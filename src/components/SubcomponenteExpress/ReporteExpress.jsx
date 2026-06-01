@@ -1,12 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { FaCog, FaFileExcel, FaTasks, FaTrash } from 'react-icons/fa';
-import { deleteSiniestroExpress, getSiniestrosExpressPaginado } from '../../services/expressService.js';
+import { deleteSiniestroExpress, fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import SubcomponenteExpress from './SubcomponenteExpress.jsx';
 import { convertirFechaParaExcelDate } from '../../utils/fechaUtils.js';
 import {
   EXPRESS_COLUMNAS_STORAGE_KEY,
-  EXPRESS_LIMIT_FETCH,
   EXPRESS_REPORTE_PAGE_SIZE,
   formatCurrency,
   formatDate,
@@ -151,15 +150,7 @@ const ReporteExpress = () => {
     setLoading(true);
     setError(null);
     try {
-      const respuesta = await getSiniestrosExpressPaginado({
-        page: 1,
-        limit: EXPRESS_LIMIT_FETCH,
-      });
-      const data = Array.isArray(respuesta?.data)
-        ? respuesta.data
-        : Array.isArray(respuesta)
-          ? respuesta
-          : [];
+      const data = await fetchAllSiniestrosExpress();
       setSiniestros(data);
       setFiltrados(data);
     } catch (err) {
@@ -177,12 +168,8 @@ const ReporteExpress = () => {
       setLoading(true);
       setError(null);
       try {
-        const respuesta = await getSiniestrosExpressPaginado({
-          page: 1,
-          limit: EXPRESS_LIMIT_FETCH,
-        });
+        const data = await fetchAllSiniestrosExpress();
         if (cancelado) return;
-        const data = Array.isArray(respuesta?.data) ? respuesta.data : Array.isArray(respuesta) ? respuesta : [];
         setSiniestros(data);
         setFiltrados(data);
       } catch (err) {

@@ -159,6 +159,28 @@ export const getSiniestrosExpressPaginado = async ({ page = 1, limit = 100 } = {
   return payload;
 };
 
+/** Descarga todos los casos Express paginando en lotes (para reporte, dashboard, tablero). */
+export const fetchAllSiniestrosExpress = async (batchSize = 2000) => {
+  const acumulado = [];
+  let page = 1;
+  let total = null;
+
+  while (true) {
+    const respuesta = await getSiniestrosExpressPaginado({ page, limit: batchSize });
+    const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
+    if (total == null && typeof respuesta?.total === 'number') {
+      total = respuesta.total;
+    }
+    if (!lote.length) break;
+    acumulado.push(...lote);
+    if (total != null && acumulado.length >= total) break;
+    if (lote.length < batchSize) break;
+    page += 1;
+  }
+
+  return acumulado;
+};
+
 export const deleteSiniestroExpress = async (id) => {
   if (!id) {
     throw new Error('Identificador de siniestro express no válido');

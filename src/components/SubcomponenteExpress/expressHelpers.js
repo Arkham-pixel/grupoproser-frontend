@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BASE_URL } from '../../config/apiConfig.js';
 
-export const EXPRESS_LIMIT_FETCH = 1500;
+export const EXPRESS_LIMIT_FETCH = 2000;
+/** Lote por petición al cargar todos los casos Express */
+export const EXPRESS_FETCH_BATCH = EXPRESS_LIMIT_FETCH;
 export const EXPRESS_COLUMNAS_STORAGE_KEY = 'express-reporte-columnas-v1';
 /** Filas visibles por página en el reporte Express */
 export const EXPRESS_REPORTE_PAGE_SIZE = 25;

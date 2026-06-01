@@ -9,11 +9,10 @@ import {
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import { FaChartLine, FaChevronDown, FaChevronRight } from 'react-icons/fa';
-import { getSiniestrosExpressPaginado } from '../../services/expressService.js';
+import { fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  EXPRESS_LIMIT_FETCH,
   parseDate,
   useExpressCatalogos,
 } from './expressHelpers.js';
@@ -64,16 +63,7 @@ const TableroOperativoExpress = () => {
       setLoading(true);
       setError(null);
       try {
-        const respuesta = await getSiniestrosExpressPaginado({
-          page: 1,
-          limit: EXPRESS_LIMIT_FETCH,
-        });
-        if (cancelado) return;
-        const data = Array.isArray(respuesta?.data)
-          ? respuesta.data
-          : Array.isArray(respuesta)
-            ? respuesta
-            : [];
+        const data = await fetchAllSiniestrosExpress();
         setSiniestros(data);
       } catch (err) {
         if (!cancelado) {
