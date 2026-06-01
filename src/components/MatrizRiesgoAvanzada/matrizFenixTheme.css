@@ -1,0 +1,682 @@
+/**
+ * Tema Fenix para toda la Matriz de Riesgo.
+ * Aplica bajo .matriz-fenix-scope para sustituir estilos legacy (morados, gradientes viejos).
+ */
+
+.matriz-fenix-scope {
+  font-family: 'Inter', sans-serif;
+  color: #1e1e1e;
+}
+
+.dark .matriz-fenix-scope {
+  color: #e5e5e5;
+}
+
+/* —— Cabeceras de sección legacy → estilo tarjeta compacto —— */
+.matriz-fenix-scope .identificacion-header,
+.matriz-fenix-scope .valoracion-header,
+.matriz-fenix-scope .mapa-calor-header,
+.matriz-fenix-scope .gestion-header,
+.matriz-fenix-scope .categories-intro,
+.matriz-fenix-scope .criteria-intro,
+.matriz-fenix-scope .heatmap-intro,
+.matriz-fenix-scope .gestion-intro,
+.matriz-fenix-scope .process-intro {
+  display: none;
+}
+
+/* Resumen identificación — anular morado legacy */
+.matriz-fenix-scope .resumen-identificacion {
+  background: #fff !important;
+  color: inherit !important;
+  border-radius: 0.75rem !important;
+  padding: 0 !important;
+}
+
+.matriz-fenix-scope .resumen-identificacion .seccion-titulo {
+  color: #1f2937 !important;
+}
+
+/* —— Paneles y tarjetas —— */
+.matriz-fenix-scope .importar-excel-panel,
+.matriz-fenix-scope .welcome-card,
+.matriz-fenix-scope .info-form-card,
+.matriz-fenix-scope .recomendaciones-section,
+.matriz-fenix-scope .recomendacion-card,
+.matriz-fenix-scope .formulario-excel,
+.matriz-fenix-scope .tabla-riesgos,
+.matriz-fenix-scope .valoracion-content > .valoracion-barra-seleccion,
+.matriz-fenix-scope .mapa-calor-content,
+.matriz-fenix-scope .mensaje-informativo,
+.matriz-fenix-scope .mapa-calor-alerta-concentracion,
+.matriz-fenix-scope .tabla-resumen-mapa-block,
+.matriz-fenix-scope .heatmap-section,
+.matriz-fenix-scope .intro-tab .step-card,
+.matriz-fenix-scope .intro-tab .tip-card,
+.matriz-fenix-scope .categories-tab .category-card,
+.matriz-fenix-scope .criteria-tab .criteria-card {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  padding: 1.25rem;
+}
+
+.dark .matriz-fenix-scope .importar-excel-panel,
+.dark .matriz-fenix-scope .welcome-card,
+.dark .matriz-fenix-scope .info-form-card,
+.dark .matriz-fenix-scope .recomendacion-card,
+.dark .matriz-fenix-scope .formulario-excel,
+.dark .matriz-fenix-scope .tabla-riesgos,
+.dark .matriz-fenix-scope .mensaje-informativo,
+.dark .matriz-fenix-scope .mapa-calor-content {
+  background: #1a1a1a;
+  border-color: #374151;
+}
+
+.matriz-fenix-scope .importar-excel-panel {
+  background: rgba(220, 38, 38, 0.04);
+  border-color: rgba(220, 38, 38, 0.15);
+  padding: 1rem 1.25rem;
+  margin-bottom: 0;
+}
+
+.matriz-fenix-scope .importar-excel-info h4 {
+  color: #dc2626;
+  font-family: Montserrat, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+}
+
+.matriz-fenix-scope .importar-excel-info p {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.matriz-fenix-scope .importar-excel-modo select,
+.matriz-fenix-scope .form-input,
+.matriz-fenix-scope .form-textarea,
+.matriz-fenix-scope .form-input-recomendacion,
+.matriz-fenix-scope .form-textarea-recomendacion,
+.matriz-fenix-scope .input-excel,
+.matriz-fenix-scope .textarea-excel,
+.matriz-fenix-scope .selector-input,
+.matriz-fenix-scope .input-num,
+.matriz-fenix-scope select:not([class*='rounded']) {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  background: #fff;
+  color: #1f2937;
+}
+
+.matriz-fenix-scope .form-input:focus,
+.matriz-fenix-scope .form-textarea:focus,
+.matriz-fenix-scope .input-excel:focus,
+.matriz-fenix-scope .textarea-excel:focus,
+.matriz-fenix-scope .form-input-recomendacion:focus,
+.matriz-fenix-scope .form-textarea-recomendacion:focus {
+  outline: none;
+  border-color: #dc2626;
+  box-shadow: 0 0 0 1px #dc2626;
+}
+
+/* —— Títulos de sección interna (sin línea lateral) —— */
+.matriz-fenix-scope .seccion-titulo,
+.matriz-fenix-scope .info-form-card h3,
+.matriz-fenix-scope .welcome-card h2,
+.matriz-fenix-scope .tabla-titulo,
+.matriz-fenix-scope .tabla-seccion-titulo,
+.matriz-fenix-scope .heatmap-title,
+.matriz-fenix-scope .criteria-section h3,
+.matriz-fenix-scope .heatmap-explanation h3,
+.matriz-fenix-scope .heatmap-interpretation h3,
+.matriz-fenix-scope .heatmap-importance h3,
+.matriz-fenix-scope .gestion-explanation h3,
+.matriz-fenix-scope .beneficios-section h3,
+.matriz-fenix-scope .proceso-section h3,
+.matriz-fenix-scope .estrategias-section h3,
+.matriz-fenix-scope .process-tab h2,
+.matriz-fenix-scope .categories-tab h2,
+.matriz-fenix-scope .criteria-tab h2 {
+  font-family: Montserrat, sans-serif;
+  font-weight: 700;
+  color: #1f2937 !important;
+  border-left: none !important;
+  padding-left: 0 !important;
+  margin-bottom: 0.75rem;
+}
+
+.dark .matriz-fenix-scope .criteria-section h3,
+.dark .matriz-fenix-scope .heatmap-explanation h3 {
+  color: #f3f4f6 !important;
+}
+
+.matriz-fenix-scope .seccion-titulo .icono {
+  display: none;
+}
+
+/* —— Botones —— */
+.matriz-fenix-scope .btn-fenix-primary,
+.matriz-fenix-scope .btn-agregar-fila,
+.matriz-fenix-scope .btn-procesar-formulario,
+.matriz-fenix-scope .btn-importar-excel,
+.matriz-fenix-scope .btn-agregar-recomendacion,
+.matriz-fenix-scope .btn-refrescar,
+.matriz-fenix-scope .btn-ir-valoracion,
+.matriz-fenix-scope .primary-btn {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: none !important;
+}
+
+.matriz-fenix-scope .btn-fenix-primary:hover,
+.matriz-fenix-scope .btn-agregar-fila:hover,
+.matriz-fenix-scope .btn-procesar-formulario:hover,
+.matriz-fenix-scope .btn-importar-excel:hover:not(:disabled),
+.matriz-fenix-scope .btn-agregar-recomendacion:hover,
+.matriz-fenix-scope .btn-refrescar:hover,
+.matriz-fenix-scope .btn-ir-valoracion:hover {
+  background: #b91c1c !important;
+}
+
+.matriz-fenix-scope .btn-plantilla-excel,
+.matriz-fenix-scope .secondary-btn,
+.matriz-fenix-scope .btn-agregar-excel,
+.matriz-fenix-scope .tertiary-btn {
+  background: transparent !important;
+  color: #dc2626 !important;
+  border: 2px solid #dc2626 !important;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.matriz-fenix-scope .btn-eliminar-fila,
+.matriz-fenix-scope .btn-eliminar-recomendacion,
+.matriz-fenix-scope .btn-eliminar-seleccionados {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.matriz-fenix-scope .btn-limpiar-seleccion {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 0.5rem;
+}
+
+/* —— Tablas —— */
+.matriz-fenix-scope .tabla-formulario-container,
+.matriz-fenix-scope .tabla-valoracion-container {
+  border: 1px solid #f3f4f6;
+  border-radius: 0.75rem;
+  overflow-x: auto;
+  overflow-y: visible;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Permitir redimensionar los cuadros de texto en tablas */
+.matriz-fenix-scope .celda-editable,
+.matriz-fenix-scope .textarea-excel {
+  resize: vertical;
+  min-height: 3.5rem;
+  overflow: auto;
+}
+
+.matriz-fenix-scope .tabla-formulario th,
+.matriz-fenix-scope .tabla-valoracion th,
+.matriz-fenix-scope .tabla-valoracion-estilo th,
+.matriz-fenix-scope .tabla-resumen-mapa th {
+  background: #f9fafb !important;
+  color: #374151 !important;
+  font-family: Montserrat, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-color: #e5e7eb !important;
+}
+
+.matriz-fenix-scope .tabla-formulario td,
+.matriz-fenix-scope .tabla-valoracion td,
+.matriz-fenix-scope .tabla-valoracion-estilo td,
+.matriz-fenix-scope .tabla-resumen-mapa td {
+  border-color: #f3f4f6 !important;
+  font-size: 0.8rem;
+}
+
+.matriz-fenix-scope .fila-formulario:hover,
+.matriz-fenix-scope .tabla-valoracion tbody tr:hover {
+  background: #f9fafb;
+}
+
+.matriz-fenix-scope .tabla-valoracion .grupo,
+.matriz-fenix-scope .tabla-valoracion .thead-grupos th {
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+}
+
+/* —— Pestañas contenido Información —— */
+.matriz-fenix-scope .tab-content {
+  padding: 0;
+}
+
+.matriz-fenix-scope .intro-tab,
+.matriz-fenix-scope .process-tab,
+.matriz-fenix-scope .categories-tab,
+.matriz-fenix-scope .criteria-tab,
+.matriz-fenix-scope .heatmap-tab,
+.matriz-fenix-scope .gestion-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0;
+  background: transparent;
+  min-height: 0;
+}
+
+.matriz-fenix-scope .welcome-card {
+  padding: 1.25rem 1.5rem;
+  text-align: left;
+}
+
+.matriz-fenix-scope .welcome-card h2 {
+  font-size: 1.125rem;
+  border: none;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.matriz-fenix-scope .info-form-card {
+  padding: 1.25rem 1.5rem;
+}
+
+.matriz-fenix-scope .info-form-card h3::before {
+  display: none;
+}
+
+.matriz-fenix-scope .info-form-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.matriz-fenix-scope .form-group label,
+.matriz-fenix-scope .form-group-recomendacion label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+/* —— Valoración barra selección —— */
+.matriz-fenix-scope .valoracion-barra-seleccion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+/* —— Mapa de calor —— */
+.matriz-fenix-scope .mapa-calor-riesgos,
+.matriz-fenix-scope .gestion-riesgos,
+.matriz-fenix-scope .identificacion-riesgos,
+.matriz-fenix-scope .valoracion-riesgos,
+.matriz-fenix-scope .informacion-matriz {
+  background: transparent !important;
+  padding: 0 !important;
+  min-height: 0;
+}
+
+.matriz-fenix-scope .mapa-calor-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.matriz-fenix-scope .heatmap-section {
+  padding: 1.25rem;
+}
+
+.matriz-fenix-scope .mensaje-informativo {
+  padding: 1.25rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.matriz-fenix-scope .mapa-calor-alerta-concentracion {
+  padding: 0.75rem 1rem;
+  background: #fffbeb !important;
+  border-color: #fcd34d !important;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.matriz-fenix-scope .header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.matriz-fenix-scope .contador-riesgos {
+  font-size: 0.875rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+}
+
+/* —— Gestión (legacy purple wrapper) —— */
+.matriz-fenix-scope .gestion-riesgos {
+  background: transparent !important;
+}
+
+.matriz-fenix-scope .recomendaciones-section {
+  padding: 1.25rem;
+  max-width: none;
+  margin: 0;
+}
+
+.matriz-fenix-scope .recomendacion-card {
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.matriz-fenix-scope .recomendacion-form {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.matriz-fenix-scope .form-group-recomendacion.full-width {
+  grid-column: 1 / -1;
+}
+
+/* —— Sin datos / vacíos —— */
+.matriz-fenix-scope .sin-riesgos {
+  text-align: center;
+  padding: 2rem;
+  color: #6b7280;
+  background: #f9fafb;
+  border-radius: 0.75rem;
+  border: 1px dashed #e5e7eb;
+}
+
+.matriz-fenix-scope .sin-riesgos-icono {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* —— Modal mapa —— */
+.matriz-fenix-scope .mapa-celda-modal {
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+}
+
+.matriz-fenix-scope .mapa-celda-modal-header {
+  border-bottom: 1px solid #f3f4f6;
+  padding: 1rem 1.25rem;
+}
+
+.matriz-fenix-scope .mapa-celda-modal-cerrar {
+  background: #f3f4f6;
+  color: #374151;
+  border-radius: 0.5rem;
+}
+
+/* Checkboxes tablas */
+.matriz-fenix-scope .checkbox-excel,
+.matriz-fenix-scope .valoracion-checkbox {
+  accent-color: #dc2626;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Ocultar gradientes morados residuales en tabs de info */
+.matriz-fenix-scope .criteria-tab,
+.matriz-fenix-scope .categories-tab,
+.matriz-fenix-scope .process-tab,
+.matriz-fenix-scope .heatmap-tab,
+.matriz-fenix-scope .gestion-tab {
+  background: transparent !important;
+}
+
+/* Tarjetas didácticas (Información — resto de pestañas) */
+.matriz-fenix-scope .quick-card,
+.matriz-fenix-scope .step-card,
+.matriz-fenix-scope .tip-card,
+.matriz-fenix-scope .category-card,
+.matriz-fenix-scope .criteria-card,
+.matriz-fenix-scope .benefit-card,
+.matriz-fenix-scope .beneficio-card,
+.matriz-fenix-scope .herramienta-card,
+.matriz-fenix-scope .estrategia-card,
+.matriz-fenix-scope .process-step {
+  background: #fff !important;
+  border: 1px solid #f3f4f6 !important;
+  border-radius: 0.75rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  color: #374151 !important;
+}
+
+.matriz-fenix-scope .quick-card:hover,
+.matriz-fenix-scope .category-card:hover {
+  border-color: rgba(220, 38, 38, 0.35) !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.08) !important;
+}
+
+.matriz-fenix-scope .quick-start-grid,
+.matriz-fenix-scope .categories-grid,
+.matriz-fenix-scope .criteria-grid,
+.matriz-fenix-scope .process-steps {
+  gap: 1rem;
+}
+
+.matriz-fenix-scope .process-tab h2,
+.matriz-fenix-scope .categories-tab h2,
+.matriz-fenix-scope .criteria-tab h2,
+.matriz-fenix-scope .heatmap-tab h2,
+.matriz-fenix-scope .gestion-tab h2,
+.matriz-fenix-scope .intro-tab h2 {
+  font-family: Montserrat, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  border-left: 4px solid #dc2626;
+  padding-left: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.matriz-fenix-scope .form-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Botones didácticos en tabs info */
+.matriz-fenix-scope .btn-action,
+.matriz-fenix-scope .cta-button,
+.matriz-fenix-scope .nav-button {
+  background: #dc2626 !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 0.5rem !important;
+  padding: 0.5rem 1rem !important;
+  font-weight: 600 !important;
+}
+
+.matriz-fenix-scope .btn-action:hover,
+.matriz-fenix-scope .cta-button:hover {
+  background: #b91c1c !important;
+}
+
+/* —— Criterios (prob / impact cards) —— */
+.matriz-fenix-scope .criteria-section,
+.matriz-fenix-scope .heatmap-explanation,
+.matriz-fenix-scope .gestion-explanation,
+.matriz-fenix-scope .beneficios-section,
+.matriz-fenix-scope .proceso-section,
+.matriz-fenix-scope .estrategias-section,
+.matriz-fenix-scope .heatmap-usage,
+.matriz-fenix-scope .heatmap-cta,
+.matriz-fenix-scope .gestion-cta,
+.matriz-fenix-scope .finalizar-identificacion-section {
+  background: #fff !important;
+  border: 1px solid #f3f4f6 !important;
+  border-radius: 0.75rem !important;
+  padding: 1.25rem !important;
+  margin: 0 0 1rem !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  color: #374151 !important;
+}
+
+.matriz-fenix-scope .prob-card,
+.matriz-fenix-scope .impact-card,
+.matriz-fenix-scope .usage-step,
+.matriz-fenix-scope .proceso-item,
+.matriz-fenix-scope .estrategia-card,
+.matriz-fenix-scope .stat-highlight {
+  background: #fff !important;
+  border: 1px solid #f3f4f6 !important;
+  border-radius: 0.75rem !important;
+  padding: 1rem !important;
+  color: #374151 !important;
+  box-shadow: none !important;
+}
+
+.matriz-fenix-scope .prob-header,
+.matriz-fenix-scope .impact-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.matriz-fenix-scope .prob-card .prob-number,
+.matriz-fenix-scope .impact-card .impact-number,
+.matriz-fenix-scope .usage-step .step-number,
+.matriz-fenix-scope .proceso-item .proceso-number {
+  position: static !important;
+  left: auto !important;
+  transform: none !important;
+  background: #dc2626 !important;
+  color: #fff !important;
+  border-radius: 0.5rem !important;
+  width: 2rem !important;
+  height: 2rem !important;
+  min-width: 2rem;
+  flex-shrink: 0;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.875rem;
+}
+
+.matriz-fenix-scope .prob-card,
+.matriz-fenix-scope .impact-card {
+  border-left: none !important;
+}
+
+.matriz-fenix-scope .process-timeline::before {
+  display: none !important;
+}
+
+.matriz-fenix-scope .timeline-item,
+.matriz-fenix-scope .timeline-number {
+  display: none !important;
+}
+
+.matriz-fenix-scope .matrix-impact-numbers {
+  display: none !important;
+}
+
+.matriz-fenix-scope .tabla-resumen-mapa thead {
+  background: #f9fafb !important;
+  color: #374151 !important;
+}
+
+.matriz-fenix-scope .tabla-resumen-mapa-titulo {
+  background: transparent !important;
+  color: #1f2937 !important;
+  border-radius: 0 !important;
+}
+
+.matriz-fenix-scope .explanation-text,
+.matriz-fenix-scope .criteria-section > p,
+.matriz-fenix-scope .interpretation-intro,
+.matriz-fenix-scope .importance-intro,
+.matriz-fenix-scope .beneficios-intro,
+.matriz-fenix-scope .proceso-intro,
+.matriz-fenix-scope .estrategias-intro {
+  color: #4b5563 !important;
+}
+
+.matriz-fenix-scope .prob-card h4,
+.matriz-fenix-scope .impact-card h4,
+.matriz-fenix-scope .interpretation-card h4,
+.matriz-fenix-scope .importance-card h4,
+.matriz-fenix-scope .beneficio-card h4 {
+  color: #1f2937 !important;
+}
+
+.matriz-fenix-scope .probability-cards,
+.matriz-fenix-scope .impact-cards,
+.matriz-fenix-scope .usage-steps,
+.matriz-fenix-scope .beneficios-grid,
+.matriz-fenix-scope .proceso-timeline,
+.matriz-fenix-scope .stats-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.matriz-fenix-scope .probability-cards {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.matriz-fenix-scope .impact-cards {
+  grid-template-columns: 1fr;
+}
+
+.matriz-fenix-scope .mapas-container {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.matriz-fenix-scope .mapa-celda-modal-backdrop {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.matriz-fenix-scope .heatmap-title-external h3 {
+  border-left: 4px solid #dc2626;
+  padding-left: 0.75rem;
+  font-family: Montserrat, sans-serif;
+  font-size: 1rem;
+  color: #1f2937;
+}

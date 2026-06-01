@@ -1,0 +1,1470 @@
+/* Estilos para el componente de Identificación de Riesgos */
+.identificacion-riesgos {
+  max-width: 100%;
+}
+
+.identificacion-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.identificacion-header h3 {
+  color: #495057;
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.identificacion-header p {
+  color: #6c757d;
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.identificacion-content {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: visible; /* Permitir que el contenido se desborde horizontalmente */
+}
+
+/* Importación desde Excel */
+.importar-excel-panel {
+  background: linear-gradient(135deg, #f0f7ff 0%, #f8f9fa 100%);
+  border: 1px solid #b8daff;
+  border-radius: 12px;
+  padding: 18px 20px;
+  margin-bottom: 8px;
+}
+
+.importar-excel-info h4 {
+  margin: 0 0 8px;
+  color: #0d47a1;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.importar-excel-info p {
+  margin: 0;
+  color: #495057;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.importar-excel-controles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.importar-excel-modo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.importar-excel-modo select {
+  min-width: 280px;
+  padding: 8px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+.importar-excel-botones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-excel-file {
+  display: none;
+}
+
+.btn-plantilla-excel,
+.btn-importar-excel {
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.btn-plantilla-excel {
+  background: #fff;
+  color: #0d47a1;
+  border: 1px solid #90caf9;
+}
+
+.btn-plantilla-excel:hover:not(:disabled) {
+  background: #e3f2fd;
+}
+
+.btn-importar-excel {
+  background: #1976d2;
+  color: #fff;
+}
+
+.btn-importar-excel:hover:not(:disabled) {
+  background: #1565c0;
+}
+
+.btn-plantilla-excel:disabled,
+.btn-importar-excel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.importar-excel-mensaje {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.importar-excel-mensaje--ok {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.importar-excel-mensaje--error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Formulario para agregar riesgos */
+.formulario-agregar {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  border: 1px solid #e9ecef;
+}
+
+.seccion-titulo {
+  display: flex;
+  align-items: center;
+  color: #495057;
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 25px;
+}
+
+.seccion-titulo .icono {
+  margin-right: 12px;
+  font-size: 1.4rem;
+}
+
+/* Grid del formulario */
+.formulario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.campo-formulario {
+  display: flex;
+  flex-direction: column;
+}
+
+.campo-formulario.campo-completo {
+  grid-column: 1 / -1;
+}
+
+.campo-formulario label {
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 8px;
+  font-size: 0.95rem;
+}
+
+.campo-input,
+.campo-textarea {
+  padding: 12px 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.campo-input:focus,
+.campo-textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.campo-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+/* Botón agregar */
+.formulario-acciones {
+  display: flex;
+  justify-content: center;
+}
+
+.btn-agregar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-agregar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-agregar:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Lista de riesgos */
+.lista-riesgos {
+  background: white;
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+  border: 1px solid #e9ecef;
+}
+
+/* Sin riesgos */
+.sin-riesgos {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.sin-riesgos-icono {
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.sin-riesgos h5 {
+  margin: 0 0 10px 0;
+  font-size: 1.2rem;
+  color: #495057;
+}
+
+.sin-riesgos p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* Categorías de riesgos */
+.categorias-container {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+}
+
+.categoria-riesgos {
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.categoria-header {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.categoria-titulo {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.categoria-icono {
+  margin-right: 10px;
+  font-size: 1.2rem;
+}
+
+.categoria-count {
+  margin-left: auto;
+  background: #667eea;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Lista de riesgos por categoría */
+.riesgos-lista {
+  padding: 20px;
+}
+
+.riesgo-item {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-left: 4px solid #667eea;
+  transition: all 0.3s ease;
+}
+
+.riesgo-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.riesgo-item:last-child {
+  margin-bottom: 0;
+}
+
+.riesgo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.riesgo-nombre {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #495057;
+  flex: 1;
+}
+
+.btn-eliminar {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.btn-eliminar:hover {
+  background: #c82333;
+  transform: scale(1.05);
+}
+
+.riesgo-descripcion {
+  margin: 0 0 15px 0;
+  color: #6c757d;
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.riesgo-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  font-size: 0.85rem;
+}
+
+.metadata-item {
+  color: #6c757d;
+}
+
+.metadata-item strong {
+  color: #495057;
+}
+
+/* Resumen */
+.resumen-identificacion {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px;
+  padding: 30px;
+}
+
+.resumen-identificacion .seccion-titulo {
+  color: white;
+}
+
+.resumen-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.resumen-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  text-align: center;
+}
+
+.resumen-label {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  font-weight: 500;
+}
+
+.resumen-valor {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+/* Botón para finalizar identificación */
+.finalizar-identificacion-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 40px 0;
+  padding: 30px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 15px;
+  border: 2px solid #dee2e6;
+}
+
+.btn-finalizar-identificacion {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 40px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-finalizar-identificacion:hover {
+  background: linear-gradient(135deg, #218838, #1ea085);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 25px rgba(40, 167, 69, 0.4);
+}
+
+.btn-finalizar-identificacion:active {
+  transform: translateY(-1px);
+}
+
+.btn-finalizar-identificacion .btn-icono {
+  font-size: 1.4rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.finalizar-descripcion {
+  margin-top: 15px;
+  color: #6c757d;
+  font-size: 0.95rem;
+  text-align: center;
+  font-style: italic;
+  max-width: 500px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .formulario-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .resumen-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .formulario-agregar,
+  .lista-riesgos,
+  .resumen-identificacion {
+    padding: 20px;
+  }
+  
+  .riesgo-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .riesgo-metadata {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+/* Animaciones */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.riesgo-item {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.categoria-riesgos {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Estados de validación */
+.campo-input.error,
+.campo-textarea.error {
+  border-color: #dc3545;
+}
+
+.campo-input.success,
+.campo-textarea.success {
+  border-color: #28a745;
+}
+
+/* Formulario estilo Excel */
+.formulario-excel {
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #d0d7de;
+  margin-bottom: 20px;
+}
+
+/* Contenedor principal del formulario Excel - Responsive */
+.formulario-excel {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.tabla-formulario-container {
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 1px solid #000000;
+  background: white;
+  width: 100%;
+  max-width: 100vw; /* Usar todo el ancho de la pantalla */
+  margin: 0;
+  padding: 0;
+  /* Forzar que el scroll funcione */
+  position: relative;
+}
+
+/* Scrollbar estilo Excel - Simple y limpia */
+.tabla-formulario-container::-webkit-scrollbar {
+  height: 17px; /* Altura estándar de Excel */
+}
+
+.tabla-formulario-container::-webkit-scrollbar-track {
+  background: #f0f0f0; /* Gris claro como Excel */
+  border-top: 1px solid #d0d0d0;
+}
+
+.tabla-formulario-container::-webkit-scrollbar-thumb {
+  background: #c0c0c0; /* Gris medio como Excel */
+  border: 1px solid #a0a0a0;
+  border-radius: 0; /* Sin bordes redondeados como Excel */
+}
+
+.tabla-formulario-container::-webkit-scrollbar-thumb:hover {
+  background: #a0a0a0; /* Gris más oscuro al hover */
+}
+
+.tabla-formulario-container::-webkit-scrollbar-corner {
+  background: #f0f0f0; /* Esquina del scrollbar */
+}
+
+/* Estilos para las categorías de riesgo - Mejorados */
+.categorias-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); /* 4 columnas para mejor distribución */
+  gap: 8px;
+  padding: 8px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  min-height: 80px; /* Altura mínima para mejor visualización */
+}
+
+.categoria-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #495057;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.categoria-checkbox:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  transform: translateY(-1px);
+}
+
+.categoria-checkbox input[type="checkbox"] {
+  margin: 0;
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+.categoria-checkbox.checked {
+  background: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+  font-weight: 600;
+}
+
+.tabla-formulario {
+  width: 1560px !important; /* Ancho fijo que fuerza el scroll */
+  min-width: 1560px; /* Ancho mínimo más grande para forzar scroll (60+250+200+350+600+100) */
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  font-family: 'Calibri', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  table-layout: fixed; /* Para controlar el ancho de las columnas */
+  /* Asegurar que la tabla no se comprima */
+  flex-shrink: 0;
+}
+
+.tabla-formulario thead tr:first-child th {
+  background: #d9d9d9;
+  color: #000000;
+  font-weight: 700;
+  font-size: 11px;
+  text-align: center;
+  border: 1px solid #000000;
+  padding: 4px 8px;
+}
+
+/* Anchos por clase (evita conflictos con encabezado de dos filas) */
+.tabla-formulario .col-numero { width: 60px; min-width: 60px; }
+.tabla-formulario .col-proceso { width: 250px; min-width: 250px; }
+.tabla-formulario .col-tipo { width: 200px; min-width: 200px; }
+.tabla-formulario .col-riesgo { width: 350px; min-width: 350px; }
+.tabla-formulario .col-categorias,
+.tabla-formulario .col-categorias-header { width: 75px; min-width: 75px; }
+.tabla-formulario .col-acciones { width: 100px; min-width: 100px; }
+
+.tabla-formulario thead tr:last-child th {
+  background: #d9d9d9;
+  color: #000000;
+  font-weight: 600;
+  font-size: 10px;
+  text-align: center;
+  border: 1px solid #000000;
+  border-top: none;
+  padding: 4px 8px;
+}
+
+.fila-formulario td {
+  padding: 8px 12px; /* Más padding para que se vea como Excel */
+  border: 1px solid #000000;
+  vertical-align: middle;
+  font-size: 10px;
+  color: #000000;
+  background: #ffff99; /* Fila amarilla como Excel */
+  font-family: 'Calibri', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Inputs estilo Excel */
+.input-excel,
+.select-excel,
+.textarea-excel {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 10px;
+  color: #000000;
+  font-family: 'Calibri', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  padding: 2px 4px;
+  outline: none;
+  resize: vertical;
+  min-height: 2.5rem;
+}
+
+.input-excel:focus,
+.select-excel:focus,
+.textarea-excel:focus {
+  background: white;
+  border: 1px solid #0078d4;
+}
+
+.input-excel::placeholder,
+.textarea-excel::placeholder {
+  color: #666666;
+  font-style: italic;
+}
+
+/* Checkboxes estilo Excel */
+.checkbox-excel {
+  transform: scale(1.2);
+  accent-color: #000000;
+}
+
+/* Botón agregar estilo Excel */
+.btn-agregar-excel {
+  background: #f5f5f5;
+  border: 1px solid #000000;
+  color: #000000;
+  padding: 2px 6px;
+  border-radius: 0px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  font-size: 12px;
+  font-weight: 700;
+  width: 24px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-agregar-excel:hover:not(:disabled) {
+  background: #e6f3ff;
+  border-color: #0078d4;
+}
+
+.btn-agregar-excel:disabled {
+  background: #f5f5f5;
+  color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Header del formulario simplificado */
+.formulario-header {
+  margin-bottom: 15px;
+}
+
+/* Footer del formulario */
+.formulario-footer {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 15px;
+  padding: 20px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.btn-agregar-fila {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.btn-agregar-fila:hover {
+  background: linear-gradient(135deg, #0056b3, #004085);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+}
+
+.btn-procesar-formulario {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.btn-procesar-formulario:hover {
+  background: linear-gradient(135deg, #218838, #1ea085);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.btn-procesar-formulario:active {
+  transform: translateY(-1px);
+}
+
+/* Acciones de fila */
+.acciones-fila {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-eliminar-fila {
+  background: #f5f5f5;
+  border: 1px solid #000000;
+  color: #d32f2f;
+  padding: 2px 4px;
+  border-radius: 0px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  font-size: 9px;
+  width: 20px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-eliminar-fila:hover {
+  background: #ffebee;
+  border-color: #d32f2f;
+}
+
+/* Estilos para columnas adicionales */
+.col-adicional {
+  width: 120px;
+  font-size: 10px;
+  text-align: center;
+  background: #d9d9d9 !important;
+  border: 1px solid #000000;
+}
+
+/* Modal para agregar columnas */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  color: #495057;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.btn-cerrar-modal {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-cerrar-modal:hover {
+  background: #e9ecef;
+  color: #495057;
+}
+
+.modal-body {
+  padding: 25px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 25px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+}
+
+.btn-cancelar {
+  background: #6c757d;
+  color: white;
+  border: 1px solid #6c757d;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-cancelar:hover {
+  background: #5a6268;
+  border-color: #5a6268;
+}
+
+.btn-confirmar {
+  background: #28a745;
+  color: white;
+  border: 1px solid #28a745;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-confirmar:hover:not(:disabled) {
+  background: #218838;
+  border-color: #218838;
+}
+
+.btn-confirmar:disabled {
+  background: #6c757d;
+  border-color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Estilos para la tabla de identificación - Estilo Excel */
+.tabla-riesgos {
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 2px solid #d0d7de;
+}
+
+.tabla-container {
+  overflow-x: auto;
+  border-radius: 0px;
+  border: 1px solid #000000;
+  background: white;
+}
+
+.tabla-identificacion {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: white;
+  font-family: 'Calibri', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Headers estilo Excel - Fila 4 y 5 como en la imagen */
+.tabla-identificacion thead tr:first-child th {
+  background: #d9d9d9;
+  color: #000000;
+  font-weight: 700;
+  font-size: 11px;
+  text-align: center;
+  border: 1px solid #000000;
+  padding: 4px 8px;
+}
+
+/* Simular la fila 5 con subheaders */
+.tabla-identificacion thead tr:last-child th {
+  background: #d9d9d9;
+  color: #000000;
+  font-weight: 600;
+  font-size: 10px;
+  text-align: center;
+  border: 1px solid #000000;
+  border-top: none;
+  padding: 4px 8px;
+}
+
+/* Estilo especial para la columna de categorías que se extiende */
+.col-categorias-header {
+  background: #d9d9d9 !important;
+  border: 1px solid #000000;
+  text-align: center;
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.tabla-identificacion th {
+  padding: 8px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #000000;
+  border: 1px solid #d0d7de;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #f2f2f2;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.tabla-identificacion td {
+  padding: 4px 8px;
+  border: 1px solid #000000;
+  vertical-align: middle;
+  font-size: 10px;
+  color: #000000;
+  background: white;
+  font-family: 'Calibri', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Filas alternadas como Excel - algunas amarillas */
+.tabla-identificacion tbody tr:nth-child(odd) {
+  background: white;
+}
+
+.tabla-identificacion tbody tr:nth-child(even) {
+  background: #ffff99; /* Amarillo como en Excel */
+}
+
+/* Hover más sutil */
+.tabla-identificacion tbody tr:hover {
+  background: #e6f3ff;
+}
+
+/* Bordes específicos para simular Excel */
+.tabla-identificacion th:first-child,
+.tabla-identificacion td:first-child {
+  border-left: 1px solid #000000;
+}
+
+.tabla-identificacion th:last-child,
+.tabla-identificacion td:last-child {
+  border-right: 1px solid #000000;
+}
+
+.tabla-identificacion thead th {
+  border-top: 1px solid #000000;
+}
+
+.tabla-identificacion tbody tr:last-child td {
+  border-bottom: 1px solid #000000;
+}
+
+/* Columnas específicas - Estilo Excel */
+.col-numero {
+  width: 40px;
+  text-align: center;
+  font-weight: 600;
+  color: #000000;
+  background: #f2f2f2 !important;
+  font-size: 10px;
+}
+
+.col-proceso {
+  width: 160px;
+  font-weight: 500;
+  color: #000000;
+  font-size: 10px;
+}
+
+.col-tipo {
+  width: 120px;
+  color: #000000;
+  font-size: 10px;
+}
+
+.col-riesgo {
+  min-width: 200px;
+  color: #000000;
+  line-height: 1.3;
+  font-size: 10px;
+}
+
+.col-categorias {
+  width: 75px;
+  min-width: 75px;
+  font-size: 10px;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.2;
+  padding: 4px 2px;
+}
+
+/* Estilo para las X en las categorías - Estilo Excel */
+.col-categorias.text-center {
+  font-weight: 700;
+  color: #000000;
+  background: inherit;
+  font-size: 12px;
+}
+
+.col-categorias.text-center:not(:empty) {
+  background: inherit;
+  color: #000000;
+  font-weight: 700;
+}
+
+.col-acciones {
+  width: 60px;
+  text-align: center;
+}
+
+/* Categorías seleccionadas en la tabla - Estilo Excel */
+.categorias-seleccionadas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.categoria-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  background: #e7f3ff;
+  color: #0066cc;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 500;
+  border: 1px solid #b3d9ff;
+  white-space: nowrap;
+}
+
+/* Botón eliminar en tabla - Estilo Excel */
+.btn-eliminar-tabla {
+  background: #f5f5f5;
+  border: 1px solid #000000;
+  color: #d32f2f;
+  padding: 2px 4px;
+  border-radius: 0px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  font-size: 9px;
+  width: 20px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-eliminar-tabla:hover {
+  background: #ffebee;
+  border-color: #d32f2f;
+}
+
+/* Resumen de categorías */
+.resumen-categorias {
+  margin-top: 20px;
+}
+
+.resumen-categorias h5 {
+  color: #495057;
+  font-size: 1.1rem;
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+.categorias-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.categoria-resumen-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.categoria-resumen-item .categoria-icono {
+  margin-right: 8px;
+  font-size: 1.1rem;
+}
+
+.categoria-resumen-item .categoria-nombre {
+  flex: 1;
+  color: #495057;
+  font-weight: 500;
+}
+
+.categoria-resumen-item .categoria-count {
+  background: #007bff;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Responsive adicional para tabla */
+@media (max-width: 768px) {
+  .categorias-checkboxes {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabla-container {
+    font-size: 0.85rem;
+  }
+  
+  .tabla-identificacion th,
+  .tabla-identificacion td {
+    padding: 10px 8px;
+  }
+  
+  .col-proceso {
+    width: 150px;
+  }
+  
+  .col-tipo {
+    width: 120px;
+  }
+  
+  .col-riesgo {
+    min-width: 200px;
+  }
+  
+  .col-categorias {
+    width: 150px;
+  }
+  
+  .categorias-resumen {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== RESPONSIVE COMPLETO PARA TABLA EXCEL ===== */
+
+/* Pantallas grandes (Desktop) - 1200px+ */
+@media (min-width: 1200px) {
+  .tabla-formulario {
+    min-width: 1560px; /* Mantener el ancho completo */
+  }
+  
+  .tabla-formulario-container {
+    max-width: 100%;
+  }
+  
+  .formulario-excel {
+    margin: 0;
+    padding: 0;
+  }
+}
+
+/* Pantallas medianas (Tablet) - 768px a 1199px */
+@media (max-width: 1199px) and (min-width: 768px) {
+  .tabla-formulario {
+    min-width: 1000px;
+  }
+  
+  .tabla-formulario-container {
+    max-width: 100vw;
+    margin: 0;
+  }
+  
+  .formulario-excel {
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Ajustar anchos de columnas para tablet */
+  .tabla-formulario th:nth-child(1), .tabla-formulario td:nth-child(1) { width: 50px; min-width: 50px; }
+  .tabla-formulario th:nth-child(2), .tabla-formulario td:nth-child(2) { width: 200px; min-width: 200px; }
+  .tabla-formulario th:nth-child(3), .tabla-formulario td:nth-child(3) { width: 150px; min-width: 150px; }
+  .tabla-formulario th:nth-child(4), .tabla-formulario td:nth-child(4) { width: 300px; min-width: 300px; }
+  .tabla-formulario th:nth-child(5), .tabla-formulario td:nth-child(5) { width: 500px; min-width: 500px; } /* Más espacio para categorías */
+  .tabla-formulario th:nth-child(6), .tabla-formulario td:nth-child(6) { width: 80px; min-width: 80px; }
+}
+
+/* Pantallas pequeñas (Móvil) - Menos de 768px */
+@media (max-width: 767px) {
+  .tabla-formulario {
+    min-width: 800px;
+  }
+  
+  .tabla-formulario-container {
+    max-width: 100vw;
+    margin: 0 -15px; /* Usar todo el ancho de la pantalla */
+    border-left: none;
+    border-right: none;
+  }
+  
+  .formulario-excel {
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Ajustar anchos de columnas para móvil */
+  .tabla-formulario th:nth-child(1), .tabla-formulario td:nth-child(1) { width: 40px; min-width: 40px; }
+  .tabla-formulario th:nth-child(2), .tabla-formulario td:nth-child(2) { width: 150px; min-width: 150px; }
+  .tabla-formulario th:nth-child(3), .tabla-formulario td:nth-child(3) { width: 120px; min-width: 120px; }
+  .tabla-formulario th:nth-child(4), .tabla-formulario td:nth-child(4) { width: 200px; min-width: 200px; }
+  .tabla-formulario th:nth-child(5), .tabla-formulario td:nth-child(5) { width: 400px; min-width: 400px; } /* Más espacio para categorías */
+  .tabla-formulario th:nth-child(6), .tabla-formulario td:nth-child(6) { width: 60px; min-width: 60px; }
+  
+  /* Ajustar padding para móvil */
+  .fila-formulario td {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+  
+  .tabla-formulario thead tr:first-child th,
+  .tabla-formulario thead tr:last-child th {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+  
+  /* Botones responsive */
+  .btn-agregar-fila,
+  .btn-procesar-formulario {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 15px 20px;
+    font-size: 1.1rem;
+  }
+  
+  .formulario-footer {
+    flex-direction: column;
+    gap: 10px;
+    padding: 15px;
+  }
+  
+  /* Resumen responsive */
+  .resumen-grid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .categorias-resumen {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  
+  .categoria-resumen-item {
+    padding: 8px;
+    font-size: 0.9rem;
+  }
+  
+  /* Estilos específicos para categorías en móvil */
+  .categorias-checkboxes {
+    grid-template-columns: repeat(2, 1fr); /* 2 columnas en móvil */
+    gap: 6px;
+    padding: 6px;
+  }
+  
+  .categoria-checkbox {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+}
+
+/* Pantallas muy pequeñas (Móvil pequeño) - Menos de 480px */
+@media (max-width: 479px) {
+  .tabla-formulario {
+    min-width: 700px;
+  }
+  
+  .tabla-formulario-container {
+    margin: 0 -20px; /* Usar aún más ancho */
+  }
+  
+  /* Columnas aún más pequeñas */
+  .tabla-formulario th:nth-child(1), .tabla-formulario td:nth-child(1) { width: 35px; min-width: 35px; }
+  .tabla-formulario th:nth-child(2), .tabla-formulario td:nth-child(2) { width: 130px; min-width: 130px; }
+  .tabla-formulario th:nth-child(3), .tabla-formulario td:nth-child(3) { width: 100px; min-width: 100px; }
+  .tabla-formulario th:nth-child(4), .tabla-formulario td:nth-child(4) { width: 180px; min-width: 180px; }
+  .tabla-formulario th:nth-child(5), .tabla-formulario td:nth-child(5) { width: 200px; min-width: 200px; }
+  .tabla-formulario th:nth-child(6), .tabla-formulario td:nth-child(6) { width: 55px; min-width: 55px; }
+  
+  .fila-formulario td {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+  
+  .tabla-formulario thead tr:first-child th,
+  .tabla-formulario thead tr:last-child th {
+    padding: 2px 4px;
+    font-size: 8px;
+  }
+  
+  .categorias-resumen {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Indicador de auto-completado */
+.auto-fill-indicator {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  color: #28a745;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.col-tipo {
+  position: relative;
+}
+
+/* Estilos para el campo de tipo de proceso (solo lectura) */
+.tipo-proceso-display {
+  transition: all 0.3s ease;
+  cursor: default;
+  user-select: none;
+}
+
+.tipo-proceso-display:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+

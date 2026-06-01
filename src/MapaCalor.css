@@ -1,0 +1,75 @@
+.mapa-de-calor {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.mapa-de-calor table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.mapa-de-calor th,
+.mapa-de-calor td {
+  border: 1px solid #444;
+  padding: 8px;
+  text-align: center;
+  font-size: 12px;
+}
+
+/* Colores para modo claro */
+.mapa-de-calor .verde {
+  background-color: #b6fcb6; /* verde claro */
+}
+
+.mapa-de-calor .amarillo {
+  background-color: #fff9b6; /* amarillo claro */
+}
+
+.mapa-de-calor .naranja {
+  background-color: #ffa500; /* naranja */
+}
+
+.mapa-de-calor .rojo {
+  background-color: #fcb6b6; /* rojo claro */
+}
+
+/* Colores para modo oscuro - Más vibrantes y con mejor contraste */
+.dark .mapa-de-calor .verde {
+  background-color: #2d5a2d; /* verde oscuro más visible */
+}
+
+.dark .mapa-de-calor .amarillo {
+  background-color: #6b6b2d; /* amarillo oscuro más visible */
+}
+
+.dark .mapa-de-calor .naranja {
+  background-color: #cc8400; /* naranja oscuro más visible */
+}
+
+.dark .mapa-de-calor .rojo {
+  background-color: #6b2d2d; /* rojo oscuro más visible */
+}
+
+.mapa-de-calor .celda {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.mapa-de-calor .valor-r {
+  font-weight: bold;
+}
+
+.mapa-de-calor .riesgos {
+  font-size: 11px;
+  white-space: pre-line;
+  margin-top: 4px;
+}
+
+.mapa-de-calor .titulo {
+  margin-bottom: 10px;
+  font-size: 18px;
+  font-weight: bold;
+}

@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/arnald-icon.png?v=2" />
+    <link rel="apple-touch-icon" href="/arnald-icon.png?v=2" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- CSP actualizado para desarrollo y producción -->
+<meta http-equiv="Content-Security-Policy"
+  content="
+    default-src 'self';
+    connect-src 'self' data:
+                http://localhost:3000
+                https://aplicacion.grupoproser.com.co
+                https://api.grupoproser.com.co
+                https://aplicacion.grupoproser.com.co
+                https://content.googleapis.com
+                https://www.gstatic.com
+                https://www.googleapis.com
+                https://accounts.google.com
+                https://*.firebaseapp.com
+                https://firebase.googleapis.com
+                https://*.tile.openstreetmap.org
+                https://nominatim.openstreetmap.org
+                https://maps.googleapis.com
+                https://*.googleapis.com
+                https://*.gstatic.com
+                https://khms0.googleapis.com
+                https://khms1.googleapis.com
+                https://khms2.googleapis.com
+                https://khms3.googleapis.com
+                https://*.google.com
+                ws: wss:;
+    img-src 'self' data: blob:
+             http://localhost:3000
+             https://aplicacion.grupoproser.com.co
+             https://api.grupoproser.com.co
+             https://a.tile.openstreetmap.org
+             https://b.tile.openstreetmap.org
+             https://c.tile.openstreetmap.org
+             https://*.tile.openstreetmap.org
+             https://www.gstatic.com
+             https://*.gstatic.com
+             https://*.googleapis.com
+             https://maps.googleapis.com
+             https://khms0.googleapis.com
+             https://khms1.googleapis.com
+             https://khms2.googleapis.com
+             https://khms3.googleapis.com
+             https://*.google.com
+             https://*.googleusercontent.com
+             https://*.firebaseapp.com;
+    style-src 'self' 'unsafe-inline'
+              https://fonts.googleapis.com
+              https://*.googleapis.com;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval'
+                https://apis.google.com
+                https://maps.googleapis.com
+                https://accounts.google.com
+                https://www.gstatic.com
+                https://*.gstatic.com;
+    font-src 'self' data:
+             https://fonts.gstatic.com
+             https://*.googleapis.com;
+    frame-src https://accounts.google.com
+              https://*.googleusercontent.com
+              https://content.googleapis.com
+              https://*.firebaseapp.com
+              https://*.google.com;
+  " />
+
+
+    <title>Arnald DataFlow - Panel de Control</title>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <!-- Script para aplicar el tema antes de que React cargue (evita flash) -->
+    <script>
+      (function() {
+        try {
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          // Si hay error, usar modo claro por defecto
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-CYsLUX7N.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DDGvk1d3.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

@@ -1,0 +1,293 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Inter:wght@400;500&family=Poppins:wght@500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global mobile optimizations */
+@layer base {
+  :root {
+    /* Colores modo claro */
+    --bg-main: #F5F5F7;
+    --bg-card: #FFFFFF;
+    --bg-sidebar: #FFFFFF;
+    --text-primary: #1E1E1E;
+    --text-secondary: #6B6B6B;
+    --border-color: #E6E6E6;
+    --table-bg: #FFFFFF;
+    --table-header-bg: #F8F9FA;
+    --table-row-hover: #F5F5F7;
+  }
+
+  .dark {
+    /* Colores modo oscuro - Mejorados para legibilidad */
+    --bg-main: #0F0F0F;
+    --bg-card: #1A1A1A;
+    --bg-sidebar: #1A1A1A;
+    --text-primary: #E5E5E5;
+    --text-secondary: #A0A0A0;
+    --border-color: #2D2D2D;
+    /* Tablas y reportes con mejor contraste */
+    --table-bg: #1A1A1A;
+    --table-header-bg: #252525;
+    --table-row-hover: #2A2A2A;
+    --table-row-even: #1F1F1F;
+    /* Cards y paneles de filtros más claros */
+    --card-bg: #1F1F1F;
+    --filter-panel-bg: #252525;
+  }
+
+  html {
+    /* Prevent zoom on iOS when focusing inputs */
+    -webkit-text-size-adjust: 100%;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+    /* Tipografía base Arnald DataFlow */
+    font-family: 'Inter', sans-serif;
+  }
+  
+  body {
+    /* Prevent horizontal scroll on mobile */
+    overflow-x: hidden;
+    /* Tipografía base */
+    font-family: 'Inter', sans-serif;
+    color: var(--text-primary);
+    background-color: var(--bg-main);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Tipografías Arnald DataFlow */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  
+  /* Touch optimizations for mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Estilos para selects y options en modo oscuro */
+  select {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+  }
+
+  select option {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+  }
+
+  .dark select {
+    background-color: #1A1A1A !important;
+    color: #F5F5F5 !important;
+  }
+
+  .dark select option {
+    background-color: #1A1A1A !important;
+    color: #F5F5F5 !important;
+  }
+
+  /* Estilos para inputs de fecha en modo oscuro */
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"] {
+    background-color: var(--bg-card) !important;
+    color: var(--text-primary) !important;
+  }
+
+  .dark input[type="date"],
+  .dark input[type="time"],
+  .dark input[type="datetime-local"] {
+    background-color: #1A1A1A !important;
+    color: #F5F5F5 !important;
+  }
+
+  /* Forzar estilos en dropdowns nativos del navegador */
+  .dark select::-ms-expand {
+    background-color: #1A1A1A;
+  }
+}
+
+@layer components {
+  /* Inputs modernos corporativos */
+  .input {
+    @apply w-full border focus:outline-none;
+    height: 42px;
+    border-radius: 6px;
+    padding: 0 14px;
+    border-color: var(--border-color);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    transition: border-color 0.2s ease, background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  .input::placeholder {
+    color: var(--text-secondary);
+  }
+  
+  .input:hover {
+    border-color: #DC2626;
+  }
+  
+  .input:focus {
+    @apply ring-2;
+    --tw-ring-color: #DC2626;
+    border-color: #DC2626;
+  }
+  
+  /* Botones Arnald DataFlow - Corporativos */
+  .btn-fenix-primary {
+    @apply transition-all duration-200;
+    border-radius: 6px;
+    padding: 12px 20px;
+    background-color: rgba(220, 38, 38, 0.1);
+    color: #1E1E1E;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    cursor: pointer;
+  }
+  
+  .btn-fenix-primary:hover {
+    background-color: rgba(220, 38, 38, 0.15);
+    border-color: #DC2626;
+  }
+  
+  .btn-fenix-primary:active {
+    background-color: rgba(220, 38, 38, 0.2);
+  }
+  
+  .btn-fenix-secondary {
+    @apply transition-all duration-200;
+    border-radius: 6px;
+    padding: 12px 20px;
+    border: 2px solid #DC2626;
+    color: #DC2626;
+    background-color: transparent;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  
+  .btn-fenix-secondary:hover {
+    background-color: rgba(220, 38, 38, 0.1);
+  }
+  
+  /* Tarjetas corporativas */
+  .card-fenix {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+  
+  /* Barra de título corporativa */
+  .barra-titulo-fenix {
+    background: rgba(220, 38, 38, 0.1);
+    color: #1E1E1E;
+    padding: 14px;
+    border-radius: 6px 6px 0 0;
+    font-weight: 600;
+    border-bottom: 2px solid rgba(220, 38, 38, 0.2);
+  }
+  
+  /* Gradiente corporativo Arnald DataFlow */
+  .gradient-fenix {
+    background: rgba(220, 38, 38, 0.1);
+  }
+  
+  /* Estados de alerta */
+  .alert-success {
+    background-color: #2E8B57;
+    color: white;
+  }
+  
+  .alert-warning {
+    background-color: #E6B800;
+    color: #1C1C1C;
+  }
+  
+  .alert-error {
+    background-color: #EF4444;
+    color: white;
+  }
+  
+  .alert-info {
+    background-color: #3878D9;
+    color: white;
+  }
+  
+  /* Mobile-first responsive containers */
+  .mobile-container {
+    @apply px-3 sm:px-6 lg:px-8;
+  }
+  
+  /* Mobile-friendly buttons */
+  .btn-mobile {
+    @apply min-h-[44px] px-4 py-2 text-sm sm:text-base;
+  }
+  
+  /* Mobile-friendly tables */
+  .table-mobile {
+    @apply text-xs sm:text-sm;
+  }
+  
+  /* Mobile-friendly forms */
+  .form-mobile {
+    @apply space-y-3 sm:space-y-4;
+  }
+  
+  /* Responsive text sizes */
+  .text-responsive-xs {
+    @apply text-xs sm:text-sm;
+  }
+  
+  .text-responsive-sm {
+    @apply text-sm sm:text-base;
+  }
+  
+  .text-responsive-lg {
+    @apply text-lg sm:text-xl lg:text-2xl;
+  }
+  
+  .text-responsive-xl {
+    @apply text-xl sm:text-2xl lg:text-3xl;
+  }
+
+  /* Estilos para Recharts en modo oscuro */
+  .dark .recharts-legend-item-text {
+    fill: #FFFFFF !important;
+    color: #FFFFFF !important;
+  }
+
+  .dark .recharts-tooltip-label {
+    color: #FFFFFF !important;
+    fill: #FFFFFF !important;
+  }
+
+  .dark .recharts-tooltip-item {
+    color: #FFFFFF !important;
+  }
+
+  .dark .recharts-legend-wrapper {
+    color: #FFFFFF !important;
+  }
+
+  .dark .recharts-legend-item {
+    color: #FFFFFF !important;
+  }
+
+  /* Forzar color de texto en todos los elementos de texto de Recharts en modo oscuro */
+  .dark .recharts-text {
+    fill: #FFFFFF !important;
+    color: #FFFFFF !important;
+  }
+}
+

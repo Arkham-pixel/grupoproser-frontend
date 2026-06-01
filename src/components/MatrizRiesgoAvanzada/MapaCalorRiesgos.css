@@ -1,0 +1,1331 @@
+.mapa-calor-riesgos {
+  padding: 0;
+  background: transparent;
+  min-height: 0;
+}
+
+.mapa-calor-header {
+  margin-bottom: 12px;
+}
+
+.mapa-calor-header h2,
+.mapa-calor-header > p {
+  display: none;
+}
+
+/* Header actions */
+.header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 0;
+  padding: 10px 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.btn-refrescar {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-refrescar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+  background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+}
+
+.btn-refrescar:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-exportar-json {
+  background: linear-gradient(135deg, #6f42c1 0%, #8e44ad 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(111, 66, 193, 0.3);
+  margin-left: 10px;
+}
+
+.btn-exportar-json:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(111, 66, 193, 0.4);
+  background: linear-gradient(135deg, #5a32a3 0%, #7d3c98 100%);
+}
+
+.btn-exportar-json:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(111, 66, 193, 0.3);
+}
+
+.datos-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.contador-riesgos {
+  background: #007bff;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+/* Mensaje informativo */
+.mensaje-informativo {
+  background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+  border: 2px solid #2196f3;
+  border-radius: 12px;
+  padding: 20px;
+  margin: 20px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.15);
+}
+
+.mensaje-icono {
+  font-size: 24px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.mensaje-contenido {
+  flex: 1;
+}
+
+.mensaje-contenido h4 {
+  color: #1976d2;
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mensaje-contenido p {
+  color: #424242;
+  margin: 0 0 15px 0;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+/* Aviso: todos los riesgos en la celda mínima (suele ser desajuste datos / solo defectos) */
+.mapa-calor-alerta-concentracion {
+  background: #fff8e1;
+  border: 1px solid #ffc107;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin: 0 0 16px 0;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: #5d4037;
+}
+
+.mensaje-accion {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-ir-valoracion {
+  background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.btn-ir-valoracion:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+  background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+}
+
+.btn-ir-valoracion:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+}
+
+.mapa-calor-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Tablas grandes anteriores al mapa (ocultas: ahora va tabla compacta sobre cada mapa) */
+.tablas-wrapper--oculto {
+  display: none !important;
+}
+
+/* Contenedor principal de tablas */
+.tablas-wrapper {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 20px;
+  margin-bottom: 30px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.tabla-seccion-valoracion {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tabla-seccion-titulo {
+  background: #34495e;
+  color: white;
+  padding: 12px 15px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: bold;
+  text-align: center;
+  border-radius: 4px;
+}
+
+/* Tabla con estilo de leyenda pero con columnas originales */
+.tabla-valoracion-estilo {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.tabla-valoracion-estilo thead {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.tabla-valoracion-estilo th {
+  padding: 16px 20px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tabla-valoracion-estilo td {
+  padding: 18px 20px;
+  border-bottom: 1px solid #f1f3f4;
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.tabla-valoracion-estilo tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.tabla-valoracion-estilo tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.tabla-valoracion-estilo .col-riesgo {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.tabla-valoracion-estilo .col-probabilidad,
+.tabla-valoracion-estilo .col-impacto {
+  text-align: center;
+  font-weight: 600;
+  color: #495057;
+}
+
+.tabla-valoracion-estilo .col-calificacion {
+  text-align: center;
+  font-weight: 700;
+  border-radius: 4px;
+}
+
+.tabla-riesgos-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.tabla-titulo {
+  background: #2c3e50;
+  color: white;
+  padding: 15px;
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.tabla-riesgos {
+  overflow-x: auto;
+}
+
+.tabla-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tabla-header > div {
+  padding: 16px 20px;
+  text-align: left;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tabla-header > div:last-child {
+  border-right: none;
+}
+
+.tabla-body {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.tabla-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  border-bottom: 1px solid #f1f3f4;
+  font-size: 1rem;
+  background: white;
+}
+
+.tabla-fila:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+.tabla-fila:hover {
+  background-color: #f8f9fa;
+}
+
+.tabla-fila > div {
+  padding: 18px 20px;
+  text-align: left;
+  border-right: 1px solid #f1f3f4;
+  display: flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.tabla-fila > div:last-child {
+  border-right: none;
+}
+
+.col-riesgo {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+/* Mapas de calor */
+.mapas-container {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 12px;
+  align-items: start;
+}
+
+.mapa-calor-container {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  padding: 20px;
+}
+
+.mapa-titulo {
+  background: #2c3e50;
+  color: white;
+  padding: 15px;
+  margin: -20px -20px 20px -20px;
+  font-size: 16px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.mapa-grid {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.mapa-ejes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.eje-y {
+  position: absolute;
+  left: -30px;
+  top: 50%;
+  transform: translateY(-50%) rotate(-90deg);
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.eje-x {
+  position: absolute;
+  bottom: -30px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-weight: bold;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.mapa-celdas {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: relative;
+  z-index: 2;
+}
+
+.matrix-row {
+  display: flex;
+  gap: 2px;
+}
+
+.matrix-cell {
+  width: 60px;
+  height: 60px;
+  border: 1px solid #ddd;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.8s ease;
+  border-radius: 4px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Marcadores de riesgo dentro de la celda (sin desbordar ni tapar ejes) */
+.celda-riesgos-marcadores {
+  position: absolute;
+  inset: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  padding: 1px;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.celda-riesgos-marcadores .riesgo-marcador {
+  pointer-events: auto;
+}
+
+.matrix-cell:hover {
+  transform: scale(1.02);
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Colores de riesgo */
+.green-risk {
+  background-color: #28a745;
+}
+
+.yellow-risk {
+  background-color: #ffc107;
+}
+
+.orange-risk {
+  background-color: #fd7e14;
+}
+
+.red-risk {
+  background-color: #dc3545;
+}
+
+.riesgo-marcador {
+  background: rgba(255, 255, 255, 0.95);
+  color: #2c3e50;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin: 0;
+  border: 1px solid #2c3e50;
+  min-width: 0;
+  max-width: 100%;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  position: static;
+  line-height: 1.1;
+  flex: 0 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.celda-densidad-baja .riesgo-marcador {
+  font-size: 10px;
+  padding: 3px 6px;
+}
+
+.celda-densidad-media .riesgo-marcador {
+  font-size: 8px;
+  padding: 2px 3px;
+}
+
+.celda-densidad-alta .riesgo-marcador {
+  font-size: 7px;
+  padding: 1px 2px;
+}
+
+.celda-densidad-alta .riesgo-marcador-mas {
+  font-size: 8px;
+  padding: 2px 4px;
+}
+
+.riesgo-marcador-mas {
+  background: #2c3e50 !important;
+  color: #fff !important;
+  border-color: #1a252f !important;
+  font-weight: 800;
+  min-width: 1.25em;
+}
+
+.riesgo-marcador:hover {
+  transform: none;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  z-index: 3;
+}
+
+.riesgo-marcador-mas:hover {
+  filter: brightness(1.08);
+}
+
+/* Celdas del mapa: recorte para que no invadan números de impacto (p. ej. si InformacionMatriz.css aplica flex) */
+.heatmap-matrix .matrix-cell {
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Muchos riesgos en la misma celda: solo número; el color de la celda = magnitud */
+.matrix-cell--agrupada {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.celda-riesgos-conteo-boton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  min-width: 38px;
+  max-width: calc(100% - 4px);
+  padding: 4px 6px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #1a1a1a;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  line-height: 1.05;
+  z-index: 4;
+  font-family: inherit;
+}
+
+.celda-riesgos-conteo-boton:hover,
+.celda-riesgos-conteo-boton:focus-visible {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  outline: none;
+}
+
+.celda-riesgos-conteo-numero {
+  font-size: clamp(0.95rem, 2.8vw, 1.35rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.celda-riesgos-conteo-etiq {
+  font-size: clamp(7px, 1.9vw, 10px);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.92;
+}
+
+.celda-riesgos-marcadores--solo {
+  pointer-events: auto;
+}
+
+.celda-riesgos-marcadores--pocos {
+  flex-wrap: nowrap;
+  gap: 3px;
+  padding: 2px;
+}
+
+.celda-riesgos-marcadores--pocos .riesgo-marcador-mini {
+  font-size: 7px;
+  padding: 2px 4px;
+  border-width: 1px;
+}
+
+.mapa-celda-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.mapa-celda-modal {
+  background: #fff;
+  border-radius: 12px;
+  max-width: min(560px, 100%);
+  width: 100%;
+  max-height: min(78vh, 640px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+
+.mapa-celda-modal-header {
+  position: relative;
+  padding: 18px 44px 12px 18px;
+  border-bottom: 1px solid #e9ecef;
+  flex-shrink: 0;
+}
+
+.mapa-celda-modal-header h4 {
+  margin: 0 0 8px 0;
+  font-size: 1.1rem;
+  color: #2c3e50;
+}
+
+.mapa-celda-modal-sub {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #495057;
+  line-height: 1.4;
+}
+
+.mapa-celda-modal-cerrar {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: #f1f3f5;
+  color: #495057;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mapa-celda-modal-cerrar:hover {
+  background: #dee2e6;
+}
+
+.mapa-celda-modal-lista {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.mapa-celda-modal-lista li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 18px;
+  border-bottom: 1px solid #f1f3f4;
+  font-size: 0.92rem;
+}
+
+.mapa-celda-modal-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mapa-celda-nombre {
+  font-size: 0.88rem;
+  color: #495057;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.mapa-celda-modal-lista li:last-child {
+  border-bottom: none;
+}
+
+.mapa-celda-codigo {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.mapa-celda-calif {
+  font-size: 0.85rem;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.mapa-calor-ayuda-details {
+  max-width: 720px;
+  margin: 0 auto 16px;
+  padding: 0 8px;
+  font-size: 0.88rem;
+  color: #495057;
+}
+
+.mapa-calor-ayuda-summary {
+  cursor: pointer;
+  color: #0d6efd;
+  font-weight: 600;
+  list-style: none;
+}
+
+.mapa-calor-ayuda-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mapa-calor-ayuda-summary::before {
+  content: '▸ ';
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+
+.mapa-calor-ayuda-details[open] .mapa-calor-ayuda-summary::before {
+  transform: rotate(90deg);
+}
+
+.mapa-calor-ayuda-texto {
+  margin: 10px 0 0;
+  padding: 12px 14px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  line-height: 1.45;
+}
+
+.mapa-calor-ayuda-texto p {
+  margin: 0;
+}
+
+.mapa-contenedor {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* Tabla resumen compacta (mismo ancho que el mapa 5×5) */
+.tabla-resumen-mapa-block {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto 12px;
+}
+
+.tabla-resumen-mapa-titulo {
+  margin: 0 0 8px;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #1f2937;
+  background: transparent;
+}
+
+.tabla-resumen-mapa-scroll {
+  max-height: min(220px, 40vh);
+  overflow: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0 0 6px 6px;
+  background: #fff;
+}
+
+.tabla-resumen-mapa {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  table-layout: fixed;
+}
+
+.tabla-resumen-mapa thead {
+  background: #f9fafb;
+  color: #374151;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.tabla-resumen-mapa th,
+.tabla-resumen-mapa td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.tabla-resumen-mapa th:first-child,
+.tabla-resumen-mapa td:first-child {
+  text-align: left;
+  width: 28%;
+}
+
+.tabla-resumen-mapa-codigo {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.tabla-resumen-mapa-calif {
+  font-weight: 700;
+  border-radius: 3px;
+}
+
+.tabla-resumen-mapa-vacio {
+  margin: 0;
+  padding: 12px;
+  font-size: 0.85rem;
+  color: #6c757d;
+  text-align: center;
+  border: 1px dashed #ced4da;
+  border-radius: 6px;
+  background: #f8f9fa;
+}
+
+/* Leyenda compacta debajo de cada mapa (mismo ancho que el heatmap) */
+.tabla-leyenda-mapa-block {
+  margin-top: 14px;
+  margin-bottom: 0;
+}
+
+.tabla-leyenda-mapa-block .tabla-resumen-mapa-scroll {
+  max-height: min(200px, 35vh);
+}
+
+.tabla-leyenda-mapa th:nth-child(1),
+.tabla-leyenda-mapa td:nth-child(1) {
+  width: 12%;
+}
+
+.tabla-leyenda-mapa th:nth-child(2),
+.tabla-leyenda-mapa td:nth-child(2) {
+  width: 48%;
+  text-align: left;
+}
+
+.tabla-leyenda-mapa th:nth-child(3),
+.tabla-leyenda-mapa td:nth-child(3) {
+  width: 14%;
+}
+
+.tabla-leyenda-mapa th:nth-child(4),
+.tabla-leyenda-mapa td:nth-child(4) {
+  width: 26%;
+}
+
+.tabla-leyenda-mapa-nombre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left !important;
+  color: #495057;
+}
+
+.tabla-leyenda-mapa-calif {
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.tabla-leyenda-mapa-nivel {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tabla-leyenda-mapa-nivel.nivel-bajo {
+  background: #d4edda;
+  color: #155724;
+}
+
+.tabla-leyenda-mapa-nivel.nivel-medio {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.tabla-leyenda-mapa-nivel.nivel-alto {
+  background: #ffe0b2;
+  color: #e65100;
+}
+
+.tabla-leyenda-mapa-nivel.nivel-critico {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.mapa-contenedor .heatmap-title-external {
+  margin-bottom: 10px;
+}
+
+.mapa-contenedor .heatmap-title-external h3 {
+  font-size: 1rem;
+  padding: 8px 14px;
+}
+
+/* Título del mapa de calor - externo (arriba del contenedor) */
+.heatmap-title-external {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.heatmap-title-external h3 {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  border: 2px solid #dee2e6;
+  display: inline-block;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Título del mapa de calor - interno (deprecado, mantener por compatibilidad) */
+.heatmap-title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.heatmap-title h3 {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  border: 2px solid #dee2e6;
+  display: inline-block;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.lineas-conexion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+}
+
+
+
+/* Leyenda */
+.mapa-leyenda {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #2c3e50;
+}
+
+.leyenda-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid #ddd;
+}
+
+/* Botones de navegación */
+.navegacion-botones {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 30px;
+  flex-wrap: wrap;
+}
+
+.btn-navegacion {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.btn-navegacion:hover {
+  background: #5a6268;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .tablas-container,
+  .mapas-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .mapa-calor-riesgos {
+    padding: 10px;
+  }
+  
+  .celda-mapa {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .riesgo-marcador {
+    font-size: 6px;
+    padding: 1px 2px;
+    min-width: 15px;
+  }
+  
+  .tabla-header,
+  .tabla-fila {
+    font-size: 10px;
+  }
+  
+  .tabla-header > div,
+  .tabla-fila > div {
+    padding: 6px 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .celda-mapa {
+    width: 30px;
+    height: 30px;
+  }
+  
+  .riesgo-marcador {
+    font-size: 5px;
+    padding: 1px;
+    min-width: 12px;
+  }
+  
+  .navegacion-botones {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .btn-navegacion {
+    width: 200px;
+  }
+}
+
+/* Estilos para Leyenda de Riesgos */
+.leyenda-riesgos {
+  margin: 40px 0;
+}
+
+.leyenda-riesgos h3 {
+  text-align: center;
+  color: #2c3e50;
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.leyenda-riesgos p {
+  text-align: center;
+  color: #6c757d;
+  font-size: 1rem;
+  margin-bottom: 30px;
+  font-style: italic;
+}
+
+.leyenda-contenido {
+  display: flex;
+  gap: 40px;
+  align-items: flex-start;
+  justify-content: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 30px;
+}
+
+.leyenda-mapa {
+  flex: 1;
+  background: white;
+  padding: 35px;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  min-width: 0;
+  max-width: 600px;
+}
+
+.leyenda-mapa h4 {
+  color: #2c3e50;
+  margin-bottom: 12px;
+  font-size: 1.4rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.leyenda-mapa p {
+  color: #6c757d;
+  margin-bottom: 20px;
+  font-size: 1rem;
+  font-style: italic;
+}
+
+.leyenda-riesgos h3 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+  font-size: 1.4rem;
+}
+
+.leyenda-riesgos p {
+  color: #6c757d;
+  margin-bottom: 20px;
+  font-size: 1rem;
+}
+
+.leyenda-tabla {
+  overflow-x: auto;
+}
+
+.tabla-leyenda {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.tabla-leyenda thead {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.tabla-leyenda th {
+  padding: 16px 20px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.tabla-leyenda td {
+  padding: 18px 20px;
+  border-bottom: 1px solid #f1f3f4;
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+.tabla-leyenda tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.tabla-leyenda tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.codigo-riesgo {
+  font-weight: 700;
+  color: #2c3e50;
+  background: #f8f9fa;
+  text-align: center;
+  width: 60px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.nombre-riesgo {
+  font-weight: 500;
+  color: #495057;
+  padding-left: 15px;
+}
+
+.clasificacion-riesgo {
+  text-align: center;
+  font-weight: 700;
+  color: #2c3e50;
+  background: #e9ecef;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  width: 80px;
+}
+
+.nivel-riesgo {
+  text-align: center;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nivel-bajo {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.nivel-medio {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.nivel-alto {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.nivel-critico {
+  background: #721c24;
+  color: #ffffff;
+  border: 1px solid #721c24;
+}
+
+.probabilidad-riesgo,
+.impacto-riesgo {
+  text-align: center;
+  font-weight: 600;
+  color: #6c757d;
+  width: 80px;
+}
+
+.nivel-riesgo {
+  text-align: center;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+}
+
+.nivel-riesgo.nivel-bajo {
+  background: #d4edda;
+  color: #155724;
+}
+
+.nivel-riesgo.nivel-medio {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.nivel-riesgo.nivel-alto {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.nivel-riesgo.nivel-critico {
+  background: #f5c6cb;
+  color: #721c24;
+}
+
+/* Responsive para leyenda */
+@media (max-width: 1024px) {
+  .leyenda-riesgos {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .leyenda-mapa {
+    flex: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .leyenda-riesgos {
+    padding: 20px;
+    margin: 20px 0;
+  }
+  
+  .tabla-leyenda th,
+  .tabla-leyenda td {
+    padding: 8px 6px;
+    font-size: 0.8rem;
+  }
+}

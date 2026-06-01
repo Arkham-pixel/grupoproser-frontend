@@ -1,0 +1,72 @@
+.informe-madre {
+  display: block;
+}
+
+.portada {
+  min-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.portada-titulo {
+  font-size: 32px;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+}
+
+.portada-empresa {
+  font-size: 22px;
+  font-weight: 600;
+  color: #444;
+  margin: 0 0 24px 0;
+}
+
+.portada-footer {
+  margin-top: 16px;
+  color: #666;
+}
+
+.tabla-contenido {
+  padding: 24px;
+}
+
+.tabla-contenido h2 {
+  font-size: 24px;
+  margin-bottom: 12px;
+}
+
+.tabla-lista {
+  list-style: decimal inside;
+  margin: 0;
+  padding: 0;
+}
+
+.tabla-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+
+.tabla-texto {
+  flex: 1 1 auto;
+}
+
+.tabla-puntos {
+  flex: 0 0 auto;
+  height: 1px;
+  background: repeating-linear-gradient(to right, #999, #999 4px, transparent 4px, transparent 8px);
+  width: 100%;
+}
+
+.tabla-pagina {
+  flex: 0 0 auto;
+  width: 32px;
+  text-align: right;
+}
+
+

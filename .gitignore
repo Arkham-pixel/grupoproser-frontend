@@ -1,0 +1,25 @@
+# Node modules
+node_modules/
+
+# Vite build output
+
+.vite/
+
+# Firebase
+.firebase/
+.firebaserc
+firebase.json
+
+# Environment files
+.env
+.env.local
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor & OS
+.DS_Store
+.vscode/
+.idea/
