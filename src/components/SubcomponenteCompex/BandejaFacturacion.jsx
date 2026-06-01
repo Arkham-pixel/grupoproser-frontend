@@ -199,10 +199,14 @@ export default function BandejaFacturacion() {
         <span className="inline-flex items-center gap-2 rounded-full bg-fenix-primario/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-fenix-primario">
           <FaInbox /> Facturación
         </span>
-        <h1 className={complexPageTitle}>Bandeja de casos para facturar</h1>
+        <h1 className={complexPageTitle}>Bandeja de casos para facturar.</h1>
         <p className={complexPageSubtitle}>
           Casos que los ajustadores enviaron a {tituloGerente}. Abra cada caso sin buscarlo en el reporte
           completo.
+        </p>
+        {/* PRUEBA DE SICRONIZACION CON CO0LIFY */}
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+          PRUEBA DE SICRONIZACION CON CO0LIFY.
         </p>
         <ComplexNavTabs activePath="/complex/bandeja-facturacion" />
       </header>
