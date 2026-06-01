@@ -76,6 +76,70 @@ export const obtenerBandejaFacturacion = async (params = {}) => {
   return data;
 };
 
+const bandejaAdminBody = (payload) => {
+  const login = localStorage.getItem('login') || '';
+  return JSON.stringify({ ...payload, login });
+};
+
+async function leerRespuestaBandejaAdmin(response, accionPorDefecto) {
+  const texto = await response.text();
+  let data = {};
+  if (texto) {
+    try {
+      data = JSON.parse(texto);
+    } catch {
+      if (response.status === 404) {
+        throw new Error(
+          'El servidor no tiene la ruta de administración de la bandeja. Reinicie el backend (npm start en /backend) o despliegue la última versión.'
+        );
+      }
+      throw new Error(
+        `Respuesta inválida del servidor (${response.status}). ${accionPorDefecto}`
+      );
+    }
+  }
+  if (!response.ok) {
+    throw new Error(data.error || accionPorDefecto);
+  }
+  return data;
+}
+
+export const corregirEnvioBandejaFacturacion = async (payload) => {
+  const body = bandejaAdminBody(payload);
+  const headers = { 'Content-Type': 'application/json' };
+  let response = await fetch(`${BASE_URL}/api/complex/bandeja-facturacion/envio`, {
+    method: 'PATCH',
+    headers,
+    body,
+  });
+  if (response.status === 404) {
+    response = await fetch(`${BASE_URL}/api/complex/bandeja-facturacion/envio/corregir`, {
+      method: 'POST',
+      headers,
+      body,
+    });
+  }
+  return leerRespuestaBandejaAdmin(response, 'No se pudo corregir el destinatario');
+};
+
+export const eliminarEnvioBandejaFacturacion = async (payload) => {
+  const body = bandejaAdminBody(payload);
+  const headers = { 'Content-Type': 'application/json' };
+  let response = await fetch(`${BASE_URL}/api/complex/bandeja-facturacion/envio`, {
+    method: 'DELETE',
+    headers,
+    body,
+  });
+  if (response.status === 404) {
+    response = await fetch(`${BASE_URL}/api/complex/bandeja-facturacion/envio/eliminar`, {
+      method: 'POST',
+      headers,
+      body,
+    });
+  }
+  return leerRespuestaBandejaAdmin(response, 'No se pudo eliminar el registro de envío');
+};
+
 export const crearCasoComplex = async (datos) => {
   try {
     const response = await fetch(`${BASE_URL}/api/complex`, {

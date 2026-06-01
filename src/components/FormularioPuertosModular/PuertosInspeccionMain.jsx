@@ -6,6 +6,7 @@ import { generarWordPuertos } from './generarWordPuertos';
 import { generarManualPuertos } from './generarManualPuertos';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService';
+import { BASE_URL } from '../../config/apiConfig.js';
 
 // Importar subcomponentes
 import SeccionInicialPuertos from './SeccionInicialPuertos';
@@ -524,13 +525,8 @@ export default function PuertosInspeccionMain() {
         return;
       }
       
-      const baseURL = window.location.hostname === 'localhost' || 
-                     window.location.hostname === '127.0.0.1' ||
-                     window.location.port === '5173' || 
-                     window.location.port === '3000'
-        ? 'http://localhost:3000'
-        : 'https://aplicacion.grupoproser.com.co';
-      
+      const baseURL = BASE_URL;
+
       console.log('🔍 Cargando formulario desde servidor:', formularioId);
       
       const response = await fetch(`${baseURL}/api/historial-formularios/${formularioId}`, {

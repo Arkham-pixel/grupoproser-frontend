@@ -732,7 +732,7 @@ export default function FormularioAjuste() {
             tx(d.observacionesInformeFinal) ||
             tx(liq.infraseguro) || tx(liq.demerito) || tx(liq.avanceTecnologico) ||
             tx(ind.deducible) || tx(ind.subrogacion) ||
-            tx(d.salvamentos) || tx(d.panoramaRiesgos);
+            tx(d.panoramaRiesgos);
           if (hayFinal) return 'informeFinal';
           if (tx(d.fechaInformeFinal)) return 'informeFinal';
           const hayAct =
@@ -1496,6 +1496,20 @@ export default function FormularioAjuste() {
 
       const mapaDataUrlParaWord = await cargarMapaComoDataUrl();
 
+      // Datos más recientes del formulario (evita cierre obsoleto tras captura del mapa)
+      const fd = { ...formDataRef.current };
+      if (
+        !String(fd.actaObservaciones || '').trim() &&
+        String(fd.observacionesPreeliminar || '').trim()
+      ) {
+        fd.actaObservaciones = fd.observacionesPreeliminar;
+      }
+      const textoObservacionesWord = String(fd.actaObservaciones || '').trim();
+      const esInformePreliminarOActualizacion =
+        estadoActual === 'inicial' ||
+        estadoActual === 'preeliminar' ||
+        estadoActual === 'actualizacion';
+
       // Función helper para crear párrafos con formato consistente
       const crearParrafo = (texto, opciones = {}) => {
         return new Paragraph({
@@ -1604,19 +1618,19 @@ export default function FormularioAjuste() {
       // COPIADO EXACTO DE FORMULARIOPUERTOS QUE FUNCIONA PERFECTAMENTE
       let contenidoRegistroFotografico = [];
       
-      if (formData.imagenesInspeccion && formData.imagenesInspeccion.length > 0) {
-        console.log(`📸 Procesando ${formData.imagenesInspeccion.length} imágenes de registro para el informe...`);
+      if (fd.imagenesInspeccion && fd.imagenesInspeccion.length > 0) {
+        console.log(`📸 Procesando ${fd.imagenesInspeccion.length} imágenes de registro para el informe...`);
 
         // Aquí se guardarán las filas de la tabla
         const filas = [];
 
         // Recorre las imágenes de a 2 por fila (EXACTO A FORMULARIOPUERTOS)
-        for (let i = 0; i < formData.imagenesInspeccion.length; i += 2) {
+        for (let i = 0; i < fd.imagenesInspeccion.length; i += 2) {
           const celdasImagen = [];
           const celdasDescripcion = [];
 
-          for (let j = i; j < i + 2 && j < formData.imagenesInspeccion.length; j++) {
-            const img = formData.imagenesInspeccion[j];
+          for (let j = i; j < i + 2 && j < fd.imagenesInspeccion.length; j++) {
+            const img = fd.imagenesInspeccion[j];
             let imagenBuffer = null;
             
             try {
@@ -1846,11 +1860,11 @@ export default function FormularioAjuste() {
         };
 
         // 1. ANTECEDENTES
-        agregarSeccion('ANTECEDENTES', formData.antecedentes);
+        agregarSeccion('ANTECEDENTES', fd.antecedentes);
 
         // 2. DESCRIPCIÓN DE RIESGO (texto del acta + mapa; el mapa no va en la portada)
         {
-          const hayDesc = tieneContenido(formData.descripcionRiesgo);
+          const hayDesc = tieneContenido(fd.descripcionRiesgo);
           const hayMapa = Boolean(mapaDataUrlParaWord);
           if (hayDesc || hayMapa) {
             secciones.push(
@@ -1860,7 +1874,7 @@ export default function FormularioAjuste() {
               })
             );
             if (hayDesc) {
-              secciones.push(...crearParrafosDesdeTexto(formData.descripcionRiesgo, { spacingAfter: 200 }));
+              secciones.push(...crearParrafosDesdeTexto(fd.descripcionRiesgo, { spacingAfter: 200 }));
             }
             secciones.push(
               crearTextoNormal('UBICACIÓN GEOGRÁFICA DEL SINIESTRO', {
@@ -1900,25 +1914,22 @@ export default function FormularioAjuste() {
 
         // 3. CIRCUNSTANCIAS: en acta se escribe como «Descripción del siniestro»; aquí va ese texto (y ampliaciones del informe).
         {
-          const d = String(formData.descripcionSiniestro || '').trim();
-          const c = String(formData.circunstanciasSiniestro || '').trim();
+          const d = String(fd.descripcionSiniestro || '').trim();
+          const c = String(fd.circunstanciasSiniestro || '').trim();
           const textoCircunstancias =
             c && d && c !== d ? `${d}\n\n${c}` : c || d;
           agregarSeccion('CIRCUNSTANCIAS DEL SINIESTRO', textoCircunstancias);
         }
 
-        const observacionesAlFinalInforme =
-          estadoActual === 'inicial' ||
-          estadoActual === 'preeliminar' ||
-          estadoActual === 'actualizacion';
+        const observacionesAlFinalInforme = esInformePreliminarOActualizacion;
 
         if (!observacionesAlFinalInforme) {
-          agregarSeccion('OBSERVACIONES', formData.actaObservaciones);
+          agregarSeccion('OBSERVACIONES', textoObservacionesWord);
         }
 
         // 5. INSPECCIÓN Y REGISTRO FOTOGRÁFICO
-        if (tieneContenido(formData.descripcionInspeccion)) {
-          agregarSeccion('INSPECCIÓN Y REGISTRO FOTOGRÁFICO', formData.descripcionInspeccion);
+        if (tieneContenido(fd.descripcionInspeccion)) {
+          agregarSeccion('INSPECCIÓN Y REGISTRO FOTOGRÁFICO', fd.descripcionInspeccion);
         }
         
         // REGISTRO FOTOGRÁFICO (si hay imágenes) - se agrega después de INSPECCIÓN
@@ -1936,13 +1947,13 @@ export default function FormularioAjuste() {
         }
 
         // 6. CAUSA (SIEMPRE debe aparecer, solo se corrige la numeración)
-        agregarSeccion('CAUSA', formData.causa);
+        agregarSeccion('CAUSA', fd.causa);
 
         // Orden: análisis de cobertura → reserva → salvamentos → recobro → observaciones
         const tieneAnalisisCobertura =
-          tieneContenido(formData.coberturasAplicables) ||
-          tieneContenido(formData.exclusiones) ||
-          tieneContenido(formData.garantias);
+          tieneContenido(fd.coberturasAplicables) ||
+          tieneContenido(fd.exclusiones) ||
+          tieneContenido(fd.garantias);
 
         if (tieneAnalisisCobertura) {
           const numSeccionAnalisis = numeroSeccion;
@@ -1954,44 +1965,44 @@ export default function FormularioAjuste() {
           );
           
           let numSubseccion = 1;
-          if (tieneContenido(formData.coberturasAplicables)) {
+          if (tieneContenido(fd.coberturasAplicables)) {
             secciones.push(
               crearTextoNormal(`${numSeccionAnalisis}.${numSubseccion}. COBERTURAS APLICABLES`, { 
                 heading: HeadingLevel.HEADING_3, 
                 spacing: { before: 150, after: 150 } 
               }),
-              ...crearParrafosDesdeTexto(formData.coberturasAplicables, { spacingAfter: 200 })
+              ...crearParrafosDesdeTexto(fd.coberturasAplicables, { spacingAfter: 200 })
             );
             numSubseccion++;
           }
-          if (tieneContenido(formData.exclusiones)) {
+          if (tieneContenido(fd.exclusiones)) {
             secciones.push(
               crearTextoNormal(`${numSeccionAnalisis}.${numSubseccion}. EXCLUSIONES`, { 
                 heading: HeadingLevel.HEADING_3, 
                 spacing: { before: 150, after: 150 } 
               }),
-              ...crearParrafosDesdeTexto(formData.exclusiones, { spacingAfter: 200 })
+              ...crearParrafosDesdeTexto(fd.exclusiones, { spacingAfter: 200 })
             );
             numSubseccion++;
           }
-          if (tieneContenido(formData.garantias)) {
+          if (tieneContenido(fd.garantias)) {
             secciones.push(
               crearTextoNormal(`${numSeccionAnalisis}.${numSubseccion}. GARANTÍAS`, { 
                 heading: HeadingLevel.HEADING_3, 
                 spacing: { before: 150, after: 150 } 
               }),
-              ...crearParrafosDesdeTexto(formData.garantias, { spacingAfter: 200 })
+              ...crearParrafosDesdeTexto(fd.garantias, { spacingAfter: 200 })
             );
             numSubseccion++;
           }
           numeroSeccion++;
         }
 
-        if (estadoActual !== 'informeFinal') {
-          const itemsReserva = Array.isArray(formData.reservaSugeridaItems)
-            ? formData.reservaSugeridaItems
+        if (esInformePreliminarOActualizacion) {
+          const itemsReserva = Array.isArray(fd.reservaSugeridaItems)
+            ? fd.reservaSugeridaItems
             : [];
-          const hayTextoReserva = tieneContenido(formData.reservaSugerida);
+          const hayTextoReserva = tieneContenido(fd.reservaSugerida);
           const hayTablaReserva = itemsReserva.some(
             (item) => tieneContenido(item?.descripcion) || tieneContenido(item?.reserva)
           );
@@ -2005,7 +2016,7 @@ export default function FormularioAjuste() {
             );
 
             if (hayTextoReserva) {
-              secciones.push(...crearParrafosDesdeTexto(formData.reservaSugerida, { spacingAfter: 200 }));
+              secciones.push(...crearParrafosDesdeTexto(fd.reservaSugerida, { spacingAfter: 200 }));
             }
 
             if (hayTablaReserva) {
@@ -2106,30 +2117,30 @@ export default function FormularioAjuste() {
         }
 
         if (estadoActual !== 'actaInspeccion') {
-          agregarSeccion('SALVAMENTOS', formData.salvamentos);
-          agregarSeccion('RECOBRO', formData.recobro);
+          agregarSeccion('SALVAMENTOS', fd.salvamentos);
+          agregarSeccion('RECOBRO', fd.recobro);
         }
 
         if (observacionesAlFinalInforme) {
-          agregarSeccion('OBSERVACIONES', formData.actaObservaciones);
+          agregarSeccion('OBSERVACIONES', textoObservacionesWord);
         }
 
         // SECCIONES ESPECÍFICAS DE ACTUALIZACIÓN
         if (estadoActual === 'actualizacion') {
-          agregarSeccion('OBSERVACIONES DE ACTUALIZACIÓN', formData.observacionesActualizacion);
+          agregarSeccion('OBSERVACIONES DE ACTUALIZACIÓN', fd.observacionesActualizacion);
         }
 
         // SECCIONES ESPECÍFICAS DE INFORME FINAL
         if (estadoActual === 'informeFinal') {
-          agregarSeccion('CONCLUSIONES FINALES', formData.conclusionesFinales);
-          agregarSeccion('RECOMENDACIONES FINALES', formData.recomendacionesFinales);
-          agregarSeccion('OBSERVACIONES DEL INFORME FINAL', formData.observacionesInformeFinal);
+          agregarSeccion('CONCLUSIONES FINALES', fd.conclusionesFinales);
+          agregarSeccion('RECOMENDACIONES FINALES', fd.recomendacionesFinales);
+          agregarSeccion('OBSERVACIONES DEL INFORME FINAL', fd.observacionesInformeFinal);
 
           // LIQUIDACIÓN DE LA PÉRDIDA
           const tieneLiquidacion =
-            tieneContenido(formData.liquidacionPerdida?.infraseguro) ||
-            tieneContenido(formData.liquidacionPerdida?.demerito) ||
-            tieneContenido(formData.liquidacionPerdida?.avanceTecnologico);
+            tieneContenido(fd.liquidacionPerdida?.infraseguro) ||
+            tieneContenido(fd.liquidacionPerdida?.demerito) ||
+            tieneContenido(fd.liquidacionPerdida?.avanceTecnologico);
 
           if (tieneLiquidacion) {
             const numSeccionLiq = numeroSeccion;
@@ -2140,29 +2151,29 @@ export default function FormularioAjuste() {
               })
             );
             
-            if (tieneContenido(formData.liquidacionPerdida?.infraseguro)) {
+            if (tieneContenido(fd.liquidacionPerdida?.infraseguro)) {
               secciones.push(
                 crearTextoNormal('Infraseguro:', { bold: true, spacingAfter: 100 }),
-                ...crearParrafosDesdeTexto(formData.liquidacionPerdida.infraseguro, { spacingAfter: 200 })
+                ...crearParrafosDesdeTexto(fd.liquidacionPerdida.infraseguro, { spacingAfter: 200 })
               );
             }
-            if (tieneContenido(formData.liquidacionPerdida?.demerito)) {
+            if (tieneContenido(fd.liquidacionPerdida?.demerito)) {
               secciones.push(
                 crearTextoNormal('Demérito:', { bold: true, spacingAfter: 100 }),
-                ...crearParrafosDesdeTexto(formData.liquidacionPerdida.demerito, { spacingAfter: 200 })
+                ...crearParrafosDesdeTexto(fd.liquidacionPerdida.demerito, { spacingAfter: 200 })
               );
             }
-            if (tieneContenido(formData.liquidacionPerdida?.avanceTecnologico)) {
+            if (tieneContenido(fd.liquidacionPerdida?.avanceTecnologico)) {
               secciones.push(
                 crearTextoNormal('Avance Tecnológico:', { bold: true, spacingAfter: 100 }),
-                ...crearParrafosDesdeTexto(formData.liquidacionPerdida.avanceTecnologico, { spacingAfter: 200 })
+                ...crearParrafosDesdeTexto(fd.liquidacionPerdida.avanceTecnologico, { spacingAfter: 200 })
               );
             }
             numeroSeccion++;
           }
 
           // LIQUIDADOR - Tabla de liquidación
-          if (formData.liquidador && formData.liquidador.items && formData.liquidador.items.length > 0) {
+          if (fd.liquidador && fd.liquidador.items && fd.liquidador.items.length > 0) {
             // Función para parsear números (convertir formato colombiano a número)
             const parsearNumero = (valor) => {
               if (!valor || valor === '') return 0;
@@ -2201,20 +2212,20 @@ export default function FormularioAjuste() {
             };
 
             // Calcular totales
-            const totalReclamado = formData.liquidador.items.reduce((sum, item) => {
+            const totalReclamado = fd.liquidador.items.reduce((sum, item) => {
               return sum + parsearNumero(item.valorReclamado || 0);
             }, 0);
 
-            const totalAjustado = formData.liquidador.items.reduce((sum, item) => {
+            const totalAjustado = fd.liquidador.items.reduce((sum, item) => {
               return sum + parsearNumero(item.valorAjustado || 0);
             }, 0);
 
-            const deduciblePorcentaje = parseFloat(formData.liquidador.deduciblePorcentaje) || 15;
+            const deduciblePorcentaje = parseFloat(fd.liquidador.deduciblePorcentaje) || 15;
             // Deducible por porcentaje
             const deduciblePorcentajeValor = totalAjustado * (deduciblePorcentaje / 100);
             // Deducible SMMLV
-            const valorSMMLVTotal = parsearNumero(formData.liquidador.valorSMMLV || 0);
-            const cantidadSMMLVTotal = formData.liquidador.cantidadSMMLV || 4;
+            const valorSMMLVTotal = parsearNumero(fd.liquidador.valorSMMLV || 0);
+            const cantidadSMMLVTotal = fd.liquidador.cantidadSMMLV || 4;
             const deducibleSMMLVValor = valorSMMLVTotal * cantidadSMMLVTotal;
             // Deducible aplicable (el mayor valor)
             const deducible = Math.max(deduciblePorcentajeValor, deducibleSMMLVValor);
@@ -2264,7 +2275,7 @@ export default function FormularioAjuste() {
             ];
 
             // Agregar filas de items
-            formData.liquidador.items.forEach(item => {
+            fd.liquidador.items.forEach(item => {
               filasTabla.push(
                 new TableRow({
                   children: [
@@ -2383,15 +2394,15 @@ export default function FormularioAjuste() {
             );
 
             // Calcular valores del resumen (cuadro pequeño)
-            const resumenTotalAjustado = formData.liquidador.resumenTotalAjustado || formatearNumeroMostrar(totalAjustado);
+            const resumenTotalAjustado = fd.liquidador.resumenTotalAjustado || formatearNumeroMostrar(totalAjustado);
             // Calcular deducible del resumen: Total ajustado × porcentaje
             const resumenTotalAjustadoNum = parsearNumero(resumenTotalAjustado);
-            const resumenDeducible15 = formData.liquidador.resumenDeducible15 || formatearNumeroMostrar(resumenTotalAjustadoNum * (deduciblePorcentaje / 100));
+            const resumenDeducible15 = fd.liquidador.resumenDeducible15 || formatearNumeroMostrar(resumenTotalAjustadoNum * (deduciblePorcentaje / 100));
             // Calcular deducible SMMLV del resumen
-            const valorSMMLV = parsearNumero(formData.liquidador.valorSMMLV || 0);
-            const cantidadSMMLV = formData.liquidador.cantidadSMMLV || 4;
+            const valorSMMLV = parsearNumero(fd.liquidador.valorSMMLV || 0);
+            const cantidadSMMLV = fd.liquidador.cantidadSMMLV || 4;
             const deducibleSMMLVResumen = valorSMMLV * cantidadSMMLV;
-            const resumenDeducibleSMMLV = formData.liquidador.resumenDeducibleSMMLV || formatearNumeroMostrar(deducibleSMMLVResumen);
+            const resumenDeducibleSMMLV = fd.liquidador.resumenDeducibleSMMLV || formatearNumeroMostrar(deducibleSMMLVResumen);
             const resumenDeducible15Num = parsearNumero(resumenDeducible15);
             const resumenDeducibleSMMLVNum = parsearNumero(resumenDeducibleSMMLV);
             const usaSMMLVResumen = resumenDeducibleSMMLVNum > resumenDeducible15Num;
@@ -2401,7 +2412,7 @@ export default function FormularioAjuste() {
               : `deducible ${deduciblePorcentaje}%`;
             // Total a indemnizar: Total ajustado - deducible de mayor valor
             const totalIndemnizarResumen = resumenTotalAjustadoNum - Math.max(resumenDeducible15Num, resumenDeducibleSMMLVNum);
-            const resumenTotalIndemnizar = formData.liquidador.resumenTotalIndemnizar || formatearNumeroMostrar(totalIndemnizarResumen);
+            const resumenTotalIndemnizar = fd.liquidador.resumenTotalIndemnizar || formatearNumeroMostrar(totalIndemnizarResumen);
 
             // Primero agregar la tabla principal del liquidador
             secciones.push(
@@ -2474,8 +2485,8 @@ export default function FormularioAjuste() {
 
           // INDEMNIZACIÓN
           const tieneIndemnizacion =
-            tieneContenido(formData.indemnizacion?.deducible) ||
-            tieneContenido(formData.indemnizacion?.subrogacion);
+            tieneContenido(fd.indemnizacion?.deducible) ||
+            tieneContenido(fd.indemnizacion?.subrogacion);
 
           if (tieneIndemnizacion) {
             secciones.push(
@@ -2485,23 +2496,23 @@ export default function FormularioAjuste() {
               })
             );
             
-            if (tieneContenido(formData.indemnizacion?.deducible)) {
+            if (tieneContenido(fd.indemnizacion?.deducible)) {
               secciones.push(
                 crearTextoNormal('Deducible:', { bold: true, spacingAfter: 100 }),
-                ...crearParrafosDesdeTexto(formData.indemnizacion.deducible, { spacingAfter: 200 })
+                ...crearParrafosDesdeTexto(fd.indemnizacion.deducible, { spacingAfter: 200 })
               );
             }
-            if (tieneContenido(formData.indemnizacion?.subrogacion)) {
+            if (tieneContenido(fd.indemnizacion?.subrogacion)) {
               secciones.push(
                 crearTextoNormal('Subrogación:', { bold: true, spacingAfter: 100 }),
-                ...crearParrafosDesdeTexto(formData.indemnizacion.subrogacion, { spacingAfter: 200 })
+                ...crearParrafosDesdeTexto(fd.indemnizacion.subrogacion, { spacingAfter: 200 })
               );
             }
             numeroSeccion++;
           }
 
           // RECOMENDACIONES (PANORAMA DE RIESGOS)
-          agregarSeccion('RECOMENDACIONES', formData.panoramaRiesgos);
+          agregarSeccion('RECOMENDACIONES', fd.panoramaRiesgos);
         }
 
         return secciones;
@@ -2979,7 +2990,6 @@ export default function FormularioAjuste() {
       ];
 
       const construirBloqueActaInspeccionWord = async () => {
-        const fd = formData;
         const encabezadoCelda = (texto) =>
           new TableCell({
             children: [
@@ -3135,7 +3145,7 @@ export default function FormularioAjuste() {
                             new Paragraph({
                               children: [
                                 new TextRun({
-                                  text: formData.inspector || "INSPECTOR",
+                                  text: fd.inspector || "INSPECTOR",
                                   font: 'Arial',
                                   size: 18
                                 })
@@ -3155,13 +3165,13 @@ export default function FormularioAjuste() {
                                   children: [
                                     new TableCell({
                                       children: [
-                                        crearTextoNormal(`CÓDIGO: ${formData.codigoReporte || 'RIU-ISA-001'}`, { size: 14, alignment: AlignmentType.LEFT })
+                                        crearTextoNormal(`CÓDIGO: ${fd.codigoReporte || 'RIU-ISA-001'}`, { size: 14, alignment: AlignmentType.LEFT })
                                       ],
                                       margins: { top: 100, bottom: 100, left: 100, right: 100 }
                                     }),
                                     new TableCell({
                                       children: [
-                                        crearTextoNormal(`VERSIÓN: ${formData.versionReporte || '1'}`, { size: 14, alignment: AlignmentType.LEFT })
+                                        crearTextoNormal(`VERSIÓN: ${fd.versionReporte || '1'}`, { size: 14, alignment: AlignmentType.LEFT })
                                       ],
                                       margins: { top: 100, bottom: 100, left: 100, right: 100 }
                                     }),
@@ -3193,9 +3203,9 @@ export default function FormularioAjuste() {
             ...(estadoActual !== 'actaInspeccion'
               ? [
                   crearTextoNormal(`${(() => {
-                    const c = String(formData.ciudad ?? '').trim();
-                    const d = String(formData.departamento ?? '').trim();
-                    return d ? `${valorTabla(c, 'Ciudad')}, ${d}` : valorTabla(formData.ciudad, 'Ciudad');
+                    const c = String(fd.ciudad ?? '').trim();
+                    const d = String(fd.departamento ?? '').trim();
+                    return d ? `${valorTabla(c, 'Ciudad')}, ${d}` : valorTabla(fd.ciudad, 'Ciudad');
                   })()}, ${formatearFechaParaWord(new Date(), 'es-ES', {
                     month: 'long',
                     year: 'numeric'
@@ -3209,10 +3219,10 @@ export default function FormularioAjuste() {
                     { bold: true, size: 20, spacingAfter: 200 }),
 
                   crearTextoNormal('Señores', { spacingAfter: 100 }),
-                  crearTextoNormal(valorTabla(formData.aseguradora, 'Aseguradora'), { heading: HeadingLevel.HEADING_2, spacingAfter: 100 }),
-                  crearTextoNormal(`Atn: ${valorTabla(formData.destinatario, 'Destinatario')}`, { spacingAfter: 50 }),
-                  crearTextoNormal(valorTabla(formData.cargo, 'Cargo'), { spacingAfter: 100 }),
-                  crearTextoNormal(`${valorTabla(formData.ciudadDestino, 'Ciudad Destino')}, ${valorTabla(formData.paisDestino, 'País Destino')}`, { spacingAfter: 120 })
+                  crearTextoNormal(valorTabla(fd.aseguradora, 'Aseguradora'), { heading: HeadingLevel.HEADING_2, spacingAfter: 100 }),
+                  crearTextoNormal(`Atn: ${valorTabla(fd.destinatario, 'Destinatario')}`, { spacingAfter: 50 }),
+                  crearTextoNormal(valorTabla(fd.cargo, 'Cargo'), { spacingAfter: 100 }),
+                  crearTextoNormal(`${valorTabla(fd.ciudadDestino, 'Ciudad Destino')}, ${valorTabla(fd.paisDestino, 'País Destino')}`, { spacingAfter: 120 })
                 ]
               : [
                   new Paragraph({
@@ -3248,51 +3258,51 @@ export default function FormularioAjuste() {
 
               const mostrarFila = (valor) => !esVistaActaSolo || tNorm(valor);
 
-              const fechaOcurrenciaEfectiva = tNorm(formData.fechaOcurrencia)
-                ? formData.fechaOcurrencia
-                : formData.fechaSiniestro || '';
-              const reclamoPorEfectivo = tNorm(formData.tipoSiniestro)
-                ? formData.tipoSiniestro
-                : tNorm(formData.tipoEvento)
-                  ? formData.tipoEvento
-                  : formData.tipoRiesgoActa || '';
+              const fechaOcurrenciaEfectiva = tNorm(fd.fechaOcurrencia)
+                ? fd.fechaOcurrencia
+                : fd.fechaSiniestro || '';
+              const reclamoPorEfectivo = tNorm(fd.tipoSiniestro)
+                ? fd.tipoSiniestro
+                : tNorm(fd.tipoEvento)
+                  ? fd.tipoEvento
+                  : fd.tipoRiesgoActa || '';
 
               const ciudadDetalleTexto =
-                tNorm(formData.ciudad) && tNorm(formData.departamento)
-                  ? `${formData.ciudad} (${formData.departamento})`
-                  : tNorm(formData.ciudad)
-                    ? formData.ciudad
+                tNorm(fd.ciudad) && tNorm(fd.departamento)
+                  ? `${fd.ciudad} (${fd.departamento})`
+                  : tNorm(fd.ciudad)
+                    ? fd.ciudad
                     : valorTabla('', 'Ciudad');
 
               const fechaAsignacionEfectiva =
-                tNorm(formData.fechaReporte) ||
-                resolverFechaReporteDesdeAsignacion(formData) ||
+                tNorm(fd.fechaReporte) ||
+                resolverFechaReporteDesdeAsignacion(fd) ||
                 '';
 
               const identificacionAseguradoTexto = (() => {
-                const tipo = tNorm(formData.metadata?.tipoDocumento);
+                const tipo = tNorm(fd.metadata?.tipoDocumento);
                 const num = tNorm(
-                  formData.identificacionActa || formData.metadata?.numeroDocumento
+                  fd.identificacionActa || fd.metadata?.numeroDocumento
                 );
                 if (tipo && num) return `${tipo} ${num}`;
                 return num || tipo || '';
               })();
 
-              const intermediarioTexto = tNorm(formData.metadata?.intermediario);
+              const intermediarioTexto = tNorm(fd.metadata?.intermediario);
               const totalReservaTabla = calcularTotalReservaSugeridaItems(
-                formData.reservaSugeridaItems
+                fd.reservaSugeridaItems
               );
               const textoReservaSugeridaTabla =
                 totalReservaTabla > 0
                   ? formatearMontoReserva(totalReservaTabla)
-                  : resumenTextoParaTablaWord(formData.reservaSugerida, 80);
+                  : resumenTextoParaTablaWord(fd.reservaSugerida, 80);
 
               const filas = [
-                filaDosCols('REPORTE', formData.numeroReporte || '1'),
-                filaDosCols('POLIZA', formData.numeroPoliza || 'No especificada'),
-                filaDosCols('RAMO', formData.ramo || 'HOGAR'),
-                filaDosCols('REFERENCIA', formData.numeroSiniestro || 'SINIESTRO No especificado'),
-                filaDosCols('FUNCIONARIO QUE ASIGNO', formData.funcionarioAsigna || 'No especificado')
+                filaDosCols('REPORTE', fd.numeroReporte || '1'),
+                filaDosCols('POLIZA', fd.numeroPoliza || 'No especificada'),
+                filaDosCols('RAMO', fd.ramo || 'HOGAR'),
+                filaDosCols('REFERENCIA', fd.numeroSiniestro || 'SINIESTRO No especificado'),
+                filaDosCols('FUNCIONARIO QUE ASIGNO', fd.funcionarioAsigna || 'No especificado')
               ];
 
               if (mostrarFila(intermediarioTexto)) {
@@ -3305,7 +3315,7 @@ export default function FormularioAjuste() {
               }
 
               filas.push(
-                filaDosCols('TOMADOR/ASEGURADO', valorTabla(formData.asegurado, 'Asegurado'))
+                filaDosCols('TOMADOR/ASEGURADO', valorTabla(fd.asegurado, 'Asegurado'))
               );
 
               if (mostrarFila(identificacionAseguradoTexto)) {
@@ -3320,13 +3330,13 @@ export default function FormularioAjuste() {
               filas.push(
                 filaDosCols(
                   'BENEFICIARIO',
-                  valorTabla(formData.beneficiario || formData.asegurado, 'Beneficiario')
+                  valorTabla(fd.beneficiario || fd.asegurado, 'Beneficiario')
                 ),
-                filaDosCols('DIRECCION', valorTabla(formData.direccionRiesgo, 'Dirección'))
+                filaDosCols('DIRECCION', valorTabla(fd.direccionRiesgo, 'Dirección'))
               );
 
-              if (mostrarFila(formData.actividad)) {
-                filas.push(filaDosCols('ACTIVIDAD', valorTabla(formData.actividad, 'Actividad')));
+              if (mostrarFila(fd.actividad)) {
+                filas.push(filaDosCols('ACTIVIDAD', valorTabla(fd.actividad, 'Actividad')));
               }
 
               filas.push(filaDosCols('CIUDAD', ciudadDetalleTexto));
@@ -3334,8 +3344,8 @@ export default function FormularioAjuste() {
               if (mostrarFila(reclamoPorEfectivo)) {
                 filas.push(filaDosCols('RECLAMO POR', valorTabla(reclamoPorEfectivo, 'Tipo de Siniestro')));
               }
-              if (mostrarFila(formData.tipoEvento)) {
-                filas.push(filaDosCols('EVENTO', valorTabla(formData.tipoEvento, 'Evento')));
+              if (mostrarFila(fd.tipoEvento)) {
+                filas.push(filaDosCols('EVENTO', valorTabla(fd.tipoEvento, 'Evento')));
               }
               if (mostrarFila(fechaAsignacionEfectiva)) {
                 filas.push(
@@ -3350,13 +3360,13 @@ export default function FormularioAjuste() {
                   filaDosCols('FECHA DE OCURRENCIA', valorTabla(fechaOcurrenciaEfectiva, 'Fecha de Ocurrencia'))
                 );
               }
-              if (mostrarFila(formData.fechaInspeccion)) {
+              if (mostrarFila(fd.fechaInspeccion)) {
                 filas.push(
-                  filaDosCols('FECHA DE INSPECCION', valorTabla(formData.fechaInspeccion, 'Fecha de Inspección'))
+                  filaDosCols('FECHA DE INSPECCION', valorTabla(fd.fechaInspeccion, 'Fecha de Inspección'))
                 );
               }
 
-              if (estadoActual !== 'informeFinal' && mostrarFila(textoReservaSugeridaTabla)) {
+              if (esInformePreliminarOActualizacion && tNorm(textoReservaSugeridaTabla)) {
                 filas.push(
                   filaDosCols(
                     'RESERVA SUGERIDA',
@@ -3370,7 +3380,7 @@ export default function FormularioAjuste() {
                 filaDosCols(
                   'RECOBRO',
                   valorTabla(
-                    resumenTextoParaTablaWord(formData.tablaRecobro, 120),
+                    resumenTextoParaTablaWord(fd.tablaRecobro, 120),
                     'Recobro'
                   )
                 )
@@ -3379,7 +3389,7 @@ export default function FormularioAjuste() {
                 filaDosCols(
                   'SALVAMENTO',
                   valorTabla(
-                    resumenTextoParaTablaWord(formData.tablaSalvamento, 120),
+                    resumenTextoParaTablaWord(fd.tablaSalvamento, 120),
                     'Salvamento'
                   )
                 )
@@ -3388,14 +3398,14 @@ export default function FormularioAjuste() {
                 filaDosCols(
                   'INFRASEGURO',
                   valorTabla(
-                    resumenTextoParaTablaWord(formData.tablaInfraseguro, 120),
+                    resumenTextoParaTablaWord(fd.tablaInfraseguro, 120),
                     'Infraseguro'
                   )
                 )
               );
 
-              if (formData.camposPersonalizados && formData.camposPersonalizados.length > 0) {
-                formData.camposPersonalizados
+              if (fd.camposPersonalizados && fd.camposPersonalizados.length > 0) {
+                fd.camposPersonalizados
                   .filter((campo) => campo.nombre && campo.nombre.trim().length > 0)
                   .filter((campo) => mostrarFila(campo.valor))
                   .forEach((campo) => {
@@ -3841,7 +3851,7 @@ export default function FormularioAjuste() {
                     spacing: { before: 600, after: 200 }
                   }),
                   ...textoCierreAntesFirmasInforme(),
-                  ...construirElementosFirmasActaWord(formData, { modo: 'informe' }),
+                  ...construirElementosFirmasActaWord(fd, { modo: 'informe' }),
                   new Paragraph({
                     text: '',
                     spacing: { before: 200, after: 600 }
@@ -3857,7 +3867,7 @@ export default function FormularioAjuste() {
       // Generar y descargar el documento
       Packer.toBlob(doc).then(blob => {
         console.log('✅ Blob generado:', { size: blob.size, type: blob.type });
-        const nombreDocx = `PAGINA_1_${formData.numeroPoliza || 'Sin_Poliza'}_${obtenerFechaActualISO()}.docx`;
+        const nombreDocx = `PAGINA_1_${fd.numeroPoliza || 'Sin_Poliza'}_${obtenerFechaActualISO()}.docx`;
         setArchivoGeneradoBlob(blob);
         setArchivoGenerado({
           nombre: nombreDocx,

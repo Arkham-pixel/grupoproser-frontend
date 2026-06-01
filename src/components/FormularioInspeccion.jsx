@@ -45,6 +45,7 @@ const FormularioAreas = lazy(() => import("./SubcomponenteFRiesgo/FormularioArea
 import BotonesHistorial from './BotonesHistorial.jsx';
 import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
+import { BASE_URL } from '../config/apiConfig.js';
 import { generarManualInspeccion } from './generarManualInspeccion.js';
 const ChatbotIA = lazy(() => import('./SubcomponenteFormularioAjuste/ChatbotIA'));
 
@@ -5197,14 +5198,8 @@ const cargarDatosFormulario = async (formularioId) => {
       return;
     }
     
-    // Usar la misma lógica de entorno que otros servicios
-    const baseURL = window.location.hostname === 'localhost' || 
-                   window.location.hostname === '127.0.0.1' ||
-                   window.location.port === '5173' || 
-                   window.location.port === '3000'
-      ? 'http://localhost:3000'
-      : 'https://aplicacion.grupoproser.com.co';
-    
+    const baseURL = BASE_URL;
+
     const response = await fetch(`${baseURL}/api/historial-formularios/${formularioId}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -5716,14 +5711,8 @@ const cargarDatosFormulario = async (formularioId) => {
       if (Array.isArray(imagenesRegistroHistorial) && imagenesRegistroHistorial.length > 0) {
         console.log('📸 Procesando imágenes de registro desde historial...');
         
-        // Obtener URL base para construir URLs completas de imágenes
-        const baseURL = window.location.hostname === 'localhost' || 
-                       window.location.hostname === '127.0.0.1' ||
-                       window.location.port === '5173' || 
-                       window.location.port === '3000'
-          ? 'http://localhost:3000'
-          : 'https://aplicacion.grupoproser.com.co';
-        
+        const baseURL = BASE_URL;
+
         const imagenesProcesadas = await Promise.all(
           imagenesRegistroHistorial.map(async (img, index) => {
             // Si tiene ruta (archivo en servidor), cargar desde servidor

@@ -13,6 +13,7 @@ import RegistroFotograficoMaquinaria from "./RegistroFotograficoMaquinaria";
 import FirmaMaquinaria from "./FirmaMaquinaria";
 import Logo from '../../img/Logo.png'; // Ajusta la ruta según tu estructura
 import BotonesHistorial from '../BotonesHistorial.jsx';
+import { BASE_URL } from '../../config/apiConfig.js';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService.js';
 import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios.js';
@@ -430,14 +431,8 @@ export default function FormularioMaquinaria() {
 
       console.log('🔍 Iniciando carga de formulario de maquinaria con ID:', formularioId);
 
-      // Usar la misma lógica de entorno que otros servicios
-      const baseURL = window.location.hostname === 'localhost' || 
-                     window.location.hostname === '127.0.0.1' ||
-                     window.location.port === '5173' || 
-                     window.location.port === '3000'
-        ? 'http://localhost:3000'
-        : 'https://aplicacion.grupoproser.com.co';
-      
+      const baseURL = BASE_URL;
+
       console.log('🌐 URL base para edición:', baseURL);
 
       const response = await fetch(`${baseURL}/api/historial-formularios/${formularioId}`, {

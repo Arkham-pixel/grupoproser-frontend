@@ -1,18 +1,27 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaInbox, FaSearch, FaSync } from 'react-icons/fa';
-import { obtenerBandejaFacturacion } from '../../services/complexService';
+import { FaInbox, FaSearch, FaSync, FaEdit, FaTrash } from 'react-icons/fa';
+import {
+  obtenerBandejaFacturacion,
+  corregirEnvioBandejaFacturacion,
+  eliminarEnvioBandejaFacturacion,
+} from '../../services/complexService';
+import { getEstados } from '../../services/estadosService';
+import { BASE_URL } from '../../config/apiConfig';
+import { crearResolverNombreAseguradora } from '../../utils/aseguradoraResolver';
 import { formatearFechaUI } from '../../utils/fechaUtils';
 import {
   GERENTES_FACTURACION_OPCIONES,
   TIPO_ENVIO_LABELS,
   esUsuarioGerenteFacturacion,
   puedeElegirGerenteEnBandeja,
+  puedeAdministrarBandejaFacturacion,
   gerenteDesdeLogin,
   nombreGerente,
+  resolverNombreEstadoDesdeCatalogo,
 } from '../../config/gerentesFacturacion';
 import {
-  complexPageWrap,
+  complexPageWrapWide,
   complexCard,
   complexPageTitle,
   complexPageSubtitle,
@@ -32,6 +41,7 @@ export default function BandejaFacturacion() {
   const navigate = useNavigate();
   const login = localStorage.getItem('login') || '';
   const esSupervisor = puedeElegirGerenteEnBandeja(login);
+  const puedeAdministrar = puedeAdministrarBandejaFacturacion(login);
   const gerentePropio = gerenteDesdeLogin(login);
 
   const [gerenteFiltro, setGerenteFiltro] = useState(gerentePropio || (esSupervisor ? 'elkin' : ''));
@@ -40,8 +50,13 @@ export default function BandejaFacturacion() {
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
   const [items, setItems] = useState([]);
+  const [estadosCatalogo, setEstadosCatalogo] = useState([]);
+  const [clientesCatalogo, setClientesCatalogo] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  const [filaEditando, setFilaEditando] = useState(null);
+  const [nuevoGerenteCorreccion, setNuevoGerenteCorreccion] = useState('');
+  const [guardandoAdmin, setGuardandoAdmin] = useState(false);
 
   const puedeAcceder = esUsuarioGerenteFacturacion(login);
 
@@ -76,6 +91,27 @@ export default function BandejaFacturacion() {
     cargar();
   }, [cargar]);
 
+  useEffect(() => {
+    getEstados()
+      .then((data) => {
+        const lista = Array.isArray(data) ? data : data?.data || [];
+        setEstadosCatalogo(lista);
+      })
+      .catch(() => setEstadosCatalogo([]));
+  }, []);
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/clientes`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => setClientesCatalogo(Array.isArray(data) ? data : []))
+      .catch(() => setClientesCatalogo([]));
+  }, []);
+
+  const resolverNombreAseguradora = useMemo(
+    () => crearResolverNombreAseguradora(clientesCatalogo),
+    [clientesCatalogo]
+  );
+
   const tituloGerente = useMemo(() => nombreGerente(gerenteFiltro), [gerenteFiltro]);
 
   const abrirCaso = (casoId) => {
@@ -85,9 +121,66 @@ export default function BandejaFacturacion() {
     });
   };
 
+  const payloadEnvio = (fila) => ({
+    casoId: fila.casoId,
+    envioId: fila.envioId,
+    envioIndice: fila.envioIndice,
+    fechaEnvio: fila.fechaEnvio,
+    gerente: fila.gerente,
+    tipoEnvio: fila.tipoEnvio,
+    enviadoPor: fila.enviadoPor,
+  });
+
+  const abrirCorreccion = (fila) => {
+    setFilaEditando(fila);
+    setNuevoGerenteCorreccion(fila.gerente || 'elkin');
+  };
+
+  const guardarCorreccion = async () => {
+    if (!filaEditando || !nuevoGerenteCorreccion) return;
+    if (nuevoGerenteCorreccion === filaEditando.gerente) {
+      setFilaEditando(null);
+      return;
+    }
+    setGuardandoAdmin(true);
+    try {
+      await corregirEnvioBandejaFacturacion({
+        ...payloadEnvio(filaEditando),
+        nuevoGerente: nuevoGerenteCorreccion,
+      });
+      setFilaEditando(null);
+      alert(
+        `Destinatario actualizado a ${nombreGerente(nuevoGerenteCorreccion)}. El caso no se duplicó; solo se corrigió el registro del envío.`
+      );
+      await cargar();
+    } catch (e) {
+      alert(e.message || 'Error al corregir');
+    } finally {
+      setGuardandoAdmin(false);
+    }
+  };
+
+  const quitarEnvio = async (fila) => {
+    const nombre = fila.nombreGerente || nombreGerente(fila.gerente);
+    const msg =
+      `¿Quitar este registro de envío a ${nombre}?\n\n` +
+      `Caso ${fila.nmroAjste || fila.casoId} — no se elimina el caso Complex, solo la línea en la bandeja.`;
+    if (!window.confirm(msg)) return;
+
+    setGuardandoAdmin(true);
+    try {
+      await eliminarEnvioBandejaFacturacion(payloadEnvio(fila));
+      await cargar();
+    } catch (e) {
+      alert(e.message || 'Error al quitar el registro');
+    } finally {
+      setGuardandoAdmin(false);
+    }
+  };
+
   if (!puedeAcceder) {
     return (
-      <div className={complexPageWrap}>
+      <div className={complexPageWrapWide}>
         <div className={complexCard}>
           <p className="text-gray-600 dark:text-gray-300">
             Esta vista está disponible solo para los jefes de facturación autorizados.
@@ -97,8 +190,11 @@ export default function BandejaFacturacion() {
     );
   }
 
+  const thClase = `${complexTableThDivider} px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide whitespace-nowrap`;
+  const tdClase = `${complexTableTdDivider} px-3 py-3 text-sm align-top`;
+
   return (
-    <div className={complexPageWrap}>
+    <div className={complexPageWrapWide}>
       <header className="mb-6 space-y-3">
         <span className="inline-flex items-center gap-2 rounded-full bg-fenix-primario/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-fenix-primario">
           <FaInbox /> Facturación
@@ -160,7 +256,7 @@ export default function BandejaFacturacion() {
               <input
                 type="search"
                 className={`${complexInput} pl-9`}
-                placeholder="No. ajuste, siniestro, asegurado…"
+                placeholder="No. ajuste, siniestro, aseguradora, asegurado…"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && cargar()}
@@ -183,6 +279,12 @@ export default function BandejaFacturacion() {
               ? 'Cargando…'
               : `${items.length} envío${items.length === 1 ? '' : 's'} registrado${items.length === 1 ? '' : 's'} con el jefe destino del correo. Cada vez que se envía control de horas o gerencia, queda guardado a quién se notificó.`}
           </p>
+          {puedeAdministrar && (
+            <p className="mt-2 text-sm font-medium text-fenix-primario">
+              Como supervisor puede corregir el jefe destinatario o quitar un registro erróneo sin duplicar
+              casos ni borrar el caso en el sistema.
+            </p>
+          )}
         </div>
       </div>
 
@@ -192,52 +294,65 @@ export default function BandejaFacturacion() {
         </div>
       )}
 
-      <div className={complexCard}>
-        <div className="overflow-x-auto">
-          <table className={complexTableGrid}>
-            <thead>
+      <div className={`${complexCard} p-0 sm:p-0 overflow-hidden`}>
+        <div className="w-full overflow-x-auto">
+          <table className={`${complexTableGrid} w-full min-w-[1320px] table-auto`}>
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
-                <th className={complexTableThDivider}>No. Ajuste</th>
-                <th className={complexTableThDivider}>Siniestro</th>
-                <th className={complexTableThDivider}>Asegurado</th>
-                <th className={complexTableThDivider}>Responsable</th>
-                <th className={complexTableThDivider}>Tipo envío</th>
-                <th className={complexTableThDivider}>Jefe destino</th>
-                <th className={complexTableThDivider}>Correo</th>
-                <th className={complexTableThDivider}>Fecha envío</th>
-                <th className={complexTableThDivider}>Enviado por</th>
-                <th className={complexTableThDivider}>Estado</th>
-                <th className={complexTableThDivider}>Acción</th>
+                <th className={thClase}>No. Ajuste</th>
+                <th className={thClase}>Siniestro</th>
+                <th className={`${thClase} min-w-[140px]`}>Aseguradora</th>
+                <th className={`${thClase} min-w-[140px]`}>Asegurado</th>
+                <th className={`${thClase} min-w-[120px]`}>Responsable</th>
+                <th className={`${thClase} min-w-[130px]`}>Tipo envío</th>
+                <th className={`${thClase} min-w-[160px]`}>Jefe destino</th>
+                <th className={`${thClase} min-w-[200px]`}>Correo</th>
+                <th className={thClase}>Fecha envío</th>
+                <th className={thClase}>Enviado por</th>
+                <th className={`${thClase} min-w-[180px]`}>Estado</th>
+                <th className={`${thClase} text-center`}>Acción</th>
+                {puedeAdministrar && (
+                  <th className={`${thClase} text-center min-w-[140px]`}>Corregir</th>
+                )}
               </tr>
             </thead>
             <tbody>
               {!cargando && items.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td
+                    colSpan={puedeAdministrar ? 13 : 12}
+                    className="px-4 py-10 text-center text-gray-500 dark:text-gray-400"
+                  >
                     No hay casos en la bandeja con los filtros actuales.
                   </td>
                 </tr>
               )}
               {items.map((fila, idx) => (
-                <tr key={`${fila.casoId}-${fila.fechaEnvio}-${idx}`}>
-                  <td className={complexTableTdDivider}>{fila.nmroAjste || '—'}</td>
-                  <td className={complexTableTdDivider}>{fila.nmroSinstro || '—'}</td>
-                  <td className={complexTableTdDivider}>{fila.asgrBenfcro || '—'}</td>
-                  <td className={complexTableTdDivider}>{fila.nombreResponsable || '—'}</td>
-                  <td className={complexTableTdDivider}>
+                <tr
+                  key={`${fila.casoId}-${fila.fechaEnvio}-${idx}`}
+                  className="hover:bg-gray-50/80 dark:hover:bg-gray-800/40"
+                >
+                  <td className={`${tdClase} font-medium whitespace-nowrap`}>{fila.nmroAjste || '—'}</td>
+                  <td className={`${tdClase} whitespace-nowrap`}>{fila.nmroSinstro || '—'}</td>
+                  <td className={tdClase}>
+                    {resolverNombreAseguradora(fila.codiAsgrdra, fila.nombreAseguradora)}
+                  </td>
+                  <td className={tdClase}>{fila.asgrBenfcro || '—'}</td>
+                  <td className={tdClase}>{fila.nombreResponsable || '—'}</td>
+                  <td className={`${tdClase} whitespace-nowrap`}>
                     {TIPO_ENVIO_LABELS[fila.tipoEnvio] || fila.tipoEnvio}
                     {fila.rolEnvio === 'copia' ? ' (copia)' : ''}
                   </td>
-                  <td className={complexTableTdDivider}>
-                    {fila.nombreGerente || nombreGerente(fila.gerente)}
-                  </td>
-                  <td className={complexTableTdDivider}>{fila.emailDestinatario || '—'}</td>
-                  <td className={complexTableTdDivider}>
+                  <td className={tdClase}>{fila.nombreGerente || nombreGerente(fila.gerente)}</td>
+                  <td className={`${tdClase} break-all text-xs sm:text-sm`}>{fila.emailDestinatario || '—'}</td>
+                  <td className={`${tdClase} whitespace-nowrap`}>
                     {formatearFechaUI(fila.fechaEnvio) || '—'}
                   </td>
-                  <td className={complexTableTdDivider}>{fila.enviadoPor || '—'}</td>
-                  <td className={complexTableTdDivider}>{fila.descripcionEstado || fila.codiEstdo || '—'}</td>
-                  <td className={complexTableTdDivider}>
+                  <td className={`${tdClase} whitespace-nowrap`}>{fila.enviadoPor || '—'}</td>
+                  <td className={tdClase}>
+                    {resolverNombreEstadoDesdeCatalogo(fila, estadosCatalogo)}
+                  </td>
+                  <td className={`${tdClase} text-center whitespace-nowrap`}>
                     <button
                       type="button"
                       className={complexTableBtnGestionar}
@@ -246,12 +361,88 @@ export default function BandejaFacturacion() {
                       Ver caso
                     </button>
                   </td>
+                  {puedeAdministrar && (
+                    <td className={`${tdClase} text-center whitespace-nowrap`}>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          className={`${complexBtnSecondary} !px-2 !py-1 text-xs`}
+                          disabled={guardandoAdmin}
+                          onClick={() => abrirCorreccion(fila)}
+                          title="Cambiar jefe destinatario"
+                        >
+                          <FaEdit className="inline" /> Jefe
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+                          disabled={guardandoAdmin}
+                          onClick={() => quitarEnvio(fila)}
+                          title="Quitar registro de envío"
+                        >
+                          <FaTrash className="inline" />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+
+      {filaEditando && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={`${complexCard} w-full max-w-md space-y-4`}>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Corregir jefe destinatario</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Caso <strong>{filaEditando.nmroAjste}</strong> — envío del{' '}
+              {formatearFechaUI(filaEditando.fechaEnvio)} actualmente a{' '}
+              <strong>{nombreGerente(filaEditando.gerente)}</strong>.
+            </p>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Nuevo jefe destinatario</span>
+              <select
+                className={complexSelect}
+                value={nuevoGerenteCorreccion}
+                onChange={(e) => setNuevoGerenteCorreccion(e.target.value)}
+              >
+                {GERENTES_FACTURACION_OPCIONES.map((g) => (
+                  <option key={g.clave} value={g.clave}>
+                    {g.nombre}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="text-xs text-gray-500">
+              No se crea un envío nuevo ni se borra el caso. Solo se actualiza este registro en la bandeja.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className={complexBtnSecondary}
+                disabled={guardandoAdmin}
+                onClick={() => setFilaEditando(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={complexBtnPrimary}
+                disabled={guardandoAdmin}
+                onClick={guardarCorreccion}
+              >
+                {guardandoAdmin ? 'Guardando…' : 'Guardar corrección'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

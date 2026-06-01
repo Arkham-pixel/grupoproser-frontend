@@ -37,7 +37,7 @@ export default function ActaInspeccion() {
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
-
+//un nuevo color para el border
   // Estados para datos personales
   const [fechaInspeccion, setFechaInspeccion] = useState(new Date().toISOString().split("T")[0]);
   const [ciudad, setCiudad] = useState(datosPrevios.ciudad || datosPrevios.municipio || "");

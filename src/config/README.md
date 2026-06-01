@@ -3,8 +3,8 @@
 ## 🎯 **¿Qué hace?**
 
 Este archivo **detecta automáticamente** dónde está corriendo tu aplicación:
-- **En desarrollo:** `http://localhost:3000`
-- **En producción:** `https://aplicacion.grupoproser.com.co`
+- **En desarrollo:** `VITE_API_BASE_URL` en `frontend/.env` (por defecto `http://localhost:3000`)
+- **En producción:** `frontend/.env.production` → `https://arnalddataflowbackend.grupoproser.com.co`
 
 **No hay failover** - solo detección inteligente del entorno.
 

@@ -1,19 +1,9 @@
+import { BASE_URL } from '../config/apiConfig.js';
+
 // Servicio para manejar las operaciones de matrices de riesgo
 export class MatrizRiesgoService {
-  
-  // Configuración de URLs según el entorno
   static getBaseURL() {
-    const isDevelopment = import.meta.env.DEV;
-    const isProduction = import.meta.env.PROD;
-    
-    if (isDevelopment) {
-      return 'http://localhost:3000'; // Backend local en desarrollo
-    } else if (isProduction) {
-      return 'https://aplicacion.grupoproser.com.co'; // Backend en producción
-    }
-    
-    // Fallback
-    return window.location.origin;
+    return BASE_URL;
   }
   
   // Obtener URL completa para las APIs
