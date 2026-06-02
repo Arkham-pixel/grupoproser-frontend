@@ -20,9 +20,9 @@ export const etiquetaMesAnio = (mes, anio) => {
   return `${m?.label ?? mes} / ${anio}`;
 };
 
-const getMonthSafe = (fecha) => fecha.getUTCMonth() + 1;
-const getYearSafe = (fecha) => fecha.getUTCFullYear();
-const getDaySafe = (fecha) => fecha.getUTCDate();
+const getMonthSafe = (fecha) => fecha.getMonth() + 1;
+const getYearSafe = (fecha) => fecha.getFullYear();
+const getDaySafe = (fecha) => fecha.getDate();
 
 /** Formato tipo Excel: 4/05/2026 */
 export const formatFechaAvisoExcel = (value) => {

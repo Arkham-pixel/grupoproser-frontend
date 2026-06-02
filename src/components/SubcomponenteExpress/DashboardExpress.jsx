@@ -20,8 +20,15 @@ import { fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import {
+  buildOpcionesFiltroResponsable,
+  buildOpcionesFiltroAseguradora,
+  buildOpcionesFiltroEstado,
+  coincideFiltroResponsable,
+  coincideFiltroAseguradora,
+  coincideFiltroEstado,
   formatCurrency,
   parseDate,
+  avisoEnRango,
   useExpressCatalogos,
 } from './expressHelpers.js';
 import {
@@ -58,8 +65,14 @@ const DashboardExpress = () => {
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
-  const { obtenerNombreEstado, obtenerNombreAseguradora, obtenerNombreResponsable } =
-    useExpressCatalogos();
+  const {
+    catalogoResponsables,
+    catalogoAseguradoras,
+    catalogoEstados,
+    obtenerNombreEstado,
+    obtenerNombreAseguradora,
+    obtenerNombreResponsable,
+  } = useExpressCatalogos();
 
   useEffect(() => {
     let cancelado = false;
@@ -101,20 +114,25 @@ const DashboardExpress = () => {
   const siniestrosFiltrados = useMemo(() => {
     return siniestros.filter((item) => {
       let ok = true;
-      if (filtroResponsable) ok = ok && item.responsable === filtroResponsable;
-      if (filtroEstado) ok = ok && item.estadoProceso === filtroEstado;
-      if (filtroAseguradora) ok = ok && item.aseguradora === filtroAseguradora;
-      if (fechaDesde) {
-        const fechaAviso = parseDate(item.avisoSiniestro);
-        ok = ok && fechaAviso && fechaAviso >= new Date(fechaDesde);
+      if (filtroResponsable) {
+        ok =
+          ok &&
+          coincideFiltroResponsable(item.responsable, filtroResponsable, catalogoResponsables);
       }
-      if (fechaHasta) {
-        const fechaAviso = parseDate(item.avisoSiniestro);
-        ok = ok && fechaAviso && fechaAviso <= new Date(fechaHasta);
+      if (filtroEstado) {
+        ok = ok && coincideFiltroEstado(item.estadoProceso, filtroEstado, catalogoEstados);
+      }
+      if (filtroAseguradora) {
+        ok =
+          ok &&
+          coincideFiltroAseguradora(item.aseguradora, filtroAseguradora, catalogoAseguradoras);
+      }
+      if (fechaDesde || fechaHasta) {
+        ok = ok && avisoEnRango(item.avisoSiniestro, fechaDesde, fechaHasta);
       }
       return ok;
     });
-  }, [siniestros, filtroResponsable, filtroEstado, filtroAseguradora, fechaDesde, fechaHasta]);
+  }, [siniestros, filtroResponsable, filtroEstado, filtroAseguradora, fechaDesde, fechaHasta, catalogoResponsables, catalogoAseguradoras, catalogoEstados]);
 
   const totalCasos = siniestrosFiltrados.length;
   const totalIndemnizacion = siniestrosFiltrados.reduce(
@@ -184,24 +202,17 @@ const DashboardExpress = () => {
 
   const responsablesUnicos = useMemo(
     () =>
-      Array.from(new Set(siniestros.map((item) => item.responsable).filter(Boolean)))
-        .map((value) => ({ value, label: obtenerNombreResponsable(value) || value }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
-    [siniestros, obtenerNombreResponsable]
+      buildOpcionesFiltroResponsable(siniestros, catalogoResponsables, obtenerNombreResponsable),
+    [siniestros, catalogoResponsables, obtenerNombreResponsable]
   );
   const estadosUnicos = useMemo(
-    () =>
-      Array.from(new Set(siniestros.map((item) => item.estadoProceso).filter(Boolean)))
-        .map((value) => ({ value, label: obtenerNombreEstado(value) || value }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
-    [siniestros, obtenerNombreEstado]
+    () => buildOpcionesFiltroEstado(siniestros, catalogoEstados, obtenerNombreEstado),
+    [siniestros, catalogoEstados, obtenerNombreEstado]
   );
   const aseguradorasUnicas = useMemo(
     () =>
-      Array.from(new Set(siniestros.map((item) => item.aseguradora).filter(Boolean)))
-        .map((value) => ({ value, label: obtenerNombreAseguradora(value) || value }))
-        .sort((a, b) => a.label.localeCompare(b.label)),
-    [siniestros, obtenerNombreAseguradora]
+      buildOpcionesFiltroAseguradora(siniestros, catalogoAseguradoras, obtenerNombreAseguradora),
+    [siniestros, catalogoAseguradoras, obtenerNombreAseguradora]
   );
 
   const tooltipStyle = {

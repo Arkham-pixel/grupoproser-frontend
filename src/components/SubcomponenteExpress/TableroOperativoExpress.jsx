@@ -4,7 +4,6 @@ import {
   PieChart,
   Pie,
   Cell,
-  Legend,
   Tooltip,
 } from 'recharts';
 import { Link } from 'react-router-dom';
@@ -39,8 +38,8 @@ import {
 import { TablaHitoPorAjustador, TableroPivotTresColumnas } from './ExpressDashboardPivot.jsx';
 
 const TableroOperativoExpress = () => {
-  const getMonthSafe = (fecha) => fecha.getUTCMonth() + 1;
-  const getYearSafe = (fecha) => fecha.getUTCFullYear();
+  const getMonthSafe = (fecha) => fecha.getMonth() + 1;
+  const getYearSafe = (fecha) => fecha.getFullYear();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -370,8 +369,21 @@ function MiniChart({
   formatoLeyenda,
 }) {
   const [animateIn, setAnimateIn] = useState(true);
+  const hasData = Boolean(data?.length);
 
-  if (!data?.length) {
+  const dataSignature = useMemo(
+    () => (data || []).map((item) => `${item.estado}:${item.cantidad}`).join('|'),
+    [data]
+  );
+
+  useEffect(() => {
+    if (!hasData) return undefined;
+    setAnimateIn(false);
+    const t = setTimeout(() => setAnimateIn(true), 24);
+    return () => clearTimeout(t);
+  }, [dataSignature, hasData]);
+
+  if (!hasData) {
     return (
       <div className="rounded border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-[#1A1A1A]">
         <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-300">{title}</p>
@@ -392,16 +404,7 @@ function MiniChart({
   };
 
   const depthLayers = 8;
-  const dataSignature = useMemo(
-    () => (data || []).map((item) => `${item.estado}:${item.cantidad}`).join('|'),
-    [data]
-  );
-
-  useEffect(() => {
-    setAnimateIn(false);
-    const t = setTimeout(() => setAnimateIn(true), 24);
-    return () => clearTimeout(t);
-  }, [dataSignature]);
+  const muchosItems = data.length > 5;
 
   return (
     <div className="rounded border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-[#1A1A1A]">
@@ -413,7 +416,7 @@ function MiniChart({
           transition: 'opacity 320ms ease, transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1)',
         }}
       >
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={muchosItems ? 190 : 220}>
           <PieChart>
             {Array.from({ length: depthLayers }).map((_, layer) => (
               <Pie
@@ -421,9 +424,9 @@ function MiniChart({
                 data={data}
                 dataKey="cantidad"
                 nameKey="estado"
-                cx="30%"
-                cy={`${52 + layer * 0.5}%`}
-                outerRadius={78}
+                cx="50%"
+                cy={`${50 + layer * 0.45}%`}
+                outerRadius={muchosItems ? 62 : 72}
                 innerRadius={0}
                 paddingAngle={1}
                 minAngle={2}
@@ -443,9 +446,9 @@ function MiniChart({
               data={data}
               dataKey="cantidad"
               nameKey="estado"
-              cx="30%"
-              cy="52%"
-              outerRadius={78}
+              cx="50%"
+              cy="50%"
+              outerRadius={muchosItems ? 62 : 72}
               innerRadius={0}
               paddingAngle={1}
               minAngle={2}
@@ -468,17 +471,30 @@ function MiniChart({
                 return [`${cantidad} (${pct}%)`, payload?.payload?.estado || name];
               }}
             />
-            <Legend
-              layout="vertical"
-              align="right"
-              verticalAlign="middle"
-              payload={leyenda}
-              formatter={formatoLeyenda}
-              wrapperStyle={{ fontSize: '10px', color: tickColor, maxWidth: '55%' }}
-              iconType="circle"
-            />
           </PieChart>
         </ResponsiveContainer>
+
+        <ul
+          className={`mt-2 grid gap-x-3 gap-y-1 px-1 ${
+            muchosItems ? 'max-h-44 grid-cols-1 overflow-y-auto sm:grid-cols-2' : 'grid-cols-1'
+          }`}
+          aria-label={`Leyenda: ${title}`}
+        >
+          {leyenda.map((entry) => (
+            <li
+              key={entry.value}
+              className="flex min-w-0 items-start gap-1.5 font-body leading-snug"
+              style={{ fontSize: '10px', color: tickColor }}
+            >
+              <span
+                className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: entry.color }}
+                aria-hidden
+              />
+              <span className="min-w-0 break-words">{formatoLeyenda(entry.value, entry)}</span>
+            </li>
+          ))}
+        </ul>
       </div>
       <p className="mt-1 px-1 font-body text-[11px] font-semibold" style={{ color: tickColor }}>
         Total: {total}

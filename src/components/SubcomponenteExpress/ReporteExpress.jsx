@@ -7,8 +7,15 @@ import { convertirFechaParaExcelDate } from '../../utils/fechaUtils.js';
 import {
   EXPRESS_COLUMNAS_STORAGE_KEY,
   EXPRESS_REPORTE_PAGE_SIZE,
+  buildOpcionesFiltroResponsable,
+  buildOpcionesFiltroAseguradora,
+  buildOpcionesFiltroEstado,
+  coincideFiltroResponsable,
+  coincideFiltroAseguradora,
+  coincideFiltroEstado,
   formatCurrency,
   formatDate,
+  avisoEnRango,
   useExpressCatalogos,
 } from './expressHelpers.js';
 import {
@@ -143,8 +150,14 @@ const ReporteExpress = () => {
     tipo: 'info',
   });
 
-  const { obtenerNombreEstado, obtenerNombreAseguradora, obtenerNombreResponsable } =
-    useExpressCatalogos();
+  const {
+    catalogoResponsables,
+    catalogoAseguradoras,
+    catalogoEstados,
+    obtenerNombreEstado,
+    obtenerNombreAseguradora,
+    obtenerNombreResponsable,
+  } = useExpressCatalogos();
 
   const recargarDespuesDeEdicion = useCallback(async () => {
     setLoading(true);
@@ -255,26 +268,22 @@ const ReporteExpress = () => {
     cerrarModalEdicion();
   }, [recargarDespuesDeEdicion, cerrarModalEdicion]);
 
-  const responsables = useMemo(() => {
-    const conjunto = new Set(siniestros.map((item) => item.responsable).filter(Boolean));
-    return Array.from(conjunto)
-      .map((value) => ({ value, label: obtenerNombreResponsable(value) || value }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [siniestros, obtenerNombreResponsable]);
+  const responsables = useMemo(
+    () =>
+      buildOpcionesFiltroResponsable(siniestros, catalogoResponsables, obtenerNombreResponsable),
+    [siniestros, catalogoResponsables, obtenerNombreResponsable]
+  );
 
-  const estados = useMemo(() => {
-    const conjunto = new Set(siniestros.map((item) => item.estadoProceso).filter(Boolean));
-    return Array.from(conjunto)
-      .map((value) => ({ value, label: obtenerNombreEstado(value) || value }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [siniestros, obtenerNombreEstado]);
+  const estados = useMemo(
+    () => buildOpcionesFiltroEstado(siniestros, catalogoEstados, obtenerNombreEstado),
+    [siniestros, catalogoEstados, obtenerNombreEstado]
+  );
 
-  const aseguradoras = useMemo(() => {
-    const conjunto = new Set(siniestros.map((item) => item.aseguradora).filter(Boolean));
-    return Array.from(conjunto)
-      .map((value) => ({ value, label: obtenerNombreAseguradora(value) || value }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [siniestros, obtenerNombreAseguradora]);
+  const aseguradoras = useMemo(
+    () =>
+      buildOpcionesFiltroAseguradora(siniestros, catalogoAseguradoras, obtenerNombreAseguradora),
+    [siniestros, catalogoAseguradoras, obtenerNombreAseguradora]
+  );
 
   const filtrosActivos = Boolean(
     busqueda || filtroResponsable || filtroEstado || filtroAseguradora || fechaInicio || fechaFin
@@ -310,20 +319,25 @@ const ReporteExpress = () => {
       );
     }
 
-    if (filtroResponsable) resultado = resultado.filter((item) => item.responsable === filtroResponsable);
-    if (filtroEstado) resultado = resultado.filter((item) => item.estadoProceso === filtroEstado);
-    if (filtroAseguradora) resultado = resultado.filter((item) => item.aseguradora === filtroAseguradora);
-    if (fechaInicio) {
-      resultado = resultado.filter((item) => {
-        const fecha = item.avisoSiniestro ? item.avisoSiniestro.slice(0, 10) : '';
-        return fecha && fecha >= fechaInicio;
-      });
+    if (filtroResponsable) {
+      resultado = resultado.filter((item) =>
+        coincideFiltroResponsable(item.responsable, filtroResponsable, catalogoResponsables)
+      );
     }
-    if (fechaFin) {
-      resultado = resultado.filter((item) => {
-        const fecha = item.avisoSiniestro ? item.avisoSiniestro.slice(0, 10) : '';
-        return fecha && fecha <= fechaFin;
-      });
+    if (filtroEstado) {
+      resultado = resultado.filter((item) =>
+        coincideFiltroEstado(item.estadoProceso, filtroEstado, catalogoEstados)
+      );
+    }
+    if (filtroAseguradora) {
+      resultado = resultado.filter((item) =>
+        coincideFiltroAseguradora(item.aseguradora, filtroAseguradora, catalogoAseguradoras)
+      );
+    }
+    if (fechaInicio || fechaFin) {
+      resultado = resultado.filter((item) =>
+        avisoEnRango(item.avisoSiniestro, fechaInicio, fechaFin)
+      );
     }
 
     setFiltrados(resultado);
@@ -336,6 +350,9 @@ const ReporteExpress = () => {
     filtroAseguradora,
     fechaInicio,
     fechaFin,
+    catalogoResponsables,
+    catalogoAseguradoras,
+    catalogoEstados,
     obtenerNombreResponsable,
     obtenerNombreAseguradora,
     obtenerNombreEstado,

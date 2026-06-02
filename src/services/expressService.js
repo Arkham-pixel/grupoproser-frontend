@@ -59,7 +59,7 @@ const normalizeExpressItem = (item = {}) => {
   const amparo = item.amparo ?? item.amprAfecto ?? '';
 
   const fechaSiniestro = toISODate(item.fechaSiniestro ?? item.fchaSinstro);
-  const avisoSiniestro = toISODate(item.avisoSiniestro ?? item.fchaSinstro ?? item.fechaAviso);
+  const avisoSiniestro = toISODate(item.avisoSiniestro ?? item.fechaAviso);
   const avisoSiniestroCompania = toISODate(item.avisoSiniestroCompania);
   const fechaReciboDocumentos = toISODate(item.fechaReciboDocumentos ?? item.fchaReciboDocu ?? item.fchaReciboDocumentos);
   const fechaCargueFiniquito = toISODate(item.fechaCargueFiniquito ?? item.fchaCargueFiniquito);

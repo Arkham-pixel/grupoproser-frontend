@@ -6,7 +6,7 @@ import {
   opcionesCatalogo,
   resolverNombreCatalogo,
 } from '../../services/expressCatalogoService.js';
-import { ordenarLista } from './expressHelpers.js';
+import { ordenarLista, resolverCodigoResponsable, resolverCodigoAseguradora, resolverCodigoEstado, formatDate } from './expressHelpers.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -88,12 +88,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     tipo: 'warning',
   });
 
-  const toDateInputValue = useCallback((value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toISOString().slice(0, 10);
-  }, []);
+  const toDateInputValue = useCallback((value) => formatDate(value), []);
 
   const toInputTextValue = useCallback((value) => {
     if (value === null || value === undefined) return '';
@@ -151,7 +146,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
         ...DEFAULT_FORM,
         _id: data._id || data.id || '',
         consecutivo: toInputTextValue(data.consecutivo),
-        responsable: toInputTextValue(data.responsable),
+        responsable:
+          resolverCodigoResponsable(data.responsable, responsables) ||
+          toInputTextValue(data.responsable),
         codigoWorkflow: toInputTextValue(data.codigoWorkflow),
         numeroSiniestro: toInputTextValue(data.numeroSiniestro),
         fechaSiniestro: toDateInputValue(data.fechaSiniestro),
@@ -164,7 +161,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
           data.valorIndemnizacion ?? data.valorIndemnizacionNumero ?? ''
         ),
         observacionesSeguimiento: toInputTextValue(data.observacionesSeguimiento),
-        aseguradora: toInputTextValue(data.aseguradora),
+        aseguradora:
+          resolverCodigoAseguradora(data.aseguradora, aseguradoras) ||
+          toInputTextValue(data.aseguradora),
         intermediario:
           resolverNombreCatalogo(intermediariosExpress, data.intermediario) ||
           toInputTextValue(data.intermediario),
@@ -182,7 +181,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
         reserva: toInputNumberValue(data.reserva ?? data.reservaNumero ?? ''),
         estadoProceso:
           data.estadoProceso !== undefined && data.estadoProceso !== null
-            ? String(data.estadoProceso)
+            ? resolverCodigoEstado(String(data.estadoProceso), estadosExpress)
             : '',
         salvamentoAplica: data.salvamentoAplica ? String(data.salvamentoAplica) : '',
         valorSalvamento: toInputNumberValue(data.valorSalvamento ?? data.valorSalvamentoNumero ?? ''),
@@ -208,7 +207,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
       setExistingSalvamentoAnexos(salvamentoIniciales);
     },
-    [normalizeExistingAnexo, toDateInputValue, toInputNumberValue, toInputTextValue, amparosExpress, analistasExpress, intermediariosExpress]
+    [normalizeExistingAnexo, toDateInputValue, toInputNumberValue, toInputTextValue, amparosExpress, analistasExpress, intermediariosExpress, responsables, aseguradoras, estadosExpress]
   );
 
   useEffect(() => {
