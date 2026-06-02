@@ -298,7 +298,7 @@ export default function Facturacion({
           onToggle={() => setControlHorasAbierto(!controlHorasAbierto)}
           icon={FaClock}
           titulo="Control de Horas"
-          subtitulo="Liquidación de horas, documentos y envío a gerencia"
+          subtitulo="Fase 1: liquidación y envío a Elkin o Iskharly"
         >
           <div className={complexInfoPanel}>
             <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
@@ -445,7 +445,7 @@ export default function Facturacion({
           onToggle={() => setEnvioControlHorasAbierto(!envioControlHorasAbierto)}
           icon={FaPaperPlane}
           titulo="Envío de Control de Horas"
-          subtitulo="Envío de documentos y notificaciones a gerencia"
+          subtitulo="Fase 2: evidencia y notificación a facturación (Adriana)"
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <Campo label="Fecha de envío">
@@ -490,7 +490,7 @@ export default function Facturacion({
               onChange={handleChange}
             >
               <option value="">Seleccione un gerente...</option>
-              <option value="adriana">Adriana Angulo Funes</option>
+              <option value="adriana">Adriana Angulo Funes (facturación.ajustes@proserpuertos.com.co)</option>
               <option value="test">🧪 Prueba (danalyst@proserpuertos.com.co)</option>
             </SelectFenix>
           </Campo>

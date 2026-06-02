@@ -1332,9 +1332,6 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           : `✅ Notificación enviada exitosamente a ${nombreGerente}`;
         if (resultado.envioRegistrado) {
           mensaje += '\n\n📋 Quedó registrado en la bandeja de facturación del jefe.';
-          if (resultado.resultado?.copia) {
-            mensaje += '\n(Copia a facturación también registrada para Adriana.)';
-          }
         } else if (resultado.motivoNoRegistro === 'caso_no_encontrado') {
           mensaje +=
             '\n\n⚠️ Guarde el caso en el sistema (con número de ajuste) para que el jefe lo vea en su bandeja.';
