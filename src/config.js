@@ -1,7 +1,10 @@
-// Configuración de URLs de la API
+// Configuración de URLs de la API (legacy; preferir apiConfig.js)
+const HOST = typeof window !== 'undefined' ? window.location.hostname : '';
 const config = {
-  // Dominio con HTTPS (Let's Encrypt SSL)
-  API_BASE_URL: 'https://arnalddataflowbackend.grupoproser.com.co'
+  API_BASE_URL:
+    HOST === 'aplicacion.grupoproser.com.co'
+      ? 'https://aplicacion.grupoproser.com.co'
+      : 'https://arnalddataflowbackend.grupoproser.com.co',
 };
 
 export default config;

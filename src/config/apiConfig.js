@@ -13,14 +13,29 @@ const envApiBase = trimOrigin(import.meta.env.VITE_API_BASE_URL);
 const isDevelopment =
   window.location.hostname === 'localhost' ||
   window.location.hostname === '127.0.0.1' ||
-  window.location.port === '5173' ||
+  /^51(73|74|75)$/.test(window.location.port) ||
   window.location.port === '3000';
 
 const DEFAULT_DEV = 'http://localhost:3000';
 const DEFAULT_PROD = 'https://arnalddataflowbackend.grupoproser.com.co';
 
-export const BASE_URL =
-  envApiBase || (isDevelopment ? DEFAULT_DEV : DEFAULT_PROD);
+/** API según dónde se sirve el front (un solo build, dos despliegues). */
+const API_BY_FRONTEND_HOST = {
+  'aplicacion.grupoproser.com.co': 'https://aplicacion.grupoproser.com.co',
+  'arnalddataflow.grupoproser.com.co':
+    'https://arnalddataflowbackend.grupoproser.com.co',
+};
+
+function resolveBaseUrl() {
+  const hostname = window.location.hostname;
+  if (API_BY_FRONTEND_HOST[hostname]) {
+    return API_BY_FRONTEND_HOST[hostname];
+  }
+  if (envApiBase) return envApiBase;
+  return isDevelopment ? DEFAULT_DEV : DEFAULT_PROD;
+}
+
+export const BASE_URL = resolveBaseUrl();
 
 // Fallback de uploads en dev (datos/imágenes en servidor de producción)
 export const PROD_URL =

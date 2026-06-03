@@ -9,7 +9,16 @@ import { useCasosRiesgo } from "../../context/CasosRiesgoContext";
 import axios from 'axios';
 import { BASE_URL } from '../../config/apiConfig';
 import historialService, { TIPOS_FORMULARIOS, ESTADOS_FORMULARIO } from '../../services/historialService';
-import { useTheme } from '../../context/ThemeContext';
+import {
+  riesgoBtnInfo,
+  riesgoBtnSecondary,
+  riesgoBtnSuccess,
+  riesgoFormRoot,
+  riesgoFormShell,
+  riesgoPageWrapWide,
+  riesgoScope,
+} from './riesgoFenixUi.js';
+import { InputFenix, RiesgoFormTabs, RiesgoNavPanel, RiesgoPageHeader } from './RiesgoUiBlocks.jsx';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
@@ -179,7 +188,6 @@ const crearFormDataDesdePayload = (payload) => {
 };
 
 const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
-  const { theme } = useTheme();
   const [pestanaActiva, setPestanaActiva] = useState('activacion');
   const [formData, setFormData] = useState(initialFormData);
   const [editando, setEditando] = useState(false);
@@ -190,14 +198,12 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   const location = useLocation();
   const { id } = useParams();
   
-  // Colores según el tema
-  const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
-  const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
-  const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
-  const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
-  const activeTabBg = theme === 'dark' ? '#DC2626' : '#2563EB';
-  const inactiveTabBg = theme === 'dark' ? '#2A2A2A' : '#E5E7EB';
-  const inactiveTabText = theme === 'dark' ? '#B0B0B0' : '#374151';
+  const PESTANAS_RIESGO = [
+    { id: 'activacion', label: 'Activación' },
+    { id: 'trazabilidad', label: 'Trazabilidad' },
+    { id: 'seguimiento', label: 'Seguimiento' },
+    { id: 'facturacion', label: 'Facturación' },
+  ];
   const [estados, setEstados] = useState([]);
   const [aseguradoras, setAseguradoras] = useState([]);
   const [responsables, setResponsables] = useState([]);
@@ -1177,172 +1183,53 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   }, [responsables, editando, casoEditadoIndex]);
 
   return (
-    <div className="p-2 sm:p-4 lg:p-6">
-      {/* Navegación de pestañas responsive */}
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-        <button
-          className="px-3 sm:px-4 lg:px-6 py-2 text-xs sm:text-sm lg:text-base rounded font-semibold transition-colors duration-200"
-          style={{
-            backgroundColor: pestanaActiva === 'activacion' ? activeTabBg : inactiveTabBg,
-            color: pestanaActiva === 'activacion' ? '#FFFFFF' : inactiveTabText,
-            boxShadow: pestanaActiva === 'activacion' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-          }}
-          onMouseEnter={(e) => {
-            if (pestanaActiva !== 'activacion') {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#3A3A3A' : '#D1D5DB';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (pestanaActiva !== 'activacion') {
-              e.currentTarget.style.backgroundColor = inactiveTabBg;
-            }
-          }}
-          onClick={() => setPestanaActiva('activacion')}
-        >
-          Activación
-        </button>
-        <button
-          className="px-3 sm:px-4 lg:px-6 py-2 text-xs sm:text-sm lg:text-base rounded font-semibold transition-colors duration-200"
-          style={{
-            backgroundColor: pestanaActiva === 'trazabilidad' ? activeTabBg : inactiveTabBg,
-            color: pestanaActiva === 'trazabilidad' ? '#FFFFFF' : inactiveTabText,
-            boxShadow: pestanaActiva === 'trazabilidad' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-          }}
-          onMouseEnter={(e) => {
-            if (pestanaActiva !== 'trazabilidad') {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#3A3A3A' : '#D1D5DB';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (pestanaActiva !== 'trazabilidad') {
-              e.currentTarget.style.backgroundColor = inactiveTabBg;
-            }
-          }}
-          onClick={() => setPestanaActiva('trazabilidad')}
-        >
-          Trazabilidad
-        </button>
-        <button
-          className="px-3 sm:px-4 lg:px-6 py-2 text-xs sm:text-sm lg:text-base rounded font-semibold transition-colors duration-200"
-          style={{
-            backgroundColor: pestanaActiva === 'seguimiento' ? activeTabBg : inactiveTabBg,
-            color: pestanaActiva === 'seguimiento' ? '#FFFFFF' : inactiveTabText,
-            boxShadow: pestanaActiva === 'seguimiento' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-          }}
-          onMouseEnter={(e) => {
-            if (pestanaActiva !== 'seguimiento') {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#3A3A3A' : '#D1D5DB';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (pestanaActiva !== 'seguimiento') {
-              e.currentTarget.style.backgroundColor = inactiveTabBg;
-            }
-          }}
-          onClick={() => setPestanaActiva('seguimiento')}
-        >
-          Seguimiento
-        </button>
-        <button
-          className="px-3 sm:px-4 lg:px-6 py-2 text-xs sm:text-sm lg:text-base rounded font-semibold transition-colors duration-200"
-          style={{
-            backgroundColor: pestanaActiva === 'facturacion' ? activeTabBg : inactiveTabBg,
-            color: pestanaActiva === 'facturacion' ? '#FFFFFF' : inactiveTabText,
-            boxShadow: pestanaActiva === 'facturacion' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
-          }}
-          onMouseEnter={(e) => {
-            if (pestanaActiva !== 'facturacion') {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#3A3A3A' : '#D1D5DB';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (pestanaActiva !== 'facturacion') {
-              e.currentTarget.style.backgroundColor = inactiveTabBg;
-            }
-          }}
-          onClick={() => setPestanaActiva('facturacion')}
-        >
-          Facturación
-        </button>
-      </div>
-
-      {/* Barra de búsqueda responsive */}
-      <div className="mb-3 sm:mb-4 flex justify-center">
-        <input
-          type="text"
-          value={busqueda}
-          onChange={e => setBusqueda(e.target.value)}
-          placeholder="Buscar en el formulario..."
-          className="px-2 sm:px-3 py-2 text-xs sm:text-sm rounded w-full max-w-xs sm:max-w-lg"
-          style={{
-            backgroundColor: inputBg,
-            color: textPrimary,
-            borderColor: borderColor,
-            border: `1px solid ${borderColor}`
-          }}
+    <div className={riesgoFormRoot}>
+      <div className={`${riesgoScope} ${riesgoPageWrapWide}`}>
+        <RiesgoPageHeader
+          title="Gestión de casos de riesgo"
+          subtitle="Activación, trazabilidad, seguimiento y facturación."
+          showNav={false}
         />
-      </div>
 
-      {/* Número de riesgo responsive */}
-      {formData.nmroRiesgo && (
-        <div className="text-center mb-3 sm:mb-4">
-          <span 
-            className="text-lg sm:text-xl lg:text-2xl font-bold"
-            style={{ color: '#EF4444' }}
-          >
-            N° Riesgo: {formData.nmroRiesgo}
-          </span>
+        <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A] sm:p-6">
+          <RiesgoNavPanel activePath="/riesgos/agregar" />
+        <RiesgoFormTabs
+          tabs={PESTANAS_RIESGO}
+          activeId={pestanaActiva}
+          onChange={setPestanaActiva}
+        />
+
+        <div className="flex justify-center py-2">
+          <InputFenix
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar en el formulario..."
+            className="max-w-lg"
+          />
         </div>
-      )}
 
-      {/* Contenido de la pestaña activa */}
-      {renderizarContenido()}
+        {formData.nmroRiesgo && (
+          <div className="text-center">
+            <span className="font-heading text-xl font-bold text-fenix-primario sm:text-2xl">
+              N° Riesgo: {formData.nmroRiesgo}
+            </span>
+          </div>
+        )}
 
-      {/* Botones de acción responsive */}
-      <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
-        <button
-          type="button"
-          onClick={guardarCaso}
-          className="text-white px-4 sm:px-6 py-2 text-xs sm:text-sm lg:text-base rounded font-semibold w-full sm:w-auto transition-colors"
-          style={{ backgroundColor: '#10B981' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#059669';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#10B981';
-          }}
-        >
-          GUARDAR
-        </button>
-        <button
-          type="button"
-          onClick={nuevoCaso}
-          className="text-white px-4 sm:px-6 py-2 text-xs sm:text-sm lg:text-base rounded font-semibold w-full sm:w-auto transition-colors"
-          style={{ backgroundColor: theme === 'dark' ? '#4A4A4A' : '#6B7280' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#5A5A5A' : '#4B5563';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = theme === 'dark' ? '#4A4A4A' : '#6B7280';
-          }}
-        >
-          NUEVO CASO
-        </button>
-        <button
-          type="button"
-          onClick={iniciarInspeccion}
-          className="text-white px-4 sm:px-6 py-2 text-xs sm:text-sm lg:text-base rounded font-semibold w-full sm:w-auto transition-colors"
-          style={{ backgroundColor: '#2563EB' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#1D4ED8';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#2563EB';
-          }}
-        >
-          INICIAR INSPECCIÓN
-        </button>
-      </div>
+        {renderizarContenido()}
+
+        <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <button type="button" onClick={guardarCaso} className={`${riesgoBtnSuccess} w-full sm:w-auto`}>
+            Guardar
+          </button>
+          <button type="button" onClick={nuevoCaso} className={`${riesgoBtnSecondary} w-full sm:w-auto`}>
+            Nuevo caso
+          </button>
+          <button type="button" onClick={iniciarInspeccion} className={`${riesgoBtnInfo} w-full sm:w-auto`}>
+            Iniciar inspección
+          </button>
+        </div>
 
       {/* Lista de casos */}
       {!casoInicial && (
@@ -1351,16 +1238,13 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
         </div>
       )}
 
-      {/* Información adicional */}
-      <div className="mt-3 sm:mt-4 text-xs sm:text-sm">
-        <p className="mb-1" style={{ color: textPrimary }}>
+      <div className="mt-3 font-body text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
+        <p className="mb-1">
           {formData.ciudad && formData.ciudad.label
-            ? formData.ciudad.label.split("/")[0]
-            : ""}
+            ? formData.ciudad.label.split('/')[0]
+            : ''}
         </p>
-        <p style={{ color: textPrimary }}>
-          {formData.ciudad_siniestro ? formData.ciudad_siniestro.split("/")[0] : "_________"}
-        </p>
+        <p>{formData.ciudad_siniestro ? formData.ciudad_siniestro.split('/')[0] : '_________'}</p>
       </div>
 
       {/* Componentes de autoguardado */}
@@ -1384,6 +1268,8 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
         onDiscard={handleDiscardSavedData}
         onCancel={handleCancelRestore}
       />
+        </div>
+      </div>
     </div>
   );
 };

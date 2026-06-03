@@ -1,22 +1,55 @@
 import React, { useEffect, useState } from 'react';
 import { obtenerCasosRiesgo, obtenerResponsables, obtenerEstados, obtenerAseguradoras, obtenerCiudades } from '../../services/riesgoService';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, ResponsiveContainer, Legend, CartesianGrid, AreaChart, Area } from 'recharts';
-import Loader from "../Loader"; // Ajusta la ruta si es necesario
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Legend,
+  CartesianGrid,
+  LineChart,
+  Line,
+} from 'recharts';
+import Loader from '../Loader';
 import { useTheme } from '../../context/ThemeContext';
+import {
+  buildPieLegendPayload,
+  FENIX_PALETTE,
+  getFenixChartColor,
+  getFenixLineChartColors,
+  riesgoFilterActiveBox,
+  riesgoFilterChip,
+  riesgoKpiCardAlert,
+  riesgoKpiCardOk,
+  riesgoMetricCard,
+  riesgoPageWrapWide,
+  riesgoReportRoot,
+  riesgoScope,
+  riesgoSectionTitle,
+  riesgoTableRowEven,
+  riesgoTableRowOdd,
+  riesgoTableTd,
+  riesgoTableTh,
+} from '../SubcomponentesRiesgo/riesgoFenixUi.js';
+import {
+  Campo,
+  InputFenix,
+  RiesgoChartCard,
+  RiesgoFilterSection,
+  RiesgoMetricCard,
+  RiesgoNavPanel,
+  RiesgoPageHeader,
+  SelectFenix,
+} from '../SubcomponentesRiesgo/RiesgoUiBlocks.jsx';
 
 const Dashboard = () => {
   const { theme } = useTheme();
-  
-  // Colores según el tema
-  const bgMain = theme === 'dark' ? '#1A1A1A' : '#F5F5F7';
-  const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
-  const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
-  const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
-  const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
-  const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
-  const filterBg = theme === 'dark' ? '#1F1F1F' : '#F0F9FF';
-  const filterText = theme === 'dark' ? '#E0E7FF' : '#1E40AF';
-  const filterBorder = theme === 'dark' ? '#3D3D3D' : '#BFDBFE';
+  const isDark = theme === 'dark';
   
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -167,7 +200,13 @@ const Dashboard = () => {
   }, []);
 
   if (loading) {
-    return <Loader />;
+    return (
+      <div className={riesgoReportRoot}>
+        <div className={`${riesgoScope} ${riesgoPageWrapWide} flex min-h-[40vh] items-center justify-center`}>
+          <Loader />
+        </div>
+      </div>
+    );
   }
 
   // Filtros mejorados
@@ -279,13 +318,6 @@ const Dashboard = () => {
     .slice(0, 10)
     .map(([aseguradora, cantidad]) => ({ aseguradora, cantidad }));
   
-  // Debug para verificar
-  console.log('🔍 Debug aseguradoras - Casos procesados:', casosFiltrados.length);
-  console.log('🔍 Debug aseguradoras - Aseguradoras encontradas:', topAseguradoras.length);
-  if (topAseguradoras.length > 0) {
-    console.log('🔍 Debug aseguradoras - Top 3:', topAseguradoras.slice(0, 3));
-  }
-
   // Gráfico de barras → Número de casos por responsable
   // Agrupar por nombre de responsable (normalizado) en lugar de por código
   const casosPorResponsable = {};
@@ -507,7 +539,39 @@ const Dashboard = () => {
     { etapa: 'Informe Final', retrasados: casosRetrasadosPorEtapa.informeFinal, limite: '2 días' }
   ];
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#A28EFF', '#FF6699', '#33CC33', '#FF6633'];
+  const filtrosAplicados = Boolean(
+    fechaDesde || fechaHasta || estadoFiltro || responsableFiltro || aseguradoraFiltro
+  );
+
+  const limpiarFiltros = () => {
+    setFechaDesde('');
+    setFechaHasta('');
+    setEstadoFiltro('');
+    setResponsableFiltro('');
+    setAseguradoraFiltro('');
+  };
+
+  const tooltipStyle = {
+    backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
+    border: `1px solid ${isDark ? '#2D2D2D' : '#E6E6E6'}`,
+    color: isDark ? '#F5F5F5' : '#1E1E1E',
+    borderRadius: '8px',
+  };
+
+  const tickColor = isDark ? '#B0B0B0' : '#6B6B6B';
+  const gridStroke = isDark ? '#2D2D2D' : '#E5E7EB';
+  const pieStroke = isDark ? '#1A1A1A' : '#FFFFFF';
+  const lineColors = getFenixLineChartColors(isDark);
+
+  const leyendaCasosPorEstado = buildPieLegendPayload(casosPorEstado, 'estado', isDark);
+
+  const formatoLeyendaPie = (total, labelKey) => (value, entry) => {
+    const item = entry?.payload ?? {};
+    const etiqueta = item[labelKey] || value || 'Sin nombre';
+    const cantidad = item.cantidad ?? 0;
+    const pct = total > 0 ? ((cantidad / total) * 100).toFixed(1) : 0;
+    return `${etiqueta}: ${cantidad} (${pct}%)`;
+  };
 
   // Listas únicas para los filtros
   const estadosUnicos = Array.from(new Set(casos.map(c => c.estado)))
@@ -528,906 +592,419 @@ const Dashboard = () => {
     .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
-    <div 
-      className="p-2 sm:p-4 lg:p-6 max-w-7xl mx-auto"
-      style={{ backgroundColor: bgMain }}
-    >
-      <h2 
-        className="text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 text-center"
-        style={{ color: textPrimary }}
-      >
-        📊 Dashboard de Casos de Riesgo
-      </h2>
+    <div className={riesgoReportRoot}>
+      <div className={`${riesgoScope} ${riesgoPageWrapWide}`}>
+        <RiesgoPageHeader
+          title="Dashboard de Riesgos"
+          subtitle="Métricas, distribución geográfica, evolución temporal y cumplimiento de trazabilidad."
+          showNav={false}
+        />
 
-      {/* Filtros Mejorados */}
-      <div 
-        className="shadow rounded-lg p-3 sm:p-4 mb-4 sm:mb-6"
-        style={{
-          backgroundColor: cardBg,
-          border: `1px solid ${borderColor}`
-        }}
-      >
-        <h3 
-          className="text-sm sm:text-lg font-semibold mb-3 text-center"
-          style={{ color: textPrimary }}
+        <RiesgoFilterSection
+          title="Filtros del dashboard"
+          subtitle="Navegación del módulo y criterios de análisis en un solo panel."
+          showClear={filtrosAplicados}
+          onClear={limpiarFiltros}
         >
-          🔍 Filtros de Búsqueda
-        </h3>
-        
-        {/* Primera fila - Fechas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-        <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              📅 Fecha desde
-            </label>
-            <input 
-              type="date" 
-              value={fechaDesde} 
-              onChange={e => setFechaDesde(e.target.value)} 
-              className="w-full rounded-md px-3 py-2 text-sm focus:outline-none" 
-              style={{
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: borderColor,
-                border: `1px solid ${borderColor}`
-              }}
-            />
-        </div>
-        <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              📅 Fecha hasta
-            </label>
-            <input 
-              type="date" 
-              value={fechaHasta} 
-              onChange={e => setFechaHasta(e.target.value)} 
-              className="w-full rounded-md px-3 py-2 text-sm focus:outline-none" 
-              style={{
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: borderColor,
-                border: `1px solid ${borderColor}`
-              }}
-            />
-          </div>
-        </div>
-        
-        {/* Segunda fila - Selectores */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              📊 Estado
-            </label>
-            <select 
-              value={estadoFiltro} 
-              onChange={e => setEstadoFiltro(e.target.value)} 
-              className="w-full rounded-md px-3 py-2 text-sm focus:outline-none"
-              style={{
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: borderColor,
-                border: `1px solid ${borderColor}`
-              }}
-            >
-              <option value="">Todos los estados</option>
-              {estadosUnicos.map((e, index) => (
-                <option key={`estado-${e.value}-${index}`} value={e.value}>{e.label}</option>
-              ))}
-            </select>
-          </div>
-          
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              👨‍💼 Responsable
-            </label>
-            <select 
-              value={responsableFiltro} 
-              onChange={e => setResponsableFiltro(e.target.value)} 
-              className="w-full rounded-md px-3 py-2 text-sm focus:outline-none"
-              style={{
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: borderColor,
-                border: `1px solid ${borderColor}`
-              }}
-            >
-              <option value="">Todos los responsables</option>
-              {responsablesUnicos.map((r, index) => (
-                <option key={`responsable-${r.value}-${index}`} value={r.value}>{r.label}</option>
-              ))}
-            </select>
-          </div>
-          
-        <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              🏢 Aseguradora
-            </label>
-            <select 
-              value={aseguradoraFiltro} 
-              onChange={e => setAseguradoraFiltro(e.target.value)} 
-              className="w-full rounded-md px-3 py-2 text-sm focus:outline-none"
-              style={{
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: borderColor,
-                border: `1px solid ${borderColor}`
-              }}
-            >
-              <option value="">Todas las aseguradoras</option>
-              {aseguradorasUnicas.map((a, index) => (
-                <option key={`aseguradora-${a.value}-${index}`} value={a.value}>{a.label}</option>
-            ))}
-          </select>
-        </div>
-      </div>
+          <RiesgoNavPanel activePath="/riesgos/dashboard" />
 
-        {/* Botón para limpiar filtros */}
-        <div className="mt-3 text-center">
-          <button 
-            onClick={() => {
-              setFechaDesde("");
-              setFechaHasta("");
-              setEstadoFiltro("");
-              setResponsableFiltro("");
-              setAseguradoraFiltro("");
-            }}
-            className="px-4 py-2 rounded-md text-sm transition-colors"
-            style={{
-              backgroundColor: theme === 'dark' ? '#4B5563' : '#6B7280',
-              color: '#FFFFFF'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#5B6673' : '#4B5563';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#4B5563' : '#6B7280';
-            }}
-          >
-            🗑️ Limpiar Filtros
-          </button>
-        </div>
-
-        {/* Información de filtros activos */}
-        {(fechaDesde || fechaHasta || estadoFiltro || responsableFiltro || aseguradoraFiltro) && (
-          <div 
-            className="mt-3 p-2 rounded-md"
-            style={{
-              backgroundColor: filterBg,
-              border: `1px solid ${filterBorder}`
-            }}
-          >
-            <p 
-              className="text-xs font-medium mb-1"
-              style={{ color: filterText }}
-            >
-              🔍 Filtros activos:
-            </p>
-            <div className="flex flex-wrap gap-1">
-              {fechaDesde && (
-                <span 
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
-                    color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
-                  }}
-                >
-                  Desde: {fechaDesde}
-                </span>
-              )}
-              {fechaHasta && (
-                <span 
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
-                    color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
-                  }}
-                >
-                  Hasta: {fechaHasta}
-                </span>
-              )}
-              {estadoFiltro && (
-                <span 
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
-                    color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
-                  }}
-                >
-                  Estado: {getEstadoNombre(estadoFiltro)}
-                </span>
-              )}
-              {responsableFiltro && (
-                <span 
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
-                    color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
-                  }}
-                >
-                  Responsable: {getResponsableNombre(responsableFiltro)}
-                </span>
-              )}
-              {aseguradoraFiltro && (
-                <span 
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
-                    color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
-                  }}
-                >
-                  Aseguradora: {getAseguradoraNombre(aseguradoraFiltro)}
-                </span>
-              )}
-            </div>
-            <p 
-              className="text-xs mt-1"
-              style={{ color: filterText }}
-            >
-              Mostrando {totalCasos} de {casos.length} casos
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
-        <div 
-          className="shadow rounded-lg p-3 sm:p-4 text-center"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-sm sm:text-lg font-semibold mb-2"
-            style={{ color: textPrimary }}
-          >
-            Total de Casos
-          </h3>
-          <p 
-            className="text-2xl sm:text-3xl lg:text-4xl font-bold"
-            style={{ color: '#3B82F6' }}
-          >
-            {totalCasos}
-          </p>
-        </div>
-
-        <div 
-          className="shadow rounded-lg p-3 sm:p-4 text-center"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-sm sm:text-lg font-semibold mb-2"
-            style={{ color: textPrimary }}
-          >
-            Casos Pendientes
-          </h3>
-          <p 
-            className="text-2xl sm:text-3xl lg:text-4xl font-bold"
-            style={{ color: '#EF4444' }}
-          >
-            {casosPendientes}
-          </p>
-        </div>
-
-        <div 
-          className="shadow rounded-lg p-3 sm:p-4 sm:col-span-2 lg:col-span-1"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-sm sm:text-lg font-semibold mb-2 text-center"
-            style={{ color: textPrimary }}
-          >
-            Últimos Casos Registrados
-          </h3>
-          <ul className="text-xs sm:text-sm space-y-1">
-            {ultimosCasos.map((caso, idx) => (
-              <li 
-                key={caso._id || caso.nmroRiesgo || idx} 
-                className="flex justify-between"
-              >
-                <span 
-                  className="truncate mr-2"
-                  style={{ color: textPrimary }}
-                >
-                  {caso.numero_siniestro || caso.nmroRiesgo || caso.codigo}
-                </span>
-                <span 
-                  className="text-xs"
-                  style={{ color: textSecondary }}
-                >
-                  {caso.fecha_creacion?.substring(0, 10)}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {/* Gráfico de Pastel - Estados */}
-        <div 
-          className="shadow rounded-lg p-4 sm:p-6"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-base sm:text-lg font-semibold mb-4 text-center"
-            style={{ color: textPrimary }}
-          >
-            🥧 Distribución por Estado
-          </h3>
-          <ResponsiveContainer width="100%" height={450}>
-            <PieChart>
-              <Pie
-                data={casosPorEstado}
-                cx="50%"
-                cy="45%"
-                labelLine={false}
-                label={false}
-                outerRadius={100}
-                innerRadius={50}
-                fill="#8884d8"
-                dataKey="cantidad"
-                paddingAngle={3}
-                nameKey="estado"
-              >
-                {casosPorEstado.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <Campo label="Fecha desde">
+              <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+            </Campo>
+            <Campo label="Fecha hasta">
+              <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+            </Campo>
+            <Campo label="Estado">
+              <SelectFenix value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)}>
+                <option value="">Todos los estados</option>
+                {estadosUnicos.map((e, index) => (
+                  <option key={`estado-${e.value}-${index}`} value={e.value}>
+                    {e.label}
+                  </option>
                 ))}
-              </Pie>
-              <Tooltip 
-                formatter={(value, name, props) => {
-                  const estado = props.payload?.estado || 'Sin nombre';
-                  const cantidad = props.payload?.cantidad || value || 0;
-                  const porcentaje = totalCasos > 0 ? ((cantidad / totalCasos) * 100).toFixed(1) : 0;
-                  return [`${cantidad} casos (${porcentaje}%)`, estado];
-                }}
-                contentStyle={{
-                  backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary,
-                  borderRadius: '4px'
-                }}
-              />
-              <Legend 
-                verticalAlign="bottom" 
-                height={80}
-                iconType="circle"
-                formatter={(value, entry) => {
-                  const payload = entry.payload || entry;
-                  const estado = payload?.estado || payload?.name || value || 'Sin nombre';
-                  const cantidad = payload?.cantidad || payload?.value || 0;
-                  const porcentaje = totalCasos > 0 ? ((cantidad / totalCasos) * 100).toFixed(1) : 0;
-                  return `${estado}: ${cantidad} (${porcentaje}%)`;
-                }}
-                wrapperStyle={{ 
-                  paddingTop: '15px', 
-                  fontSize: '12px',
-                  color: textPrimary
-                }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Gráfico de Barras - Estados */}
-        <div 
-          className="shadow rounded-lg p-4 sm:p-6"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-base sm:text-lg font-semibold mb-4 text-center"
-            style={{ color: textPrimary }}
-          >
-            📊 Casos por Estado
-          </h3>
-          <ResponsiveContainer width="100%" height={400}>
-            <BarChart data={casosPorEstado} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-              <XAxis 
-                type="number" 
-                tick={{ fontSize: 12, fill: textPrimary }}
-                stroke={borderColor}
-              />
-              <YAxis 
-                dataKey="estado" 
-                type="category" 
-                width={120} 
-                tick={{ fontSize: 12, fill: textPrimary }}
-                interval={0}
-                stroke={borderColor}
-              />
-              <Tooltip 
-                formatter={(value) => [`${value} casos`, 'Cantidad']}
-                contentStyle={{
-                  backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary
-                }}
-              />
-              <Bar dataKey="cantidad" fill="#8884d8" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Top Aseguradoras */}
-        <div 
-          className="shadow rounded-lg p-4 sm:p-6 lg:col-span-2"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-base sm:text-lg font-semibold mb-4 text-center"
-            style={{ color: textPrimary }}
-          >
-            🏢 Top 10 Aseguradoras
-          </h3>
-          <ResponsiveContainer width="100%" height={450}>
-            <BarChart data={topAseguradoras} layout="vertical" margin={{ top: 5, right: 30, left: 200, bottom: 5 }}>
-              <XAxis 
-                type="number" 
-                tick={{ fontSize: 12, fill: textPrimary }}
-                stroke={borderColor}
-              />
-              <YAxis 
-                dataKey="aseguradora" 
-                type="category" 
-                width={180} 
-                tick={{ fontSize: 11, fill: textPrimary }}
-                interval={0}
-                stroke={borderColor}
-              />
-              <Tooltip 
-                formatter={(value) => [`${value} casos`, 'Cantidad']}
-                contentStyle={{
-                  backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary
-                }}
-              />
-              <Bar dataKey="cantidad" fill="#FF8042" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Gráficos de responsables - Una arriba de la otra para mejor visualización */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 mb-6 sm:mb-8">
-        {/* Gráfico: Número de casos por responsable */}
-        <div 
-          className="shadow rounded-lg p-4 sm:p-6"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-        <h3 
-          className="text-base sm:text-lg font-semibold mb-4 text-center"
-          style={{ color: textPrimary }}
-        >
-          👥 Número de Casos por Responsable
-        </h3>
-        <div style={{ width: '100%', height: Math.max(550, casosPorResponsableData.length * 35) }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart 
-              data={casosPorResponsableData}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 180, bottom: 5 }}
-            >
-              <XAxis 
-                type="number"
-                tick={{ fontSize: 12, fill: textPrimary }}
-                stroke={borderColor}
-              />
-              <YAxis 
-                dataKey="responsable" 
-                type="category"
-                width={170}
-                tick={{ fontSize: 10, fill: textPrimary }}
-                interval={0}
-                stroke={borderColor}
-                tickFormatter={(value) => {
-                  if (value && value.length > 30) {
-                    return value.substring(0, 27) + '...';
-                  }
-                  return value || 'Sin responsable';
-                }}
-              />
-              <Tooltip 
-                formatter={(value) => [`${value} casos`, 'Cantidad']}
-                contentStyle={{
-                  backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary
-                }}
-              />
-              <Bar dataKey="cantidad" fill="#3B82F6" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        </div>
-
-        {/* Gráfico: Días promedio por responsable */}
-        <div 
-          className="shadow rounded-lg p-4 sm:p-6"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-        <h3 
-          className="text-base sm:text-lg font-semibold mb-4 text-center"
-          style={{ color: textPrimary }}
-        >
-          📅 Días promedio (Cierre → Creación) por Responsable
-        </h3>
-        <div style={{ width: '100%', height: Math.max(550, promedioDiasPorResponsable.length * 35) }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={promedioDiasPorResponsable}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 180, bottom: 5 }}
-            >
-              <XAxis 
-                type="number"
-                label={{ value: 'Días', angle: 0, position: 'insideBottom', offset: -5, fill: textPrimary }}
-                tick={{ fontSize: 12, fill: textPrimary }}
-                stroke={borderColor}
-              />
-              <YAxis 
-                dataKey="responsable" 
-                type="category"
-                width={170}
-                tick={{ fontSize: 10, fill: textPrimary }}
-                interval={0}
-                stroke={borderColor}
-                tickFormatter={(value) => {
-                  if (value && value.length > 30) {
-                    return value.substring(0, 27) + '...';
-                  }
-                  return value || 'Sin responsable';
-                }}
-              />
-              <Tooltip 
-                formatter={(value, name) => [`${value} días`, 'Promedio']}
-                contentStyle={{
-                  backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary
-                }}
-              />
-              <Bar dataKey="promedioDias" fill="#82ca9d" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        </div>
-      </div>
-
-      {/* ========== NUEVAS SECCIONES ========== */}
-
-      {/* Distribución por Ciudad */}
-      <div 
-        className="shadow rounded-lg p-4 sm:p-6 mb-6 sm:mb-8"
-        style={{
-          backgroundColor: cardBg,
-          border: `1px solid ${borderColor}`
-        }}
-      >
-        <h3 
-          className="text-base sm:text-lg font-semibold mb-4 text-center"
-          style={{ color: textPrimary }}
-        >
-          🌍 Distribución por Ciudad (Top 10)
-        </h3>
-        <div style={{ width: '100%', height: Math.max(400, casosPorCiudad.length * 50) }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={casosPorCiudad} layout="vertical" margin={{ top: 5, right: 30, left: 180, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#2D2D2D' : '#E5E7EB'} />
-              <XAxis 
-                type="number"
-                tick={{ fontSize: 12, fill: textPrimary }}
-                stroke={borderColor}
-              />
-              <YAxis 
-                dataKey="ciudad"
-                type="category"
-                width={190}
-                tick={{ fontSize: 10, fill: textPrimary }}
-                interval={0}
-                stroke={borderColor}
-                tickFormatter={(value) => {
-                  if (!value) return 'Sin ciudad';
-                  // Limpiar nombres: eliminar ", COLOMBIA" y duplicados como "BOGOTA, D.C., BOGOTA, D.C."
-                  let nombre = value.includes(', COLOMBIA') ? value.replace(', COLOMBIA', '') : value;
-                  // Eliminar duplicados (ej: "BOGOTA, D.C., BOGOTA, D.C." -> "BOGOTA, D.C.")
-                  const partes = nombre.split(', ');
-                  const partesUnicas = [...new Set(partes)];
-                  nombre = partesUnicas.join(', ');
-                  // Truncar si es muy largo
-                  if (nombre.length > 35) {
-                    return nombre.substring(0, 32) + '...';
-                  }
-                  return nombre;
-                }}
-              />
-              <Tooltip 
-                formatter={(value) => [`${value} casos`, 'Cantidad']}
-                contentStyle={{
-                  backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary
-                }}
-              />
-              <Bar dataKey="cantidad" fill="#43e97b" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Evolución Temporal */}
-      <div 
-        className="shadow rounded-lg p-4 sm:p-6 mb-6 sm:mb-8"
-        style={{
-          backgroundColor: cardBg,
-          border: `1px solid ${borderColor}`
-        }}
-      >
-        <h3 
-          className="text-base sm:text-lg font-semibold mb-4 text-center"
-          style={{ color: textPrimary }}
-        >
-          📈 Evolución Temporal de Casos
-        </h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={casosPorMes}>
-            <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#2D2D2D' : '#E5E7EB'} />
-            <XAxis 
-              dataKey="mes"
-              tick={{ fontSize: 11, fill: textPrimary }}
-              stroke={borderColor}
-            />
-            <YAxis 
-              tick={{ fontSize: 12, fill: textPrimary }}
-              stroke={borderColor}
-            />
-            <Tooltip 
-              formatter={(value) => [`${value} casos`, 'Cantidad']}
-              contentStyle={{
-                backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                border: `1px solid ${borderColor}`,
-                color: textPrimary
-              }}
-            />
-            <Bar dataKey="cantidad" fill="#667eea" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Trazabilidad */}
-      <div className="mb-6 sm:mb-8">
-        <h2 
-          className="text-xl sm:text-2xl font-bold mb-4"
-          style={{ color: textPrimary }}
-        >
-          📋 Métricas de Trazabilidad
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          {retrasosPorEtapaData.map((item, index) => (
-            <div 
-              key={index}
-              className="shadow-md rounded-lg p-4 text-center border-l-4"
-              style={{
-                backgroundColor: cardBg,
-                borderLeftColor: item.retrasados > 0 ? '#EF4444' : '#22C55E'
-              }}
-            >
-              <div 
-                className="text-xs font-semibold mb-1"
-                style={{ color: textSecondary }}
-              >
-                {item.etapa}
+              </SelectFenix>
+            </Campo>
+            <Campo label="Responsable">
+              <SelectFenix value={responsableFiltro} onChange={(e) => setResponsableFiltro(e.target.value)}>
+                <option value="">Todos los responsables</option>
+                {responsablesUnicos.map((r, index) => (
+                  <option key={`responsable-${r.value}-${index}`} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label="Aseguradora">
+              <SelectFenix value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)}>
+                <option value="">Todas las aseguradoras</option>
+                {aseguradorasUnicas.map((a, index) => (
+                  <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
+                    {a.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+          </div>
+          {filtrosAplicados && (
+            <div className={riesgoFilterActiveBox}>
+              <p className="mb-2 font-body text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Filtros activos
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {fechaDesde && <span className={riesgoFilterChip}>Desde: {fechaDesde}</span>}
+                {fechaHasta && <span className={riesgoFilterChip}>Hasta: {fechaHasta}</span>}
+                {estadoFiltro && (
+                  <span className={riesgoFilterChip}>Estado: {getEstadoNombre(estadoFiltro)}</span>
+                )}
+                {responsableFiltro && (
+                  <span className={riesgoFilterChip}>
+                    Responsable: {getResponsableNombre(responsableFiltro)}
+                  </span>
+                )}
+                {aseguradoraFiltro && (
+                  <span className={riesgoFilterChip}>
+                    Aseguradora: {getAseguradoraNombre(aseguradoraFiltro) || aseguradoraFiltro}
+                  </span>
+                )}
               </div>
-              <div 
-                className="text-2xl font-bold mb-1"
-                style={{ color: item.retrasados > 0 ? '#EF4444' : '#22C55E' }}
-              >
-                {item.retrasados}
-              </div>
-              <div 
-                className="text-xs"
-                style={{ color: textSecondary }}
-              >
-                {item.retrasados === 1 ? 'retrasado' : 'retrasados'}
-              </div>
-              <div 
-                className="text-xs mt-1"
-                style={{ color: textSecondary }}
-              >
-                Límite: {item.limite}
-              </div>
+              <p className="mt-2 font-body text-xs text-gray-600 dark:text-gray-400">
+                Mostrando {totalCasos} de {casos.length} casos
+              </p>
             </div>
-          ))}
-        </div>
-
-        {/* Gráfica de retrasos por etapa */}
-        <div 
-          className="shadow rounded-lg p-4 sm:p-6 mb-6"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-base sm:text-lg font-semibold mb-4 text-center"
-            style={{ color: textPrimary }}
-          >
-            ⚠️ Casos Retrasados por Etapa de Trazabilidad
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={retrasosPorEtapaData}>
-              <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#2D2D2D' : '#E5E7EB'} />
-              <XAxis 
-                dataKey="etapa"
-                tick={{ fontSize: 11, fill: textPrimary }}
-                stroke={borderColor}
-              />
-              <YAxis 
-                tick={{ fontSize: 12, fill: textPrimary }}
-                stroke={borderColor}
-              />
-              <Tooltip 
-                formatter={(value) => [`${value} retrasados`, 'Cantidad']}
-                contentStyle={{
-                  backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                  border: `1px solid ${borderColor}`,
-                  color: textPrimary
-                }}
-              />
-              <Bar dataKey="retrasados" fill="#EF4444" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Cumplimiento por Responsable */}
-        <div 
-          className="shadow rounded-lg p-4 sm:p-6"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <h3 
-            className="text-base sm:text-lg font-semibold mb-4 text-center"
-            style={{ color: textPrimary }}
-          >
-            👥 Cumplimiento de Trazabilidad por Responsable
-          </h3>
-          {cumplimientoPorResponsableArray.length > 0 ? (
-            <>
-              <div className="overflow-x-auto mb-4">
-                <table className="w-full text-xs sm:text-sm" style={{ color: textPrimary }}>
-                  <thead>
-                    <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
-                      <th className="text-left py-2 px-2" style={{ color: textSecondary }}>Responsable</th>
-                      <th className="text-center py-2 px-2" style={{ color: textSecondary }}>Total Casos</th>
-                      <th className="text-center py-2 px-2" style={{ color: textSecondary }}>Cumplidos</th>
-                      <th className="text-center py-2 px-2" style={{ color: textSecondary }}>Retrasados</th>
-                      <th className="text-center py-2 px-2" style={{ color: textSecondary }}>% Cumplimiento</th>
-                      <th className="text-center py-2 px-2" style={{ color: textSecondary }}>Prom. Días Retraso</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cumplimientoPorResponsableArray.map((resp, index) => (
-                      <tr 
-                        key={index} 
-                        style={{ 
-                          borderBottom: `1px solid ${borderColor}`,
-                          backgroundColor: index % 2 === 0 
-                            ? (theme === 'dark' ? '#1F1F1F' : '#F9FAFB') 
-                            : 'transparent'
-                        }}
-                      >
-                        <td className="py-2 px-2 font-medium">{resp.nombre}</td>
-                        <td className="py-2 px-2 text-center">{resp.totalCasos}</td>
-                        <td className="py-2 px-2 text-center" style={{ color: '#22C55E' }}>
-                          {resp.casosCumplidos}
-                        </td>
-                        <td className="py-2 px-2 text-center" style={{ color: '#EF4444' }}>
-                          {resp.casosRetrasados}
-                        </td>
-                        <td className="py-2 px-2 text-center">
-                          <span 
-                            style={{ 
-                              color: parseFloat(resp.porcentajeCumplimiento) >= 80 
-                                ? '#22C55E' 
-                                : parseFloat(resp.porcentajeCumplimiento) >= 50 
-                                  ? '#EAB308' 
-                                  : '#EF4444' 
-                            }}
-                            className="font-bold"
-                          >
-                            {resp.porcentajeCumplimiento}%
-                          </span>
-                        </td>
-                        <td className="py-2 px-2 text-center" style={{ color: textSecondary }}>
-                          {resp.promedioDiasRetraso === '0' ? '-' : `${resp.promedioDiasRetraso} días`}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              
-              {/* Gráfica de cumplimiento */}
-              <div style={{ width: '100%', height: Math.max(400, cumplimientoPorResponsableArray.length * 40) }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={cumplimientoPorResponsableArray} layout="vertical" margin={{ top: 5, right: 30, left: 150, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#2D2D2D' : '#E5E7EB'} />
-                    <XAxis 
-                      type="number"
-                      domain={[0, 100]}
-                      tick={{ fontSize: 12, fill: textPrimary }}
-                      stroke={borderColor}
-                    />
-                    <YAxis 
-                      dataKey="nombre"
-                      type="category"
-                      width={140}
-                      tick={{ fontSize: 10, fill: textPrimary }}
-                      stroke={borderColor}
-                      tickFormatter={(value) => {
-                        if (value && value.length > 25) {
-                          return value.substring(0, 22) + '...';
-                        }
-                        return value;
-                      }}
-                    />
-                    <Tooltip 
-                      formatter={(value) => [`${value}%`, 'Cumplimiento']}
-                      contentStyle={{
-                        backgroundColor: theme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-                        border: `1px solid ${borderColor}`,
-                        color: textPrimary
-                      }}
-                    />
-                    <Bar dataKey="porcentajeCumplimiento" fill="#667eea" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </>
-          ) : (
-            <p style={{ color: textSecondary }} className="text-center py-4">
-              No hay suficientes datos para mostrar el cumplimiento por responsable
-            </p>
           )}
-        </div>
+        </RiesgoFilterSection>
+
+        <section className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <RiesgoMetricCard label="Total de casos" value={totalCasos} hint="Con filtros aplicados" />
+          <RiesgoMetricCard
+            label="Casos pendientes"
+            value={casosPendientes}
+            hint="Estados en proceso o sin asignar"
+            accent="primario"
+          />
+          <div className={`${riesgoMetricCard} sm:col-span-2 lg:col-span-1`}>
+            <p className="font-body text-sm font-medium text-gray-500 dark:text-gray-400">
+              Últimos casos registrados
+            </p>
+            <ul className="mt-3 space-y-1">
+              {ultimosCasos.map((caso, idx) => (
+                <li
+                  key={caso._id || caso.nmroRiesgo || idx}
+                  className="flex justify-between gap-2 font-body text-xs sm:text-sm"
+                >
+                  <span className="truncate text-gray-800 dark:text-gray-200">
+                    {caso.numero_siniestro || caso.nmroRiesgo || caso.codigo}
+                  </span>
+                  <span className="shrink-0 text-gray-500 dark:text-gray-400">
+                    {caso.fecha_creacion?.substring(0, 10)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="grid w-full grid-cols-1 gap-4 xl:grid-cols-2">
+          <RiesgoChartCard title="Distribución por estado" empty={casosPorEstado.length === 0}>
+            <ResponsiveContainer width="100%" height={360}>
+              <PieChart>
+                <Pie
+                  data={casosPorEstado}
+                  dataKey="cantidad"
+                  nameKey="estado"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  innerRadius={60}
+                  stroke={pieStroke}
+                  strokeWidth={2}
+                >
+                  {casosPorEstado.map((entry, index) => (
+                    <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, name, props) => {
+                    const estado = props.payload?.estado || 'Sin nombre';
+                    const cantidad = props.payload?.cantidad || value || 0;
+                    const pct = totalCasos > 0 ? ((cantidad / totalCasos) * 100).toFixed(1) : 0;
+                    return [`${cantidad} casos (${pct}%)`, estado];
+                  }}
+                  contentStyle={tooltipStyle}
+                />
+                <Legend
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  payload={leyendaCasosPorEstado}
+                  formatter={formatoLeyendaPie(totalCasos, 'estado')}
+                  wrapperStyle={{ fontSize: '12px', color: tickColor }}
+                  iconType="circle"
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </RiesgoChartCard>
+
+          <RiesgoChartCard title="Casos por estado" empty={casosPorEstado.length === 0}>
+            <ResponsiveContainer width="100%" height={360}>
+              <BarChart data={casosPorEstado} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" tick={{ fill: tickColor }} />
+                <YAxis type="category" dataKey="estado" width={120} tick={{ fill: tickColor }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
+                  {casosPorEstado.map((entry, index) => (
+                    <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </RiesgoChartCard>
+
+          <div className="lg:col-span-2">
+            <RiesgoChartCard title="Top 10 aseguradoras" empty={topAseguradoras.length === 0}>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart data={topAseguradoras} layout="vertical" margin={{ left: 200 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis type="number" tick={{ fill: tickColor }} />
+                  <YAxis dataKey="aseguradora" type="category" width={180} tick={{ fill: tickColor, fontSize: 11 }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
+                    {topAseguradoras.map((entry, index) => (
+                      <Cell key={entry.aseguradora} fill={getFenixChartColor(index, isDark)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </RiesgoChartCard>
+          </div>
+        </section>
+
+        <section className="grid w-full grid-cols-1 gap-4">
+          <RiesgoChartCard
+            title="Casos por responsable"
+            empty={casosPorResponsableData.length === 0}
+          >
+            <div style={{ height: Math.max(400, casosPorResponsableData.length * 35) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={casosPorResponsableData} layout="vertical" margin={{ left: 180 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis type="number" tick={{ fill: tickColor }} />
+                  <YAxis
+                    dataKey="responsable"
+                    type="category"
+                    width={170}
+                    tick={{ fill: tickColor, fontSize: 10 }}
+                    tickFormatter={(v) => (v && v.length > 30 ? `${v.substring(0, 27)}...` : v || 'Sin responsable')}
+                  />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
+                    {casosPorResponsableData.map((entry, index) => (
+                      <Cell key={entry.responsable} fill={getFenixChartColor(index, isDark)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </RiesgoChartCard>
+
+          <RiesgoChartCard
+            title="Días promedio (cierre → creación) por responsable"
+            empty={promedioDiasPorResponsable.length === 0}
+          >
+            <div style={{ height: Math.max(400, promedioDiasPorResponsable.length * 35) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={promedioDiasPorResponsable} layout="vertical" margin={{ left: 180 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis type="number" tick={{ fill: tickColor }} />
+                  <YAxis
+                    dataKey="responsable"
+                    type="category"
+                    width={170}
+                    tick={{ fill: tickColor, fontSize: 10 }}
+                    tickFormatter={(v) => (v && v.length > 30 ? `${v.substring(0, 27)}...` : v || 'Sin responsable')}
+                  />
+                  <Tooltip formatter={(v) => [`${v} días`, 'Promedio']} contentStyle={tooltipStyle} />
+                  <Bar dataKey="promedioDias" radius={[0, 4, 4, 0]}>
+                    {promedioDiasPorResponsable.map((entry, index) => (
+                      <Cell key={entry.responsable} fill={getFenixChartColor(index + 1, isDark)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </RiesgoChartCard>
+
+          <RiesgoChartCard title="Distribución por ciudad (Top 10)" empty={casosPorCiudad.length === 0}>
+            <div style={{ height: Math.max(360, casosPorCiudad.length * 50) }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={casosPorCiudad} layout="vertical" margin={{ left: 180 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis type="number" tick={{ fill: tickColor }} />
+                  <YAxis
+                    dataKey="ciudad"
+                    type="category"
+                    width={190}
+                    tick={{ fill: tickColor, fontSize: 10 }}
+                    tickFormatter={(value) => {
+                      if (!value) return 'Sin ciudad';
+                      let nombre = value.includes(', COLOMBIA') ? value.replace(', COLOMBIA', '') : value;
+                      const partesUnicas = [...new Set(nombre.split(', '))];
+                      nombre = partesUnicas.join(', ');
+                      return nombre.length > 35 ? `${nombre.substring(0, 32)}...` : nombre;
+                    }}
+                  />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
+                    {casosPorCiudad.map((entry, index) => (
+                      <Cell key={entry.ciudad} fill={getFenixChartColor(index, isDark)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </RiesgoChartCard>
+
+          <RiesgoChartCard title="Evolución temporal de casos" empty={casosPorMes.length === 0}>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={casosPorMes}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="mes" tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis tick={{ fill: tickColor }} allowDecimals={false} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Line
+                  type="monotone"
+                  dataKey="cantidad"
+                  name="Casos"
+                  stroke={lineColors.casos}
+                  strokeWidth={2.5}
+                  dot={{ fill: lineColors.casos, r: 3 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </RiesgoChartCard>
+        </section>
+
+        <section>
+          <h2 className={riesgoSectionTitle}>Métricas de trazabilidad</h2>
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {retrasosPorEtapaData.map((item, index) => (
+              <div
+                key={index}
+                className={item.retrasados > 0 ? riesgoKpiCardAlert : riesgoKpiCardOk}
+              >
+                <p className="font-body text-xs font-semibold text-gray-500 dark:text-gray-400">
+                  {item.etapa}
+                </p>
+                <p
+                  className={`mt-2 font-accent text-2xl font-bold ${
+                    item.retrasados > 0 ? 'text-fenix-primario' : 'text-fenix-exito'
+                  }`}
+                >
+                  {item.retrasados}
+                </p>
+                <p className="font-body text-xs text-gray-500 dark:text-gray-400">
+                  {item.retrasados === 1 ? 'retrasado' : 'retrasados'} · Límite: {item.limite}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <RiesgoChartCard title="Casos retrasados por etapa" empty={false}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={retrasosPorEtapaData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="etapa" tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis tick={{ fill: tickColor }} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="retrasados" fill={FENIX_PALETTE.primario} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </RiesgoChartCard>
+
+          <RiesgoChartCard
+            title="Cumplimiento de trazabilidad por responsable"
+            empty={cumplimientoPorResponsableArray.length === 0}
+          >
+            {cumplimientoPorResponsableArray.length > 0 && (
+              <>
+                <div className="mb-4 overflow-x-auto">
+                  <table className="w-full min-w-[640px]">
+                    <thead>
+                      <tr>
+                        <th className={riesgoTableTh}>Responsable</th>
+                        <th className={`${riesgoTableTh} text-center`}>Total</th>
+                        <th className={`${riesgoTableTh} text-center`}>Cumplidos</th>
+                        <th className={`${riesgoTableTh} text-center`}>Retrasados</th>
+                        <th className={`${riesgoTableTh} text-center`}>% Cumpl.</th>
+                        <th className={`${riesgoTableTh} text-center`}>Prom. retraso</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cumplimientoPorResponsableArray.map((resp, index) => (
+                        <tr key={index} className={index % 2 === 0 ? riesgoTableRowEven : riesgoTableRowOdd}>
+                          <td className={`${riesgoTableTd} font-medium`}>{resp.nombre}</td>
+                          <td className={`${riesgoTableTd} text-center`}>{resp.totalCasos}</td>
+                          <td className={`${riesgoTableTd} text-center text-fenix-exito`}>
+                            {resp.casosCumplidos}
+                          </td>
+                          <td className={`${riesgoTableTd} text-center text-fenix-primario`}>
+                            {resp.casosRetrasados}
+                          </td>
+                          <td className={`${riesgoTableTd} text-center font-bold`}>
+                            <span
+                              className={
+                                parseFloat(resp.porcentajeCumplimiento) >= 80
+                                  ? 'text-fenix-exito'
+                                  : parseFloat(resp.porcentajeCumplimiento) >= 50
+                                    ? 'text-fenix-editar'
+                                    : 'text-fenix-primario'
+                              }
+                            >
+                              {resp.porcentajeCumplimiento}%
+                            </span>
+                          </td>
+                          <td className={`${riesgoTableTd} text-center text-gray-500`}>
+                            {resp.promedioDiasRetraso === '0' ? '-' : `${resp.promedioDiasRetraso} días`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ height: Math.max(360, cumplimientoPorResponsableArray.length * 40) }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={cumplimientoPorResponsableArray}
+                      layout="vertical"
+                      margin={{ left: 150 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                      <XAxis type="number" domain={[0, 100]} tick={{ fill: tickColor }} />
+                      <YAxis
+                        dataKey="nombre"
+                        type="category"
+                        width={140}
+                        tick={{ fill: tickColor, fontSize: 10 }}
+                        tickFormatter={(v) => (v && v.length > 25 ? `${v.substring(0, 22)}...` : v)}
+                      />
+                      <Tooltip
+                        formatter={(v) => [`${v}%`, 'Cumplimiento']}
+                        contentStyle={tooltipStyle}
+                      />
+                      <Bar dataKey="porcentajeCumplimiento" radius={[0, 4, 4, 0]}>
+                        {cumplimientoPorResponsableArray.map((entry, index) => (
+                          <Cell key={entry.nombre} fill={getFenixChartColor(index, isDark)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </>
+            )}
+          </RiesgoChartCard>
+        </section>
       </div>
     </div>
   );

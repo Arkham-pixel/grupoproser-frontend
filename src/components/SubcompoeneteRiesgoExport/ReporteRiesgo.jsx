@@ -6,6 +6,30 @@ import AgregarCasoRiesgo from '../SubcomponentesRiesgo/AgregarCasoRiesgo';
 // Nota: para exportar fechas como tipo fecha en Excel (no texto),
 // convertimos a Date y usamos `cellDates: true` en `json_to_sheet`.
 import { useTheme } from '../../context/ThemeContext';
+import {
+  getRiesgoSelectStyles,
+  riesgoBtnGhost,
+  riesgoBtnPrimary,
+  riesgoBtnSecondary,
+  riesgoBtnSuccess,
+  riesgoFilterActiveBox,
+  riesgoFilterChip,
+  riesgoFilterDivider,
+  riesgoPageWrapWide,
+  riesgoPaginationBtn,
+  riesgoReportRoot,
+  riesgoScope,
+  riesgoTableWrap,
+  riesgoToolbarRow,
+} from '../SubcomponentesRiesgo/riesgoFenixUi.js';
+import {
+  Campo,
+  InputFenix,
+  RiesgoFilterSection,
+  RiesgoNavPanel,
+  RiesgoPageHeader,
+  SelectFenix,
+} from '../SubcomponentesRiesgo/RiesgoUiBlocks.jsx';
 import { convertirFechaParaExcelDate } from '../../utils/fechaUtils';
 import { BASE_URL } from '../../config/apiConfig.js';
 import Select from 'react-select';
@@ -301,6 +325,8 @@ const todasLasColumnas = [
 
 const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
   const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const selectStyles = useMemo(() => getRiesgoSelectStyles(isDark), [isDark]);
   const [casos, setCasos] = useState([]);
   const [responsables, setResponsables] = useState([]);
   const [aseguradoras, setAseguradoras] = useState([]);
@@ -1310,738 +1336,235 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
     XLSX.writeFile(workbook, 'reporte_riesgo.xlsx');
   };
 
+  const filtrosAplicados = Boolean(
+    fechaDesde ||
+      fechaHasta ||
+      estadoFiltro.length > 0 ||
+      responsableFiltro.length > 0 ||
+      aseguradoraFiltro.length > 0 ||
+      ciudadFiltro.length > 0
+  );
+
+  const limpiarFiltros = () => {
+    setFechaDesde('');
+    setFechaHasta('');
+    setEstadoFiltro([]);
+    setResponsableFiltro([]);
+    setAseguradoraFiltro([]);
+    setCiudadFiltro([]);
+    setCampoBusqueda('');
+    setTerminoBusqueda('');
+  };
+
+  const hayBusqueda = Boolean(campoBusqueda || terminoBusqueda);
+  const mostrarLimpiar = filtrosAplicados || hayBusqueda;
+
   return (
-    <div className="p-2 sm:p-4">
-      <h2 
-        className="text-xl sm:text-2xl font-bold mb-4"
-        style={{ color: textPrimary }}
-      >
-        📊 Reporte de Casos de Riesgo
-      </h2>
+    <div className={riesgoReportRoot}>
+      <div className={`${riesgoScope} ${riesgoPageWrapWide}`}>
+        <RiesgoPageHeader
+          title="Reporte de casos de riesgo"
+          subtitle="Consulta, filtra y exporta el listado de casos."
+          showNav={false}
+        />
 
-      {/* Filtros Avanzados */}
-      <div 
-        className="shadow rounded-lg p-3 sm:p-4 mb-4"
-        style={{
-          backgroundColor: cardBg,
-          border: `1px solid ${borderColor}`
-        }}
-      >
-        <h3 
-          className="text-sm sm:text-lg font-semibold mb-3 text-center"
-          style={{ color: textPrimary }}
+        <RiesgoFilterSection
+          title="Filtros y consulta"
+          subtitle="Navegación, fechas, catálogos, búsqueda y exportación en un solo panel."
+          showClear={mostrarLimpiar}
+          onClear={limpiarFiltros}
         >
-          🔍 Filtros de Búsqueda
-        </h3>
+          <RiesgoNavPanel activePath="/riesgos/exportar" />
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Campo label="Fecha desde">
+              <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+            </Campo>
+            <Campo label="Fecha hasta">
+              <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+            </Campo>
+          </div>
         
-        {/* Primera fila - Fechas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              📅 Fecha desde
-            </label>
-            <input 
-              type="date" 
-              value={fechaDesde} 
-              onChange={e => setFechaDesde(e.target.value)} 
-              className="w-full rounded-md px-3 py-2 text-sm focus:outline-none"
-              style={{
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: borderColor,
-                border: `1px solid ${borderColor}`
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = theme === 'dark' ? '#DC2626' : '#2563EB';
-                e.target.style.boxShadow = `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}`;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = borderColor;
-                e.target.style.boxShadow = 'none';
-              }}
-            />
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Campo label="Estado">
+              <Select
+                isMulti
+                options={estadosUnicos}
+                value={estadoFiltro}
+                onChange={(selected) => setEstadoFiltro(selected || [])}
+                placeholder="Todos los estados"
+                isClearable
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+                styles={selectStyles}
+              />
+            </Campo>
+            <Campo label="Responsable">
+              <Select
+                isMulti
+                options={responsablesUnicos}
+                value={responsableFiltro}
+                onChange={(selected) => setResponsableFiltro(selected || [])}
+                placeholder="Todos los responsables"
+                isClearable
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+                styles={selectStyles}
+              />
+            </Campo>
+            <Campo label="Aseguradora">
+              <Select
+                isMulti
+                options={aseguradorasUnicas}
+                value={aseguradoraFiltro}
+                onChange={(selected) => setAseguradoraFiltro(selected || [])}
+                placeholder="Todas las aseguradoras"
+                isClearable
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+                styles={selectStyles}
+              />
+            </Campo>
+            <Campo label="Ciudad">
+              <Select
+                isMulti
+                options={ciudadesUnicas}
+                value={ciudadFiltro}
+                onChange={(selected) => setCiudadFiltro(selected || [])}
+                placeholder="Todas las ciudades"
+                isClearable
+                menuPortalTarget={document.body}
+                menuPosition="fixed"
+                styles={selectStyles}
+              />
+            </Campo>
           </div>
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              📅 Fecha hasta
-            </label>
-            <input 
-              type="date" 
-              value={fechaHasta} 
-              onChange={e => setFechaHasta(e.target.value)} 
-              className="w-full rounded-md px-3 py-2 text-sm focus:outline-none"
-              style={{
-                backgroundColor: inputBg,
-                color: textPrimary,
-                borderColor: borderColor,
-                border: `1px solid ${borderColor}`
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = theme === 'dark' ? '#DC2626' : '#2563EB';
-                e.target.style.boxShadow = `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}`;
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = borderColor;
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          </div>
-        </div>
-        
-        {/* Segunda fila - Selectores */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              📊 Estado
-            </label>
-            <Select
-              isMulti
-              options={estadosUnicos}
-              value={estadoFiltro}
-              onChange={(selected) => setEstadoFiltro(selected || [])}
-              placeholder="Todos los estados"
-              isClearable
-              className="text-xs sm:text-sm"
-              menuPortalTarget={document.body}
-              menuPosition="fixed"
-              styles={{
-                control: (provided, state) => ({
-                  ...provided,
-                  fontSize: '0.875rem',
-                  backgroundColor: inputBg,
-                  color: textPrimary,
-                  borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                  boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                  '&:hover': {
-                    borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                  },
-                }),
-                menuPortal: (provided) => ({
-                  ...provided,
-                  zIndex: 9999
-                }),
-                menu: (provided) => ({
-                  ...provided,
-                  zIndex: 9999,
-                  backgroundColor: inputBg,
-                  border: `1px solid ${borderColor}`,
-                  boxShadow: theme === 'dark' 
-                    ? '0 10px 25px rgba(0, 0, 0, 0.5)' 
-                    : '0 10px 25px rgba(0, 0, 0, 0.15)'
-                }),
-                menuList: (provided) => ({
-                  ...provided,
-                  backgroundColor: inputBg,
-                  padding: 0
-                }),
-                option: (provided, state) => ({
-                  ...provided,
-                  backgroundColor: state.isSelected 
-                    ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                    : state.isFocused
-                    ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                    : inputBg,
-                  color: state.isSelected 
-                    ? '#FFFFFF'
-                    : textPrimary
-                }),
-                multiValue: (provided) => ({
-                  ...provided,
-                  backgroundColor: theme === 'dark' ? '#2A2A2A' : '#E5E7EB',
-                }),
-                multiValueLabel: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                }),
-                multiValueRemove: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                  '&:hover': {
-                    backgroundColor: theme === 'dark' ? '#DC2626' : '#EF4444',
-                    color: '#FFFFFF',
-                  },
-                }),
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: textPrimary
-                }),
-                placeholder: (provided) => ({
-                  ...provided,
-                  color: textSecondary
-                })
-              }}
-            />
-          </div>
-          
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              👨‍💼 Responsable
-            </label>
-            <Select
-              isMulti
-              options={responsablesUnicos}
-              value={responsableFiltro}
-              onChange={(selected) => setResponsableFiltro(selected || [])}
-              placeholder="Todos los responsables"
-              isClearable
-              className="text-xs sm:text-sm"
-              menuPortalTarget={document.body}
-              menuPosition="fixed"
-              styles={{
-                control: (provided, state) => ({
-                  ...provided,
-                  fontSize: '0.875rem',
-                  backgroundColor: inputBg,
-                  color: textPrimary,
-                  borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                  boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                  '&:hover': {
-                    borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                  },
-                }),
-                menuPortal: (provided) => ({
-                  ...provided,
-                  zIndex: 9999
-                }),
-                menu: (provided) => ({
-                  ...provided,
-                  zIndex: 9999,
-                  backgroundColor: inputBg,
-                  border: `1px solid ${borderColor}`,
-                  boxShadow: theme === 'dark' 
-                    ? '0 10px 25px rgba(0, 0, 0, 0.5)' 
-                    : '0 10px 25px rgba(0, 0, 0, 0.15)'
-                }),
-                menuList: (provided) => ({
-                  ...provided,
-                  backgroundColor: inputBg,
-                  padding: 0
-                }),
-                option: (provided, state) => ({
-                  ...provided,
-                  backgroundColor: state.isSelected 
-                    ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                    : state.isFocused
-                    ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                    : inputBg,
-                  color: state.isSelected 
-                    ? '#FFFFFF'
-                    : textPrimary
-                }),
-                multiValue: (provided) => ({
-                  ...provided,
-                  backgroundColor: theme === 'dark' ? '#2A2A2A' : '#E5E7EB',
-                }),
-                multiValueLabel: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                }),
-                multiValueRemove: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                  '&:hover': {
-                    backgroundColor: theme === 'dark' ? '#DC2626' : '#EF4444',
-                    color: '#FFFFFF',
-                  },
-                }),
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: textPrimary
-                }),
-                placeholder: (provided) => ({
-                  ...provided,
-                  color: textSecondary
-                })
-              }}
-            />
-          </div>
-          
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              🏢 Aseguradora
-            </label>
-            <Select
-              isMulti
-              options={aseguradorasUnicas}
-              value={aseguradoraFiltro}
-              onChange={(selected) => setAseguradoraFiltro(selected || [])}
-              placeholder="Todas las aseguradoras"
-              isClearable
-              className="text-xs sm:text-sm"
-              menuPortalTarget={document.body}
-              menuPosition="fixed"
-              styles={{
-                control: (provided, state) => ({
-                  ...provided,
-                  fontSize: '0.875rem',
-                  backgroundColor: inputBg,
-                  color: textPrimary,
-                  borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                  boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                  '&:hover': {
-                    borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                  },
-                }),
-                menuPortal: (provided) => ({
-                  ...provided,
-                  zIndex: 9999
-                }),
-                menu: (provided) => ({
-                  ...provided,
-                  zIndex: 9999,
-                  backgroundColor: inputBg,
-                  border: `1px solid ${borderColor}`,
-                  boxShadow: theme === 'dark' 
-                    ? '0 10px 25px rgba(0, 0, 0, 0.5)' 
-                    : '0 10px 25px rgba(0, 0, 0, 0.15)'
-                }),
-                menuList: (provided) => ({
-                  ...provided,
-                  backgroundColor: inputBg,
-                  padding: 0
-                }),
-                option: (provided, state) => ({
-                  ...provided,
-                  backgroundColor: state.isSelected 
-                    ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                    : state.isFocused
-                    ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                    : inputBg,
-                  color: state.isSelected 
-                    ? '#FFFFFF'
-                    : textPrimary
-                }),
-                multiValue: (provided) => ({
-                  ...provided,
-                  backgroundColor: theme === 'dark' ? '#2A2A2A' : '#E5E7EB',
-                }),
-                multiValueLabel: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                }),
-                multiValueRemove: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                  '&:hover': {
-                    backgroundColor: theme === 'dark' ? '#DC2626' : '#EF4444',
-                    color: '#FFFFFF',
-                  },
-                }),
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: textPrimary
-                }),
-                placeholder: (provided) => ({
-                  ...provided,
-                  color: textSecondary
-                })
-              }}
-            />
-          </div>
-          
-          <div>
-            <label 
-              className="block text-xs font-semibold mb-1"
-              style={{ color: textPrimary }}
-            >
-              🏙️ Ciudad
-            </label>
-            <Select
-              isMulti
-              options={ciudadesUnicas}
-              value={ciudadFiltro}
-              onChange={(selected) => setCiudadFiltro(selected || [])}
-              placeholder="Todas las ciudades"
-              isClearable
-              className="text-xs sm:text-sm"
-              menuPortalTarget={document.body}
-              menuPosition="fixed"
-              styles={{
-                control: (provided, state) => ({
-                  ...provided,
-                  fontSize: '0.875rem',
-                  backgroundColor: inputBg,
-                  color: textPrimary,
-                  borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
-                  boxShadow: state.isFocused ? `0 0 0 1px ${theme === 'dark' ? '#DC2626' : '#2563EB'}` : 'none',
-                  '&:hover': {
-                    borderColor: theme === 'dark' ? '#DC2626' : '#2563EB',
-                  },
-                }),
-                menuPortal: (provided) => ({
-                  ...provided,
-                  zIndex: 9999
-                }),
-                menu: (provided) => ({
-                  ...provided,
-                  zIndex: 9999,
-                  backgroundColor: inputBg,
-                  border: `1px solid ${borderColor}`,
-                  boxShadow: theme === 'dark' 
-                    ? '0 10px 25px rgba(0, 0, 0, 0.5)' 
-                    : '0 10px 25px rgba(0, 0, 0, 0.15)'
-                }),
-                menuList: (provided) => ({
-                  ...provided,
-                  backgroundColor: inputBg,
-                  padding: 0
-                }),
-                option: (provided, state) => ({
-                  ...provided,
-                  backgroundColor: state.isSelected 
-                    ? (theme === 'dark' ? '#DC2626' : '#2563EB')
-                    : state.isFocused
-                    ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
-                    : inputBg,
-                  color: state.isSelected 
-                    ? '#FFFFFF'
-                    : textPrimary
-                }),
-                multiValue: (provided) => ({
-                  ...provided,
-                  backgroundColor: theme === 'dark' ? '#2A2A2A' : '#E5E7EB',
-                }),
-                multiValueLabel: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                }),
-                multiValueRemove: (provided) => ({
-                  ...provided,
-                  color: textPrimary,
-                  '&:hover': {
-                    backgroundColor: theme === 'dark' ? '#DC2626' : '#EF4444',
-                    color: '#FFFFFF',
-                  },
-                }),
-                singleValue: (provided) => ({
-                  ...provided,
-                  color: textPrimary
-                }),
-                placeholder: (provided) => ({
-                  ...provided,
-                  color: textSecondary
-                })
-              }}
-            />
-          </div>
-        </div>
-        
-        {/* Botón para limpiar filtros */}
-        <div className="mt-3 text-center">
-          <button 
-            onClick={() => {
-              setFechaDesde("");
-              setFechaHasta("");
-              setEstadoFiltro([]);
-              setResponsableFiltro([]);
-              setAseguradoraFiltro([]);
-              setCiudadFiltro([]);
-            }}
-            className="px-4 py-2 rounded-md text-sm text-white transition-colors"
-            style={{ backgroundColor: theme === 'dark' ? '#4A4A4A' : '#6B7280' }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#5A5A5A' : '#4B5563';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme === 'dark' ? '#4A4A4A' : '#6B7280';
-            }}
-          >
-            🗑️ Limpiar Filtros
-          </button>
-        </div>
-        
-        {/* Información de filtros activos */}
-        {(fechaDesde || fechaHasta || estadoFiltro.length > 0 || responsableFiltro.length > 0 || aseguradoraFiltro.length > 0 || ciudadFiltro.length > 0) && (
-          <div 
-            className="mt-3 p-2 rounded-md border"
-            style={{
-              backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.1)' : '#DBEAFE',
-              borderColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.3)' : '#BFDBFE'
-            }}
-          >
-            <p 
-              className="text-xs font-medium mb-1"
-              style={{ color: theme === 'dark' ? '#93C5FD' : '#1E40AF' }}
-            >
-              🔍 Filtros activos:
+
+          <div className={riesgoFilterDivider}>
+            <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
+              Búsqueda y acciones
             </p>
-            <div className="flex flex-wrap gap-1">
-              {fechaDesde && (
-                <span 
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#BFDBFE',
-                    color: theme === 'dark' ? '#DBEAFE' : '#1E3A8A'
-                  }}
-                >
-                  Desde: {fechaDesde}
+            <div className={riesgoToolbarRow}>
+              <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-2xl">
+                <Campo label="Buscar por">
+                  <SelectFenix value={campoBusqueda} onChange={(e) => setCampoBusqueda(e.target.value)}>
+                    <option value="" disabled>
+                      Selecciona filtro
+                    </option>
+                    {camposVisibles.map((c) => (
+                      <option key={c.clave} value={c.clave}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </SelectFenix>
+                  {!campoBusqueda && (
+                    <p className="mt-1 font-body text-xs text-fenix-primario">
+                      Selecciona un filtro para buscar.
+                    </p>
+                  )}
+                </Campo>
+                <Campo label="Término">
+                  <InputFenix
+                    type="text"
+                    value={terminoBusqueda}
+                    onChange={(e) => setTerminoBusqueda(e.target.value)}
+                    disabled={!campoBusqueda}
+                    placeholder="Escribe el valor a buscar…"
+                  />
+                </Campo>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+                <button type="button" className={riesgoBtnPrimary} onClick={obtenerCasos}>
+                  Buscar
+                </button>
+                <button type="button" className={riesgoBtnSecondary} onClick={abrirModalColumnas}>
+                  Columnas
+                </button>
+                <button type="button" className={riesgoBtnSuccess} onClick={exportarExcel}>
+                  Exportar Excel
+                </button>
+                <span className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+                  {camposVisibles.length} de {todasLasColumnas.length} columnas
                 </span>
-              )}
-              {fechaHasta && (
-                <span 
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#BFDBFE',
-                    color: theme === 'dark' ? '#DBEAFE' : '#1E3A8A'
-                  }}
-                >
-                  Hasta: {fechaHasta}
-                </span>
-              )}
-              {estadoFiltro.length > 0 && estadoFiltro.map((filtro, index) => (
-                <span 
-                  key={`estado-${index}`}
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#BFDBFE',
-                    color: theme === 'dark' ? '#DBEAFE' : '#1E3A8A'
-                  }}
-                >
-                  Estado: {filtro.label || getEstadoNombre(filtro.value, estadosLocales)}
-                </span>
-              ))}
-              {responsableFiltro.length > 0 && responsableFiltro.map((filtro, index) => (
-                <span 
-                  key={`responsable-${index}`}
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#BFDBFE',
-                    color: theme === 'dark' ? '#DBEAFE' : '#1E3A8A'
-                  }}
-                >
-                  Responsable: {filtro.label || getResponsableNombre(filtro.value, responsables)}
-                </span>
-              ))}
-              {aseguradoraFiltro.length > 0 && aseguradoraFiltro.map((filtro, index) => (
-                <span 
-                  key={`aseguradora-${index}`}
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#BFDBFE',
-                    color: theme === 'dark' ? '#DBEAFE' : '#1E3A8A'
-                  }}
-                >
-                  Aseguradora: {filtro.label || getAseguradoraNombre(filtro.value, aseguradoras)}
-                </span>
-              ))}
-              {ciudadFiltro.length > 0 && ciudadFiltro.map((filtro, index) => (
-                <span 
-                  key={`ciudad-${index}`}
-                  className="px-2 py-1 rounded text-xs"
-                  style={{
-                    backgroundColor: theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#BFDBFE',
-                    color: theme === 'dark' ? '#DBEAFE' : '#1E3A8A'
-                  }}
-                >
-                  Ciudad: {filtro.label || getCiudadNombre(filtro.value, ciudades)}
-                </span>
-              ))}
+              </div>
             </div>
-            <p 
-              className="text-xs mt-1"
-              style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }}
-            >
-              Mostrando {casosFiltrados.length} de {casos.length} casos
-            </p>
-            {hayFiltroResponsable && (
-              <p 
-                className="text-xs mt-1 font-medium"
-                style={{ color: '#10B981' }}
-              >
-                ✅ Mostrando todos los casos del responsable seleccionado (sin paginación)
-              </p>
-            )}
           </div>
-        )}
-      </div>
 
-      <div className="flex flex-wrap gap-2 items-end mb-4">
-        <div>
-          <label 
-            className="text-sm font-medium block"
-            style={{ color: textPrimary }}
-          >
-            Buscar por
-          </label>
-          <select
-            className="px-2 py-1 rounded"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            value={campoBusqueda}
-            onChange={e => setCampoBusqueda(e.target.value)}
-          >
-            <option value="" disabled>Selecciona filtro</option>
-            {camposVisibles.map(c => (
-              <option key={c.clave} value={c.clave}>{c.label}</option>
-            ))}
-          </select>
-          {!campoBusqueda && (
-            <p className="text-xs mt-1" style={{ color: '#DC2626' }}>
-              Selecciona un filtro para buscar.
-            </p>
+          {(filtrosAplicados || hayBusqueda) && (
+            <div className={`${riesgoFilterActiveBox} mt-4`}>
+              <p className="mb-2 font-body text-xs font-semibold text-gray-700 dark:text-gray-300">
+                Filtros activos
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {fechaDesde && <span className={riesgoFilterChip}>Desde: {fechaDesde}</span>}
+                {fechaHasta && <span className={riesgoFilterChip}>Hasta: {fechaHasta}</span>}
+                {estadoFiltro.map((filtro, index) => (
+                  <span key={`estado-${index}`} className={riesgoFilterChip}>
+                    Estado: {filtro.label || getEstadoNombre(filtro.value, estadosLocales)}
+                  </span>
+                ))}
+                {responsableFiltro.map((filtro, index) => (
+                  <span key={`responsable-${index}`} className={riesgoFilterChip}>
+                    Responsable: {filtro.label || getResponsableNombre(filtro.value, responsables)}
+                  </span>
+                ))}
+                {aseguradoraFiltro.map((filtro, index) => (
+                  <span key={`aseguradora-${index}`} className={riesgoFilterChip}>
+                    Aseguradora: {filtro.label || getAseguradoraNombre(filtro.value, aseguradoras)}
+                  </span>
+                ))}
+                {ciudadFiltro.map((filtro, index) => (
+                  <span key={`ciudad-${index}`} className={riesgoFilterChip}>
+                    Ciudad: {filtro.label || getCiudadNombre(filtro.value, ciudades)}
+                  </span>
+                ))}
+                {campoBusqueda && terminoBusqueda && (
+                  <span className={riesgoFilterChip}>
+                    Búsqueda: {camposVisibles.find((c) => c.clave === campoBusqueda)?.label || campoBusqueda} ={' '}
+                    {terminoBusqueda}
+                  </span>
+                )}
+              </div>
+              <p className="mt-2 font-body text-xs text-gray-600 dark:text-gray-400">
+                Mostrando {casosFiltrados.length} de {casos.length} casos
+                {totalPaginas > 1 ? ` · Página ${paginaActual} de ${totalPaginas}` : ''}
+              </p>
+              {hayFiltroResponsable && (
+                <p className="mt-1 font-body text-xs font-medium text-fenix-exito">
+                  Mostrando todos los casos del responsable seleccionado (sin paginación)
+                </p>
+              )}
+            </div>
           )}
-        </div>
-        <div>
-          <label 
-            className="text-sm font-medium block"
-            style={{ color: textPrimary }}
-          >
-            Término
-          </label>
-          <input
-            type="text"
-            className="px-2 py-1 rounded"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            value={terminoBusqueda}
-            onChange={e => setTerminoBusqueda(e.target.value)}
-            disabled={!campoBusqueda}
-          />
-        </div>
-        <button
-          className="text-white px-4 py-2 rounded transition-colors"
-          style={{ backgroundColor: '#2563EB' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#1D4ED8';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#2563EB';
-          }}
-          onClick={obtenerCasos}
-        >
-          🔍 Buscar
-        </button>
-        <button
-          className="text-white px-4 py-2 rounded transition-colors"
-          style={{ backgroundColor: '#3B82F6' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#2563EB';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#3B82F6';
-          }}
-              onClick={abrirModalColumnas}
-        >
-          🗂️ Columnas
-        </button>
-        <button
-          className="text-white px-4 py-2 rounded transition-colors"
-          style={{ backgroundColor: '#059669' }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#047857';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#059669';
-          }}
-          onClick={exportarExcel}
-        >
-          ⬇ Exportar Excel
-        </button>
-        <div 
-          className="text-xs px-3 py-2 rounded"
-          style={{
-            backgroundColor: theme === 'dark' ? '#2A2A2A' : '#F3F4F6',
-            color: textSecondary
-          }}
-        >
-          📊 {camposVisibles.length} de {todasLasColumnas.length} campos visibles
-        </div>
-      </div>
+        </RiesgoFilterSection>
 
-      {/* Paginación - Movida arriba de la tabla */}
-      {totalPaginas > 1 && (
-        <div 
-          className="shadow rounded-lg p-4 mb-4"
-          style={{
-            backgroundColor: cardBg,
-            border: `1px solid ${borderColor}`
-          }}
-        >
-          <div className="flex justify-between items-center">
-            <span 
-              className="text-sm"
-              style={{ color: textPrimary }}
-            >
+        {totalPaginas > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
+            <span className="font-body text-sm text-gray-700 dark:text-gray-300">
               Página {paginaActual} de {totalPaginas}
             </span>
-            <div className="space-x-2">
+            <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
+                type="button"
+                onClick={() => setPaginaActual((p) => Math.max(p - 1, 1))}
                 disabled={paginaActual === 1}
-                className="px-3 py-1 rounded disabled:opacity-50 transition-colors"
-                style={{
-                  backgroundColor: theme === 'dark' ? '#2A2A2A' : '#E5E7EB',
-                  color: textPrimary
-                }}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#3A3A3A' : '#D1D5DB';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2A2A2A' : '#E5E7EB';
-                  }
-                }}
+                className={riesgoPaginationBtn}
               >
-                ⬅ Anterior
+                Anterior
               </button>
               <button
-                onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
+                type="button"
+                onClick={() => setPaginaActual((p) => Math.min(p + 1, totalPaginas))}
                 disabled={paginaActual === totalPaginas}
-                className="px-3 py-1 rounded disabled:opacity-50 transition-colors"
-                style={{
-                  backgroundColor: theme === 'dark' ? '#2A2A2A' : '#E5E7EB',
-                  color: textPrimary
-                }}
-                onMouseEnter={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#3A3A3A' : '#D1D5DB';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!e.currentTarget.disabled) {
-                    e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2A2A2A' : '#E5E7EB';
-                  }
-                }}
+                className={riesgoPaginationBtn}
               >
-                Siguiente ➡
+                Siguiente
               </button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div 
-        className="overflow-auto rounded-lg"
-        style={{
-          backgroundColor: cardBg,
-          border: `1px solid ${borderColor}`
-        }}
-      >
+        <div className={`${riesgoTableWrap} w-full overflow-x-auto`}>
         <table className="w-full text-sm" style={{ borderColor: borderColor }}>
           <thead className="sticky top-0 z-10" style={{ backgroundColor: tableHeaderBg }}>
             <tr>
@@ -2345,6 +1868,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
