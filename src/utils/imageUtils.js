@@ -9,6 +9,7 @@
  */
 
 import { getUploadsUrlCandidates, isStoredUploadPath } from '../config/apiConfig';
+import { debug } from './appLogger.js';
 
 /**
  * Obtiene todas las URLs candidatas para una imagen (con fallbacks)
@@ -20,10 +21,16 @@ export function getImageUrlCandidates(imagen) {
   
   if (!imagen) return candidates;
   
-  // Si es un string base64 o blob, devolverlo directamente
+  // String: data/blob, URL pública o ruta almacenada (s3:, /uploads/)
   if (typeof imagen === 'string') {
     if (imagen.startsWith('data:') || imagen.startsWith('blob:')) {
       return [imagen];
+    }
+    if (imagen.startsWith('http://') || imagen.startsWith('https://')) {
+      return [imagen];
+    }
+    if (isStoredUploadPath(imagen)) {
+      return getUploadsUrlCandidates(imagen);
     }
   }
   
@@ -66,6 +73,62 @@ export function getImageUrl(imagen) {
 }
 
 /**
+ * Descarga una imagen almacenada en servidor/S3 probando URLs candidatas.
+ * @returns {Promise<string|null>} data URL o null si ninguna URL respondió.
+ */
+async function fetchUrlAsArrayBuffer(url) {
+  if (!url || url.startsWith('data:') || url.startsWith('blob:')) return null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    return await response.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Descarga un archivo almacenado (s3:, /uploads/, URL) probando candidatos.
+ * @param {string} rutaOrUrl - Ruta guardada en BD
+ * @returns {Promise<ArrayBuffer|null>}
+ */
+export async function fetchStoredFileAsArrayBuffer(rutaOrUrl) {
+  if (!rutaOrUrl || typeof rutaOrUrl !== 'string') return null;
+  if (rutaOrUrl.startsWith('data:')) {
+    const base64Data = rutaOrUrl.split(',')[1] || rutaOrUrl;
+    return Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0)).buffer;
+  }
+  const candidates = getUploadsUrlCandidates(rutaOrUrl);
+  for (const url of candidates) {
+    const buffer = await fetchUrlAsArrayBuffer(url);
+    if (buffer) return buffer;
+  }
+  return null;
+}
+
+export async function fetchStoredImageAsDataUrl(imagen) {
+  const candidates = getImageUrlCandidates(imagen);
+  for (const url of candidates) {
+    if (!url || url.startsWith('data:') || url.startsWith('blob:')) continue;
+    try {
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const blob = await response.blob();
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+      return dataUrl;
+    } catch {
+      // Probar siguiente candidato (localhost → producción, etc.)
+    }
+  }
+  return null;
+}
+
+/**
  * Verifica si una URL de imagen es válida (no es base64 ni blob)
  * @param {string} url - URL a verificar
  * @returns {boolean} true si es una URL del servidor
@@ -98,7 +161,7 @@ export function createImageErrorHandler(imagen, onAllFailed = null) {
       const nextUrl = candidates[currentIndex + 1];
       // Solo intentar si no hemos intentado este fallback antes
       if (!img.dataset.triedFallback || img.dataset.triedFallback !== nextUrl) {
-        console.log(`🔄 Intentando URL alternativa para imagen:`, nextUrl);
+        debug(`🔄 Intentando URL alternativa para imagen:`, nextUrl);
         img.dataset.triedFallback = nextUrl;
         img.src = nextUrl;
         return;

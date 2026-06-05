@@ -41,7 +41,7 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
         
         // Si tiene ruta, mantenerla tal cual
         // getImageUrlCandidates() construirá la URL completa cuando se necesite
-        if (imagen.ruta && imagen.ruta.startsWith('/uploads/')) {
+        if (imagen.ruta && (imagen.ruta.startsWith('/uploads/') || imagen.ruta.startsWith('s3:') || imagen.ruta.startsWith('http'))) {
           return {
             ...imagen,
             // NO crear preview ahora - se creará cuando se necesite mostrar

@@ -5,6 +5,8 @@
  * Producción: frontend/.env.production → backend Coolify
  */
 
+import { logAppEnvironment, debug, isDebugEnabled } from '../utils/appLogger.js';
+
 const trimOrigin = (url) =>
   typeof url === 'string' ? url.trim().replace(/\/+$/, '') : '';
 
@@ -67,8 +69,13 @@ export const PROD_URL =
 
 export const isDevelopmentEnv = isDevelopment;
 
-console.log(`🔧 Entorno detectado: ${isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
-console.log(`🌐 URL base API: ${BASE_URL}`);
+logAppEnvironment({
+  isDev: isDevelopmentEnv,
+  apiUrl: BASE_URL,
+  storageHint: isDevelopmentEnv
+    ? 'localhost + bucket S3 (/api/storage/file)'
+    : `${BASE_URL}/api/storage/file`,
+});
 
 /**
  * Devuelve candidatos de URL para recursos subidos (por ejemplo `/uploads/...`).
@@ -84,7 +91,15 @@ export function getUploadsUrlCandidates(rutaOrUrl) {
 
   if (rutaOrUrl.startsWith('s3:')) {
     const ref = encodeURIComponent(rutaOrUrl);
-    return [`${BASE_URL}/api/storage/file?ref=${ref}`];
+    const storagePath = `/api/storage/file?ref=${ref}`;
+    const localUrl = `${BASE_URL}${storagePath}`;
+    if (isDevelopmentEnv) {
+      // 1) Ruta relativa → proxy de Vite → backend local (sin CORS).
+      // 2) Backend local con credenciales S3 (mismo bucket que producción).
+      // No usar prod en dev: arnaldbackend no envía CORS a localhost y redirige a S3.
+      return [storagePath, localUrl];
+    }
+    return [localUrl];
   }
 
   if (rutaOrUrl.startsWith('/uploads/')) {
@@ -102,17 +117,20 @@ export function resolveUploadsUrl(rutaOrUrl) {
   return getUploadsUrlCandidates(rutaOrUrl)[0] || null;
 }
 
-/** Rutas guardadas en BD: local (/uploads/...) o S3 (s3:clave). */
+/** Rutas guardadas en BD: local (/uploads/...), S3 (s3:clave) o URL pública/CDN. */
 export function isStoredUploadPath(rutaOrUrl) {
   if (!rutaOrUrl || typeof rutaOrUrl !== 'string') return false;
-  return rutaOrUrl.startsWith('/uploads/') || rutaOrUrl.startsWith('s3:');
+  const t = rutaOrUrl.trim();
+  if (t.startsWith('/uploads/') || t.startsWith('s3:') || t.startsWith('s3://')) return true;
+  if (t.startsWith('http://') || t.startsWith('https://')) return true;
+  return false;
 }
 
 export async function apiRequest(endpoint, options = {}) {
   try {
     const url = `${BASE_URL}/api${endpoint}`;
 
-    console.log(`🌐 ${options.method || 'GET'} ${url}`);
+    debug(`🌐 ${options.method || 'GET'} ${url}`);
 
     const config = {
       method: options.method || 'GET',
@@ -160,12 +178,18 @@ export const API_ENDPOINTS = {
 };
 
 export function showConfig() {
-  console.log('🔧 === CONFIGURACIÓN ACTUAL ===');
-  console.log(`📍 Entorno: ${isDevelopmentEnv ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
-  console.log(`🌐 URL Base API: ${BASE_URL}`);
-  console.log(`🏠 Hostname: ${window.location.hostname}`);
-  console.log(`🔌 Puerto: ${window.location.port}`);
-  console.log('===============================');
+  logAppEnvironment({
+    isDev: isDevelopmentEnv,
+    apiUrl: BASE_URL,
+    storageHint: isDevelopmentEnv
+      ? 'localhost + bucket S3 (/api/storage/file)'
+      : `${BASE_URL}/api/storage/file`,
+  });
+  if (!isDebugEnabled) return;
+  debug('=== Detalle de configuración ===');
+  debug(`Hostname: ${window.location.hostname}`);
+  debug(`Puerto: ${window.location.port}`);
+  debug(`PROD_URL (fallback): ${PROD_URL}`);
 }
 
 export default {

@@ -1,3 +1,5 @@
+import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+
 import {
   Document,
   Packer,
@@ -236,13 +238,15 @@ const convertirImagenABuffer = async (imagen) => {
       const base64Data = imagen.src.split(',')[1];
       return Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
     }
-    // Si es URL del servidor
+    // Si es URL del servidor (local, S3 o CDN)
     if (imagen.ruta || (imagen.src && (imagen.src.startsWith('http://') || imagen.src.startsWith('https://')))) {
       const url = imagen.ruta || imagen.src;
-      const imagenUrl = url.startsWith('http') ? url : `${window.location.origin}${url}`;
-      const response = await fetch(imagenUrl);
-      if (response.ok) {
-        return await response.arrayBuffer();
+      const candidatos = getUploadsUrlCandidates(url);
+      for (const imagenUrl of candidatos) {
+        const response = await fetch(imagenUrl);
+        if (response.ok) {
+          return await response.arrayBuffer();
+        }
       }
     }
     return null;

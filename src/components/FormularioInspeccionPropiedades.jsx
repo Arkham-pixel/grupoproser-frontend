@@ -18,8 +18,8 @@ import {
   PageBreak,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { BASE_URL, PROD_URL, getUploadsUrlCandidates } from '../config/apiConfig';
-import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils';
+import { getUploadsUrlCandidates, isStoredUploadPath } from '../config/apiConfig';
+import { getImageUrl, createImageErrorHandler, fetchStoredFileAsArrayBuffer } from '../utils/imageUtils';
 import { FaCamera, FaUpload, FaTrash, FaPlus, FaEye } from 'react-icons/fa';
 import ChatbotIA from './SubcomponenteFormularioAjuste/ChatbotIA';
 import BotonesHistorial from './BotonesHistorial';
@@ -1805,30 +1805,10 @@ export default function FormularioInspeccionPropiedades() {
                       : `data:image/jpeg;base64,${foto.base64}`;
                     imageBuffer = base64ToArrayBuffer(base64Data);
                   } 
-                  // Prioridad 2: Si tiene ruta del servidor, cargar desde ahí
-                  else if (foto.ruta && foto.ruta.startsWith('/uploads/')) {
+                  // Prioridad 2: Si tiene ruta del servidor (local o S3), cargar desde ahí
+                  else if (foto.ruta && isStoredUploadPath(foto.ruta)) {
                     try {
-                      const candidatos = [];
-                      if (foto.ruta.startsWith('http')) {
-                        candidatos.push(foto.ruta);
-                      } else {
-                        // 1) URL base configurada (dev/prod)
-                        candidatos.push(`${BASE_URL}${foto.ruta}`);
-                        // 2) Fallback: si estás en dev (localhost) pero las imágenes viven en producción
-                        if (String(BASE_URL).includes('localhost')) {
-                          candidatos.push(`${PROD_URL}${foto.ruta}`);
-                        }
-                      }
-
-                      for (const url of candidatos) {
-                        // eslint-disable-next-line no-await-in-loop
-                        const buf = await fetchImageArrayBuffer(url);
-                        if (buf) {
-                          imageBuffer = buf;
-                          break;
-                        }
-                      }
-
+                      imageBuffer = await fetchStoredFileAsArrayBuffer(foto.ruta);
                       if (!imageBuffer) {
                         console.error('Error cargando imagen desde servidor: 404/no-image', {
                           nombre: foto.nombre,

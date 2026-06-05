@@ -760,15 +760,10 @@ export default function HistorialFormularios() {
                   if (foto.base64) {
                     imageBuffer = base64ToArrayBuffer(foto.base64);
                   } else if (foto.ruta) {
-                    // Si tiene ruta, intentar cargarla desde el servidor
-                    try {
-                      const fullUrl = foto.ruta.startsWith('http') ? foto.ruta : `${BASE_URL}${foto.ruta}`;
-                      const response = await fetch(fullUrl);
-                      const blob = await response.blob();
-                      imageBuffer = await blob.arrayBuffer();
-                    } catch (fetchError) {
+                    const { fetchStoredFileAsArrayBuffer } = await import('../utils/imageUtils');
+                    imageBuffer = await fetchStoredFileAsArrayBuffer(foto.ruta);
+                    if (!imageBuffer) {
                       console.warn('No se pudo cargar imagen desde ruta:', foto.ruta);
-                      imageBuffer = null;
                     }
                   } else if (foto.url) {
                     const response = await fetch(foto.url);

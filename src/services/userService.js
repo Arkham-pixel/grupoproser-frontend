@@ -1,6 +1,7 @@
 // src/services/userService.js
 import axios from "axios";
 import { BASE_URL } from "../config/apiConfig.js";
+import { debug } from "../utils/appLogger.js";
 
 
 // Asegúrate de usar el protocolo correcto:
@@ -31,7 +32,7 @@ export const obtenerPerfil = async (token, tipo = "normal", usuarioId = null) =>
       : `${BASE_URL}/api/usuarios/perfil`;
   }
   
-  console.log('🌐 obtenerPerfil - configuración:', {
+  debug('🌐 obtenerPerfil - configuración:', {
     tipo,
     url,
     usuarioId,
@@ -45,7 +46,7 @@ export const obtenerPerfil = async (token, tipo = "normal", usuarioId = null) =>
 
 // Nueva función para subir y actualizar la foto de perfil
 export const actualizarFoto = (formData, token) => {
-  console.log('📸 actualizarFoto - configuración:', {
+  debug('📸 actualizarFoto - configuración:', {
     BASE_URL,
     token: token ? 'SÍ' : 'NO',
     formDataKeys: formData ? Array.from(formData.keys()) : 'NO DATA'

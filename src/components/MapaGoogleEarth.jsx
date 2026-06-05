@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useJsApiLoader, GoogleMap, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api'
 import { FaSearch, FaCrosshairs, FaCamera, FaMapMarkerAlt } from 'react-icons/fa'
 import html2canvas from 'html2canvas'
+import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils.js'
 
 // Librerías de Google Maps a cargar (debe ser un array constante para evitar re-renders)
 const LIBRARIES = ['places']
@@ -110,7 +111,7 @@ export default function MapaGoogleEarth({
   coordenadasIniciales, 
   direccionInicial, 
   forzarCaptura,
-  /** data URL o URL absoluta de captura ya guardada (historial) */
+  /** data URL, ruta S3 o objeto { ruta } de captura ya guardada (historial) */
   capturaInicial
 }) {
   // Obtener API key
@@ -149,9 +150,9 @@ export default function MapaGoogleEarth({
   const [imagenMapa, setImagenMapa] = useState(null)
   const [error, setError] = useState(loadError ? 'Error al cargar Google Maps' : null)
 
-  // Restaurar vista previa de captura al cargar desde historial (ruta subida o data URL)
+  // Restaurar vista previa de captura al cargar desde historial (objeto S3, ruta o data URL)
   useEffect(() => {
-    if (!capturaInicial || typeof capturaInicial !== 'string') return
+    if (!capturaInicial) return
     setImagenMapa(capturaInicial)
   }, [capturaInicial])
   
@@ -705,10 +706,15 @@ export default function MapaGoogleEarth({
         </div>
 
         {/* Vista previa de captura */}
-        {imagenMapa && (
+        {getImageUrl(imagenMapa) && (
           <div className="mt-2 p-2 bg-gray-50 rounded-lg">
             <p className="text-xs text-gray-600 mb-1">✅ Captura guardada</p>
-            <img src={imagenMapa} alt="Captura del mapa" className="max-w-full h-auto rounded border" />
+            <img
+              src={getImageUrl(imagenMapa)}
+              alt="Captura del mapa"
+              className="max-w-full h-auto rounded border"
+              onError={createImageErrorHandler(imagenMapa)}
+            />
           </div>
         )}
       </div>
