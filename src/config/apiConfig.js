@@ -17,21 +17,35 @@ const isDevelopment =
   window.location.port === '3000';
 
 const DEFAULT_DEV = 'http://localhost:3000';
-const DEFAULT_PROD = 'https://arnalddataflowbackend.grupoproser.com.co';
+
+
+const COOLIFY_BACKEND = 'https://arnalddataflowbackend.grupoproser.com.co';
 
 /** API según dónde se sirve el front (un solo build, dos despliegues). */
 const API_BY_FRONTEND_HOST = {
   'aplicacion.grupoproser.com.co': 'https://aplicacion.grupoproser.com.co',
-  'arnalddataflow.grupoproser.com.co':
-    'https://arnalddataflowbackend.grupoproser.com.co',
+  'arnalddataflow.grupoproser.com.co': COOLIFY_BACKEND,
+  'arnald.grupoproser.com.co': COOLIFY_BACKEND,
 };
+
+function isLocalhostUrl(url) {
+  try {
+    const { hostname } = new URL(url);
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
+}
 
 function resolveBaseUrl() {
   const hostname = window.location.hostname;
   if (API_BY_FRONTEND_HOST[hostname]) {
     return API_BY_FRONTEND_HOST[hostname];
   }
-  if (envApiBase) return envApiBase;
+  // En producción, ignorar VITE_API_BASE_URL si apunta a localhost (build mal configurado en Coolify).
+  if (envApiBase && (isDevelopment || !isLocalhostUrl(envApiBase))) {
+    return envApiBase;
+  }
   return isDevelopment ? DEFAULT_DEV : DEFAULT_PROD;
 }
 
@@ -58,6 +72,11 @@ export function getUploadsUrlCandidates(rutaOrUrl) {
 
   if (rutaOrUrl.startsWith('http://') || rutaOrUrl.startsWith('https://')) return [rutaOrUrl];
 
+  if (rutaOrUrl.startsWith('s3:')) {
+    const ref = encodeURIComponent(rutaOrUrl);
+    return [`${BASE_URL}/api/storage/file?ref=${ref}`];
+  }
+
   if (rutaOrUrl.startsWith('/uploads/')) {
     const list = [`${BASE_URL}${rutaOrUrl}`];
     if (isDevelopmentEnv) list.push(`${PROD_URL}${rutaOrUrl}`);
@@ -71,6 +90,12 @@ export function getUploadsUrlCandidates(rutaOrUrl) {
 
 export function resolveUploadsUrl(rutaOrUrl) {
   return getUploadsUrlCandidates(rutaOrUrl)[0] || null;
+}
+
+/** Rutas guardadas en BD: local (/uploads/...) o S3 (s3:clave). */
+export function isStoredUploadPath(rutaOrUrl) {
+  if (!rutaOrUrl || typeof rutaOrUrl !== 'string') return false;
+  return rutaOrUrl.startsWith('/uploads/') || rutaOrUrl.startsWith('s3:');
 }
 
 export async function apiRequest(endpoint, options = {}) {
