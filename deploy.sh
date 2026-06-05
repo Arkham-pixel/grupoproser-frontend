@@ -11,19 +11,21 @@ if [ $? -eq 0 ]; then
     
     # 2. Copiar al servidor
     echo "📤 Copiando archivos al servidor..."
-    scp -i "C:\Users\USUARIO\Downloads\PcLenovo.pem" -r dist ubuntu@13.59.106.174:/home/ubuntu/cliente4/
-    
+    REMOTE=ubuntu@3.17.56.57
+    DIST=/home/ubuntu/grupoproser/grupoproser/frontend/dist
+    scp -i "C:\Users\GP-TI\Downloads\PcLenovo.pem" -r dist/* "$REMOTE:$DIST/"
+
     if [ $? -eq 0 ]; then
         echo "✅ Archivos copiados exitosamente"
-        
-        # 3. Recargar Nginx
-        echo "🔄 Recargando Nginx..."
-        ssh -i "C:\Users\USUARIO\Downloads\PcLenovo.pem" ubuntu@13.59.106.174 "sudo systemctl reload nginx"
+
+        # 3. Permisos (nginx www-data debe poder leer assets/)
+        echo "🔐 Ajustando permisos..."
+        ssh -i "C:\Users\GP-TI\Downloads\PcLenovo.pem" "$REMOTE" "chmod -R a+rX $DIST && sudo systemctl reload nginx"
         
         if [ $? -eq 0 ]; then
             echo "✅ Nginx recargado exitosamente"
             echo "🎉 Despliegue completado!"
-            echo "🌐 Tu aplicación está disponible en: http://api.grupoproser.com.co"
+            echo "🌐 Tu aplicación está disponible en: https://aplicacion.grupoproser.com.co"
         else
             echo "❌ Error al recargar Nginx"
         fi

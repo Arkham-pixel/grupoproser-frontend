@@ -262,7 +262,7 @@ export function createImageErrorHandler(imagen, onAllFailed = null) {
 export function hasValidServerPath(imagen) {
   if (!imagen || typeof imagen !== 'object') return false;
   if (!imagen.ruta || typeof imagen.ruta !== 'string') return false;
-  return isStoredUploadPath(imagen.ruta) && !imagen.ruta.startsWith('data:');
+  return imagen.ruta.startsWith('/uploads/') && !imagen.ruta.startsWith('data:');
 }
 
 /**

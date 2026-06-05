@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerPerfil, actualizarFoto } from "../../services/userService";
 import axios from "axios";
-import { BASE_URL, isDevelopmentEnv, resolveUploadsUrl } from '../../config/apiConfig';
+import { BASE_URL, isDevelopmentEnv } from '../../config/apiConfig';
 import { useTheme } from '../../context/ThemeContext';
 
 // Estados con soporte para modo oscuro local
@@ -131,13 +131,16 @@ export default function MiCuenta() {
       console.log('✅ Es una URL completa:', fotoUrlRelativa);
       return fotoUrlRelativa;
     }
-
-    const resolved = resolveUploadsUrl(fotoUrlRelativa);
-    if (resolved) {
-      console.log('🔗 URL resuelta:', resolved);
-      return resolved;
+    
+    // Para URLs relativas, usar la URL base del archivo de configuración
+    if (fotoUrlRelativa.startsWith('/uploads/')) {
+      // En desarrollo: http://localhost:3000
+      // En producción: https://aplicacion.grupoproser.com.co
+      const urlCompleta = `${BASE_URL}${fotoUrlRelativa}`;
+      console.log('🔗 URL construida usando config:', urlCompleta);
+      return urlCompleta;
     }
-
+    
     // Fallback: usar BASE_URL
     const urlCompleta = `${BASE_URL}${fotoUrlRelativa.startsWith('/') ? '' : '/'}${fotoUrlRelativa}`;
     console.log('🔗 URL construida (fallback):', urlCompleta);

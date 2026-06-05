@@ -19,45 +19,23 @@ const isDevelopment =
   window.location.port === '3000';
 
 const DEFAULT_DEV = 'http://localhost:3000';
-const COOLIFY_BACKEND = 'https://arnaldbackend.grupoproser.com.co';
-const DEFAULT_PROD = COOLIFY_BACKEND;
+/** Backend Coolify (DNS: arnaldbackend → 52.20.220.24) */
+const DEFAULT_PROD = 'https://arnaldbackend.grupoproser.com.co';
 
 /** API según dónde se sirve el front (un solo build, dos despliegues). */
 const API_BY_FRONTEND_HOST = {
+  // PM2 en el mismo servidor (DNS: aplicacion → 3.17.56.57)
   'aplicacion.grupoproser.com.co': 'https://aplicacion.grupoproser.com.co',
-  'arnalddataflow.grupoproser.com.co': COOLIFY_BACKEND,
-  'arnald.grupoproser.com.co': COOLIFY_BACKEND,
+  // Front Coolify (DNS: arnald → 52.20.220.24)
+  'arnald.grupoproser.com.co': 'https://arnaldbackend.grupoproser.com.co',
 };
-
-function isLocalhostUrl(url) {
-  try {
-    const { hostname } = new URL(url);
-    return hostname === 'localhost' || hostname === '127.0.0.1';
-  } catch {
-    return false;
-  }
-}
 
 function resolveBaseUrl() {
   const hostname = window.location.hostname;
-
   if (API_BY_FRONTEND_HOST[hostname]) {
     return API_BY_FRONTEND_HOST[hostname];
   }
-
-  // Cualquier front *.grupoproser.com.co en HTTPS → backend según despliegue.
-  if (!isDevelopment && hostname.endsWith('.grupoproser.com.co')) {
-    if (hostname === 'aplicacion.grupoproser.com.co') {
-      return 'https://aplicacion.grupoproser.com.co';
-    }
-    return COOLIFY_BACKEND;
-  }
-
-  // En producción, ignorar VITE_API_BASE_URL si apunta a localhost (build mal configurado en Coolify).
-  if (envApiBase && (isDevelopment || !isLocalhostUrl(envApiBase))) {
-    return envApiBase;
-  }
-
+  if (envApiBase) return envApiBase;
   return isDevelopment ? DEFAULT_DEV : DEFAULT_PROD;
 }
 
