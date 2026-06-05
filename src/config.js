@@ -4,7 +4,7 @@ const config = {
   API_BASE_URL:
     HOST === 'aplicacion.grupoproser.com.co'
       ? 'https://aplicacion.grupoproser.com.co'
-      : 'https://arnalddataflowbackend.grupoproser.com.co',
+      : 'https://arnaldbackend.grupoproser.com.co',
 };
 
 export default config;

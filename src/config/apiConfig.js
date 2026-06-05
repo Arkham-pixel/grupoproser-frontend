@@ -17,9 +17,8 @@ const isDevelopment =
   window.location.port === '3000';
 
 const DEFAULT_DEV = 'http://localhost:3000';
-
-
-const COOLIFY_BACKEND = 'https://arnalddataflowbackend.grupoproser.com.co';
+const COOLIFY_BACKEND = 'https://arnaldbackend.grupoproser.com.co';
+const DEFAULT_PROD = COOLIFY_BACKEND;
 
 /** API según dónde se sirve el front (un solo build, dos despliegues). */
 const API_BY_FRONTEND_HOST = {
@@ -39,13 +38,24 @@ function isLocalhostUrl(url) {
 
 function resolveBaseUrl() {
   const hostname = window.location.hostname;
+
   if (API_BY_FRONTEND_HOST[hostname]) {
     return API_BY_FRONTEND_HOST[hostname];
   }
+
+  // Cualquier front *.grupoproser.com.co en HTTPS → backend según despliegue.
+  if (!isDevelopment && hostname.endsWith('.grupoproser.com.co')) {
+    if (hostname === 'aplicacion.grupoproser.com.co') {
+      return 'https://aplicacion.grupoproser.com.co';
+    }
+    return COOLIFY_BACKEND;
+  }
+
   // En producción, ignorar VITE_API_BASE_URL si apunta a localhost (build mal configurado en Coolify).
   if (envApiBase && (isDevelopment || !isLocalhostUrl(envApiBase))) {
     return envApiBase;
   }
+
   return isDevelopment ? DEFAULT_DEV : DEFAULT_PROD;
 }
 
