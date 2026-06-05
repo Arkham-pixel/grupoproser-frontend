@@ -107,7 +107,7 @@ export default function Login() {
     try {
       console.log('🔐 Enviando código 2FA:', { correo: login, code: twoFACode });
       
-      const res = await axios.post(`${BASE_URL}/api/secur-auth/login/2fa`, {
+      const res = await axios.post('http://localhost:3000/api/secur-auth/login/2fa', {
         correo: login,
         code: twoFACode
       });

@@ -1,4 +1,4 @@
-import { parseDate } from './expressHelpers.js';
+import { formatDate, parseDate } from './expressHelpers.js';
 
 export const MESES_EXPRESS = [
   { value: 1, label: 'ENERO' },
@@ -55,11 +55,8 @@ export const filtrarPorAnioAviso = (siniestros, anio) =>
     return fecha && getYearSafe(fecha) === Number(anio);
   });
 
-const claveFechaDia = (value) => {
-  const fecha = parseDate(value);
-  if (!fecha) return null;
-  return fecha.toISOString().slice(0, 10);
-};
+/** Clave YYYY-MM-DD en calendario local (misma lógica que el filtro por mes) */
+const claveFechaDia = (value) => formatDate(value) || null;
 
 /** Tabla 1: asignación por ajustador — avisos del mes agrupados por fecha */
 export function buildAsignacionPorAjustador(casos, obtenerNombreResponsable) {
@@ -155,11 +152,10 @@ export function buildConteoHitoPorAjustador(casos, campoFecha, obtenerNombreResp
   const porAjustador = new Map();
 
   for (const caso of casos) {
-    const fecha = parseDate(caso[campoFecha]);
-    if (!fecha) continue;
+    const claveDia = formatDate(caso[campoFecha]);
+    if (!claveDia) continue;
     const ajustador =
       (obtenerNombreResponsable?.(caso.responsable) || caso.responsable || 'Sin ajustador').toUpperCase();
-    const claveDia = fecha.toISOString().slice(0, 10);
     if (!porAjustador.has(ajustador)) {
       porAjustador.set(ajustador, new Map());
     }

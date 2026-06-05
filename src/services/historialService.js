@@ -1,5 +1,5 @@
 // Servicio para manejar el historial de formularios
-import { BASE_URL, PROD_URL, isDevelopmentEnv, getUploadsUrlCandidates, isStoredUploadPath } from '../config/apiConfig.js';
+import { BASE_URL, PROD_URL, isDevelopmentEnv, getUploadsUrlCandidates } from '../config/apiConfig.js';
 
 // Tipos de formularios disponibles
 export const TIPOS_FORMULARIOS = {
@@ -124,7 +124,9 @@ class HistorialService {
         if (!img || typeof img !== 'object') return null;
         
         // Verificar ruta válida
-        const tieneRutaValida = img.ruta && isStoredUploadPath(img.ruta) && !img.ruta.startsWith('data:');
+        const tieneRutaValida = img.ruta && 
+                               img.ruta.startsWith('/uploads/') && 
+                               !img.ruta.startsWith('data:');
         
         if (!tieneRutaValida) {
           console.warn(`⚠️ Imagen ${index + 1} sin ruta válida, será excluida`);
@@ -174,7 +176,7 @@ class HistorialService {
         .filter(img => {
           // Solo incluir si tiene ruta válida (no base64)
           const tieneRutaValida = img.ruta && 
-                                  isStoredUploadPath(img.ruta) && 
+                                  img.ruta.startsWith('/uploads/') && 
                                   !img.ruta.startsWith('data:');
           return tieneRutaValida;
         })
@@ -254,7 +256,7 @@ class HistorialService {
               if (img && img.file && img.file instanceof File) return false;
               // Solo incluir si tiene ruta válida (no base64)
               const tieneRutaValida = img.ruta &&
-                                      isStoredUploadPath(img.ruta) &&
+                                      img.ruta.startsWith('/uploads/') &&
                                       !img.ruta.startsWith('data:');
               return tieneRutaValida;
             })
@@ -297,7 +299,7 @@ class HistorialService {
       return imagenes
         .filter(img => {
           const tieneRutaValida = img.ruta && 
-                                  isStoredUploadPath(img.ruta) && 
+                                  img.ruta.startsWith('/uploads/') && 
                                   !img.ruta.startsWith('data:');
           return tieneRutaValida;
         })
@@ -349,7 +351,7 @@ class HistorialService {
       datosProcesados.imagenesRegistro = imagenesProcesadas.map(img => {
         // Solo guardar si tiene ruta válida (no base64 como ruta)
         const rutaValida = img.ruta && 
-                          isStoredUploadPath(img.ruta) && 
+                          img.ruta.startsWith('/uploads/') && 
                           !img.ruta.startsWith('data:');
         
         if (!rutaValida && img.base64 && img.base64.startsWith('data:')) {
@@ -412,7 +414,7 @@ class HistorialService {
       // Guardar solo las rutas y metadata, LIMPIANDO cualquier base64
       datosProcesados.imagenesInspeccion = imagenesProcesadas.map(img => {
         const rutaValida = img.ruta && 
-                          isStoredUploadPath(img.ruta) && 
+                          img.ruta.startsWith('/uploads/') && 
                           !img.ruta.startsWith('data:');
         
         if (!rutaValida && img.base64 && img.base64.startsWith('data:')) {
@@ -465,7 +467,7 @@ class HistorialService {
         } catch (e) {
           console.warn('⚠️ No se pudo subir la captura del mapa:', e?.message || e);
         }
-      } else if (typeof im === 'object' && im !== null && im.ruta && isStoredUploadPath(String(im.ruta))) {
+      } else if (typeof im === 'object' && im !== null && im.ruta && String(im.ruta).startsWith('/uploads/')) {
         datosProcesados.imagenMapa = {
           ruta: im.ruta,
           nombre: im.nombre || 'mapa_ubicacion.png',
@@ -529,7 +531,7 @@ class HistorialService {
               }
               
               // Si ya tiene ruta, mantenerla
-              if (foto.ruta && isStoredUploadPath(foto.ruta)) {
+              if (foto.ruta && foto.ruta.startsWith('/uploads/')) {
                 return {
                   nombre: foto.nombre || 'imagen',
                   descripcion: foto.descripcion || '',
@@ -548,7 +550,7 @@ class HistorialService {
             
             // Guardar solo rutas y metadata
             fotosAreasProcesadas.alcobas[alcobaNum] = fotosProcesadas
-              .filter(img => img.ruta && isStoredUploadPath(img.ruta))
+              .filter(img => img.ruta && img.ruta.startsWith('/uploads/'))
               .map(img => ({
                 id: Date.now() + Math.random(),
                 nombre: img.nombre || 'imagen',
@@ -594,7 +596,7 @@ class HistorialService {
             }
             
             // Si ya tiene ruta, mantenerla
-            if (foto.ruta && isStoredUploadPath(foto.ruta)) {
+            if (foto.ruta && foto.ruta.startsWith('/uploads/')) {
               return {
                 nombre: foto.nombre || 'imagen',
                 descripcion: foto.descripcion || '',
@@ -613,7 +615,7 @@ class HistorialService {
           
           // Guardar solo rutas y metadata
           fotosAreasProcesadas[area] = fotosProcesadas
-            .filter(img => img.ruta && isStoredUploadPath(img.ruta))
+            .filter(img => img.ruta && img.ruta.startsWith('/uploads/'))
             .map(img => ({
               id: Date.now() + Math.random(),
               nombre: img.nombre || 'imagen',
@@ -840,7 +842,7 @@ class HistorialService {
           descripcion: img.descripcion || '',
           tamaño: img.tamaño,
           tipoMime: img.tipoMime
-        })).filter(img => img.ruta && isStoredUploadPath(img.ruta));
+        })).filter(img => img.ruta && img.ruta.startsWith('/uploads/'));
         console.log(`✅ ${datos.imagenesRegistro.length} imágenes procesadas en nivel raíz`);
       }
       
