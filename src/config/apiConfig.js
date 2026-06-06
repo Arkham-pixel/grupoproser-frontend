@@ -45,11 +45,16 @@ export const PROD_URL =
 
 export const isDevelopmentEnv = isDevelopment;
 
+function storageFileUrl(baseUrl, ref) {
+  return `${baseUrl}/api/storage/file?ref=${encodeURIComponent(ref)}`;
+}
+
 console.log(`🔧 Entorno detectado: ${isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
 console.log(`🌐 URL base API: ${BASE_URL}`);
 
 /**
- * Devuelve candidatos de URL para recursos subidos (por ejemplo `/uploads/...`).
+ * Devuelve candidatos de URL para recursos subidos (por ejemplo `/uploads/...` o `s3:legacy/...`).
+ * - Referencias `s3:` → proxy `/api/storage/file?ref=...` (CSP no permite esquema s3:)
  * - En PROD: solo usa `BASE_URL`
  * - En DEV: intenta primero `BASE_URL` (localhost) y si no existe, permite fallback a `PROD_URL`
  */
@@ -60,9 +65,22 @@ export function getUploadsUrlCandidates(rutaOrUrl) {
 
   if (rutaOrUrl.startsWith('http://') || rutaOrUrl.startsWith('https://')) return [rutaOrUrl];
 
+  if (rutaOrUrl.startsWith('s3:') || rutaOrUrl.startsWith('s3://')) {
+    const list = [storageFileUrl(BASE_URL, rutaOrUrl)];
+    if (isDevelopmentEnv) list.push(storageFileUrl(PROD_URL, rutaOrUrl));
+    return list;
+  }
+
   if (rutaOrUrl.startsWith('/uploads/')) {
     const list = [`${BASE_URL}${rutaOrUrl}`];
     if (isDevelopmentEnv) list.push(`${PROD_URL}${rutaOrUrl}`);
+    return list;
+  }
+
+  if (rutaOrUrl.startsWith('uploads/')) {
+    const path = `/${rutaOrUrl}`;
+    const list = [`${BASE_URL}${path}`];
+    if (isDevelopmentEnv) list.push(`${PROD_URL}${path}`);
     return list;
   }
 

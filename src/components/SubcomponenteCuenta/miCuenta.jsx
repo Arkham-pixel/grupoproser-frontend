@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerPerfil, actualizarFoto } from "../../services/userService";
 import axios from "axios";
-import { BASE_URL, isDevelopmentEnv } from '../../config/apiConfig';
+import { BASE_URL, isDevelopmentEnv, resolveUploadsUrl } from '../../config/apiConfig';
 import { useTheme } from '../../context/ThemeContext';
 
 // Estados con soporte para modo oscuro local
@@ -114,37 +114,8 @@ export default function MiCuenta() {
 
   // Función para obtener la URL de la foto
   const obtenerUrlFoto = (fotoUrlRelativa) => {
-    console.log('🔍 Construyendo URL de foto:', {
-      fotoUrlRelativa,
-      BASE_URL,
-      isDevelopmentEnv,
-      tipo: typeof fotoUrlRelativa
-    });
-    
-    if (!fotoUrlRelativa) {
-      console.log('❌ No hay URL de foto, usando placeholder');
-      return "/img/placeholder.png";
-    }
-    
-    // Si es una URL completa, usarla tal como está
-    if (fotoUrlRelativa.startsWith('http://') || fotoUrlRelativa.startsWith('https://')) {
-      console.log('✅ Es una URL completa:', fotoUrlRelativa);
-      return fotoUrlRelativa;
-    }
-    
-    // Para URLs relativas, usar la URL base del archivo de configuración
-    if (fotoUrlRelativa.startsWith('/uploads/')) {
-      // En desarrollo: http://localhost:3000
-      // En producción: https://aplicacion.grupoproser.com.co
-      const urlCompleta = `${BASE_URL}${fotoUrlRelativa}`;
-      console.log('🔗 URL construida usando config:', urlCompleta);
-      return urlCompleta;
-    }
-    
-    // Fallback: usar BASE_URL
-    const urlCompleta = `${BASE_URL}${fotoUrlRelativa.startsWith('/') ? '' : '/'}${fotoUrlRelativa}`;
-    console.log('🔗 URL construida (fallback):', urlCompleta);
-    return urlCompleta;
+    if (!fotoUrlRelativa) return '/img/placeholder.png';
+    return resolveUploadsUrl(fotoUrlRelativa) || '/img/placeholder.png';
   };
 
   // Función para manejar errores de carga de imagen
