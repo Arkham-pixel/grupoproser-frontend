@@ -7,7 +7,6 @@ import { generarManualPuertos } from './generarManualPuertos';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService';
 import { BASE_URL } from '../../config/apiConfig.js';
-import { getImageUrl } from '../../utils/imageUtils.js';
 
 // Importar subcomponentes
 import SeccionInicialPuertos from './SeccionInicialPuertos';
@@ -562,8 +561,8 @@ export default function PuertosInspeccionMain() {
               if (img.ruta) {
                 const imagenProcesada = {
                   ...img,
-                  src: getImageUrl(img),
-                  ruta: img.ruta,
+                  src: `${baseURL}${img.ruta}`,     // URL completa para mostrar
+                  ruta: img.ruta,                    // Mantener ruta original
                   id: img.id || Date.now() + Math.random()
                 };
                 console.log(`✅ Imagen ${index + 1} procesada:`, imagenProcesada);

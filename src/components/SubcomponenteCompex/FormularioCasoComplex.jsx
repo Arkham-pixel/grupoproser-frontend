@@ -9,7 +9,7 @@ import Facturacion from './Facturacion';
 import Honorarios from './Honorarios';
 import ObservacionesCliente from './ObservacionesCliente';
 import ObservacionesPendientes from './ObservacionesPendientes';
-import { BASE_URL, resolveUploadsUrl } from '../../config/apiConfig.js';
+import { BASE_URL } from '../../config/apiConfig.js';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import {
   complexFormRoot,
@@ -166,8 +166,6 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     if (valor.startsWith('http') || valor.startsWith('data:')) {
       return valor;
     }
-    const resolved = resolveUploadsUrl(valor);
-    if (resolved) return resolved;
     const base = (BASE_URL || '').replace(/\/$/, '');
     const path = valor.startsWith('/') ? valor : `/${valor}`;
     return `${base}${path}`;
@@ -1081,16 +1079,13 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
               rutaRelativa = doc.url;
             }
           }
-          if (
-            rutaRelativa &&
-            !rutaRelativa.startsWith('s3:') &&
-            !rutaRelativa.startsWith('/uploads') &&
-            !rutaRelativa.startsWith('uploads') &&
-            !rutaRelativa.startsWith('http')
-          ) {
-            rutaRelativa = rutaRelativa.startsWith('/')
-              ? rutaRelativa
-              : `/uploads/${rutaRelativa}`;
+          // Asegurar que la ruta empiece con /uploads
+          if (rutaRelativa && !rutaRelativa.startsWith('/uploads') && !rutaRelativa.startsWith('uploads')) {
+            if (rutaRelativa.startsWith('/')) {
+              rutaRelativa = rutaRelativa;
+            } else {
+              rutaRelativa = `/uploads/${rutaRelativa}`;
+            }
           }
           
           return {
@@ -1238,16 +1233,13 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
               rutaRelativa = doc.url;
             }
           }
-          if (
-            rutaRelativa &&
-            !rutaRelativa.startsWith('s3:') &&
-            !rutaRelativa.startsWith('/uploads') &&
-            !rutaRelativa.startsWith('uploads') &&
-            !rutaRelativa.startsWith('http')
-          ) {
-            rutaRelativa = rutaRelativa.startsWith('/')
-              ? rutaRelativa
-              : `/uploads/${rutaRelativa}`;
+          // Asegurar que la ruta empiece con /uploads
+          if (rutaRelativa && !rutaRelativa.startsWith('/uploads') && !rutaRelativa.startsWith('uploads')) {
+            if (rutaRelativa.startsWith('/')) {
+              rutaRelativa = rutaRelativa;
+            } else {
+              rutaRelativa = `/uploads/${rutaRelativa}`;
+            }
           }
           
           return {

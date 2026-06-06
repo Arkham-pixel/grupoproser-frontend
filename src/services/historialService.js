@@ -1,6 +1,5 @@
 // Servicio para manejar el historial de formularios
-import { BASE_URL, PROD_URL, isDevelopmentEnv, getUploadsUrlCandidates, isStoredUploadPath } from '../config/apiConfig.js';
-import { debug } from '../utils/appLogger.js';
+import { BASE_URL, PROD_URL, isDevelopmentEnv, getUploadsUrlCandidates } from '../config/apiConfig.js';
 
 // Tipos de formularios disponibles
 export const TIPOS_FORMULARIOS = {
@@ -29,7 +28,15 @@ export const ESTADOS_FORMULARIO = {
 class HistorialService {
   constructor() {
     this.baseURL = BASE_URL;
-    this.uploadsURL = BASE_URL;
+    // ✅ IMPORTANTE: Las imágenes SIEMPRE se suben al servidor de producción
+    // Esto evita que las imágenes guardadas en desarrollo no se vean en producción
+    this.uploadsURL = PROD_URL;
+    
+    if (isDevelopmentEnv) {
+      console.log('🔧 Modo DESARROLLO: APIs en localhost; imágenes de historial pueden ir a producción; Word del formulario se sube al mismo host que la API.');
+      console.log(`📡 APIs / Word (.docx): ${this.baseURL}`);
+      console.log(`📸 Imágenes (fallback): ${this.uploadsURL}`);
+    }
   }
 
   // Comprimir imágenes antes de subirlas (estándar global para TODOS los formularios)
@@ -65,13 +72,13 @@ class HistorialService {
     
     // Limpiar base64 de imágenes de registro
     if (datosLimpios.imagenesRegistro && Array.isArray(datosLimpios.imagenesRegistro)) {
-      debug(`📸 Limpiando ${datosLimpios.imagenesRegistro.length} imágenes de registro...`);
+      console.log(`📸 Limpiando ${datosLimpios.imagenesRegistro.length} imágenes de registro...`);
       datosLimpios.imagenesRegistro = this.limpiarArrayImagenes(datosLimpios.imagenesRegistro);
     }
     
     // Limpiar base64 de imágenes de inspección (formulario de ajustes)
     if (datosLimpios.imagenesInspeccion && Array.isArray(datosLimpios.imagenesInspeccion)) {
-      debug(`📷 Limpiando ${datosLimpios.imagenesInspeccion.length} imágenes de inspección...`);
+      console.log(`📷 Limpiando ${datosLimpios.imagenesInspeccion.length} imágenes de inspección...`);
       datosLimpios.imagenesInspeccion = this.limpiarArrayImagenes(datosLimpios.imagenesInspeccion);
     }
     
@@ -110,7 +117,7 @@ class HistorialService {
   limpiarArrayImagenes(imagenes) {
     if (!Array.isArray(imagenes)) return imagenes;
     
-    debug(`📸 Limpiando array de ${imagenes.length} imágenes...`);
+    console.log(`📸 Limpiando array de ${imagenes.length} imágenes...`);
     
     return imagenes
       .map((img, index) => {
@@ -142,7 +149,7 @@ class HistorialService {
   async subirImagenesAlServidor(imagenes, casoId = null) {
     if (!imagenes || imagenes.length === 0) return [];
 
-    debug(`📤 Subiendo ${imagenes.length} imagen(es) al servidor...`);
+    console.log(`📤 Subiendo ${imagenes.length} imagen(es) al servidor...`);
     
     const formData = new FormData();
     const imagenesNuevas = [];
@@ -163,7 +170,7 @@ class HistorialService {
     }
 
     if (imagenesNuevas.length === 0) {
-      debug('✅ No hay imágenes nuevas para subir, todas ya están en el servidor');
+      console.log('✅ No hay imágenes nuevas para subir, todas ya están en el servidor');
       // Retornar solo las imágenes existentes que tienen rutas válidas (NO base64)
       return imagenes
         .filter(img => {
@@ -201,8 +208,8 @@ class HistorialService {
             ? `${uploadsBase}/api/historial-formularios/upload-images?casoId=${casoId}`
             : `${uploadsBase}/api/historial-formularios/upload-images`;
 
-          debug('📡 Subiendo imágenes a:', url);
-          debug('🌐 Servidor de uploads (intento):', uploadsBase);
+          console.log('📡 Subiendo imágenes a:', url);
+          console.log('🌐 Servidor de uploads (intento):', uploadsBase);
 
           const response = await fetch(url, {
             method: 'POST',
@@ -229,7 +236,7 @@ class HistorialService {
           }
 
           const data = await response.json();
-          debug(`✅ ${data.imagenes.length} imagen(es) subida(s) exitosamente`);
+          console.log(`✅ ${data.imagenes.length} imagen(es) subida(s) exitosamente`);
 
           // Combinar imágenes nuevas subidas con las existentes
           const imagenesSubidas = data.imagenes.map((imgSubida, index) => ({
@@ -316,13 +323,13 @@ class HistorialService {
 
     // Procesar imagen principal si existe (mantener como base64 para compatibilidad con Word)
     if (datosProcesados.imagen && datosProcesados.imagen instanceof File) {
-      debug('🖼️ Procesando imagen principal como base64 (para Word)...');
+      console.log('🖼️ Procesando imagen principal como base64 (para Word)...');
       datosProcesados.imagen = await this.convertirArchivoABase64(datosProcesados.imagen);
     }
 
     // Procesar foto principal de maquinaria (similar a imagen principal)
     if (datosProcesados.fotoPrincipal && datosProcesados.fotoPrincipal instanceof File) {
-      debug('🖼️ Procesando foto principal de maquinaria como base64 (para Word)...');
+      console.log('🖼️ Procesando foto principal de maquinaria como base64 (para Word)...');
       datosProcesados.fotoPrincipal = await this.convertirArchivoABase64(datosProcesados.fotoPrincipal);
       // También mantener el preview si existe
       if (datosProcesados.fotoPrincipalPreview) {
@@ -332,7 +339,7 @@ class HistorialService {
 
     // Procesar imágenes de registro: SUBIR COMO ARCHIVOS
     if (datosProcesados.imagenesRegistro && Array.isArray(datosProcesados.imagenesRegistro)) {
-      debug('📸 Procesando imágenes de registro (subiendo como archivos)...');
+      console.log('📸 Procesando imágenes de registro (subiendo como archivos)...');
       
       // Subir imágenes al servidor y obtener rutas
       const imagenesProcesadas = await this.subirImagenesAlServidor(
@@ -363,12 +370,12 @@ class HistorialService {
         };
       }).filter(img => img !== null && img.ruta !== null); // Filtrar imágenes inválidas
       
-      debug(`✅ ${datosProcesados.imagenesRegistro.length} imagen(es) procesada(s) con rutas (base64 limpiado)`);
+      console.log(`✅ ${datosProcesados.imagenesRegistro.length} imagen(es) procesada(s) con rutas (base64 limpiado)`);
     }
 
     // Procesar imágenes de inspección fotográfica (formulario de ajuste): SUBIR COMO ARCHIVOS
     if (datosProcesados.imagenesInspeccion && Array.isArray(datosProcesados.imagenesInspeccion)) {
-      debug('📷 Procesando imágenes de inspección (subiendo como archivos)...');
+      console.log('📷 Procesando imágenes de inspección (subiendo como archivos)...');
       
       // Normalizar las imágenes para que tengan la misma estructura que imagenesRegistro
       const imagenesNormalizadas = datosProcesados.imagenesInspeccion.map(img => {
@@ -425,14 +432,14 @@ class HistorialService {
         };
       }).filter(img => img !== null && img.ruta !== null);
       
-      debug(`✅ ${datosProcesados.imagenesInspeccion.length} imagen(es) de inspección procesada(s) con rutas (base64 limpiado)`);
+      console.log(`✅ ${datosProcesados.imagenesInspeccion.length} imagen(es) de inspección procesada(s) con rutas (base64 limpiado)`);
     }
 
     // Captura del mapa de ubicación (formulario de ajuste): subir PNG/JPEG para no persistir base64 en MongoDB
     if (datosProcesados.imagenMapa) {
       const im = datosProcesados.imagenMapa;
       if (typeof im === 'string' && im.startsWith('data:image')) {
-        debug('🗺️ Procesando captura de mapa (subiendo como archivo)...');
+        console.log('🗺️ Procesando captura de mapa (subiendo como archivo)...');
         try {
           const base64Payload = im.includes(',') ? im.split(',')[1] : im.replace(/^data:[^;]+;base64,/, '');
           const byteCharacters = atob(base64Payload);
@@ -455,7 +462,7 @@ class HistorialService {
               nombre: subidas[0].nombre || file.name,
               tipoMime: subidas[0].tipoMime || mime
             };
-            debug('✅ Captura de mapa guardada en servidor:', subidas[0].ruta);
+            console.log('✅ Captura de mapa guardada en servidor:', subidas[0].ruta);
           }
         } catch (e) {
           console.warn('⚠️ No se pudo subir la captura del mapa:', e?.message || e);
@@ -471,7 +478,7 @@ class HistorialService {
 
     // Procesar fotosAreas (formulario de inspección de propiedades): SUBIR COMO ARCHIVOS
     if (datosProcesados.fotosAreas && typeof datosProcesados.fotosAreas === 'object') {
-      debug('📸 Procesando fotosAreas (subiendo como archivos)...');
+      console.log('📸 Procesando fotosAreas (subiendo como archivos)...');
       
       const fotosAreasProcesadas = {};
       
@@ -623,12 +630,12 @@ class HistorialService {
       }
       
       datosProcesados.fotosAreas = fotosAreasProcesadas;
-      debug(`✅ fotosAreas procesadas (base64 convertido a rutas)`);
+      console.log(`✅ fotosAreas procesadas (base64 convertido a rutas)`);
     }
 
     // Procesar anexos si existen
     if (datosProcesados.anexos && Array.isArray(datosProcesados.anexos)) {
-      debug('📎 Procesando anexos...');
+      console.log('📎 Procesando anexos...');
       const anexosProcesados = [];
       
       for (const anexo of datosProcesados.anexos) {
@@ -655,8 +662,8 @@ class HistorialService {
   // Obtener todos los formularios del historial con filtros
   async obtenerHistorial(filtros = {}) {
     try {
-      debug('🔍 Obteniendo historial con filtros:', filtros);
-      debug('🌐 URL base:', this.baseURL);
+      console.log('🔍 Obteniendo historial con filtros:', filtros);
+      console.log('🌐 URL base:', this.baseURL);
       
       const queryParams = new URLSearchParams();
       
@@ -690,10 +697,10 @@ class HistorialService {
       }
 
       const url = `${this.baseURL}/api/historial-formularios?${queryParams.toString()}`;
-      debug('📡 Haciendo request a:', url);
+      console.log('📡 Haciendo request a:', url);
       
       const token = localStorage.getItem('token');
-      debug('🔑 Token disponible:', token ? 'SÍ' : 'NO');
+      console.log('🔑 Token disponible:', token ? 'SÍ' : 'NO');
       
       const response = await fetch(url, {
         method: 'GET',
@@ -703,8 +710,8 @@ class HistorialService {
         }
       });
 
-      debug('📥 Response status:', response.status);
-      debug('📥 Response headers:', response.headers);
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', response.headers);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -713,7 +720,7 @@ class HistorialService {
       }
 
       const data = await response.json();
-      debug('✅ Datos recibidos:', data);
+      console.log('✅ Datos recibidos:', data);
       return data.formularios || [];
     } catch (error) {
       console.error('❌ Error obteniendo historial:', error);
@@ -724,27 +731,27 @@ class HistorialService {
   // Guardar un nuevo formulario en el historial
   async guardarFormulario(formulario) {
     try {
-      debug('💾 Guardando formulario:', formulario);
-      debug('🌐 URL base:', this.baseURL);
+      console.log('💾 Guardando formulario:', formulario);
+      console.log('🌐 URL base:', this.baseURL);
       
       // Obtener casoId si existe para organizar las imágenes
       const casoId = formulario.datos?.casoId || null;
       
       // Procesar imágenes antes de enviar (ahora sube como archivos)
       if (formulario.datos) {
-        debug('🖼️ Procesando imágenes en los datos del formulario...');
+        console.log('🖼️ Procesando imágenes en los datos del formulario...');
         formulario.datos = await this.procesarImagenesEnDatos(formulario.datos, casoId);
         
         // LIMPIEZA FINAL: Eliminar cualquier base64 residual antes de enviar
-        debug('🧹 Limpiando datos antes de enviar al servidor...');
+        console.log('🧹 Limpiando datos antes de enviar al servidor...');
         formulario.datos = this.limpiarBase64Residual(formulario.datos);
       }
       
       const token = localStorage.getItem('token');
-      debug('🔑 Token disponible:', token ? 'SÍ' : 'NO');
+      console.log('🔑 Token disponible:', token ? 'SÍ' : 'NO');
       
       const url = `${this.baseURL}/api/historial-formularios`;
-      debug('📡 Haciendo POST a:', url);
+      console.log('📡 Haciendo POST a:', url);
       
       const response = await fetch(url, {
         method: 'POST',
@@ -755,8 +762,8 @@ class HistorialService {
         body: JSON.stringify(formulario)
       });
 
-      debug('📥 Response status:', response.status);
-      debug('📥 Response headers:', response.headers);
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', response.headers);
 
       if (!response.ok) {
         let errorData;
@@ -790,8 +797,8 @@ class HistorialService {
       }
 
       const data = await response.json();
-      debug('✅ Formulario guardado:', data);
-      debug('📅 Datos enviados en guardado:', {
+      console.log('✅ Formulario guardado:', data);
+      console.log('📅 Datos enviados en guardado:', {
         fechaCreacion: formulario.fechaCreacion,
         fechaModificacion: formulario.fechaModificacion
       });
@@ -805,26 +812,26 @@ class HistorialService {
   // Actualizar un formulario existente
   async actualizarFormulario(id, datos) {
     try {
-      debug('🔄 actualizarFormulario iniciado');
-      debug('🔍 ID recibido:', id);
-      debug('🔍 Tipo de ID:', typeof id);
-      debug('🔍 Datos a actualizar:', datos);
+      console.log('🔄 actualizarFormulario iniciado');
+      console.log('🔍 ID recibido:', id);
+      console.log('🔍 Tipo de ID:', typeof id);
+      console.log('🔍 Datos a actualizar:', datos);
       
       // Obtener casoId si existe para organizar las imágenes
       const casoId = datos.datos?.casoId || datos.casoId || null;
-      debug('🔑 CasoId para imágenes:', casoId);
+      console.log('🔑 CasoId para imágenes:', casoId);
       
       // IMPORTANTE: Procesar imágenes ANTES de enviar
       // Primero procesar datos.datos (estructura principal)
       if (datos.datos) {
-        debug('🖼️ Procesando imágenes en datos.datos (actualización)...');
+        console.log('🖼️ Procesando imágenes en datos.datos (actualización)...');
         datos.datos = await this.procesarImagenesEnDatos(datos.datos, casoId);
         datos.datos = this.limpiarBase64Residual(datos.datos);
       }
       
       // También procesar si imagenesRegistro está en el nivel raíz (compatibilidad)
       if (datos.imagenesRegistro && Array.isArray(datos.imagenesRegistro)) {
-        debug('🖼️ Procesando imágenes en nivel raíz (actualización)...');
+        console.log('🖼️ Procesando imágenes en nivel raíz (actualización)...');
         const imagenesProcesadas = await this.subirImagenesAlServidor(
           datos.imagenesRegistro,
           casoId
@@ -835,12 +842,12 @@ class HistorialService {
           descripcion: img.descripcion || '',
           tamaño: img.tamaño,
           tipoMime: img.tipoMime
-        })).filter(img => img.ruta && isStoredUploadPath(img.ruta));
-        debug(`✅ ${datos.imagenesRegistro.length} imágenes procesadas en nivel raíz`);
+        })).filter(img => img.ruta && img.ruta.startsWith('/uploads/'));
+        console.log(`✅ ${datos.imagenesRegistro.length} imágenes procesadas en nivel raíz`);
       }
       
       // LIMPIEZA FINAL: Eliminar cualquier base64 residual de TODO el objeto
-      debug('🧹 Limpiando datos antes de enviar al servidor...');
+      console.log('🧹 Limpiando datos antes de enviar al servidor...');
       datos = this.limpiarBase64Residual(datos);
       if (datos.datos) {
         datos.datos = this.limpiarBase64Residual(datos.datos);
@@ -849,7 +856,7 @@ class HistorialService {
       // Verificar tamaño final antes de enviar
       const tamanoFinal = JSON.stringify(datos).length;
       const tamanoMBFinal = (tamanoFinal / (1024 * 1024)).toFixed(2);
-      debug(`📊 Tamaño FINAL del payload: ${tamanoMBFinal} MB`);
+      console.log(`📊 Tamaño FINAL del payload: ${tamanoMBFinal} MB`);
       
       if (tamanoFinal > 15 * 1024 * 1024) {
         console.error(`❌ ERROR: Payload aún demasiado grande (${tamanoMBFinal} MB) después de limpiar`);
@@ -862,7 +869,7 @@ class HistorialService {
       }
       
       const url = `${this.baseURL}/api/historial-formularios/${id}`;
-      debug('🌐 URL de actualización:', url);
+      console.log('🌐 URL de actualización:', url);
       
       const response = await fetch(url, {
         method: 'PUT',
@@ -873,8 +880,8 @@ class HistorialService {
         body: JSON.stringify(datos)
       });
 
-      debug('📡 Response status:', response.status);
-      debug('📡 Response ok:', response.ok);
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response ok:', response.ok);
 
       if (!response.ok) {
         let errorData;
@@ -908,8 +915,8 @@ class HistorialService {
       }
 
       const data = await response.json();
-      debug('✅ Formulario actualizado exitosamente:', data);
-      debug('📅 Datos enviados en actualización:', {
+      console.log('✅ Formulario actualizado exitosamente:', data);
+      console.log('📅 Datos enviados en actualización:', {
         fechaModificacion: datos.fechaModificacion
       });
       return data.formulario;
@@ -965,7 +972,7 @@ class HistorialService {
   // Descargar un formulario
   async descargarFormulario(id) {
     try {
-      debug('📥 Iniciando descarga del formulario:', id);
+      console.log('📥 Iniciando descarga del formulario:', id);
       
       const token = localStorage.getItem('token');
       if (!token) {
@@ -973,7 +980,7 @@ class HistorialService {
       }
       
       const url = `${this.baseURL}/api/historial-formularios/${id}/descargar`;
-      debug('🌐 URL de descarga:', url);
+      console.log('🌐 URL de descarga:', url);
       
       const response = await fetch(url, {
         method: 'GET',
@@ -983,9 +990,9 @@ class HistorialService {
         }
       });
 
-      debug('📥 Response status:', response.status);
-      debug('📥 Response headers:', response.headers);
-      debug('📥 Content-Type:', response.headers.get('content-type'));
+      console.log('📥 Response status:', response.status);
+      console.log('📥 Response headers:', response.headers);
+      console.log('📥 Content-Type:', response.headers.get('content-type'));
 
       if (!response.ok) {
         let errorMessage = `Error HTTP: ${response.status}`;
@@ -1039,7 +1046,7 @@ class HistorialService {
             try {
               if (!mismoOrigen(candidato)) {
                 abrirDescargaNavegador(candidato);
-                debug('✅ Fallback: apertura en nueva pestaña (evita CORS de fetch):', candidato);
+                console.log('✅ Fallback: apertura en nueva pestaña (evita CORS de fetch):', candidato);
                 return true;
               }
 
@@ -1062,7 +1069,7 @@ class HistorialService {
               a.click();
               window.URL.revokeObjectURL(downloadUrl);
               document.body.removeChild(a);
-              debug('✅ Descarga completada por fallback de uploads:', candidato);
+              console.log('✅ Descarga completada por fallback de uploads:', candidato);
               return true;
             } catch (fallbackError) {
               // Continuar con el siguiente candidato
@@ -1085,8 +1092,8 @@ class HistorialService {
       }
 
       const blob = await response.blob();
-      debug('📦 Blob recibido:', blob);
-      debug('📦 Tamaño del blob:', blob.size, 'bytes');
+      console.log('📦 Blob recibido:', blob);
+      console.log('📦 Tamaño del blob:', blob.size, 'bytes');
       
       if (blob.size === 0) {
         throw new Error('El archivo descargado está vacío');
@@ -1102,7 +1109,7 @@ class HistorialService {
         }
       }
       
-      debug('📁 Nombre del archivo:', filename);
+      console.log('📁 Nombre del archivo:', filename);
 
       // Crear y descargar el archivo
       const downloadUrl = window.URL.createObjectURL(blob);
@@ -1117,7 +1124,7 @@ class HistorialService {
       window.URL.revokeObjectURL(downloadUrl);
       document.body.removeChild(a);
 
-      debug('✅ Descarga completada exitosamente');
+      console.log('✅ Descarga completada exitosamente');
       return true;
       
     } catch (error) {
@@ -1160,7 +1167,7 @@ class HistorialService {
           }
 
           const data = await response.json();
-          debug('✅ Archivo Word subido en servidor:', servidor);
+          console.log('✅ Archivo Word subido en servidor:', servidor);
           return data;
         } catch (errorIntento) {
           ultimoError = errorIntento;

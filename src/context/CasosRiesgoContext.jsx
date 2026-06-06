@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { BASE_URL } from "../config/apiConfig.js";
-import { debug } from "../utils/appLogger.js";
 
 // Configurar axios con timeouts más largos para Firebase -> AWS
 const api = axios.create({
@@ -44,12 +43,12 @@ export const CasosRiesgoProvider = ({ children }) => {
       }
 
       setCasos(acumulado);
-      debug(`✅ Casos de riesgo cargados: ${acumulado.length}`);
+      console.log(`✅ Casos de riesgo cargados: ${acumulado.length}`);
     } catch (err) {
       console.error("Error al cargar casos de riesgo:", err);
       // Si hay error, intentar con menos registros
       if (err.code === 'ECONNABORTED') {
-        debug('⚠️ Timeout detectado, intentando con menos registros...');
+        console.log('⚠️ Timeout detectado, intentando con menos registros...');
         try {
           const pageLimit = 500;
           const maxTotal = 5000;
@@ -67,7 +66,7 @@ export const CasosRiesgoProvider = ({ children }) => {
           }
 
           setCasos(acumulado);
-          debug(`✅ Casos de riesgo cargados (reducido): ${acumulado.length}`);
+          console.log(`✅ Casos de riesgo cargados (reducido): ${acumulado.length}`);
         } catch (err2) {
           console.error("Error al cargar casos de riesgo (intento reducido):", err2);
           setCasos([]);
@@ -80,7 +79,7 @@ export const CasosRiesgoProvider = ({ children }) => {
 
   const agregarCaso = async (nuevoCaso) => {
     try {
-      debug('📝 DATOS A ENVIAR DESDE FRONTEND:', JSON.stringify(nuevoCaso, null, 2));
+      console.log('📝 DATOS A ENVIAR DESDE FRONTEND:', JSON.stringify(nuevoCaso, null, 2));
       
       let dataToSend = nuevoCaso;
       // Si hay archivos adjuntos, usar FormData
@@ -98,11 +97,11 @@ export const CasosRiesgoProvider = ({ children }) => {
         dataToSend = formData;
       }
       
-      debug('📤 ENVIANDO AL BACKEND:', dataToSend);
+      console.log('📤 ENVIANDO AL BACKEND:', dataToSend);
       
       const response = await api.post(`${BASE_URL}/api/riesgos`, dataToSend);
       
-      debug('✅ RESPUESTA DEL BACKEND:', response.data);
+      console.log('✅ RESPUESTA DEL BACKEND:', response.data);
       
       // Mostrar notificación de éxito
       if (response.data.success) {

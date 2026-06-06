@@ -4,7 +4,6 @@ import { FaTimes, FaSearchPlus, FaUpload, FaCompress } from 'react-icons/fa';
 import { getUploadsUrlCandidates } from '../config/apiConfig';
 import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils';
 import { ImageCompression } from '../utils/imageCompression';
-import { debug } from '../utils/appLogger.js';
 
 export default function RegistroFotografico({
   onChange,
@@ -90,16 +89,16 @@ export default function RegistroFotografico({
   useEffect(() => {
     if (!isMountedRef.current) {
       isMountedRef.current = true;
-      debug('🔄 RegistroFotografico: Componente montado, imágenes iniciales:', imagenesIniciales?.length || 0);
+      console.log('🔄 RegistroFotografico: Componente montado, imágenes iniciales:', imagenesIniciales?.length || 0);
       
       // Si hay imágenes iniciales al montar, procesarlas inmediatamente
       if (imagenesIniciales && imagenesIniciales.length > 0 && !inicializado) {
         isProcessingRef.current = true;
         const cargarImagenes = async () => {
           try {
-            debug('🔄 RegistroFotografico: Procesando imágenes en montaje inicial...');
+            console.log('🔄 RegistroFotografico: Procesando imágenes en montaje inicial...');
             const imagenesProcesadas = await procesarImagenes(imagenesIniciales);
-            debug('✅ RegistroFotografico: Imágenes procesadas en montaje:', imagenesProcesadas.length);
+            console.log('✅ RegistroFotografico: Imágenes procesadas en montaje:', imagenesProcesadas.length);
             setImagenes(imagenesProcesadas);
             setInicializado(true);
             imagenesInicialesRef.current = imagenesIniciales;
@@ -160,7 +159,7 @@ export default function RegistroFotografico({
       
       if (imagenesIniciales && imagenesIniciales.length > 0) {
         isProcessingRef.current = true;
-        debug('🔄 RegistroFotografico: Procesando imágenes iniciales...', {
+        console.log('🔄 RegistroFotografico: Procesando imágenes iniciales...', {
           cantidad: imagenesIniciales.length,
           estructuraCambio: estructuraActual !== estructuraAnterior,
           datosNuevos: tieneDatosNuevos
@@ -169,7 +168,7 @@ export default function RegistroFotografico({
         const cargarImagenes = async () => {
           try {
             const imagenesProcesadas = await procesarImagenes(imagenesIniciales);
-            debug('✅ RegistroFotografico: Imágenes procesadas:', imagenesProcesadas.length);
+            console.log('✅ RegistroFotografico: Imágenes procesadas:', imagenesProcesadas.length);
             setImagenes(imagenesProcesadas);
             setInicializado(true);
           } catch (error) {
@@ -188,12 +187,12 @@ export default function RegistroFotografico({
     } else if (!inicializado && imagenesIniciales && imagenesIniciales.length > 0) {
       // Si no está inicializado pero hay imágenes, procesarlas de todas formas
       isProcessingRef.current = true;
-      debug('🔄 RegistroFotografico: Inicializando con imágenes existentes...');
+      console.log('🔄 RegistroFotografico: Inicializando con imágenes existentes...');
       
       const cargarImagenes = async () => {
         try {
           const imagenesProcesadas = await procesarImagenes(imagenesIniciales);
-          debug('✅ RegistroFotografico: Imágenes inicializadas:', imagenesProcesadas.length);
+          console.log('✅ RegistroFotografico: Imágenes inicializadas:', imagenesProcesadas.length);
           setImagenes(imagenesProcesadas);
           setInicializado(true);
         } catch (error) {

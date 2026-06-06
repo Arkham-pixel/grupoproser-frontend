@@ -30,8 +30,7 @@ import firmaIskharlyImg from '../../img/FIRMAISKHARLY.png';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService.js';
 import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios.js';
 import colombia from '../../data/colombia.json';
-import API_CONFIG, { getUploadsUrlCandidates, resolveUploadsUrl, isStoredUploadPath } from '../../config/apiConfig.js';
-import { fetchStoredFileAsArrayBuffer } from '../../utils/imageUtils.js';
+import API_CONFIG, { getUploadsUrlCandidates, resolveUploadsUrl } from '../../config/apiConfig.js';
 import { getAutofillAjusteDesdeComplex, getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
 import { resolverFechaReporteDesdeAsignacion } from '../../utils/prefillAjusteDesdeCasoComplex.js';
 import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
@@ -645,7 +644,7 @@ export default function FormularioAjuste() {
           // Solo asegurar que cada imagen tenga un ID único
           datosProcesados.imagenesInspeccion = datosProcesados.imagenesInspeccion.map((imagen, index) => {
             // Si la imagen tiene ruta (guardada en servidor), mantenerla tal cual
-            if (imagen && imagen.ruta && isStoredUploadPath(imagen.ruta)) {
+            if (imagen && imagen.ruta && imagen.ruta.startsWith('/uploads/')) {
               console.log(`✅ Imagen ${index + 1} cargada desde servidor:`, imagen.ruta);
               return {
                 ...imagen,
@@ -1651,9 +1650,18 @@ export default function FormularioAjuste() {
                 imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
                 console.log('✅ Imagen del registro obtenida desde preview base64');
               } else if (img && img.ruta) {
-                imagenBuffer = await fetchStoredFileAsArrayBuffer(img.ruta);
-                if (imagenBuffer) {
-                  console.log('✅ Imagen del registro obtenida desde servidor');
+                // Si tiene ruta del servidor, intentar cargarla (EXACTO A FORMULARIOPUERTOS)
+                try {
+                  const imagenUrl = img.ruta.startsWith('http') 
+                    ? img.ruta 
+                    : `${window.location.origin}${img.ruta}`;
+                  const response = await fetch(imagenUrl);
+                  if (response.ok) {
+                    imagenBuffer = await response.arrayBuffer();
+                    console.log('✅ Imagen del registro obtenida desde servidor');
+                  }
+                } catch (fetchError) {
+                  console.error('❌ Error al cargar imagen desde servidor:', fetchError);
                 }
               }
               
@@ -3942,7 +3950,7 @@ export default function FormularioAjuste() {
           });
           
           // Si ya tiene ruta (imagen guardada), mantenerla
-          if (imagen.ruta && isStoredUploadPath(imagen.ruta)) {
+          if (imagen.ruta && imagen.ruta.startsWith('/uploads/')) {
             return {
               ruta: imagen.ruta,
               nombre: imagen.nombre || 'imagen',

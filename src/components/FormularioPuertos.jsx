@@ -43,7 +43,6 @@ import BotonesHistorial from './BotonesHistorial.jsx';
 import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
 import { BASE_URL } from '../config/apiConfig.js';
-import { fetchStoredImageAsDataUrl, fetchStoredFileAsArrayBuffer } from '../utils/imageUtils.js';
 import ChatbotIA from './SubcomponenteFormularioAjuste/ChatbotIA';
 
 
@@ -1983,9 +1982,18 @@ if (imagenesRegistro.length > 0) {
           imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
           console.log('✅ Imagen del registro obtenida desde preview base64');
         } else if (img && img.ruta) {
-          imagenBuffer = await fetchStoredFileAsArrayBuffer(img.ruta);
-          if (imagenBuffer) {
-            console.log('✅ Imagen del registro obtenida desde servidor');
+          // Si tiene ruta del servidor, intentar cargarla
+          try {
+            const imagenUrl = img.ruta.startsWith('http') 
+              ? img.ruta 
+              : `${window.location.origin}${img.ruta}`;
+            const response = await fetch(imagenUrl);
+            if (response.ok) {
+              imagenBuffer = await response.arrayBuffer();
+              console.log('✅ Imagen del registro obtenida desde servidor');
+            }
+          } catch (fetchError) {
+            console.error('❌ Error al cargar imagen desde servidor:', fetchError);
           }
         }
         
@@ -2794,37 +2802,57 @@ const cargarDatosFormulario = async (formularioId) => {
       if (formulario.datos?.imagenesRegistro && Array.isArray(formulario.datos.imagenesRegistro)) {
         console.log('📸 Procesando imágenes de registro desde historial...');
         
+        const baseURL = BASE_URL;
+
         const imagenesProcesadas = await Promise.all(
-          formulario.datos.imagenesRegistro.map(async (img) => {
+          formulario.datos.imagenesRegistro.map(async (img, index) => {
+            // Si tiene ruta (archivo en servidor), cargar desde servidor
             if (img && typeof img === 'object' && img.ruta) {
               try {
-                const base64 = await fetchStoredImageAsDataUrl(img);
-                if (base64) {
+                // Convertir ruta a URL completa
+                const imagenUrl = img.ruta.startsWith('http') 
+                  ? img.ruta 
+                  : `${baseURL}${img.ruta}`;
+                
+                // Cargar imagen como base64 para preview
+                const response = await fetch(imagenUrl);
+                if (response.ok) {
+                  const blob = await response.blob();
+                  const reader = new FileReader();
+                  const base64 = await new Promise((resolve, reject) => {
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                  });
+                  
                   return {
                     ...img,
                     ruta: img.ruta,
                     preview: base64,
-                    base64,
-                    descripcion: img.descripcion || '',
+                    base64: base64, // Para compatibilidad
+                    descripcion: img.descripcion || ''
+                  };
+                } else {
+                  console.warn(`⚠️ No se pudo cargar imagen desde ${imagenUrl} (status: ${response.status})`);
+                  // Mantener la ruta para que se use como fallback en getImageUrl
+                  return {
+                    ...img,
+                    ruta: img.ruta, // Mantener ruta para fallback
+                    preview: null,
+                    base64: null,
+                    descripcion: img.descripcion || ''
                   };
                 }
-                console.warn(`⚠️ No se pudo cargar imagen desde almacenamiento: ${img.ruta}`);
-                return {
-                  ...img,
-                  ruta: img.ruta,
-                  preview: null,
-                  base64: null,
-                  descripcion: img.descripcion || '',
-                };
               } catch (error) {
                 console.error(`❌ Error cargando imagen ${img.ruta}:`, error);
+                // Mantener la ruta para que se use como fallback en getImageUrl
                 return {
                   ...img,
-                  ruta: img.ruta,
+                  ruta: img.ruta, // Mantener ruta para fallback
                   preview: null,
                   base64: null,
                   descripcion: img.descripcion || '',
-                  errorCarga: error.message,
+                  errorCarga: error.message
                 };
               }
             }

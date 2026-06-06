@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
-import { BASE_URL, resolveUploadsUrl } from '../../config/apiConfig';
+import { BASE_URL } from '../../config/apiConfig';
 import { FaTimes, FaDownload, FaEye, FaCalendar, FaFile, FaTag } from 'react-icons/fa';
 
 export default function VerDocumentosUsuario({ usuario, onCerrar }) {
@@ -62,7 +62,10 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
     try {
       setDocumentoVistaPrevia(documento);
       setMostrarVistaPrevia(true);
-      const url = resolveUploadsUrl(documento.archivo.ruta);
+      const ruta = documento.archivo.ruta.startsWith('/') 
+        ? documento.archivo.ruta 
+        : `/${documento.archivo.ruta}`;
+      const url = `${BASE_URL}${ruta}`;
       setUrlVistaPrevia(url);
     } catch (error) {
       console.error('Error abriendo vista previa:', error);

@@ -480,8 +480,13 @@ export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
 
   const handleVistaPrevia = async (documento) => {
     try {
-      const candidatos = getUploadsUrlCandidates(documento.archivo.ruta);
-      const url = candidatos[0] || null;
+      const ruta = documento.archivo.ruta.startsWith('/') 
+        ? documento.archivo.ruta 
+        : `/${documento.archivo.ruta}`;
+      const candidatos = getUploadsUrlCandidates(ruta);
+      const url = isDevelopmentEnv && candidatos.length > 1
+        ? candidatos[candidatos.length - 1]
+        : (candidatos[0] || null);
       if (!url) {
         setMensaje({ tipo: 'error', texto: 'No se pudo resolver la ruta del documento' });
         return;
