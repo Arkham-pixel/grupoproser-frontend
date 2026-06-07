@@ -199,13 +199,9 @@ export class MatrizRiesgoService {
   // Guardar matriz de riesgo automáticamente
   static async guardarMatrizAutomatica(datosMatriz, nombreEmpresa, titulo) {
     try {
-      console.log('💾 Guardando matriz de riesgo automáticamente...');
+const resultado = await this.crearMatrizRiesgo(datosMatriz, nombreEmpresa, titulo);
       
-      const resultado = await this.crearMatrizRiesgo(datosMatriz, nombreEmpresa, titulo);
-      
-      console.log('✅ Matriz guardada exitosamente:', resultado.data.id);
-      
-      return resultado;
+return resultado;
     } catch (error) {
       console.error('❌ Error guardando matriz automáticamente:', error);
       throw error;
@@ -215,13 +211,9 @@ export class MatrizRiesgoService {
   // Cargar matriz existente
   static async cargarMatrizExistente(id) {
     try {
-      console.log('📂 Cargando matriz de riesgo existente...');
+const resultado = await this.obtenerMatrizRiesgo(id);
       
-      const resultado = await this.obtenerMatrizRiesgo(id);
-      
-      console.log('✅ Matriz cargada exitosamente:', resultado.data.titulo);
-      
-      return resultado.data;
+return resultado.data;
     } catch (error) {
       console.error('❌ Error cargando matriz existente:', error);
       throw error;

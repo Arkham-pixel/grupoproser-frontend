@@ -48,9 +48,7 @@ export default function ChatbotIA({ formData, onInputChange }) {
 
       // Si ChatGPT quiere llenar campos, ejecutar las acciones
       if (response.data.acciones && Array.isArray(response.data.acciones) && response.data.acciones.length > 0) {
-        console.log('✅ ChatGPT quiere llenar campos:', response.data.acciones);
-        
-        const camposLlenados = [];
+const camposLlenados = [];
         const camposConError = [];
         
         // Ejecutar cada acción para llenar campos con validación
@@ -79,8 +77,7 @@ export default function ChatbotIA({ formData, onInputChange }) {
               }
               
               if (esValido) {
-                console.log(`📝 Llenando campo "${accion.campo}" con valor:`, accion.valor);
-                onInputChange(accion.campo, accion.valor);
+onInputChange(accion.campo, accion.valor);
                 camposLlenados.push(accion.campo);
               } else {
                 camposConError.push(`${accion.campo} (formato inválido)`);

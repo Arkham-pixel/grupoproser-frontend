@@ -71,11 +71,9 @@ export default function useHistorial() {
         return;
       }
       
-      console.log('🔑 Token encontrado, cargando historial...');
-      const datos = await historialService.obtenerHistorial(filtrosAplicados);
+const datos = await historialService.obtenerHistorial(filtrosAplicados);
       setFormularios(Array.isArray(datos) ? datos.map(normalizarFormulario) : []);
-      console.log('✅ Historial cargado:', datos);
-    } catch (err) {
+} catch (err) {
       console.error('❌ Error cargando historial:', err);
       setError(err.message);
       setFormularios([]);

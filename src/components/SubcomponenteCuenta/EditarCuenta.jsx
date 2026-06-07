@@ -96,24 +96,7 @@ export default function EditarCuentas() {
     const tipo = localStorage.getItem("tipoUsuario") || "normal";
     setTipoUsuario(tipo);
     obtenerPerfil(token, tipo).then(({ data }) => {
-      console.log('📥 Datos recibidos del backend en EditarCuenta:', data);
-      console.log('📋 Campos específicos:', {
-        empresa: data.empresa,
-        cedula: data.cedula,
-        tipoSangre: data.tipoSangre,
-        direccion: data.direccion,
-        telefonoFijo: data.telefonoFijo,
-        celulares: data.celulares,
-        correosElectronicos: data.correosElectronicos,
-        fechaIngreso: data.fechaIngreso,
-        cargos: data.cargos,
-        salario: data.salario,
-        tipoContrato: data.tipoContrato,
-        aportesSalud: data.aportesSalud,
-        aportesPension: data.aportesPension
-      });
-      
-      setForm(f => ({
+setForm(f => ({
         ...f,
         // Para usuarios secundarios (secur)
         name: data.name || "",
@@ -150,8 +133,7 @@ export default function EditarCuentas() {
         correo: data.correo || "",
       }));
       
-      console.log('✅ Formulario actualizado con datos del backend');
-    }).catch((err) => {
+}).catch((err) => {
       console.error('❌ Error cargando perfil en EditarCuenta:', err);
     });
   }, []);
@@ -229,16 +211,13 @@ export default function EditarCuentas() {
           passwordConfirm: form.passwordConfirm,
         };
       }
-      console.log('📤 Enviando datos al backend:', dataToSend);
-      const response = await actualizarPerfil(dataToSend, token, tipoUsuario);
-      console.log('✅ Respuesta del backend:', response.data);
-      setMensaje("¡Perfil actualizado!");
+const response = await actualizarPerfil(dataToSend, token, tipoUsuario);
+setMensaje("¡Perfil actualizado!");
       
       // Recargar los datos del perfil después de actualizar
       setTimeout(() => {
         obtenerPerfil(token, tipoUsuario).then(({ data }) => {
-          console.log('🔄 Perfil recargado después de actualizar:', data);
-          setForm(f => ({
+setForm(f => ({
             ...f,
             // Para usuarios secundarios (secur)
             name: data.name || "",

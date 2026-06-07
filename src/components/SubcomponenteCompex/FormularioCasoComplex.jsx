@@ -117,17 +117,13 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
   // Función helper para convertir fechas ISO a formato yyyy-MM-dd para inputs de tipo date
   const formatearFechaParaInput = useCallback((fecha) => {
     if (!fecha) {
-      console.log('🔧 [formatearFechaParaInput] Fecha vacía o null');
-      return '';
+return '';
     }
     
-    console.log('🔧 [formatearFechaParaInput] Procesando fecha:', { fecha, tipo: typeof fecha, esDate: fecha instanceof Date });
-    
-    if (typeof fecha === 'string' && fecha.includes('T')) {
+if (typeof fecha === 'string' && fecha.includes('T')) {
       // Si es formato ISO, extraer solo la parte de la fecha
       const fechaFormateada = fecha.split('T')[0];
-      console.log('🔧 [formatearFechaParaInput] Fecha ISO formateada:', fecha, '->', fechaFormateada);
-      return fechaFormateada;
+return fechaFormateada;
     }
     if (fecha instanceof Date) {
       // Si es un objeto Date, convertir a yyyy-MM-dd
@@ -135,23 +131,19 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       const month = String(fecha.getMonth() + 1).padStart(2, '0');
       const day = String(fecha.getDate()).padStart(2, '0');
       const fechaFormateada = `${year}-${month}-${day}`;
-      console.log('🔧 [formatearFechaParaInput] Fecha Date formateada:', fechaFormateada);
-      return fechaFormateada;
+return fechaFormateada;
     }
     // Si ya está en formato yyyy-MM-dd, devolverlo tal cual
     if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      console.log('🔧 [formatearFechaParaInput] Fecha ya en formato correcto:', fecha);
-      return fecha;
+return fecha;
     }
     // Si viene en formato dd/MM/yyyy (común en listados/reportes), convertir a yyyy-MM-dd
     if (typeof fecha === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(fecha)) {
       const [day, month, year] = fecha.split('/');
       const fechaFormateada = `${year}-${month}-${day}`;
-      console.log('🔧 [formatearFechaParaInput] Fecha dd/MM/yyyy convertida:', fecha, '->', fechaFormateada);
-      return fechaFormateada;
+return fechaFormateada;
     }
-    console.log('⚠️ [formatearFechaParaInput] Fecha no reconocida, retornando vacío:', fecha);
-    return '';
+return '';
   }, []);
 
   const ordenarStrings = useCallback((lista = []) => {
@@ -205,15 +197,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
   // Sincronizar historialDocs con initialData si existe (modo edición)
   // Solo usar initialData si tiene _id (es edición), de lo contrario ignorarlo
   useEffect(() => {
-    console.log('🔄 [useEffect] Ejecutando carga de datos desde initialData:', {
-      tieneInitialData: !!initialData,
-      tieneId: !!(initialData?._id),
-      fchaInfoPrelm: initialData?.fchaInfoPrelm,
-      fcha_info_prelm: initialData?.fcha_info_prelm,
-      'initialData completo': initialData
-    });
-    
-    if (initialData && initialData._id) {
+if (initialData && initialData._id) {
       const normalizados = { ...initialData };
       const equivalencias = {
         ciudadSiniestro: ['ciudadSiniestro', 'ciudad_siniestro'],
@@ -261,24 +245,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       }
 
       // Log para depurar fechas de trazabilidad
-      console.log('📅 [Cargar datos] Fechas en initialData:', {
-        fchaInfoPrelm: initialData.fchaInfoPrelm,
-        fcha_info_prelm: initialData.fcha_info_prelm,
-        fchaInfoFnal: initialData.fchaInfoFnal,
-        fcha_info_fnal: initialData.fcha_info_fnal,
-        fchaSoliDocu: initialData.fchaSoliDocu,
-        fcha_soli_docu: initialData.fcha_soli_docu,
-        fchaRepoActi: initialData.fchaRepoActi,
-        fcha_repo_acti: initialData.fcha_repo_acti
-      });
-      console.log('📅 [Cargar datos] Fechas en normalizados:', {
-        fchaInfoPrelm: normalizados.fchaInfoPrelm,
-        fchaInfoFnal: normalizados.fchaInfoFnal,
-        fchaSoliDocu: normalizados.fchaSoliDocu,
-        fchaRepoActi: normalizados.fchaRepoActi
-      });
-
-      setFormData(prev => {
+setFormData(prev => {
         // Obtener fechas directamente de initialData (prioridad: camelCase > snake_case)
         // Esto asegura que siempre obtengamos la fecha correcta, incluso si viene en formato ISO
         const fchaInfoPrelmRaw = initialData.fchaInfoPrelm || initialData.fcha_info_prelm || normalizados.fchaInfoPrelm;
@@ -295,21 +262,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         const fchaRecibidoControlHorasRaw = initialData.fchaRecibidoControlHoras || initialData.fcha_recibido_control_horas || initialData.fecha_recibido_control_horas || normalizados.fchaRecibidoControlHoras;
         const fchaSeguimientoEnvioControlHorasRaw = initialData.fchaSeguimientoEnvioControlHoras || initialData.fcha_seguimiento_envio_control_horas || initialData.fecha_seguimiento_envio_control_horas || normalizados.fchaSeguimientoEnvioControlHoras;
         
-        console.log('📅 [Cargar datos] Fechas raw antes de formatear:', {
-          fchaInfoPrelm: fchaInfoPrelmRaw,
-          fchaInfoFnal: fchaInfoFnalRaw,
-          fchaSoliDocu: fchaSoliDocuRaw,
-          fchaRepoActi: fchaRepoActiRaw,
-          fchaPresentacionCifras: fchaPresentacionCifrasRaw,
-          fchaAceptacionCifrasAseguradora: fchaAceptacionCifrasAseguradoraRaw,
-          fchaEnvioFiniquito: fchaEnvioFiniquitoRaw,
-          fchaControlHoras: fchaControlHorasRaw,
-          fchaEnvioControlHoras: fchaEnvioControlHorasRaw,
-          'initialData.fcha_envio_control_horas': initialData.fcha_envio_control_horas,
-          'normalizados.fchaEnvioControlHoras': normalizados.fchaEnvioControlHoras
-        });
-        
-        // Formatear las fechas ANTES de crear nuevoFormData
+// Formatear las fechas ANTES de crear nuevoFormData
         const fchaInfoPrelmFormateada = formatearFechaParaInput(fchaInfoPrelmRaw);
         const fchaInfoFnalFormateada = formatearFechaParaInput(fchaInfoFnalRaw);
         const fchaSoliDocuFormateada = formatearFechaParaInput(fchaSoliDocuRaw);
@@ -324,17 +277,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         const fchaRecibidoControlHorasFormateada = formatearFechaParaInput(fchaRecibidoControlHorasRaw);
         const fchaSeguimientoEnvioControlHorasFormateada = formatearFechaParaInput(fchaSeguimientoEnvioControlHorasRaw);
         
-        console.log('📅 [Cargar datos] Fechas formateadas:', {
-          fchaInfoPrelm: fchaInfoPrelmFormateada,
-          fchaInfoFnal: fchaInfoFnalFormateada,
-          fchaSoliDocu: fchaSoliDocuFormateada,
-          fchaRepoActi: fchaRepoActiFormateada,
-          fchaPresentacionCifras: fchaPresentacionCifrasFormateada,
-          fchaAceptacionCifrasAseguradora: fchaAceptacionCifrasAseguradoraFormateada,
-          fchaEnvioFiniquito: fchaEnvioFiniquitoFormateada
-        });
-        
-        const nuevoFormData = {
+const nuevoFormData = {
           ...prev,
           ...normalizados,
           _id: initialData._id || initialData.id || prev._id, // Asegurar que _id se incluya
@@ -409,17 +352,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           estado: resolverEstadoParaSelect({ ...initialData, ...normalizados }, estados),
         };
         
-        console.log('📅 [Cargar datos] Fechas formateadas después de formatear:', {
-          fchaInfoPrelm: nuevoFormData.fchaInfoPrelm,
-          fchaInfoFnal: nuevoFormData.fchaInfoFnal,
-          fchaSoliDocu: nuevoFormData.fchaSoliDocu,
-          fchaRepoActi: nuevoFormData.fchaRepoActi,
-          fchaPresentacionCifras: nuevoFormData.fchaPresentacionCifras,
-          fchaAceptacionCifrasAseguradora: nuevoFormData.fchaAceptacionCifrasAseguradora,
-          fchaEnvioFiniquito: nuevoFormData.fchaEnvioFiniquito
-        });
-        
-        // Verificación final: asegurar que las fechas formateadas no estén vacías si había una fecha raw
+// Verificación final: asegurar que las fechas formateadas no estén vacías si había una fecha raw
         if (fchaInfoPrelmRaw && !nuevoFormData.fchaInfoPrelm) {
           console.warn('⚠️ [Cargar datos] fchaInfoPrelmRaw existe pero formateada está vacía:', {
             raw: fchaInfoPrelmRaw,
@@ -428,8 +361,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           // Intentar formatear manualmente como último recurso
           if (typeof fchaInfoPrelmRaw === 'string' && fchaInfoPrelmRaw.includes('T')) {
             nuevoFormData.fchaInfoPrelm = fchaInfoPrelmRaw.split('T')[0];
-            console.log('✅ [Cargar datos] Fecha formateada manualmente:', nuevoFormData.fchaInfoPrelm);
-          }
+}
         }
         
         // PRESERVAR el funcionario desde initialData - NO normalizar si ya existe
@@ -462,24 +394,13 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           nuevoFormData.funcAsgrdraNombre = nuevoFormData.funcAsgrdra;
         }
         
-        console.log('📋 [FormularioCasoComplex] Datos del funcionario cargados:', {
-          funcAsgrdra: nuevoFormData.funcAsgrdra,
-          funcAsgrdraNombre: nuevoFormData.funcAsgrdraNombre,
-          funcionarioAseguradora: nuevoFormData.funcionarioAseguradora,
-          initialDataFuncAsgrdra: initialData.funcAsgrdra,
-          initialDataFuncAsgrdraNombre: initialData.funcAsgrdraNombre,
-          initialDataFuncionarioAseguradora: initialData.funcionarioAseguradora
-        });
-        
-        return nuevoFormData;
+return nuevoFormData;
       });
       
       // Cargar funcionarios de la aseguradora cuando se carga initialData (modo edición)
       if (normalizados.codiAsgrdra || initialData.codiAsgrdra) {
         const codigoCliente = normalizados.codiAsgrdra || initialData.codiAsgrdra;
-        console.log('🔄 [Modo Edición] Cargando funcionarios para aseguradora:', codigoCliente);
-        
-        fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
+fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
           .then(res => res.json())
           .then(data => {
             const funcionariosData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
@@ -516,8 +437,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
             }
             
             setFuncionarios(ordenarPorLabel(opciones));
-            console.log('✅ [Modo Edición] Funcionarios cargados:', opciones.length);
-          })
+})
           .catch(error => {
             console.error('❌ [Modo Edición] Error cargando funcionarios:', error);
           });
@@ -533,13 +453,10 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       const casoId = id || initialData?._id;
       if (casoId) {
         try {
-          console.log('🔍 [Cargar Caso por ID] Cargando caso con ID:', casoId);
-          const token = localStorage.getItem('token');
+const token = localStorage.getItem('token');
           
           const casoData = await getCasoComplex(casoId);
-          console.log('✅ [Cargar Caso por ID] Caso cargado:', casoData);
-          
-          if (casoData && casoData._id) {
+if (casoData && casoData._id) {
             // Establecer los datos como initialData para que se procesen correctamente
             const normalizados = { ...casoData, origen: 'complex' };
             
@@ -675,9 +592,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
             // Cargar funcionarios si hay aseguradora
             if (normalizados.codiAsgrdra || casoData.codiAsgrdra) {
               const codigoCliente = normalizados.codiAsgrdra || casoData.codiAsgrdra;
-              console.log('🔄 [Cargar Caso por ID] Cargando funcionarios para aseguradora:', codigoCliente);
-              
-              fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
+fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
                 headers: token ? { 'Authorization': `Bearer ${token}` } : {}
               })
                 .then(res => res.json())
@@ -696,15 +611,13 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
                     .filter(Boolean);
                   
                   setFuncionarios(ordenarPorLabel(opciones));
-                  console.log('✅ [Cargar Caso por ID] Funcionarios cargados:', opciones.length);
-                })
+})
                 .catch(error => {
                   console.error('❌ [Cargar Caso por ID] Error cargando funcionarios:', error);
                 });
             }
 
-            console.log('✅ [Cargar Caso por ID] Caso cargado y formData actualizado');
-          } else {
+} else {
             console.error('❌ [Cargar Caso por ID] El caso no tiene _id válido');
           }
         } catch (error) {
@@ -728,11 +641,9 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           // Si tiene nmroAjste, no cargar (es un caso ya guardado, no un borrador)
           if (datosParseados && typeof datosParseados === 'object' && !datosParseados.nmroAjste) {
             setFormData(prev => ({ ...prev, ...datosParseados }));
-            console.log('✅ Datos de formulario Complex cargados desde localStorage (sin nmroAjste)');
-          } else if (datosParseados?.nmroAjste) {
+} else if (datosParseados?.nmroAjste) {
             // Si tiene nmroAjste, limpiar el localStorage para evitar usar datos de casos guardados
-            console.log('🧹 Limpiando localStorage: contiene nmroAjste de caso guardado');
-            localStorage.removeItem('formularioComplex');
+localStorage.removeItem('formularioComplex');
           }
         } catch (error) {
           console.error('Error al cargar datos guardados:', error);
@@ -741,8 +652,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       }
     } else if (!id && !initialData) {
       // Si es un caso nuevo, limpiar cualquier dato residual del localStorage
-      console.log('🧹 Limpiando localStorage para caso nuevo');
-      localStorage.removeItem('formularioComplex');
+localStorage.removeItem('formularioComplex');
     }
   }, [id, initialData]);
 
@@ -762,8 +672,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       try {
         const datosParaGuardar = JSON.stringify(formData);
         localStorage.setItem('formularioComplex', datosParaGuardar);
-        console.log('💾 Datos de formulario Complex guardados en localStorage (sin nmroAjste)');
-      } catch (error) {
+} catch (error) {
         console.error('Error al guardar datos:', error);
         try {
           localStorage.removeItem('formularioComplex');
@@ -798,16 +707,14 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
   useEffect(() => {
     const esRutaComplex = location.pathname.includes('/complex') || location.pathname.includes('/agregar-caso') || location.pathname.includes('/editar-caso');
     if (!esRutaComplex) {
-      console.log('🧹 Limpiando datos de localStorage al salir del formulario Complex');
-      localStorage.removeItem('formularioComplex');
+localStorage.removeItem('formularioComplex');
     }
 
     return () => {
       setTimeout(() => {
         const sigueEnRutaComplex = window.location.pathname.includes('/complex') || window.location.pathname.includes('/agregar-caso') || window.location.pathname.includes('/editar-caso');
         if (!sigueEnRutaComplex) {
-          console.log('🧹 Limpiando datos de localStorage (componente desmontado)');
-          localStorage.removeItem('formularioComplex');
+localStorage.removeItem('formularioComplex');
         }
       }, 100);
     };
@@ -826,11 +733,9 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
   // Handler de cambios
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-    console.log('📝 [handleChange] Cambio detectado:', { name, value, tipo: typeof value });
-    setFormData(prev => {
+setFormData(prev => {
       const nuevoValor = name === 'estado' ? String(value) : value;
-      console.log('📝 [handleChange] Actualizando formData:', { name, valorAnterior: prev[name], valorNuevo: nuevoValor });
-      if (name === 'estado') {
+if (name === 'estado') {
         const opcion = estados.find((est) => String(est.value) === String(nuevoValor));
         return {
           ...prev,
@@ -889,9 +794,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
 
     const archivos = Array.from(acceptedFiles);
 
-    console.log('📂 Archivos recibidos para carga:', tipoDocumento, archivos);
-
-    const token = localStorage.getItem('token');
+const token = localStorage.getItem('token');
     setErrorAdjuntos(prev => ({ ...prev, [tipoDocumento]: null }));
     setCargandoAdjuntos(prev => ({ ...prev, [tipoDocumento]: true }));
 
@@ -983,15 +886,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           ? `${valorAnterior}, ${nombresArchivos}`.replace(/^,\s*/, '').replace(/,\s*,/g, ',')
           : nombresArchivos;
         
-        console.log(`📝 [handleDocumentDrop] Actualizando ${campoFormData}:`, {
-          tipoDocumento,
-          valorAnterior,
-          nombresArchivos,
-          nuevoValor,
-          totalArchivos: resultados.length
-        });
-        
-        return {
+return {
           ...prev,
           [campoFormData]: nuevoValor
         };
@@ -1001,13 +896,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     updateHistorialDocs(prev => {
       const actual = Array.isArray(prev) ? prev : [];
       const nuevosDocs = [...actual, ...resultados];
-      console.log(`📚 [handleDocumentDrop] Actualizando historialDocs para ${tipoDocumento}:`, {
-        documentosAnteriores: actual.length,
-        documentosNuevos: resultados.length,
-        totalDocumentos: nuevosDocs.length,
-        tiposDocumentos: resultados.map(r => ({ tipo: r.tipo, nombre: r.nombre }))
-      });
-      return nuevosDocs;
+return nuevosDocs;
     });
 
     if (errores.length > 0) {
@@ -1016,8 +905,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         [tipoDocumento]: `No se pudieron subir algunos archivos: ${errores.join(' | ')}`
       }));
     } else {
-      console.log(`✅ ${resultados.length} archivo(s) subido(s) para ${tipoDocumento}`, resultados);
-      setErrorAdjuntos(prev => ({ ...prev, [tipoDocumento]: null }));
+setErrorAdjuntos(prev => ({ ...prev, [tipoDocumento]: null }));
     }
 
     setCargandoAdjuntos(prev => ({ ...prev, [tipoDocumento]: false }));
@@ -1117,8 +1005,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       // Si no hay casoId pero hay número de caso, intentar buscar el caso
       if (!casoId && numeroCaso && numeroCaso !== 'Sin número') {
         try {
-          console.log('🔍 [Gerencia] Buscando caso por número de ajuste:', numeroCaso);
-          const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
+const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
           if (buscarResponse.ok) {
@@ -1126,17 +1013,14 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
             const casos = Array.isArray(casosData) ? casosData : (casosData.data || []);
             if (casos.length > 0 && casos[0]._id) {
               casoId = casos[0]._id;
-              console.log('✅ [Gerencia] Caso encontrado por número de ajuste, ID:', casoId);
-            }
+}
           }
         } catch (error) {
           console.error('⚠️ [Gerencia] Error buscando caso por número de ajuste:', error);
         }
       }
 
-      console.log('📧 [Gerencia] Enviando notificación con casoId:', casoId, 'númeroCaso:', numeroCaso);
-
-      const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, {
+const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1279,8 +1163,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       // Si no hay casoId pero hay número de caso, intentar buscar el caso
       if (!casoId && numeroCaso && numeroCaso !== 'Sin número') {
         try {
-          console.log('🔍 Buscando caso por número de ajuste:', numeroCaso);
-          const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
+const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
           if (buscarResponse.ok) {
@@ -1288,17 +1171,14 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
             const casos = Array.isArray(casosData) ? casosData : (casosData.data || []);
             if (casos.length > 0 && casos[0]._id) {
               casoId = casos[0]._id;
-              console.log('✅ Caso encontrado por número de ajuste, ID:', casoId);
-            }
+}
           }
         } catch (error) {
           console.error('⚠️ Error buscando caso por número de ajuste:', error);
         }
       }
 
-      console.log('📧 Enviando notificación con casoId:', casoId, 'númeroCaso:', numeroCaso);
-
-      const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-horas`, {
+const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-horas`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1439,8 +1319,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         };
       });
       
-      console.log('🔄 [Sincronización] Actualizando adjunto_control_horas desde historialDocs:', nombresArchivos);
-    }
+}
   }, [formData.historialDocs, formData.adjunto_control_horas]);
 
   // Sincronizar adjunto_evidencia desde historialDocs cuando cambie
@@ -1474,8 +1353,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           adjunto_evidencia: nombresArchivos
         };
       });
-      console.log('🔄 [Sincronización] Actualizando adjunto_evidencia desde historialDocs:', nombresArchivos);
-    }
+}
   }, [formData.historialDocs, formData.adjunto_evidencia]);
 
   // Sincronizar adjunto_factura desde historialDocs cuando cambie
@@ -1515,8 +1393,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         };
       });
       
-      console.log('🔄 [Sincronización] Actualizando adjunto_factura desde historialDocs:', nombresArchivos);
-    }
+}
   }, [formData.historialDocs, formData.adjunto_factura]);
 
   // Sincronizar adjunto_seguimiento_envio_control_horas desde historialDocs
@@ -1525,8 +1402,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     const nombres = docs.length > 0 ? docs.map(d => d.nombre || d.filename).filter(Boolean).join(', ') : '';
     if (formData.adjunto_seguimiento_envio_control_horas !== nombres) {
       setFormData(prev => prev.adjunto_seguimiento_envio_control_horas === nombres ? prev : { ...prev, adjunto_seguimiento_envio_control_horas: nombres });
-      console.log('🔄 [Sincronización] Actualizando adjunto_seguimiento_envio_control_horas:', nombres);
-    }
+}
   }, [formData.historialDocs, formData.adjunto_seguimiento_envio_control_horas]);
 
   // Hook de autoguardado
@@ -1548,8 +1424,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     excludeFields: ['historialDocs'], // Excluir campos pesados
     onRestore: (savedInfo) => {
       // Cuando hay datos guardados, mostrar el diálogo
-      console.log('📦 Datos guardados encontrados, mostrando diálogo de restauración');
-      setSavedDataToRestore(savedInfo);
+setSavedDataToRestore(savedInfo);
       setShowRestoreDialog(true);
     },
   });
@@ -1557,8 +1432,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
   // Activar autoguardado automáticamente en formularios nuevos
   useEffect(() => {
     if (!initialData?._id && !isAutoSaveEnabled) {
-      console.log('🟢 Activando autoguardado automáticamente');
-      enableAutoSave();
+enableAutoSave();
     }
   }, [initialData, isAutoSaveEnabled, enableAutoSave]);
 
@@ -1581,8 +1455,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     // Si estamos en modo edición (hay initialData), no ejecutar este useEffect
     // El useEffect de modo edición se encarga de cargar los funcionarios
     if (initialData && initialData.codiAsgrdra) {
-      console.log('⏭️ [Cargar Funcionarios - Cambio Aseguradora] Modo edición detectado, saltando carga automática');
-      return;
+return;
     }
 
     // Limpiar funcionarios si no hay cliente seleccionado
@@ -1615,9 +1488,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     setCargandoFuncionarios(true);
     // No limpiar inmediatamente para evitar que el select pierda la selección actual mientras carga
 
-    console.log('🔍 [Cargar Funcionarios - Cambio Aseguradora] Cargando funcionarios para cliente:', codigoCliente);
-
-    fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
+fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
       signal: abortController.signal
     })
       .then(res => {
@@ -1698,8 +1569,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         codigoFuncionario === '' ||
         codigoFuncionario === 'null' ||
         codigoFuncionario === 'undefined') {
-      console.log('⏭️ [Campos Fijos - Complemento] Saltando búsqueda de funcionario - código inválido:', codigoFuncionario);
-      return;
+return;
     }
 
     // Si ya tenemos el nombre y no es "Sin asignar", no buscar
@@ -1717,8 +1587,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       );
       
       if (funcionarioEncontrado) {
-        console.log('✅ [Campos Fijos - Complemento] Funcionario encontrado en lista existente:', funcionarioEncontrado.label);
-        setFormData(prev => ({
+setFormData(prev => ({
           ...prev,
           funcAsgrdraNombre: funcionarioEncontrado.label,
           funcionarioAseguradora: funcionarioEncontrado.label
@@ -1729,9 +1598,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
 
     const codigoCliente = formData.codiAsgrdra;
     
-    console.log('🔍 [Campos Fijos - Complemento] Buscando funcionario en BD (complemento):', { codigoCliente, codigoFuncionario });
-    
-    const abortController = new AbortController();
+const abortController = new AbortController();
     
     fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
       method: 'GET',
@@ -1768,8 +1635,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
                                     '';
           
           if (nombreFuncionario) {
-            console.log('✅ [Campos Fijos - Complemento] Funcionario encontrado en BD:', nombreFuncionario);
-            setFormData(prev => ({
+setFormData(prev => ({
               ...prev,
               funcAsgrdraNombre: nombreFuncionario,
               funcionarioAseguradora: nombreFuncionario
@@ -1839,12 +1705,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         f.value === currentNombre
       );
       if (matchByValue) {
-        console.log('✅ [Sincronización Funcionario] Encontrado por valor:', {
-          currentValue,
-          currentNombre,
-          encontrado: matchByValue.label
-        });
-        return { 
+return { 
           ...prev, 
           funcAsgrdra: String(matchByValue.value), 
           funcAsgrdraNombre: matchByValue.label,
@@ -1861,12 +1722,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         (currentNombre && f.label && f.label.trim() === currentNombre.trim())
       );
       if (matchByLabel) {
-        console.log('✅ [Sincronización Funcionario] Encontrado por label:', {
-          currentValue,
-          currentNombre,
-          encontrado: matchByLabel.label
-        });
-        return { 
+return { 
           ...prev, 
           funcAsgrdra: String(matchByLabel.value), 
           funcAsgrdraNombre: matchByLabel.label,
@@ -1884,12 +1740,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           (f.label && currentNombre && f.label.toLowerCase().trim() === currentNombre.toLowerCase().trim())
         );
         if (matchByNombre) {
-          console.log('✅ [Sincronización Funcionario] Encontrado por nombre (case-insensitive):', {
-            currentValue,
-            currentNombre,
-            encontrado: matchByNombre.label
-          });
-          return { 
+return { 
             ...prev, 
             funcAsgrdra: String(matchByNombre.value), 
             funcAsgrdraNombre: matchByNombre.label,
@@ -1901,11 +1752,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       // Si no se encuentra pero hay un nombre válido, mantener el valor actual
       // Esto permite que el funcionario se mantenga aunque no esté en la lista
       if (currentNombre && currentNombre !== 'Sin asignar' && currentNombre.toLowerCase() !== 'sin asignar') {
-        console.log('⚠️ [Sincronización Funcionario] No encontrado en lista, manteniendo valor:', {
-          currentValue,
-          currentNombre
-        });
-        return prev;
+return prev;
       }
       
       return prev;
@@ -1977,18 +1824,10 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     const codigoCliente = cliente?.codiAsgrdra || initialData.codiAsgrdra;
     
     if (!codigoCliente) {
-      console.log('⚠️ [Cargar Funcionarios] No se encontró código de cliente válido');
-      return;
+return;
     }
 
-    console.log('🔍 [Cargar Funcionarios - Modo Edición] Iniciando carga de funcionarios:', {
-      codigoCliente,
-      tieneInitialData: !!initialData,
-      camposFijos,
-      codiAsgrdra: initialData.codiAsgrdra
-    });
-
-    // AbortController para cancelar peticiones anteriores
+// AbortController para cancelar peticiones anteriores
     const abortController = new AbortController();
     setCargandoFuncionarios(true);
     
@@ -2013,23 +1852,11 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
                         etiquetaActual.toLowerCase() === 'sin asignar';
     
     if (esSinAsignar) {
-      console.log('⚠️ [Cargar Funcionarios - Modo Edición] Valor es "Sin asignar", limpiando para buscar funcionario real');
-      valorActual = '';
+valorActual = '';
       etiquetaActual = '';
     }
     
-    console.log('🔍 [Cargar Funcionarios - Modo Edición] Valores del funcionario:', {
-      valorActual,
-      etiquetaActual,
-      esSinAsignar,
-      initialDataFuncAsgrdra: initialData?.funcAsgrdra,
-      initialDataFuncAsgrdraNombre: initialData?.funcAsgrdraNombre,
-      initialDataFuncionarioAseguradora: initialData?.funcionarioAseguradora,
-      formDataFuncAsgrdra: formData.funcAsgrdra,
-      formDataFuncAsgrdraNombre: formData.funcAsgrdraNombre
-    });
-    
-    fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
+fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
       signal: abortController.signal
     })
       .then(res => {
@@ -2053,9 +1880,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
           })
           .filter(Boolean);
 
-        console.log('✅ [Cargar Funcionarios - Modo Edición] Funcionarios cargados desde API:', opciones.length);
-
-        // Si hay un funcionario asignado pero no está en la lista, agregarlo
+// Si hay un funcionario asignado pero no está en la lista, agregarlo
         if (valorActual || etiquetaActual) {
           const yaExiste = opciones.some(opt => 
             String(opt.value) === String(valorActual) || 
@@ -2069,11 +1894,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
             // Usar el nombre como valor si no hay código numérico
             const valorParaAgregar = /^\d+$/.test(valorActual) ? valorActual : (etiquetaActual || valorActual);
             opciones.push({ value: String(valorParaAgregar), label: etiquetaActual || valorActual });
-            console.log('➕ [Cargar Funcionarios - Modo Edición] Funcionario agregado a la lista:', {
-              value: String(valorParaAgregar),
-              label: etiquetaActual || valorActual
-            });
-          }
+}
         }
 
         setFuncionarios(ordenarPorLabel(opciones));
@@ -2084,8 +1905,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         setTimeout(() => {
           // Si la lista está vacía, no hacer nada
           if (opciones.length === 0) {
-            console.log('⚠️ [Cargar Funcionarios - Modo Edición] Lista de funcionarios vacía');
-            return;
+return;
           }
           
           // Si había un valor "Sin asignar", intentar buscar el funcionario real desde initialData
@@ -2111,8 +1931,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
             
             if (funcionarioPorNombre) {
               valorOriginal = funcionarioPorNombre.value;
-              console.log(`✅ [Cargar Funcionarios - Modo Edición] Encontrado código ${valorOriginal} para funcionario ${nombreOriginal}`);
-            } else {
+} else {
               console.warn(`⚠️ [Cargar Funcionarios - Modo Edición] No se encontró código para funcionario ${nombreOriginal} en la lista cargada`);
               // Usar el nombre como código temporal si no se encuentra
               valorOriginal = nombreOriginal;
@@ -2137,11 +1956,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
                 funcionarioAseguradora: funcionarioEncontrado.label
               }));
               
-              console.log('✅ [Cargar Funcionarios - Modo Edición] Funcionario encontrado desde initialData:', {
-                value: String(funcionarioEncontrado.value),
-                label: funcionarioEncontrado.label
-              });
-              return;
+return;
             }
           }
           
@@ -2197,14 +2012,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
               }));
               
               // Forzar un re-render del select asegurando que el valor coincida
-              console.log('✅ [Cargar Funcionarios - Modo Edición] Funcionario sincronizado:', {
-                value: String(funcionarioEncontrado.value),
-                label: funcionarioEncontrado.label,
-                opciones: opciones.length,
-                valorParaBuscar,
-                nombreParaBuscar
-              });
-            } else {
+} else {
               // Si no se encuentra, intentar usar el nombre original si existe
               if (nombreOriginal && nombreOriginal !== 'Sin asignar' && nombreOriginal.toLowerCase() !== 'sin asignar') {
                 const funcionarioPorNombre = opciones.find(f => 
@@ -2220,13 +2028,8 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
                     funcionarioAseguradora: funcionarioPorNombre.label
                   }));
                   
-                  console.log('✅ [Cargar Funcionarios - Modo Edición] Funcionario encontrado por nombre:', {
-                    value: String(funcionarioPorNombre.value),
-                    label: funcionarioPorNombre.label
-                  });
-                } else {
-                  console.log('⚠️ [Cargar Funcionarios - Modo Edición] Funcionario no encontrado en lista, dejando campo vacío para selección manual');
-                  // Dejar el campo vacío para que el usuario pueda seleccionar manualmente
+} else {
+// Dejar el campo vacío para que el usuario pueda seleccionar manualmente
                   setFormData(prev => ({
                     ...prev,
                     funcAsgrdra: '',
@@ -2235,8 +2038,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
                   }));
                 }
               } else {
-                console.log('⚠️ [Cargar Funcionarios - Modo Edición] No hay funcionario válido, dejando campo vacío para selección manual');
-                // Dejar el campo vacío para que el usuario pueda seleccionar manualmente
+// Dejar el campo vacío para que el usuario pueda seleccionar manualmente
                 setFormData(prev => ({
                   ...prev,
                   funcAsgrdra: '',
@@ -2246,8 +2048,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
               }
             }
           } else {
-            console.log('⚠️ [Cargar Funcionarios - Modo Edición] No hay funcionario asignado, dejando campo vacío para selección manual');
-            // Dejar el campo vacío para que el usuario pueda seleccionar manualmente
+// Dejar el campo vacío para que el usuario pueda seleccionar manualmente
             setFormData(prev => ({
               ...prev,
               funcAsgrdra: '',
@@ -2267,8 +2068,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       })
       .catch(error => {
         if (error.name === 'AbortError') {
-          console.log('⚠️ [Cargar Funcionarios - Modo Edición] Petición cancelada');
-          return;
+return;
         }
         console.error('❌ [Cargar Funcionarios - Modo Edición] Error cargando funcionarios:', error);
         setFuncionarios([]);
@@ -2281,8 +2081,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
             label: etiquetaActual || valorActual
           };
           setFuncionarios([funcionarioFallback]);
-          console.log('⚠️ [Cargar Funcionarios - Modo Edición] Usando funcionario de fallback:', funcionarioFallback);
-        }
+}
       });
 
     // Cleanup: cancelar la petición si el componente se desmonta o cambian las dependencias
@@ -2368,19 +2167,13 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
     });
 
     if (ciudadEncontrada && formData.ciudadSiniestro !== ciudadEncontrada.value) {
-      console.log('🔄 [FormularioCasoComplex] Sincronizando ciudad:', {
-        ciudadGuardada,
-        ciudadEncontrada: ciudadEncontrada.value,
-        label: ciudadEncontrada.label
-      });
-      setFormData(prev => ({
+setFormData(prev => ({
         ...prev,
         ciudadSiniestro: ciudadEncontrada.value
       }));
     } else if (!ciudadEncontrada && ciudadGuardada) {
       // Si no se encuentra pero hay un valor, mantenerlo (puede ser un valor válido que no está en la lista)
-      console.log('⚠️ [FormularioCasoComplex] Ciudad no encontrada en lista, manteniendo valor guardado:', ciudadGuardada);
-    }
+}
   }, [ciudades, initialData, formData.ciudadSiniestro]);
 
   useEffect(() => {
@@ -2496,8 +2289,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
         return res.json();
       })
       .then(data => {
-        console.log("Intermediarios obtenidos desde API:", data);
-        // Manejar ambos formatos: {success: true, data: [...]} o [...]
+// Manejar ambos formatos: {success: true, data: [...]} o [...]
         let intermediariosList = [];
         if (data.success && Array.isArray(data.data)) {
           intermediariosList = data.data;
@@ -2673,10 +2465,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
   // Handlers para autoguardado
   const handleRestoreData = useCallback(() => {
     if (savedDataToRestore && savedDataToRestore.data) {
-      console.log('✅ Restaurando datos guardados');
-      console.log('📦 Datos a restaurar:', savedDataToRestore.data);
-      
-      // Restaurar completamente el formData (no merge, reemplazo total)
+// Restaurar completamente el formData (no merge, reemplazo total)
       setFormData({
         ...formData, // Mantener estructura base
         ...savedDataToRestore.data, // Sobrescribir con datos guardados
@@ -2685,21 +2474,18 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       setShowRestoreDialog(false);
       enableAutoSave();
       
-      console.log('✅ Restauración completa');
-      alert('✅ Datos restaurados exitosamente');
+alert('✅ Datos restaurados exitosamente');
     }
   }, [savedDataToRestore, enableAutoSave, formData]);
 
   const handleDiscardSavedData = useCallback(() => {
-    console.log('🗑️ Descartando datos guardados');
-    clearSavedData();
+clearSavedData();
     setShowRestoreDialog(false);
     setSavedDataToRestore(null);
   }, [clearSavedData]);
 
   const handleCancelRestore = useCallback(() => {
-    console.log('⏸️ Decisión de restauración pospuesta');
-    setShowRestoreDialog(false);
+setShowRestoreDialog(false);
   }, []);
 
   const handleSubmit = (e, extra = {}) => {
@@ -2757,96 +2543,29 @@ export default function FormularioCasoComplex({ initialData, onSave, onCancel, c
       const textarea = document.querySelector(`textarea[name="${campo}"]`);
       if (textarea && textarea.value !== undefined) {
         formDataConTextareas[campo] = textarea.value;
-        console.log(`📝 [handleSubmit] Capturado textarea ${campo}:`, textarea.value);
-      } else {
-        console.log(`⚠️ [handleSubmit] No se encontró textarea para ${campo}`);
-      }
+} else {
+}
     });
     
-    console.log('🟦 Iniciando submit de caso complex', {
-       origen: formDataConTextareas.origen || 'nuevo',
-       resumen: {
-         id: formDataConTextareas._id,
-         numeroAjuste: formDataConTextareas.nmroAjste,
-         valorReserva: formDataConTextareas.vlorResrva,
-         valorReclamo: formDataConTextareas.vlorReclmo,
-         montoIndemnizar: formDataConTextareas.montoIndmzar,
-         descripcionSiniestro: formDataConTextareas.descSinstro
-       }
-     });
-     console.log('🟦 handleSubmit disparado', {
-       tieneOnSave: !!onSave,
-       extra,
-       resumen: {
-         id: formDataConTextareas._id,
-         numeroAjuste: formDataConTextareas.nmroAjste,
-         aseguradora: formDataConTextareas.codiAsgrdra,
-         funcionario: formDataConTextareas.funcAsgrdra,
-         descripcionSiniestro: formDataConTextareas.descSinstro
-       }
-     });
-     if (!onSave) {
+if (!onSave) {
        alert('Guardar (sin acción definida)');
        return;
      }
     const payload = { ...mapFormDataToBackend(formDataConTextareas), ...extra };
-    console.log('🟦 Payload listo para guardar', payload);
-    console.log('🔍 [handleSubmit] Verificando fecha_control_horas en payload:', {
-      fecha_control_horas: payload.fecha_control_horas,
-      fcha_control_horas: payload.fcha_control_horas,
-      fchaControlHoras: payload.fchaControlHoras,
-      fechaControlHoras: payload.fechaControlHoras,
-      formData_fecha_control_horas: formDataConTextareas.fecha_control_horas
-    });
-    console.log('🔍 [handleSubmit] Verificando fecha_envio_control_horas en payload:', {
-      fecha_envio_control_horas: payload.fecha_envio_control_horas,
-      fcha_envio_control_horas: payload.fcha_envio_control_horas,
-      fchaEnvioControlHoras: payload.fchaEnvioControlHoras,
-      fechaEnvioControlHoras: payload.fechaEnvioControlHoras,
-      formData_fecha_envio_control_horas: formDataConTextareas.fecha_envio_control_horas
-    });
-    console.log('🔍 [handleSubmit] Verificando campos en payload:', {
-      descripcionEstado: payload.descripcionEstado,
-      observacionesPendientes: payload.observacionesPendientes,
-      historialDocs: payload.historialDocs ? `Array con ${payload.historialDocs.length} elementos` : 'vacío o undefined',
-      fchaInfoPrelm: payload.fchaInfoPrelm,
-      fchaInfoFnal: payload.fchaInfoFnal,
-      fchaSoliDocu: payload.fchaSoliDocu,
-      fchaRepoActi: payload.fchaRepoActi,
-      fchaPresentacionCifras: payload.fchaPresentacionCifras,
-      fchaAceptacionCifrasAseguradora: payload.fchaAceptacionCifrasAseguradora,
-      fchaEnvioFiniquito: payload.fchaEnvioFiniquito,
-      fchaContIni: payload.fchaContIni,
-      fchaInspccion: payload.fchaInspccion
-    });
-    console.log('📅 [handleSubmit] Fechas en formData original:', {
-      fchaInfoPrelm: formDataConTextareas.fchaInfoPrelm,
-      fchaInfoFnal: formDataConTextareas.fchaInfoFnal,
-      fchaSoliDocu: formDataConTextareas.fchaSoliDocu,
-      fchaRepoActi: formDataConTextareas.fchaRepoActi,
-      fchaPresentacionCifras: formDataConTextareas.fchaPresentacionCifras,
-      fchaAceptacionCifrasAseguradora: formDataConTextareas.fchaAceptacionCifrasAseguradora,
-      fchaEnvioFiniquito: formDataConTextareas.fchaEnvioFiniquito,
-      fchaContIni: formDataConTextareas.fchaContIni,
-      fchaInspccion: formDataConTextareas.fchaInspccion
-    });
-    
-    // Ejecutar onSave y limpiar autoguardado después de éxito
+// Ejecutar onSave y limpiar autoguardado después de éxito
     try {
       const result = onSave(payload);
       
       // Si onSave devuelve una promesa, esperar a que se resuelva
       if (result && typeof result.then === 'function') {
         result.then(() => {
-          console.log('✅ Guardado exitoso, limpiando autoguardado');
-          clearSavedData();
+clearSavedData();
         }).catch((error) => {
           console.error('❌ Error al guardar, manteniendo autoguardado:', error);
         });
       } else {
         // Si no es una promesa, limpiar inmediatamente
-        console.log('✅ Guardado completado, limpiando autoguardado');
-        clearSavedData();
+clearSavedData();
       }
     } catch (error) {
       console.error('❌ Error en handleSubmit:', error);

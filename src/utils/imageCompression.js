@@ -49,13 +49,10 @@ export class ImageCompression {
             
             // Verificar tamaño final
             const sizeKB = blob.size / 1024;
-            console.log(`📸 Imagen comprimida: ${file.name} - ${sizeKB.toFixed(1)}KB (original: ${(file.size / 1024).toFixed(1)}KB)`);
-            
-            // Si aún es muy grande, reducir calidad
+// Si aún es muy grande, reducir calidad
             if (sizeKB > maxSizeKB && quality > 0.1) {
               const newQuality = Math.max(0.1, quality - 0.2);
-              console.log(`🔄 Reduciendo calidad a ${newQuality} para ${file.name}`);
-              this.compressImage(file, maxWidth, maxHeight, newQuality, maxSizeKB)
+this.compressImage(file, maxWidth, maxHeight, newQuality, maxSizeKB)
                 .then(resolve)
                 .catch(reject);
               return;
@@ -93,9 +90,7 @@ export class ImageCompression {
       maxSizeKB = 500
     } = options;
     
-    console.log(`🔄 Comprimiendo ${files.length} imágenes...`);
-    
-    const compressedFiles = await Promise.all(
+const compressedFiles = await Promise.all(
       files.map(async (file) => {
         try {
           return await this.compressImage(file, maxWidth, maxHeight, quality, maxSizeKB);
@@ -110,11 +105,7 @@ export class ImageCompression {
     const totalSizeCompressed = compressedFiles.reduce((sum, file) => sum + file.size, 0);
     const compressionRatio = ((totalSizeOriginal - totalSizeCompressed) / totalSizeOriginal * 100).toFixed(1);
     
-    console.log(`✅ Compresión completada: ${compressionRatio}% de reducción de tamaño`);
-    console.log(`📊 Tamaño original: ${(totalSizeOriginal / 1024).toFixed(1)}KB`);
-    console.log(`📊 Tamaño comprimido: ${(totalSizeCompressed / 1024).toFixed(1)}KB`);
-    
-    return compressedFiles;
+return compressedFiles;
   }
   
   /**

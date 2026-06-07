@@ -120,15 +120,13 @@ export default function MiCuenta() {
 
   // Función para manejar errores de carga de imagen
   const handleImageError = () => {
-    console.log('❌ Error cargando imagen de perfil, usando placeholder');
-    setFotoError(true);
+setFotoError(true);
     setFotoLoaded(false);
   };
 
   // Función para manejar carga exitosa de imagen
   const handleImageLoad = () => {
-    console.log('✅ Imagen de perfil cargada exitosamente');
-    setFotoError(false);
+setFotoError(false);
     setFotoLoaded(true);
   };
 
@@ -140,56 +138,11 @@ export default function MiCuenta() {
     }
 
     const tipoUsuario = localStorage.getItem("tipoUsuario") || "normal";
-    console.log('👤 Mi Cuenta - Datos iniciales:', {
-      token: token ? 'SÍ' : 'NO',
-      tipoUsuario,
-      localStorage: {
-        token: localStorage.getItem("token") ? 'SÍ' : 'NO',
-        tipoUsuario: localStorage.getItem("tipoUsuario"),
-        rol: localStorage.getItem("rol"),
-        login: localStorage.getItem("login")
-      }
-    });
-    
-    console.log('🔄 Intentando obtener perfil...');
-    console.log('📡 URL que se va a usar:', tipoUsuario === "secur" ? "/api/secur-auth/perfil" : "/api/usuarios/perfil");
-    
-    obtenerPerfil(token, tipoUsuario)
+obtenerPerfil(token, tipoUsuario)
       .then(({ data }) => {
-        console.log('✅ Perfil obtenido exitosamente:', data);
-        console.log('🎯 Tipo de datos recibidos:', typeof data);
-        console.log('📋 Propiedades del objeto:', Object.keys(data));
-        
-        // Log específico para la foto
-        console.log('📸 Información de la foto:', {
-          foto: data.foto,
-          tipoFoto: typeof data.foto,
-          fotoExiste: !!data.foto,
-          fotoLength: data.foto ? data.foto.length : 0
-        });
-        
-        // Log de los nuevos campos
-        console.log('📋 Nuevos campos del perfil:', {
-          empresa: data.empresa,
-          cedula: data.cedula,
-          tipoSangre: data.tipoSangre,
-          direccion: data.direccion,
-          telefonoFijo: data.telefonoFijo,
-          celulares: data.celulares,
-          correosElectronicos: data.correosElectronicos,
-          fechaIngreso: data.fechaIngreso,
-          cargos: data.cargos,
-          salario: data.salario,
-          tipoContrato: data.tipoContrato,
-          aportesSalud: data.aportesSalud,
-          aportesPension: data.aportesPension,
-          aportesCesantias: data.aportesCesantias,
-          aportesARL: data.aportesARL,
-          aportesCCF: data.aportesCCF,
-          evaluacionPeriodoPrueba: data.evaluacionPeriodoPrueba
-        });
-        
-        // Verificar si el usuario actual está autorizado
+// Log específico para la foto
+// Log de los nuevos campos
+// Verificar si el usuario actual está autorizado
         const loginActual = localStorage.getItem('login') || data.login;
         const cedulaActual = data.cedula || localStorage.getItem('cedula');
         const autorizado = (loginActual && USUARIOS_AUTORIZADOS.includes(loginActual)) || 
@@ -207,21 +160,18 @@ export default function MiCuenta() {
         console.error("❌ URL llamada:", err.config?.url);
         
         if (err.response?.status === 401) {
-          console.log('🔐 Token inválido - limpiando localStorage y redirigiendo');
-          localStorage.clear();
+localStorage.clear();
           navigate("/login");
         } else {
           // Si hay error, mostrar datos del localStorage como respaldo
-          console.log('⚠️ Usando datos del localStorage como respaldo');
-          const datosRespaldo = {
+const datosRespaldo = {
             name: localStorage.getItem("nombre"),
             login: localStorage.getItem("login"),
             role: localStorage.getItem("rol"),
             email: localStorage.getItem("login") + "@proserpuertos.com.co", // Asumir dominio corporativo
             active: "Y"
           };
-          console.log('📋 Datos de respaldo:', datosRespaldo);
-          setUsuario(datosRespaldo);
+setUsuario(datosRespaldo);
         }
       })
       .finally(() => {
@@ -245,9 +195,7 @@ export default function MiCuenta() {
 
     try {
       const { data } = await actualizarFoto(formData, token);
-      console.log('✅ Foto actualizada exitosamente:', data);
-      
-      // data.fotoPerfil es la URL relativa guardada en Mongo
+// data.fotoPerfil es la URL relativa guardada en Mongo
       setUsuario(u => ({ ...u, foto: data.fotoPerfil }));
       setFotoPreview("");
       setFotoError(false); // Resetear error de foto

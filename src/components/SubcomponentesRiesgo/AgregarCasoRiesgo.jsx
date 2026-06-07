@@ -242,8 +242,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
     interval: 30000, // Guardar cada 30 segundos
     excludeFields: [], // No excluir campos en este formulario
     onRestore: (savedInfo) => {
-      console.log('📦 Datos guardados encontrados, mostrando diálogo de restauración');
-      setSavedDataToRestore(savedInfo);
+setSavedDataToRestore(savedInfo);
       setShowRestoreDialog(true);
     },
   });
@@ -251,18 +250,14 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   // Activar autoguardado automáticamente en formularios nuevos
   useEffect(() => {
     if (!casoInicial?._id && !editando && !isAutoSaveEnabled) {
-      console.log('🟢 Activando autoguardado automáticamente');
-      enableAutoSave();
+enableAutoSave();
     }
   }, [casoInicial, editando, isAutoSaveEnabled, enableAutoSave]);
 
   // Handlers para autoguardado
   const handleRestoreData = useCallback(() => {
     if (savedDataToRestore && savedDataToRestore.data) {
-      console.log('✅ Restaurando datos guardados');
-      console.log('📦 Datos a restaurar:', savedDataToRestore.data);
-      
-      // Restaurar completamente el formData
+// Restaurar completamente el formData
       setFormData({
         ...formData, // Mantener estructura base
         ...savedDataToRestore.data, // Sobrescribir con datos guardados
@@ -271,29 +266,24 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
       setShowRestoreDialog(false);
       enableAutoSave();
       
-      console.log('✅ Restauración completa');
-      alert('✅ Datos restaurados exitosamente');
+alert('✅ Datos restaurados exitosamente');
     }
   }, [savedDataToRestore, enableAutoSave, formData]);
 
   const handleDiscardSavedData = useCallback(() => {
-    console.log('🗑️ Descartando datos guardados');
-    clearSavedData();
+clearSavedData();
     setShowRestoreDialog(false);
     setSavedDataToRestore(null);
   }, [clearSavedData]);
 
   const handleCancelRestore = useCallback(() => {
-    console.log('⏸️ Decisión de restauración pospuesta');
-    setShowRestoreDialog(false);
+setShowRestoreDialog(false);
   }, []);
 
   useEffect(() => {
-    console.log('🔍 Cargando estados de riesgo...');
-    axios.get('/api/estados/estados-riesgos')
+axios.get('/api/estados/estados-riesgos')
       .then(res => {
-        console.log('✅ Estados cargados:', res.data);
-        const lista = Array.isArray(res.data) ? res.data : [];
+const lista = Array.isArray(res.data) ? res.data : [];
         const ordenada = ordenarLista(lista, estado =>
           estado?.descEstdo ?? estado?.descEstado ?? estado?.descripcion ?? ''
         );
@@ -306,11 +296,9 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   }, []);
 
   useEffect(() => {
-    console.log('🔍 Cargando clientes (aseguradoras)...');
-    axios.get('/api/clientes')
+axios.get('/api/clientes')
       .then(res => {
-        console.log('✅ Clientes cargados:', res.data);
-        // Extraer aseguradoras únicas por codiAsgrdra
+// Extraer aseguradoras únicas por codiAsgrdra
         const mapa = new Map();
         res.data.forEach(c => {
           if (c.codiAsgrdra && c.rzonSocial) {
@@ -318,8 +306,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
           }
         });
         const aseguradorasUnicas = Array.from(mapa, ([codiAsgrdra, rzonSocial]) => ({ codiAsgrdra, rzonSocial }));
-        console.log('✅ Aseguradoras únicas:', aseguradorasUnicas);
-        const ordenadas = ordenarLista(aseguradorasUnicas, (aseg) => aseg?.rzonSocial ?? '');
+const ordenadas = ordenarLista(aseguradorasUnicas, (aseg) => aseg?.rzonSocial ?? '');
         setAseguradoras(ordenadas);
       })
       .catch((error) => {
@@ -329,16 +316,14 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   }, []);
 
   useEffect(() => {
-    console.log('🔍 Cargando responsables...');
-    axios.get('/api/responsables')
+axios.get('/api/responsables')
       .then(res => {
         const data = res.data?.data && Array.isArray(res.data.data)
           ? res.data.data
           : Array.isArray(res.data)
             ? res.data
             : [];
-        console.log('✅ Responsables cargados:', data);
-        const opciones = data
+const opciones = data
           .map(r => ({
             codiRespnsble: r.codiRespnsble,
             nmbrRespnsble: r.nmbrRespnsble
@@ -376,11 +361,9 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   }, [casoDesdeComplex]);
 
   useEffect(() => {
-    console.log('🔍 Cargando clasificaciones de riesgo...');
-    axios.get('/api/estados/clasificaciones-riesgo')
+axios.get('/api/estados/clasificaciones-riesgo')
       .then(res => {
-        console.log('✅ Clasificaciones cargadas:', res.data);
-        const opciones = res.data
+const opciones = res.data
           .map(c => ({ codiIdentificador: c.codiIdentificador, rzonDescripcion: c.rzonDescripcion }))
           .filter(c => c.codiIdentificador && c.rzonDescripcion);
         setClasificaciones(ordenarLista(opciones, (clasificacion) => clasificacion.rzonDescripcion));
@@ -392,11 +375,9 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   }, []);
 
   useEffect(() => {
-    console.log('🔍 Cargando ciudades...');
-    axios.get('/api/ciudades/ciudades')
+axios.get('/api/ciudades/ciudades')
       .then(res => {
-        console.log('✅ Ciudades cargadas:', res.data);
-        // Mapeo para react-select: value = codiMunicipio, label = descMunicipio - descDepto
+// Mapeo para react-select: value = codiMunicipio, label = descMunicipio - descDepto
         const opciones = res.data.map(c => ({
           value: c.codiMunicipio,
           label: `${c.descMunicipio} - ${c.descDepto}`,
@@ -510,15 +491,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
 
   // Log para mostrar el estado final de los datos cargados
   useEffect(() => {
-    console.log('📊 Estado final de datos cargados:', {
-      estados: estados.length,
-      aseguradoras: aseguradoras.length,
-      responsables: responsables.length,
-      clasificaciones: clasificaciones.length,
-      ciudades: ciudades.length,
-      funcionarios: funcionarios.length
-    });
-  }, [estados, aseguradoras, responsables, clasificaciones, ciudades, funcionarios]);
+}, [estados, aseguradoras, responsables, clasificaciones, ciudades, funcionarios]);
 
 
   const onEditarCaso = (caso, idx) => {
@@ -826,8 +799,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
         await cargarCasos?.();
         alert('✅ Caso de riesgo actualizado correctamente.');
         // Limpiar autoguardado después de guardado exitoso
-        console.log('✅ Guardado exitoso, limpiando autoguardado');
-        clearSavedData();
+clearSavedData();
         if (onClose) onClose();
       } catch (err) {
         console.error('❌ Error actualizando caso de riesgo:', err);
@@ -838,8 +810,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
       try {
         await agregarCaso(nuevoCaso);
         // Limpiar autoguardado después de guardado exitoso
-        console.log('✅ Caso agregado exitosamente, limpiando autoguardado');
-        clearSavedData();
+clearSavedData();
       } catch (err) {
         console.error('❌ Error agregando caso de riesgo:', err);
         // Mantener autoguardado en caso de error
@@ -861,15 +832,12 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
       
       if (!casoId || casoId === '') {
         // Si no tiene ID, guardar el caso primero
-        console.log('💾 Guardando caso antes de iniciar inspección...');
-        const nuevoCaso = construirPayloadRiesgo(formData);
+const nuevoCaso = construirPayloadRiesgo(formData);
         const response = await axios.post(`${BASE_URL}/api/riesgos`, crearFormDataDesdePayload(nuevoCaso));
         
         if (response.data && response.data.riesgo) {
           casoId = response.data.riesgo._id || response.data.riesgo.id_riesgo;
-          console.log('✅ Caso guardado con ID:', casoId);
-          
-          // Actualizar formData con el ID del caso guardado
+// Actualizar formData con el ID del caso guardado
           setFormData(prev => ({
             ...prev,
             _id: casoId,
@@ -884,19 +852,15 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
           throw new Error('No se recibió ID del caso guardado');
         }
       } else {
-        console.log('✅ Caso ya guardado con ID:', casoId);
-      }
+}
 
       // 2. Verificar si ya existe un registro en el historial para este caso
-      console.log('🔍 Verificando si el caso ya existe en el historial...');
-      let historialExistente = null;
+let historialExistente = null;
       let datosParaInspeccion = { ...formData };
 
       try {
         const historialesDelCaso = await historialService.obtenerFormulariosPorCaso(casoId);
-        console.log('📋 Historiales encontrados para el caso:', historialesDelCaso);
-        
-        // Buscar si hay un historial de tipo RIESGOS para este caso
+// Buscar si hay un historial de tipo RIESGOS para este caso
         if (historialesDelCaso && historialesDelCaso.formularios && Array.isArray(historialesDelCaso.formularios)) {
           historialExistente = historialesDelCaso.formularios.find(
             h => h.tipo === TIPOS_FORMULARIOS.RIESGOS
@@ -908,8 +872,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
         }
 
         if (historialExistente) {
-          console.log('✅ Historial existente encontrado, usando datos guardados:', historialExistente);
-          // Usar los datos del historial existente
+// Usar los datos del historial existente
           if (historialExistente.datos) {
             datosParaInspeccion = {
               ...datosParaInspeccion,
@@ -918,9 +881,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
           }
         } else {
           // 3. Si no existe, crear nuevo registro en el historial
-          console.log('📝 No existe historial, creando nuevo registro...');
-          
-          // Generar numeroCaso y carpetaCaso basados en el número de riesgo
+// Generar numeroCaso y carpetaCaso basados en el número de riesgo
           const numeroRiesgo = formData.nmroRiesgo || `RIESGO-${Date.now()}`;
           const numeroCaso = numeroRiesgo;
           const carpetaCaso = `Caso_${numeroCaso}_${new Date().toISOString().split('T')[0]}`;
@@ -952,8 +913,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
           );
 
           await historialService.guardarFormulario(formularioHistorial);
-          console.log('✅ Nuevo registro creado en historial exitosamente');
-        }
+}
       } catch (historialError) {
         console.warn('⚠️ Error al verificar historial, continuando con creación nueva:', historialError);
         // Si hay error al verificar, crear uno nuevo por seguridad
@@ -1065,19 +1025,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
         ? (typeof datosParaInspeccion.clasificacion === 'object' ? datosParaInspeccion.clasificacion.label : datosParaInspeccion.clasificacion)
         : '';
 
-      console.log('📤 Datos preparados para inspección:', {
-        nombreEmpresa,
-        direccionCompleta,
-        ciudadSiniestro,
-        municipioNombre,
-        departamentoSiniestro,
-        aseguradoraNombre,
-        aseguradora: datosParaInspeccion.aseguradora,
-        quienSolicitaNombre,
-        clasificacionNombre
-      });
-
-      // 5. Navegar al formulario de inspección con los datos relevantes
+// 5. Navegar al formulario de inspección con los datos relevantes
     navigate('/formularioinspeccion', {
       state: {
           ...datosParaInspeccion,

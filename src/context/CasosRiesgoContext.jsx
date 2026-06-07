@@ -43,13 +43,11 @@ export const CasosRiesgoProvider = ({ children }) => {
       }
 
       setCasos(acumulado);
-      console.log(`✅ Casos de riesgo cargados: ${acumulado.length}`);
-    } catch (err) {
+} catch (err) {
       console.error("Error al cargar casos de riesgo:", err);
       // Si hay error, intentar con menos registros
       if (err.code === 'ECONNABORTED') {
-        console.log('⚠️ Timeout detectado, intentando con menos registros...');
-        try {
+try {
           const pageLimit = 500;
           const maxTotal = 5000;
           let skip = 0;
@@ -66,8 +64,7 @@ export const CasosRiesgoProvider = ({ children }) => {
           }
 
           setCasos(acumulado);
-          console.log(`✅ Casos de riesgo cargados (reducido): ${acumulado.length}`);
-        } catch (err2) {
+} catch (err2) {
           console.error("Error al cargar casos de riesgo (intento reducido):", err2);
           setCasos([]);
         }
@@ -79,9 +76,7 @@ export const CasosRiesgoProvider = ({ children }) => {
 
   const agregarCaso = async (nuevoCaso) => {
     try {
-      console.log('📝 DATOS A ENVIAR DESDE FRONTEND:', JSON.stringify(nuevoCaso, null, 2));
-      
-      let dataToSend = nuevoCaso;
+let dataToSend = nuevoCaso;
       // Si hay archivos adjuntos, usar FormData
       const formData = new FormData();
       let hasFile = false;
@@ -97,13 +92,9 @@ export const CasosRiesgoProvider = ({ children }) => {
         dataToSend = formData;
       }
       
-      console.log('📤 ENVIANDO AL BACKEND:', dataToSend);
+const response = await api.post(`${BASE_URL}/api/riesgos`, dataToSend);
       
-      const response = await api.post(`${BASE_URL}/api/riesgos`, dataToSend);
-      
-      console.log('✅ RESPUESTA DEL BACKEND:', response.data);
-      
-      // Mostrar notificación de éxito
+// Mostrar notificación de éxito
       if (response.data.success) {
         alert(`✅ ${response.data.message}`);
       }

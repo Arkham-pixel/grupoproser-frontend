@@ -85,11 +85,7 @@ export default function EditarPerfilUsuario() {
   const esAdminOSoporte = usuarioActual.rol === 'admin' || usuarioActual.rol === 'soporte';
 
   // Para desarrollo - mostrar información del usuario actual
-  console.log('Usuario actual:', usuarioActual);
-  console.log('Rol del usuario:', usuarioActual.rol);
-  console.log('¿Es admin o soporte?:', esAdminOSoporte);
-
-  if (!esAdminOSoporte) {
+if (!esAdminOSoporte) {
     return (
       <div className="container mx-auto p-2 sm:p-4">
         <div className="bg-red-50 border border-red-200 rounded-md p-3 sm:p-4">

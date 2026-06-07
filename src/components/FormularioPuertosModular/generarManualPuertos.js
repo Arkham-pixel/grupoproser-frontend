@@ -17,9 +17,7 @@ import { saveAs } from "file-saver";
  * Función para generar el manual de uso del formulario de puertos en formato Word
  */
 export const generarManualPuertos = async () => {
-  console.log('🚀 Generando manual de uso del formulario de puertos...');
-  
-  const docContent = [];
+const docContent = [];
 
   // Título principal
   docContent.push(
@@ -2176,8 +2174,7 @@ export const generarManualPuertos = async () => {
     const blob = await Packer.toBlob(doc);
     const nombreArchivo = `Manual_Formulario_Puertos_${new Date().getTime()}.docx`;
     saveAs(blob, nombreArchivo);
-    console.log('✅ Manual generado exitosamente:', nombreArchivo);
-    return { success: true, nombreArchivo };
+return { success: true, nombreArchivo };
   } catch (error) {
     console.error('❌ Error al generar manual:', error);
     throw error;

@@ -298,10 +298,7 @@ export default function InfraestructuraPuertos({ formData, onInputChange, cargan
             coordenadasIniciales={formData.coordenadasRiesgo}
             direccionInicial={formData.direccionRiesgo}
             onMapReady={(map) => {
-              if (map) {
-                console.log('✅ Mapa Google Earth listo');
-              }
-            }}
+}}
             onMapaChange={(datos) => {
               if (datos.coordenadas) {
                 onInputChange('coordenadasRiesgo', datos.coordenadas);

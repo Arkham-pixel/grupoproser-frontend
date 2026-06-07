@@ -22,19 +22,11 @@ export default function AutoSaveNotification({
 
   // Log para debugging
   useEffect(() => {
-    console.log('🔍 AutoSaveNotification renderizado con:', {
-      isEnabled,
-      showEnablePrompt,
-      showPrompt,
-      hasUnsavedChanges,
-      saveStatus
-    });
-  }, [isEnabled, showEnablePrompt, showPrompt, hasUnsavedChanges, saveStatus]);
+}, [isEnabled, showEnablePrompt, showPrompt, hasUnsavedChanges, saveStatus]);
 
   // Actualizar showPrompt cuando cambia showEnablePrompt
   useEffect(() => {
-    console.log('📢 showEnablePrompt cambió a:', showEnablePrompt);
-    setShowPrompt(showEnablePrompt);
+setShowPrompt(showEnablePrompt);
   }, [showEnablePrompt]);
 
   // Mostrar notificación temporalmente cuando se guarda

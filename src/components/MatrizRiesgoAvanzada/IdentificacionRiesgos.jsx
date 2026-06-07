@@ -365,10 +365,7 @@ const IdentificacionRiesgos = ({ datos, onDatosChange }) => {
       fechaFinalizacion: new Date().toISOString()
     };
 
-    console.log('IdentificacionRiesgos - Finalizando identificación con', riesgos.length, 'riesgos');
-    console.log('IdentificacionRiesgos - Datos finalizados:', datosFinalizados);
-    
-    onDatosChange(datosFinalizados);
+onDatosChange(datosFinalizados);
     
     alert(`✅ Identificación Finalizada!\n\n📊 Resumen:\n• Total de Riesgos: ${riesgos.length}\n• Procesos Únicos: ${new Set(riesgos.map(r => r.nombreProceso)).size}\n• Tipos de Proceso: ${new Set(riesgos.map(r => r.tipoProceso)).size}\n\nLos riesgos están listos para ser valorados en la siguiente pestaña.`);
   };
@@ -412,9 +409,7 @@ const IdentificacionRiesgos = ({ datos, onDatosChange }) => {
     });
     
     const todosLosRiesgos = [...riesgos, ...nuevosRiesgos];
-    console.log('IdentificacionRiesgos - Riesgos agregados:', nuevosRiesgos);
-    console.log('IdentificacionRiesgos - Total de riesgos:', todosLosRiesgos);
-    setRiesgos(todosLosRiesgos);
+setRiesgos(todosLosRiesgos);
     onDatosChange({ ...datosSeguros, riesgos: todosLosRiesgos });
     
     // Limpiar formulario - mantener solo una fila vacía

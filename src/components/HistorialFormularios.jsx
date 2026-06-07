@@ -108,8 +108,7 @@ export default function HistorialFormularios() {
 
           const data = await response.json();
           setListaUsuarios(data.usuarios || []);
-          console.log('✅ Usuarios cargados:', data.usuarios?.length || 0);
-        } catch (error) {
+} catch (error) {
           console.error('❌ Error cargando usuarios:', error);
           setListaUsuarios([]);
         } finally {
@@ -177,18 +176,12 @@ export default function HistorialFormularios() {
         return;
       }
       
-      console.log('📤 Iniciando exportación de:', formulario.archivo.nombre);
-      console.log('🔍 ID del formulario:', formularioId);
-      console.log('🔍 Información del archivo:', formulario.archivo);
-      
-      // Mostrar indicador de carga
+// Mostrar indicador de carga
       setExportando(prev => ({ ...prev, [formularioId]: true }));
       
       // Si el formulario ya existe en la base de datos (tiene ID), solo descargarlo
       // No necesitamos guardarlo de nuevo, ya está en la BD
-      console.log('⬇️ Descargando archivo del formulario existente...');
-      
-      // Descargar el archivo directamente
+// Descargar el archivo directamente
       await descargarFormulario(formularioId);
       
       // Mostrar mensaje de éxito
@@ -242,12 +235,8 @@ export default function HistorialFormularios() {
   // Función para editar formulario
   const handleEditarFormulario = async (formulario) => {
     try {
-      console.log('🔍 Obteniendo formulario para editar:', formulario.id);
-      
-      const formularioCompleto = await obtenerFormulario(formulario.id);
-      console.log('✅ Formulario obtenido para editar:', formularioCompleto);
-      
-      // Redirección según el tipo de formulario
+const formularioCompleto = await obtenerFormulario(formulario.id);
+// Redirección según el tipo de formulario
       let rutaEdicion = '';
       let mensajeInfo = '';
       
@@ -342,13 +331,9 @@ export default function HistorialFormularios() {
       // Mostrar indicador de carga
       setRegenerando(prev => ({ ...prev, [formularioId]: true }));
 
-      console.log('🔄 Regenerando documento desde la base de datos...', formularioId);
-
-      // Obtener formulario completo con todos los datos
+// Obtener formulario completo con todos los datos
       const formularioCompleto = await obtenerFormulario(formularioId);
-      console.log('✅ Formulario completo obtenido:', formularioCompleto);
-
-      if (!formularioCompleto || !formularioCompleto.datos) {
+if (!formularioCompleto || !formularioCompleto.datos) {
         throw new Error('No se pudieron obtener los datos del formulario');
       }
 
@@ -1072,8 +1057,7 @@ export default function HistorialFormularios() {
         });
         
         if (response.ok) {
-          console.log('✅ Archivo regenerado y guardado en el servidor');
-          alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido guardado en el servidor.`);
+alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido guardado en el servidor.`);
         } else {
           console.warn('⚠️ El documento se descargó pero no se pudo guardar en el servidor');
           alert(`✅ Documento regenerado y descargado.\n\n⚠️ Nota: El archivo se descargó pero no se pudo guardar automáticamente en el servidor.`);
@@ -1112,17 +1096,13 @@ export default function HistorialFormularios() {
   // Función para ver detalles del formulario
   const handleVerDetalles = async (formulario) => {
     try {
-      console.log('🔍 Obteniendo detalles del formulario:', formulario.id);
-      
-      // Mostrar indicador de carga
+// Mostrar indicador de carga
       setModalDetalles({ visible: true, formulario: null });
       
       // Obtener formulario completo
       const formularioCompleto = await obtenerFormulario(formulario.id);
       
-      console.log('✅ Formulario completo obtenido:', formularioCompleto);
-      
-      // Validar que el formulario tenga la estructura esperada
+// Validar que el formulario tenga la estructura esperada
       if (!formularioCompleto || typeof formularioCompleto !== 'object') {
         throw new Error('Formulario no válido recibido del servidor');
       }
@@ -1163,9 +1143,7 @@ export default function HistorialFormularios() {
   // Función para ver formularios de la misma carpeta
   const handleVerCarpeta = async (casoId) => {
     try {
-      console.log('📁 Obteniendo formularios de la carpeta:', casoId);
-      
-      // Navegar a la ruta de ajuste con el casoId
+// Navegar a la ruta de ajuste con el casoId
       navigate(`/ajuste?casoId=${casoId}`);
       
     } catch (error) {

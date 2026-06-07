@@ -31,6 +31,7 @@ import historialService, { TIPOS_FORMULARIOS } from '../../services/historialSer
 import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios.js';
 import colombia from '../../data/colombia.json';
 import API_CONFIG, { getUploadsUrlCandidates, resolveUploadsUrl } from '../../config/apiConfig.js';
+import { isStoredFileReference } from '../../utils/storedFilePath.js';
 import { getAutofillAjusteDesdeComplex, getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
 import { resolverFechaReporteDesdeAsignacion } from '../../utils/prefillAjusteDesdeCasoComplex.js';
 import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
@@ -90,19 +91,11 @@ export default function FormularioAjuste() {
   const [formularioId, setFormularioId] = useState(id);
   
   // Log para verificar el ID al cargar el componente
-  console.log('🔍 === CARGA DEL COMPONENTE ===');
-  console.log('🔍 ID obtenido de useParams:', id);
-  console.log('🔍 Tipo de ID:', typeof id);
-  console.log('🔍 URL actual:', window.location.href);
-  console.log('🔍 Pathname:', window.location.pathname);
-  console.log('🔍 === FIN CARGA ===');
-  
-  // Actualizar formularioId cuando id cambie
+// Actualizar formularioId cuando id cambie
   useEffect(() => {
     if (id && id !== 'nuevo') {
       setFormularioId(id);
-      console.log('✅ ID actualizado en estado:', id);
-    }
+}
   }, [id]);
 
   // Evitar duplicados: si entran a /ajuste y ya existe un formulario del mismo numeroAjuste, redirigir a editar.
@@ -138,10 +131,7 @@ export default function FormularioAjuste() {
   }, [id, location.state, navigate]);
   
   // Verificar que TIPOS_FORMULARIOS esté disponible
-  console.log('🔍 TIPOS_FORMULARIOS disponibles:', TIPOS_FORMULARIOS);
-  console.log('🔍 TIPOS_FORMULARIOS.AJUSTE:', TIPOS_FORMULARIOS?.AJUSTE);
-  
-  const [formData, setFormData] = useState({
+const [formData, setFormData] = useState({
     destinatario: '',
     cargo: '',
     empresa: '',
@@ -358,14 +348,11 @@ export default function FormularioAjuste() {
 
   // Cargar firmas desde localStorage al inicializar el formulario
   useEffect(() => {
-    console.log('🔄 Cargando firmas desde localStorage...');
-    
-    // Cargar firma de Iskharly (localStorage o imagen por defecto del proyecto)
+// Cargar firma de Iskharly (localStorage o imagen por defecto del proyecto)
     const cargarFirmaIskharly = async () => {
       const firmaIskharlyGuardada = localStorage.getItem('proser_firma_isharly');
       if (firmaIskharlyGuardada) {
-        console.log('✅ Firma de Iskharly encontrada en localStorage');
-        setFormData((prev) => ({
+setFormData((prev) => ({
           ...prev,
           firmaIskharly: firmaIskharlyGuardada
         }));
@@ -381,8 +368,7 @@ export default function FormularioAjuste() {
           reader.readAsDataURL(blob);
         });
         if (base64) {
-          console.log('✅ Firma de Iskharly cargada desde imagen por defecto');
-          setFormData((prev) => ({
+setFormData((prev) => ({
             ...prev,
             firmaIskharly: base64
           }));
@@ -397,13 +383,10 @@ export default function FormularioAjuste() {
     const funcionariosGuardados = localStorage.getItem('proser_funcionarios');
     if (funcionariosGuardados) {
       const funcionarios = JSON.parse(funcionariosGuardados);
-      console.log('✅ Funcionarios encontrados en localStorage:', funcionarios.length);
-      
-      // Buscar si hay algún funcionario con firma
+// Buscar si hay algún funcionario con firma
       const funcionarioConFirma = funcionarios.find(f => f.firma);
       if (funcionarioConFirma) {
-        console.log('✅ Funcionario con firma encontrado:', funcionarioConFirma.nombre);
-        setFormData(prev => ({
+setFormData(prev => ({
           ...prev,
           firmaFuncionario: funcionarioConFirma.firma,
           funcionarioFirma: funcionarioConFirma.nombre,
@@ -428,8 +411,7 @@ export default function FormularioAjuste() {
           const datosParseados = JSON.parse(datosGuardados);
           if (datosParseados && typeof datosParseados === 'object') {
             setFormData(prev => ({ ...prev, ...datosParseados }));
-            console.log('✅ Datos de formulario cargados desde localStorage');
-          }
+}
         } catch (error) {
           console.error('Error al cargar datos guardados:', error);
           localStorage.removeItem('formularioAjuste');
@@ -449,8 +431,7 @@ export default function FormularioAjuste() {
       try {
         const datosParaGuardar = JSON.stringify(formData);
         localStorage.setItem('formularioAjuste', datosParaGuardar);
-        console.log('💾 Datos de formulario guardados en localStorage');
-      } catch (error) {
+} catch (error) {
         console.error('Error al guardar datos:', error);
         try {
           localStorage.removeItem('formularioAjuste');
@@ -485,16 +466,14 @@ export default function FormularioAjuste() {
   useEffect(() => {
     const esRutaAjuste = location.pathname.includes('/formulario-ajuste') || location.pathname.includes('/ajuste');
     if (!esRutaAjuste) {
-      console.log('🧹 Limpiando datos de localStorage al salir del formulario de ajuste');
-      localStorage.removeItem('formularioAjuste');
+localStorage.removeItem('formularioAjuste');
     }
 
     return () => {
       setTimeout(() => {
         const sigueEnRutaAjuste = window.location.pathname.includes('/formulario-ajuste') || window.location.pathname.includes('/ajuste');
         if (!sigueEnRutaAjuste) {
-          console.log('🧹 Limpiando datos de localStorage (componente desmontado)');
-          localStorage.removeItem('formularioAjuste');
+localStorage.removeItem('formularioAjuste');
         }
       }, 100);
     };
@@ -566,18 +545,11 @@ export default function FormularioAjuste() {
 
   const obtenerFormulario = async (id) => {
     try {
-      console.log('🔍 obtenerFormulario llamado con ID:', id);
-      console.log('🔍 Tipo de ID:', typeof id);
-      console.log('🔍 ID es string?', typeof id === 'string');
-      console.log('🔍 ID es objeto?', typeof id === 'object');
-      
-      if (typeof id === 'object') {
-        console.log('⚠️ ID es un objeto, extrayendo ID:', id.id || id._id || 'ID no encontrado');
-        id = id.id || id._id || id;
+if (typeof id === 'object') {
+id = id.id || id._id || id;
       }
       
-      console.log('🔍 ID final a enviar:', id);
-      return await historialService.obtenerFormulario(id);
+return await historialService.obtenerFormulario(id);
     } catch (error) {
       console.error('❌ Error obteniendo formulario:', error);
       throw error;
@@ -586,23 +558,12 @@ export default function FormularioAjuste() {
 
   // Cargar formulario existente si hay ID
   useEffect(() => {
-    console.log('🔄 useEffect ejecutado');
-    console.log('🔍 ID actual:', id);
-    console.log('🔍 ID !== "nuevo"?', id !== 'nuevo');
-    console.log('🔍 URL actual:', window.location.href);
-    console.log('🔍 Pathname en useEffect:', window.location.pathname);
-    
-    // Usar formularioId en lugar de id para mayor confiabilidad
+// Usar formularioId en lugar de id para mayor confiabilidad
     const idParaCargar = formularioId || id;
-    console.log('🔍 ID para cargar:', idParaCargar);
-    
-    if (idParaCargar && idParaCargar !== 'nuevo') {
-      console.log('✅ Condiciones cumplidas, llamando a cargarFormularioExistente');
-      cargarFormularioExistente();
+if (idParaCargar && idParaCargar !== 'nuevo') {
+cargarFormularioExistente();
     } else {
-      console.log('⏭️ No se cargará formulario existente');
-      console.log('🔍 Razón: idParaCargar =', idParaCargar, ', idParaCargar !== "nuevo" =', idParaCargar !== 'nuevo');
-    }
+}
   }, [id, formularioId]);
 
   // Cerrar menú de versiones cuando se haga clic fuera
@@ -621,32 +582,22 @@ export default function FormularioAjuste() {
 
   const cargarFormularioExistente = async () => {
     try {
-      console.log('🔄 cargarFormularioExistente iniciado');
-      
-      // Usar formularioId en lugar de id para mayor confiabilidad
+// Usar formularioId en lugar de id para mayor confiabilidad
       const idParaCargar = formularioId || id;
-      console.log('🔍 ID para cargar:', idParaCargar);
-      console.log('🔍 Tipo de ID:', typeof idParaCargar);
-      
-      setCargando(true);
+setCargando(true);
       const formulario = await obtenerFormulario(idParaCargar);
-      console.log('✅ Formulario obtenido:', formulario);
-      
-      if (formulario) {
+if (formulario) {
         // Procesar imágenes antes de establecer el estado
         let datosProcesados = formulario.datos || {};
         
         // ✅ CORREGIDO: Mantener las imágenes con sus rutas tal como vienen del servidor
         // InspeccionFotograficaAjuste se encargará de cargarlas desde el servidor automáticamente
         if (datosProcesados.imagenesInspeccion && datosProcesados.imagenesInspeccion.length > 0) {
-          console.log('📸 Imágenes de inspección cargadas desde historial:', datosProcesados.imagenesInspeccion.length);
-          
-          // Solo asegurar que cada imagen tenga un ID único
+// Solo asegurar que cada imagen tenga un ID único
           datosProcesados.imagenesInspeccion = datosProcesados.imagenesInspeccion.map((imagen, index) => {
             // Si la imagen tiene ruta (guardada en servidor), mantenerla tal cual
-            if (imagen && imagen.ruta && imagen.ruta.startsWith('/uploads/')) {
-              console.log(`✅ Imagen ${index + 1} cargada desde servidor:`, imagen.ruta);
-              return {
+            if (isStoredFileReference(imagen.ruta)) {
+return {
                 ...imagen,
                 id: imagen.id || Date.now() + index
               };
@@ -673,8 +624,7 @@ export default function FormularioAjuste() {
             return imagen;
           });
           
-          console.log('✅ Imágenes de inspección listas para cargar:', datosProcesados.imagenesInspeccion.length);
-        }
+}
         
         // ✅ CRÍTICO: Asegurar que coordenadasRiesgo y direccionRiesgo estén disponibles para el mapa
         const formDataValue = {
@@ -794,29 +744,8 @@ export default function FormularioAjuste() {
         setArchivoGenerado(formulario.archivo);
         
         // Log especial para verificar firmas al cargar
-        console.log('🔍 Verificando firmas al cargar formulario:');
-        console.log('🔍 firmaFuncionario en datos:', !!datosProcesados?.firmaFuncionario);
-        console.log('🔍 firmaIskharly en datos:', !!datosProcesados?.firmaIskharly);
-        console.log('🔍 funcionarioFirma en datos:', datosProcesados?.funcionarioFirma);
-        console.log('🔍 cargoFuncionario en datos:', datosProcesados?.cargoFuncionario);
-        
-        // Log especial para verificar que las coordenadas se cargaron correctamente
-        console.log('🗺️ Verificando coordenadas del mapa:');
-        console.log('🔍 coordenadasRiesgo:', formDataValue?.coordenadasRiesgo || 'No disponible');
-        console.log('🔍 direccionRiesgo:', formDataValue?.direccionRiesgo || 'No disponible');
-        console.log('🔍 TODOS los campos disponibles en formulario.datos:', Object.keys(datosProcesados || {}));
-        console.log('🔍 Campos relacionados con coordenadas/mapa:', {
-          coordenadasRiesgo: datosProcesados?.coordenadasRiesgo,
-          coordenadas: datosProcesados?.coordenadas,
-          direccionRiesgo: datosProcesados?.direccionRiesgo,
-          direccion: datosProcesados?.direccion,
-          ubicacion: datosProcesados?.ubicacion,
-          mapa: datosProcesados?.mapa,
-          lat: datosProcesados?.lat,
-          lng: datosProcesados?.lng
-        });
-        
-        // Cargar información de la carpeta
+// Log especial para verificar que las coordenadas se cargaron correctamente
+// Cargar información de la carpeta
         if (formulario.casoId) {
           setFormData(prev => ({
             ...prev,
@@ -840,8 +769,7 @@ export default function FormularioAjuste() {
           queueMicrotask(() => aplicarAutofillComplex(prefillGestionEditar, { overwrite: false }));
         }
 
-        console.log('✅ Formulario cargado exitosamente');
-        // Debug logs comentados para reducir ruido en consola
+// Debug logs comentados para reducir ruido en consola
       }
     } catch (error) {
       console.error('❌ Error cargando formulario:', error);
@@ -855,13 +783,7 @@ export default function FormularioAjuste() {
   // Función para manejar cambios en los campos del formulario
   const handleInputChange = (field, value) => {
     // Log especial para firmas
-    if (field === 'firmaFuncionario' || field === 'firmaIskharly') {
-      console.log(`🔍 handleInputChange - Campo: ${field}`);
-      console.log(`🔍 Valor recibido:`, value ? 'Firma presente' : 'Sin firma');
-      console.log(`🔍 Longitud del valor:`, value ? value.length : 0);
-    }
-    
-    setFormData(prev => {
+setFormData(prev => {
       if (field === 'metadataTipoDocumento') {
         return {
           ...prev,
@@ -882,10 +804,7 @@ export default function FormularioAjuste() {
     });
     
     // Log después de actualizar el estado
-    if (field === 'firmaFuncionario' || field === 'firmaIskharly') {
-      console.log(`✅ Estado actualizado para ${field}:`, value ? 'Firma guardada' : 'Sin firma');
-    }
-  };
+};
 
   const normalizarTexto = (valor) =>
     String(valor || '')
@@ -1324,12 +1243,7 @@ export default function FormularioAjuste() {
       }
       return next;
     });
-
-    if (tieneNuevaImagen) {
-      console.log('📸 Captura del mapa lista para persistir en historial');
-    }
-    console.log('✅ Información del mapa actualizada');
-  };
+};
 
   // Función para convertir archivo a base64
   const convertirArchivoABase64 = (file) => {
@@ -1404,9 +1318,7 @@ export default function FormularioAjuste() {
       await forzarCapturaMapaAntesDePersistir();
       await new Promise((r) => setTimeout(r, 400));
 
-      console.log('🔍 Iniciando generación de PÁGINA 1 - Solo lo solicitado...');
-
-      // FORMATO DEL DOCUMENTO:
+// FORMATO DEL DOCUMENTO:
       // - Fuente: Arial en todo el documento
       // - Tamaño: 24 = 12pt (formato estándar de Word)
       // - Alineación: Justificado para texto normal, Centrado para títulos
@@ -1430,18 +1342,14 @@ export default function FormularioAjuste() {
       let firmaIskharlyDefaultBase64 = null;
       try {
         firmaIskharlyDefaultBase64 = await convertirImagenImportadaABase64(firmaIskharlyImg);
-        console.log('✅ Firma de Iskharly por defecto lista para Word');
-      } catch (e) {
+} catch (e) {
         console.warn('⚠️ No se pudo cargar FIRMAISKHARLY.png:', e);
       }
 
       // Convertir el logo a base64 para el encabezado
       let logoBase64 = null;
-      console.log('🖼️ Convirtiendo logo a base64...');
-      logoBase64 = await convertirImagenImportadaABase64(Logo);
-      console.log('✅ Logo convertido a base64');
-
-      const stripMapaBase64ParaDocx = (dataUrl) => {
+logoBase64 = await convertirImagenImportadaABase64(Logo);
+const stripMapaBase64ParaDocx = (dataUrl) => {
         if (!dataUrl || typeof dataUrl !== 'string') return '';
         const idx = dataUrl.indexOf('base64,');
         if (idx !== -1) return dataUrl.slice(idx + 7);
@@ -1619,9 +1527,7 @@ export default function FormularioAjuste() {
       let contenidoRegistroFotografico = [];
       
       if (fd.imagenesInspeccion && fd.imagenesInspeccion.length > 0) {
-        console.log(`📸 Procesando ${fd.imagenesInspeccion.length} imágenes de registro para el informe...`);
-
-        // Aquí se guardarán las filas de la tabla
+// Aquí se guardarán las filas de la tabla
         const filas = [];
 
         // Recorre las imágenes de a 2 por fila (EXACTO A FORMULARIOPUERTOS)
@@ -1638,18 +1544,15 @@ export default function FormularioAjuste() {
               if (img && img.file && typeof img.file.arrayBuffer === "function") {
                 // Si es un File object
                 imagenBuffer = await img.file.arrayBuffer();
-                console.log('✅ Imagen del registro obtenida desde File');
-              } else if (img && img.base64) {
+} else if (img && img.base64) {
                 // Si tiene base64 (EXACTO A FORMULARIOPUERTOS)
                 const base64Data = img.base64.split(',')[1] || img.base64;
                 imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-                console.log('✅ Imagen del registro obtenida desde base64');
-              } else if (img && img.preview && typeof img.preview === 'string' && img.preview.startsWith('data:image')) {
+} else if (img && img.preview && typeof img.preview === 'string' && img.preview.startsWith('data:image')) {
                 // Si tiene preview como base64 (EXACTO A FORMULARIOPUERTOS)
                 const base64Data = img.preview.split(',')[1] || img.preview;
                 imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-                console.log('✅ Imagen del registro obtenida desde preview base64');
-              } else if (img && img.ruta) {
+} else if (img && img.ruta) {
                 // Si tiene ruta del servidor, intentar cargarla (EXACTO A FORMULARIOPUERTOS)
                 try {
                   const imagenUrl = img.ruta.startsWith('http') 
@@ -1658,8 +1561,7 @@ export default function FormularioAjuste() {
                   const response = await fetch(imagenUrl);
                   if (response.ok) {
                     imagenBuffer = await response.arrayBuffer();
-                    console.log('✅ Imagen del registro obtenida desde servidor');
-                  }
+}
                 } catch (fetchError) {
                   console.error('❌ Error al cargar imagen desde servidor:', fetchError);
                 }
@@ -3862,12 +3764,9 @@ export default function FormularioAjuste() {
         }]
       });
 
-      console.log('✅ PÁGINA 1 - Solo lo solicitado creada, generando archivo...');
-
-      // Generar y descargar el documento
+// Generar y descargar el documento
       Packer.toBlob(doc).then(blob => {
-        console.log('✅ Blob generado:', { size: blob.size, type: blob.type });
-        const nombreDocx = `PAGINA_1_${fd.numeroPoliza || 'Sin_Poliza'}_${obtenerFechaActualISO()}.docx`;
+const nombreDocx = `PAGINA_1_${fd.numeroPoliza || 'Sin_Poliza'}_${obtenerFechaActualISO()}.docx`;
         setArchivoGeneradoBlob(blob);
         setArchivoGenerado({
           nombre: nombreDocx,
@@ -3886,8 +3785,7 @@ export default function FormularioAjuste() {
         document.body.removeChild(a);
         
         setCargando(false);
-        console.log('✅ PÁGINA 1 - Solo lo solicitado descargada exitosamente');
-      }).catch(error => {
+}).catch(error => {
         console.error('❌ Error al generar blob:', error);
         setError('Error al generar el archivo: ' + error.message);
         setCargando(false);
@@ -3915,18 +3813,13 @@ export default function FormularioAjuste() {
       }
 
       // Log de depuración para imágenes
-      console.log('🖼️ Estado actual de las imágenes (ajuste):');
-      console.log('📸 imagenesInspeccion:', formData.imagenesInspeccion ? formData.imagenesInspeccion.length : 0, 'imágenes');
-      if (formData.imagenesInspeccion && formData.imagenesInspeccion.length > 0) {
+if (formData.imagenesInspeccion && formData.imagenesInspeccion.length > 0) {
         formData.imagenesInspeccion.forEach((img, index) => {
-          console.log(`  📸 Imagen ${index + 1}:`, img.archivo ? `File: ${img.archivo.name} (${img.archivo.size} bytes)` : 'Sin archivo');
-        });
+});
       }
-      console.log('📸 anexos:', formData.anexos ? formData.anexos.length : 0, 'anexos');
-      if (formData.anexos && formData.anexos.length > 0) {
+if (formData.anexos && formData.anexos.length > 0) {
         formData.anexos.forEach((anexo, index) => {
-          console.log(`  📎 Anexo ${index + 1}:`, anexo.file ? `File: ${anexo.file.name} (${anexo.file.size} bytes)` : 'Sin archivo');
-        });
+});
       }
 
       // Procesar imágenes antes de guardar
@@ -3936,21 +3829,11 @@ export default function FormularioAjuste() {
       
       // Procesar imágenes de inspección
       if (datosParaGuardar.imagenesInspeccion && datosParaGuardar.imagenesInspeccion.length > 0) {
-        console.log('📸 Procesando imágenes de inspección para guardar...');
-        console.log('📸 Cantidad de imágenes:', datosParaGuardar.imagenesInspeccion.length);
-        
-        // ✅ IMPORTANTE: historialService.guardarFormulario ya procesa las imágenes automáticamente
+// ✅ IMPORTANTE: historialService.guardarFormulario ya procesa las imágenes automáticamente
         // Solo necesitamos asegurarnos de que las imágenes tengan la propiedad 'file' correcta
         datosParaGuardar.imagenesInspeccion = datosParaGuardar.imagenesInspeccion.map(imagen => {
-          console.log('🔍 Procesando imagen:', {
-            nombre: imagen.nombre,
-            tieneFile: !!imagen.file,
-            tienePreview: !!imagen.preview,
-            tieneRuta: !!imagen.ruta
-          });
-          
-          // Si ya tiene ruta (imagen guardada), mantenerla
-          if (imagen.ruta && imagen.ruta.startsWith('/uploads/')) {
+// Si ya tiene ruta (imagen guardada), mantenerla
+          if (isStoredFileReference(imagen.ruta)) {
             return {
               ruta: imagen.ruta,
               nombre: imagen.nombre || 'imagen',
@@ -3976,8 +3859,7 @@ export default function FormularioAjuste() {
           return imagen;
         });
         
-        console.log('✅ Imágenes de inspección procesadas para guardar');
-      }
+}
 
       // Generar título del formulario basado en el estado actual
       const tituloFormulario = `Informe de Ajuste - ${estadoActual === 'actaInspeccion' ? 'Acta de Inspección' :
@@ -4073,28 +3955,9 @@ export default function FormularioAjuste() {
         throw new Error('Campo "datos" es requerido');
       }
 
-      console.log('💾 Datos del formulario a guardar:', datosFormulario);
-      console.log('✅ Validación de campos requeridos exitosa');
-      
-      // Log especial para verificar firmas
-      console.log('🔍 Verificando firmas en formData:');
-      console.log('🔍 firmaFuncionario presente:', !!datosParaGuardar.firmaFuncionario);
-      console.log('🔍 firmaIskharly presente:', !!datosParaGuardar.firmaIskharly);
-      console.log('🔍 funcionarioFirma:', datosParaGuardar.funcionarioFirma);
-      console.log('🔍 cargoFuncionario:', datosParaGuardar.cargoFuncionario);
-
-      // DIAGNÓSTICO DEL PROBLEMA: Verificar el ID antes de decidir si actualizar o crear
-      console.log('🔍 === DIAGNÓSTICO DEL PROBLEMA ===');
-      console.log('🔍 ID actual:', id);
-      console.log('🔍 Tipo de ID:', typeof id);
-      console.log('🔍 ID es truthy?', !!id);
-      console.log('🔍 ID !== "nuevo"?', id !== 'nuevo');
-      console.log('🔍 Condición completa (id && id !== "nuevo"):', id && id !== 'nuevo');
-      console.log('🔍 URL actual:', window.location.href);
-      console.log('🔍 Parámetros de la URL:', window.location.pathname);
-      console.log('🔍 === FIN DIAGNÓSTICO ===');
-
-      const numeroAjusteContinuidad = resolverNumeroAjusteCanonico(
+// Log especial para verificar firmas
+// DIAGNÓSTICO DEL PROBLEMA: Verificar el ID antes de decidir si actualizar o crear
+const numeroAjusteContinuidad = resolverNumeroAjusteCanonico(
         location?.state?.nmroAjste,
         location?.state?.numeroAjuste,
         datosParaGuardar?.metadata?.numeroAjuste,
@@ -4148,10 +4011,7 @@ export default function FormularioAjuste() {
           console.warn('⚠️ No se pudo resolver continuidad previa por número de ajuste:', errorContinuidad?.message || errorContinuidad);
         }
       }
-      console.log('🔍 ID para actualizar:', idParaActualizar);
-      console.log('🔍 Tipo de ID para actualizar:', typeof idParaActualizar);
-
-      /** Trazabilidad Complex (historialDocs) + secuencia por número de ajuste */
+/** Trazabilidad Complex (historialDocs) + secuencia por número de ajuste */
       const mapearEstadoATipoDocTrazabilidad = (estado) => {
         if (estado === 'actaInspeccion') return 'inspeccion';
         if (estado === 'actualizacion') return 'ultimoDocumento';
@@ -4185,8 +4045,7 @@ export default function FormularioAjuste() {
         );
 
         if (!numeroAjuste || numeroAjuste === 'N/A') {
-          console.log('ℹ️ Sin número de ajuste válido, se omite sincronización de secuencia.');
-          return;
+return;
         }
 
         const tipoVersion = mapearEstadoATipoVersion(estadoActual);
@@ -4242,8 +4101,7 @@ export default function FormularioAjuste() {
                     complexId: idCasoResuelto
                   }
                 }));
-                console.log('🔗 complexId resuelto por autofill:', idCasoResuelto);
-              }
+}
             } catch (errAutofill) {
               console.warn('⚠️ No se pudo resolver complexId por autofill:', errAutofill?.message || errAutofill);
             }
@@ -4251,8 +4109,7 @@ export default function FormularioAjuste() {
         }
 
         if (!complexId) {
-          console.log('ℹ️ Sin complexId, se omite sincronización de historialDocs en Complex.');
-          return;
+return;
         }
 
         const tipoDoc = mapearEstadoATipoDocTrazabilidad(estadoActual);
@@ -4278,8 +4135,7 @@ export default function FormularioAjuste() {
 
         // Evitar documentos fantasma sin archivo real.
         if (!rutaArchivoReal || !nombreArchivoReal) {
-          console.log('ℹ️ Se omite trazabilidad de documento: no hay archivo Word subido en este guardado.');
-          return;
+return;
         }
 
         const docNuevo = {
@@ -4429,10 +4285,7 @@ export default function FormularioAjuste() {
         let blobParaSubir = archivoGeneradoBlob;
 
         if (!blobParaSubir) {
-          console.log(
-            '📄 Sin Word generado: se crea un .docx resumen para esta versión y se sube al servidor.'
-          );
-          blobParaSubir = await crearDocxResumenParaServidor();
+blobParaSubir = await crearDocxResumenParaServidor();
         }
 
         const fileWord = new File([blobParaSubir], nombreArchivo, {
@@ -4451,11 +4304,7 @@ export default function FormularioAjuste() {
 
       if (idParaActualizar && idParaActualizar !== 'nuevo') {
         // Actualizar formulario existente
-        console.log('🔄 Actualizando formulario existente con ID:', idParaActualizar);
-        console.log('🔍 ID antes de actualizar:', idParaActualizar);
-        console.log('🔍 Tipo de ID antes de actualizar:', typeof idParaActualizar);
-        
-        // Agregar fecha de modificación al actualizar
+// Agregar fecha de modificación al actualizar
         const datosFormularioActualizado = {
           ...datosFormulario,
           fechaModificacion: obtenerFechaHoraActualISO()
@@ -4465,9 +4314,7 @@ export default function FormularioAjuste() {
         // tras generar el Word; evita rutas inventadas o incoherentes con el fichero en disco.
         delete datosFormularioActualizado.archivo;
         
-        console.log('📅 Fecha de modificación agregada:', datosFormularioActualizado.fechaModificacion);
-        console.log('📡 Llamando a historialService.actualizarFormulario...');
-        await historialService.actualizarFormulario(idParaActualizar, datosFormularioActualizado);
+await historialService.actualizarFormulario(idParaActualizar, datosFormularioActualizado);
         let archivoSubidoActualizacion = null;
         try {
           archivoSubidoActualizacion = await subirArchivoWordSiExiste(String(idParaActualizar));
@@ -4485,29 +4332,20 @@ export default function FormularioAjuste() {
         } catch (errorTrazabilidad) {
           console.warn('⚠️ No se pudo sincronizar documento en historialDocs de Complex (no bloqueante):', errorTrazabilidad?.message || errorTrazabilidad);
         }
-        console.log('✅ Formulario actualizado exitosamente');
-        console.log('🔍 ID después de actualizar:', idParaActualizar);
-        mostrarModalConfirmacion(
+mostrarModalConfirmacion(
           'Formulario Actualizado',
           'El formulario se ha actualizado correctamente en el historial.',
           'success'
         );
         
         // No navegar, quedarse en la misma página
-        console.log('📍 Manteniendo en la misma página con ID:', idParaActualizar);
-        console.log('📍 URL actual después de actualizar:', window.location.href);
-        
-        // Verificar que el ID se mantenga
+// Verificar que el ID se mantenga
         setTimeout(() => {
-          console.log('🔍 Verificación post-actualización:');
-          console.log('🔍 ID en useParams:', id);
-          // Debug logs comentados para reducir ruido en consola
+// Debug logs comentados para reducir ruido en consola
         }, 1000);
       } else {
         // Crear nuevo formulario
-        console.log('🆕 Creando nuevo formulario');
-
-        // Guard rail: si por cualquier motivo no llegó ID en ruta, intentar continuidad justo antes de crear.
+// Guard rail: si por cualquier motivo no llegó ID en ruta, intentar continuidad justo antes de crear.
         if (numeroAjusteContinuidad) {
           try {
             const secuenciaPreCreate = await historialService.obtenerSecuenciaPorNumeroAjuste(numeroAjusteContinuidad);
@@ -4566,12 +4404,9 @@ export default function FormularioAjuste() {
         } catch (errorTrazabilidad) {
           console.warn('⚠️ No se pudo sincronizar documento en historialDocs de Complex (no bloqueante):', errorTrazabilidad?.message || errorTrazabilidad);
         }
-        console.log('✅ Nuevo formulario creado con ID:', nuevoId);
-        
-        // Validar que nuevoId sea un string válido
+// Validar que nuevoId sea un string válido
         if (nuevoId && typeof nuevoId === 'string' && nuevoId.trim() !== '') {
-          console.log('✅ ID válido, navegando a:', `/ajuste/editar/${nuevoId}`);
-          mostrarModalConfirmacion(
+mostrarModalConfirmacion(
             'Formulario Guardado',
             'El formulario se ha guardado correctamente en el historial.',
             'success',
@@ -4581,8 +4416,7 @@ export default function FormularioAjuste() {
           );
         } else if (nuevoId && typeof nuevoId === 'object' && nuevoId.id) {
           // Si es un objeto con propiedad id
-          console.log('✅ ID encontrado en objeto, navegando a:', `/ajuste/editar/${nuevoId.id}`);
-          mostrarModalConfirmacion(
+mostrarModalConfirmacion(
             'Formulario Guardado',
             'El formulario se ha guardado correctamente en el historial.',
             'success',
@@ -4605,8 +4439,7 @@ export default function FormularioAjuste() {
 
       // Si es una versión de actualización o informe final, guardar también en versiones
       if (estadoActual === 'actualizacion' || estadoActual === 'informeFinal') {
-        console.log(`💾 Guardando versión ${estadoActual} en el historial de versiones`);
-        setVersiones(prev => ({
+setVersiones(prev => ({
           ...prev,
           [estadoActual]: {
             ...datosFormulario,
@@ -4625,8 +4458,7 @@ export default function FormularioAjuste() {
           }
         }));
         
-        console.log(`✅ Versión ${estadoActual} guardada independientemente`);
-      }
+}
 
       setCargando(false);
     } catch (error) {
@@ -4640,9 +4472,7 @@ export default function FormularioAjuste() {
   const cambiarVersion = (nuevaVersion) => {
     // Cambiar el estado directamente - esto mostrará/ocultará las secciones correspondientes
     // Todos los datos se mantienen, solo cambia qué secciones se muestran
-    console.log(`🔄 Cambiando de versión: ${estadoActual} → ${nuevaVersion}`);
-    
-    // Actualizar el estado inmediatamente para que React re-renderice las secciones
+// Actualizar el estado inmediatamente para que React re-renderice las secciones
     setEstadoActual(nuevaVersion);
     
     // Actualizar también en formData para mantener consistencia (esto se guardará automáticamente)
@@ -4654,8 +4484,7 @@ export default function FormularioAjuste() {
     // Cerrar el menú después de actualizar el estado
     cerrarMenuVersiones();
     
-    console.log(`✅ Versión cambiada a: ${nuevaVersion}, secciones deberían estar visibles ahora`);
-  };
+};
 
   // Función para generar el siguiente formulario en la secuencia
   // FLUJO: Inicial → Actualización → Informe Final → Nuevo Inicial
@@ -4690,9 +4519,7 @@ export default function FormularioAjuste() {
           mensaje = 'Generando formulario PRELIMINAR...';
       }
 
-      console.log(`🔄 ${mensaje}`);
-
-      // Guardar el formulario actual antes de cambiar
+// Guardar el formulario actual antes de cambiar
       if (Object.keys(formData).some(key => formData[key])) {
         await handleGuardarFormulario();
       }
@@ -5654,8 +5481,7 @@ export default function FormularioAjuste() {
               forzarCaptura={forzarCapturaMapa}
               onMapaChange={handleMapaChange}
               onMapReady={(map) => {
-                console.log('✅ Mapa Google Earth listo en formulario de ajustes');
-                // Si hay coordenadas existentes, el mapa ya se inicializó con ellas
+// Si hay coordenadas existentes, el mapa ya se inicializó con ellas
                 // Solo necesitamos centrar si el mapa cambió después de cargar
                 if (formData.coordenadasRiesgo && map && typeof map.panTo === 'function' && typeof map.setZoom === 'function') {
                   try {
@@ -5714,8 +5540,7 @@ export default function FormularioAjuste() {
                 imagenesInspeccion: prev.imagenesInspeccion ? [...prev.imagenesInspeccion, imagenBase64] : [imagenBase64]
               }));
               
-              console.log('📸 Imagen base64 agregada desde el formulario principal');
-            }}
+}}
           />
 
           <CausaAjuste 
@@ -6495,12 +6320,7 @@ export default function FormularioAjuste() {
           />
           
           {/* Log para verificar firmas antes de renderizar */}
-          {console.log('🔍 Renderizando FirmaAjuste con firmas:', {
-            firmaFuncionario: !!formData.firmaFuncionario,
-            firmaIskharly: !!formData.firmaIskharly,
-            funcionarioFirma: formData.funcionarioFirma,
-            cargoFuncionario: formData.cargoFuncionario
-          })}
+          {}
         </div>
         )}
 
@@ -6624,12 +6444,7 @@ export default function FormularioAjuste() {
 
             <button
               onClick={() => {
-                console.log('🧪 Probando guardado...');
-                console.log('🔍 TIPOS_FORMULARIOS:', TIPOS_FORMULARIOS);
-                console.log('🔍 formData:', formData);
-                console.log('🔍 estadoActual:', estadoActual);
-                console.log('🔍 historialService:', historialService);
-              }}
+}}
               className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
             >
               <span className="mr-2">🧪</span>

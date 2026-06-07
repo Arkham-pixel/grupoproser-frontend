@@ -4,11 +4,7 @@ export class ReporteService {
   // Generar reporte HTML completo
   static async generarReporteHTML(datosMatriz, tipoReporte = 'inicial') {
     try {
-      console.log('📄 Generando reporte HTML completo...');
-      console.log('📄 Tipo de reporte recibido:', tipoReporte);
-      console.log('📄 Tipo de reporte es anual:', tipoReporte === 'anual');
-      
-      const fecha = new Date();
+const fecha = new Date();
       const fechaFormateada = fecha.toLocaleDateString('es-ES', {
         year: 'numeric',
         month: 'long',
@@ -1677,9 +1673,7 @@ export class ReporteService {
 
     // Generar sección de información completa con menú de navegación
   static generarSeccionInformacion(informacion) {
-    console.log('📋 Datos de información recibidos:', informacion);
-    
-    return `
+return `
       <div class="section">
         <h2>📋 Información General y Tutorial</h2>
         
@@ -2610,12 +2604,7 @@ export class ReporteService {
   static generarLeyendaRiesgos(valoraciones, riesgosInherentes = [], riesgosResiduales = [], tipoReporte = 'inicial') {
     return '';
 
-    console.log('📋 Generando leyenda de riesgos:', valoraciones);
-    console.log('📋 Riesgos inherentes:', riesgosInherentes);
-    console.log('📋 Riesgos residuales:', riesgosResiduales);
-    console.log('📋 Tipo de reporte:', tipoReporte);
-
-          return `
+return `
             <div class="leyenda-riesgos">
               <h3>📋 Leyenda de Riesgos</h3>
               <p>Identificación de los riesgos mostrados en los mapas de calor:</p>
@@ -2641,10 +2630,8 @@ export class ReporteService {
                           const nombre = valoracion.riesgoIdentificado || valoracion.riesgo || valoracion.descripcion || 'Riesgo no especificado';
                           // Buscar la clasificación en los riesgos inherentes calculados
                           const riesgoInherente = riesgosInherentes.find(r => r.numero === valoracion.numero);
-                          console.log(`🔍 Buscando riesgo inherente para número ${valoracion.numero}:`, riesgoInherente);
-                          const clasificacion = riesgoInherente?.clasificacion || valoracion.clasificacionInherente || valoracion.clasificacion || 0;
-                          console.log(`📊 Clasificación inherente para ${codigo}:`, clasificacion);
-                          const nivelRiesgo = this.obtenerNivelRiesgo(clasificacion);
+const clasificacion = riesgoInherente?.clasificacion || valoracion.clasificacionInherente || valoracion.clasificacion || 0;
+const nivelRiesgo = this.obtenerNivelRiesgo(clasificacion);
                           
                           return `
                             <tr>
@@ -2681,10 +2668,8 @@ export class ReporteService {
                           const nombre = valoracion.riesgoIdentificado || valoracion.riesgo || valoracion.descripcion || 'Riesgo no especificado';
                           // Buscar la clasificación en los riesgos residuales calculados
                           const riesgoResidual = riesgosResiduales.find(r => r.numero === valoracion.numero);
-                          console.log(`🔍 Buscando riesgo residual para número ${valoracion.numero}:`, riesgoResidual);
-                          const clasificacion = riesgoResidual?.clasificacion || valoracion.clasificacionResidual || valoracion.clasificacion || 0;
-                          console.log(`📊 Clasificación residual para ${codigo}:`, clasificacion);
-                          const nivelRiesgo = this.obtenerNivelRiesgo(clasificacion);
+const clasificacion = riesgoResidual?.clasificacion || valoracion.clasificacionResidual || valoracion.clasificacion || 0;
+const nivelRiesgo = this.obtenerNivelRiesgo(clasificacion);
                           
                           return `
                             <tr>
@@ -2707,9 +2692,7 @@ export class ReporteService {
 
   // Generar sección de gestión de riesgos
   static generarSeccionGestionRiesgos(gestionRiesgos) {
-    console.log('🛡️ Datos de gestión de riesgos recibidos:', gestionRiesgos);
-    
-    if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomendaciones.length === 0) {
+if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomendaciones.length === 0) {
       return '';
     }
 
@@ -2772,9 +2755,7 @@ export class ReporteService {
 
   // Generar sección de identificación completa
   static generarSeccionIdentificacion(identificacion) {
-    console.log('🔍 Datos de identificación recibidos:', identificacion);
-    
-    // Buscar riesgos en diferentes estructuras posibles
+// Buscar riesgos en diferentes estructuras posibles
     let riesgos = [];
     let columnasAdicionales = [];
     
@@ -2792,10 +2773,7 @@ export class ReporteService {
       }
     }
 
-    console.log('🔍 Riesgos encontrados:', riesgos);
-    console.log('🔍 Columnas adicionales:', columnasAdicionales);
-
-    const categoriasRiesgo = [
+const categoriasRiesgo = [
       { valor: 'estrategico', etiqueta: 'Estratégico', icono: '🎯' },
       { valor: 'cumplimiento', etiqueta: 'Cumplimiento', icono: '⚖️' },
       { valor: 'reputacional', etiqueta: 'Reputacional', icono: '📢' },
@@ -2925,11 +2903,7 @@ export class ReporteService {
 
   // Generar sección de valoración completa
   static generarSeccionValoracion(valoracion, tipoReporte = 'inicial') {
-    console.log('📊 Datos de valoración recibidos:', valoracion);
-    console.log('📊 Tipo de reporte en valoración:', tipoReporte);
-    console.log('📊 Es reporte anual:', tipoReporte === 'anual');
-    
-    // Buscar valoraciones en diferentes estructuras posibles
+// Buscar valoraciones en diferentes estructuras posibles
     let valoraciones = [];
     if (valoracion) {
       if (valoracion.valoraciones && Array.isArray(valoracion.valoraciones)) {
@@ -2941,9 +2915,7 @@ export class ReporteService {
       }
     }
 
-    console.log('📊 Valoraciones encontradas:', valoraciones);
-
-    const escalaProbabilidad = [
+const escalaProbabilidad = [
       { valor: 1, etiqueta: 'Muy Baja', color: '#28a745' },
       { valor: 2, etiqueta: 'Baja', color: '#6c757d' },
       { valor: 3, etiqueta: 'Media', color: '#ffc107' },
@@ -3172,13 +3144,7 @@ export class ReporteService {
 
   // Generar sección de mapa de calor
   static generarSeccionMapaCalor(mapaCalor, valoracion, datosMatriz = {}, tipoReporte = 'inicial') {
-    console.log('🔥 ===== INICIO MAPA DE CALOR =====');
-    console.log('🔥 datosMatriz:', datosMatriz);
-    console.log('🔥 valoracion:', valoracion);
-    console.log('🔥 Tipo de reporte en mapa de calor:', tipoReporte);
-    console.log('🔥 Es reporte anual:', tipoReporte === 'anual');
-    
-    // Obtener datos de valoración (igual que la plataforma)
+// Obtener datos de valoración (igual que la plataforma)
     const valoraciones = valoracion?.valoraciones || [];
     const probabilidades = valoracion?.probabilidad || {};
     const impactosCategoria = valoracion?.impactosCategoria || {};
@@ -3240,13 +3206,8 @@ export class ReporteService {
       return resolverProb1a5(v);
     };
     
-    console.log('🔥 Valoraciones:', valoraciones.length);
-    console.log('🔥 Probabilidades:', Object.keys(probabilidades));
-    console.log('🔥 ImpactosCategoria:', Object.keys(impactosCategoria));
-    
-    if (valoraciones.length === 0) {
-      console.log('🔥 No hay valoraciones, omitiendo mapa de calor');
-      return '';
+if (valoraciones.length === 0) {
+return '';
     }
     
     // Usar el tipo de reporte seleccionado por el usuario
@@ -3254,10 +3215,7 @@ export class ReporteService {
     const tipoValoracion = esValoracionInicial ? 'Inicial' : 'Anual';
     const fechaValoracion = this.obtenerFechaValoracion(valoracion);
     
-    console.log('📅 Tipo de valoración detectado:', tipoValoracion);
-    console.log('📅 Fecha de valoración:', fechaValoracion);
-    
-    // Calcular riesgos inherentes (igual que la plataforma)
+// Calcular riesgos inherentes (igual que la plataforma)
     const riesgosInherentes = valoraciones.map((v) => {
       const probabilidadInherente = resolverProb1a5(v);
       const impactoInherente = resolverImpactoInh(v);
@@ -3300,10 +3258,7 @@ export class ReporteService {
       });
     }
     
-    console.log('🔥 Riesgos inherentes calculados:', riesgosInherentes);
-    console.log('🔥 Riesgos residuales calculados:', riesgosResiduales);
-    
-    // Generar matrices visuales
+// Generar matrices visuales
     const matrizInherente = this.generarMatrizVisual(riesgosInherentes, 'Inherente');
     const matrizResidual = this.generarMatrizVisual(riesgosResiduales, 'Residual');
     
@@ -4354,17 +4309,13 @@ export class ReporteService {
 
   // Generar matriz visual 5x5 (HTML/PDF; alineado con MapaCalorMatriz en la app)
   static generarMatrizVisual(riesgos, tipo = '') {
-    console.log(`🎯 Generando matriz visual 5x5 (${tipo})...`);
-    console.log('🎯 Riesgos recibidos:', riesgos);
-    
-    if (!Array.isArray(riesgos)) {
+if (!Array.isArray(riesgos)) {
       console.error('🎯 Error: riesgos no es un array:', riesgos);
       return '<div class="error">Error: Datos de riesgos no válidos</div>';
     }
     
     if (riesgos.length === 0) {
-      console.log('🎯 No hay riesgos para mostrar');
-      return '<div class="no-data">No hay datos de riesgos disponibles</div>';
+return '<div class="no-data">No hay datos de riesgos disponibles</div>';
     }
     
     // Función para obtener la clase CSS según el patrón específico de la matriz (COPIA EXACTA)
@@ -4414,11 +4365,7 @@ export class ReporteService {
         const riesgosEnCelda = riesgos.filter(r => r.probabilidad === probabilidad && r.impacto === impacto);
         
         // Debug: Mostrar información de cada celda
-        if (riesgosEnCelda.length > 0) {
-          console.log(`📍 Celda (${probabilidad}, ${impacto}):`, riesgosEnCelda);
-        }
-        
-        // Convertir clase CSS a color de fondo
+// Convertir clase CSS a color de fondo
         let colorFondo = '#28a745'; // Verde por defecto
         if (claseRiesgo === 'yellow-risk') colorFondo = '#ffc107';
         else if (claseRiesgo === 'orange-risk') colorFondo = '#fd7e14';
@@ -4434,15 +4381,12 @@ export class ReporteService {
       matrizHTML += '</div>';
     }
     
-    console.log('🎯 Matriz HTML generada exitosamente');
-    return matrizHTML;
+return matrizHTML;
   }
 
   // Calcular estadísticas de valoración
   static calcularEstadisticasValoracion(valoraciones) {
-    console.log('📊 Calculando estadísticas de valoración:', valoraciones);
-    
-    if (!Array.isArray(valoraciones)) {
+if (!Array.isArray(valoraciones)) {
       console.error('📊 Error: valoraciones no es un array');
       return { total: 0, criticos: 0, altos: 0, medios: 0, bajos: 0 };
     }
@@ -4454,37 +4398,27 @@ export class ReporteService {
     let bajos = 0;
 
     valoraciones.forEach((valoracion, index) => {
-      console.log(`📊 Procesando estadística ${index}:`, valoracion);
-      
-      const probabilidad = Number(valoracion.probabilidad) || 0;
+const probabilidad = Number(valoracion.probabilidad) || 0;
       const impacto = Number(valoracion.impacto) || 0;
       const clasificacion =
         Number(valoracion.clasificacion) > 0
           ? Number(valoracion.clasificacion)
           : probabilidad * impacto;
       
-      console.log(`📊 Probabilidad: ${probabilidad}, Impacto: ${impacto}, Clasificación: ${clasificacion}`);
-      
-      // Misma escala que calcularNivelRiesgo (producto prob×impacto 1–25): ≤4 bajo, 5–9 medio, 10–16 alto, >16 crítico
+// Misma escala que calcularNivelRiesgo (producto prob×impacto 1–25): ≤4 bajo, 5–9 medio, 10–16 alto, >16 crítico
       if (clasificacion > 16) {
         criticos++;
-        console.log(`📊 ${valoracion.id} es CRÍTICO (${clasificacion})`);
-      } else if (clasificacion > 9) {
+} else if (clasificacion > 9) {
         altos++;
-        console.log(`📊 ${valoracion.id} es ALTO (${clasificacion})`);
-      } else if (clasificacion > 4) {
+} else if (clasificacion > 4) {
         medios++;
-        console.log(`📊 ${valoracion.id} es MEDIO (${clasificacion})`);
-      } else {
+} else {
         bajos++;
-        console.log(`📊 ${valoracion.id} es BAJO (${clasificacion})`);
-      }
+}
     });
 
     const estadisticas = { total, criticos, altos, medios, bajos };
-    console.log('📊 Estadísticas calculadas:', estadisticas);
-    
-    return estadisticas;
+return estadisticas;
   }
 
   // Obtener nivel de riesgo
@@ -4499,9 +4433,7 @@ export class ReporteService {
 
   // Calcular riesgos inherentes
   static calcularRiesgosInherentes(valoraciones, valoracion) {
-    console.log('🎯 Calculando riesgos inherentes...');
-    
-    if (!Array.isArray(valoraciones) || valoraciones.length === 0) {
+if (!Array.isArray(valoraciones) || valoraciones.length === 0) {
       return [];
     }
     
@@ -4517,14 +4449,7 @@ export class ReporteService {
       const maxImpactoInherente = this.calcularMaxImpacto(impactosInherentes);
       const impactoInherente = this.bucket1a5(maxImpactoInherente);
       
-      console.log(`🎯 Riesgo inherente ${valoracion.id}:`, {
-        probabilidad: probabilidadInherente,
-        impactos: impactosInherentes,
-        maxImpacto: maxImpactoInherente,
-        impactoFinal: impactoInherente
-      });
-      
-      return {
+return {
         id: valoracion.id || `R${valoracion.numero}`,
         numero: valoracion.numero,
         probabilidad: probabilidadInherente,
@@ -4536,11 +4461,7 @@ export class ReporteService {
   
   // Calcular riesgos residuales
   static calcularRiesgosResiduales(valoraciones, valoracion) {
-    console.log('🛡️ Calculando riesgos residuales...');
-    console.log('🛡️ Datos de valoración completos:', valoracion);
-    console.log('🛡️ Valoraciones recibidas:', valoraciones);
-    
-    if (!Array.isArray(valoraciones) || valoraciones.length === 0) {
+if (!Array.isArray(valoraciones) || valoraciones.length === 0) {
       return [];
     }
     
@@ -4549,44 +4470,15 @@ export class ReporteService {
     const probabilidades = valoracion?.probabilidad || {};
     const impactosCategoria = valoracion?.impactosCategoria || {};
     
-    console.log('🛡️ Datos residuales disponibles:', {
-      probResidual,
-      impactosCategoriaResidual,
-      probabilidades,
-      impactosCategoria
-    });
-    
-    return valoraciones.map(valoracion => {
-      console.log(`🛡️ Procesando riesgo residual ${valoracion.id}:`, valoracion);
-      
-      // Probabilidad residual (después de controles)
+return valoraciones.map(valoracion => {
+// Probabilidad residual (después de controles)
       const probabilidadResidual = probResidual[valoracion.id] || probabilidades[valoracion.id] || 1;
-      console.log(`🛡️ Probabilidad residual para ${valoracion.id}:`, {
-        probResidual: probResidual[valoracion.id],
-        probabilidades: probabilidades[valoracion.id],
-        final: probabilidadResidual
-      });
-      
-      // Impacto residual (máximo impacto por categoría - igual que la plataforma)
+// Impacto residual (máximo impacto por categoría - igual que la plataforma)
       const impactosResiduales = impactosCategoriaResidual[valoracion.id] || impactosCategoria[valoracion.id] || { economico: 1, operativo: 1, reputacional: 1, legal: 1 };
       const maxImpactoResidual = this.calcularMaxImpacto(impactosResiduales);
       const impactoResidual = this.bucket1a5(maxImpactoResidual);
       
-      console.log(`🛡️ Impacto residual para ${valoracion.id}:`, {
-        impactosCategoriaResidual: impactosCategoriaResidual[valoracion.id],
-        impactosCategoria: impactosCategoria[valoracion.id],
-        impactosResiduales,
-        maxImpacto: maxImpactoResidual,
-        impactoFinal: impactoResidual
-      });
-      
-      console.log(`🛡️ Riesgo residual ${valoracion.id} FINAL:`, {
-        probabilidad: probabilidadResidual,
-        impacto: impactoResidual,
-        posicion: `(${probabilidadResidual}, ${impactoResidual})`
-      });
-      
-      return {
+return {
         id: valoracion.id || `R${valoracion.numero}`,
         numero: valoracion.numero,
         probabilidad: probabilidadResidual,

@@ -258,18 +258,13 @@ const convertirImagenABuffer = async (imagen) => {
  * @returns {Promise<void>}
  */
 export const generarWordPuertos = async (formData, incluirMapaCalor = true) => {
-  console.log('🚀 Iniciando generación de documento Word para Puertos...');
-  console.log('📦 Datos recibidos:', formData);
-  console.log('🗺️ Incluir mapa de calor:', incluirMapaCalor);
-  
-  const docContent = [];
+const docContent = [];
 
   // Convertir logo a base64
   let logoBase64 = null;
   try {
     logoBase64 = await convertirImagenImportadaABase64(Logo);
-    console.log('✅ Logo convertido a base64');
-  } catch (error) {
+} catch (error) {
     console.error('❌ Error convirtiendo logo:', error);
   }
 
@@ -709,8 +704,7 @@ export const generarWordPuertos = async (formData, incluirMapaCalor = true) => {
           spacing: { after: 300 },
         })
       );
-      console.log('✅ Mapa insertado en portada');
-    } else {
+} else {
       docContent.push(
         new Paragraph({
           children: [new TextRun({ text: "[Mapa no disponible]", size: 24, font: "Calibri", color: "000000", italics: true })],
@@ -1389,8 +1383,7 @@ export const generarWordPuertos = async (formData, incluirMapaCalor = true) => {
     const blob = await Packer.toBlob(doc);
     const nombreArchivo = `Informe_Puertos_${formData.empresaCliente || formData.nombreCliente || 'Puerto'}_${new Date().getTime()}.docx`;
     saveAs(blob, nombreArchivo);
-    console.log('✅ Documento Word generado exitosamente:', nombreArchivo);
-    return { success: true, nombreArchivo };
+return { success: true, nombreArchivo };
   } catch (error) {
     console.error('❌ Error al generar documento Word:', error);
     throw error;

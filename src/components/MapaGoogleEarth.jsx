@@ -212,15 +212,11 @@ export default function MapaGoogleEarth({
   
   // Log cuando Google Maps se carga exitosamente
   useEffect(() => {
-    if (isLoaded && typeof window !== 'undefined' && window.google && window.google.maps) {
-      console.log('✅ Google Maps API cargada y lista')
-    }
-  }, [isLoaded])
+}, [isLoaded])
   
   // Callback cuando el mapa se carga
   const handleMapLoad = useCallback((mapInstance) => {
-    console.log('🗺️ Mapa cargado')
-    setMap(mapInstance)
+setMap(mapInstance)
     mapRef.current = mapInstance
     setMapaListo(true)
     setCargando(false)
@@ -423,8 +419,7 @@ export default function MapaGoogleEarth({
       })
     }
 
-    console.log('✅ Captura del mapa guardada')
-  }, [posicion, direccion, onMapaChange, apiKey])
+}, [posicion, direccion, onMapaChange, apiKey])
   
   // Forzar captura: Static Maps solo necesita coordenadas + key; html2canvas necesita el DOM listo
   useEffect(() => {

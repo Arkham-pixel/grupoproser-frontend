@@ -3,14 +3,8 @@ import { BASE_URL } from '../config/apiConfig.js';
 
 export const obtenerCasosComplex = async () => {
   try {
-    console.log('🔍 Llamando a la API de complex...');
-    console.log('🌐 URL:', `${BASE_URL}/api/complex`);
-    
-    const response = await fetch(`${BASE_URL}/api/complex`);
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response ok:', response.ok);
-    
-    if (!response.ok) {
+const response = await fetch(`${BASE_URL}/api/complex`);
+if (!response.ok) {
       const errorText = await response.text();
       console.error('❌ Error response:', errorText);
       console.error('❌ Status:', response.status, response.statusText);
@@ -19,24 +13,16 @@ export const obtenerCasosComplex = async () => {
     }
     
     const data = await response.json();
-    console.log('✅ Datos recibidos, tipo:', typeof data);
-    console.log('✅ Es array:', Array.isArray(data));
-    console.log('✅ Cantidad de casos:', Array.isArray(data) ? data.length : 'N/A');
-    
-    // Asegurar que siempre retornemos un array
+// Asegurar que siempre retornemos un array
     if (Array.isArray(data)) {
-      console.log('✅ Retornando array con', data.length, 'casos');
-      return data;
+return data;
     } else if (data && typeof data === 'object') {
       // Si la respuesta es un objeto con una propiedad que contiene el array
       console.warn('⚠️ La respuesta es un objeto, buscando array dentro...');
-      console.log('⚠️ Claves del objeto:', Object.keys(data));
-      
-      // Buscar si hay alguna propiedad que sea un array
+// Buscar si hay alguna propiedad que sea un array
       for (const key in data) {
         if (Array.isArray(data[key])) {
-          console.log(`✅ Encontrado array en propiedad "${key}" con ${data[key].length} elementos`);
-          return data[key];
+return data[key];
         }
       }
       

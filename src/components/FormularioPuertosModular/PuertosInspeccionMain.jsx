@@ -92,8 +92,7 @@ export default function PuertosInspeccionMain() {
       const monthStr = String(month).padStart(2, '0');
       const dayStr = String(day).padStart(2, '0');
       const fechaFormateada = `${year}-${monthStr}-${dayStr}`;
-      console.log('📅 Fecha inicializada:', fechaFormateada, '| Fecha objeto:', ahora, '| Día:', day, '| Mes:', month, '| Año:', year);
-      return fechaFormateada;
+return fechaFormateada;
     })(),
     
     // Infraestructura
@@ -224,11 +223,8 @@ export default function PuertosInspeccionMain() {
     try {
       setGenerandoWord(true);
       const tipoInforme = incluirMapaCalor ? 'Completo' : 'Diario';
-      console.log(`🚀 Generando documento Word (${tipoInforme})...`);
-      
-      // Forzar captura del mapa antes de generar
-      console.log('📸 Forzando captura del mapa antes de generar Word...');
-      setForzarCapturaMapa(prev => prev + 1);
+// Forzar captura del mapa antes de generar
+setForzarCapturaMapa(prev => prev + 1);
       
       // Esperar un momento para que se complete la captura
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -250,8 +246,7 @@ export default function PuertosInspeccionMain() {
   const handleGenerarManual = async () => {
     try {
       setGenerandoManual(true);
-      console.log('📘 Generando manual de uso...');
-      await generarManualPuertos();
+await generarManualPuertos();
       alert('✅ Manual generado exitosamente. Revisa la carpeta de descargas.');
     } catch (error) {
       console.error('❌ Error al generar manual:', error);
@@ -290,18 +285,9 @@ export default function PuertosInspeccionMain() {
       const codigoCPD = formData.codigoReferencia || generarCodigoCPD();
       
       // 🔍 VERIFICAR IMÁGENES ANTES DE GUARDAR
-      console.log('🔍 Verificando imágenes antes de guardar...');
-      console.log('📸 Número de imágenes:', formData.imagenesRegistro?.length || 0);
-      if (formData.imagenesRegistro && formData.imagenesRegistro.length > 0) {
+if (formData.imagenesRegistro && formData.imagenesRegistro.length > 0) {
         formData.imagenesRegistro.forEach((img, index) => {
-          console.log(`📷 Imagen ${index + 1}:`, {
-            nombre: img.nombre,
-            tieneFile: !!img.file,
-            tieneSrc: !!img.src,
-            tieneRuta: !!img.ruta,
-            descripcion: img.descripcion
-          });
-        });
+});
       }
       
       const datosFormulario = {
@@ -326,27 +312,18 @@ export default function PuertosInspeccionMain() {
         codigoReferencia: codigoCPD
       }));
       
-      console.log('💾 Enviando datos al historial...');
-      console.log('🔑 Usando formularioId:', formularioId);
-      
-      let formularioGuardado;
+let formularioGuardado;
       
       // 🔑 Si ya tenemos un formularioId, ACTUALIZAR; si no, CREAR
       if (formularioId && formularioId !== 'nuevo') {
-        console.log('🔄 Actualizando formulario existente con ID:', formularioId);
-        formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
-        console.log('✅ Formulario actualizado exitosamente');
-        alert('✅ Formulario actualizado en historial exitosamente');
+formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
+alert('✅ Formulario actualizado en historial exitosamente');
       } else {
-        console.log('🆕 Creando nuevo formulario en historial');
-        formularioGuardado = await historialService.guardarFormulario(datosFormulario);
-        console.log('✅ Formulario creado exitosamente con ID:', formularioGuardado._id);
-        
-        // 🔑 Guardar el ID del formulario creado y navegar a la URL con el ID
+formularioGuardado = await historialService.guardarFormulario(datosFormulario);
+// 🔑 Guardar el ID del formulario creado y navegar a la URL con el ID
         const nuevoId = formularioGuardado._id;
         setFormularioId(nuevoId);
-        console.log('🔑 Navegando a URL con ID:', nuevoId);
-        navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
+navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
         setModoEdicion(true);
         
         alert('✅ Formulario guardado en historial exitosamente');
@@ -366,8 +343,7 @@ export default function PuertosInspeccionMain() {
       setCargando(true);
       
       // Forzar captura del mapa antes de generar
-      console.log('📸 Forzando captura del mapa antes de exportar y guardar...');
-      setForzarCapturaMapa(prev => prev + 1);
+setForzarCapturaMapa(prev => prev + 1);
       
       // Esperar un momento para que se complete la captura
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -407,27 +383,18 @@ export default function PuertosInspeccionMain() {
         }
       };
       
-      console.log('💾 Enviando datos al historial (exportar y guardar)...');
-      console.log('🔑 Usando formularioId:', formularioId);
-      
-      let formularioGuardado;
+let formularioGuardado;
       
       // 🔑 Si ya tenemos un formularioId, ACTUALIZAR; si no, CREAR
       if (formularioId && formularioId !== 'nuevo') {
-        console.log('🔄 Actualizando formulario existente con ID:', formularioId);
-        formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
-        console.log('✅ Formulario actualizado exitosamente');
-        alert('✅ Documento generado y formulario actualizado exitosamente');
+formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
+alert('✅ Documento generado y formulario actualizado exitosamente');
       } else {
-        console.log('🆕 Creando nuevo formulario en historial');
-        formularioGuardado = await historialService.guardarFormulario(datosFormulario);
-        console.log('✅ Formulario creado exitosamente con ID:', formularioGuardado._id);
-        
-        // 🔑 Guardar el ID del formulario creado y navegar a la URL con el ID
+formularioGuardado = await historialService.guardarFormulario(datosFormulario);
+// 🔑 Guardar el ID del formulario creado y navegar a la URL con el ID
         const nuevoId = formularioGuardado._id;
         setFormularioId(nuevoId);
-        console.log('🔑 Navegando a URL con ID:', nuevoId);
-        navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
+navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
         setModoEdicion(true);
         
         alert('✅ Documento generado y guardado en historial exitosamente');
@@ -449,8 +416,7 @@ export default function PuertosInspeccionMain() {
     const timeoutId = setTimeout(() => {
       try {
         localStorage.setItem('formularioPuertosModular', JSON.stringify(formData));
-        console.log('💾 Datos autoguardados en localStorage');
-      } catch (error) {
+} catch (error) {
         console.error('Error al guardar datos:', error);
       }
     }, 500);
@@ -480,8 +446,7 @@ export default function PuertosInspeccionMain() {
               // Solo limpiar formularios nuevos (sin formularioId o formularioId === 'nuevo')
               // Los formularios guardados en historial NO se limpian
               if (!datosParseados.formularioId || datosParseados.formularioId === 'nuevo') {
-                console.log('🧹 Limpiando localStorage: usuario salió del formulario por navegación');
-                localStorage.removeItem('formularioPuertosModular');
+localStorage.removeItem('formularioPuertosModular');
               }
             } catch (error) {
               console.error('Error al verificar localStorage:', error);
@@ -501,8 +466,7 @@ export default function PuertosInspeccionMain() {
       if (esRutaPuertos && formData) {
         try {
           localStorage.setItem('formularioPuertosModular', JSON.stringify(formData));
-          console.log('💾 Datos guardados antes de refrescar/cerrar');
-        } catch (error) {
+} catch (error) {
           console.error('Error al guardar antes de unload:', error);
         }
       }
@@ -527,9 +491,7 @@ export default function PuertosInspeccionMain() {
       
       const baseURL = BASE_URL;
 
-      console.log('🔍 Cargando formulario desde servidor:', formularioId);
-      
-      const response = await fetch(`${baseURL}/api/historial-formularios/${formularioId}`, {
+const response = await fetch(`${baseURL}/api/historial-formularios/${formularioId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -544,20 +506,13 @@ export default function PuertosInspeccionMain() {
       
       if (data.success && data.formulario) {
         const formulario = data.formulario;
-        console.log('✅ Formulario cargado:', formulario);
-        
-        // Cargar TODOS los datos del formulario en formData
+// Cargar TODOS los datos del formulario en formData
         if (formulario.datos) {
           // Procesar imágenes si existen - convertir rutas del servidor a URLs completas
           let imagenesRegistro = [];
           if (formulario.datos.imagenesRegistro && Array.isArray(formulario.datos.imagenesRegistro)) {
-            console.log('📸 Imágenes recibidas del servidor:', formulario.datos.imagenesRegistro.length);
-            console.log('📸 Datos de imágenes:', formulario.datos.imagenesRegistro);
-            
-            imagenesRegistro = formulario.datos.imagenesRegistro.map((img, index) => {
-              console.log(`🖼️ Procesando imagen ${index + 1}:`, img);
-              
-              // Si la imagen tiene ruta del servidor, convertirla a URL completa
+imagenesRegistro = formulario.datos.imagenesRegistro.map((img, index) => {
+// Si la imagen tiene ruta del servidor, convertirla a URL completa
               if (img.ruta) {
                 const imagenProcesada = {
                   ...img,
@@ -565,17 +520,13 @@ export default function PuertosInspeccionMain() {
                   ruta: img.ruta,                    // Mantener ruta original
                   id: img.id || Date.now() + Math.random()
                 };
-                console.log(`✅ Imagen ${index + 1} procesada:`, imagenProcesada);
-                return imagenProcesada;
+return imagenProcesada;
               }
-              console.log(`⚠️ Imagen ${index + 1} sin ruta válida`);
-              return img;
+return img;
             });
             
-            console.log('✅ Total de imágenes procesadas:', imagenesRegistro.length);
-          } else {
-            console.log('⚠️ No hay imágenes en el formulario o no es un array');
-          }
+} else {
+}
           
           // Validar y corregir la fecha al cargar desde servidor
           let fechaCorregida = formulario.datos.fecha || formulario.datos.fechaInspeccion;
@@ -602,8 +553,7 @@ export default function PuertosInspeccionMain() {
                 const monthNow = hoy.getMonth() + 1;
                 const dayNow = hoy.getDate();
                 fechaCorregida = `${yearNow}-${String(monthNow).padStart(2, '0')}-${String(dayNow).padStart(2, '0')}`;
-                console.log('📅 Fecha corregida a fecha actual:', fechaCorregida);
-              }
+}
             }
           }
           
@@ -617,8 +567,7 @@ export default function PuertosInspeccionMain() {
           }));
         }
         
-        console.log('✅ Datos del formulario cargados exitosamente');
-      } else {
+} else {
         console.error('❌ No se pudo obtener el formulario');
         alert('No se pudo cargar el formulario');
       }
@@ -658,15 +607,13 @@ export default function PuertosInspeccionMain() {
             if (fechaParts.length !== 3 || fechaParts[0].length !== 4) {
               // Fecha mal formateada, usar fecha actual
               datosParseados.fecha = obtenerFechaActual();
-              console.log('📅 Fecha mal formateada, corregida a:', datosParseados.fecha);
-            }
+}
           } else {
             // Si no hay fecha, usar fecha actual
             datosParseados.fecha = obtenerFechaActual();
           }
           setFormData(prev => ({ ...prev, ...datosParseados }));
-          console.log('✅ Datos cargados desde localStorage');
-        } catch (error) {
+} catch (error) {
           console.error('Error al cargar datos:', error);
           localStorage.removeItem('formularioPuertosModular');
         }

@@ -95,14 +95,6 @@ const DATOS_MAESTROS = {
   ]
 };
 
-// Debug: Verificar que los datos maestros se carguen correctamente
-console.log('🔍 DATOS_MAESTROS cargados:', {
-  aseguradoras: DATOS_MAESTROS.aseguradoras.length,
-  ciudades: DATOS_MAESTROS.ciudades.length,
-  asegurados: DATOS_MAESTROS.asegurados.length
-});
-console.log('🔍 Primera aseguradora:', DATOS_MAESTROS.aseguradoras[0]);
-
 const toArrayBuffer = (file) => {
   return new Promise((resolve, reject) => {
     if (!(file instanceof Blob)) {
@@ -245,8 +237,7 @@ export default function FormularioMaquinaria() {
             if (datosParseados.imagenesRegistro !== undefined) setImagenesRegistro(datosParseados.imagenesRegistro);
             if (datosParseados.registroFotografico !== undefined) setRegistroFotografico(datosParseados.registroFotografico);
             // Agregar más estados según sea necesario
-            console.log('✅ Datos de formulario de maquinaria cargados desde localStorage');
-          }
+}
         } catch (error) {
           console.error('Error al cargar datos guardados:', error);
           localStorage.removeItem('formularioMaquinaria');
@@ -284,8 +275,7 @@ export default function FormularioMaquinaria() {
           // Agregar más estados según sea necesario
         });
         localStorage.setItem('formularioMaquinaria', datosParaGuardar);
-        console.log('💾 Datos de formulario de maquinaria guardados en localStorage');
-      } catch (error) {
+} catch (error) {
         console.error('Error al guardar datos:', error);
         try {
           localStorage.removeItem('formularioMaquinaria');
@@ -356,16 +346,14 @@ export default function FormularioMaquinaria() {
   useEffect(() => {
     const esRutaMaquinaria = location.pathname.includes('/maquinaria') || location.pathname.includes('/formulario-maquinaria');
     if (!esRutaMaquinaria) {
-      console.log('🧹 Limpiando datos de localStorage al salir del formulario de maquinaria');
-      localStorage.removeItem('formularioMaquinaria');
+localStorage.removeItem('formularioMaquinaria');
     }
 
     return () => {
       setTimeout(() => {
         const sigueEnRutaMaquinaria = window.location.pathname.includes('/maquinaria') || window.location.pathname.includes('/formulario-maquinaria');
         if (!sigueEnRutaMaquinaria) {
-          console.log('🧹 Limpiando datos de localStorage (componente desmontado)');
-          localStorage.removeItem('formularioMaquinaria');
+localStorage.removeItem('formularioMaquinaria');
         }
       }, 100);
     };
@@ -378,8 +366,7 @@ export default function FormularioMaquinaria() {
       setAseguradora(aseguradoraSeleccionada.nombre);
       setDestinatario(aseguradoraSeleccionada.nombre);
       setCamposLlenadosAuto(prev => ({ ...prev, aseguradora: true }));
-      console.log('✅ Campos de aseguradora llenados automáticamente:', aseguradoraSeleccionada.nombre);
-    }
+}
   };
 
   const llenarCamposCiudad = (ciudadId) => {
@@ -390,10 +377,7 @@ export default function FormularioMaquinaria() {
       setUbicacion(ciudadSeleccionada.zona);
       setLugar(`${ciudadSeleccionada.nombre}, ${ciudadSeleccionada.departamento}`);
       setCamposLlenadosAuto(prev => ({ ...prev, ciudad: true }));
-      console.log('✅ Campos de ciudad llenados automáticamente:', ciudadSeleccionada.nombre);
-      console.log('📍 Departamento:', ciudadSeleccionada.departamento);
-      console.log('🌍 Zona:', ciudadSeleccionada.zona);
-    }
+}
   };
 
   const llenarCamposAsegurado = (aseguradoId) => {
@@ -405,15 +389,13 @@ export default function FormularioMaquinaria() {
       setReferencia(aseguradoSeleccionado.nit || aseguradoSeleccionado.cedula);
       setLugar(aseguradoSeleccionado.direccion);
       setCamposLlenadosAuto(prev => ({ ...prev, asegurado: true }));
-      console.log('✅ Campos de asegurado llenados automáticamente:', aseguradoSeleccionado.nombre);
-    }
+}
   };
 
   // Función para obtener opciones de los datos maestros
   const obtenerOpcionesAseguradoras = () => {
     const opciones = DATOS_MAESTROS.aseguradoras.map(a => ({ value: a.id, label: a.nombre }));
-    console.log('🔍 Opciones de aseguradoras generadas:', opciones);
-    return opciones;
+return opciones;
   };
   const obtenerOpcionesCiudades = () => DATOS_MAESTROS.ciudades.map(c => ({ value: c.id, label: c.nombre }));
   const obtenerOpcionesAsegurados = () => DATOS_MAESTROS.asegurados.map(a => ({ value: a.id, label: a.nombre }));
@@ -429,13 +411,9 @@ export default function FormularioMaquinaria() {
         return;
       }
 
-      console.log('🔍 Iniciando carga de formulario de maquinaria con ID:', formularioId);
+const baseURL = BASE_URL;
 
-      const baseURL = BASE_URL;
-
-      console.log('🌐 URL base para edición:', baseURL);
-
-      const response = await fetch(`${baseURL}/api/historial-formularios/${formularioId}`, {
+const response = await fetch(`${baseURL}/api/historial-formularios/${formularioId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -452,12 +430,7 @@ export default function FormularioMaquinaria() {
       if (data.success && data.formulario) {
         const formulario = data.formulario;
         
-        console.log('📥 Datos del formulario cargados:', formulario);
-        console.log('🔍 Estructura de datos:', formulario.datos);
-        console.log('🔍 Tipo de formulario:', formulario.tipo);
-        console.log('🔍 Claves disponibles en datos:', Object.keys(formulario.datos || {}));
-        
-        // Poblar todos los campos del formulario desde formulario.datos
+// Poblar todos los campos del formulario desde formulario.datos
         setNombre(formulario.datos?.numeroActa || "");
         setFecha(formulario.datos?.fechaInspeccion || "");
         setNombreAsegurado(formulario.datos?.asegurado || "");
@@ -508,9 +481,7 @@ export default function FormularioMaquinaria() {
         setFirmanteInspector(formulario.datos?.firmanteInspector || "");
         setCodigoInspector(formulario.datos?.codigoInspector || "");
         
-        console.log('✅ Formulario de maquinaria cargado exitosamente en modo edición');
-        console.log('🔍 Todos los estados han sido actualizados');
-      }
+}
     } catch (error) {
       console.error('❌ Error cargando datos del formulario:', error);
       alert('Error al cargar los datos del formulario. Por favor, inténtalo de nuevo.');
@@ -530,22 +501,7 @@ export default function FormularioMaquinaria() {
 
   // Efecto para monitorear cambios en los estados principales cuando se cargan datos
   useEffect(() => {
-    if (modoEdicion && !cargando) {
-      console.log('🔍 Estados actualizados después de la carga:');
-      console.log('  - nombre:', nombre);
-      console.log('  - fecha:', fecha);
-      console.log('  - nombreAsegurado:', nombreAsegurado);
-      console.log('  - nombreMaquinaria:', nombreMaquinaria);
-      console.log('  - ciudadFecha:', ciudadFecha);
-      console.log('  - aseguradora:', aseguradora);
-      console.log('  - marca:', marca);
-      console.log('  - modelo:', modelo);
-      console.log('  - tipoProteccion:', tipoProteccion);
-      console.log('  - recomendaciones:', recomendaciones);
-      console.log('  - firmanteInspector:', firmanteInspector);
-      console.log('  - codigoInspector:', codigoInspector);
-    }
-  }, [modoEdicion, cargando, nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, aseguradora, marca, modelo, tipoProteccion, recomendaciones, firmanteInspector, codigoInspector]);
+}, [modoEdicion, cargando, nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, aseguradora, marca, modelo, tipoProteccion, recomendaciones, firmanteInspector, codigoInspector]);
 
   const handleGuardarEnHistorial = async () => {
     const datos = {

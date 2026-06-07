@@ -338,47 +338,20 @@ const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
   const impactoPlano = datos.valoracion?.impacto || {};
   const impactoResidualPlano = datos.valoracion?.impactoResidual || {};
 
-  console.log('🔍 Estructura de datos.valoracion:', datos.valoracion);
-  console.log('🔍 Probabilidades disponibles:', probabilidades);
-  console.log('🔍 ImpactosCategoria disponibles:', impactosCategoria);
-
-  // Debug: Mostrar información de los datos recibidos
+// Debug: Mostrar información de los datos recibidos
   useEffect(() => {
-    console.log('🔍 MapaCalorRiesgos - Datos recibidos:', {
-      valoraciones: valoraciones.length,
-      probabilidades: Object.keys(probabilidades).length,
-      impactosCategoria: Object.keys(impactosCategoria).length,
-      probResidual: Object.keys(probResidual).length,
-      impactosCategoriaResidual: Object.keys(impactosCategoriaResidual).length,
-      datosCompletos: datos
-    });
-    
-    // Debug específico de valoraciones
+// Debug específico de valoraciones
     if (valoraciones.length > 0) {
-      console.log('📊 Valoraciones detalladas:', valoraciones);
-      console.log('📊 Probabilidades:', probabilidades);
-      console.log('📊 Impactos Categoría:', impactosCategoria);
-      
-      // Debug detallado de cada valoración
+// Debug detallado de cada valoración
       valoraciones.forEach((valoracion, index) => {
-        console.log(`📊 Valoración ${index} (${valoracion.id}):`, {
-          valoracion,
-          probabilidad: probabilidades[valoracion.id],
-          impactos: impactosCategoria[valoracion.id],
-          probResidual: probResidual[valoracion.id],
-          impactosResidual: impactosCategoriaResidual[valoracion.id]
-        });
-      });
+});
     } else {
-      console.log('⚠️ No hay valoraciones disponibles');
-      console.log('📊 Estructura de datos.valoracion:', datos.valoracion);
-    }
+}
   }, [valoraciones, probabilidades, impactosCategoria, probResidual, impactosCategoriaResidual, datos]);
 
   // Función para refrescar datos manualmente
   const refrescarDatos = () => {
-    console.log('🔄 Recalculando mapa de calor desde valoración guardada...');
-    if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length > 0)) {
+if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length > 0)) {
       onDatosChange({
         riesgosInherentes,
         riesgosResiduales
@@ -504,27 +477,13 @@ const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
 
   // Calcular riesgos inherentes desde los datos de valoración
   useEffect(() => {
-    console.log('🔄 Calculando riesgos inherentes...', { 
-      valoraciones: valoraciones.length,
-      probabilidades: Object.keys(probabilidades),
-      impactosCategoria: Object.keys(impactosCategoria)
-    });
-    
-    if (valoraciones.length > 0) {
-      console.log('📊 Iniciando cálculo de riesgos inherentes...');
-      
-      const riesgosInherentesCalculados = valoraciones.map((valoracion, index) => {
-        console.log(`📊 Procesando valoración ${index} (${valoracion.id}):`, valoracion);
-        
-        // Probabilidad inherente (desde la valoración directamente)
+if (valoraciones.length > 0) {
+const riesgosInherentesCalculados = valoraciones.map((valoracion, index) => {
+// Probabilidad inherente (desde la valoración directamente)
         const probabilidadInherente = resolverProbabilidad1a5(valoracion, probabilidades);
-        console.log(`📊 Probabilidad inherente para ${valoracion.id}:`, probabilidadInherente);
-        
-        // Impacto inherente (alineado con sumatoria / impacto de la tabla de Valoración)
+// Impacto inherente (alineado con sumatoria / impacto de la tabla de Valoración)
         const impactosInherentes = valoracion.impactosCategoria || impactosCategoria[valoracion.id] || { economico: 1, operativo: 1, reputacional: 1, legal: 1 };
-        console.log(`📊 Impactos inherentes para ${valoracion.id}:`, impactosInherentes);
-        
-        const impactoInherente = resolverImpacto1a5(
+const impactoInherente = resolverImpacto1a5(
           valoracion,
           valoracion.impactosCategoria,
           impactosCategoria,
@@ -532,9 +491,7 @@ const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
           valoracion.impacto,
           impactoPlano
         );
-        console.log(`📊 Impacto inherente final para ${valoracion.id}:`, impactoInherente);
-        
-        // Clasificación inherente
+// Clasificación inherente
         const clasificacionInherente = probabilidadInherente * impactoInherente;
         const nivelInherente = calcularNivelRiesgo(probabilidadInherente, impactoInherente);
         
@@ -549,18 +506,14 @@ const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
           descripcion: valoracion.descripcion || ''
         };
         
-        console.log(`📊 Riesgo inherente calculado para ${valoracion.id}:`, riesgoCalculado);
-        return riesgoCalculado;
+return riesgoCalculado;
       });
       
-      console.log('📊 Todos los riesgos inherentes calculados:', riesgosInherentesCalculados);
-      setRiesgosInherentes(riesgosInherentesCalculados);
+setRiesgosInherentes(riesgosInherentesCalculados);
     } else if (datos.riesgosInherentes && datos.riesgosInherentes.length > 0) {
-      console.log('📊 Usando riesgos inherentes preexistentes:', datos.riesgosInherentes);
-      setRiesgosInherentes(datos.riesgosInherentes);
+setRiesgosInherentes(datos.riesgosInherentes);
     } else {
-      console.log('⚠️ No hay datos para calcular riesgos inherentes');
-      setRiesgosInherentes([]);
+setRiesgosInherentes([]);
     }
   }, [valoraciones, probabilidades, impactosCategoria, impactoPlano]);
 
@@ -608,8 +561,7 @@ const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
   // Sincronización automática cuando cambien los datos de valoración
   useEffect(() => {
     if (valoraciones.length > 0) {
-      console.log('🔄 Sincronización automática de datos de valoración...');
-      // No llamar refrescarDatos aquí para evitar bucle infinito
+// No llamar refrescarDatos aquí para evitar bucle infinito
       // Los useEffect de cálculo ya se ejecutan automáticamente
     }
   }, [valoraciones, probabilidades, impactosCategoria, probResidual, impactosCategoriaResidual]);
@@ -617,12 +569,7 @@ const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
   // Guardar datos cuando cambien
   useEffect(() => {
     if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length > 0)) {
-      console.log('🔥 Guardando datos calculados del mapa de calor:', {
-        riesgosInherentes: riesgosInherentes.length,
-        riesgosResiduales: riesgosResiduales.length
-      });
-      
-      onDatosChange({
+onDatosChange({
         riesgosInherentes,
         riesgosResiduales
       });

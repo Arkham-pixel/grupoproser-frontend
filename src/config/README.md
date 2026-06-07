@@ -4,7 +4,7 @@
 
 Este archivo **detecta automáticamente** dónde está corriendo tu aplicación:
 - **En desarrollo:** `VITE_API_BASE_URL` en `frontend/.env` (por defecto `http://localhost:3000`)
-- **En producción:** hostname en `apiConfig.js` — `aplicacion` → mismo dominio; `arnald` → `https://arnaldbackend.grupoproser.com.co`
+- **En producción:** `platformUrls.js` + hostname — `arnald` → `https://arnaldbackend.grupoproser.com.co`; `aplicacion` → legacy PM2
 
 **No hay failover** - solo detección inteligente del entorno.
 

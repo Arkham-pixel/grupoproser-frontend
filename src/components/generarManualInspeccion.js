@@ -96,9 +96,7 @@ function crearListaItems(items) {
  * Función para generar el manual de uso del formulario de inspección de riesgos en formato Word
  */
 export const generarManualInspeccion = async () => {
-  console.log('🚀 Generando manual completo de uso del formulario de inspección de riesgos...');
-  
-  const docContent = [];
+const docContent = [];
   let screenshotCounter = 1;
 
   // Título principal
@@ -678,8 +676,7 @@ export const generarManualInspeccion = async () => {
     const blob = await Packer.toBlob(doc);
     const nombreArchivo = `Manual_Formulario_Inspeccion_Riesgos_${new Date().getTime()}.docx`;
     saveAs(blob, nombreArchivo);
-    console.log('✅ Manual completo generado exitosamente:', nombreArchivo);
-    return { success: true, nombreArchivo };
+return { success: true, nombreArchivo };
   } catch (error) {
     console.error('❌ Error al generar manual:', error);
     throw error;

@@ -283,8 +283,7 @@ export default function ReporteCasosMejorado() {
   useEffect(() => {
     const filtrosDesdeNavegacion = location.state?.filtros;
     if (filtrosDesdeNavegacion && !filtrosAplicadosRef.current) {
-      console.log('🔄 Restaurando filtros desde navegación:', filtrosDesdeNavegacion);
-      setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
+setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
       setFechaHasta(filtrosDesdeNavegacion.fechaHasta || '');
       setCampoFechaFiltro(filtrosDesdeNavegacion.campoFechaFiltro || 'fchaAsgncion');
       setEstadoFiltro(filtrosDesdeNavegacion.estadoFiltro || '');
@@ -310,8 +309,7 @@ export default function ReporteCasosMejorado() {
     // Cargar mapeo de funcionarios (importante para mostrar nombres en lugar de códigos)
     cargarMapeoFuncionarios()
       .then(() => {
-        console.log('✅ Mapeo de funcionarios cargado correctamente');
-      })
+})
       .catch(error => {
         console.error('Error cargando mapeo de funcionarios:', error);
       });
@@ -371,16 +369,12 @@ export default function ReporteCasosMejorado() {
       
       if (zurichAseguradora) {
         const codigoZurich = String(zurichAseguradora.codiAsgrdra || zurichAseguradora.cod1Asgrdra || '').trim();
-        console.log(`🏢 Código de Zurich encontrado: ${codigoZurich}`);
-        
-        // Contar casos de Zurich
+// Contar casos de Zurich
         const casosZurich = casos.filter(caso => {
           const codigo = String(caso.codiAsgrdra || caso.cod1Asgrdra || '').trim();
           return codigo === codigoZurich;
         });
-        console.log(`📊 Total casos de Zurich en BD: ${casosZurich.length}`);
-        
-        // Contar casos de Zurich por año
+// Contar casos de Zurich por año
         const zurichPorAno = {};
         casosZurich.forEach(caso => {
           const fecha = caso.fchaAsgncion || caso.fecha_asignacion_form || caso.createdAt;
@@ -396,9 +390,7 @@ export default function ReporteCasosMejorado() {
             }
           }
         });
-        console.log('📊 Casos de Zurich por año:', zurichPorAno);
-        
-        // Contar casos de Zurich en 2025
+// Contar casos de Zurich en 2025
         const zurich2025 = casosZurich.filter(caso => {
           const fecha = caso.fchaAsgncion || caso.fecha_asignacion_form || caso.createdAt;
           if (fecha) {
@@ -413,10 +405,8 @@ export default function ReporteCasosMejorado() {
           }
           return false;
         });
-        console.log(`📊 Casos de Zurich en 2025: ${zurich2025.length}`);
-      } else {
-        console.log('⚠️ No se encontró Zurich en la lista de aseguradoras');
-      }
+} else {
+}
     }
   }, [casos, aseguradoras]);
 
@@ -460,26 +450,19 @@ export default function ReporteCasosMejorado() {
         return fechaB - fechaA;
       });
 
-      console.log(`📊 Casos cargados: ${casosFinales.length} casos totales`);
-      console.log(`📊 Siniestros: ${siniestros.length}, Complex: ${complex.length}`);
-      
-      // Contar casos por estado para debugging
+// Contar casos por estado para debugging
       const casosPorEstado = {};
       casosFinales.forEach(caso => {
         const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
         casosPorEstado[estado] = (casosPorEstado[estado] || 0) + 1;
       });
-      console.log('📊 Casos por estado:', casosPorEstado);
-      
-      // Contar casos por aseguradora para debugging
+// Contar casos por aseguradora para debugging
       const casosPorAseguradora = {};
       casosFinales.forEach(caso => {
         const codigoAseguradora = String(caso.codiAsgrdra || caso.cod1Asgrdra || 'Sin código').trim();
         casosPorAseguradora[codigoAseguradora] = (casosPorAseguradora[codigoAseguradora] || 0) + 1;
       });
-      console.log('📊 Casos por aseguradora (código):', casosPorAseguradora);
-      
-      // Contar casos por año para debugging
+// Contar casos por año para debugging
       const casosPorAno = {};
       casosFinales.forEach(caso => {
         const fecha = caso.fchaAsgncion || caso.fecha_asignacion_form || caso.createdAt;
@@ -489,9 +472,7 @@ export default function ReporteCasosMejorado() {
           casosPorAno[año] = (casosPorAno[año] || 0) + 1;
         }
       });
-      console.log('📊 Casos por año:', casosPorAno);
-
-      setCasos(casosFinales);
+setCasos(casosFinales);
     } catch (error) {
       console.error('Error cargando casos:', error);
       setCasos([]);
@@ -516,18 +497,7 @@ export default function ReporteCasosMejorado() {
     }
     
     // Debug: mostrar filtros activos
-    console.log('🔍 Aplicando filtros:', {
-      estadoFiltro,
-      responsableFiltro,
-      aseguradoraFiltro,
-      fechaDesde,
-      fechaHasta,
-      campoFechaFiltro,
-      terminoBusqueda,
-      totalCasos: casos.length
-    });
-    
-    // Análisis previo de casos de Zurich si hay filtro de aseguradora
+// Análisis previo de casos de Zurich si hay filtro de aseguradora
     if (aseguradoraFiltro && aseguradoras.length > 0) {
       const aseguradoraEncontrada = aseguradoras.find(a => {
         const cod1 = String(a.codiAsgrdra || '').trim();
@@ -541,10 +511,7 @@ export default function ReporteCasosMejorado() {
           String(aseguradoraEncontrada.cod1Asgrdra || '').trim()
         ].filter(c => c !== '');
         
-        console.log('🏢 Códigos de aseguradora seleccionada:', codigosZurich);
-        console.log('🏢 Nombre:', aseguradoraEncontrada.rzonSocial);
-        
-        // Analizar TODOS los códigos únicos de aseguradora en los casos
+// Analizar TODOS los códigos únicos de aseguradora en los casos
         const todosCodigosUnicos = new Set();
         casos.forEach(caso => {
           const cod1 = String(caso.codiAsgrdra || '').trim();
@@ -553,15 +520,7 @@ export default function ReporteCasosMejorado() {
           if (cod2) todosCodigosUnicos.add(cod2);
         });
         
-        console.log('🔍 Todos los códigos únicos de aseguradora en casos (primeros 30):', Array.from(todosCodigosUnicos).slice(0, 30));
-        console.log('🔍 ¿Están los códigos de Zurich en la lista?', {
-          codigo1: codigosZurich[0],
-          codigo2: codigosZurich[1],
-          encontrado1: todosCodigosUnicos.has(codigosZurich[0]),
-          encontrado2: codigosZurich[1] ? todosCodigosUnicos.has(codigosZurich[1]) : false
-        });
-        
-        // Buscar casos que tengan el nombre de Zurich en cualquier campo
+// Buscar casos que tengan el nombre de Zurich en cualquier campo
         const casosConNombreZurich = casos.filter(caso => {
           const nombreZurich = aseguradoraEncontrada.rzonSocial.toLowerCase();
           const camposTexto = Object.values(caso).filter(v => 
@@ -576,9 +535,7 @@ export default function ReporteCasosMejorado() {
           });
         });
         
-        console.log(`🔍 Casos que contienen "zurich" o "zúrich" en algún campo: ${casosConNombreZurich.length}`);
-        
-        // Contar casos de Zurich antes de filtrar - buscar por AMBOS códigos
+// Contar casos de Zurich antes de filtrar - buscar por AMBOS códigos
         const casosZurich = casos.filter(caso => {
           const codigosCaso = [
             String(caso.codiAsgrdra || '').trim(),
@@ -604,9 +561,7 @@ export default function ReporteCasosMejorado() {
           return coincide;
         });
         
-        console.log(`🏢 Total casos de ${aseguradoraEncontrada.rzonSocial} ANTES de filtros: ${casosZurich.length}`);
-        
-        // Analizar códigos únicos encontrados en los casos
+// Analizar códigos únicos encontrados en los casos
         const codigosUnicosEncontrados = new Set();
         casosZurich.forEach(caso => {
           const cod1 = String(caso.codiAsgrdra || '').trim();
@@ -614,17 +569,12 @@ export default function ReporteCasosMejorado() {
           if (cod1) codigosUnicosEncontrados.add(cod1);
           if (cod2) codigosUnicosEncontrados.add(cod2);
         });
-        console.log('🏢 Códigos únicos encontrados en casos:', Array.from(codigosUnicosEncontrados));
-        
-        // Analizar fechas de casos de Zurich
+// Analizar fechas de casos de Zurich
         if (fechaDesde || fechaHasta) {
           const casosZurichConFecha = casosZurich.filter(c => c[campoFechaFiltro]);
           const casosZurichSinFecha = casosZurich.filter(c => !c[campoFechaFiltro]);
           
-          console.log(`📅 Casos de ${aseguradoraEncontrada.rzonSocial} CON fecha en ${campoFechaFiltro}: ${casosZurichConFecha.length}`);
-          console.log(`📅 Casos de ${aseguradoraEncontrada.rzonSocial} SIN fecha en ${campoFechaFiltro}: ${casosZurichSinFecha.length}`);
-          
-          // Contar casos en el rango de fechas
+// Contar casos en el rango de fechas
           const casosZurichEnRango = casosZurichConFecha.filter(caso => {
             try {
               const f = new Date(caso[campoFechaFiltro]);
@@ -650,9 +600,7 @@ export default function ReporteCasosMejorado() {
             }
           });
           
-          console.log(`📅 Casos de ${aseguradoraEncontrada.rzonSocial} en rango ${fechaDesde || 'sin inicio'} a ${fechaHasta || 'sin fin'}: ${casosZurichEnRango.length}`);
-          
-          // Mostrar algunos ejemplos de casos fuera del rango
+// Mostrar algunos ejemplos de casos fuera del rango
           const casosFueraRango = casosZurichConFecha.filter(caso => {
             try {
               const f = new Date(caso[campoFechaFiltro]);
@@ -677,16 +625,7 @@ export default function ReporteCasosMejorado() {
               return true;
             }
           });
-          
-          if (casosFueraRango.length > 0) {
-            console.log(`⚠️ Casos de ${aseguradoraEncontrada.rzonSocial} FUERA del rango: ${casosFueraRango.length}`);
-            console.log('📋 Primeros 5 casos fuera del rango:', casosFueraRango.slice(0, 5).map(c => ({
-              numeroAjuste: c.nmroAjste || c.numero_ajuste,
-              fecha: c[campoFechaFiltro],
-              aseguradora: c.codiAsgrdra || c.cod1Asgrdra
-            })));
-          }
-        }
+}
       }
     }
     
@@ -1023,31 +962,13 @@ export default function ReporteCasosMejorado() {
       
       // Log detallado para los primeros casos que se excluyen (solo si hay filtros activos)
       if (!ok && (aseguradoraFiltro || fechaDesde || fechaHasta) && contadorInicial <= 10) {
-        console.log(`❌ Caso ${contadorInicial} excluido:`, {
-          numeroAjuste: caso.nmroAjste || caso.numero_ajuste,
-          aseguradora: caso.codiAsgrdra || caso.cod1Asgrdra,
-          fecha: caso[campoFechaFiltro],
-          razones: razonesExclusion
-        });
-      }
+}
       
       return ok;
     });
     
     // Log de contadores
-    console.log('📊 Contadores de filtrado:', {
-      totalCasos: casos.length,
-      despuésTexto: contadorDespuesTexto,
-      despuésFecha: contadorDespuesFecha,
-      despuésEstado: contadorDespuesEstado,
-      despuésResponsable: contadorDespuesResponsable,
-      despuésAseguradora: contadorDespuesAseguradora,
-      final: resultados.length
-    });
-    
-    console.log(`✅ Filtros aplicados: ${resultados.length} casos de ${casos.length} totales`);
-    
-    // Análisis directo: casos de Zurich con fechas en 2025
+// Análisis directo: casos de Zurich con fechas en 2025
     if (aseguradoraFiltro && aseguradoras.length > 0) {
       const aseguradoraEncontrada = aseguradoras.find(a => {
         const cod1 = String(a.codiAsgrdra || '').trim();
@@ -1088,9 +1009,7 @@ export default function ReporteCasosMejorado() {
           return coincideDirecto;
         });
         
-        console.log(`🔍 ANÁLISIS DIRECTO: Total casos de ${aseguradoraEncontrada.rzonSocial}: ${todosCasosAseguradora.length}`);
-        
-        // Filtrar por fechas en 2025
+// Filtrar por fechas en 2025
         if (fechaDesde || fechaHasta) {
           const casosConFecha2025 = todosCasosAseguradora.filter(caso => {
             // Buscar fecha en cualquier campo
@@ -1129,39 +1048,19 @@ export default function ReporteCasosMejorado() {
             return false; // No tiene fecha válida
           });
           
-          console.log(`🔍 ANÁLISIS DIRECTO: Casos de ${aseguradoraEncontrada.rzonSocial} con fecha en rango: ${casosConFecha2025.length}`);
-          console.log(`🔍 ANÁLISIS DIRECTO: Casos que pasaron el filtro completo: ${resultados.length}`);
-          console.log(`🔍 DIFERENCIA: ${casosConFecha2025.length - resultados.length} casos no están pasando el filtro`);
-        }
+}
       }
-    }
-    
-    // Debug: información adicional sobre filtros aplicados
-    if (fechaDesde || fechaHasta) {
-      console.log(`📅 Filtro de fechas: ${fechaDesde || 'sin límite'} a ${fechaHasta || 'sin límite'} (campo: ${campoFechaFiltro})`);
-      const casosConFecha = resultados.filter(c => c[campoFechaFiltro]);
-      console.log(`📅 Casos con fecha en campo ${campoFechaFiltro}: ${casosConFecha.length} de ${resultados.length}`);
     }
     
     if (aseguradoraFiltro && aseguradoraFiltro.trim() !== '') {
       const nombreAseg = getNombreAseguradora(aseguradoraFiltro);
-      console.log(`🏢 Filtro de aseguradora: ${nombreAseg} (código: ${aseguradoraFiltro})`);
-      
-      // Contar casos de la aseguradora seleccionada ANTES de aplicar otros filtros
       const aseguradoraEncontrada = aseguradoras.find(a => {
         const cod1 = String(a.codiAsgrdra || '').trim();
         const cod2 = String(a.cod1Asgrdra || '').trim();
         const filtroStr = String(aseguradoraFiltro).trim();
         return cod1 === filtroStr || cod2 === filtroStr;
       });
-      
-      if (aseguradoraEncontrada) {
-        console.log('🏢 Aseguradora encontrada en lista:', {
-          nombre: aseguradoraEncontrada.rzonSocial,
-          codiAsgrdra: aseguradoraEncontrada.codiAsgrdra,
-          cod1Asgrdra: aseguradoraEncontrada.cod1Asgrdra
-        });
-      } else {
+      if (!aseguradoraEncontrada) {
         console.warn('⚠️ Aseguradora NO encontrada en lista con código:', aseguradoraFiltro);
       }
       
@@ -1180,9 +1079,7 @@ export default function ReporteCasosMejorado() {
           return codigosCaso.some(codCaso => codigosAseg.includes(codCaso));
         });
         
-        console.log(`🏢 Total casos de ${nombreAseg} SIN filtros: ${casosAseguradoraSinFiltros.length}`);
-        
-        // Contar casos de la aseguradora que pasan el filtro de fechas
+// Contar casos de la aseguradora que pasan el filtro de fechas
         if (fechaDesde || fechaHasta) {
           const casosAseguradoraConFechas = casosAseguradoraSinFiltros.filter(caso => {
             const f = caso[campoFechaFiltro] ? new Date(caso[campoFechaFiltro]) : null;
@@ -1205,12 +1102,9 @@ export default function ReporteCasosMejorado() {
             return true;
           });
           
-          console.log(`🏢 Casos de ${nombreAseg} que pasan filtro de fechas: ${casosAseguradoraConFechas.length}`);
-          
-          // Contar casos sin fecha en el campo seleccionado
+// Contar casos sin fecha en el campo seleccionado
           const casosSinFecha = casosAseguradoraSinFiltros.filter(caso => !caso[campoFechaFiltro]);
-          console.log(`🏢 Casos de ${nombreAseg} SIN fecha en campo ${campoFechaFiltro}: ${casosSinFecha.length}`);
-        }
+}
       }
       
       const casosPorAseguradora = {};
@@ -1218,8 +1112,7 @@ export default function ReporteCasosMejorado() {
         const codigo = String(caso.codiAsgrdra || caso.cod1Asgrdra || 'Sin código').trim();
         casosPorAseguradora[codigo] = (casosPorAseguradora[codigo] || 0) + 1;
       });
-      console.log('🏢 Casos por aseguradora después del filtro:', casosPorAseguradora);
-    }
+}
     
     // Debug: contar casos por estado después del filtro
     if (estadoFiltro && estadoFiltro.trim() !== '') {
@@ -1228,24 +1121,18 @@ export default function ReporteCasosMejorado() {
         const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
         casosPorEstadoFiltrado[estado] = (casosPorEstadoFiltrado[estado] || 0) + 1;
       });
-      console.log('📊 Casos por estado después del filtro:', casosPorEstadoFiltrado);
-      console.log('🔍 Estado filtrado (código):', estadoFiltro);
-      
-      // Buscar el nombre del estado correspondiente al código
+// Buscar el nombre del estado correspondiente al código
       const estadoEncontrado = estados.find(e => 
         String(e.codiEstdo || e.codiEstado || e.codigo || '').trim() === String(estadoFiltro).trim()
       );
       if (estadoEncontrado) {
         const nombreEstado = String(estadoEncontrado.descEstdo || estadoEncontrado.descEstado || estadoEncontrado.descripcion || '').trim();
-        console.log('🔍 Nombre del estado filtrado:', nombreEstado);
-        
-        // Contar casos que tienen el nombre del estado
+// Contar casos que tienen el nombre del estado
         const casosConNombreEstado = casos.filter(caso => {
           const estadoCaso = String(caso.codiEstdo || caso.codi_estado || caso.estado || '').trim().toUpperCase();
           return estadoCaso === nombreEstado.toUpperCase() || estadoCaso.includes(nombreEstado.toUpperCase());
         });
-        console.log(`📊 Casos con nombre de estado "${nombreEstado}":`, casosConNombreEstado.length);
-      }
+}
     }
     
     setCasosFiltrados(resultados);
@@ -1722,20 +1609,7 @@ export default function ReporteCasosMejorado() {
 
   // Exportar a Excel
   const exportarExcel = async () => {
-    console.log('🔄 Iniciando exportación Excel...');
-    console.log('📊 Filtros activos al exportar:', {
-      fechaDesde,
-      fechaHasta,
-      campoFechaFiltro,
-      estadoFiltro,
-      responsableFiltro,
-      aseguradoraFiltro,
-      terminoBusqueda
-    });
-    console.log('📊 Total casos filtrados en estado:', casosFiltrados.length);
-    console.log('📊 Total casos sin filtrar:', casos.length);
-    
-    // Aplicar filtros nuevamente para asegurar que se exporten los mismos casos que se muestran
+// Aplicar filtros nuevamente para asegurar que se exporten los mismos casos que se muestran
     const casosParaExportar = casos.filter(caso => {
       let ok = true;
       
@@ -1888,9 +1762,7 @@ export default function ReporteCasosMejorado() {
       return ok;
     });
     
-    console.log('📊 Total casos después de aplicar filtros al exportar:', casosParaExportar.length);
-    
-    // ANÁLISIS DE COLUMNAS: Clasificar cada columna según su tipo
+// ANÁLISIS DE COLUMNAS: Clasificar cada columna según su tipo
     const clasificacionColumnas = {};
     camposVisibles.forEach(({ clave, label }) => {
       // Identificar columnas de FECHA
@@ -1917,9 +1789,7 @@ export default function ReporteCasosMejorado() {
       }
     });
     
-    console.log('📊 Clasificación de columnas:', clasificacionColumnas);
-    
-    // Usar ExcelJS para mejor soporte de formatos
+// Usar ExcelJS para mejor soporte de formatos
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('CasosComplex');
     
@@ -2092,10 +1962,7 @@ export default function ReporteCasosMejorado() {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
     const nombreArchivo = `reporte_casos_mejorado_${timestamp}.xlsx`;
     
-    console.log('💾 Guardando archivo:', nombreArchivo);
-    console.log(`✅ Exportación completada: ${casosParaExportar.length} casos exportados`);
-    
-    // Escribir el archivo usando ExcelJS
+// Escribir el archivo usando ExcelJS
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);

@@ -352,8 +352,7 @@ const [recomendaciones, setRecomendaciones] = useState("");
     try {
       const bancoString = JSON.stringify(bancoRecomendaciones);
       localStorage.setItem("bancoRecomendaciones", bancoString);
-      console.log('💾 Banco de recomendaciones guardado en localStorage');
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error al guardar banco de recomendaciones en localStorage:', error);
       // Intentar guardar solo las categorías principales si hay error de espacio
       try {
@@ -427,8 +426,7 @@ const [recomendaciones, setRecomendaciones] = useState("");
             if (datosParseados.areas !== undefined) setAreas(datosParseados.areas);
             if (datosParseados.datosEquipos !== undefined) setDatosEquipos(datosParseados.datosEquipos);
             // Agregar más estados según sea necesario
-            console.log('✅ Datos de formulario de inspección cargados desde localStorage');
-          }
+}
         } catch (error) {
           console.error('Error al cargar datos guardados:', error);
           localStorage.removeItem('formularioInspeccion');
@@ -468,8 +466,7 @@ const [recomendaciones, setRecomendaciones] = useState("");
           // Agregar más estados según sea necesario
         });
         localStorage.setItem('formularioInspeccion', datosParaGuardar);
-        console.log('💾 Datos de formulario de inspección guardados en localStorage');
-      } catch (error) {
+} catch (error) {
         console.error('Error al guardar datos:', error);
         try {
           localStorage.removeItem('formularioInspeccion');
@@ -544,16 +541,14 @@ const [recomendaciones, setRecomendaciones] = useState("");
   useEffect(() => {
     const esRutaInspeccion = location.pathname.includes('/inspeccion') || location.pathname.includes('/formulario-inspeccion');
     if (!esRutaInspeccion) {
-      console.log('🧹 Limpiando datos de localStorage al salir del formulario de inspección');
-      localStorage.removeItem('formularioInspeccion');
+localStorage.removeItem('formularioInspeccion');
     }
 
     return () => {
       setTimeout(() => {
         const sigueEnRutaInspeccion = window.location.pathname.includes('/inspeccion') || window.location.pathname.includes('/formulario-inspeccion');
         if (!sigueEnRutaInspeccion) {
-          console.log('🧹 Limpiando datos de localStorage (componente desmontado)');
-          localStorage.removeItem('formularioInspeccion');
+localStorage.removeItem('formularioInspeccion');
         }
       }, 100);
     };
@@ -752,8 +747,7 @@ const filaDoble = (label, value) => new TableRow({
     let logoBase64 = null;
     try {
       logoBase64 = await convertirImagenImportadaABase64(Logo);
-      console.log('✅ Logo convertido a base64');
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error convirtiendo logo:', error);
     }
 
@@ -888,22 +882,19 @@ try {
   if (imagen && imagen instanceof File) {
     // Si tenemos el archivo File directamente
     imagenBuffer = await imagen.arrayBuffer();
-    console.log('✅ Imagen del riesgo obtenida desde File');
-  } else if (preview) {
+} else if (preview) {
     // Si tenemos preview (puede ser base64 o blob URL)
     if (typeof preview === 'string') {
       if (preview.startsWith('data:image')) {
         // Es base64, convertir a buffer
         const base64Data = preview.split(',')[1] || preview;
         imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-        console.log('✅ Imagen del riesgo obtenida desde base64 (preview)');
-      } else if (preview.startsWith('blob:')) {
+} else if (preview.startsWith('blob:')) {
         // Es blob URL, necesitamos convertirlo
         try {
           const response = await fetch(preview);
           imagenBuffer = await response.arrayBuffer();
-          console.log('✅ Imagen del riesgo obtenida desde blob URL');
-        } catch (blobError) {
+} catch (blobError) {
           console.error('❌ Error al obtener imagen desde blob URL:', blobError);
         }
       }
@@ -920,8 +911,7 @@ try {
           if (datos.imagen.startsWith('data:image')) {
             const base64Data = datos.imagen.split(',')[1] || datos.imagen;
             imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-            console.log('✅ Imagen del riesgo obtenida desde localStorage');
-          }
+}
         }
       }
     } catch (e) {
@@ -957,8 +947,7 @@ try {
         alignment: AlignmentType.CENTER,
       })
     );
-    console.log('✅ Imagen del riesgo insertada en el documento Word');
-  } else {
+} else {
     console.warn('⚠️ No se pudo obtener la imagen del riesgo para insertar en el Word');
   }
 } catch (error) {
@@ -1394,22 +1383,18 @@ docContent.push(
     
     // Primero intentar usar imagen del mapa si existe (captura manual previa)
     if (imagenMapa) {
-      console.log('🔍 Usando imagen del mapa capturada previamente...');
-      try {
+try {
         // Verificar si es base64
         if (typeof imagenMapa === 'string' && imagenMapa.startsWith('data:image')) {
           const base64Data = imagenMapa.split(',')[1] || imagenMapa;
           mapaBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-          console.log('✅ Mapa convertido desde base64');
-        } else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('blob:')) {
+} else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('blob:')) {
           const response = await fetch(imagenMapa);
           mapaBuffer = await response.arrayBuffer();
-          console.log('✅ Mapa convertido desde blob URL');
-        } else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('http')) {
+} else if (typeof imagenMapa === 'string' && imagenMapa.startsWith('http')) {
           const response = await fetch(imagenMapa);
           mapaBuffer = await response.arrayBuffer();
-          console.log('✅ Mapa cargado desde servidor');
-        }
+}
         
         if (mapaBuffer) {
           const mapaImage = new ImageRun({
@@ -1429,8 +1414,7 @@ docContent.push(
           );
           
           mapaInsertado = true;
-          console.log('✅ Mapa capturado previamente insertado en el documento');
-        }
+}
       } catch (error) {
         console.warn('⚠️ Error al procesar imagen del mapa capturada:', error);
       }
@@ -1438,9 +1422,7 @@ docContent.push(
     
     // Si no hay imagen capturada, generar mapa estático automáticamente desde coordenadas
     if (!mapaInsertado && formData.coordenadasRiesgo) {
-      console.log('🔄 Generando mapa estático automáticamente desde coordenadas...');
-      
-      try {
+try {
         // Parsear coordenadas (formato: "lat, lng" o "lat,lng")
         const coordsStr = formData.coordenadasRiesgo.trim();
         const coordsMatch = coordsStr.match(/(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/);
@@ -1456,8 +1438,7 @@ docContent.push(
             const osmStaticUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=500x300&markers=${lat},${lng},red-pushpin`;
             
             try {
-              console.log('📡 Descargando mapa estático desde OpenStreetMap...');
-              const response = await fetch(osmStaticUrl);
+const response = await fetch(osmStaticUrl);
               
               if (response.ok) {
                 mapaBuffer = await response.arrayBuffer();
@@ -1479,8 +1460,7 @@ docContent.push(
                 );
                 
                 mapaInsertado = true;
-                console.log('✅ Mapa estático generado automáticamente e insertado');
-              } else {
+} else {
                 throw new Error('No se pudo descargar el mapa estático');
               }
             } catch (fetchError) {
@@ -1970,18 +1950,15 @@ if (imagenesRegistro.length > 0) {
         if (img && img.file && typeof img.file.arrayBuffer === "function") {
           // Si es un File object
           imagenBuffer = await img.file.arrayBuffer();
-          console.log('✅ Imagen del registro obtenida desde File');
-        } else if (img && img.base64) {
+} else if (img && img.base64) {
           // Si tiene base64
           const base64Data = img.base64.split(',')[1] || img.base64;
           imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-          console.log('✅ Imagen del registro obtenida desde base64');
-        } else if (img && img.preview && typeof img.preview === 'string' && img.preview.startsWith('data:image')) {
+} else if (img && img.preview && typeof img.preview === 'string' && img.preview.startsWith('data:image')) {
           // Si tiene preview como base64
           const base64Data = img.preview.split(',')[1] || img.preview;
           imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-          console.log('✅ Imagen del registro obtenida desde preview base64');
-        } else if (img && img.ruta) {
+} else if (img && img.ruta) {
           // Si tiene ruta del servidor, intentar cargarla
           try {
             const imagenUrl = img.ruta.startsWith('http') 
@@ -1990,8 +1967,7 @@ if (imagenesRegistro.length > 0) {
             const response = await fetch(imagenUrl);
             if (response.ok) {
               imagenBuffer = await response.arrayBuffer();
-              console.log('✅ Imagen del registro obtenida desde servidor');
-            }
+}
           } catch (fetchError) {
             console.error('❌ Error al cargar imagen desde servidor:', fetchError);
           }
@@ -2388,10 +2364,8 @@ const handleGuardarEnHistorial = async () => {
     }
   };
 
-  console.log('💾 Datos a enviar al historial:', datos);
-  const resultado = await guardarEnHistorial(datos, 'en_proceso');
-  console.log('✅ Imagen guardada exitosamente');
-  alert(resultado.message);
+const resultado = await guardarEnHistorial(datos, 'en_proceso');
+alert(resultado.message);
 };
 
 const handleExportar = async () => {
@@ -2517,15 +2491,12 @@ const handleExportar = async () => {
       }
     };
 
-    console.log('💾 Datos a enviar al historial (exportar):', datos);
-
-    // Primero exportar el documento
+// Primero exportar el documento
     await generarWord();
 
     // Luego guardar en el historial como completado
     const resultado = await guardarEnHistorial(datos, 'completado');
-    console.log('✅ Formulario exportado y guardado exitosamente');
-    alert(resultado.message);
+alert(resultado.message);
     
   } catch (error) {
     console.error('Error en exportación:', error);
@@ -2542,8 +2513,7 @@ const handleInputChange = (field, value) => {
 };
 
 const handleMapaChange = (mapaData) => {
-  console.log('🗺️ Datos del mapa recibidos:', mapaData);
-  setImagenMapa(mapaData.imagen);
+setImagenMapa(mapaData.imagen);
   
   // Actualizar coordenadas en formData
   if (mapaData.coordenadas) {
@@ -2800,9 +2770,7 @@ const cargarDatosFormulario = async (formularioId) => {
       
       // Procesar imágenes de registro si existen
       if (formulario.datos?.imagenesRegistro && Array.isArray(formulario.datos.imagenesRegistro)) {
-        console.log('📸 Procesando imágenes de registro desde historial...');
-        
-        const baseURL = BASE_URL;
+const baseURL = BASE_URL;
 
         const imagenesProcesadas = await Promise.all(
           formulario.datos.imagenesRegistro.map(async (img, index) => {
@@ -2879,14 +2847,12 @@ const cargarDatosFormulario = async (formularioId) => {
           })
         );
         
-        console.log(`✅ ${imagenesProcesadas.length} imágenes de registro procesadas`);
-        setImagenesRegistro(imagenesProcesadas);
+setImagenesRegistro(imagenesProcesadas);
       } else {
         setImagenesRegistro([]);
       }
       
-      console.log('✅ Formulario cargado exitosamente');
-    }
+}
   } catch (error) {
     console.error('❌ Error cargando formulario:', error);
     alert(`Error cargando formulario: ${error.message}`);
@@ -4513,10 +4479,7 @@ return (
     coordenadasIniciales={formData.coordenadasRiesgo}
     direccionInicial={formData.direccionRiesgo}
     onMapReady={(map) => {
-      if (map) {
-        console.log('✅ Mapa Google Earth listo');
-      }
-    }}
+}}
     apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
     onMapaChange={(datos) => {
       // Actualizar coordenadas en el formulario si es necesario
@@ -5706,8 +5669,7 @@ return (
                 // Guardar inmediatamente en localStorage
                 try {
                   localStorage.setItem("bancoRecomendaciones", JSON.stringify(nuevoBanco));
-                  console.log('✅ Recomendación guardada en localStorage (Enter):', nuevaRecomendacion.trim());
-                } catch (error) {
+} catch (error) {
                   console.error('❌ Error al guardar en localStorage:', error);
                 }
                 
@@ -5733,8 +5695,7 @@ return (
               // Guardar inmediatamente en localStorage
               try {
                 localStorage.setItem("bancoRecomendaciones", JSON.stringify(nuevoBanco));
-                console.log('✅ Recomendación guardada en localStorage:', nuevaRecomendacion.trim());
-              } catch (error) {
+} catch (error) {
                 console.error('❌ Error al guardar en localStorage:', error);
               }
               
@@ -5845,8 +5806,7 @@ return (
           setRecomendaciones(value);
         } else {
           // Manejar otros campos si es necesario
-          console.log(`Campo ${field} cambiado:`, value);
-        }
+}
       }}
     />
   </div>

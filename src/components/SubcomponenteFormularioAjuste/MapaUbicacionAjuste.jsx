@@ -98,8 +98,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
       // Pequeño delay para asegurar que el mapa esté completamente renderizado
       const timer = setTimeout(() => {
         setMapaListo(true);
-        console.log('✅ Mapa Leaflet listo para usar');
-      }, 2000);
+}, 2000);
       
       return () => clearTimeout(timer);
     }
@@ -135,8 +134,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccionCompleta + ', Colombia')}&limit=1`
         );
       } catch (cspError) {
-        console.log('⚠️ Error de CSP, intentando con proxy local...');
-        // Si falla por CSP, usar proxy local
+// Si falla por CSP, usar proxy local
         response = await fetch(
           `http://localhost:3000/api/geocode?q=${encodeURIComponent(direccionCompleta + ', Colombia')}`
         );
@@ -156,8 +154,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
         // Actualizar coordenadas en el formulario
         onInputChange('coordenadasRiesgo', `${lat}, ${lng}`);
         
-        console.log('✅ Ubicación encontrada:', { lat, lng });
-        setError(null);
+setError(null);
       } else {
         setError('No se pudo encontrar la ubicación exacta. Verifica la dirección.');
       }
@@ -195,8 +192,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(busquedaLibre + ', Colombia')}&limit=1`
         );
       } catch (cspError) {
-        console.log('⚠️ Error de CSP, intentando con proxy local...');
-        // Si falla por CSP, usar proxy local
+// Si falla por CSP, usar proxy local
         response = await fetch(
           `http://localhost:3000/api/geocode?q=${encodeURIComponent(busquedaLibre + ', Colombia')}`
         );
@@ -219,8 +215,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
         // Actualizar la dirección completa con la búsqueda exitosa
         setDireccionCompleta(busquedaLibre);
         
-        console.log('✅ Dirección encontrada:', { lat, lng, direccion: busquedaLibre });
-        setError(null);
+setError(null);
         
         // Limpiar el campo de búsqueda después de encontrar
         setBusquedaLibre('');
@@ -260,8 +255,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
       // Actualizar coordenadas en el formulario
       onInputChange('coordenadasRiesgo', `${latlng.lat}, ${latlng.lng}`);
       
-      console.log('✅ Ubicación actualizada manualmente:', { lat: latlng.lat, lng: latlng.lng });
-      setError(null);
+setError(null);
     }
   };
 
@@ -276,8 +270,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
     // Actualizar coordenadas en el formulario
     onInputChange('coordenadasRiesgo', `${position.lat}, ${position.lng}`);
     
-    console.log('✅ Marcador movido a:', { lat: position.lat, lng: position.lng });
-    setError(null);
+setError(null);
   };
 
   // Función para alternar el modo de edición
@@ -301,25 +294,19 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
       
       if (data && data.display_name) {
         setDireccionCompleta(data.display_name);
-        console.log('✅ Dirección obtenida desde coordenadas:', data.display_name);
-      }
+}
     } catch (error) {
-      console.log('⚠️ No se pudo obtener la dirección desde las coordenadas');
-    }
+}
   };
 
   // Función para capturar el mapa como imagen
   const capturarMapaComoImagen = async () => {
     if (!mapaListo || !mapContainerRef.current) {
-      console.log('⚠️ Mapa no está listo para capturar');
-      return null;
+return null;
     }
 
     try {
-      console.log('📸 Iniciando captura del mapa...');
-      console.log('🔍 Estado del mapa:', { mapaListo, containerRef: !!mapContainerRef.current });
-      
-      // Usar html2canvas para capturar el mapa
+// Usar html2canvas para capturar el mapa
       
       const canvas = await html2canvas(mapContainerRef.current, {
         useCORS: true,
@@ -331,23 +318,16 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
         height: mapContainerRef.current.offsetHeight
       });
 
-      console.log('✅ Canvas generado:', { width: canvas.width, height: canvas.height });
-
-      // Convertir canvas a blob
+// Convertir canvas a blob
       const blob = await new Promise(resolve => {
         canvas.toBlob(resolve, 'image/png', 0.8); // Reducir calidad para evitar problemas
       });
 
-      console.log('✅ Blob generado:', { size: blob.size, type: blob.type });
-
-      // Convertir blob a base64
+// Convertir blob a base64
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result;
-        console.log('✅ Base64 generado, longitud:', base64data.length);
-        console.log('🔍 Primeros 100 caracteres:', base64data.substring(0, 100));
-        
-        setImagenMapa(base64data);
+setImagenMapa(base64data);
         
         // Notificar al componente padre sobre el cambio del mapa
         if (onMapaChange) {
@@ -359,12 +339,10 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
             zoom: zoom
           };
           
-          console.log('📤 Enviando datos del mapa al padre:', mapaData);
-          onMapaChange(mapaData);
+onMapaChange(mapaData);
         }
         
-        console.log('✅ Mapa capturado como imagen exitosamente');
-      };
+};
       
       reader.onerror = (error) => {
         console.error('❌ Error al leer el blob:', error);
@@ -405,8 +383,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
           // Actualizar coordenadas en el formulario
           onInputChange('coordenadasRiesgo', `${lat}, ${lng}`);
           
-          console.log('✅ Ubicación actual obtenida:', { lat, lng });
-          setCargando(false);
+setCargando(false);
         },
         (error) => {
           setCargando(false);
@@ -422,8 +399,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
   // Cambiar zoom del mapa
   const cambiarZoom = (nuevoZoom) => {
     setZoom(nuevoZoom);
-    console.log('✅ Zoom cambiado a:', nuevoZoom);
-  };
+};
 
   return (
     <div className="space-y-6">

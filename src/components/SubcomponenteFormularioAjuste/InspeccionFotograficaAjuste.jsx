@@ -4,6 +4,7 @@ import IAInteligente from './IAInteligente';
 import { ImageCompression } from '../../utils/imageCompression';
 import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl, getImageUrlCandidates, createImageErrorHandler } from '../../utils/imageUtils';
+import { isStoredFileReference } from '../../utils/storedFilePath';
 
 export default function InspeccionFotograficaAjuste({ formData, onInputChange, onAgregarImagenBase64, numeroSeccion = 4 }) {
   const { theme } = useTheme();
@@ -28,9 +29,7 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
       return [];
     }
 
-    console.log('📸 Procesando imágenes (modo lazy):', imagenesParaProcesar.length);
-
-    // ✅ NO hacer fetch ahora - solo preparar las imágenes
+// ✅ NO hacer fetch ahora - solo preparar las imágenes
     // getImageUrlCandidates se encargará de construir las URLs correctas
     const imagenesProcesadas = imagenesParaProcesar.map((imagen) => {
       if (typeof imagen === 'object' && imagen !== null) {
@@ -41,7 +40,7 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
         
         // Si tiene ruta, mantenerla tal cual
         // getImageUrlCandidates() construirá la URL completa cuando se necesite
-        if (imagen.ruta && imagen.ruta.startsWith('/uploads/')) {
+        if (isStoredFileReference(imagen.ruta)) {
           return {
             ...imagen,
             // NO crear preview ahora - se creará cuando se necesite mostrar
@@ -55,8 +54,7 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
       return imagen;
     });
 
-    console.log('✅ Imágenes preparadas (lazy loading):', imagenesProcesadas.length);
-    return imagenesProcesadas;
+return imagenesProcesadas;
   };
 
   // Ref para rastrear la última estructura de imágenes procesada (sin descripciones)
@@ -136,9 +134,7 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
     setComprimiendo(true);
     
     try {
-      console.log(`🔄 Procesando ${files.length} imágenes...`);
-      
-      // Comprimir imágenes si es necesario
+// Comprimir imágenes si es necesario
       const imagenesComprimidas = await ImageCompression.compressImages(files, {
         maxWidth: 1920,
         maxHeight: 1080,
@@ -160,8 +156,7 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
       setImagenes(todasLasImagenes);
       onInputChange('imagenesInspeccion', todasLasImagenes);
       
-      console.log(`✅ ${files.length} imágenes procesadas y agregadas`);
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error procesando imágenes:', error);
       alert('Error al procesar las imágenes. Inténtalo de nuevo.');
     } finally {
@@ -399,8 +394,7 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
               const base64String = prompt('Pega aquí la imagen en formato base64 (data:image/...):');
               if (base64String && base64String.startsWith('data:image')) {
                 agregarImagenBase64(base64String, 'Imagen del Formulario');
-                console.log('📸 Imagen base64 agregada manualmente');
-              } else if (base64String) {
+} else if (base64String) {
                 alert('Por favor, pega una imagen válida en formato base64 (debe comenzar con "data:image/...")');
               }
             }}

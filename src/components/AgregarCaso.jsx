@@ -13,8 +13,7 @@ const API_URL = 'http://localhost:4000/api/complex';
 const crearCaso = async (formData) => {
   try {
     const response = await axios.post(API_URL, formData);
-    console.log('Caso creado:', response.data);
-  } catch (error) {
+} catch (error) {
     console.error('Error al crear el caso:', error);
   }
 };

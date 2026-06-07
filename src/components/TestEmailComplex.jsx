@@ -20,8 +20,7 @@ export default function TestEmailComplex() {
       });
 
       setResultado(response.data);
-      console.log('✅ Email de prueba complex enviado:', response.data);
-    } catch (err) {
+} catch (err) {
       setError(err.response?.data?.message || err.message);
       console.error('❌ Error enviando email de prueba complex:', err);
     } finally {

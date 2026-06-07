@@ -21,13 +21,11 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
       try {
         const firmas = JSON.parse(bancoGuardado);
         setBancoFirmas(firmas);
-        console.log('✅ Banco de firmas cargado:', firmas.length, 'firmas encontradas');
-      } catch (error) {
+} catch (error) {
         console.error('❌ Error al cargar banco de firmas:', error);
       }
     } else {
-      console.log('ℹ️ No hay firmas guardadas en el banco');
-    }
+}
   }, []);
 
   // Guardar en localStorage
@@ -95,8 +93,7 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
     };
 
     guardarEnBanco([...bancoFirmas, nuevaFirma]);
-    console.log('✅ Firma guardada:', nuevaFirma);
-    alert(`✅ Firma de "${nombreFirmante}" guardada en el banco exitosamente. Ahora puedes seleccionarla desde "Firmas Guardadas" arriba.`);
+alert(`✅ Firma de "${nombreFirmante}" guardada en el banco exitosamente. Ahora puedes seleccionarla desde "Firmas Guardadas" arriba.`);
   };
 
   // Cargar firma del banco al formulario

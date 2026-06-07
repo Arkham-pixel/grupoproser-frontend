@@ -89,17 +89,13 @@ export default function RegistroFotografico({
   useEffect(() => {
     if (!isMountedRef.current) {
       isMountedRef.current = true;
-      console.log('🔄 RegistroFotografico: Componente montado, imágenes iniciales:', imagenesIniciales?.length || 0);
-      
-      // Si hay imágenes iniciales al montar, procesarlas inmediatamente
+// Si hay imágenes iniciales al montar, procesarlas inmediatamente
       if (imagenesIniciales && imagenesIniciales.length > 0 && !inicializado) {
         isProcessingRef.current = true;
         const cargarImagenes = async () => {
           try {
-            console.log('🔄 RegistroFotografico: Procesando imágenes en montaje inicial...');
-            const imagenesProcesadas = await procesarImagenes(imagenesIniciales);
-            console.log('✅ RegistroFotografico: Imágenes procesadas en montaje:', imagenesProcesadas.length);
-            setImagenes(imagenesProcesadas);
+const imagenesProcesadas = await procesarImagenes(imagenesIniciales);
+setImagenes(imagenesProcesadas);
             setInicializado(true);
             imagenesInicialesRef.current = imagenesIniciales;
           } catch (error) {
@@ -159,17 +155,10 @@ export default function RegistroFotografico({
       
       if (imagenesIniciales && imagenesIniciales.length > 0) {
         isProcessingRef.current = true;
-        console.log('🔄 RegistroFotografico: Procesando imágenes iniciales...', {
-          cantidad: imagenesIniciales.length,
-          estructuraCambio: estructuraActual !== estructuraAnterior,
-          datosNuevos: tieneDatosNuevos
-        });
-        
-        const cargarImagenes = async () => {
+const cargarImagenes = async () => {
           try {
             const imagenesProcesadas = await procesarImagenes(imagenesIniciales);
-            console.log('✅ RegistroFotografico: Imágenes procesadas:', imagenesProcesadas.length);
-            setImagenes(imagenesProcesadas);
+setImagenes(imagenesProcesadas);
             setInicializado(true);
           } catch (error) {
             console.error('❌ Error procesando imágenes:', error);
@@ -187,13 +176,10 @@ export default function RegistroFotografico({
     } else if (!inicializado && imagenesIniciales && imagenesIniciales.length > 0) {
       // Si no está inicializado pero hay imágenes, procesarlas de todas formas
       isProcessingRef.current = true;
-      console.log('🔄 RegistroFotografico: Inicializando con imágenes existentes...');
-      
-      const cargarImagenes = async () => {
+const cargarImagenes = async () => {
         try {
           const imagenesProcesadas = await procesarImagenes(imagenesIniciales);
-          console.log('✅ RegistroFotografico: Imágenes inicializadas:', imagenesProcesadas.length);
-          setImagenes(imagenesProcesadas);
+setImagenes(imagenesProcesadas);
           setInicializado(true);
         } catch (error) {
           console.error('❌ Error inicializando imágenes:', error);

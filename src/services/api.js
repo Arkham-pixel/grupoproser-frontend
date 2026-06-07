@@ -1,8 +1,5 @@
 import axios from 'axios';
-import { showConfig, BASE_URL } from '../config/apiConfig.js';
-
-// Mostrar configuración al inicializar
-showConfig();
+import { BASE_URL } from '../config/apiConfig.js';
 
 // Crear instancia de axios con configuración base
 const api = axios.create({
@@ -35,9 +32,6 @@ const checkAndCloseSessionIfExpired = async () => {
     if (token) {
       const now = Date.now();
       localStorage.setItem('sessionStartTime', now.toString());
-      const sessionStartDate = new Date(now).toLocaleString('es-CO');
-      console.log(`⏱️ Nueva sesión iniciada: ${sessionStartDate}`);
-      console.log(`📊 Sesión válida hasta: ${new Date(now + MAX_SESSION_DURATION).toLocaleString('es-CO')}`);
       return false;
     }
     return false;
@@ -46,17 +40,10 @@ const checkAndCloseSessionIfExpired = async () => {
   const sessionStart = parseInt(sessionStartTime, 10);
   const currentTime = Date.now();
   const sessionDuration = currentTime - sessionStart;
-  const hoursElapsed = Math.floor(sessionDuration / (60 * 60 * 1000));
-  const minutesElapsed = Math.floor((sessionDuration % (60 * 60 * 1000)) / (60 * 1000));
-  const hoursRemaining = Math.floor((MAX_SESSION_DURATION - sessionDuration) / (60 * 60 * 1000));
-  const minutesRemaining = Math.floor(((MAX_SESSION_DURATION - sessionDuration) % (60 * 60 * 1000)) / (60 * 1000));
-  
+
   // Si han pasado 7 horas 50 minutos o más, cerrar sesión
   if (sessionDuration >= MAX_SESSION_DURATION) {
-    console.log('⏰ ⚠️ SESIÓN DE 7 HORAS 50 MINUTOS COMPLETADA. Cerrando sesión automáticamente...');
-    console.log(`📊 Tiempo total de sesión: ${hoursElapsed}h ${minutesElapsed}m`);
-    
-    // Intentar registrar el logout en el servidor (pero no bloquear si falla)
+// Intentar registrar el logout en el servidor (pero no bloquear si falla)
     const token = localStorage.getItem('token');
     if (token && navigator.onLine) {
       try {
@@ -67,11 +54,9 @@ const checkAndCloseSessionIfExpired = async () => {
             'Authorization': `Bearer ${token}`
           }
         }).catch(err => {
-          console.log('⚠️ Error al registrar logout (no crítico):', err);
-        });
+});
       } catch (err) {
-        console.log('⚠️ Error al registrar logout (no crítico):', err);
-      }
+}
     }
     
     // Limpiar toda la sesión
@@ -96,9 +81,7 @@ const checkAndCloseSessionIfExpired = async () => {
     
     // Redirigir al login solo si no estamos ya ahí
     if (window.location.pathname !== '/login') {
-      console.log('🔐 Redirigiendo al login después de 7 horas 50 minutos de sesión...');
-      
-      // Forzar redirección inmediata
+// Forzar redirección inmediata
       setTimeout(() => {
         window.location.href = '/login';
       }, 100);
@@ -106,31 +89,7 @@ const checkAndCloseSessionIfExpired = async () => {
     
     return true;
   }
-  
-  // Log informativo - mostrar siempre en las primeras 5 minutos, luego cada 10 minutos
-  const shouldLogStatus = sessionDuration < (5 * 60 * 1000) || sessionDuration % (10 * 60 * 1000) < 5000;
-  if (shouldLogStatus) {
-    console.log(`⏱️ Estado de sesión: ${hoursElapsed}h ${minutesElapsed}m transcurridas | ${hoursRemaining}h ${minutesRemaining}m restantes`);
-    const sessionEndTime = new Date(sessionStart + MAX_SESSION_DURATION).toLocaleString('es-CO');
-    console.log(`📅 Sesión válida hasta: ${sessionEndTime}`);
-    
-    // Información adicional del token en las primeras verificaciones
-    if (sessionDuration < 60000) {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const tokenExpiry = new Date(payload.exp * 1000).toLocaleString('es-CO');
-          const minutesUntilTokenExpiry = Math.floor((payload.exp - Math.floor(Date.now() / 1000)) / 60);
-          console.log(`🔑 Token JWT expira en: ${tokenExpiry} (${minutesUntilTokenExpiry} minutos)`);
-          console.log(`🔄 El token se renovará automáticamente cuando queden ${50} minutos o menos`);
-        } catch (e) {
-          // Error al decodificar, no mostrar info del token
-        }
-      }
-    }
-  }
-  
+
   return false;
 };
 
@@ -189,8 +148,7 @@ const refreshToken = async (force = false) => {
       const hasConnection = navigator.onLine;
       
       if (!hasConnection && !force) {
-        console.log('📡 Sin conexión a internet. El token seguirá siendo válido localmente.');
-        // Guardar que se necesita renovar cuando haya conexión
+// Guardar que se necesita renovar cuando haya conexión
         localStorage.setItem('tokenNeedsRenewal', 'true');
         return currentToken; // Devolver el token actual para que funcione offline
       }
@@ -244,15 +202,7 @@ const refreshToken = async (force = false) => {
               const oldExpiry = new Date(oldPayload.exp * 1000).toLocaleString('es-CO');
               const newExpiry = new Date(newPayload.exp * 1000).toLocaleString('es-CO');
               const minutesBeforeExpiry = Math.floor((oldPayload.exp - Math.floor(Date.now() / 1000)) / 60);
-              
-              console.log(`✅ Token renovado exitosamente`);
-              console.log(`   📅 Token anterior expiraba: ${oldExpiry}`);
-              console.log(`   📅 Token nuevo expira: ${newExpiry}`);
-              if (minutesBeforeExpiry > 0) {
-                console.log(`   🔄 Renovación realizada con ${minutesBeforeExpiry} minutos de anticipación`);
-              }
-              
-              // Emitir evento personalizado para notificar al componente visual
+// Emitir evento personalizado para notificar al componente visual
               window.dispatchEvent(new CustomEvent('tokenRenewed', {
                 detail: {
                   oldExpiry: oldExpiry,
@@ -261,8 +211,7 @@ const refreshToken = async (force = false) => {
                 }
               }));
             } catch (e) {
-              console.log('✅ Token renovado exitosamente');
-              // Emitir evento incluso si falla el parseo
+// Emitir evento incluso si falla el parseo
               window.dispatchEvent(new CustomEvent('tokenRenewed', {
                 detail: {
                   timestamp: Date.now()
@@ -280,8 +229,7 @@ const refreshToken = async (force = false) => {
             // Si no hay conexión, guardar flag para intentar más tarde
             if (!hasConnection) {
               localStorage.setItem('tokenNeedsRenewal', 'true');
-              console.log('📡 Sin conexión. Se intentará renovar cuando haya conexión.');
-              return currentToken; // Devolver token actual para funcionar offline
+return currentToken; // Devolver token actual para funcionar offline
             }
           }
           continue;
@@ -331,8 +279,7 @@ api.interceptors.request.use(
     
     // Si no hay token, continuar sin token
     if (!token) {
-      console.log(`🌐 ${config.method?.toUpperCase() || 'GET'} ${config.url} (sin token)`);
-      return config;
+return config;
     }
     
     // Verificar si el token está cerca de expirar (50 minutos antes) o si necesita renovación
@@ -341,35 +288,11 @@ api.interceptors.request.use(
     const isNearExpiry = !config.url?.includes('/refresh-token') && isTokenNearExpiry(token, 50);
     
     if (isNearExpiry || needsRenewal) {
-      // Obtener información del token para logging
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const currentTime = Math.floor(Date.now() / 1000);
-        const minutesUntilExpiry = Math.floor((payload.exp - currentTime) / 60);
-        if (isNearExpiry) {
-          console.log(`🔄 Token cerca de expirar (${minutesUntilExpiry} minutos restantes), renovando automáticamente...`);
-        } else if (needsRenewal) {
-          console.log(`🔄 Token marcado para renovación pendiente, intentando renovar ahora...`);
-        }
-      } catch (e) {
-        console.log('🔄 Token necesita renovación, renovando automáticamente...');
-      }
-      
       const newToken = await refreshToken(needsRenewal);
-      
+
       if (newToken && newToken !== token) {
         token = newToken;
-        try {
-          const newPayload = JSON.parse(atob(newToken.split('.')[1]));
-          const newExpiryTime = new Date(newPayload.exp * 1000).toLocaleString('es-CO');
-          console.log(`✅ Token renovado y actualizado. Nuevo token expira: ${newExpiryTime}`);
-        } catch (e) {
-          console.log('✅ Token renovado y actualizado exitosamente');
-        }
-      } else if (newToken === token) {
-        // Token no se renovó pero se mantiene el actual (funciona offline)
-        console.log('📡 Token actual se mantiene (funcionando offline o sin conexión)');
-      } else {
+      } else if (!newToken) {
         console.warn('⚠️ No se pudo renovar el token, usando el actual');
       }
     }
@@ -379,8 +302,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    console.log(`🌐 ${config.method?.toUpperCase() || 'GET'} ${config.url}`);
-    return config;
+return config;
   },
   (error) => {
     console.error('❌ Error en interceptor de request:', error);
@@ -391,8 +313,7 @@ api.interceptors.request.use(
 // Interceptor para manejar errores de respuesta
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ ${response.config.method?.toUpperCase() || 'GET'} ${response.status} ${response.config.url}`);
-    return response;
+return response;
   },
   async (error) => {
     const originalRequest = error.config;
@@ -402,18 +323,15 @@ api.interceptors.response.use(
       // Marcar esta petición como que ya intentamos retry
       originalRequest._retry = true;
       
-      console.log('🔄 Token expirado o inválido detectado, intentando renovar...');
-      const newToken = await refreshToken(true);
+const newToken = await refreshToken(true);
       
       if (newToken && newToken !== originalRequest.headers.Authorization?.split(' ')[1]) {
         // Actualizar el header de autorización y reintentar la petición original
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        console.log('✅ Token renovado, reintentando petición...');
-        return api(originalRequest);
+return api(originalRequest);
       } else if (newToken) {
         // Token no cambió pero se mantiene (funciona offline)
-        console.log('📡 Token actual se mantiene (funcionando offline). Reintentando petición...');
-        return api(originalRequest);
+return api(originalRequest);
       } else {
         // Si no se pudo renovar y no hay conexión, permitir funcionar offline
         if (!navigator.onLine) {
@@ -467,8 +385,7 @@ const initSessionCheck = () => {
     const isNearExpiry = isTokenNearExpiry(token, 50);
     
     if (isNearExpiry || needsRenewal) {
-      console.log('🔄 Verificación periódica: Token necesita renovación');
-      await refreshToken(needsRenewal);
+await refreshToken(needsRenewal);
     }
   }, 5 * 60 * 1000); // 5 minutos
   
@@ -524,12 +441,10 @@ const initSessionCheck = () => {
   
   // Escuchar eventos de conexión para renovar token cuando se recupere la conexión
   const handleOnline = () => {
-    console.log('📡 Conexión a internet restaurada');
-    const token = localStorage.getItem('token');
+const token = localStorage.getItem('token');
     const needsRenewal = localStorage.getItem('tokenNeedsRenewal') === 'true';
     if (token && (needsRenewal || isTokenNearExpiry(token, 50))) {
-      console.log('🔄 Intentando renovar token ahora que hay conexión...');
-      refreshToken(true);
+refreshToken(true);
     }
   };
   

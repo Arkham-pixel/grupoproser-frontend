@@ -20,8 +20,7 @@ export default function TestEmail() {
       });
 
       setResultado(response.data);
-      console.log('✅ Email de prueba enviado:', response.data);
-    } catch (err) {
+} catch (err) {
       setError(err.response?.data?.message || err.message);
       console.error('❌ Error enviando email de prueba:', err);
     } finally {

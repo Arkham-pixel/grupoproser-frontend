@@ -379,31 +379,14 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
 
   // Debug: verificar estado de clasificaciones
   useEffect(() => {
-    console.log('🔍 [DEBUG] Estado de clasificaciones actualizado:', {
-      length: clasificaciones.length,
-      tieneDatos: clasificaciones.length > 0,
-      primeras: clasificaciones.slice(0, 3).map(c => ({
-        codIdentificador: c.codIdentificador,
-        rzonDescripcion: c.rzonDescripcion
-      }))
-    });
-  }, [clasificaciones]);
+}, [clasificaciones]);
 
   const obtenerCasos = async () => {
     try {
-      console.log('🔍 Iniciando carga de casos de riesgo...');
-      
-      // Cargar datos principales primero
+// Cargar datos principales primero
       const data = await obtenerCasosRiesgo();
-      console.log('📊 Datos recibidos de obtenerCasosRiesgo:', data);
-      console.log('📊 Tipo de datos:', typeof data);
-      console.log('📊 Es array:', Array.isArray(data));
-      console.log('📊 Longitud:', Array.isArray(data) ? data.length : 'N/A');
-      
-      if (Array.isArray(data) && data.length > 0) {
-        console.log('📋 Primer caso:', data[0]);
-        console.log('📋 Campos del primer caso:', Object.keys(data[0]));
-      }
+if (Array.isArray(data) && data.length > 0) {
+}
       
       // Ordenar del más nuevo al más viejo por fecha de asignación
       const casosOrdenados = Array.isArray(data) ? data.sort((a, b) => {
@@ -412,14 +395,12 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
         return fechaB - fechaA; // Orden descendente (más nuevo primero)
       }) : [];
       
-      console.log('📊 Casos ordenados:', casosOrdenados.length);
-      setCasos(casosOrdenados);
+setCasos(casosOrdenados);
       
       // Cargar datos adicionales en paralelo, con manejo de errores individual
       try {
         const responsablesData = await obtenerResponsables();
-        console.log('👥 Responsables cargados:', responsablesData?.length || 0);
-        setResponsables(Array.isArray(responsablesData) ? responsablesData : []);
+setResponsables(Array.isArray(responsablesData) ? responsablesData : []);
       } catch (error) {
         console.error('❌ Error al cargar responsables:', error);
         setResponsables([]);
@@ -427,8 +408,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
       
       try {
         const estadosData = await obtenerEstados();
-        console.log('📊 Estados cargados:', estadosData?.length || 0);
-        setEstadosLocales(Array.isArray(estadosData) ? estadosData : []);
+setEstadosLocales(Array.isArray(estadosData) ? estadosData : []);
       } catch (error) {
         console.error('❌ Error al cargar estados:', error);
         setEstadosLocales([]);
@@ -436,8 +416,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
       
       try {
         const aseguradorasData = await obtenerAseguradoras();
-        console.log('🏢 Aseguradoras cargadas:', aseguradorasData?.length || 0);
-        setAseguradoras(Array.isArray(aseguradorasData) ? aseguradorasData : []);
+setAseguradoras(Array.isArray(aseguradorasData) ? aseguradorasData : []);
       } catch (error) {
         console.error('❌ Error al cargar aseguradoras:', error);
         setAseguradoras([]);
@@ -445,8 +424,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
       
       try {
         const ciudadesData = await obtenerCiudades();
-        console.log('🏙️ Ciudades cargadas:', ciudadesData?.length || 0);
-        // Formatear ciudades igual que en AgregarCasoRiesgo para consistencia
+// Formatear ciudades igual que en AgregarCasoRiesgo para consistencia
         const ciudadesFormateadas = Array.isArray(ciudadesData) 
           ? ciudadesData.map(c => ({
               value: c.codiMunicipio,
@@ -456,8 +434,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
             })).filter(ciudad => ciudad.value && ciudad.label)
           : [];
         setCiudades(ciudadesFormateadas);
-        console.log('🏙️ Ciudades formateadas:', ciudadesFormateadas.length);
-      } catch (error) {
+} catch (error) {
         console.error('❌ Error al cargar ciudades:', error);
         setCiudades([]);
       }
@@ -483,8 +460,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
             ...f
           })).filter(f => f.id && f.label);
           setFuncionarios(funcionariosFormateados);
-          console.log('👤 Funcionarios cargados:', funcionariosFormateados.length);
-        }
+}
       } catch (error) {
         console.error('❌ Error al cargar funcionarios:', error);
         setFuncionarios([]);
@@ -493,32 +469,22 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
       // Cargar clasificaciones para convertir codiClasificacion
       try {
         const token = localStorage.getItem('token');
-        console.log('🔍 [CLASIFICACIONES] Intentando cargar desde:', `${BASE_URL}/api/estados/clasificaciones-riesgo`);
-        const clasificacionesResponse = await fetch(`${BASE_URL}/api/estados/clasificaciones-riesgo`, {
+const clasificacionesResponse = await fetch(`${BASE_URL}/api/estados/clasificaciones-riesgo`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
         
-        console.log('🔍 [CLASIFICACIONES] Response status:', clasificacionesResponse.status, clasificacionesResponse.statusText);
-        
-        if (!clasificacionesResponse.ok) {
+if (!clasificacionesResponse.ok) {
           const errorText = await clasificacionesResponse.text();
           console.error(`❌ [CLASIFICACIONES] Error HTTP: ${clasificacionesResponse.status} ${clasificacionesResponse.statusText}`);
           console.error(`❌ [CLASIFICACIONES] Error body:`, errorText);
           setClasificaciones([]);
         } else {
           const clasificacionesData = await clasificacionesResponse.json();
-          console.log('📦 [CLASIFICACIONES] Datos recibidos (tipo):', typeof clasificacionesData);
-          console.log('📦 [CLASIFICACIONES] Datos recibidos (es array):', Array.isArray(clasificacionesData));
-          console.log('📦 [CLASIFICACIONES] Datos recibidos (longitud):', Array.isArray(clasificacionesData) ? clasificacionesData.length : 'N/A');
-          console.log('📦 [CLASIFICACIONES] Primeros datos:', clasificacionesData);
-          
-          const clasificacionesList = Array.isArray(clasificacionesData) 
+const clasificacionesList = Array.isArray(clasificacionesData) 
             ? clasificacionesData 
             : (clasificacionesData?.data || []);
           
-          console.log('📋 [CLASIFICACIONES] Lista procesada:', clasificacionesList.length, 'elementos');
-          
-          if (clasificacionesList.length === 0) {
+if (clasificacionesList.length === 0) {
             console.warn('⚠️ [CLASIFICACIONES] La lista está vacía después del procesamiento');
           }
           
@@ -540,20 +506,9 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
               return codId !== undefined && codId !== null && codId !== '';
             });
           
-          console.log('✅ [CLASIFICACIONES] Formateadas y listas para guardar:', clasificacionesFormateadas.length);
           setClasificaciones(clasificacionesFormateadas);
-          console.log('✅ [CLASIFICACIONES] Estado actualizado con', clasificacionesFormateadas.length, 'clasificaciones');
-          
-          if (clasificacionesFormateadas.length > 0) {
-            console.log('📋 [CLASIFICACIONES] Primeras clasificaciones:', clasificacionesFormateadas.slice(0, 10).map(c => ({
-              codIdentificador: c.codIdentificador,
-              tipo: typeof c.codIdentificador,
-              rzonDescripcion: c.rzonDescripcion,
-              value: c.value
-            })));
-          } else {
+          if (clasificacionesFormateadas.length === 0) {
             console.error('❌ [CLASIFICACIONES] No se cargaron clasificaciones válidas después del filtrado.');
-            console.log('📦 [CLASIFICACIONES] Datos originales (primeros 5):', clasificacionesList.slice(0, 5));
           }
         }
       } catch (error) {
@@ -563,8 +518,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
         setClasificaciones([]);
       }
       
-      console.log('✅ Carga de datos completada');
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error al cargar casos:', error);
       setCasos([]);
     }
@@ -886,8 +840,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
     
     // Si no hay ciudades disponibles, intentar cargarlas
     if (!ciudadesDisponibles || ciudadesDisponibles.length === 0) {
-      console.log('⚠️ Ciudades no disponibles, cargando...');
-      try {
+try {
         const ciudadesData = await obtenerCiudades();
         if (Array.isArray(ciudadesData) && ciudadesData.length > 0) {
           const ciudadesFormateadas = ciudadesData.map(c => ({
@@ -898,8 +851,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
           })).filter(ciudad => ciudad.value && ciudad.label);
           setCiudades(ciudadesFormateadas);
           ciudadesDisponibles = ciudadesFormateadas;
-          console.log('✅ Ciudades cargadas para exportación:', ciudadesFormateadas.length);
-        }
+}
       } catch (error) {
         console.error('❌ Error al cargar ciudades para exportación:', error);
       }
@@ -1010,12 +962,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
       ? camposVisiblesFinales 
       : todasLasColumnas;
     
-    console.log('📊 Exportando Excel:');
-    console.log('  - Columnas visibles en tabla:', camposVisibles.length);
-    console.log('  - Columnas a exportar:', columnasAExportar.length);
-    console.log('  - Lista de columnas:', columnasAExportar.map(c => c.label));
-    
-    const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
+const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
       const fila = {};
       columnasAExportar.forEach(({ clave, label }) => {
         try {

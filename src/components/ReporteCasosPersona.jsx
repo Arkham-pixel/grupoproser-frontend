@@ -300,8 +300,7 @@ export default function ReporteCasosPersona() {
     // Cargar mapeo de funcionarios (importante para mostrar nombres en lugar de códigos)
     cargarMapeoFuncionarios()
       .then(() => {
-        console.log('✅ Mapeo de funcionarios cargado correctamente');
-      })
+})
       .catch(error => {
         console.error('Error cargando mapeo de funcionarios:', error);
       });
@@ -407,18 +406,13 @@ export default function ReporteCasosPersona() {
         return fechaB - fechaA;
       });
       
-      console.log(`📊 Casos cargados (ReporteCasosPersona): ${casosFinales.length} casos totales`);
-      console.log(`📊 Siniestros: ${siniestros.length}, Complex: ${complex.length}`);
-      
-      // Contar casos por estado para debugging
+// Contar casos por estado para debugging
       const casosPorEstado = {};
       casosFinales.forEach(caso => {
         const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
         casosPorEstado[estado] = (casosPorEstado[estado] || 0) + 1;
       });
-      console.log('📊 Casos por estado (ReporteCasosPersona):', casosPorEstado);
-      
-      setCasos(casosFinales);
+setCasos(casosFinales);
     } catch (error) {
       console.error('Error cargando casos:', error);
       setCasos([]);
@@ -447,13 +441,7 @@ export default function ReporteCasosPersona() {
     const loginActual = String(usuarioActual.login || '').trim();
     const nombreActual = String(usuarioActual.nombre || '').trim();
     
-    console.log('🔍 [ReporteCasosPersona] Filtrando casos por CÉDULA/NOMBRE:', {
-      login: loginActual,
-      nombre: nombreActual,
-      totalCasos: casos.length
-    });
-    
-    if (!loginActual && !nombreActual) {
+if (!loginActual && !nombreActual) {
       console.warn('⚠️ [ReporteCasosPersona] No hay login (cédula) ni nombre del usuario');
       setCasosPorUsuario([]);
       setCasosFiltrados([]);
@@ -488,41 +476,12 @@ export default function ReporteCasosPersona() {
       );
       
       const coincide = coincidePorCedula || coincidePorNombre;
-      
-      if (coincide) {
-        console.log('✅ Caso encontrado:', {
-          nmroAjste: caso.nmroAjste,
-          codiRespnsble: codigo1,
-          codi_responble: codigo2,
-          responsable: codigo3,
-          nombreResponsable: nombreResp,
-          loginUsuario: loginActual,
-          nombreUsuario: nombreActual,
-          coincidePorCedula,
-          coincidePorNombre
-        });
-      }
-      
-      return coincide;
+return coincide;
     });
     
-    console.log(`📊 [ReporteCasosPersona] Total casos encontrados: ${casosFiltradosPorUsuario.length} de ${casos.length}`);
-    
-    if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
+if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
       // Debug: mostrar los primeros casos para ver qué códigos tienen
-      console.log('🔍 [ReporteCasosPersona] Primeros 10 casos para debug (buscando cédula:', loginActual, '):', casos.slice(0, 10).map(c => {
-        const cSync = sincronizarCamelSnake(c);
-        return {
-          nmroAjste: c.nmroAjste,
-          codiRespnsble: cSync.codiRespnsble,
-          codi_responble: cSync.codi_responble,
-          responsable: cSync.responsable,
-          nombreResponsable: cSync.nombreResponsable,
-          tipoCodiRespnsble: typeof cSync.codiRespnsble,
-          tipoCodi_responble: typeof cSync.codi_responble
-        };
-      }));
-    }
+}
     
     const casosOrdenados = casosFiltradosPorUsuario.sort((a, b) => {
       const fechaA = new Date(a.fchaAsgncion || a.fecha_asignacion_form || 0);
@@ -640,33 +599,25 @@ export default function ReporteCasosPersona() {
       return ok;
     });
     
-    console.log(`✅ Filtros aplicados (ReporteCasosPersona): ${resultados.length} casos de ${casosPorUsuario.length} totales del usuario`);
-    
-    // Debug: contar casos por estado después del filtro
+// Debug: contar casos por estado después del filtro
     if (estadoFiltro && estadoFiltro.trim() !== '') {
       const casosPorEstadoFiltrado = {};
       resultados.forEach(caso => {
         const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
         casosPorEstadoFiltrado[estado] = (casosPorEstadoFiltrado[estado] || 0) + 1;
       });
-      console.log('📊 Casos por estado después del filtro (ReporteCasosPersona):', casosPorEstadoFiltrado);
-      console.log('🔍 Estado filtrado (código):', estadoFiltro);
-      
-      // Buscar el nombre del estado correspondiente al código
+// Buscar el nombre del estado correspondiente al código
       const estadoEncontrado = estados.find(e => 
         String(e.codiEstdo || e.codiEstado || e.codigo || '').trim() === String(estadoFiltro).trim()
       );
       if (estadoEncontrado) {
         const nombreEstado = String(estadoEncontrado.descEstdo || estadoEncontrado.descEstado || estadoEncontrado.descripcion || '').trim();
-        console.log('🔍 Nombre del estado filtrado:', nombreEstado);
-        
-        // Contar casos que tienen el nombre del estado
+// Contar casos que tienen el nombre del estado
         const casosConNombreEstado = casosPorUsuario.filter(caso => {
           const estadoCaso = String(caso.codiEstdo || caso.codi_estado || caso.estado || '').trim().toUpperCase();
           return estadoCaso === nombreEstado.toUpperCase() || estadoCaso.includes(nombreEstado.toUpperCase());
         });
-        console.log(`📊 Casos del usuario con nombre de estado "${nombreEstado}":`, casosConNombreEstado.length);
-      }
+}
     }
     
     setCasosFiltrados(resultados);
@@ -1045,10 +996,7 @@ export default function ReporteCasosPersona() {
 
   // Exportar a Excel
   const exportarExcel = async () => {
-    console.log('🔄 Iniciando exportación Excel...');
-    console.log('📊 Total casos a exportar:', casosFiltrados.length);
-    
-    // ANÁLISIS DE COLUMNAS: Clasificar cada columna según su tipo
+// ANÁLISIS DE COLUMNAS: Clasificar cada columna según su tipo
     const clasificacionColumnas = {};
     camposVisibles.forEach(({ clave, label }) => {
       // Identificar columnas de FECHA
@@ -1070,9 +1018,7 @@ export default function ReporteCasosPersona() {
       }
     });
     
-    console.log('📊 Clasificación de columnas:', clasificacionColumnas);
-    
-    // Usar ExcelJS para mejor soporte de formatos
+// Usar ExcelJS para mejor soporte de formatos
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('MisCasos');
     
@@ -1185,9 +1131,7 @@ export default function ReporteCasosPersona() {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19);
     const nombreArchivo = `mis_casos_${timestamp}.xlsx`;
     
-    console.log('💾 Guardando archivo:', nombreArchivo);
-    
-    // Escribir el archivo usando ExcelJS
+// Escribir el archivo usando ExcelJS
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = window.URL.createObjectURL(blob);
@@ -1197,8 +1141,7 @@ export default function ReporteCasosPersona() {
     link.click();
     window.URL.revokeObjectURL(url);
     
-    console.log('✅ Exportación completada');
-  };
+};
 
   if (loading) {
     return (

@@ -21,8 +21,7 @@ export default function LogoutButton({ variant = 'default' }) {
             }
           });
         } catch (error) {
-          console.log('⚠️ Error al registrar logout (no crítico):', error);
-          // Continuar con el logout aunque falle el registro
+// Continuar con el logout aunque falle el registro
         }
       }
     } catch (error) {

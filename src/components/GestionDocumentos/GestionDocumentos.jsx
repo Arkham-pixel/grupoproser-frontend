@@ -37,11 +37,7 @@ export default function GestionDocumentos() {
       // Permitir acceso por cedula o login autorizado
       const acceso = IDENTIFICADORES_PERMITIDOS.includes(cedula) || IDENTIFICADORES_PERMITIDOS.includes(login);
       setTieneAcceso(acceso);
-      
-      if (!acceso) {
-        console.log(`🚫 Acceso denegado. Cedula: "${cedula}", login: "${login}"`);
-      }
-    } catch (error) {
+} catch (error) {
       console.error('Error verificando acceso:', error);
       // Si hay error al verificar, intentar verificar con datos del localStorage
       const usuarioData = localStorage.getItem('usuario');

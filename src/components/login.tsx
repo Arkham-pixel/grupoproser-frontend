@@ -45,21 +45,8 @@ export default function Login() {
     setIsLoading(true);
     try {
       const requestData = { correo: login, password: pswd };
-      console.log('🚀 Enviando petición login:', requestData);
-      console.log('📡 URL:', `${BASE_URL}/api/secur-auth/login`);
-      console.log('📦 Headers:', { 'Content-Type': 'application/json' });
-      console.log('📄 JSON string:', JSON.stringify(requestData));
-      
-      const res = await axios.post(`${BASE_URL}/api/secur-auth/login`, requestData);
-      console.log('✅ Respuesta login:', res.data);
-      console.log('🔍 Verificando respuesta...');
-      console.log('   - twoFARequired:', res.data.twoFARequired);
-      console.log('   - token:', res.data.token ? 'SÍ' : 'NO');
-      console.log('   - usuario:', res.data.usuario ? 'SÍ' : 'NO');
-      console.log('   - email:', res.data.email);
-      console.log('   - Respuesta completa:', JSON.stringify(res.data, null, 2));
-      
-      if (res.data.token && res.data.usuario) {
+const res = await axios.post(`${BASE_URL}/api/secur-auth/login`, requestData);
+if (res.data.token && res.data.usuario) {
          // Login exitoso - guardar datos y redirigir
          const currentTime = Date.now();
          localStorage.setItem('token', res.data.token);
@@ -68,23 +55,12 @@ export default function Login() {
          localStorage.setItem('login', res.data.usuario.login);
          localStorage.setItem('nombre', res.data.usuario.name);
          localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
-         console.log('✅ Login exitoso - guardado en localStorage:', {
-           token: res.data.token,
-           tipoUsuario: 'secur',
-           rol: res.data.usuario.role,
-           login: res.data.usuario.login,
-           nombre: res.data.usuario.name,
-           sessionStartTime: new Date(currentTime).toISOString()
-         });
-         navigate('/inicio');
+navigate('/inicio');
        } else if (res.data.twoFARequired) {
-         console.log('🔐 Activando pantalla 2FA...');
-         console.log('   - Email para mostrar:', res.data.email);
-         setStep(2);
+setStep(2);
          setInfoCorreo(res.data.email);
          setTwoFACode('');
-         console.log('✅ Pantalla 2FA activada');
-       } else {
+} else {
          setError('Respuesta inesperada del servidor');
        }
     } catch (err) {
@@ -105,16 +81,12 @@ export default function Login() {
     setError('');
     setIsLoading(true);
     try {
-      console.log('🔐 Enviando código 2FA:', { correo: login, code: twoFACode });
-      
-      const res = await axios.post('http://localhost:3000/api/secur-auth/login/2fa', {
+const res = await axios.post('http://localhost:3000/api/secur-auth/login/2fa', {
         correo: login,
         code: twoFACode
       });
       
-      console.log('✅ Respuesta 2FA:', res.data);
-      
-      if (res.data.token && res.data.usuario && res.data.usuario.role) {
+if (res.data.token && res.data.usuario && res.data.usuario.role) {
         const currentTime = Date.now();
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('tipoUsuario', 'secur');
@@ -124,15 +96,7 @@ export default function Login() {
         localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
         localStorage.setItem('sessionStart', currentTime.toString());
         
-        console.log('✅ Login 2FA exitoso - guardado en localStorage:', {
-          token: res.data.token,
-          tipoUsuario: 'secur',
-          rol: res.data.usuario.role,
-          login: res.data.usuario.login,
-          nombre: res.data.usuario.name
-        });
-        
-        navigate('/inicio');
+navigate('/inicio');
       } else {
         setError('Respuesta del servidor incompleta. Falta token o información del usuario.');
         console.error('❌ Respuesta incompleta:', res.data);

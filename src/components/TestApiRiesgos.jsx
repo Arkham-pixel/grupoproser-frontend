@@ -19,42 +19,27 @@ const TestApiRiesgos = () => {
     setError(null);
     
     try {
-      console.log('🧪 Probando API de riesgos...');
-      console.log('🌐 URL base configurada:', BASE_URL);
-      
-      // Probar estados de riesgo
-      console.log('🔍 Probando /api/estados/estados-riesgos...');
-      const estadosRes = await axios.get('/api/estados/estados-riesgos');
-      console.log('✅ Estados de riesgo:', estadosRes.data);
-      setEstados(estadosRes.data);
+// Probar estados de riesgo
+const estadosRes = await axios.get('/api/estados/estados-riesgos');
+setEstados(estadosRes.data);
       
       // Probar clientes
-      console.log('🔍 Probando /api/clientes...');
-      const clientesRes = await axios.get('/api/clientes');
-      console.log('✅ Clientes:', clientesRes.data);
-      setClientes(clientesRes.data);
+const clientesRes = await axios.get('/api/clientes');
+setClientes(clientesRes.data);
       
       // Probar responsables
-      console.log('🔍 Probando /api/responsables...');
-      const responsablesRes = await axios.get('/api/responsables');
-      console.log('✅ Responsables:', responsablesRes.data);
-      setResponsables(responsablesRes.data);
+const responsablesRes = await axios.get('/api/responsables');
+setResponsables(responsablesRes.data);
       
       // Probar clasificaciones
-      console.log('🔍 Probando /api/estados/clasificaciones-riesgo...');
-      const clasificacionesRes = await axios.get('/api/estados/clasificaciones-riesgo');
-      console.log('✅ Clasificaciones:', clasificacionesRes.data);
-      setClasificaciones(clasificacionesRes.data);
+const clasificacionesRes = await axios.get('/api/estados/clasificaciones-riesgo');
+setClasificaciones(clasificacionesRes.data);
       
       // Probar ciudades
-      console.log('🔍 Probando /api/ciudades/ciudades...');
-      const ciudadesRes = await axios.get('/api/ciudades/ciudades');
-      console.log('✅ Ciudades:', ciudadesRes.data);
-      setCiudades(ciudadesRes.data);
+const ciudadesRes = await axios.get('/api/ciudades/ciudades');
+setCiudades(ciudadesRes.data);
       
-      console.log('🎉 Todas las pruebas de API completadas exitosamente');
-      
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error en la prueba de API:', error);
       setError(error.message);
     } finally {

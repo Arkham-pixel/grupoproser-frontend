@@ -609,20 +609,16 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             direccionInicial={formData.direccionRiesgo}
             forzarCaptura={forzarCapturaMapa}
             onMapReady={(mapInstance) => {
-              console.log('🗺️ Mapa de Google Earth listo', mapInstance);
-            }}
+}}
             onMapaChange={(datosMapaObj) => {
-              console.log('🗺️ Datos del mapa recibidos:', datosMapaObj);
-              
-              // Actualizar todos los datos del mapa
+// Actualizar todos los datos del mapa
               onMultipleChange({
                 imagenMapa: datosMapaObj.imagenMapa,
                 coordenadasRiesgo: datosMapaObj.coordenadas,
                 direccionRiesgo: datosMapaObj.direccion
               });
               
-              console.log('✅ Mapa capturado y guardado con dirección:', datosMapaObj.direccion);
-            }}
+}}
           />
         </div>
       </div>

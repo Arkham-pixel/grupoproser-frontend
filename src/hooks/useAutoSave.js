@@ -51,8 +51,7 @@ export const useAutoSave = ({
   const saveToStorage = useCallback(() => {
     // ⚠️ DESACTIVACIÓN GLOBAL - No guardar nada
     if (GLOBAL_AUTO_SAVE_DISABLED) {
-      console.log('🚫 [useAutoSave] Autoguardado desactivado globalmente, no se guardará');
-      return;
+return;
     }
     
     if (!isAutoSaveEnabled || !formKey) return;
@@ -70,8 +69,7 @@ export const useAutoSave = ({
       setLastSaveTime(new Date());
       setSaveStatus('saved');
       
-      console.log('✅ Autoguardado exitoso:', formKey);
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error en autoguardado:', error);
       setSaveStatus('error');
     }
@@ -86,13 +84,7 @@ export const useAutoSave = ({
       
       if (savedData && savedData.data) {
         const metadata = autoSaveService.getMetadata(formKey);
-        console.log('📦 Datos guardados encontrados:', {
-          formKey,
-          savedAt: metadata?.savedAt,
-          dataKeys: Object.keys(savedData.data),
-        });
-        
-        return {
+return {
           data: savedData.data,
           metadata: metadata,
         };
@@ -109,19 +101,16 @@ export const useAutoSave = ({
   const enableAutoSave = useCallback(() => {
     // ⚠️ DESACTIVACIÓN GLOBAL - No permitir activación
     if (GLOBAL_AUTO_SAVE_DISABLED) {
-      console.log('🚫 [useAutoSave] Autoguardado desactivado globalmente, no se puede activar');
-      return;
+return;
     }
     
-    console.log('🟢 Activando autoguardado para:', formKey);
-    setIsAutoSaveEnabled(true);
+setIsAutoSaveEnabled(true);
     autoSaveService.setEnabled(formKey, true);
   }, [formKey]);
 
   // Función para desactivar el autoguardado
   const disableAutoSave = useCallback(() => {
-    console.log('🔴 Desactivando autoguardado para:', formKey);
-    setIsAutoSaveEnabled(false);
+setIsAutoSaveEnabled(false);
     autoSaveService.setEnabled(formKey, false);
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
@@ -131,16 +120,14 @@ export const useAutoSave = ({
 
   // Función para limpiar datos guardados
   const clearSavedData = useCallback(() => {
-    console.log('🗑️ Limpiando datos guardados de:', formKey);
-    autoSaveService.clear(formKey);
+autoSaveService.clear(formKey);
     setLastSaveTime(null);
     setSaveStatus('idle');
   }, [formKey]);
 
   // Función para guardar manualmente
   const saveNow = useCallback(() => {
-    console.log('💾 Guardado manual solicitado');
-    saveToStorage();
+saveToStorage();
   }, [saveToStorage]);
 
   // Verificar si hay datos guardados al montar el componente
@@ -148,41 +135,28 @@ export const useAutoSave = ({
   useEffect(() => {
     // ⚠️ DESACTIVACIÓN GLOBAL - Saltar restauración
     if (GLOBAL_AUTO_SAVE_DISABLED) {
-      console.log('🚫 [useAutoSave] Autoguardado desactivado globalmente, saltando restauración');
-      isFirstRender.current = false;
+isFirstRender.current = false;
       return;
     }
     
-    console.log('🔍 [useAutoSave] Verificando datos guardados...', {
-      isFirstRender: isFirstRender.current,
-      formKey,
-      hasShownRestorePrompt: hasShownRestorePrompt.current
-    });
-    
-    if (isFirstRender.current && formKey && !hasShownRestorePrompt.current) {
+if (isFirstRender.current && formKey && !hasShownRestorePrompt.current) {
       const savedInfo = restoreFromStorage();
       
-      console.log('📦 [useAutoSave] Resultado de restoreFromStorage:', savedInfo);
-      
-      if (savedInfo && savedInfo.data) {
+if (savedInfo && savedInfo.data) {
         hasShownRestorePrompt.current = true;
         
-        console.log('✅ [useAutoSave] Datos encontrados, llamando onRestore');
-        
-        // Llamar al callback de restauración si existe
+// Llamar al callback de restauración si existe
         if (onRestore) {
           onRestore(savedInfo);
         } else {
           console.warn('⚠️ [useAutoSave] onRestore no está definido');
         }
       } else {
-        console.log('ℹ️ [useAutoSave] No hay datos guardados para restaurar');
-      }
+}
       
       // Verificar si el autoguardado estaba activo
       const wasEnabled = autoSaveService.isEnabled(formKey);
-      console.log('⚙️ [useAutoSave] Autoguardado estaba activo?', wasEnabled);
-      if (wasEnabled) {
+if (wasEnabled) {
         setIsAutoSaveEnabled(true);
       }
       
@@ -213,9 +187,7 @@ export const useAutoSave = ({
         saveToStorage();
       }, interval);
 
-      console.log(`⏰ Intervalo de autoguardado configurado: ${interval / 1000}s`);
-
-      // Limpieza
+// Limpieza
       return () => {
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
@@ -234,8 +206,7 @@ export const useAutoSave = ({
       }
       
       if (isAutoSaveEnabled && formKey) {
-        console.log('👋 Componente desmontándose, guardando datos...');
-        const dataToSave = { ...formDataRef.current };
+const dataToSave = { ...formDataRef.current };
         excludeFields.forEach(field => {
           delete dataToSave[field];
         });

@@ -9,6 +9,7 @@
  */
 
 import { getUploadsUrlCandidates } from '../config/apiConfig';
+import { isStoredFileReference } from './storedFilePath';
 
 /**
  * Obtiene todas las URLs candidatas para una imagen (con fallbacks)
@@ -98,8 +99,7 @@ export function createImageErrorHandler(imagen, onAllFailed = null) {
       const nextUrl = candidates[currentIndex + 1];
       // Solo intentar si no hemos intentado este fallback antes
       if (!img.dataset.triedFallback || img.dataset.triedFallback !== nextUrl) {
-        console.log(`🔄 Intentando URL alternativa para imagen:`, nextUrl);
-        img.dataset.triedFallback = nextUrl;
+img.dataset.triedFallback = nextUrl;
         img.src = nextUrl;
         return;
       }
@@ -198,8 +198,7 @@ export function createImageErrorHandler(imagen, onAllFailed = null) {
  */
 export function hasValidServerPath(imagen) {
   if (!imagen || typeof imagen !== 'object') return false;
-  if (!imagen.ruta || typeof imagen.ruta !== 'string') return false;
-  return imagen.ruta.startsWith('/uploads/') && !imagen.ruta.startsWith('data:');
+  return isStoredFileReference(imagen.ruta);
 }
 
 /**

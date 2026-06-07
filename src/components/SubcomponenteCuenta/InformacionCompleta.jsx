@@ -116,8 +116,7 @@ export default function InformacionCompleta() {
           usuariosData = response.data.usuarios || [];
         }
         
-        console.log('✅ Usuarios cargados:', usuariosData.length);
-        setUsuarios(usuariosData);
+setUsuarios(usuariosData);
         setLoading(false);
       } catch (err) {
         console.error("❌ Error cargando información:", err);

@@ -44,8 +44,7 @@ class SessionManager {
         });
         // Si la verificación es exitosa, la sesión se mantiene activa
       } catch (error) {
-        console.log('⚠️ Error en heartbeat, sesión puede haber expirado:', error);
-        // Si falla, puede que la sesión haya expirado
+// Si falla, puede que la sesión haya expirado
         clearInterval(this.heartbeatInterval);
       }
     }, 2 * 60 * 1000); // Cada 2 minutos
@@ -83,8 +82,7 @@ class SessionManager {
           const timeHidden = Date.now() - this.lastHiddenTime;
           // Si estuvo oculta más de 5 minutos, considerar cerrar sesión
           if (timeHidden > 5 * 60 * 1000) {
-            console.log('⚠️ Página estuvo oculta por más de 5 minutos, verificando sesión...');
-            this.verificarSesionActiva();
+this.verificarSesionActiva();
           }
         }
       }
@@ -103,10 +101,8 @@ class SessionManager {
         formData.append('token', token);
         
         navigator.sendBeacon(url, formData);
-        console.log('✅ Logout enviado al cerrar navegador (sendBeacon)');
-      } catch (error) {
-        console.log('⚠️ Error al enviar logout:', error);
-      }
+} catch (error) {
+}
     } else if (token) {
       // Fallback: intentar con fetch (puede no completarse si se cierra muy rápido)
       try {
@@ -120,8 +116,7 @@ class SessionManager {
           body: JSON.stringify({ token }),
           keepalive: true // Mantener la petición activa incluso después de cerrar
         }).catch(() => {}); // Ignorar errores ya que la página se está cerrando
-        console.log('✅ Logout enviado al cerrar navegador (fetch)');
-      } catch (error) {
+} catch (error) {
         // Ignorar errores
       }
     }
@@ -143,8 +138,7 @@ class SessionManager {
       });
     } catch (error) {
       // Si falla, la sesión puede haber expirado
-      console.log('⚠️ Sesión no válida, cerrando...');
-      this.logout();
+this.logout();
     }
   }
 
@@ -275,8 +269,7 @@ class SessionManager {
             }
           });
         } catch (error) {
-          console.log('⚠️ Error al registrar logout (no crítico):', error);
-          // Continuar con el logout aunque falle el registro
+// Continuar con el logout aunque falle el registro
         }
       }
     } catch (error) {

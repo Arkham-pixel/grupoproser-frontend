@@ -79,8 +79,7 @@ const DashboardComplex = () => {
         // Cargar mapeo de funcionarios (importante para mostrar nombres en lugar de cÃ³digos)
         cargarMapeoFuncionarios()
           .then(() => {
-            console.log('âœ… Mapeo de funcionarios cargado correctamente');
-          })
+})
           .catch(error => {
             console.error('Error cargando mapeo de funcionarios:', error);
           });
@@ -149,18 +148,13 @@ const DashboardComplex = () => {
           return fechaB - fechaA;
         });
 
-        console.log(`ðŸ“Š Casos cargados: ${casosFinales.length} casos totales`);
-        console.log(`ðŸ“Š Siniestros: ${siniestros.length}, Complex: ${complex.length}`);
-        
-        // Contar casos por estado para debugging
+// Contar casos por estado para debugging
         const casosPorEstado = {};
         casosFinales.forEach(caso => {
           const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
           casosPorEstado[estado] = (casosPorEstado[estado] || 0) + 1;
         });
-        console.log('ðŸ“Š Casos por estado:', casosPorEstado);
-
-        setSiniestros(casosFinales);
+setSiniestros(casosFinales);
         
         // Cargar responsables, aseguradoras y estados (igual que el reporte)
         obtenerResponsables()
@@ -555,10 +549,7 @@ const DashboardComplex = () => {
     .sort((a, b) => b.cantidad - a.cantidad);
 
   // Debug: verificar datos
-  console.log('Total siniestros filtrados:', siniestrosFiltrados.length);
-  console.log('Siniestros por aseguradora:', siniestrosPorAseguradora);
-
-  // GrÃ¡fico de barras â†’ Siniestros por ajustador/responsable
+// GrÃ¡fico de barras â†’ Siniestros por ajustador/responsable
   // MÃ‰TODO: Usar la funciÃ³n getNombreResponsable definida arriba (igual que el reporte)
   
   // PASO 1: Contar siniestros por responsable usando getNombreResponsable
@@ -569,11 +560,7 @@ const DashboardComplex = () => {
     conteoPorNombreResponsable[nombreNormalizado] = (conteoPorNombreResponsable[nombreNormalizado] || 0) + 1;
   });
 
-  console.log('ðŸ“Š Total responsables en BD:', responsables.length);
-  console.log('ðŸ“Š Total siniestros filtrados:', siniestrosFiltrados.length);
-  console.log('ðŸ“Š Muestra de nombres de responsables encontrados:', Object.keys(conteoPorNombreResponsable).slice(0, 10));
-
-  // PASO 2: Crear lista de responsables con sus conteos (usando los nombres encontrados)
+// PASO 2: Crear lista de responsables con sus conteos (usando los nombres encontrados)
   const siniestrosPorResponsable = Object.entries(conteoPorNombreResponsable)
     .map(([nombre, cantidad]) => ({
       responsable: nombre,
@@ -582,12 +569,7 @@ const DashboardComplex = () => {
     }))
     .sort((a, b) => b.cantidad - a.cantidad);
 
-  console.log('ðŸ“Š Siniestros por responsable:', siniestrosPorResponsable.length, 'responsables Ãºnicos');
-  console.log('ðŸ“Š Total siniestros sin asignar:', conteoPorNombreResponsable['Sin asignar'] || 0);
-  console.log('ðŸ“Š Responsables con siniestros:', siniestrosPorResponsable.filter(r => r.cantidad > 0 && r.responsable !== 'Sin asignar').length);
-  console.log('ðŸ“Š Top 10 responsables:', siniestrosPorResponsable.slice(0, 10));
-
-  // ========== MÃ‰TRICAS DE TRAZABILIDAD ==========
+// ========== MÃ‰TRICAS DE TRAZABILIDAD ==========
   
   // Tiempos lÃ­mite segÃºn las reglas de trazabilidad
   const tiemposLimiteTrazabilidad = {

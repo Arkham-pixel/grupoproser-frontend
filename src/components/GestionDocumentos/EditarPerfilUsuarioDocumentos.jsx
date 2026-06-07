@@ -178,8 +178,7 @@ export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
       // Primero intentar usar los datos del usuario que ya tenemos para una carga inicial rápida.
       // Después de guardar, forzamos recarga desde backend para evitar mostrar datos desactualizados.
       if (!forzarBackend && usuario && (usuario._id === usuarioId || usuario.id === usuarioId)) {
-        console.log('✅ Usando datos del usuario que ya tenemos');
-        setForm({
+setForm({
           name: usuario.name || '',
           email: usuario.email || '',
           phone: usuario.phone || '',
@@ -215,8 +214,7 @@ export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
       }
       
       // Cargar datos completos y actualizados desde backend
-      console.log('🔄 Cargando datos del usuario desde el backend...');
-      const token = localStorage.getItem('token');
+const token = localStorage.getItem('token');
       const { data } = await obtenerPerfil(token, tipoUsuario, usuarioId);
       
       setForm({
@@ -260,10 +258,8 @@ export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
 
   const cargarDocumentos = async () => {
     try {
-      console.log(`📄 Intentando cargar documentos para usuario: ${usuarioId}`);
-      const response = await api.get(`/api/documentos/usuario/${usuarioId}`);
-      console.log('✅ Documentos cargados:', response.data);
-      setDocumentos(response.data.documentos || []);
+const response = await api.get(`/api/documentos/usuario/${usuarioId}`);
+setDocumentos(response.data.documentos || []);
     } catch (error) {
       console.error('Error cargando documentos:', error);
       // Si el endpoint no existe aún, simplemente mostrar lista vacía

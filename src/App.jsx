@@ -82,9 +82,7 @@ function LoginRedirect() {
 // Función para guardar el caso complex
 const guardarCasoComplex = async (formData) => {
   try {
-    console.log('📝 Enviando datos del caso complex:', formData);
-    
-    const response = await fetch(`${BASE_URL}/api/complex`, {
+const response = await fetch(`${BASE_URL}/api/complex`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(formData)
@@ -92,15 +90,7 @@ const guardarCasoComplex = async (formData) => {
     
     if (response.ok) {
       const result = await response.json();
-      console.log('✅ Caso complex guardado exitosamente:', result);
-      if (result.notificaciones != null || result.alertasComplexAutomaticas != null) {
-        console.log('📧 Resumen correo (respuesta API):', {
-          notificaciones: result.notificaciones,
-          alertasComplexAutomaticas: result.alertasComplexAutomaticas
-        });
-      }
-
-      let bloqueCorreo = '';
+let bloqueCorreo = '';
       const n = result.notificaciones;
       if (n?.asignacion) {
         const a = n.asignacion;
@@ -170,8 +160,7 @@ const FormularioCasoComplexPage = () => {
         try {
           const datosParseados = JSON.parse(datosGuardados);
           if (datosParseados?.nmroAjste) {
-            console.log('🧹 Limpiando localStorage: contiene nmroAjste de caso guardado');
-            localStorage.removeItem('formularioComplex');
+localStorage.removeItem('formularioComplex');
           }
         } catch (error) {
           console.error('Error al verificar localStorage:', error);
@@ -186,8 +175,7 @@ const FormularioCasoComplexPage = () => {
         
         if (tieneInitialDataSinId || tieneFiltrosSolo) {
           // Si hay estado residual, limpiarlo para evitar datos residuales
-          console.log('🧹 Limpiando estado residual de navegación para caso nuevo');
-          navigate(location.pathname, { replace: true, state: {} });
+navigate(location.pathname, { replace: true, state: {} });
         }
       }
     }
@@ -204,19 +192,11 @@ const FormularioCasoComplexPage = () => {
       'fchaInfoPrelm', 'fchaInfoFnal', 'fchaRepoActi'
     ];
     
-    console.log('📅 [prepararPayloadParaComplex] Fechas en payload original:', 
-      fechasTrazabilidad.reduce((acc, campo) => {
-        acc[campo] = payload[campo];
-        return acc;
-      }, {})
-    );
-    
-    // Asegurar que las fechas se preserven
+// Asegurar que las fechas se preserven
     fechasTrazabilidad.forEach(campo => {
       if (payload[campo] !== undefined && payload[campo] !== null && payload[campo] !== '') {
         resultado[campo] = payload[campo];
-        console.log(`✅ [prepararPayloadParaComplex] Preservando ${campo}:`, payload[campo]);
-      }
+}
     });
 
     // Reforzar coordinación de inspección para evitar pérdida por variantes de nombre.
@@ -240,17 +220,14 @@ const FormularioCasoComplexPage = () => {
     if (responsablePayload && responsablePayload.trim() !== '' && responsablePayload.toLowerCase() !== 'sin asignar') {
       // Si viene un responsable válido en el payload, usarlo
       resultado.codiRespnsble = responsablePayload;
-      console.log('✅ [prepararPayloadParaComplex] Usando responsable del payload:', responsablePayload);
-    } else if (datosIniciales?.codiRespnsble && datosIniciales.codiRespnsble.trim() !== '' && datosIniciales.codiRespnsble.toLowerCase() !== 'sin asignar') {
+} else if (datosIniciales?.codiRespnsble && datosIniciales.codiRespnsble.trim() !== '' && datosIniciales.codiRespnsble.toLowerCase() !== 'sin asignar') {
       // Si no viene en el payload pero hay uno en datosIniciales, preservarlo
       resultado.codiRespnsble = datosIniciales.codiRespnsble;
-      console.log('✅ [prepararPayloadParaComplex] Preservando responsable de datosIniciales:', datosIniciales.codiRespnsble);
-    } else {
+} else {
       // Si no hay responsable válido en ningún lado, NO incluirlo en el resultado
       // Esto permite que MongoDB preserve el valor existente
       delete resultado.codiRespnsble;
-      console.log('⚠️ [prepararPayloadParaComplex] No hay responsable válido, preservando valor existente en BD');
-    }
+}
 
     // PRESERVAR el funcionario - usar el valor del payload si existe, sino el de datosIniciales
     // NO eliminar si tiene un valor válido
@@ -296,55 +273,21 @@ const FormularioCasoComplexPage = () => {
     delete resultado.funcAsgrdraNombre;
     delete resultado.funcionarioAseguradora;
 
-    console.log('🔧 [prepararPayloadParaComplex] Funcionario preservado:', {
-      payloadFuncAsgrdra: payload.funcAsgrdra,
-      payloadFuncAsgrdraNombre: payload.funcAsgrdraNombre,
-      datosInicialesFuncAsgrdra: datosIniciales?.funcAsgrdra,
-      resultadoFuncAsgrdra: resultado.funcAsgrdra
-    });
-    
-    console.log('🔧 [prepararPayloadParaComplex] Responsable preservado:', {
-      payloadCodiRespnsble: payload.codiRespnsble,
-      payloadNombreResponsable: payload.nombreResponsable,
-      datosInicialesCodiRespnsble: datosIniciales?.codiRespnsble,
-      resultadoCodiRespnsble: resultado.codiRespnsble
-    });
-    
-    console.log('🔧 [prepararPayloadParaComplex] Campos preservados:', {
-      descripcionEstado: resultado.descripcionEstado,
-      observacionesPendientes: resultado.observacionesPendientes,
-      historialDocs: resultado.historialDocs ? `Array con ${resultado.historialDocs.length} elementos` : 'vacío',
-      codiRespnsble: resultado.codiRespnsble
-    });
-
-    return resultado;
+return resultado;
   };
 
   const handleSave = async (payload) => {
     try {
       if (initialData?._id) {
         const origen = initialData?.origen || 'complex';
-        console.log('🟨 [Editar Complex] Inicio guardar', { origen, payload });
-        let respuesta;
+let respuesta;
         if (origen === 'complex') {
           const datosNormalizados = prepararPayloadParaComplex(payload, initialData);
-          console.log('🟨 [Editar Complex] Payload normalizado', datosNormalizados);
-          console.log('📅 [Editar Complex] Fechas en payload normalizado:', {
-            fchaContIni: datosNormalizados.fchaContIni,
-            fchaCoordInspeccion: datosNormalizados.fchaCoordInspeccion,
-            fchaProgInspeccion: datosNormalizados.fchaProgInspeccion,
-            fchaInspccion: datosNormalizados.fchaInspccion,
-            fchaSoliDocu: datosNormalizados.fchaSoliDocu,
-            fchaInfoPrelm: datosNormalizados.fchaInfoPrelm,
-            fchaInfoFnal: datosNormalizados.fchaInfoFnal,
-            fchaRepoActi: datosNormalizados.fchaRepoActi
-          });
-          respuesta = await updateCasoComplex(initialData._id, datosNormalizados);
+respuesta = await updateCasoComplex(initialData._id, datosNormalizados);
         } else {
           respuesta = await updateSiniestro(initialData._id, payload);
         }
-        console.log('🟩 [Editar Complex] Respuesta backend', respuesta);
-        if (!respuesta || respuesta.error) {
+if (!respuesta || respuesta.error) {
           console.error('❌ Error al actualizar el caso:', respuesta?.error);
           alert('No fue posible editar el caso. Verifica la información e inténtalo nuevamente.');
           return;
@@ -353,19 +296,16 @@ const FormularioCasoComplexPage = () => {
         alert('✅ El caso ha sido editado exitosamente.');
         // Limpiar localStorage después de guardar exitosamente
         localStorage.removeItem('formularioComplex');
-        console.log('🧹 localStorage limpiado después de editar caso');
-        // Pasar los filtros de vuelta al reporte para restaurarlos (solo si estamos editando)
+// Pasar los filtros de vuelta al reporte para restaurarlos (solo si estamos editando)
         navigate(returnPath, { 
           replace: true,
           state: filtros ? { filtros } : undefined
         });
       } else {
-        console.log('🟨 [Nuevo Complex] Inicio guardar', payload);
-        await guardarCasoComplex(payload);
+await guardarCasoComplex(payload);
         // Limpiar localStorage después de guardar exitosamente
         localStorage.removeItem('formularioComplex');
-        console.log('🧹 localStorage limpiado después de crear caso nuevo');
-        // Cuando es un caso nuevo, navegar sin filtros
+// Cuando es un caso nuevo, navegar sin filtros
         navigate(returnPath, { replace: true });
       }
     } catch (error) {

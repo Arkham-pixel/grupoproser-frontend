@@ -5,6 +5,9 @@
  * Producción: frontend/.env.production → backend Coolify
  */
 
+import { devLog } from '../utils/devLog.js';
+import { API_BY_FRONTEND_HOST, DEFAULT_PROD_BACKEND } from './platformUrls.js';
+
 const trimOrigin = (url) =>
   typeof url === 'string' ? url.trim().replace(/\/+$/, '') : '';
 
@@ -17,16 +20,7 @@ const isDevelopment =
   window.location.port === '3000';
 
 const DEFAULT_DEV = 'http://localhost:3000';
-/** Backend Coolify (DNS: arnaldbackend → 52.20.220.24) */
-const DEFAULT_PROD = 'https://arnaldbackend.grupoproser.com.co';
-
-/** API según dónde se sirve el front (un solo build, dos despliegues). */
-const API_BY_FRONTEND_HOST = {
-  // PM2 en el mismo servidor (DNS: aplicacion → 3.17.56.57)
-  'aplicacion.grupoproser.com.co': 'https://aplicacion.grupoproser.com.co',
-  // Front Coolify (DNS: arnald → 52.20.220.24)
-  'arnald.grupoproser.com.co': 'https://arnaldbackend.grupoproser.com.co',
-};
+const DEFAULT_PROD = DEFAULT_PROD_BACKEND;
 
 function resolveBaseUrl() {
   const hostname = window.location.hostname;
@@ -45,12 +39,13 @@ export const PROD_URL =
 
 export const isDevelopmentEnv = isDevelopment;
 
+if (isDevelopmentEnv) {
+  devLog(`🔧 Entorno: DESARROLLO | API: ${BASE_URL}`);
+}
+
 function storageFileUrl(baseUrl, ref) {
   return `${baseUrl}/api/storage/file?ref=${encodeURIComponent(ref)}`;
 }
-
-console.log(`🔧 Entorno detectado: ${isDevelopment ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
-console.log(`🌐 URL base API: ${BASE_URL}`);
 
 /**
  * Devuelve candidatos de URL para recursos subidos (por ejemplo `/uploads/...` o `s3:legacy/...`).
@@ -96,8 +91,6 @@ export function resolveUploadsUrl(rutaOrUrl) {
 export async function apiRequest(endpoint, options = {}) {
   try {
     const url = `${BASE_URL}/api${endpoint}`;
-
-    console.log(`🌐 ${options.method || 'GET'} ${url}`);
 
     const config = {
       method: options.method || 'GET',
@@ -145,12 +138,12 @@ export const API_ENDPOINTS = {
 };
 
 export function showConfig() {
-  console.log('🔧 === CONFIGURACIÓN ACTUAL ===');
-  console.log(`📍 Entorno: ${isDevelopmentEnv ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
-  console.log(`🌐 URL Base API: ${BASE_URL}`);
-  console.log(`🏠 Hostname: ${window.location.hostname}`);
-  console.log(`🔌 Puerto: ${window.location.port}`);
-  console.log('===============================');
+  devLog('🔧 === CONFIGURACIÓN ACTUAL ===');
+  devLog(`📍 Entorno: ${isDevelopmentEnv ? 'DESARROLLO' : 'PRODUCCIÓN'}`);
+  devLog(`🌐 URL Base API: ${BASE_URL}`);
+  devLog(`🏠 Hostname: ${window.location.hostname}`);
+  devLog(`🔌 Puerto: ${window.location.port}`);
+  devLog('===============================');
 }
 
 export default {

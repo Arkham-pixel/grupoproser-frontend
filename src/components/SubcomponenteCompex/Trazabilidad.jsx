@@ -2,7 +2,8 @@ import React, { useState, useRef, useCallback, useMemo, memo, useEffect } from '
 import { FaFileAlt } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { formatearFechaUI } from '../../utils/fechaUtils';
-import { BASE_URL } from '../../config/apiConfig.js';
+import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { isStoredFileReference } from '../../utils/storedFilePath.js';
 import historialService from '../../services/historialService.js';
 import {
   complexAlertError,
@@ -412,12 +413,10 @@ const Trazabilidad = memo(function Trazabilidad({
 
   // Función para construir URL de descarga
   const construirUrlDescarga = useCallback((valor) => {
-    if (!valor) return '';
-    if (typeof valor !== 'string') return '';
+    if (!valor || typeof valor !== 'string') return '';
     if (valor.startsWith('http') || valor.startsWith('data:')) return valor;
-    const base = (BASE_URL || '').replace(/\/$/, '');
-    const path = valor.startsWith('/') ? valor : `/${valor}`;
-    return `${base}${path}`;
+    const candidates = getUploadsUrlCandidates(valor);
+    return candidates[0] || '';
   }, []);
 
   const navigate = useNavigate();
@@ -460,10 +459,10 @@ const Trazabilidad = memo(function Trazabilidad({
     // Preferir la ruta concreta del documento (cada versión apunta a su propio .docx).
     // Solo si no hay ruta directa, usar el endpoint protegido por formularioId.
     const rutaDirecta = documento?.url || documento?.ruta || documento?.path || documento?.data || '';
-    const esRutaUploads = typeof rutaDirecta === 'string' && rutaDirecta.startsWith('/uploads/');
+    const esRutaAlmacenada = isStoredFileReference(rutaDirecta);
     const esRutaAbsoluta = typeof rutaDirecta === 'string' && /^https?:\/\//.test(rutaDirecta);
 
-    if (!esRutaUploads && !esRutaAbsoluta && documento?.formularioId) {
+    if (!esRutaAlmacenada && !esRutaAbsoluta && documento?.formularioId) {
       historialService.descargarFormulario(documento.formularioId).catch((error) => {
         alert(error?.message || 'No se pudo descargar el documento.');
       });
@@ -1510,18 +1509,7 @@ const Trazabilidad = memo(function Trazabilidad({
          prevProps.onSelectFiles !== nextProps.onSelectFiles;
   
   // Si hay cambios en fechas, forzar re-render
-  if (fechasCambiaron) {
-    console.log('🔄 [Trazabilidad] Re-renderizando por cambio en fechas:', {
-      camposFechas,
-      cambios: camposFechas.filter(campo => {
-        const prevFecha = prevProps.formData?.[campo] || '';
-        const nextFecha = nextProps.formData?.[campo] || '';
-        return String(prevFecha) !== String(nextFecha);
-      })
-    });
-  }
-  
-  return !debeReRenderizar;
+return !debeReRenderizar;
 });
 
 Trazabilidad.displayName = 'Trazabilidad';

@@ -18,25 +18,12 @@ export const useHistorialFormulario = (tipoFormulario) => {
         fechaModificacion: new Date().toISOString()
       };
 
-      console.log('📅 Hook - Datos con fechas:', {
-        fechaCreacion: datosConFechas.fechaCreacion,
-        fechaModificacion: datosConFechas.fechaModificacion
-      });
-
-      // Verificar si es una actualización o creación nueva
+// Verificar si es una actualización o creación nueva
       const idParaActualizar = id;
-      console.log('🔍 Hook - ID para actualizar:', idParaActualizar);
-      console.log('🔍 Hook - Tipo de ID:', typeof idParaActualizar);
-      console.log('🔍 Hook - URL actual:', window.location.href);
-
-      if (idParaActualizar && idParaActualizar !== 'nuevo') {
+if (idParaActualizar && idParaActualizar !== 'nuevo') {
         // Actualizar formulario existente
-        console.log('🔄 Hook - Actualizando formulario existente con ID:', idParaActualizar);
-        await historialService.actualizarFormulario(idParaActualizar, datosConFechas);
-        console.log('✅ Hook - Formulario actualizado exitosamente');
-        console.log('📅 Hook - Fecha de modificación:', datosConFechas.fechaModificacion);
-        
-        return {
+await historialService.actualizarFormulario(idParaActualizar, datosConFechas);
+return {
           success: true,
           message: estado === 'completado' 
             ? '✅ Formulario completado y actualizado en el historial' 
@@ -44,18 +31,14 @@ export const useHistorialFormulario = (tipoFormulario) => {
         };
       } else {
         // Crear nuevo formulario
-        console.log('🆕 Hook - Creando nuevo formulario');
-        const nuevoHistorial = {
+const nuevoHistorial = {
           tipo: tipoFormulario,
           estado,
           ...datosConFechas
         };
 
         await historialService.guardarFormulario(nuevoHistorial);
-        console.log('✅ Hook - Nuevo formulario creado exitosamente');
-        console.log('📅 Hook - Fecha de creación:', datosConFechas.fechaCreacion);
-        
-        return {
+return {
           success: true,
           message: estado === 'completado' 
             ? '✅ Formulario completado y guardado en el historial' 

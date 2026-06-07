@@ -29,9 +29,7 @@ export async function cargarMapeoFuncionarios() {
   // Iniciar nueva carga
   cargaEnProgreso = (async () => {
     try {
-      console.log('🔄 [FuncionarioMapper] Cargando mapeo de funcionarios...');
-      
-      // Obtener todas las aseguradoras primero
+// Obtener todas las aseguradoras primero
       const clientesResponse = await fetch(`${BASE_URL}/api/clientes`);
       if (!clientesResponse.ok) {
         throw new Error(`Error obteniendo clientes: ${clientesResponse.status}`);
@@ -40,9 +38,7 @@ export async function cargarMapeoFuncionarios() {
       const clientesData = await clientesResponse.json();
       const clientes = Array.isArray(clientesData) ? clientesData : (clientesData.success && clientesData.data ? clientesData.data : []);
       
-      console.log(`📊 [FuncionarioMapper] Encontradas ${clientes.length} aseguradoras`);
-      
-      // Cargar funcionarios de cada aseguradora
+// Cargar funcionarios de cada aseguradora
       const promesasFuncionarios = clientes.map(async (cliente) => {
         try {
           const codigoCliente = cliente.codiAsgrdra || cliente.cod1Asgrdra;
@@ -109,13 +105,10 @@ export async function cargarMapeoFuncionarios() {
       });
 
       funcionariosCargados = true;
-      console.log(`✅ [FuncionarioMapper] Mapeo cargado: ${funcionariosMap.size} funcionarios mapeados`);
-      
-      // Log de algunos funcionarios para debugging
+// Log de algunos funcionarios para debugging
       if (funcionariosMap.size > 0) {
         const primerosFuncionarios = Array.from(funcionariosMap.entries()).slice(0, 5);
-        console.log('📋 [FuncionarioMapper] Ejemplos de funcionarios mapeados:', primerosFuncionarios);
-      }
+}
       
       return funcionariosMap;
     } catch (error) {
@@ -193,10 +186,7 @@ export function obtenerNombreFuncionario(codigo, nombreAlternativo = null, codig
     if (cargaEnProgreso) {
       cargaEnProgreso.then(() => {
         const nombreActualizado = funcionariosMap.get(codigoStr);
-        if (nombreActualizado && nombreActualizado !== codigoStr) {
-          console.log(`✅ [FuncionarioMapper] Nombre actualizado para código ${codigoStr}: ${nombreActualizado}`);
-        }
-      }).catch(() => {});
+}).catch(() => {});
     } else if (funcionariosCargados) {
       // Si el mapeo está cargado pero no encontramos el código, loguear para debugging
       console.warn(`⚠️ [FuncionarioMapper] Código ${codigoStr} no encontrado en mapeo (${funcionariosMap.size} funcionarios cargados)`);

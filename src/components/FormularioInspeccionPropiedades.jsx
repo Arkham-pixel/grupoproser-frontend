@@ -20,6 +20,7 @@ import {
 import { saveAs } from 'file-saver';
 import { BASE_URL, PROD_URL, getUploadsUrlCandidates } from '../config/apiConfig';
 import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils';
+import { isStoredFileReference } from '../utils/storedFilePath';
 import { FaCamera, FaUpload, FaTrash, FaPlus, FaEye } from 'react-icons/fa';
 import ChatbotIA from './SubcomponenteFormularioAjuste/ChatbotIA';
 import BotonesHistorial from './BotonesHistorial';
@@ -153,8 +154,7 @@ export default function FormularioInspeccionPropiedades() {
                 const fotosProcesadas = await procesarFotosDesdeLocalStorage(datosParseados.fotosAreas);
                 setFotosAreas(normalizarFotosAreas(fotosProcesadas));
               }
-              console.log('✅ Datos de formulario de propiedades cargados desde localStorage');
-            }
+}
           } catch (error) {
             console.error('Error al cargar datos guardados:', error);
             localStorage.removeItem('formularioPropiedades');
@@ -183,8 +183,7 @@ export default function FormularioInspeccionPropiedades() {
           fotosAreas: fotosParaGuardar
         });
         localStorage.setItem('formularioPropiedades', datosParaGuardar);
-        console.log('💾 Datos de formulario de propiedades guardados en localStorage');
-      } catch (error) {
+} catch (error) {
         console.error('Error al guardar datos:', error);
         try {
           localStorage.removeItem('formularioPropiedades');
@@ -231,16 +230,14 @@ export default function FormularioInspeccionPropiedades() {
   useEffect(() => {
     const esRutaPropiedades = location.pathname.includes('/propiedades') || location.pathname.includes('/inspeccion-propiedades');
     if (!esRutaPropiedades) {
-      console.log('🧹 Limpiando datos de localStorage al salir del formulario de propiedades');
-      localStorage.removeItem('formularioPropiedades');
+localStorage.removeItem('formularioPropiedades');
     }
 
     return () => {
       setTimeout(() => {
         const sigueEnRutaPropiedades = window.location.pathname.includes('/propiedades') || window.location.pathname.includes('/inspeccion-propiedades');
         if (!sigueEnRutaPropiedades) {
-          console.log('🧹 Limpiando datos de localStorage (componente desmontado)');
-          localStorage.removeItem('formularioPropiedades');
+localStorage.removeItem('formularioPropiedades');
         }
       }, 100);
     };
@@ -585,8 +582,7 @@ export default function FormularioInspeccionPropiedades() {
       };
       
       await historialService.actualizarFormulario(formularioId, datosFormulario);
-      console.log('✅ Guardado automático exitoso');
-    } catch (error) {
+} catch (error) {
       console.error('Error en guardado automático:', error);
     }
   };
@@ -612,15 +608,13 @@ export default function FormularioInspeccionPropiedades() {
   useEffect(() => {
     if (id && id !== 'nuevo') {
       // 🔑 Sincronizar formularioId con el id de la URL
-      console.log('🔑 Sincronizando formularioId con URL. ID anterior:', formularioId, 'ID nuevo:', id);
-      if (formularioId !== id) {
+if (formularioId !== id) {
         setFormularioId(id);
       }
       cargarFormularioExistente();
     } else if (id === 'nuevo' && formularioId) {
       // Si la URL cambió a 'nuevo' pero tenemos un formularioId, limpiar estado
-      console.log('🔄 URL cambió a "nuevo", limpiando formularioId');
-      setFormularioId(null);
+setFormularioId(null);
     }
   }, [id]);
 
@@ -642,49 +636,30 @@ export default function FormularioInspeccionPropiedades() {
           }
           
           if (datos.fotosAreas) {
-            console.log('📸 Cargando fotos desde historial...');
-            console.log('📸 Estructura de fotosAreas:', datos.fotosAreas);
-            console.log('📸 Tipo de fotosAreas:', typeof datos.fotosAreas);
-            console.log('📸 Es array?:', Array.isArray(datos.fotosAreas));
-            
-            // Procesar fotos desde servidor
+// Procesar fotos desde servidor
             const fotosProcesadas = {};
             for (const [area, fotos] of Object.entries(datos.fotosAreas)) {
               if (!fotos) continue; // Saltar si no hay fotos
               
-              console.log(`📸 Área: ${area}, Tipo: ${typeof fotos}, Es array?: ${Array.isArray(fotos)}`);
-              if (Array.isArray(fotos) && fotos.length > 0) {
-                console.log(`📸 Primer elemento del array de ${area}:`, fotos[0]);
-                console.log(`📸 Tipo del primer elemento:`, typeof fotos[0]);
-                console.log(`📸 Es array el primer elemento?:`, Array.isArray(fotos[0]));
-                if (fotos[0]) {
-                  console.log(`📸 Keys del primer elemento:`, Object.keys(fotos[0]));
-                  console.log(`📸 Contenido completo del primer elemento:`, JSON.stringify(fotos[0], null, 2));
-                }
-              }
+if (Array.isArray(fotos) && fotos.length > 0) {
+}
               
               if (area === 'alcobas') {
                 fotosProcesadas.alcobas = {};
                 for (const [alcobaNum, fotosAlcoba] of Object.entries(fotos)) {
                   if (fotosAlcoba && Array.isArray(fotosAlcoba) && fotosAlcoba.length > 0) {
-                    console.log(`📸 Procesando ${fotosAlcoba.length} fotos para alcoba ${alcobaNum}`);
-                  fotosProcesadas.alcobas[alcobaNum] = await procesarFotosDesdeServidor(fotosAlcoba);
-                    console.log(`📸 Fotos procesadas para alcoba ${alcobaNum}:`, fotosProcesadas.alcobas[alcobaNum].length);
-                  }
+fotosProcesadas.alcobas[alcobaNum] = await procesarFotosDesdeServidor(fotosAlcoba);
+}
                 }
               } else {
                 if (Array.isArray(fotos) && fotos.length > 0) {
-                  console.log(`📸 Procesando ${fotos.length} fotos para área ${area}`);
-                fotosProcesadas[area] = await procesarFotosDesdeServidor(fotos);
-                  console.log(`📸 Fotos procesadas para área ${area}:`, fotosProcesadas[area].length);
-              }
+fotosProcesadas[area] = await procesarFotosDesdeServidor(fotos);
+}
             }
             }
-            console.log('📸 Total fotos procesadas:', fotosProcesadas);
-            setFotosAreas(normalizarFotosAreas(fotosProcesadas));
+setFotosAreas(normalizarFotosAreas(fotosProcesadas));
           } else {
-            console.log('⚠️ No se encontraron fotosAreas en los datos del historial');
-          }
+}
         } else {
           // Estructura antigua: datos directos (compatibilidad hacia atrás)
           // Extraer formData de los datos directos
@@ -697,9 +672,7 @@ export default function FormularioInspeccionPropiedades() {
           }
           
           if (fotosAreasGuardado) {
-            console.log('📸 Cargando fotos desde historial (estructura antigua)...');
-            console.log('📸 Estructura de fotosAreas:', fotosAreasGuardado);
-            // Procesar fotos desde servidor
+// Procesar fotos desde servidor
             const fotosProcesadas = {};
             for (const [area, fotos] of Object.entries(fotosAreasGuardado)) {
               if (!fotos) continue; // Saltar si no hay fotos
@@ -708,24 +681,18 @@ export default function FormularioInspeccionPropiedades() {
                 fotosProcesadas.alcobas = {};
                 for (const [alcobaNum, fotosAlcoba] of Object.entries(fotos)) {
                   if (fotosAlcoba && Array.isArray(fotosAlcoba) && fotosAlcoba.length > 0) {
-                    console.log(`📸 Procesando ${fotosAlcoba.length} fotos para alcoba ${alcobaNum}`);
-                  fotosProcesadas.alcobas[alcobaNum] = await procesarFotosDesdeServidor(fotosAlcoba);
-                    console.log(`📸 Fotos procesadas para alcoba ${alcobaNum}:`, fotosProcesadas.alcobas[alcobaNum].length);
-                  }
+fotosProcesadas.alcobas[alcobaNum] = await procesarFotosDesdeServidor(fotosAlcoba);
+}
                 }
               } else {
                 if (Array.isArray(fotos) && fotos.length > 0) {
-                  console.log(`📸 Procesando ${fotos.length} fotos para área ${area}`);
-                fotosProcesadas[area] = await procesarFotosDesdeServidor(fotos);
-                  console.log(`📸 Fotos procesadas para área ${area}:`, fotosProcesadas[area].length);
-              }
+fotosProcesadas[area] = await procesarFotosDesdeServidor(fotos);
+}
             }
             }
-            console.log('📸 Total fotos procesadas (estructura antigua):', fotosProcesadas);
-            setFotosAreas(normalizarFotosAreas(fotosProcesadas));
+setFotosAreas(normalizarFotosAreas(fotosProcesadas));
           } else {
-            console.log('⚠️ No se encontraron fotosAreas en los datos del historial (estructura antigua)');
-          }
+}
         }
       }
     } catch (error) {
@@ -739,31 +706,18 @@ export default function FormularioInspeccionPropiedades() {
   // Función para procesar fotos desde servidor
   const procesarFotosDesdeServidor = async (fotos) => {
     if (!fotos || !Array.isArray(fotos)) {
-      console.log('⚠️ procesarFotosDesdeServidor: No hay fotos o no es un array');
-      return [];
+return [];
     }
     
-    console.log(`📸 procesarFotosDesdeServidor: Procesando ${fotos.length} fotos`);
-
-    // Reusar helper global para /uploads (DEV -> PROD fallback)
+// Reusar helper global para /uploads (DEV -> PROD fallback)
     const getImageUrlCandidates = (rutaOrUrl) => getUploadsUrlCandidates(rutaOrUrl);
     
     return await Promise.all(
       fotos.map(async (foto, index) => {
         // Log detallado de la estructura de la foto
-        console.log(`📸 Procesando foto ${index + 1}:`, {
-          tieneBase64: !!foto.base64,
-          tieneRuta: !!foto.ruta,
-          tieneUrl: !!foto.url,
-          tieneArchivo: !!(foto.archivo),
-          estructura: Object.keys(foto),
-          fotoCompleta: foto // Mostrar la foto completa para debug
-        });
-        
-        // Si la foto es un string (base64 directo), convertirla a objeto
+// Si la foto es un string (base64 directo), convertirla a objeto
         if (typeof foto === 'string') {
-          console.log(`📸 Foto ${index + 1} es un string, convirtiendo a objeto...`);
-          return {
+return {
             id: Date.now() + Math.random(),
             nombre: 'Imagen',
             base64: foto.startsWith('data:') ? foto : `data:image/jpeg;base64,${foto}`,
@@ -774,8 +728,7 @@ export default function FormularioInspeccionPropiedades() {
         
         // Si la foto es un array (estructura incorrecta), intentar extraer datos
         if (Array.isArray(foto)) {
-          console.log(`📸 Foto ${index + 1} es un array, intentando extraer datos...`, foto);
-          // Si el array tiene elementos, usar el primero
+// Si el array tiene elementos, usar el primero
           if (foto.length > 0 && typeof foto[0] === 'string') {
             const base64 = foto[0].startsWith('data:') ? foto[0] : `data:image/jpeg;base64,${foto[0]}`;
             return {
@@ -800,8 +753,7 @@ export default function FormularioInspeccionPropiedades() {
             ? foto.base64 
             : `data:image/jpeg;base64,${foto.base64}`;
           
-          console.log(`✅ Foto ${index + 1}: Usando base64`);
-          return {
+return {
             id: foto.id || Date.now() + Math.random(),
             nombre: foto.nombre || 'Imagen',
             base64: base64,
@@ -826,8 +778,7 @@ export default function FormularioInspeccionPropiedades() {
               if (!blob || blob.size === 0) continue;
 
               const url = URL.createObjectURL(blob);
-              console.log(`✅ Foto ${index + 1}: Cargada desde servidor`, imagenUrl);
-              return {
+return {
                 id: foto.id || Date.now() + Math.random(),
                 nombre: foto.nombre || 'Imagen',
                 url,
@@ -848,8 +799,7 @@ export default function FormularioInspeccionPropiedades() {
         
         // Si tiene url pero no ruta ni base64, mantenerla
         if (foto.url && !foto.url.startsWith('blob:')) {
-          console.log(`✅ Foto ${index + 1}: Usando URL existente`);
-          return {
+return {
             id: foto.id || Date.now() + Math.random(),
             nombre: foto.nombre || 'Imagen',
             url: foto.url,
@@ -860,8 +810,7 @@ export default function FormularioInspeccionPropiedades() {
         
         // Si tiene url blob, mantenerla
         if (foto.url && foto.url.startsWith('blob:')) {
-          console.log(`✅ Foto ${index + 1}: Usando URL blob`);
-          return {
+return {
             id: foto.id || Date.now() + Math.random(),
             nombre: foto.nombre || 'Imagen',
             url: foto.url,
@@ -870,8 +819,7 @@ export default function FormularioInspeccionPropiedades() {
         }
         
         // Retornar foto tal cual si no se puede procesar
-        console.log(`⚠️ Foto ${index + 1}: No se pudo procesar, retornando tal cual`);
-        return {
+return {
           id: foto.id || Date.now() + Math.random(),
           nombre: foto.nombre || 'Imagen',
           descripcion: foto.descripcion || '',
@@ -890,15 +838,8 @@ export default function FormularioInspeccionPropiedades() {
       const nombreCliente = formData.nombreInmueble ? capitalizeFirstLetter(formData.nombreInmueble) : "Sin Nombre";
       
       // Procesar fotos antes de guardar
-      console.log('📸 Procesando fotos para guardar en historial...');
-      console.log('📸 Total fotosAreas antes de procesar:', Object.keys(fotosAreas).length);
-      console.log('📸 Estructura de fotosAreas:', fotosAreas);
-      
-      const fotosProcesadas = await procesarFotosParaGuardar();
-      console.log('📸 Fotos procesadas:', fotosProcesadas);
-      console.log('📸 Total áreas con fotos procesadas:', Object.keys(fotosProcesadas).length);
-      
-      // Verificar que las fotos se procesaron correctamente y tienen base64
+const fotosProcesadas = await procesarFotosParaGuardar();
+// Verificar que las fotos se procesaron correctamente y tienen base64
       let totalFotos = 0;
       let fotosConBase64 = 0;
       let fotosSinBase64 = 0;
@@ -923,11 +864,7 @@ export default function FormularioInspeccionPropiedades() {
         }
       }
       
-      console.log('📸 Total de fotos procesadas:', totalFotos);
-      console.log('📸 Fotos con base64:', fotosConBase64);
-      console.log('📸 Fotos sin base64 (solo ruta):', fotosSinBase64);
-      
-      if (fotosSinBase64 > 0) {
+if (fotosSinBase64 > 0) {
         console.warn('⚠️ Algunas fotos no tienen base64, solo tienen ruta. Esto puede causar problemas al cargar.');
       }
       
@@ -945,28 +882,18 @@ export default function FormularioInspeccionPropiedades() {
         estado: ESTADOS_FORMULARIO.EN_PROCESO,
       };
       
-      console.log('💾 Guardando formulario en historial con fotos:', totalFotos, 'fotos');
-      console.log('🔑 Estado actual de formularioId:', formularioId);
-      console.log('🔑 ID de URL:', id);
-      
-      let nuevoId;
+let nuevoId;
       if (formularioId && formularioId !== 'nuevo') {
         // 🔄 Actualizar formulario existente (evita duplicados)
-        console.log('🔄 ACTUALIZANDO formulario existente con ID:', formularioId);
-        await historialService.actualizarFormulario(formularioId, datosFormulario);
+await historialService.actualizarFormulario(formularioId, datosFormulario);
         nuevoId = formularioId;
-        console.log('✅ Formulario actualizado exitosamente');
-      } else {
+} else {
         // 🆕 Crear nuevo formulario
-        console.log('🆕 CREANDO nuevo formulario en historial');
-        const resultado = await historialService.guardarFormulario(datosFormulario);
+const resultado = await historialService.guardarFormulario(datosFormulario);
         nuevoId = resultado._id || resultado.id || resultado;
-        console.log('✅ Formulario creado con ID:', nuevoId);
-        
-        // 🔑 Guardar ID y navegar a la URL con el ID para futuras actualizaciones
+// 🔑 Guardar ID y navegar a la URL con el ID para futuras actualizaciones
         setFormularioId(nuevoId);
-        console.log('🔑 Navegando a URL con ID para evitar duplicados en futuros guardados');
-        navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true });
+navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true });
       }
       
       mostrarModalConfirmacion(
@@ -1806,19 +1733,9 @@ export default function FormularioInspeccionPropiedades() {
                     imageBuffer = base64ToArrayBuffer(base64Data);
                   } 
                   // Prioridad 2: Si tiene ruta del servidor, cargar desde ahí
-                  else if (foto.ruta && foto.ruta.startsWith('/uploads/')) {
+                  else if (isStoredFileReference(foto.ruta)) {
                     try {
-                      const candidatos = [];
-                      if (foto.ruta.startsWith('http')) {
-                        candidatos.push(foto.ruta);
-                      } else {
-                        // 1) URL base configurada (dev/prod)
-                        candidatos.push(`${BASE_URL}${foto.ruta}`);
-                        // 2) Fallback: si estás en dev (localhost) pero las imágenes viven en producción
-                        if (String(BASE_URL).includes('localhost')) {
-                          candidatos.push(`${PROD_URL}${foto.ruta}`);
-                        }
-                      }
+                      const candidatos = getUploadsUrlCandidates(foto.ruta);
 
                       for (const url of candidatos) {
                         // eslint-disable-next-line no-await-in-loop
@@ -2153,11 +2070,7 @@ export default function FormularioInspeccionPropiedades() {
             },
             body: formDataFile
           });
-          
-          if (response.ok) {
-            console.log('✅ Archivo Word guardado en historial');
-          }
-        } catch (error) {
+} catch (error) {
           console.error('Error guardando archivo:', error);
         }
       }
@@ -2177,20 +2090,13 @@ export default function FormularioInspeccionPropiedades() {
       setExportando(true);
       setError(null);
       
-      console.log('🚀 Iniciando exportación...');
-      console.log('🔑 formularioId antes de guardar:', formularioId);
-      
-      // Primero guardar el formulario (esto puede crear o actualizar)
+// Primero guardar el formulario (esto puede crear o actualizar)
       await handleGuardarEnHistorial();
       
-      console.log('💾 Formulario guardado. Generando documento Word...');
-      
-      // Luego generar el Word (usa el formularioId actualizado)
+// Luego generar el Word (usa el formularioId actualizado)
       await generarDocumentoWord();
       
-      console.log('✅ Exportación completada exitosamente');
-      
-      mostrarModalConfirmacion(
+mostrarModalConfirmacion(
         'Documento Generado',
         'El documento Word se ha generado y descargado exitosamente.',
         'success'

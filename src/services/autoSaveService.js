@@ -29,8 +29,7 @@ class AutoSaveService {
       };
       localStorage.setItem(metadataKey, JSON.stringify(metadata));
       
-      console.log(`💾 Datos guardados en localStorage: ${formKey}`);
-      return true;
+return true;
     } catch (error) {
       console.error('❌ Error al guardar en localStorage:', error);
       
@@ -123,8 +122,7 @@ class AutoSaveService {
       localStorage.removeItem(metadataKey);
       localStorage.removeItem(configKey);
       
-      console.log(`🗑️ Datos de autoguardado eliminados: ${formKey}`);
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error al eliminar datos:', error);
     }
   }
@@ -146,8 +144,7 @@ class AutoSaveService {
             
             if (now - savedAt > maxAge) {
               const formKey = metadata.formKey;
-              console.log(`🧹 Limpiando autoguardado antiguo: ${formKey}`);
-              this.clear(formKey);
+this.clear(formKey);
             }
           } catch (error) {
             // Si hay error al parsear, eliminar la entrada

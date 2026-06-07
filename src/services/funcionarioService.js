@@ -88,13 +88,11 @@ class FuncionarioService {
       const body = await response.json();
       const desdeApi = this.normalizarListaFuncionarios(body);
       const merged = this.fusionarFuncionarios(desdeApi, desdeLocal);
-      console.log('✅ Funcionarios (API+local):', merged.length, '(API:', desdeApi.length, 'local:', desdeLocal.length, ')');
-      return merged;
+return merged;
     } catch (error) {
       console.error('❌ Error al obtener funcionarios:', error);
       if (desdeLocal.length > 0) {
-        console.log('⚠️ Usando solo funcionarios de localStorage');
-        return desdeLocal;
+return desdeLocal;
       }
       const funcionariosLocal = localStorage.getItem('proser_funcionarios');
       if (funcionariosLocal) {
@@ -123,9 +121,7 @@ class FuncionarioService {
       }
 
       const nuevoFuncionario = await response.json();
-      console.log('✅ Funcionario creado en BD:', nuevoFuncionario.funcionario);
-      
-      // También guardar en localStorage como backup
+// También guardar en localStorage como backup
       this.sincronizarConLocalStorage();
       
       return nuevoFuncionario.funcionario;
@@ -149,9 +145,7 @@ class FuncionarioService {
       }
 
       const funcionarioActualizado = await response.json();
-      console.log('✅ Funcionario actualizado en BD:', funcionarioActualizado.funcionario);
-      
-      // También actualizar en localStorage
+// También actualizar en localStorage
       this.sincronizarConLocalStorage();
       
       return funcionarioActualizado.funcionario;
@@ -173,9 +167,7 @@ class FuncionarioService {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
 
-      console.log('✅ Funcionario eliminado de BD');
-      
-      // También eliminar de localStorage
+// También eliminar de localStorage
       this.sincronizarConLocalStorage();
       
       return true;
@@ -199,9 +191,7 @@ class FuncionarioService {
       }
 
       const funcionarioActualizado = await response.json();
-      console.log('✅ Firma actualizada en BD');
-      
-      // También actualizar en localStorage
+// También actualizar en localStorage
       this.sincronizarConLocalStorage();
       
       return funcionarioActualizado.funcionario;
@@ -229,8 +219,7 @@ class FuncionarioService {
       }));
       
       localStorage.setItem('proser_funcionarios', JSON.stringify(funcionariosSinFirmas));
-      console.log('✅ Funcionarios sincronizados con localStorage (sin firmas)');
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error al sincronizar con localStorage:', error);
     }
   }
@@ -240,8 +229,7 @@ class FuncionarioService {
     try {
       const funcionariosLocal = localStorage.getItem('proser_funcionarios');
       if (funcionariosLocal) {
-        console.log('📱 Cargando funcionarios desde localStorage');
-        return JSON.parse(funcionariosLocal);
+return JSON.parse(funcionariosLocal);
       }
       return [];
     } catch (error) {
@@ -273,16 +261,14 @@ class FuncionarioService {
       }));
       
       localStorage.setItem('proser_funcionarios', JSON.stringify(funcionariosSinFirmas));
-      console.log('💾 Funcionarios guardados en localStorage (sin firmas)');
-    } catch (error) {
+} catch (error) {
       if (error.name === 'QuotaExceededError') {
         console.warn('⚠️ localStorage aún lleno después de limpiar, guardando solo datos recientes...');
         // Intentar guardar solo los datos más recientes
         try {
           const datosRecientes = funcionariosSinFirmas.slice(-3); // Solo los últimos 3
           localStorage.setItem('proser_funcionarios', JSON.stringify(datosRecientes));
-          console.log('💾 Datos recientes guardados en localStorage');
-        } catch (retryError) {
+} catch (retryError) {
           console.error('❌ Error persistente en localStorage, saltando backup local');
           // No hacer nada más, los datos están seguros en la BD
         }
@@ -300,8 +286,7 @@ class FuncionarioService {
       claves.forEach(clave => {
         if (localStorage.getItem(clave)) {
           localStorage.removeItem(clave);
-          console.log(`🗑️ Limpiado ${clave} del localStorage`);
-        }
+}
       });
     } catch (error) {
       console.error('❌ Error al limpiar localStorage:', error);
@@ -316,8 +301,7 @@ class FuncionarioService {
       clavesFirmas.forEach(clave => {
         if (localStorage.getItem(clave)) {
           localStorage.removeItem(clave);
-          console.log(`🗑️ Limpiada firma ${clave} del localStorage`);
-        }
+}
       });
       
       // También limpiar funcionarios con firmas del localStorage
@@ -329,8 +313,7 @@ class FuncionarioService {
           firma: null // Remover firmas
         }));
         localStorage.setItem('proser_funcionarios', JSON.stringify(funcionariosSinFirmas));
-        console.log('🗑️ Firmas removidas de funcionarios en localStorage');
-      }
+}
     } catch (error) {
       console.error('❌ Error al limpiar firmas del localStorage:', error);
     }

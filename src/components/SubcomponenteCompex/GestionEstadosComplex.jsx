@@ -36,8 +36,7 @@ export default function GestionEstadosComplex() {
       setLoading(true);
       setError(null);
       const datos = await getEstados();
-      console.log('📊 Estados recibidos de la API:', datos);
-      // Ordenar por código de estado
+// Ordenar por código de estado
       const estadosOrdenados = datos.sort((a, b) => {
         const codA = Number(a.codiEstdo || a.codiEstado) || 0;
         const codB = Number(b.codiEstdo || b.codiEstado) || 0;

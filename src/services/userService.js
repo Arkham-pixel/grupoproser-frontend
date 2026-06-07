@@ -31,27 +31,14 @@ export const obtenerPerfil = async (token, tipo = "normal", usuarioId = null) =>
       : `${BASE_URL}/api/usuarios/perfil`;
   }
   
-  console.log('🌐 obtenerPerfil - configuración:', {
-    tipo,
-    url,
-    usuarioId,
-    token: token ? 'SÍ' : 'NO'
-  });
-  
-  return axios.get(url, {
+return axios.get(url, {
     headers: { Authorization: `Bearer ${token}` }
   });
 };
 
 // Nueva función para subir y actualizar la foto de perfil
 export const actualizarFoto = (formData, token) => {
-  console.log('📸 actualizarFoto - configuración:', {
-    BASE_URL,
-    token: token ? 'SÍ' : 'NO',
-    formDataKeys: formData ? Array.from(formData.keys()) : 'NO DATA'
-  });
-  
-  // Usar la ruta secur-auth específica para fotos
+// Usar la ruta secur-auth específica para fotos
   return axios.put(
     `${BASE_URL}/api/secur-auth/perfil/foto`,
     formData,

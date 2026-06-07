@@ -298,8 +298,7 @@ export default function ActaInspeccion() {
       const nombreArchivo = `ACTA_DE_INSPECCION_${fechaInspeccion || new Date().toISOString().split('T')[0]}.docx`;
       saveAs(blob, nombreArchivo);
       
-      console.log('✅ Acta de Inspección generada exitosamente');
-    } catch (error) {
+} catch (error) {
       console.error('❌ Error al generar acta:', error);
       alert('Error al generar el documento. Por favor, intente nuevamente.');
     } finally {
