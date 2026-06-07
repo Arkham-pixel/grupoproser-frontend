@@ -57,6 +57,8 @@ import { updateCasoComplex } from './services/complexService';
 import { CasosRiesgoProvider } from './context/CasosRiesgoContext'
 import RequireAuth from './components/RequireAuth'
 import sessionManager from './services/sessionManager'
+import PaginaError from './components/PaginaError'
+import DetectorConexion from './components/DetectorConexion'
 
 // Comprueba si tenemos un token en localStorage
 const isAuthenticated = () => !!localStorage.getItem('token')
@@ -340,6 +342,7 @@ await guardarCasoComplex(payload);
 export default function App() {
   return (
     <CasosRiesgoProvider>
+      <DetectorConexion>
       <Routes>
         {/* Ruta raíz: si estás, vas a /inicio, si no, a /login */}
         <Route
@@ -360,6 +363,9 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password/:token" element={<ChangePasswordWithToken />} />
+        <Route path="/error" element={<PaginaError />} />
+        <Route path="/sin-conexion" element={<PaginaError tipoForzado="sin-conexion" />} />
+        <Route path="/servicio-no-disponible" element={<PaginaError tipoForzado="servicio" />} />
 
         {/* Rutas privadas protegidas por RequireAuth */}
         <Route
@@ -431,9 +437,10 @@ export default function App() {
           <Route path="editar-perfil-usuario" element={<EditarPerfilUsuario />} />
         </Route>
 
-        {/* Cualquier otra ruta redirige a la raíz */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Rutas no encontradas */}
+        <Route path="*" element={<PaginaError />} />
       </Routes>
+      </DetectorConexion>
     </CasosRiesgoProvider>
   )
 }
