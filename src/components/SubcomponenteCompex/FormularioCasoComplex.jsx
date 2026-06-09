@@ -21,6 +21,7 @@ import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
 import { getCasoComplex } from '../../services/complexService.js';
 import { calcularTotalesControlHoras } from './controlHoras/controlHorasUtils';
+import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 
 export default function FormularioCasoComplex({ initialData, onSave, onCancel, camposFijos = false }) {
   const navigate = useNavigate();
@@ -804,7 +805,7 @@ const token = localStorage.getItem('token');
     for (const file of archivos) {
       try {
         const formDataUpload = new FormData();
-        formDataUpload.append('file', file);
+        formDataUpload.append('file', file, sanitizeUploadFileName(file.name, 'documento'));
 
         const response = await fetch(`${BASE_URL}/api/complex/upload`, {
           method: 'POST',

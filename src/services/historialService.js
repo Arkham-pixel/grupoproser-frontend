@@ -1,6 +1,7 @@
 // Servicio para manejar el historial de formularios
 import { BASE_URL, PROD_URL, getUploadsUrlCandidates, isDevelopmentEnv } from '../config/apiConfig.js';
 import { isStoredFileReference } from '../utils/storedFilePath.js';
+import { sanitizeUploadFileName } from '../utils/sanitizeUploadFileName.js';
 
 // Tipos de formularios disponibles
 export const TIPOS_FORMULARIOS = {
@@ -151,7 +152,11 @@ const formData = new FormData();
           // Guardar info útil para debug (no se persiste, se limpia después)
           _nombreOriginal: fileOriginal?.name
         });
-        formData.append('imagenes', fileParaSubir, fileParaSubir?.name || fileOriginal?.name || 'imagen.jpg');
+        const nombreSubida = sanitizeUploadFileName(
+          fileParaSubir?.name || fileOriginal?.name || 'imagen.jpg',
+          'imagen.jpg'
+        );
+        formData.append('imagenes', fileParaSubir, nombreSubida);
       }
     }
 
@@ -466,7 +471,11 @@ const fotosAreasProcesadas = {};
                 }
                 const byteArray = new Uint8Array(byteNumbers);
                 const blob = new Blob([byteArray], { type: 'image/jpeg' });
-                const file = new File([blob], foto.nombre || 'imagen.jpg', { type: 'image/jpeg' });
+                const file = new File(
+                  [blob],
+                  sanitizeUploadFileName(foto.nombre, 'imagen.jpg'),
+                  { type: 'image/jpeg' }
+                );
                 
                 return {
                   file: file,
@@ -531,7 +540,11 @@ const fotosAreasProcesadas = {};
               }
               const byteArray = new Uint8Array(byteNumbers);
               const blob = new Blob([byteArray], { type: 'image/jpeg' });
-              const file = new File([blob], foto.nombre || 'imagen.jpg', { type: 'image/jpeg' });
+              const file = new File(
+                [blob],
+                sanitizeUploadFileName(foto.nombre, 'imagen.jpg'),
+                { type: 'image/jpeg' }
+              );
               
               return {
                 file: file,
@@ -1039,7 +1052,7 @@ return true;
       for (const servidor of servidoresCandidatos) {
         try {
           const formData = new FormData();
-          formData.append('archivo', archivoFile);
+          formData.append('archivo', archivoFile, sanitizeUploadFileName(archivoFile.name, 'formulario.docx'));
 
           const response = await fetch(`${servidor}/api/historial-formularios/${id}/archivo`, {
             method: 'POST',
