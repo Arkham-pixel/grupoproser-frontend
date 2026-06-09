@@ -58,7 +58,23 @@ export function getUploadsUrlCandidates(rutaOrUrl) {
 
   if (rutaOrUrl.startsWith('data:') || rutaOrUrl.startsWith('blob:')) return [rutaOrUrl];
 
-  if (rutaOrUrl.startsWith('http://') || rutaOrUrl.startsWith('https://')) return [rutaOrUrl];
+  if (rutaOrUrl.startsWith('http://') || rutaOrUrl.startsWith('https://')) {
+    // URLs antiguas guardadas como "https://backend/s3:clave" no existen como ruta;
+    // extraer la referencia s3: y reenrutar por el proxy de storage.
+    const s3EnUrl = rutaOrUrl.match(/^https?:\/\/[^/]+\/(s3:.+)$/i);
+    if (s3EnUrl) {
+      let ref = s3EnUrl[1];
+      try {
+        ref = decodeURIComponent(ref);
+      } catch {
+        // referencia sin codificar: usar tal cual
+      }
+      const list = [storageFileUrl(BASE_URL, ref)];
+      if (isDevelopmentEnv) list.push(storageFileUrl(PROD_URL, ref));
+      return list;
+    }
+    return [rutaOrUrl];
+  }
 
   if (rutaOrUrl.startsWith('s3:') || rutaOrUrl.startsWith('s3://')) {
     const list = [storageFileUrl(BASE_URL, rutaOrUrl)];

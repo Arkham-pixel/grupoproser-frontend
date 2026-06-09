@@ -414,7 +414,8 @@ const Trazabilidad = memo(function Trazabilidad({
   // Función para construir URL de descarga
   const construirUrlDescarga = useCallback((valor) => {
     if (!valor || typeof valor !== 'string') return '';
-    if (valor.startsWith('http') || valor.startsWith('data:')) return valor;
+    if (valor.startsWith('data:')) return valor;
+    // getUploadsUrlCandidates repara URLs antiguas tipo "https://backend/s3:..." vía proxy
     const candidates = getUploadsUrlCandidates(valor);
     return candidates[0] || '';
   }, []);

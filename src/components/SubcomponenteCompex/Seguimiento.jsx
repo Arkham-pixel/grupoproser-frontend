@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BASE_URL } from '../../config/apiConfig.js';
+import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import {
   complexBtnSecondary,
@@ -173,10 +173,8 @@ export default function Seguimiento({
   const construirUrlDescarga = useCallback((valor) => {
     if (!valor) return '';
     if (typeof valor !== 'string') return '';
-    if (valor.startsWith('http') || valor.startsWith('data:')) return valor;
-    const base = (BASE_URL || '').replace(/\/$/, '');
-    const path = valor.startsWith('/') ? valor : `/${valor}`;
-    return `${base}${path}`;
+    if (valor.startsWith('data:')) return valor;
+    return getUploadsUrlCandidates(valor)[0] || '';
   }, []);
 
   const descargarDocumento = (documento) => {

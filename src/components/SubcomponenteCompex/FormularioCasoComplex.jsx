@@ -9,7 +9,7 @@ import Facturacion from './Facturacion';
 import Honorarios from './Honorarios';
 import ObservacionesCliente from './ObservacionesCliente';
 import ObservacionesPendientes from './ObservacionesPendientes';
-import { BASE_URL } from '../../config/apiConfig.js';
+import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { useAutoSave } from '../../hooks/useAutoSave';
 import {
   complexFormRoot,
@@ -156,12 +156,9 @@ return '';
   const construirUrlArchivo = useCallback((valor) => {
     if (!valor) return '';
     if (typeof valor !== 'string') return '';
-    if (valor.startsWith('http') || valor.startsWith('data:')) {
-      return valor;
-    }
-    const base = (BASE_URL || '').replace(/\/$/, '');
-    const path = valor.startsWith('/') ? valor : `/${valor}`;
-    return `${base}${path}`;
+    if (valor.startsWith('data:')) return valor;
+    // Referencias s3: van por el proxy /api/storage/file (no existen como ruta directa)
+    return getUploadsUrlCandidates(valor)[0] || '';
   }, []);
 
   const normalizarHistorialDocs = useCallback((docs = []) => {
