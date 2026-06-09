@@ -13,6 +13,7 @@ import {
   riesgoTableTh,
   riesgoTableWrap,
 } from './riesgoFenixUi.js';
+import { getEstadoRiesgoNombre } from '../../utils/riesgoEstadoUtils.js';
 
 const getCiudadNombre = (codigo, ciudades) => {
   if (!ciudades || !Array.isArray(ciudades)) return codigo;
@@ -20,11 +21,7 @@ const getCiudadNombre = (codigo, ciudades) => {
   return ciudad ? ciudad.label : codigo;
 };
 
-const getEstadoNombre = (codigo, estados) => {
-  if (!estados || !Array.isArray(estados)) return codigo;
-  const estado = estados.find((e) => String(e.codiEstdo) === String(codigo));
-  return estado ? estado.descEstdo : codigo;
-};
+const getEstadoNombre = (codigo, estados) => getEstadoRiesgoNombre(codigo, estados);
 
 const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
   const { casos } = useCasosRiesgo();

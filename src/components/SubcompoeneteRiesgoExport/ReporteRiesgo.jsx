@@ -33,6 +33,11 @@ import {
 import { convertirFechaParaExcelDate } from '../../utils/fechaUtils';
 import { BASE_URL } from '../../config/apiConfig.js';
 import Select from 'react-select';
+import {
+  codigoEstadoRiesgoResuelto,
+  getEstadoRiesgoNombre,
+  opcionesEstadoRiesgoDesdeCatalogo,
+} from '../../utils/riesgoEstadoUtils.js';
 
 const getCiudadNombre = (codigo, ciudades) => {
   if (!ciudades || !codigo) return codigo || '';
@@ -93,24 +98,7 @@ const getCiudadNombre = (codigo, ciudades) => {
   return codigoStr;
 };
 
-const getEstadoNombre = (codigo, estados) => {
-  if (!codigo && codigo !== 0) return '';
-  if (!estados || estados.length === 0) return String(codigo);
-  
-  // Buscar el estado por código
-  const estado = estados.find(e => {
-    const codigoEstado = e.codiEstdo !== undefined && e.codiEstdo !== null ? String(e.codiEstdo) : '';
-    const codigoBuscado = String(codigo);
-    return codigoEstado === codigoBuscado;
-  });
-  
-  if (estado && estado.descEstdo) {
-    return estado.descEstdo;
-  }
-  
-  // Si no se encuentra, retornar el código como fallback
-  return String(codigo);
-};
+const getEstadoNombre = (codigo, estados) => getEstadoRiesgoNombre(codigo, estados);
 
 const getResponsableNombre = (codigo, responsables) => {
   if (!responsables) return codigo;
@@ -684,7 +672,8 @@ if (clasificacionesList.length === 0) {
     // Filtro por estado (múltiple)
     if (estadoFiltro.length > 0) {
       const valoresEstado = estadoFiltro.map(f => String(f.value));
-      ok = ok && valoresEstado.includes(String(caso.codiEstdo));
+      const codigoCaso = codigoEstadoRiesgoResuelto(caso.codiEstdo);
+      ok = ok && valoresEstado.includes(String(codigoCaso ?? caso.codiEstdo));
     }
     
     // Filtro por responsable (múltiple) - comparar por nombre normalizado
@@ -748,10 +737,7 @@ if (clasificacionesList.length === 0) {
   };
 
   // Listas únicas para los filtros
-  const estadosUnicos = Array.from(new Set(casos.map(c => c.codiEstdo).filter(Boolean))).map(e => ({ 
-    value: e, 
-    label: getEstadoNombre(e, estadosLocales) 
-  }));
+  const estadosUnicos = opcionesEstadoRiesgoDesdeCatalogo(estadosProp || estadosLocales, casos);
   
   const aseguradorasUnicas = Array.from(new Set(casos.map(c => c.codiAsgrdra).filter(Boolean))).map(a => ({ 
     value: a, 
