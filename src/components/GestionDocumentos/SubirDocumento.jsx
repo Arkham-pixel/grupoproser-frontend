@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
+import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { FaUpload, FaFile, FaTimes } from 'react-icons/fa';
 
 export default function SubirDocumento({ onDocumentoSubido }) {
@@ -49,7 +50,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
 
     try {
       const formData = new FormData();
-      formData.append('archivo', archivo);
+      appendUploadFile(formData, 'archivo', archivo, 'documento');
       formData.append('nombre', nombre || archivo.name);
       formData.append('descripcion', descripcion);
       formData.append('etiquetas', etiquetas);

@@ -21,6 +21,7 @@ import { saveAs } from 'file-saver';
 import { BASE_URL, PROD_URL, getUploadsUrlCandidates } from '../config/apiConfig';
 import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils';
 import { isStoredFileReference } from '../utils/storedFilePath';
+import { appendUploadFile } from '../utils/sanitizeUploadFileName.js';
 import { FaCamera, FaUpload, FaTrash, FaPlus, FaEye } from 'react-icons/fa';
 import ChatbotIA from './SubcomponenteFormularioAjuste/ChatbotIA';
 import BotonesHistorial from './BotonesHistorial';
@@ -2060,7 +2061,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
       if (formularioId && formularioId !== 'nuevo') {
         // Subir archivo al servidor
         const formDataFile = new FormData();
-        formDataFile.append('archivo', blob, nombreArchivo);
+        appendUploadFile(formDataFile, 'archivo', blob, nombreArchivo);
         
         try {
           const response = await fetch(`${BASE_URL}/api/historial-formularios/${formularioId}/archivo`, {

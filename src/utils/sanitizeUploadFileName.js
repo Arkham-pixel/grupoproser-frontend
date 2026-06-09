@@ -18,3 +18,18 @@ export function sanitizeUploadFileName(name, fallback = 'archivo') {
   const safeExt = ext.toLowerCase().replace(/[^a-z0-9.]/g, '') || '';
   return `${safeStem}${safeExt}`;
 }
+
+/**
+ * Añade archivo o blob a FormData con nombre seguro para el backend/S3.
+ */
+export function appendUploadFile(formData, fieldName, fileOrBlob, nameOrFallback = 'archivo') {
+  const fallback = typeof nameOrFallback === 'string' ? nameOrFallback : 'archivo';
+  const sourceName =
+    fileOrBlob instanceof File
+      ? fileOrBlob.name
+      : typeof nameOrFallback === 'string'
+        ? nameOrFallback
+        : fallback;
+  const safeName = sanitizeUploadFileName(sourceName, fallback);
+  formData.append(fieldName, fileOrBlob, safeName);
+}

@@ -1,7 +1,7 @@
 // Servicio para manejar el historial de formularios
 import { BASE_URL, PROD_URL, getUploadsUrlCandidates, isDevelopmentEnv } from '../config/apiConfig.js';
 import { isStoredFileReference } from '../utils/storedFilePath.js';
-import { sanitizeUploadFileName } from '../utils/sanitizeUploadFileName.js';
+import { appendUploadFile, sanitizeUploadFileName } from '../utils/sanitizeUploadFileName.js';
 
 // Tipos de formularios disponibles
 export const TIPOS_FORMULARIOS = {
@@ -152,11 +152,12 @@ const formData = new FormData();
           // Guardar info útil para debug (no se persiste, se limpia después)
           _nombreOriginal: fileOriginal?.name
         });
-        const nombreSubida = sanitizeUploadFileName(
-          fileParaSubir?.name || fileOriginal?.name || 'imagen.jpg',
-          'imagen.jpg'
+        appendUploadFile(
+          formData,
+          'imagenes',
+          fileParaSubir,
+          fileParaSubir?.name || fileOriginal?.name || 'imagen.jpg'
         );
-        formData.append('imagenes', fileParaSubir, nombreSubida);
       }
     }
 
@@ -1052,7 +1053,7 @@ return true;
       for (const servidor of servidoresCandidatos) {
         try {
           const formData = new FormData();
-          formData.append('archivo', archivoFile, sanitizeUploadFileName(archivoFile.name, 'formulario.docx'));
+          appendUploadFile(formData, 'archivo', archivoFile, archivoFile.name || 'formulario.docx');
 
           const response = await fetch(`${servidor}/api/historial-formularios/${id}/archivo`, {
             method: 'POST',

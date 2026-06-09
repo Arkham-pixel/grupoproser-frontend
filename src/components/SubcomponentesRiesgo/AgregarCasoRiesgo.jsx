@@ -8,6 +8,7 @@ import ListaCasosRiesgo from "./ListaCasosRiesgo";
 import { useCasosRiesgo } from "../../context/CasosRiesgoContext";
 import axios from 'axios';
 import { BASE_URL } from '../../config/apiConfig';
+import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import historialService, { TIPOS_FORMULARIOS, ESTADOS_FORMULARIO } from '../../services/historialService';
 import {
   riesgoBtnInfo,
@@ -176,7 +177,7 @@ const crearFormDataDesdePayload = (payload) => {
   const formDataSend = new FormData();
   Object.entries(payload).forEach(([key, value]) => {
     if (value instanceof File) {
-      formDataSend.append(key, value, value.name);
+      formDataSend.append(key, value, sanitizeUploadFileName(value.name, 'archivo'));
       return;
     }
     if (value === undefined || value === null) {

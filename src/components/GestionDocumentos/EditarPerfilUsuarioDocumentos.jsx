@@ -3,6 +3,7 @@ import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { obtenerPerfil, actualizarPerfil } from '../../services/userService';
 import { getUploadsUrlCandidates, isDevelopmentEnv } from '../../config/apiConfig';
+import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { FaTimes, FaUpload, FaFile, FaTrash, FaDownload, FaEye, FaCalendar, FaUser, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 
 export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
@@ -396,7 +397,7 @@ setDocumentos(response.data.documentos || []);
     setSubiendo(true);
     try {
       const formData = new FormData();
-      formData.append('archivo', archivo);
+      appendUploadFile(formData, 'archivo', archivo, 'documento');
       formData.append('nombre', nombreDoc || archivo.name);
       formData.append('descripcion', descripcionDoc);
       formData.append('etiquetas', etiquetasDoc);

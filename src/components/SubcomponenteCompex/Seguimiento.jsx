@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BASE_URL } from '../../config/apiConfig.js';
+import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import {
   complexBtnSecondary,
   complexHint,
@@ -225,7 +226,7 @@ export default function Seguimiento({
     if (nuevoSeguimiento.documento) {
       try {
         const formDataToUpload = new FormData();
-        formDataToUpload.append('file', nuevoSeguimiento.documento);
+        appendUploadFile(formDataToUpload, 'file', nuevoSeguimiento.documento, 'documento');
         
         const token = localStorage.getItem('token');
         const response = await fetch(`${BASE_URL}/api/complex/upload`, {

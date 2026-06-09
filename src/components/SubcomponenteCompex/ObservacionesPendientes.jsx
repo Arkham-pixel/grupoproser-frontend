@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BASE_URL } from '../../config/apiConfig.js';
+import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import {
   complexBtnSecondary,
   complexHint,
@@ -140,7 +141,7 @@ export default function ObservacionesPendientes({
     if (nuevaObservacion.evidencia) {
       try {
         const formDataToUpload = new FormData();
-        formDataToUpload.append('file', nuevaObservacion.evidencia);
+        appendUploadFile(formDataToUpload, 'file', nuevaObservacion.evidencia, 'evidencia');
         
         const token = localStorage.getItem('token');
         const response = await fetch(`${BASE_URL}/api/complex/upload`, {

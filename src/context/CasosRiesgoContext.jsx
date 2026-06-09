@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import axios from "axios";
 import { BASE_URL } from "../config/apiConfig.js";
+import { sanitizeUploadFileName } from "../utils/sanitizeUploadFileName.js";
 
 // Configurar axios con timeouts más largos para Firebase -> AWS
 const api = axios.create({
@@ -82,7 +83,7 @@ let dataToSend = nuevoCaso;
       let hasFile = false;
       Object.entries(nuevoCaso).forEach(([key, value]) => {
         if (value instanceof File) {
-          formData.append(key, value, value.name);
+          formData.append(key, value, sanitizeUploadFileName(value.name, 'archivo'));
           hasFile = true;
         } else if (value !== undefined && value !== null) {
           formData.append(key, value);
@@ -119,7 +120,7 @@ const response = await api.post(`${BASE_URL}/api/riesgos`, dataToSend);
       let hasFile = false;
       Object.entries(nuevoCaso).forEach(([key, value]) => {
         if (value instanceof File) {
-          formData.append(key, value, value.name);
+          formData.append(key, value, sanitizeUploadFileName(value.name, 'archivo'));
           hasFile = true;
         } else if (value !== undefined && value !== null) {
           formData.append(key, value);

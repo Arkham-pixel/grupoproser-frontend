@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { sanitizeUploadFileName } from "../../utils/sanitizeUploadFileName.js";
 
 export default function AgregarCuenta() {
   const rol = localStorage.getItem("rol");
@@ -59,7 +60,11 @@ export default function AgregarCuenta() {
 
       const form = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        form.append(key, value);
+        if (value instanceof File) {
+          form.append(key, value, sanitizeUploadFileName(value.name, key === 'foto' ? 'foto.jpg' : 'archivo'));
+        } else if (value !== null && value !== undefined) {
+          form.append(key, value);
+        }
       });
 
       await axios.post("/api/secur-auth/register", form, {

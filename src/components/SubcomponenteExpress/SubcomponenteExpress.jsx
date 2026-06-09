@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { BASE_URL } from '../../config/apiConfig.js';
+import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import {
   fetchExpressCatalogo,
   opcionesCatalogo,
@@ -531,14 +532,22 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
       anexos.forEach((anexo) => {
         if (anexo?.file) {
-          formDataToSend.append('anexos', anexo.file, anexo.nombre);
+          formDataToSend.append(
+            'anexos',
+            anexo.file,
+            sanitizeUploadFileName(anexo.nombre || anexo.file?.name, 'anexo')
+          );
         }
       });
 
       if (formData.salvamentoAplica === 'aplica') {
         salvamentoAnexos.forEach((anexo) => {
           if (anexo?.file) {
-            formDataToSend.append('salvamentoAnexos', anexo.file, anexo.nombre);
+            formDataToSend.append(
+              'salvamentoAnexos',
+              anexo.file,
+              sanitizeUploadFileName(anexo.nombre || anexo.file?.name, 'anexo')
+            );
           }
         });
       }

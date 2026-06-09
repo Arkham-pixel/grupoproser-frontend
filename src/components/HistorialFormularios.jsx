@@ -35,6 +35,7 @@ import {
   PageBreak
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { appendUploadFile } from '../utils/sanitizeUploadFileName.js';
 
 export default function HistorialFormularios() {
   const {
@@ -1046,7 +1047,7 @@ if (!formularioCompleto || !formularioCompleto.datos) {
       // Intentar guardar el archivo en el servidor
       try {
         const formDataFile = new FormData();
-        formDataFile.append('archivo', blob, nombreArchivo);
+        appendUploadFile(formDataFile, 'archivo', blob, nombreArchivo);
         
         const response = await fetch(`${BASE_URL}/api/historial-formularios/${formularioId}/archivo`, {
           method: 'POST',
