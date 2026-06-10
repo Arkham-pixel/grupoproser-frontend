@@ -645,12 +645,20 @@ axios.get('/api/ciudades/ciudades')
       );
       
       if (funcionarioEncontrado) {
-        // Solo actualizar si el valor actual es diferente (evitar loops infinitos)
+        // Solo actualizar si valor o etiqueta difieren (evitar loops infinitos).
+        // Comparar también el label: el fallback {label:'133', value:'133'} tiene el
+        // mismo value que la opción real y dejaba el código visible en vez del nombre.
         const valorActual = formData.quienSolicita && typeof formData.quienSolicita === 'object' 
           ? formData.quienSolicita.value 
           : formData.quienSolicita;
+        const etiquetaActual = formData.quienSolicita && typeof formData.quienSolicita === 'object'
+          ? formData.quienSolicita.label
+          : formData.quienSolicita;
         
-        if (String(funcionarioEncontrado.value) !== String(valorActual)) {
+        if (
+          String(funcionarioEncontrado.value) !== String(valorActual) ||
+          String(funcionarioEncontrado.label) !== String(etiquetaActual)
+        ) {
           setFormData(prev => ({
             ...prev,
             quienSolicita: funcionarioEncontrado
