@@ -82,6 +82,14 @@ export function getUploadsUrlCandidates(rutaOrUrl) {
     return list;
   }
 
+  // Referencias mutiladas tipo "/s3:clave" (guardadas así por normalizaciones antiguas)
+  if (/^\/s3:/i.test(rutaOrUrl)) {
+    const ref = rutaOrUrl.slice(1);
+    const list = [storageFileUrl(BASE_URL, ref)];
+    if (isDevelopmentEnv) list.push(storageFileUrl(PROD_URL, ref));
+    return list;
+  }
+
   if (rutaOrUrl.startsWith('/uploads/')) {
     const list = [`${BASE_URL}${rutaOrUrl}`];
     if (isDevelopmentEnv) list.push(`${PROD_URL}${rutaOrUrl}`);

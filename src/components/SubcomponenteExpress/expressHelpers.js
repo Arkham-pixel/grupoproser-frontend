@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BASE_URL } from '../../config/apiConfig.js';
+import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const EXPRESS_LIMIT_FETCH = 2000;
@@ -504,25 +504,23 @@ export function useExpressCatalogos() {
 }
 
 /** URL absoluta para anexo guardado en servidor o archivo local pendiente de subir */
-export function resolverUrlAnexoExpress(anexo, baseUrl = BASE_URL) {
+export function resolverUrlAnexoExpress(anexo) {
   if (!anexo) return null;
   if (anexo.file instanceof File || anexo.file instanceof Blob) {
     return URL.createObjectURL(anexo.file);
   }
   const url = anexo.url || anexo.ruta || '';
   if (!url) return null;
-  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:')) return url;
-  const base = (baseUrl || '').replace(/\/$/, '');
-  const path = url.startsWith('/') ? url : `/${url}`;
-  return `${base}${path}`;
+  // Resuelve referencias s3: (vía proxy /api/storage/file), /uploads/... y URLs absolutas
+  return getUploadsUrlCandidates(url)[0] || null;
 }
 
 export function puedeAccederAnexoExpress(anexo) {
   return Boolean(anexo?.url || anexo?.file);
 }
 
-export function verAnexoExpress(anexo, baseUrl = BASE_URL) {
-  const enlace = resolverUrlAnexoExpress(anexo, baseUrl);
+export function verAnexoExpress(anexo) {
+  const enlace = resolverUrlAnexoExpress(anexo);
   if (!enlace) {
     return { ok: false, error: 'No hay URL disponible para ver este documento.' };
   }
@@ -530,8 +528,8 @@ export function verAnexoExpress(anexo, baseUrl = BASE_URL) {
   return { ok: true };
 }
 
-export function descargarAnexoExpress(anexo, baseUrl = BASE_URL) {
-  const enlace = resolverUrlAnexoExpress(anexo, baseUrl);
+export function descargarAnexoExpress(anexo) {
+  const enlace = resolverUrlAnexoExpress(anexo);
   if (!enlace) {
     return { ok: false, error: 'No hay URL disponible para descargar este documento.' };
   }
