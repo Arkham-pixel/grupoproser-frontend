@@ -118,6 +118,55 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
     error: errorAdjuntos?.[tipo]
   });
 
+  // Nombre legible del adjunto: File recién seleccionado o ruta/s3 ya guardada
+  const nombreArchivoAdjunto = (valor) => {
+    if (!valor) return '';
+    if (typeof valor === 'object' && valor.name) return valor.name;
+    if (typeof valor === 'string') {
+      const base = valor.split('?')[0].split('/').pop() || valor;
+      try {
+        return decodeURIComponent(base);
+      } catch {
+        return base;
+      }
+    }
+    return '';
+  };
+
+  // Fila con el adjunto actual: descargable si ya está guardado en el servidor
+  const renderAdjuntoActual = (valor) => {
+    const nombre = nombreArchivoAdjunto(valor);
+    if (!nombre) return null;
+    const estaGuardado = typeof valor === 'string';
+    return (
+      <div
+        className="flex items-center justify-between gap-2 mt-2 px-3 py-2 rounded-md"
+        style={{
+          backgroundColor: theme === 'dark' ? '#111827' : '#F3F4F6',
+          border: `1px solid ${borderColor}`
+        }}
+      >
+        <span className="text-xs sm:text-sm truncate" style={{ color: textPrimary }} title={nombre}>
+          📎 {nombre}
+        </span>
+        {estaGuardado ? (
+          <button
+            type="button"
+            onClick={(e) => descargarDocumento({ url: valor, nombre }, e)}
+            className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
+          >
+            <span>📥</span>
+            Descargar
+          </button>
+        ) : (
+          <span className="shrink-0 text-xs" style={{ color: theme === 'dark' ? '#FBBF24' : '#B45309' }}>
+            Se subirá al guardar el caso
+          </span>
+        )}
+      </div>
+    );
+  };
+
   const [bandejasAbiertas, setBandejasAbiertas] = useState({
     contactoInicial: false,
     inspeccion: false,
@@ -738,6 +787,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               )
             }
           </ArchivoDropZone>
+          {renderAdjuntoActual(formData.adjuntoContIni)}
         </div>
       </BandejaDesplegable>
 
@@ -822,6 +872,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               )
             }
           </ArchivoDropZone>
+          {renderAdjuntoActual(formData.adjuntoInspeccion)}
         </div>
       </BandejaDesplegable>
 
@@ -906,6 +957,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               )
             }
           </ArchivoDropZone>
+          {renderAdjuntoActual(formData.anxoInfoFnal)}
         </div>
       </BandejaDesplegable>
     </div>

@@ -752,6 +752,9 @@ axios.get('/api/ciudades/ciudades')
         fchaAsgncion: casoInicial.fchaAsgncion ? new Date(casoInicial.fchaAsgncion).toISOString().slice(0,10) : '',
         observAsignacion: casoInicial.observAsignacion || '',
         adjuntoAsignacion: casoInicial.adjuntoAsignacion || null,
+        fchaContIni: casoInicial.fchaContIni ? new Date(casoInicial.fchaContIni).toISOString().slice(0,10) : '',
+        observContIni: casoInicial.observContIni || '',
+        adjuntoContIni: casoInicial.adjuntoContIni || null,
         fchaInspccion: casoInicial.fchaInspccion ? new Date(casoInicial.fchaInspccion).toISOString().slice(0,10) : '',
         observInspeccion: casoInicial.observInspeccion || '',
         adjuntoInspeccion: casoInicial.adjuntoInspeccion || null,
@@ -1073,7 +1076,12 @@ let historialExistente = null;
             const { name, value } = e.target;
             setFormData(prev => ({ ...prev, [name]: value }));
           }} 
-          onSelectFiles={() => {}} 
+          onSelectFiles={(tipo, campo, archivos) => {
+            // El archivo queda en formData y se envía como multipart al guardar el caso
+            const archivo = archivos?.[0];
+            if (!campo || !archivo) return;
+            setFormData(prev => ({ ...prev, [campo]: archivo }));
+          }} 
           historialDocs={[]}
           ciudades={ciudades}
         />;
