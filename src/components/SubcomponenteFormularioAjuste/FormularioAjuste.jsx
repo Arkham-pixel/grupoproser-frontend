@@ -1420,6 +1420,56 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         estadoActual === 'preeliminar' ||
         estadoActual === 'actualizacion';
 
+      const parsearNumeroLiquidador = (valor) => {
+        if (!valor || valor === '') return 0;
+        if (typeof valor === 'number') return valor;
+        let numero = String(valor).replace(/[^\d.,]/g, '');
+        if (numero.includes(',') && numero.includes('.')) {
+          numero = numero.replace(/\./g, '').replace(',', '.');
+        } else if (numero.includes('.') && !numero.includes(',')) {
+          numero = numero.replace(/\./g, '');
+        } else if (numero.includes(',')) {
+          numero = numero.replace(',', '.');
+        }
+        const num = parseFloat(numero);
+        return isNaN(num) ? 0 : num;
+      };
+
+      const numDeducibleLiquidador = (valor, defaultVal) => {
+        if (valor === '' || valor === null || valor === undefined) return defaultVal;
+        const n = typeof valor === 'number' ? valor : parseFloat(valor);
+        return isNaN(n) ? defaultVal : n;
+      };
+
+      const formatearMontoLiquidadorWord = (valor) => {
+        const num = typeof valor === 'number' ? valor : parsearNumeroLiquidador(valor);
+        const esNegativo = num < 0;
+        const formateado = new Intl.NumberFormat('es-CO', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2
+        }).format(Math.abs(num));
+        return esNegativo ? `-${formateado}` : formateado;
+      };
+
+      const calcularTotalesLiquidadorParaWord = (liquidador) => {
+        if (!liquidador?.items?.length) return null;
+        const totalReclamado = liquidador.items.reduce(
+          (sum, item) => sum + parsearNumeroLiquidador(item.valorReclamado || 0),
+          0
+        );
+        const totalAjustado = liquidador.items.reduce(
+          (sum, item) => sum + parsearNumeroLiquidador(item.valorAjustado || 0),
+          0
+        );
+        const porcentajeDeducible = numDeducibleLiquidador(liquidador.deduciblePorcentaje, 15);
+        const deduciblePorcentaje = totalAjustado * (porcentajeDeducible / 100);
+        const valorSMMLV = parsearNumeroLiquidador(liquidador.valorSMMLV || 0);
+        const cantidadSMMLV = numDeducibleLiquidador(liquidador.cantidadSMMLV, 4);
+        const deducibleSMMLV = valorSMMLV * cantidadSMMLV;
+        const totalIndemnizar = totalAjustado - Math.max(deduciblePorcentaje, deducibleSMMLV);
+        return { totalReclamado, totalAjustado, totalIndemnizar };
+      };
+
       // Función helper para crear párrafos con formato consistente
       const crearParrafo = (texto, opciones = {}) => {
         return new Paragraph({
@@ -2917,6 +2967,24 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
       const bloqueActaInspeccionWord =
         estadoActual === 'actaInspeccion' ? await construirBloqueActaInspeccionWord() : [];
 
+      const obtenerTituloEncabezadoWord = (estado) => {
+        switch (estado) {
+          case 'actaInspeccion':
+            return 'INFORME DE INSPECCION';
+          case 'informeFinal':
+            return 'INFORME FINAL';
+          case 'actualizacion':
+            return 'ACTUALIZACIÓN';
+          case 'inicial':
+          case 'preeliminar':
+            return 'INFORME PRELIMINAR';
+          default:
+            return 'INFORME DE INSPECCION';
+        }
+      };
+
+      const tituloEncabezadoWord = obtenerTituloEncabezadoWord(estadoActual);
+
       // ========================================================
 
       const doc = new Document({
@@ -2974,7 +3042,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                             new Paragraph({
                               children: [
                                 new TextRun({
-                                  text: "INFORME DE INSPECCION",
+                                  text: tituloEncabezadoWord,
                                   font: 'Arial',
                                   size: 24,
                                   bold: true,
@@ -3246,7 +3314,32 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                 )
               );
 
-              if (fd.camposPersonalizados && fd.camposPersonalizados.length > 0) {
+              const totalesLiquidadorTabla = calcularTotalesLiquidadorParaWord(fd.liquidador);
+              if (
+                totalesLiquidadorTabla &&
+                (estadoActual === 'informeFinal' || estadoActual === 'actualizacion')
+              ) {
+                filas.push(
+                  filaDosCols(
+                    'VALOR RECLAMADO',
+                    `$ ${formatearMontoLiquidadorWord(totalesLiquidadorTabla.totalReclamado)}`
+                  ),
+                  filaDosCols(
+                    'VALOR AJUSTADO',
+                    `$ ${formatearMontoLiquidadorWord(totalesLiquidadorTabla.totalAjustado)}`
+                  ),
+                  filaDosCols(
+                    'VALOR A INDEMNIZAR',
+                    `$ ${formatearMontoLiquidadorWord(totalesLiquidadorTabla.totalIndemnizar)}`
+                  )
+                );
+              }
+
+              if (
+                fd.camposPersonalizados &&
+                fd.camposPersonalizados.length > 0 &&
+                estadoActual !== 'informeFinal'
+              ) {
                 fd.camposPersonalizados
                   .filter((campo) => campo.nombre && campo.nombre.trim().length > 0)
                   .filter((campo) => mostrarFila(campo.valor))
@@ -5224,7 +5317,8 @@ setVersiones(prev => ({
             mostrarResumenTablaInforme={estadoActual !== 'actaInspeccion'}
           />
 
-          {/* Valor de Reserva (campos personalizados en tabla del Word) */}
+          {/* Valor de Reserva (campos personalizados en tabla del Word; no en informe final — ahí van los totales del liquidador) */}
+          {estadoActual !== 'informeFinal' && (
           <div 
             className="rounded-lg shadow-lg p-3 sm:p-4 lg:p-6 mb-6"
             style={{
@@ -5273,7 +5367,7 @@ setVersiones(prev => ({
               style={{ color: textSecondary }}
             >
               {subtituloAjuste(
-                'Registra el valor de reserva y conceptos relacionados (montos, porcentajes, etc.); en el Word aparecen en la tabla «INFORMACIÓN DETALLADA DEL SINIESTRO» en preliminar, actualización o informe final (no en el acta de inspección).'
+                'Registra el valor de reserva y conceptos relacionados (montos, porcentajes, etc.); en el Word aparecen en la tabla «INFORMACIÓN DETALLADA DEL SINIESTRO» en preliminar o actualización (no en acta de inspección ni en informe final, donde se usan los totales del liquidador).'
               )}
             </p>
 
@@ -5385,6 +5479,7 @@ setVersiones(prev => ({
               </div>
             )}
           </div>
+          )}
 
           {/* Antecedentes del Siniestro */}
           <AntecedentesAjuste 
