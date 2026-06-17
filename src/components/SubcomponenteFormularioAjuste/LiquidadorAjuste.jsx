@@ -31,6 +31,13 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
     resumenTotalIndemnizar: ''
   };
 
+  // 0 es un valor válido (sin deducible); solo usa default si está vacío o no es número
+  const numDeducible = (valor, defaultVal) => {
+    if (valor === '' || valor === null || valor === undefined) return defaultVal;
+    const n = typeof valor === 'number' ? valor : parseFloat(valor);
+    return isNaN(n) ? defaultVal : n;
+  };
+
   // Función para formatear números con separadores de miles
   const formatearNumero = (valor) => {
     if (!valor || valor === '') return '0';
@@ -80,12 +87,12 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
     }, 0);
 
     // Deducible por porcentaje: Total valor ajustado × porcentaje
-    const porcentajeDeducible = parseFloat(liquidador.deduciblePorcentaje) || 15;
+    const porcentajeDeducible = numDeducible(liquidador.deduciblePorcentaje, 15);
     const deduciblePorcentaje = totalAjustado * (porcentajeDeducible / 100);
 
     // Deducible SMMLV: valor SMMLV × cantidad
     const valorSMMLV = parseFloat(formatearNumero(liquidador.valorSMMLV || 0));
-    const cantidadSMMLV = parseFloat(liquidador.cantidadSMMLV) || 4;
+    const cantidadSMMLV = numDeducible(liquidador.cantidadSMMLV, 4);
     const deducibleSMMLV = (isNaN(valorSMMLV) ? 0 : valorSMMLV) * cantidadSMMLV;
 
     // Aplicar el deducible de mayor valor
@@ -112,13 +119,13 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
     const totalAjustadoResumen = parseFloat(totalAjustadoStr) || 0;
     
     // Deducible: Total del valor ajustado × porcentaje del deducible
-    const porcentajeDeducible = parseFloat(liquidador.deduciblePorcentaje) || 15;
+    const porcentajeDeducible = numDeducible(liquidador.deduciblePorcentaje, 15);
     const deducible15Resumen = totalAjustadoResumen * (porcentajeDeducible / 100);
     
     // Deducible SMMLV: valor SMMLV × cantidad
     const valorSMMLVStr = formatearNumero(liquidador.valorSMMLV || '0');
     const valorSMMLV = parseFloat(valorSMMLVStr) || 0;
-    const cantidadSMMLV = parseFloat(liquidador.cantidadSMMLV) || 4;
+    const cantidadSMMLV = numDeducible(liquidador.cantidadSMMLV, 4);
     const deducibleSMMLVResumen = valorSMMLV * cantidadSMMLV;
     
     // Seleccionar deducible de mayor valor para mostrar/aplicar
@@ -201,10 +208,10 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
         // Calcular valores del cuadro pequeño basados en el total ajustado del cuadro grande
         const totalAjustadoParaCalcular = totales.totalAjustado;
         // Deducible: Total del valor ajustado × porcentaje del deducible (igual que el cuadro grande)
-        const porcentajeDeducible = parseFloat(liquidador.deduciblePorcentaje) || 15;
+        const porcentajeDeducible = numDeducible(liquidador.deduciblePorcentaje, 15);
         const deducibleCalc = totalAjustadoParaCalcular * (porcentajeDeducible / 100);
         const valorSMMLV = parseFloat(formatearNumero(liquidador.valorSMMLV || 0));
-        const cantidadSMMLV = liquidador.cantidadSMMLV || 4;
+        const cantidadSMMLV = numDeducible(liquidador.cantidadSMMLV, 4);
         const deducibleSMMLVCalc = valorSMMLV * cantidadSMMLV;
         // Total a indemnizar: Total valor ajustado - deducible de mayor valor (puede ser negativo)
         const deducibleMayorCalc = Math.max(deducibleCalc, deducibleSMMLVCalc);
@@ -220,7 +227,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totales.totalAjustado, liquidador.items?.length]);
+  }, [totales.totalAjustado, liquidador.items?.length, liquidador.deduciblePorcentaje, liquidador.valorSMMLV, liquidador.cantidadSMMLV]);
 
   // Agregar nuevo item
   const agregarItem = () => {
@@ -335,11 +342,14 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
           </label>
           <input
             type="number"
-            value={liquidador.deduciblePorcentaje || 15}
-            onChange={(e) => onInputChange('liquidador', {
-              ...liquidador,
-              deduciblePorcentaje: parseFloat(e.target.value) || 15
-            })}
+            value={liquidador.deduciblePorcentaje ?? 15}
+            onChange={(e) => {
+              const v = e.target.value;
+              onInputChange('liquidador', {
+                ...liquidador,
+                deduciblePorcentaje: v === '' ? '' : parseFloat(v)
+              });
+            }}
             min="0"
             max="100"
             step="0.1"
@@ -385,11 +395,14 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
           </label>
           <input
             type="number"
-            value={liquidador.cantidadSMMLV || 4}
-            onChange={(e) => onInputChange('liquidador', {
-              ...liquidador,
-              cantidadSMMLV: parseFloat(e.target.value) || 4
-            })}
+            value={liquidador.cantidadSMMLV ?? 4}
+            onChange={(e) => {
+              const v = e.target.value;
+              onInputChange('liquidador', {
+                ...liquidador,
+                cantidadSMMLV: v === '' ? '' : parseFloat(v)
+              });
+            }}
             min="0"
             step="1"
             className="w-full px-3 py-2 rounded-md focus:outline-none"
@@ -645,7 +658,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  DEDUCIBLE {liquidador.deduciblePorcentaje}%
+                  DEDUCIBLE {numDeducible(liquidador.deduciblePorcentaje, 15)}%
                 </td>
                 <td 
                   className="p-3 font-bold text-sm"
@@ -667,7 +680,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  DEDUCIBLE {liquidador.cantidadSMMLV || 4} SMMLV
+                  DEDUCIBLE {numDeducible(liquidador.cantidadSMMLV, 4)} SMMLV
                 </td>
                 <td 
                   className="p-3 font-bold text-sm"
@@ -792,8 +805,8 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   }}
                 >
                   {resumenCalculado.usaSMMLV
-                    ? `deducible ${liquidador.cantidadSMMLV || 4} SMMLV`
-                    : `deducible ${liquidador.deduciblePorcentaje}%`}
+                    ? `deducible ${numDeducible(liquidador.cantidadSMMLV, 4)} SMMLV`
+                    : `deducible ${numDeducible(liquidador.deduciblePorcentaje, 15)}%`}
                 </td>
                 <td 
                   className="p-3"

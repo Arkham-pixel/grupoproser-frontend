@@ -2098,6 +2098,13 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               return isNaN(num) ? 0 : num;
             };
 
+            // 0 es válido (sin deducible); solo usa default si está vacío o no es número
+            const numDeducible = (valor, defaultVal) => {
+              if (valor === '' || valor === null || valor === undefined) return defaultVal;
+              const n = typeof valor === 'number' ? valor : parseFloat(valor);
+              return isNaN(n) ? defaultVal : n;
+            };
+
             // Función para formatear números para mostrar
             const formatearNumeroMostrar = (valor) => {
               const num = parsearNumero(valor);
@@ -2122,12 +2129,12 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               return sum + parsearNumero(item.valorAjustado || 0);
             }, 0);
 
-            const deduciblePorcentaje = parseFloat(fd.liquidador.deduciblePorcentaje) || 15;
+            const deduciblePorcentaje = numDeducible(fd.liquidador.deduciblePorcentaje, 15);
             // Deducible por porcentaje
             const deduciblePorcentajeValor = totalAjustado * (deduciblePorcentaje / 100);
             // Deducible SMMLV
             const valorSMMLVTotal = parsearNumero(fd.liquidador.valorSMMLV || 0);
-            const cantidadSMMLVTotal = fd.liquidador.cantidadSMMLV || 4;
+            const cantidadSMMLVTotal = numDeducible(fd.liquidador.cantidadSMMLV, 4);
             const deducibleSMMLVValor = valorSMMLVTotal * cantidadSMMLVTotal;
             // Deducible aplicable (el mayor valor)
             const deducible = Math.max(deduciblePorcentajeValor, deducibleSMMLVValor);
@@ -2302,7 +2309,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
             const resumenDeducible15 = fd.liquidador.resumenDeducible15 || formatearNumeroMostrar(resumenTotalAjustadoNum * (deduciblePorcentaje / 100));
             // Calcular deducible SMMLV del resumen
             const valorSMMLV = parsearNumero(fd.liquidador.valorSMMLV || 0);
-            const cantidadSMMLV = fd.liquidador.cantidadSMMLV || 4;
+            const cantidadSMMLV = numDeducible(fd.liquidador.cantidadSMMLV, 4);
             const deducibleSMMLVResumen = valorSMMLV * cantidadSMMLV;
             const resumenDeducibleSMMLV = fd.liquidador.resumenDeducibleSMMLV || formatearNumeroMostrar(deducibleSMMLVResumen);
             const resumenDeducible15Num = parsearNumero(resumenDeducible15);
