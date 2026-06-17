@@ -212,6 +212,82 @@ export function filterImagesWithValidPaths(imagenes) {
 }
 
 /**
+ * Carga una imagen del formulario como ArrayBuffer (Word, PDF, etc.).
+ * Prueba file, base64, preview y rutas del servidor con los mismos fallbacks que la UI.
+ */
+export async function fetchImageAsArrayBuffer(imagen) {
+  if (!imagen) return null;
+
+  const base64ToBuffer = (data) => {
+    if (!data || typeof data !== 'string') return null;
+    const raw = data.includes('base64,') ? data.split('base64,')[1] : data;
+    if (!raw) return null;
+    try {
+      return Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)).buffer;
+    } catch {
+      return null;
+    }
+  };
+
+  const tryFetchUrl = async (url) => {
+    if (!url || typeof url !== 'string') return null;
+    try {
+      if (url.startsWith('data:')) return base64ToBuffer(url);
+      if (url.startsWith('blob:')) {
+        const resp = await fetch(url);
+        if (resp.ok) return await resp.arrayBuffer();
+        return null;
+      }
+      const resp = await fetch(url);
+      if (resp.ok) return await resp.arrayBuffer();
+    } catch {
+      /* probar siguiente candidato */
+    }
+    return null;
+  };
+
+  try {
+    if (typeof imagen === 'string') {
+      if (imagen.startsWith('data:')) return base64ToBuffer(imagen);
+      const urls = getImageUrlCandidates({ ruta: imagen });
+      for (const url of urls) {
+        const buf = await tryFetchUrl(url);
+        if (buf) return buf;
+      }
+      return null;
+    }
+
+    if (typeof imagen === 'object' && imagen !== null) {
+      if (imagen.file && typeof imagen.file.arrayBuffer === 'function') {
+        return await imagen.file.arrayBuffer();
+      }
+      if (imagen.base64) {
+        const buf = base64ToBuffer(imagen.base64);
+        if (buf) return buf;
+      }
+      if (imagen.preview && typeof imagen.preview === 'string') {
+        if (imagen.preview.startsWith('data:')) {
+          const buf = base64ToBuffer(imagen.preview);
+          if (buf) return buf;
+        }
+        if (imagen.preview.startsWith('blob:')) {
+          const buf = await tryFetchUrl(imagen.preview);
+          if (buf) return buf;
+        }
+      }
+      const urls = getImageUrlCandidates(imagen);
+      for (const url of urls) {
+        const buf = await tryFetchUrl(url);
+        if (buf) return buf;
+      }
+    }
+  } catch (error) {
+    console.error('Error cargando imagen como buffer:', error);
+  }
+  return null;
+}
+
+/**
  * Normaliza una imagen para asegurar que tenga la estructura correcta
  * @param {Object|string} imagen - Imagen a normalizar
  * @returns {Object} Imagen normalizada

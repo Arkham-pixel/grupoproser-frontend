@@ -32,6 +32,7 @@ import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios
 import colombia from '../../data/colombia.json';
 import API_CONFIG, { getUploadsUrlCandidates, resolveUploadsUrl } from '../../config/apiConfig.js';
 import { isStoredFileReference } from '../../utils/storedFilePath.js';
+import { fetchImageAsArrayBuffer } from '../../utils/imageUtils.js';
 import { getAutofillAjusteDesdeComplex, getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
 import { resolverFechaReporteDesdeAsignacion } from '../../utils/prefillAjusteDesdeCasoComplex.js';
 import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
@@ -800,6 +801,7 @@ setFormData(prev => {
       if (field === 'identificacionActa') {
         next.metadata = { ...(prev.metadata || {}), numeroDocumento: value };
       }
+      formDataRef.current = next;
       return next;
     });
     
@@ -1404,8 +1406,8 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
 
       const mapaDataUrlParaWord = await cargarMapaComoDataUrl();
 
-      // Datos más recientes del formulario (evita cierre obsoleto tras captura del mapa)
-      const fd = { ...formDataRef.current };
+      // Datos más recientes: ref (mapa) + estado React (liquidador, fotos, etc.)
+      const fd = { ...formDataRef.current, ...formData, estadoActual };
       if (
         !String(fd.actaObservaciones || '').trim() &&
         String(fd.observacionesPreeliminar || '').trim()
@@ -1523,92 +1525,52 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
       };
 
       // ============ PROCESAR IMÁGENES PARA REGISTRO FOTOGRÁFICO ============
-      // COPIADO EXACTO DE FORMULARIOPUERTOS QUE FUNCIONA PERFECTAMENTE
       let contenidoRegistroFotografico = [];
       
       if (fd.imagenesInspeccion && fd.imagenesInspeccion.length > 0) {
-// Aquí se guardarán las filas de la tabla
         const filas = [];
 
-        // Recorre las imágenes de a 2 por fila (EXACTO A FORMULARIOPUERTOS)
         for (let i = 0; i < fd.imagenesInspeccion.length; i += 2) {
           const celdasImagen = [];
           const celdasDescripcion = [];
 
           for (let j = i; j < i + 2 && j < fd.imagenesInspeccion.length; j++) {
             const img = fd.imagenesInspeccion[j];
-            let imagenBuffer = null;
-            
+
             try {
-              // Intentar obtener la imagen desde diferentes fuentes (EXACTO A FORMULARIOPUERTOS)
-              if (img && img.file && typeof img.file.arrayBuffer === "function") {
-                // Si es un File object
-                imagenBuffer = await img.file.arrayBuffer();
-} else if (img && img.base64) {
-                // Si tiene base64 (EXACTO A FORMULARIOPUERTOS)
-                const base64Data = img.base64.split(',')[1] || img.base64;
-                imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-} else if (img && img.preview && typeof img.preview === 'string' && img.preview.startsWith('data:image')) {
-                // Si tiene preview como base64 (EXACTO A FORMULARIOPUERTOS)
-                const base64Data = img.preview.split(',')[1] || img.preview;
-                imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-} else if (img && img.ruta) {
-                // Si tiene ruta del servidor, intentar cargarla (EXACTO A FORMULARIOPUERTOS)
-                try {
-                  const imagenUrl = img.ruta.startsWith('http') 
-                    ? img.ruta 
-                    : `${window.location.origin}${img.ruta}`;
-                  const response = await fetch(imagenUrl);
-                  if (response.ok) {
-                    imagenBuffer = await response.arrayBuffer();
-}
-                } catch (fetchError) {
-                  console.error('❌ Error al cargar imagen desde servidor:', fetchError);
-                }
-              }
-              
+              const imagenBuffer = await fetchImageAsArrayBuffer(img);
+
               if (imagenBuffer) {
-                // Dimensiones máximas para que 2 imágenes quepan bien en una página
-                // Valores similares a FormularioPuertos (250x150) pero ligeramente más grandes
-                const MAX_WIDTH = 300;  // Ancho máximo
-                const MAX_HEIGHT = 225; // Alto máximo
-                
+                const MAX_WIDTH = 300;
+                const MAX_HEIGHT = 225;
+
                 let anchoImagen = MAX_WIDTH;
                 let altoImagen = MAX_HEIGHT;
-                
+
                 try {
-                  // Crear un objeto Image para obtener dimensiones reales y calcular aspecto
                   const blob = new Blob([imagenBuffer]);
                   const imageUrl = URL.createObjectURL(blob);
-                  
-                  // Usar una promesa para cargar la imagen y obtener sus dimensiones
                   const imgElement = new Image();
                   await new Promise((resolve, reject) => {
                     imgElement.onload = () => {
                       const aspectRatio = imgElement.width / imgElement.height;
-                      
-                      // Calcular dimensiones manteniendo relación de aspecto
-                      // Asegurar que la imagen quepa dentro de los límites máximos
+
                       if (aspectRatio > 1) {
-                        // Imagen horizontal (ancho > alto)
                         anchoImagen = MAX_WIDTH;
                         altoImagen = Math.round(MAX_WIDTH / aspectRatio);
-                        // Si el alto calculado excede el máximo, ajustar
                         if (altoImagen > MAX_HEIGHT) {
                           altoImagen = MAX_HEIGHT;
                           anchoImagen = Math.round(MAX_HEIGHT * aspectRatio);
                         }
                       } else {
-                        // Imagen vertical o cuadrada (alto >= ancho)
                         altoImagen = MAX_HEIGHT;
                         anchoImagen = Math.round(MAX_HEIGHT * aspectRatio);
-                        // Si el ancho calculado excede el máximo, ajustar
                         if (anchoImagen > MAX_WIDTH) {
                           anchoImagen = MAX_WIDTH;
                           altoImagen = Math.round(MAX_WIDTH / aspectRatio);
                         }
                       }
-                      
+
                       URL.revokeObjectURL(imageUrl);
                       resolve();
                     };
@@ -1617,11 +1579,10 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   });
                 } catch (error) {
                   console.warn('⚠️ No se pudieron calcular dimensiones de la imagen, usando valores por defecto:', error);
-                  // Si falla, usar valores por defecto que mantienen una relación de aspecto razonable (4:3)
                   anchoImagen = MAX_WIDTH;
                   altoImagen = 225;
                 }
-                
+
                 celdasImagen.push(
                   new TableCell({
                     width: { size: 50, type: WidthType.PERCENTAGE },
@@ -1632,7 +1593,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                         children: [
                           new ImageRun({
                             data: imagenBuffer,
-                            transformation: { 
+                            transformation: {
                               width: anchoImagen,
                               height: altoImagen,
                             },
@@ -1660,65 +1621,30 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   })
                 );
               } else {
-                console.warn('⚠️ No se pudo obtener imagen del registro:', img);
-                celdasImagen.push(
-                  new TableCell({
-                    width: { size: 50, type: WidthType.PERCENTAGE },
-                    children: [
-                      new Paragraph({
-                        children: [
-                          new TextRun({ text: '', font: 'Arial', size: 24 })
-                        ]
-                      })
-                    ]
-                  })
-                );
-                celdasDescripcion.push(
-                  new TableCell({
-                    width: { size: 50, type: WidthType.PERCENTAGE },
-                    children: [
-                      new Paragraph({
-                        children: [
-                          new TextRun({ text: '', font: 'Arial', size: 24 })
-                        ]
-                      })
-                    ]
-                  })
-                );
+                console.warn('⚠️ No se pudo obtener imagen del registro:', img?.nombre || img?.ruta);
               }
             } catch (error) {
               console.error('❌ Error procesando imagen del registro:', error);
-              celdasImagen.push(new TableCell({
-                children: [
-                  new Paragraph({
-                    children: [new TextRun({ text: '', font: 'Arial', size: 24 })]
-                  })
-                ]
-              }));
-              celdasDescripcion.push(new TableCell({
-                children: [
-                  new Paragraph({
-                    children: [new TextRun({ text: '', font: 'Arial', size: 24 })]
-                  })
-                ]
-              }));
             }
           }
 
-          // Agrega la fila de imágenes y la de descripciones
-          filas.push(new TableRow({ children: celdasImagen }));
-          filas.push(new TableRow({ children: celdasDescripcion }));
+          if (celdasImagen.length > 0) {
+            filas.push(new TableRow({ children: celdasImagen }));
+            filas.push(new TableRow({ children: celdasDescripcion }));
+          }
         }
 
-        contenidoRegistroFotografico = [
-          crearTextoNormal("REGISTRO FOTOGRÁFICO", { heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 200 } }),
-          new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            rows: filas,
-            margins: { top: 100, bottom: 100, left: 100, right: 100 }
-          }),
-          new Paragraph({ text: "", spacing: { after: 200 } })
-        ];
+        if (filas.length > 0) {
+          contenidoRegistroFotografico = [
+            crearTextoNormal("REGISTRO FOTOGRÁFICO", { heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 200 } }),
+            new Table({
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              rows: filas,
+              margins: { top: 100, bottom: 100, left: 100, right: 100 }
+            }),
+            new Paragraph({ text: "", spacing: { after: 200 } })
+          ];
+        }
       }
 
       // ============ SISTEMA DE NUMERACIÓN DINÁMICA ============
@@ -2073,9 +1999,15 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
             }
             numeroSeccion++;
           }
+        }
 
-          // LIQUIDADOR - Tabla de liquidación
-          if (fd.liquidador && fd.liquidador.items && fd.liquidador.items.length > 0) {
+        // LIQUIDADOR - Tabla de liquidación (informe final o actualización con datos)
+        if (
+          (estadoActual === 'informeFinal' || estadoActual === 'actualizacion') &&
+          fd.liquidador &&
+          fd.liquidador.items &&
+          fd.liquidador.items.length > 0
+        ) {
             // Función para parsear números (convertir formato colombiano a número)
             const parsearNumero = (valor) => {
               if (!valor || valor === '') return 0;
@@ -2392,6 +2324,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
             numeroSeccion++;
           }
 
+        if (estadoActual === 'informeFinal') {
           // INDEMNIZACIÓN
           const tieneIndemnizacion =
             tieneContenido(fd.indemnizacion?.deducible) ||
