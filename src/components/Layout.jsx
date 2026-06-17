@@ -42,6 +42,7 @@ import {
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { arnaldLogo, arnaldIcon } from '../config/brandAssets.js';
 import LogoutButton from './LogoutButton';
+import Aviso2FAPrompt from './Aviso2FAPrompt';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
@@ -191,6 +192,9 @@ export default function Layout() {
     '/express/tablero': 'Tablero operativo Express',
     '/admin/catalogos-express': 'Catálogos Express',
     '/puertos/formulario': 'Formulario de Puertos',
+    '/puertos/actas': 'Actas y Descargues',
+    '/puertos/actas/nueva': 'Nueva Acta',
+    '/puertos/actas/caso/nueva': 'Informe Exportación',
     '/historial': 'Historial de Formularios',
     '/siniestros': 'Siniestros',
     '/admin/usuarios': 'Administración de Usuarios',
@@ -314,7 +318,10 @@ export default function Layout() {
         ]
       : [],
     puertos: !esVisualizador
-      ? [{ path: '/puertos/formulario', icon: FaShip, label: 'Formulario de Inspección' }]
+      ? [
+          { path: '/puertos/formulario', icon: FaShip, label: 'Formulario de Inspección' },
+          { path: '/puertos/actas', icon: FaList, label: 'Actas y Descargues' },
+        ]
       : [],
     cuenta: !esVisualizador
       ? [
@@ -724,6 +731,7 @@ export default function Layout() {
             esMatrizRiesgo ? 'overflow-hidden p-0' : 'overflow-auto'
           }`}
         >
+          <Aviso2FAPrompt />
           <Outlet />
         </main>
       </div>

@@ -15,6 +15,8 @@ export default function Login() {
   const [step, setStep] = useState(1); // 1: login, 2: código 2FA
   const [twoFACode, setTwoFACode] = useState('');
   const [infoCorreo, setInfoCorreo] = useState('');
+  const [twoFAMethod, setTwoFAMethod] = useState(''); // 'totp' (app autenticación) o '' (correo)
+  const [tempToken, setTempToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   
@@ -55,10 +57,16 @@ if (res.data.token && res.data.usuario) {
          localStorage.setItem('login', res.data.usuario.login);
          localStorage.setItem('nombre', res.data.usuario.name);
          localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
+         if (res.data.twoFASetupRecommended || res.data.twoFASetupPending) {
+           sessionStorage.setItem('aviso2fa_mostrar', '1');
+           sessionStorage.removeItem('aviso2fa_modal_cerrado');
+         }
 navigate('/inicio');
        } else if (res.data.twoFARequired) {
 setStep(2);
-         setInfoCorreo(res.data.email);
+         setTwoFAMethod(res.data.method || '');
+         setTempToken(res.data.tempToken || '');
+         setInfoCorreo(res.data.email || '');
          setTwoFACode('');
 } else {
          setError('Respuesta inesperada del servidor');
@@ -81,9 +89,10 @@ setStep(2);
     setError('');
     setIsLoading(true);
     try {
-const res = await axios.post('http://localhost:3000/api/secur-auth/login/2fa', {
+const res = await axios.post(`${BASE_URL}/api/secur-auth/login/2fa`, {
         correo: login,
-        code: twoFACode
+        code: twoFACode,
+        tempToken
       });
       
 if (res.data.token && res.data.usuario && res.data.usuario.role) {
@@ -406,18 +415,29 @@ navigate('/inicio');
                   >
                     Verificación en dos pasos activada
                   </p>
-                  <p 
-                    className="text-[10px] sm:text-xs"
-                    style={{ color: theme === 'dark' ? '#FCA5A5' : '#991B1B', opacity: 0.9 }}
-                  >
-                    Se ha enviado un código de verificación a:
-                  </p>
-                  <p 
-                    className="font-bold text-sm sm:text-base mt-2 font-mono break-all"
-                    style={{ color: theme === 'dark' ? '#EF4444' : '#DC2626' }}
-                  >
-                    {infoCorreo}
-                  </p>
+                  {twoFAMethod === 'totp' ? (
+                    <p 
+                      className="text-[10px] sm:text-xs"
+                      style={{ color: theme === 'dark' ? '#FCA5A5' : '#991B1B', opacity: 0.9 }}
+                    >
+                      Abre tu app de autenticación (Google Authenticator o Microsoft Authenticator) e ingresa el código de 6 dígitos.
+                    </p>
+                  ) : (
+                    <>
+                      <p 
+                        className="text-[10px] sm:text-xs"
+                        style={{ color: theme === 'dark' ? '#FCA5A5' : '#991B1B', opacity: 0.9 }}
+                      >
+                        Se ha enviado un código de verificación a:
+                      </p>
+                      <p 
+                        className="font-bold text-sm sm:text-base mt-2 font-mono break-all"
+                        style={{ color: theme === 'dark' ? '#EF4444' : '#DC2626' }}
+                      >
+                        {infoCorreo}
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -520,6 +540,8 @@ navigate('/inicio');
                 setStep(1);
                 setError('');
                 setTwoFACode('');
+                setTempToken('');
+                setTwoFAMethod('');
               }}
               className="w-full py-2.5 sm:py-3 text-xs sm:text-sm font-medium transition-all hover:scale-105 active:scale-95 rounded-lg"
               style={{ 

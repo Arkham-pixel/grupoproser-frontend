@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { obtenerPerfil, actualizarPerfil } from "../../services/userService";
 import { useTheme } from '../../context/ThemeContext';
+import Configurar2FA from './Configurar2FA.jsx';
 
 export default function EditarCuentas() {
   const [form, setForm] = useState({
@@ -1046,6 +1047,11 @@ setForm(f => ({
           Guardar cambios
         </button>
       </form>
+
+      <div className="mt-6">
+        <Configurar2FA isDark={isDark} />
+      </div>
+
       {mensaje && <p className="text-green-600 mt-2 text-xs sm:text-sm">{mensaje}</p>}
       {error && <p className="text-red-600 mt-2 text-xs sm:text-sm">{error}</p>}
     </div>
