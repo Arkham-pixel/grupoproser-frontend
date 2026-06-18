@@ -16,20 +16,19 @@ class AutoSaveService {
   save(formKey, data) {
     try {
       const storageKey = `${AUTO_SAVE_PREFIX}${formKey}`;
-      const metadataKey = `${AUTO_SAVE_METADATA_PREFIX}${formKey}`;
-      
-      // Guardar datos
       localStorage.setItem(storageKey, JSON.stringify(data));
-      
-      // Guardar metadata
+
+      const metadataKey = `${AUTO_SAVE_METADATA_PREFIX}${formKey}`;
+      const prevMeta = this.getMetadata(formKey);
       const metadata = {
+        ...(prevMeta || {}),
         savedAt: new Date().toISOString(),
         version: '1.0',
         formKey,
       };
       localStorage.setItem(metadataKey, JSON.stringify(metadata));
       
-return true;
+      return true;
     } catch (error) {
       console.error('❌ Error al guardar en localStorage:', error);
       
@@ -106,6 +105,34 @@ return true;
   has(formKey) {
     const storageKey = `${AUTO_SAVE_PREFIX}${formKey}`;
     return localStorage.getItem(storageKey) !== null;
+  }
+
+  setPendingServerSync(formKey, pending = true) {
+    try {
+      const metadataKey = `${AUTO_SAVE_METADATA_PREFIX}${formKey}`;
+      const prevMeta = this.getMetadata(formKey) || { formKey, version: '1.0' };
+      const metadata = {
+        ...prevMeta,
+        formKey,
+        pendingServerSync: Boolean(pending),
+        pendingSince: pending ? new Date().toISOString() : null,
+      };
+      if (!pending) {
+        delete metadata.pendingSince;
+      }
+      localStorage.setItem(metadataKey, JSON.stringify(metadata));
+    } catch (error) {
+      console.error('❌ Error al marcar sincronización pendiente:', error);
+    }
+  }
+
+  hasPendingServerSync(formKey) {
+    const meta = this.getMetadata(formKey);
+    return Boolean(meta?.pendingServerSync);
+  }
+
+  clearPendingServerSync(formKey) {
+    this.setPendingServerSync(formKey, false);
   }
 
   /**

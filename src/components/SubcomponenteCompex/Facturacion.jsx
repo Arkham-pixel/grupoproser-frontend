@@ -12,6 +12,7 @@ import {
 import ControlHorasEditor from './ControlHorasEditor';
 import {
   calcularTotalesControlHoras,
+  controlHorasTieneDatos,
   formatearMoneda,
 } from './controlHoras/controlHorasUtils';
 import { generarControlHorasExcel, descargarBlob } from './controlHoras/generarControlHorasExcel';
@@ -143,9 +144,7 @@ export default function Facturacion({
 
   const documentosControlHoras = obtenerDocumentosPorTipo('controlHoras');
 
-  const tieneControlHorasGuardado = Boolean(
-    formData.control_horas?.filas?.length
-  );
+  const tieneControlHorasGuardado = controlHorasTieneDatos(formData.control_horas);
 
   const tieneDocumentosControlHoras =
     documentosControlHoras.length > 0 ||

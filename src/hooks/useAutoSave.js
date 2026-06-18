@@ -1,17 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { autoSaveService } from '../services/autoSaveService';
+import useOnlineStatus from './useOnlineStatus';
 
 /**
- * ⚠️ DESACTIVACIÓN GLOBAL TEMPORAL DEL AUTOGUARDADO
- * Cambiar esta constante a false para reactivar el autoguardado
- */
-const GLOBAL_AUTO_SAVE_DISABLED = true;
-
-/**
- * Hook personalizado para autoguardado de formularios
- * 
- * ⚠️ TEMPORALMENTE DESACTIVADO - El autoguardado está desactivado globalmente
- * 
+ * Hook personalizado para autoguardado de formularios (localStorage).
+ *
  * @param {Object} params - Parámetros de configuración
  * @param {string} params.formKey - Identificador único del formulario
  * @param {Object} params.formData - Datos del formulario a guardar
@@ -19,28 +12,27 @@ const GLOBAL_AUTO_SAVE_DISABLED = true;
  * @param {number} params.interval - Intervalo de autoguardado en ms (default: 30000)
  * @param {function} params.onRestore - Callback cuando se restauran datos
  * @param {Array} params.excludeFields - Campos a excluir del autoguardado
- * 
+ * @param {boolean} params.skipRestoreOnMount - No ofrecer restaurar al abrir (p. ej. edición desde reporte)
+ *
  * @returns {Object} - Objeto con métodos y estado del autoguardado
  */
 export const useAutoSave = ({
   formKey,
   formData,
-  enabled = false, // ⚠️ DESACTIVADO POR DEFECTO - Cambiar a true cuando se reactive
-  interval = 30000, // 30 segundos por defecto
+  enabled = true,
+  interval = 30000,
   onRestore,
   excludeFields = [],
+  skipRestoreOnMount = false,
 }) => {
-  // ⚠️ DESACTIVACIÓN GLOBAL TEMPORAL - Forzar desactivación
-  if (GLOBAL_AUTO_SAVE_DISABLED) {
-    enabled = false;
-  }
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState(null);
-  const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved, error
+  const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved, error, offline-saved, syncing
   const intervalRef = useRef(null);
   const formDataRef = useRef(formData);
   const isFirstRender = useRef(true);
   const hasShownRestorePrompt = useRef(false);
+  const isOnline = useOnlineStatus();
 
   // Actualizar la referencia del formData
   useEffect(() => {
@@ -49,11 +41,6 @@ export const useAutoSave = ({
 
   // Función para guardar
   const saveToStorage = useCallback(() => {
-    // ⚠️ DESACTIVACIÓN GLOBAL - No guardar nada
-    if (GLOBAL_AUTO_SAVE_DISABLED) {
-return;
-    }
-    
     if (!isAutoSaveEnabled || !formKey) return;
 
     try {
@@ -67,13 +54,34 @@ return;
 
       autoSaveService.save(formKey, dataToSave);
       setLastSaveTime(new Date());
-      setSaveStatus('saved');
+      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!online) {
+        autoSaveService.setPendingServerSync(formKey, true);
+        setSaveStatus('offline-saved');
+      } else {
+        setSaveStatus('saved');
+      }
       
 } catch (error) {
       console.error('❌ Error en autoguardado:', error);
       setSaveStatus('error');
     }
   }, [formKey, isAutoSaveEnabled, excludeFields]);
+
+  // Guardar de inmediato al perder conexión (borrador local seguro)
+  useEffect(() => {
+    const onOffline = () => {
+      if (isAutoSaveEnabled && formKey) {
+        saveToStorage();
+      }
+    };
+    window.addEventListener('offline', onOffline);
+    return () => window.removeEventListener('offline', onOffline);
+  }, [isAutoSaveEnabled, formKey, saveToStorage]);
+
+  const markSyncing = useCallback(() => setSaveStatus('syncing'), []);
+  const markSynced = useCallback(() => setSaveStatus('saved'), []);
+  const markSyncError = useCallback(() => setSaveStatus('error'), []);
 
   // Función para restaurar datos guardados
   const restoreFromStorage = useCallback(() => {
@@ -99,12 +107,7 @@ return {
 
   // Función para activar el autoguardado
   const enableAutoSave = useCallback(() => {
-    // ⚠️ DESACTIVACIÓN GLOBAL - No permitir activación
-    if (GLOBAL_AUTO_SAVE_DISABLED) {
-return;
-    }
-    
-setIsAutoSaveEnabled(true);
+    setIsAutoSaveEnabled(true);
     autoSaveService.setEnabled(formKey, true);
   }, [formKey]);
 
@@ -130,16 +133,13 @@ autoSaveService.clear(formKey);
 saveToStorage();
   }, [saveToStorage]);
 
-  // Verificar si hay datos guardados al montar el componente
-  // ⚠️ DESACTIVADO - No restaurar datos mientras el autoguardado está desactivado
   useEffect(() => {
-    // ⚠️ DESACTIVACIÓN GLOBAL - Saltar restauración
-    if (GLOBAL_AUTO_SAVE_DISABLED) {
-isFirstRender.current = false;
+    if (skipRestoreOnMount) {
+      isFirstRender.current = false;
       return;
     }
-    
-if (isFirstRender.current && formKey && !hasShownRestorePrompt.current) {
+
+    if (isFirstRender.current && formKey && !hasShownRestorePrompt.current) {
       const savedInfo = restoreFromStorage();
       
 if (savedInfo && savedInfo.data) {
@@ -162,20 +162,9 @@ if (wasEnabled) {
       
       isFirstRender.current = false;
     }
-  }, [formKey, restoreFromStorage, onRestore]);
+  }, [formKey, restoreFromStorage, onRestore, skipRestoreOnMount]);
 
-  // Configurar intervalo de autoguardado
   useEffect(() => {
-    // ⚠️ DESACTIVACIÓN GLOBAL - No configurar intervalos
-    if (GLOBAL_AUTO_SAVE_DISABLED) {
-      // Limpiar cualquier intervalo existente
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
-    
     if (isAutoSaveEnabled && enabled && formKey) {
       // Limpiar intervalo anterior si existe
       if (intervalRef.current) {
@@ -200,11 +189,6 @@ if (wasEnabled) {
   // Guardar cuando se desmonta el componente (si está habilitado)
   useEffect(() => {
     return () => {
-      // ⚠️ DESACTIVACIÓN GLOBAL - No guardar al desmontar
-      if (GLOBAL_AUTO_SAVE_DISABLED) {
-        return;
-      }
-      
       if (isAutoSaveEnabled && formKey) {
 const dataToSave = { ...formDataRef.current };
         excludeFields.forEach(field => {
@@ -220,6 +204,8 @@ const dataToSave = { ...formDataRef.current };
     isAutoSaveEnabled,
     lastSaveTime,
     saveStatus,
+    isOnline,
+    pendingServerSync: autoSaveService.hasPendingServerSync(formKey),
     
     // Métodos
     enableAutoSave,
@@ -227,6 +213,9 @@ const dataToSave = { ...formDataRef.current };
     clearSavedData,
     saveNow,
     restoreFromStorage,
+    markSyncing,
+    markSynced,
+    markSyncError,
     
     // Utilidades
     hasSavedData: () => autoSaveService.has(formKey),

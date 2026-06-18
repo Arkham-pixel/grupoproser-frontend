@@ -170,6 +170,19 @@ export const crearControlHorasInicial = (formData, nombreAseguradora, existente)
   };
 };
 
+/** True si hay al menos una fila con horas o descripción (evita borrados accidentales). */
+export const controlHorasTieneDatos = (controlHoras) => {
+  if (!controlHoras || !Array.isArray(controlHoras.filas) || controlHoras.filas.length === 0) {
+    return false;
+  }
+
+  return controlHoras.filas.some((fila) => {
+    const horas = totalFila(fila);
+    const descripcion = String(fila.descripcion || '').trim();
+    return horas > 0 || descripcion !== '';
+  });
+};
+
 export const normalizarControlHorasParaGuardar = (controlHoras, usuario = '') => ({
   valor_hora: parseNumero(controlHoras.valor_hora),
   valor_hora_origen: controlHoras.valor_hora_origen || 'manual',

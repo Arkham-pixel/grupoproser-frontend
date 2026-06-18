@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media } from "docx";
 import { saveAs } from "file-saver";
@@ -16,6 +16,7 @@ import BotonesHistorial from '../BotonesHistorial.jsx';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService.js';
+import { useServerAutoSaveUpdate } from '../../hooks/useFormAutoSave';
 import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios.js';
 import colombia from '../../data/colombia.json';
 
@@ -537,6 +538,80 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
     const resultado = await guardarEnHistorial(datos, 'en_proceso');
     alert(resultado.message);
   };
+
+  const estadoMaquinariaRef = useRef({});
+  useEffect(() => {
+    estadoMaquinariaRef.current = {
+      nombre,
+      fecha,
+      nombreAsegurado,
+      nombreMaquinaria,
+      ciudadFecha,
+      aseguradora,
+      marca,
+      modelo,
+      tipoProteccion,
+      recomendaciones,
+      firmanteInspector,
+      codigoInspector,
+      imagenesRegistro,
+      fotoPrincipal,
+      fotoPrincipalPreview,
+      descripcionFotoPrincipal,
+    };
+  }, [
+    nombre,
+    fecha,
+    nombreAsegurado,
+    nombreMaquinaria,
+    ciudadFecha,
+    aseguradora,
+    marca,
+    modelo,
+    tipoProteccion,
+    recomendaciones,
+    firmanteInspector,
+    codigoInspector,
+    imagenesRegistro,
+    fotoPrincipal,
+    fotoPrincipalPreview,
+    descripcionFotoPrincipal,
+  ]);
+
+  useServerAutoSaveUpdate({
+    recordId: id && id !== 'nuevo' ? id : null,
+    ready: modoEdicion && Boolean(id && id !== 'nuevo'),
+    isBlocked: () => guardando || exportando || cargando,
+    onUpdate: async (formularioId) => {
+      const s = estadoMaquinariaRef.current;
+      await historialService.actualizarFormulario(formularioId, {
+        titulo: `Inspección de Maquinaria - ${s.nombreAsegurado || 'Asegurado'} - ${s.nombreMaquinaria || 'Maquinaria'}`,
+        tipo: TIPOS_FORMULARIOS.MAQUINARIA,
+        estado: 'en_proceso',
+        fechaModificacion: new Date().toISOString(),
+        datos: {
+          numeroActa: s.nombre || 'N/A',
+          fechaInspeccion: s.fecha,
+          horaInspeccion: new Date().toLocaleTimeString(),
+          ciudad: s.ciudadFecha,
+          aseguradora: s.aseguradora,
+          asegurado: s.nombreAsegurado,
+          tipoMaquinaria: s.nombreMaquinaria,
+          marca: s.marca,
+          modelo: s.modelo,
+          tipoProteccion: s.tipoProteccion,
+          observaciones: s.recomendaciones,
+          recomendaciones: s.recomendaciones,
+          firmanteInspector: s.firmanteInspector,
+          codigoInspector: s.codigoInspector,
+          imagenesRegistro: s.imagenesRegistro || [],
+          fotoPrincipal: s.fotoPrincipal || null,
+          fotoPrincipalPreview: s.fotoPrincipalPreview || '',
+          descripcionFotoPrincipal: s.descripcionFotoPrincipal || '',
+        },
+      });
+    },
+  });
 
   const handleExportar = async () => {
     try {

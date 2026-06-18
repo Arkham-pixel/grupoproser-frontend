@@ -23,6 +23,7 @@ import MiCuenta from './components/SubcomponenteCuenta/miCuenta'
 import InformacionCompleta from './components/SubcomponenteCuenta/InformacionCompleta'
 import FormularioMaquinaria from './components/SubcomponenteMaquinaria/FormularioMaquinaria'
 import FormularioCasoComplex from './components/SubcomponenteCompex/FormularioCasoComplex'
+import { controlHorasTieneDatos } from './components/SubcomponenteCompex/controlHoras/controlHorasUtils'
 import SiniestrosList from "./components/SiniestrosList";
 import ReportePolPadre from './components/ReportePol/ReportePolPadre';
 import AdminUsuarios from './components/AdminUsuarios';
@@ -48,6 +49,10 @@ import TableroOperativoExpress from './components/SubcomponenteExpress/TableroOp
 import CatalogosExpress from './components/SubcomponenteExpress/CatalogosExpress';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
+import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
+import PuertosActasListado from './components/PuertosActas/PuertosActasListado';
+import PuertosNuevaActa from './components/PuertosActas/PuertosNuevaActa';
+import PuertosCasoExportacionMain from './components/PuertosActas/PuertosCasoExportacionMain';
 import ActaInspeccion from './components/ActaInspeccion';
 import GestionDocumentos from './components/GestionDocumentos/GestionDocumentos';
 
@@ -271,6 +276,13 @@ navigate(location.pathname, { replace: true, state: {} });
       resultado.observacionesPendientes = datosIniciales.observacionesPendientes;
     }
 
+    // Preservar control de horas si el payload no trae filas válidas pero el caso ya las tenía
+    if (!controlHorasTieneDatos(resultado.control_horas) && controlHorasTieneDatos(datosIniciales?.control_horas)) {
+      resultado.control_horas = datosIniciales.control_horas;
+    } else if (!controlHorasTieneDatos(resultado.control_horas)) {
+      delete resultado.control_horas;
+    }
+
     delete resultado.nombreResponsable;
     delete resultado.funcAsgrdraNombre;
     delete resultado.funcionarioAseguradora;
@@ -278,30 +290,52 @@ navigate(location.pathname, { replace: true, state: {} });
 return resultado;
   };
 
+  const handleAutoSave = async (payload, { silent = false } = {}) => {
+    if (!initialData?._id) return;
+    try {
+      const origen = initialData?.origen || 'complex';
+      if (origen === 'complex') {
+        const datosNormalizados = prepararPayloadParaComplex(payload, initialData);
+        const respuesta = await updateCasoComplex(initialData._id, datosNormalizados);
+        if (!respuesta || respuesta.error) {
+          if (!silent) {
+            console.error('❌ Error en autoguardado:', respuesta?.error);
+          }
+          return false;
+        }
+      } else {
+        const respuesta = await updateSiniestro(initialData._id, payload);
+        if (!respuesta || respuesta.error) return false;
+      }
+      return true;
+    } catch (error) {
+      if (!silent) console.error('❌ Error en autoguardado:', error);
+      return false;
+    }
+  };
+
   const handleSave = async (payload) => {
     try {
       if (initialData?._id) {
         const origen = initialData?.origen || 'complex';
-let respuesta;
+        let respuesta;
         if (origen === 'complex') {
           const datosNormalizados = prepararPayloadParaComplex(payload, initialData);
-respuesta = await updateCasoComplex(initialData._id, datosNormalizados);
+          respuesta = await updateCasoComplex(initialData._id, datosNormalizados);
         } else {
           respuesta = await updateSiniestro(initialData._id, payload);
         }
-if (!respuesta || respuesta.error) {
+        if (!respuesta || respuesta.error) {
           console.error('❌ Error al actualizar el caso:', respuesta?.error);
           alert('No fue posible editar el caso. Verifica la información e inténtalo nuevamente.');
           return;
         }
 
         alert('✅ El caso ha sido editado exitosamente.');
-        // Limpiar localStorage después de guardar exitosamente
         localStorage.removeItem('formularioComplex');
-// Pasar los filtros de vuelta al reporte para restaurarlos (solo si estamos editando)
-        navigate(returnPath, { 
+        navigate(returnPath, {
           replace: true,
-          state: filtros ? { filtros } : undefined
+          state: filtros ? { filtros } : undefined,
         });
       } else {
 await guardarCasoComplex(payload);
@@ -333,6 +367,7 @@ await guardarCasoComplex(payload);
     <FormularioCasoComplex
       initialData={initialData}
       onSave={handleSave}
+      onAutoSave={initialData?._id ? (payload) => handleAutoSave(payload, { silent: true }) : undefined}
       onCancel={handleCancel}
       camposFijos={camposFijos}
     />
@@ -416,6 +451,13 @@ export default function App() {
           <Route path="express/dashboard" element={<DashboardExpress />} />
           <Route path="express/tablero" element={<TableroOperativoExpress />} />
           <Route path="express/catalogos" element={<Navigate to="/admin/catalogos-express" replace />} />
+
+          <Route path="puertos/actas" element={<PuertosActasMain />}>
+            <Route index element={<PuertosActasListado />} />
+            <Route path="nueva" element={<PuertosNuevaActa />} />
+            <Route path="caso/nueva" element={<PuertosCasoExportacionMain />} />
+            <Route path="caso/editar/:id" element={<PuertosCasoExportacionMain />} />
+          </Route>
 
           <Route path="puertos/formulario" element={<PuertosInspeccionMain />} />
           <Route path="puertos/formulario/editar/:id" element={<PuertosInspeccionMain />} />

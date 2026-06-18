@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import Logo from '../../img/Logo.png';
@@ -15,13 +15,14 @@ import AnalisisRiesgosPuertos from './AnalisisRiesgosPuertos';
 import InformeFotograficoPuertos from './InformeFotograficoPuertos';
 import RecomendacionesPuertos from './RecomendacionesPuertos';
 import FirmaPuertos from './FirmaPuertos';
+import { useHistorialAutoSave } from '../../hooks/useHistorialAutoSave';
+import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 
 export default function PuertosInspeccionMain() {
   const { theme } = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const componenteMontadoRef = React.useRef(true);
   
   // Colores según el tema
   const bgMain = theme === 'dark' ? '#1A1A1A' : '#F5F5F7';
@@ -272,6 +273,69 @@ await generarManualPuertos();
     return `CPD-${año}-${timestamp}`;
   };
 
+  const buildHistorialPayloadPuertos = useCallback((data) => {
+    const nombreUsuario = localStorage.getItem('nombre') || 'Usuario';
+    const userId = localStorage.getItem('login') || 'ID';
+    const codigoCPD = data.codigoReferencia || generarCodigoCPD();
+    return {
+      tipo: 'inspeccion-puertos',
+      titulo: `🚢 Inspección Puertos - ${data.nombreMotonave || data.nombreCliente || 'Puerto'} - ${data.municipio || 'Ciudad'}`,
+      usuario: nombreUsuario,
+      userId,
+      estado: 'en_proceso',
+      datos: {
+        ...data,
+        codigoReferencia: codigoCPD,
+        tipoFormulario: 'PUERTOS',
+        icono: '🚢',
+      },
+    };
+  }, []);
+
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [savedDataToRestore, setSavedDataToRestore] = useState(null);
+
+  const {
+    isAutoSaveEnabled,
+    lastSaveTime,
+    saveStatus,
+    enableAutoSave,
+    disableAutoSave,
+    saveNow,
+    syncNow,
+    pendingServerSync,
+    isOnline,
+    clearSavedData,
+  } = useHistorialAutoSave({
+    formKeyBase: 'formulario-puertos-modular',
+    formularioId,
+    formData,
+    buildHistorialPayload: buildHistorialPayloadPuertos,
+    serverReady: Boolean(formularioId && formularioId !== 'nuevo'),
+    canSaveServer: () => !cargando && !generandoWord && !exportando,
+    onRestore: (savedInfo) => {
+      setSavedDataToRestore(savedInfo);
+      setShowRestoreDialog(true);
+    },
+  });
+
+  const handleRestoreData = useCallback(() => {
+    if (!savedDataToRestore?.data) return;
+    setFormData((prev) => ({ ...prev, ...savedDataToRestore.data }));
+    setShowRestoreDialog(false);
+    enableAutoSave();
+  }, [savedDataToRestore, enableAutoSave]);
+
+  const handleDiscardSavedData = useCallback(() => {
+    clearSavedData();
+    setShowRestoreDialog(false);
+    setSavedDataToRestore(null);
+  }, [clearSavedData]);
+
+  const handleCancelRestore = useCallback(() => {
+    setShowRestoreDialog(false);
+  }, []);
+
   // Función para guardar en historial
   const handleGuardarHistorial = async () => {
     try {
@@ -407,77 +471,6 @@ navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
       setCargando(false);
     }
   };
-
-  // Autoguardado en localStorage (solo mientras está en el formulario)
-  useEffect(() => {
-    const esRutaPuertos = location.pathname.includes('/puertos/formulario');
-    if (!esRutaPuertos) return;
-
-    const timeoutId = setTimeout(() => {
-      try {
-        localStorage.setItem('formularioPuertosModular', JSON.stringify(formData));
-} catch (error) {
-        console.error('Error al guardar datos:', error);
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [formData, location.pathname]);
-
-  // Limpiar localStorage cuando el componente se desmonta (navegación intencional)
-  useEffect(() => {
-    componenteMontadoRef.current = true;
-    
-    return () => {
-      // Cleanup: se ejecuta cuando el componente se desmonta
-      componenteMontadoRef.current = false;
-      
-      // Limpiar localStorage para formularios nuevos cuando el usuario navega fuera
-      // Usar un pequeño delay para permitir que la navegación se complete
-      setTimeout(() => {
-        const estaEnFormulario = window.location.pathname.includes('/puertos/formulario');
-        
-        // Si NO estamos en el formulario, es navegación intencional - limpiar
-        if (!estaEnFormulario) {
-          const datosGuardados = localStorage.getItem('formularioPuertosModular');
-          if (datosGuardados) {
-            try {
-              const datosParseados = JSON.parse(datosGuardados);
-              // Solo limpiar formularios nuevos (sin formularioId o formularioId === 'nuevo')
-              // Los formularios guardados en historial NO se limpian
-              if (!datosParseados.formularioId || datosParseados.formularioId === 'nuevo') {
-localStorage.removeItem('formularioPuertosModular');
-              }
-            } catch (error) {
-              console.error('Error al verificar localStorage:', error);
-            }
-          }
-        }
-        // Si estamos en el formulario, es un refresh - los datos ya están guardados por beforeunload
-      }, 200);
-    };
-  }, []);
-
-  // Detectar refresco de página o pérdida de conexión para conservar datos
-  useEffect(() => {
-    const handleBeforeUnload = (e) => {
-      // Al refrescar o cerrar pestaña, conservar los datos en localStorage
-      const esRutaPuertos = location.pathname.includes('/puertos/formulario');
-      if (esRutaPuertos && formData) {
-        try {
-          localStorage.setItem('formularioPuertosModular', JSON.stringify(formData));
-} catch (error) {
-          console.error('Error al guardar antes de unload:', error);
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [formData, location.pathname]);
 
   // Función para cargar datos del formulario existente desde el servidor
   const cargarDatosFormulario = async (formularioId) => {
@@ -841,6 +834,23 @@ return img;
         </div>
 
       </div>
+
+      <FormAutoSaveControls
+        isAutoSaveEnabled={isAutoSaveEnabled}
+        lastSaveTime={lastSaveTime}
+        saveStatus={saveStatus}
+        enableAutoSave={enableAutoSave}
+        disableAutoSave={disableAutoSave}
+        saveNow={saveNow}
+        syncNow={syncNow}
+        pendingServerSync={pendingServerSync}
+        isOnline={isOnline}
+        showRestoreDialog={showRestoreDialog}
+        savedDataToRestore={savedDataToRestore}
+        onRestore={handleRestoreData}
+        onDiscard={handleDiscardSavedData}
+        onCancelRestore={handleCancelRestore}
+      />
     </div>
   );
 }

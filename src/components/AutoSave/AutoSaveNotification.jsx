@@ -15,6 +15,8 @@ export default function AutoSaveNotification({
   hasUnsavedChanges = false,
   showEnablePrompt = false,
   onDismissPrompt,
+  pendingServerSync = false,
+  isOnline = true,
 }) {
   const { theme } = useTheme();
   const [showNotification, setShowNotification] = useState(false);
@@ -217,6 +219,37 @@ setShowPrompt(showEnablePrompt);
               </>
             )}
             
+            {saveStatus === 'syncing' && (
+              <>
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#4299e1',
+                    animation: 'pulse 1.5s ease-in-out infinite',
+                  }}
+                />
+                <span style={{ fontSize: '13px' }}>Sincronizando con el servidor...</span>
+              </>
+            )}
+
+            {saveStatus === 'offline-saved' && (
+              <>
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#ed8936',
+                  }}
+                />
+                <span style={{ fontSize: '13px' }}>
+                  Sin conexión — guardado en este equipo
+                </span>
+              </>
+            )}
+
             {saveStatus === 'saved' && lastSaveTime && (
               <>
                 <div
@@ -247,7 +280,21 @@ setShowPrompt(showEnablePrompt);
               </>
             )}
 
-            {saveStatus === 'idle' && (
+            {pendingServerSync && isOnline && saveStatus !== 'syncing' && (
+              <>
+                <div
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#ecc94b',
+                  }}
+                />
+                <span style={{ fontSize: '13px' }}>Pendiente de sincronizar</span>
+              </>
+            )}
+
+            {saveStatus === 'idle' && !pendingServerSync && (
               <>
                 <div
                   style={{
@@ -264,7 +311,7 @@ setShowPrompt(showEnablePrompt);
 
           {/* Botones de acción */}
           <div style={{ display: 'flex', gap: '8px', marginLeft: 'auto' }}>
-            {hasUnsavedChanges && (
+            {(hasUnsavedChanges || pendingServerSync) && (
               <button
                 onClick={onSaveNow}
                 style={{
@@ -279,9 +326,9 @@ setShowPrompt(showEnablePrompt);
                 }}
                 onMouseOver={(e) => e.target.style.backgroundColor = '#3182ce'}
                 onMouseOut={(e) => e.target.style.backgroundColor = '#4299e1'}
-                title="Guardar ahora"
+                title={pendingServerSync ? 'Sincronizar con el servidor' : 'Guardar ahora'}
               >
-                💾 Guardar ahora
+                {pendingServerSync ? '☁️ Sincronizar' : '💾 Guardar ahora'}
               </button>
             )}
             

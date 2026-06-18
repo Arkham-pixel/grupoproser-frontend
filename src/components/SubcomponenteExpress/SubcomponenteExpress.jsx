@@ -32,6 +32,8 @@ import {
   SelectFenix,
   TextareaFenix,
 } from './ExpressUiBlocks.jsx';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 
 const DEFAULT_FORM = {
   _id: '',
@@ -245,6 +247,96 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const headerSubtitle = isEditing
     ? 'Actualiza la información del siniestro y sus documentos soporte.'
     : 'Centralice la información del siniestro y cargue documentos en un solo paso.';
+
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [savedDataToRestore, setSavedDataToRestore] = useState(null);
+  const existingAnexosRef = React.useRef(existingAnexos);
+  const existingSalvamentoAnexosRef = React.useRef(existingSalvamentoAnexos);
+
+  useEffect(() => {
+    existingAnexosRef.current = existingAnexos;
+  }, [existingAnexos]);
+
+  useEffect(() => {
+    existingSalvamentoAnexosRef.current = existingSalvamentoAnexos;
+  }, [existingSalvamentoAnexos]);
+
+  const onAutoSaveExpress = useCallback(async (data) => {
+    const casoId = data._id;
+    if (!casoId) return;
+
+    const { anexos, salvamentoAnexos, _id, consecutivo, ...payload } = data;
+    const formDataToSend = new FormData();
+    formDataToSend.append('salvamentoAplica', data.salvamentoAplica || '');
+
+    Object.entries(payload).forEach(([key, value]) => {
+      if (key === 'salvamentoAplica') return;
+      if (value !== null && value !== undefined && value !== '') {
+        formDataToSend.append(key, value);
+      }
+    });
+
+    formDataToSend.append('_id', casoId);
+    formDataToSend.append('anexosExistentes', JSON.stringify(existingAnexosRef.current));
+    formDataToSend.append(
+      'salvamentoAnexosExistentes',
+      JSON.stringify(existingSalvamentoAnexosRef.current)
+    );
+
+    const token = localStorage.getItem('token');
+    const response = await fetch(`${BASE_URL}/api/siniestros-express/${casoId}`, {
+      method: 'PUT',
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      body: formDataToSend,
+    });
+
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body?.error || `Error autoguardado Express (${response.status})`);
+    }
+  }, []);
+
+  const {
+    isAutoSaveEnabled,
+    lastSaveTime,
+    saveStatus,
+    enableAutoSave,
+    disableAutoSave,
+    saveNow,
+    syncNow,
+    pendingServerSync,
+    isOnline,
+    clearSavedData,
+  } = useFormAutoSave({
+    formKeyBase: 'express-siniestro',
+    recordId: formData._id || null,
+    formData,
+    excludeFields: ['anexos', 'salvamentoAnexos'],
+    onServerUpdate: onAutoSaveExpress,
+    serverReady: Boolean(formData._id),
+    canSaveServer: () => !loading,
+    onRestore: (savedInfo) => {
+      setSavedDataToRestore(savedInfo);
+      setShowRestoreDialog(true);
+    },
+  });
+
+  const handleRestoreData = useCallback(() => {
+    if (!savedDataToRestore?.data) return;
+    setFormData((prev) => ({ ...prev, ...savedDataToRestore.data }));
+    setShowRestoreDialog(false);
+    enableAutoSave();
+  }, [savedDataToRestore, enableAutoSave]);
+
+  const handleDiscardSavedData = useCallback(() => {
+    clearSavedData();
+    setShowRestoreDialog(false);
+    setSavedDataToRestore(null);
+  }, [clearSavedData]);
+
+  const handleCancelRestore = useCallback(() => {
+    setShowRestoreDialog(false);
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -1126,6 +1218,23 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
           {success && <div className={`mx-5 mb-5 sm:mx-6 ${expressAlertSuccess}`}>{success}</div>}
         </section>
       </div>
+
+      <FormAutoSaveControls
+        isAutoSaveEnabled={isAutoSaveEnabled}
+        lastSaveTime={lastSaveTime}
+        saveStatus={saveStatus}
+        enableAutoSave={enableAutoSave}
+        disableAutoSave={disableAutoSave}
+        saveNow={saveNow}
+        syncNow={syncNow}
+        pendingServerSync={pendingServerSync}
+        isOnline={isOnline}
+        showRestoreDialog={showRestoreDialog}
+        savedDataToRestore={savedDataToRestore}
+        onRestore={handleRestoreData}
+        onDiscard={handleDiscardSavedData}
+        onCancelRestore={handleCancelRestore}
+      />
 
       <ExpressAvisoModal
         open={avisoModal.open}

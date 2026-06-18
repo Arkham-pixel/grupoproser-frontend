@@ -20,9 +20,8 @@ import {
   riesgoScope,
 } from './riesgoFenixUi.js';
 import { InputFenix, RiesgoFormTabs, RiesgoNavPanel, RiesgoPageHeader } from './RiesgoUiBlocks.jsx';
-import { useAutoSave } from '../../hooks/useAutoSave';
-import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
-import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
+import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 
 // Configurar axios para usar la URL base correcta
 axios.defaults.baseURL = BASE_URL;
@@ -214,18 +213,25 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   const [cargandoFuncionarios, setCargandoFuncionarios] = useState(false);
   const casoDesdeComplex = location.state?.caso;
 
-  // Estados para autoguardado
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [savedDataToRestore, setSavedDataToRestore] = useState(null);
 
-  // Generar key única para autoguardado
-  const autoSaveKey = casoInicial?._id 
-    ? `formulario-riesgo-${casoInicial._id}` 
-    : id 
-    ? `formulario-riesgo-${id}`
-    : 'formulario-riesgo-nuevo';
+  const recordIdRiesgo =
+    casoInicial?._id ||
+    (id && id !== 'nuevo' ? id : null) ||
+    formData._id ||
+    null;
 
-  // Hook de autoguardado
+  const onAutoSaveServidor = useCallback(
+    async (data) => {
+      const casoId = obtenerIdCaso(casoInicial, casos, casoEditadoIndex, data);
+      if (!casoId) return;
+      const payload = construirPayloadRiesgo(data);
+      await axios.put(`/api/riesgos/${casoId}`, crearFormDataDesdePayload(payload));
+    },
+    [casoInicial, casos, casoEditadoIndex]
+  );
+
   const {
     isAutoSaveEnabled,
     lastSaveTime,
@@ -234,51 +240,40 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
     disableAutoSave,
     clearSavedData,
     saveNow,
-    restoreFromStorage,
-    hasSavedData,
-  } = useAutoSave({
-    formKey: autoSaveKey,
-    formData: formData,
-    enabled: true,
-    interval: 30000, // Guardar cada 30 segundos
-    excludeFields: [], // No excluir campos en este formulario
+    syncNow,
+    pendingServerSync,
+    isOnline,
+  } = useFormAutoSave({
+    formKeyBase: 'formulario-riesgo',
+    recordId: recordIdRiesgo,
+    formData,
+    onServerUpdate: onAutoSaveServidor,
+    serverReady: Boolean(recordIdRiesgo),
     onRestore: (savedInfo) => {
-setSavedDataToRestore(savedInfo);
+      setSavedDataToRestore(savedInfo);
       setShowRestoreDialog(true);
     },
   });
 
-  // Activar autoguardado automáticamente en formularios nuevos
-  useEffect(() => {
-    if (!casoInicial?._id && !editando && !isAutoSaveEnabled) {
-enableAutoSave();
-    }
-  }, [casoInicial, editando, isAutoSaveEnabled, enableAutoSave]);
-
-  // Handlers para autoguardado
   const handleRestoreData = useCallback(() => {
-    if (savedDataToRestore && savedDataToRestore.data) {
-// Restaurar completamente el formData
-      setFormData({
-        ...formData, // Mantener estructura base
-        ...savedDataToRestore.data, // Sobrescribir con datos guardados
-      });
-      
-      setShowRestoreDialog(false);
-      enableAutoSave();
-      
-alert('✅ Datos restaurados exitosamente');
-    }
+    if (!savedDataToRestore?.data) return;
+    setFormData({
+      ...formData,
+      ...savedDataToRestore.data,
+    });
+    setShowRestoreDialog(false);
+    enableAutoSave();
+    alert('✅ Datos restaurados exitosamente');
   }, [savedDataToRestore, enableAutoSave, formData]);
 
   const handleDiscardSavedData = useCallback(() => {
-clearSavedData();
+    clearSavedData();
     setShowRestoreDialog(false);
     setSavedDataToRestore(null);
   }, [clearSavedData]);
 
   const handleCancelRestore = useCallback(() => {
-setShowRestoreDialog(false);
+    setShowRestoreDialog(false);
   }, []);
 
   useEffect(() => {
@@ -1212,26 +1207,21 @@ let historialExistente = null;
         <p>{formData.ciudad_siniestro ? formData.ciudad_siniestro.split('/')[0] : '_________'}</p>
       </div>
 
-      {/* Componentes de autoguardado */}
-      <AutoSaveNotification
-        isEnabled={isAutoSaveEnabled}
+      <FormAutoSaveControls
+        isAutoSaveEnabled={isAutoSaveEnabled}
         lastSaveTime={lastSaveTime}
         saveStatus={saveStatus}
-        onEnable={enableAutoSave}
-        onDisable={disableAutoSave}
-        onSaveNow={saveNow}
-        hasUnsavedChanges={false}
-        showEnablePrompt={false}
-        onDismissPrompt={() => {}}
-      />
-
-      <AutoSaveRestoreDialog
-        isOpen={showRestoreDialog}
-        savedData={savedDataToRestore?.data}
-        metadata={savedDataToRestore?.metadata}
+        enableAutoSave={enableAutoSave}
+        disableAutoSave={disableAutoSave}
+        saveNow={saveNow}
+        syncNow={syncNow}
+        pendingServerSync={pendingServerSync}
+        isOnline={isOnline}
+        showRestoreDialog={showRestoreDialog}
+        savedDataToRestore={savedDataToRestore}
         onRestore={handleRestoreData}
         onDiscard={handleDiscardSavedData}
-        onCancel={handleCancelRestore}
+        onCancelRestore={handleCancelRestore}
       />
         </div>
       </div>

@@ -19,11 +19,19 @@ import {
 import { ComplexFormActions, ComplexFormTabs } from './FacturacionHelpers';
 import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
-import { getCasoComplex } from '../../services/complexService.js';
-import { calcularTotalesControlHoras } from './controlHoras/controlHorasUtils';
+import { getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
+import { calcularTotalesControlHoras, controlHorasTieneDatos } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
+import { autoSaveService } from '../../services/autoSaveService.js';
+import {
+  registerOfflineSyncHandler,
+  unregisterOfflineSyncHandler,
+  isBrowserOnline,
+  flushOfflineSyncHandler,
+} from '../../services/offlineSyncRegistry.js';
+import useOnlineStatus from '../../hooks/useOnlineStatus.js';
 
-export default function FormularioCasoComplex({ initialData, onSave, onCancel, camposFijos = false }) {
+export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = true }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -346,7 +354,10 @@ const nuevoFormData = {
             }
             return initialData.adjunto_control_horas || '';
           })(),
-          control_horas: initialData.control_horas || normalizados.control_horas || null,
+          control_horas: (() => {
+            const ch = initialData.control_horas || normalizados.control_horas;
+            return controlHorasTieneDatos(ch) ? ch : null;
+          })(),
           estado: resolverEstadoParaSelect({ ...initialData, ...normalizados }, estados),
         };
         
@@ -583,9 +594,15 @@ if (casoData && casoData._id) {
                 }
                 return casoData.adjunto_control_horas || '';
               })(),
-              control_horas: casoData.control_horas || normalizados.control_horas || null,
+              control_horas: (() => {
+                const ch = casoData.control_horas || normalizados.control_horas;
+                return controlHorasTieneDatos(ch) ? ch : null;
+              })(),
               estado: resolverEstadoParaSelect(casoData, estados),
             }));
+
+            setCasoListoParaAutoGuardar(true);
+            datosInicialesAutoSaveRef.current = casoData;
 
             // Cargar funcionarios si hay aseguradora
             if (normalizados.codiAsgrdra || casoData.codiAsgrdra) {
@@ -1270,11 +1287,23 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
   // Estados para autoguardado
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [savedDataToRestore, setSavedDataToRestore] = useState(null);
+  const [casoListoParaAutoGuardar, setCasoListoParaAutoGuardar] = useState(false);
+  const datosInicialesAutoSaveRef = useRef(initialData || null);
+  const autoGuardandoServidorRef = useRef(false);
+  const formDataAutoSaveRef = useRef(formData);
+
+  useEffect(() => {
+    formDataAutoSaveRef.current = formData;
+  }, [formData]);
 
   // Generar key única para autoguardado (usa ID si existe, sino un key genérico)
-  const autoSaveKey = initialData?._id 
-    ? `formulario-complex-${initialData._id}` 
+  const autoSaveKey = (initialData?._id || id)
+    ? `formulario-complex-${initialData?._id || id}`
     : 'formulario-complex-nuevo';
+  const isOnline = useOnlineStatus();
+  const [pendingServerSync, setPendingServerSync] = useState(() =>
+    autoSaveService.hasPendingServerSync(autoSaveKey)
+  );
 
   // Refs para rastrear cambios específicos y evitar actualizaciones innecesarias
   const prevControlHorasDocsRef = useRef('');
@@ -1414,25 +1443,29 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
     saveNow,
     restoreFromStorage,
     hasSavedData,
+    markSyncing,
+    markSynced,
+    markSyncError,
   } = useAutoSave({
     formKey: autoSaveKey,
     formData: formData,
-    enabled: true,
-    interval: 30000, // Guardar cada 30 segundos
-    excludeFields: ['historialDocs'], // Excluir campos pesados
+    enabled: autoGuardadoActivo,
+    interval: 30000,
+    excludeFields: ['historialDocs'],
+    skipRestoreOnMount: Boolean(autoGuardadoActivo && (initialData?._id || id)),
     onRestore: (savedInfo) => {
-      // Cuando hay datos guardados, mostrar el diálogo
-setSavedDataToRestore(savedInfo);
+      setSavedDataToRestore(savedInfo);
       setShowRestoreDialog(true);
     },
   });
 
-  // Activar autoguardado automáticamente en formularios nuevos
+  // Autoguardado solo cuando la ventana lo habilita explícitamente (p. ej. edición desde reporte)
   useEffect(() => {
-    if (!initialData?._id && !isAutoSaveEnabled) {
-enableAutoSave();
+    if (!autoGuardadoActivo) return;
+    if (!isAutoSaveEnabled) {
+      enableAutoSave();
     }
-  }, [initialData, isAutoSaveEnabled, enableAutoSave]);
+  }, [autoGuardadoActivo, isAutoSaveEnabled, enableAutoSave]);
 
   // Handler para responsable - actualizar tanto el código como el nombre
   const handleResponsableChange = useCallback((codigoResponsable) => {
@@ -2406,7 +2439,7 @@ setFormData(prev => ({
       fcha_seguimiento_envio_control_horas: pick('fcha_seguimiento_envio_control_horas', 'fecha_seguimiento_envio_control_horas'), // Fecha de seguimiento de envío control de horas
       obse_seguimiento_envio_control_horas: pick('obse_seguimiento_envio_control_horas', 'observacion_seguimiento_envio_control_horas'), // Observaciones de seguimiento de envío control de horas
       anxo_seguimiento_envio_control_horas: pick('anxo_seguimiento_envio_control_horas', 'adjunto_seguimiento_envio_control_horas'), // Adjunto de seguimiento de envío control de horas
-      control_horas: formData.control_horas || undefined,
+      control_horas: controlHorasTieneDatos(formData.control_horas) ? formData.control_horas : undefined,
 
       // Valores numéricos - USAR NOMBRES EXACTOS DEL SCHEMA (snake_case)
       dias_transcrrdo: pick('dias_transcrrdo', 'diasTranscrrdo'),
@@ -2763,9 +2796,89 @@ clearSavedData();
      delete resultado.nombreResponsable;
      delete resultado.funcAsgrdraNombre;
      delete resultado.funcionarioAseguradora;
+
+     if (!controlHorasTieneDatos(resultado.control_horas) && controlHorasTieneDatos(datosIniciales?.control_horas)) {
+       resultado.control_horas = datosIniciales.control_horas;
+     } else if (!controlHorasTieneDatos(resultado.control_horas)) {
+       delete resultado.control_horas;
+     }
  
      return resultado;
   };
+
+  // Autoguardado silencioso en servidor (edición con _id, tras cargar caso completo desde API)
+  useEffect(() => {
+    const casoId = formData._id || initialData?._id || id;
+    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return undefined;
+
+    const intervaloMs = 60000;
+
+    const guardarEnServidor = async () => {
+      if (autoGuardandoServidorRef.current) return;
+      if (Object.values(cargandoAdjuntos || {}).some(Boolean)) return;
+
+      if (!isBrowserOnline()) {
+        saveNow();
+        autoSaveService.setPendingServerSync(autoSaveKey, true);
+        setPendingServerSync(true);
+        return;
+      }
+
+      autoGuardandoServidorRef.current = true;
+      markSyncing();
+      try {
+        const payload = mapFormDataToBackend(formDataAutoSaveRef.current);
+        if (onAutoSave) {
+          await onAutoSave(payload);
+        } else {
+          const datosBase = datosInicialesAutoSaveRef.current || initialData || {};
+          const normalizado = prepararPayloadParaComplex(payload, datosBase);
+          await updateCasoComplex(casoId, normalizado);
+        }
+        autoSaveService.clearPendingServerSync(autoSaveKey);
+        setPendingServerSync(false);
+        markSynced();
+      } catch (error) {
+        console.warn('[auto-guardado servidor]', error);
+        if (!isBrowserOnline()) {
+          saveNow();
+          autoSaveService.setPendingServerSync(autoSaveKey, true);
+          setPendingServerSync(true);
+        } else {
+          markSyncError();
+        }
+      } finally {
+        autoGuardandoServidorRef.current = false;
+      }
+    };
+
+    registerOfflineSyncHandler(autoSaveKey, guardarEnServidor);
+    window.addEventListener('online', guardarEnServidor);
+
+    const timer = setInterval(guardarEnServidor, intervaloMs);
+    return () => {
+      unregisterOfflineSyncHandler(autoSaveKey);
+      window.removeEventListener('online', guardarEnServidor);
+      clearInterval(timer);
+    };
+  }, [
+    autoGuardadoActivo,
+    autoSaveKey,
+    formData._id,
+    initialData,
+    id,
+    onAutoSave,
+    casoListoParaAutoGuardar,
+    cargandoAdjuntos,
+    saveNow,
+    markSyncing,
+    markSynced,
+    markSyncError,
+  ]);
+
+  useEffect(() => {
+    setPendingServerSync(autoSaveService.hasPendingServerSync(autoSaveKey));
+  }, [autoSaveKey, isOnline]);
 
   return (
     <>
@@ -2882,27 +2995,35 @@ clearSavedData();
       </form>
     </div>
 
-      {/* Componentes de autoguardado */}
-      <AutoSaveNotification
-        isEnabled={isAutoSaveEnabled}
-        lastSaveTime={lastSaveTime}
-        saveStatus={saveStatus}
-        onEnable={enableAutoSave}
-        onDisable={disableAutoSave}
-        onSaveNow={saveNow}
-        hasUnsavedChanges={false}
-        showEnablePrompt={false}
-        onDismissPrompt={() => {}}
-      />
+      {autoGuardadoActivo && (
+        <>
+          <AutoSaveNotification
+            isEnabled={isAutoSaveEnabled}
+            lastSaveTime={lastSaveTime}
+            saveStatus={saveStatus}
+            onEnable={enableAutoSave}
+            onDisable={disableAutoSave}
+            onSaveNow={async () => {
+              saveNow();
+              await flushOfflineSyncHandler(autoSaveKey);
+            }}
+            hasUnsavedChanges={false}
+            showEnablePrompt={false}
+            onDismissPrompt={() => {}}
+            pendingServerSync={pendingServerSync}
+            isOnline={isOnline}
+          />
 
-      <AutoSaveRestoreDialog
-        isOpen={showRestoreDialog}
-        savedData={savedDataToRestore?.data}
-        metadata={savedDataToRestore?.metadata}
-        onRestore={handleRestoreData}
-        onDiscard={handleDiscardSavedData}
-        onCancel={handleCancelRestore}
-      />
+          <AutoSaveRestoreDialog
+            isOpen={showRestoreDialog}
+            savedData={savedDataToRestore?.data}
+            metadata={savedDataToRestore?.metadata}
+            onRestore={handleRestoreData}
+            onDiscard={handleDiscardSavedData}
+            onCancel={handleCancelRestore}
+          />
+        </>
+      )}
     </>
   );
 }
