@@ -49,10 +49,6 @@ import TableroOperativoExpress from './components/SubcomponenteExpress/TableroOp
 import CatalogosExpress from './components/SubcomponenteExpress/CatalogosExpress';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
-import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
-import PuertosActasListado from './components/PuertosActas/PuertosActasListado';
-import PuertosNuevaActa from './components/PuertosActas/PuertosNuevaActa';
-import PuertosCasoExportacionMain from './components/PuertosActas/PuertosCasoExportacionMain';
 import ActaInspeccion from './components/ActaInspeccion';
 import GestionDocumentos from './components/GestionDocumentos/GestionDocumentos';
 
@@ -451,13 +447,6 @@ export default function App() {
           <Route path="express/dashboard" element={<DashboardExpress />} />
           <Route path="express/tablero" element={<TableroOperativoExpress />} />
           <Route path="express/catalogos" element={<Navigate to="/admin/catalogos-express" replace />} />
-
-          <Route path="puertos/actas" element={<PuertosActasMain />}>
-            <Route index element={<PuertosActasListado />} />
-            <Route path="nueva" element={<PuertosNuevaActa />} />
-            <Route path="caso/nueva" element={<PuertosCasoExportacionMain />} />
-            <Route path="caso/editar/:id" element={<PuertosCasoExportacionMain />} />
-          </Route>
 
           <Route path="puertos/formulario" element={<PuertosInspeccionMain />} />
           <Route path="puertos/formulario/editar/:id" element={<PuertosInspeccionMain />} />
