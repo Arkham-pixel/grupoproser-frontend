@@ -5877,6 +5877,126 @@ setImagenesRegistro([]);
   }
 };
 
+const handleGoogleEarthMapReady = useCallback(() => {}, []);
+
+const handleGoogleEarthMapaChange = useCallback((datos) => {
+  const imagenCaptura = datos.imagenMapa || datos.imagen || null;
+  const esNuevaCaptura = Boolean(imagenCaptura);
+  const yaHayCapturaGuardada = Boolean(imagenMapa);
+
+  if (datos.coordenadas && (esNuevaCaptura || !yaHayCapturaGuardada)) {
+    handleInputChange('coordenadasRiesgo', datos.coordenadas);
+  }
+  if (datos.direccion) {
+    handleInputChange('direccion', datos.direccion);
+    handleInputChange('direccionRiesgo', datos.direccion);
+  }
+  if (esNuevaCaptura) {
+    setImagenMapa(imagenCaptura);
+  }
+}, [imagenMapa, handleInputChange]);
+
+const handleDatosEquiposChange = useCallback((areas) => {
+  setDatosEquipos(areas);
+}, []);
+
+const chatbotFormData = useMemo(() => ({
+  ...formData,
+  recomendaciones: recomendaciones,
+  recomendacionesItems: recomendacionesItems,
+  bancoRecomendaciones: bancoRecomendaciones,
+  categoriaSeleccionada: categoriaSeleccionada,
+  nombreCliente: nombreCliente,
+  tipoInmueble: formData.tipo_inmueble,
+  direccion: formData.direccion,
+  ciudad: formData.ciudad_siniestro,
+  analisisRiesgos: analisisRiesgos,
+  tablaRiesgos: tablaRiesgos,
+  energiaProveedor: energiaProveedor,
+  energiaTension: energiaTension,
+  transformadores: transformadores,
+  plantasElectricas: plantasElectricas,
+  proteccionesIncendio: {
+    extintor,
+    rci,
+    rociadores,
+    deteccion,
+    alarmas,
+    brigadas,
+    bomberos,
+    bombaPrincipal,
+    bombaJockey,
+    presionContraincendios,
+    estacionBomberosNombre,
+    estacionBomberosTiempoMin,
+    estacionBomberosDistanciaMetros,
+    murosCortafuegos,
+    puertasCortafuego,
+    almacenamientoAguaRci,
+    pruebasProteccionIncendios,
+  },
+  seguridad: {
+    alarmaMonitoreada,
+    cctv,
+    tipoVigilancia,
+    horariosVigilancia,
+    accesos,
+    cerramientoPredio,
+  },
+}), [
+  formData,
+  recomendaciones,
+  recomendacionesItems,
+  bancoRecomendaciones,
+  categoriaSeleccionada,
+  nombreCliente,
+  analisisRiesgos,
+  tablaRiesgos,
+  energiaProveedor,
+  energiaTension,
+  transformadores,
+  plantasElectricas,
+  extintor,
+  rci,
+  rociadores,
+  deteccion,
+  alarmas,
+  brigadas,
+  bomberos,
+  bombaPrincipal,
+  bombaJockey,
+  presionContraincendios,
+  estacionBomberosNombre,
+  estacionBomberosTiempoMin,
+  estacionBomberosDistanciaMetros,
+  murosCortafuegos,
+  puertasCortafuego,
+  almacenamientoAguaRci,
+  pruebasProteccionIncendios,
+  alarmaMonitoreada,
+  cctv,
+  tipoVigilancia,
+  horariosVigilancia,
+  accesos,
+  cerramientoPredio,
+]);
+
+const handleChatbotInputChange = useCallback((field, value) => {
+  if (field === "recomendaciones") {
+    setRecomendacionesItems(migrarTextoPlanoAItems(value));
+  } else if (field === "recomendacionesItems" && Array.isArray(value)) {
+    setRecomendacionesItems(
+      normalizarRecomendacionesItemsDesdeDatos({
+        recomendacionesItems: value,
+      })
+    );
+  }
+}, []);
+
+const handleImagenesRegistroChange = useCallback((imagenes) => {
+  setImagenesRegistro(imagenes);
+}, []);
+
 return (
   <div 
     className="min-h-screen p-2 sm:p-4 lg:p-8"
@@ -8604,32 +8724,12 @@ return (
 <div className="mt-4">
   <Suspense fallback={<div style={{ color: textPrimary }}>Cargando mapa...</div>}>
     <MapaGoogleEarth 
-      onMapReady={useCallback((map) => {
-}, [])}
+      onMapReady={handleGoogleEarthMapReady}
       apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
       coordenadasIniciales={formData?.coordenadasRiesgo || ''}
       direccionInicial={formData?.direccionRiesgo || formData?.direccion || ''}
       forzarCaptura={forzarCapturaMapa}
-      onMapaChange={useCallback((datos) => {
-        // Regla de negocio:
-        // - Sin captura previa: el mapa puede actualizar coordenadas.
-        // - Con captura previa: solo una NUEVA captura puede cambiar coordenadas.
-        const imagenCaptura = datos.imagenMapa || datos.imagen || null;
-        const esNuevaCaptura = Boolean(imagenCaptura);
-        const yaHayCapturaGuardada = Boolean(imagenMapa);
-
-        if (datos.coordenadas && (esNuevaCaptura || !yaHayCapturaGuardada)) {
-          handleInputChange('coordenadasRiesgo', datos.coordenadas);
-        }
-        if (datos.direccion) {
-          handleInputChange('direccion', datos.direccion);
-          handleInputChange('direccionRiesgo', datos.direccion);
-        }
-        if (esNuevaCaptura) {
-          // Guardar imagen del mapa para usar en el documento e historial
-          setImagenMapa(imagenCaptura);
-        }
-      }, [imagenMapa, handleInputChange])}
+      onMapaChange={handleGoogleEarthMapaChange}
     />
   </Suspense>
 
@@ -12403,9 +12503,7 @@ return (
 </div>
 </div>
 
-<FormularioAreas areasIniciales={datosEquipos} onChange={useCallback((areas) => {
-  setDatosEquipos(areas);
-}, [])} />
+<FormularioAreas areasIniciales={datosEquipos} onChange={handleDatosEquiposChange} />
 
 </>
 )}
@@ -14135,63 +14233,8 @@ return (
     </p>
     <Suspense fallback={<div style={{ color: textPrimary }}>Cargando asistente...</div>}>
       <ChatbotIA 
-        formData={useMemo(() => ({
-        ...formData,
-        recomendaciones: recomendaciones,
-        recomendacionesItems: recomendacionesItems,
-        bancoRecomendaciones: bancoRecomendaciones,
-        categoriaSeleccionada: categoriaSeleccionada,
-        // Incluir contexto relevante del formulario para el chatbot
-        nombreCliente: nombreCliente,
-        tipoInmueble: formData.tipo_inmueble,
-        direccion: formData.direccion,
-        ciudad: formData.ciudad_siniestro,
-        analisisRiesgos: analisisRiesgos,
-        tablaRiesgos: tablaRiesgos,
-        energiaProveedor: energiaProveedor,
-        energiaTension: energiaTension,
-        transformadores: transformadores,
-        plantasElectricas: plantasElectricas,
-        proteccionesIncendio: {
-          extintor,
-          rci,
-          rociadores,
-          deteccion,
-          alarmas,
-          brigadas,
-          bomberos,
-          bombaPrincipal,
-          bombaJockey,
-          presionContraincendios,
-          estacionBomberosNombre,
-          estacionBomberosTiempoMin,
-          estacionBomberosDistanciaMetros,
-          murosCortafuegos,
-          puertasCortafuego,
-          almacenamientoAguaRci,
-          pruebasProteccionIncendios,
-        },
-        seguridad: {
-          alarmaMonitoreada,
-          cctv,
-          tipoVigilancia,
-          horariosVigilancia,
-          accesos,
-          cerramientoPredio
-        }
-      }), [formData, recomendaciones, recomendacionesItems, bancoRecomendaciones, categoriaSeleccionada, nombreCliente, analisisRiesgos, tablaRiesgos, energiaProveedor, energiaTension, transformadores, plantasElectricas, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, alarmaMonitoreada, cctv, tipoVigilancia, horariosVigilancia, accesos, cerramientoPredio])}
-      onInputChange={useCallback((field, value) => {
-        if (field === "recomendaciones") {
-          setRecomendacionesItems(migrarTextoPlanoAItems(value));
-        } else if (field === "recomendacionesItems" && Array.isArray(value)) {
-          setRecomendacionesItems(
-            normalizarRecomendacionesItemsDesdeDatos({
-              recomendacionesItems: value,
-            })
-          );
-        } else {
-}
-      }, [])}
+        formData={chatbotFormData}
+      onInputChange={handleChatbotInputChange}
       />
     </Suspense>
   </div>
@@ -14199,9 +14242,7 @@ return (
     {incluirSeccion('registroFotografico') && (
     <Suspense fallback={<div style={{ color: textPrimary }}>Cargando registro fotográfico...</div>}>
       <RegistroFotografico 
-        onChange={useCallback((imagenes) => {
-          setImagenesRegistro(imagenes);
-        }, [])} 
+        onChange={handleImagenesRegistroChange}
         imagenesIniciales={imagenesRegistro}
         tituloSeccion="18. REGISTRO FOTOGRÁFICO"
       />
