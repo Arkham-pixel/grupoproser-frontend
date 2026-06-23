@@ -424,7 +424,24 @@ export default function PuertosCasoExportacionMain() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <FormAutoSaveControls
+            placement="inline"
+            isAutoSaveEnabled={isAutoSaveEnabled}
+            lastSaveTime={lastSaveTime}
+            saveStatus={saveStatus}
+            enableAutoSave={enableAutoSave}
+            disableAutoSave={disableAutoSave}
+            saveNow={saveNow}
+            syncNow={syncNow}
+            pendingServerSync={pendingServerSync}
+            isOnline={isOnline}
+            showRestoreDialog={showRestoreDialog}
+            savedDataToRestore={savedDataToRestore}
+            onRestore={handleRestoreData}
+            onDiscard={handleDiscardSavedData}
+            onCancelRestore={handleCancelRestore}
+          />
           <button type="button" onClick={handleGuardar} disabled={guardando} className={puertosBtnPrimary}>
             <FaSave /> {guardando ? 'Guardando…' : 'Grabar'}
           </button>
@@ -498,23 +515,6 @@ export default function PuertosCasoExportacionMain() {
         </button>
       </div>
       </div>
-
-      <FormAutoSaveControls
-        isAutoSaveEnabled={isAutoSaveEnabled}
-        lastSaveTime={lastSaveTime}
-        saveStatus={saveStatus}
-        enableAutoSave={enableAutoSave}
-        disableAutoSave={disableAutoSave}
-        saveNow={saveNow}
-        syncNow={syncNow}
-        pendingServerSync={pendingServerSync}
-        isOnline={isOnline}
-        showRestoreDialog={showRestoreDialog}
-        savedDataToRestore={savedDataToRestore}
-        onRestore={handleRestoreData}
-        onDiscard={handleDiscardSavedData}
-        onCancelRestore={handleCancelRestore}
-      />
     </div>
   );
 }

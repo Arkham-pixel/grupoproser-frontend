@@ -633,6 +633,23 @@ return img;
         >
           <div className="flex items-center gap-2 sm:gap-4">
             <img src={Logo} alt="Logo PROSER" className="h-12 sm:h-16 object-contain" />
+            <FormAutoSaveControls
+              placement="inline"
+              isAutoSaveEnabled={isAutoSaveEnabled}
+              lastSaveTime={lastSaveTime}
+              saveStatus={saveStatus}
+              enableAutoSave={enableAutoSave}
+              disableAutoSave={disableAutoSave}
+              saveNow={saveNow}
+              syncNow={syncNow}
+              pendingServerSync={pendingServerSync}
+              isOnline={isOnline}
+              showRestoreDialog={showRestoreDialog}
+              savedDataToRestore={savedDataToRestore}
+              onRestore={handleRestoreData}
+              onDiscard={handleDiscardSavedData}
+              onCancelRestore={handleCancelRestore}
+            />
             {modoEdicion && (
               <div 
                 className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium"
@@ -834,23 +851,6 @@ return img;
         </div>
 
       </div>
-
-      <FormAutoSaveControls
-        isAutoSaveEnabled={isAutoSaveEnabled}
-        lastSaveTime={lastSaveTime}
-        saveStatus={saveStatus}
-        enableAutoSave={enableAutoSave}
-        disableAutoSave={disableAutoSave}
-        saveNow={saveNow}
-        syncNow={syncNow}
-        pendingServerSync={pendingServerSync}
-        isOnline={isOnline}
-        showRestoreDialog={showRestoreDialog}
-        savedDataToRestore={savedDataToRestore}
-        onRestore={handleRestoreData}
-        onDiscard={handleDiscardSavedData}
-        onCancelRestore={handleCancelRestore}
-      />
     </div>
   );
 }

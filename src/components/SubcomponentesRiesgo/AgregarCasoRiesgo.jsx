@@ -1149,6 +1149,25 @@ let historialExistente = null;
           title="Gestión de casos de riesgo"
           subtitle="Activación, trazabilidad, seguimiento y facturación."
           showNav={false}
+          actions={
+            <FormAutoSaveControls
+              placement="inline"
+              isAutoSaveEnabled={isAutoSaveEnabled}
+              lastSaveTime={lastSaveTime}
+              saveStatus={saveStatus}
+              enableAutoSave={enableAutoSave}
+              disableAutoSave={disableAutoSave}
+              saveNow={saveNow}
+              syncNow={syncNow}
+              pendingServerSync={pendingServerSync}
+              isOnline={isOnline}
+              showRestoreDialog={showRestoreDialog}
+              savedDataToRestore={savedDataToRestore}
+              onRestore={handleRestoreData}
+              onDiscard={handleDiscardSavedData}
+              onCancelRestore={handleCancelRestore}
+            />
+          }
         />
 
         <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A] sm:p-6">
@@ -1206,23 +1225,6 @@ let historialExistente = null;
         </p>
         <p>{formData.ciudad_siniestro ? formData.ciudad_siniestro.split('/')[0] : '_________'}</p>
       </div>
-
-      <FormAutoSaveControls
-        isAutoSaveEnabled={isAutoSaveEnabled}
-        lastSaveTime={lastSaveTime}
-        saveStatus={saveStatus}
-        enableAutoSave={enableAutoSave}
-        disableAutoSave={disableAutoSave}
-        saveNow={saveNow}
-        syncNow={syncNow}
-        pendingServerSync={pendingServerSync}
-        isOnline={isOnline}
-        showRestoreDialog={showRestoreDialog}
-        savedDataToRestore={savedDataToRestore}
-        onRestore={handleRestoreData}
-        onDiscard={handleDiscardSavedData}
-        onCancelRestore={handleCancelRestore}
-      />
         </div>
       </div>
     </div>

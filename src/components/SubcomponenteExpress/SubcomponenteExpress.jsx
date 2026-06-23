@@ -722,6 +722,23 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
           subtitle={headerSubtitle}
           actions={
             <>
+              <FormAutoSaveControls
+                placement="inline"
+                isAutoSaveEnabled={isAutoSaveEnabled}
+                lastSaveTime={lastSaveTime}
+                saveStatus={saveStatus}
+                enableAutoSave={enableAutoSave}
+                disableAutoSave={disableAutoSave}
+                saveNow={saveNow}
+                syncNow={syncNow}
+                pendingServerSync={pendingServerSync}
+                isOnline={isOnline}
+                showRestoreDialog={showRestoreDialog}
+                savedDataToRestore={savedDataToRestore}
+                onRestore={handleRestoreData}
+                onDiscard={handleDiscardSavedData}
+                onCancelRestore={handleCancelRestore}
+              />
               {embed && typeof onClose === 'function' && (
                 <button type="button" className={expressBtnGhost} onClick={onClose} disabled={loading}>
                   Cancelar
@@ -1218,23 +1235,6 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
           {success && <div className={`mx-5 mb-5 sm:mx-6 ${expressAlertSuccess}`}>{success}</div>}
         </section>
       </div>
-
-      <FormAutoSaveControls
-        isAutoSaveEnabled={isAutoSaveEnabled}
-        lastSaveTime={lastSaveTime}
-        saveStatus={saveStatus}
-        enableAutoSave={enableAutoSave}
-        disableAutoSave={disableAutoSave}
-        saveNow={saveNow}
-        syncNow={syncNow}
-        pendingServerSync={pendingServerSync}
-        isOnline={isOnline}
-        showRestoreDialog={showRestoreDialog}
-        savedDataToRestore={savedDataToRestore}
-        onRestore={handleRestoreData}
-        onDiscard={handleDiscardSavedData}
-        onCancelRestore={handleCancelRestore}
-      />
 
       <ExpressAvisoModal
         open={avisoModal.open}

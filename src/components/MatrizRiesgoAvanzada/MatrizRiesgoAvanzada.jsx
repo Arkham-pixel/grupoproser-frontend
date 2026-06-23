@@ -515,6 +515,24 @@ const MatrizRiesgoAvanzada = () => {
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <FormAutoSaveControls
+                  placement="inline"
+                  enabled={autoguardadoActivo}
+                  isAutoSaveEnabled={isAutoSaveEnabled}
+                  lastSaveTime={lastSaveTime}
+                  saveStatus={saveStatus}
+                  enableAutoSave={enableAutoSave}
+                  disableAutoSave={disableAutoSave}
+                  saveNow={saveNow}
+                  syncNow={syncNow}
+                  pendingServerSync={pendingServerSync}
+                  isOnline={isOnline}
+                  showRestoreDialog={showRestoreDialog}
+                  savedDataToRestore={savedDataToRestore}
+                  onRestore={handleRestoreBorrador}
+                  onDiscard={handleDiscardSavedData}
+                  onCancelRestore={handleCancelRestore}
+                />
                 <button
                   type="button"
                   className="btn-fenix-primary min-w-[7.5rem] disabled:opacity-60"
@@ -571,24 +589,6 @@ const MatrizRiesgoAvanzada = () => {
                 El autoguardado se activará después de guardar la matriz por primera vez con el botón <strong>Guardar</strong>.
               </p>
             )}
-
-            <FormAutoSaveControls
-              enabled={autoguardadoActivo}
-              isAutoSaveEnabled={isAutoSaveEnabled}
-              lastSaveTime={lastSaveTime}
-              saveStatus={saveStatus}
-              enableAutoSave={enableAutoSave}
-              disableAutoSave={disableAutoSave}
-              saveNow={saveNow}
-              syncNow={syncNow}
-              pendingServerSync={pendingServerSync}
-              isOnline={isOnline}
-              showRestoreDialog={showRestoreDialog}
-              savedDataToRestore={savedDataToRestore}
-              onRestore={handleRestoreBorrador}
-              onDiscard={handleDiscardSavedData}
-              onCancelRestore={handleCancelRestore}
-            />
           </div>
 
           <div

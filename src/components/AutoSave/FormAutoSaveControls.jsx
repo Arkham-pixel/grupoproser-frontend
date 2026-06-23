@@ -21,6 +21,8 @@ export default function FormAutoSaveControls({
   onCancelRestore,
   pendingServerSync = false,
   isOnline = true,
+  /** 'floating' = chip arriba a la derecha; 'inline' = en la barra de acciones del formulario */
+  placement = 'floating',
 }) {
   if (!enabled) return null;
 
@@ -46,6 +48,7 @@ export default function FormAutoSaveControls({
         onDismissPrompt={() => {}}
         pendingServerSync={pendingServerSync}
         isOnline={isOnline}
+        placement={placement}
       />
 
       <AutoSaveRestoreDialog
