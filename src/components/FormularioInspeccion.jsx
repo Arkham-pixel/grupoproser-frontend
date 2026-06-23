@@ -47,6 +47,13 @@ import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
 import { BASE_URL } from '../config/apiConfig.js';
 import { generarManualInspeccion } from './generarManualInspeccion.js';
+import {
+  SECCIONES_INFORME_INSPECCION,
+  normalizarSeccionesActivas,
+  estaSeccionInformeActiva,
+  obtenerFilasIndiceInforme,
+  obtenerFilasIndiceWord,
+} from './inspeccion/seccionesInformeInspeccion.js';
 const ChatbotIA = lazy(() => import('./SubcomponenteFormularioAjuste/ChatbotIA'));
 
 /** Prefijo MM/YYYY para códigos de recomendación */
@@ -281,6 +288,29 @@ export default function FormularioInspeccion() {
   // Texto que se inserta en la carta (Word y previsualización)
   const textoSuscripcion =
     puedeSuscribir === "NO" ? "NO SE PUEDE SUSCRIBIR" : "SE PUEDE SUSCRIBIR";
+
+  const [seccionesActivas, setSeccionesActivas] = useState(() =>
+    normalizarSeccionesActivas(datosPrevios.seccionesActivas)
+  );
+
+  const incluirSeccion = useCallback(
+    (id) => estaSeccionInformeActiva(seccionesActivas, id),
+    [seccionesActivas]
+  );
+
+  const toggleSeccionInforme = useCallback((id) => {
+    const cfg = SECCIONES_INFORME_INSPECCION.find((s) => s.id === id);
+    if (!cfg || cfg.obligatoria || cfg.seleccionable === false) return;
+    setSeccionesActivas((prev) => {
+      const siguiente = { ...prev, [id]: !estaSeccionInformeActiva(prev, id) };
+      return normalizarSeccionesActivas(siguiente);
+    });
+  }, []);
+
+  const filasIndiceInforme = useMemo(
+    () => obtenerFilasIndiceInforme(seccionesActivas),
+    [seccionesActivas]
+  );
 
   const [nombreEmpresa, setNombreEmpresa] = useState(datosPrevios.nombreEmpresa || datosPrevios.nombreCliente || datosPrevios.asegurado || "");
   const [direccion, setDireccion] = useState(datosPrevios.direccion || datosPrevios.direccionRiesgo || "");
@@ -629,6 +659,21 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   const [valorFacturacionAnoAnterior, setValorFacturacionAnoAnterior] = useState(datosPrevios.valorFacturacionAnoAnterior || datosPrevios.lucroCesante?.valorFacturacionAnoAnterior || "");
   const [valorProyectadoFacturacion, setValorProyectadoFacturacion] = useState(datosPrevios.valorProyectadoFacturacion || datosPrevios.lucroCesante?.valorProyectadoFacturacion || "");
   const [comentariosLucroCesante, setComentariosLucroCesante] = useState(datosPrevios.comentariosLucroCesante || datosPrevios.lucroCesante?.comentariosLucroCesante || "");
+
+  const [pml, setPml] = useState({
+    porcentaje: datosPrevios.pml?.porcentaje || datosPrevios.pmlPorcentaje || datosPrevios.lucroCesante?.pmlPorcentaje || "",
+    descripcion: datosPrevios.pml?.descripcion || datosPrevios.pmlDescripcion || datosPrevios.lucroCesante?.pmlDescripcion || "",
+  });
+  const [pmlPorcentaje, setPmlPorcentaje] = useState(
+    datosPrevios.pml?.porcentaje || datosPrevios.pmlPorcentaje || datosPrevios.lucroCesante?.pmlPorcentaje || ""
+  );
+  const [pmlDescripcion, setPmlDescripcion] = useState(
+    datosPrevios.pml?.descripcion || datosPrevios.pmlDescripcion || datosPrevios.lucroCesante?.pmlDescripcion || ""
+  );
+
+  useEffect(() => {
+    setPml({ porcentaje: pmlPorcentaje, descripcion: pmlDescripcion });
+  }, [pmlPorcentaje, pmlDescripcion]);
 
   // Sincroniza TODOS los campos visibles de lucro cesante
   // al objeto agrupado que se persiste en historial.
@@ -1496,6 +1541,13 @@ await generarManualInspeccion();
               if (datosParseados.valorProyectadoFacturacion !== undefined) setValorProyectadoFacturacion(datosParseados.valorProyectadoFacturacion);
               if (datosParseados.comentariosLucroCesante !== undefined) setComentariosLucroCesante(datosParseados.comentariosLucroCesante);
             }
+            if (datosParseados.seccionesActivas) {
+              setSeccionesActivas(normalizarSeccionesActivas(datosParseados.seccionesActivas));
+            }
+            if (datosParseados.pml) {
+              setPmlPorcentaje(datosParseados.pml.porcentaje ?? datosParseados.pmlPorcentaje ?? "");
+              setPmlDescripcion(datosParseados.pml.descripcion ?? datosParseados.pmlDescripcion ?? "");
+            }
             // Procesos Críticos y Riesgos Medioambientales
             if (datosParseados.procesosCriticos !== undefined) setProcesosCriticos(datosParseados.procesosCriticos);
             if (datosParseados.riesgosMedioambientales !== undefined) setRiesgosMedioambientales(datosParseados.riesgosMedioambientales);
@@ -1685,6 +1737,8 @@ await generarManualInspeccion();
     sustraccion,
     // Lucro Cesante - estado agrupado
     lucroCesante,
+    pml,
+    seccionesActivas,
     // Procesos Críticos y Riesgos Medioambientales
     procesosCriticos,
     riesgosMedioambientales,
@@ -1714,7 +1768,7 @@ await generarManualInspeccion();
     // Cálculo completado
     
     return datos;
-  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, sustraccion, lucroCesante, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems]);
+  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, sustraccion, lucroCesante, pml, seccionesActivas, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems]);
 
   // ⚠️ OPTIMIZACIÓN CRÍTICA: Usar useDeferredValue para diferir el cálculo pesado
   // Esto permite que la UI responda inmediatamente mientras el cálculo se hace en segundo plano
@@ -2126,6 +2180,9 @@ const filaDoble = (label, value) => new TableRow({
   };
 
   const generarWord = async () => {
+    const incluirSeccionWord = (id) => estaSeccionInformeActiva(seccionesActivas, id);
+    const filasIndiceWord = obtenerFilasIndiceWord(seccionesActivas);
+
     // Función para convertir imagen importada a base64
     const convertirImagenImportadaABase64 = async (imagePath) => {
       try {
@@ -2394,7 +2451,7 @@ try {
       new Paragraph({ children: [], pageBreakBefore: true }),
       linea("Señores"),
       linea(aseguradora, true),
-      linea(`Ciudad: ${ciudadSiniestroTexto}`),
+      linea(`Municipio: ${ciudadSiniestroTexto}`),
       linea(""),
       linea("REF: INFORME DE INSPECCIÓN", true),
       linea(`ASEGURADO: ${nombreCliente}`),
@@ -2514,7 +2571,7 @@ docContent.push(
       }),
       new TableRow({
         children: [
-          celdaEncabezadoInfo("Ciudad", 20),
+          celdaEncabezadoInfo("Municipio", 20),
           celdaValorInfo(ciudadSiniestroTexto || municipio || formData?.ciudad || formData?.ciudad_siniestro || "", 36),
           celdaVaciaInfo(20),
           celdaVaciaInfo(24),
@@ -2990,6 +3047,7 @@ const response = await fetch(osmStaticUrl);
   }
 
   // Sección: Sustracción - Protecciones Físicas
+  if (incluirSeccionWord('sustraccion')) {
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 300 } }),
     seccion("6. SUSTRACCIÓN - PROTECCIONES FÍSICAS"),
@@ -3207,6 +3265,11 @@ const response = await fetch(osmStaticUrl);
       ],
     }),
     new Paragraph({ text: "", spacing: { after: 200 } }),
+  );
+}
+
+if (incluirSeccionWord('lucroCesante')) {
+  docContent.push(
     seccion("9. LUCRO CESANTE"),
     new Paragraph({ text: "Por incendio", bold: true, spacing: { after: 100 } }),
     new Table({
@@ -3254,6 +3317,35 @@ const response = await fetch(osmStaticUrl);
     new Paragraph({ text: "Análisis y comentarios", bold: true, spacing: { after: 100 } }),
     linea(comentariosLucroCesante || "No se ingresaron comentarios."),
     new Paragraph({ text: "", spacing: { after: 200 } }),
+  );
+}
+
+if (incluirSeccionWord('pml')) {
+  docContent.push(
+    seccion("9.1 PML (PÉRDIDA MÁXIMA PROBABLE)"),
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        new TableRow({
+          children: [
+            encabezadoTabla("Porcentaje (%)"),
+            celdaTexto(pmlPorcentaje ? `${pmlPorcentaje}%` : ""),
+          ],
+        }),
+        new TableRow({
+          children: [
+            encabezadoTabla("Descripción"),
+            celdaTexto(pmlDescripcion || ""),
+          ],
+        }),
+      ],
+    }),
+    new Paragraph({ text: "", spacing: { after: 200 } }),
+  );
+}
+
+if (incluirSeccionWord('procesosCriticos')) {
+  docContent.push(
     seccion("10. PROCESOS CRÍTICOS Y RIESGOS MEDIOAMBIENTALES"),
     new Paragraph({ text: "Procesos Críticos", bold: true, spacing: { after: 100 } }),
     linea(procesosCriticos || "No se ingresaron comentarios."),
@@ -3261,6 +3353,11 @@ const response = await fetch(osmStaticUrl);
     new Paragraph({ text: "Riesgos Medioambientales", bold: true, spacing: { after: 100 } }),
     linea(riesgosMedioambientales || "No se ingresaron comentarios."),
     new Paragraph({ text: "", spacing: { after: 200 } }),
+  );
+}
+
+if (incluirSeccionWord('roturaMaquinaria')) {
+  docContent.push(
     seccion("11. POR ROTURA DE MAQUINARIA"),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -3327,7 +3424,10 @@ const response = await fetch(osmStaticUrl);
         }),
       ],
     })
-  );  // Sección: Características operativas ambientales
+  );
+  }  // roturaMaquinaria
+
+  // Sección: Características operativas ambientales
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 300 } }),
     seccion("7. CARACTERÍSTICAS OPERATIVAS AMBIENTALES"),
@@ -4787,6 +4887,8 @@ const datos = {
       sustraccion: sustraccion,
       // Lucro Cesante - estado agrupado
       lucroCesante: lucroCesante,
+      pml: pml,
+      seccionesActivas: seccionesActivas,
       // Procesos Críticos y Riesgos Medioambientales
       procesosCriticos: procesosCriticos,
       riesgosMedioambientales: riesgosMedioambientales,
@@ -5453,6 +5555,16 @@ const cargarDatosFormulario = async (formularioId) => {
       // Campos "Otro" para Lucro Cesante
       setAreaRequeridaLucroCesanteOtro(lucroDatos.areaRequeridaLucroCesanteOtro ?? formulario.datos?.areaRequeridaLucroCesanteOtro ?? '');
       setComplejidadActividadLucroCesanteOtro(lucroDatos.complejidadActividadLucroCesanteOtro ?? formulario.datos?.complejidadActividadLucroCesanteOtro ?? '');
+      if (formulario.datos?.seccionesActivas) {
+        setSeccionesActivas(normalizarSeccionesActivas(formulario.datos.seccionesActivas));
+      }
+      const pmlDatos = formulario.datos?.pml || {};
+      setPmlPorcentaje(
+        pmlDatos.porcentaje ?? pmlDatos.pmlPorcentaje ?? formulario.datos?.pmlPorcentaje ?? ''
+      );
+      setPmlDescripcion(
+        pmlDatos.descripcion ?? pmlDatos.pmlDescripcion ?? formulario.datos?.pmlDescripcion ?? ''
+      );
       // Procesos Críticos y Riesgos Medioambientales
       setProcesosCriticos(formulario.datos?.procesosCriticos || '');
       setRiesgosMedioambientales(formulario.datos?.riesgosMedioambientales || '');
@@ -6183,6 +6295,9 @@ return (
         >
           Tabla de Contenido
         </h2>
+        <p className="text-sm mb-3" style={{ color: textSecondary }}>
+          Marque las secciones que desea incluir en el formulario y en el Word. Las secciones obligatorias no se pueden desactivar.
+        </p>
         <div className="overflow-x-auto mb-6">
           <table 
             className="w-full text-sm"
@@ -6197,6 +6312,16 @@ return (
                   backgroundColor: theme === 'dark' ? '#1F1F1F' : '#E5E7EB'
                 }}
               >
+                <th 
+                  className="px-3 py-1 font-bold text-center"
+                  style={{
+                    border: `1px solid ${borderColor}`,
+                    color: textPrimary,
+                    width: '48px'
+                  }}
+                >
+                  ✓
+                </th>
                 <th 
                   className="px-3 py-1 font-bold"
                   style={{
@@ -6227,57 +6352,56 @@ return (
               </tr>
             </thead>
             <tbody>
-              {[
-                ["0.", "INFORME DE INSPECCIÓN", "2"],
-                ["1.", "INFORMACIÓN GENERAL", "8"],
-                ["2.", "DESCRIPCIÓN GENERAL DE LA EMPRESA", "9"],
-                ["3.", "INFRAESTRUCTURA", "10"],
-                ["4.", "PROCESOS", "11"],
-                ["5.", "LINDEROS", "12"],
-                ["5.1", "MAPA DE UBICACIÓN", "13"],
-                ["6.", "SUSTRACCIÓN - PROTECCIONES FÍSICAS", "14"],
-                ["7.", "CARACTERÍSTICAS OPERATIVAS AMBIENTALES", "15"],
-                ["8.", "PROTECCIÓN Y PREVENCIÓN CONTRA INCENDIOS", "16"],
-                ["9.", "LUCRO CESANTE", "17"],
-                ["10.", "PROCESOS CRÍTICOS Y RIESGOS MEDIOAMBIENTALES", "18"],
-                ["11.", "POR ROTURA DE MAQUINARIA", "19"],
-                ["12.", "MAQUINARIA, EQUIPOS Y MANTENIMIENTO", "20"],
-                ["13.", "SERVICIOS INDUSTRIALES", "21"],
-                ["14.", "SINIESTRALIDAD", "22"],
-                ["15.", "ALMACENAMIENTO", "23"],
-                ["16.", "ANÁLISIS Y CLASIFICACIÓN DE RIESGOS", "24"],
-                ["16.1", "ANÁLISIS DE RIESGOS", "24"],
-                ["16.2", "CLASIFICACIÓN DE RIESGOS", "25"],
-                ["16.3", "CALIFICACIÓN DEL RIESGO (R) E ÍNDICE DE VULNERABILIDAD", "26"],
-                ["16.4", "MATRIZ DE CALOR DE RIESGOS", "27"],
-                ["17.", "RECOMENDACIONES", "28"],
-                ["18.", "REGISTRO FOTOGRÁFICO", "29"]
-              ].map(([num, title, page], idx) => (
+              {filasIndiceInforme.map((fila, idx) => (
                 <tr 
-                  key={idx}
+                  key={`${fila.ref}-${fila.titulo}-${idx}`}
                   style={{
                     backgroundColor: idx % 2 === 0 
                       ? (theme === 'dark' ? '#1A1A1A' : '#FFFFFF')
-                      : (theme === 'dark' ? '#1F1F1F' : '#F9FAFB')
+                      : (theme === 'dark' ? '#1F1F1F' : '#F9FAFB'),
+                    opacity: fila.activa ? 1 : 0.55,
                   }}
                 >
                   <td 
-                    className="px-3 py-1"
+                    className="px-3 py-1 text-center"
                     style={{
                       border: `1px solid ${borderColor}`,
-                      color: textPrimary
                     }}
                   >
-                    {num}
+                    {fila.tipo === 'principal' ? (
+                      fila.seleccionable ? (
+                        <input
+                          type="checkbox"
+                          checked={fila.activa}
+                          onChange={() => toggleSeccionInforme(fila.id)}
+                          disabled={cargando}
+                          className="w-4 h-4"
+                        />
+                      ) : (
+                        <span title="Sección obligatoria" style={{ color: textSecondary }}>●</span>
+                      )
+                    ) : null}
                   </td>
                   <td 
                     className="px-3 py-1"
                     style={{
                       border: `1px solid ${borderColor}`,
-                      color: textPrimary
+                      color: textPrimary,
+                      paddingLeft: fila.tipo === 'sub' ? '1.5rem' : undefined,
                     }}
                   >
-                    {title}
+                    {fila.ref}
+                  </td>
+                  <td 
+                    className="px-3 py-1"
+                    style={{
+                      border: `1px solid ${borderColor}`,
+                      color: textPrimary,
+                      paddingLeft: fila.tipo === 'sub' ? '1.5rem' : undefined,
+                      fontStyle: fila.tipo === 'sub' ? 'italic' : 'normal',
+                    }}
+                  >
+                    {fila.titulo}
                   </td>
                   <td 
                     className="px-3 py-1 text-right"
@@ -6286,7 +6410,7 @@ return (
                       color: textPrimary
                     }}
                   >
-                    {page}
+                    {fila.pagina}
                   </td>
                 </tr>
               ))}
@@ -6597,6 +6721,8 @@ return (
 
 
 
+{incluirSeccion('descripcionEmpresa') && (
+<>
 {/* Secciones extensas como texto libre */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -6626,8 +6752,11 @@ return (
   disabled={cargando}
 ></textarea>
 </div>
+</>
+)}
 
-
+{incluirSeccion('infraestructura') && (
+<>
 {/* SECCIÓN INFRAESTRUCTURA */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -7331,6 +7460,11 @@ return (
 </div>
 </div>
 
+</>
+)}
+
+{incluirSeccion('procesos') && (
+<>
 {/* SECCIÓN PROCESOS */}
 <div 
   className="mt-10 p-6 rounded shadow-sm"
@@ -8289,6 +8423,11 @@ return (
 </div>
 
 
+</>
+)}
+
+{incluirSeccion('linderos') && (
+<>
 {/* SECCIÓN LINDEROS */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -8511,6 +8650,11 @@ return (
 </div>
 </div>
 
+</>
+)}
+
+{incluirSeccion('sustraccion') && (
+<>
 {/* SECCIÓN SUSTRACCIÓN - PROTECCIONES FÍSICAS */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -9953,6 +10097,11 @@ return (
 </div>
 </div>
 
+</>
+)}
+
+{incluirSeccion('caracteristicasAmbientales') && (
+<>
 {/* SECCIÓN CARACTERÍSTICAS OPERATIVAS AMBIENTALES */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -10476,6 +10625,11 @@ return (
 </div>
 </div>
 
+</>
+)}
+
+{incluirSeccion('proteccionIncendios') && (
+<>
 {/* SECCIÓN PROTECCIÓN Y PREVENCIÓN CONTRA INCENDIOS */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -11239,6 +11393,11 @@ return (
   </div>
 </div>
 
+</>
+)}
+
+{incluirSeccion('lucroCesante') && (
+<>
 {/* SECCIÓN LUCRO CESANTE */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -11552,8 +11711,109 @@ return (
     />
   </div>
 </div>
+</>
+)}
+
+{/* SECCIÓN PML */}
+{incluirSeccion('pml') && (
+<div 
+  className="mt-8 p-6 rounded shadow-sm"
+  style={{
+    backgroundColor: cardBg,
+    border: `1px solid ${borderColor}`
+  }}
+>
+  <h2 
+    className="text-xl font-bold mb-4"
+    style={{ color: textPrimary }}
+  >
+    9.1 PML (PÉRDIDA MÁXIMA PROBABLE)
+  </h2>
+
+  <div className="overflow-x-auto">
+    <table 
+      className="w-full text-sm"
+      style={{
+        border: `1px solid ${borderColor}`,
+        borderCollapse: 'collapse'
+      }}
+    >
+      <tbody>
+        <tr style={{ backgroundColor: theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
+          <td 
+            style={{
+              border: `1px solid ${borderColor}`,
+              padding: '8px',
+              fontWeight: 'bold',
+              color: textPrimary,
+              width: '40%'
+            }}
+          >
+            Porcentaje (%)
+          </td>
+          <td 
+            style={{
+              border: `1px solid ${borderColor}`,
+              padding: '8px'
+            }}
+          >
+            <input
+              type="text"
+              value={pmlPorcentaje}
+              onChange={(e) => setPmlPorcentaje(e.target.value)}
+              placeholder="Porcentaje (%)"
+              className="w-full px-2 py-1 rounded"
+              style={{
+                backgroundColor: inputBg,
+                color: textPrimary,
+                borderColor: borderColor,
+                border: `1px solid ${borderColor}`
+              }}
+              disabled={cargando}
+            />
+          </td>
+        </tr>
+        <tr>
+          <td 
+            style={{
+              border: `1px solid ${borderColor}`,
+              padding: '8px',
+              fontWeight: 'bold',
+              color: textPrimary
+            }}
+          >
+            Descripción
+          </td>
+          <td 
+            style={{
+              border: `1px solid ${borderColor}`,
+              padding: '8px'
+            }}
+          >
+            <textarea
+              value={pmlDescripcion}
+              onChange={(e) => setPmlDescripcion(e.target.value)}
+              placeholder="Descripción"
+              rows={4}
+              className="w-full px-2 py-1 rounded"
+              style={{
+                backgroundColor: inputBg,
+                color: textPrimary,
+                borderColor: borderColor,
+                border: `1px solid ${borderColor}`
+              }}
+              disabled={cargando}
+            />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+)}
 
 {/* SECCIÓN PROCESOS CRÍTICOS Y RIESGOS MEDIOAMBIENTALES */}
+{incluirSeccion('procesosCriticos') && (
 <div 
   className="mt-8 p-6 rounded shadow-sm"
   style={{
@@ -11616,7 +11876,10 @@ return (
     />
   </div>
 </div>
+)}
 
+{incluirSeccion('roturaMaquinaria') && (
+<>
 {/* SECCIÓN POR ROTURA DE MAQUINARIA */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -12001,7 +12264,11 @@ return (
     </div>
   </div>
 </div>
+</>
+)}
 
+{incluirSeccion('maquinaria') && (
+<>
 {/* SECCIÓN MAQUINARIA */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -12140,9 +12407,10 @@ return (
   setDatosEquipos(areas);
 }, [])} />
 
+</>
+)}
 
-
-
+{incluirSeccion('serviciosIndustriales') && (
 <div 
   className="mt-8 p-6 rounded shadow-sm"
   style={{
@@ -12700,7 +12968,9 @@ return (
   </table>
 </div>
 </div>
+)}
 
+{incluirSeccion('siniestralidad') && (
 <div 
   className="mt-8 p-6 rounded shadow-sm"
   style={{
@@ -12849,7 +13119,10 @@ return (
     </table>
   </div>
 </div>
+)}
 
+{incluirSeccion('almacenamiento') && (
+<>
 {/* 15. ALMACENAMIENTO */}
 <div
   className="mt-8 p-6 rounded shadow-sm"
@@ -13058,7 +13331,11 @@ return (
     </table>
   </div>
 </div>
+</>
+)}
 
+{incluirSeccion('analisisRiesgos') && (
+<>
 {/* SECCIÓN DE ANÁLISIS DE RIESGOS - MOVIDA AQUÍ PARA UBICACIÓN IDEAL ANTES DE RECOMENDACIONES */}
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -13557,6 +13834,8 @@ return (
 
 </div>
 </div>
+</>
+)}
 
 <div 
   className="mt-8 p-6 rounded shadow-sm"
@@ -13917,6 +14196,7 @@ return (
     </Suspense>
   </div>
 
+    {incluirSeccion('registroFotografico') && (
     <Suspense fallback={<div style={{ color: textPrimary }}>Cargando registro fotográfico...</div>}>
       <RegistroFotografico 
         onChange={useCallback((imagenes) => {
@@ -13926,6 +14206,7 @@ return (
         tituloSeccion="18. REGISTRO FOTOGRÁFICO"
       />
     </Suspense>
+    )}
 
     {/* Botón de acción */}
     <div 
