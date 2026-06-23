@@ -327,10 +327,62 @@ export const coincideFiltroEstado = (valorCaso, filtro, catalogoEstados = []) =>
   return codiCaso === codiFiltro;
 };
 
+const indiceCiudadesVacio = () => ({ porCodi: new Map(), porNorm: new Map() });
+
+export const buildCiudadResolverIndex = (ciudades = []) => {
+  const porCodi = new Map();
+  const porNorm = new Map();
+
+  for (const ciudad of ciudades) {
+    const nombre = ciudad.descMunicipio ?? ciudad.label ?? ciudad.nombre ?? '';
+    const nombreTexto = nombre == null ? '' : String(nombre).trim();
+    if (!nombreTexto) continue;
+
+    const entry = { nombre: nombreTexto };
+    const codigos = [
+      ciudad.codiMunicipio,
+      ciudad.codiCpoblado,
+      ciudad.value,
+      ciudad._id,
+    ];
+
+    for (const codigo of codigos) {
+      const codi = codigo == null ? '' : String(codigo).trim();
+      if (codi && !porCodi.has(codi)) {
+        porCodi.set(codi, entry);
+      }
+    }
+
+    const norm = normCatalogoTexto(nombreTexto);
+    if (norm && !porNorm.has(norm)) {
+      porNorm.set(norm, entry);
+    }
+  }
+
+  return { porCodi, porNorm };
+};
+
+export const resolverNombreCiudad = (valor, index = indiceCiudadesVacio()) => {
+  const raw = String(valor ?? '').trim();
+  if (!raw) return '';
+
+  if (index.porCodi.has(raw)) {
+    return index.porCodi.get(raw).nombre;
+  }
+
+  const norm = normCatalogoTexto(raw);
+  if (index.porNorm.has(norm)) {
+    return index.porNorm.get(norm).nombre;
+  }
+
+  return raw;
+};
+
 export function useExpressCatalogos() {
   const [catalogoResponsables, setCatalogoResponsables] = useState([]);
   const [catalogoAseguradoras, setCatalogoAseguradoras] = useState([]);
   const [catalogoEstados, setCatalogoEstados] = useState([]);
+  const [indiceCiudades, setIndiceCiudades] = useState(indiceCiudadesVacio);
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
 
   useEffect(() => {
@@ -340,10 +392,11 @@ export function useExpressCatalogos() {
       setLoadingCatalogos(true);
       try {
         const token = localStorage.getItem('token');
-        const [responsablesRes, aseguradorasRes, estadosRes] = await Promise.allSettled([
+        const [responsablesRes, aseguradorasRes, estadosRes, ciudadesRes] = await Promise.allSettled([
           fetch(`${BASE_URL}/api/responsables`),
           fetch(`${BASE_URL}/api/clientes`),
           fetch(`${BASE_URL}/api/estados/express`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined),
+          fetch(`${BASE_URL}/api/ciudades`),
         ]);
 
         if (cancelado) return;
@@ -385,12 +438,21 @@ export function useExpressCatalogos() {
         } else {
           setCatalogoEstados([]);
         }
+
+        if (ciudadesRes.status === 'fulfilled') {
+          const data = await ciudadesRes.value.json().catch(() => []);
+          const lista = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : [];
+          setIndiceCiudades(buildCiudadResolverIndex(lista));
+        } else {
+          setIndiceCiudades(indiceCiudadesVacio());
+        }
       } catch (err) {
         console.error('Error cargando catálogos Express:', err);
         if (!cancelado) {
           setCatalogoResponsables([]);
           setCatalogoAseguradoras([]);
           setCatalogoEstados([]);
+          setIndiceCiudades(indiceCiudadesVacio());
         }
       } finally {
         if (!cancelado) setLoadingCatalogos(false);
@@ -489,6 +551,11 @@ export function useExpressCatalogos() {
     [catalogoResponsables]
   );
 
+  const obtenerNombreCiudad = useCallback(
+    (codigo) => resolverNombreCiudad(codigo, indiceCiudades),
+    [indiceCiudades]
+  );
+
   return {
     catalogoResponsables,
     catalogoAseguradoras,
@@ -497,6 +564,7 @@ export function useExpressCatalogos() {
     obtenerNombreEstado,
     obtenerNombreAseguradora,
     obtenerNombreResponsable,
+    obtenerNombreCiudad,
     resolverCodigoResponsable: (v) => resolverCodigoResponsable(v, catalogoResponsables),
     resolverCodigoAseguradora: (v) => resolverCodigoAseguradora(v, catalogoAseguradoras),
     resolverCodigoEstado: (v) => resolverCodigoEstado(v, catalogoEstados),

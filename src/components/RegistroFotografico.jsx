@@ -9,6 +9,7 @@ export default function RegistroFotografico({
   onChange,
   imagenesIniciales = [],
   tituloSeccion = "17. REGISTRO FOTOGRÁFICO",
+  descripcionPlaceholder = "Descripción de la imagen",
 }) {
   const { theme } = useTheme();
   
@@ -556,7 +557,7 @@ setImagenes(imagenesProcesadas);
                 </div>
                 <input
                   type="text"
-                  placeholder="Descripción de la imagen"
+                  {...(descripcionPlaceholder ? { placeholder: descripcionPlaceholder } : {})}
                   value={img.descripcion}
                   onChange={(e) => handleDescripcionChange(index, e.target.value)}
                   className="mt-2 w-full rounded px-2 py-1 text-sm"

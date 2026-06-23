@@ -1,212 +1,130 @@
 import React from "react";
 import Select from "react-select";
+import {
+  FieldLabel,
+  ThemedInput,
+  ThemedTextarea,
+  SyncedValue,
+  getSelectStyles,
+  useMaquinariaTheme,
+} from "./maquinariaUi";
+
+const SALUDOS = ["Estimados señores:", "Cordial saludo.", "Apreciados señores:"];
 
 export default function CartaPresentacionMaquinaria({
   ciudadFecha,
   setCiudadFecha,
   fecha,
-  setFecha,
-  destinatario,
-  setDestinatario,
-  asegurado,
-  setAsegurado,
-  maquinaria,
-  setMaquinaria,
+  aseguradora,
+  nombreAsegurado,
+  nombreMaquinaria,
   referencia,
-  setReferencia,
   saludo,
   setSaludo,
   cuerpo,
   setCuerpo,
-  foto,
-  setFoto,
-  // Nuevas props para datos maestros
   opcionesCiudades = [],
-  opcionesAseguradoras = [],
   onCiudadChange,
-  onAseguradoraChange
+  cargando = false,
 }) {
-  const saludosPredeterminados = [
-    "Estimados señores:",
-    "Cordial saludo.",
-    "Apreciados señores:",
-  ];
+  const t = useMaquinariaTheme();
+  const selectStyles = getSelectStyles(t);
 
   return (
-    <div className="text-white text-sm">
-      {/* Ciudad */}
-      <div className="mb-2">
-        <label className="block mb-1 font-semibold">Ciudad</label>
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="sm:col-span-2">
+        <FieldLabel hint="Al elegir ciudad se autocompleta lugar, ubicación y departamento en la tabla">
+          Ciudad
+        </FieldLabel>
         <Select
           options={opcionesCiudades}
-          value={opcionesCiudades.find(opt => opt.value === ciudadFecha) || null}
+          value={opcionesCiudades.find((opt) => opt.label === ciudadFecha) || null}
           onChange={(opt) => {
             if (opt) {
               setCiudadFecha(opt.label);
-              if (onCiudadChange) {
-                onCiudadChange(opt.value);
-              }
+              onCiudadChange?.(opt.value);
             } else {
               setCiudadFecha("");
             }
           }}
           placeholder="Seleccione ciudad"
           isClearable
-          className="text-sm"
-          styles={{
-            control: styles => ({
-              ...styles,
-              backgroundColor: "#1F2937", // bg-gray-800
-              color: "white",
-              borderColor: "#4B5563",
-            }),
-            singleValue: styles => ({ ...styles, color: "white" }),
-            input: styles => ({ ...styles, color: "white" }),
-            menu: styles => ({ ...styles, backgroundColor: "#1F2937", color: "white" }),
-            option: (styles, state) => ({
-              ...styles,
-              backgroundColor: state.isFocused ? "#374151" : "#1F2937",
-              color: "white",
-            }),
-          }}
+          styles={selectStyles}
+          isDisabled={cargando}
         />
-        {/* Campo editable para ciudad */}
-        <input
-          type="text"
-          value={ciudadFecha}
-          onChange={e => setCiudadFecha(e.target.value)}
-          className="w-full mt-1 bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-          placeholder="Ciudad (editable)"
-        />
-      </div>
-
-      {/* Fecha */}
-      <div className="mb-2">
-        <label className="block mb-1 font-semibold">Fecha</label>
-        <input
-          type="date"
-          className="w-full bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-          value={fecha}
-          onChange={e => setFecha(e.target.value)}
-          placeholder="Fecha"
-        />
-      </div>
-
-      {/* Aseguradora */}
-      <div className="mb-2">
-        <label className="block mb-1 font-semibold">Aseguradora</label>
-        <Select
-          options={opcionesAseguradoras}
-          value={opcionesAseguradoras.find(opt => opt.value === destinatario) || null}
-          onChange={(opt) => {
-            if (opt) {
-              setDestinatario(opt.label);
-              if (onAseguradoraChange) {
-                onAseguradoraChange(opt.value);
-              }
-            } else {
-              setDestinatario("");
-            }
-          }}
-          placeholder="Seleccione aseguradora"
-          isClearable
-          className="text-sm"
-          styles={{
-            control: styles => ({
-              ...styles,
-              backgroundColor: "#1F2937", // bg-gray-800
-              color: "white",
-              borderColor: "#4B5563",
-            }),
-            singleValue: styles => ({ ...styles, color: "white" }),
-            input: styles => ({ ...styles, color: "white" }),
-            menu: styles => ({ ...styles, backgroundColor: "#1F2937", color: "white" }),
-            option: (styles, state) => ({
-              ...styles,
-              backgroundColor: state.isFocused ? "#374151" : "#1F2937",
-              color: "white",
-            }),
-          }}
-        />
-        {/* Campo editable para aseguradora */}
-        <input
-          type="text"
-          value={destinatario}
-          onChange={e => setDestinatario(e.target.value)}
-          className="w-full mt-1 bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-          placeholder="Aseguradora (editable)"
-        />
-      </div>
-
-      {/* Referencia */}
-      <div className="mb-2">
-        <label className="block mb-1 font-semibold">Referencia</label>
-        <textarea
-          className="w-full bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-          value={referencia}
-          onChange={e => setReferencia(e.target.value)}
-          placeholder="Referencia"
-          rows={2}
-        />
-      </div>
-
-      {/* Asegurado */}
-      <div className="mb-2">
-        <label className="block mb-1 font-semibold">Asegurado</label>
-        <input
-          type="text"
-          className="w-full bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-          value={asegurado}
-          onChange={e => setAsegurado(e.target.value)}
-          placeholder="Nombre del asegurado"
-        />
-      </div>
-
-      {/* Maquinaria */}
-      <div className="mb-2">
-        <label className="block mb-1 font-semibold">Maquinaria</label>
-        <input
-          type="text"
-          className="w-full bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-          value={maquinaria}
-          onChange={e => setMaquinaria(e.target.value)}
-          placeholder="Nombre de la maquinaria"
-        />
-      </div>
-
-      {/* Saludo predeterminado */}
-      <div className="mb-2">
-        <label className="block mb-1 font-semibold">Saludo</label>
-        <div className="flex gap-2">
-          <select
-            className="bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-            value={saludo}
-            onChange={e => setSaludo(e.target.value)}
-          >
-            <option value="">Seleccione un saludo</option>
-            {saludosPredeterminados.map((s, i) => (
-              <option key={i} value={s}>{s}</option>
-            ))}
-          </select>
-          <input
-            type="text"
-            className="flex-1 bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
-            value={saludo}
-            onChange={e => setSaludo(e.target.value)}
-            placeholder="Otro saludo"
+        <div className="mt-2">
+          <ThemedInput
+            value={ciudadFecha}
+            onChange={(e) => setCiudadFecha(e.target.value)}
+            placeholder="O escriba la ciudad"
+            disabled={cargando}
           />
         </div>
       </div>
 
-      {/* Cuerpo */}
-      <div className="mb-4">
-        <label className="block mb-1 font-semibold">Texto de presentación</label>
-        <textarea
-          className="w-full bg-gray-800 text-white border-b border-gray-600 px-2 py-1"
+      <div>
+        <FieldLabel>Fecha</FieldLabel>
+        <SyncedValue value={fecha} source="Encabezado del formulario" />
+      </div>
+
+      <div>
+        <FieldLabel>Aseguradora</FieldLabel>
+        <SyncedValue value={aseguradora} source="Encabezado del formulario" />
+      </div>
+
+      <div>
+        <FieldLabel>Asegurado</FieldLabel>
+        <SyncedValue value={nombreAsegurado} source="Encabezado del formulario" />
+      </div>
+
+      <div>
+        <FieldLabel>Maquinaria</FieldLabel>
+        <SyncedValue value={nombreMaquinaria} source="Encabezado del formulario" />
+      </div>
+
+      <div className="sm:col-span-2">
+        <FieldLabel>Referencia</FieldLabel>
+        <SyncedValue value={referencia} source="§1 Informe de inspección" />
+      </div>
+
+      <div className="sm:col-span-2">
+        <FieldLabel>Saludo</FieldLabel>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select
+            value={saludo}
+            onChange={(e) => setSaludo(e.target.value)}
+            className="px-3 py-2 text-sm rounded-md sm:max-w-xs"
+            style={{
+              backgroundColor: t.inputBg,
+              color: t.textPrimary,
+              border: `1px solid ${t.borderColor}`,
+            }}
+            disabled={cargando}
+          >
+            <option value="">Seleccione un saludo</option>
+            {SALUDOS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <ThemedInput
+            value={saludo}
+            onChange={(e) => setSaludo(e.target.value)}
+            placeholder="O escriba otro saludo"
+            disabled={cargando}
+          />
+        </div>
+      </div>
+
+      <div className="sm:col-span-2">
+        <FieldLabel>Texto de presentación</FieldLabel>
+        <ThemedTextarea
           value={cuerpo}
-          onChange={e => setCuerpo(e.target.value)}
-          placeholder="Texto de presentación"
-          rows={3}
+          onChange={(e) => setCuerpo(e.target.value)}
+          placeholder="Cuerpo de la carta de presentación"
+          rows={4}
+          disabled={cargando}
         />
       </div>
     </div>

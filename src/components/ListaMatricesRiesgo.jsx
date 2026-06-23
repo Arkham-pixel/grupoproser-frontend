@@ -10,6 +10,8 @@ import {
   FaUser,
 } from 'react-icons/fa';
 import { MatrizRiesgoService } from '../services/matrizRiesgoService';
+import { autoSaveService } from '../services/autoSaveService';
+import { buildFormAutoSaveKey } from '../hooks/useFormAutoSave';
 import {
   matrizBtnDanger,
   matrizBtnPrimary,
@@ -69,6 +71,12 @@ const ListaMatricesRiesgo = () => {
     navigate(`/matriz-riesgo-avanzada/${id}`);
   };
 
+  const handleNuevaMatriz = () => {
+    autoSaveService.clear(buildFormAutoSaveKey('matriz-riesgo', null));
+    localStorage.removeItem('matrizRiesgos');
+    navigate('/matriz-riesgo-avanzada', { state: { nuevaMatriz: true } });
+  };
+
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
     try {
@@ -107,7 +115,7 @@ const ListaMatricesRiesgo = () => {
             Matrices de riesgo guardadas
           </h1>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={matrizBtnPrimary} onClick={() => navigate('/matriz-riesgo-avanzada')}>
+            <button type="button" className={matrizBtnPrimary} onClick={handleNuevaMatriz}>
               <FaPlus />
               Nueva matriz
             </button>
@@ -173,7 +181,7 @@ const ListaMatricesRiesgo = () => {
             <button
               type="button"
               className={`${matrizBtnPrimary} mt-4`}
-              onClick={() => navigate('/matriz-riesgo-avanzada')}
+              onClick={handleNuevaMatriz}
             >
               <FaPlus />
               Crear nueva matriz

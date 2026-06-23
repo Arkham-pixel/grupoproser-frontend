@@ -3275,6 +3275,25 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   filaDosCols('FECHA DE INSPECCION', valorTabla(fd.fechaInspeccion, 'Fecha de Inspección'))
                 );
               }
+              if (
+                (estadoActual === 'actualizacion' || estadoActual === 'informeFinal') &&
+                mostrarFila(fd.fechaActualizacion)
+              ) {
+                filas.push(
+                  filaDosCols(
+                    'FECHA DE ACTUALIZACION',
+                    valorTabla(fd.fechaActualizacion, 'Fecha de actualización')
+                  )
+                );
+              }
+              if (estadoActual === 'informeFinal' && mostrarFila(fd.fechaInformeFinal)) {
+                filas.push(
+                  filaDosCols(
+                    'FECHA DE INFORME FINAL',
+                    valorTabla(fd.fechaInformeFinal, 'Fecha de informe final')
+                  )
+                );
+              }
 
               if (esInformePreliminarOActualizacion && tNorm(textoReservaSugeridaTabla)) {
                 filas.push(
@@ -5315,6 +5334,7 @@ setVersiones(prev => ({
             datosMaestros={DATOS_MAESTROS}
             autofillState={autofillState}
             mostrarResumenTablaInforme={estadoActual !== 'actaInspeccion'}
+            estadoActual={estadoActual}
           />
 
           {/* Valor de Reserva (campos personalizados en tabla del Word; no en informe final — ahí van los totales del liquidador) */}
@@ -5686,27 +5706,6 @@ setVersiones(prev => ({
                     className="block text-xs sm:text-sm font-medium mb-2"
                     style={{ color: textPrimary }}
                   >
-                    {subtituloAjuste('Fecha de actualización')}
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.fechaActualizacion || obtenerFechaActualISO()}
-                    onChange={(e) => handleInputChange('fechaActualizacion', e.target.value)}
-                    className="w-full px-2 sm:px-3 py-2 rounded-md focus:outline-none text-sm"
-                    style={{
-                      backgroundColor: inputBg,
-                      color: textPrimary,
-                      borderColor: borderColor,
-                      border: `1px solid ${borderColor}`
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label 
-                    className="block text-xs sm:text-sm font-medium mb-2"
-                    style={{ color: textPrimary }}
-                  >
                     {subtituloAjuste('Inspector responsable')}
                   </label>
                   <input
@@ -5868,27 +5867,6 @@ setVersiones(prev => ({
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label 
-                    className="block text-sm font-medium mb-2"
-                    style={{ color: textPrimary }}
-                  >
-                    Fecha del Informe Final
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.fechaInformeFinal || obtenerFechaActualISO()}
-                    onChange={(e) => handleInputChange('fechaInformeFinal', e.target.value)}
-                    className="w-full px-3 py-2 rounded-md focus:outline-none"
-                    style={{
-                      backgroundColor: inputBg,
-                      color: textPrimary,
-                      borderColor: borderColor,
-                      border: `1px solid ${borderColor}`
-                    }}
-                  />
-                </div>
-
                 <div>
                   <label 
                     className="block text-sm font-medium mb-2"

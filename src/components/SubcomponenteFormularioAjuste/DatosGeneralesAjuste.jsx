@@ -3,13 +3,15 @@ import { FaUser, FaBuilding, FaMapMarkerAlt, FaCalendarAlt, FaFileAlt, FaShieldA
 import { useTheme } from '../../context/ThemeContext';
 import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 import { resolverFechaAsignacionDesdeCaso } from '../../utils/prefillAjusteDesdeCasoComplex';
+import { obtenerFechaActualISO } from '../../utils/fechaUtils';
 
 export default function DatosGeneralesAjuste({
   formData,
   onInputChange,
   datosMaestros = {},
   autofillState = { loading: false, partial: false, error: '' },
-  mostrarResumenTablaInforme = true
+  mostrarResumenTablaInforme = true,
+  estadoActual = 'inicial'
 }) {
   const { theme } = useTheme();
   
@@ -1149,7 +1151,7 @@ export default function DatosGeneralesAjuste({
           <FaCalendarAlt className="mr-2" />
           Fechas Importantes
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label 
               className="block text-sm font-medium mb-2"
@@ -1211,6 +1213,50 @@ export default function DatosGeneralesAjuste({
               }}
             />
           </div>
+          {(estadoActual === 'actualizacion' || estadoActual === 'informeFinal') && (
+            <div>
+              <label
+                className="block text-sm font-medium mb-2"
+                style={{ color: textPrimary }}
+              >
+                {tituloAjuste('Fecha de actualización')}
+              </label>
+              <input
+                type="date"
+                value={formData.fechaActualizacion || obtenerFechaActualISO()}
+                onChange={(e) => onInputChange('fechaActualizacion', e.target.value)}
+                className="w-full px-3 py-2 rounded-md focus:outline-none"
+                style={{
+                  backgroundColor: inputBg,
+                  color: textPrimary,
+                  borderColor: borderColor,
+                  border: `1px solid ${borderColor}`
+                }}
+              />
+            </div>
+          )}
+          {estadoActual === 'informeFinal' && (
+            <div>
+              <label
+                className="block text-sm font-medium mb-2"
+                style={{ color: textPrimary }}
+              >
+                {tituloAjuste('Fecha de informe final')}
+              </label>
+              <input
+                type="date"
+                value={formData.fechaInformeFinal || obtenerFechaActualISO()}
+                onChange={(e) => onInputChange('fechaInformeFinal', e.target.value)}
+                className="w-full px-3 py-2 rounded-md focus:outline-none"
+                style={{
+                  backgroundColor: inputBg,
+                  color: textPrimary,
+                  borderColor: borderColor,
+                  border: `1px solid ${borderColor}`
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

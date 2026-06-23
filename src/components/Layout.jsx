@@ -191,10 +191,10 @@ export default function Layout() {
     '/express/dashboard': 'Dashboard Express',
     '/express/tablero': 'Tablero operativo Express',
     '/admin/catalogos-express': 'Catálogos Express',
-    '/puertos/formulario': 'Formulario de Puertos',
-    '/puertos/actas': 'Actas y Descargues',
-    '/puertos/actas/nueva': 'Nueva Acta',
-    '/puertos/actas/caso/nueva': 'Informe Exportación',
+    '/puertos/actas': 'Puertos — Actas',
+    '/puertos/actas/nueva': 'Puertos — Nueva Acta',
+    '/puertos/actas/caso/nueva': 'Puertos — Informe Exportación',
+    '/puertos/formulario': 'Inspección de Instalaciones',
     '/historial': 'Historial de Formularios',
     '/siniestros': 'Siniestros',
     '/admin/usuarios': 'Administración de Usuarios',
@@ -319,8 +319,9 @@ export default function Layout() {
       : [],
     puertos: !esVisualizador
       ? [
-          { path: '/puertos/formulario', icon: FaShip, label: 'Formulario de Inspección' },
-          { path: '/puertos/actas', icon: FaList, label: 'Actas y Descargues' },
+          { path: '/puertos/actas', icon: FaClipboardList, label: 'Actas y Descargues' },
+          { path: '/puertos/actas/nueva', icon: FaPlus, label: 'Nueva Acta' },
+          { path: '/puertos/formulario', icon: FaShip, label: 'Inspección Instalaciones' },
         ]
       : [],
     cuenta: !esVisualizador

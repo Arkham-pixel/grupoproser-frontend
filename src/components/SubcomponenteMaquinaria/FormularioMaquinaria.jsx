@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media } from "docx";
+import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media, VerticalAlign, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
 import EncabezadoMaquinaria from "./EncabezadoMaquinaria";
 import CartaPresentacionMaquinaria from "./CartaPresentacionMaquinaria";
@@ -10,8 +10,11 @@ import EstadoGeneralMaquinaria from "./EstadoGeneralMaquinaria";
 import TipoProteccionMaquinaria from "./TipoProteccionMaquinaria";
 import RecomendacionesObservacionesMaquinaria from "./RecomendacionesObservacionesMaquinaria";
 import RegistroFotograficoMaquinaria from "./RegistroFotograficoMaquinaria";
+import FotoPrincipalMaquinaria from "./FotoPrincipalMaquinaria";
 import FirmaMaquinaria from "./FirmaMaquinaria";
-import Logo from '../../img/Logo.png'; // Ajusta la ruta según tu estructura
+import Logo from '../../img/Logo.png';
+import { fetchImageAsArrayBuffer } from '../../utils/imageUtils';
+import { normalizarImagenCargada } from './maquinariaImagenUtils.js'; // Ajusta la ruta según tu estructura
 import BotonesHistorial from '../BotonesHistorial.jsx';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario.js';
@@ -19,6 +22,18 @@ import historialService, { TIPOS_FORMULARIOS } from '../../services/historialSer
 import { useServerAutoSaveUpdate } from '../../hooks/useFormAutoSave';
 import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios.js';
 import colombia from '../../data/colombia.json';
+import { useMaquinariaTheme, SectionCard, ThemedInput, LlenadoGuia } from './maquinariaUi.jsx';
+import {
+  construirSnapshotMaquinaria,
+  snapshotALocalStorage,
+  aplicarDatosMaquinaria,
+  aplicarBorradorLocal,
+  buscarDepartamentoPorCiudad,
+  borradorTieneContenido,
+  limpiarBorradorMaquinaria,
+  BORRADOR_MAQUINARIA_KEY,
+  BORRADOR_MAQUINARIA_LEGACY_KEY,
+} from './maquinariaFormSnapshot.js';
 
 //import proserLogo from "../../img/logo.png";
 
@@ -111,6 +126,7 @@ const toArrayBuffer = (file) => {
 
 
 export const convertirHtmlADocx = (html) => {
+  if (!html?.trim()) return [];
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
   const elements = Array.from(doc.body.childNodes);
@@ -134,6 +150,8 @@ export const convertirHtmlADocx = (html) => {
       );
     }
 
+    if (!node.textContent?.trim()) return [];
+
     return new Paragraph({
       children: [new TextRun({ text: node.textContent, font: "Arial", size: 24 })],
     });
@@ -142,33 +160,41 @@ export const convertirHtmlADocx = (html) => {
   return docxParagraphs;
 };
 
+export const textoPlanoAHtml = (text) => {
+  if (!text?.trim()) return "";
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  return text
+    .split(/\n{2,}/)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${p.replace(/\n/g, "<br>")}</p>`)
+    .join("");
+};
+
 export default function FormularioMaquinaria() {
+  const t = useMaquinariaTheme();
   // Estados principales
   const [nombre, setNombre] = useState("");
   const [fecha, setFecha] = useState("");
   const [nombreAsegurado, setNombreAsegurado] = useState("");
   const [nombreMaquinaria, setNombreMaquinaria] = useState("");
   const [ciudadFecha, setCiudadFecha] = useState("");
-  const [destinatario, setDestinatario] = useState("");
   const [referencia, setReferencia] = useState("");
   const [saludo, setSaludo] = useState("");
   const [cuerpo, setCuerpo] = useState("");
-  const [fotos, setFotos] = useState([{ src: "", descripcion: "" }]);
   const [aseguradora, setAseguradora] = useState("");
-  const [equipo, setEquipo] = useState("");
   const [marca, setMarca] = useState("");
   const [descripcion, setDescripcion] = useState("");
-  const [marcaBien, setMarcaBien] = useState("");
   const [electrico, setElectrico] = useState("");
   const [tipoProteccion, setTipoProteccion] = useState("");
   const [recomendaciones, setRecomendaciones] = useState("");
   const [inspectorSeleccionado, setInspectorSeleccionado] = useState("");
+  const [codiInspector, setCodiInspector] = useState("");
   const [cargoSeleccionado, setCargoSeleccionado] = useState("");
-  const [imagenesRegistro, setImagenesRegistro] = useState([]); // Para varias fotos
-  const [fotoPrincipal, setFotoPrincipal] = useState(null); // archivo File
-  const [fotoPrincipalPreview, setFotoPrincipalPreview] = useState(""); // base64 para mostrar
+  const [opcionesInspectores, setOpcionesInspectores] = useState([]);
+  const [imagenesRegistro, setImagenesRegistro] = useState([]);
+  const [fotoPrincipalImagen, setFotoPrincipalImagen] = useState(null);
   const [descripcionFotoPrincipal, setDescripcionFotoPrincipal] = useState("");
-  const [tomador, setTomador] = useState("");
   const [lugar, setLugar] = useState("");
   const [ubicacion, setUbicacion] = useState("");
   const [departamento, setDepartamento] = useState("");
@@ -187,12 +213,14 @@ export default function FormularioMaquinaria() {
   const [hidraulico, setHidraulico] = useState("");
   const [pintura, setPintura] = useState("");
   const [chasis, setChasis] = useState("");
-  const [locomocion, setLocomocion] = useState("");
   const [mantenimiento, setMantenimiento] = useState("");
   const [funcionamiento, setFuncionamiento] = useState("");
-  const [registroFotografico, setRegistroFotografico] = useState([]);
-  const [firmanteInspector, setFirmanteInspector] = useState("");
-  const [codigoInspector, setCodigoInspector] = useState("");
+  const [firmaClienteNombre, setFirmaClienteNombre] = useState("");
+  const [firmaClienteCargo, setFirmaClienteCargo] = useState("");
+  const [firmaClienteEmail, setFirmaClienteEmail] = useState("");
+  const [firmaCliente, setFirmaCliente] = useState("");
+  const [inspectorFuncionarioId, setInspectorFuncionarioId] = useState("");
+  const [inspectorFirmaImagen, setInspectorFirmaImagen] = useState("");
 
   // Estados para modo edición
   const [modoEdicion, setModoEdicion] = useState(false);
@@ -210,129 +238,290 @@ export default function FormularioMaquinaria() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const borradorInicializadoRef = useRef(false);
+  const esRutaFormularioMaquinaria = (pathname) =>
+    pathname === '/formulario-maquinaria'
+    || pathname.startsWith('/formulario-maquinaria/')
+    || pathname.endsWith('/formulario-maquinaria');
 
-  // Cargar datos desde localStorage al iniciar (solo si no hay ID)
+  const limpiarFormulario = () => {
+    limpiarBorradorMaquinaria();
+    setNombre('');
+    setFecha('');
+    setNombreAsegurado('');
+    setNombreMaquinaria('');
+    setCiudadFecha('');
+    setReferencia('');
+    setSaludo('');
+    setCuerpo('');
+    setAseguradora('');
+    setMarca('');
+    setDescripcion('');
+    setElectrico('');
+    setTipoProteccion('');
+    setRecomendaciones('');
+    setInspectorSeleccionado('');
+    setCodiInspector('');
+    setCargoSeleccionado('');
+    setImagenesRegistro([]);
+    setFotoPrincipalImagen(null);
+    setDescripcionFotoPrincipal('');
+    setLugar('');
+    setUbicacion('');
+    setDepartamento('');
+    setModelo('');
+    setLinea('');
+    setMotorDiesel('');
+    setSistemaLocomocion('');
+    setColor('');
+    setEstadoOperativo('');
+    setCabina('');
+    setFuncion('');
+    setEquipoContraincendio('');
+    setEquipoRadio('');
+    setRadiodeOperacion('');
+    setMecanico('');
+    setHidraulico('');
+    setPintura('');
+    setChasis('');
+    setMantenimiento('');
+    setFuncionamiento('');
+    setFirmaClienteNombre('');
+    setFirmaClienteCargo('');
+    setFirmaClienteEmail('');
+    setFirmaCliente('');
+    setInspectorFuncionarioId('');
+    setInspectorFirmaImagen('');
+    setCamposLlenadosAuto({ aseguradora: false, ciudad: false, asegurado: false });
+  };
+
+  const guardarBorradorSesion = (estado) => {
+    const borrador = snapshotALocalStorage(estado);
+    if (borradorTieneContenido(borrador)) {
+      sessionStorage.setItem(BORRADOR_MAQUINARIA_KEY, JSON.stringify(borrador));
+    } else {
+      limpiarBorradorMaquinaria();
+    }
+  };
+
+  const getEstadoActual = () => ({
+    nombre,
+    fecha,
+    nombreAsegurado,
+    nombreMaquinaria,
+    ciudadFecha,
+    referencia,
+    saludo,
+    cuerpo,
+    aseguradora,
+    marca,
+    descripcion,
+    electrico,
+    tipoProteccion,
+    recomendaciones,
+    inspectorSeleccionado,
+    codiInspector,
+    cargoSeleccionado,
+    imagenesRegistro,
+    fotoPrincipalImagen,
+    descripcionFotoPrincipal,
+    lugar,
+    ubicacion,
+    departamento,
+    modelo,
+    linea,
+    motorDiesel,
+    sistemaLocomocion,
+    color,
+    estadoOperativo,
+    cabina,
+    funcion,
+    equipoContraincendio,
+    equipoRadio,
+    radiodeOperacion,
+    mecanico,
+    hidraulico,
+    pintura,
+    chasis,
+    mantenimiento,
+    funcionamiento,
+    firmaClienteNombre,
+    firmaClienteCargo,
+    firmaClienteEmail,
+    firmaCliente,
+    inspectorFuncionarioId,
+    inspectorFirmaImagen,
+  });
+
+  const getSettersMaquinaria = () => ({
+    setNombre,
+    setFecha,
+    setNombreAsegurado,
+    setNombreMaquinaria,
+    setCiudadFecha,
+    setReferencia,
+    setSaludo,
+    setCuerpo,
+    setAseguradora,
+    setMarca,
+    setModelo,
+    setLinea,
+    setLugar,
+    setUbicacion,
+    setDepartamento,
+    setInspectorSeleccionado,
+    setCodiInspector,
+    setCargoSeleccionado,
+    setDescripcion,
+    setMotorDiesel,
+    setSistemaLocomocion,
+    setColor,
+    setEstadoOperativo,
+    setCabina,
+    setFuncion,
+    setEquipoContraincendio,
+    setEquipoRadio,
+    setRadiodeOperacion,
+    setElectrico,
+    setMecanico,
+    setHidraulico,
+    setPintura,
+    setChasis,
+    setMantenimiento,
+    setFuncionamiento,
+    setFirmaClienteNombre,
+    setFirmaClienteCargo,
+    setFirmaClienteEmail,
+    setFirmaCliente,
+    setInspectorFuncionarioId,
+    setInspectorFirmaImagen,
+    setTipoProteccion,
+    setRecomendaciones,
+    setImagenesRegistro,
+    setFotoPrincipalImagen,
+    setDescripcionFotoPrincipal,
+  });
+
+  // Autocompletar ubicación al escribir o elegir ciudad
   useEffect(() => {
-    if (!id || id === 'nuevo') {
-      const datosGuardados = localStorage.getItem('formularioMaquinaria');
+    const ciudad = buscarDepartamentoPorCiudad(DATOS_MAESTROS.ciudades, ciudadFecha);
+    if (ciudad) {
+      setDepartamento(ciudad.departamento);
+      setUbicacion(ciudad.zona);
+      setLugar(`${ciudad.nombre}, ${ciudad.departamento}`);
+    }
+  }, [ciudadFecha]);
+
+  // Estado general §2.1: funcionamiento desde función y estado operativo de §2
+  useEffect(() => {
+    const texto = [funcion, estadoOperativo]
+      .map((s) => s?.trim())
+      .filter(Boolean)
+      .join('\n\n');
+    setFuncionamiento(texto);
+  }, [funcion, estadoOperativo]);
+
+  // Cargar lista de inspectores (responsables)
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/responsables`)
+      .then((r) => r.json())
+      .then((data) => {
+        const lista =
+          data?.success && Array.isArray(data.data)
+            ? data.data
+            : Array.isArray(data)
+              ? data
+              : [];
+        setOpcionesInspectores(
+          lista
+            .map((r) => {
+              const value = String(r.codiRespnsble ?? r.codigo ?? r._id ?? '');
+              const label = r.nmbrRespnsble ?? r.nombre ?? '';
+              return value && label ? { value, label } : null;
+            })
+            .filter(Boolean)
+        );
+      })
+      .catch(() => setOpcionesInspectores([]));
+  }, []);
+
+  // Vincular código de inspector al cargar historial por nombre
+  useEffect(() => {
+    if (codiInspector || !inspectorSeleccionado || !opcionesInspectores.length) return;
+    const match = opcionesInspectores.find((o) => o.label === inspectorSeleccionado);
+    if (match) setCodiInspector(match.value);
+  }, [opcionesInspectores, inspectorSeleccionado, codiInspector]);
+
+  const handleInspectorChange = (codi) => {
+    setCodiInspector(codi);
+    const match = opcionesInspectores.find((o) => o.value === codi);
+    setInspectorSeleccionado(match?.label || '');
+    setInspectorFuncionarioId('');
+    setInspectorFirmaImagen('');
+  };
+
+  useEffect(() => {
+    if (nombreAsegurado && !firmaClienteNombre) {
+      setFirmaClienteNombre(nombreAsegurado);
+    }
+  }, [nombreAsegurado, firmaClienteNombre]);
+
+  // Cargar borrador de la sesión actual (solo formulario nuevo)
+  useEffect(() => {
+    if (id && id !== 'nuevo') {
+      borradorInicializadoRef.current = true;
+      return;
+    }
+
+    try {
+      localStorage.removeItem(BORRADOR_MAQUINARIA_LEGACY_KEY);
+      const datosGuardados = sessionStorage.getItem(BORRADOR_MAQUINARIA_KEY);
       if (datosGuardados) {
-        try {
-          const datosParseados = JSON.parse(datosGuardados);
-          if (datosParseados && typeof datosParseados === 'object') {
-            // Restaurar todos los estados desde localStorage
-            if (datosParseados.nombre !== undefined) setNombre(datosParseados.nombre);
-            if (datosParseados.fecha !== undefined) setFecha(datosParseados.fecha);
-            if (datosParseados.nombreAsegurado !== undefined) setNombreAsegurado(datosParseados.nombreAsegurado);
-            if (datosParseados.nombreMaquinaria !== undefined) setNombreMaquinaria(datosParseados.nombreMaquinaria);
-            if (datosParseados.ciudadFecha !== undefined) setCiudadFecha(datosParseados.ciudadFecha);
-            if (datosParseados.destinatario !== undefined) setDestinatario(datosParseados.destinatario);
-            if (datosParseados.referencia !== undefined) setReferencia(datosParseados.referencia);
-            if (datosParseados.saludo !== undefined) setSaludo(datosParseados.saludo);
-            if (datosParseados.cuerpo !== undefined) setCuerpo(datosParseados.cuerpo);
-            if (datosParseados.fotos !== undefined) setFotos(datosParseados.fotos);
-            if (datosParseados.aseguradora !== undefined) setAseguradora(datosParseados.aseguradora);
-            if (datosParseados.equipo !== undefined) setEquipo(datosParseados.equipo);
-            if (datosParseados.marca !== undefined) setMarca(datosParseados.marca);
-            if (datosParseados.descripcion !== undefined) setDescripcion(datosParseados.descripcion);
-            if (datosParseados.recomendaciones !== undefined) setRecomendaciones(datosParseados.recomendaciones);
-            if (datosParseados.imagenesRegistro !== undefined) setImagenesRegistro(datosParseados.imagenesRegistro);
-            if (datosParseados.registroFotografico !== undefined) setRegistroFotografico(datosParseados.registroFotografico);
-            // Agregar más estados según sea necesario
-}
-        } catch (error) {
-          console.error('Error al cargar datos guardados:', error);
-          localStorage.removeItem('formularioMaquinaria');
+        const datosParseados = JSON.parse(datosGuardados);
+        if (borradorTieneContenido(datosParseados)) {
+          aplicarBorradorLocal(datosParseados, getSettersMaquinaria());
+        } else {
+          limpiarBorradorMaquinaria();
         }
       }
+    } catch (error) {
+      console.error('Error al cargar borrador:', error);
+      limpiarBorradorMaquinaria();
+    } finally {
+      borradorInicializadoRef.current = true;
     }
   }, [id]);
 
-  // Guardar datos automáticamente cuando cambien (con debounce para evitar guardados excesivos)
-  // Solo se guarda si estamos en la ruta del formulario de maquinaria
+  // Guardar borrador solo en sessionStorage y solo si hay contenido
   useEffect(() => {
-    const esRutaMaquinaria = location.pathname.includes('/maquinaria') || location.pathname.includes('/formulario-maquinaria');
-    if (!esRutaMaquinaria) return;
+    if (!borradorInicializadoRef.current) return;
+    if (!esRutaFormularioMaquinaria(location.pathname)) return;
 
     const timeoutId = setTimeout(() => {
       try {
-        const datosParaGuardar = JSON.stringify({
-          nombre,
-          fecha,
-          nombreAsegurado,
-          nombreMaquinaria,
-          ciudadFecha,
-          destinatario,
-          referencia,
-          saludo,
-          cuerpo,
-          fotos,
-          aseguradora,
-          equipo,
-          marca,
-          descripcion,
-          recomendaciones,
-          imagenesRegistro,
-          registroFotografico,
-          // Agregar más estados según sea necesario
-        });
-        localStorage.setItem('formularioMaquinaria', datosParaGuardar);
-} catch (error) {
-        console.error('Error al guardar datos:', error);
-        try {
-          localStorage.removeItem('formularioMaquinaria');
-          localStorage.setItem('formularioMaquinaria', JSON.stringify({
-            nombre,
-            fecha,
-            nombreAsegurado,
-            nombreMaquinaria,
-            ciudadFecha,
-            destinatario,
-            referencia,
-            saludo,
-            cuerpo,
-            fotos,
-            aseguradora,
-            equipo,
-            marca,
-            descripcion,
-            recomendaciones,
-            imagenesRegistro,
-            registroFotografico,
-          }));
-        } catch (e) {
-          console.error('Error crítico al guardar:', e);
-        }
+        guardarBorradorSesion(getEstadoActual());
+      } catch (error) {
+        console.error('Error al guardar borrador:', error);
       }
-    }, 500); // Debounce de 500ms
+    }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, destinatario, referencia, saludo, cuerpo, fotos, aseguradora, equipo, marca, descripcion, recomendaciones, imagenesRegistro, registroFotografico, location.pathname]);
+  }, [
+    location.pathname,
+    nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, referencia, saludo, cuerpo,
+    aseguradora, marca, descripcion, electrico, tipoProteccion, recomendaciones,
+    inspectorSeleccionado, cargoSeleccionado, imagenesRegistro, fotoPrincipalImagen,
+    descripcionFotoPrincipal, lugar, ubicacion, departamento, modelo, linea, motorDiesel,
+    sistemaLocomocion, color, estadoOperativo, cabina, funcion, equipoContraincendio,
+    equipoRadio, radiodeOperacion, mecanico, hidraulico, pintura, chasis, mantenimiento, funcionamiento,
+  ]);
 
-  // Guardar datos antes de refrescar la página (solo si estamos en el formulario)
+  // Guardar borrador antes de refrescar la página
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const esRutaMaquinaria = window.location.pathname.includes('/maquinaria') || window.location.pathname.includes('/formulario-maquinaria');
-      if (esRutaMaquinaria) {
+      if (esRutaFormularioMaquinaria(window.location.pathname)) {
         try {
-          localStorage.setItem('formularioMaquinaria', JSON.stringify({
-            nombre,
-            fecha,
-            nombreAsegurado,
-            nombreMaquinaria,
-            ciudadFecha,
-            destinatario,
-            referencia,
-            saludo,
-            cuerpo,
-            fotos,
-            aseguradora,
-            equipo,
-            marca,
-            descripcion,
-            recomendaciones,
-            imagenesRegistro,
-            registroFotografico,
-          }));
+          guardarBorradorSesion(getEstadoActual());
         } catch (error) {
           console.error('Error al guardar antes de salir:', error);
         }
@@ -341,20 +530,18 @@ export default function FormularioMaquinaria() {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, destinatario, referencia, saludo, cuerpo, fotos, aseguradora, equipo, marca, descripcion, recomendaciones, imagenesRegistro, registroFotografico]);
+  }, [nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, referencia, saludo, cuerpo, aseguradora, marca, descripcion, recomendaciones, imagenesRegistro, inspectorSeleccionado, cargoSeleccionado]);
 
-  // Limpiar localStorage cuando salgamos de la ruta del formulario
+  // Limpiar borrador al salir del formulario
   useEffect(() => {
-    const esRutaMaquinaria = location.pathname.includes('/maquinaria') || location.pathname.includes('/formulario-maquinaria');
-    if (!esRutaMaquinaria) {
-localStorage.removeItem('formularioMaquinaria');
+    if (!esRutaFormularioMaquinaria(location.pathname)) {
+      limpiarBorradorMaquinaria();
     }
 
     return () => {
       setTimeout(() => {
-        const sigueEnRutaMaquinaria = window.location.pathname.includes('/maquinaria') || window.location.pathname.includes('/formulario-maquinaria');
-        if (!sigueEnRutaMaquinaria) {
-localStorage.removeItem('formularioMaquinaria');
+        if (!esRutaFormularioMaquinaria(window.location.pathname)) {
+          limpiarBorradorMaquinaria();
         }
       }, 100);
     };
@@ -365,9 +552,8 @@ localStorage.removeItem('formularioMaquinaria');
     const aseguradoraSeleccionada = DATOS_MAESTROS.aseguradoras.find(a => a.id === aseguradoraId);
     if (aseguradoraSeleccionada) {
       setAseguradora(aseguradoraSeleccionada.nombre);
-      setDestinatario(aseguradoraSeleccionada.nombre);
       setCamposLlenadosAuto(prev => ({ ...prev, aseguradora: true }));
-}
+    }
   };
 
   const llenarCamposCiudad = (ciudadId) => {
@@ -385,12 +571,9 @@ localStorage.removeItem('formularioMaquinaria');
     const aseguradoSeleccionado = DATOS_MAESTROS.asegurados.find(a => a.id === aseguradoId);
     if (aseguradoSeleccionado) {
       setNombreAsegurado(aseguradoSeleccionado.nombre);
-      setTomador(aseguradoSeleccionado.representante);
-      setDestinatario(aseguradoSeleccionado.nombre);
-      setReferencia(aseguradoSeleccionado.nit || aseguradoSeleccionado.cedula);
       setLugar(aseguradoSeleccionado.direccion);
       setCamposLlenadosAuto(prev => ({ ...prev, asegurado: true }));
-}
+    }
   };
 
   // Función para obtener opciones de los datos maestros
@@ -429,60 +612,8 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
       const data = await response.json();
       
       if (data.success && data.formulario) {
-        const formulario = data.formulario;
-        
-// Poblar todos los campos del formulario desde formulario.datos
-        setNombre(formulario.datos?.numeroActa || "");
-        setFecha(formulario.datos?.fechaInspeccion || "");
-        setNombreAsegurado(formulario.datos?.asegurado || "");
-        setNombreMaquinaria(formulario.datos?.tipoMaquinaria || "");
-        setCiudadFecha(formulario.datos?.ciudad || "");
-        setDestinatario(formulario.datos?.destinatario || "");
-        setReferencia(formulario.datos?.referencia || "");
-        setSaludo(formulario.datos?.saludo || "");
-        setCuerpo(formulario.datos?.cuerpo || "");
-        setFotos(formulario.datos?.fotos || [{ src: "", descripcion: "" }]);
-        setAseguradora(formulario.datos?.aseguradora || "");
-        setEquipo(formulario.datos?.equipo || "");
-        setMarca(formulario.datos?.marca || "");
-        setDescripcion(formulario.datos?.descripcion || "");
-        setMarcaBien(formulario.datos?.marcaBien || "");
-        setElectrico(formulario.datos?.electrico || "");
-        setTipoProteccion(formulario.datos?.tipoProteccion || "");
-        setRecomendaciones(formulario.datos?.recomendaciones || "");
-        setInspectorSeleccionado(formulario.datos?.inspectorSeleccionado || "");
-        setCargoSeleccionado(formulario.datos?.cargoSeleccionado || "");
-        setImagenesRegistro(formulario.datos?.imagenesRegistro || []);
-        setFotoPrincipal(formulario.datos?.fotoPrincipal || null);
-        setFotoPrincipalPreview(formulario.datos?.fotoPrincipalPreview || "");
-        setDescripcionFotoPrincipal(formulario.datos?.descripcionFotoPrincipal || "");
-        setTomador(formulario.datos?.tomador || "");
-        setLugar(formulario.datos?.lugar || "");
-        setUbicacion(formulario.datos?.ubicacion || "");
-        setDepartamento(formulario.datos?.departamento || "");
-        setModelo(formulario.datos?.modelo || "");
-        setLinea(formulario.datos?.linea || "");
-        setMotorDiesel(formulario.datos?.motorDiesel || "");
-        setSistemaLocomocion(formulario.datos?.sistemaLocomocion || "");
-        setColor(formulario.datos?.color || "");
-        setEstadoOperativo(formulario.datos?.estadoOperativo || "");
-        setCabina(formulario.datos?.cabina || "");
-        setFuncion(formulario.datos?.funcion || "");
-        setEquipoContraincendio(formulario.datos?.equipoContraincendio || "");
-        setEquipoRadio(formulario.datos?.equipoRadio || "");
-        setRadiodeOperacion(formulario.datos?.radiodeOperacion || "");
-        setMecanico(formulario.datos?.mecanico || "");
-        setHidraulico(formulario.datos?.hidraulico || "");
-        setPintura(formulario.datos?.pintura || "");
-        setChasis(formulario.datos?.chasis || "");
-        setLocomocion(formulario.datos?.locomocion || "");
-        setMantenimiento(formulario.datos?.mantenimiento || "");
-        setFuncionamiento(formulario.datos?.funcionamiento || "");
-        setRegistroFotografico(formulario.datos?.registroFotografico || []);
-        setFirmanteInspector(formulario.datos?.firmanteInspector || "");
-        setCodigoInspector(formulario.datos?.codigoInspector || "");
-        
-}
+        aplicarDatosMaquinaria(data.formulario.datos || {}, getSettersMaquinaria());
+      }
     } catch (error) {
       console.error('❌ Error cargando datos del formulario:', error);
       alert('Error al cargar los datos del formulario. Por favor, inténtalo de nuevo.');
@@ -500,82 +631,36 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
     }
   }, [id]);
 
-  // Efecto para monitorear cambios en los estados principales cuando se cargan datos
-  useEffect(() => {
-}, [modoEdicion, cargando, nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, aseguradora, marca, modelo, tipoProteccion, recomendaciones, firmanteInspector, codigoInspector]);
-
   const handleGuardarEnHistorial = async () => {
+    const snapshot = construirSnapshotMaquinaria(getEstadoActual());
     const datos = {
       titulo: `Inspección de Maquinaria - ${nombreAsegurado || 'Asegurado'} - ${nombreMaquinaria || 'Maquinaria'}`,
       datos: {
-        numeroActa: nombre || "N/A",
-        fechaInspeccion: fecha,
+        ...snapshot,
         horaInspeccion: new Date().toLocaleTimeString(),
-        ciudad: ciudadFecha,
-        aseguradora: aseguradora,
-        sucursal: "N/A",
-        asegurado: nombreAsegurado,
-        tipoMaquinaria: nombreMaquinaria,
-        marca: marca,
-        modelo: modelo,
-        serie: "N/A",
-        ano: "N/A",
-        estadoGeneral: "N/A",
-        tipoProteccion: tipoProteccion,
+        sucursal: 'N/A',
+        serie: 'N/A',
+        ano: 'N/A',
+        estadoGeneral: 'N/A',
         observaciones: recomendaciones,
-        recomendaciones: recomendaciones,
-        firmanteInspector: firmanteInspector,
-        codigoInspector: codigoInspector,
-        // Incluir imágenes para procesamiento
-        imagenesRegistro: imagenesRegistro || [],
-        fotoPrincipal: fotoPrincipal || null,
-        fotoPrincipalPreview: fotoPrincipalPreview || "",
-        descripcionFotoPrincipal: descripcionFotoPrincipal || "",
-        // Agregar otros campos según sea necesario
-      }
+      },
     };
 
     const resultado = await guardarEnHistorial(datos, 'en_proceso');
     alert(resultado.message);
+    if (resultado.success) limpiarBorradorMaquinaria();
   };
 
   const estadoMaquinariaRef = useRef({});
   useEffect(() => {
-    estadoMaquinariaRef.current = {
-      nombre,
-      fecha,
-      nombreAsegurado,
-      nombreMaquinaria,
-      ciudadFecha,
-      aseguradora,
-      marca,
-      modelo,
-      tipoProteccion,
-      recomendaciones,
-      firmanteInspector,
-      codigoInspector,
-      imagenesRegistro,
-      fotoPrincipal,
-      fotoPrincipalPreview,
-      descripcionFotoPrincipal,
-    };
+    estadoMaquinariaRef.current = getEstadoActual();
   }, [
-    nombre,
-    fecha,
-    nombreAsegurado,
-    nombreMaquinaria,
-    ciudadFecha,
-    aseguradora,
-    marca,
-    modelo,
-    tipoProteccion,
-    recomendaciones,
-    firmanteInspector,
-    codigoInspector,
-    imagenesRegistro,
-    fotoPrincipal,
-    fotoPrincipalPreview,
-    descripcionFotoPrincipal,
+    nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, aseguradora, marca, modelo,
+    tipoProteccion, recomendaciones, inspectorSeleccionado, cargoSeleccionado, imagenesRegistro,
+    fotoPrincipalImagen, descripcionFotoPrincipal, referencia, saludo, cuerpo,
+    descripcion, lugar, ubicacion, departamento, linea, motorDiesel, sistemaLocomocion, color,
+    estadoOperativo, cabina, funcion, equipoContraincendio, equipoRadio, radiodeOperacion,
+    electrico, mecanico, hidraulico, pintura, chasis, mantenimiento, funcionamiento,
   ]);
 
   useServerAutoSaveUpdate({
@@ -584,30 +669,16 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
     isBlocked: () => guardando || exportando || cargando,
     onUpdate: async (formularioId) => {
       const s = estadoMaquinariaRef.current;
+      const snapshot = construirSnapshotMaquinaria(s);
       await historialService.actualizarFormulario(formularioId, {
         titulo: `Inspección de Maquinaria - ${s.nombreAsegurado || 'Asegurado'} - ${s.nombreMaquinaria || 'Maquinaria'}`,
         tipo: TIPOS_FORMULARIOS.MAQUINARIA,
         estado: 'en_proceso',
         fechaModificacion: new Date().toISOString(),
         datos: {
-          numeroActa: s.nombre || 'N/A',
-          fechaInspeccion: s.fecha,
+          ...snapshot,
           horaInspeccion: new Date().toLocaleTimeString(),
-          ciudad: s.ciudadFecha,
-          aseguradora: s.aseguradora,
-          asegurado: s.nombreAsegurado,
-          tipoMaquinaria: s.nombreMaquinaria,
-          marca: s.marca,
-          modelo: s.modelo,
-          tipoProteccion: s.tipoProteccion,
           observaciones: s.recomendaciones,
-          recomendaciones: s.recomendaciones,
-          firmanteInspector: s.firmanteInspector,
-          codigoInspector: s.codigoInspector,
-          imagenesRegistro: s.imagenesRegistro || [],
-          fotoPrincipal: s.fotoPrincipal || null,
-          fotoPrincipalPreview: s.fotoPrincipalPreview || '',
-          descripcionFotoPrincipal: s.descripcionFotoPrincipal || '',
         },
       });
     },
@@ -615,48 +686,34 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
 
   const handleExportar = async () => {
     try {
+      const snapshot = construirSnapshotMaquinaria(getEstadoActual());
       const datos = {
         titulo: `Inspección de Maquinaria - ${nombreAsegurado || 'Asegurado'} - ${nombreMaquinaria || 'Maquinaria'}`,
         datos: {
-          numeroActa: nombre || "N/A",
-          fechaInspeccion: fecha,
+          ...snapshot,
           horaInspeccion: new Date().toLocaleTimeString(),
-          ciudad: ciudadFecha,
-          aseguradora: aseguradora,
-          sucursal: "N/A",
-          asegurado: nombreAsegurado,
-          tipoMaquinaria: nombreMaquinaria,
-          marca: marca,
-          modelo: modelo,
-          serie: "N/A",
-          ano: "N/A",
-          estadoGeneral: "N/A",
-          tipoProteccion: tipoProteccion,
+          sucursal: 'N/A',
+          serie: 'N/A',
+          ano: 'N/A',
+          estadoGeneral: 'N/A',
           observaciones: recomendaciones,
-          recomendaciones: recomendaciones,
-          firmanteInspector: firmanteInspector,
-          codigoInspector: codigoInspector,
-          // Incluir imágenes para procesamiento
-          imagenesRegistro: imagenesRegistro || [],
-          fotoPrincipal: fotoPrincipal || null,
-          fotoPrincipalPreview: fotoPrincipalPreview || "",
-          descripcionFotoPrincipal: descripcionFotoPrincipal || "",
-        }
+        },
       };
 
-      // Primero exportar el documento
-      const firmaCanvas = await getFirmaArrayBuffer();
       await generarWord({
-        inspectorSeleccionado: firmanteInspector,
-        cargoSeleccionado: codigoInspector,
-        firmaCanvas,
+        inspectorSeleccionado,
+        cargoSeleccionado,
+        firmaCliente,
+        firmaClienteNombre,
+        firmaClienteCargo,
+        firmaClienteEmail,
+        inspectorFirmaImagen,
         fecha,
       });
 
-      // Luego guardar en el historial como completado
       const resultado = await guardarEnHistorial(datos, 'completado');
       alert(resultado.message);
-      
+      if (resultado.success) limpiarBorradorMaquinaria();
     } catch (error) {
       console.error('Error en exportación:', error);
       alert(`❌ Error en la exportación: ${error.message}`);
@@ -664,30 +721,84 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
   };
 
 
-  // Convierte el canvas de firma en un ArrayBuffer
-const getFirmaArrayBuffer = () => {
-  return new Promise((resolve) => {
-    const canvas = document.querySelector("canvas");
-    canvas.toBlob((blob) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.readAsArrayBuffer(blob);
-    });
-  });
+  // Convierte data URL de firma en ArrayBuffer para Word
+const bufferDesdeDataUrl = (dataUrl) => {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const idx = dataUrl.indexOf('base64,');
+  const raw = idx !== -1 ? dataUrl.slice(idx + 7) : dataUrl;
+  if (!raw) return null;
+  try {
+    return Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)).buffer;
+  } catch {
+    return null;
+  }
 };
 
+const parrafoFirmaImg = (buf) =>
+  new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 80, after: 80 },
+    children: buf
+      ? [new ImageRun({ data: buf, transformation: { width: 160, height: 80 } })]
+      : [new TextRun({ text: '________________________', font: 'Arial', size: 24 })],
+  });
+
   
-const generarWord = async ({ inspectorSeleccionado, cargoSeleccionado, firmaCanvas, fecha }) => {
+const generarWord = async ({
+  inspectorSeleccionado,
+  cargoSeleccionado,
+  firmaCliente,
+  firmaClienteNombre,
+  firmaClienteCargo,
+  firmaClienteEmail,
+  inspectorFirmaImagen,
+  fecha,
+}) => {
     let isMounted = true;
-    // Usa la primera imagen del registro fotográfico como portada
+
+    const bordesTablaSinLineas = {
+      top: { style: BorderStyle.NONE, size: 0 },
+      bottom: { style: BorderStyle.NONE, size: 0 },
+      left: { style: BorderStyle.NONE, size: 0 },
+      right: { style: BorderStyle.NONE, size: 0 },
+      insideHorizontal: { style: BorderStyle.NONE, size: 0 },
+      insideVertical: { style: BorderStyle.NONE, size: 0 },
+    };
+
+    const bufCliente = bufferDesdeDataUrl(firmaCliente);
+    const bufInspector = bufferDesdeDataUrl(inspectorFirmaImagen);
+    const margFirma = { top: 100, bottom: 100, left: 140, right: 140 };
+    const celdaFirma = (children) =>
+      new TableCell({
+        width: { size: 50, type: WidthType.PERCENTAGE },
+        margins: margFirma,
+        verticalAlign: VerticalAlign.CENTER,
+        children,
+      });
 
     let imagenPresentacion = null;
-    if (fotoPrincipal) {
-      const arrayBuffer = await toArrayBuffer(fotoPrincipal);
-      imagenPresentacion = new ImageRun({
-        data: arrayBuffer,
-        transformation: { width: 350, height: 250 },
-      });
+    let descripcionPortada = descripcionFotoPrincipal || fotoPrincipalImagen?.descripcion || 'Vista de la máquina';
+    try {
+      if (fotoPrincipalImagen) {
+        const arrayBuffer = await fetchImageAsArrayBuffer(fotoPrincipalImagen);
+        if (arrayBuffer) {
+          imagenPresentacion = new ImageRun({
+            data: arrayBuffer,
+            transformation: { width: 350, height: 250 },
+          });
+        }
+      } else if (imagenesRegistro?.[0]) {
+        const arrayBuffer = await fetchImageAsArrayBuffer(imagenesRegistro[0]);
+        if (arrayBuffer) {
+          imagenPresentacion = new ImageRun({
+            data: arrayBuffer,
+            transformation: { width: 350, height: 250 },
+          });
+          if (imagenesRegistro[0].descripcion) descripcionPortada = imagenesRegistro[0].descripcion;
+        }
+      }
+    } catch (err) {
+      console.warn('No se pudo incluir foto de portada en Word:', err);
     }
     
     const headerTable = new Table({
@@ -823,7 +934,7 @@ const generarWord = async ({ inspectorSeleccionado, cargoSeleccionado, firmaCanv
             new Paragraph({
               children: [
                 new TextRun({ text: "Destinatario: ", bold: true, font: "Arial", size: 24 }),
-                new TextRun({ text: destinatario, font: "Arial", size: 24 }),
+                new TextRun({ text: aseguradora, font: "Arial", size: 24 }),
               ],
               alignment: AlignmentType.LEFT,
             }),
@@ -877,7 +988,7 @@ const generarWord = async ({ inspectorSeleccionado, cargoSeleccionado, firmaCanv
                     spacing: { after: 200 },
                     children: [
                       new TextRun({
-                        text: descripcionFotoPrincipal || "Vista de la máquina",
+                        text: descripcionPortada,
                         italics: true,
                         font: "Arial",
                         size: 20,
@@ -903,10 +1014,10 @@ const generarWord = async ({ inspectorSeleccionado, cargoSeleccionado, firmaCanv
               rows: [
                 ...[
                   ["ASEGURADORA", aseguradora],
-                  ["EQUIPO INSPECCIONADO", equipo],
+                  ["EQUIPO INSPECCIONADO", nombreMaquinaria],
                   ["MARCA", marca],
                   ["REFERENCIA", referencia],
-                  ["TOMADOR", tomador],
+                  ["TOMADOR", nombreAsegurado],
                   ["LUGAR INSPECCION", lugar],
                   ["UBICACION", ubicacion],
                   ["DEPARTAMENTO", departamento],
@@ -1015,7 +1126,7 @@ const generarWord = async ({ inspectorSeleccionado, cargoSeleccionado, firmaCanv
                     ["SISTEMA HIDRÁULICO", hidraulico],
                     ["PINTURA", pintura],
                     ["CHASIS", chasis],
-                    ["SISTEMA DE LOCOMOCIÓN", locomocion],
+                    ["SISTEMA DE LOCOMOCIÓN", sistemaLocomocion],
                     ["MANTENIMIENTO", mantenimiento],
                     ["FUNCIONAMIENTO", funcionamiento],
                   ].map(([label, value]) =>
@@ -1071,7 +1182,7 @@ const generarWord = async ({ inspectorSeleccionado, cargoSeleccionado, firmaCanv
                 alignment: AlignmentType.LEFT,
                 spacing: { after: 200 },
               }),
-              ...convertirHtmlADocx(recomendaciones),
+              ...convertirHtmlADocx(textoPlanoAHtml(recomendaciones)),
 
               // 5. REGISTRO FOTOGRÁFICO
             /*  new Paragraph({ children: [], pageBreakBefore: true }),
@@ -1100,7 +1211,11 @@ const generarWord = async ({ inspectorSeleccionado, cargoSeleccionado, firmaCanv
                           const index = i * 2 + j;
                           if (index < imagenesRegistro.length) {
                             const img = imagenesRegistro[index];
-                            const buffer = await toArrayBuffer(img.file);
+                            const buffer = await fetchImageAsArrayBuffer(img);
+                            if (!buffer) {
+                              rowCells.push(new TableCell({ children: [new Paragraph({ text: "" })] }));
+                              continue;
+                            }
 
                             rowCells.push(
                               new TableCell({
@@ -1177,54 +1292,128 @@ new Paragraph({
     }),
   ],
 }),
-...(firmaCanvas
-  ? [
-      new Paragraph({
-        alignment: AlignmentType.LEFT,
-        children: [
-          new ImageRun({
-            data: firmaCanvas,
-            transformation: { width: 200, height: 100 },
+new Table({
+  width: { size: 100, type: WidthType.PERCENTAGE },
+  borders: bordesTablaSinLineas,
+  rows: [
+    new TableRow({
+      children: [
+        celdaFirma([
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            children: [
+              new TextRun({ text: 'FIRMA DE CLIENTE', font: 'Arial', size: 22, bold: true }),
+            ],
           }),
-        ],
-      }),
-    ]
-  : []),
-// Agrega nombre completo
-new Paragraph({
-  alignment: AlignmentType.LEFT,
-  spacing: { after: 100 },
-  children: [
-    new TextRun({
-      text: inspectorSeleccionado,
-      bold: true,
-      font: "Arial",
-      size: 24,
+        ]),
+        celdaFirma([
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            children: [
+              new TextRun({ text: 'FIRMA DEL INSPECTOR', font: 'Arial', size: 22, bold: true }),
+            ],
+          }),
+        ]),
+      ],
     }),
-  ],
-}),
-// Agrega cargo
-new Paragraph({
-  alignment: AlignmentType.LEFT,
-  spacing: { after: 100 },
-  children: [
-    new TextRun({
-      text: cargoSeleccionado,
-      bold: true,
-      font: "Arial",
-      size: 22,
+    new TableRow({
+      children: [
+        celdaFirma([parrafoFirmaImg(bufCliente)]),
+        celdaFirma([parrafoFirmaImg(bufInspector)]),
+      ],
     }),
-  ],
-}),
-// Agrega fecha
-new Paragraph({
-  alignment: AlignmentType.LEFT,
-  spacing: { after: 100 },
-  children: [
-    new TextRun({
-      text: `Fecha: ${fecha}`,
-      font: "Arial",
-      size: 20,
+    new TableRow({
+      children: [
+        celdaFirma([
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 80 },
+            children: [
+              new TextRun({
+                text: firmaClienteNombre?.trim() || 'NOMBRE DEL CLIENTE / TITULAR',
+                font: 'Arial',
+                size: 24,
+                bold: true,
+                underline: {},
+              }),
+            ],
+          }),
+        ]),
+        celdaFirma([
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 80 },
+            children: [
+              new TextRun({
+                text: inspectorSeleccionado?.trim() || 'NOMBRE DEL INSPECTOR',
+                font: 'Arial',
+                size: 24,
+                bold: true,
+                underline: {},
+              }),
+            ],
+          }),
+        ]),
+      ],
+    }),
+    new TableRow({
+      children: [
+        celdaFirma([
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: 'Cargo: ', font: 'Arial', size: 20, bold: true }),
+              new TextRun({
+                text: firmaClienteCargo?.trim() || '—',
+                font: 'Arial',
+                size: 20,
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: 'Correo: ', font: 'Arial', size: 20, bold: true }),
+              new TextRun({
+                text: firmaClienteEmail?.trim() || '—',
+                font: 'Arial',
+                size: 20,
+                color: '0066CC',
+              }),
+            ],
+          }),
+        ]),
+        celdaFirma([
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: 'Cargo: ', font: 'Arial', size: 20, bold: true }),
+              new TextRun({
+                text: cargoSeleccionado?.trim() || '—',
+                font: 'Arial',
+                size: 20,
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 40 },
+            children: [
+              new TextRun({ text: 'Fecha: ', font: 'Arial', size: 20, bold: true }),
+              new TextRun({
+                text: fecha || '—',
+                font: 'Arial',
+                size: 20,
+              }),
+            ],
+          }),
+        ]),
+      ],
     }),
   ],
 }),
@@ -1252,346 +1441,248 @@ const blob = await Packer.toBlob(doc);
 };
 
   return (
-    <div className="bg-gray-900 min-h-screen p-2 sm:p-4 lg:p-6">
-      <div className="max-w-6xl mx-auto bg-gray-800 rounded-lg shadow-lg p-3 sm:p-6 lg:p-8 text-white">
-        {/* Encabezado con indicadores de modo edición y carga */}
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-center mb-3 sm:mb-4">
-            📋 Formulario de Inspección de Maquinaria
+    <div className="min-h-screen p-2 sm:p-4 lg:p-8" style={{ backgroundColor: t.bgMain }}>
+      <div
+        className="max-w-4xl mx-auto shadow-lg rounded-lg p-3 sm:p-4 lg:p-6"
+        style={{ backgroundColor: t.cardBg, border: `1px solid ${t.borderColor}` }}
+      >
+        {/* Encabezado corporativo */}
+        <div
+          className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-6 gap-4"
+          style={{ borderBottom: `1px solid ${t.borderColor}` }}
+        >
+          <div className="flex items-center gap-2 sm:gap-4">
+            <img src={Logo} alt="Logo PROSER" className="h-12 sm:h-16 object-contain" />
             {modoEdicion && (
-              <span className="ml-2 sm:ml-3 text-yellow-400 text-sm sm:text-lg lg:text-xl">
-                ✏️ Modo Edición
+              <span
+                className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium"
+                style={{
+                  backgroundColor: t.theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
+                  color: t.theme === 'dark' ? '#93C5FD' : '#1E40AF',
+                }}
+              >
+                Modo edición
               </span>
             )}
-          </h1>
-          
-          {/* Información del sistema de datos maestros */}
-          <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-blue-900 rounded-lg border border-blue-600">
-            <h3 className="text-xs sm:text-sm font-semibold text-blue-200 mb-2">
-              📊 Sistema de Datos Maestros Disponibles:
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-blue-300">
-              <div className="flex items-center">
-                <span className="mr-2">🏢</span>
-                Aseguradoras: {DATOS_MAESTROS.aseguradoras.length}
-              </div>
-              <div className="flex items-center">
-                <span className="mr-2">🌆</span>
-                Ciudades: {DATOS_MAESTROS.ciudades.length}
-              </div>
-              <div className="flex items-center">
-                <span className="mr-2">👥</span>
-                Asegurados: {DATOS_MAESTROS.asegurados.length}
-              </div>
-            </div>
-            <p className="text-xs text-blue-400 mt-2">
-              💡 Selecciona del dropdown para llenado automático, o escribe manualmente
-            </p>
           </div>
-          
-          {cargando && (
-            <div className="text-center py-3 sm:py-4">
-              <div className="animate-spin rounded-full h-6 sm:h-8 w-6 sm:w-8 border-b-2 border-blue-400 mx-auto"></div>
-              <p className="mt-2 text-blue-400 text-sm sm:text-base">🔄 Cargando datos del formulario...</p>
-            </div>
-          )}
-
-          {/* Indicador de campos llenados automáticamente */}
-          {(camposLlenadosAuto.aseguradora || camposLlenadosAuto.ciudad || camposLlenadosAuto.asegurado) && (
-            <div className="mt-3 sm:mt-4 p-2 sm:p-3 bg-green-900 rounded-lg border border-green-600">
-              <h3 className="text-xs sm:text-sm font-semibold text-green-200 mb-2">
-                🤖 Campos Llenados Automáticamente:
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-green-300">
-                {camposLlenadosAuto.aseguradora && (
-                  <div className="flex items-center">
-                    <span className="mr-2">✅</span>
-                    Aseguradora: {aseguradora}
-                  </div>
-                )}
-                {camposLlenadosAuto.ciudad && (
-                  <div className="flex items-center">
-                    <span className="mr-2">✅</span>
-                    Ciudad: {ciudadFecha}
-                  </div>
-                )}
-                {camposLlenadosAuto.asegurado && (
-                  <div className="flex items-center">
-                    <span className="mr-2">✅</span>
-                    Asegurado: {nombreAsegurado}
-                  </div>
-                )}
-              </div>
-              
-              {/* Mostrar funcionarios disponibles si se seleccionó una aseguradora */}
-              {camposLlenadosAuto.aseguradora && aseguradora && (
-                <div className="mt-2 sm:mt-3 p-2 bg-blue-900 rounded border border-blue-600">
-                  <h4 className="text-xs font-semibold text-blue-200 mb-1">
-                    🏢 Aseguradora Seleccionada:
-                  </h4>
-                  <div className="text-xs text-blue-300">
-                    <div className="flex items-center">
-                      <span className="mr-2">✅</span>
-                      {aseguradora}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <p className="text-xs text-green-400 mt-2">
-                💡 Los campos se pueden editar manualmente después del llenado automático
-              </p>
-            </div>
-          )}
+          <div className="w-full sm:w-auto">
+            <p className="text-xs sm:text-sm font-semibold mb-1" style={{ color: t.textPrimary }}>
+              FECHA DE INSPECCIÓN
+            </p>
+            <ThemedInput
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              className="sm:w-auto"
+              disabled={cargando}
+            />
+          </div>
         </div>
 
-        {/* Encabezado */}
+        <div className="mb-8 text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: t.textPrimary }}>
+            FORMULARIO DE INSPECCIÓN DE MAQUINARIA
+          </h1>
+          <p className="text-sm" style={{ color: t.textSecondary }}>
+            Informe de inspección de riesgos — equipo y maquinaria
+          </p>
+        </div>
+
+        {cargando && (
+          <div className="text-center py-6 mb-6">
+            <div
+              className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto"
+              style={{ borderColor: '#DC2626' }}
+            />
+            <p className="mt-2 text-sm" style={{ color: t.textSecondary }}>
+              Cargando formulario...
+            </p>
+          </div>
+        )}
+
+        <LlenadoGuia />
+
+        <SectionCard title="Foto principal" subtitle="Suba primero la portada — 1 sola imagen por arrastre o clic">
+          <FotoPrincipalMaquinaria
+            imagen={fotoPrincipalImagen}
+            onChange={(img) => {
+              setFotoPrincipalImagen(img);
+              if (img?.descripcion !== undefined) setDescripcionFotoPrincipal(img.descripcion);
+            }}
+            descripcion={descripcionFotoPrincipal}
+            onDescripcionChange={setDescripcionFotoPrincipal}
+            disabled={cargando}
+          />
+        </SectionCard>
+
         <EncabezadoMaquinaria
           nombreAsegurado={nombreAsegurado}
           setNombreAsegurado={setNombreAsegurado}
           nombreMaquinaria={nombreMaquinaria}
           setNombreMaquinaria={setNombreMaquinaria}
-          fecha={fecha}
-          setFecha={setFecha}
+          marca={marca}
+          setMarca={setMarca}
           opcionesAsegurados={obtenerOpcionesAsegurados()}
           opcionesAseguradoras={obtenerOpcionesAseguradoras()}
-          opcionesCiudades={obtenerOpcionesCiudades()}
           onAseguradoChange={llenarCamposAsegurado}
           onAseguradoraChange={llenarCamposAseguradora}
-          onCiudadChange={llenarCamposCiudad}
           aseguradora={aseguradora}
           setAseguradora={setAseguradora}
-          ciudadFecha={ciudadFecha}
-          setCiudadFecha={setCiudadFecha}
         />
 
-        {/* DATOS GENERALES */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mt-4 sm:mt-6">
-          <div className="lg:col-span-1">
-            <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">Datos generales</h2>
-              <CartaPresentacionMaquinaria
-                ciudadFecha={ciudadFecha}
-                setCiudadFecha={setCiudadFecha}
-                destinatario={destinatario}
-                setDestinatario={setDestinatario}
-                referencia={referencia}
-                setReferencia={setReferencia}
-                saludo={saludo}
-                setSaludo={setSaludo}
-                cuerpo={cuerpo}
-                setCuerpo={setCuerpo}
-                opcionesCiudades={obtenerOpcionesCiudades()}
-                opcionesAseguradoras={obtenerOpcionesAseguradoras()}
-                onCiudadChange={llenarCamposCiudad}
-                onAseguradoraChange={llenarCamposAseguradora}
-              />
-            </div>
-            <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">Foto principal</h2>
-              {/* Foto principal */}
-              <label className="block mb-1 font-semibold text-sm">Foto principal de la máquina</label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={e => {
-                  const file = e.target.files[0];
-                  setFotoPrincipal(file);
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = ev => setFotoPrincipalPreview(ev.target.result);
-                    reader.readAsDataURL(file);
-                  } else {
-                    setFotoPrincipalPreview("");
-                  }
-                }}
-                className="mb-2 text-xs sm:text-sm"
-                disabled={cargando}
-              />
-              {fotoPrincipalPreview && (
-                <img
-                  src={fotoPrincipalPreview}
-                  alt="Vista de la máquina"
-                  className="w-full sm:w-72 h-48 sm:h-72 object-cover border border-gray-400 mb-2"
-                />
-              )}
-              <input
-                type="text"
-                className="w-full bg-gray-800 border-b border-gray-600 px-2 py-1 text-sm"
-                value={descripcionFotoPrincipal}
-                onChange={e => setDescripcionFotoPrincipal(e.target.value)}
-                placeholder="Descripción de la foto principal"
-                disabled={cargando}
-              />
-            </div>
+        <SectionCard title="Datos generales" subtitle="Carta de presentación — ciudad, saludo y texto">
+          <CartaPresentacionMaquinaria
+            ciudadFecha={ciudadFecha}
+            setCiudadFecha={setCiudadFecha}
+            fecha={fecha}
+            aseguradora={aseguradora}
+            nombreAsegurado={nombreAsegurado}
+            nombreMaquinaria={nombreMaquinaria}
+            referencia={referencia}
+            saludo={saludo}
+            setSaludo={setSaludo}
+            cuerpo={cuerpo}
+            setCuerpo={setCuerpo}
+            opcionesCiudades={obtenerOpcionesCiudades()}
+            onCiudadChange={llenarCamposCiudad}
+            cargando={cargando}
+          />
+        </SectionCard>
+
+        <SectionCard title="1. Informe de inspección maquinaria" subtitle="Referencia e inspector; el resto se completa solo">
+          <TablaInspeccionMaquinaria
+            aseguradora={aseguradora}
+            equipo={nombreMaquinaria}
+            marca={marca}
+            referencia={referencia}
+            setReferencia={setReferencia}
+            tomador={nombreAsegurado}
+            lugar={lugar}
+            ubicacion={ubicacion}
+            departamento={departamento}
+            codiInspector={codiInspector}
+            onInspectorChange={handleInspectorChange}
+            opcionesInspectores={opcionesInspectores}
+            fechaInspeccion={fecha}
+            atendido={cargoSeleccionado}
+            setAtendido={setCargoSeleccionado}
+          />
+        </SectionCard>
+
+        <SectionCard title="2. Descripción del bien asegurado" subtitle="Datos técnicos — la marca viene del encabezado">
+          <DescripcionBienAsegurado
+            descripcion={descripcion} setDescripcion={setDescripcion}
+            marca={marca}
+            modelo={modelo} setModelo={setModelo}
+            linea={linea} setLinea={setLinea}
+            motorDiesel={motorDiesel} setMotorDiesel={setMotorDiesel}
+            sistemaLocomocion={sistemaLocomocion} setSistemaLocomocion={setSistemaLocomocion}
+            color={color} setColor={setColor}
+            estadoOperativo={estadoOperativo} setEstadoOperativo={setEstadoOperativo}
+            cabina={cabina} setCabina={setCabina}
+            funcion={funcion} setFuncion={setFuncion}
+            equipoContraincendio={equipoContraincendio} setEquipoContraincendio={setEquipoContraincendio}
+            equipoRadio={equipoRadio} setEquipoRadio={setEquipoRadio}
+            radiodeOperacion={radiodeOperacion} setRadiodeOperacion={setRadiodeOperacion}
+          />
+        </SectionCard>
+
+        <SectionCard title="2.1 Estado general" subtitle="Locomoción y funcionamiento se completan desde §2">
+          <EstadoGeneralMaquinaria
+            electrico={electrico} setElectrico={setElectrico}
+            mecanico={mecanico} setMecanico={setMecanico}
+            hidraulico={hidraulico} setHidraulico={setHidraulico}
+            pintura={pintura} setPintura={setPintura}
+            chasis={chasis} setChasis={setChasis}
+            sistemaLocomocion={sistemaLocomocion}
+            funcionamiento={funcionamiento}
+            mantenimiento={mantenimiento} setMantenimiento={setMantenimiento}
+          />
+        </SectionCard>
+
+        <SectionCard title="3. Tipo de protección">
+          <TipoProteccionMaquinaria
+            tipoProteccion={tipoProteccion}
+            setTipoProteccion={setTipoProteccion}
+            cargando={cargando}
+          />
+        </SectionCard>
+
+        <SectionCard title="4. Recomendaciones y observaciones">
+          <RecomendacionesObservacionesMaquinaria
+            recomendaciones={recomendaciones}
+            setRecomendaciones={setRecomendaciones}
+            cargando={cargando}
+          />
+        </SectionCard>
+
+        <SectionCard title="Registro fotográfico" subtitle="Hasta 12 fotos · arrastre o clic · la primera sirve de portada si no hay foto principal">
+          <RegistroFotograficoMaquinaria
+            onChange={setImagenesRegistro}
+            imagenesIniciales={imagenesRegistro}
+            disabled={cargando}
+          />
+        </SectionCard>
+
+        <SectionCard title="Firmas">
+          <FirmaMaquinaria
+            clienteNombre={firmaClienteNombre}
+            setClienteNombre={setFirmaClienteNombre}
+            clienteCargo={firmaClienteCargo}
+            setClienteCargo={setFirmaClienteCargo}
+            clienteEmail={firmaClienteEmail}
+            setClienteEmail={setFirmaClienteEmail}
+            firmaCliente={firmaCliente}
+            setFirmaCliente={setFirmaCliente}
+            inspectorNombre={inspectorSeleccionado}
+            inspectorCargo={cargoSeleccionado}
+            inspectorFuncionarioId={inspectorFuncionarioId}
+            setInspectorFuncionarioId={setInspectorFuncionarioId}
+            inspectorFirmaImagen={inspectorFirmaImagen}
+            setInspectorFirmaImagen={setInspectorFirmaImagen}
+            fecha={fecha}
+            disabled={cargando}
+          />
+        </SectionCard>
+
+        {/* Acciones */}
+        <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${t.borderColor}` }}>
+          <div
+            className="mb-4 p-3 rounded-lg text-xs sm:text-sm"
+            style={{ backgroundColor: t.accentSoft, color: t.textPrimary }}
+          >
+            <p className="font-semibold mb-2">Campos obligatorios para guardar:</p>
+            <ul className="space-y-1" style={{ color: t.textSecondary }}>
+              <li>{nombreAsegurado ? '✓' : '○'} Asegurado</li>
+              <li>{nombreMaquinaria ? '✓' : '○'} Tipo de maquinaria</li>
+              <li>{aseguradora ? '✓' : '○'} Aseguradora</li>
+            </ul>
           </div>
 
-          {/* INSPECCIÓN Y DESCRIPCIÓN */}
-          <div className="lg:col-span-1">
-            <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">1. Inspección Maquinaria</h2>
-                <TablaInspeccionMaquinaria
-                  aseguradora={aseguradora} setAseguradora={setAseguradora}
-                  equipo={equipo} setEquipo={setEquipo}
-                  marca={marca} setMarca={setMarca}
-                  referencia={referencia} setReferencia={setReferencia}
-                  tomador={tomador} setTomador={setTomador}
-                  lugar={lugar} setLugar={setLugar}
-                  ubicacion={ubicacion} setUbicacion={setUbicacion}
-                  departamento={departamento} setDepartamento={setDepartamento}
-                  inspector={inspectorSeleccionado} setInspector={setInspectorSeleccionado}
-                  fechaInspeccion={fecha} setFechaInspeccion={setFecha}
-                  atendido={cargoSeleccionado} setAtendido={setCargoSeleccionado}
-                />
-               </div>
-            <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">2. Descripción del Bien Asegurado</h2>
-              <DescripcionBienAsegurado
-                descripcion={descripcion} setDescripcion={setDescripcion}
-                marca={marca} setMarca={setMarca}
-                modelo={modelo} setModelo={setModelo}
-                linea={linea} setLinea={setLinea}
-                motorDiesel={motorDiesel} setMotorDiesel={setMotorDiesel}
-                sistemaLocomocion={sistemaLocomocion} setSistemaLocomocion={setSistemaLocomocion}
-                color={color} setColor={setColor}
-                estadoOperativo={estadoOperativo} setEstadoOperativo={setEstadoOperativo}
-                cabina={cabina} setCabina={setCabina}
-                funcion={funcion} setFuncion={setFuncion}
-                equipoContraincendio={equipoContraincendio} setEquipoContraincendio={setEquipoContraincendio}
-                equipoRadio={equipoRadio} setEquipoRadio={setEquipoRadio}
-                radiodeOperacion={radiodeOperacion} setRadiodeOperacion={setRadiodeOperacion}
-              />
-            </div>
+          <div className="flex flex-col sm:flex-row gap-3 mb-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm('¿Desea limpiar el formulario y empezar de cero?')) {
+                  limpiarFormulario();
+                }
+              }}
+              className="btn-fenix-secondary text-sm py-2 px-4"
+              disabled={cargando || guardando || exportando}
+            >
+              Empezar de cero
+            </button>
           </div>
 
-          {/* ESTADO Y PROTECCIÓN */}
-          <div className="lg:col-span-1">
-            <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">2.1 Estado General</h2>
-              <EstadoGeneralMaquinaria
-                electrico={electrico} setElectrico={setElectrico}
-                mecanico={mecanico} setMecanico={setMecanico}
-                hidraulico={hidraulico} setHidraulico={setHidraulico}
-                pintura={pintura} setPintura={setPintura}
-                chasis={chasis} setChasis={setChasis}
-                locomocion={locomocion} setLocomocion={setLocomocion}
-                mantenimiento={mantenimiento} setMantenimiento={setMantenimiento}
-                funcionamiento={funcionamiento} setFuncionamiento={setFuncionamiento}
-              />
-            </div>
-            <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-              <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">3. Tipo de Protección</h2>
-              <TipoProteccionMaquinaria
-                tipoProteccion={tipoProteccion}
-                setTipoProteccion={setTipoProteccion}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* REGISTRO FOTOGRÁFICO, RECOMENDACIONES Y FIRMAS */}
-        <div className="mt-6 sm:mt-8">
-          <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">Recomendaciones y Observaciones</h2>
-              <RecomendacionesObservacionesMaquinaria
-                recomendaciones={recomendaciones}
-                setRecomendaciones={setRecomendaciones}
-              />
-          </div>
-          
-          <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">Registro Fotográfico</h2>
-            <RegistroFotograficoMaquinaria onChange={setImagenesRegistro} imagenesIniciales={imagenesRegistro} />
-          </div>
-          
-          <div className="bg-gray-700 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
-            <h2 className="text-base sm:text-lg font-bold mb-2 border-b border-gray-600 pb-1">Firma</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 sm:mb-4">
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-2">Nombre del Inspector</label>
-                <input
-                  type="text"
-                  value={firmanteInspector}
-                  onChange={e => setFirmanteInspector(e.target.value)}
-                  placeholder="Nombre del inspector"
-                  className="w-full bg-gray-800 border border-gray-600 px-2 sm:px-3 py-2 text-white rounded focus:border-blue-500 focus:outline-none text-sm"
-                  disabled={cargando}
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-medium mb-2">Cargo del Inspector</label>
-                <input
-                  type="text"
-                  value={codigoInspector}
-                  onChange={e => setCodigoInspector(e.target.value)}
-                  placeholder="Cargo del inspector"
-                  className="w-full bg-gray-800 border border-gray-600 px-2 sm:px-3 py-2 text-white rounded focus:border-blue-500 focus:outline-none text-sm"
-                  disabled={cargando}
-                />
-              </div>
-            </div>
-            <FirmaMaquinaria
-              firmanteInspector={firmanteInspector}
-              setFirmanteInspector={setFirmanteInspector}
-              codigoInspector={codigoInspector}
-              setCodigoInspector={setCodigoInspector}
-            />
-          </div>
-        </div>
-
-        {/* BOTONES DE ACCIÓN PRINCIPALES */}
-        <div className="mt-6 sm:mt-8 bg-gray-700 rounded-lg p-3 sm:p-6">
-          <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-center border-b border-gray-600 pb-2">
-            Acciones del Formulario
-          </h2>
-          
-          {/* Botones de historial */}
-          <div className="mb-4 sm:mb-6">
-            {/* Información sobre campos obligatorios */}
-            <div className="mb-3 sm:mb-4 p-2 sm:p-3 bg-blue-900 rounded-lg border border-blue-600">
-              <h3 className="text-xs sm:text-sm font-semibold text-blue-200 mb-2">
-                📋 Campos Obligatorios para Guardar:
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-blue-300">
-                <div className={`flex items-center ${nombreAsegurado ? 'text-green-400' : 'text-red-400'}`}>
-                  <span className="mr-2">{nombreAsegurado ? '✅' : '❌'}</span>
-                  Asegurado: {nombreAsegurado || 'Faltante'}
-                </div>
-                <div className={`flex items-center ${nombreMaquinaria ? 'text-green-400' : 'text-red-400'}`}>
-                  <span className="mr-2">{nombreMaquinaria ? '✅' : '❌'}</span>
-                  Tipo Maquinaria: {nombreMaquinaria || 'Faltante'}
-                </div>
-                <div className={`flex items-center ${aseguradora ? 'text-green-400' : 'text-red-400'}`}>
-                  <span className="mr-2">{aseguradora ? '✅' : '❌'}</span>
-                  Aseguradora: {aseguradora || 'Faltante'}
-                </div>
-              </div>
-            </div>
-            
-            <BotonesHistorial
-              onGuardarEnHistorial={handleGuardarEnHistorial}
-              onExportar={handleExportar}
-              tipoFormulario={TIPOS_FORMULARIOS.MAQUINARIA}
-              tituloFormulario="Maquinaria"
-              deshabilitado={!nombreAsegurado || !nombreMaquinaria || !aseguradora}
-              guardando={guardando}
-              exportando={exportando}
-            />
-          </div>
-
-          {/* Campos adicionales para exportación */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div>
-              <label className="block text-xs sm:text-sm font-medium mb-2">Fecha de Inspección</label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={e => setFecha(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-600 px-2 sm:px-3 py-2 text-white rounded focus:border-blue-500 focus:outline-none text-sm"
-                disabled={cargando}
-              />
-            </div>
-          </div>
+          <BotonesHistorial
+            onGuardarEnHistorial={handleGuardarEnHistorial}
+            onExportar={handleExportar}
+            tipoFormulario={TIPOS_FORMULARIOS.MAQUINARIA}
+            tituloFormulario="Maquinaria"
+            deshabilitado={!nombreAsegurado || !nombreMaquinaria || !aseguradora}
+            guardando={guardando}
+            exportando={exportando}
+          />
         </div>
       </div>
     </div>

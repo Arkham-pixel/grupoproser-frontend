@@ -20,18 +20,26 @@ export const useAutoSave = ({
   formKey,
   formData,
   enabled = true,
-  interval = 30000,
+  interval = 300000,
+  debounceMs = 400,
+  saveOnChange = true,
   onRestore,
   excludeFields = [],
   skipRestoreOnMount = false,
+  /** Con caso en BD y red: no pisar localStorage cada intervalo (evita conflictos entre ventanas). */
+  preferServerWhenOnline = false,
+  /** Ref opcional: si devuelve true, se omite el autoguardado por cambio (p. ej. recarga desde servidor). */
+  shouldSkipSaveRef = null,
 }) => {
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved, error, offline-saved, syncing
   const intervalRef = useRef(null);
+  const debounceRef = useRef(null);
   const formDataRef = useRef(formData);
   const isFirstRender = useRef(true);
   const hasShownRestorePrompt = useRef(false);
+  const omitirPorCargaInicialRef = useRef(true);
   const isOnline = useOnlineStatus();
 
   // Actualizar la referencia del formData
@@ -40,8 +48,14 @@ export const useAutoSave = ({
   }, [formData]);
 
   // Función para guardar
-  const saveToStorage = useCallback(() => {
+  const saveToStorage = useCallback((options = {}) => {
     if (!isAutoSaveEnabled || !formKey) return;
+
+    const force = options.force === true;
+    const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    if (preferServerWhenOnline && online && !force) {
+      return;
+    }
 
     try {
       setSaveStatus('saving');
@@ -54,7 +68,6 @@ export const useAutoSave = ({
 
       autoSaveService.save(formKey, dataToSave);
       setLastSaveTime(new Date());
-      const online = typeof navigator !== 'undefined' ? navigator.onLine : true;
       if (!online) {
         autoSaveService.setPendingServerSync(formKey, true);
         setSaveStatus('offline-saved');
@@ -66,13 +79,13 @@ export const useAutoSave = ({
       console.error('❌ Error en autoguardado:', error);
       setSaveStatus('error');
     }
-  }, [formKey, isAutoSaveEnabled, excludeFields]);
+  }, [formKey, isAutoSaveEnabled, excludeFields, preferServerWhenOnline]);
 
   // Guardar de inmediato al perder conexión (borrador local seguro)
   useEffect(() => {
     const onOffline = () => {
       if (isAutoSaveEnabled && formKey) {
-        saveToStorage();
+        saveToStorage({ force: true });
       }
     };
     window.addEventListener('offline', onOffline);
@@ -129,8 +142,8 @@ autoSaveService.clear(formKey);
   }, [formKey]);
 
   // Función para guardar manualmente
-  const saveNow = useCallback(() => {
-saveToStorage();
+  const saveNow = useCallback((options) => {
+    saveToStorage(options);
   }, [saveToStorage]);
 
   useEffect(() => {
@@ -164,8 +177,50 @@ if (wasEnabled) {
     }
   }, [formKey, restoreFromStorage, onRestore, skipRestoreOnMount]);
 
+  // Autoguardado al estilo Word/OneDrive: cada cambio, tras una pausa breve (debounce)
   useEffect(() => {
-    if (isAutoSaveEnabled && enabled && formKey) {
+    if (!isAutoSaveEnabled || !enabled || !formKey || !saveOnChange || debounceMs <= 0) {
+      return undefined;
+    }
+
+    if (omitirPorCargaInicialRef.current) {
+      omitirPorCargaInicialRef.current = false;
+      return undefined;
+    }
+
+    if (shouldSkipSaveRef?.current) {
+      return undefined;
+    }
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    setSaveStatus((prev) => (prev === 'syncing' ? prev : 'saving'));
+
+    debounceRef.current = setTimeout(() => {
+      saveToStorage({ force: !preferServerWhenOnline });
+    }, debounceMs);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [
+    formData,
+    isAutoSaveEnabled,
+    enabled,
+    formKey,
+    saveOnChange,
+    debounceMs,
+    saveToStorage,
+    preferServerWhenOnline,
+    shouldSkipSaveRef,
+  ]);
+
+  useEffect(() => {
+    if (isAutoSaveEnabled && enabled && formKey && interval > 0) {
       // Limpiar intervalo anterior si existe
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -176,8 +231,24 @@ if (wasEnabled) {
         saveToStorage();
       }, interval);
 
+      // Reflejar guardados de otra ventana (misma clave) en el indicador
+      const onStorageSync = (event) => {
+        if (event.key !== `autosave_${formKey}` || !event.newValue) return;
+        try {
+          const meta = autoSaveService.getMetadata(formKey);
+          if (meta?.savedAt) {
+            setLastSaveTime(new Date(meta.savedAt));
+            setSaveStatus(navigator.onLine ? 'saved' : 'offline-saved');
+          }
+        } catch {
+          /* ignore */
+        }
+      };
+      window.addEventListener('storage', onStorageSync);
+
 // Limpieza
       return () => {
+        window.removeEventListener('storage', onStorageSync);
         if (intervalRef.current) {
           clearInterval(intervalRef.current);
           intervalRef.current = null;

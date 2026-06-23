@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BASE_URL } from '../config/apiConfig';
+import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig';
 import { FaPlus, FaEdit, FaTrash, FaUserTie, FaSave, FaTimes, FaUserCircle } from 'react-icons/fa';
 
 export default function GestionResponsables() {
@@ -29,10 +29,8 @@ export default function GestionResponsables() {
   // Función para obtener URL de foto
   const obtenerUrlFoto = (fotoUrlRelativa) => {
     if (!fotoUrlRelativa) return null;
-    if (fotoUrlRelativa.startsWith('http://') || fotoUrlRelativa.startsWith('https://')) {
-      return fotoUrlRelativa;
-    }
-    return `${BASE_URL}${fotoUrlRelativa.startsWith('/') ? '' : '/'}${fotoUrlRelativa}`;
+    // Maneja rutas /uploads y referencias s3: vía proxy de storage
+    return resolveUploadsUrl(fotoUrlRelativa);
   };
 
   // Cargar datos

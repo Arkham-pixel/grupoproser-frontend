@@ -2,6 +2,7 @@
 import { BASE_URL, PROD_URL, getUploadsUrlCandidates, isDevelopmentEnv } from '../config/apiConfig.js';
 import { isStoredFileReference } from '../utils/storedFilePath.js';
 import { appendUploadFile, sanitizeUploadFileName } from '../utils/sanitizeUploadFileName.js';
+import { AREAS_FOTOS_ANIDADAS } from '../utils/propiedadesFotoUtils.js';
 
 // Tipos de formularios disponibles
 export const TIPOS_FORMULARIOS = {
@@ -79,6 +80,13 @@ datosLimpios.imagenesInspeccion = this.limpiarArrayImagenes(datosLimpios.imagene
     if (datosLimpios.fotoPrincipalPreview) {
       delete datosLimpios.fotoPrincipalPreview;
     }
+    if (datosLimpios.fotoPrincipalImagen && typeof datosLimpios.fotoPrincipalImagen === 'object') {
+      const fp = { ...datosLimpios.fotoPrincipalImagen };
+      delete fp.file;
+      delete fp.preview;
+      delete fp.src;
+      datosLimpios.fotoPrincipalImagen = fp;
+    }
     
     // Limpiar otros campos problemáticos recursivamente
     Object.keys(datosLimpios).forEach(key => {
@@ -143,13 +151,17 @@ const formData = new FormData();
     
     // Filtrar solo imágenes nuevas (File objects) que necesitan subirse
     for (const imagen of imagenes) {
-      if (imagen && imagen.file && imagen.file instanceof File) {
-        const fileOriginal = imagen.file;
+      const fileOriginal =
+        imagen?.file instanceof File
+          ? imagen.file
+          : imagen?.archivo instanceof File
+            ? imagen.archivo
+            : null;
+      if (imagen && fileOriginal) {
         const fileParaSubir = await this.comprimirImagenSiEsNecesario(fileOriginal);
         imagenesNuevas.push({
           ...imagen,
           file: fileParaSubir,
-          // Guardar info útil para debug (no se persiste, se limpia después)
           _nombreOriginal: fileOriginal?.name
         });
         appendUploadFile(
@@ -292,6 +304,80 @@ const response = await fetch(url, {
     }
   }
 
+  normalizarFotoPropiedadParaSubida(foto) {
+    if (!foto || typeof foto !== 'object') return foto;
+
+    if (foto.base64 && !foto.ruta) {
+      const base64Data = foto.base64.startsWith('data:')
+        ? foto.base64.split(',')[1]
+        : foto.base64;
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'image/jpeg' });
+      const file = new File(
+        [blob],
+        sanitizeUploadFileName(foto.nombre, 'imagen.jpg'),
+        { type: 'image/jpeg' }
+      );
+      return {
+        file,
+        nombre: foto.nombre || 'imagen',
+        descripcion: foto.descripcion || '',
+        ruta: null,
+      };
+    }
+
+    if (foto.archivo && foto.archivo instanceof File) {
+      return {
+        file: foto.archivo,
+        nombre: foto.nombre || foto.archivo.name,
+        descripcion: foto.descripcion || '',
+        ruta: foto.ruta || null,
+      };
+    }
+
+    if (foto.file && foto.file instanceof File) {
+      return {
+        file: foto.file,
+        nombre: foto.nombre || foto.file.name,
+        descripcion: foto.descripcion || '',
+        ruta: foto.ruta || null,
+      };
+    }
+
+    if (isStoredFileReference(foto.ruta)) {
+      return {
+        nombre: foto.nombre || 'imagen',
+        descripcion: foto.descripcion || '',
+        ruta: foto.ruta,
+      };
+    }
+
+    return foto;
+  }
+
+  async procesarListaFotosPropiedadesParaS3(fotos, casoId) {
+    if (!Array.isArray(fotos) || fotos.length === 0) return [];
+
+    const fotosNormalizadas = fotos.map((foto) => this.normalizarFotoPropiedadParaSubida(foto));
+    const fotosProcesadas = await this.subirImagenesAlServidor(fotosNormalizadas, casoId);
+
+    return fotosProcesadas
+      .filter((img) => isStoredFileReference(img.ruta))
+      .map((img) => ({
+        id: img.id || `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        nombre: img.nombre || 'imagen',
+        descripcion: img.descripcion || '',
+        ruta: img.ruta,
+        tamaño: img.tamaño,
+        tipoMime: img.tipoMime,
+      }));
+  }
+
   // Función para procesar imágenes en los datos del formulario
   // AHORA: Sube imágenes como archivos y guarda solo las rutas
   async procesarImagenesEnDatos(datos, casoId = null) {
@@ -304,20 +390,112 @@ const response = await fetch(url, {
 datosProcesados.imagen = await this.convertirArchivoABase64(datosProcesados.imagen);
     }
 
-    // Procesar foto principal de maquinaria (similar a imagen principal)
-    if (datosProcesados.fotoPrincipal && datosProcesados.fotoPrincipal instanceof File) {
-datosProcesados.fotoPrincipal = await this.convertirArchivoABase64(datosProcesados.fotoPrincipal);
-      // También mantener el preview si existe
-      if (datosProcesados.fotoPrincipalPreview) {
-        datosProcesados.fotoPrincipalPreview = datosProcesados.fotoPrincipalPreview;
+    // Procesar foto principal de maquinaria → S3
+    if (datosProcesados.fotoPrincipalImagen && typeof datosProcesados.fotoPrincipalImagen === 'object') {
+      const img = datosProcesados.fotoPrincipalImagen;
+      if (img.file && img.file instanceof File) {
+        const [subida] = await this.subirImagenesAlServidor(
+          [{
+            file: img.file,
+            nombre: img.nombre || img.file.name,
+            descripcion: img.descripcion || datosProcesados.descripcionFotoPrincipal || '',
+          }],
+          casoId || datosProcesados.casoId
+        );
+        if (subida?.ruta) {
+          datosProcesados.fotoPrincipalImagen = {
+            ruta: subida.ruta,
+            nombre: subida.nombre || img.nombre,
+            descripcion: subida.descripcion || img.descripcion || '',
+            tamaño: subida.tamaño,
+            tipoMime: subida.tipoMime,
+          };
+        }
+      } else if (isStoredFileReference(img.ruta)) {
+        datosProcesados.fotoPrincipalImagen = {
+          ruta: img.ruta,
+          nombre: img.nombre || 'foto_principal',
+          descripcion: img.descripcion || datosProcesados.descripcionFotoPrincipal || '',
+          tamaño: img.tamaño,
+          tipoMime: img.tipoMime,
+        };
       }
+    } else if (datosProcesados.fotoPrincipal && datosProcesados.fotoPrincipal instanceof File) {
+      const [subida] = await this.subirImagenesAlServidor(
+        [{
+          file: datosProcesados.fotoPrincipal,
+          nombre: datosProcesados.fotoPrincipal.name,
+          descripcion: datosProcesados.descripcionFotoPrincipal || '',
+        }],
+        casoId || datosProcesados.casoId
+      );
+      if (subida?.ruta) {
+        datosProcesados.fotoPrincipalImagen = {
+          ruta: subida.ruta,
+          nombre: subida.nombre,
+          descripcion: subida.descripcion || datosProcesados.descripcionFotoPrincipal || '',
+          tamaño: subida.tamaño,
+          tipoMime: subida.tipoMime,
+        };
+      }
+      delete datosProcesados.fotoPrincipal;
+      delete datosProcesados.fotoPrincipalPreview;
+    }
+
+    // Legacy: preview base64 sin subir aún
+    if (
+      datosProcesados.fotoPrincipalPreview
+      && typeof datosProcesados.fotoPrincipalPreview === 'string'
+      && datosProcesados.fotoPrincipalPreview.startsWith('data:')
+      && !isStoredFileReference(datosProcesados.fotoPrincipalImagen?.ruta)
+    ) {
+      try {
+        const base64Payload = datosProcesados.fotoPrincipalPreview.split(',')[1];
+        const binary = atob(base64Payload);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const file = new File([bytes], 'foto_principal.jpg', { type: 'image/jpeg' });
+        const [subida] = await this.subirImagenesAlServidor(
+          [{ file, nombre: file.name, descripcion: datosProcesados.descripcionFotoPrincipal || '' }],
+          casoId || datosProcesados.casoId
+        );
+        if (subida?.ruta) {
+          datosProcesados.fotoPrincipalImagen = {
+            ruta: subida.ruta,
+            nombre: subida.nombre,
+            descripcion: subida.descripcion || '',
+            tamaño: subida.tamaño,
+            tipoMime: subida.tipoMime,
+          };
+        }
+      } catch (e) {
+        console.warn('⚠️ No se pudo subir foto principal legacy:', e?.message);
+      }
+      delete datosProcesados.fotoPrincipalPreview;
     }
 
     // Procesar imágenes de registro: SUBIR COMO ARCHIVOS
     if (datosProcesados.imagenesRegistro && Array.isArray(datosProcesados.imagenesRegistro)) {
-// Subir imágenes al servidor y obtener rutas
+      const imagenesNormalizadas = await Promise.all(
+        datosProcesados.imagenesRegistro.map(async (img) => {
+          if (img?.file instanceof File) return img;
+          if (typeof img?.src === 'string' && img.src.startsWith('data:')) {
+            try {
+              const res = await fetch(img.src);
+              const blob = await res.blob();
+              return {
+                ...img,
+                file: new File([blob], img.nombre || 'imagen.jpg', { type: blob.type || 'image/jpeg' }),
+              };
+            } catch {
+              return img;
+            }
+          }
+          return img;
+        })
+      );
       const imagenesProcesadas = await this.subirImagenesAlServidor(
-        datosProcesados.imagenesRegistro,
+        imagenesNormalizadas,
         casoId || datosProcesados.casoId
       );
 
@@ -440,167 +618,31 @@ try {
       }
     }
 
-    // Procesar fotosAreas (formulario de inspección de propiedades): SUBIR COMO ARCHIVOS
+    // Procesar fotosAreas (inspección de propiedades): subir a S3 y guardar solo rutas
     if (datosProcesados.fotosAreas && typeof datosProcesados.fotosAreas === 'object') {
-const fotosAreasProcesadas = {};
-      
+      const fotosAreasProcesadas = {};
+      const casoRef = casoId || datosProcesados.casoId;
+
       for (const [area, fotos] of Object.entries(datosProcesados.fotosAreas)) {
         if (!fotos) continue;
-        
-        // Si es alcobas, tiene estructura anidada
-        if (area === 'alcobas' && typeof fotos === 'object' && !Array.isArray(fotos)) {
-          fotosAreasProcesadas.alcobas = {};
-          
-          for (const [alcobaNum, fotosAlcoba] of Object.entries(fotos)) {
-            if (!Array.isArray(fotosAlcoba) || fotosAlcoba.length === 0) {
-              fotosAreasProcesadas.alcobas[alcobaNum] = [];
-              continue;
-            }
-            
-            // Normalizar fotos para subir al servidor
-            const fotosNormalizadas = fotosAlcoba.map(foto => {
-              // Si tiene base64 pero no ruta, necesitamos convertir base64 a File para subirlo
-              if (foto.base64 && !foto.ruta) {
-                // Convertir base64 a Blob y luego a File
-                const base64Data = foto.base64.startsWith('data:') 
-                  ? foto.base64.split(',')[1] 
-                  : foto.base64;
-                const byteCharacters = atob(base64Data);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                  byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'image/jpeg' });
-                const file = new File(
-                  [blob],
-                  sanitizeUploadFileName(foto.nombre, 'imagen.jpg'),
-                  { type: 'image/jpeg' }
-                );
-                
-                return {
-                  file: file,
-                  nombre: foto.nombre || 'imagen',
-                  descripcion: foto.descripcion || '',
-                  ruta: null
-                };
-              }
-              
-              // Si tiene archivo File, usarlo directamente
-              if (foto.archivo && foto.archivo instanceof File) {
-                return {
-                  file: foto.archivo,
-                  nombre: foto.nombre || foto.archivo.name,
-                  descripcion: foto.descripcion || '',
-                  ruta: foto.ruta || null
-                };
-              }
-              
-              // Si ya tiene ruta, mantenerla
-              if (isStoredFileReference(foto.ruta)) {
-                return {
-                  nombre: foto.nombre || 'imagen',
-                  descripcion: foto.descripcion || '',
-                  ruta: foto.ruta
-                };
-              }
-              
-              return foto;
-            });
-            
-            // Subir fotos al servidor
-            const fotosProcesadas = await this.subirImagenesAlServidor(
-              fotosNormalizadas,
-              casoId || datosProcesados.casoId
+
+        if (AREAS_FOTOS_ANIDADAS.includes(area) && typeof fotos === 'object' && !Array.isArray(fotos)) {
+          fotosAreasProcesadas[area] = {};
+          for (const [clave, fotosGrupo] of Object.entries(fotos)) {
+            fotosAreasProcesadas[area][clave] = await this.procesarListaFotosPropiedadesParaS3(
+              fotosGrupo,
+              casoRef
             );
-            
-            // Guardar solo rutas y metadata
-            fotosAreasProcesadas.alcobas[alcobaNum] = fotosProcesadas
-              .filter(img => isStoredFileReference(img.ruta))
-              .map(img => ({
-                id: Date.now() + Math.random(),
-                nombre: img.nombre || 'imagen',
-                descripcion: img.descripcion || '',
-                ruta: img.ruta
-                // NO incluir base64, url, archivo, etc.
-              }));
           }
-        } else if (Array.isArray(fotos) && fotos.length > 0) {
-          // Área normal (cocina, sala, etc.)
-          // Normalizar fotos para subir al servidor
-          const fotosNormalizadas = fotos.map(foto => {
-            // Si tiene base64 pero no ruta, convertir a File
-            if (foto.base64 && !foto.ruta) {
-              const base64Data = foto.base64.startsWith('data:') 
-                ? foto.base64.split(',')[1] 
-                : foto.base64;
-              const byteCharacters = atob(base64Data);
-              const byteNumbers = new Array(byteCharacters.length);
-              for (let i = 0; i < byteCharacters.length; i++) {
-                byteNumbers[i] = byteCharacters.charCodeAt(i);
-              }
-              const byteArray = new Uint8Array(byteNumbers);
-              const blob = new Blob([byteArray], { type: 'image/jpeg' });
-              const file = new File(
-                [blob],
-                sanitizeUploadFileName(foto.nombre, 'imagen.jpg'),
-                { type: 'image/jpeg' }
-              );
-              
-              return {
-                file: file,
-                nombre: foto.nombre || 'imagen',
-                descripcion: foto.descripcion || '',
-                ruta: null
-              };
-            }
-            
-            // Si tiene archivo File, usarlo directamente
-            if (foto.archivo && foto.archivo instanceof File) {
-              return {
-                file: foto.archivo,
-                nombre: foto.nombre || foto.archivo.name,
-                descripcion: foto.descripcion || '',
-                ruta: foto.ruta || null
-              };
-            }
-            
-            // Si ya tiene ruta, mantenerla
-            if (isStoredFileReference(foto.ruta)) {
-              return {
-                nombre: foto.nombre || 'imagen',
-                descripcion: foto.descripcion || '',
-                ruta: foto.ruta
-              };
-            }
-            
-            return foto;
-          });
-          
-          // Subir fotos al servidor
-          const fotosProcesadas = await this.subirImagenesAlServidor(
-            fotosNormalizadas,
-            casoId || datosProcesados.casoId
-          );
-          
-          // Guardar solo rutas y metadata
-          fotosAreasProcesadas[area] = fotosProcesadas
-            .filter(img => isStoredFileReference(img.ruta))
-            .map(img => ({
-              id: Date.now() + Math.random(),
-              nombre: img.nombre || 'imagen',
-              descripcion: img.descripcion || '',
-              ruta: img.ruta
-              // NO incluir base64, url, archivo, etc.
-            }));
+        } else if (Array.isArray(fotos)) {
+          fotosAreasProcesadas[area] = await this.procesarListaFotosPropiedadesParaS3(fotos, casoRef);
         } else {
-          // Área vacía o estructura desconocida, mantener tal cual
           fotosAreasProcesadas[area] = fotos;
         }
       }
-      
+
       datosProcesados.fotosAreas = fotosAreasProcesadas;
-}
+    }
 
     // Procesar anexos si existen
     if (datosProcesados.anexos && Array.isArray(datosProcesados.anexos)) {

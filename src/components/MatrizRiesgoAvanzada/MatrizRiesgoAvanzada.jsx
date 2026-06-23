@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   FaArrowLeft,
@@ -14,13 +14,24 @@ import IdentificacionRiesgos from './IdentificacionRiesgos';
 import ValoracionRiesgos from './ValoracionRiesgos';
 import MapaCalorRiesgos from './MapaCalorRiesgos';
 import GestionRiesgos from './GestionRiesgos';
+import { normalizarGestionRiesgos } from './gestionRiesgosHelpers';
+import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 import { ReporteService } from '../../services/reporteService';
 import { MatrizRiesgoService } from '../../services/matrizRiesgoService';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import './matrizFenixTheme.css';
 
 /** Referencias estables para no crear arrays nuevos en cada render */
 const RIESGOS_IDENTIFICACION_VACIOS = [];
 const FILAS_IDENTIFICACION_VACIAS = [];
+
+const DATOS_MATRIZ_VACIOS = {
+  informacion: {},
+  identificacion: {},
+  valoracion: {},
+  mapaCalor: {},
+  gestionRiesgos: {},
+};
 
 const SECCIONES_NAV = [
   {
@@ -63,19 +74,81 @@ const MatrizRiesgoAvanzada = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [seccionActiva, setSeccionActiva] = useState('informacion');
-  const [datosMatriz, setDatosMatriz] = useState({
-    informacion: {},
-    identificacion: {},
-    valoracion: {},
-    mapaCalor: {},
-    gestionRiesgos: {},
-  });
+  const [datosMatriz, setDatosMatriz] = useState(DATOS_MATRIZ_VACIOS);
+  const [formKey, setFormKey] = useState(0);
   const [mensajeReporte, setMensajeReporte] = useState('');
   const [estadoGuardado, setEstadoGuardado] = useState('idle');
   const [mensajeGuardado, setMensajeGuardado] = useState('');
   const [matrizId, setMatrizId] = useState(id || null);
   const [tipoReporte, setTipoReporte] = useState('inicial');
   const [cargando, setCargando] = useState(!!id);
+  const cargandoDesdeServidorRef = useRef(false);
+  const datosMatrizRef = useRef(DATOS_MATRIZ_VACIOS);
+  const gestionRiesgosRef = useRef(null);
+
+  useEffect(() => {
+    datosMatrizRef.current = datosMatriz;
+  }, [datosMatriz]);
+
+  const recordIdMatriz = id || matrizId || null;
+  const autoguardadoActivo = Boolean(recordIdMatriz);
+
+  const onAutoSaveServidor = useCallback(
+    async (data) => {
+      const matrizIdActual = id || matrizId;
+      if (!matrizIdActual) return;
+
+      const nombreEmpresa = data.informacion?.nombreEmpresa || 'Empresa Sin Nombre';
+      const titulo = `Matriz de Riesgo - ${nombreEmpresa}`;
+      const datosCompletos = {
+        informacion: data.informacion || {},
+        identificacion: data.identificacion || {},
+        valoracion: data.valoracion || {},
+        mapaCalor: data.mapaCalor || {},
+        gestionRiesgos: normalizarGestionRiesgos(data.gestionRiesgos || {}),
+      };
+
+      await MatrizRiesgoService.actualizarMatrizRiesgo(
+        matrizIdActual,
+        datosCompletos,
+        titulo,
+        'en_proceso'
+      );
+    },
+    [id, matrizId]
+  );
+
+  const {
+    isAutoSaveEnabled,
+    lastSaveTime,
+    saveStatus,
+    enableAutoSave,
+    disableAutoSave,
+    clearSavedData,
+    saveNow,
+    syncNow,
+    pendingServerSync,
+    isOnline,
+    savedDataToRestore,
+    showRestoreDialog,
+    handleRestoreData,
+    handleDiscardSavedData,
+    handleCancelRestore,
+  } = useFormAutoSave({
+    formKeyBase: 'matriz-riesgo',
+    recordId: recordIdMatriz,
+    formData: datosMatriz,
+    enabled: autoguardadoActivo,
+    serverReady: autoguardadoActivo,
+    skipRestoreOnMount: true,
+    onServerUpdate: onAutoSaveServidor,
+    shouldSkipSaveRef: cargandoDesdeServidorRef,
+  });
+
+  const handleRestoreBorrador = useCallback(() => {
+    handleRestoreData(setDatosMatriz, datosMatriz);
+    setFormKey((k) => k + 1);
+  }, [handleRestoreData, datosMatriz]);
 
   useEffect(() => {
     setMatrizId(id || null);
@@ -86,106 +159,42 @@ const MatrizRiesgoAvanzada = () => {
       if (id) {
         try {
           setCargando(true);
+          cargandoDesdeServidorRef.current = true;
           const resultado = await MatrizRiesgoService.obtenerMatrizRiesgo(id);
           if (resultado.success && resultado.data) {
             const matriz = resultado.data;
             setMatrizId(matriz._id);
-            setDatosMatriz(
-              matriz.datosMatriz || {
-                informacion: {},
-                identificacion: {},
-                valoracion: {},
-                mapaCalor: {},
-                gestionRiesgos: {},
-              }
+            setDatosMatriz(matriz.datosMatriz || DATOS_MATRIZ_VACIOS);
+            gestionRiesgosRef.current = normalizarGestionRiesgos(
+              matriz.datosMatriz?.gestionRiesgos || {}
             );
             setTipoReporte(matriz.tipo === 'matriz_riesgo_anual' ? 'anual' : 'inicial');
+            setFormKey((k) => k + 1);
           }
         } catch (error) {
           console.error('Error cargando matriz:', error);
           alert('Error al cargar la matriz: ' + error.message);
           navigate('/matrices-riesgo');
         } finally {
+          cargandoDesdeServidorRef.current = false;
           setCargando(false);
         }
-      } else {
-        setMatrizId(null);
-        const datosGuardados = localStorage.getItem('matrizRiesgos');
-        if (datosGuardados) {
-          try {
-            const datosParseados = JSON.parse(datosGuardados);
-            if (datosParseados && typeof datosParseados === 'object') {
-              setDatosMatriz({
-                informacion: datosParseados.informacion || {},
-                identificacion: datosParseados.identificacion || {},
-                valoracion: datosParseados.valoracion || {},
-                mapaCalor: datosParseados.mapaCalor || {},
-                gestionRiesgos: datosParseados.gestionRiesgos || {},
-              });
-            }
-          } catch (error) {
-            console.error('Error al cargar datos guardados:', error);
-            localStorage.removeItem('matrizRiesgos');
-          }
-        }
+        return;
+      }
+
+      setMatrizId(null);
+      gestionRiesgosRef.current = null;
+      setDatosMatriz(DATOS_MATRIZ_VACIOS);
+      setTipoReporte('inicial');
+      setFormKey((k) => k + 1);
+
+      if (location.state?.nuevaMatriz) {
+        navigate(location.pathname, { replace: true, state: {} });
       }
     };
 
     cargarMatrizExistente();
-  }, [id, navigate]);
-
-  useEffect(() => {
-    const esRutaMatriz = location.pathname.includes('/matriz-riesgo-avanzada');
-    if (!esRutaMatriz) return;
-
-    const timeoutId = setTimeout(() => {
-      try {
-        localStorage.setItem('matrizRiesgos', JSON.stringify(datosMatriz));
-      } catch (error) {
-        console.error('Error al guardar datos:', error);
-        try {
-          localStorage.removeItem('matrizRiesgos');
-          localStorage.setItem('matrizRiesgos', JSON.stringify(datosMatriz));
-        } catch (e) {
-          console.error('Error crítico al guardar:', e);
-        }
-      }
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
-  }, [datosMatriz, location.pathname]);
-
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      const esRutaMatriz = window.location.pathname.includes('/matriz-riesgo-avanzada');
-      if (esRutaMatriz) {
-        try {
-          localStorage.setItem('matrizRiesgos', JSON.stringify(datosMatriz));
-        } catch (error) {
-          console.error('Error al guardar antes de salir:', error);
-        }
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [datosMatriz]);
-
-  useEffect(() => {
-    const esRutaMatriz = location.pathname.includes('/matriz-riesgo-avanzada');
-    if (!esRutaMatriz) {
-      localStorage.removeItem('matrizRiesgos');
-    }
-
-    return () => {
-      setTimeout(() => {
-        const sigueEnRutaMatriz = window.location.pathname.includes('/matriz-riesgo-avanzada');
-        if (!sigueEnRutaMatriz) {
-          localStorage.removeItem('matrizRiesgos');
-        }
-      }, 100);
-    };
-  }, [location.pathname]);
+  }, [id, navigate, location.pathname, location.state?.nuevaMatriz]);
 
   const handleDatosChange = useCallback((seccion, datos) => {
     setDatosMatriz((prev) => {
@@ -200,20 +209,47 @@ const MatrizRiesgoAvanzada = () => {
     });
   }, []);
 
+  const onInformacionChange = useCallback(
+    (datos) => handleDatosChange('informacion', datos),
+    [handleDatosChange]
+  );
+  const onIdentificacionChange = useCallback(
+    (datos) => handleDatosChange('identificacion', datos),
+    [handleDatosChange]
+  );
+  const onValoracionChange = useCallback(
+    (datos) => handleDatosChange('valoracion', datos),
+    [handleDatosChange]
+  );
+  const onMapaCalorChange = useCallback(
+    (datos) => handleDatosChange('mapaCalor', datos),
+    [handleDatosChange]
+  );
+  const onGestionRiesgosChange = useCallback(
+    (datos) => {
+      gestionRiesgosRef.current = datos;
+      handleDatosChange('gestionRiesgos', datos);
+    },
+    [handleDatosChange]
+  );
+
   const handleGuardarMatriz = async () => {
     try {
       setEstadoGuardado('guardando');
       setMensajeGuardado('Guardando matriz de riesgo...');
 
-      const nombreEmpresa = datosMatriz.informacion?.nombreEmpresa || 'Empresa Sin Nombre';
+      const snapshot = datosMatrizRef.current;
+      const nombreEmpresa = snapshot.informacion?.nombreEmpresa || 'Empresa Sin Nombre';
       const titulo = `Matriz de Riesgo - ${nombreEmpresa}`;
 
       const datosCompletos = {
-        informacion: datosMatriz.informacion || {},
-        identificacion: datosMatriz.identificacion || {},
-        valoracion: datosMatriz.valoracion || {},
-        mapaCalor: datosMatriz.mapaCalor || {},
-        gestionRiesgos: datosMatriz.gestionRiesgos || {},
+        informacion: snapshot.informacion || {},
+        identificacion: snapshot.identificacion || {},
+        valoracion: snapshot.valoracion || {},
+        mapaCalor: snapshot.mapaCalor || {},
+        gestionRiesgos: normalizarGestionRiesgos(
+          gestionRiesgosRef.current ?? snapshot.gestionRiesgos ?? {}
+        ),
       };
 
       let resultado;
@@ -261,6 +297,7 @@ const MatrizRiesgoAvanzada = () => {
       }
 
       setEstadoGuardado('guardado');
+      clearSavedData();
       setTimeout(() => {
         setMensajeGuardado('');
         setEstadoGuardado('idle');
@@ -319,8 +356,9 @@ const MatrizRiesgoAvanzada = () => {
       id: 'informacion',
       componente: (
         <InformacionMatriz
+          key={`informacion-${formKey}`}
           datos={datosMatriz.informacion}
-          onDatosChange={(datos) => handleDatosChange('informacion', datos)}
+          onDatosChange={onInformacionChange}
         />
       ),
     },
@@ -328,8 +366,9 @@ const MatrizRiesgoAvanzada = () => {
       id: 'identificacion',
       componente: (
         <IdentificacionRiesgos
+          key={`identificacion-${formKey}`}
           datos={datosMatriz.identificacion}
-          onDatosChange={(datos) => handleDatosChange('identificacion', datos)}
+          onDatosChange={onIdentificacionChange}
         />
       ),
     },
@@ -337,8 +376,9 @@ const MatrizRiesgoAvanzada = () => {
       id: 'valoracion',
       componente: (
         <ValoracionRiesgos
+          key={`valoracion-${formKey}`}
           datos={datosMatriz.valoracion}
-          onDatosChange={(datos) => handleDatosChange('valoracion', datos)}
+          onDatosChange={onValoracionChange}
           riesgosIdentificacion={datosMatriz.identificacion?.riesgos ?? RIESGOS_IDENTIFICACION_VACIOS}
           filasIdentificacionFormulario={
             datosMatriz.identificacion?.filasFormulario ?? FILAS_IDENTIFICACION_VACIAS
@@ -350,8 +390,9 @@ const MatrizRiesgoAvanzada = () => {
       id: 'mapa-calor',
       componente: (
         <MapaCalorRiesgos
+          key={`mapa-calor-${formKey}`}
           datos={datosMatriz}
-          onDatosChange={(datos) => handleDatosChange('mapaCalor', datos)}
+          onDatosChange={onMapaCalorChange}
           tipoReporte={tipoReporte}
         />
       ),
@@ -360,8 +401,9 @@ const MatrizRiesgoAvanzada = () => {
       id: 'gestion-riesgos',
       componente: (
         <GestionRiesgos
+          key={`gestion-riesgos-${formKey}`}
           datos={datosMatriz.gestionRiesgos}
-          onDatosChange={(datos) => handleDatosChange('gestionRiesgos', datos)}
+          onDatosChange={onGestionRiesgosChange}
         />
       ),
     },
@@ -523,6 +565,30 @@ const MatrizRiesgoAvanzada = () => {
                 )}
               </div>
             )}
+
+            {!autoguardadoActivo && (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                El autoguardado se activará después de guardar la matriz por primera vez con el botón <strong>Guardar</strong>.
+              </p>
+            )}
+
+            <FormAutoSaveControls
+              enabled={autoguardadoActivo}
+              isAutoSaveEnabled={isAutoSaveEnabled}
+              lastSaveTime={lastSaveTime}
+              saveStatus={saveStatus}
+              enableAutoSave={enableAutoSave}
+              disableAutoSave={disableAutoSave}
+              saveNow={saveNow}
+              syncNow={syncNow}
+              pendingServerSync={pendingServerSync}
+              isOnline={isOnline}
+              showRestoreDialog={showRestoreDialog}
+              savedDataToRestore={savedDataToRestore}
+              onRestore={handleRestoreBorrador}
+              onDiscard={handleDiscardSavedData}
+              onCancelRestore={handleCancelRestore}
+            />
           </div>
 
           <div

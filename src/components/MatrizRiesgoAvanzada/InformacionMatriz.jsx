@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   FaBullseye,
   FaChartBar,
@@ -112,12 +112,23 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
     }
   }, [seccionActiva]);
 
-  // Guardar datos cuando cambien
+  // Guardar datos cuando cambien (ref estable evita bucles por callback nuevo en cada render)
+  const onDatosChangeRef = useRef(onDatosChange);
+  onDatosChangeRef.current = onDatosChange;
+  const ultimoInformacionEnviadoRef = useRef('');
+
   useEffect(() => {
-    if (onDatosChange) {
-      onDatosChange(informacionGeneral);
+    let serializado = '';
+    try {
+      serializado = JSON.stringify(informacionGeneral);
+    } catch {
+      onDatosChangeRef.current?.(informacionGeneral);
+      return;
     }
-  }, [informacionGeneral, onDatosChange]);
+    if (serializado === ultimoInformacionEnviadoRef.current) return;
+    ultimoInformacionEnviadoRef.current = serializado;
+    onDatosChangeRef.current?.(informacionGeneral);
+  }, [informacionGeneral]);
 
   // Funciones para manejar recomendaciones
   const agregarRecomendacion = () => {
@@ -882,7 +893,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
             <MatrizTabEncabezado
               icon={FaShieldAlt}
               title="Gestión de riesgos y recomendaciones"
-              description="Documenta recomendaciones, fechas de implementación y seguimiento."
+              description="Documenta recomendaciones, fechas y seguimiento de avances."
             />
 
             {/* ¿Por qué son importantes las recomendaciones? */}

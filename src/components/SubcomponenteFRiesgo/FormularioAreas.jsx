@@ -58,7 +58,6 @@ export default function FormularioAreas({ onChange, areasIniciales = [] }) {
         <input
           type="text"
           className="border rounded p-2 flex-1"
-          placeholder="Nombre del área (ej: COCINA)"
           value={nuevaArea}
           onChange={(e) => setNuevaArea(e.target.value)}
         />

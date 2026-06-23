@@ -147,13 +147,9 @@ export default function ListaDocumentos() {
       setDocumentoVistaPrevia(documento);
       setMostrarVistaPrevia(true);
       
-      // Obtener la URL del archivo
-      const { BASE_URL } = await import('../../config/apiConfig');
-      // Asegurar que la ruta tenga el / inicial
-      const ruta = documento.archivo.ruta.startsWith('/') 
-        ? documento.archivo.ruta 
-        : `/${documento.archivo.ruta}`;
-      const url = `${BASE_URL}${ruta}`;
+      // Obtener la URL del archivo (maneja rutas /uploads y referencias s3: vía proxy)
+      const { getUploadsUrlCandidates } = await import('../../config/apiConfig');
+      const url = getUploadsUrlCandidates(documento.archivo.ruta)[0] || '';
       setUrlVistaPrevia(url);
     } catch (error) {
       console.error('Error abriendo vista previa:', error);

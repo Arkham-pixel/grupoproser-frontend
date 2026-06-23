@@ -2036,15 +2036,33 @@ const filaDoble = (label, value) => new TableRow({
   };
 
   const handleNombreClienteChange = (e) => {
-    setNombreCliente(e.target.value);
+    const value = e.target.value;
+    setNombreCliente(value);
+    setNombreEmpresa(value);
+    setFormData((prev) => ({ ...prev, asegurado: value }));
   };
 
   const handleNombreEmpresaChange = (e) => {
-    setNombreEmpresa(e.target.value);
+    const value = e.target.value;
+    setNombreEmpresa(value);
+    setNombreCliente(value);
+    setFormData((prev) => ({ ...prev, asegurado: value }));
   };
 
   const handleDireccionChange = (e) => {
-    setDireccion(e.target.value);
+    const value = e.target.value;
+    setDireccion(value);
+    setFormData((prev) => ({
+      ...prev,
+      direccion: value,
+      direccionRiesgo: value,
+    }));
+  };
+
+  const handleAseguradoraChange = (e) => {
+    const value = e.target.value;
+    setFormData((prev) => ({ ...prev, aseguradora: value }));
+    setAseguradora(value);
   };
 
   const handlePersonaEntrevistadaChange = (e) => {
@@ -2069,21 +2087,29 @@ const filaDoble = (label, value) => new TableRow({
 
   const handleCiudadChange = (selectedOption) => {
     if (!selectedOption) {
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         ciudad_siniestro: "",
         departamento_siniestro: "",
-      });
+        ciudad: "",
+        departamento: "",
+      }));
+      setMunicipio("");
+      setDepartamento("");
       return;
     }
-    setFormData({
-      ...formData,
+    const dept = selectedOption.label.split(" - ")[1] || "";
+    const ciudadTexto = selectedOption.value || selectedOption.label.split(" - ")[0] || "";
+    setFormData((prev) => ({
+      ...prev,
       ciudad_siniestro: selectedOption,
-      departamento_siniestro: selectedOption.label.split(" - ")[1] || "",
-    });
-
-
-};
+      departamento_siniestro: dept,
+      ciudad: ciudadTexto,
+      departamento: dept,
+    }));
+    setMunicipio(ciudadTexto);
+    setDepartamento(dept);
+  };
 
 
 
@@ -5837,7 +5863,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Ej: LADRILLERA CASABLANCA S.A.S."
+            placeholder="Nombre del Cliente / Empresa"
             disabled={cargando}
           />
         </div>
@@ -5851,8 +5877,8 @@ return (
           </label>
           <input
             type="text"
-            value={formData.direccion}
-            onChange={e => setFormData({ ...formData, direccion: e.target.value })}
+            value={direccion}
+            onChange={handleDireccionChange}
             className="w-full rounded px-2 sm:px-3 py-2 text-sm"
             style={{
               backgroundColor: inputBg,
@@ -5876,9 +5902,10 @@ return (
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Ciudad
+            Municipio
           </label>
           <Select
+            placeholder="Municipio"
             options={municipios}
             value={(() => {
               if (!formData.ciudad_siniestro) return null;
@@ -5914,7 +5941,6 @@ return (
               return encontrada || null;
             })()}
             onChange={handleCiudadChange}
-            placeholder="Selecciona una ciudad..."
             isSearchable
             className="w-full"
             isDisabled={cargando}
@@ -5969,9 +5995,7 @@ return (
           <select
             name="aseguradora"
             value={formData.aseguradora}
-            onChange={e =>
-              setFormData({ ...formData, aseguradora: e.target.value })
-            }
+            onChange={handleAseguradoraChange}
             className="w-full rounded px-2 sm:px-3 py-2 text-sm"
             style={{
               backgroundColor: inputBg,
@@ -5981,7 +6005,7 @@ return (
             }}
             disabled={cargando}
           >
-            <option value="">Selecciona una aseguradora</option>
+            <option value="">Aseguradora</option>
     <option value="ALIANZ SEGURO S.A.">ALIANZ SEGURO S.A.</option>
     <option value="ASEGURADORA SOLIDARIA DE COLOMBIA">ASEGURADORA SOLIDARIA DE COLOMBIA</option>
     <option value="AXA COLPATRIA SEGUROS S.A.">AXA COLPATRIA SEGUROS S.A.</option>
@@ -6028,6 +6052,7 @@ return (
           style={{
             color: textPrimary
           }}
+        placeholder="Subir Fotografía del Riesgo"
           disabled={cargando}
         />
         {preview && (
@@ -6298,7 +6323,7 @@ return (
       </label>
       <input
         type="text"
-        placeholder="Ej: Ladrillera Casablanca S.A.S."
+        placeholder="Nombre de la Empresa"
         value={nombreEmpresa}
         onChange={handleNombreEmpresaChange}
         className="w-full rounded px-3 py-2"
@@ -6320,7 +6345,7 @@ return (
       </label>
       <input
         type="text"
-        placeholder="Ej: Km 8 vía El Zulia"
+        placeholder="Dirección"
         value={direccion}
         onChange={handleDireccionChange}
         className="w-full rounded px-3 py-2"
@@ -6339,9 +6364,10 @@ return (
           className="block text-sm font-medium"
           style={{ color: textPrimary }}
         >
-          Ciudad del Siniestro
+          Municipio
         </label>
        <Select
+            placeholder="Municipio"
             options={municipios}
             value={(() => {
               if (!formData.ciudad_siniestro) return null;
@@ -6377,7 +6403,6 @@ return (
               return encontrada || null;
             })()}
             onChange={handleCiudadChange}
-            placeholder="Selecciona una ciudad..."
             isSearchable
             className="w-full"
             styles={{
@@ -6442,7 +6467,7 @@ return (
       </label>
       <input
         type="text"
-        placeholder="Ej: Nelson Gómez"
+        placeholder="Persona Entrevistada"
         value={personaEntrevistada}
         onChange={handlePersonaEntrevistadaChange}
         className="w-full rounded px-3 py-2"
@@ -6464,7 +6489,7 @@ return (
       </label>
       <input
         type="text"
-        placeholder="Ej: Vía El Zulia"
+        placeholder="Barrio"
         value={barrio}
         onChange={handleBarrioChange}
         className="w-full rounded px-3 py-2"
@@ -6486,7 +6511,7 @@ return (
       </label>
       <input
         type="text"
-        placeholder="Ej: Norte de Santander"
+        placeholder="Departamento"
         value={formData.departamento_siniestro}
         onChange={e => setFormData({ ...formData, departamento_siniestro: e.target.value })}
         className="w-full rounded px-3 py-2"
@@ -6508,7 +6533,7 @@ return (
       </label>
       <input
         type="text"
-        placeholder="Ej: Jefe de mantenimiento"
+        placeholder="Cargo"
         value={cargo}
         onChange={handleCargoChange}
         className="w-full rounded px-3 py-2"
@@ -6586,7 +6611,7 @@ return (
 >
   2. DESCRIPCIÓN GENERAL DE LA EMPRESA
 </h2>
-<textarea
+<textarea placeholder="NÚMERO DE COLABOLADORES"
   rows={6}
   placeholder="Agrega aquí la descripción general de la empresa..."
   value={descripcionEmpresa}
@@ -6626,7 +6651,7 @@ return (
   >
     Comentarios adicionales sobre las características de la construcción
   </label>
-  <textarea
+  <textarea placeholder="Comentarios adicionales sobre las características de la construcción"
     rows={8}
     placeholder="Describe aquí cualquier información adicional sobre las características de la construcción (estructura, materiales, techos, pisos, estado general, etc.)..."
     value={caracteristicasConstruccion}
@@ -6762,7 +6787,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Año de construcción</option>
               <option value="Edificio">Edificio</option>
               <option value="Bodega">Bodega</option>
               <option value="Nave Industrial">Nave Industrial</option>
@@ -6776,7 +6801,6 @@ return (
                 type="text"
                 value={tipoEdificioOtro}
                 onChange={(e) => setTipoEdificioOtro(e.target.value)}
-                placeholder="Especifique el tipo de edificio..."
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -6810,7 +6834,6 @@ return (
               type="text"
               value={areaLoteConstruccion}
               onChange={(e) => setAreaLoteConstruccion(e.target.value)}
-              placeholder="Ej: 1.600 m²"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -6841,7 +6864,6 @@ return (
               type="text"
               value={areaConstruidaConstruccion}
               onChange={(e) => setAreaConstruidaConstruccion(e.target.value)}
-              placeholder="Ej: 1.200 m²"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -6883,7 +6905,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Número de pisos</option>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
@@ -6944,7 +6966,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Cimentación</option>
               <option value="Pilotes aislados">Pilotes aislados</option>
               <option value="Zapatas aisladas">Zapatas aisladas</option>
               <option value="Zapatas corridas">Zapatas corridas</option>
@@ -6957,7 +6979,6 @@ return (
                 type="text"
                 value={cimentacionOtro}
                 onChange={(e) => setCimentacionOtro(e.target.value)}
-                placeholder="Especifique el tipo de cimentación..."
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -6997,7 +7018,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Materiales estructura</option>
               <option value="Mampostería - Reforzada">Mampostería - Reforzada</option>
               <option value="Mampostería - No reforzada">Mampostería - No reforzada</option>
               <option value="Concreto reforzado">Concreto reforzado</option>
@@ -7011,7 +7032,6 @@ return (
                 type="text"
                 value={materialesEstructuraOtro}
                 onChange={(e) => setMaterialesEstructuraOtro(e.target.value)}
-                placeholder="Especifique los materiales de estructura..."
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7053,7 +7073,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Regularidad de planta</option>
               <option value="1 = con irregularidad">1 = con irregularidad</option>
               <option value="2 = sin irregularidad">2 = sin irregularidad</option>
             </select>
@@ -7086,7 +7106,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Daños previos</option>
               <option value="1 = inmueble con daños previos">1 = inmueble con daños previos</option>
               <option value="2 = inmueble sin daños previos">2 = inmueble sin daños previos</option>
             </select>
@@ -7121,7 +7141,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Reforzamientos estructurales</option>
               <option value="1 = trabes coladas en sitio">1 = trabes coladas en sitio</option>
               <option value="2 = trabes prefabricadas">2 = trabes prefabricadas</option>
               <option value="3 = losas macizas">3 = losas macizas</option>
@@ -7157,7 +7177,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Sistema estructural</option>
               <option value="Estructura portante">Estructura portante</option>
               <option value="Estructura de acero">Estructura de acero</option>
               <option value="Estructura de concreto">Estructura de concreto</option>
@@ -7170,7 +7190,6 @@ return (
                 type="text"
                 value={sistemaEstructuralOtro}
                 onChange={(e) => setSistemaEstructuralOtro(e.target.value)}
-                placeholder="Especifique el sistema estructural..."
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7212,7 +7231,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Estructura cubierta</option>
               <option value="Metálica">Metálica</option>
               <option value="Concreto">Concreto</option>
               <option value="Madera">Madera</option>
@@ -7224,7 +7243,6 @@ return (
                 type="text"
                 value={estructuraCubiertaOtro}
                 onChange={(e) => setEstructuraCubiertaOtro(e.target.value)}
-                placeholder="Especifique el tipo de estructura cubierta..."
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7264,7 +7282,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Regular de altura</option>
               <option value="1 = con irregularidad">1 = con irregularidad</option>
               <option value="2 = sin irregularidad">2 = sin irregularidad</option>
             </select>
@@ -7300,7 +7318,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Daños reparados</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -7334,7 +7352,7 @@ return (
     Descripción de Procesos
   </label>
   <textarea
-    placeholder="Ej: El proceso de fabricación de un ladrillo (bloque)..."
+    placeholder="Descripción de Procesos"
     value={procesos}
     onChange={(e) => setProcesos(e.target.value)}
     rows={5}
@@ -7395,9 +7413,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de insumo</option>
               <option value="No combustibles">No combustibles</option>
               <option value="Combustibles">Combustibles</option>
               <option value="Inflamables">Inflamables</option>
@@ -7411,7 +7430,7 @@ return (
                 type="text"
                 value={tipoInsumoOtro}
                 onChange={(e) => setTipoInsumoOtro(e.target.value)}
-                placeholder="Especifique el tipo de insumo..."
+            placeholder="Tipo de insumo"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7419,6 +7438,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de insumo"
                 disabled={cargando}
               />
             )}
@@ -7451,9 +7471,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Nivel de riesgo</option>
               <option value="Bajo">Bajo</option>
               <option value="Medio">Medio</option>
               <option value="Alto">Alto</option>
@@ -7482,7 +7503,7 @@ return (
               type="text"
               value={descripcionContenidosInsumo}
               onChange={(e) => setDescripcionContenidosInsumo(e.target.value)}
-              placeholder="Ej: Sal"
+            placeholder="Descripción de los contenidos"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -7490,6 +7511,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de los contenidos"
               disabled={cargando}
             />
           </td>
@@ -7521,9 +7543,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Contenedores</option>
               <option value="Empaque combustible">Empaque combustible</option>
               <option value="Empaque no combustible">Empaque no combustible</option>
               <option value="Contenedores metálicos">Contenedores metálicos</option>
@@ -7537,7 +7560,7 @@ return (
                 type="text"
                 value={contenedoresInsumoOtro}
                 onChange={(e) => setContenedoresInsumoOtro(e.target.value)}
-                placeholder="Especifique el tipo de contenedor..."
+            placeholder="Contenedores"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7545,6 +7568,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Contenedores"
                 disabled={cargando}
               />
             )}
@@ -7577,9 +7601,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de almacenamiento</option>
               <option value="Almacenamiento en silos, tanques o contenedores">Almacenamiento en silos, tanques o contenedores</option>
               <option value="Almacenamiento en estanterías">Almacenamiento en estanterías</option>
               <option value="Almacenamiento en pallets">Almacenamiento en pallets</option>
@@ -7592,7 +7617,7 @@ return (
                 type="text"
                 value={tipoAlmacenamientoInsumoOtro}
                 onChange={(e) => setTipoAlmacenamientoInsumoOtro(e.target.value)}
-                placeholder="Especifique el tipo de almacenamiento..."
+            placeholder="Tipo de almacenamiento"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7600,6 +7625,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de almacenamiento"
                 disabled={cargando}
               />
             )}
@@ -7632,9 +7658,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Estado de almacenamiento</option>
               <option value="Adecuado">Adecuado</option>
               <option value="Regular">Regular</option>
               <option value="Deficiente">Deficiente</option>
@@ -7692,9 +7719,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de materias primas</option>
               <option value="No combustibles">No combustibles</option>
               <option value="Combustibles">Combustibles</option>
               <option value="Inflamables">Inflamables</option>
@@ -7708,7 +7736,7 @@ return (
                 type="text"
                 value={tipoMateriasPrimasOtro}
                 onChange={(e) => setTipoMateriasPrimasOtro(e.target.value)}
-                placeholder="Especifique el tipo de materias primas..."
+            placeholder="Tipo de materias primas"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7716,6 +7744,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de materias primas"
                 disabled={cargando}
               />
             )}
@@ -7748,9 +7777,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Nivel de riesgo</option>
               <option value="Bajo">Bajo</option>
               <option value="Medio">Medio</option>
               <option value="Alto">Alto</option>
@@ -7779,7 +7809,7 @@ return (
               type="text"
               value={descripcionContenidosMateriasPrimas}
               onChange={(e) => setDescripcionContenidosMateriasPrimas(e.target.value)}
-              placeholder="Ej: Viseras de cerdo"
+            placeholder="Descripción de los contenidos"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -7787,6 +7817,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de los contenidos"
               disabled={cargando}
             />
           </td>
@@ -7818,9 +7849,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Contenedores</option>
               <option value="Empaque combustible">Empaque combustible</option>
               <option value="Empaque no combustible">Empaque no combustible</option>
               <option value="Contenedores metálicos">Contenedores metálicos</option>
@@ -7834,7 +7866,7 @@ return (
                 type="text"
                 value={contenedoresMateriasPrimasOtro}
                 onChange={(e) => setContenedoresMateriasPrimasOtro(e.target.value)}
-                placeholder="Especifique el tipo de contenedor..."
+            placeholder="Contenedores"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7842,6 +7874,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Contenedores"
                 disabled={cargando}
               />
             )}
@@ -7874,9 +7907,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de almacenamiento</option>
               <option value="Almacenamiento en silos, tanques o contenedores">Almacenamiento en silos, tanques o contenedores</option>
               <option value="Almacenamiento en estanterías">Almacenamiento en estanterías</option>
               <option value="Almacenamiento en pallets">Almacenamiento en pallets</option>
@@ -7889,7 +7923,7 @@ return (
                 type="text"
                 value={tipoAlmacenamientoMateriasPrimasOtro}
                 onChange={(e) => setTipoAlmacenamientoMateriasPrimasOtro(e.target.value)}
-                placeholder="Especifique el tipo de almacenamiento..."
+            placeholder="Tipo de almacenamiento"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -7897,6 +7931,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de almacenamiento"
                 disabled={cargando}
               />
             )}
@@ -7929,9 +7964,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Estado de almacenamiento</option>
               <option value="Adecuado">Adecuado</option>
               <option value="Regular">Regular</option>
               <option value="Deficiente">Deficiente</option>
@@ -7989,9 +8025,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de mercancías</option>
               <option value="No combustibles">No combustibles</option>
               <option value="Combustibles">Combustibles</option>
               <option value="Inflamables">Inflamables</option>
@@ -8005,7 +8042,7 @@ return (
                 type="text"
                 value={tipoMercanciasOtro}
                 onChange={(e) => setTipoMercanciasOtro(e.target.value)}
-                placeholder="Especifique el tipo de mercancías..."
+            placeholder="Tipo de mercancías"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8013,6 +8050,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de mercancías"
                 disabled={cargando}
               />
             )}
@@ -8045,9 +8083,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Nivel de riesgo</option>
               <option value="Bajo">Bajo</option>
               <option value="Medio">Medio</option>
               <option value="Alto">Alto</option>
@@ -8076,7 +8115,7 @@ return (
               type="text"
               value={descripcionContenidosMercancias}
               onChange={(e) => setDescripcionContenidosMercancias(e.target.value)}
-              placeholder="Ej: Viseras de cerdo para elaboración de embutidos"
+            placeholder="Descripción de los contenidos"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -8084,6 +8123,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de los contenidos"
               disabled={cargando}
             />
           </td>
@@ -8115,9 +8155,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Contenedores</option>
               <option value="Empaque combustible">Empaque combustible</option>
               <option value="Empaque no combustible">Empaque no combustible</option>
               <option value="Contenedores metálicos">Contenedores metálicos</option>
@@ -8131,7 +8172,7 @@ return (
                 type="text"
                 value={contenedoresMercanciasOtro}
                 onChange={(e) => setContenedoresMercanciasOtro(e.target.value)}
-                placeholder="Especifique el tipo de contenedor..."
+            placeholder="Contenedores"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8139,6 +8180,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Contenedores"
                 disabled={cargando}
               />
             )}
@@ -8171,9 +8213,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de almacenamiento</option>
               <option value="Almacenamiento en silos, tanques o contenedores">Almacenamiento en silos, tanques o contenedores</option>
               <option value="Almacenamiento en estanterías">Almacenamiento en estanterías</option>
               <option value="Almacenamiento en pallets">Almacenamiento en pallets</option>
@@ -8186,7 +8229,7 @@ return (
                 type="text"
                 value={tipoAlmacenamientoMercanciasOtro}
                 onChange={(e) => setTipoAlmacenamientoMercanciasOtro(e.target.value)}
-                placeholder="Especifique el tipo de almacenamiento..."
+            placeholder="Tipo de almacenamiento"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8194,6 +8237,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de almacenamiento"
                 disabled={cargando}
               />
             )}
@@ -8226,9 +8270,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Descripción de Procesos"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Estado de almacenamiento</option>
               <option value="Adecuado">Adecuado</option>
               <option value="Regular">Regular</option>
               <option value="Deficiente">Deficiente</option>
@@ -8520,9 +8565,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Ubicación del predio</option>
               <option value="Comercial cerrado">Comercial cerrado</option>
               <option value="Comercial abierto">Comercial abierto</option>
               <option value="Industrial">Industrial</option>
@@ -8535,7 +8581,7 @@ return (
                 type="text"
                 value={ubicacionPredioOtro}
                 onChange={(e) => setUbicacionPredioOtro(e.target.value)}
-                placeholder="Especifique la ubicación del predio..."
+            placeholder="Ubicación del predio"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8543,6 +8589,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Ubicación del predio"
                 disabled={cargando}
               />
             )}
@@ -8575,9 +8622,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Vulnerabilidad de los contenidos</option>
               <option value="De uso exclusivo - No comercializable">De uso exclusivo - No comercializable</option>
               <option value="Comercializable">Comercializable</option>
               <option value="Alto valor">Alto valor</option>
@@ -8590,7 +8638,7 @@ return (
                 type="text"
                 value={vulnerabilidadContenidosOtro}
                 onChange={(e) => setVulnerabilidadContenidosOtro(e.target.value)}
-                placeholder="Especifique la vulnerabilidad de los contenidos..."
+            placeholder="Vulnerabilidad de los contenidos"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8598,6 +8646,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Vulnerabilidad de los contenidos"
                 disabled={cargando}
               />
             )}
@@ -8630,9 +8679,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Acceso a las instalaciones</option>
               <option value="Con cerramiento perimetral y acceso controlado">Con cerramiento perimetral y acceso controlado</option>
               <option value="Con cerramiento perimetral sin acceso controlado">Con cerramiento perimetral sin acceso controlado</option>
               <option value="Sin cerramiento perimetral">Sin cerramiento perimetral</option>
@@ -8644,7 +8694,7 @@ return (
                 type="text"
                 value={accesoInstalacionesOtro}
                 onChange={(e) => setAccesoInstalacionesOtro(e.target.value)}
-                placeholder="Especifique el acceso a las instalaciones..."
+            placeholder="Acceso a las instalaciones"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8652,6 +8702,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Acceso a las instalaciones"
                 disabled={cargando}
               />
             )}
@@ -8684,9 +8735,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Circulación de personas externas</option>
               <option value="No se realiza atención al público - no hay afluencia de público">No se realiza atención al público - no hay afluencia de público</option>
               <option value="Se realiza atención al público controlada">Se realiza atención al público controlada</option>
               <option value="Alta afluencia de público">Alta afluencia de público</option>
@@ -8698,7 +8750,7 @@ return (
                 type="text"
                 value={circulacionPersonasExternasOtro}
                 onChange={(e) => setCirculacionPersonasExternasOtro(e.target.value)}
-                placeholder="Especifique la circulación de personas externas..."
+            placeholder="Circulación de personas externas"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8706,6 +8758,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Circulación de personas externas"
                 disabled={cargando}
               />
             )}
@@ -8738,9 +8791,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Protecciones pasivas</option>
               <option value="Todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas">Todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas</option>
               <option value="No todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas">No todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas</option>
               <option value="Sin protecciones pasivas">Sin protecciones pasivas</option>
@@ -8752,7 +8806,7 @@ return (
                 type="text"
                 value={proteccionesPasivasOtro}
                 onChange={(e) => setProteccionesPasivasOtro(e.target.value)}
-                placeholder="Especifique las protecciones pasivas..."
+            placeholder="Protecciones pasivas"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8760,6 +8814,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Protecciones pasivas"
                 disabled={cargando}
               />
             )}
@@ -8804,13 +8859,14 @@ return (
               type="text"
               value={personalRecaudo}
               onChange={(e) => setPersonalRecaudo(e.target.value)}
-              placeholder="Ej: número de personas, perfil, empresa de recaudo"
+            placeholder="Personal de recaudo"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Personal de recaudo"
               disabled={cargando}
             />
           </td>
@@ -8831,13 +8887,14 @@ return (
               type="text"
               value={horariosRecaudo}
               onChange={(e) => setHorariosRecaudo(e.target.value)}
-              placeholder="Ej: días y franjas horarias"
+            placeholder="Horarios de recaudo"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Horarios de recaudo"
               disabled={cargando}
             />
           </td>
@@ -8858,13 +8915,14 @@ return (
               type="text"
               value={lugarRecaudo}
               onChange={(e) => setLugarRecaudo(e.target.value)}
-              placeholder="Ej: caja principal, oficina, punto de venta"
+            placeholder="Lugar de recaudo"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Lugar de recaudo"
               disabled={cargando}
             />
           </td>
@@ -8885,13 +8943,14 @@ return (
               type="text"
               value={transporteDinero}
               onChange={(e) => setTransporteDinero(e.target.value)}
-              placeholder="Ej: empresa de valores, vehículo blindado, frecuencia"
+            placeholder="Transporte de dinero"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Transporte de dinero"
               disabled={cargando}
             />
           </td>
@@ -8946,9 +9005,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tiene alarma</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -8982,9 +9042,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Monitoreada</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -9012,7 +9073,7 @@ return (
               type="text"
               value={empresaMonitorea}
               onChange={(e) => setEmpresaMonitorea(e.target.value)}
-              placeholder="Ej: Telesentinel"
+            placeholder="Empresa que monitorea"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9020,6 +9081,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Empresa que monitorea"
               disabled={cargando}
             />
           </td>
@@ -9051,9 +9113,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de comunicación</option>
               <option value="Teléfono">Teléfono</option>
               <option value="Radio">Radio</option>
               <option value="Teléfono y radio">Teléfono y radio</option>
@@ -9066,7 +9129,7 @@ return (
                 type="text"
                 value={tipoComunicacionAlarmaOtro}
                 onChange={(e) => setTipoComunicacionAlarmaOtro(e.target.value)}
-                placeholder="Especifique el tipo de comunicación..."
+            placeholder="Tipo de comunicación"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9074,6 +9137,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de comunicación"
                 disabled={cargando}
               />
             )}
@@ -9106,9 +9170,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Cobertura</option>
               <option value="0% - 25%">0% - 25%</option>
               <option value="25% - 50%">25% - 50%</option>
               <option value="50% - 75%">50% - 75%</option>
@@ -9145,9 +9210,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Sensores que posee</option>
               <option value="Movimiento">Movimiento</option>
               <option value="Magnéticos">Magnéticos</option>
               <option value="Movimiento y magnéticos">Movimiento y magnéticos</option>
@@ -9161,7 +9227,7 @@ return (
                 type="text"
                 value={sensoresAlarmaOtro}
                 onChange={(e) => setSensoresAlarmaOtro(e.target.value)}
-                placeholder="Especifique los sensores..."
+            placeholder="Sensores que posee"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9169,6 +9235,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Sensores que posee"
                 disabled={cargando}
               />
             )}
@@ -9224,9 +9291,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Cuenta con CCTV</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -9254,7 +9322,7 @@ return (
               type="text"
               value={numeroCamaras}
               onChange={(e) => setNumeroCamaras(e.target.value)}
-              placeholder="Ej: 21"
+            placeholder="Número de cámaras que posee"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9262,6 +9330,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Número de cámaras que posee"
               disabled={cargando}
             />
           </td>
@@ -9293,9 +9362,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Controlado por</option>
               <option value="Personal administrativo u operativo de la empresa">Personal administrativo u operativo de la empresa</option>
               <option value="Empresa de seguridad contratada">Empresa de seguridad contratada</option>
               <option value="Central de monitoreo externa">Central de monitoreo externa</option>
@@ -9307,7 +9377,7 @@ return (
                 type="text"
                 value={controladoPorOtro}
                 onChange={(e) => setControladoPorOtro(e.target.value)}
-                placeholder="Especifique quién controla el CCTV..."
+            placeholder="Controlado por"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9315,6 +9385,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Controlado por"
                 disabled={cargando}
               />
             )}
@@ -9347,9 +9418,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tipo de monitoreo</option>
               <option value="Continuo">Continuo</option>
               <option value="Ocasional">Ocasional</option>
               <option value="Remoto">Remoto</option>
@@ -9362,7 +9434,7 @@ return (
                 type="text"
                 value={tipoMonitoreoCCTVOtro}
                 onChange={(e) => setTipoMonitoreoCCTVOtro(e.target.value)}
-                placeholder="Especifique el tipo de monitoreo..."
+            placeholder="Tipo de monitoreo"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9370,6 +9442,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Tipo de monitoreo"
                 disabled={cargando}
               />
             )}
@@ -9402,9 +9475,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Frecuencia de grabación</option>
               <option value="24 horas">24 horas</option>
               <option value="Solo horario laboral">Solo horario laboral</option>
               <option value="Solo horario nocturno">Solo horario nocturno</option>
@@ -9417,7 +9491,7 @@ return (
                 type="text"
                 value={frecuenciaGrabacionOtro}
                 onChange={(e) => setFrecuenciaGrabacionOtro(e.target.value)}
-                placeholder="Especifique la frecuencia de grabación..."
+            placeholder="Frecuencia de grabación"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9425,6 +9499,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Frecuencia de grabación"
                 disabled={cargando}
               />
             )}
@@ -9451,7 +9526,7 @@ return (
               type="text"
               value={tiempoRespaldo}
               onChange={(e) => setTiempoRespaldo(e.target.value)}
-              placeholder="Ej: No informaron"
+            placeholder="Tiempo de respaldo"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9459,6 +9534,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Tiempo de respaldo"
               disabled={cargando}
             />
           </td>
@@ -9490,9 +9566,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Dispositivo de grabación</option>
               <option value="DVR">DVR</option>
               <option value="NVR">NVR</option>
               <option value="Cloud">Cloud</option>
@@ -9504,7 +9581,7 @@ return (
                 type="text"
                 value={dispositivoGrabacionOtro}
                 onChange={(e) => setDispositivoGrabacionOtro(e.target.value)}
-                placeholder="Especifique el dispositivo de grabación..."
+            placeholder="Dispositivo de grabación"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9512,6 +9589,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Dispositivo de grabación"
                 disabled={cargando}
               />
             )}
@@ -9544,9 +9622,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Ubicación del grabador</option>
               <option value="Oculto">Oculto</option>
               <option value="Visible">Visible</option>
               <option value="Sala de control">Sala de control</option>
@@ -9558,7 +9637,7 @@ return (
                 type="text"
                 value={ubicacionGrabadorOtro}
                 onChange={(e) => setUbicacionGrabadorOtro(e.target.value)}
-                placeholder="Especifique la ubicación del grabador..."
+            placeholder="Ubicación del grabador"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9566,6 +9645,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Ubicación del grabador"
                 disabled={cargando}
               />
             )}
@@ -9598,9 +9678,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Visualización por internet</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -9657,9 +9738,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Cuenta con vigilancia</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -9687,7 +9769,7 @@ return (
               type="text"
               value={contratadaCon}
               onChange={(e) => setContratadaCon(e.target.value)}
-              placeholder="Ej: No aplica"
+            placeholder="Contratada con"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9695,6 +9777,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Contratada con"
               disabled={cargando}
             />
           </td>
@@ -9720,7 +9803,7 @@ return (
               type="text"
               value={numeroVigilantes}
               onChange={(e) => setNumeroVigilantes(e.target.value)}
-              placeholder="Ej: 0"
+            placeholder="Número de vigilantes"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9728,6 +9811,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Número de vigilantes"
               disabled={cargando}
             />
           </td>
@@ -9759,9 +9843,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Jornada</option>
               <option value="24 horas">24 horas</option>
               <option value="Diurna">Diurna</option>
               <option value="Nocturna">Nocturna</option>
@@ -9774,7 +9859,7 @@ return (
                 type="text"
                 value={jornadaVigilanciaOtro}
                 onChange={(e) => setJornadaVigilanciaOtro(e.target.value)}
-                placeholder="Especifique la jornada..."
+            placeholder="Jornada"
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9782,6 +9867,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Jornada"
                 disabled={cargando}
               />
             )}
@@ -9814,9 +9900,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tienen armas</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -9850,9 +9937,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Tienen radio</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -9922,9 +10010,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Requiere licencia ambiental para su funcionamiento</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -9962,9 +10051,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Requiere permiso de vertimientos o emisiones contaminantes</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10002,9 +10092,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Consume más de 1.000 m3 de agua al mes</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10042,9 +10133,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Cuenta con bombillas ahorradoras de energía</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10082,9 +10174,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Hace parte del mercado no regulado de energía</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10122,9 +10215,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Genera vertimiento de aguas residuales contaminantes</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10162,9 +10256,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Cuenta con planta de tratamiento de aguas residuales</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10202,9 +10297,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Cuenta con plan de manejo integral de residuos peligrosos</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10242,9 +10338,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Se generan emisiones contaminantes</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10282,9 +10379,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Cuenta con sistema de filtración o lavado de gases</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10322,9 +10420,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Generan niveles de ruido que afecten a los vecinos</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10362,9 +10461,10 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Seleccione...</option>
+            <option value="">Cuenta con programa de gestión ambiental certificado</option>
             <option value="Sí">Sí</option>
             <option value="No">No</option>
             <option value="No aplica">No aplica</option>
@@ -10436,9 +10536,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Cuenta con detectores de humo</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -10466,7 +10567,7 @@ return (
               type="text"
               value={coberturaDeteccion}
               onChange={(e) => setCoberturaDeteccion(e.target.value)}
-              placeholder="Ej: 100% del área"
+            placeholder="Cobertura"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10474,6 +10575,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Cobertura"
               disabled={cargando}
             />
           </td>
@@ -10499,7 +10601,7 @@ return (
               type="text"
               value={instalacionDeteccion}
               onChange={(e) => setInstalacionDeteccion(e.target.value)}
-              placeholder="Ej: Adecuada"
+            placeholder="Instalación"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10507,6 +10609,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Instalación"
               disabled={cargando}
             />
           </td>
@@ -10538,9 +10641,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Monitoreado</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -10591,7 +10695,7 @@ return (
               type="text"
               value={cantidadExtintores}
               onChange={(e) => setCantidadExtintores(e.target.value)}
-              placeholder="Ej: 8"
+            placeholder="Cantidad"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10599,6 +10703,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Cantidad"
               disabled={cargando}
             />
           </td>
@@ -10624,7 +10729,7 @@ return (
               type="text"
               value={tipoExtintores}
               onChange={(e) => setTipoExtintores(e.target.value)}
-              placeholder="Ej: ABC Multipropósito"
+            placeholder="Tipo"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10632,6 +10737,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Tipo"
               disabled={cargando}
             />
           </td>
@@ -10663,9 +10769,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Suficientes</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -10693,7 +10800,7 @@ return (
               type="text"
               value={instalacionExtintores}
               onChange={(e) => setInstalacionExtintores(e.target.value)}
-              placeholder="Ej: Adecuado"
+            placeholder="Instalación"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10701,6 +10808,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Instalación"
               disabled={cargando}
             />
           </td>
@@ -10726,7 +10834,7 @@ return (
               type="text"
               value={senalizacionExtintores}
               onChange={(e) => setSenalizacionExtintores(e.target.value)}
-              placeholder="Ej: Adecuado"
+            placeholder="Señalización"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10734,6 +10842,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Señalización"
               disabled={cargando}
             />
           </td>
@@ -10765,9 +10874,10 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Carga vigente</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -10813,13 +10923,14 @@ return (
               type="text"
               value={bombaPrincipal}
               onChange={(e) => setBombaPrincipal(e.target.value)}
-              placeholder="Ej: Marca, modelo, estado"
+            placeholder="Bomba principal"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Bomba principal"
               disabled={cargando}
             />
           </td>
@@ -10840,13 +10951,14 @@ return (
               type="text"
               value={bombaJockey}
               onChange={(e) => setBombaJockey(e.target.value)}
-              placeholder="Ej: Sí / No / Capacidad"
+            placeholder="Bomba jockey"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Bomba jockey"
               disabled={cargando}
             />
           </td>
@@ -10867,13 +10979,14 @@ return (
               type="text"
               value={presionContraincendios}
               onChange={(e) => setPresionContraincendios(e.target.value)}
-              placeholder="Ej: Presión de la red o de bombeo"
+            placeholder="Presión"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Presión"
               disabled={cargando}
             />
           </td>
@@ -10894,13 +11007,14 @@ return (
               type="text"
               value={estacionBomberosNombre}
               onChange={(e) => setEstacionBomberosNombre(e.target.value)}
-              placeholder="Nombre de la estación"
+            placeholder="Estación de bomberos — nombre"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Estación de bomberos — nombre"
               disabled={cargando}
             />
           </td>
@@ -10922,13 +11036,14 @@ return (
               inputMode="numeric"
               value={estacionBomberosTiempoMin}
               onChange={(e) => setEstacionBomberosTiempoMin(e.target.value)}
-              placeholder="Ej: 15"
+            placeholder="Tiempo de respuesta (minutos)"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Tiempo de respuesta (minutos)"
               disabled={cargando}
             />
           </td>
@@ -10950,13 +11065,14 @@ return (
               inputMode="numeric"
               value={estacionBomberosDistanciaMetros}
               onChange={(e) => setEstacionBomberosDistanciaMetros(e.target.value)}
-              placeholder="Ej: 800"
+            placeholder="Distancia (metros)"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Distancia (metros)"
               disabled={cargando}
             />
           </td>
@@ -10982,9 +11098,10 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Muros cortafuegos</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -11012,9 +11129,10 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Puertas cortafuego</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -11047,6 +11165,7 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             />
           </td>
@@ -11075,9 +11194,10 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Seleccione periodicidad...</option>
+              <option value="">LONGITUD:</option>
               <option value="Semanal">Semanal</option>
               <option value="Quincenal">Quincenal</option>
               <option value="Mensual">Mensual</option>
@@ -11102,7 +11222,7 @@ return (
   >
     Comentarios adicionales sobre protección contra incendios
   </label>
-  <textarea
+  <textarea placeholder="Comentarios adicionales sobre protección contra incendios"
     rows={6}
     placeholder="Describe aquí información adicional sobre los sistemas de protección contra incendios, características del proceso que reducen el riesgo, protocolos de seguridad, etc..."
     value={comentariosProteccionIncendios}
@@ -11179,9 +11299,10 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Comentarios adicionales sobre protección contra incendios"
                 disabled={cargando}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Área requerida para el desarrollo de las actividades</option>
                 <option value="Menos de 500 m2">Menos de 500 m2</option>
                 <option value="De 500 a 1000 m2">De 500 a 1000 m2</option>
                 <option value="De 1000 a 2000 m2">De 1000 a 2000 m2</option>
@@ -11194,7 +11315,7 @@ return (
                   type="text"
                   value={areaRequeridaLucroCesanteOtro}
                   onChange={(e) => setAreaRequeridaLucroCesanteOtro(e.target.value)}
-                  placeholder="Especifique el área requerida..."
+            placeholder="Área requerida para el desarrollo de las actividades"
                   className="w-full px-2 py-1 rounded mt-2"
                   style={{
                     backgroundColor: inputBg,
@@ -11202,6 +11323,7 @@ return (
                     borderColor: borderColor,
                     border: `1px solid ${borderColor}`
                   }}
+            placeholder="Área requerida para el desarrollo de las actividades"
                   disabled={cargando}
                 />
               )}
@@ -11234,9 +11356,10 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Comentarios adicionales sobre protección contra incendios"
                 disabled={cargando}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Complejidad de la actividad o proceso</option>
                 <option value="Complejidad baja (confecciones, reciclaje de plástico, estampación, entre otros)">Complejidad baja (confecciones, reciclaje de plástico, estampación, entre otros)</option>
                 <option value="Complejidad media (ensamblaje, manufactura básica, entre otros)">Complejidad media (ensamblaje, manufactura básica, entre otros)</option>
                 <option value="Complejidad alta (procesos químicos, farmacéuticos, tecnología avanzada, entre otros)">Complejidad alta (procesos químicos, farmacéuticos, tecnología avanzada, entre otros)</option>
@@ -11247,7 +11370,7 @@ return (
                   type="text"
                   value={complejidadActividadLucroCesanteOtro}
                   onChange={(e) => setComplejidadActividadLucroCesanteOtro(e.target.value)}
-                  placeholder="Especifique la complejidad..."
+            placeholder="Complejidad de la actividad o proceso"
                   className="w-full px-2 py-1 rounded mt-2"
                   style={{
                     backgroundColor: inputBg,
@@ -11255,6 +11378,7 @@ return (
                     borderColor: borderColor,
                     border: `1px solid ${borderColor}`
                   }}
+            placeholder="Complejidad de la actividad o proceso"
                   disabled={cargando}
                 />
               )}
@@ -11287,9 +11411,10 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Comentarios adicionales sobre protección contra incendios"
                 disabled={cargando}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Plan de continuidad del negocio documentado</option>
                 <option value="Sí">Sí</option>
                 <option value="No">No</option>
                 <option value="No aplica">No aplica</option>
@@ -11317,7 +11442,7 @@ return (
                 type="text"
                 value={valorNominaMensual}
                 onChange={(e) => setValorNominaMensual(e.target.value)}
-                placeholder="Ej: $ 98.000.000"
+            placeholder="Valor nómina mensual"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11325,6 +11450,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Valor nómina mensual"
                 disabled={cargando}
               />
             </td>
@@ -11350,7 +11476,7 @@ return (
                 type="text"
                 value={valorFacturacionAnoAnterior}
                 onChange={(e) => setValorFacturacionAnoAnterior(e.target.value)}
-                placeholder="Ej: $ 11.760.000.000"
+            placeholder="Valor facturación del año anterior"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11358,6 +11484,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Valor facturación del año anterior"
                 disabled={cargando}
               />
             </td>
@@ -11383,7 +11510,7 @@ return (
                 type="text"
                 value={valorProyectadoFacturacion}
                 onChange={(e) => setValorProyectadoFacturacion(e.target.value)}
-                placeholder="Ej: No informaron"
+            placeholder="Valor proyectado facturación para el presente año"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11391,6 +11518,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Valor proyectado facturación para el presente año"
                 disabled={cargando}
               />
             </td>
@@ -11408,7 +11536,7 @@ return (
     >
       Análisis y comentarios
     </label>
-    <textarea
+    <textarea placeholder="Análisis y comentarios"
       value={comentariosLucroCesante}
       onChange={(e) => setComentariosLucroCesante(e.target.value)}
       rows={8}
@@ -11449,6 +11577,7 @@ return (
       Procesos Críticos
     </label>
     <textarea
+      placeholder="Procesos Críticos"
       value={procesosCriticos}
       onChange={(e) => setProcesosCriticos(e.target.value)}
       rows={3}
@@ -11459,7 +11588,6 @@ return (
         borderColor: borderColor,
         border: `1px solid ${borderColor}`
       }}
-      placeholder="Ej: No hay criticidad."
       disabled={cargando}
     />
   </div>
@@ -11473,6 +11601,7 @@ return (
       Riesgos Medioambientales
     </label>
     <textarea
+      placeholder="Riesgos Medioambientales"
       value={riesgosMedioambientales}
       onChange={(e) => setRiesgosMedioambientales(e.target.value)}
       rows={3}
@@ -11483,7 +11612,6 @@ return (
         borderColor: borderColor,
         border: `1px solid ${borderColor}`
       }}
-      placeholder="Ej: Moderados (vientos, terremoto y deslizamientos)."
       disabled={cargando}
     />
   </div>
@@ -11537,7 +11665,7 @@ return (
                 type="text"
                 value={capacidadInstaladaPlanta}
                 onChange={(e) => setCapacidadInstaladaPlanta(e.target.value)}
-                placeholder="Ej: 305 toneladas"
+            placeholder="Capacidad instalada de la planta de producción"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11545,6 +11673,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Capacidad instalada de la planta de producción"
                 disabled={cargando}
               />
             </td>
@@ -11570,7 +11699,7 @@ return (
                 type="text"
                 value={indicePromedioCapacidad}
                 onChange={(e) => setIndicePromedioCapacidad(e.target.value)}
-                placeholder="Ej: 60%"
+            placeholder="Índice promedio de capacidad utilizada"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11578,6 +11707,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Índice promedio de capacidad utilizada"
                 disabled={cargando}
               />
             </td>
@@ -11603,7 +11733,7 @@ return (
                 type="text"
                 value={numeroLineasProduccion}
                 onChange={(e) => setNumeroLineasProduccion(e.target.value)}
-                placeholder="Ej: Una"
+            placeholder="Número de líneas de producción"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11611,6 +11741,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Número de líneas de producción"
                 disabled={cargando}
               />
             </td>
@@ -11636,7 +11767,7 @@ return (
                 type="text"
                 value={maquinariaCritica}
                 onChange={(e) => setMaquinariaCritica(e.target.value)}
-                placeholder="Ej: Ninguna"
+            placeholder="Maquinaria crítica"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11644,6 +11775,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Maquinaria crítica"
                 disabled={cargando}
               />
             </td>
@@ -11669,7 +11801,7 @@ return (
                 type="text"
                 value={incidenciaProduccion}
                 onChange={(e) => setIncidenciaProduccion(e.target.value)}
-                placeholder="Ej: 0"
+            placeholder="Incidencia sobre la producción (%)"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11677,6 +11809,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Incidencia sobre la producción (%)"
                 disabled={cargando}
               />
             </td>
@@ -11702,7 +11835,7 @@ return (
                 type="text"
                 value={origenMaquinariaCritica}
                 onChange={(e) => setOrigenMaquinariaCritica(e.target.value)}
-                placeholder="Ej: No aplica"
+            placeholder="Origen de la maquinaria crítica"
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -11710,6 +11843,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Origen de la maquinaria crítica"
                 disabled={cargando}
               />
             </td>
@@ -11741,9 +11875,10 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Riesgos Medioambientales"
                 disabled={cargando}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Hay representación nacional de la maquinaria</option>
                 <option value="Sí">Sí</option>
                 <option value="No">No</option>
                 <option value="No aplica">No aplica</option>
@@ -11777,9 +11912,10 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Riesgos Medioambientales"
                 disabled={cargando}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Hay maquinaria en Stand-by</option>
                 <option value="Sí">Sí</option>
                 <option value="No">No</option>
                 <option value="No aplica">No aplica</option>
@@ -11813,9 +11949,10 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Riesgos Medioambientales"
                 disabled={cargando}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Existen empresas satélite para la producción</option>
                 <option value="Sí">Sí</option>
                 <option value="No">No</option>
                 <option value="No aplica">No aplica</option>
@@ -11849,9 +11986,10 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
+            placeholder="Riesgos Medioambientales"
                 disabled={cargando}
               >
-                <option value="">Seleccione...</option>
+                <option value="">Hay convenios con otras empresas</option>
                 <option value="Sí">Sí</option>
                 <option value="No">No</option>
                 <option value="No aplica">No aplica</option>
@@ -11886,8 +12024,8 @@ return (
   Descripción del Equipamiento
 </label>
 <textarea
+  placeholder="Descripción del Equipamiento"
   rows={8}
-  placeholder="Ej: El predio inspeccionado cuenta con los siguientes equipos y maquinaria: 22 hornos tipo colmena, 4 extrusoras, 2 plantas eléctricas..."
   value={maquinariaDescripcion}
   onChange={(e) => setMaquinariaDescripcion(e.target.value)}
   className="w-full rounded px-3 py-2"
@@ -11917,9 +12055,10 @@ return (
             type="text"
             value={promedioEdadEquipos}
             onChange={(e) => setPromedioEdadEquipos(e.target.value)}
-            placeholder="Ej: 8 años"
+            placeholder="Promedio de edad de los equipos"
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
+            placeholder="Promedio de edad de los equipos"
             disabled={cargando}
           />
         </td>
@@ -11933,9 +12072,10 @@ return (
             type="text"
             value={tipoMantenimientoEquipos}
             onChange={(e) => setTipoMantenimientoEquipos(e.target.value)}
-            placeholder="Ej: Preventivo y correctivo"
+            placeholder="Tipo de mantenimiento"
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
+            placeholder="Tipo de mantenimiento"
             disabled={cargando}
           />
         </td>
@@ -11949,9 +12089,10 @@ return (
             type="text"
             value={bitacorasMantenimiento}
             onChange={(e) => setBitacorasMantenimiento(e.target.value)}
-            placeholder="Ej: Sí, registro físico y digital"
+            placeholder="Bitácoras de mantenimiento"
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
+            placeholder="Bitácoras de mantenimiento"
             disabled={cargando}
           />
         </td>
@@ -11965,9 +12106,10 @@ return (
             type="text"
             value={personalMantenimiento}
             onChange={(e) => setPersonalMantenimiento(e.target.value)}
-            placeholder="Ej: Técnico interno + proveedor externo"
+            placeholder="Personal que realiza mantenimiento"
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
+            placeholder="Personal que realiza mantenimiento"
             disabled={cargando}
           />
         </td>
@@ -11981,9 +12123,10 @@ return (
             type="text"
             value={periodicidadMantenimientos}
             onChange={(e) => setPeriodicidadMantenimientos(e.target.value)}
-            placeholder="Ej: Mensual / trimestral / anual"
+            placeholder="Periodicidad de los mantenimientos"
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
+            placeholder="Periodicidad de los mantenimientos"
             disabled={cargando}
           />
         </td>
@@ -12041,7 +12184,7 @@ return (
         type="text"
         value={energiaProveedor}
         onChange={(e) => setEnergiaProveedor(e.target.value)}
-        placeholder="Ej: Centrales Eléctricas de Norte de Santander (CENS)."
+        placeholder="PROVEEDOR"
         className="w-full rounded px-2 py-1"
         style={{
           backgroundColor: inputBg,
@@ -12064,7 +12207,7 @@ return (
         type="text"
         value={energiaTension}
         onChange={(e) => setEnergiaTension(e.target.value)}
-        placeholder="Ej: Alta tensión de la red pública (34,5Kv) y la entrega a 440v"
+        placeholder="TENSIÓN"
         className="w-full rounded px-2 py-1"
         style={{
           backgroundColor: inputBg,
@@ -12379,7 +12522,7 @@ return (
     >
       Comentarios
     </label>
-    <textarea
+    <textarea placeholder="Comentarios"
       rows={6}
       value={energiaComentarios}
       onChange={(e) => setEnergiaComentarios(e.target.value)}
@@ -12474,7 +12617,7 @@ return (
             type="text"
             value={aguaFuente}
             onChange={(e) => setAguaFuente(e.target.value)}
-            placeholder="Ej: Compra de carro tanque"
+            placeholder="Comentarios"
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -12482,6 +12625,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="Comentarios"
             disabled={cargando}
           />
         </td>
@@ -12495,7 +12639,7 @@ return (
             type="text"
             value={aguaUso}
             onChange={(e) => setAguaUso(e.target.value)}
-            placeholder="Ej: En toda la edificación"
+            placeholder="Comentarios"
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -12503,6 +12647,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="Comentarios"
             disabled={cargando}
           />
         </td>
@@ -12516,7 +12661,7 @@ return (
             type="text"
             value={aguaAlmacenamiento}
             onChange={(e) => setAguaAlmacenamiento(e.target.value)}
-            placeholder="Ej: Tanques"
+            placeholder="Comentarios"
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -12524,6 +12669,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="Comentarios"
             disabled={cargando}
           />
         </td>
@@ -12537,7 +12683,7 @@ return (
             type="text"
             value={aguaBombeo}
             onChange={(e) => setAguaBombeo(e.target.value)}
-            placeholder="Ej: A presión"
+            placeholder="Comentarios"
             className="w-full rounded px-3 py-2"
             style={{
               backgroundColor: inputBg,
@@ -12545,6 +12691,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
+            placeholder="Comentarios"
             disabled={cargando}
           />
         </td>
@@ -12595,13 +12742,14 @@ return (
               value={siniestralidadAno}
               onChange={(e) => setSiniestralidadAno(e.target.value)}
               className="w-full rounded px-3 py-2"
-              placeholder="Ej: 2024"
+            placeholder="Año"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Año"
               disabled={cargando}
             />
           </td>
@@ -12623,13 +12771,14 @@ return (
               value={siniestralidadValor}
               onChange={(e) => setSiniestralidadValor(e.target.value)}
               className="w-full rounded px-3 py-2"
-              placeholder="Ej: $150.000.000"
+            placeholder="Valor del siniestro"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Valor del siniestro"
               disabled={cargando}
             />
           </td>
@@ -12662,6 +12811,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Comentarios"
               disabled={cargando}
             />
           </td>
@@ -12690,6 +12840,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
+            placeholder="Comentarios"
               disabled={cargando}
             />
           </td>
@@ -12737,13 +12888,14 @@ return (
               type="text"
               value={almacenAlturaMaxima}
               onChange={(e) => setAlmacenAlturaMaxima(e.target.value)}
-              placeholder="Ej: metros"
+            placeholder="Altura máxima del almacén"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Altura máxima del almacén"
               disabled={cargando}
             />
           </td>
@@ -12769,9 +12921,10 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Comentarios"
               disabled={cargando}
             >
-              <option value="">Seleccione...</option>
+              <option value="">Matriz de compatibilidad</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
               <option value="No aplica">No aplica</option>
@@ -12794,13 +12947,14 @@ return (
               type="text"
               value={almacenAlturaMaximaEstanteria}
               onChange={(e) => setAlmacenAlturaMaximaEstanteria(e.target.value)}
-              placeholder="Ej: metros"
+            placeholder="Altura máxima de la estantería"
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Altura máxima de la estantería"
               disabled={cargando}
             />
           </td>
@@ -12841,6 +12995,7 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Tipo de mercancía"
               disabled={cargando}
             />
           </td>
@@ -12867,6 +13022,7 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Tipo de almacenamiento"
               disabled={cargando}
             />
           </td>
@@ -12893,6 +13049,7 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
+            placeholder="Comentarios"
               disabled={cargando}
             />
           </td>
@@ -13013,7 +13170,7 @@ return (
                   border: 'none',
                   outline: 'none'
                 }}
-                placeholder="Ej: Incendio/Explosión"
+                placeholder="Comentarios"
                 disabled={cargando}
               />
       </td>
@@ -13045,6 +13202,7 @@ return (
                 onClick={() => handleEliminarRiesgo(fila.id)}
                 className="p-1 rounded hover:bg-red-500 hover:text-white transition-colors"
                 style={{ color: '#EF4444' }}
+            placeholder="Comentarios"
                 disabled={cargando}
               >
                 <FaTrash size={14} />
@@ -13304,6 +13462,7 @@ return (
                 className="p-1 rounded hover:bg-red-500 hover:text-white transition-colors"
                 style={{ color: '#EF4444' }}
                 title="Eliminar de ambas tablas"
+            placeholder="Comentarios"
                 disabled={cargando}
               >
                 <FaTrash size={14} />
@@ -13630,7 +13789,7 @@ return (
                 <FaTrash className="text-sm" aria-hidden />
               </button>
             </div>
-            <textarea
+            <textarea placeholder="Recomendaciones del informe"
               rows={5}
               value={item.texto}
               onChange={(e) =>

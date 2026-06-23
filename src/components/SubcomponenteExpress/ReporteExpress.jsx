@@ -41,7 +41,7 @@ const formatDateForExcel = (value) => convertirFechaParaExcelDate(value);
 const expressReportRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const expressPageWrapWide = 'w-full min-w-0 space-y-4 sm:space-y-6';
 
-const buildExportRow = (siniestro, { getNombreResponsable, getNombreAseguradora, getNombreEstado }) => ({
+const buildExportRow = (siniestro, { getNombreResponsable, getNombreAseguradora, getNombreEstado, getNombreCiudad }) => ({
   Consecutivo: siniestro.consecutivo ?? '',
   Responsable: getNombreResponsable(siniestro.responsable) || siniestro.responsable || '',
   'Código Workflow': siniestro.codigoWorkflow ?? '',
@@ -54,7 +54,12 @@ const buildExportRow = (siniestro, { getNombreResponsable, getNombreAseguradora,
   'Reservas (COP)': siniestro.reserva ?? '',
   Aseguradora: getNombreAseguradora(siniestro.aseguradora) || siniestro.aseguradora || '',
   Intermediario: siniestro.intermediario ?? '',
-  'Ciudad Siniestro': siniestro.ciudadSiniestro ?? '',
+  'Ciudad Siniestro':
+    (typeof getNombreCiudad === 'function'
+      ? getNombreCiudad(siniestro.ciudadSiniestro)
+      : siniestro.ciudadSiniestro) ||
+    siniestro.ciudadSiniestro ||
+    '',
   'Asegurado/Beneficiario': siniestro.aseguradoBeneficiario ?? '',
   'Fecha Solicitud Documentos': formatDateForExcel(siniestro.fechaSolicitudDocumentos),
   'Fecha Presentación Cifras': formatDateForExcel(siniestro.fechaPresentacionCifras),
@@ -157,6 +162,7 @@ const ReporteExpress = () => {
     obtenerNombreEstado,
     obtenerNombreAseguradora,
     obtenerNombreResponsable,
+    obtenerNombreCiudad,
   } = useExpressCatalogos();
 
   const recargarDespuesDeEdicion = useCallback(async () => {
@@ -310,6 +316,7 @@ const ReporteExpress = () => {
           item.codigoWorkflow,
           item.aseguradoBeneficiario,
           item.ciudadSiniestro,
+          obtenerNombreCiudad(item.ciudadSiniestro),
           obtenerNombreResponsable(item.responsable),
           obtenerNombreAseguradora(item.aseguradora),
           obtenerNombreEstado(item.estadoProceso),
@@ -356,6 +363,7 @@ const ReporteExpress = () => {
     obtenerNombreResponsable,
     obtenerNombreAseguradora,
     obtenerNombreEstado,
+    obtenerNombreCiudad,
   ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / EXPRESS_REPORTE_PAGE_SIZE));
@@ -380,43 +388,52 @@ const ReporteExpress = () => {
       alert('No hay datos para exportar.');
       return;
     }
-    const rows = filtrados.map((item) =>
-      buildExportRow(item, {
-        getNombreResponsable: obtenerNombreResponsable,
-        getNombreAseguradora: obtenerNombreAseguradora,
-        getNombreEstado: obtenerNombreEstado,
-      })
-    );
 
-    const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true });
-    const columnasFecha = [
-      'Aviso de Siniestro',
-      'Fecha Recibo Documentos',
-      'Fecha Cargue Finiquito',
-      'Fecha Solicitud Documentos',
-      'Fecha Presentación Cifras',
-      'Fecha Finiquitos Firmado',
-      'Creado el',
-      'Actualizado el',
-    ];
-    const encabezados = rows.length > 0 ? Object.keys(rows[0]) : [];
-    const indicesColumnasFecha = columnasFecha.map((nombre) => encabezados.indexOf(nombre)).filter((idx) => idx >= 0);
+    try {
+      const rows = filtrados.map((item) =>
+        buildExportRow(item, {
+          getNombreResponsable: obtenerNombreResponsable,
+          getNombreAseguradora: obtenerNombreAseguradora,
+          getNombreEstado: obtenerNombreEstado,
+          getNombreCiudad: obtenerNombreCiudad,
+        })
+      );
 
-    if (indicesColumnasFecha.length > 0 && worksheet['!ref']) {
-      const range = XLSX.utils.decode_range(worksheet['!ref']);
-      for (let r = 1; r <= range.e.r; r++) {
-        for (const c of indicesColumnasFecha) {
-          const addr = XLSX.utils.encode_cell({ r, c });
-          if (worksheet[addr] && worksheet[addr].t === 'd' && !worksheet[addr].z) {
-            worksheet[addr].z = 'dd/mm/yyyy';
+      const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true });
+      const columnasFecha = [
+        'Aviso de Siniestro',
+        'Fecha Recibo Documentos',
+        'Fecha Cargue Finiquito',
+        'Fecha Solicitud Documentos',
+        'Fecha Presentación Cifras',
+        'Fecha Finiquitos Firmado',
+        'Creado el',
+        'Actualizado el',
+      ];
+      const encabezados = rows.length > 0 ? Object.keys(rows[0]) : [];
+      const indicesColumnasFecha = columnasFecha
+        .map((nombre) => encabezados.indexOf(nombre))
+        .filter((idx) => idx >= 0);
+
+      if (indicesColumnasFecha.length > 0 && worksheet['!ref']) {
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        for (let r = 1; r <= range.e.r; r++) {
+          for (const c of indicesColumnasFecha) {
+            const addr = XLSX.utils.encode_cell({ r, c });
+            if (worksheet[addr] && worksheet[addr].t === 'd' && !worksheet[addr].z) {
+              worksheet[addr].z = 'dd/mm/yyyy';
+            }
           }
         }
       }
-    }
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Express');
-    XLSX.writeFile(workbook, `reporte-express-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Express');
+      XLSX.writeFile(workbook, `reporte-express-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    } catch (err) {
+      console.error('Error exportando Excel Express:', err);
+      alert('No se pudo generar el Excel. Recargue la página e intente de nuevo.');
+    }
   };
 
   const abrirPersonalizarColumnas = () => {
@@ -499,7 +516,7 @@ const ReporteExpress = () => {
       case 'intermediario':
         return item.intermediario || '—';
       case 'ciudadSiniestro':
-        return item.ciudadSiniestro || '—';
+        return obtenerNombreCiudad(item.ciudadSiniestro) || item.ciudadSiniestro || '—';
       case 'aseguradoBeneficiario':
         return item.aseguradoBeneficiario || '—';
       case 'observacionesSeguimiento':

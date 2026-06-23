@@ -49,6 +49,10 @@ import TableroOperativoExpress from './components/SubcomponenteExpress/TableroOp
 import CatalogosExpress from './components/SubcomponenteExpress/CatalogosExpress';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
+import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
+import PuertosActasListado from './components/PuertosActas/PuertosActasListado';
+import PuertosNuevaActa from './components/PuertosActas/PuertosNuevaActa';
+import PuertosCasoExportacionMain from './components/PuertosActas/PuertosCasoExportacionMain';
 import ActaInspeccion from './components/ActaInspeccion';
 import GestionDocumentos from './components/GestionDocumentos/GestionDocumentos';
 
@@ -286,12 +290,13 @@ navigate(location.pathname, { replace: true, state: {} });
 return resultado;
   };
 
-  const handleAutoSave = async (payload, { silent = false } = {}) => {
-    if (!initialData?._id) return;
+  const handleAutoSave = async (payload, { silent = false, datosBase = null } = {}) => {
+    if (!initialData?._id) return false;
     try {
       const origen = initialData?.origen || 'complex';
+      const base = datosBase || initialData;
       if (origen === 'complex') {
-        const datosNormalizados = prepararPayloadParaComplex(payload, initialData);
+        const datosNormalizados = prepararPayloadParaComplex(payload, base);
         const respuesta = await updateCasoComplex(initialData._id, datosNormalizados);
         if (!respuesta || respuesta.error) {
           if (!silent) {
@@ -299,11 +304,12 @@ return resultado;
           }
           return false;
         }
+        return respuesta;
       } else {
         const respuesta = await updateSiniestro(initialData._id, payload);
         if (!respuesta || respuesta.error) return false;
+        return respuesta;
       }
-      return true;
     } catch (error) {
       if (!silent) console.error('❌ Error en autoguardado:', error);
       return false;
@@ -363,7 +369,7 @@ await guardarCasoComplex(payload);
     <FormularioCasoComplex
       initialData={initialData}
       onSave={handleSave}
-      onAutoSave={initialData?._id ? (payload) => handleAutoSave(payload, { silent: true }) : undefined}
+      onAutoSave={initialData?._id ? (payload, opts) => handleAutoSave(payload, { silent: true, ...opts }) : undefined}
       onCancel={handleCancel}
       camposFijos={camposFijos}
     />
@@ -450,6 +456,14 @@ export default function App() {
 
           <Route path="puertos/formulario" element={<PuertosInspeccionMain />} />
           <Route path="puertos/formulario/editar/:id" element={<PuertosInspeccionMain />} />
+
+          <Route path="puertos/actas" element={<PuertosActasMain />}>
+            <Route index element={<PuertosActasListado />} />
+            <Route path="nueva" element={<PuertosNuevaActa />} />
+            <Route path="editar/:id" element={<PuertosNuevaActa />} />
+            <Route path="caso/nueva" element={<PuertosCasoExportacionMain />} />
+            <Route path="caso/editar/:id" element={<PuertosCasoExportacionMain />} />
+          </Route>
 
           <Route path="historial" element={<HistorialFormularios />} />
           <Route path="siniestros" element={<SiniestrosList />} />

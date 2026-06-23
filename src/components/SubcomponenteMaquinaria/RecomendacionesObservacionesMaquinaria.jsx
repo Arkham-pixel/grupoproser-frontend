@@ -1,62 +1,34 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Editor } from "react-draft-wysiwyg";
-import { EditorState, convertToRaw } from "draft-js";
-import draftToHtml from "draftjs-to-html";
-import "react-draft-wysiwyg/dist/react-draft-wysiwyg.css";
+import React, { useEffect } from "react";
+import { FieldLabel, ThemedTextarea } from "./maquinariaUi";
 
-export default function RecomendacionesObservacionesMaquinaria({ recomendaciones, setRecomendaciones }) {
-  const [editorState, setEditorState] = useState(() => EditorState.createEmpty());
-  const isMounted = useRef(false);
-  const [isClient, setIsClient] = useState(false); // Detecta si ya estamos en el cliente (navegador)
-  const ultimoHtmlRef = useRef("");
+function htmlATextoPlano(html) {
+  if (!html || typeof html !== "string") return "";
+  if (!/<[a-z][\s\S]*>/i.test(html)) return html;
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return (doc.body.innerText || doc.body.textContent || "").replace(/\u00a0/g, " ").trim();
+}
 
+export default function RecomendacionesObservacionesMaquinaria({
+  recomendaciones,
+  setRecomendaciones,
+  cargando = false,
+}) {
   useEffect(() => {
-    isMounted.current = true;
-    setIsClient(true);
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
-  const sincronizarRecomendaciones = useCallback((state) => {
-    const rawContent = convertToRaw(state.getCurrentContent());
-    const html = draftToHtml(rawContent);
-
-    // Evita escrituras repetidas al estado del padre que fuerzan re-render innecesario
-    // y pueden afectar la posición del cursor en editores ricos.
-    if (isMounted.current && html !== ultimoHtmlRef.current) {
-      ultimoHtmlRef.current = html;
-      setRecomendaciones(html);
-    }
-  }, [setRecomendaciones]);
-
-  const handleEditorStateChange = useCallback((state) => {
-    setEditorState(state);
-  }, []);
-
-  const handleEditorBlur = useCallback(() => {
-    sincronizarRecomendaciones(editorState);
-  }, [editorState, sincronizarRecomendaciones]);
+    if (!recomendaciones || !/<[a-z][\s\S]*>/i.test(recomendaciones)) return;
+    const plain = htmlATextoPlano(recomendaciones);
+    if (plain !== recomendaciones) setRecomendaciones(plain);
+  }, [recomendaciones, setRecomendaciones]);
 
   return (
-    <div className="mb-6">
-      <h2 className="text-white text-sm font-bold mb-2">4. RECOMENDACIONES Y OBSERVACIONES</h2>
-      {isClient && (
-        <div className="bg-white rounded p-2">
-          <Editor
-            editorState={editorState}
-            onEditorStateChange={handleEditorStateChange}
-            onBlur={handleEditorBlur}
-            toolbar={{
-              options: ["inline", "list", "textAlign", "history"],
-              list: { inDropdown: false },
-            }}
-            editorClassName="px-3 py-2 bg-gray-900 text-white text-xs"
-            toolbarClassName="mb-2"
-            wrapperClassName="border border-white rounded"
-          />
-        </div>
-      )}
+    <div>
+      <FieldLabel>Recomendaciones y observaciones</FieldLabel>
+      <ThemedTextarea
+        value={recomendaciones}
+        onChange={(e) => setRecomendaciones(e.target.value)}
+        rows={6}
+        placeholder="Escriba aquí las recomendaciones y observaciones"
+        disabled={cargando}
+      />
     </div>
   );
 }

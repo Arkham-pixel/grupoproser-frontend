@@ -349,7 +349,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [casoParaEditar, setCasoParaEditar] = useState(null);
   const [columnasSeleccionadas, setColumnasSeleccionadas] = useState([
-    'nmroRiesgo', 'asgrBenfcro', 'codiAsgrdra', 'codigoPoblado', 'ciudadSucursalAseguradora', 'nmroConsecutivo', 'codiEstdo',
+    'nmroRiesgo', 'asgrBenfcro', 'codiAsgrdra', 'funcSolicita', 'codigoPoblado', 'ciudadSucursalAseguradora', 'nmroConsecutivo', 'codiEstdo',
     'fchaAsgncion', 'fchaInspccion', 'fchaInforme', 'codiIspector',
     'observInspeccion', 'observAsignacion', 'vlorTarifaAseguradora',
     'vlorHonorarios', 'vlorGastos', 'totalPagado'
@@ -936,7 +936,7 @@ try {
 
     // Usar camposVisibles directamente (lo que se muestra en la tabla)
     // Asegurar que las columnas importantes estén incluidas si no están ya
-    const columnasRequeridas = ['ciudadSucursalAseguradora', 'nmroConsecutivo'];
+    const columnasRequeridas = ['ciudadSucursalAseguradora', 'nmroConsecutivo', 'funcSolicita'];
     const clavesVisibles = camposVisibles.map(col => col.clave);
     const columnasFinales = [...new Set([...clavesVisibles, ...columnasRequeridas])];
     
@@ -1014,8 +1014,8 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
           } else if (clave === 'codiAsgrdra') {
             fila[label] = getAseguradoraNombre(caso[clave], aseguradoras);
           } else if (clave === 'funcSolicita') {
-            // Convertir ID de funcionario a nombre
-            fila[label] = getFuncionarioNombre(caso[clave], funcionarios);
+            const valorSolicitante = caso.funcSolicita || caso.quienSolicita || '';
+            fila[label] = getFuncionarioNombre(valorSolicitante, funcionarios) || valorSolicitante || '';
           } else if (clave === 'codiRespnsble') {
             // Convertir código de responsable a nombre
             fila[label] = getResponsableNombrePorCodigo(caso[clave], responsables);
@@ -1633,7 +1633,10 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                             : clave === 'codiAsgrdra'
                               ? getAseguradoraNombre(caso[clave], aseguradoras)
                           : clave === 'funcSolicita'
-                            ? getFuncionarioNombre(caso[clave], funcionarios)
+                            ? (() => {
+                                const valorSolicitante = caso.funcSolicita || caso.quienSolicita || '';
+                                return getFuncionarioNombre(valorSolicitante, funcionarios) || valorSolicitante || '';
+                              })()
                           : clave === 'codiRespnsble'
                             ? getResponsableNombrePorCodigo(caso[clave], responsables)
                           : clave === 'codiClasificacion'

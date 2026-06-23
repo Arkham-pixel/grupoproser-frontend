@@ -1,121 +1,122 @@
 import React from "react";
-import proserLogo from "../../img/PROSER_FIRMA_BLANCA_V2 (3).gif"; // Ajusta la ruta si es necesario
+import Select from "react-select";
+import Logo from "../../img/Logo.png";
+import {
+  useMaquinariaTheme,
+  FieldLabel,
+  ThemedInput,
+  getSelectStyles,
+} from "./maquinariaUi";
 
 export default function EncabezadoMaquinaria({
   nombreAsegurado,
   setNombreAsegurado,
   nombreMaquinaria,
   setNombreMaquinaria,
-  fecha,
-  setFecha,
-  // Nuevas props para el llenado automático
+  marca,
+  setMarca,
   opcionesAsegurados = [],
   opcionesAseguradoras = [],
-  opcionesCiudades = [],
   onAseguradoChange,
   onAseguradoraChange,
-  onCiudadChange,
   aseguradora,
   setAseguradora,
-  ciudadFecha,
-  setCiudadFecha
 }) {
+  const t = useMaquinariaTheme();
+  const selectStyles = getSelectStyles(t);
+
   return (
-    <div className="flex flex-row items-center border border-gray-400 bg-gray-900 p-4 mb-4">
-      {/* Logo */}
-      <div className="w-1/3 flex justify-center items-center">
-        <img
-          src={proserLogo}
-          alt="Logo PROSER"
-          className="h-20 object-contain"
-        />
-      </div>
-      {/* Datos principales */}
-      <div className="w-2/3 flex flex-col justify-center">
-        <div className="bg-gray-800 px-4 py-2 rounded-t text-sm font-semibold flex flex-col gap-2">
-          {/* Dropdown para Aseguradora */}
-          <select
-            value={aseguradora || ''}
-            onChange={(e) => {
-              const selectedValue = e.target.value;
-              setAseguradora(selectedValue);
-              if (onAseguradoraChange) {
-                onAseguradoraChange(selectedValue);
-              }
-            }}
-            className="w-full bg-gray-800 border-b border-gray-600 px-2 py-1 text-white font-semibold"
-          >
-            <option value="">Seleccione aseguradora</option>
-            {opcionesAseguradoras.map(option => (
-              <option key={option.value} value={option.label}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          
-          {/* Campo editable para Aseguradora (permite edición manual) */}
-          <input
-            type="text"
-            value={aseguradora}
-            onChange={e => setAseguradora(e.target.value)}
-            className="w-full bg-gray-800 border-b border-gray-600 px-2 py-1 text-white font-semibold"
-            placeholder="Nombre de la aseguradora (editable)"
-          />
-          
-          {/* Dropdown para Asegurado */}
-          <select
-            value={nombreAsegurado || ''}
-            onChange={(e) => {
-              const selectedValue = e.target.value;
-              setNombreAsegurado(selectedValue);
-              if (onAseguradoChange) {
-                onAseguradoChange(selectedValue);
-              }
-            }}
-            className="w-full bg-gray-800 border-b border-gray-600 px-2 py-1 text-white font-semibold"
-          >
-            <option value="">Seleccione asegurado</option>
-            {opcionesAsegurados.map(option => (
-              <option key={option.value} value={option.label}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          
-          {/* Campo editable para Asegurado (permite edición manual) */}
-          <input
-            type="text"
-            value={nombreAsegurado}
-            onChange={e => setNombreAsegurado(e.target.value)}
-            className="w-full bg-gray-800 border-b border-gray-600 px-2 py-1 text-white font-semibold"
-            placeholder="Nombre del asegurado (editable)"
-          />
-          
-          <input
-            type="text"
-            value={nombreMaquinaria}
-            onChange={e => setNombreMaquinaria(e.target.value)}
-            className="w-full bg-gray-800 border-b border-gray-600 px-2 py-1 text-white font-semibold"
-            placeholder="Nombre de la maquinaria"
-          />
+    <div
+      className="rounded-lg border p-4 sm:p-5 mb-6"
+      style={{ borderColor: t.borderColor, backgroundColor: t.cardBg }}
+    >
+      <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
+        <div className="flex-shrink-0 flex justify-center sm:justify-start w-full sm:w-auto">
+          <img src={Logo} alt="Logo PROSER" className="h-14 sm:h-16 object-contain" />
         </div>
-        <div className="flex flex-row bg-gray-800 rounded-b text-xs font-medium mt-1">
-          <div className="flex-1 px-4 py-2 border-r border-gray-700 text-center">
-            INSP. RIESGOS
+
+        <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <FieldLabel hint="Estos datos se replican en carta, tabla y Word">Aseguradora</FieldLabel>
+            <Select
+              options={opcionesAseguradoras}
+              value={opcionesAseguradoras.find((o) => o.label === aseguradora) || null}
+              onChange={(opt) => {
+                if (opt) {
+                  setAseguradora(opt.label);
+                  onAseguradoraChange?.(opt.value);
+                } else {
+                  setAseguradora("");
+                }
+              }}
+              placeholder="Seleccione aseguradora"
+              isClearable
+              isSearchable
+              styles={selectStyles}
+            />
+            <div className="mt-2">
+              <ThemedInput
+                value={aseguradora}
+                onChange={(e) => setAseguradora(e.target.value)}
+                placeholder="O escriba el nombre de la aseguradora"
+              />
+            </div>
           </div>
-          <div className="flex-1 px-4 py-2 border-r border-gray-700 text-center">
-            RIESGOS
+
+          <div>
+            <FieldLabel>Asegurado</FieldLabel>
+            <Select
+              options={opcionesAsegurados}
+              value={opcionesAsegurados.find((o) => o.label === nombreAsegurado) || null}
+              onChange={(opt) => {
+                if (opt) {
+                  setNombreAsegurado(opt.label);
+                  onAseguradoChange?.(opt.value);
+                } else {
+                  setNombreAsegurado("");
+                }
+              }}
+              placeholder="Seleccione asegurado"
+              isClearable
+              isSearchable
+              styles={selectStyles}
+            />
+            <div className="mt-2">
+              <ThemedInput
+                value={nombreAsegurado}
+                onChange={(e) => setNombreAsegurado(e.target.value)}
+                placeholder="O escriba el nombre del asegurado"
+              />
+            </div>
           </div>
-          <div className="flex-1 px-4 py-2 text-center">
-            <span className="font-bold">DATE:</span>{" "}
-            <input
-              type="date"
-              value={fecha}
-              onChange={e => setFecha(e.target.value)}
-              className="bg-gray-800 border-b border-gray-600 px-2 py-1 text-white text-xs"
+
+          <div>
+            <FieldLabel>Equipo / Maquinaria</FieldLabel>
+            <ThemedInput
+              value={nombreMaquinaria}
+              onChange={(e) => setNombreMaquinaria(e.target.value)}
+              placeholder="Tipo o nombre del equipo"
+            />
+          </div>
+
+          <div>
+            <FieldLabel hint="Se replica en tabla §1 y descripción §2">Marca</FieldLabel>
+            <ThemedInput
+              value={marca}
+              onChange={(e) => setMarca(e.target.value)}
+              placeholder="Marca del equipo"
             />
           </div>
         </div>
+      </div>
+
+      <div
+        className="mt-4 pt-3 grid grid-cols-3 text-center text-xs sm:text-sm font-medium border-t"
+        style={{ borderColor: t.borderColor, color: t.textSecondary }}
+      >
+        <span>INSP. RIESGOS</span>
+        <span>RIESGOS</span>
+        <span style={{ color: t.textPrimary }}>INFORME DE MAQUINARIA</span>
       </div>
     </div>
   );

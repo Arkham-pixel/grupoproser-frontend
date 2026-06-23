@@ -1,15 +1,16 @@
 import React from "react";
+import { FieldLabel, ThemedTextarea } from "./maquinariaUi";
 
-export default function TipoProteccionMaquinaria({ tipoProteccion, setTipoProteccion }) {
+export default function TipoProteccionMaquinaria({ tipoProteccion, setTipoProteccion, cargando = false }) {
   return (
-    <div className="mb-6">
-      <h2 className="font-bold mb-2 text-base">3. TIPO DE PROTECCIÓN</h2>
-      <textarea
-        className="w-full text-xs border border-white p-3 bg-gray-900 text-white"
+    <div>
+      <FieldLabel>Describa el tipo de protección y el contexto del riesgo</FieldLabel>
+      <ThemedTextarea
         value={tipoProteccion}
-        onChange={e => setTipoProteccion(e.target.value)}
-        rows={4}
-        placeholder="Escriba aquí el tipo de protección y contexto"
+        onChange={(e) => setTipoProteccion(e.target.value)}
+        rows={5}
+        placeholder="Escriba aquí el tipo de protección"
+        disabled={cargando}
       />
     </div>
   );

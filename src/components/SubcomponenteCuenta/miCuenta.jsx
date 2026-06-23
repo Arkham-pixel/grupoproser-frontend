@@ -3,9 +3,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { obtenerPerfil, actualizarFoto } from "../../services/userService";
-import axios from "axios";
 import { BASE_URL, isDevelopmentEnv, resolveUploadsUrl } from '../../config/apiConfig';
 import { useTheme } from '../../context/ThemeContext';
+import RecortarFotoPerfilModal from './RecortarFotoPerfilModal.jsx';
+import Configurar2FA from './Configurar2FA.jsx';
 
 // Estados con soporte para modo oscuro local
 const getEstadoClasses = (estado, isDark) => {
@@ -103,6 +104,9 @@ export default function MiCuenta() {
   const [fotoPreview, setFotoPreview] = useState("");
   const [fotoError, setFotoError] = useState(false);
   const [fotoLoaded, setFotoLoaded] = useState(false);
+  const [cropModalOpen, setCropModalOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState("");
+  const [subiendoFoto, setSubiendoFoto] = useState(false);
   const fileInputRef = useRef();
   const navigate = useNavigate();
   const { theme } = useTheme();
@@ -179,31 +183,62 @@ setUsuario(datosRespaldo);
       });
   }, [navigate]);
 
-  const handleFotoChange = async (e) => {
-    const file = e.target.files[0];
+  const handleFotoChange = (e) => {
+    const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setFotoError(true);
+      return;
+    }
 
-    // Muestra preview mientras sube
     const reader = new FileReader();
-    reader.onload = (ev) => setFotoPreview(ev.target.result);
+    reader.onload = (ev) => {
+      setCropImageSrc(ev.target.result);
+      setCropModalOpen(true);
+    };
     reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
-    // Sube la imagen al servidor
+  const handleAjustarFotoActual = () => {
+    if (!usuario?.foto) return;
+    setCropImageSrc(obtenerUrlFoto(usuario.foto));
+    setCropModalOpen(true);
+  };
+
+  const handleCerrarRecorte = () => {
+    if (subiendoFoto) return;
+    setCropModalOpen(false);
+    setCropImageSrc("");
+  };
+
+  const handleConfirmarRecorte = async (blob) => {
     const token = localStorage.getItem("token");
+    if (!token) return;
+
+    setSubiendoFoto(true);
+    const previewUrl = URL.createObjectURL(blob);
+    setFotoPreview(previewUrl);
+
     const formData = new FormData();
-    formData.append("foto", file);
+    formData.append("foto", blob, "perfil.jpg");
 
     try {
       const { data } = await actualizarFoto(formData, token);
-// data.fotoPerfil es la URL relativa guardada en Mongo
-      setUsuario(u => ({ ...u, foto: data.fotoPerfil }));
+      setUsuario((u) => ({ ...u, foto: data.fotoPerfil }));
       setFotoPreview("");
-      setFotoError(false); // Resetear error de foto
-      setFotoLoaded(true); // Marcar que la foto se cargó correctamente
+      setFotoError(false);
+      setFotoLoaded(true);
+      setCropModalOpen(false);
+      setCropImageSrc("");
     } catch (err) {
       console.error("❌ Error subiendo foto:", err);
-      setFotoError(true); // Marcar que hubo un error al subir la foto
-      setFotoLoaded(false); // No marcar como cargada si hubo error
+      setFotoPreview("");
+      setFotoError(true);
+      setFotoLoaded(false);
+    } finally {
+      URL.revokeObjectURL(previewUrl);
+      setSubiendoFoto(false);
     }
   };
 
@@ -277,9 +312,9 @@ setUsuario(datosRespaldo);
       )}
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
         {/* Foto de perfil - Lado izquierdo, mejorada y más elegante */}
-        <div className="relative flex-shrink-0 self-start group">
-          {/* Contenedor de la foto con efecto hover */}
-          <div className={`relative ${isDark ? 'ring-4 ring-blue-600/50' : 'ring-4 ring-blue-200/50'} rounded-full p-1 transition-all duration-300 group-hover:ring-blue-500 group-hover:scale-105`}>
+        <div className="flex flex-shrink-0 flex-col items-center gap-3 self-start">
+          <div className="relative group">
+            <div className={`relative ${isDark ? 'ring-4 ring-blue-600/50' : 'ring-4 ring-blue-200/50'} rounded-full p-1 transition-all duration-300 group-hover:ring-blue-500 group-hover:scale-105`}>
           {/* Mostrar foto de perfil o placeholder */}
           {fotoPreview ? (
             // Preview de la foto que se está subiendo
@@ -307,31 +342,17 @@ setUsuario(datosRespaldo);
               </div>
             )}
             </div>
-          
-          {/* Indicador de estado de conexión mejorado */}
-          <div className={`absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-4 lg:right-4 xl:top-5 xl:right-5 z-10`}>
+
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-4 lg:right-4 xl:top-5 xl:right-5 z-10">
             <div className={`relative w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 xl:w-9 xl:h-9 ${getEstadoClasses(estado, isDark).includes('green') ? 'bg-green-500' : getEstadoClasses(estado, isDark).includes('yellow') ? 'bg-yellow-500' : getEstadoClasses(estado, isDark).includes('red') ? 'bg-red-500' : 'bg-gray-500'} rounded-full border-3 ${isDark ? 'border-gray-800' : 'border-white'} shadow-xl flex items-center justify-center`}>
               <div className="w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 xl:w-4.5 xl:h-4.5 bg-white rounded-full animate-pulse"></div>
-              {/* Anillo de pulso para estado conectado */}
               {estado === 'Conectado' && (
                 <div className={`absolute inset-0 ${getEstadoClasses(estado, isDark).includes('green') ? 'bg-green-500' : 'bg-green-500'} rounded-full animate-ping opacity-75`}></div>
               )}
             </div>
           </div>
-          
-          {/* Botón para cambiar foto mejorado */}
-          <button
-            onClick={() => fileInputRef.current.click()}
-            className={`absolute bottom-2 right-2 sm:bottom-3 sm:right-3 lg:bottom-4 lg:right-4 xl:bottom-5 xl:right-5 ${isDark ? 'bg-blue-600 hover:bg-blue-500 active:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700 active:bg-blue-800'} text-white rounded-full p-2.5 sm:p-3 lg:p-3.5 xl:p-4 transition-all duration-200 shadow-xl hover:shadow-2xl hover:scale-110 active:scale-95 z-10`}
-            title="Cambiar foto de perfil"
-          >
-            <svg className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 xl:w-6 xl:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-          
-          {/* Input de archivo oculto */}
+          </div>
+
           <input
             type="file"
             accept="image/*"
@@ -339,6 +360,33 @@ setUsuario(datosRespaldo);
             className="hidden"
             onChange={handleFotoChange}
           />
+
+          <div className="flex w-40 sm:w-48 lg:w-64 xl:w-80 flex-col gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-colors ${
+                isDark
+                  ? 'bg-blue-900/40 text-blue-200 hover:bg-blue-900/60 border border-blue-800'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+              }`}
+            >
+              Cambiar foto
+            </button>
+            {usuario.foto && !fotoError && (
+              <button
+                type="button"
+                onClick={handleAjustarFotoActual}
+                className={`rounded-lg px-3 py-2 text-xs sm:text-sm font-medium transition-colors ${
+                  isDark
+                    ? 'bg-gray-800 text-gray-200 hover:bg-gray-700 border border-gray-700'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
+                }`}
+              >
+                Acomodar foto actual
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Contenido principal - Lado derecho */}
@@ -512,6 +560,9 @@ setUsuario(datosRespaldo);
                 )}
               </div>
             </div>
+            
+            {/* Seguridad: verificación en dos pasos con app de autenticación */}
+            <Configurar2FA isDark={isDark} />
             
             {/* Información Laboral - Solo para usuarios autorizados */}
             {usuarioAutorizado && (
@@ -744,6 +795,15 @@ setUsuario(datosRespaldo);
           </div>
         </div>
       </div>
+
+      <RecortarFotoPerfilModal
+        open={cropModalOpen}
+        imageSrc={cropImageSrc}
+        isDark={isDark}
+        subiendo={subiendoFoto}
+        onClose={handleCerrarRecorte}
+        onConfirm={handleConfirmarRecorte}
+      />
     </div>
   );
 }

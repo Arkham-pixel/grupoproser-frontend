@@ -36,6 +36,18 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { appendUploadFile } from '../utils/sanitizeUploadFileName.js';
+import { construirElementosFirmasActaWord } from '../utils/firmasActaWord.js';
+import {
+  estilosDocumentoPropiedades,
+  pBody,
+  pHeading,
+  pTitulo,
+  pSpacer,
+  tr,
+  crearTablaDatos,
+  crearTablaInspeccionItems,
+  insertarFotosSeccionWord,
+} from '../utils/propiedadesWordUtils.js';
 
 export default function HistorialFormularios() {
   const {
@@ -342,32 +354,12 @@ if (!formularioCompleto || !formularioCompleto.datos) {
       const datos = formularioCompleto.datos;
       const { BASE_URL } = await import('../config/apiConfig');
       
-      // Función auxiliar para convertir base64 a ArrayBuffer
-      const base64ToArrayBuffer = (base64) => {
-        const binaryString = window.atob(base64.split(',')[1] || base64);
-        const len = binaryString.length;
-        const bytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        return bytes.buffer;
-      };
-
       // Función para capitalizar primera letra
       const capitalizeFirstLetter = (str) => {
         if (!str) return "";
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
       };
 
-      // Función para formatear cumple
-      const formatearCumple = (cumple) => {
-        if (!cumple) return "";
-        const lower = cumple.toLowerCase();
-        if (lower === "si" || lower === "sí") return "SÍ";
-        if (lower === "no") return "NO";
-        return cumple.toUpperCase();
-      };
-      
       // Extraer áreas y fotos de los datos
       const areasData = datos.areasData || {};
       const fotosAreas = datos.fotosAreas || {};
@@ -676,135 +668,6 @@ if (!formularioCompleto || !formularioCompleto.datos) {
         })
       );
 
-      // Función auxiliar para crear tabla de inspección desde items dinámicos
-      const crearTablaDesdeItems = (items, titulo) => {
-        if (!items || items.length === 0) return null;
-        
-        const rows = [
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ text: "PARÁMETRO", bold: true })] }),
-              new TableCell({ children: [new Paragraph({ text: "CUMPLE", bold: true })] }),
-              new TableCell({ children: [new Paragraph({ text: "SÍNTOMA", bold: true })] }),
-              new TableCell({ children: [new Paragraph({ text: "OBSERVACIÓN", bold: true })] }),
-            ],
-          }),
-        ];
-
-        items.forEach(item => {
-          rows.push(
-            new TableRow({
-              children: [
-                new TableCell({ children: [new Paragraph(item.parametro || "")] }),
-                new TableCell({ 
-                  children: [new Paragraph(formatearCumple(item.cumple || ""))],
-                  shading: {
-                    fill: item.cumple?.toLowerCase() === "si" || item.cumple?.toLowerCase() === "sí" ? "C6EFCE" : 
-                          item.cumple?.toLowerCase() === "no" ? "FFC7CE" : "FFFFFF"
-                  }
-                }),
-                new TableCell({ children: [new Paragraph(item.sintoma || "")] }),
-                new TableCell({ children: [new Paragraph(item.observacion || "")] }),
-              ],
-            })
-          );
-        });
-
-        return new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: rows,
-        });
-      };
-
-      // Función para insertar fotos por sección
-      const insertarFotosSeccion = async (fotos, titulo) => {
-        if (!fotos || fotos.length === 0) return;
-        
-        docContent.push(
-          new Paragraph({
-            text: titulo,
-            heading: HeadingLevel.HEADING_2,
-            spacing: { after: 200 },
-          })
-        );
-        
-        // Insertar fotos en grupos de 4 (2x2)
-        for (let i = 0; i < fotos.length; i += 4) {
-          const fotoGroup = fotos.slice(i, i + 4);
-          const rows = [];
-          
-          for (let r = 0; r < 2; r++) {
-            const cells = [];
-            for (let c = 0; c < 2; c++) {
-              const idx = r * 2 + c;
-              if (idx < fotoGroup.length) {
-                try {
-                  const foto = fotoGroup[idx];
-                  let imageBuffer;
-                  
-                  // Intentar obtener imagen desde diferentes fuentes
-                  if (foto.base64) {
-                    imageBuffer = base64ToArrayBuffer(foto.base64);
-                  } else if (foto.ruta) {
-                    // Si tiene ruta, intentar cargarla desde el servidor
-                    try {
-                      const fullUrl = foto.ruta.startsWith('http') ? foto.ruta : `${BASE_URL}${foto.ruta}`;
-                      const response = await fetch(fullUrl);
-                      const blob = await response.blob();
-                      imageBuffer = await blob.arrayBuffer();
-                    } catch (fetchError) {
-                      console.warn('No se pudo cargar imagen desde ruta:', foto.ruta);
-                      imageBuffer = null;
-                    }
-                  } else if (foto.url) {
-                    const response = await fetch(foto.url);
-                    const blob = await response.blob();
-                    imageBuffer = await blob.arrayBuffer();
-                  }
-                  
-                  if (imageBuffer) {
-                    cells.push(
-                      new TableCell({
-                        children: [
-                          new Paragraph({
-                            children: [
-                              new ImageRun({
-                                data: imageBuffer,
-                                transformation: { width: 200, height: 200 },
-                              }),
-                            ],
-                            alignment: AlignmentType.CENTER,
-                          }),
-                          new Paragraph({
-                            text: foto.descripcion || "",
-                            alignment: AlignmentType.CENTER,
-                            spacing: { after: 100 },
-                          }),
-                        ],
-                      })
-                    );
-                  } else {
-                    cells.push(new TableCell({ children: [new Paragraph("Imagen no disponible")] }));
-                  }
-                } catch (error) {
-                  console.error('Error procesando foto:', error);
-                  cells.push(new TableCell({ children: [new Paragraph("Error en imagen")] }));
-                }
-              } else {
-                cells.push(new TableCell({ children: [new Paragraph("")] }));
-              }
-            }
-            rows.push(new TableRow({ children: cells }));
-          }
-          
-          docContent.push(new Table({ rows: rows }));
-          if (i + 4 < fotos.length) {
-            docContent.push(new PageBreak());
-          }
-        }
-        docContent.push(new Paragraph({ text: "", spacing: { after: 400 } }));
-      };
-
       // COCINA
       if (areasData.cocina && areasData.cocina.length > 0) {
         docContent.push(
@@ -814,14 +677,14 @@ if (!formularioCompleto || !formularioCompleto.datos) {
             spacing: { after: 200 },
           })
         );
-        const tablaCocina = crearTablaDesdeItems(areasData.cocina, "COCINA");
+        const tablaCocina = crearTablaInspeccionItems(areasData.cocina);
         if (tablaCocina) {
           docContent.push(tablaCocina);
         }
         docContent.push(new Paragraph({ text: "", spacing: { after: 400 } }));
         
         if (fotosAreas.cocina && fotosAreas.cocina.length > 0) {
-          await insertarFotosSeccion(fotosAreas.cocina, "FOTOS DE COCINA");
+          await insertarFotosSeccionWord(docContent, fotosAreas.cocina, "FOTOS DE COCINA");
         }
       }
 
@@ -834,14 +697,14 @@ if (!formularioCompleto || !formularioCompleto.datos) {
             spacing: { after: 200 },
           })
         );
-        const tablaRopas = crearTablaDesdeItems(areasData.ropas, "ZONA DE ROPAS");
+        const tablaRopas = crearTablaInspeccionItems(areasData.ropas);
         if (tablaRopas) {
           docContent.push(tablaRopas);
         }
         docContent.push(new Paragraph({ text: "", spacing: { after: 400 } }));
         
         if (fotosAreas.ropas && fotosAreas.ropas.length > 0) {
-          await insertarFotosSeccion(fotosAreas.ropas, "FOTOS DE ZONA DE ROPAS");
+          await insertarFotosSeccionWord(docContent, fotosAreas.ropas, "FOTOS DE ZONA DE ROPAS");
         }
       }
 
@@ -854,14 +717,14 @@ if (!formularioCompleto || !formularioCompleto.datos) {
             spacing: { after: 200 },
           })
         );
-        const tablaSala = crearTablaDesdeItems(areasData.sala, "SALA DE ESTAR");
+        const tablaSala = crearTablaInspeccionItems(areasData.sala);
         if (tablaSala) {
           docContent.push(tablaSala);
         }
         docContent.push(new Paragraph({ text: "", spacing: { after: 400 } }));
         
         if (fotosAreas.sala && fotosAreas.sala.length > 0) {
-          await insertarFotosSeccion(fotosAreas.sala, "FOTOS DE SALA DE ESTAR");
+          await insertarFotosSeccionWord(docContent, fotosAreas.sala, "FOTOS DE SALA DE ESTAR");
         }
       }
 
@@ -874,14 +737,14 @@ if (!formularioCompleto || !formularioCompleto.datos) {
             spacing: { after: 200 },
           })
         );
-        const tablaBanoSocial = crearTablaDesdeItems(areasData.banioSocial, "BAÑO SOCIAL");
+        const tablaBanoSocial = crearTablaInspeccionItems(areasData.banioSocial);
         if (tablaBanoSocial) {
           docContent.push(tablaBanoSocial);
         }
         docContent.push(new Paragraph({ text: "", spacing: { after: 400 } }));
         
         if (fotosAreas.banioSocial && fotosAreas.banioSocial.length > 0) {
-          await insertarFotosSeccion(fotosAreas.banioSocial, "FOTOS DE BAÑO SOCIAL");
+          await insertarFotosSeccionWord(docContent, fotosAreas.banioSocial, "FOTOS DE BAÑO SOCIAL");
         }
       }
 
@@ -894,14 +757,14 @@ if (!formularioCompleto || !formularioCompleto.datos) {
             spacing: { after: 200 },
           })
         );
-        const tablaBanoPrincipal = crearTablaDesdeItems(areasData.banoPrincipal, "BAÑO PRINCIPAL");
+        const tablaBanoPrincipal = crearTablaInspeccionItems(areasData.banoPrincipal);
         if (tablaBanoPrincipal) {
           docContent.push(tablaBanoPrincipal);
         }
         docContent.push(new Paragraph({ text: "", spacing: { after: 400 } }));
         
         if (fotosAreas.banoPrincipal && fotosAreas.banoPrincipal.length > 0) {
-          await insertarFotosSeccion(fotosAreas.banoPrincipal, "FOTOS DE BAÑO PRINCIPAL");
+          await insertarFotosSeccionWord(docContent, fotosAreas.banoPrincipal, "FOTOS DE BAÑO PRINCIPAL");
         }
       }
 
@@ -916,14 +779,14 @@ if (!formularioCompleto || !formularioCompleto.datos) {
               spacing: { after: 200 },
             })
           );
-          const tablaAlcoba = crearTablaDesdeItems(areasData.alcobas[i], `ALCOBA ${i}`);
+          const tablaAlcoba = crearTablaInspeccionItems(areasData.alcobas[i]);
           if (tablaAlcoba) {
             docContent.push(tablaAlcoba);
           }
           docContent.push(new Paragraph({ text: "", spacing: { after: 400 } }));
           
           if (fotosAreas.alcobas && fotosAreas.alcobas[i] && fotosAreas.alcobas[i].length > 0) {
-            await insertarFotosSeccion(fotosAreas.alcobas[i], `FOTOS DE ALCOBA ${i}`);
+            await insertarFotosSeccionWord(docContent, fotosAreas.alcobas[i], `FOTOS DE ALCOBA ${i}`);
           }
         }
       }
@@ -979,44 +842,17 @@ if (!formularioCompleto || !formularioCompleto.datos) {
       // Firmas
       docContent.push(new Paragraph({ text: "ATENTAMENTE,", spacing: { after: 400 } }));
 
-      const inspector2 = datos.inspector2 || "ladys";
-      const signTable = new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: [
-              new TableCell({
-                children: [
-                  new Paragraph("ARNALDO TAPIA GUTIÉRREZ"),
-                  new Paragraph("PROSER RIESGOS SAS"),
-                  new Paragraph("E-MAIL: atapia@proserpuertos.com.co"),
-                ],
-              }),
-              new TableCell({
-                children: [
-                  new Paragraph(
-                    inspector2 === "ladys" ? "LADYS ESCALANTE BOSSIO" :
-                    inspector2 === "maria" ? "MARÍA GARCÍA MANJARRES" :
-                    inspector2 === "mario" ? "MARIO PINILLA DE LA TORRE" :
-                    "INSPECTOR"
-                  ),
-                  new Paragraph("PROSER RIESGOS SAS"),
-                  new Paragraph(
-                    inspector2 === "ladys" ? "E-MAIL: ladys.escalante@proserpuertos.com.co" :
-                    inspector2 === "maria" ? "E-MAIL: magarciamanjarres@proserpuertos.com.co" :
-                    inspector2 === "mario" ? "E-MAIL: mario.pinilla@proserpuertos.com.co" :
-                    "E-MAIL: inspector@proserpuertos.com.co"
-                  ),
-                ],
-              }),
-            ],
-          }),
-        ],
-      });
-      docContent.push(signTable);
+      const formDataFirmas = datos.formData || datos;
+      docContent.push(
+        ...construirElementosFirmasActaWord(formDataFirmas, {
+          nombreEmpresa: 'Proser Riesgos SAS',
+          tituloCliente: 'FIRMA DE QUIEN RECIBE LA VISITA',
+        })
+      );
 
       // Crear el documento completo
       const doc = new Document({
+        styles: estilosDocumentoPropiedades,
         sections: [
           {
             headers: {
@@ -1028,8 +864,8 @@ if (!formularioCompleto || !formularioCompleto.datos) {
               default: new Footer({
                 children: [
                   new Paragraph({
-                    text: "Reporte generado desde la base de datos - Proser Riesgos SAS",
                     alignment: AlignmentType.CENTER,
+                    children: [tr('Reporte generado desde la base de datos - Proser Riesgos SAS')],
                   }),
                 ],
               }),

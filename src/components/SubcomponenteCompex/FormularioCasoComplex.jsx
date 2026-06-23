@@ -30,6 +30,10 @@ import {
   flushOfflineSyncHandler,
 } from '../../services/offlineSyncRegistry.js';
 import useOnlineStatus from '../../hooks/useOnlineStatus.js';
+import {
+  notifyFormServerSaved,
+  subscribeFormServerSaved,
+} from '../../services/formSyncChannel.js';
 
 export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = true }) {
   const navigate = useNavigate();
@@ -462,6 +466,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
       const casoId = id || initialData?._id;
       if (casoId) {
         try {
+          aplicandoDesdeServidorRef.current = true;
 const token = localStorage.getItem('token');
           
           const casoData = await getCasoComplex(casoId);
@@ -603,6 +608,9 @@ if (casoData && casoData._id) {
 
             setCasoListoParaAutoGuardar(true);
             datosInicialesAutoSaveRef.current = casoData;
+            requestAnimationFrame(() => {
+              aplicandoDesdeServidorRef.current = false;
+            });
 
             // Cargar funcionarios si hay aseguradora
             if (normalizados.codiAsgrdra || casoData.codiAsgrdra) {
@@ -636,6 +644,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
             console.error('❌ [Cargar Caso por ID] El caso no tiene _id válido');
           }
         } catch (error) {
+          aplicandoDesdeServidorRef.current = false;
           console.error('❌ [Cargar Caso por ID] Error cargando caso:', error);
           alert('Error al cargar el caso. Por favor, verifica que el caso exista.');
         }
@@ -643,7 +652,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
     };
 
     cargarCasoPorId();
-  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, ordenarPorLabel]);
+  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, ordenarPorLabel, forceReloadCaso]);
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID ni initialData)
   // IMPORTANTE: No cargar si tiene nmroAjste (es un caso ya guardado)
@@ -1288,12 +1297,20 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [savedDataToRestore, setSavedDataToRestore] = useState(null);
   const [casoListoParaAutoGuardar, setCasoListoParaAutoGuardar] = useState(false);
+  const [forceReloadCaso, setForceReloadCaso] = useState(0);
+  const [hayActualizacionRemota, setHayActualizacionRemota] = useState(false);
   const datosInicialesAutoSaveRef = useRef(initialData || null);
   const autoGuardandoServidorRef = useRef(false);
   const formDataAutoSaveRef = useRef(formData);
+  const ultimaEdicionUsuarioRef = useRef(Date.now());
+  const aplicandoDesdeServidorRef = useRef(false);
+  const casoConId = Boolean(initialData?._id || id);
 
   useEffect(() => {
     formDataAutoSaveRef.current = formData;
+    if (aplicandoDesdeServidorRef.current) return;
+    ultimaEdicionUsuarioRef.current = Date.now();
+    setHayActualizacionRemota(false);
   }, [formData]);
 
   // Generar key única para autoguardado (usa ID si existe, sino un key genérico)
@@ -1450,9 +1467,13 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
     formKey: autoSaveKey,
     formData: formData,
     enabled: autoGuardadoActivo,
-    interval: 30000,
+    interval: 300000,
+    debounceMs: 400,
+    saveOnChange: true,
     excludeFields: ['historialDocs'],
     skipRestoreOnMount: Boolean(autoGuardadoActivo && (initialData?._id || id)),
+    preferServerWhenOnline: casoConId,
+    shouldSkipSaveRef: aplicandoDesdeServidorRef,
     onRestore: (savedInfo) => {
       setSavedDataToRestore(savedInfo);
       setShowRestoreDialog(true);
@@ -2806,65 +2827,69 @@ clearSavedData();
      return resultado;
   };
 
-  // Autoguardado silencioso en servidor (edición con _id, tras cargar caso completo desde API)
-  useEffect(() => {
-    const casoId = formData._id || initialData?._id || id;
-    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return undefined;
+  const SERVER_AUTOSAVE_DEBOUNCE_MS = 1200;
 
-    const intervaloMs = 60000;
+  const guardarEnServidor = useCallback(async () => {
+    const casoId = formDataAutoSaveRef.current._id || initialData?._id || id;
+    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return;
+    if (autoGuardandoServidorRef.current) return;
+    if (aplicandoDesdeServidorRef.current) return;
+    if (Object.values(cargandoAdjuntos || {}).some(Boolean)) return;
 
-    const guardarEnServidor = async () => {
-      if (autoGuardandoServidorRef.current) return;
-      if (Object.values(cargandoAdjuntos || {}).some(Boolean)) return;
+    if (!isBrowserOnline()) {
+      saveNow({ force: true });
+      autoSaveService.setPendingServerSync(autoSaveKey, true);
+      setPendingServerSync(true);
+      return;
+    }
 
+    autoGuardandoServidorRef.current = true;
+    markSyncing();
+    try {
+      const payload = mapFormDataToBackend(formDataAutoSaveRef.current);
+      const datosBase = datosInicialesAutoSaveRef.current || initialData || {};
+      let respuestaServidor = null;
+
+      if (onAutoSave) {
+        respuestaServidor = await onAutoSave(payload, { datosBase });
+      } else {
+        const normalizado = prepararPayloadParaComplex(payload, datosBase);
+        respuestaServidor = await updateCasoComplex(casoId, normalizado);
+      }
+
+      if (respuestaServidor === false || respuestaServidor?.error) {
+        throw new Error('Autoguardado rechazado por el servidor');
+      }
+
+      if (respuestaServidor && typeof respuestaServidor === 'object') {
+        datosInicialesAutoSaveRef.current = {
+          ...(datosInicialesAutoSaveRef.current || {}),
+          ...respuestaServidor,
+          control_horas:
+            respuestaServidor.control_horas ??
+            datosInicialesAutoSaveRef.current?.control_horas,
+        };
+      }
+
+      notifyFormServerSaved(autoSaveKey, casoId);
+      autoSaveService.clearPendingServerSync(autoSaveKey);
+      setPendingServerSync(false);
+      markSynced();
+    } catch (error) {
+      console.warn('[auto-guardado servidor]', error);
       if (!isBrowserOnline()) {
-        saveNow();
+        saveNow({ force: true });
         autoSaveService.setPendingServerSync(autoSaveKey, true);
         setPendingServerSync(true);
-        return;
+      } else {
+        markSyncError();
       }
-
-      autoGuardandoServidorRef.current = true;
-      markSyncing();
-      try {
-        const payload = mapFormDataToBackend(formDataAutoSaveRef.current);
-        if (onAutoSave) {
-          await onAutoSave(payload);
-        } else {
-          const datosBase = datosInicialesAutoSaveRef.current || initialData || {};
-          const normalizado = prepararPayloadParaComplex(payload, datosBase);
-          await updateCasoComplex(casoId, normalizado);
-        }
-        autoSaveService.clearPendingServerSync(autoSaveKey);
-        setPendingServerSync(false);
-        markSynced();
-      } catch (error) {
-        console.warn('[auto-guardado servidor]', error);
-        if (!isBrowserOnline()) {
-          saveNow();
-          autoSaveService.setPendingServerSync(autoSaveKey, true);
-          setPendingServerSync(true);
-        } else {
-          markSyncError();
-        }
-      } finally {
-        autoGuardandoServidorRef.current = false;
-      }
-    };
-
-    registerOfflineSyncHandler(autoSaveKey, guardarEnServidor);
-    window.addEventListener('online', guardarEnServidor);
-
-    const timer = setInterval(guardarEnServidor, intervaloMs);
-    return () => {
-      unregisterOfflineSyncHandler(autoSaveKey);
-      window.removeEventListener('online', guardarEnServidor);
-      clearInterval(timer);
-    };
+    } finally {
+      autoGuardandoServidorRef.current = false;
+    }
   }, [
     autoGuardadoActivo,
     autoSaveKey,
-    formData._id,
     initialData,
     id,
     onAutoSave,
@@ -2876,9 +2901,99 @@ clearSavedData();
     markSyncError,
   ]);
 
+  const omitirServidorTrasCargaRef = useRef(true);
+
+  useEffect(() => {
+    if (casoListoParaAutoGuardar) {
+      omitirServidorTrasCargaRef.current = true;
+    }
+  }, [casoListoParaAutoGuardar]);
+
+  // Registro offline / reconexión + respaldo cada 5 min
+  useEffect(() => {
+    const casoId = formData._id || initialData?._id || id;
+    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return undefined;
+
+    registerOfflineSyncHandler(autoSaveKey, guardarEnServidor);
+    window.addEventListener('online', guardarEnServidor);
+
+    const timer = setInterval(guardarEnServidor, 300000);
+
+    return () => {
+      unregisterOfflineSyncHandler(autoSaveKey);
+      window.removeEventListener('online', guardarEnServidor);
+      clearInterval(timer);
+    };
+  }, [
+    autoGuardadoActivo,
+    autoSaveKey,
+    formData._id,
+    initialData,
+    id,
+    casoListoParaAutoGuardar,
+    guardarEnServidor,
+  ]);
+
+  // Servidor: cada cambio del formulario (debounce ~1.2 s), estilo Word/OneDrive
+  useEffect(() => {
+    const casoId = formData._id || initialData?._id || id;
+    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return undefined;
+
+    if (omitirServidorTrasCargaRef.current) {
+      omitirServidorTrasCargaRef.current = false;
+      return undefined;
+    }
+
+    if (aplicandoDesdeServidorRef.current) return undefined;
+
+    const timer = setTimeout(() => {
+      guardarEnServidor();
+    }, SERVER_AUTOSAVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [
+    formData,
+    autoGuardadoActivo,
+    initialData,
+    id,
+    casoListoParaAutoGuardar,
+    guardarEnServidor,
+  ]);
+
   useEffect(() => {
     setPendingServerSync(autoSaveService.hasPendingServerSync(autoSaveKey));
   }, [autoSaveKey, isOnline]);
+
+  // Otra ventana guardó el mismo caso → recargar desde servidor si no hay edición activa
+  useEffect(() => {
+    const casoId = formData._id || initialData?._id || id;
+    if (!casoId || !autoGuardadoActivo) return undefined;
+
+    const recargarSiCorresponde = () => {
+      if (autoGuardandoServidorRef.current) return;
+      const idleMs = Date.now() - ultimaEdicionUsuarioRef.current;
+      if (idleMs >= 5000) {
+        setForceReloadCaso((n) => n + 1);
+        setHayActualizacionRemota(false);
+      } else {
+        setHayActualizacionRemota(true);
+      }
+    };
+
+    const unsubscribe = subscribeFormServerSaved(autoSaveKey, recargarSiCorresponde);
+
+    const onFocus = () => {
+      if (hayActualizacionRemota) {
+        recargarSiCorresponde();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [autoSaveKey, autoGuardadoActivo, formData._id, initialData?._id, id, hayActualizacionRemota]);
 
   return (
     <>
@@ -2997,6 +3112,42 @@ clearSavedData();
 
       {autoGuardadoActivo && (
         <>
+          {hayActualizacionRemota && (
+            <div
+              role="status"
+              style={{
+                position: 'fixed',
+                bottom: '72px',
+                right: '16px',
+                zIndex: 9999,
+                maxWidth: '320px',
+                padding: '10px 14px',
+                backgroundColor: '#1e3a5f',
+                color: '#fff',
+                borderRadius: '8px',
+                fontSize: '13px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+              }}
+            >
+              Otra ventana guardó este caso.{' '}
+              <button
+                type="button"
+                onClick={() => setForceReloadCaso((n) => n + 1)}
+                style={{
+                  marginLeft: '6px',
+                  textDecoration: 'underline',
+                  background: 'none',
+                  border: 'none',
+                  color: '#93c5fd',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                }}
+              >
+                Recargar ahora
+              </button>
+            </div>
+          )}
+
           <AutoSaveNotification
             isEnabled={isAutoSaveEnabled}
             lastSaveTime={lastSaveTime}

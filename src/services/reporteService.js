@@ -2696,55 +2696,91 @@ if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomen
       return '';
     }
 
+    const renderSeguimientos = (recomendacion) => {
+      const seguimientos = [];
+
+      if (Array.isArray(recomendacion.seguimientos) && recomendacion.seguimientos.length > 0) {
+        recomendacion.seguimientos.forEach((seg, segIndex) => {
+          if (!seg?.fecha && !seg?.comentarios) return;
+          seguimientos.push(`
+            <div class="seguimiento-item-report">
+              <strong>📌 Seguimiento ${segIndex + 1}:</strong>
+              ${seg.fecha ? `<span class="fecha-seguimiento-report">${seg.fecha}</span>` : ''}
+              ${seg.comentarios ? `
+                <div class="comentarios-report">
+                  <strong>💬 Comentarios:</strong> ${seg.comentarios}
+                </div>
+              ` : ''}
+            </div>
+          `);
+        });
+      }
+
+      if (seguimientos.length === 0 && recomendacion.fechaImplementacion1) {
+        seguimientos.push(`
+          <div class="seguimiento-item-report">
+            <strong>📌 Seguimiento 1:</strong>
+            <span class="fecha-seguimiento-report">${recomendacion.fechaImplementacion1}</span>
+            ${recomendacion.comentariosImplementacion1 ? `
+              <div class="comentarios-report">
+                <strong>💬 Comentarios:</strong> ${recomendacion.comentariosImplementacion1}
+              </div>
+            ` : ''}
+          </div>
+        `);
+      }
+
+      if (recomendacion.fechaImplementacion2) {
+        seguimientos.push(`
+          <div class="seguimiento-item-report">
+            <strong>📌 Seguimiento 2:</strong>
+            <span class="fecha-seguimiento-report">${recomendacion.fechaImplementacion2}</span>
+            ${recomendacion.comentariosImplementacion2 ? `
+              <div class="comentarios-report">
+                <strong>💬 Comentarios:</strong> ${recomendacion.comentariosImplementacion2}
+              </div>
+            ` : ''}
+          </div>
+        `);
+      }
+
+      if (seguimientos.length === 0) return '';
+
+      return `
+        <div class="seguimientos-container-report">
+          <h4>📈 Seguimiento</h4>
+          ${seguimientos.join('')}
+        </div>
+      `;
+    };
+
     return `
       <div class="section">
-        <h2>🛡️ Recomendaciones de El corazón digital de Grupo Proser</h2>
-        <p class="section-description-report">Recomendaciones identificadas y su seguimiento de implementación</p>
+        <h2>🛡️ Recomendaciones de Gestión de Riesgos</h2>
+        <p class="section-description-report">Recomendaciones identificadas y su seguimiento</p>
         
         <div class="recomendaciones-container-report">
           ${gestionRiesgos.recomendaciones.map((recomendacion, index) => `
             <div class="recomendacion-card-report">
               <div class="recomendacion-header-report">
-                <h3>📋 Recomendación #${index + 1}</h3>
+                <h3>📋 Recomendación ${index + 1}</h3>
+                ${recomendacion.fechaRecomendacion || recomendacion.fechaInicial ? `
+                  <p class="fecha-recomendacion-report">
+                    <strong>📅 Fecha de recomendación:</strong>
+                    ${recomendacion.fechaRecomendacion || recomendacion.fechaInicial}
+                  </p>
+                ` : ''}
               </div>
               
               <div class="recomendacion-content-report">
                 ${recomendacion.recomendacion ? `
                   <div class="recomendacion-descripcion-report">
-                    <h4>📝 Descripción de la Recomendación</h4>
+                    <h4>📝 Descripción</h4>
                     <p>${recomendacion.recomendacion}</p>
                   </div>
                 ` : ''}
                 
-                <div class="recomendacion-fechas-report">
-                  ${recomendacion.fechaInicial ? `
-                    <div class="fecha-item-report">
-                      <strong>📅 Fecha Inicial:</strong> ${recomendacion.fechaInicial}
-                    </div>
-                  ` : ''}
-                  
-                  ${recomendacion.fechaImplementacion1 ? `
-                    <div class="fecha-item-report">
-                      <strong>🎯 Fecha Implementación 1:</strong> ${recomendacion.fechaImplementacion1}
-                      ${recomendacion.comentariosImplementacion1 ? `
-                        <div class="comentarios-report">
-                          <strong>💬 Comentarios:</strong> ${recomendacion.comentariosImplementacion1}
-                        </div>
-                      ` : ''}
-                    </div>
-                  ` : ''}
-                  
-                  ${recomendacion.fechaImplementacion2 ? `
-                    <div class="fecha-item-report">
-                      <strong>🎯 Fecha Implementación 2:</strong> ${recomendacion.fechaImplementacion2}
-                      ${recomendacion.comentariosImplementacion2 ? `
-                        <div class="comentarios-report">
-                          <strong>💬 Comentarios:</strong> ${recomendacion.comentariosImplementacion2}
-                        </div>
-                      ` : ''}
-                    </div>
-                  ` : ''}
-                </div>
+                ${renderSeguimientos(recomendacion)}
               </div>
             </div>
           `).join('')}
@@ -3911,7 +3947,44 @@ return '';
         
         .comentarios-report strong {
           color: #495057;
+        }
+
+        .fecha-recomendacion-report {
+          margin: 8px 0 0;
+          color: #495057;
+          font-size: 0.95rem;
+        }
+
+        .seguimientos-container-report {
+          background: #f8f9fa;
+          padding: 18px;
+          border-radius: 8px;
+          border: 1px dashed #dee2e6;
+        }
+
+        .seguimientos-container-report h4 {
+          color: #2c3e50;
+          font-size: 1.05rem;
           font-weight: 600;
+          margin: 0 0 12px 0;
+        }
+
+        .seguimiento-item-report {
+          background: white;
+          padding: 12px 14px;
+          border-radius: 8px;
+          border: 1px solid #e9ecef;
+          margin-bottom: 10px;
+        }
+
+        .seguimiento-item-report:last-child {
+          margin-bottom: 0;
+        }
+
+        .fecha-seguimiento-report {
+          display: inline-block;
+          margin-left: 6px;
+          color: #495057;
         }
 
         /* Mapas export — diseño alineado con la plataforma */

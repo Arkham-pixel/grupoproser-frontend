@@ -1,4 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
+const VALORACIONES_VACIAS = [];
+const MAPA_VACIO = {};
+
+function riesgosIguales(a, b) {
+  if (a === b) return true;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
+}
 import { FaChartBar, FaFire, FaSyncAlt } from 'react-icons/fa';
 import MatrizSeccionTitulo from './MatrizSeccionTitulo';
 import { MatrizMapaBloque } from './MatrizUiBlocks';
@@ -327,27 +339,17 @@ function TablaLeyendaMapa({ titulo, valoraciones, riesgosMapa }) {
 const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
   const [riesgosInherentes, setRiesgosInherentes] = useState([]);
   const [riesgosResiduales, setRiesgosResiduales] = useState([]);
-  
-  // Obtener datos de valoración del estado global
-  const valoraciones = datos.valoracion?.valoraciones || [];
-  const probabilidades = datos.valoracion?.probabilidad || {};
-  const impactosCategoria = datos.valoracion?.impactosCategoria || {};
-  const probResidual = datos.valoracion?.probResidual || {};
-  const impactosCategoriaResidual = datos.valoracion?.impactosCategoriaResidual || {};
-  /** Impacto “plano” por id (misma fuente que la tabla de Valoración) */
-  const impactoPlano = datos.valoracion?.impacto || {};
-  const impactoResidualPlano = datos.valoracion?.impactoResidual || {};
 
-// Debug: Mostrar información de los datos recibidos
-  useEffect(() => {
-// Debug específico de valoraciones
-    if (valoraciones.length > 0) {
-// Debug detallado de cada valoración
-      valoraciones.forEach((valoracion, index) => {
-});
-    } else {
-}
-  }, [valoraciones, probabilidades, impactosCategoria, probResidual, impactosCategoriaResidual, datos]);
+  const valoracion = datos.valoracion;
+  const mapaCalorGuardado = datos.mapaCalor;
+
+  const valoraciones = valoracion?.valoraciones ?? VALORACIONES_VACIAS;
+  const probabilidades = valoracion?.probabilidad ?? MAPA_VACIO;
+  const impactosCategoria = valoracion?.impactosCategoria ?? MAPA_VACIO;
+  const probResidual = valoracion?.probResidual ?? MAPA_VACIO;
+  const impactosCategoriaResidual = valoracion?.impactosCategoriaResidual ?? MAPA_VACIO;
+  const impactoPlano = valoracion?.impacto ?? MAPA_VACIO;
+  const impactoResidualPlano = valoracion?.impactoResidual ?? MAPA_VACIO;
 
   // Función para refrescar datos manualmente
   const refrescarDatos = () => {
@@ -475,15 +477,16 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
     return nivel.color;
   };
 
+  const actualizarRiesgosSiCambian = (setter, siguiente) => {
+    setter((prev) => (riesgosIguales(prev, siguiente) ? prev : siguiente));
+  };
+
   // Calcular riesgos inherentes desde los datos de valoración
   useEffect(() => {
-if (valoraciones.length > 0) {
-const riesgosInherentesCalculados = valoraciones.map((valoracion, index) => {
-// Probabilidad inherente (desde la valoración directamente)
+    if (valoraciones.length > 0) {
+      const riesgosInherentesCalculados = valoraciones.map((valoracion) => {
         const probabilidadInherente = resolverProbabilidad1a5(valoracion, probabilidades);
-// Impacto inherente (alineado con sumatoria / impacto de la tabla de Valoración)
-        const impactosInherentes = valoracion.impactosCategoria || impactosCategoria[valoracion.id] || { economico: 1, operativo: 1, reputacional: 1, legal: 1 };
-const impactoInherente = resolverImpacto1a5(
+        const impactoInherente = resolverImpacto1a5(
           valoracion,
           valoracion.impactosCategoria,
           impactosCategoria,
@@ -491,11 +494,10 @@ const impactoInherente = resolverImpacto1a5(
           valoracion.impacto,
           impactoPlano
         );
-// Clasificación inherente
         const clasificacionInherente = probabilidadInherente * impactoInherente;
         const nivelInherente = calcularNivelRiesgo(probabilidadInherente, impactoInherente);
-        
-        const riesgoCalculado = {
+
+        return {
           id: `R${valoracion.numero || valoracion.id}`,
           numero: valoracion.numero,
           probabilidad: probabilidadInherente,
@@ -503,32 +505,27 @@ const impactoInherente = resolverImpacto1a5(
           clasificacion: clasificacionInherente,
           nivel: nivelInherente.nivel,
           color: nivelInherente.color,
-          descripcion: valoracion.descripcion || ''
+          descripcion: valoracion.descripcion || '',
         };
-        
-return riesgoCalculado;
       });
-      
-setRiesgosInherentes(riesgosInherentesCalculados);
-    } else if (datos.riesgosInherentes && datos.riesgosInherentes.length > 0) {
-setRiesgosInherentes(datos.riesgosInherentes);
+
+      actualizarRiesgosSiCambian(setRiesgosInherentes, riesgosInherentesCalculados);
+    } else if (mapaCalorGuardado?.riesgosInherentes?.length > 0) {
+      actualizarRiesgosSiCambian(setRiesgosInherentes, mapaCalorGuardado.riesgosInherentes);
     } else {
-setRiesgosInherentes([]);
+      actualizarRiesgosSiCambian(setRiesgosInherentes, VALORACIONES_VACIAS);
     }
-  }, [valoraciones, probabilidades, impactosCategoria, impactoPlano]);
+  }, [valoraciones, probabilidades, impactosCategoria, impactoPlano, mapaCalorGuardado?.riesgosInherentes]);
 
   // Calcular riesgos residuales desde los datos de valoración
   useEffect(() => {
     if (valoraciones.length > 0 && riesgosInherentes.length > 0) {
-      const riesgosResidualesCalculados = valoraciones.map(valoracion => {
+      const riesgosResidualesCalculados = valoraciones.map((valoracion) => {
         const probabilidadResidual = resolverProbabilidadResidual1a5(valoracion);
-        
         const impactoResidual = resolverImpactoResidual1a5(valoracion);
-        
-        // Clasificación residual
         const clasificacionResidual = probabilidadResidual * impactoResidual;
         const nivelResidual = calcularNivelRiesgo(probabilidadResidual, impactoResidual);
-        
+
         return {
           id: `R${valoracion.numero || valoracion.id}`,
           numero: valoracion.numero,
@@ -537,16 +534,15 @@ setRiesgosInherentes([]);
           clasificacion: clasificacionResidual,
           nivel: nivelResidual.nivel,
           color: nivelResidual.color,
-          descripcion: valoracion.descripcion || ''
+          descripcion: valoracion.descripcion || '',
         };
       });
-      
-      setRiesgosResiduales(riesgosResidualesCalculados);
-    } else if (datos.riesgosResiduales && datos.riesgosResiduales.length > 0) {
-      setRiesgosResiduales(datos.riesgosResiduales);
+
+      actualizarRiesgosSiCambian(setRiesgosResiduales, riesgosResidualesCalculados);
+    } else if (mapaCalorGuardado?.riesgosResiduales?.length > 0) {
+      actualizarRiesgosSiCambian(setRiesgosResiduales, mapaCalorGuardado.riesgosResiduales);
     } else {
-      // NO generar datos residuales de ejemplo
-      setRiesgosResiduales([]);
+      actualizarRiesgosSiCambian(setRiesgosResiduales, VALORACIONES_VACIAS);
     }
   }, [
     valoraciones,
@@ -554,27 +550,35 @@ setRiesgosInherentes([]);
     impactosCategoriaResidual,
     probabilidades,
     impactosCategoria,
-    riesgosInherentes,
-    impactoResidualPlano
+    riesgosInherentes.length,
+    impactoResidualPlano,
+    mapaCalorGuardado?.riesgosResiduales,
   ]);
 
-  // Sincronización automática cuando cambien los datos de valoración
-  useEffect(() => {
-    if (valoraciones.length > 0) {
-// No llamar refrescarDatos aquí para evitar bucle infinito
-      // Los useEffect de cálculo ya se ejecutan automáticamente
-    }
-  }, [valoraciones, probabilidades, impactosCategoria, probResidual, impactosCategoriaResidual]);
-
   // Guardar datos cuando cambien
+  const onDatosChangeRef = useRef(onDatosChange);
+  onDatosChangeRef.current = onDatosChange;
+  const ultimoMapaEnviadoRef = useRef('');
+
   useEffect(() => {
-    if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length > 0)) {
-onDatosChange({
-        riesgosInherentes,
-        riesgosResiduales
-      });
+    if (riesgosInherentes.length === 0 && riesgosResiduales.length === 0) return;
+
+    const payload = {
+      riesgosInherentes,
+      riesgosResiduales,
+    };
+
+    let serializado = '';
+    try {
+      serializado = JSON.stringify(payload);
+    } catch {
+      onDatosChangeRef.current?.(payload);
+      return;
     }
-  }, [riesgosInherentes, riesgosResiduales, onDatosChange]);
+    if (serializado === ultimoMapaEnviadoRef.current) return;
+    ultimoMapaEnviadoRef.current = serializado;
+    onDatosChangeRef.current?.(payload);
+  }, [riesgosInherentes, riesgosResiduales]);
 
 
   // Componente para la tabla de riesgos
