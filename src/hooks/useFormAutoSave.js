@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useAutoSave } from './useAutoSave';
 import useOnlineStatus from './useOnlineStatus';
 import { autoSaveService } from '../services/autoSaveService';
+import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
 import {
   registerOfflineSyncHandler,
   unregisterOfflineSyncHandler,
@@ -40,6 +41,7 @@ export function useFormAutoSave({
   canSaveServer = null,
   shouldSkipSaveRef = null,
 }) {
+  const autoguardadoActivo = enabled && AUTO_SAVE_ENABLED;
   const formKey = buildFormAutoSaveKey(formKeyBase, recordId);
   const formDataRef = useRef(formData);
   const recordIdRef = useRef(recordId);
@@ -83,7 +85,7 @@ export function useFormAutoSave({
   const autoSave = useAutoSave({
     formKey,
     formData,
-    enabled,
+    enabled: autoguardadoActivo,
     interval: localInterval,
     debounceMs: localDebounceMs,
     saveOnChange: true,
@@ -95,11 +97,11 @@ export function useFormAutoSave({
   });
 
   useEffect(() => {
-    if (!enabled || !tieneRecordId) return;
+    if (!autoguardadoActivo || !tieneRecordId) return;
     if (!autoSave.isAutoSaveEnabled) {
       autoSave.enableAutoSave();
     }
-  }, [enabled, tieneRecordId, autoSave.isAutoSaveEnabled, autoSave.enableAutoSave]);
+  }, [autoguardadoActivo, tieneRecordId, autoSave.isAutoSaveEnabled, autoSave.enableAutoSave]);
 
   const ejecutarGuardadoServidor = useCallback(async () => {
     const id = recordIdRef.current;
@@ -139,14 +141,14 @@ export function useFormAutoSave({
   }, [onServerUpdate, serverReady, canSaveServer, formKey, autoSave]);
 
   useEffect(() => {
-    if (!enabled || !onServerUpdate) return undefined;
+    if (!autoguardadoActivo || !onServerUpdate) return undefined;
 
     registerOfflineSyncHandler(formKey, ejecutarGuardadoServidor);
     return () => unregisterOfflineSyncHandler(formKey);
-  }, [enabled, formKey, onServerUpdate, ejecutarGuardadoServidor]);
+  }, [autoguardadoActivo, formKey, onServerUpdate, ejecutarGuardadoServidor]);
 
   useEffect(() => {
-    if (!enabled || !onServerUpdate) return undefined;
+    if (!autoguardadoActivo || !onServerUpdate) return undefined;
 
     const onOnline = () => {
       ejecutarGuardadoServidor();
@@ -154,21 +156,21 @@ export function useFormAutoSave({
 
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [enabled, onServerUpdate, ejecutarGuardadoServidor]);
+  }, [autoguardadoActivo, onServerUpdate, ejecutarGuardadoServidor]);
 
   useEffect(() => {
-    if (!enabled || !onServerUpdate || !serverReady) return undefined;
+    if (!autoguardadoActivo || !onServerUpdate || !serverReady) return undefined;
 
     const timer = setInterval(() => {
       ejecutarGuardadoServidor();
     }, serverInterval);
 
     return () => clearInterval(timer);
-  }, [enabled, onServerUpdate, serverReady, serverInterval, ejecutarGuardadoServidor]);
+  }, [autoguardadoActivo, onServerUpdate, serverReady, serverInterval, ejecutarGuardadoServidor]);
 
   // Servidor: guardar tras cada cambio (debounce), como OneDrive
   useEffect(() => {
-    if (!enabled || !onServerUpdate || !serverReady || serverDebounceMs <= 0) {
+    if (!autoguardadoActivo || !onServerUpdate || !serverReady || serverDebounceMs <= 0) {
       return undefined;
     }
 
@@ -196,7 +198,7 @@ export function useFormAutoSave({
     };
   }, [
     formData,
-    enabled,
+    autoguardadoActivo,
     onServerUpdate,
     serverReady,
     serverDebounceMs,
@@ -267,6 +269,7 @@ export function useServerAutoSaveUpdate({
   onOfflineFallback = null,
   shouldSkipSaveRef = null,
 }) {
+  const autoguardadoActivo = enabled && AUTO_SAVE_ENABLED;
   const recordIdRef = useRef(recordId);
   const guardRef = useRef(false);
   const debounceRef = useRef(null);
@@ -305,30 +308,30 @@ export function useServerAutoSaveUpdate({
   }, [onUpdate, isBlocked, onOfflineFallback]);
 
   useEffect(() => {
-    if (!enabled || !ready || !onUpdate) return undefined;
+    if (!autoguardadoActivo || !ready || !onUpdate) return undefined;
     registerOfflineSyncHandler(handlerKey, ejecutar);
     return () => unregisterOfflineSyncHandler(handlerKey);
-  }, [enabled, ready, onUpdate, handlerKey, ejecutar]);
+  }, [autoguardadoActivo, ready, onUpdate, handlerKey, ejecutar]);
 
   useEffect(() => {
-    if (!enabled || !ready || !onUpdate) return undefined;
+    if (!autoguardadoActivo || !ready || !onUpdate) return undefined;
     const onOnline = () => ejecutar();
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [enabled, ready, onUpdate, ejecutar]);
+  }, [autoguardadoActivo, ready, onUpdate, ejecutar]);
 
   useEffect(() => {
-    if (!enabled || !ready || !onUpdate) return undefined;
+    if (!autoguardadoActivo || !ready || !onUpdate) return undefined;
 
     const timer = setInterval(() => {
       ejecutar();
     }, interval);
 
     return () => clearInterval(timer);
-  }, [enabled, ready, onUpdate, interval, ejecutar, isOnline]);
+  }, [autoguardadoActivo, ready, onUpdate, interval, ejecutar, isOnline]);
 
   useEffect(() => {
-    if (!enabled || !ready || !onUpdate || !formData || debounceMs <= 0) {
+    if (!autoguardadoActivo || !ready || !onUpdate || !formData || debounceMs <= 0) {
       return undefined;
     }
 
@@ -354,7 +357,7 @@ export function useServerAutoSaveUpdate({
         clearTimeout(debounceRef.current);
       }
     };
-  }, [formData, enabled, ready, onUpdate, debounceMs, ejecutar, shouldSkipSaveRef]);
+  }, [formData, autoguardadoActivo, ready, onUpdate, debounceMs, ejecutar, shouldSkipSaveRef]);
 
   return { isOnline, syncNow: ejecutar };
 }

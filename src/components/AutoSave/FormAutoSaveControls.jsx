@@ -2,6 +2,7 @@ import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import AutoSaveNotification from './AutoSaveNotification';
 import AutoSaveRestoreDialog from './AutoSaveRestoreDialog';
+import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig';
 
 function AutoSaveManualActivate({ onEnable, placement = 'floating' }) {
   const { theme } = useTheme();
@@ -64,6 +65,8 @@ export default function FormAutoSaveControls({
   /** 'floating' = chip arriba a la derecha; 'inline' = en la barra de acciones del formulario */
   placement = 'floating',
 }) {
+  if (!AUTO_SAVE_ENABLED) return null;
+
   if (!enabled) return (
     <AutoSaveRestoreDialog
       isOpen={showRestoreDialog}

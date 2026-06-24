@@ -3,6 +3,8 @@
  * Maneja el almacenamiento local de datos de formularios
  */
 
+import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
+
 const AUTO_SAVE_PREFIX = 'autosave_';
 const AUTO_SAVE_METADATA_PREFIX = 'autosave_meta_';
 const AUTO_SAVE_CONFIG_PREFIX = 'autosave_config_';
@@ -14,6 +16,7 @@ class AutoSaveService {
    * @param {Object} data - Datos a guardar
    */
   save(formKey, data) {
+    if (!AUTO_SAVE_ENABLED) return false;
     try {
       const storageKey = `${AUTO_SAVE_PREFIX}${formKey}`;
       localStorage.setItem(storageKey, JSON.stringify(data));

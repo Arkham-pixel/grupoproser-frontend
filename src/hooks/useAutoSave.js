@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { autoSaveService } from '../services/autoSaveService';
 import useOnlineStatus from './useOnlineStatus';
+import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
 
 /**
  * Hook personalizado para autoguardado de formularios (localStorage).
@@ -31,6 +32,7 @@ export const useAutoSave = ({
   /** Ref opcional: si devuelve true, se omite el autoguardado por cambio (p. ej. recarga desde servidor). */
   shouldSkipSaveRef = null,
 }) => {
+  const autoguardadoActivo = enabled && AUTO_SAVE_ENABLED;
   const [isAutoSaveEnabled, setIsAutoSaveEnabled] = useState(false);
   const [lastSaveTime, setLastSaveTime] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle'); // idle, saving, saved, error, offline-saved, syncing
@@ -147,7 +149,7 @@ autoSaveService.clear(formKey);
   }, [saveToStorage]);
 
   useEffect(() => {
-    if (skipRestoreOnMount) {
+    if (!AUTO_SAVE_ENABLED || skipRestoreOnMount) {
       isFirstRender.current = false;
       return;
     }
@@ -180,7 +182,7 @@ if (savedInfo && savedInfo.data) {
 
   // Autoguardado al estilo Word/OneDrive: cada cambio, tras una pausa breve (debounce)
   useEffect(() => {
-    if (!isAutoSaveEnabled || !enabled || !formKey || !saveOnChange || debounceMs <= 0) {
+    if (!isAutoSaveEnabled || !autoguardadoActivo || !formKey || !saveOnChange || debounceMs <= 0) {
       return undefined;
     }
 
@@ -211,7 +213,7 @@ if (savedInfo && savedInfo.data) {
   }, [
     formData,
     isAutoSaveEnabled,
-    enabled,
+    autoguardadoActivo,
     formKey,
     saveOnChange,
     debounceMs,
@@ -221,7 +223,7 @@ if (savedInfo && savedInfo.data) {
   ]);
 
   useEffect(() => {
-    if (isAutoSaveEnabled && enabled && formKey && interval > 0) {
+    if (isAutoSaveEnabled && autoguardadoActivo && formKey && interval > 0) {
       // Limpiar intervalo anterior si existe
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
@@ -256,7 +258,7 @@ if (savedInfo && savedInfo.data) {
         }
       };
     }
-  }, [isAutoSaveEnabled, enabled, formKey, interval, saveToStorage]);
+  }, [isAutoSaveEnabled, autoguardadoActivo, formKey, interval, saveToStorage]);
 
   // Guardar cuando se desmonta el componente (si está habilitado)
   useEffect(() => {

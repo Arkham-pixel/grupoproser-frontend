@@ -34,8 +34,10 @@ import {
   notifyFormServerSaved,
   subscribeFormServerSaved,
 } from '../../services/formSyncChannel.js';
+import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig.js';
 
-export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = true }) {
+export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false }) {
+  const autoguardadoEfectivo = AUTO_SAVE_ENABLED && autoGuardadoActivo;
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -658,6 +660,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
   // Cargar datos desde localStorage al iniciar (solo si no hay ID ni initialData)
   // IMPORTANTE: No cargar si tiene nmroAjste (es un caso ya guardado)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     if (!id && !initialData) {
       const datosGuardados = localStorage.getItem('formularioComplex');
       if (datosGuardados) {
@@ -685,6 +688,7 @@ localStorage.removeItem('formularioComplex');
   // Solo se guarda si estamos en la ruta del formulario Complex
   // IMPORTANTE: No guardar si tiene nmroAjste (es un caso ya guardado, no un borrador)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const esRutaComplex = location.pathname.includes('/complex') || location.pathname.includes('/agregar-caso') || location.pathname.includes('/editar-caso');
     if (!esRutaComplex) return;
 
@@ -713,6 +717,7 @@ localStorage.removeItem('formularioComplex');
 
   // Guardar datos antes de refrescar la página (solo si estamos en el formulario)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const handleBeforeUnload = () => {
       const esRutaComplex = window.location.pathname.includes('/complex') || window.location.pathname.includes('/agregar-caso') || window.location.pathname.includes('/editar-caso');
       if (esRutaComplex) {
@@ -1466,12 +1471,12 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
   } = useAutoSave({
     formKey: autoSaveKey,
     formData: formData,
-    enabled: autoGuardadoActivo,
+    enabled: autoguardadoEfectivo,
     interval: 300000,
     debounceMs: 400,
     saveOnChange: true,
     excludeFields: ['historialDocs'],
-    skipRestoreOnMount: Boolean(autoGuardadoActivo && (initialData?._id || id)),
+    skipRestoreOnMount: Boolean(autoguardadoEfectivo && (initialData?._id || id)),
     preferServerWhenOnline: casoConId,
     shouldSkipSaveRef: aplicandoDesdeServidorRef,
     onRestore: (savedInfo) => {
@@ -1482,11 +1487,11 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
 
   // Autoguardado solo cuando la ventana lo habilita explícitamente (p. ej. edición desde reporte)
   useEffect(() => {
-    if (!autoGuardadoActivo) return;
+    if (!autoguardadoEfectivo) return;
     if (!isAutoSaveEnabled) {
       enableAutoSave();
     }
-  }, [autoGuardadoActivo, isAutoSaveEnabled, enableAutoSave]);
+  }, [autoguardadoEfectivo, isAutoSaveEnabled, enableAutoSave]);
 
   // Handler para responsable - actualizar tanto el código como el nombre
   const handleResponsableChange = useCallback((codigoResponsable) => {
@@ -2831,7 +2836,7 @@ clearSavedData();
 
   const guardarEnServidor = useCallback(async () => {
     const casoId = formDataAutoSaveRef.current._id || initialData?._id || id;
-    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return;
+    if (!autoguardadoEfectivo || !casoId || !casoListoParaAutoGuardar) return;
     if (autoGuardandoServidorRef.current) return;
     if (aplicandoDesdeServidorRef.current) return;
     if (Object.values(cargandoAdjuntos || {}).some(Boolean)) return;
@@ -2888,7 +2893,7 @@ clearSavedData();
       autoGuardandoServidorRef.current = false;
     }
   }, [
-    autoGuardadoActivo,
+    autoguardadoEfectivo,
     autoSaveKey,
     initialData,
     id,
@@ -2912,7 +2917,7 @@ clearSavedData();
   // Registro offline / reconexión + respaldo cada 5 min
   useEffect(() => {
     const casoId = formData._id || initialData?._id || id;
-    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return undefined;
+    if (!autoguardadoEfectivo || !casoId || !casoListoParaAutoGuardar) return undefined;
 
     registerOfflineSyncHandler(autoSaveKey, guardarEnServidor);
     window.addEventListener('online', guardarEnServidor);
@@ -2925,7 +2930,7 @@ clearSavedData();
       clearInterval(timer);
     };
   }, [
-    autoGuardadoActivo,
+    autoguardadoEfectivo,
     autoSaveKey,
     formData._id,
     initialData,
@@ -2937,7 +2942,7 @@ clearSavedData();
   // Servidor: cada cambio del formulario (debounce ~1.2 s), estilo Word/OneDrive
   useEffect(() => {
     const casoId = formData._id || initialData?._id || id;
-    if (!autoGuardadoActivo || !casoId || !casoListoParaAutoGuardar) return undefined;
+    if (!autoguardadoEfectivo || !casoId || !casoListoParaAutoGuardar) return undefined;
 
     if (omitirServidorTrasCargaRef.current) {
       omitirServidorTrasCargaRef.current = false;
@@ -2953,7 +2958,7 @@ clearSavedData();
     return () => clearTimeout(timer);
   }, [
     formData,
-    autoGuardadoActivo,
+    autoguardadoEfectivo,
     initialData,
     id,
     casoListoParaAutoGuardar,
@@ -2967,7 +2972,7 @@ clearSavedData();
   // Otra ventana guardó el mismo caso → recargar desde servidor si no hay edición activa
   useEffect(() => {
     const casoId = formData._id || initialData?._id || id;
-    if (!casoId || !autoGuardadoActivo) return undefined;
+    if (!casoId || !autoguardadoEfectivo) return undefined;
 
     const recargarSiCorresponde = () => {
       if (autoGuardandoServidorRef.current) return;
@@ -2993,7 +2998,7 @@ clearSavedData();
       unsubscribe();
       window.removeEventListener('focus', onFocus);
     };
-  }, [autoSaveKey, autoGuardadoActivo, formData._id, initialData?._id, id, hayActualizacionRemota]);
+  }, [autoSaveKey, autoguardadoEfectivo, formData._id, initialData?._id, id, hayActualizacionRemota]);
 
   return (
     <>
@@ -3110,7 +3115,7 @@ clearSavedData();
       </form>
     </div>
 
-      {autoGuardadoActivo && (
+      {autoguardadoEfectivo && (
         <>
           {hayActualizacionRemota && (
             <div
