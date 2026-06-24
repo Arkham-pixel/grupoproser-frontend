@@ -84,6 +84,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
   });
 
   const [estados, setEstados] = useState([]);
+  const [forceReloadCaso, setForceReloadCaso] = useState(0);
 
   const ordenarPorLabel = useCallback((lista = []) => {
     return [...lista].sort((a, b) => {
@@ -1297,7 +1298,6 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [savedDataToRestore, setSavedDataToRestore] = useState(null);
   const [casoListoParaAutoGuardar, setCasoListoParaAutoGuardar] = useState(false);
-  const [forceReloadCaso, setForceReloadCaso] = useState(0);
   const [hayActualizacionRemota, setHayActualizacionRemota] = useState(false);
   const datosInicialesAutoSaveRef = useRef(initialData || null);
   const autoGuardandoServidorRef = useRef(false);
