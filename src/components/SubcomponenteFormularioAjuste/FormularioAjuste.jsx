@@ -4,6 +4,7 @@ import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, Align
 import { saveAs } from "file-saver";
 import { formatearFechaParaWord, obtenerFechaActualISO, obtenerFechaHoraActualISO } from '../../utils/fechaUtils';
 import { useTheme } from '../../context/ThemeContext';
+import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig';
 
 import DatosGeneralesAjuste from "./DatosGeneralesAjuste";
 import AntecedentesAjuste from "./AntecedentesAjuste";
@@ -405,6 +406,7 @@ setFormData(prev => ({
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     if (!id || id === 'nuevo') {
       const datosGuardados = localStorage.getItem('formularioAjuste');
       if (datosGuardados) {
@@ -424,6 +426,7 @@ setFormData(prev => ({
   // Guardar datos automáticamente cuando cambien (con debounce para evitar guardados excesivos)
   // Solo se guarda si estamos en la ruta del formulario de ajuste
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const esRutaAjuste = location.pathname.includes('/formulario-ajuste') || location.pathname.includes('/ajuste');
     if (!esRutaAjuste) return;
     if (!permitirAutoguardadoLocalRef.current) return;
@@ -448,6 +451,7 @@ setFormData(prev => ({
 
   // Guardar datos antes de refrescar la página (solo si estamos en el formulario)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const handleBeforeUnload = () => {
       const esRutaAjuste = window.location.pathname.includes('/formulario-ajuste') || window.location.pathname.includes('/ajuste');
       if (esRutaAjuste && permitirAutoguardadoLocalRef.current) {

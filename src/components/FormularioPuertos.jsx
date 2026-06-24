@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { obtenerHoraActualColombia } from '../utils/fechaUtils';
 import { useTheme } from '../context/ThemeContext';
+import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
 import {
   Document,
   Packer,
@@ -399,6 +400,7 @@ const [recomendaciones, setRecomendaciones] = useState("");
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     if (!id || id === 'nuevo') {
       const datosGuardados = localStorage.getItem('formularioInspeccion');
       if (datosGuardados) {
@@ -438,6 +440,7 @@ const [recomendaciones, setRecomendaciones] = useState("");
   // Guardar datos automáticamente cuando cambien (con debounce para evitar guardados excesivos)
   // Solo se guarda si estamos en la ruta del formulario de inspección
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const esRutaInspeccion = location.pathname.includes('/inspeccion') || location.pathname.includes('/formulario-inspeccion');
     if (!esRutaInspeccion) return;
 
@@ -502,6 +505,7 @@ const [recomendaciones, setRecomendaciones] = useState("");
 
   // Guardar datos antes de refrescar la página (solo si estamos en el formulario)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const handleBeforeUnload = () => {
       const esRutaInspeccion = window.location.pathname.includes('/inspeccion') || window.location.pathname.includes('/formulario-inspeccion');
       if (esRutaInspeccion) {

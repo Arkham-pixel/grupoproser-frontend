@@ -25,6 +25,7 @@ import { FaCamera, FaUpload, FaTrash, FaPlus, FaEye } from 'react-icons/fa';
 import ChatbotIA from './SubcomponenteFormularioAjuste/ChatbotIA';
 import BotonesHistorial from './BotonesHistorial';
 import historialService, { TIPOS_FORMULARIOS, ESTADOS_FORMULARIO } from '../services/historialService';
+import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
 import { ImageCompression } from '../utils/imageCompression';
 import {
   MAX_FOTOS_POR_SECCION,
@@ -348,6 +349,7 @@ export default function FormularioInspeccionPropiedades() {
   // Cargar datos desde localStorage al iniciar (solo si no hay ID)
   useEffect(() => {
     const cargarDatos = async () => {
+      if (!AUTO_SAVE_ENABLED) return;
       if (!id || id === 'nuevo') {
         const datosGuardados = localStorage.getItem('formularioPropiedades');
         if (datosGuardados) {
@@ -389,6 +391,7 @@ export default function FormularioInspeccionPropiedades() {
   // Guardar datos automáticamente cuando cambien (con debounce para evitar guardados excesivos)
   // Solo se guarda si estamos en la ruta del formulario de propiedades
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const esRutaPropiedades = location.pathname.includes('/propiedades') || location.pathname.includes('/inspeccion-propiedades');
     if (!esRutaPropiedades) return;
 
@@ -421,6 +424,7 @@ export default function FormularioInspeccionPropiedades() {
 
   // Guardar datos antes de refrescar la página (solo si estamos en el formulario)
   useEffect(() => {
+    if (!AUTO_SAVE_ENABLED) return;
     const handleBeforeUnload = () => {
       const esRutaPropiedades = window.location.pathname.includes('/propiedades') || window.location.pathname.includes('/inspeccion-propiedades');
       if (esRutaPropiedades) {
@@ -886,6 +890,7 @@ localStorage.removeItem('formularioPropiedades');
 
   // Función para guardado automático
   const guardarAutomatico = async () => {
+    if (!AUTO_SAVE_ENABLED) return;
     if (!formularioId || formularioId === 'nuevo') return; // Solo guardar si ya existe un ID
     
     const datosActuales = {
