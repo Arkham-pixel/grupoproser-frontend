@@ -167,9 +167,10 @@ if (savedInfo && savedInfo.data) {
       } else {
 }
       
-      // Verificar si el autoguardado estaba activo
+      // Solo reactivar si ya existía en BD; en borradores nuevos (-nuevo) el usuario debe activarlo
       const wasEnabled = autoSaveService.isEnabled(formKey);
-if (wasEnabled) {
+      const esBorradorNuevo = formKey?.endsWith('-nuevo');
+      if (wasEnabled && !esBorradorNuevo) {
         setIsAutoSaveEnabled(true);
       }
       

@@ -306,6 +306,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     syncNow,
     pendingServerSync,
     isOnline,
+    isExistingRecord,
     clearSavedData,
   } = useFormAutoSave({
     formKeyBase: 'express-siniestro',
@@ -724,6 +725,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
             <>
               <FormAutoSaveControls
                 placement="inline"
+                isExistingRecord={isExistingRecord}
                 isAutoSaveEnabled={isAutoSaveEnabled}
                 lastSaveTime={lastSaveTime}
                 saveStatus={saveStatus}

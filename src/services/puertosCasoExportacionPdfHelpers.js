@@ -1,6 +1,9 @@
 import { getImageUrlCandidates } from '../utils/imageUtils';
 import { getPuertosImagenDisplayUrl } from '../components/PuertosActas/puertosCasoImagenUtils';
-import { calcularTotalMercancia } from '../components/PuertosActas/puertosCasoExportacionState';
+import {
+  calcularTotalMercancia,
+  calcularNumContenedoresMercancia,
+} from '../components/PuertosActas/puertosCasoExportacionState';
 
 export const PDF_FONT = {
   family: 'RobotoCondensed',
@@ -200,6 +203,94 @@ export function resumenMercancia(informe) {
   return {
     lineas,
     total: calcularTotalMercancia(lineas),
+  };
+}
+
+/** No usar nombres de archivo como pie de foto en el PDF. */
+export function captionImagenPdf(imagen) {
+  const descripcion = (imagen?.descripcion || '').trim();
+  if (descripcion) return descripcion;
+  const nombre = (imagen?.nombre || '').trim();
+  if (!nombre) return '';
+  if (/\.(png|jpe?g|webp|gif|bmp|heic)$/i.test(nombre)) return '';
+  if (/captura|screenshot|pantalla|image|img_|photo|foto/i.test(nombre)) return '';
+  return nombre;
+}
+
+/** Filas estilo Word: una fila con cantidades apiladas cuando hay varias líneas. */
+export function construirFilasMercanciaWord(lineas = []) {
+  if (!lineas.length) return [['', '', '', '', '', '']];
+  if (lineas.length === 1) {
+    const l = lineas[0];
+    return [
+      [
+        l.numContenedores || '',
+        l.bl || '',
+        l.producto || '',
+        l.cantidad || '',
+        l.tipoCarga || '',
+        l.destino || '',
+      ],
+    ];
+  }
+  const numCont =
+    calcularNumContenedoresMercancia(lineas) || lineas[0].numContenedores || '';
+  const cantidades = lineas.map((l) => l.cantidad || '').filter(Boolean);
+  return [
+    [
+      numCont,
+      lineas[0].bl || '',
+      lineas[0].producto || '',
+      cantidades.join('\n'),
+      lineas[0].tipoCarga || '',
+      lineas[0].destino || '',
+    ],
+  ];
+}
+
+/**
+ * Distribuye fotos de mercancía: bloque 2×2 del Word (sección 3) y resto para supervisión.
+ */
+export function prepararFotosSeccion3Mercancia(informe = {}) {
+  let cajas = [...(informe.imagenesContenidoCajas || [])];
+  let contenedores = [...(informe.imagenesContenedoresMercancia || [])];
+  const legacy = informe.imagenesRegistroMercancia || [];
+
+  if (!cajas.length && !contenedores.length && legacy.length) {
+    cajas = legacy.slice(0, 3);
+    contenedores = legacy.slice(3);
+  }
+
+  const fila1 = cajas.splice(0, 2);
+  const cajaFila2 = cajas.shift() || null;
+  let contenedorFila2 = contenedores.shift() || null;
+  let leyendaDerechaFila2 = 'Contenedores asignados';
+
+  if (!contenedorFila2 && cajas.length) {
+    contenedorFila2 = cajas.shift();
+    leyendaDerechaFila2 = 'Contenido de las cajas';
+  }
+
+  const fila2 = [];
+  const leyendasFila2 = [];
+  if (cajaFila2) {
+    fila2.push(cajaFila2);
+    leyendasFila2.push('Contenido de las cajas');
+  }
+  if (contenedorFila2) {
+    fila2.push(contenedorFila2);
+    leyendasFila2.push(leyendaDerechaFila2);
+  }
+
+  return {
+    fila1,
+    fila2,
+    leyendasFila2,
+    extras: {
+      contenedores: [...contenedores, ...cajas],
+      vehiculos: [...(informe.imagenesVehiculosMercancia || [])],
+    },
+    tieneFotos: fila1.length > 0 || fila2.length > 0,
   };
 }
 

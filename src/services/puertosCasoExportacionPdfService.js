@@ -19,6 +19,9 @@ import {
   imagenInformeABase64,
   obtenerInspector,
   resumenMercancia,
+  construirFilasMercanciaWord,
+  captionImagenPdf,
+  prepararFotosSeccion3Mercancia,
   textoPunto,
   agruparFotosSupervisionInicial,
 } from './puertosCasoExportacionPdfHelpers';
@@ -175,6 +178,135 @@ class PdfLayout {
       this.y += alto;
     });
     this.y += 4;
+  }
+
+  filaCabeceraVerde(titulo) {
+    const { doc } = this;
+    const headerH = 8;
+    this.asegurarEspacio(headerH + 2);
+    doc.setFillColor(...PDF_COLORS.greenBarBg);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.setLineWidth(0.2);
+    doc.rect(this.x, this.y - 4.5, PDF_CONTENT_W, headerH, 'FD');
+    this.aplicarFuente('bold', PDF_FONT.title);
+    doc.setTextColor(...PDF_COLORS.greenBrand);
+    doc.text(String(titulo).toUpperCase(), PDF_PAGE.w / 2, this.y, { align: 'center' });
+    doc.setTextColor(...PDF_COLORS.text);
+    this.y += headerH - 1;
+  }
+
+  tablaFilasEtiquetaValor(filas) {
+    const { doc } = this;
+    const labelW = 58;
+    const valW = PDF_CONTENT_W - labelW;
+    const fontSize = PDF_FONT.body;
+
+    filas.forEach(([label, value]) => {
+      const val = String(value || '').trim() || '—';
+      const valLines = doc.splitTextToSize(val, valW - 4);
+      const alto = Math.max(7, valLines.length * 4.2 + 3);
+      this.asegurarEspacio(alto + 1);
+
+      doc.setDrawColor(...PDF_COLORS.border);
+      doc.setLineWidth(0.2);
+      doc.rect(this.x, this.y - 4.5, labelW, alto);
+      doc.rect(this.x + labelW, this.y - 4.5, valW, alto);
+
+      this.aplicarFuente('bold', fontSize);
+      doc.text(String(label).toUpperCase(), this.x + 2, this.y);
+      this.aplicarFuente('normal', fontSize);
+      doc.text(valLines, this.x + labelW + 2, this.y);
+
+      this.y += alto;
+    });
+    this.y += 2;
+  }
+
+  tablaCaracteristicasBarco(filas) {
+    this.filaCabeceraVerde('CARACTERISTICAS DEL BARCO');
+    this.tablaFilasEtiquetaValor(filas);
+  }
+
+  filaCabeceraColumnas(headers, anchos) {
+    const { doc } = this;
+    const headerH = 8;
+    const fontSize = PDF_FONT.table;
+    const total = anchos.reduce((a, b) => a + b, 0);
+    const escala = PDF_CONTENT_W / total;
+    const cols = anchos.map((w) => w * escala);
+
+    this.asegurarEspacio(headerH + 1);
+    let cx = this.x;
+    headers.forEach((h, i) => {
+      doc.setFillColor(...PDF_COLORS.greenBarBg);
+      doc.setDrawColor(...PDF_COLORS.border);
+      doc.setLineWidth(0.2);
+      doc.rect(cx, this.y - 4.5, cols[i], headerH, 'FD');
+      this.aplicarFuente('bold', fontSize);
+      const lines = doc.splitTextToSize(h, cols[i] - 2);
+      doc.text(lines, cx + cols[i] / 2, this.y, { align: 'center' });
+      cx += cols[i];
+    });
+    this.y += headerH - 1;
+  }
+
+  tablaFilasConColumnas(rows, anchos, dibujarSubHeader = null) {
+    if (!rows.length) return;
+    const { doc } = this;
+    const total = anchos.reduce((a, b) => a + b, 0);
+    const escala = PDF_CONTENT_W / total;
+    const cols = anchos.map((w) => w * escala);
+    const fontSize = PDF_FONT.table;
+
+    rows.forEach((row) => {
+      let maxLines = 1;
+      const celdas = row.map((cell, i) => {
+        const lines = doc.splitTextToSize(String(cell ?? ''), cols[i] - 2);
+        maxLines = Math.max(maxLines, lines.length);
+        return lines;
+      });
+      const rowH = maxLines * 3.8 + 4;
+      if (this.y + rowH > this.maxY) {
+        this.nuevaPagina();
+        if (dibujarSubHeader) dibujarSubHeader();
+      }
+      let cx = this.x;
+      doc.setDrawColor(...PDF_COLORS.border);
+      doc.setLineWidth(0.2);
+      this.aplicarFuente('normal', fontSize);
+      celdas.forEach((lines, i) => {
+        doc.rect(cx, this.y - 4.5, cols[i], rowH);
+        if (i === 2) {
+          doc.text(lines, cx + 2, this.y);
+        } else {
+          doc.text(lines, cx + cols[i] / 2, this.y, { align: 'center' });
+        }
+        cx += cols[i];
+      });
+      this.y += rowH;
+    });
+    this.y += 3;
+  }
+
+  tablaMercanciaWord(lineas, total) {
+    const anchos = [18, 22, 56, 20, 32, 32];
+    const headers = [
+      'N° CONTENEDORES',
+      'B/L N°',
+      'PRODUCTO',
+      'CANTIDAD',
+      'TIPO DE CARGA',
+      'DESTINO',
+    ];
+    const dataRows = construirFilasMercanciaWord(lineas);
+    dataRows.push(['', '', 'Total', total > 0 ? `${total} UDS` : '—', '', '']);
+
+    this.filaCabeceraVerde('DESCRIPCIÓN DE LA MERCANCÍA');
+    const dibujarSubHeader = () => {
+      this.filaCabeceraColumnas(headers, anchos);
+    };
+    dibujarSubHeader();
+    this.tablaFilasConColumnas(dataRows, anchos, dibujarSubHeader);
   }
 
   /** Título numerado en negrita (ej. «1. INTRODUCCIÓN»). */
@@ -391,55 +523,88 @@ class PdfLayout {
     this.y += h + 2;
   }
 
-  async grillaFotos(imagenes, columnas = 3, anchoCelda = null, altoCelda = 42) {
+  /** Barra oscura con leyenda (estilo Word bajo las fotos). */
+  leyendaBloqueFotos(texto, x = this.x, ancho = PDF_CONTENT_W) {
+    if (!texto?.trim()) return;
+    const h = 5.5;
+    const { doc } = this;
+    doc.setFillColor(35, 35, 35);
+    doc.rect(x, this.y, ancho, h, 'F');
+    doc.setTextColor(255, 255, 255);
+    this.aplicarFuente('normal', PDF_FONT.caption);
+    doc.text(texto.trim(), x + ancho / 2, this.y + 3.8, { align: 'center' });
+    doc.setTextColor(...PDF_COLORS.text);
+    this.y += h + 2;
+  }
+
+  async grillaFotos(imagenes, columnas = 3, anchoCelda = null, altoCelda = 42, opciones = {}) {
     const lista = (imagenes || []).filter(Boolean);
     if (!lista.length) return;
+
+    const {
+      sinCaption = false,
+      leyendasPorCelda = null,
+      leyendaFila = null,
+    } = opciones;
 
     const gap = 3;
     const cols = Math.max(1, columnas);
     const cellW = anchoCelda || (PDF_CONTENT_W - gap * (cols - 1)) / cols;
+    const leyendaH = leyendaFila ? 7.5 : leyendasPorCelda ? 7.5 : 0;
 
     for (let i = 0; i < lista.length; i += cols) {
       const slice = lista.slice(i, i + cols);
       let maxCaptionH = 0;
-      const captions = slice.map((img) => {
-        const cap = img.descripcion || img.nombre || '';
-        const lines = cap
-          ? this.doc.splitTextToSize(cap, cellW - 2)
-          : [];
+      const captions = slice.map((img, idx) => {
+        if (leyendaFila || leyendasPorCelda) return [];
+        if (sinCaption) return [];
+        const cap = captionImagenPdf(img);
+        const lines = cap ? this.doc.splitTextToSize(cap, cellW - 2) : [];
         maxCaptionH = Math.max(maxCaptionH, lines.length * 3.2);
         return lines;
       });
-      const bloqueH = altoCelda + maxCaptionH + 6;
+      const bloqueH = altoCelda + maxCaptionH + leyendaH + 4;
       this.asegurarEspacio(bloqueH);
 
+      const filaY = this.y;
       for (let c = 0; c < slice.length; c++) {
         const img = slice[c];
         const cx = this.x + c * (cellW + gap);
         const data = await imagenInformeABase64(img);
         this.doc.setDrawColor(...PDF_COLORS.border);
-        this.doc.rect(cx, this.y, cellW, altoCelda);
+        this.doc.rect(cx, filaY, cellW, altoCelda);
         if (data) {
           try {
             const fmt = detectarFormatoImagen(data);
-            this.doc.addImage(data, fmt, cx + 0.5, this.y + 0.5, cellW - 1, altoCelda - 1);
+            this.doc.addImage(data, fmt, cx + 0.5, filaY + 0.5, cellW - 1, altoCelda - 1);
           } catch {
             this.doc.setFontSize(7);
-            this.doc.text('Imagen no disponible', cx + 2, this.y + altoCelda / 2);
+            this.doc.text('Imagen no disponible', cx + 2, filaY + altoCelda / 2);
           }
         } else {
           this.doc.setFontSize(7);
           this.doc.setTextColor(...PDF_COLORS.muted);
-          this.doc.text('Sin imagen', cx + cellW / 2, this.y + altoCelda / 2, { align: 'center' });
+          this.doc.text('Sin imagen', cx + cellW / 2, filaY + altoCelda / 2, { align: 'center' });
           this.doc.setTextColor(...PDF_COLORS.text);
         }
         const capLines = captions[c];
         if (capLines.length) {
           this.aplicarFuente('normal', PDF_FONT.caption);
-          this.doc.text(capLines, cx + cellW / 2, this.y + altoCelda + 3, { align: 'center' });
+          this.doc.text(capLines, cx + cellW / 2, filaY + altoCelda + 3, { align: 'center' });
         }
       }
-      this.y += bloqueH;
+
+      this.y = filaY + altoCelda + 1;
+      if (leyendaFila) {
+        this.leyendaBloqueFotos(leyendaFila);
+      } else if (leyendasPorCelda) {
+        for (let c = 0; c < slice.length; c++) {
+          const cx = this.x + c * (cellW + gap);
+          this.leyendaBloqueFotos(leyendasPorCelda[c] || '', cx, cellW);
+        }
+      } else {
+        this.y += maxCaptionH + 3;
+      }
     }
   }
 
@@ -562,51 +727,39 @@ function paginaDatosEIntroduccion(layout, formData, responsables, informe) {
 async function seccionBuque(layout, informe) {
   layout.nuevaPagina();
   const buque = informe.buque || {};
-  layout.tituloSeccion('Particularidades del buque', true);
-  layout.espacio(4);
+
+  layout.tituloNumerado(2, 'Particularidades del buque');
+  layout.espacio(3);
 
   if (buque.imagenBuque) {
     const data = await imagenInformeABase64(buque.imagenBuque);
-    await layout.imagenCentrada(data, 44);
+    await layout.imagenCentrada(data, 50);
+    layout.espacio(4);
   }
 
-  layout.subtitulo('Características del barco');
-  layout.tablaDatosPares([
-    ['ORIGEN', buque.origen, 'PUERTO DE EMBARQUE', buque.puertoEmbarque],
-    ['PUERTO DE DESCARGUE', buque.puertoDescargue, 'NOMBRE', buque.nombre],
-    ['BANDERA', buque.bandera, 'TIPO DE BUQUE', buque.tipoBuque],
-    ['IMO NRO.', buque.imo, 'TONELAJE BRUTO', buque.tonelajeBruto],
-    ['PESO MUERTO', buque.pesoMuerto, 'ESLORA X MANGA', buque.esloraManga],
-    ['AÑO DE CONSTRUCCIÓN', buque.anioConstruccion, 'FECHA DE ARRIBO', formatearFechaCorta(buque.fechaArribo)],
+  layout.tablaCaracteristicasBarco([
+    ['ORIGEN', buque.origen],
+    ['PUERTO DE EMBARQUE', buque.puertoEmbarque],
+    ['PUERTO DE DESCARGUE', buque.puertoDescargue],
+    ['NOMBRE', buque.nombre],
+    ['BANDERA', buque.bandera],
+    ['TIPO DE BUQUE', buque.tipoBuque],
+    ['IMO NRO.', buque.imo],
+    ['TONELAJE BRUTO', buque.tonelajeBruto],
+    ['PESO MUERTO', buque.pesoMuerto],
+    ['ESLORA X MANGA', buque.esloraManga],
+    ['AÑO DE CONSTRUCCIÓN', buque.anioConstruccion],
+    ['FECHA DE ARRIBO', formatearFechaCorta(buque.fechaArribo)],
   ]);
 }
 
 function seccionMercancia(layout, informe) {
   const { lineas, total } = resumenMercancia(informe);
-  layout.tituloSeccion('Información general', true);
-  layout.subtitulo('Descripción de la mercancía');
 
-  const headers = [
-    'N° CONT.',
-    'B/L N°',
-    'PRODUCTO',
-    'CANTIDAD',
-    'TIPO CARGA',
-    'DESTINO',
-  ];
-  const rows = lineas.map((l) => [
-    l.numContenedores,
-    l.bl,
-    l.producto,
-    l.cantidad,
-    l.tipoCarga,
-    l.destino,
-  ]);
-  if (!rows.length) {
-    rows.push(['', '', '', '', '', '']);
-  }
-  rows.push(['', '', 'Total', `${total} UDS`, '', '']);
-  layout.tablaDatos(headers, rows, [16, 20, 52, 18, 28, 32]);
+  layout.espacio(8);
+  layout.tituloNumerado(3, 'Información general');
+  layout.espacio(3);
+  layout.tablaMercanciaWord(lineas, total);
 
   if (informe.contenidoCajasNota) {
     layout.espacio(2);
@@ -615,44 +768,33 @@ function seccionMercancia(layout, informe) {
 }
 
 async function seccionFotosMercancia(layout, informe) {
-  const contenidoCajas = informe.imagenesContenidoCajas || [];
-  const contenedores = informe.imagenesContenedoresMercancia || [];
-  const vehiculos = informe.imagenesVehiculosMercancia || [];
-  const legacy = informe.imagenesRegistroMercancia || [];
-  const numCont = calcularNumContenedoresMercancia(informe.lineasMercancia);
+  const bloque = prepararFotosSeccion3Mercancia(informe);
+  if (!bloque.tieneFotos) return;
 
-  if (contenidoCajas.length) {
-    layout.barraTituloContenedor('Contenido de las cajas');
-    await layout.grillaFotos(contenidoCajas, 2, null, 40);
-    layout.espacio(3);
+  layout.espacio(6);
+  layout.barraTituloContenedor('Contenido de las cajas');
+
+  if (bloque.fila1.length) {
+    await layout.grillaFotos(bloque.fila1, 2, null, 38, {
+      sinCaption: true,
+      leyendaFila: 'Contenido de las cajas',
+    });
   }
 
-  if (contenedores.length) {
-    layout.barraTituloContenedor(
-      numCont > 0 ? `Contenedores asignados apto (${numCont})` : 'Contenedores asignados apto'
-    );
-    await layout.grillaFotos(contenedores, 4, null, 36);
-    layout.espacio(3);
+  if (bloque.fila2.length) {
+    await layout.grillaFotos(bloque.fila2, 2, null, 38, {
+      leyendasPorCelda: bloque.leyendasFila2,
+    });
   }
 
-  if (vehiculos.length) {
-    layout.barraTituloContenedor('Vehículos asignados con sus sellos de seguridad');
-    await layout.grillaFotos(vehiculos, 3, null, 40);
-    return;
-  }
-
-  if (!contenedores.length && !contenidoCajas.length && legacy.length) {
-    layout.barraTituloContenedor('Contenido de las cajas');
-    await layout.grillaFotos(legacy.slice(0, 2), 2, null, 40);
-    if (legacy.length > 2) {
-      layout.barraTituloContenedor('Contenedores asignados');
-      await layout.grillaFotos(legacy.slice(2), 3, null, 38);
-    }
-  }
+  layout.espacio(4);
+  return bloque.extras;
 }
 
 function seccionSupervisionTabla(layout, informe) {
-  layout.tituloSeccion('Reporte de supervisión', true);
+  layout.espacio(6);
+  layout.tituloNumerado(4, 'Reporte de supervisión');
+  layout.espacio(2);
   layout.subtitulo('Seguimiento contenedor');
 
   const filas = aplanarSeguimiento(informe.seguimiento);
@@ -686,7 +828,7 @@ function seccionSupervisionTabla(layout, informe) {
   layout.tablaDatos(headers, rows, [14, 22, 14, 20, 12, 10, 14, 20, 20, 16]);
 }
 
-async function seccionSupervisionBloques(layout, informe) {
+async function seccionSupervisionBloques(layout, informe, extrasMercancia = null) {
   if (informe.comentariosSupervision) {
     layout.tituloSeccion('Comentarios', true);
     layout.parrafo(informe.comentariosSupervision);
@@ -695,17 +837,25 @@ async function seccionSupervisionBloques(layout, informe) {
 
   const fotosInicial = agruparFotosSupervisionInicial(informe.imagenesRegistroInicialSupervision);
   const numCont = calcularNumContenedoresMercancia(informe.lineasMercancia);
+  const contenedoresExtra = [
+    ...(extrasMercancia?.contenedores || []),
+    ...fotosInicial.contenedores,
+  ];
+  const vehiculosExtra = [
+    ...(extrasMercancia?.vehiculos || []),
+    ...fotosInicial.vehiculos,
+  ];
 
-  if (fotosInicial.contenedores.length) {
+  if (contenedoresExtra.length) {
     layout.barraTituloContenedor(
       numCont > 0 ? `Contenedores asignados apto (${numCont})` : 'Contenedores asignados apto'
     );
-    await layout.grillaFotos(fotosInicial.contenedores, 3, null, 40);
+    await layout.grillaFotos(contenedoresExtra, 4, null, 36);
     layout.espacio(3);
   }
-  if (fotosInicial.vehiculos.length) {
+  if (vehiculosExtra.length) {
     layout.barraTituloContenedor('Vehículos asignados con sus sellos de seguridad');
-    await layout.grillaFotos(fotosInicial.vehiculos, 3, null, 40);
+    await layout.grillaFotos(vehiculosExtra, 3, null, 40);
     layout.espacio(3);
   }
   if (fotosInicial.bodega.length) {
@@ -817,9 +967,9 @@ export async function generarPdfInformeExportacion(
   paginaDatosEIntroduccion(layout, formData, responsables, informe);
   await seccionBuque(layout, informe);
   seccionMercancia(layout, informe);
-  await seccionFotosMercancia(layout, informe);
+  const extrasFotosMercancia = await seccionFotosMercancia(layout, informe);
   seccionSupervisionTabla(layout, informe);
-  await seccionSupervisionBloques(layout, informe);
+  await seccionSupervisionBloques(layout, informe, extrasFotosMercancia);
   await seccionConclusiones(layout, informe);
   seccionContacto(layout);
 

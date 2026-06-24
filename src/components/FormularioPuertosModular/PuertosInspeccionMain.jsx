@@ -305,6 +305,7 @@ await generarManualPuertos();
     syncNow,
     pendingServerSync,
     isOnline,
+    isExistingRecord,
     clearSavedData,
   } = useHistorialAutoSave({
     formKeyBase: 'formulario-puertos-modular',
@@ -635,6 +636,7 @@ return img;
             <img src={Logo} alt="Logo PROSER" className="h-12 sm:h-16 object-contain" />
             <FormAutoSaveControls
               placement="inline"
+              isExistingRecord={isExistingRecord}
               isAutoSaveEnabled={isAutoSaveEnabled}
               lastSaveTime={lastSaveTime}
               saveStatus={saveStatus}

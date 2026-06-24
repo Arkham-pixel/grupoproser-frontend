@@ -129,6 +129,7 @@ const MatrizRiesgoAvanzada = () => {
     syncNow,
     pendingServerSync,
     isOnline,
+    isExistingRecord,
     savedDataToRestore,
     showRestoreDialog,
     handleRestoreData,
@@ -518,6 +519,7 @@ const MatrizRiesgoAvanzada = () => {
                 <FormAutoSaveControls
                   placement="inline"
                   enabled={autoguardadoActivo}
+                  isExistingRecord={isExistingRecord}
                   isAutoSaveEnabled={isAutoSaveEnabled}
                   lastSaveTime={lastSaveTime}
                   saveStatus={saveStatus}

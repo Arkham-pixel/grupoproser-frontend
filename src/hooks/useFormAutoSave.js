@@ -95,11 +95,11 @@ export function useFormAutoSave({
   });
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !tieneRecordId) return;
     if (!autoSave.isAutoSaveEnabled) {
       autoSave.enableAutoSave();
     }
-  }, [enabled, autoSave.isAutoSaveEnabled, autoSave.enableAutoSave]);
+  }, [enabled, tieneRecordId, autoSave.isAutoSaveEnabled, autoSave.enableAutoSave]);
 
   const ejecutarGuardadoServidor = useCallback(async () => {
     const id = recordIdRef.current;
@@ -236,6 +236,7 @@ export function useFormAutoSave({
 
   return {
     formKey,
+    isExistingRecord: tieneRecordId,
     ...autoSave,
     isOnline,
     pendingServerSync,

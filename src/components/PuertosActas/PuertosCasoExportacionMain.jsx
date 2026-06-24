@@ -294,6 +294,7 @@ export default function PuertosCasoExportacionMain() {
     syncNow,
     pendingServerSync,
     isOnline,
+    isExistingRecord,
     clearSavedData,
   } = useFormAutoSave({
     formKeyBase: 'puertos-caso-exportacion',
@@ -427,6 +428,7 @@ export default function PuertosCasoExportacionMain() {
         <div className="flex flex-wrap items-center gap-2">
           <FormAutoSaveControls
             placement="inline"
+            isExistingRecord={isExistingRecord}
             isAutoSaveEnabled={isAutoSaveEnabled}
             lastSaveTime={lastSaveTime}
             saveStatus={saveStatus}

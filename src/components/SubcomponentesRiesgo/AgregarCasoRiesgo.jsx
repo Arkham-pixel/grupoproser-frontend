@@ -243,6 +243,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
     syncNow,
     pendingServerSync,
     isOnline,
+    isExistingRecord,
   } = useFormAutoSave({
     formKeyBase: 'formulario-riesgo',
     recordId: recordIdRiesgo,
@@ -1152,6 +1153,7 @@ let historialExistente = null;
           actions={
             <FormAutoSaveControls
               placement="inline"
+              isExistingRecord={isExistingRecord}
               isAutoSaveEnabled={isAutoSaveEnabled}
               lastSaveTime={lastSaveTime}
               saveStatus={saveStatus}
