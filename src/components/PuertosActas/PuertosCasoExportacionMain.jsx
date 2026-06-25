@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { FaSave, FaFilePdf, FaArrowLeft } from 'react-icons/fa';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
+import { FaSave, FaFilePdf, FaArrowLeft, FaEdit } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
 import {
   getPuertosCaso,
@@ -9,16 +9,11 @@ import {
 } from '../../services/puertosService.js';
 import {
   ESTADO_INICIAL_CASO_EXPORTACION,
-  INFORME_EXPORTACION_VACIO,
-  BUQUE_VACIO,
-  normalizarRegistroFotograficoMercancia,
-  migrarSupervisionPagina4,
-  normalizarRegistrosFotograficosContenedores,
-  normalizarPuntos,
+  aplicarEstadoInformeExportacion,
 } from './puertosCasoExportacionState';
+import { normalizarCasoApiParaFormulario, normalizarInformeExportacion } from './puertosCasoExportacionNormalize';
 import { procesarInformeExportacionImagenes } from '../../services/puertosCasoImagenService.js';
 import { generarPdfInformeExportacion } from '../../services/puertosCasoExportacionPdfService.js';
-import { normalizarImagenCargada } from './puertosCasoImagenUtils';
 import {
   puertosBtnLink,
   puertosBtnPrimary,
@@ -79,87 +74,14 @@ const ABIERTAS_INICIAL = {
   conclusiones: false,
 };
 
-function formatearFechaInput(valor) {
-  if (!valor) return '';
-  if (typeof valor === 'string' && valor.includes('T')) return valor.split('T')[0];
-  if (typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(valor)) return valor;
-  try {
-    const d = new Date(valor);
-    if (Number.isNaN(d.getTime())) return '';
-    return d.toISOString().split('T')[0];
-  } catch {
-    return '';
-  }
-}
-
-function normalizarInforme(informe = {}) {
-  const buque = { ...BUQUE_VACIO, ...(informe.buque || {}) };
-  if (buque.imagenBuque) {
-    buque.imagenBuque = normalizarImagenCargada(buque.imagenBuque);
-  }
-  const supervision = migrarSupervisionPagina4(informe);
-  const registroMercancia = normalizarRegistroFotograficoMercancia(informe);
-  const mapImgs = (arr) => (arr || []).map(normalizarImagenCargada);
-
-  return {
-    ...INFORME_EXPORTACION_VACIO,
-    ...informe,
-    buque,
-    lineasMercancia: Array.isArray(informe.lineasMercancia) ? informe.lineasMercancia : [],
-    seguimiento: Array.isArray(informe.seguimiento) ? informe.seguimiento : [],
-    imagenesContenedoresMercancia: mapImgs(registroMercancia.imagenesContenedoresMercancia),
-    imagenesVehiculosMercancia: mapImgs(registroMercancia.imagenesVehiculosMercancia),
-    imagenesContenidoCajas: mapImgs(informe.imagenesContenidoCajas),
-    imagenesRegistroMercancia: [],
-    ...supervision,
-    imagenesRegistroInicialSupervision: mapImgs(supervision.imagenesRegistroInicialSupervision),
-    imagenesCondicionCarga: mapImgs(supervision.imagenesCondicionCarga),
-    imagenesInspeccionArribo: mapImgs(supervision.imagenesInspeccionArribo),
-    imagenesEquiposOperacion: mapImgs(supervision.imagenesEquiposOperacion),
-    imagenesCondicionesMeteo: mapImgs(supervision.imagenesCondicionesMeteo),
-    conclusionesTexto: informe.conclusionesTexto || '',
-    conclusionesPuntos: normalizarPuntos(informe.conclusionesPuntos),
-    registrosFotograficosContenedores: normalizarRegistrosFotograficosContenedores(
-      informe.registrosFotograficosContenedores
-    ).map((r) => ({
-      ...r,
-      imagenes: (r.imagenes || []).map(normalizarImagenCargada),
-    })),
-  };
-}
-
-function normalizarCasoParaForm(caso) {
-  if (!caso) return { ...ESTADO_INICIAL_CASO_EXPORTACION };
-  const fechas = [
-    'fchaAsgncion',
-    'fchaContIni',
-    'fchaCoordInspeccion',
-    'fchaProgInspeccion',
-    'fchaInspccion',
-    'fchaInfoFnal',
-    'fchaFactra',
-    'fechaInforme',
-  ];
-  const out = {
-    ...ESTADO_INICIAL_CASO_EXPORTACION,
-    ...caso,
-    informeExportacion: normalizarInforme(caso.informeExportacion),
-  };
-  fechas.forEach((f) => {
-    out[f] = formatearFechaInput(caso[f]);
-  });
-  if (out.informeExportacion.buque?.fechaArribo) {
-    out.informeExportacion.buque.fechaArribo = formatearFechaInput(
-      out.informeExportacion.buque.fechaArribo
-    );
-  }
-  return out;
-}
-
 export default function PuertosCasoExportacionMain() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const esEdicion = Boolean(id && id !== 'nueva');
+  const soloLectura =
+    location.pathname.includes('/caso/ver/') || searchParams.get('modo') === 'ver';
 
   const [abiertas, setAbiertas] = useState(ABIERTAS_INICIAL);
   const [formData, setFormData] = useState(ESTADO_INICIAL_CASO_EXPORTACION);
@@ -180,27 +102,39 @@ export default function PuertosCasoExportacionMain() {
     });
   }, []);
 
-  const onChange = useCallback((campo, valor) => {
-    setFormData((prev) => ({ ...prev, [campo]: valor }));
-  }, []);
+  const onChange = useCallback(
+    (campo, valor) => {
+      if (soloLectura) return;
+      setFormData((prev) => ({ ...prev, [campo]: valor }));
+    },
+    [soloLectura]
+  );
 
-  const onInformeChange = useCallback((campo, valor) => {
-    setFormData((prev) => ({
-      ...prev,
-      informeExportacion: {
-        ...prev.informeExportacion,
-        [campo]:
-          typeof valor === 'function' ? valor(prev.informeExportacion[campo]) : valor,
-      },
-    }));
-  }, []);
+  const onInformeChange = useCallback(
+    (campo, valor) => {
+      if (soloLectura) return;
+      setFormData((prev) => ({
+        ...prev,
+        informeExportacion: {
+          ...prev.informeExportacion,
+          [campo]:
+            typeof valor === 'function' ? valor(prev.informeExportacion[campo]) : valor,
+        },
+      }));
+    },
+    [soloLectura]
+  );
 
-  const onNestedInformeChange = useCallback((subObj, valor) => {
-    setFormData((prev) => ({
-      ...prev,
-      informeExportacion: { ...prev.informeExportacion, [subObj]: valor },
-    }));
-  }, []);
+  const onNestedInformeChange = useCallback(
+    (subObj, valor) => {
+      if (soloLectura) return;
+      setFormData((prev) => ({
+        ...prev,
+        informeExportacion: { ...prev.informeExportacion, [subObj]: valor },
+      }));
+    },
+    [soloLectura]
+  );
 
   useEffect(() => {
     fetch(`${BASE_URL}/api/clientes`)
@@ -253,7 +187,7 @@ export default function PuertosCasoExportacionMain() {
     }
     setCargando(true);
     getPuertosCaso(id)
-      .then((caso) => setFormData(normalizarCasoParaForm(caso)))
+      .then((caso) => setFormData(normalizarCasoApiParaFormulario(caso)))
       .catch((err) => {
         alert(`No se pudo cargar el caso: ${err.message}`);
         navigate('/puertos/actas');
@@ -261,24 +195,42 @@ export default function PuertosCasoExportacionMain() {
       .finally(() => setCargando(false));
   }, [id, esEdicion, navigate]);
 
+  useEffect(() => {
+    if (searchParams.get('fotos') === '1') {
+      setAbiertas({
+        portada: false,
+        datosIntro: false,
+        buqueMercancia: true,
+        supervision: true,
+        conclusiones: searchParams.get('seccion') === 'conclusiones',
+      });
+      requestAnimationFrame(() => {
+        document
+          .getElementById('seccion-buqueMercancia')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [searchParams]);
+
   const recordIdCaso = esEdicion ? (id || formData._id) : null;
 
   const onAutoSaveServidor = useCallback(
     async (data) => {
+      if (soloLectura) return;
       const casoId = id || data._id;
       if (!casoId) return;
       const informeExportacion = await procesarInformeExportacionImagenes(
         data.informeExportacion,
         casoId
       );
-      const payload = {
+      const payload = aplicarEstadoInformeExportacion({
         ...data,
         informeExportacion,
         actualizadoPor: localStorage.getItem('login') || undefined,
-      };
+      });
       await actualizarPuertosCaso(casoId, payload);
     },
-    [id]
+    [id, soloLectura]
   );
 
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
@@ -301,9 +253,10 @@ export default function PuertosCasoExportacionMain() {
     recordId: recordIdCaso,
     formData,
     onServerUpdate: onAutoSaveServidor,
-    serverReady: esEdicion && !cargando,
-    canSaveServer: () => !guardando && !generandoPdf,
+    serverReady: esEdicion && !cargando && !soloLectura,
+    canSaveServer: () => !guardando && !generandoPdf && !soloLectura,
     onRestore: (savedInfo) => {
+      if (soloLectura) return;
       setSavedDataToRestore(savedInfo);
       setShowRestoreDialog(true);
     },
@@ -327,6 +280,7 @@ export default function PuertosCasoExportacionMain() {
   }, []);
 
   const handleGuardar = async () => {
+    if (soloLectura) return;
     if (!formData.codiAsgrdra?.trim()) {
       alert('Seleccione el cliente (aseguradora) en la portada.');
       abrirSeccion('portada');
@@ -346,12 +300,12 @@ export default function PuertosCasoExportacionMain() {
         casoId
       );
 
-      const payload = {
+      const payload = aplicarEstadoInformeExportacion({
         ...formData,
         informeExportacion,
         creadoPor: formData.creadoPor || localStorage.getItem('login') || undefined,
         actualizadoPor: localStorage.getItem('login') || undefined,
-      };
+      });
       const nombreAseg = aseguradoraOptions.find((a) => a.value === formData.codiAsgrdra)?.label;
       if (nombreAseg) payload.nombreAseguradora = nombreAseg;
       const nombreResp = responsables.find((r) => r.value === formData.codiRespnsble)?.label;
@@ -368,12 +322,16 @@ export default function PuertosCasoExportacionMain() {
         setFormData((prev) => ({
           ...prev,
           consecutivo: resultado.consecutivo,
-          informeExportacion: normalizarInforme(resultado.informeExportacion || prev.informeExportacion),
+          informeExportacion: normalizarInformeExportacion(resultado.informeExportacion || prev.informeExportacion),
+          descripcionEstado: resultado.descripcionEstado || prev.descripcionEstado,
+          codiEstdo: resultado.codiEstdo || prev.codiEstdo,
         }));
       } else {
         setFormData((prev) => ({
           ...prev,
-          informeExportacion: normalizarInforme(resultado.informeExportacion || prev.informeExportacion),
+          informeExportacion: normalizarInformeExportacion(resultado.informeExportacion || prev.informeExportacion),
+          descripcionEstado: resultado.descripcionEstado || prev.descripcionEstado,
+          codiEstdo: resultado.codiEstdo || prev.codiEstdo,
         }));
       }
     } catch (err) {
@@ -418,7 +376,9 @@ export default function PuertosCasoExportacionMain() {
             <FaArrowLeft />
           </button>
           <div>
-            <h2 className={puertosPageTitle}>Informe exportación — Reporte de supervisión</h2>
+            <h2 className={puertosPageTitle}>
+              {soloLectura ? 'Consulta — Informe exportación' : 'Informe exportación — Reporte de supervisión'}
+            </h2>
             <p className={puertosPageSubtitle}>
               Formulario único · secciones desplegables
               {formData.consecutivo ? ` · ${formData.consecutivo}` : ''}
@@ -426,6 +386,16 @@ export default function PuertosCasoExportacionMain() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {soloLectura && id && (
+            <button
+              type="button"
+              onClick={() => navigate(`/puertos/actas/caso/editar/${id}`)}
+              className={puertosBtnPrimary}
+            >
+              <FaEdit /> Editar
+            </button>
+          )}
+          {!soloLectura && (
           <FormAutoSaveControls
             placement="inline"
             isExistingRecord={isExistingRecord}
@@ -444,9 +414,12 @@ export default function PuertosCasoExportacionMain() {
             onDiscard={handleDiscardSavedData}
             onCancelRestore={handleCancelRestore}
           />
-          <button type="button" onClick={handleGuardar} disabled={guardando} className={puertosBtnPrimary}>
-            <FaSave /> {guardando ? 'Guardando…' : 'Grabar'}
-          </button>
+          )}
+          {!soloLectura && (
+            <button type="button" onClick={handleGuardar} disabled={guardando} className={puertosBtnPrimary}>
+              <FaSave /> {guardando ? 'Guardando…' : 'Grabar'}
+            </button>
+          )}
           <button
             type="button"
             onClick={handleGenerarPdf}
@@ -468,6 +441,12 @@ export default function PuertosCasoExportacionMain() {
         </button>
       </div>
 
+      {soloLectura && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 font-body text-sm text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100">
+          Modo solo consulta: no puede modificar datos. Pulse <strong>Editar</strong> arriba para habilitar cambios.
+        </div>
+      )}
+
       <div className="space-y-3">
         {SECCIONES.map(({ id, numero, titulo, subtitulo }) => (
           <PuertosCasoSeccionDesplegable
@@ -478,12 +457,14 @@ export default function PuertosCasoExportacionMain() {
             subtitulo={subtitulo}
             abierta={!!abiertas[id]}
             onToggle={toggleSeccion}
+            soloLectura={soloLectura}
           >
             {id === 'portada' && (
               <PuertosCasoPagina1
                 formData={formData}
                 onChange={onChange}
                 aseguradoraOptions={aseguradoraOptions}
+                soloLectura={soloLectura}
               />
             )}
             {id === 'datosIntro' && (
@@ -492,6 +473,7 @@ export default function PuertosCasoExportacionMain() {
                 onChange={onChange}
                 onInformeChange={onInformeChange}
                 responsables={responsables}
+                soloLectura={soloLectura}
               />
             )}
             {id === 'buqueMercancia' && (
@@ -499,23 +481,34 @@ export default function PuertosCasoExportacionMain() {
                 formData={formData}
                 onInformeChange={onInformeChange}
                 onNestedInformeChange={onNestedInformeChange}
+                soloLectura={soloLectura}
               />
             )}
             {id === 'supervision' && (
-              <PuertosCasoPagina4 formData={formData} onInformeChange={onInformeChange} />
+              <PuertosCasoPagina4
+                formData={formData}
+                onInformeChange={onInformeChange}
+                soloLectura={soloLectura}
+              />
             )}
             {id === 'conclusiones' && (
-              <PuertosCasoPagina5 formData={formData} onInformeChange={onInformeChange} />
+              <PuertosCasoPagina5
+                formData={formData}
+                onInformeChange={onInformeChange}
+                soloLectura={soloLectura}
+              />
             )}
           </PuertosCasoSeccionDesplegable>
         ))}
       </div>
 
+      {!soloLectura && (
       <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-800">
         <button type="button" onClick={handleGuardar} disabled={guardando} className={puertosBtnPrimary}>
           <FaSave /> {guardando ? 'Guardando…' : 'Grabar'}
         </button>
       </div>
+      )}
       </div>
     </div>
   );

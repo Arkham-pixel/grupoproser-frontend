@@ -462,6 +462,7 @@ export default function App() {
             <Route path="nueva" element={<PuertosNuevaActa />} />
             <Route path="editar/:id" element={<PuertosNuevaActa />} />
             <Route path="caso/nueva" element={<PuertosCasoExportacionMain />} />
+            <Route path="caso/ver/:id" element={<PuertosCasoExportacionMain />} />
             <Route path="caso/editar/:id" element={<PuertosCasoExportacionMain />} />
           </Route>
 

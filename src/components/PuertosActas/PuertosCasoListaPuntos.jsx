@@ -1,6 +1,6 @@
 import React from 'react';
 import { FaPlus, FaTrash, FaArrowUp, FaArrowDown } from 'react-icons/fa';
-import { inputCls } from './PuertosCasoDatosGenerales';
+import { inputCls, attrsInput } from './PuertosCasoDatosGenerales';
 import { nuevoPuntoInforme } from './puertosCasoExportacionState';
 import { puertosBtnLink, puertosBtnSm, puertosInnerPanel } from './puertosFenixUi';
 
@@ -9,6 +9,7 @@ export default function PuertosCasoListaPuntos({
   puntos = [],
   onChange,
   placeholder = 'Escriba un punto…',
+  soloLectura = false,
 }) {
   const setPuntos = (updater) => onChange(updater);
 
@@ -37,9 +38,11 @@ export default function PuertosCasoListaPuntos({
       {titulo && (
         <div className="flex items-center justify-between gap-2">
           <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">{titulo}</span>
+          {!soloLectura && (
           <button type="button" onClick={() => setPuntos((prev) => [...(prev || []), nuevoPuntoInforme()])} className={puertosBtnSm}>
             <FaPlus /> Punto
           </button>
+          )}
         </div>
       )}
       {puntos.length === 0 && (
@@ -51,11 +54,14 @@ export default function PuertosCasoListaPuntos({
             <span className="mt-2 w-5 shrink-0 font-body text-xs font-bold text-fenix-primario">{idx + 1}.</span>
             <input
               type="text"
-              className={`${inputCls} flex-1`}
-              value={punto.texto || ''}
-              onChange={(e) => actualizar(punto.id, e.target.value)}
-              placeholder={placeholder}
+              {...attrsInput(soloLectura, {
+                className: `${inputCls} flex-1`,
+                value: punto.texto || '',
+                onChange: (e) => actualizar(punto.id, e.target.value),
+                placeholder,
+              })}
             />
+            {!soloLectura && (
             <div className="flex shrink-0 flex-col gap-0.5">
               <button type="button" onClick={() => mover(punto.id, -1)} className="p-1 text-gray-500 hover:text-fenix-primario" title="Subir">
                 <FaArrowUp className="text-xs" />
@@ -67,6 +73,7 @@ export default function PuertosCasoListaPuntos({
                 <FaTrash className="text-xs" />
               </button>
             </div>
+            )}
           </li>
         ))}
       </ol>

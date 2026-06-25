@@ -255,3 +255,122 @@ export function normalizarImagenesRegistroMercancia(informe = {}) {
   ];
   return legacy;
 }
+
+const textoEstado = (v) => String(v || '').trim();
+
+function lineaMercanciaCompleta(linea) {
+  return textoEstado(linea?.producto) && textoEstado(linea?.cantidad);
+}
+
+export const SECCIONES_ESTADO_EXPORTACION = [
+  {
+    id: 'portada',
+    nombre: 'Portada',
+    completada: (caso) =>
+      textoEstado(caso.numeroSolicitud) &&
+      textoEstado(caso.codiAsgrdra) &&
+      textoEstado(caso.fechaInforme),
+  },
+  {
+    id: 'datosIntro',
+    nombre: 'Datos generales',
+    completada: (caso) => {
+      const inf = caso.informeExportacion || {};
+      return (
+        textoEstado(caso.asgrBenfcro) &&
+        textoEstado(caso.actividad) &&
+        textoEstado(inf.introduccion)
+      );
+    },
+  },
+  {
+    id: 'buqueMercancia',
+    nombre: 'Buque y mercancía',
+    completada: (caso) => {
+      const inf = caso.informeExportacion || {};
+      const buque = inf.buque || {};
+      const lineas = Array.isArray(inf.lineasMercancia) ? inf.lineasMercancia : [];
+      return (
+        textoEstado(buque.nombre) &&
+        textoEstado(buque.fechaArribo) &&
+        lineas.some(lineaMercanciaCompleta)
+      );
+    },
+  },
+  {
+    id: 'supervision',
+    nombre: 'Supervisión',
+    completada: (caso) => {
+      const inf = caso.informeExportacion || {};
+      const seguimiento = Array.isArray(inf.seguimiento) ? inf.seguimiento : [];
+      const tieneSeguimiento = seguimiento.some(
+        (fila) =>
+          textoEstado(fila.fecha) ||
+          textoEstado(fila.placa) ||
+          (Array.isArray(fila.contenedores) &&
+            fila.contenedores.some((c) => textoEstado(c.numeroContenedor)))
+      );
+      const tieneFotos =
+        (inf.imagenesRegistroInicialSupervision?.length || 0) > 0 ||
+        (inf.imagenesCondicionCarga?.length || 0) > 0 ||
+        (inf.imagenesInspeccionArribo?.length || 0) > 0;
+      return tieneSeguimiento || tieneFotos || textoEstado(inf.comentariosSupervision);
+    },
+  },
+  {
+    id: 'conclusiones',
+    nombre: 'Conclusiones',
+    completada: (caso) => {
+      const inf = caso.informeExportacion || {};
+      const puntos = Array.isArray(inf.conclusionesPuntos) ? inf.conclusionesPuntos : [];
+      const registros = Array.isArray(inf.registrosFotograficosContenedores)
+        ? inf.registrosFotograficosContenedores
+        : [];
+      return (
+        textoEstado(inf.conclusionesTexto) ||
+        puntos.some((p) => textoEstado(typeof p === 'string' ? p : p?.texto)) ||
+        registros.some((r) => (r.imagenes?.length || 0) > 0)
+      );
+    },
+  },
+];
+
+/** Estado automático según secciones completadas del informe de exportación. */
+export function calcularEstadoInformeExportacion(caso = {}) {
+  const completadas = SECCIONES_ESTADO_EXPORTACION.filter((s) => s.completada(caso));
+  const total = SECCIONES_ESTADO_EXPORTACION.length;
+  const n = completadas.length;
+  const pendiente = SECCIONES_ESTADO_EXPORTACION.find((s) => !s.completada(caso));
+
+  if (n === 0 && !textoEstado(caso.consecutivo) && !textoEstado(caso.numeroSolicitud)) {
+    return { codigo: 'borrador', etiqueta: 'Borrador', progreso: 0, total, detalle: '' };
+  }
+
+  if (n === total) {
+    return {
+      codigo: 'terminado',
+      etiqueta: 'Terminado',
+      progreso: total,
+      total,
+      detalle: `${total}/${total} secciones`,
+    };
+  }
+
+  return {
+    codigo: 'en_curso',
+    etiqueta: 'En curso',
+    progreso: n,
+    total,
+    detalle: `${n}/${total} secciones${pendiente?.nombre ? ` · pendiente: ${pendiente.nombre}` : ''}`,
+    seccionPendiente: pendiente?.nombre || '',
+  };
+}
+
+export function aplicarEstadoInformeExportacion(datos = {}) {
+  const estado = calcularEstadoInformeExportacion(datos);
+  return {
+    ...datos,
+    codiEstdo: estado.codigo,
+    descripcionEstado: estado.etiqueta,
+  };
+}

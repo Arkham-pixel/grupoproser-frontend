@@ -18,6 +18,7 @@ export default function PuertosCasoAreaFotograficaMercancia({
   informe,
   onInformeChange,
   numContenedores = 0,
+  soloLectura = false,
 }) {
   const tituloContenedores =
     numContenedores > 0
@@ -35,6 +36,7 @@ export default function PuertosCasoAreaFotograficaMercancia({
         max={12}
         descripcionesSugeridas={['Contenido de las cajas', 'Producto en caja']}
         datalistId="puertos-fotos-contenido-cajas"
+        soloLectura={soloLectura}
       />
 
       <PuertosCasoGridFotografico
@@ -46,6 +48,7 @@ export default function PuertosCasoAreaFotograficaMercancia({
         max={48}
         descripcionesSugeridas={FOTOS_CONTENEDOR}
         datalistId="puertos-fotos-contenedores-mercancia"
+        soloLectura={soloLectura}
       />
 
       <PuertosCasoGridFotografico
@@ -57,6 +60,7 @@ export default function PuertosCasoAreaFotograficaMercancia({
         max={24}
         descripcionesSugeridas={FOTOS_VEHICULO}
         datalistId="puertos-fotos-vehiculos-mercancia"
+        soloLectura={soloLectura}
       />
     </div>
   );

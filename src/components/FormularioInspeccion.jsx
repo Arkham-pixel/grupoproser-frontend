@@ -37,7 +37,6 @@ const RegistroFotografico = lazy(() => import('./RegistroFotografico'));
 import { PageBreak } from "docx";
 import { toPng } from 'html-to-image';
 import Logo from '../img/Logo.png';
-import { TableOfContents } from "docx";
 import ciudadesData from '../data/colombia.json';
 import Select from 'react-select';
 import 'leaflet/dist/leaflet.css'
@@ -52,6 +51,7 @@ import {
   SECCIONES_INFORME_INSPECCION,
   normalizarSeccionesActivas,
   estaSeccionInformeActiva,
+  construirNumeracionActiva,
   obtenerFilasIndiceInforme,
   obtenerFilasIndiceWord,
 } from './inspeccion/seccionesInformeInspeccion.js';
@@ -2185,6 +2185,10 @@ const filaDoble = (label, value) => new TableRow({
 
   const generarWord = async () => {
     const incluirSeccionWord = (id) => estaSeccionInformeActiva(seccionesActivas, id);
+    const numeracionWord = construirNumeracionActiva(seccionesActivas);
+    const encWord = (id, fallback = '') => numeracionWord.get(id)?.encabezado || fallback;
+    const encWordSub = (parentId, subIdx, fallback = '') =>
+      numeracionWord.get(parentId)?.subIndices?.[subIdx]?.encabezado || fallback;
     const filasIndiceWord = obtenerFilasIndiceWord(seccionesActivas);
 
     // Función para convertir imagen importada a base64
@@ -2491,20 +2495,52 @@ docContent.push(
     text: "",
     spacing: { after: 40 },
   }),
-  new TableOfContents(" ", {
-    hyperlink: false,
-    headingStyleRange: "2-2",
-  }),
-  new Paragraph({
-    children: [
-      new TextRun({
-        text: "Nota: Si la tabla de contenido no refleja páginas actualizadas, en Word use 'Actualizar tabla' (Actualizar toda la tabla).",
-        italics: true,
-        size: 18,
-        color: "666666",
+  new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({
+        children: [
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: "REF", bold: true })] })],
+          }),
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: "SECCIÓN", bold: true })] })],
+          }),
+          new TableCell({
+            children: [new Paragraph({ children: [new TextRun({ text: "PÁG.", bold: true })], alignment: AlignmentType.RIGHT })],
+          }),
+        ],
       }),
+      ...filasIndiceWord.map((fila) =>
+        new TableRow({
+          children: [
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: fila.ref || "", bold: fila.tipo === 'principal' })],
+                  indent: fila.tipo === 'sub' ? { left: 360 } : undefined,
+                }),
+              ],
+            }),
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: fila.titulo || "", italics: fila.tipo === 'sub' })],
+                }),
+              ],
+            }),
+            new TableCell({
+              children: [
+                new Paragraph({
+                  children: [new TextRun({ text: fila.pagina || "" })],
+                  alignment: AlignmentType.RIGHT,
+                }),
+              ],
+            }),
+          ],
+        })
+      ),
     ],
-    spacing: { before: 120, after: 80 },
   })
     );
     
@@ -2553,7 +2589,7 @@ const celdaVaciaInfo = (width = 20) =>
 
 docContent.push(
   new Paragraph({ children: [], pageBreakBefore: true }),
-  seccion("1. INFORMACIÓN GENERAL"),
+  seccion(encWord('informacionGeneral', '1. INFORMACIÓN GENERAL')),
   new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
@@ -2613,17 +2649,18 @@ docContent.push(
     
 
 
-   
+if (incluirSeccionWord('descripcionEmpresa')) {
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }), 
-  seccion("2. DESCRIPCIÓN GENERAL DE LA EMPRESA"),
+  seccion(encWord('descripcionEmpresa', '2. DESCRIPCIÓN GENERAL DE LA EMPRESA')),
   linea(descripcionEmpresa || "No se ingresó información.")
 );
+}
 
-
+if (incluirSeccionWord('infraestructura')) {
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
-  seccion("3. INFRAESTRUCTURA"),
+  seccion(encWord('infraestructura', '3. INFRAESTRUCTURA')),
   new Paragraph({ text: "Comentarios adicionales", bold: true, spacing: { after: 100 } }),
   linea(caracteristicasConstruccion || "No se ingresaron comentarios adicionales."),
   new Paragraph({ text: "", spacing: { after: 200 } }),
@@ -2704,11 +2741,12 @@ docContent.push(
     ],
   })
 );
+}
 
-
+if (incluirSeccionWord('procesos')) {
  docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }), 
-  seccion("4. PROCESOS"),
+  seccion(encWord('procesos', '4. PROCESOS')),
   linea(procesos || "No se ingresó información.")
 );
 
@@ -2865,9 +2903,11 @@ docContent.push(
       );
     }
   }
+}
 
+if (incluirSeccionWord('linderos')) {
 docContent.push(
-  seccion("5. LINDEROS"),
+  seccion(encWord('linderos', '5. LINDEROS')),
   new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
@@ -2959,7 +2999,7 @@ try {
 
           docContent.push(
             new Paragraph({ text: "", spacing: { after: 300 } }), 
-            seccion("MAPA DE UBICACIÓN"),
+            seccion(encWordSub('linderos', 0, 'MAPA DE UBICACIÓN')),
             new Paragraph({ children: [mapaImage], alignment: AlignmentType.CENTER }),
             linea("Coordenadas: " + (formData.coordenadasRiesgo || "No disponibles")),
             linea("Dirección: " + (formData.direccionRiesgo || "No especificada"))
@@ -3005,7 +3045,7 @@ const response = await fetch(osmStaticUrl);
 
                 docContent.push(
                   new Paragraph({ text: "", spacing: { after: 300 } }), 
-                  seccion("MAPA DE UBICACIÓN"),
+                  seccion(encWordSub('linderos', 0, 'MAPA DE UBICACIÓN')),
                   new Paragraph({ children: [mapaImage], alignment: AlignmentType.CENTER }),
                   linea("Coordenadas: " + formData.coordenadasRiesgo),
                   linea("Dirección: " + (formData.direccionRiesgo || "No especificada"))
@@ -3031,7 +3071,7 @@ const response = await fetch(osmStaticUrl);
       console.warn('⚠️ No se pudo generar el mapa automáticamente');
       docContent.push(
         new Paragraph({ text: "", spacing: { after: 300 } }), 
-        seccion("MAPA DE UBICACIÓN"),
+        seccion(encWordSub('linderos', 0, 'MAPA DE UBICACIÓN')),
         linea("📍 Ubicación del Riesgo"),
         linea("Coordenadas: " + (formData.coordenadasRiesgo || "No disponibles")),
         linea("Dirección: " + (formData.direccionRiesgo || "No especificada")),
@@ -3043,18 +3083,19 @@ const response = await fetch(osmStaticUrl);
     console.error("❌ Error general en el bloque del mapa:", error);
     docContent.push(
       new Paragraph({ text: "", spacing: { after: 300 } }), 
-      seccion("MAPA DE UBICACIÓN"),
+      seccion(encWordSub('linderos', 0, 'MAPA DE UBICACIÓN')),
       linea("📍 Ubicación del Riesgo"),
       linea("Coordenadas: " + (formData.coordenadasRiesgo || "No disponibles")),
       linea("Dirección: " + (formData.direccionRiesgo || "No especificada"))
     );
   }
+}  // linderos
 
   // Sección: Sustracción - Protecciones Físicas
   if (incluirSeccionWord('sustraccion')) {
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 300 } }),
-    seccion("6. SUSTRACCIÓN - PROTECCIONES FÍSICAS"),
+    seccion(encWord('sustraccion', '6. SUSTRACCIÓN - PROTECCIONES FÍSICAS')),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -3274,7 +3315,7 @@ const response = await fetch(osmStaticUrl);
 
 if (incluirSeccionWord('lucroCesante')) {
   docContent.push(
-    seccion("9. LUCRO CESANTE"),
+    seccion(encWord('lucroCesante', '9. LUCRO CESANTE')),
     new Paragraph({ text: "Por incendio", bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -3326,7 +3367,7 @@ if (incluirSeccionWord('lucroCesante')) {
 
 if (incluirSeccionWord('pml')) {
   docContent.push(
-    seccion("9.1 PML (PÉRDIDA MÁXIMA PROBABLE)"),
+    seccion(encWord('pml', '9.1 PML (PÉRDIDA MÁXIMA PROBABLE)')),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -3350,7 +3391,7 @@ if (incluirSeccionWord('pml')) {
 
 if (incluirSeccionWord('procesosCriticos')) {
   docContent.push(
-    seccion("10. PROCESOS CRÍTICOS Y RIESGOS MEDIOAMBIENTALES"),
+    seccion(encWord('procesosCriticos', '10. PROCESOS CRÍTICOS Y RIESGOS MEDIOAMBIENTALES')),
     new Paragraph({ text: "Procesos Críticos", bold: true, spacing: { after: 100 } }),
     linea(procesosCriticos || "No se ingresaron comentarios."),
     new Paragraph({ text: "", spacing: { after: 200 } }),
@@ -3362,7 +3403,7 @@ if (incluirSeccionWord('procesosCriticos')) {
 
 if (incluirSeccionWord('roturaMaquinaria')) {
   docContent.push(
-    seccion("11. POR ROTURA DE MAQUINARIA"),
+    seccion(encWord('roturaMaquinaria', '11. POR ROTURA DE MAQUINARIA')),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -3432,9 +3473,10 @@ if (incluirSeccionWord('roturaMaquinaria')) {
   }  // roturaMaquinaria
 
   // Sección: Características operativas ambientales
+  if (incluirSeccionWord('caracteristicasAmbientales')) {
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 300 } }),
-    seccion("7. CARACTERÍSTICAS OPERATIVAS AMBIENTALES"),
+    seccion(encWord('caracteristicasAmbientales', '7. CARACTERÍSTICAS OPERATIVAS AMBIENTALES')),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
@@ -3513,11 +3555,13 @@ if (incluirSeccionWord('roturaMaquinaria')) {
       ],
     })
   );
+  }  // caracteristicasAmbientales
 
   // Sección: Protección y prevención contra incendios
+  if (incluirSeccionWord('proteccionIncendios')) {
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 300 } }),
-    seccion("8. PROTECCIÓN Y PREVENCIÓN CONTRA INCENDIOS"),
+    seccion(encWord('proteccionIncendios', '8. PROTECCIÓN Y PREVENCIÓN CONTRA INCENDIOS')),
     new Paragraph({ text: "Sistema de detección", bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -3673,6 +3717,7 @@ if (incluirSeccionWord('roturaMaquinaria')) {
       linea(comentariosProteccionIncendios)
     );
   }
+  }  // proteccionIncendios
 
 
 
@@ -3743,9 +3788,10 @@ if (incluirSeccionWord('roturaMaquinaria')) {
     filaDoble("COMENTARIOS", energiaComentarios),
   ];
 
+  if (incluirSeccionWord('maquinaria')) {
   docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }), 
-    seccion("12. MAQUINARIA, EQUIPOS Y MANTENIMIENTO"),
+    seccion(encWord('maquinaria', '12. MAQUINARIA, EQUIPOS Y MANTENIMIENTO')),
   linea(maquinariaDescripcion || "No se ingresó información."),
   new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -3833,13 +3879,15 @@ docContent.push(
     spacing: { before: 300, after: 300 },
   })
 );
+}  // maquinaria
 
   
 
 
 // SERVICIOS INDUSTRIALES
+if (incluirSeccionWord('serviciosIndustriales')) {
 docContent.push(
-  seccion("13. SERVICIOS INDUSTRIALES"),
+  seccion(encWord('serviciosIndustriales', '13. SERVICIOS INDUSTRIALES')),
 
   // Tabla con proveedor y tensión (título 25%, valor 75%)
   new Table({
@@ -3980,11 +4028,6 @@ docContent.push(
   })
 );
 
-
-  
-
-  
-
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
   seccion("SISTEMA DE AGUA"),
@@ -4027,10 +4070,16 @@ docContent.push(
     ],
   })
 );
+}  // serviciosIndustriales
 
+  
+
+  
+
+if (incluirSeccionWord('siniestralidad')) {
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
-  seccion("14. SINIESTRALIDAD"),
+  seccion(encWord('siniestralidad', '14. SINIESTRALIDAD')),
   new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
@@ -4061,10 +4110,12 @@ docContent.push(
     ],
   })
 );
+}
 
+if (incluirSeccionWord('almacenamiento')) {
 docContent.push(
   new Paragraph({ children: [], pageBreakBefore: true }),
-  seccion("15. ALMACENAMIENTO"),
+  seccion(encWord('almacenamiento', '15. ALMACENAMIENTO')),
   new Paragraph({ text: "Almacén", bold: true, spacing: { after: 100 } }),
   new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -4115,11 +4166,13 @@ docContent.push(
     ],
   })
 );
+}
 
+if (incluirSeccionWord('analisisRiesgos')) {
     docContent.push(
       new Paragraph({ children: [], pageBreakBefore: true }),
-      seccion("16. ANÁLISIS Y CLASIFICACIÓN DE RIESGOS"),
-      new Paragraph({ text: "ANÁLISIS DE RIESGOS", bold: true, spacing: { after: 100 } }),
+      seccion(encWord('analisisRiesgos', '16. ANÁLISIS Y CLASIFICACIÓN DE RIESGOS')),
+      new Paragraph({ text: encWordSub('analisisRiesgos', 0, 'ANÁLISIS DE RIESGOS'), bold: true, spacing: { after: 100 } }),
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
@@ -4141,7 +4194,7 @@ docContent.push(
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
   new Paragraph({
-    text: "CLASIFICACIÓN DE RIESGOS",
+    text: encWordSub('analisisRiesgos', 1, 'CLASIFICACIÓN DE RIESGOS'),
     bold: true,
     spacing: { after: 300 },
   }),
@@ -4174,7 +4227,7 @@ docContent.push(
 docContent.push(
  // new Paragraph({ children: [], pageBreakBefore: true }),
   new Paragraph({
-    text: "CALIFICACIÓN DEL RIESGO (R) E ÍNDICE DE VULNERABILIDAD (%)",
+    text: encWordSub('analisisRiesgos', 2, 'CALIFICACIÓN DEL RIESGO (R) E ÍNDICE DE VULNERABILIDAD (%)'),
     heading: HeadingLevel.HEADING_2,
     spacing: { before: 400, after: 300 },
   }),
@@ -4219,7 +4272,7 @@ docContent.push(
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
   new Paragraph({
-    text: "MATRIZ DE CALOR DE RIESGOS",
+    text: encWordSub('analisisRiesgos', 3, 'MATRIZ DE CALOR DE RIESGOS'),
     heading: HeadingLevel.HEADING_2,
     spacing: { after: 300 },
   }),
@@ -4281,11 +4334,12 @@ docContent.push(
     ],
   })
 );
+}  // analisisRiesgos
 //Recomendaciones 
 
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
-  seccion("17. RECOMENDACIONES"),
+  seccion(encWord('recomendaciones', '17. RECOMENDACIONES')),
 );
 if (recomendacionesItems.length > 0) {
   for (const rec of recomendacionesItems) {
@@ -4314,7 +4368,7 @@ if (recomendacionesItems.length > 0) {
   
 if (imagenesRegistro.length > 0) {
   // Título de la sección
-  docContent.push(seccion("18. REGISTRO FOTOGRÁFICO"));
+  docContent.push(seccion(encWord('registroFotografico', '18. REGISTRO FOTOGRÁFICO')));
 
   // Aquí se guardarán las filas de la tabla
   const filas = [];

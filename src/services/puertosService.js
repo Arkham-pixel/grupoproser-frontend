@@ -12,6 +12,11 @@ export async function listarRegistrosPuertos(params = {}) {
   const qs = new URLSearchParams();
   if (params.tipo) qs.set('tipo', params.tipo);
   if (params.q) qs.set('q', params.q);
+  if (params.estado) qs.set('estado', params.estado);
+  if (params.regional) qs.set('regional', params.regional);
+  if (params.cliente) qs.set('cliente', params.cliente);
+  if (params.fechaDesde) qs.set('fechaDesde', params.fechaDesde);
+  if (params.fechaHasta) qs.set('fechaHasta', params.fechaHasta);
   if (params.limit) qs.set('limit', String(params.limit));
   const url = `${BASE_URL}/api/puertos/registros${qs.toString() ? `?${qs}` : ''}`;
   const response = await fetch(url);

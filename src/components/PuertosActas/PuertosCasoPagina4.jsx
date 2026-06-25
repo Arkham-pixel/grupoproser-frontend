@@ -16,14 +16,15 @@ import {
   puertosSectionTitle,
 } from './puertosFenixUi';
 
-function CeldaInput({ value, onChange, type = 'text', placeholder = '' }) {
+function CeldaInput({ value, onChange, type = 'text', placeholder = '', soloLectura = false }) {
   return (
     <input
       type={type}
-      className={`${inputCls} text-xs py-1 min-w-[72px]`}
+      className={`${inputCls} text-xs py-1 min-w-[72px]${soloLectura ? ' bg-gray-50 cursor-default dark:bg-gray-900/60' : ''}`}
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
+      readOnly={soloLectura}
     />
   );
 }
@@ -58,7 +59,7 @@ const FOTOS_METEO = [
   'Final del llenado contenedores',
 ];
 
-export default function PuertosCasoPagina4({ formData, onInformeChange }) {
+export default function PuertosCasoPagina4({ formData, onInformeChange, soloLectura = false }) {
   const informe = formData.informeExportacion || {};
   const seguimiento = informe.seguimiento || [];
 
@@ -107,9 +108,11 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
       <section className={puertosCard}>
         <header className={`${puertosCardHeaderAccent} flex flex-wrap items-center justify-between gap-2`}>
           <h3 className={puertosSectionTitle}>4. Seguimiento contenedor</h3>
+          {!soloLectura && (
           <button type="button" onClick={() => setSeguimiento([...seguimiento, nuevaFilaSeguimiento()])} className={puertosBtnSm}>
             <FaPlus /> Agregar vehículo / jornada
           </button>
+          )}
         </header>
 
         <div className="space-y-6 p-5">
@@ -125,6 +128,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
                 <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
                   Registro {idx + 1}
                 </span>
+                {!soloLectura && (
                 <button
                   type="button"
                   onClick={() => setSeguimiento(seguimiento.filter((f) => f.id !== fila.id))}
@@ -132,38 +136,41 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
                 >
                   <FaTrash /> Eliminar
                 </button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 <Campo label="Fecha">
-                  <CeldaInput type="date" value={fila.fecha} onChange={(v) => actualizarFila(fila.id, 'fecha', v)} />
+                  <CeldaInput soloLectura={soloLectura} type="date" value={fila.fecha} onChange={(v) => actualizarFila(fila.id, 'fecha', v)} />
                 </Campo>
                 <Campo label="Entrada vehículo">
-                  <CeldaInput value={fila.entradaVehiculo} onChange={(v) => actualizarFila(fila.id, 'entradaVehiculo', v)} placeholder="07:55" />
+                  <CeldaInput soloLectura={soloLectura} value={fila.entradaVehiculo} onChange={(v) => actualizarFila(fila.id, 'entradaVehiculo', v)} placeholder="07:55" />
                 </Campo>
                 <Campo label="Salida vehículo">
-                  <CeldaInput value={fila.salidaVehiculo} onChange={(v) => actualizarFila(fila.id, 'salidaVehiculo', v)} placeholder="11:47" />
+                  <CeldaInput soloLectura={soloLectura} value={fila.salidaVehiculo} onChange={(v) => actualizarFila(fila.id, 'salidaVehiculo', v)} placeholder="11:47" />
                 </Campo>
                 <Campo label="Placa">
-                  <CeldaInput value={fila.placa} onChange={(v) => actualizarFila(fila.id, 'placa', v)} placeholder="XMA 685" />
+                  <CeldaInput soloLectura={soloLectura} value={fila.placa} onChange={(v) => actualizarFila(fila.id, 'placa', v)} placeholder="XMA 685" />
                 </Campo>
                 <Campo label="Descargue inicio">
-                  <CeldaInput value={fila.descargueInicio} onChange={(v) => actualizarFila(fila.id, 'descargueInicio', v)} />
+                  <CeldaInput soloLectura={soloLectura} value={fila.descargueInicio} onChange={(v) => actualizarFila(fila.id, 'descargueInicio', v)} />
                 </Campo>
                 <Campo label="Descargue final">
-                  <CeldaInput value={fila.descargueFin} onChange={(v) => actualizarFila(fila.id, 'descargueFin', v)} />
+                  <CeldaInput soloLectura={soloLectura} value={fila.descargueFin} onChange={(v) => actualizarFila(fila.id, 'descargueFin', v)} />
                 </Campo>
                 <Campo label="Bultos">
-                  <CeldaInput value={fila.bultos} onChange={(v) => actualizarFila(fila.id, 'bultos', v)} />
+                  <CeldaInput soloLectura={soloLectura} value={fila.bultos} onChange={(v) => actualizarFila(fila.id, 'bultos', v)} />
                 </Campo>
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-body text-xs font-semibold uppercase text-gray-500">Contenedores</span>
+                  {!soloLectura && (
                   <button type="button" onClick={() => agregarContenedor(fila.id)} className={`${puertosBtnLink} text-xs`}>
                     <FaPlus /> Contenedor
                   </button>
+                  )}
                 </div>
                 {(fila.contenedores || []).map((cont) => (
                   <div
@@ -171,26 +178,27 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
                     className="grid grid-cols-2 items-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-700 sm:grid-cols-4 lg:grid-cols-8"
                   >
                     <Campo label="Cantidad">
-                      <CeldaInput value={cont.cantidad} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'cantidad', v)} />
+                      <CeldaInput soloLectura={soloLectura} value={cont.cantidad} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'cantidad', v)} />
                     </Campo>
                     <Campo label="Tipo">
-                      <CeldaInput value={cont.tipoContenedor} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'tipoContenedor', v)} />
+                      <CeldaInput soloLectura={soloLectura} value={cont.tipoContenedor} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'tipoContenedor', v)} />
                     </Campo>
                     <Campo label="N° contenedor" className="sm:col-span-2">
-                      <CeldaInput value={cont.numeroContenedor} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'numeroContenedor', v)} />
+                      <CeldaInput soloLectura={soloLectura} value={cont.numeroContenedor} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'numeroContenedor', v)} />
                     </Campo>
                     <Campo label="Llenado inicio">
-                      <CeldaInput value={cont.llenadoInicio} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'llenadoInicio', v)} />
+                      <CeldaInput soloLectura={soloLectura} value={cont.llenadoInicio} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'llenadoInicio', v)} />
                     </Campo>
                     <Campo label="Llenado final">
-                      <CeldaInput value={cont.llenadoFin} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'llenadoFin', v)} />
+                      <CeldaInput soloLectura={soloLectura} value={cont.llenadoFin} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'llenadoFin', v)} />
                     </Campo>
                     <Campo label="Sello 1">
-                      <CeldaInput value={cont.sello1} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'sello1', v)} />
+                      <CeldaInput soloLectura={soloLectura} value={cont.sello1} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'sello1', v)} />
                     </Campo>
                     <Campo label="Sello 2">
-                      <CeldaInput value={cont.sello2} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'sello2', v)} />
+                      <CeldaInput soloLectura={soloLectura} value={cont.sello2} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'sello2', v)} />
                     </Campo>
+                    {!soloLectura && (
                     <button
                       type="button"
                       onClick={() => eliminarContenedor(fila.id, cont.id)}
@@ -199,6 +207,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
                     >
                       <FaTrash />
                     </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -227,9 +236,11 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
         max={9}
         descripcionesSugeridas={FOTOS_INICIAL}
         datalistId="puertos-fotos-inicial-supervision"
+        soloLectura={soloLectura}
       />
 
       <PuertosCasoSeccionInformeWord
+        soloLectura={soloLectura}
         tituloSeccion="Condición de la carga"
         labelTexto="Narrativa de la operación de descargue y llenado"
         valorTexto={informe.condicionCargaTexto}
@@ -246,6 +257,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
       />
 
       <PuertosCasoSeccionInformeWord
+        soloLectura={soloLectura}
         tituloSeccion="Durante la inspección de arribo se observó"
         labelTexto="Comentario introductorio"
         valorTexto={informe.inspeccionArriboIntro}
@@ -265,6 +277,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
       />
 
       <PuertosCasoSeccionInformeWord
+        soloLectura={soloLectura}
         tituloSeccion="Equipos usados en la operación de cargue/descargue"
         labelTexto="Texto introductorio"
         valorTexto={informe.equiposOperacionIntro}
@@ -284,6 +297,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange }) {
       />
 
       <PuertosCasoSeccionInformeWord
+        soloLectura={soloLectura}
         tituloSeccion="Condiciones meteorológicas durante el descargue"
         labelTexto="Narrativa meteorológica"
         valorTexto={informe.condicionesMeteoTexto}

@@ -19,7 +19,7 @@ import {
   puertosTableWrap,
 } from './puertosFenixUi';
 
-export default function PuertosCasoPagina3({ formData, onInformeChange, onNestedInformeChange }) {
+export default function PuertosCasoPagina3({ formData, onInformeChange, onNestedInformeChange, soloLectura = false }) {
   const informe = formData.informeExportacion || {};
   const buque = informe.buque || {};
   const lineas = informe.lineasMercancia || [];
@@ -50,6 +50,7 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
           descripcion="Como en el informe Word: imagen del buque sobre la tabla de características"
           imagen={buque.imagenBuque || null}
           onChange={setImagenBuque}
+          soloLectura={soloLectura}
         />
       </Seccion>
 
@@ -95,9 +96,11 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
       <section className={puertosTableWrap}>
         <header className={`${puertosCardHeaderAccent} flex flex-wrap items-center justify-between gap-2`}>
           <h3 className={puertosSectionTitle}>3. Información general — Descripción de la mercancía</h3>
+          {!soloLectura && (
           <button type="button" onClick={() => setLineas([...lineas, nuevaLineaMercancia()])} className={puertosBtnSm}>
             <FaPlus /> Agregar línea
           </button>
+          )}
         </header>
         <div className="overflow-x-auto p-3">
           <table className="min-w-full border-collapse text-xs sm:text-sm">
@@ -165,6 +168,7 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
                     />
                   </td>
                   <td className={`${puertosTableTd} p-1 text-center`}>
+                    {!soloLectura && (
                     <button
                       type="button"
                       onClick={() => setLineas(lineas.filter((l) => l.id !== linea.id))}
@@ -172,6 +176,7 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
                     >
                       <FaTrash />
                     </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -193,6 +198,7 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
         informe={informe}
         onInformeChange={onInformeChange}
         numContenedores={numContenedores}
+        soloLectura={soloLectura}
       />
     </div>
   );

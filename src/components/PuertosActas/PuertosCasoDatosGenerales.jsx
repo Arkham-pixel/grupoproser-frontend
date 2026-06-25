@@ -10,6 +10,30 @@ import {
 
 export const inputCls = puertosInput;
 
+const clsSoloLectura = 'bg-gray-50 cursor-default dark:bg-gray-900/60';
+
+export function attrsInput(soloLectura, props = {}) {
+  if (!soloLectura) return props;
+  return {
+    ...props,
+    readOnly: true,
+    className: props.className ? `${props.className} ${clsSoloLectura}` : `${inputCls} ${clsSoloLectura}`,
+  };
+}
+
+export function attrsSelect(soloLectura, props = {}) {
+  if (!soloLectura) return props;
+  return {
+    ...props,
+    disabled: true,
+    className: props.className ? `${props.className} ${clsSoloLectura}` : `${inputCls} ${clsSoloLectura}`,
+  };
+}
+
+export function attrsTextarea(soloLectura, props = {}) {
+  return attrsInput(soloLectura, props);
+}
+
 export function Seccion({ titulo, children, cols = 2 }) {
   const gridCls =
     cols === 1

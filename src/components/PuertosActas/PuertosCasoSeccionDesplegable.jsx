@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FaChevronDown, FaChevronUp } from 'react-icons/fa';
 import {
   puertosAccordionBtn,
@@ -17,7 +17,20 @@ export default function PuertosCasoSeccionDesplegable({
   onToggle,
   children,
   numero,
+  soloLectura = false,
 }) {
+  const cuerpoRef = useRef(null);
+
+  useEffect(() => {
+    const el = cuerpoRef.current;
+    if (!el) return;
+    if (soloLectura) {
+      el.setAttribute('inert', '');
+    } else {
+      el.removeAttribute('inert');
+    }
+  }, [soloLectura, abierta]);
+
   return (
     <section className={puertosCard}>
       <button
@@ -38,7 +51,18 @@ export default function PuertosCasoSeccionDesplegable({
           <FaChevronDown className="shrink-0 text-gray-400" />
         )}
       </button>
-      {abierta && <div className={puertosCardBody}>{children}</div>}
+      {abierta && (
+        <div ref={cuerpoRef} className={`${puertosCardBody} relative`}>
+          {children}
+          {soloLectura && (
+            <div
+              className="absolute inset-0 z-20 cursor-default bg-transparent"
+              aria-hidden="true"
+              tabIndex={-1}
+            />
+          )}
+        </div>
+      )}
     </section>
   );
 }

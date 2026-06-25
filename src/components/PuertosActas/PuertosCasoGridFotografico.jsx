@@ -28,6 +28,7 @@ export default function PuertosCasoGridFotografico({
   max = 30,
   descripcionesSugeridas = [],
   datalistId = 'puertos-descripciones-foto',
+  soloLectura = false,
 }) {
   const setImagenes = (updater) => {
     onChange(updater);
@@ -49,7 +50,7 @@ export default function PuertosCasoGridFotografico({
     onDrop,
     accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'] },
     multiple: true,
-    disabled: imagenes.length >= max,
+    disabled: soloLectura || imagenes.length >= max,
   });
 
   const filas = useMemo(() => {
@@ -97,7 +98,7 @@ export default function PuertosCasoGridFotografico({
       )}
 
       <div className={`${puertosCardBody} space-y-4`}>
-        {imagenes.length < max && (
+        {!soloLectura && imagenes.length < max && (
           <div
             {...getRootProps()}
             className={`${puertosDropzone} ${isDragActive ? puertosDropzoneActive : ''}`}
@@ -141,6 +142,7 @@ export default function PuertosCasoGridFotografico({
                               <FaImage className="text-3xl text-gray-400" />
                             </div>
                           )}
+                          {!soloLectura && (
                           <div className="absolute right-2 top-2 flex flex-col gap-1">
                             <button
                               type="button"
@@ -167,8 +169,14 @@ export default function PuertosCasoGridFotografico({
                               <FaTrash />
                             </button>
                           </div>
+                          )}
                         </div>
                         <div className={puertosPhotoCaption}>
+                          {soloLectura ? (
+                            <p className="px-2 py-1 text-center font-body text-xs text-gray-600 dark:text-gray-300">
+                              {img.descripcion || img.nombre || `Foto ${orden}`}
+                            </p>
+                          ) : (
                           <input
                             type="text"
                             list={datalistId}
@@ -177,6 +185,7 @@ export default function PuertosCasoGridFotografico({
                             value={img.descripcion || ''}
                             onChange={(e) => actualizarDescripcion(img.id, e.target.value)}
                           />
+                          )}
                         </div>
                       </div>
                     );

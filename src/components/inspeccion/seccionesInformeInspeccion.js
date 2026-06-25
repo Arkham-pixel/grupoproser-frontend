@@ -167,33 +167,105 @@ export function estaSeccionInformeActiva(seccionesActivas, id) {
   return seccionesActivas?.[id] !== false;
 }
 
+/** Numeración dinámica según secciones activas (formulario + Word). */
+export function construirNumeracionActiva(seccionesActivas) {
+  const numeracion = new Map();
+  let n = 0;
+
+  for (const cfg of SECCIONES_INFORME_INSPECCION) {
+    if (cfg.id === 'informe') {
+      numeracion.set('informe', {
+        ref: cfg.ref,
+        titulo: cfg.titulo,
+        encabezado: `${cfg.ref} ${cfg.titulo}`.trim(),
+      });
+      continue;
+    }
+
+    if (!estaSeccionInformeActiva(seccionesActivas, cfg.id)) continue;
+
+    if (cfg.id === 'pml') {
+      const lucro = numeracion.get('lucroCesante');
+      if (lucro?.numero != null) {
+        numeracion.set('pml', {
+          ref: `${lucro.numero}.1`,
+          titulo: cfg.titulo,
+          encabezado: `${lucro.numero}.1 ${cfg.titulo}`,
+        });
+      } else {
+        n += 1;
+        numeracion.set('pml', {
+          ref: `${n}.`,
+          titulo: cfg.titulo,
+          encabezado: `${n}. ${cfg.titulo}`,
+          numero: n,
+        });
+      }
+      continue;
+    }
+
+    n += 1;
+    const ref = `${n}.`;
+    const entry = {
+      ref,
+      titulo: cfg.titulo,
+      encabezado: `${ref} ${cfg.titulo}`,
+      numero: n,
+      subIndices: [],
+    };
+
+    if (cfg.subIndices?.length) {
+      cfg.subIndices.forEach((sub, idx) => {
+        entry.subIndices.push({
+          ref: `${n}.${idx + 1}`,
+          titulo: sub.titulo,
+          encabezado: `${n}.${idx + 1} ${sub.titulo}`,
+          pagina: sub.pagina,
+        });
+      });
+    }
+
+    numeracion.set(cfg.id, entry);
+  }
+
+  return numeracion;
+}
+
 /** Filas para la tabla de contenido (índice) en pantalla. */
 export function obtenerFilasIndiceInforme(seccionesActivas) {
+  const numeracion = construirNumeracionActiva(seccionesActivas);
   const filas = [];
+
   for (const seccion of SECCIONES_INFORME_INSPECCION) {
+    const activa = estaSeccionInformeActiva(seccionesActivas, seccion.id);
+    const num = numeracion.get(seccion.id);
+
     filas.push({
       tipo: 'principal',
       id: seccion.id,
-      ref: seccion.ref,
+      ref: activa && num ? num.ref : '—',
       titulo: seccion.titulo,
-      pagina: seccion.pagina,
+      pagina: activa ? seccion.pagina : '',
       obligatoria: Boolean(seccion.obligatoria),
       seleccionable: seccion.seleccionable !== false && !seccion.obligatoria,
-      activa: estaSeccionInformeActiva(seccionesActivas, seccion.id),
+      activa,
     });
+
     if (seccion.subIndices?.length) {
-      for (const sub of seccion.subIndices) {
+      seccion.subIndices.forEach((sub, idx) => {
+        const subNum = num?.subIndices?.[idx];
         filas.push({
           tipo: 'sub',
           parentId: seccion.id,
-          ref: sub.ref,
+          ref: activa && subNum ? subNum.ref : '—',
           titulo: sub.titulo,
-          pagina: sub.pagina,
-          activa: estaSeccionInformeActiva(seccionesActivas, seccion.id),
+          pagina: activa ? sub.pagina : '',
+          activa,
         });
-      }
+      });
     }
   }
+
   return filas;
 }
 

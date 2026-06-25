@@ -1,11 +1,9 @@
 import React from 'react';
 import { FaPlus } from 'react-icons/fa';
-import { Seccion, Campo, inputCls } from './PuertosCasoDatosGenerales';
+import { Seccion, Campo, inputCls, attrsTextarea } from './PuertosCasoDatosGenerales';
 import PuertosCasoListaPuntos from './PuertosCasoListaPuntos';
 import PuertosCasoRegistroFotograficoContenedor from './PuertosCasoRegistroFotograficoContenedor';
-import {
-  nuevoRegistroFotograficoContenedor,
-} from './puertosCasoExportacionState';
+import { nuevoRegistroFotograficoContenedor } from './puertosCasoExportacionState';
 import {
   puertosBlockHeader,
   puertosBtnPrimary,
@@ -14,7 +12,7 @@ import {
   puertosSectionSubtitle,
 } from './puertosFenixUi';
 
-export default function PuertosCasoPagina5({ formData, onInformeChange }) {
+export default function PuertosCasoPagina5({ formData, onInformeChange, soloLectura = false }) {
   const informe = formData.informeExportacion || {};
   const registros = informe.registrosFotograficosContenedores || [];
 
@@ -62,11 +60,14 @@ export default function PuertosCasoPagina5({ formData, onInformeChange }) {
       <Seccion titulo="5. Conclusiones y comentarios" cols={1}>
         <Campo label="Párrafo principal">
           <textarea
-            className={inputCls}
-            style={{ minHeight: '100px' }}
-            value={informe.conclusionesTexto || ''}
-            onChange={(e) => onInformeChange('conclusionesTexto', e.target.value)}
-            placeholder="La mercancía de exportación fue estibada y asegurada de acuerdo con las imperantes costumbres del comercio..."
+            {...attrsTextarea(soloLectura, {
+              className: inputCls,
+              style: { minHeight: '100px' },
+              value: informe.conclusionesTexto || '',
+              onChange: (e) => onInformeChange('conclusionesTexto', e.target.value),
+              placeholder:
+                'La mercancía de exportación fue estibada y asegurada de acuerdo con las imperantes costumbres del comercio...',
+            })}
           />
         </Campo>
         <PuertosCasoListaPuntos
@@ -74,6 +75,7 @@ export default function PuertosCasoPagina5({ formData, onInformeChange }) {
           puntos={informe.conclusionesPuntos || []}
           onChange={(updater) => onInformeChange('conclusionesPuntos', updater)}
           placeholder="Ej: Cajas cargadas en contenedores TRITON, CIA y MAERSK..."
+          soloLectura={soloLectura}
         />
       </Seccion>
 
@@ -86,6 +88,7 @@ export default function PuertosCasoPagina5({ formData, onInformeChange }) {
                 Cada bloque corresponde a un contenedor con sus sellos, como en el Word (TIIU, CAAU, MRSU…).
               </p>
             </div>
+            {!soloLectura && (
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={importarContenedoresDesdeSeguimiento} className={puertosBtnPrimary}>
                 Desde seguimiento (§4)
@@ -94,6 +97,7 @@ export default function PuertosCasoPagina5({ formData, onInformeChange }) {
                 <FaPlus /> Registro fotográfico del contenedor
               </button>
             </div>
+            )}
           </div>
 
           {registros.length === 0 && (
@@ -110,6 +114,7 @@ export default function PuertosCasoPagina5({ formData, onInformeChange }) {
                 indice={idx}
                 onChange={(actualizado) => actualizarRegistro(registro.id, actualizado)}
                 onEliminar={() => eliminarRegistro(registro.id)}
+                soloLectura={soloLectura}
               />
             ))}
           </div>

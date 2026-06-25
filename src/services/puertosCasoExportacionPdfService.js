@@ -983,3 +983,17 @@ export async function generarPdfInformeExportacion(
   doc.save(nombreArchivo);
   return nombreArchivo;
 }
+
+/** Carga el caso por id y genera el PDF (desde el listado). */
+export async function generarPdfInformeExportacionDesdeId(
+  id,
+  { aseguradoraOptions = [], responsables = [] } = {}
+) {
+  const { getPuertosCaso } = await import('./puertosService.js');
+  const { normalizarCasoApiParaFormulario } = await import(
+    '../components/PuertosActas/puertosCasoExportacionNormalize.js'
+  );
+  const caso = await getPuertosCaso(id);
+  const formData = normalizarCasoApiParaFormulario(caso);
+  return generarPdfInformeExportacion(formData, { aseguradoraOptions, responsables });
+}

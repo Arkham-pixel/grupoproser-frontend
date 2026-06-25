@@ -1,7 +1,7 @@
 import React from 'react';
 import { FaTrash } from 'react-icons/fa';
 import PuertosCasoGridFotografico from './PuertosCasoGridFotografico';
-import { Campo, inputCls } from './PuertosCasoDatosGenerales';
+import { Campo, inputCls, attrsInput } from './PuertosCasoDatosGenerales';
 import { tituloRegistroContenedor } from './puertosCasoExportacionState';
 import {
   puertosBlockHeader,
@@ -25,6 +25,7 @@ export default function PuertosCasoRegistroFotograficoContenedor({
   indice,
   onChange,
   onEliminar,
+  soloLectura = false,
 }) {
   const actualizar = (campo, valor) => {
     onChange({ ...registro, [campo]: valor });
@@ -48,26 +49,32 @@ export default function PuertosCasoRegistroFotograficoContenedor({
           <h4 className={puertosBlockHeader}>{tituloVista}</h4>
           <p className={puertosSectionSubtitle}>Registro fotográfico · contenedor {indice + 1}</p>
         </div>
+        {!soloLectura && (
         <button type="button" onClick={onEliminar} className={puertosBtnSm}>
           <FaTrash /> Quitar bloque
         </button>
+        )}
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Campo label="N° contenedor">
           <input
-            className={inputCls}
-            value={registro.numeroContenedor || ''}
-            onChange={(e) => actualizarNumero(e.target.value)}
-            placeholder="TIIU 529571-6"
+            {...attrsInput(soloLectura, {
+              className: inputCls,
+              value: registro.numeroContenedor || '',
+              onChange: (e) => actualizarNumero(e.target.value),
+              placeholder: 'TIIU 529571-6',
+            })}
           />
         </Campo>
         <Campo label="Título en el informe (editable)">
           <input
-            className={inputCls}
-            value={registro.titulo || ''}
-            onChange={(e) => actualizar('titulo', e.target.value)}
-            placeholder="N° Contenedor … con sellos de seguridad"
+            {...attrsInput(soloLectura, {
+              className: inputCls,
+              value: registro.titulo || '',
+              onChange: (e) => actualizar('titulo', e.target.value),
+              placeholder: 'N° Contenedor … con sellos de seguridad',
+            })}
           />
         </Campo>
       </div>
@@ -84,6 +91,7 @@ export default function PuertosCasoRegistroFotograficoContenedor({
         max={12}
         descripcionesSugeridas={DESCRIPCIONES_FOTO_CONTENEDOR}
         datalistId={`puertos-fotos-contenedor-${registro.id}`}
+        soloLectura={soloLectura}
       />
     </div>
   );

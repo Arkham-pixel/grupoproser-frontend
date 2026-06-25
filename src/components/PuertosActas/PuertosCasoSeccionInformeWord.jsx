@@ -1,7 +1,7 @@
 import React from 'react';
 import PuertosCasoGridFotografico from './PuertosCasoGridFotografico';
 import PuertosCasoListaPuntos from './PuertosCasoListaPuntos';
-import { Campo, inputCls } from './PuertosCasoDatosGenerales';
+import { Campo, inputCls, attrsTextarea } from './PuertosCasoDatosGenerales';
 import { puertosBlockHeader, puertosCard, puertosCardBody } from './puertosFenixUi';
 
 export default function PuertosCasoSeccionInformeWord({
@@ -23,6 +23,7 @@ export default function PuertosCasoSeccionInformeWord({
   subtituloFotos,
   descripcionesFoto = [],
   datalistId,
+  soloLectura = false,
 }) {
   return (
     <section className={puertosCard}>
@@ -32,11 +33,13 @@ export default function PuertosCasoSeccionInformeWord({
         <div className="space-y-5">
           <Campo label={labelTexto}>
             <textarea
-              className={inputCls}
-              style={{ minHeight: `${minRowsTexto * 24}px` }}
-              value={valorTexto || ''}
-              onChange={(e) => onTextoChange(e.target.value)}
-              placeholder={placeholderTexto}
+              {...attrsTextarea(soloLectura, {
+                className: inputCls,
+                style: { minHeight: `${minRowsTexto * 24}px` },
+                value: valorTexto || '',
+                onChange: (e) => onTextoChange(e.target.value),
+                placeholder: placeholderTexto,
+              })}
             />
           </Campo>
 
@@ -46,6 +49,7 @@ export default function PuertosCasoSeccionInformeWord({
               puntos={puntos}
               onChange={onPuntosChange}
               placeholder={placeholderPunto}
+              soloLectura={soloLectura}
             />
           )}
 
@@ -58,6 +62,7 @@ export default function PuertosCasoSeccionInformeWord({
             max={maxFotos}
             descripcionesSugeridas={descripcionesFoto}
             datalistId={datalistId}
+            soloLectura={soloLectura}
           />
         </div>
       </div>

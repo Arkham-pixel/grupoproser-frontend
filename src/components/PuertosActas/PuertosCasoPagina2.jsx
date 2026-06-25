@@ -1,11 +1,12 @@
 import React from 'react';
-import { Seccion, Campo, inputCls } from './PuertosCasoDatosGenerales';
+import { Seccion, Campo, inputCls, attrsInput, attrsSelect, attrsTextarea } from './PuertosCasoDatosGenerales';
 
 export default function PuertosCasoPagina2({
   formData,
   onChange,
   onInformeChange,
   responsables = [],
+  soloLectura = false,
 }) {
   const handle = (e) => {
     onChange(e.target.name, e.target.value);
@@ -17,7 +18,7 @@ export default function PuertosCasoPagina2({
     <div className="space-y-5">
       <Seccion titulo="Datos generales">
         <Campo label="Nombre o razón social (exportador)" obligatorio>
-          <input className={inputCls} name="asgrBenfcro" value={formData.asgrBenfcro || ''} onChange={handle} />
+          <input {...attrsInput(soloLectura, { className: inputCls, name: 'asgrBenfcro', value: formData.asgrBenfcro || '', onChange: handle })} />
         </Campo>
         <Campo label="Actividad">
           <input
@@ -79,10 +80,12 @@ export default function PuertosCasoPagina2({
       <Seccion titulo="1. Introducción" cols={1}>
         <Campo label="Párrafo principal">
           <textarea
-            className={`${inputCls} min-h-[140px]`}
-            value={informe.introduccion || ''}
-            onChange={(e) => onInformeChange('introduccion', e.target.value)}
-            placeholder="Por instrucciones de Seguros Bolívar S.A., Proserpuertos Ltda. ha sido nominada para..."
+            {...attrsTextarea(soloLectura, {
+              className: `${inputCls} min-h-[140px]`,
+              value: informe.introduccion || '',
+              onChange: (e) => onInformeChange('introduccion', e.target.value),
+              placeholder: 'Por instrucciones de Seguros Bolívar S.A., Proserpuertos Ltda. ha sido nominada para...',
+            })}
           />
         </Campo>
         <Campo label="Propósito de la supervisión">
