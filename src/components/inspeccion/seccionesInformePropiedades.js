@@ -1,0 +1,265 @@
+import { PLANTILLA_RESIDENCIAL, idsAreasDesdePlantilla, subIndicesDesdePlantilla } from './propiedadesAreasConfig.js';
+
+/** Secciones fijas del informe (el grupo de áreas es dinámico según clase/tipo). */
+export const SECCIONES_INFORME_PROPIEDADES = [
+  {
+    id: 'informe',
+    ref: '0.',
+    titulo: 'REPORTE DE INSPECCIÓN DE PROPIEDAD',
+    obligatoria: true,
+    seleccionable: false,
+  },
+  {
+    id: 'informacionGeneral',
+    ref: '1.',
+    titulo: 'INFORMACIÓN GENERAL DEL INMUEBLE',
+    obligatoria: true,
+  },
+  {
+    id: 'informacionJuridica',
+    ref: '1.2',
+    titulo: 'INFORMACIÓN JURÍDICA DEL INMUEBLE',
+    anexoDe: 'informacionGeneral',
+  },
+  {
+    id: 'inspeccionMetrica',
+    ref: '2.',
+    titulo: 'INSPECCIÓN MÉTRICA',
+  },
+  {
+    id: 'inspeccionPorAreas',
+    ref: '3.',
+    titulo: 'INSPECCIÓN POR ÁREAS',
+    esGrupo: true,
+    seleccionable: false,
+  },
+  {
+    id: 'conclusiones',
+    ref: '4.',
+    titulo: 'CONCLUSIONES',
+    obligatoria: true,
+  },
+  {
+    id: 'observacionesPrincipales',
+    ref: '4.1',
+    titulo: 'PRINCIPALES OBSERVACIONES',
+    anexoDe: 'conclusiones',
+  },
+  {
+    id: 'firmas',
+    ref: '',
+    titulo: 'FIRMAS',
+    obligatoria: true,
+    seleccionable: false,
+  },
+];
+
+export function obtenerSubIndicesAreas(plantilla = PLANTILLA_RESIDENCIAL) {
+  return subIndicesDesdePlantilla(plantilla);
+}
+
+export function crearSeccionesActivasPorDefecto(plantilla = PLANTILLA_RESIDENCIAL) {
+  const idsAreas = idsAreasDesdePlantilla(plantilla);
+  const base = Object.fromEntries(
+    SECCIONES_INFORME_PROPIEDADES.filter((s) => s.seleccionable !== false && !s.esGrupo).map((s) => [s.id, true])
+  );
+  for (const id of idsAreas) {
+    base[id] = true;
+  }
+  return base;
+}
+
+export function normalizarSeccionesActivas(guardadas, plantilla = PLANTILLA_RESIDENCIAL) {
+  const idsAreas = idsAreasDesdePlantilla(plantilla);
+  const base = crearSeccionesActivasPorDefecto(plantilla);
+  if (!guardadas || typeof guardadas !== 'object') return base;
+
+  for (const seccion of SECCIONES_INFORME_PROPIEDADES) {
+    if (seccion.seleccionable === false || seccion.esGrupo) continue;
+    if (guardadas[seccion.id] !== undefined) {
+      base[seccion.id] = Boolean(guardadas[seccion.id]);
+    }
+  }
+  for (const id of idsAreas) {
+    if (guardadas[id] !== undefined) {
+      base[id] = Boolean(guardadas[id]);
+    }
+  }
+
+  for (const seccion of SECCIONES_INFORME_PROPIEDADES) {
+    if (seccion.obligatoria) base[seccion.id] = true;
+  }
+
+  return base;
+}
+
+export function estaSeccionPropiedadesActiva(seccionesActivas, id, plantilla = PLANTILLA_RESIDENCIAL) {
+  const subIndices = obtenerSubIndicesAreas(plantilla);
+  const esSubArea = subIndices.some((x) => x.id === id);
+
+  const cfg = SECCIONES_INFORME_PROPIEDADES.find((s) => s.id === id);
+  if (!cfg && esSubArea) {
+    return seccionesActivas?.[id] !== false;
+  }
+  if (!cfg) return true;
+
+  if (cfg.obligatoria || cfg.seleccionable === false) return true;
+  if (cfg.esGrupo) {
+    return subIndices.some((sub) => estaSeccionPropiedadesActiva(seccionesActivas, sub.id, plantilla));
+  }
+  return seccionesActivas?.[id] !== false;
+}
+
+export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL) {
+  const subIndices = obtenerSubIndicesAreas(plantilla);
+  const numeracion = new Map();
+  let n = 0;
+
+  for (const cfg of SECCIONES_INFORME_PROPIEDADES) {
+    if (cfg.id === 'informe') {
+      numeracion.set('informe', {
+        ref: cfg.ref,
+        titulo: cfg.titulo,
+        encabezado: `${cfg.ref} ${cfg.titulo}`.trim(),
+      });
+      continue;
+    }
+
+    if (cfg.anexoDe) {
+      if (!estaSeccionPropiedadesActiva(seccionesActivas, cfg.id, plantilla)) continue;
+      const padre = numeracion.get(cfg.anexoDe);
+      const sufijo = cfg.ref.includes('.') ? cfg.ref.split('.').slice(1).join('.') : '1';
+      const ref = padre?.numero != null ? `${padre.numero}.${sufijo}` : cfg.ref;
+      numeracion.set(cfg.id, {
+        ref,
+        titulo: cfg.titulo,
+        encabezado: `${ref} ${cfg.titulo}`,
+      });
+      continue;
+    }
+
+    if (cfg.esGrupo) {
+      const subsActivos = subIndices.filter((sub) =>
+        estaSeccionPropiedadesActiva(seccionesActivas, sub.id, plantilla)
+      );
+      if (subsActivos.length === 0) continue;
+      n += 1;
+      const entry = {
+        ref: `${n}.`,
+        titulo: cfg.titulo,
+        encabezado: `${n}. ${cfg.titulo}`,
+        numero: n,
+        subIndices: [],
+      };
+      subsActivos.forEach((sub, idx) => {
+        const subEntry = {
+          id: sub.id,
+          ref: `${n}.${idx + 1}`,
+          titulo: sub.titulo,
+          encabezado: `${n}.${idx + 1} ${sub.titulo}`,
+        };
+        entry.subIndices.push(subEntry);
+        numeracion.set(sub.id, subEntry);
+      });
+      numeracion.set(cfg.id, entry);
+      continue;
+    }
+
+    if (cfg.id === 'firmas') {
+      numeracion.set('firmas', { ref: '', titulo: cfg.titulo, encabezado: cfg.titulo });
+      continue;
+    }
+
+    if (!estaSeccionPropiedadesActiva(seccionesActivas, cfg.id, plantilla)) continue;
+
+    n += 1;
+    numeracion.set(cfg.id, {
+      ref: `${n}.`,
+      titulo: cfg.titulo,
+      encabezado: `${n}. ${cfg.titulo}`,
+      numero: n,
+    });
+  }
+
+  return numeracion;
+}
+
+export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL) {
+  const subIndices = obtenerSubIndicesAreas(plantilla);
+  const numeracion = construirNumeracionActiva(seccionesActivas, plantilla);
+  const filas = [];
+
+  for (const seccion of SECCIONES_INFORME_PROPIEDADES) {
+    if (seccion.esGrupo) {
+      const num = numeracion.get(seccion.id);
+      const algunaActiva = subIndices.some((sub) =>
+        estaSeccionPropiedadesActiva(seccionesActivas, sub.id, plantilla)
+      );
+      filas.push({
+        tipo: 'principal',
+        id: seccion.id,
+        ref: algunaActiva && num ? num.ref : '—',
+        titulo: seccion.titulo,
+        obligatoria: false,
+        seleccionable: false,
+        activa: algunaActiva,
+      });
+      subIndices.forEach((sub) => {
+        const subNum = numeracion.get(sub.id);
+        const activa = estaSeccionPropiedadesActiva(seccionesActivas, sub.id, plantilla);
+        filas.push({
+          tipo: 'sub',
+          id: sub.id,
+          parentId: seccion.id,
+          ref: activa && subNum ? subNum.ref : '—',
+          titulo: sub.titulo,
+          obligatoria: false,
+          seleccionable: true,
+          activa,
+        });
+      });
+      continue;
+    }
+
+    if (seccion.anexoDe) {
+      const activa = estaSeccionPropiedadesActiva(seccionesActivas, seccion.id, plantilla);
+      const num = numeracion.get(seccion.id);
+      filas.push({
+        tipo: 'sub',
+        id: seccion.id,
+        parentId: seccion.anexoDe,
+        ref: activa && num ? num.ref : '—',
+        titulo: seccion.titulo,
+        obligatoria: Boolean(seccion.obligatoria),
+        seleccionable: !seccion.obligatoria && seccion.seleccionable !== false,
+        activa,
+      });
+      continue;
+    }
+
+    const activa = estaSeccionPropiedadesActiva(seccionesActivas, seccion.id, plantilla);
+    const num = numeracion.get(seccion.id);
+
+    filas.push({
+      tipo: 'principal',
+      id: seccion.id,
+      ref: activa && num ? num.ref : '—',
+      titulo: seccion.titulo,
+      obligatoria: Boolean(seccion.obligatoria),
+      seleccionable: seccion.seleccionable !== false && !seccion.obligatoria,
+      activa,
+    });
+  }
+
+  return filas;
+}
+
+export function obtenerFilasIndiceWordPropiedades(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL) {
+  return obtenerFilasIndicePropiedades(seccionesActivas, plantilla).filter((fila) => {
+    if (fila.tipo === 'principal') {
+      if (fila.id === 'informe') return true;
+      return fila.activa;
+    }
+    return fila.activa;
+  });
+}

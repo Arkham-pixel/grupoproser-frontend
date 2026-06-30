@@ -8,8 +8,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  PieChart,
-  Pie,
   Cell,
   Legend,
   LineChart,
@@ -32,7 +30,6 @@ import {
   useExpressCatalogos,
 } from './expressHelpers.js';
 import {
-  buildPieLegendPayload,
   expressChartCard,
   expressBtnSecondary,
   expressPageWrap,
@@ -49,9 +46,18 @@ import {
   SelectFenix,
 } from './ExpressUiBlocks.jsx';
 
+const expressDashboardRoot =
+  'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F]';
+
+const truncarEtiqueta = (valor, max = 28) => {
+  const texto = String(valor ?? '').trim();
+  if (!texto) return 'Sin nombre';
+  return texto.length > max ? `${texto.slice(0, max - 3)}...` : texto;
+};
+
 const DashboardExpress = () => {
-  const getMonthSafe = (fecha) => fecha.getUTCMonth() + 1;
-  const getYearSafe = (fecha) => fecha.getUTCFullYear();
+  const getMonthSafe = (fecha) => fecha.getMonth() + 1;
+  const getYearSafe = (fecha) => fecha.getFullYear();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -69,6 +75,7 @@ const DashboardExpress = () => {
     catalogoResponsables,
     catalogoAseguradoras,
     catalogoEstados,
+    loadingCatalogos,
     obtenerNombreEstado,
     obtenerNombreAseguradora,
     obtenerNombreResponsable,
@@ -151,13 +158,27 @@ const DashboardExpress = () => {
   }).length;
   const porcentajeCerrados = totalCasos === 0 ? 0 : Math.round((casosCerrados / totalCasos) * 100);
 
+  const casosPorAseguradora = useMemo(() => {
+    const agrupado = siniestrosFiltrados.reduce((acc, item) => {
+      const key = obtenerNombreAseguradora(item.aseguradora) || item.aseguradora || 'Sin aseguradora';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(agrupado)
+      .map(([aseguradora, cantidad]) => ({ aseguradora, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 10);
+  }, [siniestrosFiltrados, obtenerNombreAseguradora]);
+
   const casosPorEstado = useMemo(() => {
     const agrupado = siniestrosFiltrados.reduce((acc, item) => {
       const key = obtenerNombreEstado(item.estadoProceso) || item.estadoProceso || 'Sin estado';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    return Object.entries(agrupado).map(([estado, cantidad]) => ({ estado, cantidad }));
+    return Object.entries(agrupado)
+      .map(([estado, cantidad]) => ({ estado, cantidad }))
+      .sort((a, b) => b.cantidad - a.cantidad);
   }, [siniestrosFiltrados, obtenerNombreEstado]);
 
   const casosPorResponsable = useMemo(() => {
@@ -169,17 +190,8 @@ const DashboardExpress = () => {
     return Object.entries(agrupado)
       .map(([responsable, cantidad]) => ({ responsable, cantidad }))
       .sort((a, b) => b.cantidad - a.cantidad)
-      .slice(0, 8);
+      .slice(0, 10);
   }, [siniestrosFiltrados, obtenerNombreResponsable]);
-
-  const casosPorAseguradora = useMemo(() => {
-    const agrupado = siniestrosFiltrados.reduce((acc, item) => {
-      const key = obtenerNombreAseguradora(item.aseguradora) || item.aseguradora || 'Sin aseguradora';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    return Object.entries(agrupado).map(([aseguradora, cantidad]) => ({ aseguradora, cantidad }));
-  }, [siniestrosFiltrados, obtenerNombreAseguradora]);
 
   const tendenciaMensual = useMemo(() => {
     const agrupado = siniestrosFiltrados.reduce((acc, item) => {
@@ -224,30 +236,12 @@ const DashboardExpress = () => {
 
   const tickColor = isDark ? '#B0B0B0' : '#6B6B6B';
   const gridStroke = isDark ? '#2D2D2D' : '#E5E7EB';
-  const pieStroke = isDark ? '#1A1A1A' : '#FFFFFF';
 
   const lineColors = getFenixLineChartColors(isDark);
 
-  const leyendaCasosPorEstado = useMemo(
-    () => buildPieLegendPayload(casosPorEstado, 'estado', isDark),
-    [casosPorEstado, isDark]
-  );
-  const leyendaCasosPorAseguradora = useMemo(
-    () => buildPieLegendPayload(casosPorAseguradora, 'aseguradora', isDark),
-    [casosPorAseguradora, isDark]
-  );
-
-  const formatoLeyendaPie = (total, labelKey) => (value, entry) => {
-    const item = entry?.payload ?? {};
-    const etiqueta = item[labelKey] || value || 'Sin nombre';
-    const cantidad = item.cantidad ?? 0;
-    const pct = total > 0 ? ((cantidad / total) * 100).toFixed(1) : 0;
-    return `${etiqueta}: ${cantidad} (${pct}%)`;
-  };
-
-  if (loading) {
+  if (loading || loadingCatalogos) {
     return (
-      <div className="p-4 sm:p-6">
+      <div className={`${expressDashboardRoot} p-4 sm:p-6`}>
         <Loader />
       </div>
     );
@@ -255,7 +249,7 @@ const DashboardExpress = () => {
 
   if (error) {
     return (
-      <div className={`${expressScope} p-4 sm:p-6`}>
+      <div className={`${expressDashboardRoot} ${expressScope} p-4 sm:p-6`}>
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
           {error}
         </div>
@@ -264,8 +258,8 @@ const DashboardExpress = () => {
   }
 
   return (
-    <div className={`${expressScope} p-4 sm:p-6`}>
-      <div className={expressPageWrap}>
+    <div className={`${expressDashboardRoot} ${expressScope} p-4 sm:p-6`}>
+      <div className={`${expressPageWrap} min-w-0`}>
         <ExpressPageHeader
           title="Dashboard Express"
           subtitle="Analiza tendencias, responsables, aseguradoras e indemnizaciones de los procesos Express."
@@ -279,7 +273,7 @@ const DashboardExpress = () => {
         />
 
         <ExpressFilterSection title="Filtros" showClear={filtrosAplicados} onClear={limpiarFiltros}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Campo label="Responsable">
               <SelectFenix value={filtroResponsable} onChange={(e) => setFiltroResponsable(e.target.value)}>
                 <option value="">Todos</option>
@@ -319,7 +313,7 @@ const DashboardExpress = () => {
           </div>
         </ExpressFilterSection>
 
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <ExpressMetricCard
             label="Casos Express"
             value={totalCasos}
@@ -342,128 +336,36 @@ const DashboardExpress = () => {
           />
         </section>
 
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ChartCard title="Casos por estado" empty={casosPorEstado.length === 0}>
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={casosPorEstado}
-                  dataKey="cantidad"
-                  nameKey="estado"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  innerRadius={60}
-                  stroke={pieStroke}
-                  strokeWidth={2}
-                >
-                  {casosPorEstado.map((entry, index) => (
-                    <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value, name, props) => {
-                    const estado = props.payload?.estado || name;
-                    const cantidad = props.payload?.cantidad || value || 0;
-                    const pct = totalCasos > 0 ? ((cantidad / totalCasos) * 100).toFixed(1) : 0;
-                    return [`${cantidad} casos (${pct}%)`, estado];
-                  }}
-                  contentStyle={tooltipStyle}
-                />
-                <Legend
-                  layout="vertical"
-                  align="right"
-                  verticalAlign="middle"
-                  payload={leyendaCasosPorEstado}
-                  formatter={formatoLeyendaPie(totalCasos, 'estado')}
-                  wrapperStyle={{ fontSize: '12px', color: tickColor }}
-                  iconType="circle"
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
-          <ChartCard title="Distribución por aseguradora" empty={casosPorAseguradora.length === 0}>
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={casosPorAseguradora}
-                  dataKey="cantidad"
-                  nameKey="aseguradora"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  innerRadius={60}
-                  stroke={pieStroke}
-                  strokeWidth={2}
-                >
-                  {casosPorAseguradora.map((entry, index) => (
-                    <Cell key={entry.aseguradora} fill={getFenixChartColor(index, isDark)} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  formatter={(value, name, props) => {
-                    const nombre = props.payload?.aseguradora || name;
-                    const cantidad = props.payload?.cantidad || value || 0;
-                    const pct = totalCasos > 0 ? ((cantidad / totalCasos) * 100).toFixed(1) : 0;
-                    return [`${cantidad} casos (${pct}%)`, nombre];
-                  }}
-                  contentStyle={tooltipStyle}
-                />
-                <Legend
-                  layout="vertical"
-                  align="right"
-                  verticalAlign="middle"
-                  payload={leyendaCasosPorAseguradora}
-                  formatter={formatoLeyendaPie(totalCasos, 'aseguradora')}
-                  wrapperStyle={{ fontSize: '12px', color: tickColor }}
-                  iconType="circle"
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </section>
-
-        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <ChartCard title="Top responsables" empty={casosPorResponsable.length === 0}>
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={casosPorResponsable} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor }} />
-                <YAxis type="category" dataKey="responsable" width={140} tick={{ fill: tickColor }} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
-                  {casosPorResponsable.map((entry, index) => (
-                    <Cell key={entry.responsable} fill={getFenixChartColor(index, isDark)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
-
+        <section className="grid w-full min-w-0 grid-cols-1 gap-4">
           <ChartCard title="Tendencia mensual" empty={tendenciaMensual.length === 0}>
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={tendenciaMensual}>
+            <ResponsiveContainer width="100%" height={340}>
+              <LineChart data={tendenciaMensual} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis dataKey="mes" tick={{ fill: tickColor }} />
-                <YAxis yAxisId="left" allowDecimals={false} tick={{ fill: tickColor }} />
+                <XAxis dataKey="mes" tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  yAxisId="left"
+                  allowDecimals={false}
+                  tick={{ fill: tickColor, fontSize: 11 }}
+                  width={40}
+                />
                 <YAxis
                   yAxisId="right"
                   orientation="right"
-                  tickFormatter={formatCurrency}
-                  tick={{ fill: tickColor }}
+                  tickFormatter={(v) => formatCurrency(v).replace(/\s/g, '')}
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  width={72}
                 />
                 <Tooltip
                   formatter={(value, name) => {
                     if (name === 'Casos') return [value, 'Casos'];
                     return [
                       formatCurrency(value),
-                      name === 'indemnizacion' ? 'Indemnización' : 'Reserva',
+                      name === 'Indemnización' ? 'Indemnización' : 'Reserva',
                     ];
                   }}
                   contentStyle={tooltipStyle}
                 />
-                <Legend wrapperStyle={{ color: tickColor }} />
+                <Legend wrapperStyle={{ color: tickColor, fontSize: '12px' }} />
                 <Line
                   yAxisId="left"
                   type="monotone"
@@ -496,6 +398,94 @@ const DashboardExpress = () => {
             </ResponsiveContainer>
           </ChartCard>
         </section>
+
+        <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          <ChartCard title="Casos por estado" empty={casosPorEstado.length === 0}>
+            <ResponsiveContainer width="100%" height={Math.max(320, casosPorEstado.length * 34)}>
+              <BarChart
+                data={casosPorEstado}
+                layout="vertical"
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="estado"
+                  width={150}
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  tickFormatter={(v) => truncarEtiqueta(v, 28)}
+                />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                  {casosPorEstado.map((entry, index) => (
+                    <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title="Distribución por aseguradora" empty={casosPorAseguradora.length === 0}>
+            <ResponsiveContainer
+              width="100%"
+              height={Math.max(320, casosPorAseguradora.length * 34)}
+            >
+              <BarChart
+                data={casosPorAseguradora}
+                layout="vertical"
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="aseguradora"
+                  width={150}
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  tickFormatter={(v) => truncarEtiqueta(v, 28)}
+                />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                  {casosPorAseguradora.map((entry, index) => (
+                    <Cell key={entry.aseguradora} fill={getFenixChartColor(index, isDark)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
+
+        <section className="grid w-full min-w-0 grid-cols-1 gap-4">
+          <ChartCard title="Top responsables" empty={casosPorResponsable.length === 0}>
+            <ResponsiveContainer
+              width="100%"
+              height={Math.max(320, casosPorResponsable.length * 36)}
+            >
+              <BarChart
+                data={casosPorResponsable}
+                layout="vertical"
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="responsable"
+                  width={160}
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  tickFormatter={(v) => truncarEtiqueta(v, 28)}
+                />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                  {casosPorResponsable.map((entry, index) => (
+                    <Cell key={entry.responsable} fill={getFenixChartColor(index, isDark)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
       </div>
     </div>
   );
@@ -503,7 +493,7 @@ const DashboardExpress = () => {
 
 function ChartCard({ title, empty, children }) {
   return (
-    <div className={expressChartCard}>
+    <div className={`${expressChartCard} min-w-0`}>
       <h3 className="mb-4 font-heading text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
       {empty ? (
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">No hay datos disponibles para mostrar.</p>

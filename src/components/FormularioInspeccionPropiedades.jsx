@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Document,
@@ -37,6 +37,7 @@ import {
   contarFotosTotales,
   prepararFotosAreasParaGuardar,
 } from '../utils/propiedadesFotoUtils';
+import { generarResumenInspeccion } from '../utils/propiedadesObservacionesUtils';
 import ModalConfirmacion from './ModalConfirmacion';
 import SeccionFirmasActa from './SeccionFirmasActa';
 import { construirElementosFirmasActaWord } from '../utils/firmasActaWord';
@@ -74,6 +75,30 @@ import {
   complexBtnDanger,
   complexBtnGhost,
 } from './propiedadesUi';
+import {
+  SECCIONES_INFORME_PROPIEDADES,
+  normalizarSeccionesActivas,
+  estaSeccionPropiedadesActiva,
+  construirNumeracionActiva,
+  obtenerFilasIndicePropiedades,
+} from './inspeccion/seccionesInformePropiedades.js';
+import {
+  resolverPlantillaAreas,
+  idsAreasDesdePlantilla,
+  obtenerCamposArea,
+  tituloArea,
+  clavePlantillaAreas,
+} from './inspeccion/propiedadesAreasConfig.js';
+import {
+  combinarAreasInspeccion,
+  cargarHistorialAreasGlobal,
+  registrarAreaEnHistorialGlobal,
+  aprenderParametrosAreasPersonalizadas,
+  areaPersonalizadaYaExiste,
+  crearEntradaAreaPersonalizada,
+  normalizarAreasPersonalizadas,
+  extraerParametrosDeItems,
+} from './inspeccion/propiedadesAreasPersonalizadas.js';
 
 const CLASES_TIPOS_INMUEBLE = {
   Residencial: [
@@ -204,6 +229,8 @@ export default function FormularioInspeccionPropiedades() {
     onConfirmar: null
   });
 
+  const [seccionesActivas, setSeccionesActivas] = useState(() => normalizarSeccionesActivas());
+
   // Estado principal del formulario
   const [formData, setFormData] = useState({
     // Información General del Inmueble
@@ -247,7 +274,54 @@ export default function FormularioInspeccionPropiedades() {
     alcobasConBano: {},
     // Alcobas con closet habilitado: { 1: true, 2: false, ... }
     alcobasConCloset: {},
+    /** Áreas creadas por el inspector en este informe */
+    areasPersonalizadas: [],
   });
+
+  const [historialAreasGlobal, setHistorialAreasGlobal] = useState(() => cargarHistorialAreasGlobal());
+  const [nuevaAreaTitulo, setNuevaAreaTitulo] = useState('');
+
+  const plantillaAreas = useMemo(
+    () => resolverPlantillaAreas(formData.claseInmueble, formData.tipoInmueble),
+    [formData.claseInmueble, formData.tipoInmueble]
+  );
+
+  const areasEfectivas = useMemo(
+    () => combinarAreasInspeccion(plantillaAreas, formData.areasPersonalizadas),
+    [plantillaAreas, formData.areasPersonalizadas]
+  );
+
+  const incluirSeccion = useCallback(
+    (id) => estaSeccionPropiedadesActiva(seccionesActivas, id, areasEfectivas),
+    [seccionesActivas, areasEfectivas]
+  );
+
+  const toggleSeccionInforme = useCallback((id) => {
+    const cfg = SECCIONES_INFORME_PROPIEDADES.find((s) => s.id === id);
+    const subArea = areasEfectivas.some(
+      (a) => (a.tipo === 'alcobas' ? 'alcobas' : a.id) === id
+    );
+    if (!cfg && !subArea) return;
+    if (cfg?.obligatoria || cfg?.seleccionable === false) return;
+    setSeccionesActivas((prev) => {
+      const siguiente = { ...prev, [id]: !estaSeccionPropiedadesActiva(prev, id, areasEfectivas) };
+      return normalizarSeccionesActivas(siguiente, areasEfectivas);
+    });
+  }, [areasEfectivas]);
+
+  const filasIndiceInforme = useMemo(
+    () => obtenerFilasIndicePropiedades(seccionesActivas, areasEfectivas),
+    [seccionesActivas, areasEfectivas]
+  );
+
+  const algunaAreaActiva = useMemo(
+    () => idsAreasDesdePlantilla(areasEfectivas).some((id) => incluirSeccion(id)),
+    [areasEfectivas, incluirSeccion]
+  );
+
+  useEffect(() => {
+    setSeccionesActivas((prev) => normalizarSeccionesActivas(prev, areasEfectivas));
+  }, [clavePlantillaAreas(formData.claseInmueble, formData.tipoInmueble), formData.areasPersonalizadas?.length]);
 
   // Estado para items dinámicos de cada área
   const [areasData, setAreasData] = useState({
@@ -319,32 +393,52 @@ export default function FormularioInspeccionPropiedades() {
     return { areas: areasMigradas, form: formMigrado };
   };
 
-  // Normalizar estructuras para evitar crashes cuando falten claves (ej. alcobas)
-  const normalizarAreasData = (data) => ({
-    cocina: Array.isArray(data?.cocina) ? data.cocina : [],
-    ropas: Array.isArray(data?.ropas) ? data.ropas : [],
-    sala: Array.isArray(data?.sala) ? data.sala : [],
-    banioSocial: Array.isArray(data?.banioSocial) ? data.banioSocial : [],
-    banoPrincipal: Array.isArray(data?.banoPrincipal) ? data.banoPrincipal : [],
-    alcobas: (data?.alcobas && typeof data.alcobas === 'object' && !Array.isArray(data.alcobas)) ? data.alcobas : {},
-    banosAlcobas: (data?.banosAlcobas && typeof data.banosAlcobas === 'object' && !Array.isArray(data.banosAlcobas)) ? data.banosAlcobas : {},
-    closetsAlcobas: (data?.closetsAlcobas && typeof data.closetsAlcobas === 'object' && !Array.isArray(data.closetsAlcobas)) ? data.closetsAlcobas : {},
-  });
+  const AREAS_RESIDENCIALES_BASE = ['cocina', 'ropas', 'sala', 'banioSocial', 'banoPrincipal'];
 
-  const normalizarFotosAreas = (data) => ({
-    cocina: Array.isArray(data?.cocina) ? data.cocina : [],
-    ropas: Array.isArray(data?.ropas) ? data.ropas : [],
-    sala: Array.isArray(data?.sala) ? data.sala : [],
-    banioSocial: Array.isArray(data?.banioSocial) ? data.banioSocial : [],
-    banoPrincipal: Array.isArray(data?.banoPrincipal) ? data.banoPrincipal : [],
-    alcobas: (data?.alcobas && typeof data.alcobas === 'object' && !Array.isArray(data.alcobas)) ? data.alcobas : {},
-    banosAlcobas: (data?.banosAlcobas && typeof data.banosAlcobas === 'object' && !Array.isArray(data.banosAlcobas)) ? data.banosAlcobas : {},
-    closetsAlcobas: (data?.closetsAlcobas && typeof data.closetsAlcobas === 'object' && !Array.isArray(data.closetsAlcobas)) ? data.closetsAlcobas : {},
-  });
+  const normalizarAreasData = (data) => {
+    const result = {
+      alcobas: (data?.alcobas && typeof data.alcobas === 'object' && !Array.isArray(data.alcobas)) ? data.alcobas : {},
+      banosAlcobas: (data?.banosAlcobas && typeof data.banosAlcobas === 'object' && !Array.isArray(data.banosAlcobas)) ? data.banosAlcobas : {},
+      closetsAlcobas: (data?.closetsAlcobas && typeof data.closetsAlcobas === 'object' && !Array.isArray(data.closetsAlcobas)) ? data.closetsAlcobas : {},
+    };
+    if (!data || typeof data !== 'object') {
+      for (const key of AREAS_RESIDENCIALES_BASE) result[key] = [];
+      return result;
+    }
+    for (const [key, val] of Object.entries(data)) {
+      if (key === 'alcobas' || key === 'banosAlcobas' || key === 'closetsAlcobas') continue;
+      result[key] = Array.isArray(val) ? val : [];
+    }
+    for (const key of AREAS_RESIDENCIALES_BASE) {
+      if (!result[key]) result[key] = [];
+    }
+    return result;
+  };
+
+  const normalizarFotosAreas = (data) => {
+    const result = {
+      alcobas: (data?.alcobas && typeof data.alcobas === 'object' && !Array.isArray(data.alcobas)) ? data.alcobas : {},
+      banosAlcobas: (data?.banosAlcobas && typeof data.banosAlcobas === 'object' && !Array.isArray(data.banosAlcobas)) ? data.banosAlcobas : {},
+      closetsAlcobas: (data?.closetsAlcobas && typeof data.closetsAlcobas === 'object' && !Array.isArray(data.closetsAlcobas)) ? data.closetsAlcobas : {},
+    };
+    if (!data || typeof data !== 'object') {
+      for (const key of AREAS_RESIDENCIALES_BASE) result[key] = [];
+      return result;
+    }
+    for (const [key, val] of Object.entries(data)) {
+      if (key === 'alcobas' || key === 'banosAlcobas' || key === 'closetsAlcobas') continue;
+      result[key] = Array.isArray(val) ? val : [];
+    }
+    for (const key of AREAS_RESIDENCIALES_BASE) {
+      if (!result[key]) result[key] = [];
+    }
+    return result;
+  };
 
   // Ref para debounce de guardado automático
   const autoSaveTimeoutRef = useRef(null);
   const lastSavedDataRef = useRef(null);
+  const resumenEditadoManualRef = useRef(false);
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID)
   useEffect(() => {
@@ -460,89 +554,6 @@ localStorage.removeItem('formularioPropiedades');
       }, 100);
     };
   }, [location.pathname]);
-
-  // Campos base para cada área
-  const camposBase = {
-    cocina: [
-      { name: 'Muros', key: 'muros' },
-      { name: 'Pintura y/o estuco', key: 'pintura' },
-      { name: 'Pisos', key: 'pisos' },
-      { name: 'Ventanería y puertas de vidrio', key: 'ventanas' },
-      { name: 'Mesones', key: 'mesones' },
-      { name: 'Aparatos de cocina y zona de ropas', key: 'aparatos' },
-      { name: 'Aparatos eléctricos', key: 'aparatosElectricos' },
-      { name: 'Salidas hidráulicas y de gas', key: 'salidasHidraulicas' },
-      { name: 'Salidas eléctricas', key: 'salidasElectricas' },
-      { name: 'Aseo', key: 'aseo' },
-      { name: 'Carpintería de madera', key: 'carpinteria' },
-    ],
-    ropas: [
-      { name: 'Muros', key: 'muros' },
-      { name: 'Pintura y/o estuco', key: 'pintura' },
-      { name: 'Pisos', key: 'pisos' },
-      { name: 'Ventanería y puertas de vidrio', key: 'ventanas' },
-      { name: 'Aparatos eléctricos', key: 'aparatosElectricos' },
-      { name: 'Salidas hidráulicas y de gas', key: 'salidasHidraulicas' },
-      { name: 'Salidas eléctricas', key: 'salidasElectricas' },
-      { name: 'Aseo', key: 'aseo' },
-      { name: 'Carpintería de madera', key: 'carpinteria' },
-    ],
-    sala: [
-      { name: 'Muros', key: 'muros' },
-      { name: 'Pintura y/o estuco', key: 'pintura' },
-      { name: 'Pisos', key: 'pisos' },
-      { name: 'Ventanería y puertas de vidrio', key: 'ventanas' },
-      { name: 'Kit de AA', key: 'kitAA' },
-      { name: 'Carpintería metálica', key: 'carpinteriaMetalica' },
-      { name: 'Salidas eléctricas', key: 'salidasElectricas' },
-      { name: 'Aseo', key: 'aseo' },
-    ],
-    banioSocial: [
-      { name: 'Muros', key: 'muros' },
-      { name: 'Pintura y/o estuco', key: 'pintura' },
-      { name: 'Pisos', key: 'pisos' },
-      { name: 'Ventanería y puertas de vidrio', key: 'ventanas' },
-      { name: 'Enchapes', key: 'enchapes' },
-      { name: 'Salidas hidráulicas y de gas', key: 'salidasHidraulicas' },
-      { name: 'Salidas eléctricas', key: 'salidasElectricas' },
-      { name: 'Aseo', key: 'aseo' },
-      { name: 'Incrustaciones', key: 'incrustaciones' },
-      { name: 'Carpintería de madera', key: 'carpinteria' },
-    ],
-    banoPrincipal: [
-      { name: 'Muros', key: 'muros' },
-      { name: 'Pintura y/o estuco', key: 'pintura' },
-      { name: 'Pisos', key: 'pisos' },
-      { name: 'Ventanería y puertas de vidrio', key: 'ventanas' },
-      { name: 'Salidas hidráulicas y de gas', key: 'salidasHidraulicas' },
-      { name: 'Salidas eléctricas', key: 'salidasElectricas' },
-      { name: 'Aseo', key: 'aseo' },
-      { name: 'Incrustaciones', key: 'incrustaciones' },
-      { name: 'Carpintería de madera', key: 'carpinteria' },
-    ],
-    alcoba: [
-      { name: 'Muros', key: 'muros' },
-      { name: 'Pintura y/o estuco', key: 'pintura' },
-      { name: 'Pisos', key: 'pisos' },
-      { name: 'Enchapes', key: 'enchapes' },
-      { name: 'Salidas eléctricas', key: 'salidasElectricas' },
-      { name: 'Aseo', key: 'aseo' },
-      { name: 'Carpintería de madera', key: 'carpinteria' },
-    ],
-    closet: [
-      { name: 'Puertas del closet', key: 'puertasCloset' },
-      { name: 'Interior del closet', key: 'interiorCloset' },
-      { name: 'Estanterías', key: 'estanterias' },
-      { name: 'Barras colgadoras', key: 'barrasColgadoras' },
-      { name: 'Cajones', key: 'cajones' },
-      { name: 'Pisos', key: 'pisos' },
-      { name: 'Pintura y/o estuco', key: 'pintura' },
-      { name: 'Iluminación interna', key: 'iluminacionInterna' },
-      { name: 'Ventilación', key: 'ventilacion' },
-      { name: 'Herrajes y accesorios', key: 'herrajesAccesorios' },
-      { name: 'Carpintería de madera', key: 'carpinteria' },
-    ],
-  };
 
   // Función auxiliar para capitalizar
   const capitalizeFirstLetter = (str) => {
@@ -888,6 +899,44 @@ localStorage.removeItem('formularioPropiedades');
     guardarAutomatico();
   };
 
+  const sincronizarAprendizajeAreas = useCallback(() => {
+    const personalizadas = formData.areasPersonalizadas || [];
+    if (!personalizadas.length) return;
+    const aprendidas = aprenderParametrosAreasPersonalizadas(personalizadas, areasData);
+    const cambio = JSON.stringify(aprendidas) !== JSON.stringify(personalizadas);
+    if (cambio) {
+      setFormData((prev) => ({ ...prev, areasPersonalizadas: aprendidas }));
+    }
+    setHistorialAreasGlobal(cargarHistorialAreasGlobal());
+  }, [formData.areasPersonalizadas, areasData]);
+
+  const aplicarResumenInspeccion = useCallback((forzar = false) => {
+    if (!forzar && resumenEditadoManualRef.current) return;
+    const resumen = generarResumenInspeccion(areasData, areasEfectivas, {
+      numAlcobas: formData.numAlcobas,
+      incluirArea: incluirSeccion,
+    });
+    setFormData((prev) => ({
+      ...prev,
+      observacionesPrincipales: resumen.observacionesPrincipales,
+      conclusiones: resumen.conclusiones,
+    }));
+    if (forzar) resumenEditadoManualRef.current = false;
+  }, [areasData, areasEfectivas, formData.numAlcobas, incluirSeccion]);
+
+  const marcarResumenEditadoManual = useCallback(() => {
+    resumenEditadoManualRef.current = true;
+  }, []);
+
+  const resumenInspeccion = useMemo(
+    () =>
+      generarResumenInspeccion(areasData, areasEfectivas, {
+        numAlcobas: formData.numAlcobas,
+        incluirArea: incluirSeccion,
+      }),
+    [areasData, areasEfectivas, formData.numAlcobas, incluirSeccion]
+  );
+
   // Función para guardado automático
   const guardarAutomatico = async () => {
     if (!AUTO_SAVE_ENABLED) return;
@@ -897,6 +946,7 @@ localStorage.removeItem('formularioPropiedades');
       formData,
       areasData,
       fotosAreas,
+      seccionesActivas,
     };
     
     const datosString = JSON.stringify(datosActuales);
@@ -914,9 +964,10 @@ localStorage.removeItem('formularioPropiedades');
         tipo: TIPOS_FORMULARIOS.INSPECCION_PROPIEDADES,
         titulo: `Inspección de Propiedades - ${nombreCliente}`,
         datos: {
-          formData: { ...formData }, // Estructura consistente
+          formData: { ...formData },
           areasData: { ...areasData },
           fotosAreas: fotosProcesadas,
+          seccionesActivas,
         },
         fechaModificacion: obtenerFechaHoraActualISO(),
       };
@@ -924,10 +975,27 @@ localStorage.removeItem('formularioPropiedades');
       await historialService.actualizarFormulario(formularioId, datosFormulario);
       const actualizado = await historialService.obtenerFormulario(formularioId);
       await sincronizarFotosDesdeDatosGuardados(actualizado?.datos);
+      sincronizarAprendizajeAreas();
 } catch (error) {
       console.error('Error en guardado automático:', error);
     }
   };
+
+  useEffect(() => {
+    if (!formData.areasPersonalizadas?.length) return undefined;
+    const timer = setTimeout(() => sincronizarAprendizajeAreas(), 2000);
+    return () => clearTimeout(timer);
+  }, [areasData, sincronizarAprendizajeAreas, formData.areasPersonalizadas?.length]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => aplicarResumenInspeccion(false), 1000);
+    return () => clearTimeout(timer);
+  }, [areasData, areasEfectivas, formData.numAlcobas, seccionesActivas, aplicarResumenInspeccion]);
+
+  useEffect(() => {
+    if (!formularioId || formularioId === 'nuevo') return;
+    guardarAutomatico();
+  }, [seccionesActivas]);
 
   // Función para mostrar modal de confirmación
   const mostrarModalConfirmacion = (titulo, mensaje, tipo = 'success', botonTexto = 'Aceptar', mostrarCancelar = false, onConfirmar = null) => {
@@ -945,6 +1013,47 @@ localStorage.removeItem('formularioPropiedades');
   const cerrarModalConfirmacion = () => {
     setModalConfirmacion(prev => ({ ...prev, isOpen: false }));
   };
+
+  const agregarAreaPersonalizada = useCallback((titulo, parametrosFrecuentes = []) => {
+    const tituloNorm = String(titulo || nuevaAreaTitulo).trim();
+    if (!tituloNorm) return;
+
+    if (areaPersonalizadaYaExiste(areasEfectivas, tituloNorm)) {
+      mostrarModalConfirmacion(
+        'Área existente',
+        `La zona «${tituloNorm}» ya está en el informe. Revise la tabla de contenido si no la ve activa.`,
+        'error'
+      );
+      return;
+    }
+
+    const hist = historialAreasGlobal.find((h) => h.titulo.toLowerCase() === tituloNorm.toLowerCase());
+    const params = parametrosFrecuentes.length
+      ? parametrosFrecuentes
+      : (hist?.parametrosFrecuentes || []);
+
+    const entrada = crearEntradaAreaPersonalizada(tituloNorm, params);
+
+    setFormData((prev) => ({
+      ...prev,
+      areasPersonalizadas: [...normalizarAreasPersonalizadas(prev.areasPersonalizadas), entrada],
+    }));
+    setAreasData((prev) => ({ ...prev, [entrada.id]: prev[entrada.id] || [] }));
+    setFotosAreas((prev) => ({ ...prev, [entrada.id]: prev[entrada.id] || [] }));
+    setSeccionesActivas((prev) => ({ ...prev, [entrada.id]: true }));
+    setNuevaAreaTitulo('');
+    setHistorialAreasGlobal(registrarAreaEnHistorialGlobal(tituloNorm, params));
+    programarGuardadoAutomatico();
+  }, [nuevaAreaTitulo, areasEfectivas, historialAreasGlobal]);
+
+  const eliminarAreaPersonalizada = useCallback((areaId) => {
+    setFormData((prev) => ({
+      ...prev,
+      areasPersonalizadas: (prev.areasPersonalizadas || []).filter((a) => a.id !== areaId),
+    }));
+    setSeccionesActivas((prev) => ({ ...prev, [areaId]: false }));
+    programarGuardadoAutomatico();
+  }, []);
 
   // Cargar formulario existente si hay ID y sincronizar formularioId con URL
   useEffect(() => {
@@ -971,6 +1080,7 @@ setFormularioId(null);
         // Manejar estructura nueva (con formData separado) y antigua (datos directos)
         if (datos.formData) {
           const formMigrado = migrarFirmasActa(datos.formData || {});
+          formMigrado.areasPersonalizadas = normalizarAreasPersonalizadas(formMigrado.areasPersonalizadas);
           
           if (datos.areasData) {
             const areasNorm = normalizarAreasData(datos.areasData);
@@ -979,6 +1089,18 @@ setFormularioId(null);
             setFormData(form);
           } else {
             setFormData(formMigrado);
+          }
+
+          if (datos.seccionesActivas) {
+            setSeccionesActivas(
+              normalizarSeccionesActivas(
+                datos.seccionesActivas,
+                combinarAreasInspeccion(
+                  resolverPlantillaAreas(formMigrado.claseInmueble, formMigrado.tipoInmueble),
+                  formMigrado.areasPersonalizadas
+                )
+              )
+            );
           }
           
           if (datos.fotosAreas) {
@@ -1011,6 +1133,7 @@ setFotosAreas(normalizarFotosAreas(fotosProcesadas));
           // Extraer formData de los datos directos
           const { areasData: areasDataGuardado, fotosAreas: fotosAreasGuardado, ...formDataDirecto } = datos;
           const formMigrado = migrarFirmasActa(formDataDirecto);
+          formMigrado.areasPersonalizadas = normalizarAreasPersonalizadas(formMigrado.areasPersonalizadas);
           
           if (areasDataGuardado) {
             const areasNorm = normalizarAreasData(areasDataGuardado);
@@ -1019,6 +1142,18 @@ setFotosAreas(normalizarFotosAreas(fotosProcesadas));
             setFormData(form);
           } else {
             setFormData(formMigrado);
+          }
+
+          if (datos.seccionesActivas) {
+            setSeccionesActivas(
+              normalizarSeccionesActivas(
+                datos.seccionesActivas,
+                combinarAreasInspeccion(
+                  resolverPlantillaAreas(formMigrado.claseInmueble, formMigrado.tipoInmueble),
+                  formMigrado.areasPersonalizadas
+                )
+              )
+            );
           }
           
           if (fotosAreasGuardado) {
@@ -1211,9 +1346,10 @@ return {
         tipo: TIPOS_FORMULARIOS.INSPECCION_PROPIEDADES,
         titulo: `Inspección de Propiedades - ${nombreCliente}`,
         datos: {
-          formData: { ...formData }, // Guardar formData como objeto separado
-          areasData: { ...areasData }, // Guardar areasData como objeto separado
-          fotosAreas: fotosProcesadas, // Fotos ya procesadas
+          formData: { ...formData },
+          areasData: { ...areasData },
+          fotosAreas: fotosProcesadas,
+          seccionesActivas,
         },
         fechaCreacion: formularioId && formularioId !== 'nuevo' ? undefined : obtenerFechaHoraActualISO(),
         fechaModificacion: obtenerFechaHoraActualISO(),
@@ -1326,6 +1462,18 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
       });
 
       const docContent = [];
+      const incluirSeccionWord = (id) => estaSeccionPropiedadesActiva(seccionesActivas, id, areasEfectivas);
+      const numeracionWord = construirNumeracionActiva(seccionesActivas, areasEfectivas);
+      const encabezado = (id, fallback) => numeracionWord.get(id)?.encabezado || fallback;
+      const resumenDocumento = resumenEditadoManualRef.current
+        ? {
+            conclusiones: formData.conclusiones,
+            observacionesPrincipales: formData.observacionesPrincipales,
+          }
+        : generarResumenInspeccion(areasData, areasEfectivas, {
+            numAlcobas: formData.numAlcobas,
+            incluirArea: incluirSeccionWord,
+          });
 
       // Cargar logo
       const logoResponse = await fetch(Logo);
@@ -1364,7 +1512,6 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
               new TableCell({
                 columnSpan: 3,
                 width: { size: 65, type: WidthType.PERCENTAGE },
-                shading: { fill: "404040" }, // Fondo gris oscuro
                 children: [
                   new Paragraph({
                     children: [
@@ -1373,7 +1520,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
                         bold: true,
                         font: "Arial",
                         size: 24,
-                        color: "E0E0E0",
+                        color: "000000",
                       }),
                     ],
                     alignment: AlignmentType.LEFT,
@@ -1385,7 +1532,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
                         text: nombreClienteMayusculas,
                         font: "Arial",
                         size: 20,
-                        color: "E0E0E0",
+                        color: "000000",
                       }),
                     ],
                     alignment: AlignmentType.LEFT,
@@ -1399,7 +1546,6 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
             children: [
               // Tres celdas inferiores: INSP. RIESGOS | RIESGOS | DATE
               new TableCell({
-                shading: { fill: "404040" }, // Fondo gris oscuro
                 width: { size: 21.67, type: WidthType.PERCENTAGE },
                 children: [
                   new Paragraph({
@@ -1408,7 +1554,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
                         text: "INSP. RIESGOS",
                         font: "Arial",
                         size: 18,
-                        color: "E0E0E0",
+                        color: "000000",
                       }),
                     ],
                     alignment: AlignmentType.CENTER,
@@ -1417,7 +1563,6 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
                 verticalAlign: VerticalAlign.CENTER,
               }),
               new TableCell({
-                shading: { fill: "404040" }, // Fondo gris oscuro
                 width: { size: 21.67, type: WidthType.PERCENTAGE },
                 children: [
                   new Paragraph({
@@ -1426,7 +1571,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
                         text: "RIESGOS",
                         font: "Arial",
                         size: 18,
-                        color: "E0E0E0",
+                        color: "000000",
                       }),
                     ],
                     alignment: AlignmentType.CENTER,
@@ -1435,7 +1580,6 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
                 verticalAlign: VerticalAlign.CENTER,
               }),
               new TableCell({
-                shading: { fill: "404040" }, // Fondo gris oscuro
                 width: { size: 21.67, type: WidthType.PERCENTAGE },
                 children: [
                   new Paragraph({
@@ -1444,7 +1588,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
                         text: `DATE: ${formattedDate}`,
                         font: "Arial",
                         size: 18,
-                        color: "E0E0E0",
+                        color: "000000",
                       }),
                     ],
                     alignment: AlignmentType.CENTER,
@@ -1464,7 +1608,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
       docContent.push(pTitulo('Reporte de Inspección de Propiedad'));
       docContent.push(pSpacer(200));
 
-      docContent.push(pHeading('Información General del Inmueble'));
+      docContent.push(pHeading(encabezado('informacionGeneral', 'Información General del Inmueble')));
       docContent.push(
         crearTablaDatos([
           ['Clase de Inmueble', formData.claseInmueble],
@@ -1479,78 +1623,103 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
       );
       docContent.push(pSpacer(400));
 
-      docContent.push(pHeading('Información Jurídica del Inmueble'));
-      docContent.push(
-        crearTablaDatos([
-          ['Tipo de Documento', formData.tipoDocumento],
-          ['Número de Documento', formData.numeroDocumento],
-          ['Fecha del Documento', formData.fechaDocumento],
-          ['Notaría y Lugar de Expedición', formData.notaria],
-        ])
-      );
-      docContent.push(pSpacer(400));
+      if (incluirSeccionWord('informacionJuridica')) {
+        docContent.push(pHeading(encabezado('informacionJuridica', 'Información Jurídica del Inmueble')));
+        docContent.push(
+          crearTablaDatos([
+            ['Tipo de Documento', formData.tipoDocumento],
+            ['Número de Documento', formData.numeroDocumento],
+            ['Fecha del Documento', formData.fechaDocumento],
+            ['Notaría y Lugar de Expedición', formData.notaria],
+          ])
+        );
+        docContent.push(pSpacer(400));
+      }
 
-      if (formData.inspeccionMetrica) {
-        docContent.push(pHeading('2 - INSPECCIÓN MÉTRICA'));
+      if (incluirSeccionWord('inspeccionMetrica') && formData.inspeccionMetrica) {
+        docContent.push(pHeading(encabezado('inspeccionMetrica', '2 - INSPECCIÓN MÉTRICA')));
         docContent.push(pBody(formData.inspeccionMetrica, { after: 400 }));
       }
 
-      docContent.push(pHeading('3 - INSPECCIÓN POR ÁREAS'));
-
-      // COCINA
-      if (areasData.cocina && areasData.cocina.length > 0) {
-        docContent.push(pHeading('COCINA', HeadingLevel.HEADING_2));
-        const tablaCocina = crearTablaInspeccionItems(areasData.cocina);
-        if (tablaCocina) {
-          docContent.push(tablaCocina);
-        }
-        docContent.push(pSpacer(400));
-        
-        // Insertar fotos de cocina
-        if (fotosAreas.cocina && fotosAreas.cocina.length > 0) {
-          await insertarFotosSeccionWord(docContent, fotosAreas.cocina, "FOTOS DE COCINA");
-        }
+      const algunaAreaWord = idsAreasDesdePlantilla(areasEfectivas).some(incluirSeccionWord);
+      if (algunaAreaWord) {
+        docContent.push(pHeading(encabezado('inspeccionPorAreas', '3 - INSPECCIÓN POR ÁREAS')));
       }
 
-      // ZONA DE ROPAS
-      if (areasData.ropas && areasData.ropas.length > 0) {
-        docContent.push(pHeading('ZONA DE ROPAS', HeadingLevel.HEADING_2));
-        const tablaRopas = crearTablaInspeccionItems(areasData.ropas);
-        if (tablaRopas) {
-          docContent.push(tablaRopas);
-        }
-        docContent.push(pSpacer(400));
-        
-        if (fotosAreas.ropas && fotosAreas.ropas.length > 0) {
-          await insertarFotosSeccionWord(docContent, fotosAreas.ropas, "FOTOS DE ZONA DE ROPAS");
-        }
-      }
+      for (const areaCfg of areasEfectivas) {
+        if (areaCfg.tipo === 'alcobas') {
+          if (!incluirSeccionWord('alcobas')) continue;
+          const numAlcobas = parseInt(formData.numAlcobas) || 0;
+          for (let i = 1; i <= numAlcobas; i++) {
+            const tieneAlcoba = areasData.alcobas[i] && areasData.alcobas[i].length > 0;
+            const tieneBano = areasData.banosAlcobas?.[i]?.length > 0;
+            const tieneCloset = areasData.closetsAlcobas?.[i]?.length > 0;
+            const tieneFotosAlcoba = fotosAreas.alcobas[i] && fotosAreas.alcobas[i].length > 0;
+            const tieneFotosBano = fotosAreas.banosAlcobas?.[i]?.length > 0;
+            const tieneFotosCloset = fotosAreas.closetsAlcobas?.[i]?.length > 0;
 
-      // SALA DE ESTAR
-      if (areasData.sala && areasData.sala.length > 0) {
-        docContent.push(pHeading('SALA DE ESTAR', HeadingLevel.HEADING_2));
-        const tablaSala = crearTablaInspeccionItems(areasData.sala);
-        if (tablaSala) {
-          docContent.push(tablaSala);
-        }
-        docContent.push(pSpacer(400));
-        
-        if (fotosAreas.sala && fotosAreas.sala.length > 0) {
-          await insertarFotosSeccionWord(docContent, fotosAreas.sala, "FOTOS DE SALA DE ESTAR");
-        }
-      }
+            if (tieneAlcoba || tieneFotosAlcoba) {
+              docContent.push(pHeading(encabezado('alcobas', `ALCOBA ${i}`), HeadingLevel.HEADING_2));
+              if (tieneAlcoba) {
+                const tablaAlcoba = crearTablaInspeccionItems(areasData.alcobas[i]);
+                if (tablaAlcoba) docContent.push(tablaAlcoba);
+                docContent.push(pSpacer(400));
+              }
+              if (tieneFotosAlcoba) {
+                await insertarFotosSeccionWord(docContent, fotosAreas.alcobas[i], `FOTOS DE ALCOBA ${i}`);
+              }
+            }
 
-      // BAÑO SOCIAL
-      if (areasData.banioSocial && areasData.banioSocial.length > 0) {
-        docContent.push(pHeading('BAÑO SOCIAL', HeadingLevel.HEADING_2));
-        const tablaBanoSocial = crearTablaInspeccionItems(areasData.banioSocial);
-        if (tablaBanoSocial) {
-          docContent.push(tablaBanoSocial);
+            if (tieneBano || tieneFotosBano) {
+              docContent.push(pHeading(`BAÑO - ALCOBA ${i}`, HeadingLevel.HEADING_2));
+              if (tieneBano) {
+                const tablaBano = crearTablaInspeccionItems(areasData.banosAlcobas[i]);
+                if (tablaBano) docContent.push(tablaBano);
+                docContent.push(pSpacer(400));
+              }
+              if (tieneFotosBano) {
+                await insertarFotosSeccionWord(docContent, fotosAreas.banosAlcobas[i], `FOTOS DE BAÑO ALCOBA ${i}`);
+              }
+            }
+
+            if (tieneCloset || tieneFotosCloset) {
+              docContent.push(pHeading(`CLOSET - ALCOBA ${i}`, HeadingLevel.HEADING_2));
+              if (tieneCloset) {
+                const tablaCloset = crearTablaInspeccionItems(areasData.closetsAlcobas[i]);
+                if (tablaCloset) docContent.push(tablaCloset);
+                docContent.push(pSpacer(400));
+              }
+              if (tieneFotosCloset) {
+                await insertarFotosSeccionWord(docContent, fotosAreas.closetsAlcobas[i], `FOTOS DE CLOSET ALCOBA ${i}`);
+              }
+            }
+          }
+          continue;
         }
-        docContent.push(pSpacer(400));
-        
-        if (fotosAreas.banioSocial && fotosAreas.banioSocial.length > 0) {
-          await insertarFotosSeccionWord(docContent, fotosAreas.banioSocial, "FOTOS DE BAÑO SOCIAL");
+
+        const areaId = areaCfg.id;
+        if (!incluirSeccionWord(areaId)) continue;
+        const tieneItems = areasData[areaId]?.length > 0;
+        const tieneFotos = fotosAreas[areaId]?.length > 0;
+        if (!tieneItems && !tieneFotos) continue;
+
+        docContent.push(
+          pHeading(
+            encabezado(areaId, areaCfg.titulo.toUpperCase()),
+            HeadingLevel.HEADING_2
+          )
+        );
+        if (tieneItems) {
+          const tabla = crearTablaInspeccionItems(areasData[areaId]);
+          if (tabla) docContent.push(tabla);
+          docContent.push(pSpacer(400));
+        }
+        if (tieneFotos) {
+          await insertarFotosSeccionWord(
+            docContent,
+            fotosAreas[areaId],
+            `FOTOS DE ${areaCfg.titulo.toUpperCase()}`
+          );
         }
       }
 
@@ -1568,77 +1737,20 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
         }
       }
 
-      // ALCOBAS
-      const numAlcobas = parseInt(formData.numAlcobas) || 0;
-      for (let i = 1; i <= numAlcobas; i++) {
-        const tieneAlcoba = areasData.alcobas[i] && areasData.alcobas[i].length > 0;
-        const tieneBano = areasData.banosAlcobas?.[i]?.length > 0;
-        const tieneCloset = areasData.closetsAlcobas?.[i]?.length > 0;
-        const tieneFotosAlcoba = fotosAreas.alcobas[i] && fotosAreas.alcobas[i].length > 0;
-        const tieneFotosBano = fotosAreas.banosAlcobas?.[i]?.length > 0;
-        const tieneFotosCloset = fotosAreas.closetsAlcobas?.[i]?.length > 0;
-
-        if (tieneAlcoba || tieneFotosAlcoba) {
-          docContent.push(pHeading(`ALCOBA ${i}`, HeadingLevel.HEADING_2));
-          if (tieneAlcoba) {
-            const tablaAlcoba = crearTablaInspeccionItems(areasData.alcobas[i]);
-            if (tablaAlcoba) {
-              docContent.push(tablaAlcoba);
-            }
-            docContent.push(pSpacer(400));
-          }
-          
-          if (tieneFotosAlcoba) {
-            await insertarFotosSeccionWord(docContent, fotosAreas.alcobas[i], `FOTOS DE ALCOBA ${i}`);
-          }
-        }
-
-        if (tieneBano || tieneFotosBano) {
-          docContent.push(pHeading(`BAÑO - ALCOBA ${i}`, HeadingLevel.HEADING_2));
-          if (tieneBano) {
-            const tablaBano = crearTablaInspeccionItems(areasData.banosAlcobas[i]);
-            if (tablaBano) {
-              docContent.push(tablaBano);
-            }
-            docContent.push(pSpacer(400));
-          }
-
-          if (tieneFotosBano) {
-            await insertarFotosSeccionWord(docContent, fotosAreas.banosAlcobas[i], `FOTOS DE BAÑO ALCOBA ${i}`);
-          }
-        }
-
-        if (tieneCloset || tieneFotosCloset) {
-          docContent.push(pHeading(`CLOSET - ALCOBA ${i}`, HeadingLevel.HEADING_2));
-          if (tieneCloset) {
-            const tablaCloset = crearTablaInspeccionItems(areasData.closetsAlcobas[i]);
-            if (tablaCloset) {
-              docContent.push(tablaCloset);
-            }
-            docContent.push(pSpacer(400));
-          }
-
-          if (tieneFotosCloset) {
-            await insertarFotosSeccionWord(docContent, fotosAreas.closetsAlcobas[i], `FOTOS DE CLOSET ALCOBA ${i}`);
-          }
-        }
-      }
-
       // Conclusiones
-      if (formData.conclusiones) {
-        docContent.push(pHeading('4 - CONCLUSIONES'));
-        docContent.push(pBody(formData.conclusiones, { after: 400 }));
+      if (incluirSeccionWord('conclusiones') && resumenDocumento.conclusiones) {
+        docContent.push(pHeading(encabezado('conclusiones', '4 - CONCLUSIONES')));
+        docContent.push(pBody(resumenDocumento.conclusiones, { after: 400 }));
       }
 
-      if (formData.observacionesPrincipales) {
-        docContent.push(pHeading('4.1 - LAS PRINCIPALES OBSERVACIONES SON:', HeadingLevel.HEADING_2));
-        docContent.push(pBody(formData.observacionesPrincipales, { after: 400 }));
+      if (incluirSeccionWord('observacionesPrincipales') && resumenDocumento.observacionesPrincipales) {
         docContent.push(
-          pBody(
-            'Por lo anterior el propietario tiene todo el derecho de solicitar garantía al vendedor, de todos los puntos mencionados en el ítem 4.1 del presente informe.',
-            { after: 400 }
+          pHeading(
+            encabezado('observacionesPrincipales', '4.1 - LAS PRINCIPALES OBSERVACIONES SON:'),
+            HeadingLevel.HEADING_2
           )
         );
+        docContent.push(pBody(resumenDocumento.observacionesPrincipales, { after: 400 }));
       }
 
       docContent.push(
@@ -1653,6 +1765,7 @@ navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true
         ...construirElementosFirmasActaWord(formData, {
           nombreEmpresa: 'Proser Riesgos SAS',
           tituloCliente: 'FIRMA DE QUIEN RECIBE LA VISITA',
+          tituloAjustador: 'FIRMA DEL INSPECTOR',
         })
       );
 
@@ -1748,13 +1861,7 @@ mostrarModalConfirmacion(
     const totalFotos = contarFotosTotales(fotosAreas);
     const seccionLlena = enSeccion >= MAX_FOTOS_POR_SECCION;
     const informeLleno = totalFotos >= MAX_FOTOS_TOTAL;
-    const tituloArea = area === 'banoAlcoba' && alcobaNum
-      ? `BAÑO ALCOBA ${alcobaNum}`
-      : area === 'closetAlcoba' && alcobaNum
-        ? `CLOSET ALCOBA ${alcobaNum}`
-        : alcobaNum
-          ? `ALCOBA ${alcobaNum}`
-          : area.toUpperCase();
+    const tituloFotos = tituloArea(area, areasEfectivas, alcobaNum);
     
     // Usar utilidades centralizadas de imageUtils
     
@@ -1763,8 +1870,11 @@ mostrarModalConfirmacion(
         className="mb-6 mt-6 rounded-lg border p-4 sm:p-5"
         style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
       >
-        <h4 className="mb-1 font-heading text-base font-bold sm:text-lg" style={{ color: t.textPrimary }}>
-          Fotos de {tituloArea}
+        <h4
+          className="mb-1 font-heading text-base font-bold sm:text-lg"
+          style={{ color: t.textPrimary, textTransform: 'none' }}
+        >
+          Fotos de {tituloFotos}
         </h4>
         <p className="mb-4 text-xs" style={{ color: t.textSecondary }}>
           {enSeccion} / {MAX_FOTOS_POR_SECCION} en esta sección · {totalFotos} / {MAX_FOTOS_TOTAL} en el informe ·
@@ -1898,20 +2008,9 @@ mostrarModalConfirmacion(
   const renderTablaInspeccion = (area, alcobaNum = null) => {
     const clave = getClaveAlmacenamientoArea(area);
     const items = clave && alcobaNum ? (areasData?.[clave]?.[alcobaNum] || []) : (areasData?.[area] || []);
-    const campos = area === 'banoAlcoba'
-      ? camposBase.banoPrincipal
-      : area === 'closetAlcoba'
-        ? camposBase.closet
-        : area === 'alcoba'
-          ? camposBase.alcoba
-          : camposBase[area];
-    const tituloItems = area === 'banoAlcoba' && alcobaNum
-      ? `- Baño Alcoba ${alcobaNum}`
-      : area === 'closetAlcoba' && alcobaNum
-        ? `- Closet Alcoba ${alcobaNum}`
-        : alcobaNum
-          ? `- Alcoba ${alcobaNum}`
-          : `- ${area.toUpperCase()}`;
+    const campos = obtenerCamposArea(area, areasEfectivas);
+    const nombreArea = tituloArea(area, areasEfectivas, alcobaNum);
+    const tituloItems = nombreArea;
     
     return (
       <div
@@ -1919,8 +2018,11 @@ mostrarModalConfirmacion(
         style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
       >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h4 className="font-heading text-sm font-semibold sm:text-base" style={{ color: t.textPrimary }}>
-            Items de inspección {tituloItems}
+          <h4
+            className="font-heading text-sm font-semibold sm:text-base"
+            style={{ color: t.textPrimary, textTransform: 'none' }}
+          >
+            Items de inspección — {tituloItems}
           </h4>
           <button
             type="button"
@@ -2050,6 +2152,99 @@ mostrarModalConfirmacion(
     );
   };
 
+  const renderBloqueAlcobas = (numeroSubseccion) => (
+    <>
+      <SubsectionTitle>{numeroSubseccion ? `3.${numeroSubseccion} — Alcobas` : 'Alcobas'}</SubsectionTitle>
+      <div className="mb-4">
+        <FieldLabel>¿Cuántas alcobas hay?</FieldLabel>
+        <div className="flex flex-wrap items-center gap-3">
+          <ThemedInput
+            type="number"
+            name="numAlcobas"
+            value={formData.numAlcobas}
+            onChange={(e) => {
+              handleInputChange('numAlcobas', e.target.value);
+              setTimeout(() => generateBedrooms(), 100);
+            }}
+            min="0"
+            className="!w-32"
+          />
+          <button
+            type="button"
+            onClick={generateBedrooms}
+            className={complexBtnSecondary}
+          >
+            Generar alcobas
+          </button>
+        </div>
+      </div>
+
+      {Array.from({ length: parseInt(formData.numAlcobas) || 0 }, (_, i) => i + 1).map((alcobaNum) => (
+        <div
+          key={alcobaNum}
+          className="mb-6 rounded-lg border p-4"
+          style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
+        >
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h4 className="font-heading text-base font-bold" style={{ color: t.textPrimary }}>
+              Alcoba {alcobaNum}
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => toggleBanoAlcoba(alcobaNum)}
+                className={formData.alcobasConBano?.[alcobaNum] ? complexBtnPrimary : complexBtnGhost}
+              >
+                {formData.alcobasConBano?.[alcobaNum] ? 'Ocultar baño' : '+ Agregar baño'}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleClosetAlcoba(alcobaNum)}
+                className={formData.alcobasConCloset?.[alcobaNum] ? complexBtnPrimary : complexBtnGhost}
+              >
+                {formData.alcobasConCloset?.[alcobaNum] ? 'Ocultar closet' : '+ Agregar closet'}
+              </button>
+            </div>
+          </div>
+          {renderTablaInspeccion('alcoba', alcobaNum)}
+          {renderFotosArea('alcoba', alcobaNum)}
+
+          {formData.alcobasConBano?.[alcobaNum] && (
+            <div
+              className="mt-6 rounded-lg border p-4 pt-6"
+              style={{
+                borderColor: t.borderColor,
+                backgroundColor: t.theme === 'dark' ? 'rgba(220,38,38,0.06)' : t.accentSoft,
+              }}
+            >
+              <h4 className="mb-4 font-heading text-base font-bold" style={{ color: t.textPrimary }}>
+                Baño — Alcoba {alcobaNum}
+              </h4>
+              {renderTablaInspeccion('banoAlcoba', alcobaNum)}
+              {renderFotosArea('banoAlcoba', alcobaNum)}
+            </div>
+          )}
+
+          {formData.alcobasConCloset?.[alcobaNum] && (
+            <div
+              className="mt-6 rounded-lg border p-4 pt-6"
+              style={{
+                borderColor: t.borderColor,
+                backgroundColor: t.theme === 'dark' ? 'rgba(220,38,38,0.06)' : t.accentSoft,
+              }}
+            >
+              <h4 className="mb-4 font-heading text-base font-bold" style={{ color: t.textPrimary }}>
+                Closet — Alcoba {alcobaNum}
+              </h4>
+              {renderTablaInspeccion('closetAlcoba', alcobaNum)}
+              {renderFotosArea('closetAlcoba', alcobaNum)}
+            </div>
+          )}
+        </div>
+      ))}
+    </>
+  );
+
   return (
     <div className="min-h-screen p-2 sm:p-4 lg:p-8" style={{ backgroundColor: t.bgMain }}>
       <div
@@ -2109,6 +2304,77 @@ mostrarModalConfirmacion(
         )}
 
         <LlenadoGuiaPropiedades />
+
+        <div
+          className="mb-8 rounded-lg border p-4"
+          style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
+        >
+          <h2 className="mb-2 font-heading text-lg font-bold" style={{ color: t.textPrimary }}>
+            Tabla de contenido
+          </h2>
+          <p className="mb-3 text-sm" style={{ color: t.textSecondary }}>
+            Marque las secciones que desea incluir en el formulario y en el Word. Las secciones obligatorias no se pueden desactivar.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" style={{ border: `1px solid ${t.borderColor}` }}>
+              <thead>
+                <tr style={{ backgroundColor: t.theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
+                  <th className="px-3 py-2 text-center font-bold" style={{ border: `1px solid ${t.borderColor}`, width: '48px', color: t.textPrimary }}>✓</th>
+                  <th className="px-3 py-2 text-left font-bold" style={{ border: `1px solid ${t.borderColor}`, color: t.textPrimary }}>REF</th>
+                  <th className="px-3 py-2 text-left font-bold" style={{ border: `1px solid ${t.borderColor}`, color: t.textPrimary }}>SECCIÓN</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filasIndiceInforme.map((fila, idx) => (
+                  <tr
+                    key={`${fila.id || fila.ref}-${fila.titulo}-${idx}`}
+                    style={{
+                      backgroundColor: idx % 2 === 0
+                        ? (t.theme === 'dark' ? '#1A1A1A' : '#FFFFFF')
+                        : (t.theme === 'dark' ? '#1F1F1F' : '#F9FAFB'),
+                      opacity: fila.activa ? 1 : 0.55,
+                    }}
+                  >
+                    <td className="px-3 py-2 text-center" style={{ border: `1px solid ${t.borderColor}` }}>
+                      {fila.seleccionable ? (
+                        <input
+                          type="checkbox"
+                          checked={fila.activa}
+                          onChange={() => toggleSeccionInforme(fila.id)}
+                          disabled={cargando}
+                          className="h-4 w-4"
+                        />
+                      ) : fila.tipo === 'principal' ? (
+                        <span title="Sección obligatoria o de agrupación" style={{ color: t.textSecondary }}>●</span>
+                      ) : null}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      style={{
+                        border: `1px solid ${t.borderColor}`,
+                        color: t.textPrimary,
+                        paddingLeft: fila.tipo === 'sub' ? '1.5rem' : undefined,
+                      }}
+                    >
+                      {fila.ref}
+                    </td>
+                    <td
+                      className="px-3 py-2"
+                      style={{
+                        border: `1px solid ${t.borderColor}`,
+                        color: t.textPrimary,
+                        paddingLeft: fila.tipo === 'sub' ? '1.5rem' : undefined,
+                        fontStyle: fila.tipo === 'sub' ? 'italic' : 'normal',
+                      }}
+                    >
+                      {fila.titulo}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
         <form className="space-y-6">
           <SectionCard
@@ -2208,6 +2474,7 @@ mostrarModalConfirmacion(
             </div>
           </SectionCard>
 
+          {incluirSeccion('informacionJuridica') && (
           <SectionCard title="1.2 Información jurídica del inmueble" subtitle="Documento de propiedad y notaría">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
@@ -2248,7 +2515,9 @@ mostrarModalConfirmacion(
               </div>
             </div>
           </SectionCard>
+          )}
 
+          {incluirSeccion('inspeccionMetrica') && (
           <SectionCard title="2. Inspección métrica" subtitle="Observaciones generales de medición y dimensiones">
             <FieldLabel>Observaciones de inspección métrica</FieldLabel>
             <ThemedTextarea
@@ -2269,124 +2538,199 @@ mostrarModalConfirmacion(
               />
             </div>
           </SectionCard>
+          )}
 
+          {formData.claseInmueble && (
           <SectionCard title="3. Inspección por áreas" subtitle="Tablas de cumplimiento y registro fotográfico por zona">
-            <SubsectionTitle>3.1 — Cocina</SubsectionTitle>
-            {renderTablaInspeccion('cocina')}
-            {renderFotosArea('cocina')}
-            <AreaDivider />
+            {formData.claseInmueble && formData.tipoInmueble && (
+              <p className="mb-4 text-sm" style={{ color: t.textSecondary }}>
+                Áreas sugeridas para <strong>{formData.claseInmueble}</strong> — <strong>{formData.tipoInmueble}</strong>.
+                Puede activar o desactivar cada zona en la tabla de contenido.
+              </p>
+            )}
+            {formData.claseInmueble && !formData.tipoInmueble && (
+              <p className="mb-4 rounded-lg border px-3 py-2 text-sm" style={{ borderColor: t.borderColor, color: t.textSecondary, backgroundColor: t.theme === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB' }}>
+                Seleccione el tipo de inmueble para cargar las áreas de inspección correspondientes.
+              </p>
+            )}
 
-            <SubsectionTitle>3.2 — Zona de ropas</SubsectionTitle>
-            {renderTablaInspeccion('ropas')}
-            {renderFotosArea('ropas')}
-            <AreaDivider />
-
-            <SubsectionTitle>3.3 — Sala de estar</SubsectionTitle>
-            {renderTablaInspeccion('sala')}
-            {renderFotosArea('sala')}
-            <AreaDivider />
-
-            <SubsectionTitle>3.4 — Baño social</SubsectionTitle>
-            {renderTablaInspeccion('banioSocial')}
-            {renderFotosArea('banioSocial')}
-            <AreaDivider />
-
-            <SubsectionTitle>Alcobas</SubsectionTitle>
-            <div className="mb-4">
-              <FieldLabel>¿Cuántas alcobas hay?</FieldLabel>
-              <div className="flex flex-wrap items-center gap-3">
-                <ThemedInput
-                  type="number"
-                  name="numAlcobas"
-                  value={formData.numAlcobas}
-                  onChange={(e) => {
-                    handleInputChange('numAlcobas', e.target.value);
-                    setTimeout(() => generateBedrooms(), 100);
-                  }}
-                  min="0"
-                  className="!w-32"
-                />
+            <div
+              className="mb-6 rounded-lg border p-4"
+              style={{
+                borderColor: t.borderColor,
+                backgroundColor: t.theme === 'dark' ? 'rgba(59,130,246,0.06)' : '#EFF6FF',
+              }}
+            >
+              <h4 className="mb-1 font-heading text-sm font-bold" style={{ color: t.textPrimary, textTransform: 'none' }}>
+                Agregar área no listada
+              </h4>
+              <p className="mb-3 text-xs" style={{ color: t.textSecondary }}>
+                Si falta una zona en la plantilla, créela aquí. El formulario recordará las áreas y los ítems que haya usado en informes anteriores.
+              </p>
+              <div className="mb-3 flex flex-wrap items-end gap-2">
+                <div className="min-w-[200px] flex-1">
+                  <FieldLabel>Nombre del área</FieldLabel>
+                  <ThemedInput
+                    type="text"
+                    value={nuevaAreaTitulo}
+                    onChange={(e) => setNuevaAreaTitulo(e.target.value)}
+                    placeholder="Ej: Terraza, bodega auxiliar, patio..."
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        agregarAreaPersonalizada();
+                      }
+                    }}
+                  />
+                </div>
                 <button
                   type="button"
-                  onClick={generateBedrooms}
-                  className={complexBtnSecondary}
+                  className={complexBtnPrimary}
+                  onClick={() => agregarAreaPersonalizada()}
                 >
-                  Generar alcobas
+                  <FaPlus className="h-4 w-4" />
+                  Agregar área
                 </button>
               </div>
-            </div>
-              
-            {Array.from({ length: parseInt(formData.numAlcobas) || 0 }, (_, i) => i + 1).map(alcobaNum => (
-              <div
-                key={alcobaNum}
-                className="mb-6 rounded-lg border p-4"
-                style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
-              >
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                  <h4 className="font-heading text-base font-bold" style={{ color: t.textPrimary }}>
-                    Alcoba {alcobaNum}
-                  </h4>
+
+              {historialAreasGlobal.length > 0 && (
+                <div className="mb-3">
+                  <p className="mb-2 text-xs font-semibold" style={{ color: t.textSecondary }}>
+                    Historial de áreas creadas (clic para agregar al informe):
+                  </p>
                   <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleBanoAlcoba(alcobaNum)}
-                      className={formData.alcobasConBano?.[alcobaNum] ? complexBtnPrimary : complexBtnGhost}
-                    >
-                      {formData.alcobasConBano?.[alcobaNum] ? 'Ocultar baño' : '+ Agregar baño'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => toggleClosetAlcoba(alcobaNum)}
-                      className={formData.alcobasConCloset?.[alcobaNum] ? complexBtnPrimary : complexBtnGhost}
-                    >
-                      {formData.alcobasConCloset?.[alcobaNum] ? 'Ocultar closet' : '+ Agregar closet'}
-                    </button>
+                    {historialAreasGlobal.slice(0, 20).map((h) => {
+                      const yaEnInforme = areaPersonalizadaYaExiste(areasEfectivas, h.titulo);
+                      return (
+                        <button
+                          key={`${h.titulo}-${h.ultimaVez}`}
+                          type="button"
+                          disabled={yaEnInforme}
+                          className={yaEnInforme ? `${complexBtnGhost} opacity-50` : complexBtnGhost}
+                          onClick={() => agregarAreaPersonalizada(h.titulo, h.parametrosFrecuentes || [])}
+                          title={
+                            h.parametrosFrecuentes?.length
+                              ? `Ítems frecuentes: ${h.parametrosFrecuentes.join(', ')}`
+                              : undefined
+                          }
+                        >
+                          + {h.titulo}
+                          {h.parametrosFrecuentes?.length > 0 && (
+                            <span className="ml-1 opacity-70">({h.parametrosFrecuentes.length} ítems)</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                {renderTablaInspeccion('alcoba', alcobaNum)}
-                {renderFotosArea('alcoba', alcobaNum)}
+              )}
 
-                {formData.alcobasConBano?.[alcobaNum] && (
-                  <div
-                    className="mt-6 rounded-lg border p-4 pt-6"
-                    style={{
-                      borderColor: t.borderColor,
-                      backgroundColor: t.theme === 'dark' ? 'rgba(220,38,38,0.06)' : t.accentSoft,
-                    }}
-                  >
-                    <h4 className="mb-4 font-heading text-base font-bold" style={{ color: t.textPrimary }}>
-                      Baño — Alcoba {alcobaNum}
-                    </h4>
-                    {renderTablaInspeccion('banoAlcoba', alcobaNum)}
-                    {renderFotosArea('banoAlcoba', alcobaNum)}
-                  </div>
-                )}
+              {(formData.areasPersonalizadas?.length > 0) && (
+                <div className="border-t pt-3" style={{ borderColor: t.borderColor }}>
+                  <p className="mb-2 text-xs font-semibold" style={{ color: t.textSecondary }}>
+                    Áreas personalizadas en este informe:
+                  </p>
+                  <ul className="space-y-2 text-sm">
+                    {formData.areasPersonalizadas.map((a) => {
+                      const numItems = areasData[a.id]?.length || 0;
+                      const params = extraerParametrosDeItems(areasData[a.id]);
+                      return (
+                        <li
+                          key={a.id}
+                          className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2"
+                          style={{ borderColor: t.borderColor, backgroundColor: t.cardBg }}
+                        >
+                          <div>
+                            <span className="font-medium" style={{ color: t.textPrimary }}>{a.titulo}</span>
+                            <span className="ml-2 text-xs" style={{ color: t.textSecondary }}>
+                              {numItems} ítem{numItems !== 1 ? 's' : ''}
+                            </span>
+                            {params.length > 0 && (
+                              <p className="mt-0.5 text-xs" style={{ color: t.textSecondary }}>
+                                Ítems: {params.slice(0, 5).join(', ')}
+                                {params.length > 5 ? '…' : ''}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            className={complexBtnDanger}
+                            onClick={() => eliminarAreaPersonalizada(a.id)}
+                            title="Quitar del informe"
+                          >
+                            <FaTrash className="h-3 w-3" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
 
-                {formData.alcobasConCloset?.[alcobaNum] && (
-                  <div
-                    className="mt-6 rounded-lg border p-4 pt-6"
-                    style={{
-                      borderColor: t.borderColor,
-                      backgroundColor: t.theme === 'dark' ? 'rgba(220,38,38,0.06)' : t.accentSoft,
-                    }}
-                  >
-                    <h4 className="mb-4 font-heading text-base font-bold" style={{ color: t.textPrimary }}>
-                      Closet — Alcoba {alcobaNum}
-                    </h4>
-                    {renderTablaInspeccion('closetAlcoba', alcobaNum)}
-                    {renderFotosArea('closetAlcoba', alcobaNum)}
-                  </div>
-                )}
-              </div>
-            ))}
+            {(() => {
+              let subNum = 0;
+              return areasEfectivas.map((areaCfg) => {
+                const areaId = areaCfg.tipo === 'alcobas' ? 'alcobas' : areaCfg.id;
+                if (!incluirSeccion(areaId)) return null;
+                subNum += 1;
+                if (areaCfg.tipo === 'alcobas') {
+                  return <React.Fragment key="alcobas">{renderBloqueAlcobas(subNum)}</React.Fragment>;
+                }
+                return (
+                  <React.Fragment key={areaCfg.id}>
+                    <div className="mb-1 flex flex-wrap items-center gap-2">
+                      <SubsectionTitle>3.{subNum} — {areaCfg.titulo}</SubsectionTitle>
+                      {areaCfg.personalizada && (
+                        <span
+                          className="mb-4 rounded px-2 py-0.5 text-xs font-medium"
+                          style={{
+                            backgroundColor: t.theme === 'dark' ? 'rgba(59,130,246,0.2)' : '#DBEAFE',
+                            color: t.theme === 'dark' ? '#93C5FD' : '#1D4ED8',
+                          }}
+                        >
+                          Área personalizada
+                        </span>
+                      )}
+                    </div>
+                    {renderTablaInspeccion(areaCfg.id)}
+                    {renderFotosArea(areaCfg.id)}
+                    <AreaDivider />
+                  </React.Fragment>
+                );
+              });
+            })()}
           </SectionCard>
+          )}
 
-          <SectionCard title="4. Conclusiones" subtitle="Resumen general de la inspección">
+          <SectionCard
+            title="4. Conclusiones"
+            subtitle={
+              resumenInspeccion.hallazgos.length
+                ? `Generadas desde ${resumenInspeccion.hallazgos.length} hallazgo(s) no conforme(s) o parcial(es)`
+                : 'Resumen general de la inspección'
+            }
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm" style={{ color: t.textSecondary }}>
+                Se actualizan solas al marcar ítems como <strong>No</strong> o <strong>Parcialmente</strong> en las áreas.
+              </p>
+              <button
+                type="button"
+                onClick={() => aplicarResumenInspeccion(true)}
+                className={complexBtnSecondary}
+              >
+                Actualizar desde inspección
+              </button>
+            </div>
             <FieldLabel>Conclusiones</FieldLabel>
             <ThemedTextarea
               name="conclusiones"
               value={formData.conclusiones}
-              onChange={(e) => handleInputChange('conclusiones', e.target.value)}
+              onChange={(e) => {
+                marcarResumenEditadoManual();
+                handleInputChange('conclusiones', e.target.value);
+              }}
               rows={4}
             />
             <div className="mt-3">
@@ -2396,19 +2740,33 @@ mostrarModalConfirmacion(
                 seccion="conclusiones"
                 tituloSeccion="Conclusiones"
                 textoActual={formData.conclusiones || ''}
-                onTextoCambiado={(texto) => handleInputChange('conclusiones', texto)}
+                onTextoCambiado={(texto) => {
+                  marcarResumenEditadoManual();
+                  handleInputChange('conclusiones', texto);
+                }}
                 tipoSeccion="conclusiones"
               />
             </div>
           </SectionCard>
 
-          <SectionCard title="4.1 Principales observaciones" subtitle="Hallazgos más relevantes del informe">
+          {incluirSeccion('observacionesPrincipales') && (
+          <SectionCard
+            title="4.1 Principales observaciones"
+            subtitle={
+              resumenInspeccion.hallazgos.length
+                ? `${resumenInspeccion.hallazgos.length} hallazgo(s) detectado(s) en la inspección`
+                : 'Hallazgos más relevantes del informe'
+            }
+          >
             <FieldLabel>Principales observaciones</FieldLabel>
             <ThemedTextarea
               name="observacionesPrincipales"
               value={formData.observacionesPrincipales}
-              onChange={(e) => handleInputChange('observacionesPrincipales', e.target.value)}
-              rows={4}
+              onChange={(e) => {
+                marcarResumenEditadoManual();
+                handleInputChange('observacionesPrincipales', e.target.value);
+              }}
+              rows={6}
             />
             <div className="mt-3">
               <ChatbotIA 
@@ -2417,20 +2775,26 @@ mostrarModalConfirmacion(
                 seccion="observacionesPrincipales"
                 tituloSeccion="Principales Observaciones"
                 textoActual={formData.observacionesPrincipales || ''}
-                onTextoCambiado={(texto) => handleInputChange('observacionesPrincipales', texto)}
+                onTextoCambiado={(texto) => {
+                  marcarResumenEditadoManual();
+                  handleInputChange('observacionesPrincipales', texto);
+                }}
                 tipoSeccion="observacionesPrincipales"
               />
             </div>
           </SectionCard>
+          )}
 
           <SectionCard
             title="Firmas"
-            subtitle="Quien recibe la visita y ajustador registrado en el sistema"
+            subtitle="Quien recibe la visita y el inspector registrado en el sistema"
           >
             <SeccionFirmasActa
               formData={formData}
               onInputChange={handleInputChange}
               tituloCliente="FIRMA DE QUIEN RECIBE LA VISITA"
+              tituloAjustador="FIRMA DEL INSPECTOR"
+              nombreRolProfesional="inspector"
               permitirRegistrarAjustadores
               sinContenedor
             />

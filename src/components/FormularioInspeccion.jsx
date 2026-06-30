@@ -317,6 +317,7 @@ export default function FormularioInspeccion() {
   const [direccion, setDireccion] = useState(datosPrevios.direccion || datosPrevios.direccionRiesgo || "");
   const [municipio, setMunicipio] = useState(datosPrevios.municipio || datosPrevios.ciudad_siniestro || datosPrevios.ciudad || "");
   const [personaEntrevistada, setPersonaEntrevistada] = useState("");
+  const [actividadEconomica, setActividadEconomica] = useState(datosPrevios.actividadEconomica || "");
 
 
   // Datos de inspección
@@ -393,6 +394,8 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   const [reforzamientosEstructurales, setReforzamientosEstructurales] = useState("");
   const [sistemaEstructural, setSistemaEstructural] = useState("");
   const [estructuraCubierta, setEstructuraCubierta] = useState("");
+  const [mantenimientoCubierta, setMantenimientoCubierta] = useState("");
+  const [mantenimientoCubiertaOtro, setMantenimientoCubiertaOtro] = useState("");
   const [regularAltura, setRegularAltura] = useState("");
   const [danosReparados, setDanosReparados] = useState("");
   // Campos "Otro" para especificar
@@ -1227,6 +1230,7 @@ await generarManualInspeccion();
             if (datosParseados.direccion !== undefined) setDireccion(datosParseados.direccion);
             if (datosParseados.municipio !== undefined) setMunicipio(datosParseados.municipio);
             if (datosParseados.personaEntrevistada !== undefined) setPersonaEntrevistada(datosParseados.personaEntrevistada);
+            if (datosParseados.actividadEconomica !== undefined) setActividadEconomica(datosParseados.actividadEconomica);
             if (datosParseados.nombreCliente !== undefined) setNombreCliente(datosParseados.nombreCliente);
             if (datosParseados.aseguradora !== undefined) setAseguradora(datosParseados.aseguradora);
             if (datosParseados.fecha !== undefined) setFecha(datosParseados.fecha);
@@ -1256,6 +1260,8 @@ await generarManualInspeccion();
             if (datosParseados.sistemaEstructuralOtro !== undefined) setSistemaEstructuralOtro(datosParseados.sistemaEstructuralOtro);
             if (datosParseados.estructuraCubierta !== undefined) setEstructuraCubierta(datosParseados.estructuraCubierta);
             if (datosParseados.estructuraCubiertaOtro !== undefined) setEstructuraCubiertaOtro(datosParseados.estructuraCubiertaOtro);
+            if (datosParseados.mantenimientoCubierta !== undefined) setMantenimientoCubierta(datosParseados.mantenimientoCubierta);
+            if (datosParseados.mantenimientoCubiertaOtro !== undefined) setMantenimientoCubiertaOtro(datosParseados.mantenimientoCubiertaOtro);
             if (datosParseados.regularAltura !== undefined) setRegularAltura(datosParseados.regularAltura);
             if (datosParseados.danosReparados !== undefined) setDanosReparados(datosParseados.danosReparados);
             // Materiales
@@ -1645,6 +1651,7 @@ await generarManualInspeccion();
     direccion,
     municipio,
     personaEntrevistada,
+    actividadEconomica,
     nombreCliente,
     aseguradora,
     fecha,
@@ -1674,6 +1681,8 @@ await generarManualInspeccion();
     sistemaEstructuralOtro,
     estructuraCubierta,
     estructuraCubiertaOtro,
+    mantenimientoCubierta,
+    mantenimientoCubiertaOtro,
     regularAltura,
     danosReparados,
     // Materiales
@@ -1770,7 +1779,7 @@ await generarManualInspeccion();
     // Cálculo completado
     
     return datos;
-  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, sustraccion, lucroCesante, pml, seccionesActivas, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems]);
+  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, actividadEconomica, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, mantenimientoCubierta, mantenimientoCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, sustraccion, lucroCesante, pml, seccionesActivas, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems]);
 
   // ⚠️ OPTIMIZACIÓN CRÍTICA: Usar useDeferredValue para diferir el cálculo pesado
   // Esto permite que la UI responda inmediatamente mientras el cálculo se hace en segundo plano
@@ -2125,6 +2134,10 @@ const filaDoble = (label, value) => new TableRow({
 
   const handlePersonaEntrevistadaChange = (e) => {
     setPersonaEntrevistada(e.target.value);
+  };
+
+  const handleActividadEconomicaChange = (e) => {
+    setActividadEconomica(e.target.value);
   };
 
   const handleBarrioChange = (e) => {
@@ -2619,6 +2632,14 @@ docContent.push(
       }),
       new TableRow({
         children: [
+          celdaEncabezadoInfo("Actividad Económica", 20),
+          celdaValorInfo(actividadEconomica, 36),
+          celdaVaciaInfo(20),
+          celdaVaciaInfo(24),
+        ],
+      }),
+      new TableRow({
+        children: [
           celdaEncabezadoInfo("Cargo", 20),
           celdaValorInfo(cargo, 36),
           celdaVaciaInfo(20),
@@ -2732,10 +2753,14 @@ docContent.push(
       }),
       new TableRow({
         children: [
+          encabezadoTabla("Mantenimiento de la cubierta"),
+          celdaTexto(
+            mantenimientoCubierta === "Otro" && mantenimientoCubiertaOtro
+              ? `${mantenimientoCubierta}: ${mantenimientoCubiertaOtro}`
+              : (mantenimientoCubierta || "")
+          ),
           encabezadoTabla("Daños reparados"),
           celdaTexto(limpiarPrefijoNumerico(danosReparados)),
-          new TableCell({ children: [new Paragraph("")], width: { size: 25, type: WidthType.PERCENTAGE } }),
-          new TableCell({ children: [new Paragraph("")], width: { size: 25, type: WidthType.PERCENTAGE } }),
         ],
       }),
     ],
@@ -3663,6 +3688,12 @@ if (incluirSeccionWord('roturaMaquinaria')) {
           children: [
             encabezadoTabla("Presión"),
             celdaTexto(presionContraincendios || ""),
+          ],
+        }),
+        new TableRow({
+          children: [
+            encabezadoTabla("Rociadores"),
+            celdaTexto(rociadores || ""),
           ],
         }),
         new TableRow({
@@ -4886,6 +4917,8 @@ const datos = {
       sistemaEstructuralOtro: sistemaEstructuralOtro,
       estructuraCubierta: estructuraCubierta,
       estructuraCubiertaOtro: estructuraCubiertaOtro,
+      mantenimientoCubierta: mantenimientoCubierta,
+      mantenimientoCubiertaOtro: mantenimientoCubiertaOtro,
       regularAltura: regularAltura,
       danosReparados: danosReparados,
       // Materiales
@@ -5021,6 +5054,7 @@ const datos = {
       nombreEmpresa: nombreEmpresa,
       municipio: municipio,
       personaEntrevistada: personaEntrevistada,
+      actividadEconomica: actividadEconomica,
       imagen: imagenBase64,
       imagenesRegistro: imagenesRegistro,
       imagenMapa: imagenMapaBase64,
@@ -5140,6 +5174,8 @@ const datos = {
       sistemaEstructuralOtro: sistemaEstructuralOtro,
       estructuraCubierta: estructuraCubierta,
       estructuraCubiertaOtro: estructuraCubiertaOtro,
+      mantenimientoCubierta: mantenimientoCubierta,
+      mantenimientoCubiertaOtro: mantenimientoCubiertaOtro,
       regularAltura: regularAltura,
       danosReparados: danosReparados,
         energiaProveedor: energiaProveedor,
@@ -5221,6 +5257,7 @@ const datos = {
         nombreEmpresa: nombreEmpresa,
         municipio: municipio,
         personaEntrevistada: personaEntrevistada,
+        actividadEconomica: actividadEconomica,
         imagen: imagenBase64,
         imagenesRegistro: imagenesRegistro,
         imagenMapa: imagenMapaBase64,
@@ -5317,7 +5354,7 @@ useEffect(() => {
 // Efecto para monitorear cambios en los estados principales cuando se cargan datos
 useEffect(() => {
   // Este efecto se mantiene para asegurar que los estados se actualicen correctamente
-}, [modoEdicion, cargando, nombreCliente, formData, fecha, barrio, departamento, horarioLaboral, cargo, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, descripcionEmpresa, infraestructura]);
+}, [modoEdicion, cargando, nombreCliente, formData, fecha, barrio, departamento, horarioLaboral, cargo, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, actividadEconomica, descripcionEmpresa, infraestructura]);
 
 // Función para cargar datos del formulario existente
 const cargarDatosFormulario = async (formularioId) => {
@@ -5398,6 +5435,9 @@ const cargarDatosFormulario = async (formularioId) => {
       
       const personaEntrevistadaValue = formulario.datos?.personaEntrevistada || '';
       setPersonaEntrevistada(personaEntrevistadaValue);
+
+      const actividadEconomicaValue = formulario.datos?.actividadEconomica || '';
+      setActividadEconomica(actividadEconomicaValue);
       
       const descripcionEmpresaValue = formulario.datos?.descripcionEmpresa || '';
       setDescripcionEmpresa(descripcionEmpresaValue);
@@ -5468,6 +5508,8 @@ const cargarDatosFormulario = async (formularioId) => {
       setSistemaEstructuralOtro(formulario.datos?.sistemaEstructuralOtro || '');
       setEstructuraCubierta(formulario.datos?.estructuraCubierta || '');
       setEstructuraCubiertaOtro(formulario.datos?.estructuraCubiertaOtro || '');
+      setMantenimientoCubierta(formulario.datos?.mantenimientoCubierta || '');
+      setMantenimientoCubiertaOtro(formulario.datos?.mantenimientoCubiertaOtro || '');
       setRegularAltura(formulario.datos?.regularAltura || '');
       setDanosReparados(formulario.datos?.danosReparados || '');
       
@@ -6760,6 +6802,30 @@ return (
             }}
           />
       </div>
+
+    <div className="md:col-span-2">
+      <label
+        className="block text-sm font-semibold mb-1"
+        style={{ color: textPrimary }}
+      >
+        Actividad Económica
+      </label>
+      <input
+        type="text"
+        placeholder="Actividad Económica"
+        value={actividadEconomica}
+        onChange={handleActividadEconomicaChange}
+        className="w-full rounded px-3 py-2"
+        style={{
+          backgroundColor: inputBg,
+          color: textPrimary,
+          borderColor: borderColor,
+          border: `1px solid ${borderColor}`
+        }}
+        disabled={cargando}
+      />
+    </div>
+
     <div>
       <label 
         className="block text-sm font-semibold mb-1"
@@ -7593,6 +7659,63 @@ return (
               <option value="1 = con irregularidad">1 = con irregularidad</option>
               <option value="2 = sin irregularidad">2 = sin irregularidad</option>
             </select>
+          </td>
+        </tr>
+        <tr>
+          <td 
+            style={{
+              border: `1px solid ${borderColor}`,
+              padding: '8px',
+              fontWeight: 'bold',
+              color: textPrimary
+            }}
+          >
+            Mantenimiento de la cubierta
+          </td>
+          <td 
+            colSpan="3"
+            style={{
+              border: `1px solid ${borderColor}`,
+              padding: '8px'
+            }}
+          >
+            <select
+              value={mantenimientoCubierta}
+              onChange={(e) => setMantenimientoCubierta(e.target.value)}
+              className="w-full px-2 py-1 rounded"
+              style={{
+                backgroundColor: inputBg,
+                color: textPrimary,
+                borderColor: borderColor,
+                border: `1px solid ${borderColor}`
+              }}
+              disabled={cargando}
+            >
+              <option value="">Mantenimiento de la cubierta</option>
+              <option value="Preventivo">Preventivo</option>
+              <option value="Correctivo">Correctivo</option>
+              <option value="Predictivo">Predictivo</option>
+              <option value="Preventivo y correctivo">Preventivo y correctivo</option>
+              <option value="No realiza mantenimiento">No realiza mantenimiento</option>
+              <option value="No aplica">No aplica</option>
+              <option value="Otro">Otro</option>
+            </select>
+            {mantenimientoCubierta === "Otro" && (
+              <input
+                type="text"
+                value={mantenimientoCubiertaOtro}
+                onChange={(e) => setMantenimientoCubiertaOtro(e.target.value)}
+                placeholder="Especifique el tipo de mantenimiento"
+                className="w-full px-2 py-1 rounded mt-2"
+                style={{
+                  backgroundColor: inputBg,
+                  color: textPrimary,
+                  borderColor: borderColor,
+                  border: `1px solid ${borderColor}`
+                }}
+                disabled={cargando}
+              />
+            )}
           </td>
         </tr>
         <tr style={{ backgroundColor: theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
@@ -11304,6 +11427,33 @@ return (
           </td>
         </tr>
         <tr>
+          <td
+            style={{
+              border: `1px solid ${borderColor}`,
+              padding: "8px",
+              fontWeight: "bold",
+              color: textPrimary,
+            }}
+          >
+            Rociadores
+          </td>
+          <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
+            <input
+              type="text"
+              value={rociadores}
+              onChange={(e) => setRociadores(e.target.value)}
+              placeholder="Rociadores"
+              className="w-full px-2 py-1 rounded"
+              style={{
+                backgroundColor: inputBg,
+                color: textPrimary,
+                border: `1px solid ${borderColor}`,
+              }}
+              disabled={cargando}
+            />
+          </td>
+        </tr>
+        <tr style={{ backgroundColor: theme === "dark" ? "#1F1F1F" : "#E5E7EB" }}>
           <td
             style={{
               border: `1px solid ${borderColor}`,

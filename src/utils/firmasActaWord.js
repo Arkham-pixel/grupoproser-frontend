@@ -111,6 +111,11 @@ const construirTablaFirmaActa = (bloque, opciones = {}) => {
   const nombreEmpresa = opciones.nombreEmpresa || 'Proser Riesgos SAS';
   const tituloCliente = opciones.tituloCliente || 'FIRMA DE QUIEN RECIBE LA VISITA';
   const tituloAjustador = opciones.tituloAjustador || 'FIRMA DEL AJUSTADOR';
+  const placeholderNombreProfesional =
+    opciones.placeholderNombreProfesional ||
+    (tituloAjustador.toUpperCase().includes('INSPECTOR')
+      ? 'NOMBRE DEL INSPECTOR'
+      : 'NOMBRE DEL AJUSTADOR');
 
   const cliente = bloque?.cliente || {};
   const ajustador = bloque?.ajustador || null;
@@ -232,7 +237,7 @@ const construirTablaFirmaActa = (bloque, opciones = {}) => {
               spacing: { after: 80 },
               children: [
                 new TextRun({
-                  text: nombreAjustadorDoc || 'NOMBRE DEL AJUSTADOR',
+                  text: nombreAjustadorDoc || placeholderNombreProfesional,
                   font: 'Arial',
                   size: 24,
                   bold: true,

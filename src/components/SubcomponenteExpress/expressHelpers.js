@@ -382,7 +382,7 @@ export function useExpressCatalogos() {
   const [catalogoResponsables, setCatalogoResponsables] = useState([]);
   const [catalogoAseguradoras, setCatalogoAseguradoras] = useState([]);
   const [catalogoEstados, setCatalogoEstados] = useState([]);
-  const [indiceCiudades, setIndiceCiudades] = useState(indiceCiudadesVacio);
+  const [indiceCiudades, setIndiceCiudades] = useState(() => indiceCiudadesVacio());
   const [loadingCatalogos, setLoadingCatalogos] = useState(true);
 
   useEffect(() => {

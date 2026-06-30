@@ -823,12 +823,6 @@ if (!formularioCompleto || !formularioCompleto.datos) {
             spacing: { after: 400 },
           })
         );
-        docContent.push(
-          new Paragraph({
-            text: "Por lo anterior el propietario tiene todo el derecho de solicitar garantía al vendedor, de todos los puntos mencionados en el ítem 6.1 del presente informe.",
-            spacing: { after: 400 },
-          })
-        );
       }
 
       // Texto final
@@ -847,6 +841,7 @@ if (!formularioCompleto || !formularioCompleto.datos) {
         ...construirElementosFirmasActaWord(formDataFirmas, {
           nombreEmpresa: 'Proser Riesgos SAS',
           tituloCliente: 'FIRMA DE QUIEN RECIBE LA VISITA',
+          tituloAjustador: 'FIRMA DEL INSPECTOR',
         })
       );
 

@@ -240,17 +240,7 @@ export async function obtenerBufferFoto(foto) {
   return null;
 }
 
-function celdaFotoVacia() {
-  return new TableCell({
-    width: { size: 50, type: WidthType.PERCENTAGE },
-    borders: bordesCeldaFoto,
-    margins: margenCeldaFoto,
-    verticalAlign: VerticalAlign.CENTER,
-    children: [pCelda('', { align: AlignmentType.CENTER })],
-  });
-}
-
-function celdaConFoto(imageBuffer, descripcion) {
+function celdaConFoto(imageBuffer, descripcion, opts = {}) {
   const children = imageBuffer
     ? [
         new Paragraph({
@@ -264,7 +254,7 @@ function celdaConFoto(imageBuffer, descripcion) {
           ],
         }),
         new Paragraph({
-          alignment: AlignmentType.JUSTIFIED,
+          alignment: AlignmentType.CENTER,
           spacing: { after: 0 },
           children: [tr(descripcion || '')],
         }),
@@ -277,7 +267,8 @@ function celdaConFoto(imageBuffer, descripcion) {
       ];
 
   return new TableCell({
-    width: { size: 50, type: WidthType.PERCENTAGE },
+    width: { size: opts.fullWidth ? 100 : 50, type: WidthType.PERCENTAGE },
+    columnSpan: opts.fullWidth ? 2 : undefined,
     borders: bordesCeldaFoto,
     margins: margenCeldaFoto,
     verticalAlign: VerticalAlign.CENTER,
@@ -296,16 +287,13 @@ export async function insertarFotosSeccionWord(docContent, fotos, titulo) {
 
     for (const foto of grupo) {
       const buf = await obtenerBufferFoto(foto);
-      celdas.push(celdaConFoto(buf, foto.descripcion));
-    }
-
-    if (grupo.length === 1) {
-      celdas.push(celdaFotoVacia());
+      celdas.push(celdaConFoto(buf, foto.descripcion, { fullWidth: grupo.length === 1 }));
     }
 
     docContent.push(
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
+        alignment: AlignmentType.CENTER,
         rows: [new TableRow({ children: celdas })],
       })
     );

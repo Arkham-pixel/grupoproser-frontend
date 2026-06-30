@@ -303,11 +303,14 @@ export default function SeccionFirmasActa({
   formData,
   onInputChange,
   tituloCliente = 'FIRMA DE QUIEN RECIBE LA VISITA',
+  tituloAjustador = 'FIRMA DEL AJUSTADOR',
+  nombreRolProfesional = 'ajustador',
   descripcion,
   permitirRegistrarAjustadores = false,
   sinContenedor = false,
 }) {
   const t = usePropiedadesTheme();
+  const rolCap = nombreRolProfesional.charAt(0).toUpperCase() + nombreRolProfesional.slice(1);
   const [modalFirmaAbierto, setModalFirmaAbierto] = useState(false);
   const [modalNuevoAjustador, setModalNuevoAjustador] = useState(false);
   const [funcionarios, setFuncionarios] = useState([]);
@@ -333,7 +336,9 @@ export default function SeccionFirmasActa({
       const arr = Array.isArray(lista) ? lista : [];
       setFuncionarios(arr);
       if (arr.length === 0) {
-        setErrorListaFuncionarios('No hay ajustadores en la lista. Use «Agregar ajustador» para registrar uno nuevo.');
+        setErrorListaFuncionarios(
+          `No hay ${nombreRolProfesional}es en la lista. Use «Agregar ${nombreRolProfesional}» para registrar uno nuevo.`
+        );
       }
     } catch {
       const raw = FuncionarioService.cargarDesdeLocalStorage();
@@ -341,13 +346,13 @@ export default function SeccionFirmasActa({
       setFuncionarios(Array.isArray(norm) ? norm : []);
       setErrorListaFuncionarios(
         norm.length === 0
-          ? 'No se pudo cargar la lista. Use «Agregar ajustador» para registrar uno nuevo.'
+          ? `No se pudo cargar la lista. Use «Agregar ${nombreRolProfesional}» para registrar uno nuevo.`
           : 'Lista cargada solo desde el navegador (sin conexión al servidor).'
       );
     } finally {
       setCargandoFuncionarios(false);
     }
-  }, []);
+  }, [nombreRolProfesional]);
 
   useEffect(() => {
     cargarListaFuncionarios();
@@ -401,7 +406,7 @@ export default function SeccionFirmasActa({
 
   const textoDescripcion =
     descripcion ||
-    'Quien recibe la visita a la izquierda. A la derecha elija el ajustador de la lista del sistema. Si llega un empleado nuevo, use «Agregar ajustador» para registrarlo en la lista (independiente del formulario de ajustes).';
+    `Quien recibe la visita a la izquierda. A la derecha elija el ${nombreRolProfesional} de la lista del sistema. Si llega un empleado nuevo, use «Agregar ${nombreRolProfesional}» para registrarlo en la lista.`;
 
   const contenido = (
     <>
@@ -511,18 +516,18 @@ export default function SeccionFirmasActa({
           style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-heading font-bold" style={{ color: t.textPrimary }}>FIRMA DEL AJUSTADOR</h3>
+            <h3 className="font-heading font-bold" style={{ color: t.textPrimary }}>{tituloAjustador}</h3>
             {permitirRegistrarAjustadores && (
               <button
                 type="button"
                 onClick={() => setModalNuevoAjustador(true)}
                 className={complexBtnSecondary}
               >
-                <FaPlus /> Agregar ajustador
+                <FaPlus /> Agregar {nombreRolProfesional}
               </button>
             )}
           </div>
-          <FieldLabel>Ajustador (lista del sistema)</FieldLabel>
+          <FieldLabel>{rolCap} (lista del sistema)</FieldLabel>
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -531,7 +536,9 @@ export default function SeccionFirmasActa({
             >
               Actualizar lista
             </button>
-            <span className="text-xs" style={{ color: t.textSecondary }}>{funcionarios.length} ajustador(es)</span>
+            <span className="text-xs" style={{ color: t.textSecondary }}>
+              {funcionarios.length} {nombreRolProfesional}(es)
+            </span>
           </div>
           {errorListaFuncionarios && (
             <p
@@ -551,7 +558,7 @@ export default function SeccionFirmasActa({
             disabled={cargandoFuncionarios}
             className="mb-2"
           >
-            <option value="">— Seleccione ajustador —</option>
+            <option value="">— Seleccione {nombreRolProfesional} —</option>
             {funcionarios.map((f) => {
               const fid = idFunc(f);
               if (!fid) return null;
@@ -564,7 +571,9 @@ export default function SeccionFirmasActa({
             })}
           </ThemedSelect>
           {cargandoFuncionarios && (
-            <p className="mb-2 text-xs" style={{ color: t.textSecondary }}>Cargando lista de ajustadores…</p>
+            <p className="mb-2 text-xs" style={{ color: t.textSecondary }}>
+              Cargando lista de {nombreRolProfesional}es…
+            </p>
           )}
           {(() => {
             const sel = funcionarios.find(
@@ -572,14 +581,16 @@ export default function SeccionFirmasActa({
             );
             return sel && !formData.actaAjustadorFirmaImagen ? (
               <p className="mb-3 text-xs" style={{ color: t.theme === 'dark' ? '#FCD34D' : '#B45309' }}>
-                Este ajustador no tiene imagen de firma guardada. Edítelo en Gestión de funcionarios o súbala al registrarlo.
+                Este {nombreRolProfesional} no tiene imagen de firma guardada. Edítelo en Gestión de funcionarios o súbala al registrarlo.
               </p>
             ) : null;
           })()}
           <div className="mb-4 space-y-2 text-sm" style={{ color: t.textPrimary }}>
             <p>
               <span className="font-semibold">Nombre:</span>{' '}
-              {formData.actaAjustadorNombre || <span style={{ color: t.textSecondary }}>— Elija ajustador —</span>}
+              {formData.actaAjustadorNombre || (
+                <span style={{ color: t.textSecondary }}>— Elija {nombreRolProfesional} —</span>
+              )}
             </p>
             <p>
               <span className="font-semibold">Cargo:</span>{' '}
@@ -595,10 +606,14 @@ export default function SeccionFirmasActa({
             style={{ borderColor: t.borderColor, backgroundColor: t.cardBg }}
           >
             {formData.actaAjustadorFirmaImagen ? (
-              <img src={formData.actaAjustadorFirmaImagen} alt="Firma del ajustador" className="max-h-28 object-contain" />
+              <img
+                src={formData.actaAjustadorFirmaImagen}
+                alt={`Firma del ${nombreRolProfesional}`}
+                className="max-h-28 object-contain"
+              />
             ) : (
               <span className="text-center text-sm" style={{ color: t.textSecondary }}>
-                Elija un ajustador de la lista o registre uno nuevo con «Agregar ajustador».
+                Elija un {nombreRolProfesional} de la lista o registre uno nuevo con «Agregar {nombreRolProfesional}».
               </span>
             )}
           </div>
