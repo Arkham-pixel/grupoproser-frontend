@@ -21,10 +21,13 @@ export function getImageUrlCandidates(imagen) {
   
   if (!imagen) return candidates;
   
-  // Si es un string base64 o blob, devolverlo directamente
+  // Si es un string base64, blob o referencia persistida (s3:, /uploads/, etc.)
   if (typeof imagen === 'string') {
     if (imagen.startsWith('data:') || imagen.startsWith('blob:')) {
       return [imagen];
+    }
+    if (isStoredFileReference(imagen)) {
+      return getUploadsUrlCandidates(imagen);
     }
   }
   

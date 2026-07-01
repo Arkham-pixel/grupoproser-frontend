@@ -522,6 +522,15 @@ const docContent = [];
       );
     }
 
+    if (formData.gerenciaContacto) {
+      docContent.push(
+        new Paragraph({
+          children: [new TextRun({ text: formData.gerenciaContacto, size: 24, font: "Calibri", color: "000000" })],
+          spacing: { after: 0 },
+        })
+      );
+    }
+
     // Empresa (en negrilla y mayúsculas)
     if (formData.empresaCliente) {
       docContent.push(

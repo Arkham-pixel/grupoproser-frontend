@@ -10,6 +10,7 @@ import {
   FaSync,
   FaFileExcel,
   FaFileAlt,
+  FaShip,
 } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { listarRegistrosPuertos } from '../../services/puertosService.js';
@@ -39,13 +40,18 @@ import {
   puertosTableTd,
   puertosTableWrap,
 } from './puertosFenixUi';
+import { esRegistroInspeccionAsegurado } from './puertosTipoRegistro.js';
 
 const TIPO_LABEL = {
   acta: 'Acta',
   caso_exportacion: 'Caso exportación',
+  inspeccion_asegurado: 'Inspección asegurado',
 };
 
 function rutaEditar(registro) {
+  if (esRegistroInspeccionAsegurado(registro)) {
+    return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}`;
+  }
   if (registro.tipoRegistro === 'caso_exportacion') {
     return `/puertos/actas/caso/editar/${registro.id}`;
   }
@@ -53,6 +59,9 @@ function rutaEditar(registro) {
 }
 
 function rutaVer(registro) {
+  if (esRegistroInspeccionAsegurado(registro)) {
+    return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}`;
+  }
   if (registro.tipoRegistro === 'caso_exportacion') {
     return `/puertos/actas/caso/ver/${registro.id}`;
   }
@@ -60,6 +69,9 @@ function rutaVer(registro) {
 }
 
 function rutaFotos(registro) {
+  if (esRegistroInspeccionAsegurado(registro)) {
+    return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}?fotos=1`;
+  }
   if (registro.tipoRegistro === 'caso_exportacion') {
     return `/puertos/actas/caso/editar/${registro.id}?fotos=1`;
   }
@@ -209,6 +221,9 @@ export default function PuertosActasListado() {
           <Link to="/puertos/actas/caso/nueva" className={puertosBtnPrimary}>
             <FaFileAlt /> Informe Exportación
           </Link>
+          <Link to="/puertos/actas/inspeccion-asegurado/nueva" className={puertosBtnPrimary}>
+            <FaShip /> Inspección Asegurado
+          </Link>
         </div>
       </div>
 
@@ -308,10 +323,16 @@ export default function PuertosActasListado() {
                   <td className={puertosTableTd}>
                     <span
                       className={
-                        fila.tipoRegistro === 'caso_exportacion' ? puertosBadge : puertosBadgeAlt
+                        esRegistroInspeccionAsegurado(fila)
+                          ? puertosBadgeAlt
+                          : fila.tipoRegistro === 'caso_exportacion'
+                            ? puertosBadge
+                            : puertosBadgeAlt
                       }
                     >
-                      {TIPO_LABEL[fila.tipoRegistro] || fila.tipoRegistro}
+                      {esRegistroInspeccionAsegurado(fila)
+                        ? TIPO_LABEL.inspeccion_asegurado
+                        : TIPO_LABEL[fila.tipoRegistro] || fila.tipoRegistro}
                     </span>
                   </td>
                   <td className={`${puertosTableTd} font-medium`}>{fila.nroReferencia || '—'}</td>

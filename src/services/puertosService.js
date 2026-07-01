@@ -3,7 +3,8 @@ import { BASE_URL } from '../config/apiConfig.js';
 async function parseJson(response) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.error || data.message || `Error ${response.status}`);
+    const detalle = data.detalles ? `: ${data.detalles}` : '';
+    throw new Error((data.error || data.message || `Error ${response.status}`) + detalle);
   }
   return data;
 }

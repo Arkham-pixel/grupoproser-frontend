@@ -61,6 +61,8 @@ import { updateCasoComplex } from './services/complexService';
 
 import { CasosRiesgoProvider } from './context/CasosRiesgoContext'
 import RequireAuth from './components/RequireAuth'
+import RequireRutaPermitida from './components/RequireRutaPermitida'
+import { esRolVisualizador, esRolPuertos, rutaInicioPorRol } from './config/roles'
 import sessionManager from './services/sessionManager'
 import PaginaError from './components/PaginaError'
 import DetectorConexion from './components/DetectorConexion'
@@ -68,22 +70,20 @@ import DetectorConexion from './components/DetectorConexion'
 // Comprueba si tenemos un token en localStorage
 const isAuthenticated = () => !!localStorage.getItem('token')
 
-const esRolVisualizador = () =>
-  (localStorage.getItem('rol') || '').toLowerCase() === 'visualizador'
+const esRolVisualizadorLocal = () => esRolVisualizador()
+const esRolPuertosLocal = () => esRolPuertos()
 
 // Visualizadores solo usan matrices de riesgo: evitar aterrizar en el panel general
-function InicioOrRedirectVisualizador() {
-  return esRolVisualizador()
-    ? <Navigate to="/matrices-riesgo" replace />
-    : <Inicio />
+function InicioOrRedirectPorRol() {
+  if (esRolVisualizadorLocal()) return <Navigate to="/matrices-riesgo" replace />
+  if (esRolPuertosLocal()) return <Navigate to="/puertos/actas" replace />
+  return <Inicio />
 }
 
 // Para redirigir al dashboard si ya estás logueado
 function LoginRedirect() {
   if (!isAuthenticated()) return <Login />
-  return esRolVisualizador()
-    ? <Navigate to="/matrices-riesgo" replace />
-    : <Navigate to="/inicio" replace />
+  return <Navigate to={rutaInicioPorRol()} replace />
 }
 
 // Función para guardar el caso complex
@@ -386,11 +386,7 @@ export default function App() {
           path="/"
           element={
             isAuthenticated()
-              ? (
-                  esRolVisualizador()
-                    ? <Navigate to="/matrices-riesgo" replace />
-                    : <Navigate to="/inicio" replace />
-                )
+              ? <Navigate to={rutaInicioPorRol()} replace />
               : <Navigate to="/login" replace />
           }
         />
@@ -408,11 +404,13 @@ export default function App() {
         <Route
           element={
             <RequireAuth>
-              <Layout />
+              <RequireRutaPermitida>
+                <Layout />
+              </RequireRutaPermitida>
             </RequireAuth>
           }
         >
-          <Route path="inicio" element={<InicioOrRedirectVisualizador />} />
+          <Route path="inicio" element={<InicioOrRedirectPorRol />} />
           <Route
             path="complex/formulario"
             element={<FormularioCasoComplex onSave={guardarCasoComplex} />}
@@ -464,7 +462,18 @@ export default function App() {
             <Route path="caso/nueva" element={<PuertosCasoExportacionMain />} />
             <Route path="caso/ver/:id" element={<PuertosCasoExportacionMain />} />
             <Route path="caso/editar/:id" element={<PuertosCasoExportacionMain />} />
+            <Route
+              path="inspeccion-asegurado/nueva"
+              element={<PuertosInspeccionMain tipoInicial="riicp004" modoActas />}
+            />
+            <Route
+              path="inspeccion-asegurado/editar/:id"
+              element={<PuertosInspeccionMain tipoInicial="riicp004" modoActas />}
+            />
           </Route>
+
+          <Route path="puertos/inspeccion-asegurado" element={<Navigate to="/puertos/actas/inspeccion-asegurado/nueva" replace />} />
+          <Route path="puertos/inspeccion-asegurado/editar/:id" element={<Navigate to="/puertos/actas/inspeccion-asegurado/editar/:id" replace />} />
 
           <Route path="historial" element={<HistorialFormularios />} />
           <Route path="siniestros" element={<SiniestrosList />} />

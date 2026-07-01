@@ -204,6 +204,8 @@ if (!esAdminOSoporte) {
               >
                 <option value="">Seleccionar rol</option>
                 <option value="usuario">Usuario</option>
+                <option value="visualizador">Visualizador</option>
+                <option value="puertos">Puertos</option>
                 <option value="soporte">Soporte</option>
                 <option value="admin">Administrador</option>
               </select>

@@ -18,6 +18,9 @@ const CAMPOS_IMAGENES_INFORME = [
   'imagenesCondicionesMeteo',
 ];
 
+const LOTE_SUBIDA = 1;
+const TIMEOUT_SUBIDA_MS = 120000;
+
 async function subirArchivosAlServidor(archivos, casoId) {
   if (!archivos.length) return [];
 
@@ -28,18 +31,31 @@ async function subirArchivosAlServidor(archivos, casoId) {
 
   const token = localStorage.getItem('token');
   const qs = casoId ? `?casoId=${encodeURIComponent(casoId)}` : '';
-  const response = await fetch(`${BASE_URL}/api/puertos/casos/upload-images${qs}`, {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), TIMEOUT_SUBIDA_MS);
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || data.message || `Error ${response.status} al subir imágenes`);
+  try {
+    const response = await fetch(`${BASE_URL}/api/puertos/casos/upload-images${qs}`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || data.message || `Error ${response.status} al subir imágenes`);
+    }
+
+    return data.imagenes || [];
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('La subida de fotos tardó demasiado. Intente con menos imágenes por lote o revise su conexión.');
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-
-  return data.imagenes || [];
 }
 
 /**
@@ -136,4 +152,166 @@ export async function procesarInformeExportacionImagenes(informe = {}, casoId = 
   }
 
   return informeProcesado;
+}
+
+const CAMPOS_IMAGENES_INSPECCION_PUERTOS = [
+  'imagenesAspectoAlmacenamiento',
+  'imagenesAspectoModelo',
+  'imagenesInspeccionBordo',
+  'imagenesInspeccionDescargue',
+  'imagenesRegistro',
+];
+
+/** ¿Hay fotos nuevas locales que aún no están en S3? */
+export function hayImagenesPendientesInspeccion(formData = {}) {
+  for (const campo of CAMPOS_IMAGENES_INSPECCION_PUERTOS) {
+    if ((formData[campo] || []).some(imagenNecesitaSubida)) return true;
+  }
+  for (const registro of formData.registrosPorVin || []) {
+    if ((registro.fotos || []).some(imagenNecesitaSubida)) return true;
+  }
+  if (typeof formData.imagenFirma === 'string' && formData.imagenFirma.startsWith('data:')) return true;
+  if (formData.imagenFirma?.file instanceof File) return true;
+  return false;
+}
+
+function aplicarListaImagenesProcesadas(imagenes = [], mapaSubidas) {
+  return (imagenes || [])
+    .map((imagen) => {
+      if (imagenNecesitaSubida(imagen)) {
+        const meta = mapaSubidas.get(imagen.id);
+        if (!meta?.ruta) return null;
+        return serializarImagenPersistida({
+          id: imagen.id,
+          ruta: meta.ruta,
+          nombre: meta.nombre || imagen.nombre,
+          descripcion: imagen.descripcion || '',
+          tamaño: meta.tamaño,
+          tipoMime: meta.tipoMime,
+        });
+      }
+      return serializarImagenPersistida(imagen);
+    })
+    .filter(Boolean);
+}
+
+async function subirPendientesEnLotes(pendientes, casoId, onProgreso) {
+  const mapaSubidas = new Map();
+  const unicos = [...new Map(pendientes.map((p) => [p.id, p])).values()];
+  const totalLotes = Math.max(1, Math.ceil(unicos.length / LOTE_SUBIDA));
+  onProgreso?.({ lote: 0, totalLotes, subidas: 0, total: unicos.length });
+
+  for (let i = 0; i < unicos.length; i += LOTE_SUBIDA) {
+    const numeroLote = Math.floor(i / LOTE_SUBIDA) + 1;
+    onProgreso?.({ lote: mapaSubidas.size + 1, totalLotes: unicos.length, subidas: mapaSubidas.size, total: unicos.length });
+
+    const lote = unicos.slice(i, i + LOTE_SUBIDA);
+    const preparados = await Promise.all(
+      lote.map(async (imagen) => {
+        const file = await prepararFileDesdeImagen(imagen);
+        return file ? { imagen, file } : null;
+      })
+    );
+    const archivos = preparados.filter(Boolean);
+    if (!archivos.length) continue;
+
+    const subidas = await subirArchivosAlServidor(
+      archivos.map(({ imagen, file }) => ({ file, nombreFallback: imagen.nombre })),
+      casoId
+    );
+
+    if (subidas.length !== archivos.length) {
+      throw new Error(
+        `Solo se subieron ${subidas.length} de ${archivos.length} fotos del lote ${numeroLote}.`
+      );
+    }
+
+    archivos.forEach(({ imagen }, idx) => {
+      if (subidas[idx]?.ruta) {
+        mapaSubidas.set(imagen.id, subidas[idx]);
+      }
+    });
+  }
+
+  const faltantes = unicos.filter((img) => !mapaSubidas.has(img.id));
+  if (faltantes.length > 0) {
+    throw new Error(`No se pudieron subir ${faltantes.length} foto(s) al servidor.`);
+  }
+
+  return mapaSubidas;
+}
+
+function recolectarImagenesPendientes(formData = {}) {
+  const pendientes = [];
+  const agregar = (lista) => {
+    for (const imagen of lista || []) {
+      if (imagenNecesitaSubida(imagen)) pendientes.push(imagen);
+    }
+  };
+  for (const campo of CAMPOS_IMAGENES_INSPECCION_PUERTOS) {
+    agregar(formData[campo]);
+  }
+  for (const registro of formData.registrosPorVin || []) {
+    agregar(registro.fotos);
+  }
+  if (typeof formData.imagenFirma === 'string' && formData.imagenFirma.startsWith('data:')) {
+    pendientes.push({
+      id: 'firma-informe',
+      src: formData.imagenFirma,
+      file: formData.archivoFirma,
+      nombre: 'firma.png',
+    });
+  }
+  return pendientes;
+}
+
+/**
+ * Sube fotos del formulario modular de inspección Puertos / inspección asegurado a S3.
+ * Las ya guardadas en S3 no se vuelven a subir. Un solo lote de subida por guardado.
+ */
+export async function procesarInspeccionPuertosImagenes(formData = {}, casoId = null, onProgreso) {
+  const idCaso = casoId || formData._id || 'borrador';
+  const procesado = { ...formData };
+
+  const pendientes = recolectarImagenesPendientes(formData);
+  let mapaSubidas = new Map();
+
+  if (pendientes.length > 0) {
+    mapaSubidas = await subirPendientesEnLotes(pendientes, idCaso, onProgreso);
+  }
+
+  await Promise.all(
+    CAMPOS_IMAGENES_INSPECCION_PUERTOS.map(async (campo) => {
+      procesado[campo] = aplicarListaImagenesProcesadas(formData[campo], mapaSubidas);
+    })
+  );
+
+  procesado.registrosPorVin = await Promise.all(
+    (formData.registrosPorVin || []).map(async (registro) => ({
+      ...registro,
+      fotos: aplicarListaImagenesProcesadas(registro.fotos, mapaSubidas),
+    }))
+  );
+
+  if (formData.imagenFirma) {
+    if (typeof formData.imagenFirma === 'string' && isStoredFileReference(formData.imagenFirma)) {
+      procesado.imagenFirma = formData.imagenFirma;
+    } else if (mapaSubidas.has('firma-informe')) {
+      const rutaFirma = mapaSubidas.get('firma-informe')?.ruta;
+      if (!rutaFirma) {
+        throw new Error('No se pudo guardar la imagen de la firma en el servidor.');
+      }
+      procesado.imagenFirma = rutaFirma;
+    } else if (
+      typeof formData.imagenFirma === 'string' &&
+      formData.imagenFirma.startsWith('data:')
+    ) {
+      throw new Error(
+        'La firma no se subió al servidor. Vuelva a cargar la imagen e intente guardar de nuevo.'
+      );
+    }
+  }
+
+  delete procesado.archivoFirma;
+  return procesado;
 }

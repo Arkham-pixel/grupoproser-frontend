@@ -46,6 +46,7 @@ import Aviso2FAPrompt from './Aviso2FAPrompt';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
+import { esRolPuertos, esRolVisualizador, etiquetaRol, obtenerRolAlmacenado } from '../config/roles';
 
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 
@@ -65,12 +66,7 @@ function formatNombreCorto(nombre, login) {
 }
 
 function formatRol(rol) {
-  if (!rol) return 'Usuario';
-  const r = rol.toLowerCase();
-  if (r === 'admin') return 'Administrador';
-  if (r === 'soporte') return 'Soporte';
-  if (r === 'visualizador') return 'Visualizador';
-  return rol.charAt(0).toUpperCase() + rol.slice(1);
+  return etiquetaRol(rol);
 }
 
 /** Timer de sesión en pie del sidebar */
@@ -128,9 +124,12 @@ function SessionTimerSidebar({ compact = false }) {
 
 export default function Layout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [expandedSection, setExpandedSection] = useState(() =>
-    (localStorage.getItem('rol') || '').toLowerCase() === 'visualizador' ? 'matrices' : null
-  );
+  const [expandedSection, setExpandedSection] = useState(() => {
+    const rol = obtenerRolAlmacenado();
+    if (esRolVisualizador(rol)) return 'matrices';
+    if (esRolPuertos(rol)) return 'puertos';
+    return null;
+  });
   const [fotoUsuarioQueue, setFotoUsuarioQueue] = useState([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const fotoUsuario = fotoUsuarioQueue[0] || null;
@@ -152,7 +151,9 @@ export default function Layout() {
     rolNorm === 'admin' || rolNorm === 'administrador';
   const esAdminOSoporte = esAdmin || rolNorm === 'soporte';
   const esSoloSoporte = rolNorm === 'soporte';
-  const esVisualizador = rolNorm === 'visualizador';
+  const esVisualizador = esRolVisualizador(rolNorm);
+  const esPuertos = esRolPuertos(rolNorm);
+  const accesoRestringido = esVisualizador || esPuertos;
   const puedeCatalogosExpress = usuarioAutorizadoCatalogosExpress(
     localStorage.getItem('cedula'),
     localStorage.getItem('login'),
@@ -195,6 +196,8 @@ export default function Layout() {
     '/puertos/actas/nueva': 'Puertos — Nueva Acta',
     '/puertos/actas/caso/nueva': 'Puertos — Informe Exportación',
     '/puertos/formulario': 'Inspección de Instalaciones',
+    '/puertos/inspeccion-asegurado': 'Inspección de Asegurado',
+    '/puertos/actas/inspeccion-asegurado/nueva': 'Inspección de Asegurado',
     '/historial': 'Historial de Formularios',
     '/siniestros': 'Siniestros',
     '/admin/usuarios': 'Administración de Usuarios',
@@ -269,12 +272,14 @@ export default function Layout() {
   };
 
   const menuItems = {
-    principal: esVisualizador ? [] : [{ path: '/inicio', icon: FaHome, label: 'Inicio' }],
-    matrices: [
-      { path: '/matrices-riesgo', icon: FaList, label: 'Ver Matrices' },
-      { path: '/matriz-riesgo-avanzada', icon: FaChartBar, label: 'Matriz de Riesgo' },
-    ],
-    complex: !esVisualizador
+    principal: accesoRestringido ? [] : [{ path: '/inicio', icon: FaHome, label: 'Inicio' }],
+    matrices: esPuertos
+      ? []
+      : [
+          { path: '/matrices-riesgo', icon: FaList, label: 'Ver Matrices' },
+          { path: '/matriz-riesgo-avanzada', icon: FaChartBar, label: 'Matriz de Riesgo' },
+        ],
+    complex: !accesoRestringido
       ? [
           { path: '/complex/agregar', icon: FaPlus, label: 'Agregar Casos' },
           { path: '/complex/dashboard', icon: FaChartLine, label: 'Dashboard' },
@@ -288,14 +293,14 @@ export default function Layout() {
             : []),
         ]
       : [],
-    riesgos: !esVisualizador
+    riesgos: !accesoRestringido
       ? [
           { path: '/riesgos/agregar', icon: FaPlus, label: 'Agregar Casos' },
           { path: '/riesgos/dashboard', icon: FaChartLine, label: 'Dashboard' },
           { path: '/riesgos/exportar', icon: FaDownload, label: 'Exportar Excel' },
         ]
       : [],
-    formularios: !esVisualizador
+    formularios: !accesoRestringido
       ? [
           { path: '/formularioinspeccion', icon: FaClipboardList, label: 'Formulario de Riesgo' },
           { path: '/ajuste', icon: FaFileAlt, label: 'Ajuste / Acta de inspección' },
@@ -309,7 +314,7 @@ export default function Layout() {
           { path: '/historial', icon: FaList, label: 'Historial de Formularios' },
         ]
       : [],
-    express: !esVisualizador
+    express: !accesoRestringido
       ? [
           { path: '/express/carga', icon: FaBolt, label: 'Carga Express' },
           { path: '/express/dashboard', icon: FaChartLine, label: 'Dashboard Express' },
@@ -320,12 +325,19 @@ export default function Layout() {
     puertos: !esVisualizador
       ? [
           { path: '/puertos/actas', icon: FaClipboardList, label: 'Actas y Descargues' },
-          { path: '/puertos/actas/nueva', icon: FaPlus, label: 'Nueva Acta' },
-          { path: '/puertos/formulario', icon: FaShip, label: 'Inspección Instalaciones' },
+          ...(esPuertos
+            ? []
+            : [
+                { path: '/puertos/actas/nueva', icon: FaPlus, label: 'Nueva Acta' },
+                { path: '/puertos/formulario', icon: FaShip, label: 'Inspección Instalaciones' },
+              ]),
+          { path: '/puertos/actas/inspeccion-asegurado/nueva', icon: FaFileAlt, label: 'Inspección Asegurado' },
         ]
       : [],
     cuenta: !esVisualizador
-      ? [
+      ? esPuertos
+        ? [{ path: '/cuenta', icon: FaUserCircle, label: 'Mi Cuenta' }]
+        : [
           { path: '/cuenta', icon: FaUserCircle, label: 'Mi Cuenta' },
           ...(usuarioAutorizadoGestionDocumentos(
             localStorage.getItem('cedula'),
@@ -377,16 +389,18 @@ export default function Layout() {
 
   const sections = [
     { key: 'principal', title: 'PRINCIPAL', icon: FaHome, items: menuItems.principal },
-    ...(!esVisualizador
-      ? [
-          { key: 'complex', title: 'COMPLEX', icon: FaFileAlt, items: menuItems.complex },
-          { key: 'riesgos', title: 'RIESGOS', icon: FaChartBar, items: menuItems.riesgos },
-          { key: 'express', title: 'EXPRESS', icon: FaBolt, items: menuItems.express },
-          { key: 'puertos', title: 'PUERTOS', icon: FaShip, items: menuItems.puertos },
-          { key: 'formularios', title: 'FORMULARIOS', icon: FaFileInvoice, items: menuItems.formularios },
-        ]
-      : []),
-    { key: 'matrices', title: 'MATRICES', icon: FaChartBar, items: menuItems.matrices },
+    ...(esPuertos
+      ? [{ key: 'puertos', title: 'PUERTOS', icon: FaShip, items: menuItems.puertos }]
+      : !esVisualizador
+        ? [
+            { key: 'complex', title: 'COMPLEX', icon: FaFileAlt, items: menuItems.complex },
+            { key: 'riesgos', title: 'RIESGOS', icon: FaChartBar, items: menuItems.riesgos },
+            { key: 'express', title: 'EXPRESS', icon: FaBolt, items: menuItems.express },
+            { key: 'puertos', title: 'PUERTOS', icon: FaShip, items: menuItems.puertos },
+            { key: 'formularios', title: 'FORMULARIOS', icon: FaFileInvoice, items: menuItems.formularios },
+          ]
+        : []),
+    ...(!esPuertos ? [{ key: 'matrices', title: 'MATRICES', icon: FaChartBar, items: menuItems.matrices }] : []),
     ...(esAdminOSoporte
       ? [{ key: 'admin', title: 'ADMINISTRACIÓN', icon: FaShieldAlt, items: menuItems.admin }]
       : []),

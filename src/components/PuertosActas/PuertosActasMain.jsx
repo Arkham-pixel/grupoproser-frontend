@@ -15,6 +15,7 @@ const tabs = [
   { to: '/puertos/actas', label: 'Listado', icon: FaList, end: true },
   { to: '/puertos/actas/nueva', label: 'Nueva Acta', icon: FaPlus, end: false },
   { to: '/puertos/actas/caso/nueva', label: 'Informe Exportación', icon: FaFileAlt, end: false },
+  { to: '/puertos/actas/inspeccion-asegurado/nueva', label: 'Inspección Asegurado', icon: FaShip, end: false },
 ];
 
 export default function PuertosActasMain() {
@@ -40,9 +41,11 @@ export default function PuertosActasMain() {
           {tabs.map(({ to, label, icon: Icon, end }) => {
             const active = end
               ? location.pathname === to
-              : to.includes('/caso/')
-                ? location.pathname.startsWith('/puertos/actas/caso')
-                : location.pathname.startsWith(to);
+              : to.includes('/inspeccion-asegurado')
+                ? location.pathname.startsWith('/puertos/actas/inspeccion-asegurado')
+                : to.includes('/caso/')
+                  ? location.pathname.startsWith('/puertos/actas/caso')
+                  : location.pathname.startsWith(to);
             return (
               <NavLink key={to} to={to} end={end} className={active ? puertosTabActive : puertosTabIdle}>
                 <Icon />

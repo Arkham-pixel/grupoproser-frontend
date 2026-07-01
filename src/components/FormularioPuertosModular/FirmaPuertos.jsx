@@ -1,10 +1,18 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import { FaPlus, FaTrash, FaCheck, FaUpload } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaUpload } from 'react-icons/fa';
+import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
+
+const BANCO_FIRMAS_KEY = 'bancoFirmasPuertos';
+
+function urlFirmaParaMostrar(imagenFirma) {
+  if (!imagenFirma) return null;
+  return getImageUrl(imagenFirma) || getImageUrl({ ruta: imagenFirma });
+}
 
 export default function FirmaPuertos({ formData, onInputChange, onMultipleChange, cargando }) {
   const { theme } = useTheme();
-  
+
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
@@ -13,266 +21,230 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
 
   const fileInputRef = useRef(null);
   const [bancoFirmas, setBancoFirmas] = useState([]);
+  const [firmaSeleccionadaId, setFirmaSeleccionadaId] = useState('');
 
-  // Cargar banco de firmas del localStorage
   useEffect(() => {
-    const bancoGuardado = localStorage.getItem('bancoFirmasPuertos');
-    if (bancoGuardado) {
-      try {
-        const firmas = JSON.parse(bancoGuardado);
-        setBancoFirmas(firmas);
-} catch (error) {
-        console.error('❌ Error al cargar banco de firmas:', error);
+    try {
+      const bancoGuardado = localStorage.getItem(BANCO_FIRMAS_KEY);
+      if (bancoGuardado) {
+        setBancoFirmas(JSON.parse(bancoGuardado));
       }
-    } else {
-}
+    } catch (error) {
+      console.error('Error al cargar banco de firmas:', error);
+    }
   }, []);
 
-  // Guardar en localStorage
   const guardarEnBanco = (nuevoBanco) => {
     setBancoFirmas(nuevoBanco);
-    localStorage.setItem('bancoFirmasPuertos', JSON.stringify(nuevoBanco));
+    localStorage.setItem(BANCO_FIRMAS_KEY, JSON.stringify(nuevoBanco));
   };
 
-  // Manejar carga de imagen de firma
   const handleCargarFirma = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onMultipleChange({
-          imagenFirma: reader.result,
-          archivoFirma: file
-        });
-      };
-      reader.readAsDataURL(file);
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      onMultipleChange({
+        imagenFirma: reader.result,
+        archivoFirma: file,
+      });
+      setFirmaSeleccionadaId('');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleSeleccionFirma = (e) => {
+    const id = e.target.value;
+    setFirmaSeleccionadaId(id);
+    if (!id) return;
+    const firma = bancoFirmas.find((f) => String(f.id) === id);
+    if (firma) {
+      onMultipleChange({
+        nombreFirmante: firma.nombre,
+        cargoFirmante: firma.cargo || '',
+        emailFirmante: firma.email || '',
+        celularFirmante: firma.celular || '',
+        imagenFirma: firma.firma,
+      });
     }
   };
 
-  // Guardar firma actual en el banco
   const handleGuardarEnBanco = () => {
     const { nombreFirmante, cargoFirmante, emailFirmante, celularFirmante, imagenFirma } = formData;
-    
-    if (!nombreFirmante || !imagenFirma) {
-      alert('Por favor completa al menos el nombre y sube la firma antes de guardar');
+
+    if (!nombreFirmante?.trim() || !imagenFirma) {
+      alert('Complete el nombre y suba la imagen de firma antes de guardar en el banco.');
       return;
     }
 
-    // Verificar si ya existe una firma con el mismo nombre
-    const firmaExistente = bancoFirmas.find(f => f.nombre === nombreFirmante);
+    const firmaExistente = bancoFirmas.find(
+      (f) => f.nombre?.toLowerCase() === nombreFirmante.trim().toLowerCase()
+    );
+
     if (firmaExistente) {
-      if (confirm(`Ya existe una firma guardada para "${nombreFirmante}". ¿Deseas reemplazarla?`)) {
-        // Reemplazar la firma existente
-        const bancoActualizado = bancoFirmas.map(f => 
-          f.id === firmaExistente.id 
-            ? {
-                ...f,
-                nombre: nombreFirmante,
-                cargo: cargoFirmante || '',
-                email: emailFirmante || '',
-                celular: celularFirmante || '',
-                firma: imagenFirma
-              }
-            : f
-        );
-        guardarEnBanco(bancoActualizado);
-        alert('✅ Firma actualizada en el banco exitosamente');
-        return;
-      } else {
-        return;
-      }
+      if (!confirm(`Ya existe una firma para "${nombreFirmante}". ¿Desea reemplazarla?`)) return;
+      const bancoActualizado = bancoFirmas.map((f) =>
+        f.id === firmaExistente.id
+          ? {
+              ...f,
+              nombre: nombreFirmante.trim(),
+              cargo: cargoFirmante || '',
+              email: emailFirmante || '',
+              celular: celularFirmante || '',
+              firma: imagenFirma,
+            }
+          : f
+      );
+      guardarEnBanco(bancoActualizado);
+      setFirmaSeleccionadaId(String(firmaExistente.id));
+      alert('Firma actualizada en el banco.');
+      return;
     }
 
     const nuevaFirma = {
       id: Date.now(),
-      nombre: nombreFirmante,
+      nombre: nombreFirmante.trim(),
       cargo: cargoFirmante || '',
       email: emailFirmante || '',
       celular: celularFirmante || '',
-      firma: imagenFirma
+      firma: imagenFirma,
     };
 
     guardarEnBanco([...bancoFirmas, nuevaFirma]);
-alert(`✅ Firma de "${nombreFirmante}" guardada en el banco exitosamente. Ahora puedes seleccionarla desde "Firmas Guardadas" arriba.`);
+    setFirmaSeleccionadaId(String(nuevaFirma.id));
+    alert(`Firma de "${nombreFirmante}" guardada en el banco.`);
   };
 
-  // Cargar firma del banco al formulario
-  const handleCargarDesdeBanco = (firma) => {
-    onMultipleChange({
-      nombreFirmante: firma.nombre,
-      cargoFirmante: firma.cargo,
-      emailFirmante: firma.email,
-      celularFirmante: firma.celular,
-      imagenFirma: firma.firma
-    });
-  };
-
-  // Eliminar firma del banco
-  const handleEliminarDelBanco = (id) => {
-    if (confirm('¿Estás seguro de eliminar esta firma del banco?')) {
-      guardarEnBanco(bancoFirmas.filter(f => f.id !== id));
+  const handleEliminarSeleccionada = () => {
+    if (!firmaSeleccionadaId) {
+      alert('Seleccione una firma del listado para eliminar.');
+      return;
     }
+    const firma = bancoFirmas.find((f) => String(f.id) === firmaSeleccionadaId);
+    if (!firma) return;
+    if (!confirm(`¿Eliminar del banco la firma de "${firma.nombre}"?`)) return;
+    guardarEnBanco(bancoFirmas.filter((f) => String(f.id) !== firmaSeleccionadaId));
+    setFirmaSeleccionadaId('');
   };
+
+  const firmaPreview = firmaSeleccionadaId
+    ? bancoFirmas.find((f) => String(f.id) === firmaSeleccionadaId)
+    : null;
+
+  const firmaDisplayUrl = useMemo(
+    () => urlFirmaParaMostrar(formData.imagenFirma),
+    [formData.imagenFirma]
+  );
+
+  const firmaBancoDisplayUrl = useMemo(
+    () => (firmaPreview?.firma ? urlFirmaParaMostrar(firmaPreview.firma) : null),
+    [firmaPreview?.firma]
+  );
+
+  const handleErrorFirma = useMemo(
+    () => createImageErrorHandler(formData.imagenFirma || { ruta: formData.imagenFirma }),
+    [formData.imagenFirma]
+  );
 
   return (
-    <div 
+    <div
       className="p-4 rounded mb-6"
-      style={{
-        backgroundColor: cardBg,
-        border: `2px solid ${borderColor}`
-      }}
+      style={{ backgroundColor: cardBg, border: `2px solid ${borderColor}` }}
     >
-      <h3 
-        className="text-xl font-bold mb-4"
-        style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
-      >
+      <h3 className="text-xl font-bold mb-4" style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}>
         ✍️ FIRMA Y DATOS DEL INSPECTOR
       </h3>
 
-      {/* Banco de Firmas */}
-      <div 
+      {/* Banco de firmas — lista desplegable */}
+      <div
         className="mb-6 p-4 rounded"
         style={{
           backgroundColor: theme === 'dark' ? '#0F0F0F' : '#F9FAFB',
-          border: `2px solid ${theme === 'dark' ? '#2563EB' : '#3B82F6'}`,
-          borderStyle: 'dashed'
+          border: `2px dashed ${theme === 'dark' ? '#2563EB' : '#3B82F6'}`,
         }}
       >
-        <h4 
-          className="text-sm font-bold mb-3 flex items-center gap-2"
-          style={{ color: textPrimary }}
-        >
-          💾 Firmas Guardadas {bancoFirmas.length > 0 && `(${bancoFirmas.length})`}
-        </h4>
-        
-        {bancoFirmas.length > 0 ? (
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {bancoFirmas.map(firma => (
-              <div 
-                key={firma.id}
-                className="p-3 rounded"
-                style={{
-                  backgroundColor: cardBg,
-                  border: `1px solid ${borderColor}`
-                }}
-              >
-                <div className="flex items-start gap-3">
-                  <img
-                    src={firma.firma}
-                    alt="Firma"
-                    className="w-20 h-12 object-contain"
-                    style={{
-                      border: `1px solid ${borderColor}`,
-                      backgroundColor: '#FFFFFF',
-                      padding: '4px'
-                    }}
-                  />
-                  
-                  <div className="flex-1">
-                    <p 
-                      className="text-sm font-bold"
-                      style={{ color: textPrimary }}
-                    >
-                      {firma.nombre}
-                    </p>
-                    {firma.cargo && (
-                      <p 
-                        className="text-xs"
-                        style={{ color: textSecondary }}
-                      >
-                        {firma.cargo}
-                      </p>
-                    )}
-                    {firma.email && (
-                      <p 
-                        className="text-xs mt-1"
-                        style={{ color: textSecondary }}
-                      >
-                        📧 {firma.email}
-                      </p>
-                    )}
-                    {firma.celular && (
-                      <p 
-                        className="text-xs"
-                        style={{ color: textSecondary }}
-                      >
-                        📱 {firma.celular}
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => handleCargarDesdeBanco(firma)}
-                      className="p-2 rounded hover:bg-blue-500 hover:text-white transition-colors"
-                      style={{ color: '#3B82F6' }}
-                      title="Usar esta firma"
-                    >
-                      <FaCheck size={14} />
-                    </button>
-                    
-                    <button
-                      onClick={() => handleEliminarDelBanco(firma.id)}
-                      className="p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
-                      style={{ color: '#EF4444' }}
-                      title="Eliminar"
-                    >
-                      <FaTrash size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div 
-            className="p-4 rounded text-center"
+        <label className="block text-sm font-bold mb-2" style={{ color: textPrimary }}>
+          💾 Banco de firmas {bancoFirmas.length > 0 && `(${bancoFirmas.length})`}
+        </label>
+        <p className="text-xs mb-3" style={{ color: textSecondary }}>
+          Elija una firma guardada o complete los datos abajo y guárdela en el banco.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+          <select
+            value={firmaSeleccionadaId}
+            onChange={handleSeleccionFirma}
+            className="flex-1 rounded px-3 py-2 text-sm"
             style={{
-              backgroundColor: cardBg,
-              border: `1px dashed ${borderColor}`
+              backgroundColor: inputBg,
+              color: textPrimary,
+              border: `1px solid ${borderColor}`,
             }}
+            disabled={cargando || bancoFirmas.length === 0}
           >
-            <p 
-              className="text-sm"
-              style={{ color: textSecondary }}
-            >
-              No hay firmas guardadas. Completa el formulario y haz clic en "Guardar en Banco de Firmas" para guardar tu firma.
-            </p>
+            <option value="">
+              {bancoFirmas.length === 0
+                ? '— No hay firmas en el banco —'
+                : '— Seleccionar firma del banco —'}
+            </option>
+            {bancoFirmas.map((firma) => (
+              <option key={firma.id} value={String(firma.id)}>
+                {firma.nombre}
+                {firma.cargo ? ` — ${firma.cargo}` : ''}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={handleEliminarSeleccionada}
+            className="px-3 py-2 rounded flex items-center justify-center gap-2 text-sm font-medium text-white shrink-0"
+            style={{ backgroundColor: '#EF4444' }}
+            disabled={cargando || !firmaSeleccionadaId}
+            title="Eliminar firma seleccionada del banco"
+          >
+            <FaTrash size={12} />
+            Eliminar del banco
+          </button>
+        </div>
+
+        {firmaBancoDisplayUrl && (
+          <div
+            className="mt-3 p-2 rounded inline-block"
+            style={{ backgroundColor: '#FFFFFF', border: `1px solid ${borderColor}` }}
+          >
+            <img
+              src={firmaBancoDisplayUrl}
+              alt="Vista previa firma"
+              className="h-12 object-contain"
+              onError={createImageErrorHandler(firmaPreview?.firma)}
+            />
           </div>
         )}
       </div>
 
-      {/* Formulario de Firma */}
+      {/* Datos del firmante */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <div>
-          <label 
-            className="block text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
-            Nombre Completo *
+          <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
+            Nombre completo *
           </label>
           <input
             type="text"
             value={formData.nombreFirmante || ''}
-            onChange={(e) => onInputChange('nombreFirmante', e.target.value)}
-            className="w-full rounded px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
+            onChange={(e) => {
+              onInputChange('nombreFirmante', e.target.value);
+              setFirmaSeleccionadaId('');
             }}
-            placeholder="Ej: Yaneth Vitola Suárez"
+            className="w-full rounded px-3 py-2 text-sm"
+            style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+            placeholder="Ej: Jimmy Grueso"
             disabled={cargando}
           />
         </div>
-
         <div>
-          <label 
-            className="block text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
+          <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
             Cargo
           </label>
           <input
@@ -280,22 +252,13 @@ alert(`✅ Firma de "${nombreFirmante}" guardada en el banco exitosamente. Ahora
             value={formData.cargoFirmante || ''}
             onChange={(e) => onInputChange('cargoFirmante', e.target.value)}
             className="w-full rounded px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            placeholder="Ej: Directora Control Portuario"
+            style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+            placeholder="Ej: Director Operativo"
             disabled={cargando}
           />
         </div>
-
         <div>
-          <label 
-            className="block text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
+          <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
             E-Mail
           </label>
           <input
@@ -303,22 +266,13 @@ alert(`✅ Firma de "${nombreFirmante}" guardada en el banco exitosamente. Ahora
             value={formData.emailFirmante || ''}
             onChange={(e) => onInputChange('emailFirmante', e.target.value)}
             className="w-full rounded px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
+            style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
             placeholder="ejemplo@proserpuertos.com.co"
             disabled={cargando}
           />
         </div>
-
         <div>
-          <label 
-            className="block text-sm font-medium mb-1"
-            style={{ color: textPrimary }}
-          >
+          <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
             Celular
           </label>
           <input
@@ -326,27 +280,18 @@ alert(`✅ Firma de "${nombreFirmante}" guardada en el banco exitosamente. Ahora
             value={formData.celularFirmante || ''}
             onChange={(e) => onInputChange('celularFirmante', e.target.value)}
             className="w-full rounded px-3 py-2 text-sm"
-            style={{
-              backgroundColor: inputBg,
-              color: textPrimary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`
-            }}
-            placeholder="316-5231821"
+            style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+            placeholder="3168345216"
             disabled={cargando}
           />
         </div>
       </div>
 
-      {/* Cargar Firma */}
+      {/* Imagen de firma */}
       <div className="mb-4">
-        <label 
-          className="block text-sm font-medium mb-2"
-          style={{ color: textPrimary }}
-        >
-          Imagen de la Firma *
+        <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
+          Imagen de la firma *
         </label>
-        
         <input
           ref={fileInputRef}
           type="file"
@@ -354,130 +299,73 @@ alert(`✅ Firma de "${nombreFirmante}" guardada en el banco exitosamente. Ahora
           onChange={handleCargarFirma}
           className="hidden"
         />
-        
         <button
+          type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="px-4 py-2 rounded flex items-center gap-2 font-medium transition-colors"
-          style={{
-            backgroundColor: theme === 'dark' ? '#2563EB' : '#3B82F6',
-            color: '#FFFFFF'
-          }}
+          className="px-4 py-2 rounded flex items-center gap-2 font-medium text-white"
+          style={{ backgroundColor: theme === 'dark' ? '#2563EB' : '#3B82F6' }}
           disabled={cargando}
         >
           <FaUpload />
-          Subir Firma
+          Subir firma
         </button>
-        
-        {formData.imagenFirma && (
-          <div 
-            className="mt-3 p-3 rounded"
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: `1px solid ${borderColor}`
-            }}
-          >
-            <p 
-              className="text-xs mb-2"
-              style={{ color: textSecondary }}
-            >
+        {firmaDisplayUrl && (
+          <div className="mt-3 p-3 rounded" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${borderColor}` }}>
+            <p className="text-xs mb-2" style={{ color: textSecondary }}>
               Vista previa:
             </p>
             <img
-              src={formData.imagenFirma}
+              src={firmaDisplayUrl}
               alt="Firma"
               className="max-w-full h-24 object-contain"
+              onError={handleErrorFirma}
             />
           </div>
         )}
       </div>
 
-      {/* Botón para guardar en banco */}
-      <div className="flex gap-2">
-        <button
-          onClick={handleGuardarEnBanco}
-          className="px-4 py-2 rounded flex items-center gap-2 font-medium transition-colors"
-          style={{
-            backgroundColor: theme === 'dark' ? '#16A34A' : '#22C55E',
-            color: '#FFFFFF'
-          }}
-          disabled={cargando || !formData.nombreFirmante || !formData.imagenFirma}
-        >
-          <FaPlus />
-          Guardar en Banco de Firmas
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={handleGuardarEnBanco}
+        className="px-4 py-2 rounded flex items-center gap-2 font-medium text-white"
+        style={{ backgroundColor: theme === 'dark' ? '#16A34A' : '#22C55E' }}
+        disabled={cargando || !formData.nombreFirmante || !formData.imagenFirma}
+      >
+        <FaPlus />
+        Guardar en banco de firmas
+      </button>
 
-      {/* Vista Previa del Bloque de Firma */}
+      {/* Vista previa del bloque en el documento */}
       {(formData.nombreFirmante || formData.imagenFirma) && (
-        <div 
+        <div
           className="mt-6 p-4 rounded"
           style={{
             backgroundColor: theme === 'dark' ? '#0F0F0F' : '#F9FAFB',
-            border: `2px solid ${borderColor}`
+            border: `2px solid ${borderColor}`,
           }}
         >
-          <h4 
-            className="text-sm font-bold mb-3"
-            style={{ color: textPrimary }}
-          >
-            👁️ Vista Previa en el Documento
+          <h4 className="text-sm font-bold mb-3" style={{ color: textPrimary }}>
+            Vista previa en el documento
           </h4>
-          
-          <div 
-            className="p-4 rounded"
-            style={{
-              backgroundColor: '#FFFFFF',
-              border: `1px solid ${borderColor}`
-            }}
-          >
-            <p className="text-sm mb-2" style={{ color: '#1E1E1E' }}>
-              Agradeciendo de antemano su valiosa atención me suscribo de usted,
-            </p>
-            <p className="text-sm mb-3" style={{ color: '#1E1E1E' }}>
-              Cordialmente,
-            </p>
-            
-            {formData.imagenFirma && (
-              <div className="mb-3">
-                <img
-                  src={formData.imagenFirma}
-                  alt="Firma"
-                  className="h-16 object-contain"
-                />
-              </div>
+          <div className="p-4 rounded bg-white" style={{ border: `1px solid ${borderColor}` }}>
+            <p className="text-sm mb-2 text-gray-900">Atentamente,</p>
+            {firmaDisplayUrl && (
+              <img
+                src={firmaDisplayUrl}
+                alt="Firma"
+                className="h-16 object-contain mb-3"
+                onError={handleErrorFirma}
+              />
             )}
-            
             {formData.nombreFirmante && (
-              <p className="text-sm font-bold" style={{ color: '#1E1E1E' }}>
-                {formData.nombreFirmante}
-              </p>
+              <p className="text-sm font-bold text-gray-900">{formData.nombreFirmante}</p>
             )}
-            
-            {formData.cargoFirmante && (
-              <p className="text-xs" style={{ color: '#6B6B6B' }}>
-                {formData.cargoFirmante}
-              </p>
-            )}
-            
-            <div className="mt-3">
-              {formData.emailFirmante && (
-                <p className="text-xs" style={{ color: '#DC2626' }}>
-                  <span style={{ fontWeight: 'bold' }}>E-Mail: </span>
-                  <span style={{ color: '#2563EB' }}>{formData.emailFirmante}</span>
-                </p>
-              )}
-              
-              {formData.celularFirmante && (
-                <p className="text-xs" style={{ color: '#DC2626' }}>
-                  <span style={{ fontWeight: 'bold' }}>Celular: </span>
-                  <span style={{ color: '#2563EB' }}>{formData.celularFirmante}</span>
-                </p>
-              )}
-            </div>
+            {formData.cargoFirmante && <p className="text-xs text-gray-600">{formData.cargoFirmante}</p>}
+            {formData.emailFirmante && <p className="text-xs text-blue-600 mt-2">{formData.emailFirmante}</p>}
+            {formData.celularFirmante && <p className="text-xs text-blue-600">Cel: {formData.celularFirmante}</p>}
           </div>
         </div>
       )}
     </div>
   );
 }
-

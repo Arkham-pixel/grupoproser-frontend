@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import { FaPlus, FaTrash, FaCamera, FaTimes, FaSearchPlus } from 'react-icons/fa';
+import { FaPlus, FaTrash } from 'react-icons/fa';
+import PuertosDragDropFotos from './PuertosDragDropFotos';
 
 export default function DocumentosTransportePuertos({ formData, onInputChange, onMultipleChange, cargando }) {
   const { theme } = useTheme();
@@ -10,10 +11,6 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
-
-  const fileInputRef = useRef(null);
-  const fileInputRef2 = useRef(null); // Para la segunda sección
-  const [imagenAmpliada, setImagenAmpliada] = useState(null);
 
   // Datos de la tabla ORIGEN
   const tablaOrigen = formData.tablaOrigen || [];
@@ -62,84 +59,6 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
     return { totalCantidad, totalPeso };
   };
 
-  // Manejar imágenes de inspección a bordo
-  const handleAgregarImagenBordo = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const nuevaImagen = {
-          id: Date.now() + Math.random(),
-          file: file,
-          preview: reader.result,
-          src: reader.result,
-          descripcion: '',
-          nombre: file.name
-        };
-        
-        onInputChange('imagenesInspeccionBordo', [...imagenesInspeccionBordo, nuevaImagen]);
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleEliminarImagenBordo = (id) => {
-    onInputChange('imagenesInspeccionBordo', imagenesInspeccionBordo.filter(img => img.id !== id));
-  };
-
-  const handleActualizarDescripcionBordo = (id, nuevaDescripcion) => {
-    onInputChange('imagenesInspeccionBordo', 
-      imagenesInspeccionBordo.map(img => 
-        img.id === id ? { ...img, descripcion: nuevaDescripcion } : img
-      )
-    );
-  };
-
-  // Funciones para la segunda sección de fotos (Inspección en Descargue)
-  const handleAgregarImagenDescargue = (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const nuevaImagen = {
-          id: Date.now() + Math.random(),
-          file: file,
-          preview: reader.result,
-          src: reader.result,
-          descripcion: '',
-          nombre: file.name
-        };
-        
-        onInputChange('imagenesInspeccionDescargue', [...imagenesInspeccionDescargue, nuevaImagen]);
-      };
-      reader.readAsDataURL(file);
-    });
-    
-    if (fileInputRef2.current) {
-      fileInputRef2.current.value = '';
-    }
-  };
-
-  const handleEliminarImagenDescargue = (id) => {
-    onInputChange('imagenesInspeccionDescargue', imagenesInspeccionDescargue.filter(img => img.id !== id));
-  };
-
-  const handleActualizarDescripcionDescargue = (id, nuevaDescripcion) => {
-    onInputChange('imagenesInspeccionDescargue', 
-      imagenesInspeccionDescargue.map(img => 
-        img.id === id ? { ...img, descripcion: nuevaDescripcion } : img
-      )
-    );
-  };
-
   // Funciones para la tabla de AVERÍAS
   const handleAgregarFilaAveria = () => {
     const nuevaFila = {
@@ -168,45 +87,6 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
 
   return (
     <>
-      {/* Modal de Vista Previa */}
-      {imagenAmpliada && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
-          onClick={() => setImagenAmpliada(null)}
-        >
-          <button
-            onClick={() => setImagenAmpliada(null)}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-colors"
-            style={{ color: '#FFFFFF' }}
-          >
-            <FaTimes size={24} />
-          </button>
-          
-          <div 
-            className="max-w-7xl max-h-full overflow-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <img
-              src={imagenAmpliada.src}
-              alt={imagenAmpliada.descripcion || 'Vista ampliada'}
-              className="max-w-full max-h-[90vh] object-contain rounded"
-            />
-            {imagenAmpliada.descripcion && (
-              <p 
-                className="mt-4 text-center text-sm px-4 py-2 rounded"
-                style={{
-                  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                  color: '#FFFFFF'
-                }}
-              >
-                {imagenAmpliada.descripcion}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
       <div 
         className="p-4 rounded mb-6"
         style={{
@@ -726,89 +606,13 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
             🚢 INSPECCIÓN A BORDO DEL BUQUE
           </h4>
 
-          {/* Botón para agregar imágenes */}
-          <div className="mb-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleAgregarImagenBordo}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 rounded flex items-center gap-2 font-medium transition-colors"
-              style={{
-                backgroundColor: theme === 'dark' ? '#2563EB' : '#3B82F6',
-                color: '#FFFFFF'
-              }}
-              disabled={cargando}
-            >
-              <FaCamera />
-              Agregar Fotografías
-            </button>
-          </div>
-
-          {/* Grid de imágenes */}
-          {imagenesInspeccionBordo.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              {imagenesInspeccionBordo.map((imagen) => (
-                <div 
-                  key={imagen.id}
-                  className="rounded overflow-hidden"
-                  style={{
-                    border: `1px solid ${borderColor}`,
-                    backgroundColor: theme === 'dark' ? '#0F0F0F' : '#F9FAFB'
-                  }}
-                >
-                  <div 
-                    className="relative group cursor-pointer"
-                    onClick={() => setImagenAmpliada(imagen)}
-                  >
-                    <img
-                      src={imagen.src}
-                      alt={imagen.descripcion || 'Inspección a bordo'}
-                      className="w-full h-48 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
-                      <FaSearchPlus 
-                        className="text-white opacity-0 group-hover:opacity-100 transition-opacity" 
-                        size={32}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="p-3">
-                    <input
-                      type="text"
-                      value={imagen.descripcion}
-                      onChange={(e) => handleActualizarDescripcionBordo(imagen.id, e.target.value)}
-                      placeholder="Descripción de la imagen..."
-                      className="w-full px-2 py-1 text-sm rounded mb-2"
-                      style={{
-                        backgroundColor: inputBg,
-                        color: textPrimary,
-                        border: `1px solid ${borderColor}`
-                      }}
-                    />
-                    
-                    <button
-                      onClick={() => handleEliminarImagenBordo(imagen.id)}
-                      className="w-full px-3 py-1 rounded text-sm flex items-center justify-center gap-2 transition-colors"
-                      style={{
-                        backgroundColor: '#EF4444',
-                        color: '#FFFFFF'
-                      }}
-                    >
-                      <FaTrash size={12} />
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <PuertosDragDropFotos
+            imagenes={imagenesInspeccionBordo}
+            onChange={(nuevas) => onInputChange('imagenesInspeccionBordo', nuevas)}
+            cargando={cargando}
+            placeholder="Arrastra fotos de aspecto modelo (leyenda: ASPECTO MODELO)"
+            notaS3="Leyenda por defecto en Word: ASPECTO MODELO"
+          />
 
           {/* Espacio para comentarios */}
           <div className="mt-4">
@@ -845,89 +649,13 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
             🚗 INSPECCIÓN EN APROCHE - DESCARGUE
           </h4>
 
-          {/* Botón para agregar imágenes */}
-          <div className="mb-4">
-            <input
-              ref={fileInputRef2}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleAgregarImagenDescargue}
-              className="hidden"
-            />
-            <button
-              onClick={() => fileInputRef2.current?.click()}
-              className="px-4 py-2 rounded flex items-center gap-2 font-medium transition-colors"
-              style={{
-                backgroundColor: theme === 'dark' ? '#2563EB' : '#3B82F6',
-                color: '#FFFFFF'
-              }}
-              disabled={cargando}
-            >
-              <FaCamera />
-              Agregar Fotografías del Descargue
-            </button>
-          </div>
-
-          {/* Grid de imágenes */}
-          {imagenesInspeccionDescargue.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-              {imagenesInspeccionDescargue.map((imagen) => (
-                <div 
-                  key={imagen.id}
-                  className="rounded overflow-hidden"
-                  style={{
-                    border: `1px solid ${borderColor}`,
-                    backgroundColor: theme === 'dark' ? '#0F0F0F' : '#F9FAFB'
-                  }}
-                >
-                  <div 
-                    className="relative group cursor-pointer"
-                    onClick={() => setImagenAmpliada(imagen)}
-                  >
-                    <img
-                      src={imagen.src}
-                      alt={imagen.descripcion || 'Inspección en descargue'}
-                      className="w-full h-48 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
-                      <FaSearchPlus 
-                        className="text-white opacity-0 group-hover:opacity-100 transition-opacity" 
-                        size={32}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="p-3">
-                    <input
-                      type="text"
-                      value={imagen.descripcion}
-                      onChange={(e) => handleActualizarDescripcionDescargue(imagen.id, e.target.value)}
-                      placeholder="Descripción de la imagen..."
-                      className="w-full px-2 py-1 text-sm rounded mb-2"
-                      style={{
-                        backgroundColor: inputBg,
-                        color: textPrimary,
-                        border: `1px solid ${borderColor}`
-                      }}
-                    />
-                    
-                    <button
-                      onClick={() => handleEliminarImagenDescargue(imagen.id)}
-                      className="w-full px-3 py-1 rounded text-sm flex items-center justify-center gap-2 transition-colors"
-                      style={{
-                        backgroundColor: '#EF4444',
-                        color: '#FFFFFF'
-                      }}
-                    >
-                      <FaTrash size={12} />
-                      Eliminar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <PuertosDragDropFotos
+            imagenes={imagenesInspeccionDescargue}
+            onChange={(nuevas) => onInputChange('imagenesInspeccionDescargue', nuevas)}
+            cargando={cargando}
+            placeholder="Arrastra fotos del almacenamiento en patio (leyenda: ASPECTO DEL ALMACENAMIENTO)"
+            notaS3="Leyenda por defecto en Word: ASPECTO DEL ALMACENAMIENTO"
+          />
 
           {/* Espacio para comentarios del descargue */}
           <div className="mt-4">

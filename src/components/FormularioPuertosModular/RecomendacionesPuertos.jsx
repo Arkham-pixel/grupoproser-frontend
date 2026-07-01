@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash, FaCheck } from 'react-icons/fa';
 
-export default function RecomendacionesPuertos({ formData, onInputChange, cargando }) {
+export default function RecomendacionesPuertos({ formData, onInputChange, cargando, tituloSeccion }) {
   const { theme } = useTheme();
   
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -111,7 +111,7 @@ export default function RecomendacionesPuertos({ formData, onInputChange, cargan
         className="text-xl font-bold mb-4"
         style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
       >
-        📋 RECOMENDACIONES
+        {tituloSeccion || '📋 RECOMENDACIONES'}
       </h3>
 
       {/* Selector de categoría */}

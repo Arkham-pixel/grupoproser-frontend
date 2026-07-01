@@ -3,26 +3,60 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
 import Logo from '../../img/Logo.png';
 import { generarWordPuertos } from './generarWordPuertos';
+import { generarWordRiicp004 } from './generarWordRiicp004';
 import { generarManualPuertos } from './generarManualPuertos';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService';
 import { BASE_URL } from '../../config/apiConfig.js';
+import {
+  crearPuertosCaso,
+  actualizarPuertosCaso,
+  getPuertosCaso,
+} from '../../services/puertosService.js';
+import { procesarInspeccionPuertosImagenes, hayImagenesPendientesInspeccion } from '../../services/puertosCasoImagenService.js';
+import {
+  formDataToCasoInspeccionAsegurado,
+  casoToFormDataInspeccionAsegurado,
+  casoToFormDataInspeccionAseguradoConMeta,
+  sanitizarFormDataParaGuardado,
+} from '../PuertosActas/puertosInspeccionAseguradoMapper.js';
+import {
+  validarLimiteFotosInspeccion,
+  MAX_FOTOS_SECCION_INSPECCION_ASEGURADO,
+  recortarFotosInspeccionAlLimite,
+} from '../PuertosActas/puertosFotosLimites.js';
+import { esCasoInspeccionAsegurado } from '../PuertosActas/puertosTipoRegistro.js';
 
 // Importar subcomponentes
 import SeccionInicialPuertos from './SeccionInicialPuertos';
+import SeccionRiicp004Puertos from './SeccionRiicp004Puertos';
+import ObservacionesRiicp004 from './ObservacionesRiicp004';
+import InformeFotograficoRiicp004 from './InformeFotograficoRiicp004';
+import ConclusionesRiicp004 from './ConclusionesRiicp004';
 import DocumentosTransportePuertos from './DocumentosTransportePuertos';
 import AnalisisRiesgosPuertos from './AnalisisRiesgosPuertos';
 import InformeFotograficoPuertos from './InformeFotograficoPuertos';
 import RecomendacionesPuertos from './RecomendacionesPuertos';
 import FirmaPuertos from './FirmaPuertos';
-import { useHistorialAutoSave } from '../../hooks/useHistorialAutoSave';
+import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 
-export default function PuertosInspeccionMain() {
+const esIdPersistido = (valor) => Boolean(valor && !['nuevo', 'nueva'].includes(valor));
+
+export default function PuertosInspeccionMain({ tipoInicial, modoActas } = {}) {
   const { theme } = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const esModoActas =
+    modoActas || location.pathname.includes('/actas/inspeccion-asegurado');
+
+  const resolverTipoInforme = () => {
+    if (tipoInicial === 'riicp004') return 'riicp004';
+    if (location.pathname.includes('/inspeccion-asegurado')) return 'riicp004';
+    return 'diario';
+  };
   
   // Colores según el tema
   const bgMain = theme === 'dark' ? '#1A1A1A' : '#F5F5F7';
@@ -36,11 +70,16 @@ export default function PuertosInspeccionMain() {
   const [modoEdicion, setModoEdicion] = useState(false);
   const [generandoWord, setGenerandoWord] = useState(false);
   const [generandoManual, setGenerandoManual] = useState(false);
-  const [tipoInforme, setTipoInforme] = useState('diario'); // 'diario' o 'completo'
+  const [tipoInforme, setTipoInforme] = useState(resolverTipoInforme);
+  const esFlujoActas = esModoActas || tipoInforme === 'riicp004';
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0); // Contador para forzar captura
   
   // 🔑 Estado para mantener el ID del formulario después del primer guardado
-  const [formularioId, setFormularioId] = useState(id && id !== 'nuevo' ? id : null);
+  const [formularioId, setFormularioId] = useState(esIdPersistido(id) ? id : null);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [savedDataToRestore, setSavedDataToRestore] = useState(null);
+  const [guardandoActas, setGuardandoActas] = useState(false);
+  const [progresoSubida, setProgresoSubida] = useState(null);
   
   // Hook para historial - Tipo específico para PUERTOS
   const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION_PUERTOS);
@@ -49,10 +88,12 @@ export default function PuertosInspeccionMain() {
   const [formData, setFormData] = useState({
     // Sección Inicial - Carta de Presentación
     clienteSeleccionado: '',
+    contactoBolivarId: '',
     nombreCliente: '',
     codigoReferencia: '',
     nombreContacto: '',
     cargoContacto: '',
+    gerenciaContacto: '',
     empresaCliente: '',
     emailContacto: '',
     ciudadContacto: '',
@@ -197,11 +238,36 @@ return fechaFormateada;
     celularFirmante: '',
     imagenFirma: null,
     archivoFirma: null,
+
+    // Inspección de asegurado
+    plantillaInforme: 'riicp004',
+    codigoInforme: '',
+    versionInforme: '1',
+    asegurado: '',
+    patioOperacion: '',
+    numeroPoliza: '',
+    fechaPoliza: '',
+    fechasDescargue: '',
+    listaBLs: '',
+    inspectores: '',
+    modelosVehiculos: '',
+    textoObservacionesGeneral: '',
+    conclusiones: '',
+    imagenesAspectoAlmacenamiento: [],
+    imagenesAspectoModelo: [],
     
     // Registro fotográfico general
     imagenesRegistro: []
     // imagenMapa y coordenadasRiesgo ya están definidos arriba (líneas 67-68)
   });
+
+  useEffect(() => {
+    const tipo = resolverTipoInforme();
+    setTipoInforme(tipo);
+    if (tipo === 'riicp004') {
+      setFormData((prev) => ({ ...prev, plantillaInforme: 'riicp004' }));
+    }
+  }, [location.pathname, tipoInicial]);
 
   // Función para actualizar cualquier campo del formulario
   const handleInputChange = (campo, valor) => {
@@ -217,27 +283,6 @@ return fechaFormateada;
       ...prev,
       ...campos
     }));
-  };
-
-  // Función para generar documento Word
-  const handleGenerarWord = async (incluirMapaCalor = true) => {
-    try {
-      setGenerandoWord(true);
-      const tipoInforme = incluirMapaCalor ? 'Completo' : 'Diario';
-// Forzar captura del mapa antes de generar
-setForzarCapturaMapa(prev => prev + 1);
-      
-      // Esperar un momento para que se complete la captura
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      await generarWordPuertos(formData, incluirMapaCalor);
-      alert(`✅ Documento ${tipoInforme} generado exitosamente`);
-    } catch (error) {
-      console.error('❌ Error al generar Word:', error);
-      alert('Error al generar el documento. Por favor, intente nuevamente.');
-    } finally {
-      setGenerandoWord(false);
-    }
   };
 
   // Verificar si el usuario es administrador
@@ -279,7 +324,10 @@ await generarManualPuertos();
     const codigoCPD = data.codigoReferencia || generarCodigoCPD();
     return {
       tipo: 'inspeccion-puertos',
-      titulo: `🚢 Inspección Puertos - ${data.nombreMotonave || data.nombreCliente || 'Puerto'} - ${data.municipio || 'Ciudad'}`,
+      titulo:
+        data.plantillaInforme === 'riicp004'
+          ? `📋 ${data.codigoInforme?.trim() || 'Inspección asegurado'} — ${data.asegurado || data.nombreCliente || 'Asegurado'} — ${data.nombreMotonave || 'Motonave'}`
+          : `🚢 Inspección Puertos - ${data.nombreMotonave || data.nombreCliente || 'Puerto'} - ${data.municipio || 'Ciudad'}`,
       usuario: nombreUsuario,
       userId,
       estado: 'en_proceso',
@@ -292,8 +340,78 @@ await generarManualPuertos();
     };
   }, []);
 
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const [savedDataToRestore, setSavedDataToRestore] = useState(null);
+  const rutaEdicionActas = (casoId) =>
+    `/puertos/actas/inspeccion-asegurado/editar/${casoId}`;
+
+  const persistirEnActas = useCallback(
+    async (data, { marcarCompletado = false, silencioso = false } = {}) => {
+      const idActual = esIdPersistido(formularioId) ? formularioId : null;
+      const casoId = idActual || data._id || 'borrador';
+
+      let formProcesado;
+      const { datos: dataLimite } = recortarFotosInspeccionAlLimite(data);
+      try {
+        if (hayImagenesPendientesInspeccion(dataLimite)) {
+          validarLimiteFotosInspeccion(dataLimite);
+          setProgresoSubida({ lote: 0, totalLotes: 1, subidas: 0, total: 0 });
+          formProcesado = await procesarInspeccionPuertosImagenes(dataLimite, casoId, setProgresoSubida);
+        } else {
+          formProcesado = sanitizarFormDataParaGuardado(dataLimite);
+        }
+      } catch (uploadError) {
+        console.error('❌ Error subiendo fotos:', uploadError);
+        throw uploadError;
+      } finally {
+        setProgresoSubida(null);
+      }
+
+      const payload = formDataToCasoInspeccionAsegurado({
+        ...formProcesado,
+        codiEstdo: marcarCompletado ? 'terminado' : data.codiEstdo || 'en_curso',
+        descripcionEstado: marcarCompletado ? 'Terminado' : data.descripcionEstado || 'En curso',
+      });
+
+      const resultado = idActual
+        ? await actualizarPuertosCaso(idActual, payload)
+        : await crearPuertosCaso(payload);
+
+      const nuevoId = resultado._id;
+      setFormularioId(nuevoId);
+      setModoEdicion(true);
+      setFormData(casoToFormDataInspeccionAsegurado(resultado));
+
+      if (!idActual) {
+        window.setTimeout(() => navigate(rutaEdicionActas(nuevoId), { replace: true }), 0);
+      }
+
+      if (!silencioso) {
+        alert(
+          `✅ Informe guardado en Actas y Descargues${resultado.consecutivo ? `: ${resultado.consecutivo}` : ''}`
+        );
+      }
+
+      return resultado;
+    },
+    [formularioId, navigate]
+  );
+
+  const onAutoSaveServidor = useCallback(
+    async (data) => {
+      if (esFlujoActas) {
+        if (!esIdPersistido(formularioId)) return;
+        if (hayImagenesPendientesInspeccion(data)) return;
+        await persistirEnActas(data, { silencioso: true });
+        return;
+      }
+      if (!esIdPersistido(formularioId)) return;
+      const payload = buildHistorialPayloadPuertos(data);
+      await historialService.actualizarFormulario(formularioId, {
+        ...payload,
+        fechaModificacion: new Date().toISOString(),
+      });
+    },
+    [esFlujoActas, formularioId, persistirEnActas, buildHistorialPayloadPuertos]
+  );
 
   const {
     isAutoSaveEnabled,
@@ -307,13 +425,26 @@ await generarManualPuertos();
     isOnline,
     isExistingRecord,
     clearSavedData,
-  } = useHistorialAutoSave({
-    formKeyBase: 'formulario-puertos-modular',
-    formularioId,
+  } = useFormAutoSave({
+    formKeyBase: esFlujoActas
+      ? 'formulario-puertos-inspeccion-asegurado'
+      : 'formulario-puertos-modular',
+    recordId: esIdPersistido(formularioId) ? formularioId : null,
     formData,
-    buildHistorialPayload: buildHistorialPayloadPuertos,
-    serverReady: Boolean(formularioId && formularioId !== 'nuevo'),
-    canSaveServer: () => !cargando && !generandoWord && !exportando,
+    onServerUpdate: onAutoSaveServidor,
+    serverReady:
+      esIdPersistido(formularioId) &&
+      !cargando &&
+      !guardandoActas &&
+      !generandoWord &&
+      !exportando &&
+      !hayImagenesPendientesInspeccion(formData),
+    canSaveServer: () =>
+      !cargando &&
+      !guardandoActas &&
+      !generandoWord &&
+      !exportando &&
+      !hayImagenesPendientesInspeccion(formData),
     onRestore: (savedInfo) => {
       setSavedDataToRestore(savedInfo);
       setShowRestoreDialog(true);
@@ -337,8 +468,85 @@ await generarManualPuertos();
     setShowRestoreDialog(false);
   }, []);
 
-  // Función para guardar en historial
+  const cargarDesdeActas = async (casoId) => {
+    try {
+      setCargando(true);
+      const caso = await getPuertosCaso(casoId);
+      if (!esCasoInspeccionAsegurado(caso)) {
+        alert('Este registro no es un informe de inspección asegurado.');
+        navigate('/puertos/actas');
+        return;
+      }
+      const { datos, huboRecorte } = casoToFormDataInspeccionAseguradoConMeta(caso);
+      setFormData((prev) => ({ ...prev, ...datos }));
+      if (huboRecorte) {
+        alert(
+          `Este informe tenía más de ${MAX_FOTOS_SECCION_INSPECCION_ASEGURADO} fotos en alguna sección. Se muestran solo las primeras ${MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}. Guarde para aplicar el límite en el servidor.`
+        );
+      }
+      setFormularioId(casoId);
+      setModoEdicion(true);
+      setTipoInforme('riicp004');
+    } catch (error) {
+      console.error('❌ Error al cargar caso actas:', error);
+      alert(`Error al cargar el informe: ${error.message}`);
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const guardarEnActas = async (options = {}) => {
+    setGuardandoActas(true);
+    setCargando(true);
+    try {
+      return await persistirEnActas(formData, options);
+    } catch (error) {
+      console.error('❌ Error al guardar en actas:', error);
+      alert(`Error al guardar: ${error.message}`);
+      throw error;
+    } finally {
+      setProgresoSubida(null);
+      setGuardandoActas(false);
+      setCargando(false);
+    }
+  };
+
+  const handleGenerarWord = async (incluirMapaCalor = true) => {
+    try {
+      setGenerandoWord(true);
+      const esRiicp004 = tipoInforme === 'riicp004';
+
+      if (!esRiicp004) {
+        setForzarCapturaMapa((prev) => prev + 1);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await generarWordPuertos(formData, incluirMapaCalor);
+        alert(`✅ Documento ${incluirMapaCalor ? 'Completo' : 'Diario'} generado exitosamente`);
+      } else {
+        if (esFlujoActas) {
+          const resultado = await persistirEnActas(formData, { silencioso: true });
+          const dataWord = {
+            ...formData,
+            ...casoToFormDataInspeccionAsegurado(resultado),
+          };
+          await generarWordRiicp004(dataWord);
+        } else {
+          await generarWordRiicp004(formData);
+        }
+        alert(`✅ Informe ${formData.codigoInforme?.trim() || 'de inspección de asegurado'} generado exitosamente`);
+      }
+    } catch (error) {
+      console.error('❌ Error al generar Word:', error);
+      alert(`Error al generar el documento: ${error.message || 'intente nuevamente'}`);
+    } finally {
+      setGenerandoWord(false);
+    }
+  };
+
+  // Función para guardar en historial o en Actas y Descargues
   const handleGuardarHistorial = async () => {
+    if (esModoActas || tipoInforme === 'riicp004') {
+      return guardarEnActas();
+    }
     try {
       setCargando(true);
       
@@ -348,23 +556,22 @@ await generarManualPuertos();
       
       // Generar código CPD si no existe
       const codigoCPD = formData.codigoReferencia || generarCodigoCPD();
-      
-      // 🔍 VERIFICAR IMÁGENES ANTES DE GUARDAR
-if (formData.imagenesRegistro && formData.imagenesRegistro.length > 0) {
-        formData.imagenesRegistro.forEach((img, index) => {
-});
-      }
+      const casoIdHistorial = esIdPersistido(formularioId) ? formularioId : null;
+      const formProcesado = await procesarInspeccionPuertosImagenes(
+        formData,
+        casoIdHistorial || 'historial-puertos'
+      );
       
       const datosFormulario = {
         tipo: 'inspeccion-puertos',
-        titulo: `🚢 Inspección Puertos - ${formData.nombreMotonave || formData.nombreCliente || 'Puerto'} - ${formData.municipio || 'Ciudad'}`,
+        titulo: `🚢 Inspección Puertos - ${formProcesado.nombreMotonave || formProcesado.nombreCliente || 'Puerto'} - ${formProcesado.municipio || 'Ciudad'}`,
         usuario: nombreUsuario,
         userId: userId,
         estado: 'en_proceso',
         fechaCreacion: new Date().toISOString(),
         fechaModificacion: new Date().toISOString(),
         datos: {
-          ...formData,
+          ...formProcesado,
           codigoReferencia: codigoCPD, // Asignar el código generado
           tipoFormulario: 'PUERTOS',
           icono: '🚢'
@@ -380,7 +587,7 @@ if (formData.imagenesRegistro && formData.imagenesRegistro.length > 0) {
 let formularioGuardado;
       
       // 🔑 Si ya tenemos un formularioId, ACTUALIZAR; si no, CREAR
-      if (formularioId && formularioId !== 'nuevo') {
+      if (esIdPersistido(formularioId)) {
 formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
 alert('✅ Formulario actualizado en historial exitosamente');
       } else {
@@ -406,27 +613,43 @@ navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
     try {
       setGenerandoWord(true);
       setCargando(true);
-      
-      // Forzar captura del mapa antes de generar
-setForzarCapturaMapa(prev => prev + 1);
-      
-      // Esperar un momento para que se complete la captura
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
+      if (esModoActas || tipoInforme === 'riicp004') {
+        const resultado = await guardarEnActas({ marcarCompletado: true });
+        if (tipoInforme === 'riicp004') {
+          const dataWord = {
+            ...formData,
+            ...casoToFormDataInspeccionAsegurado(resultado),
+          };
+          await generarWordRiicp004(dataWord);
+        }
+        return;
+      }
+
+      if (tipoInforme !== 'riicp004') {
+        setForzarCapturaMapa((prev) => prev + 1);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+
       // Generar código CPD si no existe
       const codigoCPD = formData.codigoReferencia || generarCodigoCPD();
-      
-      // Actualizar formData con el código generado
       const formDataActualizado = {
         ...formData,
-        codigoReferencia: codigoCPD
+        codigoReferencia: codigoCPD,
       };
       
-      // Actualizar el estado local con el código generado
-      setFormData(formDataActualizado);
-      
-      // Primero generar el Word con el código actualizado (informe completo por defecto)
-      await generarWordPuertos(formDataActualizado, true);
+      if (tipoInforme === 'riicp004') {
+        await generarWordRiicp004(formDataActualizado);
+      } else {
+        await generarWordPuertos(formDataActualizado, true);
+      }
+
+      const casoIdHistorial = esIdPersistido(formularioId) ? formularioId : null;
+      const formProcesado = await procesarInspeccionPuertosImagenes(
+        formDataActualizado,
+        casoIdHistorial || 'historial-puertos'
+      );
+      setFormData(formProcesado);
       
       // Obtener información del usuario
       const nombreUsuario = localStorage.getItem('nombre') || 'Usuario';
@@ -435,14 +658,14 @@ setForzarCapturaMapa(prev => prev + 1);
       // Luego guardar en historial
       const datosFormulario = {
         tipo: 'inspeccion-puertos',
-        titulo: `🚢 Inspección Puertos - ${formData.nombreMotonave || formData.nombreCliente || 'Puerto'} - ${formData.municipio || 'Ciudad'}`,
+        titulo: `🚢 Inspección Puertos - ${formProcesado.nombreMotonave || formProcesado.nombreCliente || 'Puerto'} - ${formProcesado.municipio || 'Ciudad'}`,
         usuario: nombreUsuario,
         userId: userId,
         estado: 'completado',
         fechaCreacion: new Date().toISOString(),
         fechaModificacion: new Date().toISOString(),
         datos: {
-          ...formDataActualizado,
+          ...formProcesado,
           tipoFormulario: 'PUERTOS',
           icono: '🚢'
         }
@@ -451,7 +674,7 @@ setForzarCapturaMapa(prev => prev + 1);
 let formularioGuardado;
       
       // 🔑 Si ya tenemos un formularioId, ACTUALIZAR; si no, CREAR
-      if (formularioId && formularioId !== 'nuevo') {
+      if (esIdPersistido(formularioId)) {
 formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
 alert('✅ Documento generado y formulario actualizado exitosamente');
       } else {
@@ -575,17 +798,21 @@ return img;
 
   // Efecto para detectar modo edición y cargar datos
   useEffect(() => {
-    if (id && id !== 'nuevo') {
-      setModoEdicion(true);
+    if (!id || id === 'nuevo' || id === 'nueva') return;
+    setModoEdicion(true);
+    setFormularioId(id);
+    if (esModoActas || location.pathname.includes('/inspeccion-asegurado')) {
+      cargarDesdeActas(id);
+    } else {
       setCargando(true);
-      setFormularioId(id); // 🔑 Actualizar formularioId cuando se carga uno existente
       cargarDatosFormulario(id);
     }
-  }, [id]);
+  }, [id, esModoActas, location.pathname]);
 
   // Cargar datos desde localStorage al iniciar (solo si NO hay ID)
   useEffect(() => {
-    if (!id || id === 'nuevo') {
+    if (id && id !== 'nuevo' && id !== 'nueva') return;
+    if (esModoActas) return;
       const datosGuardados = localStorage.getItem('formularioPuertosModular');
       if (datosGuardados) {
         try {
@@ -607,13 +834,12 @@ return img;
             datosParseados.fecha = obtenerFechaActual();
           }
           setFormData(prev => ({ ...prev, ...datosParseados }));
-} catch (error) {
+        } catch (error) {
           console.error('Error al cargar datos:', error);
           localStorage.removeItem('formularioPuertosModular');
         }
       }
-    }
-  }, [id]);
+  }, [id, esModoActas]);
 
   return (
     <div 
@@ -699,11 +925,14 @@ return img;
             className="text-sm"
             style={{ color: textSecondary }}
           >
-            Sistema modular para inspección de riesgos en puertos
+            {tipoInforme === 'riicp004'
+              ? 'Inspección de asegurado en patios (vehículos)'
+              : 'Sistema modular para inspección de riesgos en puertos'}
           </p>
         </div>
 
-        {/* Selector de Tipo de Informe - Arriba */}
+        {/* Selector de Tipo de Informe — solo en informe diario / completo */}
+        {tipoInforme !== 'riicp004' && (
         <div 
           className="mb-6 flex flex-col sm:flex-row gap-3 justify-center items-center"
           style={{
@@ -719,7 +948,10 @@ return img;
           </label>
           <select
             value={tipoInforme}
-            onChange={(e) => setTipoInforme(e.target.value)}
+            onChange={(e) => {
+              setTipoInforme(e.target.value);
+              handleInputChange('plantillaInforme', e.target.value);
+            }}
             className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
               backgroundColor: inputBg,
@@ -734,6 +966,7 @@ return img;
             <option value="completo">📊 Informe Completo</option>
           </select>
         </div>
+        )}
 
         {/* SUBCOMPONENTES */}
         
@@ -744,38 +977,70 @@ return img;
           onMultipleChange={handleMultipleInputChange}
           cargando={cargando}
           forzarCapturaMapa={forzarCapturaMapa}
+          ocultarGeolocalizacion={tipoInforme === 'riicp004'}
         />
 
-        {/* 1. Documentos del Transporte (Página 2) */}
-        <DocumentosTransportePuertos 
-          formData={formData}
-          onInputChange={handleInputChange}
-          onMultipleChange={handleMultipleInputChange}
-          cargando={cargando}
-        />
-
-        {/* 2. ANÁLISIS DE RIESGOS Y MAPA DE CALOR - Solo visible en Informe Completo */}
-        {tipoInforme === 'completo' && (
-          <AnalisisRiesgosPuertos 
-            formData={formData}
-            onInputChange={handleInputChange}
-            cargando={cargando}
-          />
+        {tipoInforme === 'riicp004' && (
+          <>
+            <SeccionRiicp004Puertos
+              formData={formData}
+              onInputChange={handleInputChange}
+              cargando={cargando}
+            />
+            <ObservacionesRiicp004
+              formData={formData}
+              onInputChange={handleInputChange}
+              cargando={cargando}
+            />
+            <InformeFotograficoRiicp004
+              formData={formData}
+              onInputChange={handleInputChange}
+              cargando={cargando}
+            />
+            <RecomendacionesPuertos
+              formData={formData}
+              onInputChange={handleInputChange}
+              cargando={cargando}
+              tituloSeccion="4 — RECOMENDACIONES"
+            />
+            <ConclusionesRiicp004
+              formData={formData}
+              onInputChange={handleInputChange}
+              cargando={cargando}
+            />
+          </>
         )}
 
-        {/* 3. Informe Fotográfico por VIN (Después del Mapa de Calor) */}
-        <InformeFotograficoPuertos 
-          formData={formData}
-          onInputChange={handleInputChange}
-          cargando={cargando}
-        />
+        {tipoInforme !== 'riicp004' && (
+          <>
+            <DocumentosTransportePuertos
+              formData={formData}
+              onInputChange={handleInputChange}
+              onMultipleChange={handleMultipleInputChange}
+              cargando={cargando}
+            />
 
-        {/* 4. Recomendaciones */}
-        <RecomendacionesPuertos 
-          formData={formData}
-          onInputChange={handleInputChange}
-          cargando={cargando}
-        />
+            {tipoInforme === 'completo' && (
+              <AnalisisRiesgosPuertos
+                formData={formData}
+                onInputChange={handleInputChange}
+                cargando={cargando}
+              />
+            )}
+
+            <InformeFotograficoPuertos
+              formData={formData}
+              onInputChange={handleInputChange}
+              cargando={cargando}
+            />
+
+            <RecomendacionesPuertos
+              formData={formData}
+              onInputChange={handleInputChange}
+              cargando={cargando}
+            />
+          </>
+        )}
 
         {/* 5. Firma */}
         <FirmaPuertos 
@@ -821,13 +1086,25 @@ return img;
                 backgroundColor: theme === 'dark' ? '#2563EB' : '#3B82F6',
                 color: '#FFFFFF'
               }}
-              disabled={cargando || guardando}
+              disabled={(esFlujoActas ? guardandoActas : guardando) || cargando}
             >
-              {guardando ? '⏳ Guardando...' : '💾 Guardar en Historial'}
+              {(esFlujoActas ? guardandoActas : guardando) || cargando
+                ? progresoSubida
+                  ? progresoSubida.totalLotes > 1
+                    ? `⏳ Subiendo foto ${progresoSubida.lote}/${progresoSubida.totalLotes}…`
+                    : '⏳ Subiendo fotos y guardando…'
+                  : hayImagenesPendientesInspeccion(formData)
+                    ? '⏳ Subiendo fotos y guardando…'
+                    : '⏳ Guardando...'
+                : esModoActas || tipoInforme === 'riicp004'
+                  ? '💾 Guardar en Actas'
+                  : '💾 Guardar en Historial'}
             </button>
 
             <button
-              onClick={() => handleGenerarWord(tipoInforme === 'completo')}
+              onClick={() =>
+                handleGenerarWord(tipoInforme === 'completo')
+              }
               className="px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
               style={{
                 backgroundColor: theme === 'dark' ? '#059669' : '#10B981',

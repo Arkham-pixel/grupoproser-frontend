@@ -4,8 +4,9 @@ import Select from 'react-select';
 import { FaEye, FaTimes } from 'react-icons/fa';
 import ciudadesData from '../../data/colombia.json';
 import MapaGoogleEarth from '../MapaGoogleEarth';
+import { CONTACTOS_BOLIVAR, EMPRESA_BOLIVAR, ASEGURADOS } from './plantillasPuertos';
 
-export default function SeccionInicialPuertos({ formData, onInputChange, onMultipleChange, cargando, forzarCapturaMapa }) {
+export default function SeccionInicialPuertos({ formData, onInputChange, onMultipleChange, cargando, forzarCapturaMapa, ocultarGeolocalizacion = false }) {
   const { theme } = useTheme();
   const [mostrarVistaPrevia, setMostrarVistaPrevia] = useState(false);
   
@@ -89,19 +90,63 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
 
   // Base de datos de clientes predefinidos con toda su información
   const clientesPredefinidos = {
-    'TOYOTA': {
+    METROKIA_BOLIVAR: {
+      ...ASEGURADOS.METROKIA,
+      empresaCliente: EMPRESA_BOLIVAR,
+      clienteSeleccionado: 'METROKIA_BOLIVAR',
+    },
+    TOYOTA: {
       nombreContacto: 'Sr. Jhorgin Arce',
       cargoContacto: 'Analística Logística',
+      gerenciaContacto: '',
       empresaCliente: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S',
       emailContacto: 'jhorgin.arce@toyota.com.co',
-      ciudadContacto: 'Bogotá D.C, Colombia'
+      ciudadContacto: 'Bogotá D.C, Colombia',
+      asegurado: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S',
+      nombreCliente: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S',
+      clienteSeleccionado: 'TOYOTA',
     },
-    // Aquí se pueden agregar más clientes en el futuro
+    BOLIVAR: {
+      empresaCliente: EMPRESA_BOLIVAR,
+      clienteSeleccionado: 'BOLIVAR',
+    },
+  };
+
+  const opcionesContactosBolivar = [
+    ...CONTACTOS_BOLIVAR.map((c) => ({
+      value: c.id,
+      label: c.nombreContacto,
+    })),
+    { value: 'personalizado', label: 'Otro contacto (escribir manualmente)' },
+  ];
+
+  const esClienteBolivar =
+    formData.clienteSeleccionado === 'METROKIA_BOLIVAR' ||
+    formData.clienteSeleccionado === 'BOLIVAR';
+
+  const handleContactoBolivarChange = (selectedOption) => {
+    if (!selectedOption || selectedOption.value === 'personalizado') {
+      onInputChange('contactoBolivarId', 'personalizado');
+      return;
+    }
+    const contacto = CONTACTOS_BOLIVAR.find((c) => c.id === selectedOption.value);
+    if (contacto) {
+      onMultipleChange({
+        contactoBolivarId: contacto.id,
+        nombreContacto: contacto.nombreContacto,
+        cargoContacto: contacto.cargoContacto,
+        gerenciaContacto: contacto.gerenciaContacto || '',
+        empresaCliente: contacto.empresaCliente,
+        emailContacto: contacto.emailContacto || '',
+        ciudadContacto: contacto.ciudadContacto,
+      });
+    }
   };
 
   const opcionesClientes = [
+    { value: 'METROKIA_BOLIVAR', label: 'METROKIA → Seguros Bolívar' },
     { value: 'TOYOTA', label: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S' },
-    // Agregar más opciones aquí según se vayan definiendo
+    { value: 'BOLIVAR', label: 'SEGUROS BOLÍVAR S.A (solo contacto)' },
   ];
 
   // Función para manejar el cambio de cliente
@@ -110,12 +155,16 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
       const datosCliente = clientesPredefinidos[selectedOption.value];
       onMultipleChange({
         clienteSeleccionado: selectedOption.value,
-        nombreContacto: datosCliente.nombreContacto,
-        cargoContacto: datosCliente.cargoContacto,
-        empresaCliente: datosCliente.empresaCliente,
-        emailContacto: datosCliente.emailContacto,
-        ciudadContacto: datosCliente.ciudadContacto,
-        nombreCliente: datosCliente.empresaCliente
+        nombreContacto: datosCliente.nombreContacto || '',
+        cargoContacto: datosCliente.cargoContacto || '',
+        gerenciaContacto: datosCliente.gerenciaContacto || '',
+        empresaCliente: datosCliente.empresaCliente || '',
+        emailContacto: datosCliente.emailContacto || '',
+        ciudadContacto: datosCliente.ciudadContacto || '',
+        nombreCliente: datosCliente.nombreCliente || datosCliente.empresaCliente,
+        asegurado: datosCliente.asegurado || formData.asegurado || '',
+        contactoBolivarId:
+          selectedOption.value === 'METROKIA_BOLIVAR' || selectedOption.value === 'BOLIVAR' ? '' : '',
       });
     }
   };
@@ -310,25 +359,138 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             />
           </div>
 
-          {/* Vista previa de los datos del cliente seleccionado */}
-          {formData.clienteSeleccionado && (
-            <div 
-              className="p-3 rounded mt-3 text-sm"
-              style={{
-                backgroundColor: theme === 'dark' ? '#1A1A1A' : '#F9FAFB',
-                border: `1px solid ${borderColor}`
-              }}
-            >
-              <p className="font-bold mb-2" style={{ color: theme === 'dark' ? '#60A5FA' : '#1E40AF' }}>
-                Datos del Contacto:
-              </p>
-              <p style={{ color: textPrimary }}>{formData.nombreContacto}</p>
-              <p style={{ color: textPrimary }}>{formData.cargoContacto}</p>
-              <p style={{ color: textPrimary }} className="font-bold">{formData.empresaCliente}</p>
-              <p style={{ color: textPrimary }}>Email: {formData.emailContacto}</p>
-              <p style={{ color: textPrimary }}>{formData.ciudadContacto}</p>
+          {/* Contacto del destinatario */}
+          <div className="mt-3">
+            <p className="font-bold mb-2 text-sm" style={{ color: theme === 'dark' ? '#60A5FA' : '#1E40AF' }}>
+              Datos del contacto (destinatario de la carta)
+            </p>
+
+            {esClienteBolivar && (
+              <div className="mb-3">
+                <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
+                  Contacto Seguros Bolívar
+                </label>
+                <Select
+                  options={opcionesContactosBolivar}
+                  value={
+                    opcionesContactosBolivar.find((opt) => opt.value === formData.contactoBolivarId) || null
+                  }
+                  onChange={handleContactoBolivarChange}
+                  placeholder="Seleccione el contacto de Bolívar..."
+                  isSearchable
+                  className="w-full"
+                  isDisabled={cargando}
+                  styles={{
+                    control: (provided, state) => ({
+                      ...provided,
+                      fontSize: '14px',
+                      minHeight: '40px',
+                      backgroundColor: inputBg,
+                      color: textPrimary,
+                      borderColor: state.isFocused ? (theme === 'dark' ? '#DC2626' : '#2563EB') : borderColor,
+                    }),
+                    option: (provided, state) => ({
+                      ...provided,
+                      backgroundColor: state.isSelected
+                        ? theme === 'dark' ? '#DC2626' : '#2563EB'
+                        : state.isFocused
+                        ? theme === 'dark' ? '#2A2A2A' : '#F3F4F6'
+                        : inputBg,
+                      color: state.isSelected ? '#FFFFFF' : textPrimary,
+                    }),
+                    singleValue: (provided) => ({ ...provided, color: textPrimary }),
+                    menu: (provided) => ({ ...provided, backgroundColor: inputBg }),
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
+                  Nombre del contacto
+                </label>
+                <input
+                  type="text"
+                  value={formData.nombreContacto || ''}
+                  onChange={(e) => onInputChange('nombreContacto', e.target.value)}
+                  className="w-full rounded px-2 py-1.5 text-sm"
+                  style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
+                  placeholder="Ej: Ing. Andrea Carolina Ramírez Ruiz"
+                  disabled={cargando}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
+                  Cargo
+                </label>
+                <input
+                  type="text"
+                  value={formData.cargoContacto || ''}
+                  onChange={(e) => onInputChange('cargoContacto', e.target.value)}
+                  className="w-full rounded px-2 py-1.5 text-sm"
+                  style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
+                  placeholder="Ej: Ingeniera de Prevención y Control de Riesgos"
+                  disabled={cargando}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
+                  Gerencia / Área
+                </label>
+                <input
+                  type="text"
+                  value={formData.gerenciaContacto || ''}
+                  onChange={(e) => onInputChange('gerenciaContacto', e.target.value)}
+                  className="w-full rounded px-2 py-1.5 text-sm"
+                  style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
+                  placeholder="Ej: Gerencia de Clientes Corporativos"
+                  disabled={cargando}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
+                  Empresa
+                </label>
+                <input
+                  type="text"
+                  value={formData.empresaCliente || ''}
+                  onChange={(e) => onInputChange('empresaCliente', e.target.value)}
+                  className="w-full rounded px-2 py-1.5 text-sm"
+                  style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
+                  placeholder="Ej: SEGUROS BOLÍVAR S.A"
+                  disabled={cargando}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.emailContacto || ''}
+                  onChange={(e) => onInputChange('emailContacto', e.target.value)}
+                  className="w-full rounded px-2 py-1.5 text-sm"
+                  style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
+                  disabled={cargando}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
+                  Ciudad
+                </label>
+                <input
+                  type="text"
+                  value={formData.ciudadContacto || ''}
+                  onChange={(e) => onInputChange('ciudadContacto', e.target.value)}
+                  className="w-full rounded px-2 py-1.5 text-sm"
+                  style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
+                  placeholder="Ej: Bogotá, Colombia"
+                  disabled={cargando}
+                />
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* DATOS DE LA INSPECCIÓN - SOLO CAMPOS EDITABLES */}
@@ -540,6 +702,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             <div className="mb-3" style={{ color: textPrimary }}>
               <p>{formData.nombreContacto}</p>
               <p>{formData.cargoContacto}</p>
+              {formData.gerenciaContacto && <p>{formData.gerenciaContacto}</p>}
               <p className="font-bold">{formData.empresaCliente}</p>
               <p>Email: {formData.emailContacto}</p>
               <p>{formData.ciudadContacto}</p>
@@ -586,6 +749,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
       )}
 
       {/* Mapa de Google Earth */}
+      {!ocultarGeolocalizacion && (
       <div 
         className="mt-6 mb-6"
         style={{
@@ -622,6 +786,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
           />
         </div>
       </div>
+      )}
 
     </>
   );
