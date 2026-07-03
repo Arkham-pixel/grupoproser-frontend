@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
+import { normalizeStoredFileReference } from '../../utils/storedFilePath.js';
 import {
   fetchExpressCatalogo,
   opcionesCatalogo,
@@ -111,32 +112,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       (typeof anexo.url === 'string' ? anexo.url.split('/').pop() : '') ||
       `Anexo-${index + 1}`;
 
-    let rawUrl = anexo.url || anexo.ruta || anexo.path || '';
-    let url = '';
-    if (/^\/?s3:/i.test(rawUrl)) {
-      // Referencia S3: conservar tal cual (quitando un "/" antiguo si lo tiene);
-      // anteponer "/" la rompe y se reguardaría dañada en anexosExistentes.
-      url = rawUrl.replace(/^\//, '');
-    } else if (rawUrl) {
-      if (rawUrl.startsWith('http')) {
-        try {
-          const parsed = new URL(rawUrl);
-          // URLs antiguas tipo https://backend/s3:clave → conservar la referencia s3:
-          const pathname = decodeURIComponent(parsed.pathname);
-          rawUrl = /^\/s3:/i.test(pathname) ? pathname.slice(1) : parsed.pathname;
-        } catch {
-          /* mantener */
-        }
-      }
-      if (/^s3:/i.test(rawUrl)) {
-        url = rawUrl;
-      } else {
-        if (!rawUrl.startsWith('/')) {
-          rawUrl = `/${rawUrl}`;
-        }
-        url = rawUrl.replace(/\/{2,}/g, '/');
-      }
-    }
+    const url = normalizeStoredFileReference(anexo.url || anexo.ruta || anexo.path || '');
 
     return {
       nombre,
