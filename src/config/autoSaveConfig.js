@@ -5,4 +5,7 @@
  */
 export const AUTO_SAVE_ENABLED = false;
 
+/** Persistencia en historial (servidor) — independiente del autoguardado en localStorage */
+export const HISTORIAL_AUTO_SAVE_ENABLED = true;
+
 export const isAutoSaveGloballyEnabled = () => AUTO_SAVE_ENABLED;

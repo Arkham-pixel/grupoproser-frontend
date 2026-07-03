@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspens
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { obtenerHoraActualColombia } from '../utils/fechaUtils';
 import { useTheme } from '../context/ThemeContext';
-import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
+import { AUTO_SAVE_ENABLED, HISTORIAL_AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import {
   Document,
@@ -299,11 +299,11 @@ export default function FormularioInspeccion() {
     [seccionesActivas]
   );
 
-  const toggleSeccionInforme = useCallback((id) => {
-    const cfg = SECCIONES_INFORME_INSPECCION.find((s) => s.id === id);
+  const toggleSeccionInforme = useCallback((idSeccion) => {
+    const cfg = SECCIONES_INFORME_INSPECCION.find((s) => s.id === idSeccion);
     if (!cfg || cfg.obligatoria || cfg.seleccionable === false) return;
     setSeccionesActivas((prev) => {
-      const siguiente = { ...prev, [id]: !estaSeccionInformeActiva(prev, id) };
+      const siguiente = { ...prev, [idSeccion]: !estaSeccionInformeActiva(prev, idSeccion) };
       return normalizarSeccionesActivas(siguiente);
     });
   }, []);
@@ -312,6 +312,10 @@ export default function FormularioInspeccion() {
     () => obtenerFilasIndiceInforme(seccionesActivas),
     [seccionesActivas]
   );
+
+  const seccionesActivasSnapshotRef = useRef(null);
+  const historialSeccionesListoRef = useRef(!id || id === 'nuevo');
+  const historialCriticoSnapshotRef = useRef(null);
 
   const [nombreEmpresa, setNombreEmpresa] = useState(datosPrevios.nombreEmpresa || datosPrevios.nombreCliente || datosPrevios.asegurado || "");
   const [direccion, setDireccion] = useState(datosPrevios.direccion || datosPrevios.direccionRiesgo || "");
@@ -635,6 +639,97 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
     transporteDinero,
   ]);
 
+  // Objeto de sustracción siempre al día (evita guardar estado agrupado desfasado del useEffect)
+  const construirSustraccionParaHistorial = useCallback(() => ({
+    ubicacionPredio,
+    vulnerabilidadContenidos,
+    accesoInstalaciones,
+    circulacionPersonasExternas,
+    proteccionesPasivas,
+    tieneAlarma,
+    alarmaMonitoreadaSustraccion,
+    empresaMonitorea,
+    tipoComunicacionAlarma,
+    coberturaAlarma,
+    sensoresAlarma,
+    cuentaConCCTV,
+    numeroCamaras,
+    controladoPor,
+    tipoMonitoreoCCTV,
+    frecuenciaGrabacion,
+    tiempoRespaldo,
+    dispositivoGrabacion,
+    ubicacionGrabador,
+    visualizacionInternet,
+    cuentaConVigilancia,
+    contratadaCon,
+    numeroVigilantes,
+    jornadaVigilancia,
+    tienenArmas,
+    tienenRadio,
+    ubicacionPredioOtro,
+    vulnerabilidadContenidosOtro,
+    accesoInstalacionesOtro,
+    circulacionPersonasExternasOtro,
+    proteccionesPasivasOtro,
+    tipoComunicacionAlarmaOtro,
+    sensoresAlarmaOtro,
+    controladoPorOtro,
+    tipoMonitoreoCCTVOtro,
+    frecuenciaGrabacionOtro,
+    dispositivoGrabacionOtro,
+    ubicacionGrabadorOtro,
+    jornadaVigilanciaOtro,
+    personalRecaudo,
+    horariosRecaudo,
+    lugarRecaudo,
+    transporteDinero,
+  }), [
+    ubicacionPredio,
+    vulnerabilidadContenidos,
+    accesoInstalaciones,
+    circulacionPersonasExternas,
+    proteccionesPasivas,
+    tieneAlarma,
+    alarmaMonitoreadaSustraccion,
+    empresaMonitorea,
+    tipoComunicacionAlarma,
+    coberturaAlarma,
+    sensoresAlarma,
+    cuentaConCCTV,
+    numeroCamaras,
+    controladoPor,
+    tipoMonitoreoCCTV,
+    frecuenciaGrabacion,
+    tiempoRespaldo,
+    dispositivoGrabacion,
+    ubicacionGrabador,
+    visualizacionInternet,
+    cuentaConVigilancia,
+    contratadaCon,
+    numeroVigilantes,
+    jornadaVigilancia,
+    tienenArmas,
+    tienenRadio,
+    ubicacionPredioOtro,
+    vulnerabilidadContenidosOtro,
+    accesoInstalacionesOtro,
+    circulacionPersonasExternasOtro,
+    proteccionesPasivasOtro,
+    tipoComunicacionAlarmaOtro,
+    sensoresAlarmaOtro,
+    controladoPorOtro,
+    tipoMonitoreoCCTVOtro,
+    frecuenciaGrabacionOtro,
+    dispositivoGrabacionOtro,
+    ubicacionGrabadorOtro,
+    jornadaVigilanciaOtro,
+    personalRecaudo,
+    horariosRecaudo,
+    lugarRecaudo,
+    transporteDinero,
+  ]);
+
   // Helper para actualizar sustracción
   const updateSustraccion = useCallback((field, value) => {
     setSustraccion(prev => ({ ...prev, [field]: value }));
@@ -678,6 +773,14 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   useEffect(() => {
     setPml({ porcentaje: pmlPorcentaje, descripcion: pmlDescripcion });
   }, [pmlPorcentaje, pmlDescripcion]);
+
+  const construirPmlParaHistorial = useCallback(
+    () => ({
+      porcentaje: pmlPorcentaje,
+      descripcion: pmlDescripcion,
+    }),
+    [pmlPorcentaje, pmlDescripcion]
+  );
 
   // Sincroniza TODOS los campos visibles de lucro cesante
   // al objeto agrupado que se persiste en historial.
@@ -963,6 +1066,69 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   const [almacenamientoAguaRci, setAlmacenamientoAguaRci] = useState("");
   const [pruebasProteccionIncendios, setPruebasProteccionIncendios] = useState("");
 
+  const construirProteccionIncendiosParaHistorial = useCallback(
+    () => ({
+      detectoresHumo,
+      coberturaDeteccion,
+      instalacionDeteccion,
+      monitoreadoDeteccion,
+      cantidadExtintores,
+      tipoExtintores,
+      suficientesExtintores,
+      instalacionExtintores,
+      senalizacionExtintores,
+      cargaVigenteExtintores,
+      comentariosProteccionIncendios,
+      bombaPrincipal,
+      bombaJockey,
+      presionContraincendios,
+      estacionBomberosNombre,
+      estacionBomberosTiempoMin,
+      estacionBomberosDistanciaMetros,
+      murosCortafuegos,
+      puertasCortafuego,
+      almacenamientoAguaRci,
+      pruebasProteccionIncendios,
+      extintor,
+      rci,
+      rociadores,
+      deteccion,
+      alarmas,
+      brigadas,
+      bomberos,
+    }),
+    [
+      detectoresHumo,
+      coberturaDeteccion,
+      instalacionDeteccion,
+      monitoreadoDeteccion,
+      cantidadExtintores,
+      tipoExtintores,
+      suficientesExtintores,
+      instalacionExtintores,
+      senalizacionExtintores,
+      cargaVigenteExtintores,
+      comentariosProteccionIncendios,
+      bombaPrincipal,
+      bombaJockey,
+      presionContraincendios,
+      estacionBomberosNombre,
+      estacionBomberosTiempoMin,
+      estacionBomberosDistanciaMetros,
+      murosCortafuegos,
+      puertasCortafuego,
+      almacenamientoAguaRci,
+      pruebasProteccionIncendios,
+      extintor,
+      rci,
+      rociadores,
+      deteccion,
+      alarmas,
+      brigadas,
+      bomberos,
+    ]
+  );
+
   //Seguridad
   const [seguridadDescripcion, setSeguridadDescripcion] = useState("");
 
@@ -1131,6 +1297,122 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
 
   // Hook para manejar el historial
   const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION);
+
+  useEffect(() => {
+    historialSeccionesListoRef.current = !id || id === 'nuevo';
+    seccionesActivasSnapshotRef.current = null;
+    historialCriticoSnapshotRef.current = null;
+  }, [id]);
+
+  // Persistir secciones y datos críticos en el historial (formularios existentes)
+  const datosCriticosHistorial = useMemo(
+    () =>
+      JSON.stringify({
+        seccionesActivas,
+        sustraccion: construirSustraccionParaHistorial(),
+        pml: construirPmlParaHistorial(),
+        proteccionIncendios: construirProteccionIncendiosParaHistorial(),
+      }),
+    [
+      seccionesActivas,
+      construirSustraccionParaHistorial,
+      construirPmlParaHistorial,
+      construirProteccionIncendiosParaHistorial,
+    ]
+  );
+
+  const sincronizarSnapshotHistorialDesdeDatos = useCallback((datosServidor) => {
+    if (!datosServidor || typeof datosServidor !== 'object') return;
+    const seccionesNorm = normalizarSeccionesActivas(datosServidor.seccionesActivas);
+    const pmlDatos = datosServidor.pml || {};
+    historialCriticoSnapshotRef.current = JSON.stringify({
+      seccionesActivas: seccionesNorm,
+      sustraccion: datosServidor.sustraccion || {},
+      pml: {
+        porcentaje:
+          pmlDatos.porcentaje ?? pmlDatos.pmlPorcentaje ?? datosServidor.pmlPorcentaje ?? '',
+        descripcion:
+          pmlDatos.descripcion ?? pmlDatos.pmlDescripcion ?? datosServidor.pmlDescripcion ?? '',
+      },
+      proteccionIncendios: {
+        detectoresHumo: datosServidor.detectoresHumo ?? '',
+        coberturaDeteccion: datosServidor.coberturaDeteccion ?? '',
+        instalacionDeteccion: datosServidor.instalacionDeteccion ?? '',
+        monitoreadoDeteccion: datosServidor.monitoreadoDeteccion ?? '',
+        cantidadExtintores: datosServidor.cantidadExtintores ?? '',
+        tipoExtintores: datosServidor.tipoExtintores ?? '',
+        suficientesExtintores: datosServidor.suficientesExtintores ?? '',
+        instalacionExtintores: datosServidor.instalacionExtintores ?? '',
+        senalizacionExtintores: datosServidor.senalizacionExtintores ?? '',
+        cargaVigenteExtintores: datosServidor.cargaVigenteExtintores ?? '',
+        comentariosProteccionIncendios: datosServidor.comentariosProteccionIncendios ?? '',
+        bombaPrincipal: datosServidor.bombaPrincipal ?? '',
+        bombaJockey: datosServidor.bombaJockey ?? '',
+        presionContraincendios: datosServidor.presionContraincendios ?? '',
+        estacionBomberosNombre: datosServidor.estacionBomberosNombre ?? '',
+        estacionBomberosTiempoMin: datosServidor.estacionBomberosTiempoMin ?? '',
+        estacionBomberosDistanciaMetros: datosServidor.estacionBomberosDistanciaMetros ?? '',
+        murosCortafuegos: datosServidor.murosCortafuegos ?? '',
+        puertasCortafuego: datosServidor.puertasCortafuego ?? '',
+        almacenamientoAguaRci: datosServidor.almacenamientoAguaRci ?? '',
+        pruebasProteccionIncendios: datosServidor.pruebasProteccionIncendios ?? '',
+        extintor: datosServidor.extintor ?? '',
+        rci: datosServidor.rci ?? '',
+        rociadores: datosServidor.rociadores ?? '',
+        deteccion: datosServidor.deteccion ?? '',
+        alarmas: datosServidor.alarmas ?? '',
+        brigadas: datosServidor.brigadas ?? '',
+        bomberos: datosServidor.bomberos ?? '',
+      },
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!HISTORIAL_AUTO_SAVE_ENABLED) return;
+    if (!id || id === 'nuevo') return;
+    if (!historialSeccionesListoRef.current) return;
+    if (datosCriticosHistorial === historialCriticoSnapshotRef.current) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        const formulario = await historialService.obtenerFormulario(id);
+        if (!formulario?.datos) return;
+
+        const sustraccionActual = construirSustraccionParaHistorial();
+        const pmlActual = construirPmlParaHistorial();
+        const proteccionActual = construirProteccionIncendiosParaHistorial();
+
+        await historialService.actualizarFormulario(id, {
+          tipo: formulario.tipo,
+          titulo: formulario.titulo,
+          datos: {
+            ...formulario.datos,
+            seccionesActivas,
+            sustraccion: sustraccionActual,
+            ...sustraccionActual,
+            pml: pmlActual,
+            pmlPorcentaje: pmlActual.porcentaje,
+            pmlDescripcion: pmlActual.descripcion,
+            ...proteccionActual,
+          },
+          fechaModificacion: new Date().toISOString(),
+        });
+        historialCriticoSnapshotRef.current = datosCriticosHistorial;
+        seccionesActivasSnapshotRef.current = JSON.stringify(seccionesActivas);
+      } catch (error) {
+        console.error('Error al guardar datos críticos en historial:', error);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [
+    datosCriticosHistorial,
+    id,
+    seccionesActivas,
+    construirSustraccionParaHistorial,
+    construirPmlParaHistorial,
+    construirProteccionIncendiosParaHistorial,
+  ]);
   
   // Estado para generar manual
   const [generandoManual, setGenerandoManual] = useState(false);
@@ -1549,7 +1831,7 @@ await generarManualInspeccion();
               if (datosParseados.valorProyectadoFacturacion !== undefined) setValorProyectadoFacturacion(datosParseados.valorProyectadoFacturacion);
               if (datosParseados.comentariosLucroCesante !== undefined) setComentariosLucroCesante(datosParseados.comentariosLucroCesante);
             }
-            if (datosParseados.seccionesActivas) {
+            if (datosParseados.seccionesActivas !== undefined) {
               setSeccionesActivas(normalizarSeccionesActivas(datosParseados.seccionesActivas));
             }
             if (datosParseados.pml) {
@@ -1745,10 +2027,10 @@ await generarManualInspeccion();
     brigadas,
     bomberos,
     // Sustracción - Protecciones Físicas - estado agrupado
-    sustraccion,
+    sustraccion: construirSustraccionParaHistorial(),
     // Lucro Cesante - estado agrupado
     lucroCesante,
-    pml,
+    pml: construirPmlParaHistorial(),
     seccionesActivas,
     // Procesos Críticos y Riesgos Medioambientales
     procesosCriticos,
@@ -1779,7 +2061,7 @@ await generarManualInspeccion();
     // Cálculo completado
     
     return datos;
-  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, actividadEconomica, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, mantenimientoCubierta, mantenimientoCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, sustraccion, lucroCesante, pml, seccionesActivas, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems]);
+  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, actividadEconomica, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, mantenimientoCubierta, mantenimientoCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, construirSustraccionParaHistorial, lucroCesante, construirPmlParaHistorial, seccionesActivas, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems]);
 
   // ⚠️ OPTIMIZACIÓN CRÍTICA: Usar useDeferredValue para diferir el cálculo pesado
   // Esto permite que la UI responda inmediatamente mientras el cálculo se hace en segundo plano
@@ -4974,11 +5256,14 @@ const datos = {
       puertasCortafuego: puertasCortafuego,
       almacenamientoAguaRci: almacenamientoAguaRci,
       pruebasProteccionIncendios: pruebasProteccionIncendios,
+      ...construirSustraccionParaHistorial(),
       // Sustracción - Protecciones Físicas - estado agrupado
-      sustraccion: sustraccion,
+      sustraccion: construirSustraccionParaHistorial(),
       // Lucro Cesante - estado agrupado
       lucroCesante: lucroCesante,
-      pml: pml,
+      pml: construirPmlParaHistorial(),
+      pmlPorcentaje: pmlPorcentaje,
+      pmlDescripcion: pmlDescripcion,
       seccionesActivas: seccionesActivas,
       // Procesos Críticos y Riesgos Medioambientales
       procesosCriticos: procesosCriticos,
@@ -5062,6 +5347,15 @@ const datos = {
   };
 
   const resultado = await guardarEnHistorial(datos, 'en_proceso');
+  if (resultado?.success) {
+    seccionesActivasSnapshotRef.current = JSON.stringify(seccionesActivas);
+    historialCriticoSnapshotRef.current = JSON.stringify({
+      seccionesActivas,
+      sustraccion: construirSustraccionParaHistorial(),
+      pml: construirPmlParaHistorial(),
+      proteccionIncendios: construirProteccionIncendiosParaHistorial(),
+    });
+  }
   if (!resultado?.success) {
     console.warn('❌ No se pudo guardar correctamente:', resultado?.message);
   }
@@ -5178,6 +5472,56 @@ const datos = {
       mantenimientoCubiertaOtro: mantenimientoCubiertaOtro,
       regularAltura: regularAltura,
       danosReparados: danosReparados,
+      // Materiales
+      tipoInsumo: tipoInsumo,
+      nivelRiesgoInsumo: nivelRiesgoInsumo,
+      descripcionContenidosInsumo: descripcionContenidosInsumo,
+      contenedoresInsumo: contenedoresInsumo,
+      tipoAlmacenamientoInsumo: tipoAlmacenamientoInsumo,
+      estadoAlmacenamientoInsumo: estadoAlmacenamientoInsumo,
+      tipoMateriasPrimas: tipoMateriasPrimas,
+      nivelRiesgoMateriasPrimas: nivelRiesgoMateriasPrimas,
+      descripcionContenidosMateriasPrimas: descripcionContenidosMateriasPrimas,
+      contenedoresMateriasPrimas: contenedoresMateriasPrimas,
+      tipoAlmacenamientoMateriasPrimas: tipoAlmacenamientoMateriasPrimas,
+      estadoAlmacenamientoMateriasPrimas: estadoAlmacenamientoMateriasPrimas,
+      tipoMercancias: tipoMercancias,
+      nivelRiesgoMercancias: nivelRiesgoMercancias,
+      descripcionContenidosMercancias: descripcionContenidosMercancias,
+      contenedoresMercancias: contenedoresMercancias,
+      tipoAlmacenamientoMercancias: tipoAlmacenamientoMercancias,
+      estadoAlmacenamientoMercancias: estadoAlmacenamientoMercancias,
+      tipoInsumoOtro: tipoInsumoOtro,
+      contenedoresInsumoOtro: contenedoresInsumoOtro,
+      tipoAlmacenamientoInsumoOtro: tipoAlmacenamientoInsumoOtro,
+      tipoMateriasPrimasOtro: tipoMateriasPrimasOtro,
+      contenedoresMateriasPrimasOtro: contenedoresMateriasPrimasOtro,
+      tipoAlmacenamientoMateriasPrimasOtro: tipoAlmacenamientoMateriasPrimasOtro,
+      tipoMercanciasOtro: tipoMercanciasOtro,
+      contenedoresMercanciasOtro: contenedoresMercanciasOtro,
+      tipoAlmacenamientoMercanciasOtro: tipoAlmacenamientoMercanciasOtro,
+      caracteristicasAmbientales: caracteristicasAmbientales,
+      detectoresHumo: detectoresHumo,
+      coberturaDeteccion: coberturaDeteccion,
+      instalacionDeteccion: instalacionDeteccion,
+      monitoreadoDeteccion: monitoreadoDeteccion,
+      cantidadExtintores: cantidadExtintores,
+      tipoExtintores: tipoExtintores,
+      suficientesExtintores: suficientesExtintores,
+      instalacionExtintores: instalacionExtintores,
+      senalizacionExtintores: senalizacionExtintores,
+      cargaVigenteExtintores: cargaVigenteExtintores,
+      comentariosProteccionIncendios: comentariosProteccionIncendios,
+      ...construirSustraccionParaHistorial(),
+      sustraccion: construirSustraccionParaHistorial(),
+      lucroCesante: lucroCesante,
+      pml: construirPmlParaHistorial(),
+      pmlPorcentaje: pmlPorcentaje,
+      pmlDescripcion: pmlDescripcion,
+      seccionesActivas: seccionesActivas,
+      procesosCriticos: procesosCriticos,
+      riesgosMedioambientales: riesgosMedioambientales,
+      roturaMaquinaria: roturaMaquinaria,
         energiaProveedor: energiaProveedor,
         energiaTension: energiaTension,
         energiaPararrayos: energiaPararrayos,
@@ -5269,6 +5613,15 @@ const datos = {
 
     // Luego guardar en el historial como completado
     const resultado = await guardarEnHistorial(datos, 'completado');
+    if (resultado?.success) {
+      seccionesActivasSnapshotRef.current = JSON.stringify(seccionesActivas);
+      historialCriticoSnapshotRef.current = JSON.stringify({
+        seccionesActivas,
+        sustraccion: construirSustraccionParaHistorial(),
+        pml: construirPmlParaHistorial(),
+        proteccionIncendios: construirProteccionIncendiosParaHistorial(),
+      });
+    }
 alert(resultado.message);
     
   } catch (error) {
@@ -5655,9 +6008,10 @@ const cargarDatosFormulario = async (formularioId) => {
       // Campos "Otro" para Lucro Cesante
       setAreaRequeridaLucroCesanteOtro(lucroDatos.areaRequeridaLucroCesanteOtro ?? formulario.datos?.areaRequeridaLucroCesanteOtro ?? '');
       setComplejidadActividadLucroCesanteOtro(lucroDatos.complejidadActividadLucroCesanteOtro ?? formulario.datos?.complejidadActividadLucroCesanteOtro ?? '');
-      if (formulario.datos?.seccionesActivas) {
-        setSeccionesActivas(normalizarSeccionesActivas(formulario.datos.seccionesActivas));
-      }
+      const seccionesNormalizadas = normalizarSeccionesActivas(formulario.datos?.seccionesActivas);
+      setSeccionesActivas(seccionesNormalizadas);
+      seccionesActivasSnapshotRef.current = JSON.stringify(seccionesNormalizadas);
+      historialSeccionesListoRef.current = true;
       const pmlDatos = formulario.datos?.pml || {};
       setPmlPorcentaje(
         pmlDatos.porcentaje ?? pmlDatos.pmlPorcentaje ?? formulario.datos?.pmlPorcentaje ?? ''
@@ -5967,6 +6321,8 @@ setImagenesRegistro(imagenesProcesadas);
       } else {
 setImagenesRegistro([]);
       }
+
+      sincronizarSnapshotHistorialDesdeDatos(formulario.datos);
       
 }
   } catch (error) {
