@@ -1,10 +1,26 @@
 // Servicio para generar reportes completos de la matriz de riesgos
+import { REPORTE_FENIX_CSS } from './reporteMatrizEstilos.js';
+import { REPORTE_COMPONENTES_CSS } from './reporteMatrizEstilosComponentes.js';
+import { cargarAssetsReporte } from './reporteBrandAssets.js';
+import {
+  generarSeccionInformacionModerna,
+  generarNavReporteHtml,
+  generarCabeceraReporteHtml,
+  generarPieReporteHtml,
+  envolverSeccion,
+} from './reporteHtmlSecciones.js';
+
 export class ReporteService {
   
   // Generar reporte HTML completo
-  static async generarReporteHTML(datosMatriz, tipoReporte = 'inicial') {
+  static async generarReporteHTML(datosMatriz, tipoReporte = 'inicial', opciones = {}) {
     try {
-const fecha = new Date();
+      const modoCapturaPdf = Boolean(opciones.modoCapturaPdf);
+      const modoExportacion = Boolean(opciones.modoExportacion);
+      const embeberAssets = opciones.embeberAssets !== false;
+      const assets = embeberAssets ? await cargarAssetsReporte() : {};
+
+      const fecha = new Date();
       const fechaFormateada = fecha.toLocaleDateString('es-ES', {
         year: 'numeric',
         month: 'long',
@@ -12,7 +28,17 @@ const fecha = new Date();
       });
       
       const horaFormateada = fecha.toLocaleTimeString('es-ES');
-      
+
+      const cabeceraHtml = generarCabeceraReporteHtml({
+        assets,
+        informacion: datosMatriz.informacion || {},
+        fechaFormateada,
+        horaFormateada,
+        tipoReporte,
+      });
+      const navHtml = generarNavReporteHtml();
+      const pieHtml = generarPieReporteHtml(assets);
+
       // Crear el HTML del reporte
       const htmlReporte = `
         <!DOCTYPE html>
@@ -22,1604 +48,15 @@ const fecha = new Date();
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Reporte de Matriz de Riesgos</title>
           <style>
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 1200px;
-              margin: 0 auto;
-              padding: 20px;
-              background: #f8f9fa;
-            }
-            .header {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 30px;
-              border-radius: 10px;
-              text-align: center;
-              margin-bottom: 30px;
-              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            }
-            .header h1 {
-              margin: 0;
-              font-size: 2.5rem;
-              font-weight: 700;
-            }
-            .header p {
-              margin: 10px 0 0 0;
-              font-size: 1.2rem;
-              opacity: 0.9;
-            }
-            .section {
-              background: white;
-              margin: 20px 0;
-              padding: 25px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              border-left: 5px solid #667eea;
-            }
-            .section h2 {
-              color: #2c3e50;
-              margin-top: 0;
-              font-size: 1.8rem;
-              border-bottom: 2px solid #e9ecef;
-              padding-bottom: 10px;
-            }
-            .section h3 {
-              color: #495057;
-              margin-top: 25px;
-              font-size: 1.4rem;
-            }
-            .info-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            .info-item {
-              background: #f8f9fa;
-              padding: 15px;
-              border-radius: 8px;
-              border-left: 4px solid #28a745;
-            }
-            .info-item strong {
-              color: #2c3e50;
-              display: block;
-              margin-bottom: 5px;
-            }
-            .tabla-riesgos {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-              background: white;
-              border-radius: 8px;
-              overflow: hidden;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            .tabla-riesgos th {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 15px;
-              text-align: left;
-              font-weight: 600;
-            }
-            .tabla-riesgos td {
-              padding: 12px 15px;
-              border-bottom: 1px solid #e9ecef;
-            }
-            .tabla-riesgos tr:nth-child(even) {
-              background: #f8f9fa;
-            }
-            .tabla-riesgos tr:hover {
-              background: #e3f2fd;
-            }
-            .nivel-riesgo {
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-weight: 600;
-              font-size: 0.9rem;
-            }
-            .nivel-bajo { background: #d4edda; color: #155724; }
-            .nivel-medio { background: #fff3cd; color: #856404; }
-            .nivel-alto { background: #f8d7da; color: #721c24; }
-            .nivel-critico { background: #f5c6cb; color: #721c24; }
-            .mapa-calor-info {
-              background: #e3f2fd;
-              padding: 20px;
-              border-radius: 8px;
-              margin: 20px 0;
-            }
-            .leyenda {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 15px;
-              margin: 15px 0;
-            }
-            .leyenda-item {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-            }
-            .color-box {
-              width: 20px;
-              height: 20px;
-              border-radius: 4px;
-            }
-            
-            /* Estilos para la matriz visual del mapa de calor */
-            .heatmap-container {
-              margin: 30px 0;
-              text-align: center;
-            }
-            
-            .heatmap-grid {
-              display: inline-block;
-              border: 2px solid #333;
-              border-radius: 8px;
-              overflow: hidden;
-              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            }
-            
-            .heatmap-row {
-              display: flex;
-            }
-            
-            .heatmap-cell {
-              width: 80px;
-              height: 80px;
-              border: 1px solid #fff;
-              display: flex;
-              flex-direction: column;
-              align-items: center;
-              justify-content: center;
-              position: relative;
-              color: white;
-              font-weight: bold;
-              transition: transform 0.2s ease;
-            }
-            
-            .heatmap-cell:hover {
-              transform: scale(1.05);
-              z-index: 10;
-              box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            }
-            
-            .cell-coordinates {
-              font-size: 0.7rem;
-              opacity: 0.8;
-              position: absolute;
-              top: 2px;
-              left: 2px;
-            }
-            
-            .cell-risks {
-              display: flex;
-              flex-wrap: wrap;
-              gap: 2px;
-              justify-content: center;
-              align-items: center;
-              flex: 1;
-            }
-            
-            .risk-marker {
-              background: rgba(255,255,255,0.9);
-              color: #333;
-              padding: 2px 4px;
-              border-radius: 3px;
-              font-size: 0.6rem;
-              font-weight: bold;
-              min-width: 12px;
-              text-align: center;
-              cursor: pointer;
-            }
-            
-            .cell-classification {
-              font-size: 0.8rem;
-              font-weight: bold;
-              position: absolute;
-              bottom: 2px;
-              right: 2px;
-              background: rgba(0,0,0,0.3);
-              padding: 1px 3px;
-              border-radius: 2px;
-            }
-            
-            .heatmap-stats {
-              margin: 30px 0;
-            }
-            
-            .heatmap-stats h3 {
-              text-align: center;
-              margin-bottom: 20px;
-              color: #2c3e50;
-            }
-            .footer {
-              text-align: center;
-              margin-top: 40px;
-              padding: 20px;
-              background: #f8f9fa;
-              border-radius: 8px;
-              color: #6c757d;
-            }
-            .stats-grid {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            .stat-card {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 20px;
-              border-radius: 10px;
-              text-align: center;
-            }
-            .stat-number {
-              font-size: 2rem;
-              font-weight: 700;
-              display: block;
-            }
-            .stat-label {
-              font-size: 0.9rem;
-              opacity: 0.9;
-            }
-          </style>
-          
-          <!-- Estilos adicionales para el reporte de información -->
-          <style>
-            /* Estilos para la sección de información completa */
-            .hero-section-report {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 30px;
-              border-radius: 10px;
-              text-align: center;
-              margin: 20px 0;
-            }
-            
-            .hero-title-report {
-              font-size: 2.5rem;
-              font-weight: 700;
-              margin: 0 0 10px 0;
-            }
-            
-            .hero-subtitle-report {
-              font-size: 1.2rem;
-              margin: 0 0 20px 0;
-              opacity: 0.9;
-            }
-            
-            .hero-stats-report {
-              display: flex;
-              justify-content: center;
-              gap: 30px;
-              margin-top: 20px;
-            }
-            
-            .stat-item-report {
-              text-align: center;
-            }
-            
-            .stat-number-report {
-              display: block;
-              font-size: 2rem;
-              font-weight: 700;
-            }
-            
-            .stat-label-report {
-              font-size: 0.9rem;
-              opacity: 0.9;
-            }
-            
-            .info-form-section {
-              background: #f8f9fa;
-              padding: 20px;
-              border-radius: 8px;
-              margin: 20px 0;
-            }
-            
-            .info-form-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .form-group-report {
-              background: white;
-              padding: 15px;
-              border-radius: 8px;
-              border-left: 4px solid #28a745;
-            }
-            
-            .form-group-report.full-width {
-              grid-column: 1 / -1;
-            }
-            
-            .process-steps-section {
-              margin: 30px 0;
-            }
-            
-            .steps-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .step-card-report {
-              background: white;
-              padding: 25px;
-              border-radius: 10px;
-              text-align: center;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              border-left: 5px solid #667eea;
-            }
-            
-            .step-icon-report {
-              font-size: 3rem;
-              margin-bottom: 15px;
-            }
-            
-            .step-tip-report {
-              background: #e3f2fd;
-              padding: 10px;
-              border-radius: 5px;
-              margin-top: 15px;
-              font-style: italic;
-              color: #1976d2;
-            }
-            
-            .benefits-section-report {
-              margin: 30px 0;
-            }
-            
-            .benefits-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .benefit-item-report {
-              display: flex;
-              align-items: flex-start;
-              gap: 15px;
-              background: white;
-              padding: 20px;
-              border-radius: 8px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            
-            .benefit-icon-report {
-              font-size: 2rem;
-              flex-shrink: 0;
-            }
-            
-            .benefit-content-report h4 {
-              margin: 0 0 8px 0;
-              color: #2c3e50;
-            }
-            
-            .benefit-content-report p {
-              margin: 0;
-              color: #6c757d;
-            }
-            
-            .process-detail-section {
-              margin: 30px 0;
-            }
-            
-            .process-timeline-report {
-              margin: 20px 0;
-            }
-            
-            .timeline-item-report {
-              display: flex;
-              gap: 20px;
-              margin: 30px 0;
-              padding: 20px;
-              background: white;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            
-            .timeline-number-report {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              width: 40px;
-              height: 40px;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: 700;
-              font-size: 1.2rem;
-              flex-shrink: 0;
-            }
-            
-            .timeline-content-report {
-              flex: 1;
-            }
-            
-            .timeline-icon-report {
-              font-size: 2rem;
-              margin-bottom: 10px;
-            }
-            
-            .timeline-tips-report {
-              margin-top: 15px;
-            }
-            
-            .tip-item-report {
-              background: #f8f9fa;
-              padding: 8px 12px;
-              border-radius: 5px;
-              margin: 5px 0;
-              font-size: 0.9rem;
-            }
-            
-            .categories-section-report {
-              margin: 30px 0;
-            }
-            
-            .categories-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .category-card-report {
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              border-left: 5px solid #667eea;
-            }
-            
-            .category-header-report {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              margin-bottom: 15px;
-            }
-            
-            .category-icon-report {
-              font-size: 2rem;
-            }
-            
-            .category-header-report h4 {
-              margin: 0;
-              color: #2c3e50;
-            }
-            
-            .category-examples-report {
-              margin-top: 15px;
-            }
-            
-            .example-tag-report {
-              display: inline-block;
-              background: #e3f2fd;
-              color: #1976d2;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 0.8rem;
-              margin: 2px;
-            }
-            
-            /* Estilos para el menú de navegación */
-            .info-tabs-report {
-              display: flex;
-              background: #f8f9fa;
-              border-radius: 10px;
-              padding: 5px;
-              margin: 20px 0;
-              overflow-x: auto;
-            }
-            
-            .tab-button-report {
-              flex: 1;
-              padding: 12px 20px;
-              border: none;
-              background: transparent;
-              border-radius: 8px;
-              cursor: pointer;
-              font-weight: 500;
-              transition: all 0.3s ease;
-              white-space: nowrap;
-              min-width: 120px;
-            }
-            
-            .tab-button-report:hover {
-              background: #e9ecef;
-            }
-            
-            .tab-button-report.active {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
-            }
-            
-            .tab-content-report {
-              margin: 20px 0;
-            }
-            
-            .tab-panel-report {
-              display: none;
-            }
-            
-            .tab-panel-report.active {
-              display: block;
-            }
-            
-            .welcome-card-report {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 30px;
-              border-radius: 15px;
-              text-align: center;
-              margin: 20px 0;
-            }
-            
-            .welcome-card-report h2 {
-              font-size: 2rem;
-              margin: 0 0 15px 0;
-            }
-            
-            .info-form-card-report {
-              background: #f8f9fa;
-              padding: 25px;
-              border-radius: 10px;
-              margin: 20px 0;
-            }
-            
-            .info-form-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .form-group-report {
-              background: white;
-              padding: 20px;
-              border-radius: 8px;
-              border-left: 4px solid #28a745;
-            }
-            
-            .form-group-report.full-width {
-              grid-column: 1 / -1;
-            }
-            
-            .form-group-report label {
-              font-weight: 600;
-              color: #2c3e50;
-              display: block;
-              margin-bottom: 8px;
-            }
-            
-            .quick-start-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 30px 0;
-            }
-            
-            .quick-card-report {
-              background: white;
-              padding: 25px;
-              border-radius: 15px;
-              text-align: center;
-              box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-              border-left: 5px solid #667eea;
-              transition: transform 0.3s ease;
-            }
-            
-            .quick-card-report:hover {
-              transform: translateY(-5px);
-            }
-            
-            .quick-icon-report {
-              font-size: 3rem;
-              margin-bottom: 15px;
-            }
-            
-            .quick-tip-report {
-              background: #e3f2fd;
-              padding: 10px;
-              border-radius: 8px;
-              margin-top: 15px;
-              font-style: italic;
-              color: #1976d2;
-            }
-            
-            .benefits-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 20px;
-              margin: 30px 0;
-            }
-            
-            .benefit-card-report {
-              display: flex;
-              align-items: flex-start;
-              gap: 15px;
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            
-            .benefit-icon-report {
-              font-size: 2rem;
-              flex-shrink: 0;
-            }
-            
-            .benefit-content-report h4 {
-              margin: 0 0 8px 0;
-              color: #2c3e50;
-            }
-            
-            .benefit-content-report p {
-              margin: 0;
-              color: #6c757d;
-            }
-            
-            .process-intro-report {
-              text-align: center;
-              margin: 30px 0;
-            }
-            
-            .process-intro-report h2 {
-              font-size: 2.5rem;
-              margin: 0 0 10px 0;
-              color: #2c3e50;
-            }
-            
-            .process-intro-report p {
-              font-size: 1.2rem;
-              color: #6c757d;
-            }
-            
-            .categories-intro-report {
-              text-align: center;
-              margin: 30px 0;
-            }
-            
-            .categories-intro-report h2 {
-              font-size: 2.5rem;
-              margin: 0 0 10px 0;
-              color: #2c3e50;
-            }
-            
-            .categories-intro-report p {
-              font-size: 1.2rem;
-              color: #6c757d;
-            }
-            
-            .criteria-intro-report {
-              text-align: center;
-              margin: 30px 0;
-            }
-            
-            .criteria-intro-report h2 {
-              font-size: 2.5rem;
-              margin: 0 0 10px 0;
-              color: #2c3e50;
-            }
-            
-            .criteria-intro-report p {
-              font-size: 1.2rem;
-              color: #6c757d;
-            }
-            
-            .criteria-section-report {
-              margin: 30px 0;
-            }
-            
-            .criteria-section-report h3 {
-              font-size: 1.8rem;
-              margin: 0 0 20px 0;
-              color: #2c3e50;
-            }
-            
-            .criteria-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 15px;
-              margin: 20px 0;
-            }
-            
-            .criteria-item-report {
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-              border-left: 4px solid #667eea;
-            }
-            
-            .criteria-level-report {
-              font-weight: 600;
-              color: #667eea;
-              display: block;
-              margin-bottom: 8px;
-            }
-            
-            .heatmap-intro-report {
-              text-align: center;
-              margin: 30px 0;
-            }
-            
-            .heatmap-intro-report h2 {
-              font-size: 2.5rem;
-              margin: 0 0 10px 0;
-              color: #2c3e50;
-            }
-            
-            .heatmap-intro-report p {
-              font-size: 1.2rem;
-              color: #6c757d;
-            }
-            
-            .heatmap-legend-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 30px 0;
-            }
-            
-            .legend-item-report {
-              display: flex;
-              align-items: center;
-              gap: 15px;
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            
-            .legend-color-report {
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              flex-shrink: 0;
-            }
-            
-            .legend-item-report.red .legend-color-report {
-              background: #dc3545;
-            }
-            
-            .legend-item-report.yellow .legend-color-report {
-              background: #ffc107;
-            }
-            
-            .legend-item-report.green .legend-color-report {
-              background: #28a745;
-            }
-            
-            .legend-content-report h4 {
-              margin: 0 0 5px 0;
-              color: #2c3e50;
-            }
-            
-            .legend-content-report p {
-              margin: 0;
-              color: #6c757d;
-            }
-            
-            /* Estilos para criterios detallados */
-            .prob-cards-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .prob-card-report {
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              border-left: 5px solid #667eea;
-            }
-            
-            .prob-header-report {
-              display: flex;
-              align-items: center;
-              gap: 15px;
-              margin-bottom: 15px;
-            }
-            
-            .prob-number-report {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: 700;
-              font-size: 1.1rem;
-            }
-            
-            .prob-header-report h4 {
-              margin: 0;
-              color: #2c3e50;
-            }
-            
-            .prob-details-report {
-              display: flex;
-              flex-direction: column;
-              gap: 10px;
-              margin-bottom: 15px;
-            }
-            
-            .prob-metric-report {
-              display: flex;
-              align-items: center;
-              gap: 8px;
-              font-size: 0.9rem;
-              color: #6c757d;
-            }
-            
-            .metric-icon-report {
-              font-size: 1.2rem;
-            }
-            
-            .prob-description-report {
-              font-style: italic;
-              color: #667eea;
-              margin: 0;
-            }
-            
-            .impact-cards-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .impact-card-report {
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              border-left: 5px solid #667eea;
-            }
-            
-            .impact-header-report {
-              display: flex;
-              align-items: center;
-              gap: 15px;
-              margin-bottom: 15px;
-            }
-            
-            .impact-number-report {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              width: 30px;
-              height: 30px;
-              border-radius: 50%;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              font-weight: 700;
-              font-size: 1.1rem;
-            }
-            
-            .impact-header-report h4 {
-              margin: 0;
-              color: #2c3e50;
-            }
-            
-            .impact-areas-report {
-              margin-bottom: 15px;
-            }
-            
-            .area-item-report {
-              background: #f8f9fa;
-              padding: 8px 12px;
-              border-radius: 5px;
-              margin: 5px 0;
-              font-size: 0.9rem;
-              border-left: 3px solid #28a745;
-            }
-            
-            .impact-description-report {
-              font-style: italic;
-              color: #667eea;
-              margin: 0;
-            }
-            
-            .tips-section-report {
-              margin: 30px 0;
-            }
-            
-            .tips-section-report h3 {
-              font-size: 1.8rem;
-              margin: 0 0 20px 0;
-              color: #2c3e50;
-            }
-            
-            .tips-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .tip-card-report {
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-              text-align: center;
-              border-left: 5px solid #667eea;
-            }
-            
-            .tip-icon-report {
-              font-size: 2.5rem;
-              margin-bottom: 15px;
-              display: block;
-            }
-            
-            .tip-card-report h4 {
-              margin: 0 0 10px 0;
-              color: #2c3e50;
-            }
-            
-            .tip-card-report p {
-              margin: 0;
-              color: #6c757d;
-              font-size: 0.9rem;
-            }
-            
-            /* Estilos para mapa de calor */
-            .heatmap-explanation-report {
-              background: #e3f2fd;
-              padding: 20px;
-              border-radius: 10px;
-              margin: 20px 0;
-            }
-            
-            .heatmap-explanation-report h3 {
-              margin: 0 0 15px 0;
-              color: #2c3e50;
-            }
-            
-            .explanation-text-report {
-              margin: 0;
-              font-size: 1.1rem;
-              line-height: 1.6;
-            }
-            
-            .heatmap-title-report {
-              text-align: center;
-              margin: 20px 0;
-            }
-            
-            .heatmap-title-report p {
-              font-size: 1.2rem;
-              color: #6c757d;
-              margin: 0;
-            }
-            
-            .heatmap-container-report {
-              display: flex;
-              justify-content: center;
-              margin: 30px 0;
-            }
-            
-            .heatmap-matrix-report {
-              position: relative;
-              display: inline-block;
-            }
-            
-            .matrix-label-probability-report {
-              position: absolute;
-              left: -80px;
-              top: 50%;
-              transform: translateY(-50%) rotate(-90deg);
-              font-weight: 700;
-              color: #2c3e50;
-              font-size: 1.1rem;
-            }
-            
-            .matrix-header-impact-report {
-              position: absolute;
-              top: -40px;
-              left: 50%;
-              transform: translateX(-50%);
-              font-weight: 700;
-              color: #2c3e50;
-              font-size: 1.1rem;
-            }
-            
-            .matrix-grid-report {
-              display: grid;
-              grid-template-columns: repeat(6, 60px);
-              gap: 2px;
-              margin: 20px 0;
-            }
-            
-            .matrix-row-report {
-              display: contents;
-            }
-            
-            .matrix-label-report {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: #f8f9fa;
-              border: 2px solid #dee2e6;
-              font-weight: 700;
-              color: #2c3e50;
-            }
-            
-            .matrix-cell-report {
-              width: 60px;
-              height: 60px;
-              border: 2px solid #dee2e6;
-            }
-            
-            .green-risk-report {
-              background: #28a745;
-            }
-            
-            .yellow-risk-report {
-              background: #ffc107;
-            }
-            
-            .orange-risk-report {
-              background: #fd7e14;
-            }
-            
-            .red-risk-report {
-              background: #dc3545;
-            }
-            
-            .impact-labels-report {
-              display: grid;
-              grid-template-columns: repeat(5, 60px);
-              gap: 2px;
-              margin-left: 60px;
-            }
-            
-            .impact-label-report {
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              background: #f8f9fa;
-              border: 2px solid #dee2e6;
-              font-weight: 700;
-              color: #2c3e50;
-              height: 30px;
-            }
-            
-            .legend-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 20px;
-              margin: 20px 0;
-            }
-            
-            .legend-item-report.orange .legend-color-report {
-              background: #fd7e14;
-            }
-            
-            .heatmap-benefits-report {
-              margin: 30px 0;
-            }
-            
-            .heatmap-benefits-report h3 {
-              font-size: 1.8rem;
-              margin: 0 0 20px 0;
-              color: #2c3e50;
-            }
-            
-            /* Estilos para identificación completa */
-            .section-description-report {
-              font-size: 1.1rem;
-              color: #6c757d;
-              margin-bottom: 20px;
-            }
-            
-            .sin-riesgos-report {
-              text-align: center;
-              padding: 40px;
-              background: #f8f9fa;
-              border-radius: 10px;
-              margin: 20px 0;
-            }
-            
-            .sin-riesgos-icono-report {
-              font-size: 4rem;
-              margin-bottom: 20px;
-            }
-            
-            .sin-riesgos-report h5 {
-              margin: 0 0 10px 0;
-              color: #2c3e50;
-            }
-            
-            .sin-riesgos-report p {
-              margin: 0;
-              color: #6c757d;
-            }
-            
-            .identificacion-content-report {
-              margin: 20px 0;
-            }
-            
-            .seccion-titulo-report {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              margin: 0 0 20px 0;
-              color: #2c3e50;
-              font-size: 1.5rem;
-            }
-            
-            .icono-report {
-              font-size: 1.5rem;
-            }
-            
-            .tabla-container-report {
-              overflow-x: auto;
-              margin: 20px 0;
-              border-radius: 10px;
-              box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            }
-            
-            .tabla-identificacion-report {
-              width: 100%;
-              border-collapse: collapse;
-              background: white;
-              min-width: 800px;
-            }
-            
-            .tabla-identificacion-report th {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 12px 8px;
-              text-align: left;
-              font-weight: 600;
-              font-size: 0.9rem;
-              border: 1px solid #dee2e6;
-            }
-            
-            .tabla-identificacion-report td {
-              padding: 10px 8px;
-              border: 1px solid #dee2e6;
-              font-size: 0.9rem;
-            }
-            
-            .tabla-identificacion-report tr:nth-child(even) {
-              background: #f8f9fa;
-            }
-            
-            .tabla-identificacion-report tr:hover {
-              background: #e3f2fd;
-            }
-            
-            .col-numero-report {
-              width: 60px;
-              text-align: center;
-              font-weight: 600;
-            }
-            
-            .col-proceso-report {
-              width: 200px;
-              min-width: 200px;
-            }
-            
-            .col-tipo-report {
-              width: 150px;
-              min-width: 150px;
-            }
-            
-            .col-riesgo-report {
-              width: 300px;
-              min-width: 300px;
-            }
-            
-            .col-categorias-report {
-              width: 80px;
-              text-align: center;
-            }
-            
-            .col-adicional-report {
-              width: 120px;
-              min-width: 120px;
-            }
-            
-            .text-center-report {
-              text-align: center;
-            }
-            
-            .fila-riesgo-report {
-              transition: background-color 0.2s ease;
-            }
-            
-            .resumen-riesgos-report {
-              margin: 30px 0;
-              background: #f8f9fa;
-              padding: 20px;
-              border-radius: 10px;
-            }
-            
-            .resumen-riesgos-report h4 {
-              margin: 0 0 20px 0;
-              color: #2c3e50;
-            }
-            
-            .categorias-resumen-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-              gap: 15px;
-            }
-            
-            .categoria-item-report {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              background: white;
-              padding: 15px;
-              border-radius: 8px;
-              box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }
-            
-            .categoria-icono-report {
-              font-size: 1.5rem;
-            }
-            
-            .categoria-nombre-report {
-              flex: 1;
-              font-weight: 500;
-              color: #2c3e50;
-            }
-            
-            .categoria-count-report {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 5px 10px;
-              border-radius: 15px;
-              font-weight: 600;
-              font-size: 0.9rem;
-            }
-            
-            .tipos-proceso-report {
-              margin: 30px 0;
-              background: #e3f2fd;
-              padding: 20px;
-              border-radius: 10px;
-            }
-            
-            .tipos-proceso-report h4 {
-              margin: 0 0 20px 0;
-              color: #2c3e50;
-            }
-            
-            .tipos-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-              gap: 15px;
-            }
-            
-            .tipo-item-report {
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              background: white;
-              padding: 15px;
-              border-radius: 8px;
-              box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            }
-            
-            .tipo-nombre-report {
-              font-weight: 500;
-              color: #2c3e50;
-            }
-            
-            .tipo-count-report {
-              background: #28a745;
-              color: white;
-              padding: 5px 10px;
-              border-radius: 15px;
-              font-weight: 600;
-              font-size: 0.9rem;
-            }
-            
-            /* Estilos para valoración completa */
-            .sin-valoraciones-report {
-              text-align: center;
-              padding: 40px;
-              background: #f8f9fa;
-              border-radius: 10px;
-              margin: 20px 0;
-            }
-            
-            .sin-valoraciones-icono-report {
-              font-size: 4rem;
-              margin-bottom: 20px;
-            }
-            
-            .sin-valoraciones-report h5 {
-              margin: 0 0 10px 0;
-              color: #2c3e50;
-            }
-            
-            .sin-valoraciones-report p {
-              margin: 0;
-              color: #6c757d;
-            }
-            
-            .valoracion-content-report {
-              margin: 20px 0;
-            }
-            
-            .tabla-valoracion-report {
-              width: 100%;
-              border-collapse: collapse;
-              background: white;
-              min-width: 2000px;
-              font-size: 0.8rem;
-            }
-            
-            .tabla-valoracion-report th {
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
-              padding: 8px 4px;
-              text-align: center;
-              font-weight: 600;
-              font-size: 0.7rem;
-              border: 1px solid #dee2e6;
-              white-space: nowrap;
-            }
-            
-            .tabla-valoracion-report td {
-              padding: 6px 4px;
-              border: 1px solid #dee2e6;
-              font-size: 0.75rem;
-              text-align: center;
-              vertical-align: top;
-            }
-            
-            .tabla-valoracion-report tr:nth-child(even) {
-              background: #f8f9fa;
-            }
-            
-            .tabla-valoracion-report tr:hover {
-              background: #e3f2fd;
-            }
-            
-            .col-numero-report {
-              width: 40px;
-              font-weight: 600;
-            }
-            
-            .col-riesgo-report {
-              width: 200px;
-              min-width: 200px;
-              text-align: left;
-            }
-            
-            .col-proceso-report {
-              width: 150px;
-              min-width: 150px;
-              text-align: left;
-            }
-            
-            .col-causas-report {
-              width: 150px;
-              min-width: 150px;
-              text-align: left;
-            }
-            
-            .col-probabilidad-report {
-              width: 100px;
-              font-weight: 600;
-            }
-            
-            .col-impacto-header-report {
-              background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            }
-            
-            .col-imp-cat-report {
-              width: 60px;
-              font-weight: 600;
-            }
-            
-            .col-sum-impacto-report {
-              width: 80px;
-              font-weight: 600;
-            }
-            
-            .col-calificacion-report {
-              width: 80px;
-              font-weight: 600;
-            }
-            
-            .col-controles-report {
-              width: 100px;
-            }
-            
-            .col-controles-desc-report {
-              width: 150px;
-              text-align: left;
-            }
-            
-            .col-efectividad-header-report {
-              background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
-            }
-            
-            .col-efectividad-sub-report {
-              width: 80px;
-              font-size: 0.7rem;
-            }
-            
-            .col-efectividad-val-report {
-              width: 50px;
-              font-weight: 600;
-            }
-            
-            .col-prob-residual-report {
-              width: 80px;
-              font-weight: 600;
-            }
-            
-            .col-impacto-residual-header-report {
-              background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
-            }
-            
-            .col-sum-residual-report {
-              width: 80px;
-              font-weight: 600;
-            }
-            
-            .col-valoracion-cuantitativa-report {
-              width: 100px;
-              font-weight: 600;
-            }
-            
-            .col-nivel-residual-report {
-              width: 100px;
-              font-weight: 600;
-            }
-            
-            .col-tratamiento-report {
-              width: 150px;
-              text-align: left;
-            }
-            
-            .fila-valoracion-report {
-              transition: background-color 0.2s ease;
-            }
-            
-            .resumen-valoracion-report {
-              margin: 30px 0;
-              background: #f8f9fa;
-              padding: 20px;
-              border-radius: 10px;
-            }
-            
-            .resumen-valoracion-report h4 {
-              margin: 0 0 20px 0;
-              color: #2c3e50;
-            }
-            
-            .resumen-grid-report {
-              display: grid;
-              grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-              gap: 15px;
-            }
-            
-            .resumen-item-report {
-              display: flex;
-              align-items: center;
-              gap: 15px;
-              background: white;
-              padding: 20px;
-              border-radius: 10px;
-              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            }
-            
-            .resumen-icono-report {
-              font-size: 2rem;
-            }
-            
-            .resumen-content-report h5 {
-              margin: 0 0 5px 0;
-              color: #2c3e50;
-              font-size: 0.9rem;
-            }
-            
-            .resumen-numero-report {
-              font-size: 1.8rem;
-              font-weight: 700;
-              margin: 0;
-              color: #667eea;
-            }
-            
-            /* Estilos para auto-selección en reporte */
-            .auto-seleccion-info-report {
-              background: #f8f9fa;
-              border: 2px solid #e3f2fd;
-              border-radius: 10px;
-              padding: 20px;
-              margin: 20px 0;
-            }
-            
-            .auto-seleccion-info-report h4 {
-              color: #2c3e50;
-              margin: 0 0 15px 0;
-              font-size: 1.3rem;
-            }
-            
-            .auto-seleccion-ejemplos-report {
-              margin: 20px 0;
-            }
-            
-            .ejemplo-item-report {
-              display: flex;
-              align-items: center;
-              gap: 10px;
-              margin: 10px 0;
-              padding: 10px;
-              background: white;
-              border-radius: 8px;
-              border-left: 4px solid #667eea;
-            }
-            
-            .ejemplo-input-report {
-              font-weight: 600;
-              color: #495057;
-            }
-            
-            .ejemplo-codigo-report {
-              background: #e9ecef;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-family: 'Courier New', monospace;
-              font-size: 0.9rem;
-              color: #dc3545;
-            }
-            
-            .ejemplo-flecha-report {
-              font-size: 1.2rem;
-              color: #667eea;
-              font-weight: bold;
-            }
-            
-            .ejemplo-resultado-report {
-              color: #28a745;
-              font-weight: 600;
-            }
-            
-            .auto-seleccion-caracteristicas-report {
-              margin: 20px 0;
-            }
-            
-            .auto-seleccion-caracteristicas-report h5 {
-              color: #2c3e50;
-              margin: 0 0 10px 0;
-            }
-            
-            .auto-seleccion-caracteristicas-report ul {
-              margin: 0;
-              padding-left: 20px;
-            }
-            
-            .auto-seleccion-caracteristicas-report li {
-              margin: 8px 0;
-              color: #495057;
-            }
+            ${REPORTE_FENIX_CSS}
+            ${REPORTE_COMPONENTES_CSS}
           </style>
           
           <!-- JavaScript para funcionalidad de pestañas -->
           <script>
+            function imprimirReportePDF() {
+              window.print();
+            }
             function showTab(tabName) {
               // Ocultar todas las pestañas
               const tabs = document.querySelectorAll('.tab-panel-report');
@@ -1643,22 +80,24 @@ const fecha = new Date();
             }
           </script>
         </head>
-        <body>
-          <div class="header">
-            <h1>🎯 Reporte de Matriz de Riesgos</h1>
-            <p>El corazón digital de Grupo Proser</p>
-            <p><strong>Generado el:</strong> ${fechaFormateada} a las ${horaFormateada}</p>
-          </div>
-
-          ${this.generarSeccionInformacion(datosMatriz.informacion)}
-          ${this.generarSeccionIdentificacion(datosMatriz.identificacion)}
-          ${this.generarSeccionValoracion(datosMatriz.valoracion, tipoReporte)}
-          ${this.generarSeccionMapaCalor(datosMatriz.mapaCalor, datosMatriz.valoracion, datosMatriz, tipoReporte)}
-          ${this.generarSeccionGestionRiesgos(datosMatriz.gestionRiesgos)}
-
-          <div class="footer">
-            <p><strong>Reporte generado automáticamente por El corazón digital de Grupo Proser</strong></p>
-            <p>Este documento contiene información confidencial y debe ser tratado con la debida confidencialidad.</p>
+        <body class="reporte-tipo-${tipoReporte}${modoCapturaPdf ? ' modo-captura-pdf' : ''}${modoExportacion ? ' modo-exportacion' : ''}">
+          <div class="reporte-layout">
+            ${navHtml}
+            <div class="reporte-contenido-principal">
+              <div class="reporte-acciones no-print">
+                <button type="button" onclick="imprimirReportePDF()">Guardar como PDF</button>
+                <span class="reporte-acciones-hint">
+                  Use <strong>Guardar como PDF</strong> para conservar el diseño. Orientación horizontal recomendada.
+                </span>
+              </div>
+              ${cabeceraHtml}
+              ${generarSeccionInformacionModerna(datosMatriz.informacion)}
+              ${envolverSeccion('seccion-identificacion', this.generarSeccionIdentificacion(datosMatriz.identificacion))}
+              ${envolverSeccion('seccion-valoracion', this.generarSeccionValoracion(datosMatriz.valoracion, tipoReporte))}
+              ${envolverSeccion('seccion-mapa-calor', this.generarSeccionMapaCalor(datosMatriz.mapaCalor, datosMatriz.valoracion, datosMatriz, tipoReporte))}
+              ${this.generarSeccionGestionRiesgos(datosMatriz.gestionRiesgos)}
+              ${pieHtml}
+            </div>
           </div>
         </body>
         </html>
@@ -1671,8 +110,12 @@ const fecha = new Date();
     }
   }
 
-    // Generar sección de información completa con menú de navegación
+    // Generar sección de información (delegada al layout Fenix moderno)
   static generarSeccionInformacion(informacion) {
+    return generarSeccionInformacionModerna(informacion);
+  }
+
+  static generarSeccionInformacionLegacy(informacion) {
 return `
       <div class="section">
         <h2>📋 Información General y Tutorial</h2>
@@ -2258,7 +701,7 @@ return `
           <!-- Mapa de Calor Tab -->
           <div id="heatmap-tab" class="tab-panel-report">
             <div class="heatmap-intro-report">
-              <h2>🔥 Mapa de Calor de Riesgos</h2>
+              <h2>Mapa de Calor de Riesgos</h2>
               <p>Tu brújula visual para la gestión inteligente de riesgos</p>
             </div>
 
@@ -2748,45 +1191,51 @@ if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomen
 
       return `
         <div class="seguimientos-container-report">
-          <h4>📈 Seguimiento</h4>
+          <h4>Seguimiento</h4>
           ${seguimientos.join('')}
         </div>
       `;
     };
 
-    return `
-      <div class="section">
-        <h2>🛡️ Recomendaciones de Gestión de Riesgos</h2>
-        <p class="section-description-report">Recomendaciones identificadas y su seguimiento</p>
+    const inner = `
+      <div class="section reporte-card">
+        <h2>Recomendaciones de gestión de riesgos</h2>
+        <p class="section-subtitulo">Recomendaciones identificadas y su seguimiento</p>
         
         <div class="recomendaciones-container-report">
-          ${gestionRiesgos.recomendaciones.map((recomendacion, index) => `
+          ${gestionRiesgos.recomendaciones.map((recomendacion, index) => {
+            const textoRecomendacion =
+              recomendacion.recomendacion || recomendacion.descripcion || recomendacion.texto || '';
+            return `
             <div class="recomendacion-card-report">
               <div class="recomendacion-header-report">
-                <h3>📋 Recomendación ${index + 1}</h3>
+                <h3>Recomendación ${index + 1}</h3>
                 ${recomendacion.fechaRecomendacion || recomendacion.fechaInicial ? `
                   <p class="fecha-recomendacion-report">
-                    <strong>📅 Fecha de recomendación:</strong>
+                    <strong>Fecha:</strong>
                     ${recomendacion.fechaRecomendacion || recomendacion.fechaInicial}
                   </p>
                 ` : ''}
               </div>
               
               <div class="recomendacion-content-report">
-                ${recomendacion.recomendacion ? `
+                ${textoRecomendacion ? `
                   <div class="recomendacion-descripcion-report">
-                    <h4>📝 Descripción</h4>
-                    <p>${recomendacion.recomendacion}</p>
+                    <h4>Descripción</h4>
+                    <p>${textoRecomendacion}</p>
                   </div>
                 ` : ''}
                 
                 ${renderSeguimientos(recomendacion)}
               </div>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
         </div>
       </div>
     `;
+
+    return envolverSeccion('seccion-recomendaciones', inner);
   }
 
   // Generar sección de identificación completa
@@ -2821,19 +1270,14 @@ const categoriasRiesgo = [
     ];
 
     const tiposProceso = [
-      'Proceso Principal',
-      'Proceso de Apoyo',
-      'Proceso de Gestión',
-      'Proceso Operativo',
-      'Proceso Administrativo',
-      'Proceso de Control',
-      'Proceso de Monitoreo',
-      'Otro'
-    ];
+      ...new Set(
+        riesgos.map((r) => (r.tipoProceso || '').trim()).filter(Boolean)
+      ),
+    ].sort((a, b) => a.localeCompare(b, 'es'));
 
     return `
       <div class="section">
-        <h2>🔍 Identificación de Riesgos</h2>
+        <h2>Identificación de Riesgos</h2>
         <p class="section-description-report">Identifica y categoriza todos los riesgos potenciales por proceso organizacional</p>
         
         ${riesgos.length === 0 ? `
@@ -2844,12 +1288,50 @@ const categoriasRiesgo = [
           </div>
         ` : `
           <div class="identificacion-content-report">
+            <div class="reporte-resumen-bloque resumen-riesgos-report">
+              <h4 class="reporte-resumen-titulo">Resumen de categorías</h4>
+              <div class="categorias-resumen-report reporte-resumen-grid">
+                ${categoriasRiesgo.map(cat => {
+                  const count = riesgos.filter(riesgo => 
+                    riesgo.categorias && riesgo.categorias[cat.valor]
+                  ).length;
+                  return `
+                    <div class="categoria-item-report">
+                      <span class="categoria-nombre-report">${cat.etiqueta}</span>
+                      <span class="categoria-count-report">${count}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <div class="reporte-resumen-bloque tipos-proceso-report">
+              <h4 class="reporte-resumen-titulo">Tipos de proceso identificados</h4>
+              <div class="tipos-grid-report reporte-resumen-grid">
+                ${tiposProceso.length === 0 ? `
+                  <p style="margin:0;color:#6c757d;grid-column:1/-1;">No hay tipos de proceso registrados.</p>
+                ` : tiposProceso.map(tipo => {
+                  const count = riesgos.filter(riesgo => riesgo.tipoProceso === tipo).length;
+                  if (count > 0) {
+                    return `
+                      <div class="tipo-item-report">
+                        <span class="tipo-nombre-report">${tipo}</span>
+                        <span class="tipo-count-report">${count}</span>
+                      </div>
+                    `;
+                  }
+                  return '';
+                }).filter(Boolean).join('')}
+              </div>
+            </div>
+
             <h3 class="seccion-titulo-report">
-              <span class="icono-report">📋</span>
-              Riesgos Identificados (${riesgos.length})
+              <span class="icono-report" aria-hidden="true"></span>
+              Detalle de riesgos (${riesgos.length})
             </h3>
             
-            <div class="tabla-container-report">
+            <p class="reporte-tabla-scroll-hint no-print">← Arrastre con el mouse o desplace horizontalmente para ver todas las columnas →</p>
+            <div class="tabla-container-report reporte-tabla-scroll">
               <table class="tabla-identificacion-report">
                 <thead>
                   <tr>
@@ -2894,42 +1376,6 @@ const categoriasRiesgo = [
                   `).join('')}
                 </tbody>
               </table>
-            </div>
-            
-            <div class="resumen-riesgos-report">
-              <h4>📊 Resumen de Categorías</h4>
-              <div class="categorias-resumen-report">
-                ${categoriasRiesgo.map(cat => {
-                  const count = riesgos.filter(riesgo => 
-                    riesgo.categorias && riesgo.categorias[cat.valor]
-                  ).length;
-                  return `
-                    <div class="categoria-item-report">
-                      <span class="categoria-icono-report">${cat.icono}</span>
-                      <span class="categoria-nombre-report">${cat.etiqueta}</span>
-                      <span class="categoria-count-report">${count}</span>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            </div>
-            
-            <div class="tipos-proceso-report">
-              <h4>🔄 Tipos de Proceso Identificados</h4>
-              <div class="tipos-grid-report">
-                ${tiposProceso.map(tipo => {
-                  const count = riesgos.filter(riesgo => riesgo.tipoProceso === tipo).length;
-                  if (count > 0) {
-                    return `
-                      <div class="tipo-item-report">
-                        <span class="tipo-nombre-report">${tipo}</span>
-                        <span class="tipo-count-report">${count}</span>
-                      </div>
-                    `;
-                  }
-                  return '';
-                }).filter(Boolean).join('')}
-              </div>
             </div>
           </div>
         `}
@@ -2987,7 +1433,7 @@ const escalaProbabilidad = [
     if (valoraciones.length === 0) {
       return `
         <div class="section">
-          <h2>📊 Valoración de Riesgos</h2>
+          <h2>Valoración de Riesgos</h2>
           <p class="section-description-report">Evaluación cuantitativa y cualitativa de los riesgos identificados</p>
           <div class="sin-valoraciones-report">
             <div class="sin-valoraciones-icono-report">📊</div>
@@ -3000,16 +1446,43 @@ const escalaProbabilidad = [
 
     return `
       <div class="section">
-        <h2>📊 Valoración de Riesgos</h2>
+        <h2>Valoración de Riesgos</h2>
         <p class="section-description-report">Evaluación cuantitativa y cualitativa de los riesgos identificados</p>
         
         <div class="valoracion-content-report">
+          <div class="reporte-resumen-bloque resumen-valoracion-report">
+            <h4 class="reporte-resumen-titulo">Resumen de valoración</h4>
+            <div class="resumen-grid-report reporte-resumen-grid">
+              <div class="resumen-item-report">
+                <span class="categoria-nombre-report">Riesgos valorados</span>
+                <span class="resumen-numero-report">${valoraciones.length}</span>
+              </div>
+              <div class="resumen-item-report">
+                <span class="categoria-nombre-report">Críticos</span>
+                <span class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'CRÍTICO').length}</span>
+              </div>
+              <div class="resumen-item-report">
+                <span class="categoria-nombre-report">Altos</span>
+                <span class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'ALTO').length}</span>
+              </div>
+              <div class="resumen-item-report">
+                <span class="categoria-nombre-report">Tolerables</span>
+                <span class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'TOLERABLE').length}</span>
+              </div>
+              <div class="resumen-item-report">
+                <span class="categoria-nombre-report">Aceptables</span>
+                <span class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'ACEPTABLE').length}</span>
+              </div>
+            </div>
+          </div>
+
           <h3 class="seccion-titulo-report">
-            <span class="icono-report">📊</span>
-            Valoraciones Realizadas (${valoraciones.length})
+            <span class="icono-report" aria-hidden="true"></span>
+            Detalle de valoración (${valoraciones.length})
           </h3>
           
-          <div class="tabla-container-report">
+          <p class="reporte-tabla-scroll-hint no-print">← Arrastre con el mouse o desplace horizontalmente para ver todas las columnas →</p>
+          <div class="tabla-container-report tabla-container-report--valoracion reporte-tabla-scroll">
             <table class="tabla-valoracion-report">
               <thead>
                 <tr>
@@ -3131,47 +1604,6 @@ const escalaProbabilidad = [
                 }).join('')}
               </tbody>
             </table>
-          </div>
-          
-          <div class="resumen-valoracion-report">
-            <h4>📈 Resumen de Valoración</h4>
-            <div class="resumen-grid-report">
-              <div class="resumen-item-report">
-                <span class="resumen-icono-report">📊</span>
-                <div class="resumen-content-report">
-                  <h5>Riesgos Valorados</h5>
-                  <p class="resumen-numero-report">${valoraciones.length}</p>
-                </div>
-              </div>
-              <div class="resumen-item-report">
-                <span class="resumen-icono-report">🔴</span>
-                <div class="resumen-content-report">
-                  <h5>Críticos</h5>
-                  <p class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'CRÍTICO').length}</p>
-                </div>
-              </div>
-              <div class="resumen-item-report">
-                <span class="resumen-icono-report">🟠</span>
-                <div class="resumen-content-report">
-                  <h5>Altos</h5>
-                  <p class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'ALTO').length}</p>
-                </div>
-              </div>
-              <div class="resumen-item-report">
-                <span class="resumen-icono-report">🟡</span>
-                <div class="resumen-content-report">
-                  <h5>Tolerables</h5>
-                  <p class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'TOLERABLE').length}</p>
-                </div>
-              </div>
-              <div class="resumen-item-report">
-                <span class="resumen-icono-report">🟢</span>
-                <div class="resumen-content-report">
-                  <h5>Aceptables</h5>
-                  <p class="resumen-numero-report">${valoraciones.filter(v => calcularNivelRiesgoResidual((v.probResidual || v.probabilidad) * (v.sumImpactoResidual || v.sumImpacto || 1)).nivel === 'ACEPTABLE').length}</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -3303,949 +1735,12 @@ return '';
     const estadisticasResiduales = this.calcularEstadisticasValoracion(riesgosResiduales);
     
     return `
-      <style>
-        .heatmap-container {
-          margin: 30px 0;
-          padding: 25px;
-          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-          border-radius: 15px;
-          box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-          border: 1px solid #dee2e6;
-        }
-        
-        .heatmap-container h3 {
-          color: #2c3e50;
-          font-size: 1.4em;
-          margin-bottom: 10px;
-          font-weight: 600;
-          text-align: center;
-        }
-        
-        .heatmap-container p {
-          color: #6c757d;
-          text-align: center;
-          margin-bottom: 20px;
-          font-style: italic;
-        }
-        
-        .heatmap-grid {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          background: #fff;
-          padding: 15px;
-          border-radius: 10px;
-          box-shadow: inset 0 2px 8px rgba(0,0,0,0.1);
-          align-items: center;
-          justify-content: center;
-        }
-        
-        .heatmap-row {
-          display: flex;
-          gap: 2px;
-          margin-bottom: 2px;
-          justify-content: center;
-          align-items: center;
-        }
-        
-        .heatmap-row:last-child {
-          margin-bottom: 0;
-        }
-        
-        .heatmap-cell {
-          width: 60px;
-          height: 60px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 8px;
-          border: 2px solid rgba(255,255,255,0.3);
-          box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-          transition: all 0.3s ease;
-          position: relative;
-          font-weight: bold;
-          color: white;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-        }
-        
-        .heatmap-cell:hover {
-          transform: scale(1.05);
-          box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-          z-index: 10;
-        }
-        
-        .riesgo-marcador {
-          background: rgba(255,255,255,0.9);
-          color: #2c3e50;
-          padding: 4px 8px;
-          border-radius: 12px;
-          font-size: 0.8em;
-          font-weight: bold;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-          border: 2px solid #fff;
-          min-width: 20px;
-          text-align: center;
-        }
-        
-        .heatmap-stats {
-          margin-top: 25px;
-          padding: 20px;
-          background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-          border-radius: 12px;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        }
-        
-        .heatmap-stats h4 {
-          color: #2c3e50;
-          font-size: 1.2em;
-          margin-bottom: 15px;
-          text-align: center;
-          font-weight: 600;
-        }
-        
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-          gap: 15px;
-          margin-top: 15px;
-        }
-        
-        .stat-card {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          padding: 20px 15px;
-          border-radius: 12px;
-          text-align: center;
-          box-shadow: 0 6px 20px rgba(0,0,0,0.15);
-          transition: transform 0.3s ease;
-        }
-        
-        .stat-card:hover {
-          transform: translateY(-3px);
-          box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-        }
-        
-        .stat-number {
-          display: block;
-          font-size: 2em;
-          font-weight: bold;
-          margin-bottom: 5px;
-          text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
-        }
-        
-        .stat-label {
-          font-size: 0.9em;
-          opacity: 0.9;
-          font-weight: 500;
-        }
-        
-        .mapa-calor-info {
-          margin-top: 30px;
-          padding: 25px;
-          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-          border-radius: 15px;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        }
-        
-        .mapa-calor-info h3 {
-          color: #2c3e50;
-          font-size: 1.3em;
-          margin-bottom: 20px;
-          text-align: center;
-          font-weight: 600;
-        }
-        
-        .leyenda {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 20px;
-          justify-content: center;
-          margin-bottom: 25px;
-        }
-        
-        .leyenda-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          background: white;
-          padding: 12px 18px;
-          border-radius: 25px;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-          border: 1px solid #dee2e6;
-        }
-        
-        .color-box {
-          width: 20px;
-          height: 20px;
-          border-radius: 50%;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .mapa-calor-info ul {
-          list-style: none;
-          padding: 0;
-        }
-        
-        .mapa-calor-info li {
-          background: white;
-          margin: 10px 0;
-          padding: 15px 20px;
-          border-radius: 10px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-          border-left: 4px solid #667eea;
-        }
-        
-        .mapa-calor-info li strong {
-          color: #2c3e50;
-          font-weight: 600;
-        }
-        
-        /* Estilos para las tablas de riesgos */
-        .tabla-riesgos-container {
-          margin: 25px 0;
-          padding: 20px;
-          background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-          border-radius: 12px;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        }
-        
-        .tabla-riesgos-container h4 {
-          color: #2c3e50;
-          font-size: 1.2em;
-          margin-bottom: 15px;
-          text-align: center;
-          font-weight: 600;
-        }
-        
-        .tabla-riesgos {
-          background: white;
-          border-radius: 10px;
-          overflow: hidden;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .tabla-header {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr 1fr;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          color: white;
-          font-weight: bold;
-          text-align: center;
-        }
-        
-        .tabla-header > div {
-          padding: 15px 10px;
-          border-right: 1px solid rgba(255,255,255,0.2);
-          font-size: 0.9em;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .tabla-header > div:last-child {
-          border-right: none;
-        }
-        
-        .tabla-body {
-          display: flex;
-          flex-direction: column;
-        }
-        
-        .tabla-fila {
-          display: grid;
-          grid-template-columns: 1fr 1fr 1fr 1fr;
-          border-bottom: 1px solid #dee2e6;
-          transition: background-color 0.3s ease;
-        }
-        
-        .tabla-fila:hover {
-          background-color: #f8f9fa;
-        }
-        
-        .tabla-fila:last-child {
-          border-bottom: none;
-        }
-        
-        .tabla-fila > div {
-          padding: 15px 10px;
-          text-align: center;
-          font-weight: 500;
-          border-right: 1px solid #dee2e6;
-        }
-        
-        .tabla-fila > div:last-child {
-          border-right: none;
-        }
-        
-        .col-riesgo {
-          font-weight: bold;
-          color: #2c3e50;
-          background-color: #f8f9fa;
-        }
-        
-        .col-probabilidad, .col-impacto {
-          color: #495057;
-          font-size: 1.1em;
-        }
-        
-        .col-calificacion {
-          font-weight: bold;
-          font-size: 1.1em;
-          border-radius: 6px;
-          margin: 2px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        /* Estilos para información de valoración */
-        .valoracion-info {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin: 20px 0;
-          padding: 20px;
-          background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-          border-radius: 12px;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-          border: 1px solid #dee2e6;
-        }
-        
-        .valoracion-badge {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 12px 20px;
-          border-radius: 25px;
-          font-weight: bold;
-          font-size: 1.1em;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          transition: transform 0.3s ease;
-        }
-        
-        .valoracion-badge:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 6px 20px rgba(0,0,0,0.2);
-        }
-        
-        .valoracion-badge.inicial {
-          background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-          color: white;
-        }
-        
-        .valoracion-badge.anual {
-          background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
-          color: white;
-        }
-        
-        .badge-icon {
-          font-size: 1.2em;
-        }
-        
-        .fecha-valoracion {
-          color: #495057;
-          font-size: 1.1em;
-          font-weight: 500;
-        }
-        
-        .fecha-valoracion strong {
-          color: #2c3e50;
-        }
-        
-        /* Estilos para Leyenda de Riesgos */
-        .leyenda-riesgos {
-          margin: 40px 0;
-        }
-        
-        .leyenda-riesgos h3 {
-          text-align: center;
-          color: #2c3e50;
-          font-size: 1.8rem;
-          font-weight: 700;
-          margin-bottom: 10px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-        }
-        
-        .leyenda-riesgos p {
-          text-align: center;
-          color: #6c757d;
-          font-size: 1rem;
-          margin-bottom: 30px;
-          font-style: italic;
-        }
-        
-        .leyenda-contenido {
-          display: flex;
-          gap: 40px;
-          align-items: flex-start;
-          justify-content: center;
-          max-width: 1400px;
-          margin: 0 auto;
-          padding: 0 30px;
-        }
-        
-        .leyenda-mapa {
-          flex: 1;
-          background: white;
-          padding: 35px;
-          border-radius: 12px;
-          border: 1px solid #e9ecef;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-          min-width: 0;
-          max-width: 600px;
-        }
-        
-        .leyenda-mapa h4 {
-          color: #2c3e50;
-          margin-bottom: 12px;
-          font-size: 1.4rem;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        
-        .leyenda-mapa p {
-          color: #6c757d;
-          margin-bottom: 20px;
-          font-size: 1rem;
-          font-style: italic;
-        }
-        
-        .leyenda-riesgos h3 {
-          color: #2c3e50;
-          margin-bottom: 10px;
-          font-size: 1.4rem;
-        }
-        
-        .leyenda-riesgos p {
-          color: #6c757d;
-          margin-bottom: 20px;
-          font-size: 1rem;
-        }
-        
-        .leyenda-tabla {
-          overflow-x: auto;
-        }
-        
-        .tabla-leyenda {
-          width: 100%;
-          border-collapse: collapse;
-          background: white;
-          border-radius: 8px;
-          overflow: hidden;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        
-        .tabla-leyenda thead {
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          color: white;
-        }
-        
-        .tabla-leyenda th {
-          padding: 16px 20px;
-          text-align: left;
-          font-weight: 600;
-          font-size: 0.95rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .tabla-leyenda td {
-          padding: 18px 20px;
-          border-bottom: 1px solid #f1f3f4;
-          font-size: 1rem;
-          vertical-align: middle;
-        }
-        
-        .tabla-leyenda tbody tr:hover {
-          background: #f8f9fa;
-        }
-        
-        .tabla-leyenda tbody tr:last-child td {
-          border-bottom: none;
-        }
-        
-        .codigo-riesgo {
-          font-weight: 700;
-          color: #2c3e50;
-          background: #f8f9fa;
-          text-align: center;
-          width: 60px;
-          border-radius: 4px;
-          font-size: 0.85rem;
-        }
-        
-        .nombre-riesgo {
-          font-weight: 500;
-          color: #495057;
-          padding-left: 15px;
-        }
-        
-        .clasificacion-riesgo {
-          text-align: center;
-          font-weight: 700;
-          color: #2c3e50;
-          background: #e9ecef;
-          border-radius: 4px;
-          font-size: 0.9rem;
-          width: 80px;
-        }
-        
-        .nivel-riesgo {
-          text-align: center;
-          font-weight: 600;
-          padding: 4px 8px;
-          border-radius: 4px;
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .nivel-bajo {
-          background: #d4edda;
-          color: #155724;
-          border: 1px solid #c3e6cb;
-        }
-        
-        .nivel-medio {
-          background: #fff3cd;
-          color: #856404;
-          border: 1px solid #ffeaa7;
-        }
-        
-        .nivel-alto {
-          background: #f8d7da;
-          color: #721c24;
-          border: 1px solid #f5c6cb;
-        }
-        
-        .nivel-critico {
-          background: #721c24;
-          color: #ffffff;
-          border: 1px solid #721c24;
-        }
-        
-        .probabilidad-riesgo,
-        .impacto-riesgo {
-          text-align: center;
-          font-weight: 600;
-          color: #6c757d;
-          width: 80px;
-        }
-        
-        .nivel-riesgo {
-          text-align: center;
-          font-weight: 600;
-          padding: 6px 12px;
-          border-radius: 20px;
-          font-size: 0.8rem;
-        }
-        
-        .nivel-riesgo.nivel-bajo {
-          background: #d4edda;
-          color: #155724;
-        }
-        
-        .nivel-riesgo.nivel-medio {
-          background: #fff3cd;
-          color: #856404;
-        }
-        
-        .nivel-riesgo.nivel-alto {
-          background: #f8d7da;
-          color: #721c24;
-        }
-        
-        .nivel-riesgo.nivel-critico {
-          background: #f5c6cb;
-          color: #721c24;
-        }
-
-        /* Estilos para Recomendaciones de Gestión */
-        .recomendaciones-container-report {
-          display: flex;
-          flex-direction: column;
-          gap: 25px;
-          margin: 20px 0;
-        }
-        
-        .recomendacion-card-report {
-          background: white;
-          border-radius: 12px;
-          padding: 25px;
-          box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-          border: 2px solid #e9ecef;
-          border-left: 5px solid #667eea;
-        }
-        
-        .recomendacion-header-report {
-          margin-bottom: 20px;
-          padding-bottom: 15px;
-          border-bottom: 2px solid #f8f9fa;
-        }
-        
-        .recomendacion-header-report h3 {
-          color: #2c3e50;
-          font-size: 1.4rem;
-          font-weight: 600;
-          margin: 0;
-        }
-        
-        .recomendacion-content-report {
-          display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-        
-        .recomendacion-descripcion-report {
-          background: #f8f9fa;
-          padding: 20px;
-          border-radius: 8px;
-          border-left: 4px solid #28a745;
-        }
-        
-        .recomendacion-descripcion-report h4 {
-          color: #2c3e50;
-          font-size: 1.1rem;
-          font-weight: 600;
-          margin: 0 0 10px 0;
-        }
-        
-        .recomendacion-descripcion-report p {
-          color: #495057;
-          line-height: 1.6;
-          margin: 0;
-        }
-        
-        .recomendacion-fechas-report {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-          gap: 20px;
-        }
-        
-        .fecha-item-report {
-          background: #f8f9fa;
-          padding: 15px;
-          border-radius: 8px;
-          border: 1px solid #dee2e6;
-        }
-        
-        .fecha-item-report strong {
-          color: #2c3e50;
-          font-weight: 600;
-        }
-        
-        .comentarios-report {
-          margin-top: 10px;
-          padding: 10px;
-          background: white;
-          border-radius: 6px;
-          border-left: 3px solid #667eea;
-          font-style: italic;
-          color: #6c757d;
-        }
-        
-        .comentarios-report strong {
-          color: #495057;
-        }
-
-        .fecha-recomendacion-report {
-          margin: 8px 0 0;
-          color: #495057;
-          font-size: 0.95rem;
-        }
-
-        .seguimientos-container-report {
-          background: #f8f9fa;
-          padding: 18px;
-          border-radius: 8px;
-          border: 1px dashed #dee2e6;
-        }
-
-        .seguimientos-container-report h4 {
-          color: #2c3e50;
-          font-size: 1.05rem;
-          font-weight: 600;
-          margin: 0 0 12px 0;
-        }
-
-        .seguimiento-item-report {
-          background: white;
-          padding: 12px 14px;
-          border-radius: 8px;
-          border: 1px solid #e9ecef;
-          margin-bottom: 10px;
-        }
-
-        .seguimiento-item-report:last-child {
-          margin-bottom: 0;
-        }
-
-        .fecha-seguimiento-report {
-          display: inline-block;
-          margin-left: 6px;
-          color: #495057;
-        }
-
-        /* Mapas export — diseño alineado con la plataforma */
-        .mapas-container-export {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 24px;
-          margin-top: 16px;
-          align-items: start;
-        }
-        .mapas-container-export.mapas-container-export--uno {
-          grid-template-columns: 1fr;
-          max-width: 520px;
-          margin-left: auto;
-          margin-right: auto;
-        }
-        .mapa-contenedor-export {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          max-width: 520px;
-          margin: 0 auto;
-          width: 100%;
-        }
-        .mapa-export-titulo {
-          font-size: 1rem;
-          color: #2c3e50;
-          margin: 8px 0 6px;
-          text-align: center;
-          font-weight: 600;
-        }
-        .nota-mapa-impresion {
-          font-size: 0.82rem;
-          color: #555;
-          margin: 0 0 10px;
-          line-height: 1.4;
-          text-align: center;
-        }
-        .heatmap-grid-export {
-          margin: 0 auto 12px;
-        }
-        .mapa-stats-compact {
-          font-size: 0.78rem;
-          color: #6c757d;
-          text-align: center;
-          margin: 8px 0 0;
-          line-height: 1.4;
-        }
-        .tabla-resumen-mapa-block {
-          width: 100%;
-          max-width: 500px;
-          margin: 0 auto 12px;
-        }
-        .tabla-resumen-mapa-titulo {
-          margin: 0;
-          padding: 8px 10px;
-          font-size: 0.8rem;
-          font-weight: 700;
-          text-align: center;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          color: #fff;
-          background: #34495e;
-          border-radius: 6px 6px 0 0;
-        }
-        .tabla-resumen-mapa-scroll {
-          max-height: 280px;
-          overflow: auto;
-          border: 1px solid #dee2e6;
-          border-radius: 0 0 6px 6px;
-          background: #fff;
-        }
-        .tabla-resumen-mapa {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.78rem;
-          table-layout: fixed;
-        }
-        .tabla-resumen-mapa thead {
-          background: linear-gradient(135deg, #667eea, #764ba2);
-          color: #fff;
-        }
-        .tabla-resumen-mapa th,
-        .tabla-resumen-mapa td {
-          padding: 6px 8px;
-          text-align: center;
-          border-bottom: 1px solid #e9ecef;
-        }
-        .tabla-resumen-mapa th:first-child,
-        .tabla-resumen-mapa td:first-child {
-          text-align: left;
-        }
-        .tabla-resumen-mapa-codigo {
-          font-weight: 700;
-          color: #2c3e50;
-        }
-        .tabla-resumen-mapa-vacio {
-          margin: 0;
-          padding: 12px;
-          font-size: 0.85rem;
-          color: #6c757d;
-          text-align: center;
-          border: 1px dashed #ced4da;
-          border-radius: 6px;
-          background: #f8f9fa;
-        }
-        .tabla-leyenda-mapa-block {
-          margin-top: 14px;
-        }
-        .tabla-leyenda-mapa th:nth-child(1),
-        .tabla-leyenda-mapa td:nth-child(1) { width: 12%; }
-        .tabla-leyenda-mapa th:nth-child(2),
-        .tabla-leyenda-mapa td:nth-child(2) {
-          width: 48%;
-          text-align: left;
-        }
-        .tabla-leyenda-mapa th:nth-child(3),
-        .tabla-leyenda-mapa td:nth-child(3) { width: 14%; }
-        .tabla-leyenda-mapa th:nth-child(4),
-        .tabla-leyenda-mapa td:nth-child(4) { width: 26%; }
-        .tabla-leyenda-mapa-nombre {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-          text-align: left !important;
-          color: #495057;
-        }
-        .tabla-leyenda-mapa-calif {
-          font-weight: 700;
-          color: #2c3e50;
-        }
-        .tabla-leyenda-mapa-nivel {
-          display: inline-block;
-          padding: 2px 8px;
-          border-radius: 4px;
-          font-size: 0.7rem;
-          font-weight: 700;
-          white-space: nowrap;
-        }
-        .tabla-leyenda-mapa-nivel.nivel-bajo { background: #d4edda; color: #155724; }
-        .tabla-leyenda-mapa-nivel.nivel-medio { background: #fff3cd; color: #856404; }
-        .tabla-leyenda-mapa-nivel.nivel-alto { background: #ffe0b2; color: #e65100; }
-        .tabla-leyenda-mapa-nivel.nivel-critico { background: #f8d7da; color: #721c24; }
-        .mapa-detalle-celdas-export {
-          width: 100%;
-          max-width: 500px;
-          margin: 0 auto 14px;
-          text-align: left;
-        }
-        .mapa-detalle-celdas-titulo {
-          margin: 0 0 6px;
-          padding: 8px 10px;
-          font-size: 0.8rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          color: #fff;
-          background: #1a5276;
-          border-radius: 6px;
-        }
-        .mapa-detalle-celdas-ayuda {
-          font-size: 0.76rem;
-          color: #6c757d;
-          margin: 0 0 10px;
-          line-height: 1.35;
-        }
-        .mapa-detalle-celda-grupo {
-          border: 1px solid #dee2e6;
-          border-radius: 6px;
-          margin-bottom: 10px;
-          overflow: hidden;
-          background: #fff;
-        }
-        .mapa-detalle-celda-titulo {
-          margin: 0;
-          padding: 8px 10px;
-          font-size: 0.8rem;
-          font-weight: 600;
-          color: #2c3e50;
-          background: #e8f4fc;
-        }
-        .mapa-detalle-celda-lista {
-          list-style: none;
-          margin: 0;
-          padding: 0;
-          max-height: 280px;
-          overflow-y: auto;
-        }
-        .mapa-detalle-celda-lista li {
-          display: flex;
-          flex-wrap: wrap;
-          align-items: baseline;
-          gap: 8px 10px;
-          padding: 8px 10px;
-          border-bottom: 1px solid #f1f3f4;
-          font-size: 0.78rem;
-        }
-        .mapa-detalle-celda-lista li:last-child { border-bottom: none; }
-        .mapa-detalle-codigo {
-          font-weight: 700;
-          color: #2c3e50;
-          flex-shrink: 0;
-        }
-        .mapa-detalle-nombre {
-          flex: 1;
-          min-width: 120px;
-          color: #495057;
-          line-height: 1.35;
-        }
-        .mapa-detalle-calif {
-          font-size: 0.74rem;
-          color: #6c757d;
-          white-space: nowrap;
-          margin-left: auto;
-        }
-        @media print {
-          .mapa-detalle-celda-lista { max-height: none; overflow: visible; }
-        }
-        .mapa-calor-info-compact {
-          margin-top: 20px;
-          padding: 16px;
-        }
-        .mapa-calor-info-compact h3 {
-          font-size: 1rem;
-          margin-bottom: 12px;
-        }
-        @media print {
-          .mapas-container-export { grid-template-columns: 1fr; }
-          .tabla-resumen-mapa-scroll { max-height: none; overflow: visible; }
-        }
-        
-        @media (max-width: 1024px) {
-          .mapas-container-export { grid-template-columns: 1fr; }
-          .leyenda-riesgos {
-            flex-direction: column;
-            gap: 15px;
-          }
-          
-          .leyenda-mapa {
-            flex: none;
-          }
-        }
-        
-        @media (max-width: 768px) {
-          .recomendacion-fechas-report {
-            grid-template-columns: 1fr;
-          }
-          
-          .recomendacion-card-report {
-            padding: 20px;
-          }
-        }
-      </style>
-      
       <div class="section">
-        <h2>🔥 Mapa de Calor de Riesgos</h2>
-        <p>Visualización de la matriz de riesgos con códigos de color para facilitar la identificación de riesgos prioritarios.</p>
+        <h2>Mapa de calor</h2>
+        <p class="section-subtitulo">Visualización de la matriz con códigos de color para identificar riesgos prioritarios</p>
         
-        <!-- Información del tipo de valoración -->
         <div class="valoracion-info">
           <div class="valoracion-badge ${esValoracionInicial ? 'inicial' : 'anual'}">
-            <span class="badge-icon">${esValoracionInicial ? '🚀' : '📅'}</span>
             <span class="badge-text">Valoración ${tipoValoracion}</span>
           </div>
           <div class="fecha-valoracion">
@@ -4282,10 +1777,10 @@ return '';
         <div class="mapa-calor-info mapa-calor-info-compact">
           <h3>Leyenda de colores</h3>
           <div class="leyenda">
-            <div class="leyenda-item"><div class="color-box" style="background:#28a745;"></div><span>Bajo (≤ 4)</span></div>
-            <div class="leyenda-item"><div class="color-box" style="background:#ffc107;"></div><span>Medio (5-9)</span></div>
-            <div class="leyenda-item"><div class="color-box" style="background:#fd7e14;"></div><span>Alto (10-16)</span></div>
-            <div class="leyenda-item"><div class="color-box" style="background:#dc3545;"></div><span>Crítico (&gt; 16)</span></div>
+            <div class="leyenda-item"><div class="color-box leyenda-bajo"></div><span>Bajo (≤ 4)</span></div>
+            <div class="leyenda-item"><div class="color-box leyenda-medio"></div><span>Medio (5-9)</span></div>
+            <div class="leyenda-item"><div class="color-box leyenda-alto"></div><span>Alto (10-16)</span></div>
+            <div class="leyenda-item"><div class="color-box leyenda-critico"></div><span>Crítico (&gt; 16)</span></div>
           </div>
         </div>
       </div>
@@ -4439,10 +1934,10 @@ return '<div class="no-data">No hay datos de riesgos disponibles</div>';
         
         // Debug: Mostrar información de cada celda
 // Convertir clase CSS a color de fondo
-        let colorFondo = '#28a745'; // Verde por defecto
-        if (claseRiesgo === 'yellow-risk') colorFondo = '#ffc107';
-        else if (claseRiesgo === 'orange-risk') colorFondo = '#fd7e14';
-        else if (claseRiesgo === 'red-risk') colorFondo = '#dc3545';
+        let colorFondo = '#16A34A';
+        if (claseRiesgo === 'yellow-risk') colorFondo = '#CA8A04';
+        else if (claseRiesgo === 'orange-risk') colorFondo = '#EA580C';
+        else if (claseRiesgo === 'red-risk') colorFondo = '#DC2626';
         
         matrizHTML += `
           <div class="heatmap-cell" style="background-color: ${colorFondo}; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center;">
@@ -4585,48 +2080,58 @@ return {
     return 5;
   }
 
-  // Exportar reporte como HTML
+  static agregarCanvasAlPdf(pdf, canvas, pdfWidth, pdfHeight, estadoPagina) {
+    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+    const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+    let heightLeft = imgHeight;
+    let position = 0;
+
+    while (heightLeft > 0) {
+      if (!estadoPagina.esPrimera) {
+        pdf.addPage();
+      } else {
+        estadoPagina.esPrimera = false;
+      }
+      pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, imgHeight);
+      heightLeft -= pdfHeight;
+      position -= pdfHeight;
+    }
+  }
+
+  static async esperarDocumentoIframe(iframeWin, iframeDoc) {
+    await new Promise((resolve) => {
+      if (iframeDoc.readyState === 'complete') {
+        resolve();
+        return;
+      }
+      iframeWin.addEventListener('load', resolve, { once: true });
+    });
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  // Descargar archivo .html interactivo (NO es PDF — tablas movibles en el navegador)
+  static async exportarReportePDF(datosMatriz, nombreArchivo = 'reporte_matriz_riesgos', tipoReporte = 'inicial') {
+    const { descargarReporteInteractivoHtml } = await import('./exportarReporteInteractivoArchivo.js');
+    return descargarReporteInteractivoHtml(datosMatriz, nombreArchivo, tipoReporte);
+  }
+
+  // Descargar .html interactivo autónomo
   static async exportarReporteHTML(datosMatriz, nombreArchivo = 'reporte_matriz_riesgos', tipoReporte = 'inicial') {
     try {
-      const htmlReporte = await this.generarReporteHTML(datosMatriz, tipoReporte);
-      
-      const fecha = new Date().toISOString().split('T')[0];
-      const nombreCompleto = `${nombreArchivo}_${fecha}.html`;
-      
-      const blob = new Blob([htmlReporte], { type: 'text/html;charset=utf-8' });
-      const url = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = nombreCompleto;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-      
-      return { success: true, nombreArchivo: nombreCompleto };
+      const { descargarReporteInteractivoHtml } = await import('./exportarReporteInteractivoArchivo.js');
+      return descargarReporteInteractivoHtml(datosMatriz, nombreArchivo, tipoReporte);
     } catch (error) {
       console.error('Error al exportar reporte HTML:', error);
       return { success: false, error: error.message };
     }
   }
 
-  // Generar y mostrar reporte en nueva ventana
+  // Generar y mostrar reporte en nueva ventana (vista React = mismo diseño que la matriz)
   static async mostrarReporte(datosMatriz, tipoReporte = 'inicial') {
     try {
-      const htmlReporte = await this.generarReporteHTML(datosMatriz, tipoReporte);
-      
-      // Crear nueva ventana
-      const nuevaVentana = window.open('', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
-      
-      if (nuevaVentana) {
-        nuevaVentana.document.write(htmlReporte);
-        nuevaVentana.document.close();
-        
-        return { success: true };
-      } else {
-        throw new Error('No se pudo abrir la nueva ventana. Verifica que los pop-ups estén permitidos.');
-      }
+      const { abrirReporteMatrizVista } = await import('./reportePdfDesdeHtmlService.js');
+      abrirReporteMatrizVista(datosMatriz, tipoReporte);
+      return { success: true };
     } catch (error) {
       console.error('Error al mostrar reporte:', error);
       return { success: false, error: error.message };

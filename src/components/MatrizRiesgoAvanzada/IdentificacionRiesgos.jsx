@@ -12,7 +12,7 @@ import { matrizBtnPrimary, matrizCard } from './matrizFenixUi';
 import './IdentificacionRiesgos.css';
 import './matrizFenixTheme.css';
 
-const IdentificacionRiesgos = ({ datos, onDatosChange }) => {
+const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
   // Asegurar que datos no sea undefined
   const datosSeguros = datos || {};
   const [riesgos, setRiesgos] = useState(datosSeguros.riesgos || []);
@@ -563,6 +563,8 @@ setRiesgos(todosLosRiesgos);
 
   return (
     <div className="identificacion-riesgos">
+      {!modoReporte && (
+      <>
       <MatrizSeccionTitulo
         icon={FaSearch}
         title="Importar desde Excel"
@@ -624,9 +626,11 @@ setRiesgos(todosLosRiesgos);
           </div>
         )}
       </div>
+      </>
+      )}
 
       <div className="identificacion-content">
-        {/* Formulario estilo Excel para agregar riesgos */}
+        {!modoReporte && (
         <div className="formulario-excel">
           <MatrizSeccionTitulo icon={FaPlus} title="Agregar nuevos riesgos" />
           
@@ -932,6 +936,7 @@ setRiesgos(todosLosRiesgos);
             </button>
           </div>
         </div>
+        )}
 
         {/* Tabla de riesgos identificados */}
         <div className="tabla-riesgos">

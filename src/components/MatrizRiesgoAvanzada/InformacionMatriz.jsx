@@ -48,7 +48,7 @@ const INFO_TABS = [
   { id: 'gestion', label: 'Gestión de Riesgos', icon: FaShieldAlt },
 ];
 
-const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
+const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = false }) => {
   const [activeTab, setActiveTab] = useState(seccionActiva || 'intro');
   const [informacionGeneral, setInformacionGeneral] = useState(() => {
     const defaultData = {
@@ -167,6 +167,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
   return (
     <div className="informacion-matriz space-y-4">
       {/* Hero — estilo mockup Fenix */}
+      {!modoReporte && (
       <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-gray-900 via-[#1F1F1F] to-red-950/60 px-6 py-10 text-center text-white sm:py-12">
         <div
           className="pointer-events-none absolute -right-8 top-1/2 h-48 w-48 -translate-y-1/2 rounded-full bg-fenix-primario/20 blur-3xl"
@@ -206,8 +207,10 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
           </div>
         </div>
       </div>
+      )}
 
       {/* Pestañas */}
+      {!modoReporte && (
       <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
         <div className="flex min-w-max justify-center gap-0 px-2">
           {INFO_TABS.map((tab) => {
@@ -231,11 +234,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
           })}
         </div>
       </div>
+      )}
 
       {/* Tab Content */}
       <div className="tab-content">
-        {activeTab === 'intro' && (
+        {(modoReporte || activeTab === 'intro') && (
           <div className="intro-tab">
+            {!modoReporte && (
             <div className={`welcome-card ${matrizCard}`}>
               <h2 className={matrizCardTitle}>Bienvenido a la gestión de riesgos</h2>
               <p className="font-body text-sm text-gray-600 dark:text-gray-300">
@@ -243,6 +248,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
                 sobreviven a las crisis con mayor solidez operativa.
               </p>
             </div>
+            )}
 
             <div className={`info-form-card ${matrizCard}`}>
               <h3 className={matrizCardTitle}>Información general de la matriz</h3>
@@ -427,12 +433,16 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
               </div>
             </div>
 
+            {!modoReporte && (
+            <>
             <MatrizPasosGrid />
             <MatrizBeneficios />
+            </>
+            )}
           </div>
         )}
 
-        {activeTab === 'process' && (
+        {!modoReporte && activeTab === 'process' && (
           <div className="process-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaSyncAlt}
@@ -477,7 +487,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
           </div>
         )}
 
-        {activeTab === 'categories' && (
+        {!modoReporte && activeTab === 'categories' && (
           <div className="categories-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaClipboardList}
@@ -488,7 +498,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
           </div>
         )}
 
-        {activeTab === 'criteria' && (
+        {!modoReporte && activeTab === 'criteria' && (
           <div className="criteria-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaChartBar}
@@ -700,7 +710,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
           </div>
         )}
 
-        {activeTab === 'heatmap' && (
+        {!modoReporte && activeTab === 'heatmap' && (
           <div className="heatmap-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaFire}
@@ -888,7 +898,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva }) => {
           </div>
         )}
 
-        {activeTab === 'gestion' && (
+        {!modoReporte && activeTab === 'gestion' && (
           <div className="gestion-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaShieldAlt}

@@ -17,7 +17,7 @@ import {
 } from './matrizFenixUi';
 import './matrizFenixTheme.css';
 
-const GestionRiesgos = ({ datos, onDatosChange }) => {
+const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
   const [gestionRiesgos, setGestionRiesgos] = useState(() => normalizarGestionRiesgos(datos));
   const gestionRef = useRef(gestionRiesgos);
   const onDatosChangeRef = useRef(onDatosChange);
@@ -141,7 +141,7 @@ const GestionRiesgos = ({ datos, onDatosChange }) => {
                     {'Datos de la recomendaci\u00f3n'}
                   </h4>
                 </div>
-                {gestionRiesgos.recomendaciones.length > 1 && (
+                {gestionRiesgos.recomendaciones.length > 1 && !modoReporte && (
                   <button
                     type="button"
                     className={matrizBtnDanger}
@@ -218,7 +218,7 @@ const GestionRiesgos = ({ datos, onDatosChange }) => {
                             {'Seguimiento '}
                             {segIndex + 1}
                           </span>
-                          {(recomendacion.seguimientos || []).length > 1 && (
+                          {(recomendacion.seguimientos || []).length > 1 && !modoReporte && (
                             <button
                               type="button"
                               className={`${matrizBtnDanger} !px-2 !py-1 text-xs`}
@@ -286,6 +286,7 @@ const GestionRiesgos = ({ datos, onDatosChange }) => {
                     ))}
                   </div>
 
+                  {!modoReporte && (
                   <div className="mt-4 flex justify-center border-t border-gray-200 pt-4 dark:border-gray-700">
                     <button
                       type="button"
@@ -297,18 +298,21 @@ const GestionRiesgos = ({ datos, onDatosChange }) => {
                       {index + 1}
                     </button>
                   </div>
+                  )}
                 </section>
               </div>
             </article>
           ))}
         </div>
 
+        {!modoReporte && (
         <div className="recomendaciones-footer mt-6 flex justify-center border-t border-gray-100 pt-4 dark:border-gray-800">
           <button type="button" className={matrizBtnPrimary} onClick={agregarRecomendacion}>
             <FaPlus />
             {'Agregar recomendaci\u00f3n'}
           </button>
         </div>
+        )}
       </div>
     </div>
   );

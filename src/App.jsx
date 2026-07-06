@@ -37,6 +37,7 @@ import HistorialFormularios from './components/HistorialFormularios';
 import FormularioAjuste from './components/SubcomponenteFormularioAjuste/FormularioAjuste';
 import AlertasComplex from './components/AlertasComplex';
 import MatrizRiesgoAvanzada from './components/MatrizRiesgoAvanzada';
+import VistaReporteMatriz from './components/MatrizRiesgoAvanzada/VistaReporteMatriz';
 import ListaMatricesRiesgo from './components/ListaMatricesRiesgo';
 import GestionClientesFuncionarios from './components/GestionClientesFuncionarios';
 import GestionIntermediarios from './components/GestionIntermediarios';
@@ -399,6 +400,15 @@ export default function App() {
         <Route path="/error" element={<PaginaError />} />
         <Route path="/sin-conexion" element={<PaginaError tipoForzado="sin-conexion" />} />
         <Route path="/servicio-no-disponible" element={<PaginaError tipoForzado="servicio" />} />
+
+        <Route
+          path="/matriz-riesgo-reporte"
+          element={
+            <RequireAuth>
+              <VistaReporteMatriz />
+            </RequireAuth>
+          }
+        />
 
         {/* Rutas privadas protegidas por RequireAuth */}
         <Route

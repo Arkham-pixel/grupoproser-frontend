@@ -67,7 +67,8 @@ const ValoracionRiesgos = ({
   datos,
   onDatosChange,
   riesgosIdentificacion = RIESGOS_IDENTIFICACION_DEFECTO,
-  filasIdentificacionFormulario = FILAS_IDENTIFICACION_DEFECTO
+  filasIdentificacionFormulario = FILAS_IDENTIFICACION_DEFECTO,
+  modoReporte = false,
 }) => {
   // Asegurar que datos no sea undefined
   const datosSeguros = datos || {};
@@ -1032,7 +1033,7 @@ const ValoracionRiesgos = ({
             </p>
           </div>
         )}
-        {valoraciones.length > 0 && (
+        {valoraciones.length > 0 && !modoReporte && (
           <div className="valoracion-barra-seleccion">
             <label className="valoracion-seleccion-todo">
               <input
@@ -1513,6 +1514,8 @@ const ValoracionRiesgos = ({
         </div>
 
         <div className="acciones-section">
+          {!modoReporte && (
+          <>
           <AgregarFilaValoracion onAgregar={handleAgregarFilaValoracion} />
           
           {valoraciones.length > 0 && (
@@ -1525,6 +1528,8 @@ const ValoracionRiesgos = ({
                 Procesar Riesgos Identificados
               </button>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>

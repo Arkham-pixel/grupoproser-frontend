@@ -82,6 +82,7 @@ const MatrizRiesgoAvanzada = () => {
   const [matrizId, setMatrizId] = useState(id || null);
   const [tipoReporte, setTipoReporte] = useState('inicial');
   const [cargando, setCargando] = useState(!!id);
+  const [exportandoPdf, setExportandoPdf] = useState(false);
   const cargandoDesdeServidorRef = useRef(false);
   const datosMatrizRef = useRef(DATOS_MATRIZ_VACIOS);
   const gestionRiesgosRef = useRef(null);
@@ -319,7 +320,7 @@ const MatrizRiesgoAvanzada = () => {
       setMensajeReporte('Generando reporte completo...');
       const resultado = await ReporteService.mostrarReporte(datosMatriz, tipoReporte);
       if (resultado.success) {
-        setMensajeReporte('Reporte generado. Se abrió en una nueva ventana.');
+        setMensajeReporte('Reporte interactivo abierto. Arrastre las tablas para ver todas las columnas.');
       } else {
         setMensajeReporte(`Error al generar reporte: ${resultado.error}`);
       }
@@ -331,26 +332,34 @@ const MatrizRiesgoAvanzada = () => {
     }
   };
 
-  const handleExportarReporte = async () => {
+  const handleExportarReporteHTML = async () => {
     try {
-      setMensajeReporte('Exportando reporte como HTML...');
+      setExportandoPdf(true);
+      setMensajeReporte('Generando archivo .html interactivo…');
       const resultado = await ReporteService.exportarReporteHTML(
         datosMatriz,
         'reporte_matriz_riesgos',
         tipoReporte
       );
       if (resultado.success) {
-        setMensajeReporte(`Reporte exportado: ${resultado.nombreArchivo}`);
+        setMensajeReporte(
+          resultado.mensaje ||
+            'Archivo .html descargado. Ábralo en Chrome o Edge (no en lector de PDF).'
+        );
       } else {
         setMensajeReporte(`Error al exportar: ${resultado.error}`);
       }
-      setTimeout(() => setMensajeReporte(''), 5000);
+      setTimeout(() => setMensajeReporte(''), 8000);
     } catch (error) {
-      console.error('Error exportando reporte:', error);
+      console.error('Error exportando reporte HTML:', error);
       setMensajeReporte('Error inesperado al exportar el reporte');
       setTimeout(() => setMensajeReporte(''), 5000);
+    } finally {
+      setExportandoPdf(false);
     }
   };
+
+  const handleExportarReportePDF = handleExportarReporteHTML;
 
   const secciones = [
     {
@@ -548,17 +557,18 @@ const MatrizRiesgoAvanzada = () => {
                   type="button"
                   className="btn-fenix-secondary min-w-[7.5rem]"
                   onClick={handleGenerarReporte}
-                  title="Generar reporte completo en nueva ventana"
+                  title="Abrir reporte interactivo: arrastre las tablas anchas con el mouse"
                 >
-                  Ver reporte
+                  Reporte interactivo
                 </button>
                 <button
                   type="button"
-                  className="btn-fenix-secondary min-w-[7.5rem]"
-                  onClick={handleExportarReporte}
-                  title="Exportar como HTML"
+                  className="btn-fenix-secondary min-w-[9rem] disabled:opacity-60"
+                  onClick={handleExportarReporteHTML}
+                  disabled={exportandoPdf}
+                  title="Descarga un archivo .html que abre en el navegador con tablas que puede arrastrar (no es PDF)"
                 >
-                  Exportar HTML
+                  {exportandoPdf ? 'Generando…' : 'Descargar .html'}
                 </button>
               </div>
             </div>
