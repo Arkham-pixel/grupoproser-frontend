@@ -47,6 +47,10 @@ import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
 import { esRolPuertos, esRolVisualizador, etiquetaRol, obtenerRolAlmacenado } from '../config/roles';
+import {
+  obtenerMisAlertas,
+  obtenerResumenAlertas,
+} from '../services/alertasComplexService.js';
 
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 
@@ -132,6 +136,7 @@ export default function Layout() {
   });
   const [fotoUsuarioQueue, setFotoUsuarioQueue] = useState([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [contadorAlertas, setContadorAlertas] = useState(0);
   const fotoUsuario = fotoUsuarioQueue[0] || null;
   const location = useLocation();
   const navigate = useNavigate();
@@ -162,6 +167,30 @@ export default function Layout() {
   );
   const puedeBandejaFacturacion = esUsuarioGerenteFacturacion(usuarioActual.login);
 
+  useEffect(() => {
+    if (accesoRestringido) return undefined;
+    let activo = true;
+    const cargarContador = async () => {
+      try {
+        if (esAdminOSoporte) {
+          const res = await obtenerResumenAlertas();
+          if (activo) setContadorAlertas(res?.totalAlertas ?? 0);
+        } else {
+          const res = await obtenerMisAlertas();
+          if (activo) setContadorAlertas(res?.totalAlertas ?? 0);
+        }
+      } catch {
+        /* sin contador */
+      }
+    };
+    cargarContador();
+    const intervalo = setInterval(cargarContador, 5 * 60 * 1000);
+    return () => {
+      activo = false;
+      clearInterval(intervalo);
+    };
+  }, [accesoRestringido, esAdminOSoporte, location.pathname]);
+
   const routeTitles = {
     '/inicio': 'Inicio',
     '/formularioinspeccion': 'Formulario de Inspección',
@@ -173,6 +202,11 @@ export default function Layout() {
     '/complex/bandeja-facturacion': 'Bandeja de Facturación',
     '/complex/reporte-mejorado': 'Reporte Complex',
     '/complex/dashboard': 'Dashboard Complex',
+    '/complex/indicadores-alertas': 'Indicadores y alertas COMPLEX',
+    '/complex/indicadores-historicos': 'Indicadores y alertas COMPLEX',
+    '/complex/indicadores-protocolo': 'Indicadores y alertas COMPLEX',
+    '/complex/mis-alertas': 'Indicadores y alertas COMPLEX',
+    '/complex/protocolo-tiempos': 'Protocolo de tiempos COMPLEX',
     '/complex/alertas': 'Alertas Complex',
     '/complex/gestion-estados': 'Gestión de Estados COMPLEX',
     '/editar-caso': 'Editar Caso',
@@ -198,6 +232,7 @@ export default function Layout() {
     '/puertos/formulario': 'Inspección de Instalaciones',
     '/puertos/inspeccion-asegurado': 'Inspección de Asegurado',
     '/puertos/actas/inspeccion-asegurado/nueva': 'Inspección de Asegurado',
+    '/puertos/actas/catalogos': 'Puertos — Catálogos',
     '/historial': 'Historial de Formularios',
     '/siniestros': 'Siniestros',
     '/admin/usuarios': 'Administración de Usuarios',
@@ -283,13 +318,11 @@ export default function Layout() {
       ? [
           { path: '/complex/agregar', icon: FaPlus, label: 'Agregar Casos' },
           { path: '/complex/dashboard', icon: FaChartLine, label: 'Dashboard' },
+          { path: '/complex/indicadores-alertas', icon: FaChartBar, label: 'Indicadores y alertas' },
           { path: '/complex/excel', icon: FaTable, label: 'Reporte Completo' },
           { path: '/complex/mis-casos', icon: FaList, label: 'Mis Casos Asignados' },
           ...(puedeBandejaFacturacion
             ? [{ path: '/complex/bandeja-facturacion', icon: FaInbox, label: 'Bandeja Facturación' }]
-            : []),
-          ...(esSoloSoporte
-            ? [{ path: '/complex/alertas', icon: FaExclamationTriangle, label: 'Sistema de Alertas' }]
             : []),
         ]
       : [],
@@ -326,10 +359,13 @@ export default function Layout() {
       ? [
           { path: '/puertos/actas', icon: FaClipboardList, label: 'Actas y Descargues' },
           ...(esPuertos
-            ? []
+            ? [
+                { path: '/puertos/actas/catalogos', icon: FaList, label: 'Catálogos' },
+              ]
             : [
                 { path: '/puertos/actas/nueva', icon: FaPlus, label: 'Nueva Acta' },
                 { path: '/puertos/formulario', icon: FaShip, label: 'Inspección Instalaciones' },
+                { path: '/puertos/actas/catalogos', icon: FaList, label: 'Catálogos Puertos' },
               ]),
           { path: '/puertos/actas/inspeccion-asegurado/nueva', icon: FaFileAlt, label: 'Inspección Asegurado' },
         ]
@@ -383,6 +419,8 @@ export default function Layout() {
           { path: '/admin/documentos', icon: FaFolderOpen, label: 'Gestión de Documentos' },
           { path: '/admin/catalogos-express', icon: FaList, label: 'Catálogos Express' },
           { path: '/complex/gestion-estados', icon: FaCog, label: 'Estados COMPLEX' },
+          { path: '/complex/alertas', icon: FaExclamationTriangle, label: 'Sistema de Alertas' },
+          { path: '/complex/protocolo-tiempos', icon: FaCog, label: 'Protocolo de tiempos' },
         ]
       : [],
   };
@@ -647,17 +685,25 @@ export default function Layout() {
               <FaSearch className="text-lg" />
             </button>
 
-            {(esAdminOSoporte || esSoloSoporte) && (
+            {!accesoRestringido && (
               <button
                 type="button"
-                onClick={() => navigate('/complex/alertas')}
+                onClick={() =>
+                  navigate(
+                    esAdminOSoporte
+                      ? '/complex/alertas'
+                      : '/complex/indicadores-alertas?tab=alertas'
+                  )
+                }
                 className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
-                title="Alertas"
+                title={esAdminOSoporte ? 'Sistema de alertas' : 'Mis alertas'}
               >
                 <FaBell className="text-lg" />
-                <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-fenix-primario px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                  3
-                </span>
+                {contadorAlertas > 0 && (
+                  <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-fenix-primario px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                    {contadorAlertas > 99 ? '99+' : contadorAlertas}
+                  </span>
+                )}
               </button>
             )}
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
-import { FaList, FaPlus, FaShip, FaFileAlt } from 'react-icons/fa';
+import { FaList, FaPlus, FaShip, FaFileAlt, FaCog } from 'react-icons/fa';
 import {
   puertosBadge,
   puertosFormRoot,
@@ -16,6 +16,7 @@ const tabs = [
   { to: '/puertos/actas/nueva', label: 'Nueva Acta', icon: FaPlus, end: false },
   { to: '/puertos/actas/caso/nueva', label: 'Informe Exportación', icon: FaFileAlt, end: false },
   { to: '/puertos/actas/inspeccion-asegurado/nueva', label: 'Inspección Asegurado', icon: FaShip, end: false },
+  { to: '/puertos/actas/catalogos', label: 'Catálogos', icon: FaCog, end: false },
 ];
 
 export default function PuertosActasMain() {
@@ -41,7 +42,9 @@ export default function PuertosActasMain() {
           {tabs.map(({ to, label, icon: Icon, end }) => {
             const active = end
               ? location.pathname === to
-              : to.includes('/inspeccion-asegurado')
+              : to.includes('/catalogos')
+                ? location.pathname.startsWith('/puertos/actas/catalogos')
+                : to.includes('/inspeccion-asegurado')
                 ? location.pathname.startsWith('/puertos/actas/inspeccion-asegurado')
                 : to.includes('/caso/')
                   ? location.pathname.startsWith('/puertos/actas/caso')

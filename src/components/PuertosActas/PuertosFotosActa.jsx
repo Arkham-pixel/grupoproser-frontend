@@ -4,10 +4,11 @@ import { FaCloudUploadAlt, FaTrash, FaImage } from 'react-icons/fa';
 
 const MAX_FOTOS = 20;
 
-export default function PuertosFotosActa({ fotos = [], onChange }) {
+export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = false }) {
+  const puedeEditar = typeof onChange === 'function' && !soloLectura;
   const onDrop = useCallback(
     (acceptedFiles) => {
-      if (!acceptedFiles.length) return;
+      if (!puedeEditar || !acceptedFiles.length) return;
 
       const disponibles = MAX_FOTOS - fotos.length;
       if (disponibles <= 0) return;
@@ -33,14 +34,14 @@ export default function PuertosFotosActa({ fotos = [], onChange }) {
         reader.readAsDataURL(file);
       });
     },
-    [fotos.length, onChange]
+    [fotos.length, onChange, puedeEditar]
   );
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
     accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'] },
     multiple: true,
-    disabled: fotos.length >= MAX_FOTOS,
+    disabled: !puedeEditar || fotos.length >= MAX_FOTOS,
   });
 
   const eliminarFoto = (id) => {

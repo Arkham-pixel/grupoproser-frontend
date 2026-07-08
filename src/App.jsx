@@ -37,7 +37,6 @@ import HistorialFormularios from './components/HistorialFormularios';
 import FormularioAjuste from './components/SubcomponenteFormularioAjuste/FormularioAjuste';
 import AlertasComplex from './components/AlertasComplex';
 import MatrizRiesgoAvanzada from './components/MatrizRiesgoAvanzada';
-import VistaReporteMatriz from './components/MatrizRiesgoAvanzada/VistaReporteMatriz';
 import ListaMatricesRiesgo from './components/ListaMatricesRiesgo';
 import GestionClientesFuncionarios from './components/GestionClientesFuncionarios';
 import GestionIntermediarios from './components/GestionIntermediarios';
@@ -53,6 +52,7 @@ import PuertosInspeccionMain from './components/FormularioPuertosModular/Puertos
 import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
 import PuertosActasListado from './components/PuertosActas/PuertosActasListado';
 import PuertosNuevaActa from './components/PuertosActas/PuertosNuevaActa';
+import PuertosCatalogos from './components/PuertosActas/PuertosCatalogos';
 import PuertosCasoExportacionMain from './components/PuertosActas/PuertosCasoExportacionMain';
 import ActaInspeccion from './components/ActaInspeccion';
 import GestionDocumentos from './components/GestionDocumentos/GestionDocumentos';
@@ -284,6 +284,11 @@ navigate(location.pathname, { replace: true, state: {} });
       delete resultado.control_horas;
     }
 
+    // No enviar historialDocs vacío: evita borrar trazabilidad si el formulario no cargó adjuntos.
+    if (Array.isArray(resultado.historialDocs) && resultado.historialDocs.length === 0) {
+      delete resultado.historialDocs;
+    }
+
     delete resultado.nombreResponsable;
     delete resultado.funcAsgrdraNombre;
     delete resultado.funcionarioAseguradora;
@@ -401,15 +406,6 @@ export default function App() {
         <Route path="/sin-conexion" element={<PaginaError tipoForzado="sin-conexion" />} />
         <Route path="/servicio-no-disponible" element={<PaginaError tipoForzado="servicio" />} />
 
-        <Route
-          path="/matriz-riesgo-reporte"
-          element={
-            <RequireAuth>
-              <VistaReporteMatriz />
-            </RequireAuth>
-          }
-        />
-
         {/* Rutas privadas protegidas por RequireAuth */}
         <Route
           element={
@@ -480,6 +476,7 @@ export default function App() {
               path="inspeccion-asegurado/editar/:id"
               element={<PuertosInspeccionMain tipoInicial="riicp004" modoActas />}
             />
+            <Route path="catalogos" element={<PuertosCatalogos />} />
           </Route>
 
           <Route path="puertos/inspeccion-asegurado" element={<Navigate to="/puertos/actas/inspeccion-asegurado/nueva" replace />} />

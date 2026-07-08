@@ -15,6 +15,7 @@ import {
 import { BASE_URL } from '../../config/apiConfig.js';
 import { listarRegistrosPuertos } from '../../services/puertosService.js';
 import { generarPdfInformeExportacionDesdeId } from '../../services/puertosCasoExportacionPdfService.js';
+import { generarPdfActaPuertosDesdeId } from '../../services/puertosActaPdfService.js';
 import PuertosActasFiltros from './PuertosActasFiltros.jsx';
 import {
   contarFiltrosActivos,
@@ -162,13 +163,17 @@ export default function PuertosActasListado() {
   };
 
   const handlePdf = async (fila) => {
-    if (fila.tipoRegistro !== 'caso_exportacion') {
-      alert('El PDF del informe de exportación está disponible solo para casos de exportación.');
-      return;
-    }
     setPdfCargandoId(fila.id);
     try {
-      await generarPdfInformeExportacionDesdeId(fila.id, { aseguradoraOptions, responsables });
+      if (fila.tipoRegistro === 'caso_exportacion') {
+        await generarPdfInformeExportacionDesdeId(fila.id, { aseguradoraOptions, responsables });
+        return;
+      }
+      if (fila.tipoRegistro === 'acta') {
+        await generarPdfActaPuertosDesdeId(fila.id);
+        return;
+      }
+      alert('PDF no disponible para este tipo de registro.');
     } catch (err) {
       console.error(err);
       alert(`No se pudo generar el PDF: ${err.message || 'error desconocido'}`);
