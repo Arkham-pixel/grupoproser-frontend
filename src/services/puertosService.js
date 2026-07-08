@@ -74,3 +74,19 @@ export async function actualizarPuertosActa(id, datos) {
   });
   return parseJson(response);
 }
+
+export async function eliminarPuertosActa(id) {
+  const response = await fetch(`${BASE_URL}/api/puertos/actas/${id}`, { method: 'DELETE' });
+  return parseJson(response);
+}
+
+/** Elimina un registro del listado unificado según su tipo. */
+export async function eliminarRegistroPuertos(registro) {
+  if (!registro?.id) {
+    throw new Error('Registro sin identificador');
+  }
+  if (registro.tipoRegistro === 'acta') {
+    return eliminarPuertosActa(registro.id);
+  }
+  return eliminarPuertosCaso(registro.id);
+}

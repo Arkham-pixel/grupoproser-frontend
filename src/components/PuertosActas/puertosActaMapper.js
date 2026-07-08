@@ -82,6 +82,11 @@ export function estadoInicialActaFormulario() {
     tipoAveria: '',
     observaciones: '',
     recomendaciones: '',
+    documentosAdjuntos: {
+      facturaComercial: false,
+      listaEmpaque: false,
+      docTransporte: false,
+    },
   };
 }
 
@@ -135,6 +140,15 @@ export function actaApiAFormulario(doc = {}) {
     tipoAveria: det.tipoAveria || '',
     observaciones: doc.observaciones || '',
     recomendaciones: doc.recomendaciones || '',
+    documentosAdjuntos:
+      doc.documentosAdjuntos ||
+      (typeof doc.documentos === 'object' && !Array.isArray(doc.documentos)
+        ? doc.documentos
+        : {
+            facturaComercial: false,
+            listaEmpaque: false,
+            docTransporte: false,
+          }),
   };
 }
 
@@ -194,6 +208,7 @@ export function formularioAActaApi(form, extras = {}) {
     fotos: extras.fotos || [],
     observaciones: form.observaciones || '',
     recomendaciones: form.recomendaciones || '',
+    documentosAdjuntos: form.documentosAdjuntos || {},
     creadoPor: extras.creadoPor || login,
     actualizadoPor: login,
   };

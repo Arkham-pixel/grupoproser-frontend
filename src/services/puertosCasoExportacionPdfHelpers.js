@@ -150,6 +150,7 @@ export function detectarFormatoImagen(dataUrl) {
   if (!dataUrl || typeof dataUrl !== 'string') return 'JPEG';
   if (dataUrl.includes('image/png')) return 'PNG';
   if (dataUrl.includes('image/webp')) return 'WEBP';
+  if (dataUrl.includes('image/jfif') || dataUrl.includes('image/jpeg')) return 'JPEG';
   return 'JPEG';
 }
 

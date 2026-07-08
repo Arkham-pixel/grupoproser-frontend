@@ -1,11 +1,15 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import { FaCloudUploadAlt, FaTrash, FaImage } from 'react-icons/fa';
+import { FaArrowDown, FaArrowUp, FaCloudUploadAlt, FaGripVertical, FaTrash, FaImage } from 'react-icons/fa';
+import { getPuertosImagenDisplayUrl } from './puertosCasoImagenUtils';
 
 const MAX_FOTOS = 20;
 
 export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = false }) {
   const puedeEditar = typeof onChange === 'function' && !soloLectura;
+  const [arrastrandoId, setArrastrandoId] = useState(null);
+  const [destinoArrastreId, setDestinoArrastreId] = useState(null);
+
   const onDrop = useCallback(
     (acceptedFiles) => {
       if (!puedeEditar || !acceptedFiles.length) return;
@@ -39,9 +43,11 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     onDrop,
-    accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'] },
+    accept: { 'image/*': ['.jpeg', '.jpg', '.jfif', '.png', '.gif', '.webp'] },
     multiple: true,
     disabled: !puedeEditar || fotos.length >= MAX_FOTOS,
+    noClick: arrastrandoId != null,
+    noKeyboard: arrastrandoId != null,
   });
 
   const eliminarFoto = (id) => {
@@ -50,6 +56,31 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
 
   const actualizarDescripcion = (id, descripcion) => {
     onChange((prev) => prev.map((f) => (f.id === id ? { ...f, descripcion } : f)));
+  };
+
+  const moverFoto = (id, delta) => {
+    onChange((prev) => {
+      const idx = prev.findIndex((f) => f.id === id);
+      if (idx < 0) return prev;
+      const next = idx + delta;
+      if (next < 0 || next >= prev.length) return prev;
+      const copia = [...prev];
+      [copia[idx], copia[next]] = [copia[next], copia[idx]];
+      return copia;
+    });
+  };
+
+  const reordenarFotos = (origenId, destinoId) => {
+    if (!origenId || !destinoId || origenId === destinoId) return;
+    onChange((prev) => {
+      const origenIdx = prev.findIndex((f) => f.id === origenId);
+      const destinoIdx = prev.findIndex((f) => f.id === destinoId);
+      if (origenIdx < 0 || destinoIdx < 0) return prev;
+      const copia = [...prev];
+      const [item] = copia.splice(origenIdx, 1);
+      copia.splice(destinoIdx, 0, item);
+      return copia;
+    });
   };
 
   const lleno = fotos.length >= MAX_FOTOS;
@@ -63,7 +94,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
         <div>
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Fotos del acta</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Arrastra imágenes o haz clic — máximo {MAX_FOTOS} fotos
+            Arrastra imágenes para subir · arrastra cada foto para cambiar el orden · máximo {MAX_FOTOS} fotos
           </p>
         </div>
         <span className="ml-auto rounded-full bg-sky-100 dark:bg-sky-900/50 px-3 py-1 text-sm font-medium text-sky-800 dark:text-sky-200">
@@ -97,7 +128,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                   Arrastra y suelta tus fotos
                 </p>
                 <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">
-                  o haz clic para seleccionar — JPG, PNG, GIF, WebP
+                  o haz clic para seleccionar — JPG, JFIF, PNG, GIF, WebP
                 </p>
               </>
             )}
@@ -115,47 +146,124 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
 
         {fotos.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {fotos.map((foto, index) => (
-              <div
-                key={foto.id}
-                className="group relative flex flex-col rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900/50 overflow-hidden"
-              >
-                <div className="absolute top-2 left-2 z-10 rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
-                  Foto {index + 1}
-                </div>
-                <button
-                  type="button"
-                  onClick={() => eliminarFoto(foto.id)}
-                  className="absolute top-2 right-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-white opacity-90 hover:opacity-100 shadow"
-                  title="Eliminar foto"
+            {fotos.map((foto, index) => {
+              const displaySrc = getPuertosImagenDisplayUrl(foto) || foto.src;
+              const esArrastrada = arrastrandoId === foto.id;
+              const esDestino = destinoArrastreId === foto.id && arrastrandoId && arrastrandoId !== foto.id;
+
+              return (
+                <div
+                  key={foto.id}
+                  draggable={puedeEditar}
+                  onDragStart={(e) => {
+                    if (!puedeEditar) return;
+                    setArrastrandoId(foto.id);
+                    e.dataTransfer.effectAllowed = 'move';
+                    e.dataTransfer.setData('text/plain', foto.id);
+                  }}
+                  onDragEnd={() => {
+                    setArrastrandoId(null);
+                    setDestinoArrastreId(null);
+                  }}
+                  onDragOver={(e) => {
+                    if (!puedeEditar || !arrastrandoId || arrastrandoId === foto.id) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    setDestinoArrastreId(foto.id);
+                  }}
+                  onDragLeave={() => {
+                    if (destinoArrastreId === foto.id) setDestinoArrastreId(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (!puedeEditar) return;
+                    const origenId = e.dataTransfer.getData('text/plain') || arrastrandoId;
+                    reordenarFotos(origenId, foto.id);
+                    setArrastrandoId(null);
+                    setDestinoArrastreId(null);
+                  }}
+                  className={`group relative flex flex-col rounded-xl border bg-slate-50 dark:bg-slate-900/50 overflow-hidden transition-all ${
+                    esArrastrada ? 'opacity-40 scale-[0.98] border-dashed border-sky-400' : 'border-slate-200 dark:border-slate-600'
+                  } ${esDestino ? 'ring-2 ring-sky-500 ring-offset-2 dark:ring-offset-slate-900' : ''} ${
+                    puedeEditar ? 'cursor-grab active:cursor-grabbing' : ''
+                  }`}
                 >
-                  <FaTrash className="text-sm" />
-                </button>
-                <div className="aspect-[4/3] bg-slate-200 dark:bg-slate-700">
-                  <img
-                    src={foto.src}
-                    alt={`Foto ${index + 1}`}
-                    className="h-full w-full object-cover"
-                  />
+                  <div className="absolute top-2 left-2 z-10 flex items-center gap-1">
+                    <span className="rounded-md bg-black/60 px-2 py-0.5 text-xs font-semibold text-white">
+                      {index + 1}
+                    </span>
+                    {puedeEditar && (
+                      <span
+                        className="rounded-md bg-black/40 p-1 text-white"
+                        title="Arrastra para reordenar"
+                      >
+                        <FaGripVertical className="text-xs" />
+                      </span>
+                    )}
+                  </div>
+
+                  {puedeEditar && (
+                    <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moverFoto(foto.id, -1)}
+                        disabled={index === 0}
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/85 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                        title="Mover arriba"
+                      >
+                        <FaArrowUp className="text-xs" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moverFoto(foto.id, 1)}
+                        disabled={index === fotos.length - 1}
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/85 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+                        title="Mover abajo"
+                      >
+                        <FaArrowDown className="text-xs" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarFoto(foto.id)}
+                        className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
+                        title="Eliminar foto"
+                      >
+                        <FaTrash className="text-xs" />
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="aspect-[4/3] bg-slate-200 dark:bg-slate-700 pointer-events-none">
+                    <img
+                      src={displaySrc}
+                      alt={`Foto ${index + 1}`}
+                      className="h-full w-full object-cover"
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="p-3">
+                    <input
+                      type="text"
+                      value={foto.descripcion}
+                      onChange={(e) => actualizarDescripcion(foto.id, e.target.value)}
+                      placeholder="Descripción (opcional)"
+                      readOnly={soloLectura}
+                      className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm text-slate-800 dark:text-slate-100"
+                    />
+                  </div>
                 </div>
-                <div className="p-3">
-                  <p className="mb-2 truncate text-xs text-slate-500 dark:text-slate-400" title={foto.nombre}>
-                    {foto.nombre}
-                  </p>
-                  <input
-                    type="text"
-                    value={foto.descripcion}
-                    onChange={(e) => actualizarDescripcion(foto.id, e.target.value)}
-                    placeholder="Descripción (opcional)"
-                    className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm text-slate-800 dark:text-slate-100"
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-center text-sm text-slate-400 py-4">
             Aún no hay fotos. Usa la zona de arrastre para agregar imágenes.
+          </p>
+        )}
+
+        {puedeEditar && fotos.length > 1 && (
+          <p className="text-center text-xs text-slate-400">
+            El orden que definas aquí es el mismo que aparecerá en el PDF del acta.
           </p>
         )}
       </div>

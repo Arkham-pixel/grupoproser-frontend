@@ -155,7 +155,8 @@ export default function PuertosNuevaActa() {
         setFotos(
           (doc.fotos || []).map((f, i) => ({
             id: f.id || `foto-${i}`,
-            src: f.src || f.ruta || '',
+            src: f.src || '',
+            ruta: f.ruta || '',
             nombre: f.nombre || '',
             descripcion: f.descripcion || '',
           }))
@@ -189,7 +190,7 @@ export default function PuertosNuevaActa() {
     setGenerandoPdf(true);
     setError('');
     try {
-      await generarPdfActaPuertos(form, fotos);
+      await generarPdfActaPuertos(form, fotos, { documentosAdjuntos: form.documentosAdjuntos });
     } catch (err) {
       setError(err.message || 'No se pudo generar el PDF');
     } finally {
@@ -673,7 +674,11 @@ export default function PuertosNuevaActa() {
       </Seccion>
 
       <PuertosFotosActa fotos={fotos} onChange={setFotos} soloLectura={soloLectura} />
-      <PuertosDocumentosAdjuntos />
+      <PuertosDocumentosAdjuntos
+        tipos={form.documentosAdjuntos}
+        onChangeTipos={(documentosAdjuntos) => setCampo('documentosAdjuntos', documentosAdjuntos)}
+        soloLectura={soloLectura}
+      />
       <PuertosFacturacionActa />
       <PuertosObservacionesActa
         observaciones={form.observaciones}

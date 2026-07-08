@@ -11,9 +11,10 @@ import {
   FaFileExcel,
   FaFileAlt,
   FaShip,
+  FaTrash,
 } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
-import { listarRegistrosPuertos } from '../../services/puertosService.js';
+import { eliminarRegistroPuertos, listarRegistrosPuertos } from '../../services/puertosService.js';
 import { generarPdfInformeExportacionDesdeId } from '../../services/puertosCasoExportacionPdfService.js';
 import { generarPdfActaPuertosDesdeId } from '../../services/puertosActaPdfService.js';
 import PuertosActasFiltros from './PuertosActasFiltros.jsx';
@@ -88,6 +89,7 @@ export default function PuertosActasListado() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [pdfCargandoId, setPdfCargandoId] = useState(null);
+  const [eliminandoId, setEliminandoId] = useState(null);
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [aseguradoraOptions, setAseguradoraOptions] = useState([]);
   const [responsables, setResponsables] = useState([]);
@@ -193,6 +195,28 @@ export default function PuertosActasListado() {
     }
   };
 
+  const handleEliminar = async (fila) => {
+    const etiqueta =
+      TIPO_LABEL[fila.tipoRegistro] ||
+      (esRegistroInspeccionAsegurado(fila) ? TIPO_LABEL.inspeccion_asegurado : 'Registro');
+    const referencia = fila.nroReferencia || fila.id;
+    const confirmar = window.confirm(
+      `¿Eliminar ${etiqueta} "${referencia}"?\n\nEsta acción no se puede deshacer.`
+    );
+    if (!confirmar) return;
+
+    setEliminandoId(fila.id);
+    setError('');
+    try {
+      await eliminarRegistroPuertos(fila);
+      setRegistros((prev) => prev.filter((r) => r.id !== fila.id));
+    } catch (err) {
+      setError(err.message || 'No se pudo eliminar el registro');
+    } finally {
+      setEliminandoId(null);
+    }
+  };
+
   const accionesFila = (fila) => [
     { icon: FaEdit, title: 'Editar', onClick: () => navigate(rutaEditar(fila)), danger: false },
     { icon: FaEye, title: 'Ver', onClick: () => navigate(rutaVer(fila)), danger: false },
@@ -204,6 +228,13 @@ export default function PuertosActasListado() {
       disabled: pdfCargandoId === fila.id,
     },
     { icon: FaCamera, title: 'Fotos', onClick: () => navigate(rutaFotos(fila)), danger: false },
+    {
+      icon: FaTrash,
+      title: eliminandoId === fila.id ? 'Eliminando…' : 'Eliminar',
+      onClick: () => handleEliminar(fila),
+      danger: true,
+      disabled: eliminandoId === fila.id,
+    },
   ];
 
   const filtrosActivos = contarFiltrosActivos(filtrosAplicados);
@@ -285,7 +316,7 @@ export default function PuertosActasListado() {
           <table className="min-w-full text-sm">
             <thead className={puertosTableHead}>
               <tr>
-                <th className="whitespace-nowrap px-3 py-2.5 font-semibold" colSpan={4}>
+                <th className="whitespace-nowrap px-3 py-2.5 font-semibold" colSpan={5}>
                   Acciones
                 </th>
                 <th className="px-3 py-2.5 font-semibold">Tipo</th>
@@ -302,7 +333,7 @@ export default function PuertosActasListado() {
             <tbody>
               {!cargando && registros.length === 0 && (
                 <tr>
-                  <td colSpan={13} className="px-4 py-10 text-center font-body text-gray-500">
+                  <td colSpan={14} className="px-4 py-10 text-center font-body text-gray-500">
                     No hay registros con los filtros actuales.
                   </td>
                 </tr>
