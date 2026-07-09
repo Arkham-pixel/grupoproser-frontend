@@ -8,6 +8,7 @@ import {
   FaFire,
   FaShieldAlt,
   FaSpinner,
+  FaFileAlt,
 } from 'react-icons/fa';
 import InformacionMatriz from './InformacionMatriz';
 import IdentificacionRiesgos from './IdentificacionRiesgos';
@@ -18,6 +19,7 @@ import { normalizarGestionRiesgos } from './gestionRiesgosHelpers';
 import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 import { ReporteService } from '../../services/reporteService';
 import { MatrizRiesgoService } from '../../services/matrizRiesgoService';
+import { guardarDatosReporteMatriz, urlReporteMatriz } from './matrizReporteStorage';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import './matrizFenixTheme.css';
 
@@ -315,22 +317,32 @@ const MatrizRiesgoAvanzada = () => {
     }
   };
 
-  const handleGenerarReporte = async () => {
+  const handleVerInformeGeneral = () => {
     try {
-      setMensajeReporte('Generando reporte completo...');
-      const resultado = await ReporteService.mostrarReporte(datosMatriz, tipoReporte);
-      if (resultado.success) {
-        setMensajeReporte('Reporte interactivo abierto. Arrastre las tablas para ver todas las columnas.');
+      setMensajeReporte('Abriendo informe general de la matriz…');
+      guardarDatosReporteMatriz({
+        datosMatriz: datosMatrizRef.current,
+        tipoReporte,
+        matrizId: recordIdMatriz,
+      });
+      const url = urlReporteMatriz();
+      const ventana = window.open(url, '_blank', 'width=1440,height=900,scrollbars=yes,resizable=yes');
+      if (!ventana) {
+        setMensajeReporte('Permita ventanas emergentes para ver el informe.');
       } else {
-        setMensajeReporte(`Error al generar reporte: ${resultado.error}`);
+        setMensajeReporte(
+          'Informe general abierto: información, lectura ejecutiva y detalle técnico.'
+        );
       }
-      setTimeout(() => setMensajeReporte(''), 5000);
+      setTimeout(() => setMensajeReporte(''), 6000);
     } catch (error) {
-      console.error('Error generando reporte:', error);
-      setMensajeReporte('Error inesperado al generar el reporte');
+      console.error('Error abriendo informe general:', error);
+      setMensajeReporte('No se pudo abrir el informe general.');
       setTimeout(() => setMensajeReporte(''), 5000);
     }
   };
+
+  const handleGenerarReporte = handleVerInformeGeneral;
 
   const handleExportarReporteHTML = async () => {
     try {
@@ -555,18 +567,19 @@ const MatrizRiesgoAvanzada = () => {
                 </button>
                 <button
                   type="button"
-                  className="btn-fenix-secondary min-w-[7.5rem]"
-                  onClick={handleGenerarReporte}
-                  title="Abrir reporte interactivo: arrastre las tablas anchas con el mouse"
+                  className="btn-fenix-primary inline-flex min-w-[11rem] items-center justify-center gap-2"
+                  onClick={handleVerInformeGeneral}
+                  title="Informe completo: información general, lectura ejecutiva y detalle técnico"
                 >
-                  Reporte interactivo
+                  <FaFileAlt />
+                  Ver informe general
                 </button>
                 <button
                   type="button"
                   className="btn-fenix-secondary min-w-[9rem] disabled:opacity-60"
                   onClick={handleExportarReporteHTML}
                   disabled={exportandoPdf}
-                  title="Descarga un archivo .html que abre en el navegador con tablas que puede arrastrar (no es PDF)"
+                  title="Descarga un archivo .html del informe completo"
                 >
                   {exportandoPdf ? 'Generando…' : 'Descargar .html'}
                 </button>

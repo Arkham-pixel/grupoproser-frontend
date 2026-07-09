@@ -65,8 +65,11 @@ export function buildPrefillAjusteDesdeCasoComplex(caso) {
 
   const fechaAsignacionIso = toIsoDateInput(caso.fchaAsgncion || caso.fechaAsignacion);
 
+  const complexId = toTrim(caso._id || caso.id);
+
   const metadata = {
     ...metadataBase,
+    ...(complexId ? { complexId } : {}),
     ...(codiAsgrdra ? { codiAsgrdra } : {}),
     ...(numeroCaso ? { numeroAjuste: numeroCaso } : {}),
     ...(intermediario ? { intermediario } : {}),

@@ -10,7 +10,13 @@ import ExcelJS from 'exceljs';
 import { convertirFechaParaExcelDate, formatearFechaUI } from '../utils/fechaUtils';
 import { FaFileExcel, FaSlidersH, FaTable, FaTrash } from 'react-icons/fa';
 import { cargarMapeoFuncionarios, obtenerNombreFuncionarioDesdeCaso } from '../utils/funcionarioMapper';
+import {
+  casoCoincideFiltroResponsable,
+  esCasoSinResponsableAsignado,
+  FILTRO_RESPONSABLE_SIN_ASIGNAR,
+} from '../utils/responsableAgrupacionUtils.js';
 import { buildPrefillAjusteDesdeCasoComplex } from '../utils/prefillAjusteDesdeCasoComplex';
+import { combinarCasosComplex } from '../utils/complexTrazabilidadUtils.js';
 import {
   complexBtnGhost,
   complexBtnPrimary,
@@ -427,21 +433,8 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
         ? (Array.isArray(complexData.value) ? complexData.value : [])
         : [];
 
-      // Combinar y sincronizar casos
-      const todosLosCasos = [...siniestros, ...complex].map(sincronizarCamelSnake);
-      
-      // Eliminar duplicados basado en número de ajuste
-      const casosUnicos = new Map();
-      todosLosCasos.forEach(caso => {
-        const numeroAjuste = caso.nmroAjste || caso.numero_ajuste;
-        if (numeroAjuste && !casosUnicos.has(numeroAjuste)) {
-          casosUnicos.set(numeroAjuste, caso);
-        } else if (!numeroAjuste && caso._id) {
-          casosUnicos.set(caso._id, caso);
-        }
-      });
-
-      const casosFinales = Array.from(casosUnicos.values());
+      // Combinar fuentes y eliminar duplicados por _id o número de ajuste
+      const casosFinales = combinarCasosComplex(siniestros, complex).map(sincronizarCamelSnake);
       
       // Ordenar por fecha de asignación (más recientes primero)
       casosFinales.sort((a, b) => {
@@ -644,13 +637,30 @@ setCasos(casosFinales);
       
       // Filtro por búsqueda de texto
       if (terminoBusqueda && terminoBusqueda.trim()) {
-        const encontrado = camposVisibles.some(campo => {
+        const termino = terminoBusqueda.toLowerCase().trim();
+        let encontrado = camposVisibles.some((campo) => {
           const valor = caso[campo.clave];
           if (valor && typeof valor === 'string') {
-            return valor.toLowerCase().includes(terminoBusqueda.toLowerCase());
+            return valor.toLowerCase().includes(termino);
           }
           return false;
         });
+        if (
+          !encontrado &&
+          termino.includes('sin asignar') &&
+          esCasoSinResponsableAsignado(caso)
+        ) {
+          encontrado = true;
+        }
+        if (
+          !encontrado &&
+          typeof getNombreResponsable === 'function'
+        ) {
+          const nombreResp = getNombreResponsable(caso);
+          if (nombreResp && String(nombreResp).toLowerCase().includes(termino)) {
+            encontrado = true;
+          }
+        }
         if (!encontrado) {
           ok = false;
           razonesExclusion.push('búsqueda texto');
@@ -794,46 +804,12 @@ setCasos(casosFinales);
       
       // Filtro por responsable
       if (responsableFiltro && responsableFiltro.trim() !== '') {
-        const filtroStr = String(responsableFiltro).trim();
-        let coincide = false;
-        
-        // Comparar por código del caso
-        const codigoCaso = String(caso.codiRespnsble || caso.codi_responble || caso.responsable || '').trim();
-        if (codigoCaso === filtroStr) {
-          coincide = true;
-        }
-        
-        // Comparar por nombre del responsable
-        if (!coincide) {
-          const nombreCaso = getNombreResponsable(caso);
-          if (nombreCaso && nombreCaso.trim() !== '') {
-            const nombreCasoStr = nombreCaso.trim();
-            if (nombreCasoStr === filtroStr || 
-                nombreCasoStr.toLowerCase() === filtroStr.toLowerCase()) {
-              coincide = true;
-            }
-          }
-        }
-        
-        // Comparar usando la lista de responsables
-        if (!coincide && responsables.length > 0) {
-          const responsableEncontrado = responsables.find(r => 
-            String(r.codiRespnsble || r.codigo || '').trim() === filtroStr
-          );
-          if (responsableEncontrado) {
-            const codigoCasoStr = codigoCaso;
-            const codigoResponsableStr = String(responsableEncontrado.codiRespnsble || responsableEncontrado.codigo || '').trim();
-            const nombreCaso = getNombreResponsable(caso);
-            const nombreResponsableStr = String(responsableEncontrado.nmbrRespnsble || responsableEncontrado.nombre || '').trim();
-            
-            if (codigoCasoStr === codigoResponsableStr || 
-                (nombreCaso && nombreCaso.trim() === nombreResponsableStr)) {
-              coincide = true;
-            }
-          }
-        }
-        
-        if (!coincide) {
+        if (
+          !casoCoincideFiltroResponsable(caso, responsableFiltro, {
+            responsables,
+            getNombreResponsable,
+          })
+        ) {
           ok = false;
           razonesExclusion.push('responsable no coincide');
         }
@@ -1190,10 +1166,15 @@ setCasos(casosFinales);
     };
   });
 
-  const responsablesUnicos = responsables.map(r => ({
-    value: String(r.codiRespnsble),
-    label: r.nmbrRespnsble || r.nombre || String(r.codiRespnsble)
-  })).sort((a, b) => a.label.localeCompare(b.label));
+  const responsablesUnicos = [
+    { value: FILTRO_RESPONSABLE_SIN_ASIGNAR, label: 'Sin asignar' },
+    ...responsables
+      .map((r) => ({
+        value: String(r.codiRespnsble),
+        label: r.nmbrRespnsble || r.nombre || String(r.codiRespnsble),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ];
 
   // Funciones auxiliares
   const getNombreEstado = (codigoEstado) => {
@@ -1286,6 +1267,7 @@ setCasos(casosFinales);
       nmroSinstro: numeroSiniestro,
       nmroAjste: numeroCaso,
       origen: 'reporte-complex',
+      estadoInicial: 'actaInspeccion',
       returnPath: '/complex/excel',
       prefillDesdeCaso: buildPrefillAjusteDesdeCasoComplex(caso)
     };
@@ -1615,13 +1597,27 @@ setCasos(casosFinales);
       
       // Filtro por búsqueda de texto
       if (terminoBusqueda && terminoBusqueda.trim()) {
-        const encontrado = camposVisibles.some(campo => {
+        const termino = terminoBusqueda.toLowerCase().trim();
+        let encontrado = camposVisibles.some((campo) => {
           const valor = caso[campo.clave];
           if (valor && typeof valor === 'string') {
-            return valor.toLowerCase().includes(terminoBusqueda.toLowerCase());
+            return valor.toLowerCase().includes(termino);
           }
           return false;
         });
+        if (
+          !encontrado &&
+          termino.includes('sin asignar') &&
+          esCasoSinResponsableAsignado(caso)
+        ) {
+          encontrado = true;
+        }
+        if (!encontrado) {
+          const nombreResp = getNombreResponsable(caso);
+          if (nombreResp && String(nombreResp).toLowerCase().includes(termino)) {
+            encontrado = true;
+          }
+        }
         if (!encontrado) ok = false;
       }
       
@@ -1686,35 +1682,14 @@ setCasos(casosFinales);
       
       // Filtro por responsable
       if (responsableFiltro && responsableFiltro.trim() !== '') {
-        const filtroStr = String(responsableFiltro).trim();
-        let coincide = false;
-        const codigoCaso = String(caso.codiRespnsble || caso.codi_responble || caso.responsable || '').trim();
-        if (codigoCaso === filtroStr) coincide = true;
-        if (!coincide) {
-          const nombreCaso = getNombreResponsable(caso);
-          if (nombreCaso && nombreCaso.trim() !== '') {
-            const nombreCasoStr = nombreCaso.trim();
-            if (nombreCasoStr === filtroStr || nombreCasoStr.toLowerCase() === filtroStr.toLowerCase()) {
-              coincide = true;
-            }
-          }
+        if (
+          !casoCoincideFiltroResponsable(caso, responsableFiltro, {
+            responsables,
+            getNombreResponsable,
+          })
+        ) {
+          ok = false;
         }
-        if (!coincide && responsables.length > 0) {
-          const responsableEncontrado = responsables.find(r => 
-            String(r.codiRespnsble || r.codigo || '').trim() === filtroStr
-          );
-          if (responsableEncontrado) {
-            const codigoCasoStr = codigoCaso;
-            const codigoResponsableStr = String(responsableEncontrado.codiRespnsble || responsableEncontrado.codigo || '').trim();
-            const nombreCaso = getNombreResponsable(caso);
-            const nombreResponsableStr = String(responsableEncontrado.nmbrRespnsble || responsableEncontrado.nombre || '').trim();
-            if (codigoCasoStr === codigoResponsableStr || 
-                (nombreCaso && nombreCaso.trim() === nombreResponsableStr)) {
-              coincide = true;
-            }
-          }
-        }
-        if (!coincide) ok = false;
       }
       
       // Filtro por aseguradora - buscar en todos los campos posibles
@@ -2213,7 +2188,7 @@ setCasos(casosFinales);
                 ) : (
                   casosPaginados.map((caso, index) => (
                     <tr
-                      key={caso._id || index}
+                      key={`${caso._id || 'sin-id'}-${caso.nmroAjste || caso.numero_ajuste || index}`}
                       className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
                     >
                       <td

@@ -36,6 +36,11 @@ import { isStoredFileReference } from '../../utils/storedFilePath.js';
 import { fetchImageAsArrayBuffer } from '../../utils/imageUtils.js';
 import { getAutofillAjusteDesdeComplex, getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
 import { resolverFechaReporteDesdeAsignacion } from '../../utils/prefillAjusteDesdeCasoComplex.js';
+import {
+  buildCamposProtocoloDesdeAjuste,
+  resolverFechaFormularioAjuste,
+  tipoHistorialDesdeEstadoAjuste,
+} from '../../utils/ajusteTrazabilidadComplexMap.js';
 import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 import {
   calcularTotalReservaSugeridaItems,
@@ -74,6 +79,14 @@ const DATOS_MAESTROS = {
     'Intermediarios Profesionales', 'Otro'
   ]
 };
+
+function extraerLatLngDesdeTexto(coordenadasTexto) {
+  const texto = String(coordenadasTexto || '').trim();
+  if (!texto) return { latitud: '', longitud: '' };
+  const partes = texto.split(',').map((v) => v.trim());
+  if (partes.length < 2) return { latitud: texto, longitud: '' };
+  return { latitud: partes[0] || '', longitud: partes[1] || '' };
+}
 
 export default function FormularioAjuste() {
   const { theme } = useTheme();
@@ -319,6 +332,20 @@ const [formData, setFormData] = useState({
     if (im.ruta) return resolveUploadsUrl(im.ruta) || '';
     return '';
   }, [formData.imagenMapa]);
+
+  const coordenadasMapa = useMemo(() => {
+    const desdeForm = extraerLatLngDesdeTexto(formData.coordenadasRiesgo);
+    if (desdeForm.latitud && desdeForm.longitud) return desdeForm;
+    const snap = mapaInfo?.coordenadas;
+    if (snap && typeof snap === 'object' && snap.lat != null && snap.lng != null) {
+      return {
+        latitud: Number(snap.lat).toFixed(6),
+        longitud: Number(snap.lng).toFixed(6),
+      };
+    }
+    if (typeof snap === 'string') return extraerLatLngDesdeTexto(snap);
+    return { latitud: '', longitud: '' };
+  }, [formData.coordenadasRiesgo, mapaInfo?.coordenadas]);
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
@@ -645,9 +672,12 @@ return {
           const v = String(e || '').trim();
           return ESTADOS_AJUSTE_VALIDOS.includes(v) ? v : null;
         };
-        const estadoSugeridoTraz = String(location?.state?.estadoInicial || '').trim();
+        const estadoSugeridoTraz = String(
+          location?.state?.estadoInicial ||
+          (location?.state?.origen === 'reporte-complex' ? 'actaInspeccion' : '')
+        ).trim();
         let estadoCargado = null;
-        if (estadoSugeridoTraz && location?.state?.origen === 'trazabilidad') {
+        if (estadoSugeridoTraz && (location?.state?.origen === 'trazabilidad' || location?.state?.origen === 'reporte-complex')) {
           const mapaTipoDocAEstado = {
             inspeccion: 'actaInspeccion',
             informePreliminar: 'inicial',
@@ -1154,6 +1184,25 @@ setFormData(prev => {
   };
 
   useEffect(() => {
+    const desdeState = location.state || {};
+    const complexIdFromState = String(desdeState?.complexId || desdeState?._id || '').trim();
+    if (complexIdFromState) {
+      setFormData((prev) => ({
+        ...prev,
+        metadata: {
+          ...(prev.metadata || {}),
+          complexId: complexIdFromState
+        }
+      }));
+    }
+
+    if (desdeState?.origen === 'reporte-complex' || desdeState?.estadoInicial === 'actaInspeccion') {
+      setEstadoActual('actaInspeccion');
+      setFormData((prev) => ({ ...prev, estadoActual: 'actaInspeccion' }));
+    }
+  }, [id, location.state]);
+
+  useEffect(() => {
     if (id && id !== 'nuevo') return;
     const desdeState = location.state || {};
     const desdeQuery = new URLSearchParams(location.search).get('casoId');
@@ -1246,6 +1295,9 @@ setFormData(prev => {
       }
       if (tieneNuevaImagen) {
         next.imagenMapa = nuevaImagenRaw;
+      }
+      if (nuevaInfoMapa.direccion) {
+        next.direccionRiesgo = nuevaInfoMapa.direccion;
       }
       return next;
     });
@@ -1343,14 +1395,6 @@ setFormData(prev => {
       // - INICIAL / PREELIMINAR: observaciones (acta), análisis de cobertura si hay datos.
       // - ACTUALIZACIÓN: misma secuencia hasta el final + observaciones de actualización.
       // - INFORME FINAL: conclusiones, liquidación, etc.
-
-      // Firma Iskharly por defecto (respaldo obligatorio para Word)
-      let firmaIskharlyDefaultBase64 = null;
-      try {
-        firmaIskharlyDefaultBase64 = await convertirImagenImportadaABase64(firmaIskharlyImg);
-} catch (e) {
-        console.warn('⚠️ No se pudo cargar FIRMAISKHARLY.png:', e);
-      }
 
       // Convertir el logo a base64 para el encabezado
       let logoBase64 = null;
@@ -1748,7 +1792,8 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         {
           const hayDesc = tieneContenido(fd.descripcionRiesgo);
           const hayMapa = Boolean(mapaDataUrlParaWord);
-          if (hayDesc || hayMapa) {
+          const hayCoordenadas = Boolean(String(fd.coordenadasRiesgo || '').trim());
+          if (hayDesc || hayMapa || hayCoordenadas) {
             secciones.push(
               crearTextoNormal(`${numeroSeccion}. DESCRIPCIÓN DE RIESGO`, {
                 heading: HeadingLevel.HEADING_2,
@@ -1778,17 +1823,43 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                     })
                   ],
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 200 }
+                  spacing: { after: 120 }
                 })
               );
             } else {
               secciones.push(
                 crearTextoNormal('[IMAGEN DEL MAPA - Ubicación del siniestro]', {
-                  spacingAfter: 200,
+                  spacingAfter: 120,
                   italics: true,
                   alignment: AlignmentType.CENTER
                 })
               );
+            }
+            const textoCoordenadasWord = (() => {
+              const crs = String(fd.coordenadasRiesgo || '').trim();
+              if (crs) return crs;
+              const snap = mapaInfoRef.current?.coordenadas;
+              if (snap && typeof snap === 'object' && snap.lat != null && snap.lng != null) {
+                return `${Number(snap.lat).toFixed(6)}, ${Number(snap.lng).toFixed(6)}`;
+              }
+              if (typeof snap === 'string' && snap.trim()) return snap.trim();
+              return 'No disponibles';
+            })();
+            secciones.push(
+              crearTextoNormal(`Coordenadas: ${textoCoordenadasWord}`, {
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 80 }
+              })
+            );
+            if (String(fd.direccionRiesgo || '').trim()) {
+              secciones.push(
+                crearTextoNormal(`Dirección: ${String(fd.direccionRiesgo).trim()}`, {
+                  alignment: AlignmentType.CENTER,
+                  spacing: { after: 200 }
+                })
+              );
+            } else {
+              secciones.push(new Paragraph({ text: '', spacing: { after: 200 } }));
             }
             numeroSeccion++;
           }
@@ -2423,10 +2494,21 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         insideVertical: { style: BorderStyle.NONE, size: 0 }
       };
 
+      /** Bordes punteados del bloque FIRMAS (Cliente | Ajustador), como en la plantilla de referencia. */
+      const bordePunteadoFirma = { style: BorderStyle.DASHED, size: 4, color: '000000' };
+      const bordesTablaFirmas = {
+        top: bordePunteadoFirma,
+        bottom: bordePunteadoFirma,
+        left: bordePunteadoFirma,
+        right: bordePunteadoFirma,
+        insideHorizontal: bordePunteadoFirma,
+        insideVertical: bordePunteadoFirma
+      };
+
       /**
-       * Firmas en Word:
-       * - acta: cliente (izq) + ajustador (der)
-       * - informe (preliminar / actualización / final): ajustador (izq) + Iskharly por defecto (der)
+       * Firmas en Word (acta e informe):
+       * tabla 2 columnas — FIRMA DE CLIENTE (izq) + FIRMA DEL AJUSTADOR (der)
+       * + pie "Proser Ajustes SAS" en rojo.
        */
       const resolverFirmaAjustadorDesdeGuardadas = (fd) => {
         if (fd.actaAjustadorFirmaImagen) return fd.actaAjustadorFirmaImagen;
@@ -2459,23 +2541,13 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         }
       };
 
-      const resolverFirmaIskharlyParaWord = (fd) =>
-        fd.firmaIskharly ||
-        (typeof localStorage !== 'undefined'
-          ? localStorage.getItem('proser_firma_isharly')
-          : '') ||
-        firmaIskharlyDefaultBase64 ||
-        '';
-
-      const construirElementosFirmasActaWord = (fd, opciones = {}) => {
-        const modo = opciones.modo === 'informe' ? 'informe' : 'acta';
-
+      const construirElementosFirmasActaWord = async (fd) => {
         const primeraLegacy =
           Array.isArray(fd.actaFirmas) && fd.actaFirmas.length > 0 ? fd.actaFirmas[0] : null;
         const nombreClienteDoc = String(fd.actaClienteNombre || primeraLegacy?.nombre || '').trim();
-        const cargoClienteDoc = String(fd.actaClienteCargo || '').trim();
-        const emailClienteDoc = String(fd.actaClienteEmail || '').trim();
-        const imgClienteSrc = fd.actaClienteFirma || primeraLegacy?.firma;
+        const cargoClienteDoc = String(fd.actaClienteCargo || primeraLegacy?.cargo || '').trim();
+        const emailClienteDoc = String(fd.actaClienteEmail || primeraLegacy?.email || '').trim();
+        let imgClienteSrc = fd.actaClienteFirma || primeraLegacy?.firma;
         const imgAjustadorSrc = resolverFirmaAjustadorDesdeGuardadas(fd);
         const nombreAjustadorDoc = String(
           fd.actaAjustadorNombre || fd.funcionarioFirma || ''
@@ -2483,36 +2555,69 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         const cargoAjustDoc = String(fd.actaAjustadorCargo || fd.cargoFuncionario || '').trim();
         const emailAjustDoc = String(fd.actaAjustadorEmail || fd.emailFuncionario || '').trim();
 
-        const nombreIskharlyDoc = 'Iskharly José Tapia Gutiérrez';
-        const cargoIskharlyDoc = 'Gerente Técnico';
-        const emailIskharlyDoc = 'itapia@proserpuertos.com.co';
-        const imgIskharlySrc = resolverFirmaIskharlyParaWord(fd);
+        // Normalizar firma del cliente (foto a menudo chica/torcida) antes de insertar en Word
+        if (imgClienteSrc) {
+          try {
+            const {
+              normalizarFirmaClienteDataUrl,
+            } = await import('../../utils/normalizarFirmaImagen.js');
+            imgClienteSrc = await normalizarFirmaClienteDataUrl(imgClienteSrc);
+          } catch (err) {
+            console.warn('⚠️ No se normalizó firma cliente:', err);
+          }
+        }
 
-        const bufferDesdeDataUrl = (dataUrl) => {
+        const imagenDesdeDataUrl = async (dataUrl) => {
           if (!dataUrl || typeof dataUrl !== 'string') return null;
+          const mimeMatch = dataUrl.match(/^data:image\/(png|jpe?g|gif|webp);base64,/i);
           const idx = dataUrl.indexOf('base64,');
           const raw = idx !== -1 ? dataUrl.slice(idx + 7) : dataUrl;
           if (!raw) return null;
+          let tipo = 'png';
+          if (mimeMatch) {
+            const ext = mimeMatch[1].toLowerCase();
+            tipo = ext === 'jpg' || ext === 'jpeg' ? 'jpg' : ext === 'webp' ? 'png' : ext;
+          }
           try {
-            return Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)).buffer;
+            const data = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0)).buffer;
+            let width = 220;
+            let height = 90;
+            try {
+              const { obtenerDimensionesDataUrl, dimensionesFirmaWord } = await import(
+                '../../utils/normalizarFirmaImagen.js'
+              );
+              const dims = await obtenerDimensionesDataUrl(dataUrl);
+              const sized = dimensionesFirmaWord(dims.width, dims.height, {
+                maxWidthPx: 230,
+                maxHeightPx: 110,
+              });
+              width = sized.width;
+              height = sized.height;
+            } catch (_) {
+              /* usar defaults */
+            }
+            return { data, type: tipo, width, height };
           } catch {
             return null;
           }
         };
 
-        const bufCliente = bufferDesdeDataUrl(imgClienteSrc);
-        const bufAjustador = bufferDesdeDataUrl(imgAjustadorSrc);
-        const bufIskharly = bufferDesdeDataUrl(imgIskharlySrc);
+        const imgCliente = await imagenDesdeDataUrl(imgClienteSrc);
+        const imgAjustador = await imagenDesdeDataUrl(imgAjustadorSrc);
 
-        const parrafoFirmaOGuion = (buf) =>
+        const parrafoFirmaOGuion = (img) =>
           new Paragraph({
             alignment: AlignmentType.CENTER,
             spacing: { before: 80, after: 100 },
-            children: buf
+            children: img
               ? [
                   new ImageRun({
-                    data: buf,
-                    transformation: { width: 160, height: 80 }
+                    data: img.data,
+                    transformation: {
+                      width: img.width || 220,
+                      height: img.height || 90,
+                    },
+                    type: img.type
                   })
                 ]
               : [
@@ -2525,192 +2630,31 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                 ]
           });
 
-        const margFirma = { top: 100, bottom: 100, left: 140, right: 140 };
-        const celdaFirmaActa = (children) =>
+        const margFirma = { top: 80, bottom: 80, left: 100, right: 100 };
+        const celdaFirma = (children, { span = 1 } = {}) =>
           new TableCell({
-            width: { size: 50, type: WidthType.PERCENTAGE },
+            columnSpan: span > 1 ? span : undefined,
+            width: { size: span > 1 ? 100 : 50, type: WidthType.PERCENTAGE },
             margins: margFirma,
             verticalAlign: VerticalAlign.CENTER,
-            children
+            borders: {
+              top: bordePunteadoFirma,
+              bottom: bordePunteadoFirma,
+              left: bordePunteadoFirma,
+              right: bordePunteadoFirma
+            },
+            children: Array.isArray(children) && children.length > 0
+              ? children
+              : [new Paragraph({ children: [] })]
           });
 
-        if (modo === 'informe') {
-          const filasFirmaInforme = [
-            new TableRow({
-              children: [
-                celdaFirmaActa([
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 120 },
-                    children: [
-                      new TextRun({
-                        text: 'FIRMA DEL AJUSTADOR',
-                        font: 'Arial',
-                        size: 22,
-                        bold: true
-                      })
-                    ]
-                  })
-                ]),
-                celdaFirmaActa([
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 120 },
-                    children: [
-                      new TextRun({
-                        text: 'FIRMA GERENTE TÉCNICO',
-                        font: 'Arial',
-                        size: 22,
-                        bold: true
-                      })
-                    ]
-                  })
-                ])
-              ]
-            }),
-            new TableRow({
-              children: [
-                celdaFirmaActa([parrafoFirmaOGuion(bufAjustador)]),
-                celdaFirmaActa([parrafoFirmaOGuion(bufIskharly)])
-              ]
-            }),
-            new TableRow({
-              children: [
-                celdaFirmaActa([
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 80 },
-                    children: [
-                      new TextRun({
-                        text: nombreAjustadorDoc || 'NOMBRE DEL AJUSTADOR',
-                        font: 'Arial',
-                        size: 24,
-                        bold: true,
-                        underline: {}
-                      })
-                    ]
-                  })
-                ]),
-                celdaFirmaActa([
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 80 },
-                    children: [
-                      new TextRun({
-                        text: nombreIskharlyDoc,
-                        font: 'Arial',
-                        size: 24,
-                        bold: true,
-                        underline: {}
-                      })
-                    ]
-                  })
-                ])
-              ]
-            }),
-            new TableRow({
-              children: [
-                celdaFirmaActa([
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 40 },
-                    children: [
-                      new TextRun({ text: 'Cargo: ', font: 'Arial', size: 20, bold: true }),
-                      new TextRun({
-                        text: cargoAjustDoc || '—',
-                        font: 'Arial',
-                        size: 20,
-                        color: '000000'
-                      })
-                    ]
-                  }),
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 40 },
-                    children: [
-                      new TextRun({ text: 'E-Mail: ', font: 'Arial', size: 20, bold: true }),
-                      new TextRun({
-                        text: emailAjustDoc || '—',
-                        font: 'Arial',
-                        size: 20,
-                        color: '0066CC'
-                      })
-                    ]
-                  })
-                ]),
-                celdaFirmaActa([
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 40 },
-                    children: [
-                      new TextRun({ text: 'Cargo: ', font: 'Arial', size: 20, bold: true }),
-                      new TextRun({
-                        text: cargoIskharlyDoc,
-                        font: 'Arial',
-                        size: 20,
-                        color: '000000'
-                      })
-                    ]
-                  }),
-                  new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    spacing: { after: 40 },
-                    children: [
-                      new TextRun({ text: 'E-Mail: ', font: 'Arial', size: 20, bold: true }),
-                      new TextRun({
-                        text: emailIskharlyDoc,
-                        font: 'Arial',
-                        size: 20,
-                        color: '0066CC'
-                      })
-                    ]
-                  })
-                ])
-              ]
-            }),
-            new TableRow({
-              children: [
-                new TableCell({
-                  columnSpan: 2,
-                  margins: margFirma,
-                  verticalAlign: VerticalAlign.CENTER,
-                  children: [
-                    new Paragraph({
-                      alignment: AlignmentType.CENTER,
-                      spacing: { before: 40, after: 80 },
-                      children: [
-                        new TextRun({
-                          text: 'Proser Ajustes SAS',
-                          font: 'Arial',
-                          size: 24,
-                          bold: true,
-                          color: 'FF0000'
-                        })
-                      ]
-                    })
-                  ]
-                })
-              ]
-            })
-          ];
-
-          return [
-            new Table({
-              width: { size: 100, type: WidthType.PERCENTAGE },
-              borders: bordesTablaSinLineas,
-              rows: filasFirmaInforme
-            }),
-            new Paragraph({ text: '', spacing: { after: 300 } })
-          ];
-        }
-
-        const filasFirmasActaDosCols = [
+        const filasFirmasDosCols = [
           new TableRow({
             children: [
-              celdaFirmaActa([
+              celdaFirma([
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 120 },
+                  spacing: { after: 80 },
                   children: [
                     new TextRun({
                       text: 'FIRMA DE CLIENTE',
@@ -2721,10 +2665,10 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   ]
                 })
               ]),
-              celdaFirmaActa([
+              celdaFirma([
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 120 },
+                  spacing: { after: 80 },
                   children: [
                     new TextRun({
                       text: 'FIRMA DEL AJUSTADOR',
@@ -2739,36 +2683,36 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           }),
           new TableRow({
             children: [
-              celdaFirmaActa([parrafoFirmaOGuion(bufCliente)]),
-              celdaFirmaActa([parrafoFirmaOGuion(bufAjustador)])
+              celdaFirma([parrafoFirmaOGuion(imgCliente)]),
+              celdaFirma([parrafoFirmaOGuion(imgAjustador)])
             ]
           }),
           new TableRow({
             children: [
-              celdaFirmaActa([
+              celdaFirma([
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 80 },
+                  spacing: { after: 60 },
                   children: [
                     new TextRun({
-                      text: nombreClienteDoc || 'NOMBRE DEL CLIENTE / TITULAR',
+                      text: (nombreClienteDoc || 'NOMBRE DEL CLIENTE / TITULAR').toUpperCase(),
                       font: 'Arial',
-                      size: 24,
+                      size: 22,
                       bold: true,
                       underline: {}
                     })
                   ]
                 })
               ]),
-              celdaFirmaActa([
+              celdaFirma([
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 80 },
+                  spacing: { after: 60 },
                   children: [
                     new TextRun({
                       text: nombreAjustadorDoc || 'NOMBRE DEL AJUSTADOR',
                       font: 'Arial',
-                      size: 24,
+                      size: 22,
                       bold: true,
                       underline: {}
                     })
@@ -2779,10 +2723,10 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           }),
           new TableRow({
             children: [
-              celdaFirmaActa([
+              celdaFirma([
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 40 },
+                  spacing: { after: 20 },
                   children: [
                     new TextRun({ text: 'Cargo: ', font: 'Arial', size: 20, bold: true }),
                     new TextRun({
@@ -2807,10 +2751,10 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   ]
                 })
               ]),
-              celdaFirmaActa([
+              celdaFirma([
                 new Paragraph({
                   alignment: AlignmentType.CENTER,
-                  spacing: { after: 40 },
+                  spacing: { after: 20 },
                   children: [
                     new TextRun({ text: 'Cargo: ', font: 'Arial', size: 20, bold: true }),
                     new TextRun({
@@ -2839,26 +2783,24 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           }),
           new TableRow({
             children: [
-              new TableCell({
-                columnSpan: 2,
-                margins: margFirma,
-                verticalAlign: VerticalAlign.CENTER,
-                children: [
+              celdaFirma(
+                [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    spacing: { before: 40, after: 80 },
+                    spacing: { before: 40, after: 40 },
                     children: [
                       new TextRun({
                         text: 'Proser Ajustes SAS',
                         font: 'Arial',
                         size: 24,
                         bold: true,
-                        color: 'FF0000'
+                        color: 'C00000'
                       })
                     ]
                   })
-                ]
-              })
+                ],
+                { span: 2 }
+              )
             ]
           })
         ];
@@ -2867,8 +2809,8 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           crearTextoNormal('FIRMAS', { heading: HeadingLevel.HEADING_2, spacing: { before: 200, after: 150 } }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: bordesTablaSinLineas,
-            rows: filasFirmasActaDosCols
+            borders: bordesTablaFirmas,
+            rows: filasFirmasDosCols
           }),
           new Paragraph({ text: '', spacing: { after: 300 } })
         ];
@@ -2964,12 +2906,18 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           ...(String(fd.actaObservaciones || '').trim()
             ? crearParrafosDesdeTexto(fd.actaObservaciones, { spacingAfter: 200 })
             : [crearMensajeSinInformacion('Observaciones del acta')]),
-          ...construirElementosFirmasActaWord(fd, { modo: 'acta' })
+          ...(await construirElementosFirmasActaWord(fd))
         ];
       };
 
       const bloqueActaInspeccionWord =
         estadoActual === 'actaInspeccion' ? await construirBloqueActaInspeccionWord() : [];
+
+      // Firmas del pie (informes): normalización async de la imagen del cliente
+      const elementosFirmasInformeWord =
+        estadoActual === 'actaInspeccion'
+          ? []
+          : await construirElementosFirmasActaWord(fd);
 
       const obtenerTituloEncabezadoWord = (estado) => {
         switch (estado) {
@@ -3795,7 +3743,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               ])
             ] : []),
 
-            // Pie: acta → firmas en bloque del acta (cliente + ajustador). Informes → cierre + ajustador + Iskharly.
+            // Pie: firma unificada Cliente | Ajustador (+ Proser Ajustes SAS). Informes incluyen texto de cierre.
             ...(estadoActual === 'actaInspeccion'
               ? [
                   new Paragraph({
@@ -3809,7 +3757,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                     spacing: { before: 600, after: 200 }
                   }),
                   ...textoCierreAntesFirmasInforme(),
-                  ...construirElementosFirmasActaWord(fd, { modo: 'informe' }),
+                  ...elementosFirmasInformeWord,
                   new Paragraph({
                     text: '',
                     spacing: { before: 200, after: 600 }
@@ -3953,6 +3901,20 @@ if (formData.anexos && formData.anexos.length > 0) {
         };
       }
 
+      const complexIdPersistente = String(
+        datosParaGuardar?.metadata?.complexId ||
+        formData?.metadata?.complexId ||
+        location?.state?.complexId ||
+        location?.state?._id ||
+        ''
+      ).trim();
+      if (complexIdPersistente) {
+        datosParaGuardar.metadata = {
+          ...(datosParaGuardar.metadata || {}),
+          complexId: complexIdPersistente
+        };
+      }
+
       const sanitizarSegmentoCarpeta = (v) =>
         String(v || '')
           .trim()
@@ -4068,12 +4030,7 @@ const numeroAjusteContinuidad = resolverNumeroAjusteCanonico(
         }
       }
 /** Trazabilidad Complex (historialDocs) + secuencia por número de ajuste */
-      const mapearEstadoATipoDocTrazabilidad = (estado) => {
-        if (estado === 'actaInspeccion') return 'inspeccion';
-        if (estado === 'actualizacion') return 'ultimoDocumento';
-        if (estado === 'informeFinal') return 'informeFinal';
-        return 'informePreliminar';
-      };
+      const mapearEstadoATipoDocTrazabilidad = (estado) => tipoHistorialDesdeEstadoAjuste(estado);
 
       const mapearEstadoATipoVersion = (estado) => {
         if (estado === 'actaInspeccion') return 'inspeccion';
@@ -4122,18 +4079,21 @@ return;
       };
 
       const sincronizarDocumentoEnTrazabilidadComplex = async (formularioIdFinal, archivoSubidoEnGuardado = null) => {
+        const esObjectIdMongo = (valor) => /^[a-fA-F0-9]{24}$/.test(String(valor || '').trim());
+
         let complexId = String(
+          datosParaGuardar?.metadata?.complexId ||
+          formDataRef.current?.metadata?.complexId ||
           location?.state?.complexId ||
           location?.state?._id ||
-          formData?.metadata?.complexId ||
-          datosParaGuardar?.metadata?.complexId ||
           ''
         ).trim();
 
         // Fallback: resolver complexId vía autofill por numeroSiniestro o numeroAjuste
         // para casos que abrieron el formulario por URL directa sin location.state.
-        if (!complexId) {
+        if (!complexId || !esObjectIdMongo(complexId)) {
           const claveBusqueda = String(
+            (!esObjectIdMongo(complexId) && complexId) ||
             location?.state?.numeroSiniestro ||
             location?.state?.nmroSinstro ||
             formData?.numeroSiniestro ||
@@ -4144,6 +4104,7 @@ return;
             formData?.numeroCaso ||
             ''
           ).trim();
+          complexId = '';
           if (claveBusqueda) {
             try {
               const respAutofill = await getAutofillAjusteDesdeComplex(claveBusqueda);
@@ -4228,20 +4189,21 @@ return;
           return !(mismaVersion && mismoFormulario);
         });
 
-        // Mapear tipoDoc → campo de fecha en el caso de Complex/Siniestro.
-        // Solo se actualiza la fecha de la versión actualmente guardada para
-        // no afectar fechas históricas que el usuario ya pudo haber puesto.
-        const tipoDocAFecha = {
-          inspeccion: 'fchaInspccion',
-          informePreliminar: 'fchaInfoPrelm',
-          ultimoDocumento: 'fchaRepoActi',
-          informeFinal: 'fchaInfoFnal'
+        // Mapear tipoDoc → campos de protocolo en Complex (anexo + fecha).
+        const fechaPreferida = resolverFechaFormularioAjuste(
+          { ...formDataRef.current, ...datosParaGuardar },
+          tipoDoc,
+          fechaLocal
+        );
+        const payloadUpdate = {
+          historialDocs: [docNuevo, ...historialFiltrado],
+          ...buildCamposProtocoloDesdeAjuste({
+            tipoHistorial: tipoDoc,
+            nombreArchivo: nombreArchivoReal,
+            fechaPreferida,
+            fechaFallback: fechaLocal,
+          }),
         };
-        const campoFecha = tipoDocAFecha[tipoDoc];
-        const payloadUpdate = { historialDocs: [docNuevo, ...historialFiltrado] };
-        if (campoFecha) {
-          payloadUpdate[campoFecha] = fechaLocal;
-        }
 
         await updateCasoComplex(complexId, payloadUpdate);
       };
@@ -5532,6 +5494,66 @@ setVersiones(prev => ({
             >
               Ubicación Geográfica del Siniestro
             </h2>
+
+            <div
+              className="mb-4 p-4 rounded-lg"
+              style={{
+                border: `1px solid ${borderColor}`,
+                backgroundColor: theme === 'dark' ? '#1F1F1F' : '#F9FAFB'
+              }}
+            >
+              <h3 className="text-sm font-bold mb-3" style={{ color: textPrimary }}>
+                COORDENADAS DE UBICACIÓN
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <label className="font-semibold block mb-1" style={{ color: textPrimary }}>
+                    LATITUD:
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={coordenadasMapa.latitud}
+                    placeholder="Se llena desde el mapa"
+                    className="px-2 py-1.5 rounded w-full font-mono"
+                    style={{
+                      backgroundColor: theme === 'dark' ? '#1A1A1A' : '#FFFFFF',
+                      color: textPrimary,
+                      border: `1px solid ${borderColor}`
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="font-semibold block mb-1" style={{ color: textPrimary }}>
+                    LONGITUD:
+                  </label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={coordenadasMapa.longitud}
+                    placeholder="Se llena desde el mapa"
+                    className="px-2 py-1.5 rounded w-full font-mono"
+                    style={{
+                      backgroundColor: theme === 'dark' ? '#1A1A1A' : '#FFFFFF',
+                      color: textPrimary,
+                      border: `1px solid ${borderColor}`
+                    }}
+                  />
+                </div>
+              </div>
+              {formData.direccionRiesgo && (
+                <p className="mt-3 text-sm" style={{ color: textSecondary }}>
+                  <span className="font-semibold" style={{ color: textPrimary }}>Dirección: </span>
+                  {formData.direccionRiesgo}
+                </p>
+              )}
+              {!coordenadasMapa.latitud && !coordenadasMapa.longitud && (
+                <p className="mt-2 text-xs" style={{ color: textSecondary }}>
+                  Mueva el marcador, busque una dirección o pulse «Ubicación» para cargar las coordenadas.
+                </p>
+              )}
+            </div>
+
             <MapaGoogleEarth 
               apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               coordenadasIniciales={formData.coordenadasRiesgo}

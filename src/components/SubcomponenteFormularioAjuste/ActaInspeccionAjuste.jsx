@@ -13,6 +13,7 @@ import {
 } from 'react-icons/fa';
 import Logo from '../../img/Logo.png';
 import FuncionarioService from '../../services/funcionarioService.js';
+import { normalizarFirmaClienteDataUrl } from '../../utils/normalizarFirmaImagen.js';
 
 /** Modal para que el cliente dibuje la firma (ratón o dedo) y guardarla como PNG base64 */
 function FirmaClienteModal({ open, onClose, onSave, theme }) {
@@ -272,9 +273,15 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
       return;
     }
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (ev.target?.result) {
-        onInputChange('actaClienteFirma', ev.target.result);
+    reader.onload = async (ev) => {
+      const raw = ev.target?.result;
+      if (!raw) return;
+      try {
+        const normalizada = await normalizarFirmaClienteDataUrl(String(raw));
+        onInputChange('actaClienteFirma', normalizada || raw);
+      } catch (err) {
+        console.warn('⚠️ No se pudo normalizar la firma; se usará la imagen original.', err);
+        onInputChange('actaClienteFirma', raw);
       }
     };
     reader.onerror = () => {
@@ -295,7 +302,14 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
       <FirmaClienteModal
         open={modalFirmaAbierto}
         onClose={() => setModalFirmaAbierto(false)}
-        onSave={(dataUrl) => onInputChange('actaClienteFirma', dataUrl)}
+        onSave={async (dataUrl) => {
+          try {
+            const normalizada = await normalizarFirmaClienteDataUrl(dataUrl);
+            onInputChange('actaClienteFirma', normalizada || dataUrl);
+          } catch {
+            onInputChange('actaClienteFirma', dataUrl);
+          }
+        }}
         theme={theme}
       />
 
@@ -668,17 +682,18 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
               )}
             </div>
             <p className="text-xs mb-3" style={{ color: textSecondary }}>
-              Puede dibujar la firma o subir una imagen (recomendado: PNG con fondo blanco o transparente).
+              Al subir una foto, el sistema recorta y endereza la firma automáticamente. Preferible PNG
+              o JPG nítido del trazo sobre fondo claro.
             </p>
             <div
-              className="min-h-[120px] rounded-lg border-2 flex items-center justify-center p-3"
+              className="min-h-[140px] rounded-lg border-2 flex items-center justify-center p-3"
               style={{ borderColor, backgroundColor: theme === 'dark' ? '#0f172a' : '#f8fafc' }}
             >
               {formData.actaClienteFirma ? (
                 <img
                   src={formData.actaClienteFirma}
                   alt="Firma del cliente"
-                  className="max-h-28 object-contain"
+                  className="max-h-36 w-full object-contain"
                 />
               ) : (
                 <span className="text-sm text-center" style={{ color: textSecondary }}>

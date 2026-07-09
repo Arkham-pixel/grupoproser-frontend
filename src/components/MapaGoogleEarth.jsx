@@ -628,11 +628,24 @@ setMap(mapInstance)
           </div>
         </div>
 
-        {/* Información de dirección */}
+        {/* Información de dirección y coordenadas */}
         {direccion && (
           <div className="mb-2 p-2 bg-blue-50 rounded-lg text-sm">
             <FaMapMarkerAlt className="inline mr-2 text-blue-600" />
             <span className="text-gray-700">{direccion}</span>
+          </div>
+        )}
+
+        {posicion && Number.isFinite(posicion.lat) && Number.isFinite(posicion.lng) && (
+          <div className="mb-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm sm:grid-cols-2">
+            <div>
+              <span className="font-semibold text-gray-800">Latitud: </span>
+              <span className="font-mono text-gray-700">{posicion.lat.toFixed(6)}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-gray-800">Longitud: </span>
+              <span className="font-mono text-gray-700">{posicion.lng.toFixed(6)}</span>
+            </div>
           </div>
         )}
 

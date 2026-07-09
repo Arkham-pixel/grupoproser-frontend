@@ -11,18 +11,28 @@ import {
   FaPaperclip,
   FaPhone,
   FaSearch,
+  FaEnvelopeOpenText,
+  FaBuilding,
+  FaMoneyCheckAlt,
+  FaInbox,
+  FaUserCheck,
 } from 'react-icons/fa';
 import { complexBadge, complexInput, complexLabel } from './complexFenixUi';
 
 export const ETAPAS_TRAZABILIDAD = [
+  { tipo: 'recepcionAsignacion', titulo: 'Recepción de asignación', Icon: FaInbox },
+  { tipo: 'carguePlataforma', titulo: 'Cargue y asignación interna', Icon: FaUserCheck },
   { tipo: 'contactoInicial', titulo: 'Contacto Inicial', Icon: FaPhone },
   { tipo: 'coordinacionInspeccion', titulo: 'Coordinación de Inspección', Icon: FaCalendarAlt },
   { tipo: 'inspeccion', titulo: 'Inspección', Icon: FaSearch },
   { tipo: 'solicitudDocs', titulo: 'Solicitud Docs', Icon: FaFileAlt },
   { tipo: 'informePreliminar', titulo: 'Informe Preliminar', Icon: FaChartBar },
+  { tipo: 'seguimientoDocsPendientes', titulo: 'Seguimiento docs pendientes', Icon: FaEnvelopeOpenText },
   { tipo: 'ultimoDocumento', titulo: 'Último Documento', Icon: FaPaperclip },
   { tipo: 'informeFinal', titulo: 'Informe Final', Icon: FaFileInvoice },
+  { tipo: 'seguimientoAutorizacionCompania', titulo: 'Seguimiento autorización compañía', Icon: FaBuilding },
   { tipo: 'presentacionCifras', titulo: 'Presentación de Cifras', Icon: FaChartLine },
+  { tipo: 'seguimientoDocumentosPago', titulo: 'Seguimiento docs de pago', Icon: FaMoneyCheckAlt },
   { tipo: 'envioFiniquito', titulo: 'Envío de Finiquito', Icon: FaFileInvoice },
 ];
 

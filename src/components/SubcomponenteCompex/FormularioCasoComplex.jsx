@@ -20,8 +20,9 @@ import { ComplexFormActions, ComplexFormTabs } from './FacturacionHelpers';
 import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
 import { getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
-import { calcularTotalesControlHoras, controlHorasTieneDatos } from './controlHoras/controlHorasUtils';
+import { calcularTotalesControlHoras, controlHorasTieneDatos, resolverControlHorasDesdeEnvios } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
+import { enriquecerPlantillaContactoInicial } from '../../utils/contactoInicialPlantillaCorreo.js';
 import { autoSaveService } from '../../services/autoSaveService.js';
 import {
   registerOfflineSyncHandler,
@@ -35,6 +36,10 @@ import {
   subscribeFormServerSaved,
 } from '../../services/formSyncChannel.js';
 import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig.js';
+import {
+  CAMPOS_FECHA_HORA_PROTOCOLO,
+  formatearFechaHoraParaInput,
+} from '../../utils/complexFechaHoraUtils.js';
 
 export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false }) {
   const autoguardadoEfectivo = AUTO_SAVE_ENABLED && autoGuardadoActivo;
@@ -82,6 +87,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
 
     // ...otros campos existentes...
     historialDocs: [],
+    plantillaContactoInicial: null,
     control_horas: null,
   });
 
@@ -161,6 +167,16 @@ return fechaFormateada;
     }
 return '';
   }, []);
+
+  const formatearCampoParaInput = useCallback(
+    (campo, fecha) => {
+      if (CAMPOS_FECHA_HORA_PROTOCOLO.has(campo)) {
+        return formatearFechaHoraParaInput(fecha);
+      }
+      return formatearFechaParaInput(fecha);
+    },
+    [formatearFechaParaInput]
+  );
 
   const ordenarStrings = useCallback((lista = []) => {
     return [...lista].sort((a, b) =>
@@ -276,15 +292,30 @@ setFormData(prev => {
         const fchaSeguimientoEnvioControlHorasRaw = initialData.fchaSeguimientoEnvioControlHoras || initialData.fcha_seguimiento_envio_control_horas || initialData.fecha_seguimiento_envio_control_horas || normalizados.fchaSeguimientoEnvioControlHoras;
         
 // Formatear las fechas ANTES de crear nuevoFormData
-        const fchaInfoPrelmFormateada = formatearFechaParaInput(fchaInfoPrelmRaw);
-        const fchaInfoFnalFormateada = formatearFechaParaInput(fchaInfoFnalRaw);
-        const fchaSoliDocuFormateada = formatearFechaParaInput(fchaSoliDocuRaw);
-        const fchaRepoActiFormateada = formatearFechaParaInput(fchaRepoActiRaw);
-        const fchaPresentacionCifrasFormateada = formatearFechaParaInput(fchaPresentacionCifrasRaw);
-        const fchaAceptacionCifrasAseguradoraFormateada = formatearFechaParaInput(fchaAceptacionCifrasAseguradoraRaw);
-        const fchaEnvioFiniquitoFormateada = formatearFechaParaInput(fchaEnvioFiniquitoRaw);
-        const fchaCoordInspeccionFormateada = formatearFechaParaInput(fchaCoordInspeccionRaw);
-        const fchaProgInspeccionFormateada = formatearFechaParaInput(fchaProgInspeccionRaw);
+        const fchaInfoPrelmFormateada = formatearCampoParaInput('fchaInfoPrelm', fchaInfoPrelmRaw);
+        const fchaInfoFnalFormateada = formatearCampoParaInput('fchaInfoFnal', fchaInfoFnalRaw);
+        const fchaSoliDocuFormateada = formatearCampoParaInput('fchaSoliDocu', fchaSoliDocuRaw);
+        const fchaRepoActiFormateada = formatearCampoParaInput('fchaRepoActi', fchaRepoActiRaw);
+        const fchaPresentacionCifrasFormateada = formatearCampoParaInput(
+          'fchaPresentacionCifras',
+          fchaPresentacionCifrasRaw
+        );
+        const fchaAceptacionCifrasAseguradoraFormateada = formatearCampoParaInput(
+          'fchaAceptacionCifrasAseguradora',
+          fchaAceptacionCifrasAseguradoraRaw
+        );
+        const fchaEnvioFiniquitoFormateada = formatearCampoParaInput(
+          'fchaEnvioFiniquito',
+          fchaEnvioFiniquitoRaw
+        );
+        const fchaCoordInspeccionFormateada = formatearCampoParaInput(
+          'fchaCoordInspeccion',
+          fchaCoordInspeccionRaw
+        );
+        const fchaProgInspeccionFormateada = formatearCampoParaInput(
+          'fchaProgInspeccion',
+          fchaProgInspeccionRaw
+        );
         const fchaControlHorasFormateada = formatearFechaParaInput(fchaControlHorasRaw);
         const fchaEnvioControlHorasFormateada = formatearFechaParaInput(fchaEnvioControlHorasRaw);
         const fchaRecibidoControlHorasFormateada = formatearFechaParaInput(fchaRecibidoControlHorasRaw);
@@ -297,12 +328,20 @@ const nuevoFormData = {
           historialDocs: normalizarHistorialDocs(initialData.historialDocs),
           // IMPORTANTE: Las fechas formateadas deben ir DESPUÉS del spread para sobrescribir las fechas ISO
           // Convertir fechas ISO a formato yyyy-MM-dd para inputs de tipo date
-          fchaAsgncion: formatearFechaParaInput(normalizados.fchaAsgncion || initialData.fchaAsgncion),
+          fchaAsgncion: formatearCampoParaInput(
+            'fchaAsgncion',
+            normalizados.fchaAsgncion || initialData.fchaAsgncion
+          ),
           fchaSinstro: formatearFechaParaInput(normalizados.fchaSinstro || initialData.fchaSinstro),
-          fchaInspccion: formatearFechaParaInput(normalizados.fchaInspccion || initialData.fchaInspccion),
-          fchaContIni: formatearFechaParaInput(normalizados.fchaContIni || initialData.fchaContIni),
-          // Convertir fechas de trazabilidad a formato yyyy-MM-dd para inputs de tipo date
-          // Estas fechas DEBEN sobrescribir las que vienen en normalizados (que están en formato ISO)
+          fchaInspccion: formatearCampoParaInput(
+            'fchaInspccion',
+            normalizados.fchaInspccion || initialData.fchaInspccion
+          ),
+          fchaContIni: formatearCampoParaInput(
+            'fchaContIni',
+            normalizados.fchaContIni || initialData.fchaContIni
+          ),
+          // Fechas de trazabilidad con hora para medición precisa del protocolo
           fchaSoliDocu: fchaSoliDocuFormateada,
           fchaInfoPrelm: fchaInfoPrelmFormateada,
           fchaInfoFnal: fchaInfoFnalFormateada,
@@ -333,6 +372,7 @@ const nuevoFormData = {
           // Cargar descripcionEstado y observacionesPendientes desde initialData
           descripcionEstado: initialData.descripcionEstado || normalizados.descripcionEstado || '',
           observacionesPendientes: initialData.observacionesPendientes || normalizados.observacionesPendientes || '',
+          plantillaContactoInicial: initialData.plantillaContactoInicial || normalizados.plantillaContactoInicial || null,
           // Campos de facturación - asegurar que se carguen desde initialData
           numero_factura: initialData.numero_factura || initialData.nmroFactra || normalizados.nmroFactra || '',
           valor_servicio: initialData.valor_servicio || initialData.vlorServcios || normalizados.vlorServcios || '',
@@ -362,7 +402,7 @@ const nuevoFormData = {
             return initialData.adjunto_control_horas || '';
           })(),
           control_horas: (() => {
-            const ch = initialData.control_horas || normalizados.control_horas;
+            const ch = resolverControlHorasDesdeEnvios(initialData) || normalizados.control_horas;
             return controlHorasTieneDatos(ch) ? ch : null;
           })(),
           estado: resolverEstadoParaSelect({ ...initialData, ...normalizados }, estados),
@@ -459,7 +499,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
           });
       }
     }
-  }, [initialData, normalizarHistorialDocs, formatearFechaParaInput, ordenarPorLabel]);
+  }, [initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel]);
 
   // Cargar datos frescos del caso desde la API.
   // - Si hay ID en URL (enlace directo), usar ese.
@@ -517,15 +557,30 @@ if (casoData && casoData._id) {
             });
 
             // Formatear fechas
-            const fchaInfoPrelmFormateada = formatearFechaParaInput(normalizados.fchaInfoPrelm || casoData.fcha_info_prelm);
-            const fchaInfoFnalFormateada = formatearFechaParaInput(normalizados.fchaInfoFnal || casoData.fcha_info_fnal);
-            const fchaSoliDocuFormateada = formatearFechaParaInput(normalizados.fchaSoliDocu || casoData.fcha_soli_docu);
-            const fchaRepoActiFormateada = formatearFechaParaInput(normalizados.fchaRepoActi || casoData.fcha_repo_acti);
-            const fchaPresentacionCifrasFormateada = formatearFechaParaInput(normalizados.fchaPresentacionCifras || casoData.fcha_presentacion_cifras);
-            const fchaAceptacionCifrasAseguradoraFormateada = formatearFechaParaInput(normalizados.fchaAceptacionCifrasAseguradora || casoData.fcha_aceptacion_cifras_aseguradora);
-            const fchaEnvioFiniquitoFormateada = formatearFechaParaInput(normalizados.fchaEnvioFiniquito || casoData.fcha_envio_finiquito);
-            const fchaCoordInspeccionFormateada = formatearFechaParaInput(normalizados.fchaCoordInspeccion || casoData.fcha_coord_inspeccion);
-            const fchaProgInspeccionFormateada = formatearFechaParaInput(normalizados.fchaProgInspeccion || casoData.fcha_prog_inspeccion);
+            const fchaInfoPrelmFormateada = formatearCampoParaInput('fchaInfoPrelm', normalizados.fchaInfoPrelm || casoData.fcha_info_prelm);
+            const fchaInfoFnalFormateada = formatearCampoParaInput('fchaInfoFnal', normalizados.fchaInfoFnal || casoData.fcha_info_fnal);
+            const fchaSoliDocuFormateada = formatearCampoParaInput('fchaSoliDocu', normalizados.fchaSoliDocu || casoData.fcha_soli_docu);
+            const fchaRepoActiFormateada = formatearCampoParaInput('fchaRepoActi', normalizados.fchaRepoActi || casoData.fcha_repo_acti);
+            const fchaPresentacionCifrasFormateada = formatearCampoParaInput(
+              'fchaPresentacionCifras',
+              normalizados.fchaPresentacionCifras || casoData.fcha_presentacion_cifras
+            );
+            const fchaAceptacionCifrasAseguradoraFormateada = formatearCampoParaInput(
+              'fchaAceptacionCifrasAseguradora',
+              normalizados.fchaAceptacionCifrasAseguradora || casoData.fcha_aceptacion_cifras_aseguradora
+            );
+            const fchaEnvioFiniquitoFormateada = formatearCampoParaInput(
+              'fchaEnvioFiniquito',
+              normalizados.fchaEnvioFiniquito || casoData.fcha_envio_finiquito
+            );
+            const fchaCoordInspeccionFormateada = formatearCampoParaInput(
+              'fchaCoordInspeccion',
+              normalizados.fchaCoordInspeccion || casoData.fcha_coord_inspeccion
+            );
+            const fchaProgInspeccionFormateada = formatearCampoParaInput(
+              'fchaProgInspeccion',
+              normalizados.fchaProgInspeccion || casoData.fcha_prog_inspeccion
+            );
             const fchaControlHorasFormateada = formatearFechaParaInput(normalizados.fchaControlHoras || casoData.fcha_control_horas || casoData.fecha_control_horas);
             const fchaEnvioControlHorasFormateada = formatearFechaParaInput(normalizados.fchaEnvioControlHoras || casoData.fcha_envio_control_horas || casoData.fecha_envio_control_horas);
             const fchaRecibidoControlHorasFormateada = formatearFechaParaInput(normalizados.fchaRecibidoControlHoras || casoData.fcha_recibido_control_horas || casoData.fecha_recibido_control_horas);
@@ -536,10 +591,10 @@ if (casoData && casoData._id) {
               ...normalizados,
               _id: casoData._id || casoData.id || prev._id, // Asegurar que _id se incluya
               historialDocs: normalizarHistorialDocs(casoData.historialDocs),
-              fchaAsgncion: formatearFechaParaInput(casoData.fchaAsgncion),
+              fchaAsgncion: formatearCampoParaInput('fchaAsgncion', casoData.fchaAsgncion),
               fchaSinstro: formatearFechaParaInput(casoData.fchaSinstro),
-              fchaInspccion: formatearFechaParaInput(casoData.fchaInspccion),
-              fchaContIni: formatearFechaParaInput(casoData.fchaContIni),
+              fchaInspccion: formatearCampoParaInput('fchaInspccion', casoData.fchaInspccion),
+              fchaContIni: formatearCampoParaInput('fchaContIni', casoData.fchaContIni),
               fchaSoliDocu: fchaSoliDocuFormateada,
               fchaInfoPrelm: fchaInfoPrelmFormateada,
               fchaInfoFnal: fchaInfoFnalFormateada,
@@ -603,7 +658,7 @@ if (casoData && casoData._id) {
                 return casoData.adjunto_control_horas || '';
               })(),
               control_horas: (() => {
-                const ch = casoData.control_horas || normalizados.control_horas;
+                const ch = resolverControlHorasDesdeEnvios(casoData) || normalizados.control_horas;
                 return controlHorasTieneDatos(ch) ? ch : null;
               })(),
               estado: resolverEstadoParaSelect(casoData, estados),
@@ -655,7 +710,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
     };
 
     cargarCasoPorId();
-  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, ordenarPorLabel, forceReloadCaso]);
+  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, forceReloadCaso]);
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID ni initialData)
   // IMPORTANTE: No cargar si tiene nmroAjste (es un caso ya guardado)
@@ -780,6 +835,16 @@ if (name === 'estado') {
       };
     });
   }, [estados]);
+
+  const handlePlantillaContactoChange = useCallback((plantilla) => {
+    setFormData((prev) => ({
+      ...prev,
+      plantillaContactoInicial: {
+        ...(prev.plantillaContactoInicial || {}),
+        ...plantilla,
+      },
+    }));
+  }, []);
 
   // Handler para selects especiales (ejemplo: ciudad)
   const handleCiudadChange = (selectedOption) => {
@@ -1126,6 +1191,47 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
     }
   }, [formData, initialData, construirUrlArchivo]);
 
+  const persistirControlHorasEnServidor = useCallback(
+    async (controlHoras, totales) => {
+      const casoId = formData._id || initialData?._id || id;
+      if (!casoId || !controlHorasTieneDatos(controlHoras)) return false;
+
+      try {
+        const payload = {
+          control_horas: controlHoras,
+          fecha_control_horas:
+            formData.fecha_control_horas ||
+            formData.fcha_control_horas ||
+            new Date().toISOString().slice(0, 10),
+        };
+
+        if (totales?.subtotal_honorarios != null) {
+          payload.valor_servicio = Math.round(totales.subtotal_honorarios);
+        }
+        if (totales?.gastos != null) {
+          payload.valor_gastos = Math.round(totales.gastos);
+        }
+
+        const respuesta = await updateCasoComplex(casoId, payload);
+        datosInicialesAutoSaveRef.current = {
+          ...(datosInicialesAutoSaveRef.current || {}),
+          control_horas: respuesta?.control_horas || controlHoras,
+        };
+        return true;
+      } catch (error) {
+        console.error('❌ Error persistiendo control de horas:', error);
+        return false;
+      }
+    },
+    [
+      formData._id,
+      formData.fecha_control_horas,
+      formData.fcha_control_horas,
+      initialData?._id,
+      id,
+    ]
+  );
+
   // Función para enviar notificación de control de horas al gerente seleccionado
   const handleEnviarControlHoras = useCallback(async (gerenteSeleccionado) => {
     try {
@@ -1242,9 +1348,24 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
           : `✅ Notificación enviada exitosamente a ${nombreGerente}`;
         if (resultado.envioRegistrado) {
           mensaje += '\n\n📋 Quedó registrado en la bandeja de facturación del jefe.';
+          if (tieneControlHorasEnSistema) {
+            datosInicialesAutoSaveRef.current = {
+              ...(datosInicialesAutoSaveRef.current || {}),
+              control_horas: formData.control_horas,
+            };
+          }
         } else if (resultado.motivoNoRegistro === 'caso_no_encontrado') {
           mensaje +=
             '\n\n⚠️ Guarde el caso en el sistema (con número de ajuste) para que el jefe lo vea en su bandeja.';
+        } else if (tieneControlHorasEnSistema && casoId) {
+          const persistido = await persistirControlHorasEnServidor(
+            formData.control_horas,
+            resumenControlHoras
+          );
+          if (!persistido) {
+            mensaje +=
+              '\n\n⚠️ El correo se envió pero no se pudo guardar el control de horas en el caso. Use Guardar en el formulario.';
+          }
         }
         alert(mensaje);
       } else {
@@ -1255,7 +1376,7 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
       alert(`❌ Error al enviar la notificación: ${error.message}`);
       throw error;
     }
-  }, [formData, initialData]);
+  }, [formData, initialData, persistirControlHorasEnServidor]);
 
   const createDropzone = (tipoDocumento, campoFormData) =>
     useDropzone({
@@ -2454,7 +2575,8 @@ setFormData(prev => ({
       anxoAutorizacion: pick('anxoAutorizacion', 'anxo_autorizacion'),
 
       // Fechas adicionales - USAR NOMBRES EXACTOS DEL SCHEMA (snake_case)
-      fcha_ult_segui: pick('fcha_ult_segui', 'fchaUltSegui'),
+      fchaUltSegui: pick('fchaUltSegui', 'fcha_ult_segui'),
+      fcha_ult_segui: pick('fchaUltSegui', 'fcha_ult_segui'),
       fcha_act_segui: pick('fcha_act_segui', 'fchaActSegui'),
       fcha_finqto_indem: pick('fcha_finqto_indem', 'fchaFinqtoIndem'),
       fcha_factra: pick('fcha_factra', 'fchaFactra', 'fecha_factura'),
@@ -2506,7 +2628,17 @@ setFormData(prev => ({
       adjuntoObservacionesCliente: formData.adjunto_observaciones_cliente,
       fechaObservacionesCliente: formData.fecha_observaciones_cliente,
 
-      historialDocs: formData.historialDocs
+      historialDocs:
+        Array.isArray(formData.historialDocs) && formData.historialDocs.length > 0
+          ? formData.historialDocs
+          : undefined,
+      plantillaContactoInicial: formData.plantillaContactoInicial
+        ? enriquecerPlantillaContactoInicial(
+            formData.plantillaContactoInicial,
+            formData,
+            localStorage.getItem('nombre') || localStorage.getItem('login') || ''
+          )
+        : undefined,
     };
 
     // Eliminar claves sin valor definido para evitar sobreescribir con undefined
@@ -2828,6 +2960,10 @@ clearSavedData();
      } else if (!controlHorasTieneDatos(resultado.control_horas)) {
        delete resultado.control_horas;
      }
+
+     if (Array.isArray(resultado.historialDocs) && resultado.historialDocs.length === 0) {
+       delete resultado.historialDocs;
+     }
  
      return resultado;
   };
@@ -3041,8 +3177,11 @@ clearSavedData();
           <Trazabilidad
             formData={formData}
             handleChange={handleChange}
+            onPlantillaContactoChange={handlePlantillaContactoChange}
             onSelectFiles={handleDocumentDrop}
             historialDocs={formData.historialDocs}
+            updateHistorialDocs={updateHistorialDocs}
+            construirUrlArchivo={construirUrlArchivo}
             cargandoAdjuntos={cargandoAdjuntos}
             errorAdjuntos={errorAdjuntos}
           />
@@ -3082,6 +3221,7 @@ clearSavedData();
             getInputPropsControlHoras={dropzonePropsControlHoras.getInputProps}
             isDragActiveControlHoras={dropzonePropsControlHoras.isDragActive}
             onEnviarControlHoras={handleEnviarControlHoras}
+            onPersistirControlHoras={persistirControlHorasEnServidor}
             getRootPropsEvidencia={dropzonePropsEvidencia.getRootProps}
             getInputPropsEvidencia={dropzonePropsEvidencia.getInputProps}
             isDragActiveEvidencia={dropzonePropsEvidencia.isDragActive}

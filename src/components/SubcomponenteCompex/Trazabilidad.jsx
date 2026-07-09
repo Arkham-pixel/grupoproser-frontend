@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useMemo, memo, useEffect } from 'react';
-import { FaFileAlt } from 'react-icons/fa';
+import { FaFileAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { formatearFechaUI } from '../../utils/fechaUtils';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
@@ -20,6 +20,13 @@ import {
   complexSubsectionTitle,
   complexTableBtnNeutral,
 } from './complexFenixUi';
+import AlertasCasoPanel from './AlertasCasoPanel.jsx';
+import PlantillaCorreoContactoInicial from './PlantillaCorreoContactoInicial.jsx';
+import SeguimientoDocumentosPendientes from './SeguimientoDocumentosPendientes.jsx';
+import SeguimientoAutorizacionCompania from './SeguimientoAutorizacionCompania.jsx';
+import SeguimientoDocumentosPago from './SeguimientoDocumentosPago.jsx';
+import { calcularDiasInfoSeguimientoTrazabilidad } from '../../utils/seguimientoProtocoloUtils.js';
+import { parsearFechaHoraComplex } from '../../utils/complexFechaHoraUtils.js';
 import {
   ETAPAS_TRAZABILIDAD,
   EstadoGeneralTrazabilidad,
@@ -30,6 +37,34 @@ import {
   trazabilidadInputClass,
   trazabilidadLabelClass,
 } from './trazabilidadFenixUi';
+import { useProtocoloSiniestros } from '../../hooks/useProtocoloSiniestros.js';
+import {
+  etiquetaLimiteTipoTrazabilidad,
+  PROTOCOLO_DOCUMENTO,
+  PROTOCOLO_OBJETIVO,
+  PROTOCOLO_VERSION,
+  tituloEtapaConFase,
+} from '../../config/protocoloSiniestrosDefaults.js';
+
+const AVISO_PROTOCOLO_VISIBLE_MS = 15000;
+const claveAvisoProtocoloTrazabilidad = () =>
+  `complex_aviso_trazabilidad_${PROTOCOLO_VERSION}`;
+
+function avisoProtocoloYaOculto() {
+  try {
+    return localStorage.getItem(claveAvisoProtocoloTrazabilidad()) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function marcarAvisoProtocoloOculto() {
+  try {
+    localStorage.setItem(claveAvisoProtocoloTrazabilidad(), '1');
+  } catch {
+    /* ignore */
+  }
+}
 
 const ArchivoDropZone = ({
   tipo,
@@ -103,9 +138,12 @@ const ArchivoDropZone = ({
 
 const Trazabilidad = memo(function Trazabilidad({ 
   formData, 
-  handleChange, 
+  handleChange,
+  onPlantillaContactoChange,
   onSelectFiles,
   historialDocs,
+  updateHistorialDocs,
+  construirUrlArchivo,
   cargandoAdjuntos = {},
   errorAdjuntos = {}
 }) {
@@ -129,16 +167,44 @@ const Trazabilidad = memo(function Trazabilidad({
     []
   );
   const [bandejasAbiertas, setBandejasAbiertas] = useState({
+    recepcionAsignacion: false,
+    carguePlataforma: false,
     contactoInicial: false,
     coordinacionInspeccion: false,
     inspeccion: false,
     solicitudDocs: false,
+    seguimientoDocsPendientes: false,
     informePreliminar: false,
     informeFinal: false,
     ultimoDocumento: false,
+    seguimientoAutorizacionCompania: false,
     presentacionCifras: false,
+    seguimientoDocumentosPago: false,
     envioFiniquito: false
   });
+
+  const [mostrarAvisoProtocolo, setMostrarAvisoProtocolo] = useState(
+    () => !avisoProtocoloYaOculto()
+  );
+  const [avisoProtocoloSaliendo, setAvisoProtocoloSaliendo] = useState(false);
+
+  const ocultarAvisoProtocolo = useCallback(() => {
+    setAvisoProtocoloSaliendo(true);
+    window.setTimeout(() => {
+      setMostrarAvisoProtocolo(false);
+      marcarAvisoProtocoloOculto();
+    }, 320);
+  }, []);
+
+  useEffect(() => {
+    if (!mostrarAvisoProtocolo) return undefined;
+
+    const temporizador = window.setTimeout(() => {
+      ocultarAvisoProtocolo();
+    }, AVISO_PROTOCOLO_VISIBLE_MS);
+
+    return () => window.clearTimeout(temporizador);
+  }, [mostrarAvisoProtocolo, ocultarAvisoProtocolo]);
 
   const toggleBandeja = useCallback((bandeja) => {
     setBandejasAbiertas(prev => ({
@@ -147,65 +213,37 @@ const Trazabilidad = memo(function Trazabilidad({
     }));
   }, []);
 
-  // Tiempos límite según las nuevas reglas:
-  // C.INICIAL: 12 horas hábiles desde asignación
-  // Coordinación de Inspección: Sin tiempo límite (solo informativo)
-  // Inspección: 24 horas desde fecha programada de inspección (o asignación si no hay coordinación)
-  // Solicitud de documentos: 24 horas después de inspección
-  // Informe preliminar: 24 horas después de inspección
-  // Último documento: 3 días después del informe preliminar
-  // Informe final: 3 días después del último documento
-  // Presentación de cifras: 24 horas después de último documento
-  // Envío de finiquito: 24 horas después de último documento
-  const tiemposLimite = {
-    contactoInicial: 0.5,  // 12 horas hábiles (0.5 días aproximado)
-    coordinacionInspeccion: null, // Sin tiempo límite
-    inspeccion: 1,         // 24 horas (1 día)
-    solicitudDocs: 1,      // 24 horas después de inspección
-    informePreliminar: 1,  // 24 horas después de inspección
-    ultimoDocumento: 3,    // 3 días después del informe preliminar
-    informeFinal: 3,       // 3 días después del último documento
-    presentacionCifras: 1, // 24 horas después de último documento
-    envioFiniquito: 1      // 24 horas después de último documento
-  };
+  const { tiemposLimite, protocolo } = useProtocoloSiniestros();
 
   // Mapeo de tipos a campos de fecha en formData
   // NOTA: Cada fecha puede colocarse independientemente, sin requerir fechas o documentos anteriores
   const tipoAFecha = {
+    recepcionAsignacion: 'fchaAsgncion',
+    carguePlataforma: 'fchaAsgncion',
     contactoInicial: 'fchaContIni',
     coordinacionInspeccion: 'fchaCoordInspeccion', // Fecha de llamada
     inspeccion: 'fchaInspccion',
     solicitudDocs: 'fchaSoliDocu',
+    seguimientoDocsPendientes: 'fchaUltSegui',
     informePreliminar: 'fchaInfoPrelm',
     informeFinal: 'fchaInfoFnal',
+    seguimientoAutorizacionCompania: 'fchaUltSegui',
     ultimoDocumento: 'fchaRepoActi',
     presentacionCifras: 'fchaPresentacionCifras',
+    seguimientoDocumentosPago: 'fchaUltSegui',
     envioFiniquito: 'fchaEnvioFiniquito'
   };
 
-  // Función auxiliar para parsear fechas
-  const parsearFecha = (fechaStr) => {
-        if (!fechaStr) return null;
-        
-        if (typeof fechaStr === 'string' && fechaStr.includes('T')) {
-          const [fechaPart] = fechaStr.split('T');
-          const [year, month, day] = fechaPart.split('-');
-          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        }
-        
-        if (typeof fechaStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(fechaStr)) {
-          const [year, month, day] = fechaStr.split('-');
-          return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-        }
-        
-        const fecha = new Date(fechaStr);
-        if (isNaN(fecha.getTime())) return null;
-        return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
-  };
+  // Función auxiliar para parsear fechas con hora (hitos de protocolo)
+  const parsearFecha = (fechaStr) => parsearFechaHoraComplex(fechaStr);
 
   // Función para obtener la fecha de referencia según el tipo de documento
   const obtenerFechaReferencia = (tipo) => {
     switch (tipo) {
+      case 'recepcionAsignacion':
+      case 'carguePlataforma':
+        return parsearFecha(formData.fchaAsgncion);
+
       case 'contactoInicial':
         // Se calcula desde fecha de asignación
         return parsearFecha(formData.fchaAsgncion);
@@ -219,14 +257,38 @@ const Trazabilidad = memo(function Trazabilidad({
         return parsearFecha(formData.fchaProgInspeccion) || parsearFecha(formData.fchaAsgncion);
       
       case 'solicitudDocs':
-      case 'informePreliminar':
-        // Preferimos fecha de inspección. Si no existe, usamos eslabones
-        // anteriores de la cadena para que el conteo no quede "Sin docs".
         return (
           parsearFecha(formData.fchaInspccion) ||
           parsearFecha(formData.fchaCoordInspeccion) ||
-          parsearFecha(formData.fchaAsgncion) ||
-          parsearFecha(formData.fchaInfoPrelm)
+          parsearFecha(formData.fchaAsgncion)
+        );
+
+      case 'seguimientoDocsPendientes': {
+        const docsSeg = (historialDocs || []).filter(
+          (d) => d.tipo === 'seguimientoDocsPendientes' || d.categoria === 'seguimientoDocsPendientes'
+        );
+        if (docsSeg.length >= 2) {
+          const fechas = docsSeg
+            .map((d) => parsearFecha(d.fecha || d.fechaSubida))
+            .filter(Boolean)
+            .sort((a, b) => b.getTime() - a.getTime());
+          if (fechas[1]) return fechas[1];
+        }
+        return (
+          parsearFecha(formData.fchaUltSegui) ||
+          parsearFecha(formData.fchaSoliDocu) ||
+          parsearFecha(formData.fchaInspccion) ||
+          parsearFecha(formData.fchaAsgncion)
+        );
+      }
+
+      case 'informePreliminar':
+        // Protocolo: desde solicitud de documentos; si no hay, desde inspección.
+        return (
+          parsearFecha(formData.fchaSoliDocu) ||
+          parsearFecha(formData.fchaInspccion) ||
+          parsearFecha(formData.fchaContIni) ||
+          parsearFecha(formData.fchaAsgncion)
         );
 
       case 'ultimoDocumento':
@@ -240,19 +302,58 @@ const Trazabilidad = memo(function Trazabilidad({
         );
 
       case 'informeFinal':
-        // Cadena: último documento → preliminar → inspección → asignación → propia.
         return (
           parsearFecha(formData.fchaRepoActi) ||
           parsearFecha(formData.fchaInfoPrelm) ||
           parsearFecha(formData.fchaInspccion) ||
-          parsearFecha(formData.fchaAsgncion) ||
-          parsearFecha(formData.fchaInfoFnal)
+          parsearFecha(formData.fchaAsgncion)
         );
-      
+
+      case 'seguimientoAutorizacionCompania': {
+        const docsAut = (historialDocs || []).filter(
+          (d) =>
+            d.tipo === 'seguimientoAutorizacionCompania' ||
+            d.categoria === 'seguimientoAutorizacionCompania'
+        );
+        if (docsAut.length >= 2) {
+          const fechas = docsAut
+            .map((d) => parsearFecha(d.fecha || d.fechaSubida))
+            .filter(Boolean)
+            .sort((a, b) => b.getTime() - a.getTime());
+          if (fechas[1]) return fechas[1];
+        }
+        return (
+          parsearFecha(formData.fchaUltSegui) ||
+          parsearFecha(formData.fchaInfoFnal) ||
+          parsearFecha(formData.fchaRepoActi)
+        );
+      }
+
       case 'presentacionCifras':
       case 'envioFiniquito':
-        // Ambos se calculan desde fecha del último documento
-        return parsearFecha(formData.fchaRepoActi);
+        return (
+          parsearFecha(formData.fchaAceptacionCifrasAseguradora) ||
+          parsearFecha(formData.fchaRepoActi)
+        );
+
+      case 'seguimientoDocumentosPago': {
+        const docsPago = (historialDocs || []).filter(
+          (d) =>
+            d.tipo === 'seguimientoDocumentosPago' || d.categoria === 'seguimientoDocumentosPago'
+        );
+        if (docsPago.length >= 2) {
+          const fechas = docsPago
+            .map((d) => parsearFecha(d.fecha || d.fechaSubida))
+            .filter(Boolean)
+            .sort((a, b) => b.getTime() - a.getTime());
+          if (fechas[1]) return fechas[1];
+        }
+        return (
+          parsearFecha(formData.fchaUltSegui) ||
+          parsearFecha(formData.fchaAceptacionCifrasAseguradora) ||
+          parsearFecha(formData.fchaPresentacionCifras)
+        );
+      }
       
       default:
         return null;
@@ -261,6 +362,85 @@ const Trazabilidad = memo(function Trazabilidad({
 
   // Función para calcular días transcurridos basándose en fechas de referencia específicas
   const calcularDiasTranscurridos = (tipo) => {
+    if (tipo === 'recepcionAsignacion') {
+      const fechaAsignacion = parsearFecha(formData.fchaAsgncion);
+      if (!fechaAsignacion) return null;
+      return {
+        dias: 0,
+        horas: 0,
+        diasRetraso: 0,
+        tiempoLimite: null,
+        fecha: fechaAsignacion,
+        fechaReferencia: fechaAsignacion,
+        documentoAnterior: false,
+        esReciente: true,
+        esUrgente: false,
+        tieneDocumentos: false,
+        etiquetaEstado: `Recibido ${fechaAsignacion.toLocaleDateString('es-CO')}`,
+      };
+    }
+
+    if (tipo === 'carguePlataforma') {
+      const fechaAsignacion = parsearFecha(formData.fchaAsgncion);
+      if (!fechaAsignacion) return null;
+
+      const codigoResponsable =
+        formData.codiRespnsble ?? formData.codi_responble ?? formData.responsable;
+      const tieneAjustador =
+        codigoResponsable &&
+        String(codigoResponsable).trim() !== '' &&
+        String(codigoResponsable).toLowerCase() !== 'sin asignar';
+
+      if (tieneAjustador) {
+        return {
+          dias: 0,
+          horas: 0,
+          diasRetraso: 0,
+          tiempoLimite: 0.5,
+          fecha: fechaAsignacion,
+          fechaReferencia: fechaAsignacion,
+          documentoAnterior: false,
+          esReciente: true,
+          esUrgente: false,
+          tieneDocumentos: false,
+          etiquetaEstado: 'Ajustador asignado',
+        };
+      }
+
+      const ahora = new Date();
+      const diferenciaHoras = (ahora.getTime() - fechaAsignacion.getTime()) / (1000 * 3600);
+      const tiempoLimite = 0.5;
+      const diasRetraso = diferenciaHoras > tiempoLimite * 24 ? (diferenciaHoras / 24) - tiempoLimite : 0;
+
+      return {
+        dias: diferenciaHoras / 24,
+        horas: diferenciaHoras,
+        diasRetraso,
+        tiempoLimite,
+        fecha: null,
+        fechaReferencia: fechaAsignacion,
+        documentoAnterior: false,
+        esReciente: diasRetraso === 0,
+        esUrgente: diasRetraso > 0,
+        tieneDocumentos: false,
+        mostrarHoras: true,
+        etiquetaEstado: 'Sin ajustador asignado',
+      };
+    }
+
+    if (
+      tipo === 'seguimientoDocsPendientes' ||
+      tipo === 'seguimientoAutorizacionCompania' ||
+      tipo === 'seguimientoDocumentosPago'
+    ) {
+      return calcularDiasInfoSeguimientoTrazabilidad({
+        tipoHistorial: tipo,
+        formData,
+        historialDocs,
+        protocolo,
+      });
+    }
+
     // Obtener la fecha de referencia según el tipo de documento
     const fechaReferencia = obtenerFechaReferencia(tipo);
     if (!fechaReferencia) {
@@ -284,7 +464,11 @@ const Trazabilidad = memo(function Trazabilidad({
       const diferenciaDias = diferenciaHoras / 24;
       
       // Obtener tiempo límite para este tipo de documento
-      const tiempoLimite = tiemposLimite[tipo];
+      let tiempoLimite = tiemposLimite[tipo];
+      if (tipo === 'seguimientoDocsPendientes') {
+        const seg = protocolo.seguimientosRecurrentes?.find((s) => s.id === 'seguimientoDocumentos');
+        tiempoLimite = seg?.intervaloDias ?? 15;
+      }
       
       // Si no tiene tiempo límite (como coordinacionInspeccion), no calcular retraso
       if (tiempoLimite === null || tiempoLimite === undefined) {
@@ -306,8 +490,14 @@ const Trazabilidad = memo(function Trazabilidad({
       // Calcular retraso (si la fecha del documento excede el tiempo límite)
       const diasRetraso = diferenciaDias > tiempoLimite ? diferenciaDias - tiempoLimite : 0;
       
-      // Para contacto inicial e inspección, mostrar horas si es menos de 1 día
-      const mostrarHoras = (tipo === 'contactoInicial' || tipo === 'inspeccion' || tipo === 'coordinacionInspeccion') && diferenciaDias < 1;
+      // Para plazos en horas, mostrar horas si el transcurrido es menor a 1 día.
+      const mostrarHoras =
+        (tipo === 'contactoInicial' ||
+          tipo === 'inspeccion' ||
+          tipo === 'coordinacionInspeccion' ||
+          tipo === 'solicitudDocs' ||
+          tipo === 'informePreliminar') &&
+        diferenciaDias < 1;
       
       return {
         dias: diferenciaDias >= 0 ? diferenciaDias : 0,
@@ -347,7 +537,14 @@ const Trazabilidad = memo(function Trazabilidad({
     const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
     const diferenciaDias = diferenciaHoras / 24;
     
-    const tiempoLimite = tiemposLimite[tipo] || 1;
+    const tiempoLimite =
+      tipo === 'seguimientoDocsPendientes'
+        ? (protocolo.seguimientosRecurrentes?.find((s) => s.id === 'seguimientoDocumentos')?.intervaloDias ?? 15)
+        : tipo === 'seguimientoAutorizacionCompania'
+          ? (protocolo.seguimientosRecurrentes?.find((s) => s.id === 'seguimientoAutorizacion')?.intervaloDias ?? 5)
+          : tipo === 'seguimientoDocumentosPago'
+            ? (protocolo.seguimientosRecurrentes?.find((s) => s.id === 'seguimientoPago')?.intervaloDias ?? 15)
+            : tiemposLimite[tipo] || 1;
     const diasRetraso = diferenciaDias > tiempoLimite ? diferenciaDias - tiempoLimite : 0;
     
     const mostrarHoras = (tipo === 'contactoInicial' || tipo === 'inspeccion') && diferenciaDias < 1;
@@ -534,6 +731,10 @@ const Trazabilidad = memo(function Trazabilidad({
         return doc.tipo === 'inspeccion' || doc.categoria === 'inspeccion';
       } else if (tipo === 'solicitudDocs') {
         return doc.tipo === 'solicitudDocs' || doc.categoria === 'solicitudDocs';
+      } else if (tipo === 'seguimientoDocsPendientes') {
+        return doc.tipo === 'seguimientoDocsPendientes' || doc.categoria === 'seguimientoDocsPendientes';
+      } else if (tipo === 'seguimientoAutorizacionCompania') {
+        return doc.tipo === 'seguimientoAutorizacionCompania' || doc.categoria === 'seguimientoAutorizacionCompania';
       } else if (tipo === 'informePreliminar') {
         return doc.tipo === 'informePreliminar' || doc.categoria === 'informePreliminar';
       } else if (tipo === 'informeFinal') {
@@ -542,6 +743,8 @@ const Trazabilidad = memo(function Trazabilidad({
         return doc.tipo === 'ultimoDocumento' || doc.categoria === 'ultimoDocumento';
       } else if (tipo === 'presentacionCifras') {
         return doc.tipo === 'presentacionCifras' || doc.categoria === 'presentacionCifras';
+      } else if (tipo === 'seguimientoDocumentosPago') {
+        return doc.tipo === 'seguimientoDocumentosPago' || doc.categoria === 'seguimientoDocumentosPago';
       } else if (tipo === 'envioFiniquito') {
         return doc.tipo === 'envioFiniquito' || doc.categoria === 'envioFiniquito';
       }
@@ -757,8 +960,8 @@ const Trazabilidad = memo(function Trazabilidad({
     );
   };
 
-  const BandejaDesplegable = memo(({ titulo, bandeja, children, Icon, tipoDocumento, isOpen, onToggle }) => {
-    const diasInfo = useMemo(() => calcularDiasTranscurridos(tipoDocumento), [tipoDocumento, historialDocs]);
+  const BandejaDesplegable = memo(({ titulo, bandeja, children, Icon, tipoDocumento, isOpen, onToggle, ocultarDocumentosSubidos = false }) => {
+    const diasInfo = calcularDiasTranscurridos(tipoDocumento);
     
     return (
       <div className={`${complexCard} mb-3 overflow-hidden p-0`}>
@@ -773,8 +976,13 @@ const Trazabilidad = memo(function Trazabilidad({
             <TrazabilidadIconoEtapa Icon={Icon} />
             <div className="min-w-0">
               <h3 className="font-heading text-base font-bold text-gray-900 dark:text-white">
-                {titulo}
+                {tituloEtapaConFase(tipoDocumento, titulo)}
               </h3>
+              {etiquetaLimiteTipoTrazabilidad(tipoDocumento, protocolo) && (
+                <p className={`${complexHint} mt-0.5`}>
+                  Plazo protocolo: {etiquetaLimiteTipoTrazabilidad(tipoDocumento, protocolo)}
+                </p>
+              )}
               {diasInfo && (
                 <div className="mt-1 flex items-center gap-2">
                   <TrazabilidadIndicadorIcono diasInfo={diasInfo} />
@@ -792,8 +1000,9 @@ const Trazabilidad = memo(function Trazabilidad({
           <div className="border-t border-gray-100 px-6 pb-6 dark:border-gray-800">
             {children}
             
-            {/* Mostrar documentos subidos */}
-            <DocumentosSubidos tipo={tipoDocumento} titulo={titulo} />
+            {!ocultarDocumentosSubidos && (
+              <DocumentosSubidos tipo={tipoDocumento} titulo={titulo} />
+            )}
           </div>
         )}
       </div>
@@ -806,6 +1015,7 @@ const Trazabilidad = memo(function Trazabilidad({
       prevProps.Icon === nextProps.Icon &&
       prevProps.tipoDocumento === nextProps.tipoDocumento &&
       prevProps.isOpen === nextProps.isOpen &&
+      prevProps.ocultarDocumentosSubidos === nextProps.ocultarDocumentosSubidos &&
       prevProps.children === nextProps.children
     );
   });
@@ -815,6 +1025,41 @@ const Trazabilidad = memo(function Trazabilidad({
   return (
     <div className={complexPageWrap}>
       <h2 className={complexSectionTitle}>Trazabilidad del Caso</h2>
+
+      {mostrarAvisoProtocolo && (
+        <div
+          className={`relative mb-4 overflow-hidden rounded-xl border border-fenix-primario/20 bg-gray-50 p-4 transition-all duration-300 dark:bg-gray-900/30 ${
+            avisoProtocoloSaliendo
+              ? 'pointer-events-none max-h-0 opacity-0 py-0'
+              : 'max-h-96 opacity-100'
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          <button
+            type="button"
+            onClick={ocultarAvisoProtocolo}
+            className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+            aria-label="Cerrar aviso del protocolo"
+            title="Cerrar"
+          >
+            <FaTimes aria-hidden />
+          </button>
+          <p className="text-xs font-semibold uppercase tracking-wide text-fenix-primario pr-8">
+            Protocolo de atención
+          </p>
+          <p className="mt-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+            {PROTOCOLO_DOCUMENTO}
+          </p>
+          <p className={`${complexHint} mt-2`}>{PROTOCOLO_OBJETIVO}</p>
+          <p className={`${complexHint} mt-1`}>
+            Cada etapa muestra su fase del protocolo y el plazo objetivo configurado en ARNALD.
+            Este aviso se oculta solo en unos segundos.
+          </p>
+        </div>
+      )}
+
+      <AlertasCasoPanel numeroAjuste={formData.nmroAjste} casoId={formData._id} />
       
       {/* Resumen General de Trazabilidad */}
       <div className={`${complexCard} space-y-4`}>
@@ -831,13 +1076,15 @@ const Trazabilidad = memo(function Trazabilidad({
                   <span className={complexBadge}>{documentos.length} docs</span>
                 </div>
                 <h4 className="mb-2 font-body text-xs font-semibold text-gray-800 dark:text-gray-200 sm:text-sm">
-                  {titulo}
+                  {tituloEtapaConFase(tipo, titulo)}
                 </h4>
 
                 {diasInfo ? (
                   <div className={`text-center ${trazabilidadColorClase(diasInfo)}`}>
                     <div className="font-heading text-sm font-bold sm:text-base">
-                      {diasInfo.diasRetraso > 0
+                      {diasInfo.etiquetaEstado
+                        ? diasInfo.etiquetaEstado
+                        : diasInfo.diasRetraso > 0
                         ? diasInfo.diasRetraso < 1
                           ? `${Math.round(diasInfo.diasRetraso * 24)} h retraso`
                           : diasInfo.diasRetraso === 1
@@ -885,6 +1132,71 @@ const Trazabilidad = memo(function Trazabilidad({
           />
         </div>
       </div>
+
+      <BandejaDesplegable
+        titulo="Recepción de asignación"
+        bandeja="recepcionAsignacion"
+        Icon={iconoPorTipo.recepcionAsignacion}
+        tipoDocumento="recepcionAsignacion"
+        isOpen={bandejasAbiertas.recepcionAsignacion}
+        onToggle={() => toggleBandeja('recepcionAsignacion')}
+        ocultarDocumentosSubidos
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className={trazabilidadLabelClass}>Fecha y hora de asignación</label>
+            <input
+              type="datetime-local"
+              name="fchaAsgncion"
+              value={formData.fchaAsgncion || ''}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              className={trazabilidadInputClass}
+            />
+          </div>
+          <div>
+            <label className={trazabilidadLabelClass}>N.º de ajuste</label>
+            <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              {formData.nmroAjste || '—'}
+            </p>
+          </div>
+        </div>
+        <p className={`${complexHint} mt-3`}>
+          Registre fecha y hora en cada hito para medir plazos del protocolo (12 h, 24 h, etc.).
+          Fase 1: día 0 de la asignación. Correo automático al asignar ajustador.
+        </p>
+      </BandejaDesplegable>
+
+      <BandejaDesplegable
+        titulo="Cargue y asignación interna"
+        bandeja="carguePlataforma"
+        Icon={iconoPorTipo.carguePlataforma}
+        tipoDocumento="carguePlataforma"
+        isOpen={bandejasAbiertas.carguePlataforma}
+        onToggle={() => toggleBandeja('carguePlataforma')}
+        ocultarDocumentosSubidos
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className={trazabilidadLabelClass}>Ajustador asignado</label>
+            <p className="mt-1 text-sm font-medium text-gray-800 dark:text-gray-200">
+              {formData.nombreResponsable ||
+                formData.codiRespnsble ||
+                formData.codi_responble ||
+                'Sin asignar'}
+            </p>
+          </div>
+          <div>
+            <label className={trazabilidadLabelClass}>Plazo soporte</label>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+              12 horas desde la asignación para cargue en ARNALD
+            </p>
+          </div>
+        </div>
+        <p className={`${complexHint} mt-3`}>
+          Fase 2 del protocolo: gestión de soporte/coordinación. El ajustador inicia en la fase 3.
+        </p>
+      </BandejaDesplegable>
       
       {/* Contacto Inicial */}
       <BandejaDesplegable 
@@ -901,7 +1213,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha de Contacto Inicial
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaContIni"
               value={formData.fchaContIni || ''}
               onChange={handleChange}
@@ -924,6 +1236,11 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
         </div>
+
+        <PlantillaCorreoContactoInicial
+          formData={formData}
+          onPlantillaChange={onPlantillaContactoChange}
+        />
         
         <div className="mt-3 sm:mt-4">
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
@@ -963,7 +1280,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha de la Llamada
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaCoordInspeccion"
               value={formData.fchaCoordInspeccion || ''}
               onChange={handleChange}
@@ -975,7 +1292,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha Programada de Inspección
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaProgInspeccion"
               value={formData.fchaProgInspeccion || ''}
               onChange={handleChange}
@@ -1015,7 +1332,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha de Inspección
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaInspccion"
               value={formData.fchaInspccion || ''}
               onChange={handleChange}
@@ -1077,7 +1394,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha de Solicitud de Documentos
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaSoliDocu"
               value={formData.fchaSoliDocu || ''}
               onChange={handleChange}
@@ -1124,6 +1441,25 @@ const Trazabilidad = memo(function Trazabilidad({
         </div>
       </BandejaDesplegable>
 
+      {/* Seguimiento de documentos pendientes — protocolo fase 8 */}
+      <BandejaDesplegable
+        titulo="Seguimiento de documentos pendientes"
+        bandeja="seguimientoDocsPendientes"
+        Icon={iconoPorTipo.seguimientoDocsPendientes}
+        tipoDocumento="seguimientoDocsPendientes"
+        isOpen={bandejasAbiertas.seguimientoDocsPendientes}
+        onToggle={() => toggleBandeja('seguimientoDocsPendientes')}
+        ocultarDocumentosSubidos
+      >
+        <SeguimientoDocumentosPendientes
+          historialDocs={historialDocs}
+          updateHistorialDocs={updateHistorialDocs}
+          handleChange={handleChange}
+          formData={formData}
+          construirUrlArchivo={construirUrlArchivo}
+        />
+      </BandejaDesplegable>
+
       {/* Informe Preliminar */}
       <BandejaDesplegable 
         titulo="Informe Preliminar" 
@@ -1139,7 +1475,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha del Informe Preliminar
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaInfoPrelm"
               value={formData.fchaInfoPrelm || ''}
               onChange={handleChange}
@@ -1201,7 +1537,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha del Último Documento
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaRepoActi"
               value={formData.fchaRepoActi || ''}
               onChange={handleChange}
@@ -1263,7 +1599,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha del Informe Final
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaInfoFnal"
               value={formData.fchaInfoFnal || ''}
               onChange={handleChange}
@@ -1310,6 +1646,25 @@ const Trazabilidad = memo(function Trazabilidad({
         </div>
       </BandejaDesplegable>
 
+      {/* Seguimiento de autorización por parte de la compañía — protocolo fase 11 */}
+      <BandejaDesplegable
+        titulo="Seguimiento de autorización por parte de la compañía"
+        bandeja="seguimientoAutorizacionCompania"
+        Icon={iconoPorTipo.seguimientoAutorizacionCompania}
+        tipoDocumento="seguimientoAutorizacionCompania"
+        isOpen={bandejasAbiertas.seguimientoAutorizacionCompania}
+        onToggle={() => toggleBandeja('seguimientoAutorizacionCompania')}
+        ocultarDocumentosSubidos
+      >
+        <SeguimientoAutorizacionCompania
+          historialDocs={historialDocs}
+          updateHistorialDocs={updateHistorialDocs}
+          handleChange={handleChange}
+          formData={formData}
+          construirUrlArchivo={construirUrlArchivo}
+        />
+      </BandejaDesplegable>
+
       {/* Presentación de Cifras */}
       <BandejaDesplegable 
         titulo="Presentación de Cifras" 
@@ -1325,7 +1680,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha de Presentación de Cifras
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaPresentacionCifras"
               value={formData.fchaPresentacionCifras || ''}
               onChange={handleChange}
@@ -1337,7 +1692,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha en que la aseguradora acepta la cifra
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaAceptacionCifrasAseguradora"
               value={formData.fchaAceptacionCifrasAseguradora || ''}
               onChange={handleChange}
@@ -1392,6 +1747,25 @@ const Trazabilidad = memo(function Trazabilidad({
         </div>
       </BandejaDesplegable>
 
+      {/* Seguimiento de documentos de pago — protocolo fase 13 */}
+      <BandejaDesplegable
+        titulo="Seguimiento de documentos de pago"
+        bandeja="seguimientoDocumentosPago"
+        Icon={iconoPorTipo.seguimientoDocumentosPago}
+        tipoDocumento="seguimientoDocumentosPago"
+        isOpen={bandejasAbiertas.seguimientoDocumentosPago}
+        onToggle={() => toggleBandeja('seguimientoDocumentosPago')}
+        ocultarDocumentosSubidos
+      >
+        <SeguimientoDocumentosPago
+          historialDocs={historialDocs}
+          updateHistorialDocs={updateHistorialDocs}
+          handleChange={handleChange}
+          formData={formData}
+          construirUrlArchivo={construirUrlArchivo}
+        />
+      </BandejaDesplegable>
+
       {/* Envío de Finiquito */}
       <BandejaDesplegable 
         titulo="Envío de Finiquito" 
@@ -1407,7 +1781,7 @@ const Trazabilidad = memo(function Trazabilidad({
               Fecha de Envío de Finiquito
             </label>
             <input
-              type="date"
+              type="datetime-local"
               name="fchaEnvioFiniquito"
               value={formData.fchaEnvioFiniquito || ''}
               onChange={handleChange}
@@ -1477,6 +1851,7 @@ const Trazabilidad = memo(function Trazabilidad({
     'fchaProgInspeccion',
     'fchaInspccion',
     'fchaSoliDocu',
+    'fchaUltSegui',
     'fchaInfoPrelm',
     'fchaInfoFnal',
     'fchaRepoActi',
@@ -1507,7 +1882,9 @@ const Trazabilidad = memo(function Trazabilidad({
   // IMPORTANTE: Si cambió alguna fecha, SIEMPRE re-renderizar para asegurar que los inputs se actualicen
   const debeReRenderizar = observacionesCambiaron || fechasCambiaron || historialDocsCambio || cargandoCambio || errorCambio ||
          prevProps.handleChange !== nextProps.handleChange ||
-         prevProps.onSelectFiles !== nextProps.onSelectFiles;
+         prevProps.onSelectFiles !== nextProps.onSelectFiles ||
+         prevProps.updateHistorialDocs !== nextProps.updateHistorialDocs ||
+         prevProps.construirUrlArchivo !== nextProps.construirUrlArchivo;
   
   // Si hay cambios en fechas, forzar re-render
 return !debeReRenderizar;

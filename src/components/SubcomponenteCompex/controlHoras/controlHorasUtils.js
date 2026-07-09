@@ -183,6 +183,23 @@ export const controlHorasTieneDatos = (controlHoras) => {
   });
 };
 
+/** Usa control_horas del caso o el último snapshot en envios_facturacion. */
+export const resolverControlHorasDesdeEnvios = (caso) => {
+  if (controlHorasTieneDatos(caso?.control_horas)) {
+    return caso.control_horas;
+  }
+
+  const envios = Array.isArray(caso?.envios_facturacion) ? caso.envios_facturacion : [];
+  for (let i = envios.length - 1; i >= 0; i -= 1) {
+    const envio = envios[i];
+    if (envio?.tipo === 'control_horas' && controlHorasTieneDatos(envio.controlHoras)) {
+      return envio.controlHoras;
+    }
+  }
+
+  return caso?.control_horas ?? null;
+};
+
 export const normalizarControlHorasParaGuardar = (controlHoras, usuario = '') => ({
   valor_hora: parseNumero(controlHoras.valor_hora),
   valor_hora_origen: controlHoras.valor_hora_origen || 'manual',

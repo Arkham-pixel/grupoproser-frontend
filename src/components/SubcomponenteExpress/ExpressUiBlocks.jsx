@@ -4,6 +4,7 @@ import {
   FaBolt,
   FaChartLine,
   FaClipboardList,
+  FaCalculator,
   FaCheckCircle,
   FaChevronDown,
   FaChevronRight,
@@ -40,6 +41,7 @@ import {
 
 const NAV_EXPRESS = [
   { path: '/express/carga', icon: FaBolt, label: 'Carga' },
+  { path: '/express/liquidador', icon: FaCalculator, label: 'Liquidador' },
   { path: '/express/dashboard', icon: FaChartLine, label: 'Dashboard' },
   { path: '/express/tablero', icon: FaClipboardList, label: 'Tablero' },
   { path: '/express/reporte', icon: FaTable, label: 'Reporte' },

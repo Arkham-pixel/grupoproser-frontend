@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
-import { FaChartLine, FaCheckCircle, FaClipboardList, FaExclamationTriangle, FaInbox, FaInfoCircle, FaTable } from 'react-icons/fa';
+import { FaChartBar, FaChartLine, FaCheckCircle, FaClipboardList, FaExclamationTriangle, FaInbox, FaInfoCircle, FaTable } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../../config/gerentesFacturacion';
 import {
   complexBadge,
@@ -120,6 +120,7 @@ export function ComplexAvisoModal({
 
 const NAV_COMPLEX_BASE = [
   { path: '/complex/dashboard', icon: FaChartLine, label: 'Dashboard' },
+  { path: '/complex/indicadores-alertas', icon: FaChartBar, label: 'Indicadores y alertas' },
   { path: '/complex/excel', icon: FaTable, label: 'Reporte' },
   { path: '/complex/mis-casos', icon: FaClipboardList, label: 'Mis casos' },
 ];
@@ -248,5 +249,19 @@ export function SelectFenix({ children, className = '', ...props }) {
     <select className={`${complexSelect} ${className}`} {...props}>
       {children}
     </select>
+  );
+}
+
+/** Fecha y hora de hitos de protocolo (asignación, trazabilidad). */
+export function InputFechaHoraProtocolo({ hint, className = '', ...props }) {
+  return (
+    <div>
+      <input className={`${complexInput} ${className}`} type="datetime-local" {...props} />
+      {hint !== false && (
+        <p className={complexHint}>
+          {hint || 'Registre la fecha y la hora real del evento para medir plazos del protocolo.'}
+        </p>
+      )}
+    </div>
   );
 }

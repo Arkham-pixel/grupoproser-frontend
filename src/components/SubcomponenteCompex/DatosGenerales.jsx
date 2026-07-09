@@ -359,13 +359,16 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label="Fecha de Asignación">
+        <Campo label="Fecha y hora de asignación">
           <InputFenix
-            type="date"
+            type="datetime-local"
             name="fchaAsgncion"
             value={formData.fchaAsgncion || ''}
             onChange={handleChange}
           />
+          <p className={complexHint}>
+            Incluya la hora de recepción para medir plazos del protocolo (ej. contacto en 12 h).
+          </p>
         </Campo>
 
         <Campo label="Fecha del Siniestro">

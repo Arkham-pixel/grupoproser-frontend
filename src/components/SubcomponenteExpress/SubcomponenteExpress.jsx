@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
+import { FaCalculator } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import { normalizeStoredFileReference } from '../../utils/storedFilePath.js';
@@ -72,6 +74,7 @@ const DEFAULT_FORM = {
 };
 
 const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = false }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState(() => ({ ...DEFAULT_FORM }));
   const [existingAnexos, setExistingAnexos] = useState([]);
   const [existingSalvamentoAnexos, setExistingSalvamentoAnexos] = useState([]);
@@ -809,15 +812,31 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                   </SelectFenix>
                 </Campo>
                 <Campo label="Valor indemnización">
-                  <InputFenix
-                    id="valorIndemnizacion"
-                    name="valorIndemnizacion"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.valorIndemnizacion}
-                    onChange={handleChange}
-                  />
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <InputFenix
+                      id="valorIndemnizacion"
+                      name="valorIndemnizacion"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.valorIndemnizacion}
+                      onChange={handleChange}
+                      className="flex-1"
+                    />
+                    <button
+                      type="button"
+                      className={expressBtnGhost}
+                      onClick={() =>
+                        navigate('/express/liquidador', {
+                          state: { casoExpress: formData },
+                        })
+                      }
+                      title="Abrir liquidador con datos del caso"
+                    >
+                      <FaCalculator />
+                      Liquidador
+                    </button>
+                  </div>
                 </Campo>
                 <Campo label="Reserva">
                   <InputFenix

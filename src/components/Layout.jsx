@@ -11,6 +11,7 @@ import {
   FaChevronRight,
   FaChevronDown,
   FaBolt,
+  FaCalculator,
   FaPlus,
   FaTable,
   FaList,
@@ -222,6 +223,7 @@ export default function Layout() {
     '/matriz-riesgo-avanzada': 'Matriz de Riesgo',
     '/matrices-riesgo': 'Matrices de Riesgo',
     '/express/carga': 'Carga Express',
+    '/express/liquidador': 'Liquidador Express',
     '/express/reporte': 'Reporte Express',
     '/express/dashboard': 'Dashboard Express',
     '/express/tablero': 'Tablero operativo Express',
@@ -350,6 +352,7 @@ export default function Layout() {
     express: !accesoRestringido
       ? [
           { path: '/express/carga', icon: FaBolt, label: 'Carga Express' },
+          { path: '/express/liquidador', icon: FaCalculator, label: 'Liquidador Express' },
           { path: '/express/dashboard', icon: FaChartLine, label: 'Dashboard Express' },
           { path: '/express/tablero', icon: FaClipboardList, label: 'Tablero operativo' },
           { path: '/express/reporte', icon: FaTable, label: 'Reporte Express' },

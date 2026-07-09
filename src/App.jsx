@@ -36,17 +36,21 @@ import SessionSettings from './components/SessionSettings';
 import HistorialFormularios from './components/HistorialFormularios';
 import FormularioAjuste from './components/SubcomponenteFormularioAjuste/FormularioAjuste';
 import AlertasComplex from './components/AlertasComplex';
+import IndicadoresAlertasComplex from './components/IndicadoresAlertasComplex';
 import MatrizRiesgoAvanzada from './components/MatrizRiesgoAvanzada';
+import VistaReporteMatriz from './components/MatrizRiesgoAvanzada/VistaReporteMatriz';
 import ListaMatricesRiesgo from './components/ListaMatricesRiesgo';
 import GestionClientesFuncionarios from './components/GestionClientesFuncionarios';
 import GestionIntermediarios from './components/GestionIntermediarios';
 import GestionResponsables from './components/GestionResponsables';
 import GestionEstadosComplex from './components/SubcomponenteCompex/GestionEstadosComplex';
+import ProtocoloTiemposComplex from './components/SubcomponenteCompex/ProtocoloTiemposComplex';
 import SubcomponenteExpress from './components/SubcomponenteExpress/SubcomponenteExpress';
 import ReporteExpress from './components/SubcomponenteExpress/ReporteExpress';
 import DashboardExpress from './components/SubcomponenteExpress/DashboardExpress';
 import TableroOperativoExpress from './components/SubcomponenteExpress/TableroOperativoExpress';
 import CatalogosExpress from './components/SubcomponenteExpress/CatalogosExpress';
+import LiquidadorExpressPage from './components/SubcomponenteExpress/LiquidadorExpressPage';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
 import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
@@ -406,6 +410,16 @@ export default function App() {
         <Route path="/sin-conexion" element={<PaginaError tipoForzado="sin-conexion" />} />
         <Route path="/servicio-no-disponible" element={<PaginaError tipoForzado="servicio" />} />
 
+        {/* Reporte ejecutivo de matriz — pantalla completa sin Layout */}
+        <Route
+          path="matriz-riesgo-reporte"
+          element={
+            <RequireAuth>
+              <VistaReporteMatriz />
+            </RequireAuth>
+          }
+        />
+
         {/* Rutas privadas protegidas por RequireAuth */}
         <Route
           element={
@@ -449,10 +463,13 @@ export default function App() {
           <Route path="ajuste" element={<FormularioAjuste />} />
           <Route path="ajuste/editar/:id" element={<FormularioAjuste />} />
           <Route path="complex/alertas" element={<AlertasComplex />} />
+          <Route path="complex/indicadores-alertas" element={<IndicadoresAlertasComplex />} />
+          <Route path="complex/protocolo-tiempos" element={<ProtocoloTiemposComplex />} />
           <Route path="matriz-riesgo-avanzada" element={<MatrizRiesgoAvanzada />} />
           <Route path="matriz-riesgo-avanzada/:id" element={<MatrizRiesgoAvanzada />} />
           <Route path="matrices-riesgo" element={<ListaMatricesRiesgo />} />
           <Route path="express/carga" element={<SubcomponenteExpress />} />
+          <Route path="express/liquidador" element={<LiquidadorExpressPage />} />
           <Route path="express/reporte" element={<ReporteExpress />} />
           <Route path="express/dashboard" element={<DashboardExpress />} />
           <Route path="express/tablero" element={<TableroOperativoExpress />} />

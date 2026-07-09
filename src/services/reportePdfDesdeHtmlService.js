@@ -13,10 +13,11 @@ function abrirVentanaReporte(imprimir = false) {
 export async function exportarReportePdfDesdeHtml(
   datosMatriz,
   _nombreArchivo = 'reporte_matriz_riesgos',
-  tipoReporte = 'inicial'
+  tipoReporte = 'inicial',
+  matrizId = null
 ) {
   try {
-    guardarDatosReporteMatriz({ datosMatriz, tipoReporte });
+    guardarDatosReporteMatriz({ datosMatriz, tipoReporte, matrizId });
     abrirVentanaReporte(true);
     return {
       success: true,
@@ -30,13 +31,13 @@ export async function exportarReportePdfDesdeHtml(
   }
 }
 
-export async function abrirReporteParaImprimirPdf(datosMatriz, tipoReporte = 'inicial') {
-  guardarDatosReporteMatriz({ datosMatriz, tipoReporte });
+export async function abrirReporteParaImprimirPdf(datosMatriz, tipoReporte = 'inicial', matrizId = null) {
+  guardarDatosReporteMatriz({ datosMatriz, tipoReporte, matrizId });
   abrirVentanaReporte(true);
   return { success: true };
 }
 
-export function abrirReporteMatrizVista(datosMatriz, tipoReporte = 'inicial') {
-  guardarDatosReporteMatriz({ datosMatriz, tipoReporte });
+export function abrirReporteMatrizVista(datosMatriz, tipoReporte = 'inicial', matrizId = null) {
+  guardarDatosReporteMatriz({ datosMatriz, tipoReporte, matrizId });
   abrirVentanaReporte(false);
 }

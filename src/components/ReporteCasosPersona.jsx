@@ -782,6 +782,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
       nmroSinstro: numeroSiniestro,
       nmroAjste: numeroCaso,
       origen: 'reporte-complex',
+      estadoInicial: 'actaInspeccion',
       returnPath: '/complex/mis-casos',
       prefillDesdeCaso: buildPrefillAjusteDesdeCasoComplex(caso)
     };

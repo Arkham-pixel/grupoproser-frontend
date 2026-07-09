@@ -4,12 +4,32 @@ import {
   FaArrowLeft,
   FaBullseye,
   FaChartBar,
+  FaChartLine,
+  FaClipboardList,
   FaDownload,
+  FaExclamationTriangle,
+  FaFileAlt,
   FaFire,
+  FaGraduationCap,
+  FaLightbulb,
   FaSearch,
   FaShieldAlt,
+  FaTachometerAlt,
+  FaTrafficLight,
+  FaUpload,
 } from 'react-icons/fa';
 import { ReporteService } from '../../services/reporteService';
+import { calcularAnaliticaMatriz } from '../../services/matrizAnaliticaService';
+import DashboardEjecutivo from './reporteEjecutivo/DashboardEjecutivo';
+import Top10Riesgos from './reporteEjecutivo/Top10Riesgos';
+import SemaforoGerencial, { HallazgosAutomaticos } from './reporteEjecutivo/SemaforoHallazgos';
+import ComparativoInhRes from './reporteEjecutivo/ComparativoInhRes';
+import GraficosEjecutivos from './reporteEjecutivo/GraficosEjecutivos';
+import RecomendacionesPriorizadas from './reporteEjecutivo/RecomendacionesPriorizadas';
+import ResumenEjecutivo from './reporteEjecutivo/ResumenEjecutivo';
+import IndicadorMadurez from './reporteEjecutivo/IndicadorMadurez';
+import ExportacionReporte from './reporteEjecutivo/ExportacionReporte';
+import { cargarHistoricoMatricesEmpresa } from '../../services/exportMatrizReporteService';
 import InformacionMatriz from './InformacionMatriz';
 import IdentificacionRiesgos from './IdentificacionRiesgos';
 import ValoracionRiesgos from './ValoracionRiesgos';
@@ -22,17 +42,82 @@ import { arnaldLogo } from '../../config/brandAssets';
 import logoProser from '../../img/Logo.png';
 import './matrizFenixTheme.css';
 import './VistaReporteMatriz.css';
+import './reporteEjecutivo/reporteEjecutivo.css';
 
 const RIESGOS_IDENTIFICACION_VACIOS = [];
 const FILAS_IDENTIFICACION_VACIAS = [];
 
-const SECCIONES = [
+const SECCION_INFORMACION_GENERAL = {
+  id: 'informacion',
+  titulo: 'Información general',
+  descripcion: 'Datos de la empresa y responsables',
+  icon: FaBullseye,
+};
+
+const SECCIONES_EJECUTIVAS = [
   {
-    id: 'informacion',
-    titulo: 'Información',
-    descripcion: 'Datos de la empresa y responsables',
-    icon: FaBullseye,
+    id: 'dashboard',
+    titulo: 'Dashboard ejecutivo',
+    descripcion: 'Panorama gerencial de la matriz',
+    icon: FaTachometerAlt,
   },
+  {
+    id: 'top10',
+    titulo: 'Top 10 prioritarios',
+    descripcion: 'Riesgos con mayor exposición residual',
+    icon: FaExclamationTriangle,
+  },
+  {
+    id: 'semaforo',
+    titulo: 'Semáforo gerencial',
+    descripcion: 'Lectura rápida por frente y proceso',
+    icon: FaTrafficLight,
+  },
+  {
+    id: 'hallazgos',
+    titulo: 'Hallazgos automáticos',
+    descripcion: 'Conclusiones generadas por el sistema',
+    icon: FaLightbulb,
+  },
+  {
+    id: 'comparativo',
+    titulo: 'Comparativo inh. vs res.',
+    descripcion: 'Efectividad de los controles',
+    icon: FaChartLine,
+  },
+  {
+    id: 'graficos',
+    titulo: 'Gráficos ejecutivos',
+    descripcion: 'Visualizaciones para gerencia',
+    icon: FaChartBar,
+  },
+  {
+    id: 'recomendaciones-priorizadas',
+    titulo: 'Recomendaciones priorizadas',
+    descripcion: 'Plan de acción por prioridad',
+    icon: FaClipboardList,
+  },
+  {
+    id: 'resumen-ejecutivo',
+    titulo: 'Resumen ejecutivo',
+    descripcion: 'Conclusiones para junta directiva',
+    icon: FaFileAlt,
+  },
+  {
+    id: 'madurez',
+    titulo: 'Indicador de madurez',
+    descripcion: 'Nivel de gestión de riesgos (1–5)',
+    icon: FaGraduationCap,
+  },
+  {
+    id: 'exportacion',
+    titulo: 'Exportación',
+    descripcion: 'HTML, PDF, Word y Excel',
+    icon: FaUpload,
+  },
+];
+
+const SECCIONES_TECNICAS = [
   {
     id: 'identificacion',
     titulo: 'Identificación',
@@ -71,6 +156,7 @@ export default function VistaReporteMatriz() {
   const [payload] = useState(() => leerDatosReporteMatriz());
   const [listoParaImprimir, setListoParaImprimir] = useState(false);
   const [descargando, setDescargando] = useState(false);
+  const [analitica, setAnalitica] = useState(null);
   const contenidoRef = useRef(null);
 
   useTablasArrastrables(contenidoRef, [payload, listoParaImprimir]);
@@ -92,6 +178,15 @@ export default function VistaReporteMatriz() {
     return () => clearTimeout(timer);
   }, [payload]);
 
+  useEffect(() => {
+    if (!analitica) return undefined;
+    const params = new URLSearchParams(window.location.search);
+    const seccion = params.get('seccion');
+    if (!seccion) return undefined;
+    const timer = setTimeout(() => scrollASeccion(seccion), 700);
+    return () => clearTimeout(timer);
+  }, [analitica]);
+
   const datosMatriz = payload?.datosMatriz;
   const tipoReporte = payload?.tipoReporte || 'inicial';
 
@@ -106,6 +201,38 @@ export default function VistaReporteMatriz() {
   }, [datosMatriz, tipoReporte]);
 
   const informacion = datosMatriz?.informacion || {};
+  const matrizId = payload?.matrizId || null;
+
+  useEffect(() => {
+    if (!datosMatriz) {
+      setAnalitica(null);
+      return undefined;
+    }
+
+    let cancelado = false;
+
+    async function construirAnalitica() {
+      const historico = await cargarHistoricoMatricesEmpresa(
+        informacion.nombreEmpresa,
+        matrizId
+      );
+      if (!cancelado) {
+        setAnalitica(calcularAnaliticaMatriz(datosMatriz, { historicoMatrices: historico }));
+      }
+    }
+
+    construirAnalitica();
+    return () => {
+      cancelado = true;
+    };
+  }, [datosMatriz, informacion.nombreEmpresa, matrizId]);
+
+  const navegarSeccion = useCallback((id) => {
+    const destino = {
+      recomendaciones: 'recomendaciones-priorizadas',
+    }[id] || id;
+    scrollASeccion(destino);
+  }, []);
 
   const fechaTexto = useMemo(() => {
     const fecha = new Date();
@@ -146,8 +273,7 @@ export default function VistaReporteMatriz() {
             Volver
           </button>
           <p>
-            <strong>Vista interactiva</strong> — clic sostenido y arrastre sobre las tablas anchas.
-            No use PDF: es una captura fija.
+            <strong>Informe general de la matriz</strong> — arrastre las tablas anchas con el mouse.
           </p>
         </div>
         <button
@@ -163,8 +289,53 @@ export default function VistaReporteMatriz() {
 
       <div className="reporte-layout-grid">
         <aside className="reporte-sidebar no-print" aria-label="Navegación del reporte">
-          <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Secciones</p>
-          {SECCIONES.map((seccion) => {
+          <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Informe general
+          </p>
+          {(() => {
+            const IconInfo = SECCION_INFORMACION_GENERAL.icon;
+            return (
+              <button
+                type="button"
+                className="reporte-nav-link"
+                onClick={() => scrollASeccion(SECCION_INFORMACION_GENERAL.id)}
+              >
+                <span className="reporte-nav-icon">
+                  <IconInfo />
+                </span>
+                <span>
+                  <span className="reporte-nav-texto-titulo">{SECCION_INFORMACION_GENERAL.titulo}</span>
+                  <span className="reporte-nav-texto-desc">{SECCION_INFORMACION_GENERAL.descripcion}</span>
+                </span>
+              </button>
+            );
+          })()}
+          <p className="mb-3 mt-4 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Lectura ejecutiva
+          </p>
+          {SECCIONES_EJECUTIVAS.map((seccion) => {
+            const Icon = seccion.icon;
+            return (
+              <button
+                key={seccion.id}
+                type="button"
+                className="reporte-nav-link"
+                onClick={() => scrollASeccion(seccion.id)}
+              >
+                <span className="reporte-nav-icon">
+                  <Icon />
+                </span>
+                <span>
+                  <span className="reporte-nav-texto-titulo">{seccion.titulo}</span>
+                  <span className="reporte-nav-texto-desc">{seccion.descripcion}</span>
+                </span>
+              </button>
+            );
+          })}
+          <p className="mb-3 mt-5 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Detalle técnico
+          </p>
+          {SECCIONES_TECNICAS.map((seccion) => {
             const Icon = seccion.icon;
             return (
               <button
@@ -201,10 +372,10 @@ export default function VistaReporteMatriz() {
               <img src={logoProser} alt="Grupo Proser" className="reporte-logo-proser" />
             </div>
             <div className="reporte-cabecera-titulo">
-              <h1>Matriz de Riesgos</h1>
+              <h1>Informe general — Matriz de Riesgos</h1>
               <p>
-                {informacion.nombreEmpresa || 'Empresa'} · Reporte{' '}
-                {tipoReporte === 'anual' ? 'de valoración anual' : 'de valoración inicial'}
+                {informacion.nombreEmpresa || 'Empresa'} ·{' '}
+                {tipoReporte === 'anual' ? 'Valoración anual' : 'Valoración inicial'}
               </p>
               <p>Generado el {fechaTexto}</p>
               {informacion.responsable ? <p>Responsable: {informacion.responsable}</p> : null}
@@ -214,6 +385,59 @@ export default function VistaReporteMatriz() {
           <section id="reporte-informacion" className="reporte-seccion-bloque">
             <InformacionMatriz datos={datosMatriz.informacion} onDatosChange={noop} modoReporte />
           </section>
+
+          {analitica ? (
+            <>
+              <section id="reporte-dashboard" className="reporte-seccion-bloque">
+                <DashboardEjecutivo analitica={analitica} onNavegar={navegarSeccion} />
+              </section>
+
+              <section id="reporte-top10" className="reporte-seccion-bloque">
+                <Top10Riesgos analitica={analitica} />
+              </section>
+
+              <section id="reporte-semaforo" className="reporte-seccion-bloque">
+                <SemaforoGerencial analitica={analitica} />
+              </section>
+
+              <section id="reporte-hallazgos" className="reporte-seccion-bloque">
+                <HallazgosAutomaticos analitica={analitica} />
+              </section>
+
+              <section id="reporte-comparativo" className="reporte-seccion-bloque">
+                <ComparativoInhRes analitica={analitica} />
+              </section>
+
+              <section id="reporte-graficos" className="reporte-seccion-bloque">
+                <GraficosEjecutivos analitica={analitica} />
+              </section>
+
+              <section id="reporte-recomendaciones-priorizadas" className="reporte-seccion-bloque">
+                <RecomendacionesPriorizadas analitica={analitica} />
+              </section>
+
+              <section id="reporte-resumen-ejecutivo" className="reporte-seccion-bloque">
+                <ResumenEjecutivo analitica={analitica} />
+              </section>
+
+              <section id="reporte-madurez" className="reporte-seccion-bloque">
+                <IndicadorMadurez analitica={analitica} />
+              </section>
+
+              <section id="reporte-exportacion" className="reporte-seccion-bloque">
+                <ExportacionReporte
+                  datosMatriz={datosMatriz}
+                  tipoReporte={tipoReporte}
+                  analitica={analitica}
+                  matrizId={matrizId}
+                />
+              </section>
+            </>
+          ) : (
+            <div className="reporte-seccion-bloque p-6 text-center text-gray-500">
+              Cargando análisis ejecutivo de la matriz…
+            </div>
+          )}
 
           <section id="reporte-identificacion" className="reporte-seccion-bloque">
             <ReporteAvisoTablaAncha titulo="Identificación de riesgos" />

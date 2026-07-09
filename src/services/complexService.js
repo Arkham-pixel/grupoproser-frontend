@@ -1,6 +1,30 @@
 // src/services/complexService.js
 import { BASE_URL } from '../config/apiConfig.js';
 
+function buildComplexRequestInit(method, datos) {
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+  const login = typeof localStorage !== 'undefined' ? localStorage.getItem('login') : null;
+  const nombre = typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') : null;
+
+  const payload = { ...datos };
+  if (login && !payload.usuarioAsignadorLogin) {
+    payload.usuarioAsignadorLogin = login;
+  }
+  if (nombre && !payload.usuarioAsignadorNombre) {
+    payload.usuarioAsignadorNombre = nombre;
+  }
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (login) headers['X-Usuario-Login'] = login;
+
+  return {
+    method,
+    headers,
+    body: JSON.stringify(payload),
+  };
+}
+
 export const obtenerCasosComplex = async () => {
   try {
 const response = await fetch(`${BASE_URL}/api/complex`);
@@ -128,11 +152,7 @@ export const eliminarEnvioBandejaFacturacion = async (payload) => {
 
 export const crearCasoComplex = async (datos) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/complex`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(datos)
-    });
+    const response = await fetch(`${BASE_URL}/api/complex`, buildComplexRequestInit('POST', datos));
     
     if (!response.ok) {
       throw new Error(`Error al crear caso: ${response.status}`);
@@ -164,11 +184,7 @@ export const deleteCasoComplex = async (id) => {
 
 export const updateCasoComplex = async (id, data) => {
   try {
-    const response = await fetch(`${BASE_URL}/api/complex/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
+    const response = await fetch(`${BASE_URL}/api/complex/${id}`, buildComplexRequestInit('PUT', data));
     
     if (!response.ok) {
       throw new Error(`Error al actualizar caso: ${response.status}`);

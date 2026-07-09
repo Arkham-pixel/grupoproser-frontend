@@ -1,5 +1,7 @@
 /** Secciones y layout HTML del reporte (Fenix + navegación interactiva) */
 
+import { generarNavEjecutivoHtml } from './reporteEjecutivoHtml.js';
+
 function escapar(texto) {
   return String(texto ?? '')
     .replace(/&/g, '&amp;')
@@ -17,6 +19,7 @@ export const SECCIONES_REPORTE = [
 ];
 
 export function generarNavReporteHtml() {
+  const enlacesEjecutivos = generarNavEjecutivoHtml();
   const enlaces = SECCIONES_REPORTE.map(
     (s) => `
       <a class="reporte-nav-link" href="#${s.id}">
@@ -29,7 +32,13 @@ export function generarNavReporteHtml() {
     <nav class="reporte-nav no-print" aria-label="Índice del reporte">
       <div class="reporte-nav-inner">
         <p class="reporte-nav-titulo">ARNALD Data Flow</p>
-        <p class="reporte-nav-sub">Secciones del reporte</p>
+        <p class="reporte-nav-sub">Informe general</p>
+        <a class="reporte-nav-link" href="#seccion-informacion">
+          <span class="reporte-nav-num">00</span>
+          <span class="reporte-nav-texto">Información general</span>
+        </a>
+        ${enlacesEjecutivos}
+        <p class="reporte-nav-sub">Detalle técnico</p>
         ${enlaces}
       </div>
     </nav>`;

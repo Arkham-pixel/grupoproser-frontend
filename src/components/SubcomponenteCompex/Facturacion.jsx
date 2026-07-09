@@ -51,6 +51,7 @@ export default function Facturacion({
   getInputPropsControlHoras,
   isDragActiveControlHoras,
   onEnviarControlHoras,
+  onPersistirControlHoras,
   getRootPropsEvidencia,
   getInputPropsEvidencia,
   isDragActiveEvidencia,
@@ -159,7 +160,7 @@ export default function Facturacion({
   }, [formData.control_horas, tieneControlHorasGuardado]);
 
   const handleGuardarControlHoras = useCallback(
-    (normalizado, totales) => {
+    async (normalizado, totales) => {
       if (!setFormData) return;
       const hoy = new Date().toISOString().slice(0, 10);
       setFormData((prev) => ({
@@ -169,8 +170,12 @@ export default function Facturacion({
         valor_gastos: Math.round(totales.gastos || 0),
         fecha_control_horas: prev.fecha_control_horas || hoy,
       }));
+
+      if (onPersistirControlHoras) {
+        await onPersistirControlHoras(normalizado, totales);
+      }
     },
-    [setFormData]
+    [setFormData, onPersistirControlHoras]
   );
 
   const handleImportarExcelControlHoras = useCallback(

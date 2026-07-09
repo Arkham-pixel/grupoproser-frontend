@@ -30,7 +30,11 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
   const path = pathname || '';
 
   if (r === 'visualizador') {
-    return path.startsWith('/matriz-riesgo-avanzada') || path.startsWith('/matrices-riesgo');
+    return (
+      path.startsWith('/matriz-riesgo-avanzada') ||
+      path.startsWith('/matriz-riesgo-reporte') ||
+      path.startsWith('/matrices-riesgo')
+    );
   }
 
   if (r === 'puertos') {

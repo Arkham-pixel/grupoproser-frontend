@@ -9,6 +9,7 @@ import {
   generarPieReporteHtml,
   envolverSeccion,
 } from './reporteHtmlSecciones.js';
+import { generarSeccionesEjecutivasHtml } from './reporteEjecutivoHtml.js';
 
 export class ReporteService {
   
@@ -38,6 +39,7 @@ export class ReporteService {
       });
       const navHtml = generarNavReporteHtml();
       const pieHtml = generarPieReporteHtml(assets);
+      const seccionesEjecutivasHtml = generarSeccionesEjecutivasHtml(datosMatriz);
 
       // Crear el HTML del reporte
       const htmlReporte = `
@@ -92,6 +94,7 @@ export class ReporteService {
               </div>
               ${cabeceraHtml}
               ${generarSeccionInformacionModerna(datosMatriz.informacion)}
+              ${seccionesEjecutivasHtml}
               ${envolverSeccion('seccion-identificacion', this.generarSeccionIdentificacion(datosMatriz.identificacion))}
               ${envolverSeccion('seccion-valoracion', this.generarSeccionValoracion(datosMatriz.valoracion, tipoReporte))}
               ${envolverSeccion('seccion-mapa-calor', this.generarSeccionMapaCalor(datosMatriz.mapaCalor, datosMatriz.valoracion, datosMatriz, tipoReporte))}
@@ -2127,10 +2130,10 @@ return {
   }
 
   // Generar y mostrar reporte en nueva ventana (vista React = mismo diseño que la matriz)
-  static async mostrarReporte(datosMatriz, tipoReporte = 'inicial') {
+  static async mostrarReporte(datosMatriz, tipoReporte = 'inicial', matrizId = null) {
     try {
       const { abrirReporteMatrizVista } = await import('./reportePdfDesdeHtmlService.js');
-      abrirReporteMatrizVista(datosMatriz, tipoReporte);
+      abrirReporteMatrizVista(datosMatriz, tipoReporte, matrizId);
       return { success: true };
     } catch (error) {
       console.error('Error al mostrar reporte:', error);
