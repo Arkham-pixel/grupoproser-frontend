@@ -30,6 +30,7 @@ export const TIPOS_CATALOGO_PUERTOS = [
   { id: 'tipo_averia', label: 'Tipos de avería' },
   { id: 'tipo_inspeccion', label: 'Tipos de inspección' },
   { id: 'tipo_transporte', label: 'Tipos de transporte' },
+  { id: 'tipo_mercancia', label: 'Tipos de mercancía' },
   { id: 'aseguradora', label: 'Aseguradoras' },
   { id: 'sucursal', label: 'Sucursales' },
   { id: 'estado_acta', label: 'Estados de acta' },

@@ -325,7 +325,7 @@ export default function PuertosActasListado() {
                 <th className="px-3 py-2.5 font-semibold">Regional / Ciudad</th>
                 <th className="px-3 py-2.5 font-semibold">Fecha</th>
                 <th className="px-3 py-2.5 font-semibold">Cliente</th>
-                <th className="px-3 py-2.5 font-semibold">Beneficiario / Mercancía</th>
+                <th className="px-3 py-2.5 font-semibold">Beneficiario / Tipo de mercancía</th>
                 <th className="px-3 py-2.5 font-semibold">Estado</th>
                 <th className="px-3 py-2.5 font-semibold">Avance</th>
               </tr>

@@ -58,6 +58,7 @@ const TIPOS_CATALOGO_FORM = [
   'tipo_averia',
   'tipo_inspeccion',
   'tipo_transporte',
+  'tipo_mercancia',
   'aseguradora',
   'sucursal',
   'estado_acta',
@@ -395,14 +396,16 @@ export default function PuertosNuevaActa() {
             onChange={(e) => setCampo('asegurado', e.target.value)}
           />
         </Campo>
-        <Campo label="Mercancía" obligatorio>
-          <input
-            className={inputCls}
-            placeholder="MERCANCÍA"
-            value={form.mercancia}
-            onChange={(e) => setCampo('mercancia', e.target.value)}
-          />
-        </Campo>
+        <SelectorCatalogoPuertos
+          label="Tipo de mercancía"
+          obligatorio
+          tipo="tipo_mercancia"
+          items={catalogos.tipo_mercancia}
+          value={form.mercancia}
+          onChange={(v) => setCampo('mercancia', v)}
+          onRefresh={() => recargarTipo('tipo_mercancia')}
+          cargando={cargandoCatalogos}
+        />
         <SelectorCatalogoPuertos
           label="Empaque"
           obligatorio

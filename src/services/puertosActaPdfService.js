@@ -374,7 +374,7 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
   y = filaDatos(doc, y, pageRef, 'Aseguradora', form.aseguradora);
   y = filaDatos(doc, y, pageRef, 'Sucursal', form.sucursal);
   y = filaDatos(doc, y, pageRef, 'Asegurado', form.asegurado);
-  y = filaDatos(doc, y, pageRef, 'Mercancía', form.mercancia);
+  y = filaDatos(doc, y, pageRef, 'Tipo de mercancía', form.mercancia);
   y = filaDatos(doc, y, pageRef, 'Empaque', form.empaque);
   y = filaDatos(doc, y, pageRef, 'Nro. Piezas', form.nroPiezas);
   y = filaDatos(doc, y, pageRef, 'Fecha Construcción', formatearFechaCorta(form.fechaConstruccion));

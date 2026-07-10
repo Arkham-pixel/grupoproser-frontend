@@ -225,7 +225,7 @@ const CAMPOS_OBLIGATORIOS = [
   { key: 'aseguradora', label: 'Aseguradora' },
   { key: 'sucursal', label: 'Sucursal' },
   { key: 'asegurado', label: 'Asegurado' },
-  { key: 'mercancia', label: 'Mercancía' },
+  { key: 'mercancia', label: 'Tipo de mercancía' },
   { key: 'empaque', label: 'Empaque' },
   { key: 'fechaConstruccion', label: 'Fecha Construcción' },
   { key: 'lugarReconocimiento', label: 'Lugar de Reconocimiento' },
