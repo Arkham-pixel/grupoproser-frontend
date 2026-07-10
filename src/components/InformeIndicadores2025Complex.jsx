@@ -6,6 +6,8 @@ import {
   CartesianGrid,
   Cell,
   Legend,
+  Pie,
+  PieChart,
   Tooltip,
   XAxis,
   YAxis,
@@ -13,6 +15,7 @@ import {
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
 import { obtenerCasosComplex } from '../services/complexService';
 import { obtenerResponsables } from '../services/riesgoService';
+import { getEstados } from '../services/estadosService.js';
 import Loader from './Loader';
 import { useTheme } from '../context/ThemeContext';
 import { useProtocoloSiniestros } from '../hooks/useProtocoloSiniestros.js';
@@ -29,6 +32,9 @@ import {
   complexCard,
   complexSectionTitle,
   complexBtnSecondary,
+  complexTableWrap,
+  complexTableSimple,
+  complexTableHead,
 } from './SubcomponenteCompex/complexFenixUi.js';
 import {
   Campo,
@@ -48,6 +54,7 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
   const [siniestros, setSiniestros] = useState([]);
   const [complex, setComplex] = useState([]);
   const [responsables, setResponsables] = useState([]);
+  const [estados, setEstados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exportando, setExportando] = useState(false);
   const [errorExport, setErrorExport] = useState('');
@@ -61,10 +68,11 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
     const cargar = async () => {
       setLoading(true);
       try {
-        const [siniestrosData, complexData, responsablesData] = await Promise.allSettled([
+        const [siniestrosData, complexData, responsablesData, estadosData] = await Promise.allSettled([
           getSiniestrosEnriquecidos(),
           obtenerCasosComplex(),
           obtenerResponsables(),
+          getEstados(),
         ]);
 
         setSiniestros(
@@ -86,11 +94,17 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
                 : []
             : [];
         setResponsables(resp);
+        setEstados(
+          estadosData.status === 'fulfilled' && Array.isArray(estadosData.value)
+            ? estadosData.value
+            : []
+        );
       } catch (e) {
         console.error(e);
         setSiniestros([]);
         setComplex([]);
         setResponsables([]);
+        setEstados([]);
       } finally {
         setLoading(false);
       }
@@ -127,6 +141,7 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
       siniestros,
       complex,
       responsables,
+      estados,
       protocolo,
       fechaDesdeHistorico,
       fechaHastaHistorico,
@@ -139,6 +154,7 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
     siniestros,
     complex,
     responsables,
+    estados,
     protocolo,
     fechaDesdeHistorico,
     fechaHastaHistorico,
@@ -147,11 +163,11 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
     getNombreResponsable,
   ]);
 
-  const handleExportar = () => {
+  const handleExportar = async () => {
     setErrorExport('');
     setExportando(true);
     try {
-      exportarInformeIndicadoresExcel(informe);
+      await exportarInformeIndicadoresExcel(informe);
     } catch (e) {
       setErrorExport(e.message || 'No se pudo generar el informe.');
     } finally {
@@ -170,6 +186,11 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
   const hist = informe?.historicoResumen?.[0] || {};
   const prot = informe?.protocoloResumen?.[0] || {};
   const graf = informe?.graficos || {};
+  const cons = informe?.consolidadoHistorico || informe?.meta?.consolidadoHistorico || {};
+  const cerradosDetalle = cons.cerradosDetalle || [];
+  const enGestionDetalle = cons.enGestionDetalle || [];
+  const consolidadoCompleto = cons.consolidadoCompleto || [];
+  const porEstado = informe?.consolidadoPorEstado || [];
 
   const tooltipStyle = {
     backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
@@ -269,11 +290,27 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <ComplexMetricCard
                 label="Total casos"
-                value={String(hist['Total casos'] ?? 0)}
+                value={String(cons.total ?? hist['Total casos'] ?? 0)}
               />
               <ComplexMetricCard
-                label="En espera documentos"
-                value={String(hist['En espera de documentos'] ?? 0)}
+                label="% cierre total"
+                value={`${cons.porcentajeCierreTotal ?? 0}%`}
+              />
+              <ComplexMetricCard
+                label="Cierre exitoso (facturado)"
+                value={String(cons.cierreExitoso ?? hist['Cierre exitoso (facturado)'] ?? hist['Cerrados (facturado)'] ?? 0)}
+              />
+              <ComplexMetricCard
+                label="% cierre exitoso"
+                value={`${cons.porcentajeCierreExitoso ?? 0}%`}
+              />
+              <ComplexMetricCard
+                label="Otros cerrados"
+                value={String(cons.otrosCerrados ?? 0)}
+              />
+              <ComplexMetricCard
+                label="En gestión"
+                value={`${cons.enGestion ?? 0} (${cons.porcentajeEnGestion ?? 0}%)`}
               />
               <ComplexMetricCard
                 label="Asignación → Contacto"
@@ -285,8 +322,8 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
               />
             </div>
             <p className="mt-3 text-xs text-gray-500">
-              Hoja Excel: resumen + desglose por {informe?.historicoPorResponsable?.length ?? 0}{' '}
-              responsable(s).
+              % cierre total = (facturado + desistido + anulado) / total. % cierre exitoso =
+              solo facturado / total.
             </p>
           </div>
 
@@ -302,7 +339,10 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
                 label="Cumplimiento general"
                 value={prot['Cumplimiento general'] || '—'}
               />
-              <ComplexMetricCard label="Cerrados" value={String(prot['Cerrados en periodo'] ?? 0)} />
+              <ComplexMetricCard
+                label="Total casos"
+                value={String(prot['Total casos'] ?? informe?.meta?.totalCasosProtocolo ?? 0)}
+              />
               <ComplexMetricCard
                 label="Asignación → Contacto"
                 value={prot['Prom. Asignación → Primer contacto'] || '—'}
@@ -313,9 +353,191 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
               />
             </div>
             <p className="mt-3 text-xs text-gray-500">
-              Hoja Excel: resumen + {informe?.protocoloPorAjustador?.length ?? 0} ajustador(es) con
-              tiempos y % cumplimiento.
+              Cumplimiento y tiempos del protocolo (desde {PROTOCOLO_FECHA_ACTIVACION}). Los
+              facturados del año están en Histórico. Hoja Excel:{' '}
+              {informe?.protocoloPorAjustador?.length ?? 0} ajustador(es).
             </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-8" aria-label="Consolidado completo por estados">
+        <h3 className="mb-1 font-heading text-base font-bold text-gray-900 dark:text-white">
+          Consolidado completo por estados
+        </h3>
+        <p className="mb-4 text-sm text-gray-500 dark:text-gray-400">
+          Periodo {informe?.meta?.periodoHistorico || 'histórico'} · conteo real por estado del caso
+          (igual que el reporte).
+        </p>
+
+        {/* 1. Casos cerrados — individuales */}
+        <div className={`${complexCard} mb-4`}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-fenix-primario">
+            1. Casos cerrados (individuales)
+          </p>
+          <p className="mt-1 mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Facturado = éxito (pagado). Desistido / Anulado = otros cerrados finalizados.
+          </p>
+          <div className={complexTableWrap}>
+            <table className={complexTableSimple}>
+              <thead>
+                <tr className={complexTableHead}>
+                  <th className="text-left">Estado</th>
+                  <th className="text-right">Casos</th>
+                  <th className="text-left">Tipo de cierre</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cerradosDetalle.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-3 text-sm text-gray-500">
+                      Sin casos cerrados en el periodo.
+                    </td>
+                  </tr>
+                ) : (
+                  cerradosDetalle.map((fila) => (
+                    <tr key={`cerrado-${fila.estado}`}>
+                      <td className="px-3 py-2 text-sm font-medium">{fila.estado}</td>
+                      <td className="px-3 py-2 text-right text-sm tabular-nums font-bold">
+                        {fila.cantidad}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-gray-500">
+                        {fila.categoria === 'cierreExitoso'
+                          ? 'Éxito — facturado / pagado'
+                          : 'Finalizado — desistido / anulado'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+                <tr className="border-t border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40">
+                  <td className="px-3 py-2 text-sm font-bold">TOTAL CERRADOS</td>
+                  <td className="px-3 py-2 text-right text-sm tabular-nums font-bold">
+                    {cons.totalCerrados ?? 0}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-gray-500">
+                    {cons.porcentajeCierreTotal ?? 0}% del total · Facturado (
+                    {cons.cierreExitoso ?? 0}) + Desistido/Anulado ({cons.otrosCerrados ?? 0})
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 2. En gestión — individuales */}
+        <div className={`${complexCard} mb-4`}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-fenix-primario">
+            2. Estados en gestión (individuales)
+          </p>
+          <p className="mt-1 mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Cada estado pendiente o en proceso, con su cantidad real.
+          </p>
+          <div className={complexTableWrap}>
+            <table className={complexTableSimple}>
+              <thead>
+                <tr className={complexTableHead}>
+                  <th className="text-left">Estado</th>
+                  <th className="text-right">Casos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enGestionDetalle.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="px-3 py-3 text-sm text-gray-500">
+                      Sin casos en gestión en el periodo.
+                    </td>
+                  </tr>
+                ) : (
+                  enGestionDetalle.map((fila) => (
+                    <tr key={`gestion-${fila.estado}`}>
+                      <td className="px-3 py-2 text-sm">{fila.estado}</td>
+                      <td className="px-3 py-2 text-right text-sm tabular-nums font-semibold">
+                        {fila.cantidad}
+                      </td>
+                    </tr>
+                  ))
+                )}
+                <tr className="border-t border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/40">
+                  <td className="px-3 py-2 text-sm font-bold">TOTAL EN GESTIÓN</td>
+                  <td className="px-3 py-2 text-right text-sm tabular-nums font-bold">
+                    {cons.enGestion ?? 0}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* 3. Consolidado completo */}
+        <div className={complexCard}>
+          <p className="text-xs font-semibold uppercase tracking-wide text-fenix-primario">
+            3. Consolidado completo
+          </p>
+          <p className="mt-1 mb-3 text-sm text-gray-500 dark:text-gray-400">
+            Todos los estados + totales y porcentaje de cierre. Debe cuadrar: cerrados + en gestión
+            = total.
+          </p>
+          <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+            <ComplexMetricCard label="Facturado (éxito)" value={String(cons.cierreExitoso ?? 0)} />
+            <ComplexMetricCard
+              label="% cierre exitoso"
+              value={`${cons.porcentajeCierreExitoso ?? 0}%`}
+            />
+            <ComplexMetricCard
+              label="Desistido / Anulado"
+              value={String(cons.otrosCerrados ?? 0)}
+            />
+            <ComplexMetricCard
+              label="Total cerrados"
+              value={`${cons.totalCerrados ?? 0} (${cons.porcentajeCierreTotal ?? 0}%)`}
+            />
+            <ComplexMetricCard
+              label="En gestión"
+              value={`${cons.enGestion ?? 0} (${cons.porcentajeEnGestion ?? 0}%)`}
+            />
+            <ComplexMetricCard label="TOTAL GENERAL" value={String(cons.total ?? 0)} />
+          </div>
+          <div className={complexTableWrap}>
+            <table className={complexTableSimple}>
+              <thead>
+                <tr className={complexTableHead}>
+                  <th className="text-left">Estado</th>
+                  <th className="text-right">Casos</th>
+                  <th className="text-right">%</th>
+                  <th className="text-left">Clasificación</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(consolidadoCompleto.length ? consolidadoCompleto : porEstado).map((fila) => {
+                  const estado = fila.estado || fila.Estado;
+                  const cantidad = fila.cantidad ?? fila.Casos;
+                  const porcentaje = fila.porcentaje ?? fila['%'];
+                  const clasif = fila.etiquetaCategoria || fila.Clasificación;
+                  const esTotal = fila.esTotal || estado === 'TOTAL GENERAL';
+                  return (
+                    <tr
+                      key={`full-${estado}`}
+                      className={
+                        esTotal
+                          ? 'border-t-2 border-fenix-primario/40 bg-fenix-primario/5 font-bold'
+                          : ''
+                      }
+                    >
+                      <td className="px-3 py-2 text-sm">{estado}</td>
+                      <td className="px-3 py-2 text-right text-sm tabular-nums">{cantidad}</td>
+                      <td className="px-3 py-2 text-right text-sm tabular-nums">
+                        {porcentaje != null && porcentaje !== ''
+                          ? String(porcentaje).includes('%')
+                            ? porcentaje
+                            : `${porcentaje}%`
+                          : '—'}
+                      </td>
+                      <td className="px-3 py-2 text-xs text-gray-500">{clasif}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -326,6 +548,37 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
         </h3>
 
         <div className="grid gap-6 xl:grid-cols-2">
+          {graf.porcentajeCierre?.length > 0 && (
+            <ComplexChartCard
+              title="Porcentaje de cierre"
+              subtitle={`Cierre total ${graf.porcentajeCierreTotal ?? cons.porcentajeCierreTotal ?? 0}% · Éxito (facturado) ${graf.porcentajeCierreExitoso ?? cons.porcentajeCierreExitoso ?? 0}%`}
+            >
+              <ComplexChartPlot height={280}>
+                <PieChart>
+                  <Pie
+                    data={graf.porcentajeCierre}
+                    dataKey="valor"
+                    nameKey="etiqueta"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={55}
+                    outerRadius={95}
+                    paddingAngle={2}
+                  >
+                    {graf.porcentajeCierre.map((item) => (
+                      <Cell key={item.etiqueta} fill={item.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v) => [`${v}%`, 'Participación']}
+                  />
+                  <Legend />
+                </PieChart>
+              </ComplexChartPlot>
+            </ComplexChartCard>
+          )}
+
           {graf.volumenCasos?.length > 0 && (
             <ComplexChartCard title="Volumen de casos" subtitle="Comparativo histórico vs nuevo protocolo">
               <ComplexChartPlot height={280}>
@@ -344,6 +597,49 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
                   <Bar dataKey="valor" radius={[4, 4, 0, 0]} maxBarSize={48}>
                     {graf.volumenCasos.map((_, i) => (
                       <Cell key={i} fill={COLORES_VOLUMEN[i % COLORES_VOLUMEN.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ComplexChartPlot>
+            </ComplexChartCard>
+          )}
+
+          {graf.consolidadoEstadosBarras?.length > 0 && (
+            <ComplexChartCard
+              title="Casos por estado"
+              subtitle="Consolidado histórico — números reales del estado del caso"
+            >
+              <ComplexChartPlot height={Math.max(280, graf.consolidadoEstadosBarras.length * 34)}>
+                <BarChart
+                  data={graf.consolidadoEstadosBarras}
+                  layout="vertical"
+                  margin={{ top: 8, right: 24, left: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
+                  <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 12 }} />
+                  <YAxis
+                    type="category"
+                    dataKey="nombre"
+                    width={140}
+                    tick={{ fill: tickColor, fontSize: 10 }}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(v) => [v, 'Casos']}
+                    labelFormatter={(_, p) => p?.[0]?.payload?.nombreCompleto || ''}
+                  />
+                  <Bar dataKey="cantidad" radius={[0, 4, 4, 0]} maxBarSize={22}>
+                    {graf.consolidadoEstadosBarras.map((item) => (
+                      <Cell
+                        key={item.nombreCompleto}
+                        fill={
+                          item.categoria === 'cierreExitoso'
+                            ? '#16A34A'
+                            : item.categoria === 'otrosCerrados'
+                              ? '#C8102E'
+                              : '#2563EB'
+                        }
+                      />
                     ))}
                   </Bar>
                 </BarChart>
@@ -487,11 +783,10 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
+                    formatter={(v) => [v, 'Casos']}
                     labelFormatter={(_, p) => p?.[0]?.payload?.nombreCompleto || ''}
                   />
-                  <Legend />
-                  <Bar dataKey="casos" name="Casos" fill="#2563EB" radius={[0, 4, 4, 0]} maxBarSize={18} />
-                  <Bar dataKey="cerrados" name="Cerrados" fill="#16A34A" radius={[0, 4, 4, 0]} maxBarSize={18} />
+                  <Bar dataKey="casos" name="Casos" fill="#2563EB" radius={[0, 4, 4, 0]} maxBarSize={22} />
                 </BarChart>
               </ComplexChartPlot>
             </ComplexChartCard>

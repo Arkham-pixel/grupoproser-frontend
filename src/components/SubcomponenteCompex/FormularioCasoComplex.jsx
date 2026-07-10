@@ -2648,6 +2648,17 @@ setFormData(prev => ({
       }
     });
 
+    // No persistir fechas de hito con año corrupto (p. ej. 1902 / 0008).
+    CAMPOS_FECHA_HORA_PROTOCOLO.forEach((campo) => {
+      if (!(campo in payload)) return;
+      const limpio = formatearFechaHoraParaInput(payload[campo]);
+      if (!limpio) {
+        if (payload[campo]) payload[campo] = '';
+        return;
+      }
+      payload[campo] = limpio;
+    });
+
     return payload;
   }
 

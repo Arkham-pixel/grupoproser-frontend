@@ -656,9 +656,9 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
           <h2 className={complexSectionTitle}>Indicadores operativos</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <ComplexMetricCard
-              label="Cerrados en el periodo"
+              label="Cerrados (facturado)"
               value={String(indicadoresGlobales.cerradosPeriodo)}
-              hint={`Finiquito enviado o fecha de finiquito entre ${etiquetaPeriodo}.`}
+              hint="Estado FACTURADO entre los casos del periodo"
             />
             <ComplexMetricCard
               label="Pendientes de documentos"
@@ -693,8 +693,9 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
                 hint={`${cumplimientoGlobales.general.cumplidos} de ${cumplimientoGlobales.general.evaluables} etapas en plazo`}
               />
               <ComplexMetricCard
-                label="Cerrados en el periodo"
+                label="Cerrados (facturado)"
                 value={String(indicadoresGlobales.cerradosPeriodo)}
+                hint="Estado FACTURADO"
                 hint="Con finiquito dentro del rango de fechas."
               />
               <ComplexMetricCard

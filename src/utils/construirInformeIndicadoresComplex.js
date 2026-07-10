@@ -9,6 +9,7 @@ import {
 } from '../config/protocoloSiniestrosDefaults.js';
 import {
   agruparIndicadoresProtocolo,
+  calcularConsolidadoEstados,
   calcularIndicadoresGlobales,
   calcularIndicadoresPorResponsable,
   calcularIndicadoresProtocoloGlobales,
@@ -56,6 +57,7 @@ function construirGraficosInforme({
   cumplimientoProtocolo,
   porAjustadorProtocolo,
   cumplimientoMapa,
+  consolidadoHistorico,
 }) {
   const historicoTiempos = INDICADORES_HISTORICO_EXPORT.map((ind) => ({
     nombre: ind.titulo,
@@ -77,12 +79,41 @@ function construirGraficosInforme({
     }));
 
   const volumenCasos = [
-    { etiqueta: 'Casos históricos', valor: indicadoresHistoricos.totalCasos },
-    { etiqueta: 'Espera documentos', valor: indicadoresHistoricos.casosEsperaDocumentos },
+    { etiqueta: 'Total histórico', valor: indicadoresHistoricos.totalCasos },
+    { etiqueta: 'Facturados', valor: consolidadoHistorico?.cierreExitoso ?? indicadoresHistoricos.cerradosPeriodo },
+    { etiqueta: 'Otros cerrados', valor: consolidadoHistorico?.otrosCerrados ?? 0 },
+    { etiqueta: 'En gestión', valor: consolidadoHistorico?.enGestion ?? 0 },
     { etiqueta: 'Casos protocolo', valor: indicadoresProtocolo.totalCasos },
-    { etiqueta: 'Cerrados protocolo', valor: indicadoresProtocolo.cerradosPeriodo },
     { etiqueta: 'Docs. > 30 días', valor: indicadoresProtocolo.pendientesDocs30Dias },
   ].filter((item) => item.valor > 0);
+
+  const porcentajeCierre = [
+    {
+      etiqueta: '% cierre exitoso',
+      valor: consolidadoHistorico?.porcentajeCierreExitoso ?? 0,
+      color: '#16A34A',
+    },
+    {
+      etiqueta: '% otros cerrados',
+      valor: consolidadoHistorico?.porcentajeOtrosCerrados ?? 0,
+      color: '#C8102E',
+    },
+    {
+      etiqueta: '% en gestión',
+      valor: consolidadoHistorico?.porcentajeEnGestion ?? 0,
+      color: '#2563EB',
+    },
+  ];
+
+  const consolidadoEstadosBarras = (consolidadoHistorico?.porEstado || [])
+    .slice(0, 12)
+    .map((f) => ({
+      nombre: acortarEtiqueta(f.estado, 24),
+      nombreCompleto: f.estado,
+      cantidad: f.cantidad,
+      porcentaje: f.porcentaje ?? null,
+      categoria: f.categoria,
+    }));
 
   const protocoloCumplimiento = ETAPAS_PROTOCOLO_EXPORT.map((ind, index) => {
     const datos = cumplimientoProtocolo[ind.muestra];
@@ -112,7 +143,6 @@ function construirGraficosInforme({
       nombre: acortarEtiqueta(f.nombre, 20),
       nombreCompleto: f.nombre,
       casos: f.totalCasos,
-      cerrados: f.cerradosPeriodo,
     }));
 
   const protocoloCumplimientoAjustador = [...porAjustadorProtocolo]
@@ -131,6 +161,8 @@ function construirGraficosInforme({
 
   return {
     volumenCasos,
+    porcentajeCierre,
+    consolidadoEstadosBarras,
     historicoTiempos,
     historicoEsperaDocs,
     protocoloCumplimiento,
@@ -138,6 +170,8 @@ function construirGraficosInforme({
     protocoloCasosPorAjustador,
     protocoloCumplimientoAjustador,
     cumplimientoGeneral: cumplimientoProtocolo.general?.porcentaje ?? null,
+    porcentajeCierreTotal: consolidadoHistorico?.porcentajeCierreTotal ?? null,
+    porcentajeCierreExitoso: consolidadoHistorico?.porcentajeCierreExitoso ?? null,
   };
 }
 
@@ -152,11 +186,22 @@ function etiquetaPeriodo(desde, hasta) {
   return h ? `${d} – ${h}` : `desde ${d}`;
 }
 
-function filaResumenHistorico(indicadores, prefijo = '') {
+function filaResumenHistorico(indicadores, consolidado, prefijo = '') {
   const fila = {
     Sección: `${prefijo}Resumen histórico`.trim(),
-    'Total casos': indicadores.totalCasos,
-    'En espera de documentos': indicadores.casosEsperaDocumentos,
+    'Total casos': consolidado?.total ?? indicadores.totalCasos,
+    'Cierre exitoso (facturado)': consolidado?.cierreExitoso ?? indicadores.cerradosPeriodo ?? 0,
+    '% cierre exitoso':
+      consolidado?.porcentajeCierreExitoso != null
+        ? `${consolidado.porcentajeCierreExitoso}%`
+        : '—',
+    'Otros cerrados (desistido/anulado)': consolidado?.otrosCerrados ?? 0,
+    'Total cerrados': consolidado?.totalCerrados ?? 0,
+    '% cierre total':
+      consolidado?.porcentajeCierreTotal != null ? `${consolidado.porcentajeCierreTotal}%` : '—',
+    'En gestión': consolidado?.enGestion ?? 0,
+    '% en gestión':
+      consolidado?.porcentajeEnGestion != null ? `${consolidado.porcentajeEnGestion}%` : '—',
   };
   INDICADORES_HISTORICO_EXPORT.forEach((ind) => {
     fila[`Prom. ${ind.titulo}`] = formatearTiempoPromedio(indicadores[ind.clave]);
@@ -169,7 +214,6 @@ function filaResumenProtocolo(indicadores, cumplimiento, prefijo = '') {
   const fila = {
     Sección: `${prefijo}Resumen protocolo`.trim(),
     'Total casos': indicadores.totalCasos,
-    'Cerrados en periodo': indicadores.cerradosPeriodo,
     'Docs. pendientes > 30 días': indicadores.pendientesDocs30Dias,
     'Cumplimiento general': formatearPorcentajeCumplimiento(cumplimiento.general?.porcentaje),
     'Etapas en plazo (general)': `${cumplimiento.general?.cumplidos ?? 0}/${cumplimiento.general?.evaluables ?? 0}`,
@@ -188,6 +232,7 @@ export function construirInformeIndicadoresComplex({
   siniestros = [],
   complex = [],
   responsables = [],
+  estados = [],
   protocolo = null,
   fechaDesdeHistorico = '2025-01-01',
   fechaHastaHistorico = '',
@@ -202,7 +247,12 @@ export function construirInformeIndicadoresComplex({
   const casosHistoricos = filtrarCasosPorPeriodo(casos, fechaDesdeHistorico, fechaHastaHistorico);
   const casosProtocolo = filtrarCasosProtocolo(casos, fechaDesdeProtocolo, fechaHastaProtocolo);
 
-  const indicadoresHistoricos = calcularIndicadoresGlobales(casosHistoricos);
+  const consolidadoHistorico = calcularConsolidadoEstados(casosHistoricos, estados);
+  const indicadoresHistoricos = {
+    ...calcularIndicadoresGlobales(casosHistoricos),
+    // Alinear "cerrados" del KPI con FACTURADO real del consolidado
+    cerradosPeriodo: consolidadoHistorico.cierreExitoso,
+  };
   const porResponsableHistorico = calcularIndicadoresPorResponsable(
     casosHistoricos,
     obtenerNombreResponsable,
@@ -256,12 +306,50 @@ export function construirInformeIndicadoresComplex({
     },
   ];
 
-  const historicoResumen = [filaResumenHistorico(indicadoresHistoricos)];
+  const historicoResumen = [filaResumenHistorico(indicadoresHistoricos, consolidadoHistorico)];
+
+  const consolidadoCategorias = consolidadoHistorico.resumenCategorias.map((f) => ({
+    Categoría: f.categoria,
+    Casos: f.cantidad,
+    '%': f.porcentaje != null ? `${f.porcentaje}%` : '—',
+    Criterio: f.detalle,
+  }));
+
+  const consolidadoCasosCerrados = (consolidadoHistorico.cerradosDetalle || []).map((f) => ({
+    Estado: f.estado,
+    Casos: f.cantidad,
+    '% del total':
+      consolidadoHistorico.total > 0
+        ? `${Math.round((f.cantidad / consolidadoHistorico.total) * 1000) / 10}%`
+        : '—',
+    Tipo:
+      f.categoria === 'cierreExitoso'
+        ? 'Cerrado — éxito (facturado / pagado)'
+        : 'Cerrado — desistido/anulado (finalizado)',
+  }));
+
+  const consolidadoEnGestion = (consolidadoHistorico.enGestionDetalle || []).map((f) => ({
+    Estado: f.estado,
+    Casos: f.cantidad,
+    '% del total':
+      consolidadoHistorico.total > 0
+        ? `${Math.round((f.cantidad / consolidadoHistorico.total) * 1000) / 10}%`
+        : '—',
+    Tipo: 'En gestión',
+  }));
+
+  const consolidadoPorEstado = (consolidadoHistorico.consolidadoCompleto || []).map((f) => ({
+    Estado: f.estado,
+    Casos: f.cantidad,
+    '%': f.porcentaje != null ? `${f.porcentaje}%` : '—',
+    Clasificación: f.etiquetaCategoria,
+  }));
 
   const historicoPorResponsable = porResponsableHistorico.map((fila) => {
     const out = {
       Responsable: fila.nombre,
       Casos: fila.totalCasos,
+      'Cerrados (facturado)': fila.cerradosPeriodo ?? 0,
       'En espera documentos': fila.casosEsperaDocumentos,
     };
     INDICADORES_HISTORICO_EXPORT.forEach((ind) => {
@@ -279,7 +367,6 @@ export function construirInformeIndicadoresComplex({
       Ajustador: fila.nombre,
       Casos: fila.totalCasos,
       'Cumplimiento general': formatearPorcentajeCumplimiento(cumpl?.general?.porcentaje),
-      Cerrados: fila.cerradosPeriodo,
       'Docs. > 30 días': fila.pendientesDocs30Dias,
     };
     ETAPAS_PROTOCOLO_EXPORT.forEach((ind) => {
@@ -290,9 +377,27 @@ export function construirInformeIndicadoresComplex({
   });
 
   return {
-    meta,
+    meta: {
+      ...meta,
+      consolidadoHistorico: {
+        total: consolidadoHistorico.total,
+        cierreExitoso: consolidadoHistorico.cierreExitoso,
+        otrosCerrados: consolidadoHistorico.otrosCerrados,
+        enGestion: consolidadoHistorico.enGestion,
+        totalCerrados: consolidadoHistorico.totalCerrados,
+        porcentajeCierreExitoso: consolidadoHistorico.porcentajeCierreExitoso,
+        porcentajeOtrosCerrados: consolidadoHistorico.porcentajeOtrosCerrados,
+        porcentajeCierreTotal: consolidadoHistorico.porcentajeCierreTotal,
+        porcentajeEnGestion: consolidadoHistorico.porcentajeEnGestion,
+      },
+    },
     portada,
     historicoResumen,
+    consolidadoCategorias,
+    consolidadoCasosCerrados,
+    consolidadoEnGestion,
+    consolidadoPorEstado,
+    consolidadoHistorico,
     historicoPorResponsable,
     protocoloResumen,
     protocoloPorAjustador,
@@ -303,6 +408,7 @@ export function construirInformeIndicadoresComplex({
       cumplimientoProtocolo,
       porAjustadorProtocolo,
       cumplimientoMapa,
+      consolidadoHistorico,
     }),
   };
 }

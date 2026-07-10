@@ -17,6 +17,7 @@ import {
   TextareaFenix,
   ValorFijo,
 } from './FacturacionHelpers';
+import { InputFechaHoraProtocolo } from './ComplexUiBlocks.jsx';
 
 function resolverEstadoSelect(formData, estados = []) {
   const seleccionUsuario = String(formData?.estado ?? '').trim();
@@ -360,15 +361,12 @@ export default function DatosGenerales({
         </Campo>
 
         <Campo label="Fecha y hora de asignación">
-          <InputFenix
-            type="datetime-local"
+          <InputFechaHoraProtocolo
             name="fchaAsgncion"
             value={formData.fchaAsgncion || ''}
             onChange={handleChange}
+            hint="Incluya la hora de recepción para medir plazos del protocolo (ej. contacto en 12 h). Puede escribir fecha y hora a mano."
           />
-          <p className={complexHint}>
-            Incluya la hora de recepción para medir plazos del protocolo (ej. contacto en 12 h).
-          </p>
         </Campo>
 
         <Campo label="Fecha del Siniestro">

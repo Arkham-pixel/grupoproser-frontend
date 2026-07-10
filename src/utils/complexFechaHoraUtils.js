@@ -76,16 +76,28 @@ export function parsearFechaSoloDiaComplex(valor) {
   return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
 }
 
-/** Formato para input datetime-local: YYYY-MM-DDTHH:mm */
+/** Año mínimo aceptable en inputs de hitos (evita 1902/0008 por datos corruptos). */
+export const ANIO_MINIMO_FECHA_HORA_INPUT = 2024;
+
+export function esAnioFechaHoraInputValido(fecha) {
+  const parsed = fecha instanceof Date ? fecha : parsearFechaHoraComplex(fecha);
+  if (!parsed || Number.isNaN(parsed.getTime())) return false;
+  const year = parsed.getFullYear();
+  return year >= ANIO_MINIMO_FECHA_HORA_INPUT && year <= 2100;
+}
+
+/** Formato para inputs fecha+hora: YYYY-MM-DDTHH:mm. Vacío si el año es inválido/corrupto. */
 export function formatearFechaHoraParaInput(fecha) {
   if (!fecha) return '';
 
   if (typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(fecha)) {
-    return fecha;
+    const year = Number(fecha.slice(0, 4));
+    if (year < ANIO_MINIMO_FECHA_HORA_INPUT || year > 2100) return '';
+    return fecha.slice(0, 16);
   }
 
   const parsed = parsearFechaHoraComplex(fecha);
-  if (!parsed) return '';
+  if (!parsed || !esAnioFechaHoraInputValido(parsed)) return '';
 
   const year = parsed.getFullYear();
   const month = String(parsed.getMonth() + 1).padStart(2, '0');
@@ -93,6 +105,24 @@ export function formatearFechaHoraParaInput(fecha) {
   const hour = String(parsed.getHours()).padStart(2, '0');
   const minute = String(parsed.getMinutes()).padStart(2, '0');
   return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
+/** Partes para inputs separados (más fáciles de editar a mano que datetime-local). */
+export function partirFechaHoraParaInputs(valor) {
+  const normalizado = formatearFechaHoraParaInput(valor);
+  if (!normalizado) return { fecha: '', hora: '' };
+  const [fecha, hora = ''] = normalizado.split('T');
+  return { fecha: fecha || '', hora: (hora || '').slice(0, 5) };
+}
+
+export function combinarFechaHoraInputs(fecha, hora) {
+  const f = String(fecha || '').trim();
+  if (!f || !/^\d{4}-\d{2}-\d{2}$/.test(f)) return '';
+  const year = Number(f.slice(0, 4));
+  if (year < ANIO_MINIMO_FECHA_HORA_INPUT || year > 2100) return '';
+  const h = String(hora || '').trim();
+  const horaFinal = /^\d{2}:\d{2}/.test(h) ? h.slice(0, 5) : `${String(HORA_DEFECTO_FECHA_SOLO_DIA).padStart(2, '0')}:00`;
+  return `${f}T${horaFinal}`;
 }
 
 /** Formato legible en UI: 09/07/2025, 14:30 */

@@ -4,10 +4,15 @@ import { ResponsiveContainer } from 'recharts';
 import { FaChartBar, FaChartLine, FaCheckCircle, FaClipboardList, FaExclamationTriangle, FaInbox, FaInfoCircle, FaTable } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../../config/gerentesFacturacion';
 import {
+  combinarFechaHoraInputs,
+  partirFechaHoraParaInputs,
+} from '../../utils/complexFechaHoraUtils.js';
+import {
   complexBadge,
   complexBtnFormAction,
   complexBtnDanger,
   complexBtnGhost,
+  complexHint,
   complexNavTabActive,
   complexNavTabIdle,
   complexCard,
@@ -252,14 +257,64 @@ export function SelectFenix({ children, className = '', ...props }) {
   );
 }
 
-/** Fecha y hora de hitos de protocolo (asignación, trazabilidad). */
-export function InputFechaHoraProtocolo({ hint, className = '', ...props }) {
+/**
+ * Fecha + hora de hitos de protocolo.
+ * Usa inputs separados (date / time) para poder escribir a mano sin pelear con datetime-local
+ * (en Windows el año queda trabado en valores corruptos tipo 0008/1902).
+ */
+export function InputFechaHoraProtocolo({
+  name,
+  value = '',
+  onChange,
+  onBlur,
+  hint,
+  className = '',
+  min = '2024-01-01',
+  max = '2100-12-31',
+  disabled = false,
+  required = false,
+  id,
+}) {
+  const { fecha, hora } = partirFechaHoraParaInputs(value);
+
+  const emitir = (nuevaFecha, nuevaHora) => {
+    if (!onChange || !name) return;
+    const combinado = combinarFechaHoraInputs(nuevaFecha, nuevaHora);
+    onChange({ target: { name, value: combinado } });
+  };
+
   return (
     <div>
-      <input className={`${complexInput} ${className}`} type="datetime-local" {...props} />
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <input
+          id={id}
+          type="date"
+          name={`${name}__fecha`}
+          value={fecha}
+          min={min}
+          max={max}
+          disabled={disabled}
+          required={required}
+          className={`${complexInput} ${className}`}
+          onChange={(e) => emitir(e.target.value, hora || '12:00')}
+          onBlur={onBlur}
+          aria-label="Fecha"
+        />
+        <input
+          type="time"
+          name={`${name}__hora`}
+          value={hora}
+          disabled={disabled || !fecha}
+          className={`${complexInput} ${className}`}
+          onChange={(e) => emitir(fecha, e.target.value)}
+          onBlur={onBlur}
+          aria-label="Hora"
+        />
+      </div>
       {hint !== false && (
         <p className={complexHint}>
-          {hint || 'Registre la fecha y la hora real del evento para medir plazos del protocolo.'}
+          {hint ||
+            'Puede escribir la fecha y la hora a mano, o usar el calendario. Año mínimo 2024.'}
         </p>
       )}
     </div>

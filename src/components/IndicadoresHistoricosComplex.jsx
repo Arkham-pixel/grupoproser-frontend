@@ -280,6 +280,11 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
               />
             ))}
             <ComplexMetricCard
+              label="Cerrados (facturado)"
+              value={String(indicadoresGlobales.cerradosPeriodo ?? 0)}
+              hint="Casos con estado FACTURADO en el periodo (cierre operativo del área)."
+            />
+            <ComplexMetricCard
               label="En espera de documentos"
               value={String(indicadoresGlobales.casosEsperaDocumentos)}
               hint="Siniestros con inspección o solicitud de documentos realizada, sin último documento ni informe final (estado actual)."

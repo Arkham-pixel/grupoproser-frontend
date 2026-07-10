@@ -22,6 +22,7 @@ import {
 } from './complexFenixUi';
 import AlertasCasoPanel from './AlertasCasoPanel.jsx';
 import PlantillaCorreoContactoInicial from './PlantillaCorreoContactoInicial.jsx';
+import { InputFechaHoraProtocolo } from './ComplexUiBlocks.jsx';
 import SeguimientoDocumentosPendientes from './SeguimientoDocumentosPendientes.jsx';
 import SeguimientoAutorizacionCompania from './SeguimientoAutorizacionCompania.jsx';
 import SeguimientoDocumentosPago from './SeguimientoDocumentosPago.jsx';
@@ -1145,13 +1146,13 @@ const Trazabilidad = memo(function Trazabilidad({
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className={trazabilidadLabelClass}>Fecha y hora de asignación</label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaAsgncion"
               value={formData.fchaAsgncion || ''}
               onChange={handleChange}
               onBlur={handleBlur}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
@@ -1212,12 +1213,12 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
               Fecha de Contacto Inicial
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaContIni"
               value={formData.fchaContIni || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
@@ -1279,24 +1280,24 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
               Fecha de la Llamada
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaCoordInspeccion"
               value={formData.fchaCoordInspeccion || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
             <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
               Fecha Programada de Inspección
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaProgInspeccion"
               value={formData.fchaProgInspeccion || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
         </div>
@@ -1331,12 +1332,12 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
               Fecha de Inspección
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaInspccion"
               value={formData.fchaInspccion || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
@@ -1393,12 +1394,12 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-2`}>
               Fecha de Solicitud de Documentos
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaSoliDocu"
               value={formData.fchaSoliDocu || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
@@ -1474,12 +1475,12 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-2`}>
               Fecha del Informe Preliminar
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaInfoPrelm"
               value={formData.fchaInfoPrelm || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
@@ -1536,12 +1537,12 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-2`}>
               Fecha del Último Documento
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaRepoActi"
               value={formData.fchaRepoActi || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
@@ -1598,12 +1599,12 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-2`}>
               Fecha del Informe Final
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaInfoFnal"
               value={formData.fchaInfoFnal || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
@@ -1679,24 +1680,24 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-2`}>
               Fecha de Presentación de Cifras
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaPresentacionCifras"
               value={formData.fchaPresentacionCifras || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>
             <label className={`${trazabilidadLabelClass} mb-2`}>
               Fecha en que la aseguradora acepta la cifra
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaAceptacionCifrasAseguradora"
               value={formData.fchaAceptacionCifrasAseguradora || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div className="md:col-span-2">
@@ -1780,12 +1781,12 @@ const Trazabilidad = memo(function Trazabilidad({
             <label className={`${trazabilidadLabelClass} mb-2`}>
               Fecha de Envío de Finiquito
             </label>
-            <input
-              type="datetime-local"
+            <InputFechaHoraProtocolo
               name="fchaEnvioFiniquito"
               value={formData.fchaEnvioFiniquito || ''}
               onChange={handleChange}
               className={trazabilidadInputClass}
+              hint={false}
             />
           </div>
           <div>

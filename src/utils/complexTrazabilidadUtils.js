@@ -29,6 +29,7 @@ const CAMPOS_FECHA_CAMEL_SNAKE = [
   ['fchaAceptacionCifrasAseguradora', 'fcha_aceptacion_cifras_aseguradora'],
   ['fchaEnvioFiniquito', 'fcha_envio_finiquito'],
   ['fchaFinqtoIndem', 'fcha_finqto_indem'],
+  ['fchaFactra', 'fcha_factra'],
   ['codiRespnsble', 'codi_responble'],
   ['codiAsgrdra', 'codi_asgrdra'],
   ['tipoPoliza', 'tipo_poliza'],
@@ -111,7 +112,7 @@ export function filtrarCasosPorPeriodo(casos, fechaDesde, fechaHasta, fechaMinim
   const hasta = fechaHasta ? parsearFechaSoloDiaComplex(fechaHasta) : null;
 
   return casos.filter((caso) => {
-    const fchaAsgncion = parsearFechaSoloDiaComplex(caso.fchaAsgncion);
+    const fchaAsgncion = obtenerFechaAsignacionCaso(caso);
     if (!fchaAsgncion) return false;
     if (desde && fchaAsgncion < desde) return false;
     if (hasta && fchaAsgncion > hasta) return false;
@@ -119,8 +120,22 @@ export function filtrarCasosPorPeriodo(casos, fechaDesde, fechaHasta, fechaMinim
   });
 }
 
+/** Fecha de asignación con los mismos fallbacks que el reporte COMPLEX. */
+export function obtenerFechaAsignacionCaso(caso) {
+  return (
+    parsearFechaSoloDiaComplex(caso?.fchaAsgncion) ||
+    parsearFechaSoloDiaComplex(caso?.fecha_asignacion_form) ||
+    parsearFechaSoloDiaComplex(caso?.fecha_asignacion) ||
+    parsearFechaSoloDiaComplex(caso?.fcha_asgncion) ||
+    null
+  );
+}
+
 export function esCasoProtocoloNuevo(caso) {
-  const fchaAsgncion = parsearFechaComplex(caso?.fchaAsgncion);
+  const fchaAsgncion =
+    parsearFechaComplex(caso?.fchaAsgncion) ||
+    parsearFechaComplex(caso?.fecha_asignacion_form) ||
+    parsearFechaComplex(caso?.fecha_asignacion);
   if (fchaAsgncion) {
     return fchaAsgncion >= FECHA_INICIO_PROTOCOLO_COMPLEX;
   }
@@ -142,8 +157,255 @@ export function filtrarCasosProtocolo(casos, fechaDesde, fechaHasta) {
   );
 }
 
+/** Código de estado FACTURADO en COMPLEX (cierre operativo del área). */
+export const CODIGO_ESTADO_FACTURADO = '17';
+
+export function obtenerCodigoEstadoCaso(caso) {
+  const raw =
+    caso?.codiEstdo ??
+    caso?.codi_estado ??
+    caso?.codiEstado ??
+    caso?.codi_estdo ??
+    caso?.estado ??
+    caso?.estadoProceso ??
+    null;
+  if (raw == null || raw === '') return '';
+  return String(raw).trim();
+}
+
+/**
+ * Cerrado para COMPLEX = estado FACTURADO (código 17 o descripción).
+ * No se usa CERRADO/FINALIZADO ni solo fecha de finiquito.
+ */
+export function esCasoFacturado(caso) {
+  const codigo = obtenerCodigoEstadoCaso(caso);
+  if (!codigo) return false;
+
+  // Código numérico o string "17"
+  if (codigo === CODIGO_ESTADO_FACTURADO || Number(codigo) === 17) return true;
+
+  const normalizado = codigo.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (normalizado === 'FACTURADO' || normalizado.includes('FACTURADO')) return true;
+
+  const descripcion = String(
+    caso?.descEstdo || caso?.descEstado || caso?.nombreEstado || caso?.estadoNombre || ''
+  )
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  if (descripcion === 'FACTURADO' || descripcion.includes('FACTURADO')) return true;
+
+  return false;
+}
+
+export function esCasoCerrado(caso) {
+  return esCasoFacturado(caso);
+}
+
+function normalizarTextoEstado(valor) {
+  return String(valor || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Resuelve el nombre legible del estado del caso (código → catálogo, o texto directo).
+ */
+export function resolverNombreEstadoCaso(caso, catalogoEstados = []) {
+  const codigo = obtenerCodigoEstadoCaso(caso);
+  if (!codigo) return 'SIN ESTADO';
+
+  const codigoNorm = String(codigo).trim();
+  const catalogo = Array.isArray(catalogoEstados) ? catalogoEstados : [];
+
+  const porCodigo = catalogo.find((e) => {
+    const c = String(e?.codiEstdo ?? e?.codiEstado ?? e?.codigo ?? '').trim();
+    return c === codigoNorm || Number(c) === Number(codigoNorm);
+  });
+  if (porCodigo) {
+    return String(
+      porCodigo.descEstdo || porCodigo.descEstado || porCodigo.descripcion || codigoNorm
+    ).trim();
+  }
+
+  // Si el campo ya trae el nombre (no solo código numérico)
+  if (Number.isNaN(Number(codigoNorm))) return codigoNorm;
+
+  const descripcionDirecta = String(
+    caso?.descEstdo || caso?.descEstado || caso?.nombreEstado || ''
+  ).trim();
+  return descripcionDirecta || `Estado ${codigoNorm}`;
+}
+
+/**
+ * Clasificación de negocio para el consolidado histórico:
+ * - cierreExitoso: FACTURADO (pagado / éxito)
+ * - otrosCerrados: DESISTIDO, ANULADO, CANCELADO
+ * - enGestion: resto de estados activos
+ */
+export function clasificarCategoriaEstado(nombreEstado) {
+  const n = normalizarTextoEstado(nombreEstado);
+  if (!n || n === 'SIN ESTADO') return 'enGestion';
+
+  if (n === 'FACTURADO' || n.includes('FACTURADO')) return 'cierreExitoso';
+
+  if (
+    n.includes('DESISTIDO') ||
+    n.includes('ANULADO') ||
+    n === 'CANCELADO' ||
+    n.includes('CANCELADO')
+  ) {
+    return 'otrosCerrados';
+  }
+
+  return 'enGestion';
+}
+
+function etiquetaCategoriaEstado(categoria) {
+  if (categoria === 'cierreExitoso') return 'Cerrado — éxito (facturado)';
+  if (categoria === 'otrosCerrados') return 'Cerrado — desistido/anulado';
+  return 'En gestión';
+}
+
+/**
+ * Consolidado real por estado (misma lógica de conteo que el reporte por filtro de estado).
+ * Devuelve:
+ * - cada estado individual con cantidad
+ * - casos cerrados desglosados (facturado vs desistido/anulado)
+ * - estados en gestión individuales
+ * - consolidado completo con totales
+ */
+export function calcularConsolidadoEstados(casos = [], catalogoEstados = []) {
+  const porEstadoMap = new Map();
+
+  casos.forEach((caso) => {
+    const nombre = resolverNombreEstadoCaso(caso, catalogoEstados);
+    const clave = normalizarTextoEstado(nombre) || 'SIN ESTADO';
+    const actual = porEstadoMap.get(clave) || { estado: nombre, cantidad: 0 };
+    actual.cantidad += 1;
+    if (nombre.length > String(actual.estado).length) actual.estado = nombre;
+    porEstadoMap.set(clave, actual);
+  });
+
+  const porEstado = Array.from(porEstadoMap.values())
+    .map((fila) => {
+      const categoria = clasificarCategoriaEstado(fila.estado);
+      return {
+        estado: fila.estado,
+        cantidad: fila.cantidad,
+        categoria,
+        etiquetaCategoria: etiquetaCategoriaEstado(categoria),
+        esCerrado: categoria === 'cierreExitoso' || categoria === 'otrosCerrados',
+      };
+    })
+    .sort((a, b) => {
+      // Cerrados primero (facturado, luego otros), después en gestión por cantidad
+      const ordenCat = { cierreExitoso: 0, otrosCerrados: 1, enGestion: 2 };
+      const da = ordenCat[a.categoria] ?? 3;
+      const db = ordenCat[b.categoria] ?? 3;
+      if (da !== db) return da - db;
+      return b.cantidad - a.cantidad;
+    });
+
+  const cerradosDetalle = porEstado.filter((f) => f.esCerrado);
+  const enGestionDetalle = porEstado.filter((f) => !f.esCerrado);
+
+  const cierreExitoso = cerradosDetalle
+    .filter((f) => f.categoria === 'cierreExitoso')
+    .reduce((s, f) => s + f.cantidad, 0);
+  const otrosCerrados = cerradosDetalle
+    .filter((f) => f.categoria === 'otrosCerrados')
+    .reduce((s, f) => s + f.cantidad, 0);
+  const enGestion = enGestionDetalle.reduce((s, f) => s + f.cantidad, 0);
+  const totalCerrados = cierreExitoso + otrosCerrados;
+  const total = casos.length;
+
+  const pct = (parte) => (total > 0 ? Math.round((parte / total) * 1000) / 10 : 0);
+  const porcentajeCierreExitoso = pct(cierreExitoso);
+  const porcentajeOtrosCerrados = pct(otrosCerrados);
+  const porcentajeCierreTotal = pct(totalCerrados);
+  const porcentajeEnGestion = pct(enGestion);
+
+  const consolidadoCompleto = [
+    ...porEstado.map((f) => ({
+      estado: f.estado,
+      cantidad: f.cantidad,
+      porcentaje: pct(f.cantidad),
+      categoria: f.categoria,
+      etiquetaCategoria: f.etiquetaCategoria,
+      esCerrado: f.esCerrado,
+    })),
+    {
+      estado: 'TOTAL GENERAL',
+      cantidad: total,
+      porcentaje: total > 0 ? 100 : 0,
+      categoria: 'total',
+      etiquetaCategoria: 'Consolidado',
+      esCerrado: false,
+      esTotal: true,
+    },
+  ];
+
+  return {
+    total,
+    cierreExitoso,
+    otrosCerrados,
+    enGestion,
+    totalCerrados,
+    porcentajeCierreExitoso,
+    porcentajeOtrosCerrados,
+    porcentajeCierreTotal,
+    porcentajeEnGestion,
+    porEstado,
+    cerradosDetalle,
+    enGestionDetalle,
+    consolidadoCompleto,
+    resumenCategorias: [
+      {
+        categoria: 'Cerrado — éxito (FACTURADO)',
+        cantidad: cierreExitoso,
+        porcentaje: porcentajeCierreExitoso,
+        detalle: 'Caso pagado / cerrado con éxito en la empresa',
+      },
+      {
+        categoria: 'Cerrado — desistido / anulado',
+        cantidad: otrosCerrados,
+        porcentaje: porcentajeOtrosCerrados,
+        detalle: 'Cierre sin facturación exitosa (finalizado)',
+      },
+      {
+        categoria: 'Total casos cerrados',
+        cantidad: totalCerrados,
+        porcentaje: porcentajeCierreTotal,
+        detalle: 'Facturado + desistido + anulado',
+      },
+      {
+        categoria: 'En gestión',
+        cantidad: enGestion,
+        porcentaje: porcentajeEnGestion,
+        detalle: 'Pendientes, coordinación, liquidación, honorarios, etc.',
+      },
+      {
+        categoria: 'TOTAL GENERAL',
+        cantidad: total,
+        porcentaje: total > 0 ? 100 : 0,
+        detalle: 'Cerrados + en gestión',
+      },
+    ],
+  };
+}
+
+/** Fecha de cierre operativo: factura primero; si no, finiquito/indemnización. */
 export function obtenerFechaCierre(caso) {
   return (
+    caso?.fchaFactra ||
+    caso?.fcha_factra ||
+    caso?.fechaFactura ||
+    caso?.fecha_factura ||
     caso?.fchaEnvioFiniquito ||
     caso?.fcha_envio_finiquito ||
     caso?.fchaFinqtoIndem ||
@@ -174,8 +436,14 @@ export function casoRecibidoEnMes(caso, anio, mes) {
 }
 
 export function casoCerradoEnMes(caso, anio, mes) {
+  if (!esCasoFacturado(caso)) return false;
   const fecha = parsearFechaSoloDiaComplex(obtenerFechaCierre(caso));
-  if (!fecha) return false;
+  if (!fecha) {
+    // Facturado sin fecha de factura/finiquito: cuenta en el mes de asignación.
+    const asignacion = parsearFechaSoloDiaComplex(caso?.fchaAsgncion);
+    if (!asignacion) return false;
+    return asignacion.getFullYear() === anio && asignacion.getMonth() === mes - 1;
+  }
   return fecha.getFullYear() === anio && fecha.getMonth() === mes - 1;
 }
 
@@ -191,8 +459,21 @@ export function fechaEnPeriodo(fecha, fechaDesde, fechaHasta, fechaMinima = null
   return true;
 }
 
-export function casoCerradoEnPeriodo(caso, fechaDesde, fechaHasta) {
-  return fechaEnPeriodo(obtenerFechaCierre(caso), fechaDesde, fechaHasta);
+/**
+ * Caso cerrado dentro del universo ya filtrado por periodo de asignación.
+ * Criterio de negocio COMPLEX: estado FACTURADO (código 17).
+ */
+export function casoCerradoEnPeriodo(caso, _fechaDesde, _fechaHasta) {
+  return esCasoFacturado(caso);
+}
+
+/** Fechas de hitos anteriores a 2024 se tratan como corruptas (p. ej. Excel → 1902). */
+const FECHA_MINIMA_HITO_VALIDO = new Date(2024, 0, 1, 0, 0, 0);
+
+export function esFechaHitoValidaParaIndicador(valor) {
+  const fecha = parsearFechaComplex(valor);
+  if (!fecha) return false;
+  return fecha >= FECHA_MINIMA_HITO_VALIDO;
 }
 
 export function calcularDiasEntre(inicio, fin) {
@@ -210,6 +491,9 @@ export function calcularDiasEntre(inicio, fin) {
 export function calcularDiasSecuenciaIndicador(caso, { desde, hasta, fallbackDesde }) {
   if (!caso?.[hasta]) return null;
   const inicio = caso[desde] || (fallbackDesde ? caso[fallbackDesde] : null);
+  if (!esFechaHitoValidaParaIndicador(inicio) || !esFechaHitoValidaParaIndicador(caso[hasta])) {
+    return null;
+  }
   return calcularDiasEntre(inicio, caso[hasta]);
 }
 
@@ -274,6 +558,7 @@ export function formatearTiempoPromedio(diasPromedio) {
 function crearAcumuladorIndicadores() {
   return crearAcumuladorMuestrasSecuencia({
     esperaDocumentos: 0,
+    cerradosPeriodo: 0,
     totalCasos: 0,
   });
 }
@@ -285,6 +570,10 @@ function acumularTiempos(acumulador, caso) {
   if (casoEnEsperaDocumentos(caso)) {
     acumulador.esperaDocumentos++;
   }
+
+  if (esCasoFacturado(caso)) {
+    acumulador.cerradosPeriodo++;
+  }
 }
 
 function promediarEtapa(etapa) {
@@ -293,6 +582,9 @@ function promediarEtapa(etapa) {
 }
 
 export function casoEnEsperaDocumentos(caso) {
+  // Un caso facturado ya está cerrado: no puede seguir en "espera de documentos".
+  if (esCasoFacturado(caso)) return false;
+
   const tieneSolicitudDocs = Boolean(parsearFechaComplex(caso.fchaSoliDocu));
   const tieneInspeccion = Boolean(parsearFechaComplex(caso.fchaInspccion));
   const tieneUltimoDocumento = Boolean(parsearFechaComplex(caso.fchaRepoActi));
@@ -309,6 +601,7 @@ export function calcularIndicadoresGlobales(casos) {
     totalCasos: acumulador.totalCasos,
     ...promediosSecuenciaDesdeAcumulador(acumulador, 'promedio'),
     casosEsperaDocumentos: acumulador.esperaDocumentos,
+    cerradosPeriodo: acumulador.cerradosPeriodo,
     muestras: muestrasSecuenciaDesdeAcumulador(acumulador),
   };
 }
@@ -343,6 +636,7 @@ export function calcularIndicadoresPorResponsable(casos, obtenerNombreResponsabl
       totalCasos: item.totalCasos,
       ...promediosSecuenciaDesdeAcumulador(item, 'promedio'),
       casosEsperaDocumentos: item.esperaDocumentos,
+      cerradosPeriodo: item.cerradosPeriodo,
       muestras: muestrasSecuenciaDesdeAcumulador(item),
     }))
     .sort((a, b) => b.totalCasos - a.totalCasos);
