@@ -32,7 +32,9 @@ const INDICADORES_HISTORICO_EXPORT = [
   { clave: 'promedioUltimoDocInformeFinal', muestra: 'ultimoDocInformeFinal', titulo: 'Último documento → Informe final' },
 ];
 
-const ETAPAS_PROTOCOLO_EXPORT = INDICADORES_PROTOCOLO_DEF.filter((d) => d.etapaId);
+const ETAPAS_PROTOCOLO_EXPORT = INDICADORES_PROTOCOLO_DEF.filter(
+  (d) => d.etapaId && d.imputableAjustador !== false
+);
 
 function acortarEtiqueta(texto, max = 28) {
   if (!texto) return '';

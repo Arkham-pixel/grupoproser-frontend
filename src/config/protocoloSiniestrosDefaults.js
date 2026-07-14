@@ -25,6 +25,7 @@ export const NOTAS_IMPLEMENTACION_PROTOCOLO = [
   'Si no es posible inspeccionar en el plazo ideal, dejar trazabilidad de la causa y la nueva fecha coordinada.',
   'El seguimiento documental continúa hasta acreditación y, después, hasta completar documentos de pago.',
   'En esperas de terceros (asegurado, compañía, intermediario) la primera alerta se envía tras 10 días hábiles.',
+  'Esa prórroga de 10 días hábiles no imputa tiempos ni retraso al ajustador: solo aplaza alertas y seguimientos de espera externa.',
 ];
 
 export const GRACIA_ESPERA_EXTERNA_DIAS_HABILES = 10;
@@ -90,6 +91,8 @@ export const SECUENCIA_INDICADORES_TIEMPO = [
     muestra: 'informeFinalAutorizacion',
     desde: 'fchaInfoFnal',
     hasta: 'fchaAceptacionCifrasAseguradora',
+    // Espera de la compañía: no imputa tiempos del ajustador.
+    imputableAjustador: false,
   },
   {
     muestra: 'aprobacionPresentacion',
@@ -156,9 +159,10 @@ export const INDICADORES_PROTOCOLO_DEF = [
     label: 'Informe final → Autorización de cifras',
     desdeLegible: 'informe final enviado',
     hastaLegible: 'autorización de cifras por la compañía',
-    plazoLegible: '2 a 3 días calendario',
+    plazoLegible: 'espera externa (compañía)',
     etapaId: 'autorizacionCifras',
-    plazoObjetivo: '2–3 días calendario (compañía)',
+    plazoObjetivo: 'Espera externa — no imputa al ajustador (gracia 10 días hábiles en alertas)',
+    imputableAjustador: false,
   },
   {
     clave: 'promedioAprobacionPresentacion',

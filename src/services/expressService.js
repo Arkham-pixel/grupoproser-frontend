@@ -115,7 +115,9 @@ const normalizeExpressItem = (item = {}) => {
     salvamentoAplica: salvamentoAplica ? String(salvamentoAplica) : '',
     valorSalvamento,
     valorSalvamentoNumero,
+    anexos: Array.isArray(item.anexos) ? item.anexos : [],
     anexosSalvamento: Array.isArray(item.anexosSalvamento) ? item.anexosSalvamento : [],
+    liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   };
 };
 
@@ -208,5 +210,123 @@ export const deleteSiniestroExpress = async (id) => {
     );
   }
   return payload;
+};
+
+export const getSiniestroExpressById = async (id) => {
+  if (!id) throw new Error('Identificador de siniestro express no válido');
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${EXPRESS_API_URL}/${id}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al obtener el caso Express (${response.status})`);
+  }
+  return normalizeExpressItem(payload?.data ?? payload);
+};
+
+/** Prefijos de anexos generados por el liquidador (para reemplazar al actualizar). */
+export const PREFIJOS_ANEXO_LIQUIDADOR = [
+  'Liquidador_Express_',
+  'Recibo_Indemnizacion_',
+  'Checklist_Express_',
+  'Salvamento_Express_',
+];
+
+export const esAnexoLiquidador = (anexo = {}) => {
+  const nombre = String(anexo.nombre || '');
+  return PREFIJOS_ANEXO_LIQUIDADOR.some((p) => nombre.startsWith(p));
+};
+
+/**
+ * Guarda liquidador JSON + valor indemnización + archivos generados en anexos del caso.
+ * Reemplaza anexos previos del liquidador por nombre.
+ */
+export const guardarLiquidadorEnCasoExpress = async ({
+  casoId,
+  liquidador,
+  valorIndemnizacion,
+  archivos = [],
+  anexosActuales = [],
+  anexosSalvamentoActuales = [],
+  casoBase = {},
+}) => {
+  if (!casoId) throw new Error('El caso Express debe estar guardado antes de adjuntar el liquidador.');
+
+  const formData = new FormData();
+  const camposBase = {
+    responsable: casoBase.responsable ?? '',
+    codigoWorkflow: casoBase.codigoWorkflow ?? '',
+    numeroSiniestro: casoBase.numeroSiniestro ?? '',
+    fechaSiniestro: casoBase.fechaSiniestro ?? '',
+    avisoSiniestro: casoBase.avisoSiniestro ?? '',
+    avisoSiniestroCompania: casoBase.avisoSiniestroCompania ?? '',
+    fechaReciboDocumentos: casoBase.fechaReciboDocumentos ?? '',
+    fechaCargueFiniquito: casoBase.fechaCargueFiniquito ?? '',
+    amparo: casoBase.amparo ?? '',
+    valorIndemnizacion:
+      valorIndemnizacion === undefined || valorIndemnizacion === null ? '' : String(valorIndemnizacion),
+    observacionesSeguimiento: casoBase.observacionesSeguimiento ?? '',
+    aseguradora: casoBase.aseguradora ?? '',
+    intermediario: casoBase.intermediario ?? '',
+    ciudadSiniestro: casoBase.ciudadSiniestro ?? '',
+    aseguradoBeneficiario: casoBase.aseguradoBeneficiario ?? '',
+    nit: casoBase.nit ?? '',
+    analista: casoBase.analista ?? '',
+    fechaEnvioAutorizacion: casoBase.fechaEnvioAutorizacion ?? '',
+    fechaRespuestaAnalista: casoBase.fechaRespuestaAnalista ?? '',
+    correoNotificacion: casoBase.correoNotificacion ?? '',
+    fechaCierre: casoBase.fechaCierre ?? '',
+    fechaSolicitudDocumentos: casoBase.fechaSolicitudDocumentos ?? '',
+    fechaPresentacionCifras: casoBase.fechaPresentacionCifras ?? '',
+    fechaFiniquitosFirmado: casoBase.fechaFiniquitosFirmado ?? '',
+    reserva: casoBase.reserva ?? '',
+    estadoProceso: casoBase.estadoProceso ?? '',
+    salvamentoAplica: casoBase.salvamentoAplica || 'no_aplica',
+    valorSalvamento: casoBase.valorSalvamento ?? '',
+  };
+
+  Object.entries(camposBase).forEach(([key, value]) => {
+    if (value !== null && value !== undefined && value !== '') {
+      const str = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)
+        ? value.slice(0, 10)
+        : String(value);
+      formData.append(key, str);
+    }
+  });
+
+  formData.append('liquidador', JSON.stringify(liquidador || {}));
+  formData.append('salvamentoAplica', casoBase.salvamentoAplica || 'no_aplica');
+
+  const anexosSinLiquidador = (Array.isArray(anexosActuales) ? anexosActuales : []).filter(
+    (a) => !esAnexoLiquidador(a)
+  );
+  formData.append('anexosExistentes', JSON.stringify(anexosSinLiquidador));
+  formData.append(
+    'salvamentoAnexosExistentes',
+    JSON.stringify(Array.isArray(anexosSalvamentoActuales) ? anexosSalvamentoActuales : [])
+  );
+
+  (archivos || []).forEach(({ blob, nombre, mime }) => {
+    if (!blob || !nombre) return;
+    const file = new File([blob], nombre, {
+      type: mime || blob.type || 'application/octet-stream',
+    });
+    formData.append('anexos', file, nombre);
+  });
+
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${EXPRESS_API_URL}/${casoId}`, {
+    method: 'PUT',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: formData,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(
+      payload?.error || payload?.detalle || `Error al guardar liquidador en el caso (${response.status})`
+    );
+  }
+  return normalizeExpressItem(payload?.data ?? payload);
 };
 

@@ -1,4 +1,6 @@
 import { obtenerSeguimientoTrazabilidad } from '../config/seguimientosTrazabilidadProtocolo.js';
+import { GRACIA_ESPERA_EXTERNA_DIAS_HABILES } from '../config/protocoloSiniestrosDefaults.js';
+import { diasHabilesColombiaEntre } from './festivosColombia.js';
 
 function parsearFecha(valor) {
   if (!valor) return null;
@@ -54,6 +56,11 @@ export function evaluarSeguimientoProtocolo({
   const intervaloDias = segProto?.intervaloDias ?? cfg.intervaloDias ?? 15;
   const referenciaCampo = segProto?.referencia ?? cfg.referenciaCampo;
   const hastaCampo = segProto?.campoFechaHasta ?? cfg.hastaCampo;
+  const dependenciaExterna = segProto?.dependenciaExterna !== false;
+  const graciaDiasHabiles =
+    segProto?.graciaDiasHabiles ??
+    protocolo?.graciaEsperaExternaDiasHabiles ??
+    GRACIA_ESPERA_EXTERNA_DIAS_HABILES;
 
   const fechaHasta = parsearFecha(formData[hastaCampo]);
   const fechaRef = parsearFecha(formData[referenciaCampo]);
@@ -73,11 +80,26 @@ export function evaluarSeguimientoProtocolo({
 
   let diasDesdeUltimo = null;
   let diasRetraso = 0;
+  let enGraciaExterna = false;
+  let tiempoLimite = intervaloDias;
+
   if (activo && puntoConteo) {
     const hoy = new Date();
     const hoyLocal = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
     diasDesdeUltimo = (hoyLocal.getTime() - puntoConteo.getTime()) / (1000 * 3600 * 24);
-    if (diasDesdeUltimo > intervaloDias) {
+
+    // Sin seguimientos previos: la prórroga de gracia (espera de terceros) NO genera retraso.
+    if (!fechaUltima && dependenciaExterna && fechaRef) {
+      const diasHabiles = diasHabilesColombiaEntre(fechaRef, hoyLocal);
+      tiempoLimite = graciaDiasHabiles;
+      if (diasHabiles < graciaDiasHabiles) {
+        enGraciaExterna = true;
+        diasRetraso = 0;
+      } else {
+        // Solo cuenta retraso lo que supera la gracia (no se imputan los 10 días hábiles).
+        diasRetraso = Math.max(0, diasHabiles - graciaDiasHabiles);
+      }
+    } else if (diasDesdeUltimo > intervaloDias) {
       diasRetraso = diasDesdeUltimo - intervaloDias;
     }
   }
@@ -85,6 +107,10 @@ export function evaluarSeguimientoProtocolo({
   return {
     cfg,
     intervaloDias,
+    graciaDiasHabiles,
+    dependenciaExterna,
+    enGraciaExterna,
+    tiempoLimite,
     activo,
     completado,
     fechaRef,
@@ -93,7 +119,10 @@ export function evaluarSeguimientoProtocolo({
     diasDesdeUltimo: diasDesdeUltimo != null ? Math.max(0, diasDesdeUltimo) : null,
     diasRetraso: Math.max(0, diasRetraso),
     esUrgente: activo && diasRetraso > 0,
-    esReciente: activo && diasDesdeUltimo != null && diasDesdeUltimo <= intervaloDias,
+    esReciente:
+      activo &&
+      (enGraciaExterna ||
+        (diasDesdeUltimo != null && diasRetraso === 0 && diasDesdeUltimo <= intervaloDias)),
   };
 }
 
@@ -133,12 +162,13 @@ export function calcularDiasInfoSeguimientoTrazabilidad({
   return {
     dias: estado.diasDesdeUltimo,
     diasRetraso: estado.diasRetraso,
-    tiempoLimite: estado.intervaloDias,
+    tiempoLimite: estado.tiempoLimite ?? estado.intervaloDias,
     fecha: estado.fechaUltima,
     fechaReferencia: estado.fechaRef,
     documentoAnterior: false,
     esReciente: estado.esReciente,
     esUrgente: estado.esUrgente,
+    enGraciaExterna: Boolean(estado.enGraciaExterna),
     tieneDocumentos: filtrarHistorialSeguimiento(historialDocs, tipoHistorial).length > 0,
     mostrarHoras: false,
   };

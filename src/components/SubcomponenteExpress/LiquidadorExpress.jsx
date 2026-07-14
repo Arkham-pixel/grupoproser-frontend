@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   FaCalculator,
   FaClipboardCheck,
@@ -6,6 +6,7 @@ import {
   FaFileWord,
   FaPlus,
   FaRecycle,
+  FaSave,
   FaTrash,
 } from 'react-icons/fa';
 import {
@@ -118,6 +119,11 @@ export default function LiquidadorExpress({
   valorInicial = null,
   onTotalIndemnizarChange,
   onLiquidar,
+  onEstadoChange,
+  onGuardarEnCaso,
+  guardandoCaso = false,
+  tieneLiquidadorGuardado = false,
+  casoId = null,
   compact = false,
 }) {
   const [tab, setTab] = useState('liquidacion');
@@ -125,7 +131,7 @@ export default function LiquidadorExpress({
     const base = casoExpress
       ? mapCasoExpressALiquidador(casoExpress)
       : { ...DEFAULT_LIQUIDADOR_EXPRESS, conceptos: [], checklist: { ...DEFAULT_LIQUIDADOR_EXPRESS.checklist, itemsAnalisis: [] } };
-    if (valorInicial) {
+    if (valorInicial && !(base.conceptos || []).length) {
       base.conceptos = [
         {
           id: Date.now(),
@@ -151,6 +157,12 @@ export default function LiquidadorExpress({
     () => totalesItemsAnalisis(liquidador.checklist?.itemsAnalisis),
     [liquidador.checklist?.itemsAnalisis]
   );
+
+  useEffect(() => {
+    onTotalIndemnizarChange?.(totales.totalIndemnizar);
+    onEstadoChange?.(liquidador, totales);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- callbacks de padre; evitamos bucles
+  }, [liquidador, totales]);
 
   const actualizar = (path, valor) => {
     setLiquidador((prev) => {
@@ -294,16 +306,38 @@ export default function LiquidadorExpress({
               <TabButton key={t.id} tab={t} active={tab === t.id} onClick={setTab} />
             ))}
           </div>
-          <button
-            type="button"
-            className={expressBtnPrimary}
-            onClick={handleDescargarExcel}
-            disabled={descargandoWord}
-          >
-            <FaFileExcel />
-            {descargandoWord ? 'Generando…' : 'Descargar Excel (3 hojas)'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            {onGuardarEnCaso && (
+              <button
+                type="button"
+                className={expressBtnPrimary}
+                onClick={onGuardarEnCaso}
+                disabled={guardandoCaso || descargandoWord}
+              >
+                <FaSave />
+                {guardandoCaso
+                  ? 'Guardando…'
+                  : tieneLiquidadorGuardado
+                    ? 'Actualizar en caso'
+                    : 'Guardar en caso'}
+              </button>
+            )}
+            <button
+              type="button"
+              className={expressBtnGhost}
+              onClick={handleDescargarExcel}
+              disabled={descargandoWord || guardandoCaso}
+            >
+              <FaFileExcel />
+              {descargandoWord ? 'Generando…' : 'Descargar Excel (3 hojas)'}
+            </button>
+          </div>
         </div>
+      )}
+      {casoId && tieneLiquidadorGuardado && (
+        <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-body text-xs text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100">
+          Este caso ya tiene liquidador guardado. Al actualizar se reemplazan Excel y Word en documentos del caso y se sincroniza el valor a indemnizar.
+        </p>
       )}
 
       {tab === 'liquidacion' && (

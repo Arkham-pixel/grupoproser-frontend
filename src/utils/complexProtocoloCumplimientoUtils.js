@@ -15,7 +15,7 @@ export const INDICADORES_CUMPLIMIENTO_PROTOCOLO = [
   { muestra: 'inspeccionSolicitudDocs', etapaId: 'solicitudDocs' },
   { muestra: 'etapaPreliminar', etapaId: 'informePreliminar' },
   { muestra: 'ultimoDocInformeFinal', etapaId: 'informeFinal' },
-  { muestra: 'informeFinalAutorizacion', etapaId: 'autorizacionCifras' },
+  // autorizacionCifras es dependenciaExterna: no entra al % del ajustador
   { muestra: 'aprobacionPresentacion', etapaId: 'presentacionCifras' },
 ];
 
@@ -77,6 +77,8 @@ function resolverFechaReferenciaCaso(caso, etapa) {
  */
 export function evaluarCumplimientoIndicadorProtocolo(caso, etapa) {
   if (!etapa?.limite || etapa.alertaVencimiento === false) return null;
+  // Esperas de terceros no deben afectar el % de cumplimiento del ajustador.
+  if (etapa.dependenciaExterna) return null;
 
   const fechaReferencia = resolverFechaReferenciaCaso(caso, etapa);
   const fechaCierre = parsearFechaComplex(caso[etapa.campoFecha]);

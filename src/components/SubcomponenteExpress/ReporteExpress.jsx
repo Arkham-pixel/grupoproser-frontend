@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { FaCog, FaFileExcel, FaTasks, FaTrash } from 'react-icons/fa';
+import { FaCog, FaCalculator, FaFileExcel, FaTasks, FaTrash } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { deleteSiniestroExpress, fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import SubcomponenteExpress from './SubcomponenteExpress.jsx';
 import { convertirFechaParaExcelDate } from '../../utils/fechaUtils.js';
@@ -123,6 +124,7 @@ function cargarColumnasGuardadas() {
 }
 
 const ReporteExpress = () => {
+  const navigate = useNavigate();
   const [siniestros, setSiniestros] = useState([]);
   const [filtrados, setFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -676,6 +678,24 @@ const ReporteExpress = () => {
                           >
                             <FaTasks className="text-sm" />
                             Gestionar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(`/express/liquidador?casoId=${item._id}`, {
+                                state: { casoExpress: item },
+                              })
+                            }
+                            className={`${expressBtnSecondary} !px-3 !py-1.5 !text-xs`}
+                            title={
+                              item.liquidador
+                                ? 'Abrir / actualizar liquidador del caso'
+                                : 'Crear liquidador y guardar documentos en el caso'
+                            }
+                          >
+                            <FaCalculator className="text-sm" />
+                            Liquidador
+                            {item.liquidador ? ' ✓' : ''}
                           </button>
                           <button
                             type="button"

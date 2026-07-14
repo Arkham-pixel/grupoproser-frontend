@@ -2,47 +2,40 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
   DOCUMENTOS_SOPORTE,
-  NOTAS_SALVAMENTO,
   parsearNumero,
   pctDocumentosMarcados,
   totalesItemsAnalisis,
 } from './liquidadorExpressHelpers.js';
-import {
-  aplicarRango,
-  AZUL_ZURICH,
-  bordeFinoNegro,
-  bordeMedioNegro,
-  estiloBannerSeccion,
-  estiloCeldaTabla,
-  estiloDol,
-  estiloEncabezadoAzul,
-  estiloLabelCampo,
-  estiloLabelChecklist,
-  estiloMonto,
-  estiloTituloZurich,
-  estiloTotalAzul,
-  estiloTotalMonto,
-  estiloValorCampo,
-  estiloValorChecklist,
-  fechaExcel,
-  fechaExcelTexto,
-  insertarBannerZurich,
-  insertarLogoZurich,
-  marcarSiNoExcel,
-  mergeConEstilo,
-} from './liquidadorExpressExcelShared.js';
 
-const FILAS_CONCEPTO = 12;
-const FILA_INICIO_CONCEPTOS = 14;
+const PLANTILLA_URL = '/templates/Liquidador_plantilla.xlsx';
 
-function configurarColumnasLiquidacion(sheet) {
-  sheet.getColumn(1).width = 20;
-  sheet.getColumn(2).width = 30;
-  sheet.getColumn(3).width = 29;
-  sheet.getColumn(4).width = 25;
-  sheet.getColumn(6).width = 17;
-  sheet.getColumn(7).width = 18;
-  sheet.getColumn(8).width = 27;
+const FILA_INI_CONCEPTOS = 14;
+const FILA_FIN_CONCEPTOS = 25;
+const FILA_INI_DOCS = 38;
+const FILA_INI_ANALISIS = 57;
+const MAX_ITEMS_ANALISIS = 3;
+
+function setCell(sheet, ref, value) {
+  const cell = sheet.getCell(ref);
+  cell.value = value === undefined || value === null || value === '' ? null : value;
+  return cell;
+}
+
+function setDateCell(sheet, ref, isoDate) {
+  if (!isoDate) {
+    setCell(sheet, ref, null);
+    return;
+  }
+  const d = new Date(`${String(isoDate).slice(0, 10)}T12:00:00`);
+  if (Number.isNaN(d.getTime())) {
+    setCell(sheet, ref, String(isoDate));
+    return;
+  }
+  const cell = sheet.getCell(ref);
+  cell.value = d;
+  if (!cell.numFmt || cell.numFmt === 'General') {
+    cell.numFmt = 'd" de "mmmm" de "yyyy';
+  }
 }
 
 function textoDeducible(liquidador, totales) {
@@ -51,348 +44,236 @@ function textoDeducible(liquidador, totales) {
   return `${totales.porcentaje}% del Valor de la Pérdida Mínimo ${totales.cantidadSMMLV} SMMLV`;
 }
 
-async function buildHojaLiquidacion(workbook, liquidador, totales) {
-  const sheet = workbook.addWorksheet('FORMATO_LIQUIDACION', {
-    views: [{ showGridLines: true }],
-  });
-  configurarColumnasLiquidacion(sheet);
+/** Nombre del usuario logueado en la plataforma (para ELABORADO POR). */
+function nombreUsuarioPlataforma() {
+  if (typeof localStorage === 'undefined') return '';
+  return (
+    localStorage.getItem('nombre') ||
+    localStorage.getItem('login') ||
+    ''
+  ).trim();
+}
 
-  sheet.getRow(1).height = 22;
-  sheet.getRow(2).height = 22;
-  sheet.getRow(3).height = 22;
-  mergeConEstilo(sheet, 'A1:G3', 'LIQUIDACION FINAL', estiloTituloZurich);
-  await insertarLogoZurich(workbook, sheet, { col: 6.2, row: 0.2, width: 124, height: 80 });
+function marcarSi(valor) {
+  return valor === 'SI' ? 1 : 0;
+}
 
+function marcarNo(valor) {
+  return valor === 'SI' ? 0 : 1;
+}
+
+/** Rellena FORMATO_LIQUIDACION preservando estilos/fórmulas/logos de la plantilla. */
+function rellenarLiquidacion(sheet, liquidador, totales) {
   const enc = liquidador.encabezado || {};
-  const campos = [
-    ['Reclamo', enc.reclamo],
-    ['ZC', enc.zc],
-    ['Asegurado', enc.asegurado],
-    ['NIT / CC', enc.nit],
-    ['Poliza No', enc.poliza],
-    ['Fecha de Siniestro', fechaExcel(enc.fechaSiniestro)],
-    ['Cobertura', enc.cobertura],
-    ['Deducible', textoDeducible(liquidador, totales)],
-  ];
+  const ded = liquidador.deducible || {};
 
-  campos.forEach(([label, valor], idx) => {
-    const row = 4 + idx;
-    aplicarRango(sheet, `A${row}`, label, estiloLabelCampo);
-    const cellValor = sheet.getCell(`B${row}`);
-    cellValor.value = valor ?? '';
-    cellValor.style = estiloValorCampo;
-    if (label === 'Fecha de Siniestro' && valor instanceof Date) {
-      cellValor.numFmt = 'd" de "mmmm" de "yyyy';
-    }
-    sheet.mergeCells(`B${row}:G${row}`);
-  });
+  setCell(sheet, 'B4', enc.reclamo || null);
+  setCell(sheet, 'B5', enc.zc || null);
+  setCell(sheet, 'B6', enc.asegurado || null);
+  setCell(sheet, 'B7', enc.nit || null);
+  setCell(sheet, 'B8', enc.poliza || null);
+  setDateCell(sheet, 'B9', enc.fechaSiniestro);
+  setCell(sheet, 'B10', enc.cobertura || null);
+  setCell(sheet, 'B11', textoDeducible(liquidador, totales));
 
-  sheet.getRow(12).height = 16;
-  ['A12', 'B12', 'C12', 'D12', 'E12', 'F12', 'G12', 'H12'].forEach((ref) => {
-    sheet.getCell(ref).style = { border: { bottom: { style: 'medium', color: { argb: 'FF000000' } } } };
-  });
-
-  mergeConEstilo(sheet, 'A13:A13', 'CONCEPTO', estiloEncabezadoAzul);
-  mergeConEstilo(sheet, 'B13:G13', 'DETALLE', estiloEncabezadoAzul);
-  mergeConEstilo(sheet, 'H13:H13', 'VALOR', estiloEncabezadoAzul);
-
-  const conceptos = [...(liquidador.conceptos || [])];
-  while (conceptos.length < 3) {
-    conceptos.push({ concepto: '', detalle: '', valor: '' });
-  }
-  const conceptosHoja = conceptos.slice(0, FILAS_CONCEPTO);
-  while (conceptosHoja.length < FILAS_CONCEPTO) {
-    conceptosHoja.push({ concepto: '', detalle: '', valor: '' });
+  for (let row = FILA_INI_CONCEPTOS; row <= FILA_FIN_CONCEPTOS; row += 1) {
+    setCell(sheet, `A${row}`, null);
+    setCell(sheet, `B${row}`, null);
+    setCell(sheet, `H${row}`, null);
   }
 
-  conceptosHoja.forEach((item, idx) => {
-    const row = FILA_INICIO_CONCEPTOS + idx;
-    aplicarRango(sheet, `A${row}`, item.concepto || '', estiloCeldaTabla);
-    mergeConEstilo(sheet, `B${row}:G${row}`, item.detalle || '', estiloCeldaTabla);
-    const cellMonto = sheet.getCell(`H${row}`);
+  const conceptos = liquidador.conceptos || [];
+  conceptos.slice(0, FILA_FIN_CONCEPTOS - FILA_INI_CONCEPTOS + 1).forEach((item, idx) => {
+    const row = FILA_INI_CONCEPTOS + idx;
+    setCell(sheet, `A${row}`, item.concepto || null);
+    setCell(sheet, `B${row}`, item.detalle || item.concepto || null);
     const monto = parsearNumero(item.valor);
-    cellMonto.value = monto || null;
-    cellMonto.style = estiloMonto;
+    setCell(sheet, `H${row}`, monto || null);
   });
 
-  sheet.getRow(25).height = 16;
-  ['A25', 'B25', 'C25', 'D25', 'E25', 'F25', 'G25', 'H25'].forEach((ref) => {
-    sheet.getCell(ref).style = { border: { bottom: { style: 'medium', color: { argb: 'FF000000' } } } };
-  });
+  // Entradas de deducible (las fórmulas de totales se mantienen)
+  setCell(sheet, 'C27', (totales.porcentaje || 0) / 100);
+  setCell(sheet, 'F27', totales.cantidadSMMLV ?? ded.cantidadSMMLV ?? 4);
+  setCell(sheet, 'G27', totales.deducibleSMMLV || null);
 
-  mergeConEstilo(sheet, 'A26:G26', 'TOTAL PERDIDA', estiloTotalAzul);
-  const cellTotalPerdida = sheet.getCell('H26');
-  cellTotalPerdida.value = totales.totalPerdida;
-  cellTotalPerdida.style = estiloTotalMonto;
+  // Fórmulas de totales con resultado precargado (Excel recalcula al abrir/editar)
+  sheet.getCell('H26').value = { formula: 'SUM(H14:H25)', result: totales.totalPerdida };
+  sheet.getCell('D27').value = {
+    formula: 'H26*C27',
+    result: totales.deduciblePorcentaje,
+  };
+  sheet.getCell('H27').value = {
+    formula: 'MAX(D27,G27)',
+    result: totales.deducibleAplicado,
+  };
+  sheet.getCell('H28').value = {
+    formula: 'H26-H27',
+    result: totales.totalIndemnizar,
+  };
 
-  mergeConEstilo(sheet, 'A27:A27', 'DEDUCIBLE', estiloTotalAzul);
-  const cellTextoDed = sheet.getCell('B27');
-  cellTextoDed.value = textoDeducible(liquidador, totales);
-  cellTextoDed.style = { ...estiloValorCampo, font: { name: 'Arial', size: 10, underline: true } };
-  sheet.getCell('C27').value = totales.porcentaje / 100;
-  sheet.getCell('C27').style = { ...estiloMonto, numFmt: '0.0%' };
-  sheet.getCell('D27').value = totales.deduciblePorcentaje;
-  sheet.getCell('D27').style = estiloMonto;
-  sheet.getCell('E27').value = 'VALOR';
-  sheet.getCell('E27').style = estiloEncabezadoAzul;
-  sheet.getCell('F27').value = totales.cantidadSMMLV;
-  sheet.getCell('F27').style = estiloMonto;
-  sheet.getCell('G27').value = totales.deducibleSMMLV;
-  sheet.getCell('G27').style = estiloMonto;
-  const cellDedAplicado = sheet.getCell('H27');
-  cellDedAplicado.value = totales.deducibleAplicado;
-  cellDedAplicado.style = estiloTotalMonto;
+  setCell(sheet, 'D30', 'COP');
 
-  mergeConEstilo(sheet, 'A28:G28', 'TOTAL INDEMNIZACION', estiloTotalAzul);
-  const cellIndemnizar = sheet.getCell('H28');
-  cellIndemnizar.value = totales.totalIndemnizar;
-  cellIndemnizar.style = estiloTotalMonto;
-
-  aplicarRango(sheet, 'B30', 'MONEDA', estiloLabelCampo);
-  aplicarRango(sheet, 'D30', 'COP', estiloValorCampo);
-  aplicarRango(sheet, 'E30', 'TRM', estiloLabelCampo);
-
-  aplicarRango(sheet, 'A37', 'ELABORADO POR:', {
-    font: { name: 'Arial', size: 10, color: { argb: 'FF000000' } },
-  });
+  // ELABORADO POR: usuario logueado en Arnald / la plataforma
+  setCell(sheet, 'B37', nombreUsuarioPlataforma() || null);
 }
 
-function configurarColumnasChecklist(sheet) {
-  sheet.getColumn(1).width = 4;
-  sheet.getColumn(2).width = 7;
-  sheet.getColumn(3).width = 30;
-  sheet.getColumn(4).width = 21;
-  sheet.getColumn(5).width = 22;
-  sheet.getColumn(6).width = 39;
-  sheet.getColumn(7).width = 19;
-}
-
-async function buildHojaChecklist(workbook, liquidador, totales) {
-  const sheet = workbook.addWorksheet('FORMATO-CHECK-LIST');
-  configurarColumnasChecklist(sheet);
-
+/** Rellena FORMATO-CHECK-LIST. */
+function rellenarChecklist(sheet, liquidador, totales) {
   const enc = liquidador.encabezado || {};
   const chk = liquidador.checklist || {};
   const pct = pctDocumentosMarcados(chk.documentos);
   const items = chk.itemsAnalisis || [];
   const { totalReclamado, totalAjustado } = totalesItemsAnalisis(items);
 
-  mergeConEstilo(sheet, 'B2:E5', 'FORMATO ÚNICO ATENCIÓN DE RECLAMOS EXPRESS\nPROPERTY', {
-    font: { name: 'Calibri', size: 12, bold: true, color: { argb: AZUL_ZURICH } },
-    alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-    border: bordeFinoNegro,
-  });
-  await insertarBannerZurich(workbook, sheet, { col: 5.1, row: 0.3 });
+  setDateCell(sheet, 'D9', chk.fecha || new Date().toISOString().slice(0, 10));
+  setCell(sheet, 'D10', enc.zc || null);
+  setCell(sheet, 'D11', enc.reclamo || null);
+  setCell(sheet, 'D12', chk.tipoProducto || 'TRDM');
+  setCell(sheet, 'D13', enc.poliza || null);
+  setCell(sheet, 'D14', enc.asegurado || null);
+  setDateCell(sheet, 'D15', chk.vigenciaDesde);
+  setDateCell(sheet, 'F15', chk.vigenciaHasta);
+  setDateCell(sheet, 'D16', enc.fechaSiniestro);
+  setCell(sheet, 'D17', chk.riesgoAsegurado || enc.asegurado || null);
+  setCell(sheet, 'D18', chk.coberturaAfectada || enc.cobertura || null);
+  setCell(sheet, 'D19', chk.garantias || 'No Aplica');
+  setCell(sheet, 'D20', chk.exclusiones || 'No Aplica');
+  setCell(sheet, 'D21', chk.objecion || 'No Aplica');
+  setCell(sheet, 'D22', chk.tipoPerdida || 'Parcial');
+  setCell(sheet, 'D23', chk.aplicaDemerito || 'No Aplica');
+  setCell(sheet, 'D24', chk.limiteAsegurado || null);
 
-  mergeConEstilo(sheet, 'B7:F7', 'INFORMACIÓN GENERAL DEL RECLAMO', estiloBannerSeccion);
+  setCell(sheet, 'E25', totales.totalPerdida || null);
+  setCell(sheet, 'E26', totales.deducibleAplicado || null);
+  setCell(sheet, 'E27', totales.totalIndemnizar || null);
 
-  const filasInfo = [
-    ['Fecha:', fechaExcelTexto(chk.fecha || new Date().toISOString().slice(0, 10))],
-    ['ZC:', enc.zc],
-    ['STRO:', enc.reclamo],
-    ['Tipo de producto:', chk.tipoProducto || 'TRDM'],
-    ['Número de póliza:', enc.poliza],
-    ['Asegurado:', enc.asegurado],
-    [
-      'Vigencia de la poliza:',
-      chk.vigenciaDesde || chk.vigenciaHasta
-        ? `${fechaExcelTexto(chk.vigenciaDesde)} al ${fechaExcelTexto(chk.vigenciaHasta)}`
-        : '',
-    ],
-    ['D.O.L:', fechaExcelTexto(enc.fechaSiniestro)],
-    ['Riesgo asegurado:', chk.riesgoAsegurado || enc.asegurado],
-    ['Cobertura afectada:', chk.coberturaAfectada || enc.cobertura || chk.tipoPerdida],
-    ['Garantias:', chk.garantias],
-    ['Exclusiones:', chk.exclusiones],
-    ['Objeción:', chk.objecion],
-    ['Tipo de pérdida:', chk.tipoPerdida],
-    ['Aplica demérito:', chk.aplicaDemerito],
-    ['Limite o valor asegurado:', chk.limiteAsegurado],
-    ['Pérdida ajustada:', totales.totalPerdida],
-    ['Deducible:', totales.deducibleAplicado],
-    ['Valor a indemnizar:', totales.totalIndemnizar],
-    [
-      'Salvamento:',
-      chk.salvamento === 'Aplica' && chk.salvamentoDetalle
-        ? `${chk.salvamento} | ${chk.salvamentoDetalle}`
-        : chk.salvamento,
-    ],
-    ['Recobro:', chk.recobro],
-    ['Indicadores de fraude:', chk.indicadoresFraude],
-  ];
+  setCell(sheet, 'D28', chk.salvamento || 'No Aplica');
+  setCell(sheet, 'E28', chk.salvamentoDetalle || null);
+  setCell(sheet, 'D29', chk.recobro || 'No Aplica');
+  setCell(sheet, 'D30', chk.indicadoresFraude || 'No Aplica');
 
-  filasInfo.forEach(([label, valor], idx) => {
-    const row = 9 + idx;
-    aplicarRango(sheet, `C${row}`, label, estiloLabelChecklist);
-    const estiloValor = label === 'D.O.L:' ? estiloDol : estiloValorChecklist;
-    if (['Pérdida ajustada:', 'Deducible:', 'Valor a indemnizar:'].includes(label)) {
-      mergeConEstilo(sheet, `E${row}:F${row}`, typeof valor === 'number' ? valor : parsearNumero(valor), {
-        ...estiloValor,
-        numFmt: '#,##0',
-        alignment: { horizontal: 'right', vertical: 'center' },
-      });
-    } else {
-      mergeConEstilo(sheet, `D${row}:F${row}`, valor ?? '', estiloValor);
-    }
+  // Descripción del evento (celda fusionada C33)
+  setCell(sheet, 'C33', chk.descripcionEvento || null);
+  setCell(sheet, 'C34', chk.ajustador ? `Ajustador - ${chk.ajustador}` : null);
+
+  DOCUMENTOS_SOPORTE.forEach((_, idx) => {
+    const row = FILA_INI_DOCS + idx;
+    const aplica = Boolean(chk.documentos?.[idx]);
+    setCell(sheet, `E${row}`, aplica ? 'Aplica' : null);
+    setCell(sheet, `F${row}`, aplica ? 1 : 0);
   });
 
-  mergeConEstilo(sheet, 'C32:F32', 'Breve descripción del evento:', estiloLabelChecklist);
-  mergeConEstilo(sheet, 'C33:F33', chk.descripcionEvento || '', estiloValorChecklist);
-  mergeConEstilo(sheet, 'C34:F34', `Ajustador - ${chk.ajustador || '—'}`, estiloValorChecklist);
+  const rowPct = FILA_INI_DOCS + DOCUMENTOS_SOPORTE.length + 1; // 46
+  setCell(sheet, 'E46', pct / 100);
+  const e46 = sheet.getCell('E46');
+  e46.numFmt = '0%';
+  setCell(sheet, 'E48', chk.reclamoFormalizado || 'No');
+  setDateCell(sheet, 'E49', chk.fechaFormalizacion);
 
-  mergeConEstilo(sheet, 'B36:F36', 'DOCUMENTOS DE SOPORTE', estiloBannerSeccion);
-
-  DOCUMENTOS_SOPORTE.forEach((doc, idx) => {
-    const row = 38 + idx;
-    mergeConEstilo(sheet, `C${row}:D${row}`, doc, estiloValorChecklist);
-    aplicarRango(sheet, `E${row}`, chk.documentos?.[idx] ? 'Aplica' : '', estiloValorChecklist);
-    aplicarRango(sheet, `F${row}`, chk.documentos?.[idx] ? 1 : 0, {
-      ...estiloValorChecklist,
-      alignment: { horizontal: 'center', vertical: 'center' },
-    });
-  });
-
-  const rowPct = 38 + DOCUMENTOS_SOPORTE.length + 1;
-  mergeConEstilo(sheet, `C${rowPct}:D${rowPct}`, 'Porcentaje de tareas finalizadas', estiloLabelChecklist);
-  mergeConEstilo(sheet, `E${rowPct}:F${rowPct}`, `${pct}%`, estiloValorChecklist);
-  mergeConEstilo(sheet, `C${rowPct + 2}:D${rowPct + 2}`, '¿el reclamo está formalizado?', estiloLabelChecklist);
-  mergeConEstilo(sheet, `E${rowPct + 2}:F${rowPct + 2}`, chk.reclamoFormalizado || 'No', estiloValorChecklist);
-  mergeConEstilo(sheet, `C${rowPct + 3}:D${rowPct + 3}`, 'Fecha formalización:', estiloLabelChecklist);
-  mergeConEstilo(sheet, `E${rowPct + 3}:F${rowPct + 3}`, fechaExcelTexto(chk.fechaFormalizacion), estiloValorChecklist);
-
-  const rowAnalisis = rowPct + 5;
-  mergeConEstilo(sheet, `B${rowAnalisis}:F${rowAnalisis}`, 'ANÁLISIS DE LA PÉRDIDA', estiloBannerSeccion);
-
-  const headerRow = rowAnalisis + 3;
-  aplicarRango(sheet, `B${headerRow}`, 'ITEM', estiloEncabezadoAzul);
-  aplicarRango(sheet, `C${headerRow}`, 'DESCRIPCIÓN', estiloEncabezadoAzul);
-  aplicarRango(sheet, `D${headerRow}`, 'V/R TOTAL (RECLAMADO)', estiloEncabezadoAzul);
-  aplicarRango(sheet, `E${headerRow}`, 'V/R TOTAL (AJUSTADO)', estiloEncabezadoAzul);
-  aplicarRango(sheet, `F${headerRow}`, 'OBSERVACIÓN', estiloEncabezadoAzul);
-
-  const filasItems = items.length ? items : [{ descripcion: '', reclamado: '', ajustado: '', observacion: '' }];
-  filasItems.forEach((item, idx) => {
-    const row = headerRow + 1 + idx;
-    aplicarRango(sheet, `B${row}`, idx + 1, estiloCeldaTabla);
-    aplicarRango(sheet, `C${row}`, item.descripcion || '', estiloCeldaTabla);
-    const cellRec = sheet.getCell(`D${row}`);
-    cellRec.value = parsearNumero(item.reclamado) || null;
-    cellRec.style = estiloMonto;
-    const cellAj = sheet.getCell(`E${row}`);
-    cellAj.value = parsearNumero(item.ajustado) || null;
-    cellAj.style = estiloMonto;
-    aplicarRango(sheet, `F${row}`, item.observacion || '', estiloCeldaTabla);
-  });
-
-  const rowTotales = headerRow + 1 + filasItems.length;
-  aplicarRango(sheet, `B${rowTotales}`, 'Totales', { ...estiloCeldaTabla, font: { bold: true } });
-  const cellTotRec = sheet.getCell(`D${rowTotales}`);
-  cellTotRec.value = totalReclamado;
-  cellTotRec.style = { ...estiloMonto, font: { bold: true } };
-  const cellTotAj = sheet.getCell(`E${rowTotales}`);
-  cellTotAj.value = totalAjustado;
-  cellTotAj.style = { ...estiloMonto, font: { bold: true } };
-
-  const rowComentarios = rowTotales + 2;
-  mergeConEstilo(sheet, `B${rowComentarios}:F${rowComentarios}`, 'COMENTARIOS ADICIONALES', estiloBannerSeccion);
-  mergeConEstilo(sheet, `B${rowComentarios + 2}:F${rowComentarios + 4}`, chk.comentariosAdicionales || 'Para este caso no aplica', estiloValorChecklist);
-  mergeConEstilo(sheet, `C${rowComentarios + 8}:F${rowComentarios + 8}`, `Ajustador - ${chk.ajustador || '—'}`, estiloValorChecklist);
-}
-
-function configurarColumnasSalvamento(sheet) {
-  for (let i = 1; i <= 28; i += 1) {
-    sheet.getColumn(i).width = i <= 6 ? 6 : 8;
+  for (let i = 0; i < MAX_ITEMS_ANALISIS; i += 1) {
+    const row = FILA_INI_ANALISIS + i;
+    const item = items[i];
+    setCell(sheet, `B${row}`, item ? i + 1 : null);
+    setCell(sheet, `C${row}`, item?.descripcion || null);
+    setCell(sheet, `D${row}`, item ? parsearNumero(item.reclamado) || null : null);
+    setCell(sheet, `E${row}`, item ? parsearNumero(item.ajustado) || null : null);
+    setCell(sheet, `F${row}`, item?.observacion || null);
   }
-  sheet.getColumn(20).width = 15;
+
+  setCell(sheet, 'D60', totalReclamado || null);
+  setCell(sheet, 'E60', totalAjustado || null);
+  setCell(sheet, 'B64', chk.comentariosAdicionales || 'Para este caso no aplica');
+  setCell(sheet, 'C70', chk.ajustador ? `Ajustador - ${chk.ajustador}` : null);
 }
 
-async function buildHojaSalvamento(workbook, liquidador) {
-  const sheet = workbook.addWorksheet('SALVAMENTO');
-  configurarColumnasSalvamento(sheet);
-
+/** Rellena SALVAMENTO. */
+function rellenarSalvamento(sheet, liquidador) {
   const enc = liquidador.encabezado || {};
   const sal = liquidador.salvamento || {};
 
-  mergeConEstilo(sheet, 'F1:AA4', 'Formato Salvamentos', {
-    font: { name: 'Calibri', size: 16, bold: true, color: { argb: AZUL_ZURICH } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-    border: bordeMedioNegro,
-  });
-  await insertarLogoZurich(workbook, sheet, { col: 1.1, row: 0.2, width: 118, height: 36 });
+  setCell(sheet, 'H6', enc.poliza || null);
+  setCell(sheet, 'H8', enc.reclamo || null);
+  setCell(sheet, 'H10', sal.subTarea || 'SALVAMENTO');
+  setCell(sheet, 'H12', enc.asegurado || null);
 
-  const filasEnc = [
-    ['Poliza', enc.poliza],
-    ['Reclamo', enc.reclamo],
-    ['Sub-tarea', sal.subTarea || 'SALVAMENTO'],
-    ['Asegurado', enc.asegurado],
-  ];
-  filasEnc.forEach(([label, valor], idx) => {
-    const row = 6 + idx * 2;
-    mergeConEstilo(sheet, `B${row}:E${row}`, label, estiloLabelCampo);
-    mergeConEstilo(sheet, `H${row}:V${row}`, valor ?? '', estiloValorCampo);
-  });
+  setCell(sheet, 'J17', sal.descripcion || null);
+  setCell(sheet, 'J19', sal.cantidad || null);
+  setCell(sheet, 'J22', sal.marca || 'N/D');
+  setCell(sheet, 'J24', sal.serial || 'N/D');
+  setCell(sheet, 'J26', sal.especificacionDano || null);
+  setCell(sheet, 'J29', sal.ubicacion || null);
+  setCell(sheet, 'J32', sal.contactoEntrega || null);
 
-  mergeConEstilo(sheet, 'C14:X15', 'Informacion de Salvamento', estiloBannerSeccion);
+  // SI/NO (celdas vinculadas a checkboxes en el original)
+  setCell(sheet, 'L35', marcarSi(sal.nacionalizado));
+  setCell(sheet, 'P35', marcarNo(sal.nacionalizado));
 
-  const filasSal = [
-    ['Descripcion Salvamento', sal.descripcion],
-    ['Cantidad (unidades)', sal.cantidad],
-    ['Marca salvamento', sal.marca || 'N/D'],
-    ['Serial salvamento', sal.serial || 'N/D'],
-    ['Especificacion del daño y estado actual del salvamento', sal.especificacionDano],
-    ['Ubicación                     (Direccion y ciudad)', sal.ubicacion],
-    ['Contacto persona quien entrega', sal.contactoEntrega],
-  ];
+  setCell(sheet, 'L38', marcarSi(sal.generaCustodia));
+  setCell(sheet, 'P38', marcarNo(sal.generaCustodia));
+  setCell(sheet, 'T38', parsearNumero(sal.valorCustodia) || null);
 
-  let row = 17;
-  filasSal.forEach(([label, valor]) => {
-    mergeConEstilo(sheet, `C${row}:F${row}`, label, estiloLabelChecklist);
-    mergeConEstilo(sheet, `J${row}:T${row + (label.includes('Especificacion') ? 1 : 0)}`, valor ?? '', estiloValorChecklist);
-    row += label.includes('Especificacion') ? 3 : 2;
-  });
+  setCell(sheet, 'L41', marcarSi(sal.registroFotografico));
+  setCell(sheet, 'P41', marcarNo(sal.registroFotografico));
 
-  const filaSiNo = (rowNum, label, valor, montoValor, monto) => {
-    mergeConEstilo(sheet, `C${rowNum}:F${rowNum + 1}`, label, estiloLabelChecklist);
-    aplicarRango(sheet, `J${rowNum}`, marcarSiNoExcel(valor), estiloValorChecklist);
-    aplicarRango(sheet, `N${rowNum}`, marcarSiNoExcel(valor === 'SI' ? 'NO' : 'SI'), estiloValorChecklist);
-    if (montoValor) {
-      aplicarRango(sheet, `R${rowNum}`, 'Valor', estiloLabelChecklist);
-      aplicarRango(sheet, `T${rowNum}`, parsearNumero(monto) || 0, estiloMonto);
-    }
-  };
+  setCell(sheet, 'L44', marcarSi(sal.indemnizado));
+  setCell(sheet, 'P44', marcarNo(sal.indemnizado));
+  setCell(sheet, 'T44', parsearNumero(sal.valorIndemnizado) || null);
 
-  filaSiNo(35, 'Salvamento nacionalizado', sal.nacionalizado);
-  filaSiNo(38, 'Genera costos por custodia', sal.generaCustodia, true, sal.valorCustodia);
-  filaSiNo(41, 'Registro fotografico', sal.registroFotografico);
-  filaSiNo(44, 'Indemnizado', sal.indemnizado, true, sal.valorIndemnizado);
-  filaSiNo(46, 'Se solicito oferta Non Cash', sal.ofertaNonCash, true, sal.valorNonCash);
+  setCell(sheet, 'L46', marcarSi(sal.ofertaNonCash));
+  setCell(sheet, 'P46', marcarNo(sal.ofertaNonCash));
+  setCell(sheet, 'T46', parsearNumero(sal.valorNonCash) || null);
 
-  mergeConEstilo(sheet, 'C48:F49', 'Comentarios salvamento', estiloLabelChecklist);
-  mergeConEstilo(sheet, 'J48:T49', sal.comentarios || '', estiloValorChecklist);
+  setCell(sheet, 'J48', sal.comentarios || null);
+}
 
-  mergeConEstilo(sheet, 'B52:U52', 'NOTAS:', estiloBannerSeccion);
-  NOTAS_SALVAMENTO.forEach((nota, idx) => {
-    const startRow = 53 + idx * 2;
-    mergeConEstilo(sheet, `B${startRow}:V${startRow + 1}`, `${idx + 1}. ${nota}`, estiloValorChecklist);
-  });
+async function cargarPlantillaWorkbook() {
+  const response = await fetch(PLANTILLA_URL);
+  if (!response.ok) {
+    throw new Error(
+      `No se pudo cargar la plantilla Liquidador (${response.status}). Verifique public/templates/Liquidador_plantilla.xlsx`
+    );
+  }
+  const buffer = await response.arrayBuffer();
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(buffer);
+  return workbook;
 }
 
 /**
- * Genera y descarga el libro Excel del Liquidador (3 hojas como Liquidador.xlsm).
+ * Genera el Excel a partir de la plantilla idéntica a Liquidador.xlsm (sin macros).
  */
-export async function descargarLiquidadorExpressExcel(liquidador, totales) {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Arnald DataFlow';
-  workbook.created = new Date();
+export async function generarLiquidadorExpressExcelBlob(liquidador, totales) {
+  const workbook = await cargarPlantillaWorkbook();
 
-  await buildHojaLiquidacion(workbook, liquidador, totales);
-  await buildHojaChecklist(workbook, liquidador, totales);
-  await buildHojaSalvamento(workbook, liquidador);
+  const hojaLiq =
+    workbook.getWorksheet('FORMATO_LIQUIDACION') || workbook.worksheets[0];
+  const hojaChk =
+    workbook.getWorksheet('FORMATO-CHECK-LIST') || workbook.worksheets[1];
+  const hojaSal = workbook.getWorksheet('SALVAMENTO') || workbook.worksheets[2];
+
+  if (hojaLiq) rellenarLiquidacion(hojaLiq, liquidador, totales);
+  if (hojaChk) rellenarChecklist(hojaChk, liquidador, totales);
+  if (hojaSal) rellenarSalvamento(hojaSal, liquidador);
+
+  workbook.creator = 'Arnald DataFlow';
+  workbook.modified = new Date();
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
     type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   });
-  const reclamo = String(liquidador?.encabezado?.reclamo || 'liquidador').replace(/[^a-zA-Z0-9_-]/g, '_');
-  saveAs(blob, `Liquidador_Express_${reclamo}.xlsx`);
+  const reclamo = String(liquidador?.encabezado?.reclamo || 'liquidador').replace(
+    /[^a-zA-Z0-9_-]/g,
+    '_'
+  );
+  return {
+    blob,
+    nombre: `Liquidador_Express_${reclamo}.xlsx`,
+    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  };
+}
+
+export async function descargarLiquidadorExpressExcel(liquidador, totales) {
+  const { blob, nombre } = await generarLiquidadorExpressExcelBlob(liquidador, totales);
+  saveAs(blob, nombre);
 }

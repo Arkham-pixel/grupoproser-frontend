@@ -340,6 +340,9 @@ export function ExpressAvisoModal({
 
 function FilaAnexoExpress({ anexo, onQuitar, onAviso }) {
   const accesible = puedeAccederAnexoExpress(anexo);
+  const esLiquidador = /^(Liquidador_Express_|Recibo_Indemnizacion_|Checklist_Express_|Salvamento_Express_)/.test(
+    String(anexo?.nombre || '')
+  );
 
   const handleVer = () => {
     const resultado = verAnexoExpress(anexo);
@@ -361,6 +364,11 @@ function FilaAnexoExpress({ anexo, onQuitar, onAviso }) {
         className="min-w-0 flex-1 truncate font-body text-sm text-gray-800 dark:text-gray-200"
         title={anexo.nombre}
       >
+        {esLiquidador && (
+          <span className="mr-2 inline-block rounded bg-fenix-primario/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fenix-primario">
+            Liquidador
+          </span>
+        )}
         {anexo.nombre}
       </span>
       <div className="flex shrink-0 flex-wrap items-center gap-1.5">

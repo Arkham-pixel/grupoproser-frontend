@@ -21,7 +21,7 @@ import {
   totalesAnalisisPerdida,
 } from './liquidadorExpressWordShared.js';
 
-export async function descargarChecklistExpressWord(liquidador, totales) {
+export async function generarChecklistExpressBlob(liquidador, totales) {
   const enc = liquidador.encabezado || {};
   const chk = liquidador.checklist || {};
   const pct = pctDocumentosMarcados(chk.documentos);
@@ -172,10 +172,19 @@ export async function descargarChecklistExpressWord(liquidador, totales) {
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `Checklist_Express_${nombreArchivoSeguro(enc.reclamo || enc.zc)}.docx`);
+  return {
+    blob,
+    nombre: `Checklist_Express_${nombreArchivoSeguro(enc.reclamo || enc.zc)}.docx`,
+    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
 }
 
-export async function descargarSalvamentoExpressWord(liquidador) {
+export async function descargarChecklistExpressWord(liquidador, totales) {
+  const { blob, nombre } = await generarChecklistExpressBlob(liquidador, totales);
+  saveAs(blob, nombre);
+}
+
+export async function generarSalvamentoExpressBlob(liquidador) {
   const enc = liquidador.encabezado || {};
   const sal = liquidador.salvamento || {};
 
@@ -234,5 +243,14 @@ export async function descargarSalvamentoExpressWord(liquidador) {
   });
 
   const blob = await Packer.toBlob(doc);
-  saveAs(blob, `Salvamento_Express_${nombreArchivoSeguro(enc.reclamo)}.docx`);
+  return {
+    blob,
+    nombre: `Salvamento_Express_${nombreArchivoSeguro(enc.reclamo)}.docx`,
+    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
+}
+
+export async function descargarSalvamentoExpressWord(liquidador) {
+  const { blob, nombre } = await generarSalvamentoExpressBlob(liquidador);
+  saveAs(blob, nombre);
 }

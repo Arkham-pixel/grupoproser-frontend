@@ -38,6 +38,7 @@ import { getAutofillAjusteDesdeComplex, getCasoComplex, updateCasoComplex } from
 import { resolverFechaReporteDesdeAsignacion } from '../../utils/prefillAjusteDesdeCasoComplex.js';
 import {
   buildCamposProtocoloDesdeAjuste,
+  obtenerFechaProtocoloCaso,
   resolverFechaFormularioAjuste,
   tipoHistorialDesdeEstadoAjuste,
 } from '../../utils/ajusteTrazabilidadComplexMap.js';
@@ -4234,21 +4235,6 @@ return;
 return;
         }
 
-        const docNuevo = {
-          tipo: tipoDoc,
-          categoria: tipoDoc,
-          nombre: nombreArchivoReal,
-          url: rutaArchivoReal || descargaFallback,
-          ruta: rutaArchivoReal || descargaFallback,
-          tamano: archivo?.tamaño || archivo?.tamano || 0,
-          tipoMime: archivo?.tipoMime || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          fecha: fechaLocal,
-          fechaSubida: fechaISO,
-          comentario: `Ajuste ${estadoActual} guardado`,
-          usuario: localStorage.getItem('login') || localStorage.getItem('nombre') || 'usuario',
-          formularioId: idDescargable
-        };
-
         const caso = await getCasoComplex(complexId);
         const historialActual = Array.isArray(caso?.historialDocs) ? caso.historialDocs : [];
 
@@ -4257,30 +4243,72 @@ return;
         // previa que coincida en (tipo + formularioId) para que la descarga apunte
         // siempre al .docx más reciente generado para esa versión.
         const claveFormulario = String(idDescargable || '');
+        let docPrevioMismoFormulario = null;
         const historialFiltrado = historialActual.filter((doc) => {
           if (!doc) return false;
           const docTipo = String(doc.tipo || doc.categoria || '');
           const docFormularioId = String(doc.formularioId || '');
           const mismaVersion = docTipo === tipoDoc;
           const mismoFormulario = docFormularioId && claveFormulario && docFormularioId === claveFormulario;
+          if (mismaVersion && mismoFormulario) {
+            if (!docPrevioMismoFormulario) docPrevioMismoFormulario = doc;
+            return false;
+          }
           // Conservamos documentos antiguos sin formularioId (carga manual histórica).
           if (!docFormularioId) return true;
-          return !(mismaVersion && mismoFormulario);
+          return true;
         });
 
-        // Mapear tipoDoc → campos de protocolo en Complex (anexo + fecha).
-        const fechaPreferida = resolverFechaFormularioAjuste(
+        // Fecha del hito de protocolo: NUNCA se mueve al reeditar el formato.
+        // Solo se toma de: caso ya guardado → entrada previa del historial → formulario → (primera vez) hoy.
+        const fechaProtocoloCaso = obtenerFechaProtocoloCaso(caso, tipoDoc);
+        const fechaFormulario = resolverFechaFormularioAjuste(
           { ...formDataRef.current, ...datosParaGuardar },
           tipoDoc,
-          fechaLocal
+          ''
         );
+        const fechaOriginalDoc =
+          docPrevioMismoFormulario?.fechaCreacion ||
+          docPrevioMismoFormulario?.fecha ||
+          fechaProtocoloCaso ||
+          fechaFormulario ||
+          fechaLocal;
+
+        const docNuevo = {
+          tipo: tipoDoc,
+          categoria: tipoDoc,
+          nombre: nombreArchivoReal,
+          url: rutaArchivoReal || descargaFallback,
+          ruta: rutaArchivoReal || descargaFallback,
+          tamano: archivo?.tamaño || archivo?.tamano || 0,
+          tipoMime: archivo?.tipoMime || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          // Fecha del documento/hito (estable); no cambia al guardar otra copia.
+          fecha: String(fechaOriginalDoc).includes('T')
+            ? String(fechaOriginalDoc).split('T')[0]
+            : String(fechaOriginalDoc).slice(0, 10),
+          fechaCreacion:
+            docPrevioMismoFormulario?.fechaCreacion ||
+            docPrevioMismoFormulario?.fecha ||
+            fechaOriginalDoc,
+          // Copia más reciente: cuándo se agregó/modificó esta versión.
+          fechaSubida: fechaISO,
+          fechaModificacion: fechaISO,
+          comentario: docPrevioMismoFormulario
+            ? `Ajuste ${estadoActual} actualizado (copia más reciente)`
+            : `Ajuste ${estadoActual} guardado`,
+          usuario: localStorage.getItem('login') || localStorage.getItem('nombre') || 'usuario',
+          formularioId: idDescargable,
+        };
+
         const payloadUpdate = {
           historialDocs: [docNuevo, ...historialFiltrado],
           ...buildCamposProtocoloDesdeAjuste({
             tipoHistorial: tipoDoc,
             nombreArchivo: nombreArchivoReal,
-            fechaPreferida,
+            fechaPreferida: fechaFormulario || fechaOriginalDoc,
             fechaFallback: fechaLocal,
+            fechaExistenteCaso: fechaProtocoloCaso,
+            soloSiVacioFecha: true,
           }),
         };
 

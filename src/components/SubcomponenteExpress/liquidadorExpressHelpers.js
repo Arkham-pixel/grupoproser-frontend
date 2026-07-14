@@ -218,7 +218,7 @@ export function montoALetras(valor) {
 
 export function mapCasoExpressALiquidador(caso = {}) {
   const hoy = new Date().toISOString().slice(0, 10);
-  return {
+  const base = {
     ...DEFAULT_LIQUIDADOR_EXPRESS,
     encabezado: {
       ...DEFAULT_LIQUIDADOR_EXPRESS.encabezado,
@@ -226,8 +226,10 @@ export function mapCasoExpressALiquidador(caso = {}) {
       zc: caso.codigoWorkflow || caso.consecutivo || '',
       asegurado: caso.aseguradoBeneficiario || '',
       nit: caso.nit || '',
-      poliza: caso.numeroPoliza || '',
-      fechaSiniestro: caso.fechaSiniestro || '',
+      poliza: caso.numeroPoliza || caso.liquidador?.encabezado?.poliza || '',
+      fechaSiniestro: caso.fechaSiniestro
+        ? String(caso.fechaSiniestro).slice(0, 10)
+        : '',
       cobertura: caso.amparo || '',
     },
     checklist: {
@@ -245,6 +247,38 @@ export function mapCasoExpressALiquidador(caso = {}) {
       descripcion: caso.salvamentoAplica === 'aplica' ? (caso.valorSalvamento ? `Valor ref: ${caso.valorSalvamento}` : '') : '',
     },
   };
+
+  if (caso.liquidador && typeof caso.liquidador === 'object') {
+    return {
+      ...base,
+      ...caso.liquidador,
+      encabezado: {
+        ...base.encabezado,
+        ...(caso.liquidador.encabezado || {}),
+      },
+      deducible: {
+        ...base.deducible,
+        ...(caso.liquidador.deducible || {}),
+      },
+      checklist: {
+        ...base.checklist,
+        ...(caso.liquidador.checklist || {}),
+        documentos: Array.isArray(caso.liquidador.checklist?.documentos)
+          ? caso.liquidador.checklist.documentos
+          : base.checklist.documentos,
+        itemsAnalisis: Array.isArray(caso.liquidador.checklist?.itemsAnalisis)
+          ? caso.liquidador.checklist.itemsAnalisis
+          : base.checklist.itemsAnalisis,
+      },
+      salvamento: {
+        ...base.salvamento,
+        ...(caso.liquidador.salvamento || {}),
+      },
+      conceptos: Array.isArray(caso.liquidador.conceptos) ? caso.liquidador.conceptos : [],
+    };
+  }
+
+  return base;
 }
 
 /** Sincroniza ítems de análisis desde la tabla de conceptos de liquidación */
@@ -273,6 +307,7 @@ export function buildReciboPreview(liquidador, totales) {
     month: 'long',
     day: 'numeric',
   });
+  const { texto: descStro } = textoDescripcionSiniestroRecibo(liquidador);
 
   return {
     titulo: 'Recibo de Indemnización',
@@ -284,7 +319,7 @@ export function buildReciboPreview(liquidador, totales) {
     valor: formatearMonto(monto),
     valorLetras: letras,
     anio: String(new Date().getFullYear()),
-    parrafoPrincipal: `Declaramos que hemos recibido de Zúrich Colombia Seguros S.A. la suma de ${letras} MCE ($${formatearMonto(monto)}), como indemnización única, total y definitiva con ocasión de [descripción del siniestro — editar manualmente].`,
+    parrafoPrincipal: `Declaramos que hemos recibido de Zúrich Colombia Seguros S.A. la suma de ${letras} MCE ($${formatearMonto(monto)}), como indemnización única, total y definitiva con ocasión de ${descStro}.`,
   };
 }
 
@@ -292,4 +327,45 @@ export function pctDocumentosMarcados(documentos = []) {
   if (!documentos.length) return 0;
   const marcados = documentos.filter(Boolean).length;
   return Math.round((marcados / documentos.length) * 100);
+}
+
+/**
+ * Texto que completa «…con ocasión de _____» en el recibo de indemnización.
+ * Si no hay descripción del evento, usa una fórmula jurídica genérica para que el Word no quede con marcadores vacíos.
+ */
+export function textoDescripcionSiniestroRecibo(liquidador = {}) {
+  const chk = liquidador.checklist || {};
+  const enc = liquidador.encabezado || {};
+  const propia = (chk.descripcionEvento || '').trim();
+  if (propia) return { texto: propia, esGenerico: false };
+
+  const partes = [];
+  const cobertura = (chk.coberturaAfectada || enc.cobertura || '').trim();
+  const fecha = (enc.fechaSiniestro || '').trim();
+  const reclamo = (enc.reclamo || '').trim();
+
+  if (cobertura) {
+    partes.push(`los daños y pérdidas bajo la cobertura de ${cobertura}`);
+  } else {
+    partes.push('los daños y pérdidas ocasionados por el siniestro reclamado');
+  }
+
+  if (fecha) {
+    const d = new Date(`${fecha.slice(0, 10)}T12:00:00`);
+    const fechaTxt = Number.isNaN(d.getTime())
+      ? fecha
+      : d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+    partes.push(`ocurrido el ${fechaTxt}`);
+  }
+
+  if (reclamo) {
+    partes.push(`(reclamo ${reclamo})`);
+  }
+
+  partes.push('amparado por la póliza antes mencionada');
+
+  return {
+    texto: partes.join(' '),
+    esGenerico: true,
+  };
 }

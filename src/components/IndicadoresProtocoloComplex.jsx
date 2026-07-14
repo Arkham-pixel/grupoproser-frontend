@@ -57,7 +57,9 @@ import {
   formatearPorcentajeCumplimiento,
 } from '../utils/complexProtocoloCumplimientoUtils.js';
 
-const ETAPAS_DESGLOSE = INDICADORES_PROTOCOLO_DEF.filter((item) => item.etapaId).map((def, index) => ({
+const ETAPAS_DESGLOSE = INDICADORES_PROTOCOLO_DEF.filter(
+  (item) => item.etapaId && item.imputableAjustador !== false
+).map((def, index) => ({
   clave: def.clave,
   muestra: def.muestra,
   label: def.label,

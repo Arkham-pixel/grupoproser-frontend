@@ -3,6 +3,25 @@
  * Mantener en sync con grupoproser-backend/config/ajusteTrazabilidadComplexMap.js
  */
 
+/**
+ * Fechas de hito de trazabilidad: una vez guardadas solo pueden cambiarse
+ * con edición manual explícita en el caso Complex.
+ */
+export const CAMPOS_FECHA_HITOS_TRAZABILIDAD = [
+  'fchaAsgncion',
+  'fchaContIni',
+  'fchaCoordInspeccion',
+  'fchaProgInspeccion',
+  'fchaInspccion',
+  'fchaSoliDocu',
+  'fchaInfoPrelm',
+  'fchaRepoActi',
+  'fchaInfoFnal',
+  'fchaPresentacionCifras',
+  'fchaAceptacionCifrasAseguradora',
+  'fchaEnvioFiniquito',
+];
+
 export const MAPEO_TIPO_HISTORIAL_A_COMPLEX = {
   contactoInicial: {
     campoAnexo: 'anexContIni',
@@ -57,19 +76,26 @@ export function tipoHistorialDesdeEstadoAjuste(estado) {
   return MAPEO_ESTADO_AJUSTE_A_TIPO_HISTORIAL[estado] || 'informePreliminar';
 }
 
+/**
+ * Construye campos de protocolo para un guardado desde Ajuste (un tipo/versión).
+ * Por defecto NO sobrescribe la fecha del hito si el caso ya la tiene
+ * (editar el formato/acta no debe mover fchaInspccion, fchaInfoPrelm, etc.).
+ */
 export function buildCamposProtocoloDesdeAjuste({
   tipoHistorial,
   nombreArchivo,
   fechaPreferida,
   fechaFallback,
+  fechaExistenteCaso = '',
+  soloSiVacioFecha = true,
 }) {
   const cfg = MAPEO_TIPO_HISTORIAL_A_COMPLEX[tipoHistorial];
   if (!cfg || !nombreArchivo) return {};
 
-  const fecha = String(fechaPreferida || fechaFallback || '').trim();
+  // Ajuste/acta: NUNCA escribe fechas de hito. Solo actualiza el anexo (archivo).
+  // La fecha la pone o corrige únicamente quien edita el caso Complex a mano.
   const out = {};
   if (cfg.campoAnexo) out[cfg.campoAnexo] = String(nombreArchivo).trim();
-  if (cfg.campoFecha && fecha) out[cfg.campoFecha] = fecha;
   return out;
 }
 
@@ -78,4 +104,11 @@ export function resolverFechaFormularioAjuste(datosFormulario, tipoHistorial, fe
   if (!campo || !datosFormulario) return fechaFallback || '';
   const valor = String(datosFormulario[campo] || '').trim();
   return valor || fechaFallback || '';
+}
+
+/** Extrae la fecha de protocolo ya guardada en el caso para un tipo de historial. */
+export function obtenerFechaProtocoloCaso(caso, tipoHistorial) {
+  const cfg = MAPEO_TIPO_HISTORIAL_A_COMPLEX[tipoHistorial];
+  if (!cfg?.campoFecha || !caso) return '';
+  return String(caso[cfg.campoFecha] || '').trim();
 }

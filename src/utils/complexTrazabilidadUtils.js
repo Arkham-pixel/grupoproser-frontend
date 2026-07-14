@@ -507,6 +507,9 @@ function crearAcumuladorMuestrasSecuencia(extra = {}) {
 
 function acumularMuestrasSecuencia(acumulador, caso) {
   SECUENCIA_INDICADORES_TIEMPO.forEach((tramo) => {
+    // Esperas de terceros (aseguradora/cliente) no deben afectar promedios del ajustador.
+    if (tramo.imputableAjustador === false) return;
+
     const dias = calcularDiasSecuenciaIndicador(caso, tramo);
     if (dias != null) {
       acumulador[tramo.muestra].suma += dias;

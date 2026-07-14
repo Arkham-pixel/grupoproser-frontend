@@ -826,12 +826,20 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     <button
                       type="button"
                       className={expressBtnGhost}
-                      onClick={() =>
-                        navigate('/express/liquidador', {
+                      onClick={() => {
+                        if (!formData._id) {
+                          mostrarAviso(
+                            'Guarde el caso primero para poder almacenar el liquidador en documentos.',
+                            'Caso sin guardar',
+                            'warning'
+                          );
+                          return;
+                        }
+                        navigate(`/express/liquidador?casoId=${formData._id}`, {
                           state: { casoExpress: formData },
-                        })
-                      }
-                      title="Abrir liquidador con datos del caso"
+                        });
+                      }}
+                      title="Abrir liquidador y guardar documentos en el caso"
                     >
                       <FaCalculator />
                       Liquidador

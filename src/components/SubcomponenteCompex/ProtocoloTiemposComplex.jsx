@@ -348,6 +348,7 @@ const ProtocoloTiemposComplex = () => {
           </ul>
           <p className="mt-3 text-xs text-gray-500">
             Esperas de terceros (asegurado, compañía, intermediario): primera alerta tras 10 días hábiles.
+            Esa prórroga no imputa tiempos ni retraso al ajustador (solo aplaza alertas de espera externa).
             Tiempo bajo gestión directa del ajustador: ~6 días hábiles + 12 h (sin esperas externas).
             Use «Restaurar valores oficiales» tras actualizar el reglamento en el sistema.
           </p>

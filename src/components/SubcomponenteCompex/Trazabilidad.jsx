@@ -41,9 +41,11 @@ import {
 import { useProtocoloSiniestros } from '../../hooks/useProtocoloSiniestros.js';
 import {
   etiquetaLimiteTipoTrazabilidad,
+  MAPEO_TRAZABILIDAD_PROTOCOLO,
   PROTOCOLO_DOCUMENTO,
   PROTOCOLO_OBJETIVO,
   PROTOCOLO_VERSION,
+  resolverEtapaProtocoloPorTipo,
   tituloEtapaConFase,
 } from '../../config/protocoloSiniestrosDefaults.js';
 
@@ -215,6 +217,14 @@ const Trazabilidad = memo(function Trazabilidad({
   }, []);
 
   const { tiemposLimite, protocolo } = useProtocoloSiniestros();
+
+  const esTipoEsperaExterna = (tipo) => {
+    const cfg = MAPEO_TRAZABILIDAD_PROTOCOLO[tipo];
+    if (!cfg) return false;
+    if (cfg.esperaExternaId) return true;
+    const item = resolverEtapaProtocoloPorTipo(tipo, protocolo);
+    return Boolean(item?.dependenciaExterna);
+  };
 
   // Mapeo de tipos a campos de fecha en formData
   // NOTA: Cada fecha puede colocarse independientemente, sin requerir fechas o documentos anteriores
@@ -484,7 +494,26 @@ const Trazabilidad = memo(function Trazabilidad({
           esReciente: true,
           esUrgente: false,
           tieneDocumentos: false,
-          mostrarHoras: diferenciaDias < 1
+          mostrarHoras: diferenciaDias < 1,
+          esperaExterna: esTipoEsperaExterna(tipo),
+        };
+      }
+
+      // Esperas de terceros: el tiempo se muestra, pero la prórroga NO imputa retraso al ajustador.
+      if (esTipoEsperaExterna(tipo)) {
+        return {
+          dias: diferenciaDias >= 0 ? diferenciaDias : 0,
+          horas: diferenciaHoras >= 0 ? diferenciaHoras : 0,
+          diasRetraso: 0,
+          tiempoLimite: null,
+          fecha: fechaDocumentoLocal,
+          fechaReferencia: fechaReferencia,
+          documentoAnterior: diferenciaDias < 0,
+          esReciente: true,
+          esUrgente: false,
+          tieneDocumentos: false,
+          mostrarHoras: diferenciaDias < 1,
+          esperaExterna: true,
         };
       }
       
@@ -537,6 +566,23 @@ const Trazabilidad = memo(function Trazabilidad({
     const diferenciaTiempo = fechaMasRecienteLocal.getTime() - fechaReferencia.getTime();
     const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
     const diferenciaDias = diferenciaHoras / 24;
+
+    if (esTipoEsperaExterna(tipo)) {
+      return {
+        dias: diferenciaDias >= 0 ? diferenciaDias : 0,
+        horas: diferenciaHoras >= 0 ? diferenciaHoras : 0,
+        diasRetraso: 0,
+        tiempoLimite: null,
+        fecha: fechaMasRecienteLocal,
+        fechaReferencia: fechaReferencia,
+        documentoAnterior: diferenciaDias < 0,
+        esReciente: true,
+        esUrgente: false,
+        tieneDocumentos: true,
+        mostrarHoras: diferenciaDias < 1,
+        esperaExterna: true,
+      };
+    }
     
     const tiempoLimite =
       tipo === 'seguimientoDocsPendientes'
@@ -564,7 +610,6 @@ const Trazabilidad = memo(function Trazabilidad({
       mostrarHoras: mostrarHoras
     };
   };
-
   // Función para formatear el tiempo transcurrido (horas o días)
   const formatearTiempoTranscurrido = (diasInfo) => {
     if (!diasInfo) return 'Sin tiempo';
@@ -853,45 +898,58 @@ const Trazabilidad = memo(function Trazabilidad({
                     )}
                     <p className="text-xs text-gray-500 mt-1">
                       {(() => {
-                        // Mostrar ambas fechas si están disponibles
-                        // fechaCreacion: fecha original del documento (solo informativa, NO se usa para estadísticas)
-                        // fechaSubida: fecha en que se agregó al sistema (ESTA se usa para calcular días desde asignación)
-                        
+                        // fechaCreacion / fecha: hito o documento original (estable).
+                        // fechaSubida / fechaModificacion: cuándo se agregó o actualizó la copia.
                         let textoFechas = '';
-                        
-                        // Formatear fecha de creación del documento (si existe)
+
                         if (doc.fechaCreacion) {
-                          const fechaCreacionStr = doc.fechaCreacion.includes('T') 
-                            ? doc.fechaCreacion.split('T')[0] 
+                          const fechaCreacionStr = doc.fechaCreacion.includes('T')
+                            ? doc.fechaCreacion.split('T')[0]
                             : doc.fechaCreacion;
                           if (/^\d{4}-\d{2}-\d{2}/.test(fechaCreacionStr)) {
                             const [year, month, day] = fechaCreacionStr.split('-');
                             textoFechas = `Doc original: ${day}/${month}/${year}`;
                           }
                         }
-                        
-                        // Formatear fecha de subida (la importante para estadísticas)
+
                         if (doc.fechaSubida) {
-                            const fechaSubidaStr = doc.fechaSubida.includes('T') 
-                              ? doc.fechaSubida.split('T')[0] 
-                              : doc.fechaSubida;
+                          const fechaSubidaStr = doc.fechaSubida.includes('T')
+                            ? doc.fechaSubida.split('T')[0]
+                            : doc.fechaSubida;
                           if (/^\d{4}-\d{2}-\d{2}/.test(fechaSubidaStr)) {
                             const [yearSub, monthSub, daySub] = fechaSubidaStr.split('-');
                             const textoSubida = `Agregado: ${daySub}/${monthSub}/${yearSub}`;
                             textoFechas = textoFechas ? `${textoFechas} • ${textoSubida}` : textoSubida;
                           }
                         } else if (doc.fecha) {
-                          // Fallback a fecha si no hay fechaSubida
-                          const fechaStr = doc.fecha.includes('T') 
-                            ? doc.fecha.split('T')[0] 
+                          const fechaStr = doc.fecha.includes('T')
+                            ? doc.fecha.split('T')[0]
                             : doc.fecha;
                           if (/^\d{4}-\d{2}-\d{2}/.test(fechaStr)) {
                             const [year, month, day] = fechaStr.split('-');
                             const textoFecha = `Agregado: ${day}/${month}/${year}`;
                             textoFechas = textoFechas ? `${textoFechas} • ${textoFecha}` : textoFecha;
+                          }
                         }
+
+                        const fechaModRaw = doc.fechaModificacion || null;
+                        if (fechaModRaw && doc.fechaCreacion) {
+                          const diaCreacion = String(doc.fechaCreacion).includes('T')
+                            ? String(doc.fechaCreacion).split('T')[0]
+                            : String(doc.fechaCreacion).slice(0, 10);
+                          const diaMod = String(fechaModRaw).includes('T')
+                            ? String(fechaModRaw).split('T')[0]
+                            : String(fechaModRaw).slice(0, 10);
+                          if (diaMod && diaCreacion && diaMod !== diaCreacion) {
+                            const [yM, mM, dM] = diaMod.split('-');
+                            if (yM && mM && dM) {
+                              textoFechas = textoFechas
+                                ? `${textoFechas} • Modificado: ${dM}/${mM}/${yM}`
+                                : `Modificado: ${dM}/${mM}/${yM}`;
+                            }
+                          }
                         }
-                        
+
                         if (!textoFechas) return 'Sin fecha';
                         return textoFechas;
                       })()}
@@ -1096,13 +1154,17 @@ const Trazabilidad = memo(function Trazabilidad({
                     <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
                       {diasInfo.documentoAnterior
                         ? 'Doc. anterior pendiente'
-                        : diasInfo.diasRetraso > 0
-                          ? 'Retraso'
-                          : diasInfo.dias === 0 && !diasInfo.horas
-                            ? 'A tiempo'
-                            : diasInfo.dias <= diasInfo.tiempoLimite
-                              ? 'A tiempo'
-                              : 'En proceso'}
+                        : diasInfo.enGraciaExterna
+                          ? 'En prórroga (espera externa)'
+                          : diasInfo.esperaExterna
+                            ? 'Espera externa (no imputa)'
+                            : diasInfo.diasRetraso > 0
+                              ? 'Retraso'
+                              : diasInfo.dias === 0 && !diasInfo.horas
+                                ? 'A tiempo'
+                                : diasInfo.tiempoLimite != null && diasInfo.dias <= diasInfo.tiempoLimite
+                                  ? 'A tiempo'
+                                  : 'En proceso'}
                     </p>
                     {diasInfo.tiempoLimite != null && (
                       <p className={`${complexHint} mt-1`}>

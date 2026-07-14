@@ -40,6 +40,7 @@ import {
   CAMPOS_FECHA_HORA_PROTOCOLO,
   formatearFechaHoraParaInput,
 } from '../../utils/complexFechaHoraUtils.js';
+import { CAMPOS_FECHA_HITOS_TRAZABILIDAD } from '../../utils/ajusteTrazabilidadComplexMap.js';
 
 export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false }) {
   const autoguardadoEfectivo = AUTO_SAVE_ENABLED && autoGuardadoActivo;
@@ -815,12 +816,17 @@ localStorage.removeItem('formularioComplex');
     }));
   };
 
+  const fechasHitoEditadasRef = useRef(new Set());
+
   // Handler de cambios
   const handleChange = useCallback((e) => {
     const { name, value } = e.target;
-setFormData(prev => {
+    if (CAMPOS_FECHA_HITOS_TRAZABILIDAD.includes(name)) {
+      fechasHitoEditadasRef.current.add(name);
+    }
+    setFormData(prev => {
       const nuevoValor = name === 'estado' ? String(value) : value;
-if (name === 'estado') {
+      if (name === 'estado') {
         const opcion = estados.find((est) => String(est.value) === String(nuevoValor));
         return {
           ...prev,
@@ -2509,6 +2515,8 @@ setFormData(prev => ({
     const payload = {
       // IMPORTANTE: Incluir _id si existe para que el backend sepa que es una actualización
       ...(formData._id ? { _id: formData._id } : {}),
+      _origenGuardado: 'casoComplex',
+      fechasHitoEditadasManualmente: Array.from(fechasHitoEditadasRef.current),
       // Campos principales
       nmroAjste: formData.nmroAjste,
       nmroSinstro: formData.nmroSinstro,
@@ -2759,12 +2767,14 @@ if (!onSave) {
       // Si onSave devuelve una promesa, esperar a que se resuelva
       if (result && typeof result.then === 'function') {
         result.then(() => {
+          fechasHitoEditadasRef.current.clear();
 clearSavedData();
         }).catch((error) => {
           console.error('❌ Error al guardar, manteniendo autoguardado:', error);
         });
       } else {
         // Si no es una promesa, limpiar inmediatamente
+        fechasHitoEditadasRef.current.clear();
 clearSavedData();
       }
     } catch (error) {
@@ -3012,6 +3022,8 @@ clearSavedData();
       if (respuestaServidor === false || respuestaServidor?.error) {
         throw new Error('Autoguardado rechazado por el servidor');
       }
+
+      fechasHitoEditadasRef.current.clear();
 
       if (respuestaServidor && typeof respuestaServidor === 'object') {
         datosInicialesAutoSaveRef.current = {
