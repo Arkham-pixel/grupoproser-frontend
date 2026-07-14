@@ -804,6 +804,12 @@ return {
   const handleInputChange = (field, value) => {
     // Log especial para firmas
 setFormData(prev => {
+      // Permite actualizar varios campos a la vez: onInputChange({ a: 1, b: 2 })
+      if (field && typeof field === 'object' && !Array.isArray(field) && value === undefined) {
+        const next = { ...prev, ...field };
+        formDataRef.current = next;
+        return next;
+      }
       if (field === 'metadataTipoDocumento') {
         return {
           ...prev,
@@ -2491,66 +2497,145 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
       };
 
       /**
-       * Firmas en Word (acta e informe):
-       * tabla 2 columnas — FIRMA DE CLIENTE (izq) + FIRMA DEL AJUSTADOR (der)
-       * + pie "Proser Ajustes SAS" en rojo.
+       * Firmas en Word:
+       * - Acta de inspección: CLIENTE (izq) + AJUSTADOR (der)
+       * - Preliminar / actualización / final: ISKHARLY (izq) + AJUSTADOR (der)
+       * Nombre/cargo/email/firma del ajustador resuelven a LA MISMA persona.
        */
-      const resolverFirmaAjustadorDesdeGuardadas = (fd) => {
-        // Priorizar la selección actual del paso Firmas; el acta solo como respaldo
-        if (fd.firmaFuncionario) return fd.firmaFuncionario;
-        if (fd.actaAjustadorFirmaImagen) return fd.actaAjustadorFirmaImagen;
+      const cargarCatalogoFuncionariosLocal = () => {
         try {
           const raw =
             typeof localStorage !== 'undefined'
               ? localStorage.getItem('proser_funcionarios')
               : null;
-          if (!raw) return '';
-          const funcionarios = JSON.parse(raw);
-          if (!Array.isArray(funcionarios)) return '';
-          const nombre = String(fd.funcionarioFirma || fd.actaAjustadorNombre || '').trim();
-          if (nombre) {
-            const porNombre = funcionarios.find(
-              (f) => String(f.nombre || '').trim() === nombre
-            );
-            if (porNombre?.firma) return porNombre.firma;
-          }
-          if (fd.actaAjustadorFuncionarioId) {
-            const porId = funcionarios.find(
-              (f) => String(f._id) === String(fd.actaAjustadorFuncionarioId)
-            );
-            if (porId?.firma) return porId.firma;
-          }
-          const conFirma = funcionarios.find((f) => f.firma);
-          return conFirma?.firma || '';
+          if (!raw) return [];
+          const lista = JSON.parse(raw);
+          return Array.isArray(lista) ? lista : [];
         } catch {
+          return [];
+        }
+      };
+
+      const resolverDatosAjustadorCoherentes = (fd) => {
+        const catalogo = cargarCatalogoFuncionariosLocal();
+        const idSel = String(fd.actaAjustadorFuncionarioId || '').trim();
+        const nombreFirma = String(fd.funcionarioFirma || '').trim();
+        const firmaImg = String(
+          fd.firmaFuncionario || fd.actaAjustadorFirmaImagen || ''
+        ).trim();
+
+        let match = null;
+
+        // 1) Dueño de la imagen de firma (prioridad: evita desfase imagen vs texto)
+        if (firmaImg) {
+          match = catalogo.find((f) => f.firma && String(f.firma) === firmaImg) || null;
+        }
+        // 2) Persona elegida en «Selección para Firma» por nombre
+        if (!match && nombreFirma) {
+          match =
+            catalogo.find(
+              (f) => String(f.nombre || '').trim() === nombreFirma
+            ) || null;
+        }
+        // 3) Id guardado en el acta
+        if (!match && idSel) {
+          match =
+            catalogo.find((f) => String(f._id || f.id || '') === idSel) || null;
+        }
+
+        if (match) {
+          return {
+            nombre: String(match.nombre || '').trim(),
+            cargo: String(match.cargo || '').trim(),
+            email: String(match.email || '').trim(),
+            firma: firmaImg || match.firma || '',
+          };
+        }
+
+        // Fallback: campos del formulario (paso Firmas primero)
+        return {
+          nombre: String(fd.funcionarioFirma || fd.actaAjustadorNombre || '').trim(),
+          cargo: String(fd.cargoFuncionario || fd.actaAjustadorCargo || '').trim(),
+          email: String(fd.emailFuncionario || fd.actaAjustadorEmail || '').trim(),
+          firma: firmaImg,
+        };
+      };
+
+      const resolverFirmaIskharlyDataUrl = async (fd) => {
+        const desdeForm = String(fd.firmaIskharly || '').trim();
+        if (desdeForm.startsWith('data:image')) return desdeForm;
+        try {
+          const guardada =
+            typeof localStorage !== 'undefined'
+              ? localStorage.getItem('proser_firma_isharly')
+              : null;
+          if (guardada && String(guardada).startsWith('data:image')) return guardada;
+        } catch (_) {
+          /* ignore */
+        }
+        try {
+          const response = await fetch(firmaIskharlyImg);
+          const blob = await response.blob();
+          return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        } catch (err) {
+          console.warn('⚠️ No se pudo cargar la firma por defecto de Iskharly:', err);
           return '';
         }
       };
 
-      const construirElementosFirmasActaWord = async (fd) => {
-        const primeraLegacy =
-          Array.isArray(fd.actaFirmas) && fd.actaFirmas.length > 0 ? fd.actaFirmas[0] : null;
-        const nombreClienteDoc = String(fd.actaClienteNombre || primeraLegacy?.nombre || '').trim();
-        const cargoClienteDoc = String(fd.actaClienteCargo || primeraLegacy?.cargo || '').trim();
-        const emailClienteDoc = String(fd.actaClienteEmail || primeraLegacy?.email || '').trim();
-        let imgClienteSrc = fd.actaClienteFirma || primeraLegacy?.firma;
-        const imgAjustadorSrc = resolverFirmaAjustadorDesdeGuardadas(fd);
-        const nombreAjustadorDoc = String(
-          fd.funcionarioFirma || fd.actaAjustadorNombre || ''
-        ).trim();
-        const cargoAjustDoc = String(fd.cargoFuncionario || fd.actaAjustadorCargo || '').trim();
-        const emailAjustDoc = String(fd.emailFuncionario || fd.actaAjustadorEmail || '').trim();
+      const DATOS_ISKHARLY = {
+        titulo: 'FIRMA GERENTE TÉCNICO',
+        nombre: 'Iskharly José Tapia Gutiérrez',
+        cargo: 'Gerente Técnico',
+        email: 'itapia@proserpuertos.com.co',
+      };
 
-        // Normalizar firma del cliente (foto a menudo chica/torcida) antes de insertar en Word
-        if (imgClienteSrc) {
-          try {
-            const {
-              normalizarFirmaClienteDataUrl,
-            } = await import('../../utils/normalizarFirmaImagen.js');
-            imgClienteSrc = await normalizarFirmaClienteDataUrl(imgClienteSrc);
-          } catch (err) {
-            console.warn('⚠️ No se normalizó firma cliente:', err);
+      const construirElementosFirmasActaWord = async (fd, opciones = {}) => {
+        const esActa = opciones.modo === 'acta' || estadoActual === 'actaInspeccion';
+
+        const ajustador = resolverDatosAjustadorCoherentes(fd);
+        const imgAjustadorSrc = ajustador.firma;
+        const nombreAjustadorDoc = ajustador.nombre;
+        const cargoAjustDoc = ajustador.cargo;
+        const emailAjustDoc = ajustador.email;
+
+        let tituloIzq;
+        let nombreIzqDoc;
+        let cargoIzqDoc;
+        let emailIzqDoc;
+        let imgIzqSrc;
+
+        if (esActa) {
+          const primeraLegacy =
+            Array.isArray(fd.actaFirmas) && fd.actaFirmas.length > 0 ? fd.actaFirmas[0] : null;
+          tituloIzq = 'FIRMA DE CLIENTE';
+          nombreIzqDoc = String(fd.actaClienteNombre || primeraLegacy?.nombre || '').trim();
+          cargoIzqDoc = String(fd.actaClienteCargo || primeraLegacy?.cargo || '').trim();
+          emailIzqDoc = String(fd.actaClienteEmail || primeraLegacy?.email || '').trim();
+          imgIzqSrc = fd.actaClienteFirma || primeraLegacy?.firma;
+          // Normalizar firma del cliente (foto a menudo chica/torcida)
+          if (imgIzqSrc) {
+            try {
+              const {
+                normalizarFirmaClienteDataUrl,
+              } = await import('../../utils/normalizarFirmaImagen.js');
+              imgIzqSrc = await normalizarFirmaClienteDataUrl(imgIzqSrc);
+            } catch (err) {
+              console.warn('⚠️ No se normalizó firma cliente:', err);
+            }
           }
+        } else {
+          // Preliminar / actualización / final: Iskharly a la izquierda (no cliente)
+          tituloIzq = DATOS_ISKHARLY.titulo;
+          nombreIzqDoc = DATOS_ISKHARLY.nombre;
+          cargoIzqDoc = DATOS_ISKHARLY.cargo;
+          emailIzqDoc = DATOS_ISKHARLY.email;
+          imgIzqSrc = await resolverFirmaIskharlyDataUrl(fd);
         }
 
         const imagenDesdeDataUrl = async (dataUrl) => {
@@ -2588,7 +2673,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           }
         };
 
-        const imgCliente = await imagenDesdeDataUrl(imgClienteSrc);
+        const imgIzq = await imagenDesdeDataUrl(imgIzqSrc);
         const imgAjustador = await imagenDesdeDataUrl(imgAjustadorSrc);
 
         const parrafoFirmaOGuion = (img) =>
@@ -2634,6 +2719,10 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               : [new Paragraph({ children: [] })]
           });
 
+        const placeholderNombreIzq = esActa
+          ? 'NOMBRE DEL CLIENTE / TITULAR'
+          : DATOS_ISKHARLY.nombre;
+
         const filasFirmasDosCols = [
           new TableRow({
             children: [
@@ -2643,7 +2732,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   spacing: { after: 80 },
                   children: [
                     new TextRun({
-                      text: 'FIRMA DE CLIENTE',
+                      text: tituloIzq,
                       font: 'Arial',
                       size: 22,
                       bold: true
@@ -2669,7 +2758,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           }),
           new TableRow({
             children: [
-              celdaFirma([parrafoFirmaOGuion(imgCliente)]),
+              celdaFirma([parrafoFirmaOGuion(imgIzq)]),
               celdaFirma([parrafoFirmaOGuion(imgAjustador)])
             ]
           }),
@@ -2681,7 +2770,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   spacing: { after: 60 },
                   children: [
                     new TextRun({
-                      text: (nombreClienteDoc || 'NOMBRE DEL CLIENTE / TITULAR').toUpperCase(),
+                      text: (nombreIzqDoc || placeholderNombreIzq).toUpperCase(),
                       font: 'Arial',
                       size: 22,
                       bold: true,
@@ -2696,7 +2785,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   spacing: { after: 60 },
                   children: [
                     new TextRun({
-                      text: nombreAjustadorDoc || 'NOMBRE DEL AJUSTADOR',
+                      text: (nombreAjustadorDoc || 'NOMBRE DEL AJUSTADOR').toUpperCase(),
                       font: 'Arial',
                       size: 22,
                       bold: true,
@@ -2716,7 +2805,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   children: [
                     new TextRun({ text: 'Cargo: ', font: 'Arial', size: 20, bold: true }),
                     new TextRun({
-                      text: cargoClienteDoc || '—',
+                      text: cargoIzqDoc || '—',
                       font: 'Arial',
                       size: 20,
                       color: '000000'
@@ -2729,7 +2818,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                   children: [
                     new TextRun({ text: 'Correo: ', font: 'Arial', size: 20, bold: true }),
                     new TextRun({
-                      text: emailClienteDoc || '—',
+                      text: emailIzqDoc || '—',
                       font: 'Arial',
                       size: 20,
                       color: '0066CC'
@@ -2892,18 +2981,18 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           ...(String(fd.actaObservaciones || '').trim()
             ? crearParrafosDesdeTexto(fd.actaObservaciones, { spacingAfter: 200 })
             : [crearMensajeSinInformacion('Observaciones del acta')]),
-          ...(await construirElementosFirmasActaWord(fd))
+          ...(await construirElementosFirmasActaWord(fd, { modo: 'acta' }))
         ];
       };
 
       const bloqueActaInspeccionWord =
         estadoActual === 'actaInspeccion' ? await construirBloqueActaInspeccionWord() : [];
 
-      // Firmas del pie (informes): normalización async de la imagen del cliente
+      // Firmas del pie (informes): Iskharly + ajustador (sin firma de cliente)
       const elementosFirmasInformeWord =
         estadoActual === 'actaInspeccion'
           ? []
-          : await construirElementosFirmasActaWord(fd);
+          : await construirElementosFirmasActaWord(fd, { modo: 'informe' });
 
       const obtenerTituloEncabezadoWord = (estado) => {
         switch (estado) {
