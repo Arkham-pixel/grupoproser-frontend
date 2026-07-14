@@ -138,17 +138,63 @@ export default function FirmaAjuste({ formData, onInputChange }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cargar firma del funcionario seleccionado cuando cambie
+  const idFunc = (f) => String(f?._id || f?.id || '');
+
+  /** Mantener alineados los campos del acta: el Word prioriza actaAjustador* sobre firmaFuncionario. */
+  const sincronizarCamposActaAjustador = (funcionario, firmaOpcional) => {
+    if (!funcionario) return;
+    const firma =
+      firmaOpcional !== undefined ? firmaOpcional : funcionario.firma || '';
+    onInputChange('actaAjustadorFuncionarioId', idFunc(funcionario));
+    onInputChange('actaAjustadorNombre', funcionario.nombre || '');
+    onInputChange('actaAjustadorCargo', funcionario.cargo || '');
+    onInputChange('actaAjustadorEmail', funcionario.email || '');
+    onInputChange('actaAjustadorFirmaImagen', firma || '');
+  };
+
+  // Restaurar selección desde el formulario (no dejar la del acta “pegada” sin reflejarla en el select)
   useEffect(() => {
-    if (funcionarioSeleccionado) {
-      const funcionario = funcionarios.find(f => f._id === funcionarioSeleccionado);
-      if (funcionario && funcionario.firma) {
-        setFirmaImagen(funcionario.firma);
-        onInputChange('firmaFuncionario', funcionario.firma);
-        } else {
-        setFirmaImagen(null);
-        onInputChange('firmaFuncionario', '');
-      }
+    if (!funcionarios.length || funcionarioSeleccionado) return;
+    const idGuardado = String(formData.actaAjustadorFuncionarioId || '').trim();
+    const porId = idGuardado
+      ? funcionarios.find((f) => idFunc(f) === idGuardado)
+      : null;
+    const nombreGuardado = String(
+      formData.funcionarioFirma || formData.actaAjustadorNombre || ''
+    ).trim();
+    const porNombre =
+      !porId && nombreGuardado
+        ? funcionarios.find((f) => String(f.nombre || '').trim() === nombreGuardado)
+        : null;
+    const match = porId || porNombre;
+    if (!match) return;
+    const id = idFunc(match);
+    setFuncionarioSeleccionado(id);
+    setCargoSeleccionado(match.cargo || '');
+    const firma =
+      formData.firmaFuncionario ||
+      formData.actaAjustadorFirmaImagen ||
+      match.firma ||
+      null;
+    setFirmaImagen(firma || null);
+    onInputChange('funcionarioFirma', match.nombre || '');
+    onInputChange('cargoFuncionario', match.cargo || '');
+    onInputChange('telefonoFuncionario', match.telefono || '');
+    onInputChange('emailFuncionario', match.email || '');
+    if (firma) onInputChange('firmaFuncionario', firma);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [funcionarios]);
+
+  // Si el catálogo trae firma del seleccionado y aún no hay imagen en pantalla, cargarla
+  useEffect(() => {
+    if (!funcionarioSeleccionado || firmaImagen) return;
+    const funcionario = funcionarios.find(
+      (f) => idFunc(f) === String(funcionarioSeleccionado)
+    );
+    if (funcionario?.firma) {
+      setFirmaImagen(funcionario.firma);
+      onInputChange('firmaFuncionario', funcionario.firma);
+      onInputChange('actaAjustadorFirmaImagen', funcionario.firma);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [funcionarioSeleccionado, funcionarios]);
@@ -220,11 +266,20 @@ export default function FirmaAjuste({ formData, onInputChange }) {
         await FuncionarioService.eliminarFuncionario(id);
         setFuncionarios(funcionarios.filter(f => f._id !== id));
         
-        if (funcionarioSeleccionado === id.toString()) {
+        if (String(funcionarioSeleccionado) === idFunc({ _id: id })) {
           setFuncionarioSeleccionado('');
           setCargoSeleccionado('');
           setFirmaImagen(null);
           onInputChange('firmaFuncionario', '');
+          onInputChange('funcionarioFirma', '');
+          onInputChange('cargoFuncionario', '');
+          onInputChange('telefonoFuncionario', '');
+          onInputChange('emailFuncionario', '');
+          onInputChange('actaAjustadorFuncionarioId', '');
+          onInputChange('actaAjustadorNombre', '');
+          onInputChange('actaAjustadorCargo', '');
+          onInputChange('actaAjustadorEmail', '');
+          onInputChange('actaAjustadorFirmaImagen', '');
         }
       } catch (error) {
         console.error('❌ Error al eliminar funcionario:', error);
@@ -286,23 +341,26 @@ export default function FirmaAjuste({ formData, onInputChange }) {
 
   // Manejar cambio de funcionario seleccionado
   const handleFuncionarioChange = (funcionarioId) => {
-    const funcionario = funcionarios.find(f => f._id === funcionarioId);
-    
+    const funcionario = funcionarios.find((f) => idFunc(f) === String(funcionarioId));
+
     if (funcionario) {
-      setFuncionarioSeleccionado(funcionarioId);
+      setFuncionarioSeleccionado(idFunc(funcionario));
       setCargoSeleccionado(funcionario.cargo);
       onInputChange('funcionarioFirma', funcionario.nombre);
       onInputChange('cargoFuncionario', funcionario.cargo);
       onInputChange('telefonoFuncionario', funcionario.telefono);
       onInputChange('emailFuncionario', funcionario.email);
-      
-      if (funcionario.firma) {
-        setFirmaImagen(funcionario.firma);
-        onInputChange('firmaFuncionario', funcionario.firma);
+
+      const firma = funcionario.firma || '';
+      if (firma) {
+        setFirmaImagen(firma);
+        onInputChange('firmaFuncionario', firma);
       } else {
         setFirmaImagen(null);
         onInputChange('firmaFuncionario', '');
       }
+      // Actualiza también la firma del acta: si no, el Word sigue mostrando la persona inicial
+      sincronizarCamposActaAjustador(funcionario, firma);
     }
   };
 
@@ -311,23 +369,27 @@ export default function FirmaAjuste({ formData, onInputChange }) {
     if (funcionarioSeleccionado) {
       try {
         await FuncionarioService.actualizarFirmaFuncionario(funcionarioSeleccionado, firmaBase64);
-        
-        const funcionarioActualizado = funcionarios.map(f => 
-          f._id === funcionarioSeleccionado 
+
+        const funcionarioActualizado = funcionarios.map((f) =>
+          idFunc(f) === String(funcionarioSeleccionado)
             ? { ...f, firma: firmaBase64 }
             : f
         );
         setFuncionarios(funcionarioActualizado);
         onInputChange('firmaFuncionario', firmaBase64);
+        onInputChange('actaAjustadorFirmaImagen', firmaBase64 || '');
+        onInputChange('actaAjustadorFuncionarioId', String(funcionarioSeleccionado));
       } catch (error) {
         console.error('❌ Error al guardar firma en BD:', error);
-        const funcionarioActualizado = funcionarios.map(f => 
-          f._id === funcionarioSeleccionado 
+        const funcionarioActualizado = funcionarios.map((f) =>
+          idFunc(f) === String(funcionarioSeleccionado)
             ? { ...f, firma: firmaBase64 }
             : f
         );
         setFuncionarios(funcionarioActualizado);
         onInputChange('firmaFuncionario', firmaBase64);
+        onInputChange('actaAjustadorFirmaImagen', firmaBase64 || '');
+        onInputChange('actaAjustadorFuncionarioId', String(funcionarioSeleccionado));
       }
     }
   };
@@ -337,7 +399,8 @@ export default function FirmaAjuste({ formData, onInputChange }) {
     if (window.confirm('¿Estás seguro de eliminar la firma?')) {
       setFirmaImagen(null);
       onInputChange('firmaFuncionario', '');
-      
+      onInputChange('actaAjustadorFirmaImagen', '');
+
       if (funcionarioSeleccionado) {
         await guardarFirmaFuncionario('');
       }

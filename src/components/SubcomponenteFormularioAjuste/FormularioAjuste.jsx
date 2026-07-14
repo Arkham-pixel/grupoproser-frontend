@@ -407,24 +407,9 @@ setFormData((prev) => ({
       }
     };
     cargarFirmaIskharly();
-    
-    // Cargar funcionarios y sus firmas
-    const funcionariosGuardados = localStorage.getItem('proser_funcionarios');
-    if (funcionariosGuardados) {
-      const funcionarios = JSON.parse(funcionariosGuardados);
-// Buscar si hay algún funcionario con firma
-      const funcionarioConFirma = funcionarios.find(f => f.firma);
-      if (funcionarioConFirma) {
-setFormData(prev => ({
-          ...prev,
-          firmaFuncionario: funcionarioConFirma.firma,
-          funcionarioFirma: funcionarioConFirma.nombre,
-          cargoFuncionario: funcionarioConFirma.cargo,
-          telefonoFuncionario: funcionarioConFirma.telefono,
-          emailFuncionario: funcionarioConFirma.email
-        }));
-      }
-    }
+
+    // No sobrescribir aquí con el "primer funcionario que tenga firma" del localStorage:
+    // eso dejaba pegada la persona del acta / una firma antigua al volver a abrir el formulario.
   }, []); // Solo ejecutar una vez al montar el componente
 
   useEffect(() => {
@@ -2511,8 +2496,9 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
        * + pie "Proser Ajustes SAS" en rojo.
        */
       const resolverFirmaAjustadorDesdeGuardadas = (fd) => {
-        if (fd.actaAjustadorFirmaImagen) return fd.actaAjustadorFirmaImagen;
+        // Priorizar la selección actual del paso Firmas; el acta solo como respaldo
         if (fd.firmaFuncionario) return fd.firmaFuncionario;
+        if (fd.actaAjustadorFirmaImagen) return fd.actaAjustadorFirmaImagen;
         try {
           const raw =
             typeof localStorage !== 'undefined'
@@ -2521,18 +2507,18 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           if (!raw) return '';
           const funcionarios = JSON.parse(raw);
           if (!Array.isArray(funcionarios)) return '';
-          if (fd.actaAjustadorFuncionarioId) {
-            const porId = funcionarios.find(
-              (f) => String(f._id) === String(fd.actaAjustadorFuncionarioId)
-            );
-            if (porId?.firma) return porId.firma;
-          }
-          const nombre = String(fd.actaAjustadorNombre || fd.funcionarioFirma || '').trim();
+          const nombre = String(fd.funcionarioFirma || fd.actaAjustadorNombre || '').trim();
           if (nombre) {
             const porNombre = funcionarios.find(
               (f) => String(f.nombre || '').trim() === nombre
             );
             if (porNombre?.firma) return porNombre.firma;
+          }
+          if (fd.actaAjustadorFuncionarioId) {
+            const porId = funcionarios.find(
+              (f) => String(f._id) === String(fd.actaAjustadorFuncionarioId)
+            );
+            if (porId?.firma) return porId.firma;
           }
           const conFirma = funcionarios.find((f) => f.firma);
           return conFirma?.firma || '';
@@ -2550,10 +2536,10 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         let imgClienteSrc = fd.actaClienteFirma || primeraLegacy?.firma;
         const imgAjustadorSrc = resolverFirmaAjustadorDesdeGuardadas(fd);
         const nombreAjustadorDoc = String(
-          fd.actaAjustadorNombre || fd.funcionarioFirma || ''
+          fd.funcionarioFirma || fd.actaAjustadorNombre || ''
         ).trim();
-        const cargoAjustDoc = String(fd.actaAjustadorCargo || fd.cargoFuncionario || '').trim();
-        const emailAjustDoc = String(fd.actaAjustadorEmail || fd.emailFuncionario || '').trim();
+        const cargoAjustDoc = String(fd.cargoFuncionario || fd.actaAjustadorCargo || '').trim();
+        const emailAjustDoc = String(fd.emailFuncionario || fd.actaAjustadorEmail || '').trim();
 
         // Normalizar firma del cliente (foto a menudo chica/torcida) antes de insertar en Word
         if (imgClienteSrc) {
