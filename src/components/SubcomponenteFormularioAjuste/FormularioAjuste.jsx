@@ -1087,6 +1087,8 @@ setFormData(prev => {
 
     return {
       ...prev,
+      // Solo SEMBRAR circunstancias si aún están vacías. Nunca reescribir
+      // lo que el usuario ya editó en el preliminar, ni tocar descripcionSiniestro (acta).
       circunstanciasSiniestro: circ || descSin,
       fechaOcurrencia: txCampo(prev.fechaOcurrencia) || txCampo(prev.fechaSiniestro),
       fechaSiniestro: txCampo(prev.fechaSiniestro) || txCampo(prev.fechaOcurrencia),
@@ -1856,12 +1858,14 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           }
         }
 
-        // 3. CIRCUNSTANCIAS: en acta se escribe como «Descripción del siniestro»; aquí va ese texto (y ampliaciones del informe).
+        // 3. CIRCUNSTANCIAS DEL SINIESTRO
+        // Independientes del acta: lo escrito en preliminar (`circunstanciasSiniestro`)
+        // no debe mezclarse ni sobrescribir `descripcionSiniestro` del acta.
         {
           const d = String(fd.descripcionSiniestro || '').trim();
           const c = String(fd.circunstanciasSiniestro || '').trim();
-          const textoCircunstancias =
-            c && d && c !== d ? `${d}\n\n${c}` : c || d;
+          // En informes: priorizar lo del preliminar; solo si está vacío, caer al acta.
+          const textoCircunstancias = c || d;
           agregarSeccion('CIRCUNSTANCIAS DEL SINIESTRO', textoCircunstancias);
         }
 
@@ -4751,6 +4755,8 @@ setVersiones(prev => ({
             { rellenarDatosGenerales: true }
           );
           setFormData((prev) => ({
+            // Tras autofill solo rellena campos vacíos; no pisa circunstancias ya editadas
+            // ni borra descripcionSiniestro del acta.
             ...propagarActaAInformePreliminar(prev),
             estadoActual: 'inicial'
           }));

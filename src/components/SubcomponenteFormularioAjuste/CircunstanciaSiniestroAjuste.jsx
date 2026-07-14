@@ -38,7 +38,8 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          En el informe preliminar este texto va en la sección «Circunstancias del siniestro» (lo escrito en el acta como descripción del siniestro).
+          Texto propio del informe preliminar. Puede partir de lo del acta, pero al editarlo aquí
+          no se modifica el acta de inspección. En el Word del preliminar sale este campo.
         </p>
       </div>
 
@@ -58,8 +59,19 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
         </label>
         <textarea
           value={formData.circunstanciasSiniestro || formData.descripcionSiniestro || ''}
-          onChange={(e) => onInputChange('circunstanciasSiniestro', e.target.value)}
-          rows={6}
+          onChange={(e) => {
+            // Solo escribe en el campo del preliminar; no toca descripcionSiniestro (acta)
+            onInputChange('circunstanciasSiniestro', e.target.value);
+          }}
+          onFocus={() => {
+            // Si aún no hay texto propio, copiar el del acta para editar de forma independiente
+            const circ = String(formData.circunstanciasSiniestro || '').trim();
+            const desc = String(formData.descripcionSiniestro || '').trim();
+            if (!circ && desc) {
+              onInputChange('circunstanciasSiniestro', desc);
+            }
+          }}
+          rows={8}
           className="w-full px-3 py-2 rounded-md focus:outline-none resize-vertical"
           style={{
             backgroundColor: inputBg,
@@ -67,7 +79,7 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Escribe las circunstancias del siniestro aquí. Por ejemplo: 'El incendio empezo en el sotano, se propago rapido por los cables electricos, los bomberos llegaron tarde'"
+          placeholder="Escribe las circunstancias del siniestro para el informe preliminar..."
         />
         <div 
           className="mt-2 text-sm"
