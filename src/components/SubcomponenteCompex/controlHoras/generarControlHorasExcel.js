@@ -17,35 +17,35 @@ const bordeFino = {
 };
 
 const estiloTitulo = {
-  font: { name: FUENTE, size: 11, bold: true, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 13, bold: true, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'center', wrapText: true },
 };
 
 const estiloLabel = {
-  font: { name: FUENTE, size: 9, bold: true, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 11, bold: true, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'left', wrapText: true },
   border: bordeFino,
 };
 
 const estiloValor = {
-  font: { name: FUENTE, size: 9, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 11, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'left', wrapText: true },
   border: bordeFino,
 };
 
 const estiloValorFirma = {
   ...estiloValor,
-  font: { name: FUENTE, size: 9, bold: true, color: { argb: COLOR_PROSER } },
+  font: { name: FUENTE, size: 11, bold: true, color: { argb: COLOR_PROSER } },
 };
 
 const estiloHeaderTabla = {
-  font: { name: FUENTE, size: 8, bold: true, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 10, bold: true, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'center', wrapText: true },
   border: bordeFino,
 };
 
 const estiloCeldaTabla = {
-  font: { name: FUENTE, size: 9, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 11, color: { argb: 'FF000000' } },
   alignment: { vertical: 'top', horizontal: 'left', wrapText: true },
   border: bordeFino,
 };
@@ -57,25 +57,25 @@ const estiloCeldaNumero = {
 };
 
 const estiloTotalFila = {
-  font: { name: FUENTE, size: 9, bold: true, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 11, bold: true, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'right' },
   border: bordeFino,
   numFmt: '#,##0.00',
 };
 
 const estiloResumenLabel = {
-  font: { name: FUENTE, size: 9, bold: true, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 11, bold: true, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'left' },
 };
 
 const estiloResumenMoneda = {
-  font: { name: FUENTE, size: 9, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 11, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'right' },
   numFmt: '"$"#,##0',
 };
 
 const estiloTotalFinal = {
-  font: { name: FUENTE, size: 9, bold: true, color: { argb: 'FF000000' } },
+  font: { name: FUENTE, size: 11, bold: true, color: { argb: 'FF000000' } },
   alignment: { vertical: 'middle', horizontal: 'right' },
   numFmt: '"$"#,##0',
   border: {

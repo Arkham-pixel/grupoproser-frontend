@@ -42,6 +42,20 @@ import {
 } from '../../utils/complexFechaHoraUtils.js';
 import { CAMPOS_FECHA_HITOS_TRAZABILIDAD } from '../../utils/ajusteTrazabilidadComplexMap.js';
 
+/** Normaliza opciones del catálogo de funcionarios de aseguradora (incluye email). */
+function mapearOpcionFuncionarioAseguradora(f) {
+  const rawValue =
+    f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? f.nmbrContcto ?? f.nombre ?? '';
+  const label = f.nmbrContcto || f.nombre || f.label || '';
+  const value = rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
+  if (!value || !label) return null;
+  return {
+    value,
+    label,
+    email: String(f.email || '').trim(),
+  };
+}
+
 export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false }) {
   const autoguardadoEfectivo = AUTO_SAVE_ENABLED && autoGuardadoActivo;
   const navigate = useNavigate();
@@ -69,6 +83,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     codiAsgrdra: '',
     funcAsgrdra: '',
     funcAsgrdraNombre: '',
+    emailFuncionarioAseguradora: '',
     nombreResponsable: '',
     asgrBenfcro: '',
     tipoDucumento: '',
@@ -462,15 +477,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
           .then(data => {
             const funcionariosData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
             const opciones = funcionariosData
-              .map(f => {
-                const rawValue = f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? f.nmbrContcto ?? f.nombre ?? '';
-                const label = f.nmbrContcto || f.nombre || f.label || '';
-                const value = rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
-                if (!value || !label) {
-                  return null;
-                }
-                return { value, label };
-              })
+              .map(mapearOpcionFuncionarioAseguradora)
               .filter(Boolean);
             
             // Asegurar que el funcionario actual esté en la lista
@@ -681,15 +688,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
                 .then(data => {
                   const funcionariosData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
                   const opciones = funcionariosData
-                    .map(f => {
-                      const rawValue = f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? f.nmbrContcto ?? f.nombre ?? '';
-                      const label = f.nmbrContcto || f.nombre || f.label || '';
-                      const value = rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
-                      if (!value || !label) {
-                        return null;
-                      }
-                      return { value, label };
-                    })
+                    .map(mapearOpcionFuncionarioAseguradora)
                     .filter(Boolean);
                   
                   setFuncionarios(ordenarPorLabel(opciones));
@@ -863,7 +862,8 @@ localStorage.removeItem('formularioComplex');
       ...prev,
       codiAsgrdra: e.target.value,
       funcAsgrdra: '',
-      funcAsgrdraNombre: ''
+      funcAsgrdraNombre: '',
+      emailFuncionarioAseguradora: '',
     }));
   };
 
@@ -877,7 +877,8 @@ localStorage.removeItem('formularioComplex');
       ...prev,
       funcAsgrdra: valorSeleccionado,
       funcAsgrdraNombre: funcionarioSeleccionado ? funcionarioSeleccionado.label : (prev.funcAsgrdraNombre || valorSeleccionado),
-      funcionarioAseguradora: funcionarioSeleccionado ? funcionarioSeleccionado.label : (prev.funcionarioAseguradora || valorSeleccionado)
+      funcionarioAseguradora: funcionarioSeleccionado ? funcionarioSeleccionado.label : (prev.funcionarioAseguradora || valorSeleccionado),
+      emailFuncionarioAseguradora: funcionarioSeleccionado?.email || '',
     }));
   };
 
@@ -893,9 +894,48 @@ localStorage.removeItem('formularioComplex');
       return;
     }
 
-    const archivos = Array.from(acceptedFiles);
+    let archivos = Array.from(acceptedFiles);
 
-const token = localStorage.getItem('token');
+    // Si el caso ya tiene un control de horas montado, confirmar antes de subir otro
+    if (tipoDocumento === 'controlHoras') {
+      const docsActuales = Array.isArray(formData.historialDocs) ? formData.historialDocs : [];
+      const docsControlHoras = docsActuales.filter(
+        (doc) => doc?.tipo === 'controlHoras' || doc?.categoria === 'controlHoras'
+      );
+      const adjuntoTexto = String(formData.adjunto_control_horas || '').trim();
+      const tieneAdjuntoTexto =
+        adjuntoTexto !== '' && adjuntoTexto.toLowerCase() !== 'ninguno';
+      const yaTieneControlHorasMontado =
+        docsControlHoras.length > 0 ||
+        tieneAdjuntoTexto ||
+        controlHorasTieneDatos(formData.control_horas);
+
+      if (yaTieneControlHorasMontado) {
+        const cantidadDocs = docsControlHoras.length;
+        const detalleDocs =
+          cantidadDocs > 0
+            ? `\n\nArchivos actuales (${cantidadDocs}):\n• ${docsControlHoras
+                .map((d) => d.nombre || 'sin nombre')
+                .join('\n• ')}`
+            : controlHorasTieneDatos(formData.control_horas)
+              ? '\n\nYa existe un control de horas registrado en el sistema para este caso.'
+              : '';
+
+        const confirmar = window.confirm(
+          'Este caso ya tiene un control de horas montado.' +
+            detalleDocs +
+            '\n\n¿Está seguro de que necesita subir otro?\n\n' +
+            'Aceptar = subir de todas formas\n' +
+            'Cancelar = no subir nada'
+        );
+
+        if (!confirmar) {
+          return;
+        }
+      }
+    }
+
+    const token = localStorage.getItem('token');
     setErrorAdjuntos(prev => ({ ...prev, [tipoDocumento]: null }));
     setCargandoAdjuntos(prev => ({ ...prev, [tipoDocumento]: true }));
 
@@ -987,7 +1027,7 @@ const token = localStorage.getItem('token');
           ? `${valorAnterior}, ${nombresArchivos}`.replace(/^,\s*/, '').replace(/,\s*,/g, ',')
           : nombresArchivos;
         
-return {
+        return {
           ...prev,
           [campoFormData]: nuevoValor
         };
@@ -996,8 +1036,7 @@ return {
 
     updateHistorialDocs(prev => {
       const actual = Array.isArray(prev) ? prev : [];
-      const nuevosDocs = [...actual, ...resultados];
-return nuevosDocs;
+      return [...actual, ...resultados];
     });
 
     if (errores.length > 0) {
@@ -1006,7 +1045,7 @@ return nuevosDocs;
         [tipoDocumento]: `No se pudieron subir algunos archivos: ${errores.join(' | ')}`
       }));
     } else {
-setErrorAdjuntos(prev => ({ ...prev, [tipoDocumento]: null }));
+      setErrorAdjuntos(prev => ({ ...prev, [tipoDocumento]: null }));
     }
 
     setCargandoAdjuntos(prev => ({ ...prev, [tipoDocumento]: false }));
@@ -1685,15 +1724,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
         // La API devuelve { success: true, data: [...] }
         const funcionariosData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
         const opciones = funcionariosData
-          .map(f => {
-            const rawValue = f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? f.nmbrContcto ?? f.nombre ?? '';
-            const label = f.nmbrContcto || f.nombre || f.label || '';
-            const value = rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
-            if (!value || !label) {
-              return null;
-            }
-            return { value, label };
-          })
+          .map(mapearOpcionFuncionarioAseguradora)
           .filter(Boolean);
 
         const valorActual = formData.funcAsgrdra ? String(formData.funcAsgrdra) : '';
@@ -1828,15 +1859,7 @@ setFormData(prev => ({
             // También actualizar la lista de funcionarios solo si está vacía
             if (funcionarios.length === 0) {
               const opciones = funcionariosData
-                .map(f => {
-                  const rawValue = f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? f.nmbrContcto ?? f.nombre ?? '';
-                  const label = f.nmbrContcto || f.nombre || f.label || '';
-                  const value = rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
-                  if (!value || !label) {
-                    return null;
-                  }
-                  return { value, label };
-                })
+                .map(mapearOpcionFuncionarioAseguradora)
                 .filter(Boolean);
               
               setFuncionarios(ordenarPorLabel(opciones));
@@ -1857,6 +1880,22 @@ setFormData(prev => ({
       abortController.abort();
     };
   }, [camposFijos, formData.codiAsgrdra, formData.funcAsgrdra, formData.funcAsgrdraNombre, funcionarios.length, ordenarPorLabel]);
+
+  // Sincronizar correo del analista de compañía desde el catálogo de contactos
+  useEffect(() => {
+    if (!formData.funcAsgrdra || !funcionarios.length) return;
+    const match = funcionarios.find(
+      (f) =>
+        String(f.value) === String(formData.funcAsgrdra) ||
+        String(f.label) === String(formData.funcAsgrdraNombre || '')
+    );
+    const email = String(match?.email || '').trim();
+    if (!email) return;
+    setFormData((prev) => {
+      if (prev.emailFuncionarioAseguradora === email) return prev;
+      return { ...prev, emailFuncionarioAseguradora: email };
+    });
+  }, [formData.funcAsgrdra, formData.funcAsgrdraNombre, funcionarios]);
 
   useEffect(() => {
     if (!funcionarios.length) {
@@ -1893,7 +1932,8 @@ return {
           ...prev, 
           funcAsgrdra: String(matchByValue.value), 
           funcAsgrdraNombre: matchByValue.label,
-          funcionarioAseguradora: matchByValue.label
+          funcionarioAseguradora: matchByValue.label,
+          emailFuncionarioAseguradora: matchByValue.email || prev.emailFuncionarioAseguradora || '',
         };
       }
       
@@ -1910,7 +1950,8 @@ return {
           ...prev, 
           funcAsgrdra: String(matchByLabel.value), 
           funcAsgrdraNombre: matchByLabel.label,
-          funcionarioAseguradora: matchByLabel.label
+          funcionarioAseguradora: matchByLabel.label,
+          emailFuncionarioAseguradora: matchByLabel.email || prev.emailFuncionarioAseguradora || '',
         };
       }
       
@@ -1928,7 +1969,8 @@ return {
             ...prev, 
             funcAsgrdra: String(matchByNombre.value), 
             funcAsgrdraNombre: matchByNombre.label,
-            funcionarioAseguradora: matchByNombre.label
+            funcionarioAseguradora: matchByNombre.label,
+            emailFuncionarioAseguradora: matchByNombre.email || prev.emailFuncionarioAseguradora || '',
           };
         }
       }
@@ -2053,15 +2095,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
         // La API devuelve { success: true, data: [...] }
         const funcionariosData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
         const opciones = funcionariosData
-          .map(f => {
-            const rawValue = f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? f.nmbrContcto ?? f.nombre ?? '';
-            const label = f.nmbrContcto || f.nombre || f.label || '';
-            const value = rawValue !== undefined && rawValue !== null ? String(rawValue) : '';
-            if (!value || !label) {
-              return null;
-            }
-            return { value, label };
-          })
+          .map(mapearOpcionFuncionarioAseguradora)
           .filter(Boolean);
 
 // Si hay un funcionario asignado pero no está en la lista, agregarlo

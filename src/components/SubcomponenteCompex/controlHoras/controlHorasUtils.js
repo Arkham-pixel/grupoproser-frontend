@@ -91,6 +91,35 @@ export const formatearFechaDisplay = (valor) => {
   return fecha.toLocaleDateString('es-CO');
 };
 
+/** Nombre del analista de la compañía (no el ajustador Proser). */
+export const resolverNombreAnalistaAseguradora = (formData = {}) => {
+  const candidatos = [
+    formData.funcAsgrdraNombre,
+    formData.funcionarioAseguradora,
+    formData.nombreFuncionarioAseguradora,
+    formData.funcAsgrdra,
+  ];
+  for (const valor of candidatos) {
+    const texto = String(valor || '').trim();
+    if (texto && texto.toLowerCase() !== 'sin asignar') return texto;
+  }
+  return '';
+};
+
+/** Correo del analista de la compañía. */
+export const resolverEmailAnalistaAseguradora = (formData = {}) => {
+  const candidatos = [
+    formData.emailFuncionarioAseguradora,
+    formData.emailAnalista,
+    formData.email_funcionario_aseguradora,
+  ];
+  for (const valor of candidatos) {
+    const email = String(valor || '').trim();
+    if (email && email.includes('@')) return email;
+  }
+  return '';
+};
+
 export const buildCabeceraControlHoras = (formData = {}, nombreAseguradora = '') => ({
   firma: FIRMA_AJUSTADORA,
   compania: nombreAseguradora || formData.nombreAseguradora || formData.codiAsgrdra || '',
@@ -100,8 +129,9 @@ export const buildCabeceraControlHoras = (formData = {}, nombreAseguradora = '')
   siniestro: formData.nmroSinstro || '',
   riesgo: formData.amprAfctdo || formData.descSinstro || '',
   lugar: formData.ciudadSiniestro || formData.descripcionCiudad || '',
-  analista: formData.nombreResponsable || formData.responsable || '',
-  emailAnalista: '',
+  analista: resolverNombreAnalistaAseguradora(formData),
+  emailAnalista: resolverEmailAnalistaAseguradora(formData),
+  ajustador: formData.nombreResponsable || formData.responsable || '',
   fechaSiniestro: formData.fchaSinstro || '',
   fechaAsignacion: formData.fchaAsgncion || '',
   fechaInspeccion: formData.fchaInspccion || '',

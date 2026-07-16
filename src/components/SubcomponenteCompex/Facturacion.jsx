@@ -303,35 +303,35 @@ export default function Facturacion({
           subtitulo="Fase 1: liquidación y envío a Elkin o Iskharly"
         >
           <div className={complexInfoPanel}>
-            <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            <p className="mb-3 font-body text-base text-gray-600 dark:text-gray-400">
               Un control de horas por caso. Puede crearlo en el sistema, importarlo desde su Excel
               tradicional o descargar la plantilla. Al guardar el caso se actualizan servicios y gastos.
             </p>
             {resumenControlHoras ? (
-              <div className="mb-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+              <div className="mb-4 grid grid-cols-2 gap-2 text-base sm:grid-cols-4">
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Total horas</span>
-                  <p className="font-semibold text-fenix-primario">
+                  <p className="text-lg font-semibold text-fenix-primario">
                     {resumenControlHoras.total_horas.toFixed(2)}
                   </p>
                 </div>
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Valor hora</span>
-                  <p className="font-semibold">{formatearMoneda(resumenControlHoras.valor_hora)}</p>
+                  <p className="text-lg font-semibold">{formatearMoneda(resumenControlHoras.valor_hora)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Honorarios</span>
-                  <p className="font-semibold">
+                  <p className="text-lg font-semibold">
                     {formatearMoneda(resumenControlHoras.subtotal_honorarios)}
                   </p>
                 </div>
                 <div>
                   <span className="text-gray-500 dark:text-gray-400">Total liquidación</span>
-                  <p className="font-semibold">{formatearMoneda(resumenControlHoras.total)}</p>
+                  <p className="text-lg font-semibold">{formatearMoneda(resumenControlHoras.total)}</p>
                 </div>
               </div>
             ) : (
-              <p className="mb-4 text-sm italic text-gray-500 dark:text-gray-400">
+              <p className="mb-4 text-base italic text-gray-500 dark:text-gray-400">
                 Aún no hay control de horas registrado para este caso.
               </p>
             )}
@@ -420,6 +420,26 @@ export default function Facturacion({
                 if (!puedeEnviarNotificacionControlHoras) {
                   alert(
                     'Registre el control de horas en el sistema o suba los documentos antes de enviar la notificación.'
+                  );
+                  return;
+                }
+                if (!formData.fecha_control_horas) {
+                  alert('Indique la fecha de control de horas antes de enviar la notificación.');
+                  return;
+                }
+                const filasSinFecha = (formData.control_horas?.filas || []).filter((fila) => {
+                  const horas =
+                    Number(fila.horas_viaje || 0) +
+                    Number(fila.horas_campo || 0) +
+                    Number(fila.horas_oficina || 0) +
+                    Number(fila.horas_secretaria || 0);
+                  const tieneDesc = String(fila.descripcion || '').trim() !== '';
+                  if (horas <= 0 && !tieneDesc) return false;
+                  return !String(fila.fecha || '').trim();
+                });
+                if (filasSinFecha.length > 0) {
+                  alert(
+                    'El control de horas tiene actividades sin fecha. Edítelo y complete las fechas antes de enviar.'
                   );
                   return;
                 }

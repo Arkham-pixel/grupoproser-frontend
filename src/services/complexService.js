@@ -150,6 +150,38 @@ export const eliminarEnvioBandejaFacturacion = async (payload) => {
   return leerRespuestaBandejaAdmin(response, 'No se pudo eliminar el registro de envío');
 };
 
+export const solicitarCorreccionControlHoras = async ({
+  casoId,
+  numeroCaso,
+  mensaje,
+}) => {
+  const token = localStorage.getItem('token');
+  const login = localStorage.getItem('login') || '';
+  const nombre = localStorage.getItem('nombre') || '';
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (login) headers['X-Usuario-Login'] = login;
+  if (nombre) headers['X-Usuario-Nombre'] = nombre;
+
+  const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-horas/correccion`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({
+      casoId,
+      numeroCaso,
+      mensaje,
+      solicitadoPor: login,
+      solicitadoPorNombre: nombre || login,
+    }),
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || 'No se pudo enviar la solicitud de corrección');
+  }
+  return data;
+};
+
 export const crearCasoComplex = async (datos) => {
   try {
     const response = await fetch(`${BASE_URL}/api/complex`, buildComplexRequestInit('POST', datos));

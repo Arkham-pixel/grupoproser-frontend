@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaInbox, FaSearch, FaSync, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaInbox, FaSearch, FaSync, FaEdit, FaTrash, FaExclamationTriangle } from 'react-icons/fa';
 import {
   obtenerBandejaFacturacion,
   corregirEnvioBandejaFacturacion,
   eliminarEnvioBandejaFacturacion,
+  solicitarCorreccionControlHoras,
 } from '../../services/complexService';
 import { getEstados } from '../../services/estadosService';
 import { BASE_URL } from '../../config/apiConfig';
@@ -34,6 +35,7 @@ import {
   complexTableTdDivider,
   complexTableBtnGestionar,
   complexInfoPanel,
+  complexTextarea,
 } from './complexFenixUi';
 import { ComplexNavTabs } from './ComplexUiBlocks';
 
@@ -57,6 +59,9 @@ export default function BandejaFacturacion() {
   const [filaEditando, setFilaEditando] = useState(null);
   const [nuevoGerenteCorreccion, setNuevoGerenteCorreccion] = useState('');
   const [guardandoAdmin, setGuardandoAdmin] = useState(false);
+  const [filaCorreccionAjustador, setFilaCorreccionAjustador] = useState(null);
+  const [mensajeCorreccion, setMensajeCorreccion] = useState('');
+  const [enviandoCorreccion, setEnviandoCorreccion] = useState(false);
 
   const puedeAcceder = esUsuarioGerenteFacturacion(login);
 
@@ -134,6 +139,39 @@ export default function BandejaFacturacion() {
   const abrirCorreccion = (fila) => {
     setFilaEditando(fila);
     setNuevoGerenteCorreccion(fila.gerente || 'elkin');
+  };
+
+  const abrirSolicitudCorreccionAjustador = (fila) => {
+    setFilaCorreccionAjustador(fila);
+    setMensajeCorreccion(
+      'Se detectó un error en el control de horas. Por favor corríjalo en ARNALD (Facturación → Control de horas) o reemplace el archivo adjunto y vuelva a notificar.'
+    );
+  };
+
+  const enviarSolicitudCorreccionAjustador = async () => {
+    if (!filaCorreccionAjustador?.casoId) return;
+    const mensaje = String(mensajeCorreccion || '').trim();
+    if (!mensaje) {
+      alert('Escriba la observación para el ajustador.');
+      return;
+    }
+    setEnviandoCorreccion(true);
+    try {
+      const data = await solicitarCorreccionControlHoras({
+        casoId: filaCorreccionAjustador.casoId,
+        numeroCaso: filaCorreccionAjustador.nmroAjste,
+        mensaje,
+      });
+      alert(
+        `✅ Solicitud enviada a ${data.ajustador || 'el ajustador'}\n📧 ${data.emailEnviado || ''}`
+      );
+      setFilaCorreccionAjustador(null);
+      setMensajeCorreccion('');
+    } catch (e) {
+      alert(e.message || 'No se pudo enviar la solicitud');
+    } finally {
+      setEnviandoCorreccion(false);
+    }
   };
 
   const guardarCorreccion = async () => {
@@ -357,13 +395,25 @@ export default function BandejaFacturacion() {
                     {resolverNombreEstadoDesdeCatalogo(fila, estadosCatalogo)}
                   </td>
                   <td className={`${tdClase} text-center whitespace-nowrap`}>
-                    <button
-                      type="button"
-                      className={complexTableBtnGestionar}
-                      onClick={() => abrirCaso(fila.casoId)}
-                    >
-                      Ver caso
-                    </button>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        className={complexTableBtnGestionar}
+                        onClick={() => abrirCaso(fila.casoId)}
+                      >
+                        Ver caso
+                      </button>
+                      {(fila.tipoEnvio === 'control_horas' || fila.tipo === 'control_horas') && (
+                        <button
+                          type="button"
+                          className={`${complexBtnSecondary} !px-2 !py-1 text-xs`}
+                          title="Avisar al ajustador para que corrija el control de horas"
+                          onClick={() => abrirSolicitudCorreccionAjustador(fila)}
+                        >
+                          <FaExclamationTriangle className="inline text-amber-600" /> Corregir
+                        </button>
+                      )}
+                    </div>
                   </td>
                   {puedeAdministrar && (
                     <td className={`${tdClase} text-center whitespace-nowrap`}>
@@ -442,6 +492,53 @@ export default function BandejaFacturacion() {
                 onClick={guardarCorreccion}
               >
                 {guardandoAdmin ? 'Guardando…' : 'Guardar corrección'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {filaCorreccionAjustador && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className={`${complexCard} w-full max-w-lg space-y-4`}>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              Solicitar corrección al ajustador
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">
+              Caso <strong>{filaCorreccionAjustador.nmroAjste}</strong> — responsable{' '}
+              <strong>{filaCorreccionAjustador.nombreResponsable || '—'}</strong>.
+              Se le pedirá corregir el control de horas en ARNALD o cambiar el archivo.
+            </p>
+            <label className="block text-sm">
+              <span className="mb-1 block font-medium">Observación / error detectado</span>
+              <textarea
+                className={complexTextarea}
+                rows={4}
+                value={mensajeCorreccion}
+                onChange={(e) => setMensajeCorreccion(e.target.value)}
+                placeholder="Describa el error encontrado…"
+              />
+            </label>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className={complexBtnSecondary}
+                disabled={enviandoCorreccion}
+                onClick={() => setFilaCorreccionAjustador(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className={complexBtnPrimary}
+                disabled={enviandoCorreccion}
+                onClick={enviarSolicitudCorreccionAjustador}
+              >
+                {enviandoCorreccion ? 'Enviando…' : 'Enviar aviso al ajustador'}
               </button>
             </div>
           </div>

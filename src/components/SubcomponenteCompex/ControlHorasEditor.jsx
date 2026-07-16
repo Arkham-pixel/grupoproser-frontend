@@ -135,6 +135,30 @@ export default function ControlHorasEditor({
       alert('Ingrese el valor hora.');
       return false;
     }
+
+    const filasSinFecha = datos.filas.filter((fila) => {
+      const tieneHoras = totalFila(fila) > 0;
+      const tieneDescripcion = String(fila.descripcion || '').trim() !== '';
+      if (!tieneHoras && !tieneDescripcion) return false;
+      return !String(fila.fecha || '').trim();
+    });
+    if (filasSinFecha.length > 0) {
+      alert(
+        'Complete la fecha en todas las actividades con horas o descripción. Las fechas son obligatorias.'
+      );
+      return false;
+    }
+
+    const filasSinDescripcion = datos.filas.filter((fila) => {
+      const tieneHoras = totalFila(fila) > 0;
+      if (!tieneHoras) return false;
+      return !String(fila.descripcion || '').trim();
+    });
+    if (filasSinDescripcion.length > 0) {
+      alert('Complete la descripción en todas las actividades que tienen horas registradas.');
+      return false;
+    }
+
     return true;
   };
 
@@ -167,10 +191,10 @@ export default function ControlHorasEditor({
       <div className="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1A1A1A]">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
           <div>
-            <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+            <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">
               Control de horas del caso
             </h2>
-            <p className="font-body text-xs text-gray-500 dark:text-gray-400">
+            <p className="font-body text-sm text-gray-500 dark:text-gray-400">
               Referencia: {cabecera.referencia || '—'} · Un registro por caso (editable)
             </p>
           </div>
@@ -184,13 +208,13 @@ export default function ControlHorasEditor({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 text-base">
           {/* Cabecera readonly */}
           <div className={complexCard}>
-            <h3 className="mb-3 font-heading text-sm font-bold text-gray-800 dark:text-white">
+            <h3 className="mb-3 font-heading text-base font-bold text-gray-800 dark:text-white">
               Datos del caso (Datos Generales)
             </h3>
-            <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2 text-base sm:grid-cols-2 lg:grid-cols-3">
               {[
                 ['Firma', cabecera.firma],
                 ['Compañía', cabecera.compania],
@@ -198,24 +222,36 @@ export default function ControlHorasEditor({
                 ['Siniestro', cabecera.siniestro],
                 ['Riesgo', cabecera.riesgo],
                 ['Lugar', cabecera.lugar],
-                ['Analista', cabecera.analista],
+                ['Analista compañía', cabecera.analista],
+                ['Correo analista', cabecera.emailAnalista],
+                ['Ajustador Proser', cabecera.ajustador],
                 ['F. siniestro', formatearFechaDisplay(cabecera.fechaSiniestro)],
                 ['F. asignación', formatearFechaDisplay(cabecera.fechaAsignacion)],
                 ['F. inspección', formatearFechaDisplay(cabecera.fechaInspeccion)],
                 ['Referencia', cabecera.referencia],
               ].map(([k, v]) => (
                 <div key={k} className="rounded-lg bg-gray-50/80 px-3 py-2 dark:bg-gray-900/40">
-                  <span className="block text-xs font-semibold text-gray-500 dark:text-gray-400">{k}</span>
+                  <span className="block text-sm font-semibold text-gray-500 dark:text-gray-400">{k}</span>
                   <span className="text-gray-800 dark:text-gray-200">{v || '—'}</span>
                 </div>
               ))}
             </div>
+            {!cabecera.analista && (
+              <p className="mt-2 font-body text-sm text-amber-700 dark:text-amber-400">
+                No hay analista de compañía en Datos Generales. Asígnelo para que aparezca en el control y en el Excel.
+              </p>
+            )}
+            {cabecera.analista && !cabecera.emailAnalista && (
+              <p className="mt-2 font-body text-sm text-amber-700 dark:text-amber-400">
+                El analista no tiene correo registrado en el catálogo de contactos de la aseguradora.
+              </p>
+            )}
           </div>
 
           {/* Liquidación */}
           <div className={complexCard}>
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <h3 className="font-heading text-sm font-bold text-gray-800 dark:text-white">Liquidación</h3>
+              <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">Liquidación</h3>
               <div className="flex flex-wrap gap-2">
                 {valorHoraPorTarifa && (
                   <button
@@ -235,7 +271,7 @@ export default function ControlHorasEditor({
             </div>
             {mensajeTarifa && (
               <div className={`${complexInfoPanel} mb-3`}>
-                <p className="font-body text-sm text-gray-700 dark:text-gray-300">{mensajeTarifa}</p>
+                <p className="font-body text-base text-gray-700 dark:text-gray-300">{mensajeTarifa}</p>
               </div>
             )}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -269,7 +305,7 @@ export default function ControlHorasEditor({
                   />
                 )}
                 {valorHoraPorTarifa && (
-                  <p className="mt-1 font-body text-xs text-gray-500">
+                  <p className="mt-1 font-body text-sm text-gray-500">
                     Según tarifa de {nombreAseguradoraResuelto || 'la aseguradora'}.
                   </p>
                 )}
@@ -286,19 +322,19 @@ export default function ControlHorasEditor({
                 />
               </div>
               <div className="rounded-lg bg-red-50/50 px-3 py-2 dark:bg-red-950/20">
-                <span className="text-xs text-gray-500">Total horas</span>
-                <p className="font-heading text-lg font-bold text-fenix-primario">
+                <span className="text-sm text-gray-500">Total horas</span>
+                <p className="font-heading text-xl font-bold text-fenix-primario">
                   {totales?.total_horas?.toFixed(2) ?? '0.00'}
                 </p>
               </div>
               <div className="rounded-lg bg-red-50/50 px-3 py-2 dark:bg-red-950/20">
-                <span className="text-xs text-gray-500">Total facturable</span>
-                <p className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+                <span className="text-sm text-gray-500">Total facturable</span>
+                <p className="font-heading text-xl font-bold text-gray-900 dark:text-white">
                   {formatearMoneda(totales?.total)}
                 </p>
               </div>
             </div>
-            <p className="mt-2 font-body text-xs text-gray-500">
+            <p className="mt-2 font-body text-sm text-gray-500">
               Subtotal honorarios: {formatearMoneda(totales?.subtotal_honorarios)}
             </p>
           </div>
@@ -306,20 +342,23 @@ export default function ControlHorasEditor({
           {/* Tabla actividades */}
           <div className={complexCard}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-heading text-sm font-bold text-gray-800 dark:text-white">
+              <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">
                 Relación del tiempo empleado
               </h3>
               <button type="button" onClick={agregarFila} className={complexBtnSecondary}>
                 <FaPlus /> Agregar actividad
               </button>
             </div>
+            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">
+              Fecha y descripción son obligatorias en cada actividad con horas.
+            </p>
             <div className={complexTableWrap}>
               <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
+                <table className="min-w-full text-left text-base">
                   <thead>
-                    <tr className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                      <th className="px-2 py-2">Fecha</th>
-                      <th className="min-w-[180px] px-2 py-2">Descripción</th>
+                    <tr className="bg-gray-50 text-sm uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                      <th className="px-2 py-2">Fecha *</th>
+                      <th className="min-w-[180px] px-2 py-2">Descripción *</th>
                       <th className="px-2 py-2">Funcionario</th>
                       <th className="px-2 py-2">Cargo</th>
                       <th className="px-2 py-2">Viaje</th>
