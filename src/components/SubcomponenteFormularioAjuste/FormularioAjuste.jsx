@@ -33,6 +33,7 @@ import { aseguradorasConFuncionarios } from '../../data/aseguradorasFuncionarios
 import colombia from '../../data/colombia.json';
 import API_CONFIG, { getUploadsUrlCandidates, resolveUploadsUrl } from '../../config/apiConfig.js';
 import { isStoredFileReference } from '../../utils/storedFilePath.js';
+import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import { fetchImageAsArrayBuffer } from '../../utils/imageUtils.js';
 import { getAutofillAjusteDesdeComplex, getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
 import { resolverFechaReporteDesdeAsignacion } from '../../utils/prefillAjusteDesdeCasoComplex.js';
@@ -3945,12 +3946,50 @@ if (formData.anexos && formData.anexos.length > 0) {
         
 }
 
-      // Generar título del formulario basado en el estado actual
-      const tituloFormulario = `Informe de Ajuste - ${estadoActual === 'actaInspeccion' ? 'Acta de Inspección' :
-                               estadoActual === 'inicial' ? 'Versión Inicial (Informe preliminar)' :
-                               estadoActual === 'preeliminar' ? 'Versión Preeliminar' :
-                               estadoActual === 'actualizacion' ? 'Versión de Actualización' :
-                               estadoActual === 'informeFinal' ? 'Informe Final' : estadoActual}`;
+      // Título del historial: formulario + versión + asegurado (fácil de buscar en la lista)
+      const versionTitulo =
+        estadoActual === 'actaInspeccion'
+          ? 'Acta de Inspección'
+          : estadoActual === 'inicial'
+          ? 'Versión Inicial (Informe preliminar)'
+          : estadoActual === 'preeliminar'
+          ? 'Versión Preeliminar'
+          : estadoActual === 'actualizacion'
+          ? 'Versión de Actualización'
+          : estadoActual === 'informeFinal'
+          ? 'Informe Final'
+          : String(estadoActual || 'Versión');
+      const resolverNombreAsegurado = (...candidatos) => {
+        for (const raw of candidatos) {
+          if (raw == null || raw === '') continue;
+          if (typeof raw === 'string') {
+            const t = raw.trim();
+            if (t && t !== 'N/A' && t !== '[object Object]') return t;
+            continue;
+          }
+          if (typeof raw === 'object') {
+            const t = String(raw.nombre || raw.name || raw.razonSocial || raw.asegurado || '').trim();
+            if (t && t !== 'N/A') return t;
+          }
+        }
+        return '';
+      };
+      const aseguradoTitulo = resolverNombreAsegurado(
+        datosParaGuardar?.asegurado,
+        datosParaGuardar?.tomador,
+        formDataRef.current?.asegurado,
+        formDataRef.current?.tomador,
+        formData?.asegurado,
+        formData?.tomador,
+        location?.state?.asegurado,
+        location?.state?.tomador
+      );
+      if (aseguradoTitulo) {
+        datosParaGuardar.asegurado = aseguradoTitulo;
+      }
+      const tituloFormulario = aseguradoTitulo
+        ? `Informe de Ajuste - ${versionTitulo} - ${aseguradoTitulo}`
+        : `Informe de Ajuste - ${versionTitulo}`;
 
       const normalizarClaveAjuste = (valor) => String(valor || '').trim().toUpperCase().replace(/\s+/g, '');
       const esClaveReporte = (valor) => normalizarClaveAjuste(valor).startsWith('RPT-');
@@ -4039,7 +4078,7 @@ if (formData.anexos && formData.anexos.length > 0) {
         carpetaCaso: carpetaCasoResuelta,
         inspector: datosParaGuardar.inspector || 'N/A',
         aseguradora: datosParaGuardar.aseguradora || 'N/A',
-        asegurado: datosParaGuardar.asegurado || 'N/A'
+        asegurado: aseguradoTitulo || datosParaGuardar.asegurado || 'N/A'
       };
 
       // Validar que los campos requeridos estén presentes
@@ -4395,18 +4434,34 @@ return;
       const subirArchivoWordSiExiste = async (formularioIdFinal) => {
         if (!formularioIdFinal) return null;
 
-        // Nombre estable por (formulario + versión): así cada nuevo Guardar de
-        // la misma versión sobrescribe la copia previa en disco y solo queda
-        // la más reciente. Las otras versiones tienen su propio archivo.
+        // Nombre legible para el historial: formulario + versión + asegurado.
+        // Se mantiene el id al final para unicidad; al re-guardar el backend
+        // elimina el Word anterior aunque el nombre cambie.
         const slugVersion =
           estadoActual === 'actaInspeccion'
-            ? 'acta-inspeccion'
+            ? 'Acta_de_Inspeccion'
+            : estadoActual === 'inicial'
+            ? 'Version_Inicial'
+            : estadoActual === 'preeliminar'
+            ? 'Version_Preeliminar'
             : estadoActual === 'actualizacion'
-            ? 'actualizacion'
+            ? 'Version_Actualizacion'
             : estadoActual === 'informeFinal'
-              ? 'informe-final'
-              : 'preliminar';
-        const nombreArchivo = `ajuste_${slugVersion}_${formularioIdFinal}.docx`;
+              ? 'Informe_Final'
+              : String(estadoActual || 'version');
+        const aseguradoSlug = sanitizeUploadFileName(
+          aseguradoTitulo ||
+            datosParaGuardar?.asegurado ||
+            datosParaGuardar?.tomador ||
+            formData?.asegurado ||
+            'Sin_asegurado',
+          'Sin_asegurado'
+        )
+          .replace(/\.docx$/i, '')
+          .slice(0, 50);
+        const nombreArchivo = sanitizeUploadFileName(
+          `Informe_de_Ajuste_${slugVersion}_${aseguradoSlug}_${formularioIdFinal}.docx`
+        );
         let blobParaSubir = archivoGeneradoBlob;
 
         if (!blobParaSubir) {

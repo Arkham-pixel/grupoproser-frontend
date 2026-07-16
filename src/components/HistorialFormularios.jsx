@@ -49,6 +49,37 @@ import {
   insertarFotosSeccionWord,
 } from '../utils/propiedadesWordUtils.js';
 
+/** Nombre de asegurado/tomador aunque venga como objeto. */
+function textoAseguradoHistorialUi(...candidatos) {
+  for (const raw of candidatos) {
+    if (raw == null || raw === '') continue;
+    if (typeof raw === 'string') {
+      const t = raw.trim();
+      if (t && t !== 'N/A' && t !== '[object Object]') return t;
+      continue;
+    }
+    if (typeof raw === 'object') {
+      const t = String(raw.nombre || raw.name || raw.razonSocial || raw.asegurado || '').trim();
+      if (t && t !== 'N/A') return t;
+    }
+  }
+  return '';
+}
+
+/** Título visible en la lista: para ajustes agrega asegurado si falta. */
+function tituloVisibleHistorial(formulario) {
+  const titulo = String(formulario?.titulo || '').trim();
+  const asegurado = textoAseguradoHistorialUi(
+    formulario?.asegurado,
+    formulario?.datos?.asegurado,
+    formulario?.datos?.tomador
+  );
+  const esAjuste = String(formulario?.tipo || '').toLowerCase().includes('ajuste');
+  if (!esAjuste || !asegurado) return titulo || 'Sin título';
+  if (titulo.toLowerCase().includes(asegurado.toLowerCase())) return titulo;
+  return titulo ? `${titulo} - ${asegurado}` : `Informe de Ajuste - ${asegurado}`;
+}
+
 export default function HistorialFormularios() {
   const {
     formularios,
@@ -1233,7 +1264,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-base sm:text-lg font-medium text-gray-900 break-words">
-                            {formulario.titulo}
+                            {tituloVisibleHistorial(formulario)}
                           </h4>
                           <div className="mt-2 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-6 text-xs sm:text-sm text-gray-500">
                             <div className="flex items-center">
@@ -1507,7 +1538,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700">Título</label>
                     <p className="mt-1 text-xs sm:text-sm text-gray-900 break-words">
-                      {modalDetalles.formulario.titulo || 'N/A'}
+                      {tituloVisibleHistorial(modalDetalles.formulario) || 'N/A'}
                     </p>
                   </div>
                   <div>
