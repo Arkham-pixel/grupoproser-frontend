@@ -38,6 +38,7 @@ import {
   BotonEnviar,
   complexAccordionWrap,
 } from './FacturacionHelpers';
+import { ComplexAvisoModal } from './ComplexUiBlocks';
 
 export default function Facturacion({
   formData,
@@ -66,6 +67,7 @@ export default function Facturacion({
   const [enviandoGerencia, setEnviandoGerencia] = useState(false);
   const [controlHorasAbierto, setControlHorasAbierto] = useState(true);
   const [editorControlHorasAbierto, setEditorControlHorasAbierto] = useState(false);
+  const [avisoGuardarCaso, setAvisoGuardarCaso] = useState(false);
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [importandoExcel, setImportandoExcel] = useState(false);
   const inputExcelControlHorasRef = useRef(null);
@@ -170,6 +172,8 @@ export default function Facturacion({
         valor_gastos: Math.round(totales.gastos || 0),
         fecha_control_horas: prev.fecha_control_horas || hoy,
       }));
+
+      setAvisoGuardarCaso(true);
 
       if (onPersistirControlHoras) {
         await onPersistirControlHoras(normalizado, totales);
@@ -653,6 +657,20 @@ export default function Facturacion({
           onGuardar={handleGuardarControlHoras}
         />
       )}
+
+      <ComplexAvisoModal
+        open={avisoGuardarCaso}
+        onClose={() => setAvisoGuardarCaso(false)}
+        titulo="Guarde el caso"
+        mensaje={
+          'Control de horas listo en el formulario.\n\n' +
+          'IMPORTANTE: Debe hacer clic en el botón «Guardar» que está arriba del caso para guardar los cambios.\n\n' +
+          'Si no lo hace, el control de horas no quedará guardado.'
+        }
+        tipo="warning"
+        botonTexto="Entendido"
+        zIndexClass="z-[120]"
+      />
     </div>
   );
 }

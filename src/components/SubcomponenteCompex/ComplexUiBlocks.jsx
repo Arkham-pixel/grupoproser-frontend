@@ -63,6 +63,7 @@ export function ComplexAvisoModal({
   confirmTexto = 'Sí',
   cancelTexto = 'No',
   confirmVariant = 'danger',
+  zIndexClass = 'z-[60]',
 }) {
   if (!open) return null;
 
@@ -72,8 +73,11 @@ export function ComplexAvisoModal({
   const confirmClass = confirmVariant === 'danger' ? complexBtnDanger : complexBtnFormAction;
 
   return (
-    <div className={`${complexModalOverlay} z-[60] backdrop-blur-[2px]`} role="presentation" onClick={onClose}>
-      <div
+    <div
+      className={`${complexModalOverlay} ${zIndexClass} backdrop-blur-[2px]`}
+      role="presentation"
+      onClick={onClose}
+    >      <div
         className={`w-full max-w-md overflow-hidden rounded-2xl border bg-white shadow-2xl dark:bg-[#1A1A1A] ${estilo.border}`}
         role="alertdialog"
         aria-modal="true"
@@ -96,7 +100,7 @@ export function ComplexAvisoModal({
             </h2>
             <p
               id="complex-aviso-mensaje"
-              className="mt-2 font-body text-sm leading-relaxed text-gray-600 dark:text-gray-300"
+              className="mt-2 whitespace-pre-line font-body text-sm leading-relaxed text-gray-600 dark:text-gray-300"
             >
               {mensaje}
             </p>

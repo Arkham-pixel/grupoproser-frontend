@@ -9,6 +9,7 @@ import {
   complexLabel,
   complexTableWrap,
 } from './complexFenixUi';
+import { ComplexAvisoModal } from './ComplexUiBlocks';
 import {
   buildCabeceraControlHoras,
   calcularTotalesControlHoras,
@@ -33,6 +34,13 @@ export default function ControlHorasEditor({
   const [datos, setDatos] = useState(null);
   const [mensajeTarifa, setMensajeTarifa] = useState('');
   const [edicionManualValorHora, setEdicionManualValorHora] = useState(false);
+  const [aviso, setAviso] = useState({ open: false, titulo: '', mensaje: '', tipo: 'warning' });
+
+  const mostrarAviso = (mensaje, titulo = 'Atención', tipo = 'warning') => {
+    setAviso({ open: true, titulo, mensaje, tipo });
+  };
+
+  const cerrarAviso = () => setAviso((prev) => ({ ...prev, open: false }));
 
   const nombreAseguradoraResuelto =
     nombreAseguradora || formData.nombreCliente || formData.codiAsgrdra || '';
@@ -97,7 +105,7 @@ export default function ControlHorasEditor({
 
   const eliminarFila = (id) => {
     if (datos.filas.length <= 1) {
-      alert('Debe conservar al menos una fila de actividad.');
+      mostrarAviso('Debe conservar al menos una fila de actividad.', 'No se puede eliminar', 'warning');
       return;
     }
     setDatos((prev) => ({
@@ -124,15 +132,15 @@ export default function ControlHorasEditor({
 
   const validar = () => {
     if (!datos.filas.length) {
-      alert('Agregue al menos una actividad.');
+      mostrarAviso('Agregue al menos una actividad.', 'Control incompleto', 'warning');
       return false;
     }
     if (totales.total_horas <= 0) {
-      alert('Registre al menos una hora en las actividades.');
+      mostrarAviso('Registre al menos una hora en las actividades.', 'Control incompleto', 'warning');
       return false;
     }
     if (!datos.valor_hora && datos.valor_hora !== 0) {
-      alert('Ingrese el valor hora.');
+      mostrarAviso('Ingrese el valor hora.', 'Control incompleto', 'warning');
       return false;
     }
 
@@ -143,8 +151,10 @@ export default function ControlHorasEditor({
       return !String(fila.fecha || '').trim();
     });
     if (filasSinFecha.length > 0) {
-      alert(
-        'Complete la fecha en todas las actividades con horas o descripción. Las fechas son obligatorias.'
+      mostrarAviso(
+        'Complete la fecha en todas las actividades con horas o descripción. Las fechas son obligatorias.',
+        'Fechas pendientes',
+        'warning'
       );
       return false;
     }
@@ -155,7 +165,11 @@ export default function ControlHorasEditor({
       return !String(fila.descripcion || '').trim();
     });
     if (filasSinDescripcion.length > 0) {
-      alert('Complete la descripción en todas las actividades que tienen horas registradas.');
+      mostrarAviso(
+        'Complete la descripción en todas las actividades que tienen horas registradas.',
+        'Descripción pendiente',
+        'warning'
+      );
       return false;
     }
 
@@ -180,7 +194,7 @@ export default function ControlHorasEditor({
       descargarBlob(blob, nombre);
     } catch (e) {
       console.error(e);
-      alert('No se pudo generar el Excel.');
+      mostrarAviso('No se pudo generar el Excel.', 'Error', 'error');
     }
   };
 
@@ -459,6 +473,16 @@ export default function ControlHorasEditor({
           </button>
         </div>
       </div>
+
+      <ComplexAvisoModal
+        open={aviso.open}
+        onClose={cerrarAviso}
+        titulo={aviso.titulo}
+        mensaje={aviso.mensaje}
+        tipo={aviso.tipo}
+        botonTexto="Entendido"
+        zIndexClass="z-[120]"
+      />
     </div>
   );
 }
