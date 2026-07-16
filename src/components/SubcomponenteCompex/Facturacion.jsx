@@ -68,6 +68,7 @@ export default function Facturacion({
   const [controlHorasAbierto, setControlHorasAbierto] = useState(true);
   const [editorControlHorasAbierto, setEditorControlHorasAbierto] = useState(false);
   const [avisoGuardarCaso, setAvisoGuardarCaso] = useState(false);
+  const [avisoCatalogoEmail, setAvisoCatalogoEmail] = useState({ open: false, mensaje: '' });
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [importandoExcel, setImportandoExcel] = useState(false);
   const inputExcelControlHorasRef = useRef(null);
@@ -162,16 +163,60 @@ export default function Facturacion({
   }, [formData.control_horas, tieneControlHorasGuardado]);
 
   const handleGuardarControlHoras = useCallback(
-    async (normalizado, totales) => {
+    async (normalizado, totales, meta = {}) => {
       if (!setFormData) return;
       const hoy = new Date().toISOString().slice(0, 10);
+      const emailAnalista = String(meta.emailAnalista || '').trim();
+
       setFormData((prev) => ({
         ...prev,
         control_horas: normalizado,
         valor_servicio: Math.round(totales.subtotal_honorarios || 0),
         valor_gastos: Math.round(totales.gastos || 0),
         fecha_control_horas: prev.fecha_control_horas || hoy,
+        ...(emailAnalista
+          ? {
+              emailFuncionarioAseguradora: emailAnalista,
+              emailAnalista,
+            }
+          : {}),
       }));
+
+      if (emailAnalista) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`${BASE_URL}/api/funcionarios-aseguradora/actualizar-email`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({
+              email: emailAnalista,
+              codiAsgrdra: formData.codiAsgrdra,
+              funcAsgrdra: formData.funcAsgrdra,
+              funcAsgrdraNombre: formData.funcAsgrdraNombre || formData.funcionarioAseguradora,
+              nmbrContcto: formData.funcAsgrdraNombre || formData.funcionarioAseguradora,
+            }),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            setAvisoCatalogoEmail({
+              open: true,
+              mensaje:
+                data.error ||
+                'El control se guardó en el formulario, pero no se pudo actualizar el correo en el catálogo de analistas.',
+            });
+          }
+        } catch (error) {
+          console.warn('⚠️ Error guardando correo del analista en catálogo:', error);
+          setAvisoCatalogoEmail({
+            open: true,
+            mensaje:
+              'El control se guardó en el formulario, pero no se pudo actualizar el correo en el catálogo de analistas.',
+          });
+        }
+      }
 
       setAvisoGuardarCaso(true);
 
@@ -179,7 +224,14 @@ export default function Facturacion({
         await onPersistirControlHoras(normalizado, totales);
       }
     },
-    [setFormData, onPersistirControlHoras]
+    [
+      setFormData,
+      onPersistirControlHoras,
+      formData.codiAsgrdra,
+      formData.funcAsgrdra,
+      formData.funcAsgrdraNombre,
+      formData.funcionarioAseguradora,
+    ]
   );
 
   const handleImportarExcelControlHoras = useCallback(
@@ -670,6 +722,16 @@ export default function Facturacion({
         tipo="warning"
         botonTexto="Entendido"
         zIndexClass="z-[120]"
+      />
+
+      <ComplexAvisoModal
+        open={avisoCatalogoEmail.open}
+        onClose={() => setAvisoCatalogoEmail({ open: false, mensaje: '' })}
+        titulo="Correo del analista"
+        mensaje={avisoCatalogoEmail.mensaje}
+        tipo="warning"
+        botonTexto="Entendido"
+        zIndexClass="z-[130]"
       />
     </div>
   );

@@ -18,6 +18,7 @@ import {
   formatearFechaDisplay,
   formatearMoneda,
   normalizarControlHorasParaGuardar,
+  resolverEmailAnalistaAseguradora,
   totalFila,
 } from './controlHoras/controlHorasUtils';
 import { generarControlHorasExcel, descargarBlob } from './controlHoras/generarControlHorasExcel';
@@ -34,6 +35,7 @@ export default function ControlHorasEditor({
   const [datos, setDatos] = useState(null);
   const [mensajeTarifa, setMensajeTarifa] = useState('');
   const [edicionManualValorHora, setEdicionManualValorHora] = useState(false);
+  const [emailAnalista, setEmailAnalista] = useState('');
   const [aviso, setAviso] = useState({ open: false, titulo: '', mensaje: '', tipo: 'warning' });
 
   const mostrarAviso = (mensaje, titulo = 'Atención', tipo = 'warning') => {
@@ -52,11 +54,19 @@ export default function ControlHorasEditor({
     const { _mensajeTarifa, ...resto } = inicial;
     setDatos(resto);
     setEdicionManualValorHora(resto.valor_hora_origen !== 'tarifa');
+    setEmailAnalista(resolverEmailAnalistaAseguradora(formData));
   }, [abierto, formData, nombreAseguradoraResuelto, controlHorasGuardado]);
 
   const cabecera = useMemo(
-    () => buildCabeceraControlHoras(formData, nombreAseguradora),
-    [formData, nombreAseguradora]
+    () =>
+      buildCabeceraControlHoras(
+        {
+          ...formData,
+          emailFuncionarioAseguradora: emailAnalista || formData.emailFuncionarioAseguradora,
+        },
+        nombreAseguradora
+      ),
+    [formData, nombreAseguradora, emailAnalista]
   );
 
   const totales = useMemo(
@@ -173,13 +183,33 @@ export default function ControlHorasEditor({
       return false;
     }
 
+    if (!cabecera.analista) {
+      mostrarAviso(
+        'Asigne el analista de la compañía en Datos Generales antes de guardar el control de horas.',
+        'Analista pendiente',
+        'warning'
+      );
+      return false;
+    }
+
+    const emailLimpio = String(emailAnalista || '').trim();
+    if (!emailLimpio || !emailLimpio.includes('@')) {
+      mostrarAviso(
+        'El correo del analista de la compañía es obligatorio. Escríbalo en el campo correspondiente.',
+        'Correo del analista',
+        'warning'
+      );
+      return false;
+    }
+
     return true;
   };
 
   const handleGuardar = () => {
     if (!validar()) return;
     const normalizado = normalizarControlHorasParaGuardar(datos);
-    onGuardar(normalizado, totales);
+    const emailLimpio = String(emailAnalista || '').trim();
+    onGuardar(normalizado, totales, { emailAnalista: emailLimpio });
     onCerrar();
   };
 
@@ -187,7 +217,10 @@ export default function ControlHorasEditor({
     if (!validar()) return;
     try {
       const { blob, nombre } = await generarControlHorasExcel({
-        formData,
+        formData: {
+          ...formData,
+          emailFuncionarioAseguradora: String(emailAnalista || '').trim(),
+        },
         controlHoras: datos,
         nombreAseguradora,
       });
@@ -237,7 +270,6 @@ export default function ControlHorasEditor({
                 ['Riesgo', cabecera.riesgo],
                 ['Lugar', cabecera.lugar],
                 ['Analista compañía', cabecera.analista],
-                ['Correo analista', cabecera.emailAnalista],
                 ['Ajustador Proser', cabecera.ajustador],
                 ['F. siniestro', formatearFechaDisplay(cabecera.fechaSiniestro)],
                 ['F. asignación', formatearFechaDisplay(cabecera.fechaAsignacion)],
@@ -249,15 +281,26 @@ export default function ControlHorasEditor({
                   <span className="text-gray-800 dark:text-gray-200">{v || '—'}</span>
                 </div>
               ))}
+              <div className="rounded-lg bg-gray-50/80 px-3 py-2 dark:bg-gray-900/40 sm:col-span-2 lg:col-span-1">
+                <label className="mb-1 block text-sm font-semibold text-gray-500 dark:text-gray-400">
+                  Correo analista *
+                </label>
+                <input
+                  type="email"
+                  className={complexInput}
+                  value={emailAnalista}
+                  onChange={(e) => setEmailAnalista(e.target.value)}
+                  placeholder="correo@aseguradora.com"
+                  autoComplete="email"
+                />
+                <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
+                  Si falta en el catálogo, escríbalo aquí. Se guardará en la base de analistas.
+                </p>
+              </div>
             </div>
             {!cabecera.analista && (
               <p className="mt-2 font-body text-sm text-amber-700 dark:text-amber-400">
                 No hay analista de compañía en Datos Generales. Asígnelo para que aparezca en el control y en el Excel.
-              </p>
-            )}
-            {cabecera.analista && !cabecera.emailAnalista && (
-              <p className="mt-2 font-body text-sm text-amber-700 dark:text-amber-400">
-                El analista no tiene correo registrado en el catálogo de contactos de la aseguradora.
               </p>
             )}
           </div>
