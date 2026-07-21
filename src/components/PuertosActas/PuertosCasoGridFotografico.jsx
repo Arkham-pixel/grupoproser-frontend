@@ -203,12 +203,6 @@ export default function PuertosCasoGridFotografico({
             ))}
           </datalist>
         )}
-
-        {!titulo && !subtitulo && imagenes.length === 0 && (
-          <p className={puertosSectionSubtitle}>
-            Las fotos se organizan en filas de {columnas} con leyenda editable debajo.
-          </p>
-        )}
       </div>
     </section>
   );

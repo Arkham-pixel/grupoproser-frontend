@@ -278,6 +278,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
       <PuertosCasoRegistrosFotograficosContenedores
         informe={informe}
         onInformeChange={onInformeChange}
+        campo="registrosFotograficosSupervision"
         soloLectura={soloLectura}
       />
 
@@ -296,7 +297,6 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
       <PuertosCasoSeccionInformeWord
         soloLectura={soloLectura}
         tituloSeccion="Condición de la carga"
-        labelTexto="Narrativa de la operación de descargue y llenado"
         valorTexto={informe.condicionCargaTexto}
         onTextoChange={(v) => onInformeChange('condicionCargaTexto', v)}
         placeholderTexto="La operación de descargue y llenado de los contenedores inició con el descarpado de los vehículos..."
@@ -307,7 +307,6 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
         columnas={3}
         descripcionesFoto={FOTOS_CONDICION_CARGA}
         datalistId="puertos-fotos-condicion-carga"
-        subtituloFotos="6 fotos en cuadrícula 3×2 (descarpado, inicio y fin de descargue)"
       />
 
       <PuertosCasoSeccionInformeWord

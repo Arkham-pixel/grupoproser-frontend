@@ -35,7 +35,7 @@ export default function PuertosCasoListaPuntos({
 
   return (
     <div className={`${puertosInnerPanel} space-y-3`}>
-      {titulo && (
+      {(titulo || !soloLectura) && (
         <div className="flex items-center justify-between gap-2">
           <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">{titulo}</span>
           {!soloLectura && (

@@ -38,6 +38,7 @@ export const INFORME_EXPORTACION_VACIO = {
   imagenesCondicionesMeteo: [],
   seguimiento: [],
   comentariosSupervision: '',
+  registrosFotograficosSupervision: [],
   conclusionesTexto: '',
   conclusionesPuntos: [],
   registrosFotograficosContenedores: [],

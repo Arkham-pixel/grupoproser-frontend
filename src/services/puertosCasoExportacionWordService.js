@@ -967,6 +967,18 @@ async function seccionSupervisionBloques(informe, extrasMercancia = null) {
     children.push(...(await grillaFotos(fotosInicial.bodega, 3, 40)));
   }
 
+  const registrosSupervision = informe.registrosFotograficosSupervision || [];
+  for (const reg of registrosSupervision) {
+    if (!reg.imagenes?.length) continue;
+    const tituloReg =
+      reg.titulo ||
+      (reg.numeroContenedor
+        ? `N° Contenedor ${reg.numeroContenedor} con sellos de seguridad`
+        : 'Contenedor');
+    children.push(barraTituloContenedor(tituloReg));
+    children.push(...(await grillaFotos(reg.imagenes, 3, 48)));
+  }
+
   const bloques = [
     {
       titulo: 'Condición de la carga',

@@ -11,19 +11,20 @@ import {
 } from './puertosFenixUi';
 
 /**
- * Bloque «Registro fotográfico por contenedor». Edita
- * informe.registrosFotograficosContenedores, por lo que puede montarse en
- * varias secciones (4 y 5) y ambas ven/modifican los mismos registros.
+ * Bloque «Registro fotográfico por contenedor». El prop `campo` indica qué
+ * lista del informe edita, de modo que la sección 4 (supervisión) y la
+ * sección 5 (conclusiones) manejan registros independientes.
  */
 export default function PuertosCasoRegistrosFotograficosContenedores({
   informe,
   onInformeChange,
+  campo = 'registrosFotograficosContenedores',
   soloLectura = false,
 }) {
-  const registros = informe.registrosFotograficosContenedores || [];
+  const registros = informe[campo] || [];
 
   const setRegistros = (updater) => {
-    onInformeChange('registrosFotograficosContenedores', updater);
+    onInformeChange(campo, updater);
   };
 
   const agregarRegistroContenedor = () => {

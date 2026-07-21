@@ -74,15 +74,18 @@ export async function subirImagenesPuertosCaso(imagenes = [], casoId = null) {
     }
   }
 
-  let subidas = [];
-  if (pendientes.length > 0) {
-    subidas = await subirArchivosAlServidor(
-      pendientes.map(({ imagen, file }) => ({ file, nombreFallback: imagen.nombre })),
+  // El endpoint acepta 1 archivo por petición (limits.files = 1): subir por lotes.
+  const subidas = [];
+  for (let i = 0; i < pendientes.length; i += LOTE_SUBIDA) {
+    const lote = pendientes.slice(i, i + LOTE_SUBIDA);
+    const resultadoLote = await subirArchivosAlServidor(
+      lote.map(({ imagen, file }) => ({ file, nombreFallback: imagen.nombre })),
       casoId
     );
-    if (subidas.length !== pendientes.length) {
-      throw new Error('No se recibieron todas las rutas de las imágenes subidas');
-    }
+    subidas.push(...resultadoLote);
+  }
+  if (subidas.length !== pendientes.length) {
+    throw new Error('No se recibieron todas las rutas de las imágenes subidas');
   }
 
   let indiceSubida = 0;
@@ -140,15 +143,17 @@ export async function procesarInformeExportacionImagenes(informe = {}, casoId = 
     informeProcesado[campo] = await subirImagenesPuertosCaso(informe[campo] || [], casoId);
   }
 
-  if (Array.isArray(informe.registrosFotograficosContenedores)) {
-    informeProcesado.registrosFotograficosContenedores = await Promise.all(
-      informe.registrosFotograficosContenedores.map(async (registro) => ({
-        id: registro.id,
-        numeroContenedor: registro.numeroContenedor || '',
-        titulo: registro.titulo || '',
-        imagenes: await subirImagenesPuertosCaso(registro.imagenes || [], casoId),
-      }))
-    );
+  for (const campoRegistros of ['registrosFotograficosContenedores', 'registrosFotograficosSupervision']) {
+    if (Array.isArray(informe[campoRegistros])) {
+      informeProcesado[campoRegistros] = await Promise.all(
+        informe[campoRegistros].map(async (registro) => ({
+          id: registro.id,
+          numeroContenedor: registro.numeroContenedor || '',
+          titulo: registro.titulo || '',
+          imagenes: await subirImagenesPuertosCaso(registro.imagenes || [], casoId),
+        }))
+      );
+    }
   }
 
   return informeProcesado;

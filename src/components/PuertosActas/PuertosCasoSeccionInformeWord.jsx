@@ -48,7 +48,7 @@ export default function PuertosCasoSeccionInformeWord({
 
           {usarListaPuntos && onPuntosChange && (
             <PuertosCasoListaPuntos
-              titulo={tituloLista || 'Puntos (orden del informe)'}
+              titulo={tituloLista || ''}
               puntos={puntos}
               onChange={onPuntosChange}
               placeholder={placeholderPunto}
@@ -58,7 +58,7 @@ export default function PuertosCasoSeccionInformeWord({
 
           <PuertosCasoGridFotografico
             titulo=""
-            subtitulo={subtituloFotos || `Registro fotográfico · máx. ${maxFotos} fotos · ${columnas} por fila`}
+            subtitulo={subtituloFotos || ''}
             imagenes={imagenes}
             onChange={onImagenesChange}
             columnas={columnas}

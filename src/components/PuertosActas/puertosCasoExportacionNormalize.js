@@ -49,6 +49,12 @@ export function normalizarInformeExportacion(informe = {}) {
     imagenesCondicionesMeteo: mapImgs(supervision.imagenesCondicionesMeteo),
     conclusionesTexto: informe.conclusionesTexto || '',
     conclusionesPuntos: normalizarPuntos(informe.conclusionesPuntos),
+    registrosFotograficosSupervision: normalizarRegistrosFotograficosContenedores(
+      informe.registrosFotograficosSupervision
+    ).map((r) => ({
+      ...r,
+      imagenes: (r.imagenes || []).map(normalizarImagenCargada),
+    })),
     registrosFotograficosContenedores: normalizarRegistrosFotograficosContenedores(
       informe.registrosFotograficosContenedores
     ).map((r) => ({

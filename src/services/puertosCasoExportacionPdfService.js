@@ -1105,6 +1105,19 @@ async function seccionSupervisionBloques(layout, informe, extrasMercancia = null
     layout.espacio(3);
   }
 
+  const registrosSupervision = informe.registrosFotograficosSupervision || [];
+  for (const reg of registrosSupervision) {
+    if (!reg.imagenes?.length) continue;
+    const tituloReg =
+      reg.titulo ||
+      (reg.numeroContenedor
+        ? `N° Contenedor ${reg.numeroContenedor} con sellos de seguridad`
+        : 'Contenedor');
+    layout.barraTituloContenedor(tituloReg);
+    await layout.grillaFotos(reg.imagenes, 3, null, 48);
+    layout.espacio(3);
+  }
+
   const bloques = [
     {
       titulo: 'Condición de la carga',
