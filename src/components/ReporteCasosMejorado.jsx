@@ -1268,7 +1268,8 @@ setCasos(casosFinales);
       nmroSinstro: numeroSiniestro,
       nmroAjste: numeroCaso,
       origen: 'reporte-complex',
-      estadoInicial: 'actaInspeccion',
+      // Sin estadoInicial: al editar un ajuste existente se abre la última
+      // versión guardada; un ajuste nuevo comienza en acta de inspección.
       returnPath: '/complex/excel',
       prefillDesdeCaso: buildPrefillAjusteDesdeCasoComplex(caso)
     };

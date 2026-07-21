@@ -14,7 +14,10 @@ import {
   subirArchivoSubtarea,
 } from '../../services/complexSubtareasService.js';
 import { getCasoComplex } from '../../services/complexService.js';
-import { navegarAjusteDesdeCasoComplex } from '../../utils/navegarAjusteDesdeCasoComplex.js';
+import {
+  estadoAjusteDesdeEtapaSubtarea,
+  navegarAjusteDesdeCasoComplex,
+} from '../../utils/navegarAjusteDesdeCasoComplex.js';
 import {
   complexBtnFormAction,
   complexBtnFormActionSaveHover,
@@ -32,6 +35,8 @@ import {
   formatearDuracionSubtarea,
   formatearFechaHoraSubtarea,
   formatearFechaSubtarea,
+  subtareaRequiereFormato,
+  subtareaTieneFormato,
   urlArchivoSubtarea,
 } from './subtareasComplexUtils.js';
 
@@ -168,6 +173,14 @@ export default function MisSubtareasComplex() {
     cargarLista();
   }, [cargarLista]);
 
+  // Etapas de informe: preseleccionar tipo "formato" al abrir la subtarea
+  useEffect(() => {
+    if (trabajo?.subtarea && subtareaRequiereFormato(trabajo.subtarea)) {
+      setTipoArchivo('formato');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [trabajo?.subtarea?._id]);
+
   useEffect(() => {
     if (!abrirId || trabajo?.subtarea || loading) return;
     const local = [...(data.subtareas || []), ...(data.completadas || [])].find(
@@ -200,6 +213,16 @@ export default function MisSubtareasComplex() {
 
   const guardarAvance = async (completar = false) => {
     if (!trabajo?.subtarea?._id) return;
+    if (
+      completar &&
+      subtareaRequiereFormato(trabajo.subtarea) &&
+      !subtareaTieneFormato(trabajo.subtarea)
+    ) {
+      setError(
+        'Esta etapa exige adjuntar el formato (informe) antes de completarla. Genérelo desde "Ir a formulario de ajuste" o súbalo como tipo "Formato".'
+      );
+      return;
+    }
     setGuardando(true);
     setError('');
     try {
@@ -283,6 +306,8 @@ export default function MisSubtareasComplex() {
         {
           returnPath: `/complex/mis-subtareas?abrir=${s._id}`,
           origen: 'subtarea-formato',
+          // Abrir directo en la versión que pide la subtarea (p. ej. informe preliminar)
+          estadoInicial: estadoAjusteDesdeEtapaSubtarea(s.etapaTrazabilidad),
         }
       );
     } catch (err) {
@@ -308,6 +333,8 @@ export default function MisSubtareasComplex() {
     const docs = (s.archivos || []).filter((a) => (a.tipoArchivo || 'documento') !== 'formato');
     const formatos = (s.archivos || []).filter((a) => a.tipoArchivo === 'formato');
     const cerrada = s.estado === 'completada' || s.estado === 'cancelada';
+    const requiereFormato = subtareaRequiereFormato(s);
+    const tieneFormato = subtareaTieneFormato(s);
 
     return (
       <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">
@@ -410,6 +437,19 @@ export default function MisSubtareasComplex() {
 
         {!cerrada ? (
           <div className={`${complexCard} space-y-4`}>
+            {requiereFormato && (
+              <div
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  tieneFormato
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : 'border-amber-300 bg-amber-50 text-amber-900'
+                }`}
+              >
+                {tieneFormato
+                  ? 'Formato adjunto. Ya puede marcar la subtarea como completada.'
+                  : 'Esta etapa exige el formato (informe) como entregable obligatorio: genérelo en el formulario de ajuste y adjúntelo como tipo "Formato" antes de completar.'}
+              </div>
+            )}
             <div>
               <label className={complexLabel}>Su reporte / observaciones</label>
               <textarea
@@ -433,7 +473,7 @@ export default function MisSubtareasComplex() {
                   <option value="formato">Formato (ajuste)</option>
                 </select>
               </div>
-              {tipoArchivo === 'formato' ? (
+              {tipoArchivo === 'formato' && (
                 <button
                   type="button"
                   disabled={guardando}
@@ -443,27 +483,26 @@ export default function MisSubtareasComplex() {
                 >
                   Ir a formulario de ajuste
                 </button>
-              ) : (
-                <label className="cursor-pointer">
-                  <span className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}>
-                    Subir archivo
-                  </span>
-                  <input
-                    type="file"
-                    className="hidden"
-                    disabled={guardando}
-                    onChange={(e) => {
-                      onSubir(e.target.files?.[0]);
-                      e.target.value = '';
-                    }}
-                  />
-                </label>
               )}
+              <label className="cursor-pointer">
+                <span className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}>
+                  {tipoArchivo === 'formato' ? 'Subir formato' : 'Subir archivo'}
+                </span>
+                <input
+                  type="file"
+                  className="hidden"
+                  disabled={guardando}
+                  onChange={(e) => {
+                    onSubir(e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
             </div>
             {tipoArchivo === 'formato' && (
               <p className={complexHint}>
                 Los formatos se elaboran en el formulario de ajuste (acta / inspección), igual
-                que desde el reporte Complex.
+                que desde el reporte Complex; luego adjunte aquí el archivo generado.
               </p>
             )}
 
@@ -525,7 +564,12 @@ export default function MisSubtareasComplex() {
               </button>
               <button
                 type="button"
-                disabled={guardando}
+                disabled={guardando || (requiereFormato && !tieneFormato)}
+                title={
+                  requiereFormato && !tieneFormato
+                    ? 'Adjunte primero el formato (informe)'
+                    : undefined
+                }
                 className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
                 onClick={() => guardarAvance(true)}
               >

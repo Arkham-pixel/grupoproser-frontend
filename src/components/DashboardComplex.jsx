@@ -20,6 +20,7 @@ import Loader from './Loader';
 import { obtenerNombreAseguradora, mapeoEstados } from '../data/mapeos';
 import { useTheme } from '../context/ThemeContext';
 import { cargarMapeoFuncionarios } from '../utils/funcionarioMapper';
+import { diasHabilesColombiaEntre } from '../utils/festivosColombia.js';
 import {
   complexDashboardRoot,
   complexDashboardWrap,
@@ -583,6 +584,9 @@ setSiniestros(casosFinales);
     envioFiniquito: 1      // 24 horas
   };
 
+  // Etapas cuyo plazo del protocolo es en dÃ­as hÃ¡biles (excluye fines de semana y festivos de Colombia)
+  const etapasEnDiasHabiles = new Set(['informePreliminar', 'ultimoDocumento', 'informeFinal']);
+
   // FunciÃ³n auxiliar para parsear fechas
   const parsearFecha = (fechaStr) => {
     if (!fechaStr) return null;
@@ -598,6 +602,16 @@ setSiniestros(casosFinales);
     const fecha = new Date(fechaStr);
     if (isNaN(fecha.getTime())) return null;
     return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate());
+  };
+
+  // Fechas fuera de rango plausible (p. ej. 1902 por serial Excel) no deben
+  // entrar a las mÃ©tricas: distorsionan promedios con miles de dÃ­as de "retraso".
+  const esFechaPlausible = (fecha) => {
+    if (!fecha) return false;
+    const anio = fecha.getFullYear();
+    const maxima = new Date();
+    maxima.setFullYear(maxima.getFullYear() + 1);
+    return anio >= 2015 && fecha <= maxima;
   };
 
   // FunciÃ³n para calcular si una etapa estÃ¡ retrasada
@@ -627,11 +641,17 @@ setSiniestros(casosFinales);
       : null;
 
     if (!fechaEtapa) return null;
+    if (!esFechaPlausible(fechaReferencia) || !esFechaPlausible(fechaEtapa)) return null;
 
     const diferenciaTiempo = fechaEtapa.getTime() - fechaReferencia.getTime();
     const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
-    const diferenciaDias = diferenciaHoras / 24;
-    
+    const diasCalendario = diferenciaHoras / 24;
+    // Plazos en dÃ­as hÃ¡biles: descontar sÃ¡bados, domingos y festivos de Colombia.
+    const diferenciaDias =
+      etapasEnDiasHabiles.has(tipoEtapa) && diasCalendario >= 0
+        ? diasHabilesColombiaEntre(fechaReferencia, fechaEtapa)
+        : diasCalendario;
+
     const tiempoLimite = tiemposLimiteTrazabilidad[tipoEtapa] || 1;
     const diasRetraso = diferenciaDias > tiempoLimite ? diferenciaDias - tiempoLimite : 0;
 

@@ -575,7 +575,8 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
           <p className="mb-4 font-body text-sm text-gray-500 dark:text-gray-400">
             Porcentaje de etapas completadas dentro del plazo oficial del protocolo. Cada indicador
             mide desde el hito anterior (solo el primer contacto parte de la asignación). Plazos en
-            horas o días calendario según cada etapa. Solo casos con ambas fechas registradas.
+            horas o días hábiles según cada etapa (los días hábiles excluyen fines de semana y
+            festivos de Colombia). Solo casos con ambas fechas registradas.
           </p>
           <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ComplexMetricCard

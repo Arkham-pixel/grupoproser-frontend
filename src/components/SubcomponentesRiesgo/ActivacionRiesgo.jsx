@@ -19,10 +19,15 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
   const disabledText = theme === 'dark' ? '#6B6B6B' : '#6B7280';
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => {
+      const next = { ...prev, [name]: value };
+      // El textarea "Observaciones Inspección" usa el campo legacy "observaciones";
+      // sincronizarlo con observInspeccion para que la edición/borrado se guarde en la BD
+      if (name === 'observaciones') {
+        next.observInspeccion = value;
+      }
+      return next;
+    });
   };
 
   const handleClasificacionChange = (selectedOption) => {

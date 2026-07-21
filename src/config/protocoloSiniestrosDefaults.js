@@ -85,8 +85,15 @@ export const SECUENCIA_INDICADORES_TIEMPO = [
     desde: 'fchaSoliDocu',
     hasta: 'fchaInfoPrelm',
     fallbackDesde: 'fchaInspccion',
+    // Plazo del protocolo en días hábiles: se mide excluyendo fines de semana y festivos.
+    unidad: 'dias_habiles',
   },
-  { muestra: 'ultimoDocInformeFinal', desde: 'fchaRepoActi', hasta: 'fchaInfoFnal' },
+  {
+    muestra: 'ultimoDocInformeFinal',
+    desde: 'fchaRepoActi',
+    hasta: 'fchaInfoFnal',
+    unidad: 'dias_habiles',
+  },
   {
     muestra: 'informeFinalAutorizacion',
     desde: 'fchaInfoFnal',
@@ -139,9 +146,9 @@ export const INDICADORES_PROTOCOLO_DEF = [
     label: 'Inspección o solicitud → Informe preliminar',
     desdeLegible: 'inspección o solicitud de documentos',
     hastaLegible: 'informe preliminar',
-    plazoLegible: '3 días calendario',
+    plazoLegible: '3 días hábiles',
     etapaId: 'informePreliminar',
-    plazoObjetivo: '3 días calendario desde solicitud de docs (o inspección)',
+    plazoObjetivo: '3 días hábiles desde solicitud de docs (o inspección)',
   },
   {
     clave: 'promedioUltimoDocInformeFinal',
@@ -149,9 +156,9 @@ export const INDICADORES_PROTOCOLO_DEF = [
     label: 'Acreditación → Informe final',
     desdeLegible: 'último documento acreditado',
     hastaLegible: 'informe final',
-    plazoLegible: '3 días calendario',
+    plazoLegible: '3 días hábiles',
     etapaId: 'informeFinal',
-    plazoObjetivo: '3 días calendario desde último documento',
+    plazoObjetivo: '3 días hábiles desde último documento',
   },
   {
     clave: 'promedioInformeFinalAutorizacion',
@@ -493,6 +500,6 @@ export function etiquetaLimite(limite) {
   const { valor, unidad } = limite;
   if (unidad === 'mismo_dia') return 'mismo día';
   if (unidad === 'horas') return `${valor} h`;
-  if (unidad === 'dias_habiles') return `${valor} días calendario`;
+  if (unidad === 'dias_habiles') return `${valor} día${valor !== 1 ? 's' : ''} hábil${valor !== 1 ? 'es' : ''}`;
   return `${valor} día${valor !== 1 ? 's' : ''}`;
 }

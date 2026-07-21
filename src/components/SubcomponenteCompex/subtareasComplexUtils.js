@@ -74,6 +74,22 @@ export const ESTADO_LABELS = {
   cancelada: 'Cancelada',
 };
 
+/** Etapas cuyo entregable es un formato (informe): exigen adjuntarlo para completar. */
+export const ETAPAS_REQUIEREN_FORMATO = new Set([
+  'informePreliminar',
+  'informeFinal',
+  'presentacionCifras',
+]);
+
+export function subtareaRequiereFormato(subtarea) {
+  if (subtarea?.requiereFormato) return true;
+  return ETAPAS_REQUIEREN_FORMATO.has(String(subtarea?.etapaTrazabilidad || '').trim());
+}
+
+export function subtareaTieneFormato(subtarea) {
+  return (subtarea?.archivos || []).some((a) => a.tipoArchivo === 'formato');
+}
+
 export function formatearFechaSubtarea(fecha) {
   if (!fecha) return '—';
   try {

@@ -7,6 +7,7 @@ import { ETAPAS_PROTOCOLO_DEFAULT } from '../config/protocoloSiniestrosDefaults.
 import { parsearFechaComplex } from './complexTrazabilidadUtils.js';
 import { parsearFechaSoloDiaComplex } from './complexFechaHoraUtils.js';
 import { elegirNombreMostrarResponsable } from './responsableAgrupacionUtils.js';
+import { diasHabilesColombiaEntre } from './festivosColombia.js';
 
 /** Indicadores con plazo medible en el protocolo (sin cierre de caso). */
 export const INDICADORES_CUMPLIMIENTO_PROTOCOLO = [
@@ -44,12 +45,22 @@ function diasCalendarioEntre(inicio, fin) {
   return (b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24);
 }
 
+function diasHabilesEntre(inicio, fin) {
+  const a = parsearFechaComplex(inicio);
+  const b = parsearFechaComplex(fin);
+  if (!a || !b || b < a) return null;
+  return diasHabilesColombiaEntre(a, b);
+}
+
 function medirTranscurrido(inicio, fin, unidad) {
   if (unidad === 'mismo_dia') {
     const mismo = mismoDiaCalendario(inicio, fin);
     return mismo == null ? null : mismo ? 0 : 1;
   }
-  if (unidad === 'dias_habiles' || unidad === 'dias') {
+  if (unidad === 'dias_habiles') {
+    return diasHabilesEntre(inicio, fin);
+  }
+  if (unidad === 'dias') {
     return diasCalendarioEntre(inicio, fin);
   }
   if (unidad === 'horas') {
@@ -75,6 +86,13 @@ function resolverFechaReferenciaCaso(caso, etapa) {
 /**
  * Evalúa si el caso cumplió el plazo del indicador cuando ya tiene fecha de cierre de etapa.
  */
+function esFechaPlausibleCumplimiento(fecha) {
+  if (!fecha) return false;
+  const maxima = new Date();
+  maxima.setFullYear(maxima.getFullYear() + 1);
+  return fecha.getFullYear() >= 2015 && fecha <= maxima;
+}
+
 export function evaluarCumplimientoIndicadorProtocolo(caso, etapa) {
   if (!etapa?.limite || etapa.alertaVencimiento === false) return null;
   // Esperas de terceros no deben afectar el % de cumplimiento del ajustador.
@@ -83,6 +101,10 @@ export function evaluarCumplimientoIndicadorProtocolo(caso, etapa) {
   const fechaReferencia = resolverFechaReferenciaCaso(caso, etapa);
   const fechaCierre = parsearFechaComplex(caso[etapa.campoFecha]);
   if (!fechaReferencia || !fechaCierre) return null;
+  // Fechas corruptas (p. ej. año 1902 por serial Excel) no deben evaluar cumplimiento.
+  if (!esFechaPlausibleCumplimiento(fechaReferencia) || !esFechaPlausibleCumplimiento(fechaCierre)) {
+    return null;
+  }
 
   const limiteEfectivo = etapa.limiteMaximo || etapa.limite;
   const transcurrido = medirTranscurrido(

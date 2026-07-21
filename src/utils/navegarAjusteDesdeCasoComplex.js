@@ -8,12 +8,32 @@ const normalizarClaveCaso = (valor) =>
     .replace(/\s+/g, '');
 
 /**
+ * Versión del formulario de ajuste que corresponde a la etapa de una subtarea.
+ * Si la etapa no tiene versión propia se devuelve '' y el formulario abre en
+ * la última versión guardada.
+ */
+export function estadoAjusteDesdeEtapaSubtarea(etapa) {
+  const mapa = {
+    inspeccion: 'actaInspeccion',
+    informePreliminar: 'inicial',
+    ultimoDocumento: 'actualizacion',
+    reporteActividades: 'actualizacion',
+    informeFinal: 'informeFinal',
+    presentacionCifras: 'informeFinal',
+  };
+  return mapa[String(etapa || '').trim()] || '';
+}
+
+/**
  * Misma lógica que el botón «Ajuste» del reporte Complex.
  * @param {import('react-router-dom').NavigateFunction} navigate
  * @param {object} caso
  * @param {object} [opts]
  * @param {string} [opts.returnPath]
  * @param {string} [opts.origen]
+ * @param {string} [opts.estadoInicial] Versión del ajuste a abrir (p. ej. 'inicial'
+ *   para informe preliminar). Si se omite, el formulario abre en la última
+ *   versión guardada.
  */
 export async function navegarAjusteDesdeCasoComplex(navigate, caso, opts = {}) {
   const numeroSiniestro = caso?.nmroSinstro || '';
@@ -29,7 +49,7 @@ export async function navegarAjusteDesdeCasoComplex(navigate, caso, opts = {}) {
     nmroSinstro: numeroSiniestro,
     nmroAjste: numeroCaso,
     origen: opts.origen || 'subtarea-complex',
-    estadoInicial: 'actaInspeccion',
+    ...(opts.estadoInicial ? { estadoInicial: opts.estadoInicial } : {}),
     returnPath,
     prefillDesdeCaso: buildPrefillAjusteDesdeCasoComplex(caso),
   };

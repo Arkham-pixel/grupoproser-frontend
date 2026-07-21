@@ -115,7 +115,7 @@ export const SECCIONES_MANUAL_COMPLEX = [
       {
         tipo: 'lista',
         items: [
-          'Cada fase muestra el **plazo del protocolo** (ej. 12 h, 3 días calendario, 10 días hábiles de espera externa).',
+          'Cada fase muestra el **plazo del protocolo** (ej. 12 h, 3 días hábiles, 10 días hábiles de espera externa).',
           'Registre **fecha y hora** en cada hito; los plazos en horas (12 h, 24 h) solo son precisos con hora incluida.',
           'Adjunte documentos cuando corresponda (acta, informe preliminar, etc.).',
           'El reloj junto al título indica el tiempo transcurrido desde la fecha de referencia de esa etapa.',
@@ -189,8 +189,8 @@ export const SECCIONES_MANUAL_COMPLEX = [
           'Primer contacto: **12 horas** desde asignación.',
           'Inspección de campo: ideal **24 h**, máximo **72 h** desde contacto.',
           'Solicitud de documentos: **12 horas** desde inspección.',
-          'Informe preliminar: **3 días calendario** desde solicitud (o inspección).',
-          'Informe final: **3 días calendario** desde acreditación.',
+          'Informe preliminar: **3 días hábiles** desde solicitud (o inspección).',
+          'Informe final: **3 días hábiles** desde acreditación (excluye fines de semana y festivos de Colombia).',
           'Seguimiento documental: primer recordatorio a **10 días hábiles**, luego cada **15 días calendario**.',
         ],
       },

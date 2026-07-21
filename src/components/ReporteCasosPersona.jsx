@@ -782,7 +782,8 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
       nmroSinstro: numeroSiniestro,
       nmroAjste: numeroCaso,
       origen: 'reporte-complex',
-      estadoInicial: 'actaInspeccion',
+      // Sin estadoInicial: al editar un ajuste existente se abre la última
+      // versión guardada; un ajuste nuevo comienza en acta de inspección.
       returnPath: '/complex/mis-casos',
       prefillDesdeCaso: buildPrefillAjusteDesdeCasoComplex(caso)
     };

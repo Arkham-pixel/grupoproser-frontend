@@ -46,6 +46,7 @@ import GestionResponsables from './components/GestionResponsables';
 import GestionEstadosComplex from './components/SubcomponenteCompex/GestionEstadosComplex';
 import ProtocoloTiemposComplex from './components/SubcomponenteCompex/ProtocoloTiemposComplex';
 import PortalSubtareaExterna from './components/SubcomponenteCompex/PortalSubtareaExterna';
+import PortalAjusteExternoBridge from './components/SubcomponenteCompex/PortalAjusteExternoBridge';
 import MisSubtareasComplex from './components/SubcomponenteCompex/MisSubtareasComplex';
 import SubcomponenteExpress from './components/SubcomponenteExpress/SubcomponenteExpress';
 import ReporteExpress from './components/SubcomponenteExpress/ReporteExpress';
@@ -53,6 +54,9 @@ import DashboardExpress from './components/SubcomponenteExpress/DashboardExpress
 import TableroOperativoExpress from './components/SubcomponenteExpress/TableroOperativoExpress';
 import CatalogosExpress from './components/SubcomponenteExpress/CatalogosExpress';
 import LiquidadorExpressPage from './components/SubcomponenteExpress/LiquidadorExpressPage';
+import FormularioEquidadFdm from './components/SubcomponenteEquidadFdm/FormularioEquidadFdm';
+import ReporteEquidadFdm from './components/SubcomponenteEquidadFdm/ReporteEquidadFdm';
+import DashboardEquidadFdm from './components/SubcomponenteEquidadFdm/DashboardEquidadFdm';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
 import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
@@ -412,6 +416,7 @@ export default function App() {
         <Route path="/sin-conexion" element={<PaginaError tipoForzado="sin-conexion" />} />
         <Route path="/servicio-no-disponible" element={<PaginaError tipoForzado="servicio" />} />
         <Route path="/complex/subtarea/:token" element={<PortalSubtareaExterna />} />
+        <Route path="/complex/subtarea/:token/ajuste" element={<PortalAjusteExternoBridge />} />
 
         {/* Reporte ejecutivo de matriz — pantalla completa sin Layout */}
         <Route
@@ -478,6 +483,10 @@ export default function App() {
           <Route path="express/dashboard" element={<DashboardExpress />} />
           <Route path="express/tablero" element={<TableroOperativoExpress />} />
           <Route path="express/catalogos" element={<Navigate to="/admin/catalogos-express" replace />} />
+
+          <Route path="equidad-fdm/carga" element={<FormularioEquidadFdm />} />
+          <Route path="equidad-fdm/reporte" element={<ReporteEquidadFdm />} />
+          <Route path="equidad-fdm/dashboard" element={<DashboardEquidadFdm />} />
 
           <Route path="puertos/formulario" element={<PuertosInspeccionMain />} />
           <Route path="puertos/formulario/editar/:id" element={<PuertosInspeccionMain />} />

@@ -4,8 +4,14 @@ export const GERENTES_FACTURACION_OPCIONES = [
   { clave: 'adriana', nombre: 'Adriana Angulo Funes' },
 ];
 
-/** Oscar Atencio — ve la bandeja de todos los jefes */
+/** Oscar Atencio — ve la bandeja de todos los jefes y puede administrarla */
 export const LOGIN_SUPERVISOR_BANDEJA = '1065012991';
+
+/** Usuarios que pueden ver la bandeja de todos los jefes (selector de gerente) */
+export const LOGINS_SUPERVISORES_BANDEJA = [
+  LOGIN_SUPERVISOR_BANDEJA,
+  '1140829957', // Arnaldo Andrés Tapia Gutierrez
+];
 
 const LOGIN_A_GERENTE = {
   '72287602': 'elkin',
@@ -18,7 +24,7 @@ export function gerenteDesdeLogin(login) {
 }
 
 export function esSupervisorBandeja(login) {
-  return String(login || '').trim() === LOGIN_SUPERVISOR_BANDEJA;
+  return LOGINS_SUPERVISORES_BANDEJA.includes(String(login || '').trim());
 }
 
 /** Solo jefes y Oscar Atencio (1065012991). */
@@ -31,8 +37,9 @@ export function puedeElegirGerenteEnBandeja(login) {
   return esSupervisorBandeja(login);
 }
 
+/** Solo Oscar: corregir destinatario o quitar registros de la bandeja. */
 export function puedeAdministrarBandejaFacturacion(login) {
-  return esSupervisorBandeja(login);
+  return String(login || '').trim() === LOGIN_SUPERVISOR_BANDEJA;
 }
 
 export function nombreGerente(clave) {

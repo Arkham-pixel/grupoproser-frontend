@@ -40,6 +40,7 @@ import {
   FaQuestionCircle,
   FaInbox,
   FaTasks,
+  FaHandHoldingHeart,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
@@ -162,7 +163,7 @@ export default function Layout() {
   const esSoloSoporte = rolNorm === 'soporte';
   const esVisualizador = esRolVisualizador(rolNorm);
   const esPuertos = esRolPuertos(rolNorm);
-  const accesoRestringido = esVisualizador || esPuertos;
+  const accesoRestringido = esVisualizador || esPuertos || rolNorm === 'externo';
   const puedeCatalogosExpress = usuarioAutorizadoCatalogosExpress(
     localStorage.getItem('cedula'),
     localStorage.getItem('login'),
@@ -238,6 +239,9 @@ export default function Layout() {
     '/express/dashboard': 'Dashboard Express',
     '/express/tablero': 'Tablero operativo Express',
     '/admin/catalogos-express': 'Catálogos Express',
+    '/equidad-fdm/carga': 'Agregar caso Equidad FDM',
+    '/equidad-fdm/reporte': 'Reporte Equidad FDM',
+    '/equidad-fdm/dashboard': 'Dashboard Equidad FDM',
     '/puertos/actas': 'Puertos — Actas',
     '/puertos/actas/nueva': 'Puertos — Nueva Acta',
     '/puertos/actas/caso/nueva': 'Puertos — Informe Exportación',
@@ -278,6 +282,7 @@ export default function Layout() {
     else if (path.startsWith('/complex')) setExpandedSection('complex');
     else if (path.startsWith('/riesgos')) setExpandedSection('riesgos');
     else if (path.startsWith('/express')) setExpandedSection('express');
+    else if (path.startsWith('/equidad-fdm')) setExpandedSection('equidadFdm');
     else if (path.startsWith('/puertos')) setExpandedSection('puertos');
     else if (
       path.startsWith('/formulario') ||
@@ -369,6 +374,13 @@ export default function Layout() {
           { path: '/express/reporte', icon: FaTable, label: 'Reporte Express' },
         ]
       : [],
+    equidadFdm: !accesoRestringido
+      ? [
+          { path: '/equidad-fdm/carga', icon: FaPlus, label: 'Agregar caso' },
+          { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: 'Dashboard FDM' },
+          { path: '/equidad-fdm/reporte', icon: FaTable, label: 'Reporte FDM' },
+        ]
+      : [],
     puertos: !esVisualizador
       ? [
           { path: '/puertos/actas', icon: FaClipboardList, label: 'Actas y Descargues' },
@@ -448,6 +460,7 @@ export default function Layout() {
             { key: 'complex', title: 'COMPLEX', icon: FaFileAlt, items: menuItems.complex },
             { key: 'riesgos', title: 'RIESGOS', icon: FaChartBar, items: menuItems.riesgos },
             { key: 'express', title: 'EXPRESS', icon: FaBolt, items: menuItems.express },
+            { key: 'equidadFdm', title: 'EQUIDAD FDM', icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
             { key: 'puertos', title: 'PUERTOS', icon: FaShip, items: menuItems.puertos },
             { key: 'formularios', title: 'FORMULARIOS', icon: FaFileInvoice, items: menuItems.formularios },
           ]
@@ -574,6 +587,37 @@ export default function Layout() {
 
   const mainBg = theme === 'dark' ? 'bg-[#121212]' : 'bg-[#F5F5F7]';
   const topBarBg = theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
+
+  // Sesión externa (enlace de subtarea): sin menú de la plataforma, solo el
+  // formulario asignado y un enlace para volver a su tarea.
+  if (rolNorm === 'externo') {
+    const volverUrl = localStorage.getItem('subtareaExternaReturn') || '';
+    return (
+      <div className={`min-h-screen ${mainBg}`}>
+        <header className={`flex items-center justify-between border-b px-4 py-3 ${topBarBg}`}>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
+              Grupo Proser
+            </p>
+            <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Formulario asignado · {usuarioActual.nombre || 'Externo'}
+            </p>
+          </div>
+          {volverUrl && (
+            <Link
+              to={volverUrl}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              Volver a mi tarea
+            </Link>
+          )}
+        </header>
+        <main className="p-4">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div

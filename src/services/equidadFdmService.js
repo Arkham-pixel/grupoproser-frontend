@@ -1,0 +1,126 @@
+import { BASE_URL } from '../config/apiConfig.js';
+
+const FDM_API_URL = `${BASE_URL}/api/equidad-fdm`;
+
+const buildQueryString = (params = {}) => {
+  const filteredEntries = Object.entries(params).filter(
+    ([, value]) => value !== undefined && value !== null && value !== ''
+  );
+  if (filteredEntries.length === 0) return '';
+  return `?${new URLSearchParams(filteredEntries).toString()}`;
+};
+
+const authHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const toNumber = (value) => {
+  if (value === undefined || value === null || value === '') return 0;
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+export const normalizeFdmItem = (item = {}) => ({
+  ...item,
+  nombre: item.nombre ?? '',
+  cedula: item.cedula ?? '',
+  municipio: item.municipio ?? '',
+  ajustador: item.ajustador ?? '',
+  estado: item.estado ?? '',
+  totalPerdidaNumero: toNumber(item.totalPerdida),
+  totalLiquidadoNumero: toNumber(item.totalLiquidado),
+  valorIndemnizadoNumero: toNumber(item.valorIndemnizado),
+  deducibleNumero: toNumber(item.deducible),
+});
+
+const normalizeResponseArray = (raw) =>
+  Array.isArray(raw) ? raw.map((item) => normalizeFdmItem(item ?? {})) : [];
+
+export const getCasosFdmPaginado = async ({ page = 1, limit = 100 } = {}) => {
+  const queryString = buildQueryString({ page, limit, _t: Date.now() });
+  const response = await fetch(`${FDM_API_URL}${queryString}`);
+  if (!response.ok) {
+    throw new Error('Error al obtener los casos Equidad FDM');
+  }
+  const payload = await response.json();
+  if (payload?.data && Array.isArray(payload.data)) {
+    return { ...payload, data: normalizeResponseArray(payload.data) };
+  }
+  if (Array.isArray(payload)) {
+    return { data: normalizeResponseArray(payload), total: payload.length };
+  }
+  return payload;
+};
+
+/** Descarga todos los casos FDM paginando en lotes (para reporte y dashboard). */
+export const fetchAllCasosFdm = async (batchSize = 2000) => {
+  const acumulado = [];
+  let page = 1;
+  let total = null;
+
+  while (true) {
+    const respuesta = await getCasosFdmPaginado({ page, limit: batchSize });
+    const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
+    if (total == null && typeof respuesta?.total === 'number') {
+      total = respuesta.total;
+    }
+    if (!lote.length) break;
+    acumulado.push(...lote);
+    if (total != null && acumulado.length >= total) break;
+    if (lote.length < batchSize) break;
+    page += 1;
+  }
+
+  return acumulado;
+};
+
+export const getCasoFdmById = async (id) => {
+  if (!id) throw new Error('Identificador de caso FDM no válido');
+  const response = await fetch(`${FDM_API_URL}/${id}`, { headers: authHeaders() });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al obtener el caso FDM (${response.status})`);
+  }
+  return normalizeFdmItem(payload?.data ?? payload);
+};
+
+export const crearCasoFdm = async (datos) => {
+  const response = await fetch(FDM_API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(datos),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || payload?.detalle || `Error al guardar el caso FDM (${response.status})`);
+  }
+  return normalizeFdmItem(payload?.data ?? payload);
+};
+
+export const actualizarCasoFdm = async (id, datos) => {
+  if (!id) throw new Error('Identificador de caso FDM no válido');
+  const response = await fetch(`${FDM_API_URL}/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(datos),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || payload?.detalle || `Error al actualizar el caso FDM (${response.status})`);
+  }
+  return normalizeFdmItem(payload?.data ?? payload);
+};
+
+export const deleteCasoFdm = async (id) => {
+  if (!id) throw new Error('Identificador de caso FDM no válido');
+  const response = await fetch(`${FDM_API_URL}/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al eliminar el caso FDM (${response.status})`);
+  }
+  return payload;
+};

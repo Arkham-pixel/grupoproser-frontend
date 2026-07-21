@@ -659,17 +659,27 @@ return {
           const v = String(e || '').trim();
           return ESTADOS_AJUSTE_VALIDOS.includes(v) ? v : null;
         };
-        const estadoSugeridoTraz = String(
-          location?.state?.estadoInicial ||
-          (location?.state?.origen === 'reporte-complex' ? 'actaInspeccion' : '')
-        ).trim();
+        // Solo se fuerza versión cuando el flujo de origen la indica (trazabilidad,
+        // reporte o subtarea). Sin sugerencia, se abre la última versión guardada.
+        const ORIGENES_CON_VERSION_SUGERIDA = [
+          'trazabilidad',
+          'reporte-complex',
+          'subtarea-complex',
+          'subtarea-formato',
+          'subtarea-externa',
+        ];
+        const estadoSugeridoTraz = String(location?.state?.estadoInicial || '').trim();
         let estadoCargado = null;
-        if (estadoSugeridoTraz && (location?.state?.origen === 'trazabilidad' || location?.state?.origen === 'reporte-complex')) {
+        if (
+          estadoSugeridoTraz &&
+          ORIGENES_CON_VERSION_SUGERIDA.includes(location?.state?.origen)
+        ) {
           const mapaTipoDocAEstado = {
             inspeccion: 'actaInspeccion',
             informePreliminar: 'inicial',
             ultimoDocumento: 'actualizacion',
-            informeFinal: 'informeFinal'
+            informeFinal: 'informeFinal',
+            presentacionCifras: 'informeFinal'
           };
           estadoCargado = normalizarEstadoAjuste(mapaTipoDocAEstado[estadoSugeridoTraz] || estadoSugeridoTraz);
         }
@@ -1191,7 +1201,29 @@ setFormData(prev => {
       }));
     }
 
-    if (desdeState?.origen === 'reporte-complex' || desdeState?.estadoInicial === 'actaInspeccion') {
+    // Versión inicial del formulario según el flujo de origen:
+    // - estadoInicial explícito (subtarea informe preliminar/final, trazabilidad…)
+    // - reporte Complex sin ajuste previo: comienza en acta de inspección
+    // Al editar un ajuste existente sin sugerencia, cargarFormularioExistente
+    // abre la última versión guardada.
+    const ESTADOS_AJUSTE = ['actaInspeccion', 'inicial', 'preeliminar', 'actualizacion', 'informeFinal'];
+    const mapaEtapaAEstado = {
+      inspeccion: 'actaInspeccion',
+      informePreliminar: 'inicial',
+      ultimoDocumento: 'actualizacion',
+      informeFinal: 'informeFinal',
+      presentacionCifras: 'informeFinal'
+    };
+    const crudo = String(desdeState?.estadoInicial || '').trim();
+    const estadoDesdeState = ESTADOS_AJUSTE.includes(crudo)
+      ? crudo
+      : mapaEtapaAEstado[crudo] || null;
+    const esNuevo = !id || id === 'nuevo';
+
+    if (estadoDesdeState) {
+      setEstadoActual(estadoDesdeState);
+      setFormData((prev) => ({ ...prev, estadoActual: estadoDesdeState }));
+    } else if (desdeState?.origen === 'reporte-complex' && esNuevo) {
       setEstadoActual('actaInspeccion');
       setFormData((prev) => ({ ...prev, estadoActual: 'actaInspeccion' }));
     }

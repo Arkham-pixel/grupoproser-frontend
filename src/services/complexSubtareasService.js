@@ -107,9 +107,21 @@ export async function actualizarSubtareaPublica(token, payload) {
   return parseJson(res);
 }
 
-export async function subirArchivoSubtareaPublica(token, file) {
+/**
+ * Sesión limitada (rol externo) para diligenciar el formulario de ajuste real
+ * de la plataforma desde el enlace de la subtarea.
+ */
+export async function crearSesionAjusteExterna(token) {
+  const res = await fetch(`${BASE_URL}/api/complex-subtareas/public/${token}/sesion-ajuste`, {
+    method: 'POST',
+  });
+  return parseJson(res);
+}
+
+export async function subirArchivoSubtareaPublica(token, file, options = {}) {
   const form = new FormData();
   form.append('file', file);
+  form.append('tipoArchivo', options.tipoArchivo === 'formato' ? 'formato' : 'documento');
   const res = await fetch(`${BASE_URL}/api/complex-subtareas/public/${token}/archivos`, {
     method: 'POST',
     body: form,

@@ -12,6 +12,7 @@ import {
   parsearFechaHoraComplex,
   parsearFechaSoloDiaComplex,
 } from './complexFechaHoraUtils.js';
+import { diasHabilesColombiaEntre } from './festivosColombia.js';
 
 /** Periodo mínimo solicitado: año 2025 en adelante. */
 export const FECHA_INICIO_INDICADORES_COMPLEX = new Date(2025, 0, 1, 0, 0, 0);
@@ -470,10 +471,15 @@ export function casoCerradoEnPeriodo(caso, _fechaDesde, _fechaHasta) {
 /** Fechas de hitos anteriores a 2024 se tratan como corruptas (p. ej. Excel → 1902). */
 const FECHA_MINIMA_HITO_VALIDO = new Date(2024, 0, 1, 0, 0, 0);
 
+function fechaMaximaHitoValido() {
+  const hoy = new Date();
+  return new Date(hoy.getFullYear() + 1, hoy.getMonth(), hoy.getDate());
+}
+
 export function esFechaHitoValidaParaIndicador(valor) {
   const fecha = parsearFechaComplex(valor);
   if (!fecha) return false;
-  return fecha >= FECHA_MINIMA_HITO_VALIDO;
+  return fecha >= FECHA_MINIMA_HITO_VALIDO && fecha <= fechaMaximaHitoValido();
 }
 
 export function calcularDiasEntre(inicio, fin) {
@@ -487,12 +493,23 @@ export function calcularDiasEntre(inicio, fin) {
   return diferenciaMs / (1000 * 60 * 60 * 24);
 }
 
+/** Días hábiles Colombia entre dos fechas (excluye sábados, domingos y festivos). */
+export function calcularDiasHabilesEntre(inicio, fin) {
+  const fechaInicio = parsearFechaComplex(inicio);
+  const fechaFin = parsearFechaComplex(fin);
+  if (!fechaInicio || !fechaFin || fechaFin < fechaInicio) return null;
+  return diasHabilesColombiaEntre(fechaInicio, fechaFin);
+}
+
 /** Tiempo entre dos campos del caso; con hito anterior alternativo si falta el inmediato. */
-export function calcularDiasSecuenciaIndicador(caso, { desde, hasta, fallbackDesde }) {
+export function calcularDiasSecuenciaIndicador(caso, { desde, hasta, fallbackDesde, unidad }) {
   if (!caso?.[hasta]) return null;
   const inicio = caso[desde] || (fallbackDesde ? caso[fallbackDesde] : null);
   if (!esFechaHitoValidaParaIndicador(inicio) || !esFechaHitoValidaParaIndicador(caso[hasta])) {
     return null;
+  }
+  if (unidad === 'dias_habiles') {
+    return calcularDiasHabilesEntre(inicio, caso[hasta]);
   }
   return calcularDiasEntre(inicio, caso[hasta]);
 }

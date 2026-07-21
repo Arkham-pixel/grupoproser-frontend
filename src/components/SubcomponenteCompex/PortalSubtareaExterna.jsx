@@ -1,20 +1,31 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   actualizarSubtareaPublica,
   obtenerSubtareaPublica,
   subirArchivoSubtareaPublica,
 } from '../../services/complexSubtareasService.js';
-import { ESTADO_LABELS, formatearFechaSubtarea, SEMAFORO_STYLES } from './subtareasComplexUtils.js';
+import {
+  ESTADO_LABELS,
+  SEMAFORO_STYLES,
+  formatearFechaSubtarea,
+  subtareaRequiereFormato,
+  subtareaTieneFormato,
+} from './subtareasComplexUtils.js';
 
 export default function PortalSubtareaExterna() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [obs, setObs] = useState('');
   const [saving, setSaving] = useState(false);
   const [okMsg, setOkMsg] = useState('');
+  const [tipoArchivo, setTipoArchivo] = useState('documento');
+
+  const requiereFormato = subtareaRequiereFormato(data);
+  const tieneFormato = subtareaTieneFormato(data);
 
   const cargar = async () => {
     setLoading(true);
@@ -37,6 +48,12 @@ export default function PortalSubtareaExterna() {
   }, [token]);
 
   const guardar = async (completar = false) => {
+    if (completar && requiereFormato && !tieneFormato) {
+      setError(
+        'Debe diligenciar y guardar el formulario de ajuste (informe) antes de marcar la tarea completada. Use el botón "Diligenciar formulario de ajuste".'
+      );
+      return;
+    }
     setSaving(true);
     setOkMsg('');
     setError('');
@@ -59,9 +76,13 @@ export default function PortalSubtareaExterna() {
     setSaving(true);
     setError('');
     try {
-      const res = await subirArchivoSubtareaPublica(token, file);
+      const res = await subirArchivoSubtareaPublica(token, file, { tipoArchivo });
       setData(res.subtarea);
-      setOkMsg('Archivo cargado correctamente.');
+      setOkMsg(
+        tipoArchivo === 'formato'
+          ? 'Informe cargado correctamente y guardado en el caso.'
+          : 'Archivo cargado correctamente.'
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -148,22 +169,84 @@ export default function PortalSubtareaExterna() {
                     />
                   </div>
 
-                  <div>
-                    <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                      Adjuntar archivo
-                    </label>
-                    <input
-                      type="file"
-                      disabled={saving}
-                      onChange={(e) => onFile(e.target.files?.[0])}
-                      className="block w-full text-sm text-slate-600"
-                    />
+                  {requiereFormato && (
+                    <div
+                      className={`space-y-3 rounded-xl border p-4 ${
+                        tieneFormato
+                          ? 'border-emerald-200 bg-emerald-50'
+                          : 'border-amber-300 bg-amber-50'
+                      }`}
+                    >
+                      {tieneFormato ? (
+                        <p className="text-sm text-emerald-800">
+                          <span className="font-semibold">Informe generado y guardado en el caso.</span>{' '}
+                          Puede volver a abrir el formulario si necesita corregirlo, o marcar
+                          la tarea como completada.
+                        </p>
+                      ) : (
+                        <p className="text-sm text-amber-900">
+                          <span className="font-semibold">
+                            El entregable de esta tarea es el informe estandarizado.
+                          </span>{' '}
+                          Diligencie el formulario de ajuste de la plataforma; al guardarlo,
+                          el informe queda adjunto automáticamente al caso y a esta tarea.
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/complex/subtarea/${token}/ajuste`)}
+                        className="rounded-lg bg-[#c8102e] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                      >
+                        {tieneFormato
+                          ? 'Abrir formulario de ajuste'
+                          : 'Diligenciar formulario de ajuste (informe)'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                        ¿Qué está adjuntando?
+                      </label>
+                      <select
+                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-600 focus:outline-none"
+                        value={tipoArchivo}
+                        onChange={(e) => setTipoArchivo(e.target.value)}
+                      >
+                        <option value="documento">Documento de soporte (fotos, actas, anexos)</option>
+                        <option value="formato">Informe en archivo (Word / PDF)</option>
+                      </select>
+                    </div>
+                    <div className="min-w-[220px] flex-1">
+                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                        Adjuntar archivo
+                      </label>
+                      <input
+                        type="file"
+                        disabled={saving}
+                        onChange={(e) => {
+                          onFile(e.target.files?.[0]);
+                          e.target.value = '';
+                        }}
+                        className="block w-full text-sm text-slate-600"
+                      />
+                    </div>
                   </div>
 
                   {(data.archivos || []).length > 0 && (
                     <ul className="space-y-1 text-sm text-slate-700">
                       {data.archivos.map((a, i) => (
                         <li key={`${a.nombre}-${i}`}>
+                          <span
+                            className={`mr-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
+                              a.tipoArchivo === 'formato'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {a.tipoArchivo === 'formato' ? 'Informe' : 'Doc'}
+                          </span>
                           {a.url ? (
                             <a href={a.url} target="_blank" rel="noreferrer" className="font-semibold text-red-700 underline">
                               {a.nombre}
@@ -188,7 +271,12 @@ export default function PortalSubtareaExterna() {
                     </button>
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={saving || (requiereFormato && !tieneFormato)}
+                      title={
+                        requiereFormato && !tieneFormato
+                          ? 'Diligencie y guarde primero el formulario de ajuste (informe)'
+                          : undefined
+                      }
                       onClick={() => guardar(true)}
                       className="rounded-lg bg-[#c8102e] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
                     >

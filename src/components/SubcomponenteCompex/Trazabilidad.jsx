@@ -28,6 +28,7 @@ import SeguimientoAutorizacionCompania from './SeguimientoAutorizacionCompania.j
 import SeguimientoDocumentosPago from './SeguimientoDocumentosPago.jsx';
 import { calcularDiasInfoSeguimientoTrazabilidad } from '../../utils/seguimientoProtocoloUtils.js';
 import { parsearFechaHoraComplex } from '../../utils/complexFechaHoraUtils.js';
+import { diasHabilesColombiaEntre } from '../../utils/festivosColombia.js';
 import {
   ETAPAS_TRAZABILIDAD,
   EstadoGeneralTrazabilidad,
@@ -224,6 +225,13 @@ const Trazabilidad = memo(function Trazabilidad({
     if (cfg.esperaExternaId) return true;
     const item = resolverEtapaProtocoloPorTipo(tipo, protocolo);
     return Boolean(item?.dependenciaExterna);
+  };
+
+  // Etapas cuyo plazo del protocolo está en días hábiles (excluyen sábados,
+  // domingos y festivos de Colombia al medir transcurrido y retraso).
+  const esLimiteEnDiasHabiles = (tipo) => {
+    const item = resolverEtapaProtocoloPorTipo(tipo, protocolo);
+    return item?.limite?.unidad === 'dias_habiles';
   };
 
   // Mapeo de tipos a campos de fecha en formData
@@ -472,7 +480,12 @@ const Trazabilidad = memo(function Trazabilidad({
       // Calcular diferencia en horas primero (para manejar horas hábiles)
       const diferenciaTiempo = fechaDocumentoLocal.getTime() - fechaReferencia.getTime();
       const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
-      const diferenciaDias = diferenciaHoras / 24;
+      const diasCalendario = diferenciaHoras / 24;
+      // Plazos en días hábiles: descontar sábados, domingos y festivos de Colombia.
+      const diferenciaDias =
+        esLimiteEnDiasHabiles(tipo) && diasCalendario >= 0
+          ? diasHabilesColombiaEntre(fechaReferencia, fechaDocumentoLocal)
+          : diasCalendario;
       
       // Obtener tiempo límite para este tipo de documento
       let tiempoLimite = tiemposLimite[tipo];
@@ -527,7 +540,7 @@ const Trazabilidad = memo(function Trazabilidad({
           tipo === 'coordinacionInspeccion' ||
           tipo === 'solicitudDocs' ||
           tipo === 'informePreliminar') &&
-        diferenciaDias < 1;
+        diasCalendario < 1;
       
       return {
         dias: diferenciaDias >= 0 ? diferenciaDias : 0,
@@ -565,7 +578,12 @@ const Trazabilidad = memo(function Trazabilidad({
     
     const diferenciaTiempo = fechaMasRecienteLocal.getTime() - fechaReferencia.getTime();
     const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
-    const diferenciaDias = diferenciaHoras / 24;
+    const diasCalendarioDoc = diferenciaHoras / 24;
+    // Plazos en días hábiles: descontar sábados, domingos y festivos de Colombia.
+    const diferenciaDias =
+      esLimiteEnDiasHabiles(tipo) && diasCalendarioDoc >= 0
+        ? diasHabilesColombiaEntre(fechaReferencia, fechaMasRecienteLocal)
+        : diasCalendarioDoc;
 
     if (esTipoEsperaExterna(tipo)) {
       return {

@@ -51,13 +51,15 @@ const INDICADORES_KPI = [
     clave: 'promedioEtapaPreliminar',
     muestra: 'etapaPreliminar',
     titulo: 'Inspección o solicitud → Informe preliminar',
-    descripcion: 'Tiempo desde la inspección o solicitud de documentos hasta el informe preliminar.',
+    descripcion:
+      'Días hábiles desde la inspección o solicitud de documentos hasta el informe preliminar (excluye fines de semana y festivos).',
   },
   {
     clave: 'promedioUltimoDocInformeFinal',
     muestra: 'ultimoDocInformeFinal',
     titulo: 'Último documento acreditado → Informe final',
-    descripcion: 'Tiempo desde la acreditación del último documento hasta el informe final.',
+    descripcion:
+      'Días hábiles desde la acreditación del último documento hasta el informe final (excluye fines de semana y festivos).',
   },
 ];
 

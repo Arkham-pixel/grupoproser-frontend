@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useMemo, memo } from 'react';
 import Select from 'react-select';
 import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { useTheme } from '../../context/ThemeContext';
+import { diasHabilesColombiaEntre } from '../../utils/festivosColombia.js';
 
 // Componente ArchivoDropZone reutilizable (igual que en Trazabilidad)
 const ArchivoDropZone = ({
@@ -184,8 +185,11 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
   const tiemposLimite = {
     contactoInicial: 0.5,  // 12 horas
     inspeccion: 1,         // 24 horas
-    informeFinal: 2        // 2 días hábiles (simplificado a 2 días)
+    informeFinal: 2        // 2 días hábiles
   };
+
+  // Etapas cuyo plazo es en días hábiles (excluye fines de semana y festivos de Colombia)
+  const etapasEnDiasHabiles = new Set(['informeFinal']);
 
   const tipoAFecha = {
     contactoInicial: 'fchaContIni',
@@ -237,11 +241,16 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
 
       const diferenciaTiempo = fechaDocumentoLocal.getTime() - fechaReferencia.getTime();
       const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
-      const diferenciaDias = diferenciaHoras / 24;
-      
+      const diasCalendario = diferenciaHoras / 24;
+      // Plazos en días hábiles: descontar sábados, domingos y festivos de Colombia.
+      const diferenciaDias =
+        etapasEnDiasHabiles.has(tipo) && diasCalendario >= 0
+          ? diasHabilesColombiaEntre(fechaReferencia, fechaDocumentoLocal)
+          : diasCalendario;
+
       const tiempoLimite = tiemposLimite[tipo] || 1;
       const diasRetraso = diferenciaDias > tiempoLimite ? diferenciaDias - tiempoLimite : 0;
-      const mostrarHoras = (tipo === 'contactoInicial' || tipo === 'inspeccion') && diferenciaDias < 1;
+      const mostrarHoras = (tipo === 'contactoInicial' || tipo === 'inspeccion') && diasCalendario < 1;
       
       return {
         dias: diferenciaDias >= 0 ? diferenciaDias : 0,

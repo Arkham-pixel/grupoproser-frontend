@@ -1,0 +1,67 @@
+import { crearFechaLocal } from '../../utils/fechaUtils.js';
+
+export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v1';
+export const FDM_REPORTE_PAGE_SIZE = 25;
+
+export const ESTADOS_FDM = ['PENDIENTE', 'LIQUIDADO', 'OBJETADO', 'GIRADO'];
+
+export const formatCurrency = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '$0';
+  }
+  return new Intl.NumberFormat('es-CO', {
+    style: 'currency',
+    currency: 'COP',
+    maximumFractionDigits: 0,
+  }).format(Number(value));
+};
+
+export const parseDate = (value) => crearFechaLocal(value);
+
+export const formatDate = (value) => {
+  const date = crearFechaLocal(value);
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const fechaEnRango = (fecha, desde, hasta) => {
+  const iso = formatDate(fecha);
+  if (!iso) return false;
+  if (desde && iso < desde) return false;
+  if (hasta && iso > hasta) return false;
+  return true;
+};
+
+export const normTexto = (value) =>
+  String(value ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+
+/** Opciones únicas para un select de filtro a partir de los casos */
+export const buildOpcionesFiltro = (casos = [], campo) => {
+  const porNorm = new Map();
+  for (const item of casos) {
+    const raw = item?.[campo];
+    if (!raw) continue;
+    const norm = normTexto(raw);
+    if (!norm) continue;
+    if (!porNorm.has(norm)) {
+      porNorm.set(norm, { value: norm, label: String(raw).trim() });
+    }
+  }
+  return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
+};
+
+export const coincideFiltroTexto = (valorCaso, filtro) => {
+  if (!filtro) return true;
+  return normTexto(valorCaso) === normTexto(filtro);
+};
+
+/** Fecha ISO (YYYY-MM-DD) para inputs date desde valores de la API */
+export const fechaParaInput = (value) => formatDate(value);

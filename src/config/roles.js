@@ -16,10 +16,18 @@ export function esRolPuertos(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === 'puertos';
 }
 
+/** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */
+export function esRolExterno(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === 'externo';
+}
+
 export function rutaInicioPorRol(rol = obtenerRolAlmacenado()) {
   const r = normalizarRol(rol);
   if (r === 'visualizador') return '/matrices-riesgo';
   if (r === 'puertos') return '/puertos/actas';
+  if (r === 'externo') {
+    return localStorage.getItem('subtareaExternaReturn') || '/login';
+  }
   return '/inicio';
 }
 
@@ -39,6 +47,10 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
 
   if (r === 'puertos') {
     return path.startsWith('/puertos') || RUTAS_CUENTA.some((p) => path === p || path.startsWith(`${p}/`));
+  }
+
+  if (r === 'externo') {
+    return path.startsWith('/ajuste') || path.startsWith('/complex/subtarea');
   }
 
   return true;

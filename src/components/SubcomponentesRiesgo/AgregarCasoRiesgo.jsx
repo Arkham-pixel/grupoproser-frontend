@@ -133,8 +133,10 @@ const construirPayloadRiesgo = (datos) => {
     fechaInspeccion: datos.fechaInspeccion || '',
     fechaInforme: datos.fchaInforme || datos.fechaInforme || '',
     fechaFactra: datos.fchaFactra || datos.fechaFactra || '',
-    observAsignacion: datos.observAsignacion || datos.observaciones || '',
-    observInspeccion: datos.observInspeccion || datos.observaciones || '',
+    // Usar ?? en lugar de || para que un campo vaciado ('') no sea
+    // reemplazado por el valor viejo del campo legacy "observaciones"
+    observAsignacion: datos.observAsignacion ?? datos.observaciones ?? '',
+    observInspeccion: datos.observInspeccion ?? datos.observaciones ?? '',
     observInforme: datos.observInforme || '',
     codiClasificacion: datos.codiClasificacion || clasificacionValor,
     clasificacion: clasificacionSeleccionada ? (clasificacionSeleccionada.label || clasificacionSeleccionada.value || '') : datos.clasificacion || '',
@@ -880,11 +882,13 @@ let historialExistente = null;
         }
 
         if (historialExistente) {
-// Usar los datos del historial existente
+          // Combinar con los datos del historial existente, pero dando prioridad
+          // a los datos actuales del caso (formData): si el usuario editó o borró
+          // algo, el snapshot viejo del historial no debe sobreescribirlo
           if (historialExistente.datos) {
             datosParaInspeccion = {
-              ...datosParaInspeccion,
-              ...historialExistente.datos
+              ...historialExistente.datos,
+              ...datosParaInspeccion
             };
           }
         } else {
@@ -1078,7 +1082,14 @@ let historialExistente = null;
           setFormData={setFormData}
           handleChange={(e) => {
             const { name, value } = e.target;
-            setFormData(prev => ({ ...prev, [name]: value }));
+            setFormData(prev => {
+              const next = { ...prev, [name]: value };
+              // Mantener sincronizado el campo legacy "observaciones" (pestaña Activación)
+              if (name === 'observInspeccion') {
+                next.observaciones = value;
+              }
+              return next;
+            });
           }} 
           onSelectFiles={(tipo, campo, archivos) => {
             // El archivo queda en formData y se envía como multipart al guardar el caso
