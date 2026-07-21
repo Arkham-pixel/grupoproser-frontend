@@ -507,7 +507,7 @@ const MatrizRiesgoAvanzada = () => {
               className="mb-3 flex items-center gap-2 font-heading text-lg font-bold text-gray-800 transition hover:text-fenix-primario dark:text-white"
             >
               <FaArrowLeft className="text-sm text-fenix-primario" />
-              Matriz de Riesgo
+              Arnald Risk Intelligence
             </button>
 
             {navActual && (
@@ -579,7 +579,7 @@ const MatrizRiesgoAvanzada = () => {
                   className="btn-fenix-secondary min-w-[9rem] disabled:opacity-60"
                   onClick={handleExportarReporteHTML}
                   disabled={exportandoPdf}
-                  title="Descarga un archivo .html del informe completo"
+                  title="Descarga el informe general completo en .html (dashboard, semáforo, gráficos y detalle técnico)"
                 >
                   {exportandoPdf ? 'Generando…' : 'Descargar .html'}
                 </button>

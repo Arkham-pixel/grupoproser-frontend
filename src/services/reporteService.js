@@ -1203,12 +1203,26 @@ if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomen
     const inner = `
       <div class="section reporte-card">
         <h2>Recomendaciones de gestión de riesgos</h2>
-        <p class="section-subtitulo">Recomendaciones identificadas y su seguimiento</p>
+        <p class="section-subtitulo">Recomendaciones identificadas, estado de progreso y seguimiento</p>
         
         <div class="recomendaciones-container-report">
           ${gestionRiesgos.recomendaciones.map((recomendacion, index) => {
             const textoRecomendacion =
               recomendacion.recomendacion || recomendacion.descripcion || recomendacion.texto || '';
+            const estadoId = recomendacion.estado || 'abierta';
+            const avance = Number.isFinite(Number(recomendacion.avance))
+              ? Number(recomendacion.avance)
+              : 0;
+            const etiquetaEstado =
+              estadoId === 'abierta'
+                ? 'No iniciada'
+                : estadoId === 'en_proceso'
+                  ? 'En proceso'
+                  : estadoId === 'avanzada'
+                    ? 'Avanzada'
+                    : estadoId === 'cerrada'
+                      ? 'Completada'
+                      : estadoId;
             return `
             <div class="recomendacion-card-report">
               <div class="recomendacion-header-report">
@@ -1219,6 +1233,21 @@ if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomen
                     ${recomendacion.fechaRecomendacion || recomendacion.fechaInicial}
                   </p>
                 ` : ''}
+                <p class="fecha-recomendacion-report">
+                  <strong>Estado:</strong> ${etiquetaEstado}
+                  · <strong>Avance:</strong> ${avance}%
+                </p>
+                <div style="margin-top:8px;height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
+                  <div style="height:100%;width:${avance}%;background:${
+                    avance >= 100
+                      ? '#28a745'
+                      : avance >= 75
+                        ? '#eab308'
+                        : avance >= 25
+                          ? '#fd7e14'
+                          : '#dc3545'
+                  };"></div>
+                </div>
               </div>
               
               <div class="recomendacion-content-report">

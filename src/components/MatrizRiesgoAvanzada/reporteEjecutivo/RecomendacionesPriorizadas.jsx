@@ -49,7 +49,7 @@ function TablaPrioridad({ prioridad, filas = [] }) {
                 </td>
                 <td>{rec.responsable || '—'}</td>
                 <td>{rec.fechaObjetivo || '—'}</td>
-                <td className="re-estado-capitalize">{rec.estado.replace('_', ' ')}</td>
+                <td>{rec.estadoEtiqueta || rec.estado.replace('_', ' ')}</td>
                 <td>
                   <div className="re-avance-cell">
                     <span>{rec.avance}%</span>
@@ -86,15 +86,19 @@ export default function RecomendacionesPriorizadas({ analitica }) {
 
       <div className="re-kpi-grid re-kpi-grid--compact">
         <div className="re-kpi-mini">
-          <span>Abiertas</span>
+          <span>No iniciadas (0%)</span>
           <strong>{kpis.recomendacionesAbiertas}</strong>
         </div>
         <div className="re-kpi-mini">
-          <span>En proceso</span>
+          <span>En proceso (25%)</span>
           <strong>{kpis.recomendacionesEnProceso}</strong>
         </div>
         <div className="re-kpi-mini">
-          <span>Cerradas</span>
+          <span>Avanzadas (75%)</span>
+          <strong>{kpis.recomendacionesAvanzadas ?? 0}</strong>
+        </div>
+        <div className="re-kpi-mini">
+          <span>Completadas (100%)</span>
           <strong>{kpis.recomendacionesCerradas}</strong>
         </div>
         <div className="re-kpi-mini">

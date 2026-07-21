@@ -281,9 +281,10 @@ export default function VistaReporteMatriz() {
           className="reporte-print-btn matriz-btn-primary"
           onClick={descargarHtml}
           disabled={descargando}
+          title="Descarga este informe general con dashboard, semáforo y gráficos ejecutivos en un archivo .html autónomo"
         >
           <FaDownload />
-          {descargando ? 'Generando…' : 'Descargar .html'}
+          {descargando ? 'Generando…' : 'Descargar .html con gráficas'}
         </button>
       </div>
 

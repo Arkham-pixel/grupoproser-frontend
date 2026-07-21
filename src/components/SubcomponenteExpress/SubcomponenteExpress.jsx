@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import { FaCalculator } from 'react-icons/fa';
+import { FaCalculator, FaPlus } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import { normalizeStoredFileReference } from '../../utils/storedFilePath.js';
@@ -28,8 +28,10 @@ import {
   DropzoneFenix,
   expressBtnGhost,
   expressBtnPrimary,
+  expressBtnSecondary,
   ExpressAvisoModal,
   ExpressListaAnexos,
+  ExpressModal,
   ExpressPageHeader,
   InputFenix,
   SelectFenix,
@@ -73,6 +75,22 @@ const DEFAULT_FORM = {
   salvamentoAnexos: [],
 };
 
+/** Solo Zürich Colombia Seguros (excluye BBVA-ZURICH y similares). */
+const normalizarNombreAseguradora = (valor) =>
+  String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toUpperCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const esZurichColombia = (label) => {
+  const nombre = normalizarNombreAseguradora(label);
+  if (!nombre.includes('ZURICH')) return false;
+  if (nombre.includes('BBVA')) return false;
+  return nombre.includes('COLOMBIA') || nombre.includes('SEGUROS');
+};
+
 const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = false }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState(() => ({ ...DEFAULT_FORM }));
@@ -94,6 +112,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     mensaje: '',
     tipo: 'warning',
   });
+  const [modalIntermediarioOpen, setModalIntermediarioOpen] = useState(false);
+  const [nuevoIntermediario, setNuevoIntermediario] = useState('');
+  const [guardandoIntermediario, setGuardandoIntermediario] = useState(false);
 
   const toDateInputValue = useCallback((value) => formatDate(value), []);
 
@@ -368,20 +389,42 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
     async function cargarCatalogosExpressForm() {
       try {
-        const [amparos, analistas, intermediarios] = await Promise.all([
+        const [amparos, analistas] = await Promise.all([
           fetchExpressCatalogo('amparo'),
           fetchExpressCatalogo('analista'),
-          fetchExpressCatalogo('intermediario'),
         ]);
         if (cancelado) return;
         setAmparosExpress(Array.isArray(amparos) ? amparos : []);
         setAnalistasExpress(Array.isArray(analistas) ? analistas : []);
-        setIntermediariosExpress(Array.isArray(intermediarios) ? intermediarios : []);
       } catch (err) {
         if (!cancelado) {
           console.error('Error cargando catálogos Express:', err);
           setAmparosExpress([]);
           setAnalistasExpress([]);
+        }
+      }
+    }
+
+    async function cargarIntermediarios() {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${BASE_URL}/api/intermediarios`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (cancelado) return;
+        const lista = data?.success && Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+        const activos = lista.filter((i) => i?.estado == null || Number(i.estado) === 1);
+        setIntermediariosExpress(
+          ordenarLista(
+            activos.map((i) => ({ _id: i._id, nombre: i.nombre, codigo: i.codigo })),
+            (i) => i.nombre
+          )
+        );
+      } catch (err) {
+        if (!cancelado) {
+          console.error('Error cargando intermediarios (banco):', err);
           setIntermediariosExpress([]);
         }
       }
@@ -418,6 +461,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     cargarAseguradoras();
     cargarCiudades();
     cargarCatalogosExpressForm();
+    cargarIntermediarios();
     cargarEstadosExpress();
 
     return () => {
@@ -439,13 +483,30 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const mappedAseguradoras = useMemo(() => {
     const opciones = aseguradoras
       .map((aseg, index) => ({
-        value: aseg.codiAsgrdra ?? aseg.value ?? aseg._id ?? '',
+        value: String(aseg.codiAsgrdra ?? aseg.value ?? aseg._id ?? '').trim(),
         label: aseg.rzonSocial ?? aseg.label ?? aseg.nombre ?? '',
         key: aseg._id ?? `${aseg.codiAsgrdra ?? aseg.value ?? 'aseguradora'}-${index}`,
       }))
-      .filter((aseg) => aseg.value && aseg.label);
-    return ordenarLista(opciones, (aseg) => aseg.label);
+      .filter((aseg) => aseg.value && aseg.label)
+      .filter((aseg) => esZurichColombia(aseg.label));
+    // Preferir el nombre comercial exacto si hay varias coincidencias
+    const preferida = opciones.find((aseg) =>
+      normalizarNombreAseguradora(aseg.label).includes('ZURICH COLOMBIA SEGUROS')
+    );
+    return preferida ? [preferida] : ordenarLista(opciones, (aseg) => aseg.label).slice(0, 1);
   }, [aseguradoras]);
+
+  // Express solo opera con Zürich Colombia: fijar valor válido (corrige BBVA-ZURICH / valor huérfano)
+  useEffect(() => {
+    const zurich = mappedAseguradoras[0];
+    if (!zurich?.value) return;
+    setFormData((prev) => {
+      const actual = String(prev.aseguradora ?? '').trim();
+      const esValida = mappedAseguradoras.some((a) => String(a.value) === actual);
+      if (esValida) return prev;
+      return { ...prev, aseguradora: zurich.value };
+    });
+  }, [mappedAseguradoras, formData.aseguradora]);
 
   const opcionesAmparo = useMemo(
     () => opcionesCatalogo(amparosExpress, formData.amparo),
@@ -544,6 +605,76 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const cerrarAviso = useCallback(() => {
     setAvisoModal((prev) => ({ ...prev, open: false }));
   }, []);
+
+  const abrirModalIntermediario = useCallback(() => {
+    setNuevoIntermediario('');
+    setModalIntermediarioOpen(true);
+  }, []);
+
+  const cerrarModalIntermediario = useCallback(() => {
+    if (guardandoIntermediario) return;
+    setModalIntermediarioOpen(false);
+    setNuevoIntermediario('');
+  }, [guardandoIntermediario]);
+
+  const guardarNuevoIntermediario = useCallback(async () => {
+    const nombre = nuevoIntermediario.trim();
+    if (!nombre) {
+      mostrarAviso('Escriba el nombre del intermediario.', 'Intermediario', 'warning');
+      return;
+    }
+    setGuardandoIntermediario(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${BASE_URL}/api/intermediarios`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ nombre }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || data.message || 'No se pudo agregar el intermediario');
+      }
+
+      const creado = data?.data || {};
+      const nombreCreado = creado.nombre || nombre;
+
+      // Recargar banco de intermediarios
+      const listaRes = await fetch(`${BASE_URL}/api/intermediarios`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const listaData = await listaRes.json().catch(() => ({}));
+      const lista =
+        listaData?.success && Array.isArray(listaData.data)
+          ? listaData.data
+          : Array.isArray(listaData)
+            ? listaData
+            : [];
+      const activos = lista.filter((i) => i?.estado == null || Number(i.estado) === 1);
+      setIntermediariosExpress(
+        ordenarLista(
+          activos.map((i) => ({ _id: i._id, nombre: i.nombre, codigo: i.codigo })),
+          (i) => i.nombre
+        )
+      );
+
+      setFormData((prev) => ({ ...prev, intermediario: nombreCreado }));
+      setModalIntermediarioOpen(false);
+      setNuevoIntermediario('');
+      mostrarAviso(
+        `Intermediario «${nombreCreado}» agregado al banco de intermediarios.`,
+        'Listo',
+        'success'
+      );
+    } catch (err) {
+      mostrarAviso(err?.message || 'No se pudo agregar el intermediario.', 'Error', 'error');
+    } finally {
+      setGuardandoIntermediario(false);
+    }
+  }, [nuevoIntermediario, mostrarAviso]);
 
   const removeAnexo = (nombre) => {
     setFormData((prev) => ({
@@ -987,29 +1118,42 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                     required
                   >
-                    <option value="">Seleccionar…</option>
-                    {mappedAseguradoras.map((aseg, index) => (
-                      <option key={aseg.key ?? `${aseg.value}-${index}`} value={aseg.value}>
-                        {aseg.label}
-                      </option>
-                    ))}
+                    {mappedAseguradoras.length === 0 ? (
+                      <option value="">Cargando Zürich…</option>
+                    ) : (
+                      mappedAseguradoras.map((aseg, index) => (
+                        <option key={aseg.key ?? `${aseg.value}-${index}`} value={aseg.value}>
+                          {aseg.label}
+                        </option>
+                      ))
+                    )}
                   </SelectFenix>
                 </Campo>
-                <Campo label="Intermediario">
-                  <SelectFenix
-                    id="intermediario"
-                    name="intermediario"
-                    value={formData.intermediario}
-                    onChange={handleChange}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    className={`${expressBtnGhost} !justify-start !px-0 !py-0 text-sm`}
+                    onClick={abrirModalIntermediario}
                   >
-                    <option value="">Seleccionar…</option>
-                    {opcionesIntermediario.map((item) => (
-                      <option key={item.value} value={item.value}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </SelectFenix>
-                </Campo>
+                    <FaPlus className="mr-1.5 inline" />
+                    Agregar intermediario
+                  </button>
+                  <Campo label="Intermediario">
+                    <SelectFenix
+                      id="intermediario"
+                      name="intermediario"
+                      value={formData.intermediario}
+                      onChange={handleChange}
+                    >
+                      <option value="">Seleccionar…</option>
+                      {opcionesIntermediario.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </SelectFenix>
+                  </Campo>
+                </div>
                 <Campo label="Ciudad siniestro" required>
                   <SelectFenix
                     id="ciudadSiniestro"
@@ -1240,6 +1384,48 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
           {success && <div className={`mx-5 mb-5 sm:mx-6 ${expressAlertSuccess}`}>{success}</div>}
         </section>
       </div>
+
+      <ExpressModal
+        open={modalIntermediarioOpen}
+        onClose={cerrarModalIntermediario}
+        title="Agregar intermediario"
+      >
+        <div className="space-y-4 p-4 sm:p-6">
+          <Campo label="Nombre del intermediario" required>
+            <InputFenix
+              value={nuevoIntermediario}
+              onChange={(e) => setNuevoIntermediario(e.target.value)}
+              placeholder="Ej. Corredor XYZ…"
+              disabled={guardandoIntermediario}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  guardarNuevoIntermediario();
+                }
+              }}
+            />
+          </Campo>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              onClick={cerrarModalIntermediario}
+              disabled={guardandoIntermediario}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className={expressBtnPrimary}
+              onClick={guardarNuevoIntermediario}
+              disabled={guardandoIntermediario || !nuevoIntermediario.trim()}
+            >
+              {guardandoIntermediario ? 'Guardando…' : 'Agregar'}
+            </button>
+          </div>
+        </div>
+      </ExpressModal>
 
       <ExpressAvisoModal
         open={avisoModal.open}

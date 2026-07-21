@@ -19,7 +19,7 @@ export async function descargarReporteInteractivoHtml(
   const banner = `
     <div class="reporte-banner-interactivo no-print">
       <div>
-        <strong>ARNALD Data Flow</strong> · Reporte interactivo
+        <strong>ARNALD Data Flow</strong> · Informe general con gráficas
         <span style="opacity:0.85;margin-left:8px">Arrastre las tablas anchas con el mouse ↔</span>
       </div>
     </div>`;

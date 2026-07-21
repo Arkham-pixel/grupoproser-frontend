@@ -1,5 +1,10 @@
 import { CATEGORIAS_RIESGO } from '../components/MatrizRiesgoAvanzada/matrizContenidoShared';
-import { normalizarGestionRiesgos } from '../components/MatrizRiesgoAvanzada/gestionRiesgosHelpers';
+import {
+  etiquetaEstadoRecomendacion,
+  normalizarGestionRiesgos,
+  resolverAvanceRecomendacion,
+  resolverEstadoRecomendacion,
+} from '../components/MatrizRiesgoAvanzada/gestionRiesgosHelpers';
 import {
   calcularMaxImpacto,
   calcularNivelEjecutivo,
@@ -102,27 +107,6 @@ function construirRiesgosEnriquecidos(datosMatriz = {}) {
   );
 }
 
-function estadoRecomendacion(rec) {
-  const seguimientos = (rec.seguimientos || []).filter(
-    (s) => String(s.comentarios || '').trim() || String(s.fecha || '').trim()
-  );
-  if (!seguimientos.length) return 'abierta';
-  const ultimo = seguimientos[seguimientos.length - 1];
-  const texto = String(ultimo.comentarios || '').toLowerCase();
-  if (texto.includes('cerrad') || texto.includes('complet') || texto.includes('finaliz')) {
-    return 'cerrada';
-  }
-  if (seguimientos.length >= 2) return 'cerrada';
-  return 'en_proceso';
-}
-
-function avanceRecomendacion(rec) {
-  const estado = estadoRecomendacion(rec);
-  if (estado === 'cerrada') return 100;
-  if (estado === 'en_proceso') return 50;
-  return 0;
-}
-
 function prioridadRecomendacion(nivelResidual = 'Medio') {
   if (nivelResidual === 'Crítico' || nivelResidual === 'Alto') return 'alta';
   if (nivelResidual === 'Medio') return 'media';
@@ -137,7 +121,8 @@ function analizarRecomendaciones(datosMatriz = {}, riesgos = []) {
   const enriquecidas = lista
     .filter((rec) => String(rec.recomendacion || '').trim())
     .map((rec, index) => {
-      const estado = estadoRecomendacion(rec);
+      const estado = resolverEstadoRecomendacion(rec);
+      const avance = resolverAvanceRecomendacion(rec);
       return {
         id: rec.id ?? index,
         recomendacion: rec.recomendacion,
@@ -148,7 +133,8 @@ function analizarRecomendaciones(datosMatriz = {}, riesgos = []) {
         responsable: riesgoReferencia?.responsable || '',
         fechaObjetivo: rec.fechaRecomendacion || '',
         estado,
-        avance: avanceRecomendacion(rec),
+        estadoEtiqueta: etiquetaEstadoRecomendacion(estado),
+        avance,
         prioridad: prioridadRecomendacion(riesgoReferencia?.nivelResidual),
         comentarioSeguimiento:
           rec.seguimientos?.[rec.seguimientos.length - 1]?.comentarios || '',
@@ -157,12 +143,13 @@ function analizarRecomendaciones(datosMatriz = {}, riesgos = []) {
 
   const abiertas = enriquecidas.filter((r) => r.estado === 'abierta').length;
   const enProceso = enriquecidas.filter((r) => r.estado === 'en_proceso').length;
+  const avanzadas = enriquecidas.filter((r) => r.estado === 'avanzada').length;
   const cerradas = enriquecidas.filter((r) => r.estado === 'cerrada').length;
   const total = enriquecidas.length;
   const avancePlan =
     total > 0 ? roundPct(enriquecidas.reduce((sum, r) => sum + r.avance, 0) / total) : 0;
 
-  return { lista: enriquecidas, abiertas, enProceso, cerradas, total, avancePlan };
+  return { lista: enriquecidas, abiertas, enProceso, avanzadas, cerradas, total, avancePlan };
 }
 
 function contarPorCampo(riesgos, campo) {
@@ -317,7 +304,8 @@ function calcularIndicadorMadurez(kpis, riesgos, recomendaciones) {
   const pctReduccion = Math.min(kpis.reduccionPromedio / 55, 1);
   const pctSeguimiento =
     recomendaciones.total > 0
-      ? (recomendaciones.cerradas + recomendaciones.enProceso) / recomendaciones.total
+      ? (recomendaciones.cerradas + recomendaciones.avanzadas + recomendaciones.enProceso) /
+        recomendaciones.total
       : 0;
   const avance = kpis.avancePlanAccion / 100;
 
@@ -541,6 +529,7 @@ export function calcularAnaliticaMatriz(datosMatriz = {}, opciones = {}) {
     controlesDocumentados,
     recomendacionesAbiertas: recomendaciones.abiertas,
     recomendacionesEnProceso: recomendaciones.enProceso,
+    recomendacionesAvanzadas: recomendaciones.avanzadas,
     recomendacionesCerradas: recomendaciones.cerradas,
     totalRecomendaciones: recomendaciones.total,
     avancePlanAccion: recomendaciones.avancePlan,
@@ -629,9 +618,10 @@ export function calcularAnaliticaMatriz(datosMatriz = {}, opciones = {}) {
   });
 
   const estadoRecomendaciones = [
-    { nombre: 'Abiertas', total: recomendaciones.abiertas, color: '#dc3545' },
+    { nombre: 'No iniciadas', total: recomendaciones.abiertas, color: '#dc3545' },
     { nombre: 'En proceso', total: recomendaciones.enProceso, color: '#fd7e14' },
-    { nombre: 'Cerradas', total: recomendaciones.cerradas, color: '#6b7280' },
+    { nombre: 'Avanzadas', total: recomendaciones.avanzadas, color: '#eab308' },
+    { nombre: 'Completadas', total: recomendaciones.cerradas, color: '#28a745' },
   ].filter((item) => item.total > 0);
 
   const madurez = calcularIndicadorMadurez(kpis, riesgos, recomendaciones);

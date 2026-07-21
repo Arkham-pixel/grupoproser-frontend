@@ -12,7 +12,8 @@ const FORMATOS = [
   {
     id: 'html',
     titulo: 'HTML interactivo',
-    descripcion: 'Reporte interactivo con navegación y tablas movibles.',
+    descripcion:
+      'Mismo informe general: dashboard, semáforo, gráficos ejecutivos, tablas y detalle técnico.',
     ideal: ['Presentaciones gerenciales', 'Análisis interactivo', 'Compartir por enlace/archivo'],
     icono: FaGlobe,
     accion: exportarReporteHtml,
