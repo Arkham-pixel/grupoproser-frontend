@@ -4,6 +4,7 @@ import {
   FaEdit,
   FaEye,
   FaFilePdf,
+  FaFileWord,
   FaCamera,
   FaPlus,
   FaFilter,
@@ -16,6 +17,7 @@ import {
 import { BASE_URL } from '../../config/apiConfig.js';
 import { eliminarRegistroPuertos, listarRegistrosPuertos } from '../../services/puertosService.js';
 import { generarPdfInformeExportacionDesdeId } from '../../services/puertosCasoExportacionPdfService.js';
+import { generarWordInformeExportacionDesdeId } from '../../services/puertosCasoExportacionWordService.js';
 import { generarPdfActaPuertosDesdeId } from '../../services/puertosActaPdfService.js';
 import PuertosActasFiltros from './PuertosActasFiltros.jsx';
 import {
@@ -89,6 +91,7 @@ export default function PuertosActasListado() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [pdfCargandoId, setPdfCargandoId] = useState(null);
+  const [wordCargandoId, setWordCargandoId] = useState(null);
   const [eliminandoId, setEliminandoId] = useState(null);
   const [exportandoExcel, setExportandoExcel] = useState(false);
   const [aseguradoraOptions, setAseguradoraOptions] = useState([]);
@@ -184,6 +187,18 @@ export default function PuertosActasListado() {
     }
   };
 
+  const handleWord = async (fila) => {
+    setWordCargandoId(fila.id);
+    try {
+      await generarWordInformeExportacionDesdeId(fila.id, { aseguradoraOptions, responsables });
+    } catch (err) {
+      console.error(err);
+      alert(`No se pudo generar el Word: ${err.message || 'error desconocido'}`);
+    } finally {
+      setWordCargandoId(null);
+    }
+  };
+
   const handleExportarExcel = () => {
     setExportandoExcel(true);
     try {
@@ -227,6 +242,17 @@ export default function PuertosActasListado() {
       danger: true,
       disabled: pdfCargandoId === fila.id,
     },
+    ...(fila.tipoRegistro === 'caso_exportacion'
+      ? [
+          {
+            icon: FaFileWord,
+            title: wordCargandoId === fila.id ? 'Generando Word…' : 'Word',
+            onClick: () => handleWord(fila),
+            danger: false,
+            disabled: wordCargandoId === fila.id,
+          },
+        ]
+      : []),
     { icon: FaCamera, title: 'Fotos', onClick: () => navigate(rutaFotos(fila)), danger: false },
     {
       icon: FaTrash,

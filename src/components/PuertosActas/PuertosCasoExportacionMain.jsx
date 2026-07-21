@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
-import { FaSave, FaFilePdf, FaArrowLeft, FaEdit } from 'react-icons/fa';
+import { FaSave, FaFilePdf, FaFileWord, FaArrowLeft, FaEdit } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
 import {
   getPuertosCaso,
@@ -14,6 +14,7 @@ import {
 import { normalizarCasoApiParaFormulario, normalizarInformeExportacion } from './puertosCasoExportacionNormalize';
 import { procesarInformeExportacionImagenes } from '../../services/puertosCasoImagenService.js';
 import { generarPdfInformeExportacion } from '../../services/puertosCasoExportacionPdfService.js';
+import { generarWordInformeExportacion } from '../../services/puertosCasoExportacionWordService.js';
 import {
   puertosBtnLink,
   puertosBtnPrimary,
@@ -88,6 +89,7 @@ export default function PuertosCasoExportacionMain() {
   const [cargando, setCargando] = useState(esEdicion);
   const [guardando, setGuardando] = useState(false);
   const [generandoPdf, setGenerandoPdf] = useState(false);
+  const [generandoWord, setGenerandoWord] = useState(false);
   const [aseguradoraOptions, setAseguradoraOptions] = useState([]);
   const [responsables, setResponsables] = useState([]);
 
@@ -254,7 +256,7 @@ export default function PuertosCasoExportacionMain() {
     formData,
     onServerUpdate: onAutoSaveServidor,
     serverReady: esEdicion && !cargando && !soloLectura,
-    canSaveServer: () => !guardando && !generandoPdf && !soloLectura,
+    canSaveServer: () => !guardando && !generandoPdf && !generandoWord && !soloLectura,
     onRestore: (savedInfo) => {
       if (soloLectura) return;
       setSavedDataToRestore(savedInfo);
@@ -361,6 +363,18 @@ export default function PuertosCasoExportacionMain() {
     }
   };
 
+  const handleGenerarWord = async () => {
+    try {
+      setGenerandoWord(true);
+      await generarWordInformeExportacion(formData, { aseguradoraOptions, responsables });
+    } catch (err) {
+      console.error(err);
+      alert(`No se pudo generar el Word: ${err.message || 'error desconocido'}`);
+    } finally {
+      setGenerandoWord(false);
+    }
+  };
+
   if (cargando) {
     return (
       <div className={`${puertosFormRoot} py-16 text-center font-body text-gray-500`}>Cargando caso…</div>
@@ -423,10 +437,18 @@ export default function PuertosCasoExportacionMain() {
           <button
             type="button"
             onClick={handleGenerarPdf}
-            disabled={generandoPdf || guardando}
+            disabled={generandoPdf || generandoWord || guardando}
             className={puertosBtnSecondary}
           >
             <FaFilePdf /> {generandoPdf ? 'Generando PDF…' : 'PDF'}
+          </button>
+          <button
+            type="button"
+            onClick={handleGenerarWord}
+            disabled={generandoWord || generandoPdf || guardando}
+            className={puertosBtnSecondary}
+          >
+            <FaFileWord /> {generandoWord ? 'Generando Word…' : 'Word'}
           </button>
         </div>
       </div>
