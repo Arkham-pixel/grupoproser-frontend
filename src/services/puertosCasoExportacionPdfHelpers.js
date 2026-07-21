@@ -1,9 +1,6 @@
 import { getImageUrlCandidates } from '../utils/imageUtils';
 import { getPuertosImagenDisplayUrl } from '../components/PuertosActas/puertosCasoImagenUtils';
-import {
-  calcularTotalMercancia,
-  calcularNumContenedoresMercancia,
-} from '../components/PuertosActas/puertosCasoExportacionState';
+import { calcularTotalMercancia } from '../components/PuertosActas/puertosCasoExportacionState';
 
 export const PDF_FONT = {
   family: 'RobotoCondensed',
@@ -292,35 +289,48 @@ export function captionImagenPdf(imagen) {
   return nombre;
 }
 
-/** Filas estilo Word: una fila con cantidades apiladas cuando hay varias líneas. */
-export function construirFilasMercanciaWord(lineas = []) {
-  if (!lineas.length) return [['', '', '', '', '', '']];
-  if (lineas.length === 1) {
-    const l = lineas[0];
-    return [
-      [
-        l.numContenedores || '',
-        l.bl || '',
-        l.producto || '',
-        l.cantidad || '',
-        l.tipoCarga || '',
-        l.destino || '',
-      ],
-    ];
-  }
-  const numCont =
-    calcularNumContenedoresMercancia(lineas) || lineas[0].numContenedores || '';
-  const cantidades = lineas.map((l) => l.cantidad || '').filter(Boolean);
-  return [
-    [
-      numCont,
-      lineas[0].bl || '',
-      lineas[0].producto || '',
-      cantidades.join('\n'),
-      lineas[0].tipoCarga || '',
-      lineas[0].destino || '',
-    ],
-  ];
+/**
+ * Consolida la mercancía de un mismo caso para el informe (estilo Word):
+ * una subfila por producto (producto + cantidad) y las columnas N° contenedores,
+ * B/L, tipo de carga y destino combinadas verticalmente cuando la línea
+ * siguiente repite el valor o lo deja vacío.
+ */
+export function construirMercanciaConsolidada(lineas = []) {
+  const base = lineas.length ? lineas : [{}];
+  const productos = base.map((l) => ({
+    producto: String(l.producto || '').trim(),
+    cantidad: String(l.cantidad || '').trim(),
+  }));
+
+  const construirGrupos = (campo) => {
+    const grupos = [];
+    base.forEach((l, i) => {
+      const valor = String(l[campo] || '').trim();
+      const previo = grupos[grupos.length - 1];
+      const compatible =
+        previo &&
+        (valor === '' ||
+          previo.valor === '' ||
+          previo.valor.toLowerCase() === valor.toLowerCase());
+      if (compatible) {
+        previo.fin = i;
+        if (!previo.valor) previo.valor = valor;
+      } else {
+        grupos.push({ inicio: i, fin: i, valor });
+      }
+    });
+    return grupos;
+  };
+
+  return {
+    productos,
+    grupos: {
+      numCont: construirGrupos('numContenedores'),
+      bl: construirGrupos('bl'),
+      tipoCarga: construirGrupos('tipoCarga'),
+      destino: construirGrupos('destino'),
+    },
+  };
 }
 
 /**

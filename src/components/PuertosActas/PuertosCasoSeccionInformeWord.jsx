@@ -31,17 +31,20 @@ export default function PuertosCasoSeccionInformeWord({
         <h3 className={puertosBlockHeader}>{tituloSeccion}</h3>
 
         <div className="space-y-5">
-          <Campo label={labelTexto}>
-            <textarea
-              {...attrsTextarea(soloLectura, {
-                className: inputCls,
-                style: { minHeight: `${minRowsTexto * 24}px` },
-                value: valorTexto || '',
-                onChange: (e) => onTextoChange(e.target.value),
-                placeholder: placeholderTexto,
-              })}
-            />
-          </Campo>
+          {(() => {
+            const textarea = (
+              <textarea
+                {...attrsTextarea(soloLectura, {
+                  className: inputCls,
+                  style: { minHeight: `${minRowsTexto * 24}px` },
+                  value: valorTexto || '',
+                  onChange: (e) => onTextoChange(e.target.value),
+                  placeholder: placeholderTexto,
+                })}
+              />
+            );
+            return labelTexto ? <Campo label={labelTexto}>{textarea}</Campo> : textarea;
+          })()}
 
           {usarListaPuntos && onPuntosChange && (
             <PuertosCasoListaPuntos

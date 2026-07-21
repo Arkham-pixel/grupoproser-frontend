@@ -101,6 +101,11 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
           )}
         </header>
         <div className="overflow-x-auto p-3">
+          <p className="mb-2 font-body text-xs text-gray-500">
+            Un mismo caso con varios productos: agregue una línea por producto con su cantidad y
+            repita (o deje vacío) N° contenedores, B/L, tipo de carga y destino. En el informe esas
+            celdas se unen y las cantidades quedan divididas por producto.
+          </p>
           <table className="min-w-full border-collapse text-xs sm:text-sm">
             <thead>
               <tr className={puertosTableThRow}>

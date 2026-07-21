@@ -20,7 +20,7 @@ import {
   imagenInformeABase64,
   obtenerInspector,
   resumenMercancia,
-  construirFilasMercanciaWord,
+  construirMercanciaConsolidada,
   captionImagenPdf,
   prepararFotosSeccion3Mercancia,
   textoPunto,
@@ -228,86 +228,144 @@ class PdfLayout {
     this.tablaFilasEtiquetaValor(filas);
   }
 
-  filaCabeceraColumnas(headers, anchos) {
-    const { doc } = this;
-    const headerH = 8;
-    const fontSize = PDF_FONT.table;
-    const total = anchos.reduce((a, b) => a + b, 0);
-    const escala = PDF_CONTENT_W / total;
-    const cols = anchos.map((w) => w * escala);
-
-    this.asegurarEspacio(headerH + 1);
-    let cx = this.x;
-    headers.forEach((h, i) => {
-      doc.setFillColor(...PDF_COLORS.greenBarBg);
-      doc.setDrawColor(...PDF_COLORS.border);
-      doc.setLineWidth(0.2);
-      doc.rect(cx, this.y - 4.5, cols[i], headerH, 'FD');
-      this.aplicarFuente('bold', fontSize);
-      const lines = doc.splitTextToSize(h, cols[i] - 2);
-      doc.text(lines, cx + cols[i] / 2, this.y, { align: 'center' });
-      cx += cols[i];
-    });
-    this.y += headerH - 1;
-  }
-
-  tablaFilasConColumnas(rows, anchos, dibujarSubHeader = null) {
-    if (!rows.length) return;
-    const { doc } = this;
-    const total = anchos.reduce((a, b) => a + b, 0);
-    const escala = PDF_CONTENT_W / total;
-    const cols = anchos.map((w) => w * escala);
-    const fontSize = PDF_FONT.table;
-
-    rows.forEach((row) => {
-      let maxLines = 1;
-      const celdas = row.map((cell, i) => {
-        const lines = doc.splitTextToSize(String(cell ?? ''), cols[i] - 2);
-        maxLines = Math.max(maxLines, lines.length);
-        return lines;
-      });
-      const rowH = maxLines * 3.8 + 4;
-      if (this.y + rowH > this.maxY) {
-        this.nuevaPagina();
-        if (dibujarSubHeader) dibujarSubHeader();
-      }
-      let cx = this.x;
-      doc.setDrawColor(...PDF_COLORS.border);
-      doc.setLineWidth(0.2);
-      this.aplicarFuente('normal', fontSize);
-      celdas.forEach((lines, i) => {
-        doc.rect(cx, this.y - 4.5, cols[i], rowH);
-        if (i === 2) {
-          doc.text(lines, cx + 2, this.y);
-        } else {
-          doc.text(lines, cx + cols[i] / 2, this.y, { align: 'center' });
-        }
-        cx += cols[i];
-      });
-      this.y += rowH;
-    });
-    this.y += 3;
-  }
-
+  /**
+   * Tabla DESCRIPCIÓN DE LA MERCANCÍA consolidada (como el Word de referencia):
+   * una subfila por producto con su cantidad, y N° contenedores, B/L, tipo de
+   * carga y destino combinados verticalmente cuando el caso los comparte.
+   */
   tablaMercanciaWord(lineas, total) {
-    const anchos = [18, 22, 56, 20, 32, 32];
-    const headers = [
-      'N° CONTENEDORES',
-      'B/L N°',
-      'PRODUCTO',
-      'CANTIDAD',
-      'TIPO DE CARGA',
-      'DESTINO',
-    ];
-    const dataRows = construirFilasMercanciaWord(lineas);
-    dataRows.push(['', '', 'Total', total > 0 ? `${total} UDS` : '—', '', '']);
+    const { doc } = this;
+    const { productos, grupos } = construirMercanciaConsolidada(lineas);
 
-    this.filaCabeceraVerde('DESCRIPCIÓN DE LA MERCANCÍA');
-    const dibujarSubHeader = () => {
-      this.filaCabeceraColumnas(headers, anchos);
+    const anchosMm = [18, 22, 56, 20, 32, 32];
+    const escala = PDF_CONTENT_W / anchosMm.reduce((a, b) => a + b, 0);
+    const cols = anchosMm.map((w) => w * escala);
+    const colX = [];
+    cols.reduce((acc, w, i) => {
+      colX[i] = acc;
+      return acc + w;
+    }, this.x);
+
+    const fontSize = PDF_FONT.table;
+    const lineH = 3.8;
+    const padV = 4;
+    const tituloH = 8;
+    const totalRowH = 7;
+
+    const headers = ['N° CONTENEDORES', 'B/L N°', 'PRODUCTO', 'CANTIDAD', 'TIPO DE CARGA', 'DESTINO'];
+    this.aplicarFuente('bold', fontSize);
+    const headerLines = headers.map((h, i) => doc.splitTextToSize(h, cols[i] - 2));
+    const headerH = Math.max(
+      8,
+      Math.max(...headerLines.map((l) => l.length)) * lineH + padV
+    );
+
+    this.aplicarFuente('normal', fontSize);
+    const prodLines = productos.map((p) =>
+      p.producto ? doc.splitTextToSize(p.producto, cols[2] - 3) : []
+    );
+    const cantLines = productos.map((p) =>
+      p.cantidad ? doc.splitTextToSize(p.cantidad, cols[3] - 2) : []
+    );
+    const alturas = productos.map((_, i) =>
+      Math.max(lineH + padV, Math.max(prodLines[i].length, cantLines[i].length) * lineH + padV)
+    );
+
+    const gruposCol = [
+      { col: 0, lista: grupos.numCont },
+      { col: 1, lista: grupos.bl },
+      { col: 4, lista: grupos.tipoCarga },
+      { col: 5, lista: grupos.destino },
+    ].map(({ col, lista }) => ({
+      col,
+      lista: lista.map((g) => ({
+        ...g,
+        lines: g.valor ? doc.splitTextToSize(g.valor, cols[col] - 3) : [],
+      })),
+    }));
+    gruposCol.forEach(({ lista }) =>
+      lista.forEach((g) => {
+        const necesario = Math.max(lineH + padV, g.lines.length * lineH + padV);
+        let actual = 0;
+        for (let i = g.inicio; i <= g.fin; i++) actual += alturas[i];
+        if (actual < necesario) alturas[g.fin] += necesario - actual;
+      })
+    );
+
+    const altoTabla =
+      tituloH + headerH + alturas.reduce((a, b) => a + b, 0) + totalRowH;
+    this.asegurarEspacio(altoTabla + 2);
+
+    const y0 = this.y - 4.5;
+
+    // Título y encabezados: verde oscuro con texto blanco (como el Word).
+    doc.setFillColor(...PDF_COLORS.green);
+    doc.setDrawColor(...PDF_COLORS.white);
+    doc.setLineWidth(0.2);
+    doc.rect(this.x, y0, PDF_CONTENT_W, tituloH, 'FD');
+    this.aplicarFuente('bold', fontSize + 1);
+    doc.setTextColor(...PDF_COLORS.white);
+    doc.text('DESCRIPCIÓN DE LA MERCANCÍA', PDF_PAGE.w / 2, y0 + tituloH / 2 + 1.3, {
+      align: 'center',
+    });
+
+    const yHeader = y0 + tituloH;
+    this.aplicarFuente('bold', fontSize);
+    doc.setTextColor(...PDF_COLORS.white);
+    headers.forEach((_, i) => {
+      doc.setFillColor(...PDF_COLORS.green);
+      doc.rect(colX[i], yHeader, cols[i], headerH, 'FD');
+      const lines = headerLines[i];
+      const sy = yHeader + headerH / 2 - ((lines.length - 1) * lineH) / 2 + 1.3;
+      doc.text(lines, colX[i] + cols[i] / 2, sy, { align: 'center' });
+    });
+    doc.setTextColor(...PDF_COLORS.text);
+
+    const rowY = [];
+    let acc = yHeader + headerH;
+    alturas.forEach((h, i) => {
+      rowY[i] = acc;
+      acc += h;
+    });
+
+    const celda = (x, y, w, h, lines) => {
+      doc.setDrawColor(...PDF_COLORS.border);
+      doc.setLineWidth(0.2);
+      doc.rect(x, y, w, h);
+      if (!lines.length) return;
+      this.aplicarFuente('normal', fontSize);
+      const sy = y + h / 2 - ((lines.length - 1) * lineH) / 2 + 1.3;
+      doc.text(lines, x + w / 2, sy, { align: 'center' });
     };
-    dibujarSubHeader();
-    this.tablaFilasConColumnas(dataRows, anchos, dibujarSubHeader);
+
+    productos.forEach((_, i) => {
+      celda(colX[2], rowY[i], cols[2], alturas[i], prodLines[i]);
+      celda(colX[3], rowY[i], cols[3], alturas[i], cantLines[i]);
+    });
+    gruposCol.forEach(({ col, lista }) => {
+      lista.forEach((g) => {
+        let h = 0;
+        for (let i = g.inicio; i <= g.fin; i++) h += alturas[i];
+        celda(colX[col], rowY[g.inicio], cols[col], h, g.lines);
+      });
+    });
+
+    // Fila Total: etiqueta combinada hasta PRODUCTO, valor en CANTIDAD.
+    const yTotal = acc;
+    const wIzq = cols[0] + cols[1] + cols[2];
+    doc.setFillColor(...PDF_COLORS.labelBg);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.setLineWidth(0.2);
+    doc.rect(this.x, yTotal, wIzq, totalRowH, 'FD');
+    this.aplicarFuente('bold', fontSize);
+    doc.text('Total', this.x + wIzq - 2, yTotal + totalRowH / 2 + 1.3, { align: 'right' });
+    doc.rect(colX[3], yTotal, cols[3], totalRowH);
+    doc.text(total > 0 ? `${total} UDS` : '—', colX[3] + cols[3] / 2, yTotal + totalRowH / 2 + 1.3, {
+      align: 'center',
+    });
+    doc.rect(colX[4], yTotal, cols[4] + cols[5], totalRowH);
+
+    this.y = yTotal + totalRowH + 4.5 + 3;
   }
 
   /** Título numerado en negrita (ej. «1. INTRODUCCIÓN»). */

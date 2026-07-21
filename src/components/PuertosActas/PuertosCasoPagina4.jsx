@@ -3,6 +3,7 @@ import { FaPlus, FaTrash } from 'react-icons/fa';
 import { Seccion, Campo, inputCls } from './PuertosCasoDatosGenerales';
 import PuertosCasoGridFotografico from './PuertosCasoGridFotografico';
 import PuertosCasoSeccionInformeWord from './PuertosCasoSeccionInformeWord';
+import PuertosCasoRegistrosFotograficosContenedores from './PuertosCasoRegistrosFotograficosContenedores';
 import {
   nuevaFilaSeguimiento,
   nuevoContenedorSeguimiento,
@@ -33,6 +34,12 @@ const FOTOS_INICIAL = [
   'Contenedor (es) asignado (s)',
   'Vehículo (s) asignado (s)',
   'Carga almacenada en Bodega 9',
+];
+
+const FOTOS_VEHICULO = [
+  'Precinto / sello de seguridad',
+  'Placa del vehículo',
+  'Vista del vehículo',
 ];
 
 const FOTOS_CONDICION_CARGA = [
@@ -107,7 +114,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
     <div className="space-y-5">
       <section className={puertosCard}>
         <header className={`${puertosCardHeaderAccent} flex flex-wrap items-center justify-between gap-2`}>
-          <h3 className={puertosSectionTitle}>4. Seguimiento contenedor</h3>
+          <h3 className={puertosSectionTitle}>Seguimiento contenedor</h3>
           {!soloLectura && (
           <button type="button" onClick={() => setSeguimiento([...seguimiento, nuevaFilaSeguimiento()])} className={puertosBtnSm}>
             <FaPlus /> Agregar vehículo / jornada
@@ -257,12 +264,30 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
       </Seccion>
 
       <PuertosCasoGridFotografico
-        titulo="Registro fotográfico inicial"
-        subtitulo="Tras comentarios: contenedores aptos, vehículos con sellos, carga en bodega (como en el Word)"
+        titulo="Vehículo (s) asignado (s)"
+        subtitulo="Precinto, placa y vista del vehículo (3 columnas)"
+        imagenes={informe.imagenesVehiculosMercancia || []}
+        onChange={(updater) => onInformeChange('imagenesVehiculosMercancia', updater)}
+        columnas={3}
+        max={24}
+        descripcionesSugeridas={FOTOS_VEHICULO}
+        datalistId="puertos-fotos-vehiculos-mercancia"
+        soloLectura={soloLectura}
+      />
+
+      <PuertosCasoRegistrosFotograficosContenedores
+        informe={informe}
+        onInformeChange={onInformeChange}
+        soloLectura={soloLectura}
+      />
+
+      <PuertosCasoGridFotografico
+        titulo="Almacenamiento de las cargas"
+        subtitulo="Contenedores aptos, vehículos con sellos, carga en bodega (máx. 4 fotos)"
         imagenes={informe.imagenesRegistroInicialSupervision || []}
         onChange={(updater) => onInformeChange('imagenesRegistroInicialSupervision', updater)}
         columnas={3}
-        max={9}
+        max={4}
         descripcionesSugeridas={FOTOS_INICIAL}
         datalistId="puertos-fotos-inicial-supervision"
         soloLectura={soloLectura}
@@ -288,7 +313,6 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
       <PuertosCasoSeccionInformeWord
         soloLectura={soloLectura}
         tituloSeccion="Durante la inspección de arribo se observó"
-        labelTexto="Comentario introductorio"
         valorTexto={informe.inspeccionArriboIntro}
         onTextoChange={(v) => onInformeChange('inspeccionArriboIntro', v)}
         placeholderTexto="Durante la inspección de arribo se observó la carga en buen estado."
@@ -308,7 +332,6 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
       <PuertosCasoSeccionInformeWord
         soloLectura={soloLectura}
         tituloSeccion="Equipos usados en la operación de cargue/descargue"
-        labelTexto="Texto introductorio"
         valorTexto={informe.equiposOperacionIntro}
         onTextoChange={(v) => onInformeChange('equiposOperacionIntro', v)}
         placeholderTexto="Para el descargue y manipulación de la mercancía se utilizaron los siguientes equipos:"
@@ -328,7 +351,6 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
       <PuertosCasoSeccionInformeWord
         soloLectura={soloLectura}
         tituloSeccion="Condiciones meteorológicas durante el descargue"
-        labelTexto="Narrativa meteorológica"
         valorTexto={informe.condicionesMeteoTexto}
         onTextoChange={(v) => onInformeChange('condicionesMeteoTexto', v)}
         placeholderTexto="Apertura de los contenedores… Durante toda la mañana, se mantuvo en buenas condiciones meteorológicas."

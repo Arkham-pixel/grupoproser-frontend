@@ -342,9 +342,7 @@ export default function PuertosActasListado() {
           <table className="min-w-full text-sm">
             <thead className={puertosTableHead}>
               <tr>
-                <th className="whitespace-nowrap px-3 py-2.5 font-semibold" colSpan={5}>
-                  Acciones
-                </th>
+                <th className="whitespace-nowrap px-3 py-2.5 font-semibold">Acciones</th>
                 <th className="px-3 py-2.5 font-semibold">Tipo</th>
                 <th className="px-3 py-2.5 font-semibold">Nro. / Consecutivo</th>
                 <th className="px-3 py-2.5 font-semibold">Tipo Inspección</th>
@@ -359,7 +357,7 @@ export default function PuertosActasListado() {
             <tbody>
               {!cargando && registros.length === 0 && (
                 <tr>
-                  <td colSpan={14} className="px-4 py-10 text-center font-body text-gray-500">
+                  <td colSpan={10} className="px-4 py-10 text-center font-body text-gray-500">
                     No hay registros con los filtros actuales.
                   </td>
                 </tr>
@@ -369,19 +367,22 @@ export default function PuertosActasListado() {
                   key={`${fila.tipoRegistro}-${fila.id}`}
                   className={i % 2 === 0 ? puertosTableRowEven : puertosTableRowOdd}
                 >
-                  {accionesFila(fila).map(({ icon: Icon, title, onClick, danger, disabled }) => (
-                    <td key={title} className="px-2 py-2">
-                      <button
-                        type="button"
-                        onClick={onClick}
-                        disabled={disabled}
-                        className={`rounded-lg p-2 transition disabled:cursor-wait disabled:opacity-50 ${danger ? 'text-fenix-primario hover:bg-red-50 dark:hover:bg-red-950/30' : 'text-gray-600 hover:bg-gray-100 hover:text-fenix-primario dark:text-gray-300 dark:hover:bg-gray-800'}`}
-                        title={title}
-                      >
-                        <Icon className={disabled ? 'animate-pulse' : ''} />
-                      </button>
-                    </td>
-                  ))}
+                  <td className="whitespace-nowrap px-2 py-2">
+                    <div className="flex items-center gap-1">
+                      {accionesFila(fila).map(({ icon: Icon, title, onClick, danger, disabled }) => (
+                        <button
+                          key={title}
+                          type="button"
+                          onClick={onClick}
+                          disabled={disabled}
+                          className={`rounded-lg p-2 transition disabled:cursor-wait disabled:opacity-50 ${danger ? 'text-fenix-primario hover:bg-red-50 dark:hover:bg-red-950/30' : 'text-gray-600 hover:bg-gray-100 hover:text-fenix-primario dark:text-gray-300 dark:hover:bg-gray-800'}`}
+                          title={title}
+                        >
+                          <Icon className={disabled ? 'animate-pulse' : ''} />
+                        </button>
+                      ))}
+                    </div>
+                  </td>
                   <td className={puertosTableTd}>
                     <span
                       className={

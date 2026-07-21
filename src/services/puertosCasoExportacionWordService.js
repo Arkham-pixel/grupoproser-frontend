@@ -34,7 +34,7 @@ import {
   imagenInformeABase64,
   obtenerInspector,
   resumenMercancia,
-  construirFilasMercanciaWord,
+  construirMercanciaConsolidada,
   captionImagenPdf,
   prepararFotosSeccion3Mercancia,
   textoPunto,
@@ -428,87 +428,98 @@ function tablaCaracteristicasBarco(filas, titulo = 'CARACTERISTICAS DEL BARCO') 
   });
 }
 
-function parrafosCelda(texto, { bold = false, size = SIZE.table, align = AlignmentType.CENTER } = {}) {
-  const lineas = String(texto ?? '').split('\n');
-  return lineas.map(
-    (linea) =>
-      new Paragraph({
-        alignment: align,
-        children: [tr(linea, { bold, size })],
-      })
-  );
-}
-
-/** Tabla DESCRIPCIÓN DE LA MERCANCÍA: cabecera sage + columnas + fila total. */
+/**
+ * Tabla DESCRIPCIÓN DE LA MERCANCÍA consolidada (como el Word de referencia):
+ * cabecera verde oscura con texto blanco, una subfila por producto con su
+ * cantidad, y N° contenedores, B/L, tipo de carga y destino combinados
+ * verticalmente cuando el caso los comparte. Cierra con la fila Total.
+ */
 function tablaMercanciaWord(lineas, total) {
+  const { productos, grupos } = construirMercanciaConsolidada(lineas);
   const anchosMm = [18, 22, 56, 20, 32, 32];
   const escala = CONTENT_W_MM / anchosMm.reduce((a, b) => a + b, 0);
   const anchos = anchosMm.map((w) => mmTw(w * escala));
   const headers = ['N° CONTENEDORES', 'B/L N°', 'PRODUCTO', 'CANTIDAD', 'TIPO DE CARGA', 'DESTINO'];
 
-  const dataRows = construirFilasMercanciaWord(lineas);
-  dataRows.push(['', '', 'Total', total > 0 ? `${total} UDS` : '—', '', '']);
-
   const filaTitulo = new TableRow({
+    tableHeader: true,
     children: [
-      new TableCell({
+      celdaHeaderVerde('DESCRIPCIÓN DE LA MERCANCÍA', CONTENT_W_TW, {
         columnSpan: headers.length,
-        verticalAlign: VerticalAlign.CENTER,
-        margins: MARGEN_CELDA,
-        shading: { type: ShadingType.CLEAR, fill: COLOR.greenBarBg },
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            children: [
-              tr('DESCRIPCIÓN DE LA MERCANCÍA', { bold: true, size: SIZE.title, color: COLOR.greenBrand }),
-            ],
-          }),
-        ],
       }),
     ],
   });
 
   const filaHeaders = new TableRow({
-    children: headers.map(
-      (h, i) =>
-        new TableCell({
-          width: { size: anchos[i], type: WidthType.DXA },
-          verticalAlign: VerticalAlign.CENTER,
-          margins: MARGEN_CELDA,
-          shading: { type: ShadingType.CLEAR, fill: COLOR.greenBarBg },
-          children: [
-            new Paragraph({
-              alignment: AlignmentType.CENTER,
-              children: [tr(h, { bold: true, size: SIZE.table })],
-            }),
-          ],
-        })
-    ),
+    tableHeader: true,
+    children: headers.map((h, i) => celdaHeaderVerde(h, anchos[i])),
   });
 
-  const filasDatos = dataRows.map(
-    (row) =>
-      new TableRow({
-        children: row.map(
-          (cell, i) =>
-            new TableCell({
-              width: { size: anchos[i], type: WidthType.DXA },
-              verticalAlign: VerticalAlign.CENTER,
-              margins: MARGEN_CELDA,
-              children: parrafosCelda(cell, {
-                align: i === 2 ? AlignmentType.LEFT : AlignmentType.CENTER,
-              }),
-            })
-        ),
-      })
-  );
+  const grupoDe = (lista, i) => lista.find((g) => i >= g.inicio && i <= g.fin);
+  const filasDatos = productos.map((p, i) => {
+    const celdaCombinada = (lista, colIdx) => {
+      const g = grupoDe(lista, i);
+      const combinada = g.fin > g.inicio;
+      if (combinada && i > g.inicio) return celdaContinuacion(anchos[colIdx]);
+      return celdaSeguimiento(
+        g.valor,
+        anchos[colIdx],
+        combinada ? { verticalMerge: VerticalMergeType.RESTART } : {}
+      );
+    };
+    return new TableRow({
+      children: [
+        celdaCombinada(grupos.numCont, 0),
+        celdaCombinada(grupos.bl, 1),
+        celdaSeguimiento(p.producto, anchos[2]),
+        celdaSeguimiento(p.cantidad, anchos[3]),
+        celdaCombinada(grupos.tipoCarga, 4),
+        celdaCombinada(grupos.destino, 5),
+      ],
+    });
+  });
+
+  const filaTotal = new TableRow({
+    children: [
+      new TableCell({
+        width: { size: anchos[0] + anchos[1] + anchos[2], type: WidthType.DXA },
+        columnSpan: 3,
+        verticalAlign: VerticalAlign.CENTER,
+        margins: MARGEN_CELDA,
+        shading: { type: ShadingType.CLEAR, fill: COLOR.labelBg },
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            children: [tr('Total', { bold: true, size: SIZE.table })],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: anchos[3], type: WidthType.DXA },
+        verticalAlign: VerticalAlign.CENTER,
+        margins: MARGEN_CELDA,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            children: [tr(total > 0 ? `${total} UDS` : '—', { bold: true, size: SIZE.table })],
+          }),
+        ],
+      }),
+      new TableCell({
+        width: { size: anchos[4] + anchos[5], type: WidthType.DXA },
+        columnSpan: 2,
+        verticalAlign: VerticalAlign.CENTER,
+        children: [new Paragraph({ children: [] })],
+      }),
+    ],
+  });
 
   return new Table({
     width: { size: CONTENT_W_TW, type: WidthType.DXA },
     columnWidths: anchos,
     layout: TableLayoutType.FIXED,
     borders: BORDES_TABLA,
-    rows: [filaTitulo, filaHeaders, ...filasDatos],
+    rows: [filaTitulo, filaHeaders, ...filasDatos, filaTotal],
   });
 }
 
