@@ -45,6 +45,8 @@ import GestionIntermediarios from './components/GestionIntermediarios';
 import GestionResponsables from './components/GestionResponsables';
 import GestionEstadosComplex from './components/SubcomponenteCompex/GestionEstadosComplex';
 import ProtocoloTiemposComplex from './components/SubcomponenteCompex/ProtocoloTiemposComplex';
+import PortalSubtareaExterna from './components/SubcomponenteCompex/PortalSubtareaExterna';
+import MisSubtareasComplex from './components/SubcomponenteCompex/MisSubtareasComplex';
 import SubcomponenteExpress from './components/SubcomponenteExpress/SubcomponenteExpress';
 import ReporteExpress from './components/SubcomponenteExpress/ReporteExpress';
 import DashboardExpress from './components/SubcomponenteExpress/DashboardExpress';
@@ -409,6 +411,7 @@ export default function App() {
         <Route path="/error" element={<PaginaError />} />
         <Route path="/sin-conexion" element={<PaginaError tipoForzado="sin-conexion" />} />
         <Route path="/servicio-no-disponible" element={<PaginaError tipoForzado="servicio" />} />
+        <Route path="/complex/subtarea/:token" element={<PortalSubtareaExterna />} />
 
         {/* Reporte ejecutivo de matriz — pantalla completa sin Layout */}
         <Route
@@ -465,6 +468,7 @@ export default function App() {
           <Route path="complex/alertas" element={<AlertasComplex />} />
           <Route path="complex/indicadores-alertas" element={<IndicadoresAlertasComplex />} />
           <Route path="complex/protocolo-tiempos" element={<ProtocoloTiemposComplex />} />
+          <Route path="complex/mis-subtareas" element={<MisSubtareasComplex />} />
           <Route path="matriz-riesgo-avanzada" element={<MatrizRiesgoAvanzada />} />
           <Route path="matriz-riesgo-avanzada/:id" element={<MatrizRiesgoAvanzada />} />
           <Route path="matrices-riesgo" element={<ListaMatricesRiesgo />} />

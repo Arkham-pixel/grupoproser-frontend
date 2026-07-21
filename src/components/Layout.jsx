@@ -39,8 +39,10 @@ import {
   FaSearch,
   FaQuestionCircle,
   FaInbox,
+  FaTasks,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
+import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
 import { arnaldLogo, arnaldIcon } from '../config/brandAssets.js';
 import LogoutButton from './LogoutButton';
 import Aviso2FAPrompt from './Aviso2FAPrompt';
@@ -138,6 +140,7 @@ export default function Layout() {
   const [fotoUsuarioQueue, setFotoUsuarioQueue] = useState([]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [contadorAlertas, setContadorAlertas] = useState(0);
+  const [contadorSubtareas, setContadorSubtareas] = useState(0);
   const fotoUsuario = fotoUsuarioQueue[0] || null;
   const location = useLocation();
   const navigate = useNavigate();
@@ -183,6 +186,12 @@ export default function Layout() {
       } catch {
         /* sin contador */
       }
+      try {
+        const resSub = await obtenerMisSubtareas();
+        if (activo) setContadorSubtareas(resSub?.total ?? 0);
+      } catch {
+        /* sin contador subtareas */
+      }
     };
     cargarContador();
     const intervalo = setInterval(cargarContador, 5 * 60 * 1000);
@@ -200,6 +209,7 @@ export default function Layout() {
     '/complex/editar': 'Editar Caso Complex',
     '/complex/excel': 'Reporte Complex',
     '/complex/mis-casos': 'Mis Casos Complex',
+    '/complex/mis-subtareas': 'Mis Subtareas Complex',
     '/complex/bandeja-facturacion': 'Bandeja de Facturación',
     '/complex/reporte-mejorado': 'Reporte Complex',
     '/complex/dashboard': 'Dashboard Complex',
@@ -220,7 +230,7 @@ export default function Layout() {
     '/formulario-maquinaria': 'Formulario Maquinaria',
     '/reporte-pol': 'Reporte Póliza',
     '/ajuste': 'Formulario de Ajuste',
-    '/matriz-riesgo-avanzada': 'Matriz de Riesgo',
+    '/matriz-riesgo-avanzada': 'Arnald Risk Intelligence',
     '/matrices-riesgo': 'Matrices de Riesgo',
     '/express/carga': 'Carga Express',
     '/express/liquidador': 'Liquidador Express',
@@ -313,8 +323,8 @@ export default function Layout() {
     matrices: esPuertos
       ? []
       : [
-          { path: '/matrices-riesgo', icon: FaList, label: 'Ver Matrices' },
-          { path: '/matriz-riesgo-avanzada', icon: FaChartBar, label: 'Matriz de Riesgo' },
+          { path: '/matrices-riesgo', icon: FaList, label: 'Ver RI' },
+          { path: '/matriz-riesgo-avanzada', icon: FaChartBar, label: 'Arnald Risk Intelligence' },
         ],
     complex: !accesoRestringido
       ? [
@@ -323,6 +333,7 @@ export default function Layout() {
           { path: '/complex/indicadores-alertas', icon: FaChartBar, label: 'Indicadores y alertas' },
           { path: '/complex/excel', icon: FaTable, label: 'Reporte Completo' },
           { path: '/complex/mis-casos', icon: FaList, label: 'Mis Casos Asignados' },
+          { path: '/complex/mis-subtareas', icon: FaTasks, label: 'Mis Subtareas' },
           ...(puedeBandejaFacturacion
             ? [{ path: '/complex/bandeja-facturacion', icon: FaInbox, label: 'Bandeja Facturación' }]
             : []),
@@ -441,7 +452,7 @@ export default function Layout() {
             { key: 'formularios', title: 'FORMULARIOS', icon: FaFileInvoice, items: menuItems.formularios },
           ]
         : []),
-    ...(!esPuertos ? [{ key: 'matrices', title: 'MATRICES', icon: FaChartBar, items: menuItems.matrices }] : []),
+    ...(!esPuertos ? [{ key: 'matrices', title: 'RISK INTELLIGENCE', icon: FaChartBar, items: menuItems.matrices }] : []),
     ...(esAdminOSoporte
       ? [{ key: 'admin', title: 'ADMINISTRACIÓN', icon: FaShieldAlt, items: menuItems.admin }]
       : []),
@@ -689,25 +700,40 @@ export default function Layout() {
             </button>
 
             {!accesoRestringido && (
-              <button
-                type="button"
-                onClick={() =>
-                  navigate(
-                    esAdminOSoporte
-                      ? '/complex/alertas'
-                      : '/complex/indicadores-alertas?tab=alertas'
-                  )
-                }
-                className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
-                title={esAdminOSoporte ? 'Sistema de alertas' : 'Mis alertas'}
-              >
-                <FaBell className="text-lg" />
-                {contadorAlertas > 0 && (
-                  <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-fenix-primario px-1 text-[10px] font-bold text-white ring-2 ring-white">
-                    {contadorAlertas > 99 ? '99+' : contadorAlertas}
-                  </span>
-                )}
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate('/complex/mis-subtareas')}
+                  className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
+                  title="Mis subtareas Complex"
+                >
+                  <FaTasks className="text-lg" />
+                  {contadorSubtareas > 0 && (
+                    <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                      {contadorSubtareas > 99 ? '99+' : contadorSubtareas}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      esAdminOSoporte
+                        ? '/complex/alertas'
+                        : '/complex/indicadores-alertas?tab=alertas'
+                    )
+                  }
+                  className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
+                  title={esAdminOSoporte ? 'Sistema de alertas' : 'Mis alertas'}
+                >
+                  <FaBell className="text-lg" />
+                  {contadorAlertas > 0 && (
+                    <span className="absolute right-1 top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-fenix-primario px-1 text-[10px] font-bold text-white ring-2 ring-white">
+                      {contadorAlertas > 99 ? '99+' : contadorAlertas}
+                    </span>
+                  )}
+                </button>
+              </>
             )}
 
             <button

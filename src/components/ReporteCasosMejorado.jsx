@@ -8,7 +8,7 @@ import historialService, { TIPOS_FORMULARIOS } from '../services/historialServic
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import { convertirFechaParaExcelDate, formatearFechaUI } from '../utils/fechaUtils';
-import { FaFileExcel, FaSlidersH, FaTable, FaTrash } from 'react-icons/fa';
+import { FaFileExcel, FaSlidersH, FaTable } from 'react-icons/fa';
 import { cargarMapeoFuncionarios, obtenerNombreFuncionarioDesdeCaso } from '../utils/funcionarioMapper';
 import {
   casoCoincideFiltroResponsable,
@@ -17,13 +17,13 @@ import {
 } from '../utils/responsableAgrupacionUtils.js';
 import { buildPrefillAjusteDesdeCasoComplex } from '../utils/prefillAjusteDesdeCasoComplex';
 import { combinarCasosComplex } from '../utils/complexTrazabilidadUtils.js';
+import AccionesCasoMenu from './SubcomponenteCompex/AccionesCasoMenu.jsx';
+import AsignarSubtareaModal from './SubcomponenteCompex/AsignarSubtareaModal.jsx';
+import { puedeGestionarSubtareasFrontend } from './SubcomponenteCompex/subtareasComplexUtils.js';
 import {
   complexBtnGhost,
   complexBtnPrimary,
   complexBtnSecondary,
-  complexTableBtnAjuste,
-  complexTableBtnEliminar,
-  complexTableBtnGestionar,
   complexCard,
   complexInput,
   complexLabel,
@@ -282,6 +282,7 @@ export default function ReporteCasosMejorado() {
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [casosFiltrados, setCasosFiltrados] = useState([]);
   const [paginaActual, setPaginaActual] = useState(1);
+  const [casoSubtareaModal, setCasoSubtareaModal] = useState(null);
   const casosPorPagina = 15;
   const filtrosAplicadosRef = useRef(false);
 
@@ -2192,37 +2193,16 @@ setCasos(casosFinales);
                       className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
                     >
                       <td
-                        className={`${complexTableTdDivider} sticky left-0 z-10 whitespace-nowrap bg-white dark:bg-[#1A1A1A]`}
+                        className={`${complexTableTdDivider} sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white dark:bg-[#1A1A1A]`}
                       >
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <button
-                            type="button"
-                            className={complexTableBtnAjuste}
-                            onClick={() => handleCrearAjuste(caso)}
-                            title="Crear ajuste con autollenado"
-                          >
-                            Ajuste
-                          </button>
-                          <button
-                            type="button"
-                            className={complexTableBtnGestionar}
-                            onClick={() => handleGestionar(caso)}
-                            title="Gestionar caso"
-                          >
-                            Gestionar
-                          </button>
-                          {esAdminOSoporte && (
-                            <button
-                              type="button"
-                              className={complexTableBtnEliminar}
-                              onClick={() => handleDelete(caso)}
-                              title="Eliminar caso"
-                            >
-                              <FaTrash className="text-xs" />
-                              Eliminar
-                            </button>
-                          )}
-                        </div>
+                        <AccionesCasoMenu
+                          onAjuste={() => handleCrearAjuste(caso)}
+                          onGestionar={() => handleGestionar(caso)}
+                          onEliminar={() => handleDelete(caso)}
+                          onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
+                          puedeEliminar={esAdminOSoporte}
+                          puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
+                        />
                       </td>
                   {camposVisibles.map(({ clave }) => (
                         <td
@@ -2315,6 +2295,13 @@ setCasos(casosFinales);
         </div>
       )}
       </div>
+
+      <AsignarSubtareaModal
+        open={Boolean(casoSubtareaModal)}
+        caso={casoSubtareaModal}
+        responsables={responsables}
+        onClose={() => setCasoSubtareaModal(null)}
+      />
     </div>
   );
 }

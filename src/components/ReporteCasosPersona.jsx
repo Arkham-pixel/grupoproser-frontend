@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
 import { obtenerCasosComplex, deleteCasoComplex } from '../services/complexService';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
-import { FaTrash } from 'react-icons/fa';
 import { obtenerResponsables, obtenerAseguradoras } from '../services/riesgoService';
 import { getEstados } from '../services/estadosService';
 import * as XLSX from 'xlsx';
@@ -11,10 +10,10 @@ import ExcelJS from 'exceljs';
 import { convertirFechaParaExcelDate, formatearFechaUI } from '../utils/fechaUtils';
 import { cargarMapeoFuncionarios, obtenerNombreFuncionarioDesdeCaso } from '../utils/funcionarioMapper';
 import { buildPrefillAjusteDesdeCasoComplex } from '../utils/prefillAjusteDesdeCasoComplex';
+import AccionesCasoMenu from './SubcomponenteCompex/AccionesCasoMenu.jsx';
+import AsignarSubtareaModal from './SubcomponenteCompex/AsignarSubtareaModal.jsx';
+import { puedeGestionarSubtareasFrontend } from './SubcomponenteCompex/subtareasComplexUtils.js';
 import {
-  complexTableBtnAjuste,
-  complexTableBtnEliminar,
-  complexTableBtnGestionar,
   complexTableGrid,
   complexTableTdDivider,
   complexTableThDivider,
@@ -259,6 +258,7 @@ export default function ReporteCasosPersona() {
   const [casosFiltrados, setCasosFiltrados] = useState([]);
   const [casosPorUsuario, setCasosPorUsuario] = useState([]);
   const [paginaActual, setPaginaActual] = useState(1);
+  const [casoSubtareaModal, setCasoSubtareaModal] = useState(null);
   const casosPorPagina = 10;
   const filtrosAplicadosRef = useRef(false);
 
@@ -1419,35 +1419,15 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                   key={caso._id || index} 
                       className="transition even:bg-gray-50/50 dark:even:bg-gray-900/30 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                 >
-                      <td className={`${complexTableTdDivider} align-top`}>
-                        <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        type="button"
-                        className={complexTableBtnAjuste}
-                        onClick={() => handleCrearAjuste(caso)}
-                        title="Crear ajuste con autollenado"
-                      >
-                        Ajuste
-                      </button>
-                      <button
-                        type="button"
-                        className={complexTableBtnGestionar}
-                        onClick={() => handleGestionar(caso)}
-                        title="Editar caso (Complex)"
-                      >
-                        Gestionar
-                      </button>
-                      {esAdminOSoporte && (
-                        <button
-                          type="button"
-                          className={complexTableBtnEliminar}
-                          onClick={() => handleDelete(caso)}
-                          title="Eliminar caso"
-                        >
-                          <FaTrash className="text-xs" aria-hidden /> Eliminar
-                        </button>
-                      )}
-                    </div>
+                      <td className={`${complexTableTdDivider} align-top overflow-visible`}>
+                        <AccionesCasoMenu
+                          onAjuste={() => handleCrearAjuste(caso)}
+                          onGestionar={() => handleGestionar(caso)}
+                          onEliminar={() => handleDelete(caso)}
+                          onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
+                          puedeEliminar={esAdminOSoporte}
+                          puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
+                        />
                   </td>
                   {camposVisibles.map(({ clave }) => (
                         <td
@@ -1581,6 +1561,13 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
       )}
         </section>
       </div>
+
+      <AsignarSubtareaModal
+        open={Boolean(casoSubtareaModal)}
+        caso={casoSubtareaModal}
+        responsables={responsables}
+        onClose={() => setCasoSubtareaModal(null)}
+      />
     </div>
   );
 }
