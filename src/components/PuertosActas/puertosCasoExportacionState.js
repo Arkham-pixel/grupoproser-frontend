@@ -97,6 +97,9 @@ export function nuevaLineaMercancia() {
 export function nuevoContenedorSeguimiento() {
   return {
     id: Date.now() + Math.random(),
+    /** La carga de este vehículo complementa el último contenedor del vehículo anterior. */
+    continuaAnterior: false,
+    bultos: '',
     cantidad: '',
     tipoContenedor: "1 x 40'",
     numeroContenedor: '',
@@ -246,12 +249,12 @@ export function normalizarImagenesRegistroMercancia(informe = {}) {
   }
   const legacy = [
     ...(Array.isArray(informe.imagenesContenidoCajas) ? informe.imagenesContenidoCajas : []).map(
-      (img) => ({ ...img, descripcion: img.descripcion || 'Contenido de las cajas' })
+      (img) => ({ ...img, descripcion: img.descripcion || 'Contenido de la mercancía' })
     ),
     ...(Array.isArray(informe.imagenesContenedoresAsignados)
       ? informe.imagenesContenedoresAsignados
       : []
-    ).map((img) => ({ ...img, descripcion: img.descripcion || 'Contenedores asignados' })),
+    ).map((img) => ({ ...img, descripcion: img.descripcion || 'Contenedor (es) asignado (s)' })),
   ];
   return legacy;
 }

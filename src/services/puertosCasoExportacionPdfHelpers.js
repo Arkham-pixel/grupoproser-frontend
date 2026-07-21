@@ -168,35 +168,109 @@ export function obtenerInspector(formData, responsables = []) {
   return (opt?.label || formData.nombreResponsable || formData.creadoPor || '').toUpperCase();
 }
 
-export function aplanarSeguimiento(seguimiento = []) {
+function normalizarNumeroContenedor(numero) {
+  return String(numero || '').replace(/\s+/g, '').toUpperCase();
+}
+
+/** Cantidad estilo Word: «1 x 40'» (evita duplicar cuando el tipo ya incluye la cantidad). */
+function textoCantidadContenedor(c = {}) {
+  const cantidad = String(c.cantidad || '').trim();
+  const tipo = String(c.tipoContenedor || '').trim().replace(/\s+/g, ' ');
+  if (cantidad && tipo) {
+    const tipoLower = tipo.toLowerCase();
+    if (tipoLower.startsWith(`${cantidad.toLowerCase()} x`)) return tipo;
+    return `${cantidad} x ${tipo}`;
+  }
+  return tipo || cantidad;
+}
+
+/**
+ * Consolida el seguimiento para la tabla del informe con celdas combinadas:
+ * - Cada vehículo (fila) abarca sus porciones de carga (una por contenedor).
+ * - Si la carga restante de un vehículo se completa con el siguiente (casilla
+ *   «continúa anterior» o mismo N° de contenedor repetido), el contenedor se
+ *   une en una sola celda y consolida llenado y sellos, dejando los bultos de
+ *   cada vehículo en su propia subfila (conteo consolidado de la carga).
+ */
+export function construirSeguimientoConsolidado(seguimiento = []) {
   const filas = [];
+  const vehiculos = [];
+  const contenedores = [];
+
   seguimiento.forEach((f) => {
-    const contenedores = f.contenedores?.length ? f.contenedores : [{}];
-    contenedores.forEach((c, idx) => {
+    const conts = f.contenedores?.length ? f.contenedores : [{}];
+    vehiculos.push({
+      inicio: filas.length,
+      fin: filas.length + conts.length - 1,
+      lineasIngreso: [
+        formatearFechaCorta(f.fecha),
+        f.entradaVehiculo ? `Entrada: ${f.entradaVehiculo}` : '',
+        f.salidaVehiculo ? `Salida: ${f.salidaVehiculo}` : '',
+      ].filter(Boolean),
+      placa: f.placa || '',
+      descargueInicio: f.descargueInicio || '',
+      descargueFin: f.descargueFin || '',
+    });
+
+    conts.forEach((c, idx) => {
+      const numeroNorm = normalizarNumeroContenedor(c.numeroContenedor);
+      const previo = contenedores[contenedores.length - 1];
+      const previoEsConsecutivo = Boolean(previo) && previo.fin === filas.length - 1;
+      const continuaPrevio =
+        previoEsConsecutivo &&
+        ((idx === 0 && Boolean(c.continuaAnterior)) ||
+          (Boolean(numeroNorm) && previo.numeroNorm === numeroNorm));
+
+      let bultos = String(c.bultos || '').trim();
+      if (!bultos && idx === 0) bultos = String(f.bultos || '').trim();
+
+      if (continuaPrevio) {
+        previo.fin = filas.length;
+        if (!previo.numeroNorm && numeroNorm) {
+          previo.numero = c.numeroContenedor || '';
+          previo.numeroNorm = numeroNorm;
+        }
+        if (!previo.cantidad) previo.cantidad = textoCantidadContenedor(c);
+        if (!previo.llenadoInicio) previo.llenadoInicio = c.llenadoInicio || '';
+        if (c.llenadoFin) previo.llenadoFin = c.llenadoFin;
+        [c.sello1, c.sello2]
+          .filter(Boolean)
+          .forEach((s) => {
+            if (!previo.sellos.includes(s)) previo.sellos.push(s);
+          });
+      } else {
+        contenedores.push({
+          inicio: filas.length,
+          fin: filas.length,
+          numero: c.numeroContenedor || '',
+          numeroNorm,
+          cantidad: textoCantidadContenedor(c),
+          llenadoInicio: c.llenadoInicio || '',
+          llenadoFin: c.llenadoFin || '',
+          sellos: [c.sello1, c.sello2].filter(Boolean),
+        });
+      }
+
       filas.push({
-        fecha: idx === 0 ? formatearFechaCorta(f.fecha) : '',
-        ingreso:
-          idx === 0 && (f.entradaVehiculo || f.salidaVehiculo)
-            ? `Entrada: ${f.entradaVehiculo || '—'}\nSalida: ${f.salidaVehiculo || '—'}`
-            : '',
-        placa: idx === 0 ? f.placa || '' : '',
-        descargue:
-          idx === 0 && (f.descargueInicio || f.descargueFin)
-            ? `Inicio: ${f.descargueInicio || '—'}\nFinal: ${f.descargueFin || '—'}`
-            : '',
-        bultos: idx === 0 ? f.bultos || '' : '',
-        cantidad: c.cantidad || '',
-        tipo: c.tipoContenedor || '',
-        numero: c.numeroContenedor || '',
-        llenado:
-          c.llenadoInicio || c.llenadoFin
-            ? `Inicio: ${c.llenadoInicio || '—'}\nFinal: ${c.llenadoFin || '—'}`
-            : '',
-        sellos: [c.sello1, c.sello2].filter(Boolean).join('\n'),
+        bultos,
+        vehIdx: vehiculos.length - 1,
+        contIdx: contenedores.length - 1,
       });
     });
   });
-  return filas;
+
+  return { filas, vehiculos, contenedores };
+}
+
+/** Encabezados y anchos (mm) de la tabla de seguimiento consolidada. */
+export const SEGUIMIENTO_COLS_MM = [26, 18, 12, 12, 14, 18, 30, 12, 12, 22];
+
+/** Divide los comentarios del reporte en viñetas (una por línea no vacía). */
+export function puntosComentariosSupervision(comentarios) {
+  return String(comentarios || '')
+    .split('\n')
+    .map((l) => l.trim().replace(/^[-•*]\s*/, ''))
+    .filter(Boolean);
 }
 
 export function resumenMercancia(informe) {
@@ -265,18 +339,18 @@ export function prepararFotosSeccion3Mercancia(informe = {}) {
   const fila1 = cajas.splice(0, 2);
   const cajaFila2 = cajas.shift() || null;
   let contenedorFila2 = contenedores.shift() || null;
-  let leyendaDerechaFila2 = 'Contenedores asignados';
+  let leyendaDerechaFila2 = 'Contenedor (es) asignado (s)';
 
   if (!contenedorFila2 && cajas.length) {
     contenedorFila2 = cajas.shift();
-    leyendaDerechaFila2 = 'Contenido de las cajas';
+    leyendaDerechaFila2 = 'Contenido de la mercancía';
   }
 
   const fila2 = [];
   const leyendasFila2 = [];
   if (cajaFila2) {
     fila2.push(cajaFila2);
-    leyendasFila2.push('Contenido de las cajas');
+    leyendasFila2.push('Contenido de la mercancía');
   }
   if (contenedorFila2) {
     fila2.push(contenedorFila2);

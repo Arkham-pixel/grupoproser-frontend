@@ -30,8 +30,8 @@ function CeldaInput({ value, onChange, type = 'text', placeholder = '', soloLect
 }
 
 const FOTOS_INICIAL = [
-  'Contenedores asignados aptos',
-  'Vehículos con sellos de seguridad',
+  'Contenedor (es) asignado (s)',
+  'Vehículo (s) asignado (s)',
   'Carga almacenada en Bodega 9',
 ];
 
@@ -158,7 +158,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
                 <Campo label="Descargue final">
                   <CeldaInput soloLectura={soloLectura} value={fila.descargueFin} onChange={(v) => actualizarFila(fila.id, 'descargueFin', v)} />
                 </Campo>
-                <Campo label="Bultos">
+                <Campo label="Bultos (total vehículo)">
                   <CeldaInput soloLectura={soloLectura} value={fila.bultos} onChange={(v) => actualizarFila(fila.id, 'bultos', v)} />
                 </Campo>
               </div>
@@ -172,11 +172,39 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
                   </button>
                   )}
                 </div>
-                {(fila.contenedores || []).map((cont) => (
-                  <div
-                    key={cont.id}
-                    className="grid grid-cols-2 items-end gap-2 border-t border-gray-200 pt-3 dark:border-gray-700 sm:grid-cols-4 lg:grid-cols-8"
-                  >
+                <p className="font-body text-xs text-gray-500">
+                  Si al llenar un contenedor queda carga pendiente y se completa con el siguiente
+                  vehículo, marque en ese vehículo la casilla «Complementa el contenedor del
+                  vehículo anterior»: el informe une las celdas y consolida el conteo de la carga.
+                </p>
+                {(fila.contenedores || []).map((cont, idxCont) => (
+                  <div key={cont.id} className="border-t border-gray-200 pt-3 dark:border-gray-700">
+                    {idxCont === 0 && idx > 0 && (
+                      <label className="mb-2 flex items-center gap-2 font-body text-xs text-gray-700 dark:text-gray-300">
+                        <input
+                          type="checkbox"
+                          checked={!!cont.continuaAnterior}
+                          disabled={soloLectura}
+                          onChange={(e) =>
+                            actualizarContenedor(fila.id, cont.id, 'continuaAnterior', e.target.checked)
+                          }
+                        />
+                        Complementa el contenedor del vehículo anterior
+                        {cont.continuaAnterior && (() => {
+                          const contsAnt = seguimiento[idx - 1]?.contenedores || [];
+                          const numAnt = contsAnt[contsAnt.length - 1]?.numeroContenedor;
+                          return numAnt ? (
+                            <span className="font-semibold text-fenix-primario">
+                              (se une con {numAnt})
+                            </span>
+                          ) : null;
+                        })()}
+                      </label>
+                    )}
+                    <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-4 lg:grid-cols-9">
+                    <Campo label="Bultos">
+                      <CeldaInput soloLectura={soloLectura} value={cont.bultos} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'bultos', v)} />
+                    </Campo>
                     <Campo label="Cantidad">
                       <CeldaInput soloLectura={soloLectura} value={cont.cantidad} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'cantidad', v)} />
                     </Campo>
@@ -208,6 +236,7 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
                       <FaTrash />
                     </button>
                     )}
+                    </div>
                   </div>
                 ))}
               </div>

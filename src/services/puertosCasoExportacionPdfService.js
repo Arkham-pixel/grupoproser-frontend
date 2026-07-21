@@ -1,7 +1,6 @@
 import { jsPDF } from 'jspdf';
 import portadaFoto from '../img/Captura de pantalla 2026-06-17 092246.png';
 import logoBolivar from '../img/seguros-bolivar.png';
-import { calcularNumContenedoresMercancia } from '../components/PuertosActas/puertosCasoExportacionState';
 import { registrarFuentesPdf, familiaPdf } from './puertosCasoPdfFonts';
 import {
   PDF_COLORS,
@@ -10,7 +9,9 @@ import {
   PDF_HEADER,
   PDF_MARGINS,
   PDF_PAGE,
-  aplanarSeguimiento,
+  construirSeguimientoConsolidado,
+  puntosComentariosSupervision,
+  SEGUIMIENTO_COLS_MM,
   assetImportadoABase64,
   detectarFormatoImagen,
   formatearFechaCorta,
@@ -772,12 +773,12 @@ async function seccionFotosMercancia(layout, informe) {
   if (!bloque.tieneFotos) return;
 
   layout.espacio(6);
-  layout.barraTituloContenedor('Contenido de las cajas');
+  layout.barraTituloContenedor('Contenido de la mercancía');
 
   if (bloque.fila1.length) {
     await layout.grillaFotos(bloque.fila1, 2, null, 38, {
       sinCaption: true,
-      leyendaFila: 'Contenido de las cajas',
+      leyendaFila: 'Contenido de la mercancía',
     });
   }
 
@@ -791,52 +792,236 @@ async function seccionFotosMercancia(layout, informe) {
   return bloque.extras;
 }
 
+/**
+ * Tabla de seguimiento consolidada (como el Word de referencia):
+ * - Encabezado verde de dos niveles (Descargue y Llenado con Inicio/Final).
+ * - Celdas del vehículo combinadas verticalmente sobre sus porciones de carga.
+ * - Contenedor compartido entre dos vehículos: celdas combinadas y bultos por vehículo.
+ * - Fila final COMENTARIOS con viñetas dentro de la misma tabla.
+ */
+function dibujarTablaSeguimientoConsolidada(layout, informe) {
+  const { doc } = layout;
+  const { filas, vehiculos, contenedores } = construirSeguimientoConsolidado(
+    informe.seguimiento || []
+  );
+
+  const escala = PDF_CONTENT_W / SEGUIMIENTO_COLS_MM.reduce((a, b) => a + b, 0);
+  const cols = SEGUIMIENTO_COLS_MM.map((w) => w * escala);
+  const colX = [];
+  cols.reduce((acc, w, i) => {
+    colX[i] = acc;
+    return acc + w;
+  }, layout.x);
+
+  const fontSize = PDF_FONT.table;
+  const lineH = 3.8;
+  const padV = 4;
+  const headerRowH = 7;
+
+  const anchoCols = (desde, hasta) => {
+    let total = 0;
+    for (let i = desde; i <= hasta; i++) total += cols[i];
+    return total;
+  };
+
+  const celdaHeader = (x, y, w, h, texto) => {
+    doc.setFillColor(...PDF_COLORS.green);
+    doc.setDrawColor(...PDF_COLORS.white);
+    doc.setLineWidth(0.2);
+    doc.rect(x, y, w, h, 'FD');
+    layout.aplicarFuente('bold', fontSize);
+    doc.setTextColor(...PDF_COLORS.white);
+    const lines = doc.splitTextToSize(texto, w - 2);
+    const startY = y + h / 2 - ((lines.length - 1) * lineH) / 2 + 1.3;
+    doc.text(lines, x + w / 2, startY, { align: 'center' });
+    doc.setTextColor(...PDF_COLORS.text);
+  };
+
+  const dibujarHeader = () => {
+    const y0 = layout.y - 4.5;
+    const hTotal = headerRowH * 2;
+    celdaHeader(colX[0], y0, cols[0], hTotal, 'Fecha - Hora Ingreso Vehículo');
+    celdaHeader(colX[1], y0, cols[1], hTotal, 'Placa vehículos');
+    celdaHeader(colX[2], y0, anchoCols(2, 3), headerRowH, 'Descargue');
+    celdaHeader(colX[2], y0 + headerRowH, cols[2], headerRowH, 'Inicio');
+    celdaHeader(colX[3], y0 + headerRowH, cols[3], headerRowH, 'Final');
+    celdaHeader(colX[4], y0, cols[4], hTotal, 'Bultos');
+    celdaHeader(colX[5], y0, cols[5], hTotal, 'Cantidad');
+    celdaHeader(colX[6], y0, cols[6], hTotal, 'N° Contenedor');
+    celdaHeader(colX[7], y0, anchoCols(7, 8), headerRowH, 'Llenado de contenedores');
+    celdaHeader(colX[7], y0 + headerRowH, cols[7], headerRowH, 'Inicio');
+    celdaHeader(colX[8], y0 + headerRowH, cols[8], headerRowH, 'Final');
+    celdaHeader(colX[9], y0, cols[9], hTotal, 'Sellos de Seguridad');
+    layout.y += hTotal;
+  };
+
+  const lineasDe = (texto, colIdx) =>
+    String(texto ?? '').trim()
+      ? doc.splitTextToSize(String(texto).trim(), cols[colIdx] - 2)
+      : [];
+
+  // Contenido por celda combinada (líneas ya partidas al ancho de su columna).
+  const contenidoVeh = vehiculos.map((v) => ({
+    ingreso: v.lineasIngreso.flatMap((l) => doc.splitTextToSize(l, cols[0] - 2)),
+    placa: lineasDe(v.placa, 1),
+    descIni: lineasDe(v.descargueInicio, 2),
+    descFin: lineasDe(v.descargueFin, 3),
+  }));
+  const contenidoCont = contenedores.map((c) => ({
+    cantidad: lineasDe(c.cantidad, 5),
+    numero: lineasDe(c.numero, 6),
+    llenIni: lineasDe(c.llenadoInicio, 7),
+    llenFin: lineasDe(c.llenadoFin, 8),
+    sellos: c.sellos.flatMap((s) => doc.splitTextToSize(s, cols[9] - 2)),
+  }));
+  const contenidoBultos = filas.map((f) => lineasDe(f.bultos, 4));
+
+  // Altura por fila: mínimo por bultos; luego se expande la última fila de cada
+  // grupo (vehículo/contenedor) para que el contenido combinado quepa.
+  const alturas = filas.map((_, i) =>
+    Math.max(lineH + padV, contenidoBultos[i].length * lineH + padV)
+  );
+  const expandirGrupo = (inicio, fin, lineasMax) => {
+    const necesario = Math.max(lineH + padV, lineasMax * lineH + padV);
+    let actual = 0;
+    for (let i = inicio; i <= fin; i++) actual += alturas[i];
+    if (actual < necesario) alturas[fin] += necesario - actual;
+  };
+  vehiculos.forEach((v, vi) => {
+    const c = contenidoVeh[vi];
+    expandirGrupo(
+      v.inicio,
+      v.fin,
+      Math.max(c.ingreso.length, c.placa.length, c.descIni.length, c.descFin.length)
+    );
+  });
+  contenedores.forEach((c, ci) => {
+    const t = contenidoCont[ci];
+    expandirGrupo(
+      c.inicio,
+      c.fin,
+      Math.max(t.cantidad.length, t.numero.length, t.llenIni.length, t.llenFin.length, t.sellos.length)
+    );
+  });
+
+  // Bloques seguros para salto de página: donde inicia vehículo y contenedor a la vez.
+  const bloques = [];
+  filas.forEach((f, i) => {
+    const esInicioSeguro =
+      i === 0 ||
+      (vehiculos[f.vehIdx].inicio === i && contenedores[f.contIdx].inicio === i);
+    if (esInicioSeguro) bloques.push({ inicio: i, fin: i });
+    else bloques[bloques.length - 1].fin = i;
+  });
+
+  const celdaDatos = (x, y, w, h, lines, alignCentro = true) => {
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.setLineWidth(0.2);
+    doc.rect(x, y, w, h);
+    if (!lines.length) return;
+    layout.aplicarFuente('normal', fontSize);
+    const startY = y + h / 2 - ((lines.length - 1) * lineH) / 2 + 1.3;
+    if (alignCentro) doc.text(lines, x + w / 2, startY, { align: 'center' });
+    else doc.text(lines, x + 1.5, startY);
+  };
+
+  layout.asegurarEspacio(headerRowH * 2 + (alturas[0] || 0) + 2);
+  dibujarHeader();
+
+  bloques.forEach((bloque) => {
+    let altoBloque = 0;
+    for (let i = bloque.inicio; i <= bloque.fin; i++) altoBloque += alturas[i];
+    if (layout.y - 4.5 + altoBloque > layout.maxY) {
+      layout.nuevaPagina();
+      dibujarHeader();
+    }
+
+    const yBase = layout.y - 4.5;
+    const rowY = [];
+    let acum = yBase;
+    for (let i = bloque.inicio; i <= bloque.fin; i++) {
+      rowY[i] = acum;
+      acum += alturas[i];
+    }
+    const altoRango = (inicio, fin) => {
+      let total = 0;
+      for (let i = inicio; i <= fin; i++) total += alturas[i];
+      return total;
+    };
+
+    for (let i = bloque.inicio; i <= bloque.fin; i++) {
+      const f = filas[i];
+      celdaDatos(colX[4], rowY[i], cols[4], alturas[i], contenidoBultos[i]);
+
+      const veh = vehiculos[f.vehIdx];
+      if (veh.inicio === i) {
+        const h = altoRango(veh.inicio, veh.fin);
+        const cv = contenidoVeh[f.vehIdx];
+        celdaDatos(colX[0], rowY[i], cols[0], h, cv.ingreso);
+        celdaDatos(colX[1], rowY[i], cols[1], h, cv.placa);
+        celdaDatos(colX[2], rowY[i], cols[2], h, cv.descIni);
+        celdaDatos(colX[3], rowY[i], cols[3], h, cv.descFin);
+      }
+
+      const cont = contenedores[f.contIdx];
+      if (cont.inicio === i) {
+        const h = altoRango(cont.inicio, cont.fin);
+        const cc = contenidoCont[f.contIdx];
+        celdaDatos(colX[5], rowY[i], cols[5], h, cc.cantidad);
+        celdaDatos(colX[6], rowY[i], cols[6], h, cc.numero);
+        celdaDatos(colX[7], rowY[i], cols[7], h, cc.llenIni);
+        celdaDatos(colX[8], rowY[i], cols[8], h, cc.llenFin);
+        celdaDatos(colX[9], rowY[i], cols[9], h, cc.sellos);
+      }
+    }
+
+    layout.y += altoBloque;
+  });
+
+  // Fila COMENTARIOS integrada a la tabla (viñetas, una por línea del campo).
+  const puntos = puntosComentariosSupervision(informe.comentariosSupervision);
+  if (puntos.length) {
+    const wIzq = anchoCols(0, 3);
+    const wDer = anchoCols(4, 9);
+    const lineasPuntos = puntos.map((p) => doc.splitTextToSize(`•  ${p}`, wDer - 5));
+    const totalLineas = lineasPuntos.reduce((a, l) => a + l.length, 0);
+    const hFila = Math.max(12, totalLineas * lineH + puntos.length * 1.2 + padV);
+
+    if (layout.y - 4.5 + hFila > layout.maxY) layout.nuevaPagina();
+    const y0 = layout.y - 4.5;
+
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.setLineWidth(0.2);
+    doc.rect(colX[0], y0, wIzq, hFila);
+    doc.rect(colX[4], y0, wDer, hFila);
+
+    layout.aplicarFuente('bold', fontSize);
+    doc.text('COMENTARIOS', colX[0] + wIzq / 2, y0 + hFila / 2 + 1.3, { align: 'center' });
+
+    layout.aplicarFuente('normal', fontSize);
+    let yTexto = y0 + padV / 2 + 2.6;
+    lineasPuntos.forEach((lines) => {
+      doc.text(lines, colX[4] + 2.5, yTexto);
+      yTexto += lines.length * lineH + 1.2;
+    });
+
+    layout.y += hFila;
+  }
+
+  layout.y += 3;
+}
+
 function seccionSupervisionTabla(layout, informe) {
   layout.espacio(6);
   layout.tituloNumerado(4, 'Reporte de supervisión');
   layout.espacio(2);
   layout.subtitulo('Seguimiento contenedor');
 
-  const filas = aplanarSeguimiento(informe.seguimiento);
-  const headers = [
-    'Fecha',
-    'Ingreso veh.',
-    'Placa',
-    'Descargue',
-    'Bultos',
-    'Cant.',
-    'Tipo',
-    'N° Cont.',
-    'Llenado',
-    'Sellos',
-  ];
-  const rows = filas.length
-    ? filas.map((f) => [
-        f.fecha,
-        f.ingreso,
-        f.placa,
-        f.descargue,
-        f.bultos,
-        f.cantidad,
-        f.tipo,
-        f.numero,
-        f.llenado,
-        f.sellos,
-      ])
-    : [['', '', '', '', '', '', '', '', '', '']];
-
-  layout.tablaDatos(headers, rows, [14, 22, 14, 20, 12, 10, 14, 20, 20, 16]);
+  dibujarTablaSeguimientoConsolidada(layout, informe);
 }
 
 async function seccionSupervisionBloques(layout, informe, extrasMercancia = null) {
-  if (informe.comentariosSupervision) {
-    layout.tituloSeccion('Comentarios', true);
-    layout.parrafo(informe.comentariosSupervision);
-    layout.espacio(4);
-  }
-
   const fotosInicial = agruparFotosSupervisionInicial(informe.imagenesRegistroInicialSupervision);
-  const numCont = calcularNumContenedoresMercancia(informe.lineasMercancia);
   const contenedoresExtra = [
     ...(extrasMercancia?.contenedores || []),
     ...fotosInicial.contenedores,
@@ -847,14 +1032,12 @@ async function seccionSupervisionBloques(layout, informe, extrasMercancia = null
   ];
 
   if (contenedoresExtra.length) {
-    layout.barraTituloContenedor(
-      numCont > 0 ? `Contenedores asignados apto (${numCont})` : 'Contenedores asignados apto'
-    );
+    layout.barraTituloContenedor('Contenedor (es) asignado (s)');
     await layout.grillaFotos(contenedoresExtra, 4, null, 36);
     layout.espacio(3);
   }
   if (vehiculosExtra.length) {
-    layout.barraTituloContenedor('Vehículos asignados con sus sellos de seguridad');
+    layout.barraTituloContenedor('Vehículo (s) asignado (s)');
     await layout.grillaFotos(vehiculosExtra, 3, null, 40);
     layout.espacio(3);
   }

@@ -17,30 +17,24 @@ const FOTOS_VEHICULO = [
 export default function PuertosCasoAreaFotograficaMercancia({
   informe,
   onInformeChange,
-  numContenedores = 0,
   soloLectura = false,
 }) {
-  const tituloContenedores =
-    numContenedores > 0
-      ? `Contenedores asignados apto (${numContenedores})`
-      : 'Contenedores asignados apto';
-
   return (
     <div className="space-y-6">
       <PuertosCasoGridFotografico
-        titulo="Contenido de las cajas"
-        subtitulo="Fotografías del producto dentro de las cajas (2 columnas, como en el Word)"
+        titulo="Contenido de la mercancía"
+        subtitulo="Fotografías de la mercancía (cajas, big bags, paquetes, etc. · 2 columnas)"
         imagenes={informe.imagenesContenidoCajas || []}
         onChange={(updater) => onInformeChange('imagenesContenidoCajas', updater)}
         columnas={2}
         max={12}
-        descripcionesSugeridas={['Contenido de las cajas', 'Producto en caja']}
+        descripcionesSugeridas={['Contenido de la mercancía', 'Producto embalado']}
         datalistId="puertos-fotos-contenido-cajas"
         soloLectura={soloLectura}
       />
 
       <PuertosCasoGridFotografico
-        titulo={tituloContenedores}
+        titulo="Contenedor (es) asignado (s)"
         subtitulo="Por contenedor: exterior, sello, interior y número (4 columnas, como en el Word)"
         imagenes={informe.imagenesContenedoresMercancia || []}
         onChange={(updater) => onInformeChange('imagenesContenedoresMercancia', updater)}
@@ -52,7 +46,7 @@ export default function PuertosCasoAreaFotograficaMercancia({
       />
 
       <PuertosCasoGridFotografico
-        titulo="Vehículos asignados con sus sellos de seguridad"
+        titulo="Vehículo (s) asignado (s)"
         subtitulo="Precinto, placa y vista del vehículo (3 columnas)"
         imagenes={informe.imagenesVehiculosMercancia || []}
         onChange={(updater) => onInformeChange('imagenesVehiculosMercancia', updater)}

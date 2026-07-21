@@ -4,7 +4,6 @@ import { Seccion, Campo, inputCls } from './PuertosCasoDatosGenerales';
 import PuertosCasoImagenUnica from './PuertosCasoImagenUnica';
 import PuertosCasoAreaFotograficaMercancia from './PuertosCasoAreaFotograficaMercancia';
 import {
-  calcularNumContenedoresMercancia,
   calcularTotalMercancia,
   nuevaLineaMercancia,
 } from './puertosCasoExportacionState';
@@ -24,7 +23,6 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
   const buque = informe.buque || {};
   const lineas = informe.lineasMercancia || [];
   const total = calcularTotalMercancia(lineas);
-  const numContenedores = calcularNumContenedoresMercancia(lineas);
 
   const setBuque = (campo, valor) => {
     onNestedInformeChange('buque', { ...buque, [campo]: valor });
@@ -197,7 +195,6 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
       <PuertosCasoAreaFotograficaMercancia
         informe={informe}
         onInformeChange={onInformeChange}
-        numContenedores={numContenedores}
         soloLectura={soloLectura}
       />
     </div>

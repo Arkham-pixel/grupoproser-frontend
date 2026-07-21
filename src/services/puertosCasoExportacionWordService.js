@@ -17,14 +17,16 @@ import {
   TableRow,
   TextRun,
   VerticalAlign,
+  VerticalMergeType,
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import portadaFoto from '../img/Captura de pantalla 2026-06-17 092246.png';
 import logoBolivar from '../img/seguros-bolivar.png';
-import { calcularNumContenedoresMercancia } from '../components/PuertosActas/puertosCasoExportacionState';
 import {
-  aplanarSeguimiento,
+  construirSeguimientoConsolidado,
+  puntosComentariosSupervision,
+  SEGUIMIENTO_COLS_MM,
   assetImportadoABase64,
   formatearFechaCorta,
   formatearFechaLarga,
@@ -510,50 +512,187 @@ function tablaMercanciaWord(lineas, total) {
   });
 }
 
-/** Tabla de seguimiento: cabecera verde con texto blanco + filas de datos. */
-function tablaSeguimiento(headers, rows, anchosMm) {
-  const escala = CONTENT_W_MM / anchosMm.reduce((a, b) => a + b, 0);
-  const anchos = anchosMm.map((w) => mmTw(w * escala));
+function celdaHeaderVerde(texto, ancho, opciones = {}) {
+  return new TableCell({
+    width: { size: ancho, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.CENTER,
+    margins: MARGEN_CELDA,
+    shading: { type: ShadingType.CLEAR, fill: COLOR.green },
+    ...opciones,
+    children: [
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        children: texto
+          ? [tr(texto, { bold: true, size: SIZE.table, color: COLOR.white })]
+          : [],
+      }),
+    ],
+  });
+}
 
-  const filaHeader = new TableRow({
-    tableHeader: true,
-    children: headers.map(
-      (h, i) =>
-        new TableCell({
-          width: { size: anchos[i], type: WidthType.DXA },
-          verticalAlign: VerticalAlign.CENTER,
-          margins: MARGEN_CELDA,
-          shading: { type: ShadingType.CLEAR, fill: COLOR.green },
-          children: [
+function celdaSeguimiento(lineas, ancho, opciones = {}) {
+  const textos = (Array.isArray(lineas) ? lineas : [lineas]).filter(
+    (l) => String(l ?? '').trim() !== ''
+  );
+  return new TableCell({
+    width: { size: ancho, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.CENTER,
+    margins: MARGEN_CELDA,
+    ...opciones,
+    children: textos.length
+      ? textos.map(
+          (l) =>
             new Paragraph({
-              children: [tr(h, { bold: true, size: SIZE.table, color: COLOR.white })],
-            }),
-          ],
-        })
-    ),
+              alignment: AlignmentType.CENTER,
+              children: [tr(l, { size: SIZE.table })],
+            })
+        )
+      : [new Paragraph({ children: [] })],
+  });
+}
+
+function celdaContinuacion(ancho) {
+  return new TableCell({
+    width: { size: ancho, type: WidthType.DXA },
+    verticalMerge: VerticalMergeType.CONTINUE,
+    children: [new Paragraph({ children: [] })],
+  });
+}
+
+/**
+ * Tabla de seguimiento consolidada (como el Word de referencia): encabezado
+ * verde de dos niveles, celdas del vehículo combinadas sobre sus porciones,
+ * contenedores compartidos entre vehículos unidos verticalmente (bultos por
+ * vehículo) y fila COMENTARIOS con viñetas dentro de la tabla.
+ */
+function tablaSeguimientoConsolidada(informe) {
+  const { filas, vehiculos, contenedores } = construirSeguimientoConsolidado(
+    informe.seguimiento || []
+  );
+
+  const escala = CONTENT_W_MM / SEGUIMIENTO_COLS_MM.reduce((a, b) => a + b, 0);
+  const anchos = SEGUIMIENTO_COLS_MM.map((w) => mmTw(w * escala));
+
+  const headerFila1 = new TableRow({
+    tableHeader: true,
+    children: [
+      celdaHeaderVerde('Fecha - Hora Ingreso Vehículo', anchos[0], {
+        verticalMerge: VerticalMergeType.RESTART,
+      }),
+      celdaHeaderVerde('Placa vehículos', anchos[1], { verticalMerge: VerticalMergeType.RESTART }),
+      celdaHeaderVerde('Descargue', anchos[2] + anchos[3], { columnSpan: 2 }),
+      celdaHeaderVerde('Bultos', anchos[4], { verticalMerge: VerticalMergeType.RESTART }),
+      celdaHeaderVerde('Cantidad', anchos[5], { verticalMerge: VerticalMergeType.RESTART }),
+      celdaHeaderVerde('N° Contenedor', anchos[6], { verticalMerge: VerticalMergeType.RESTART }),
+      celdaHeaderVerde('Llenado de contenedores', anchos[7] + anchos[8], { columnSpan: 2 }),
+      celdaHeaderVerde('Sellos de Seguridad', anchos[9], {
+        verticalMerge: VerticalMergeType.RESTART,
+      }),
+    ],
   });
 
-  const filasDatos = rows.map(
-    (row) =>
+  const headerFila2 = new TableRow({
+    tableHeader: true,
+    children: [
+      celdaHeaderVerde('', anchos[0], { verticalMerge: VerticalMergeType.CONTINUE }),
+      celdaHeaderVerde('', anchos[1], { verticalMerge: VerticalMergeType.CONTINUE }),
+      celdaHeaderVerde('Inicio', anchos[2]),
+      celdaHeaderVerde('Final', anchos[3]),
+      celdaHeaderVerde('', anchos[4], { verticalMerge: VerticalMergeType.CONTINUE }),
+      celdaHeaderVerde('', anchos[5], { verticalMerge: VerticalMergeType.CONTINUE }),
+      celdaHeaderVerde('', anchos[6], { verticalMerge: VerticalMergeType.CONTINUE }),
+      celdaHeaderVerde('Inicio', anchos[7]),
+      celdaHeaderVerde('Final', anchos[8]),
+      celdaHeaderVerde('', anchos[9], { verticalMerge: VerticalMergeType.CONTINUE }),
+    ],
+  });
+
+  const filasDatos = filas.map((f, i) => {
+    const veh = vehiculos[f.vehIdx];
+    const cont = contenedores[f.contIdx];
+    const iniciaVeh = veh.inicio === i;
+    const iniciaCont = cont.inicio === i;
+    const mergeVeh = veh.fin > veh.inicio;
+    const mergeCont = cont.fin > cont.inicio;
+    const propsVeh = mergeVeh
+      ? { verticalMerge: iniciaVeh ? VerticalMergeType.RESTART : VerticalMergeType.CONTINUE }
+      : {};
+    const propsCont = mergeCont
+      ? { verticalMerge: iniciaCont ? VerticalMergeType.RESTART : VerticalMergeType.CONTINUE }
+      : {};
+
+    const celdaVeh = (lineas, colIdx) =>
+      !mergeVeh || iniciaVeh
+        ? celdaSeguimiento(lineas, anchos[colIdx], propsVeh)
+        : celdaContinuacion(anchos[colIdx]);
+    const celdaCont = (lineas, colIdx) =>
+      !mergeCont || iniciaCont
+        ? celdaSeguimiento(lineas, anchos[colIdx], propsCont)
+        : celdaContinuacion(anchos[colIdx]);
+
+    return new TableRow({
+      children: [
+        celdaVeh(veh.lineasIngreso, 0),
+        celdaVeh(veh.placa, 1),
+        celdaVeh(veh.descargueInicio, 2),
+        celdaVeh(veh.descargueFin, 3),
+        celdaSeguimiento(f.bultos, anchos[4]),
+        celdaCont(cont.cantidad, 5),
+        celdaCont(cont.numero, 6),
+        celdaCont(cont.llenadoInicio, 7),
+        celdaCont(cont.llenadoFin, 8),
+        celdaCont(cont.sellos, 9),
+      ],
+    });
+  });
+
+  const rows = [headerFila1, headerFila2, ...filasDatos];
+
+  const puntos = puntosComentariosSupervision(informe.comentariosSupervision);
+  if (puntos.length) {
+    const wIzq = anchos[0] + anchos[1] + anchos[2] + anchos[3];
+    const wDer = anchos[4] + anchos[5] + anchos[6] + anchos[7] + anchos[8] + anchos[9];
+    rows.push(
       new TableRow({
-        children: row.map(
-          (cell, i) =>
-            new TableCell({
-              width: { size: anchos[i], type: WidthType.DXA },
-              verticalAlign: VerticalAlign.CENTER,
-              margins: MARGEN_CELDA,
-              children: parrafosCelda(cell, { align: AlignmentType.LEFT }),
-            })
-        ),
+        children: [
+          new TableCell({
+            width: { size: wIzq, type: WidthType.DXA },
+            columnSpan: 4,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: MARGEN_CELDA,
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [tr('COMENTARIOS', { bold: true, size: SIZE.table })],
+              }),
+            ],
+          }),
+          new TableCell({
+            width: { size: wDer, type: WidthType.DXA },
+            columnSpan: 6,
+            verticalAlign: VerticalAlign.CENTER,
+            margins: MARGEN_CELDA,
+            children: puntos.map(
+              (p) =>
+                new Paragraph({
+                  alignment: AlignmentType.JUSTIFIED,
+                  spacing: { after: 60 },
+                  bullet: { level: 0 },
+                  children: [tr(p, { size: SIZE.table })],
+                })
+            ),
+          }),
+        ],
       })
-  );
+    );
+  }
 
   return new Table({
     width: { size: CONTENT_W_TW, type: WidthType.DXA },
     columnWidths: anchos,
     layout: TableLayoutType.FIXED,
     borders: BORDES_TABLA,
-    rows: [filaHeader, ...filasDatos],
+    rows,
   });
 }
 
@@ -757,13 +896,13 @@ async function seccionFotosMercancia(informe) {
 
   const children = [];
   children.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
-  children.push(barraTituloContenedor('Contenido de las cajas'));
+  children.push(barraTituloContenedor('Contenido de la mercancía'));
 
   if (bloque.fila1.length) {
     children.push(
       ...(await grillaFotos(bloque.fila1, 2, 38, {
         sinCaption: true,
-        leyendaFila: 'Contenido de las cajas',
+        leyendaFila: 'Contenido de la mercancía',
       }))
     );
   }
@@ -786,35 +925,7 @@ function seccionSupervisionTabla(informe) {
   children.push(tituloNumerado(4, 'Reporte de supervisión'));
   children.push(subtitulo('Seguimiento contenedor'));
 
-  const filas = aplanarSeguimiento(informe.seguimiento);
-  const headers = [
-    'Fecha',
-    'Ingreso veh.',
-    'Placa',
-    'Descargue',
-    'Bultos',
-    'Cant.',
-    'Tipo',
-    'N° Cont.',
-    'Llenado',
-    'Sellos',
-  ];
-  const rows = filas.length
-    ? filas.map((f) => [
-        f.fecha,
-        f.ingreso,
-        f.placa,
-        f.descargue,
-        f.bultos,
-        f.cantidad,
-        f.tipo,
-        f.numero,
-        f.llenado,
-        f.sellos,
-      ])
-    : [['', '', '', '', '', '', '', '', '', '']];
-
-  children.push(tablaSeguimiento(headers, rows, [14, 22, 14, 20, 12, 10, 14, 20, 20, 16]));
+  children.push(tablaSeguimientoConsolidada(informe));
 
   return children;
 }
@@ -822,13 +933,7 @@ function seccionSupervisionTabla(informe) {
 async function seccionSupervisionBloques(informe, extrasMercancia = null) {
   const children = [];
 
-  if (informe.comentariosSupervision) {
-    children.push(tituloSeccion('Comentarios'));
-    children.push(parrafo(informe.comentariosSupervision));
-  }
-
   const fotosInicial = agruparFotosSupervisionInicial(informe.imagenesRegistroInicialSupervision);
-  const numCont = calcularNumContenedoresMercancia(informe.lineasMercancia);
   const contenedoresExtra = [
     ...(extrasMercancia?.contenedores || []),
     ...fotosInicial.contenedores,
@@ -839,15 +944,11 @@ async function seccionSupervisionBloques(informe, extrasMercancia = null) {
   ];
 
   if (contenedoresExtra.length) {
-    children.push(
-      barraTituloContenedor(
-        numCont > 0 ? `Contenedores asignados apto (${numCont})` : 'Contenedores asignados apto'
-      )
-    );
+    children.push(barraTituloContenedor('Contenedor (es) asignado (s)'));
     children.push(...(await grillaFotos(contenedoresExtra, 4, 36)));
   }
   if (vehiculosExtra.length) {
-    children.push(barraTituloContenedor('Vehículos asignados con sus sellos de seguridad'));
+    children.push(barraTituloContenedor('Vehículo (s) asignado (s)'));
     children.push(...(await grillaFotos(vehiculosExtra, 3, 40)));
   }
   if (fotosInicial.bodega.length) {
