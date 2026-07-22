@@ -481,9 +481,10 @@ const Trazabilidad = memo(function Trazabilidad({
       const diferenciaTiempo = fechaDocumentoLocal.getTime() - fechaReferencia.getTime();
       const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
       const diasCalendario = diferenciaHoras / 24;
-      // Plazos en días hábiles: descontar sábados, domingos y festivos de Colombia.
+      // Si el tramo cruza más de un día calendario, medir en días hábiles
+      // (excluye sábados, domingos y festivos de Colombia: 1 ene, Reyes, etc.).
       const diferenciaDias =
-        esLimiteEnDiasHabiles(tipo) && diasCalendario >= 0
+        diasCalendario >= 1
           ? diasHabilesColombiaEntre(fechaReferencia, fechaDocumentoLocal)
           : diasCalendario;
       
@@ -553,7 +554,8 @@ const Trazabilidad = memo(function Trazabilidad({
         esReciente: diferenciaDias <= tiempoLimite && diasRetraso === 0,
         esUrgente: diasRetraso > 0 || diferenciaDias > tiempoLimite,
         tieneDocumentos: false,
-        mostrarHoras: mostrarHoras
+        mostrarHoras: mostrarHoras,
+        usaDiasHabiles: diasCalendario >= 1,
       };
     }
 
@@ -579,9 +581,9 @@ const Trazabilidad = memo(function Trazabilidad({
     const diferenciaTiempo = fechaMasRecienteLocal.getTime() - fechaReferencia.getTime();
     const diferenciaHoras = diferenciaTiempo / (1000 * 3600);
     const diasCalendarioDoc = diferenciaHoras / 24;
-    // Plazos en días hábiles: descontar sábados, domingos y festivos de Colombia.
+    // Tramos de más de un día: días hábiles Colombia (sin fines de semana ni festivos).
     const diferenciaDias =
-      esLimiteEnDiasHabiles(tipo) && diasCalendarioDoc >= 0
+      diasCalendarioDoc >= 1
         ? diasHabilesColombiaEntre(fechaReferencia, fechaMasRecienteLocal)
         : diasCalendarioDoc;
 
@@ -625,7 +627,8 @@ const Trazabilidad = memo(function Trazabilidad({
       esReciente: diferenciaDias <= tiempoLimite && diasRetraso === 0,
       esUrgente: diasRetraso > 0 || diferenciaDias > tiempoLimite,
       tieneDocumentos: true,
-      mostrarHoras: mostrarHoras
+      mostrarHoras: mostrarHoras,
+      usaDiasHabiles: diasCalendarioDoc >= 1,
     };
   };
   // Función para formatear el tiempo transcurrido (horas o días)
@@ -866,8 +869,9 @@ const Trazabilidad = memo(function Trazabilidad({
                   {diasInfo.dias === 0 && !diasInfo.horas ? 'Sin tiempo' : 
                    diasInfo.mostrarHoras ? `Desde referencia` :
                    diasInfo.dias === 0 ? 'Mismo día' : 
-                   diasInfo.dias === 1 ? '1 día desde referencia' : 
-                   `${Math.round(diasInfo.dias)} días desde referencia`}
+                   diasInfo.dias === 1
+                     ? (diasInfo.usaDiasHabiles ? '1 día hábil desde referencia' : '1 día desde referencia')
+                     : `${Math.round(diasInfo.dias)} ${diasInfo.usaDiasHabiles ? 'días hábiles' : 'días'} desde referencia`}
                 </div>
               </div>
             </div>
@@ -1165,8 +1169,8 @@ const Trazabilidad = memo(function Trazabilidad({
                         ? diasInfo.diasRetraso < 1
                           ? `${Math.round(diasInfo.diasRetraso * 24)} h retraso`
                           : diasInfo.diasRetraso === 1
-                            ? '1 día retraso'
-                            : `${Math.round(diasInfo.diasRetraso)} días retraso`
+                            ? (diasInfo.usaDiasHabiles ? '1 día hábil retraso' : '1 día retraso')
+                            : `${Math.round(diasInfo.diasRetraso)} ${diasInfo.usaDiasHabiles ? 'días hábiles' : 'días'} retraso`
                         : formatearTiempoTranscurrido(diasInfo)}
                     </div>
                     <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
@@ -1418,7 +1422,21 @@ const Trazabilidad = memo(function Trazabilidad({
               onChange={handleChange}
               className={trazabilidadInputClass}
               hint={false}
+              disabled={Boolean(formData.inspeccionNoAplica)}
             />
+            <label className="mt-2 flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={Boolean(formData.inspeccionNoAplica)}
+                onChange={(e) =>
+                  handleChange({
+                    target: { name: 'inspeccionNoAplica', value: e.target.checked },
+                  })
+                }
+              />
+              <span>Inspección no aplica (no generar alertas de inspección ni de acta)</span>
+            </label>
           </div>
           <div>
             <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
@@ -1441,22 +1459,38 @@ const Trazabilidad = memo(function Trazabilidad({
           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
             Acta de Inspección
           </label>
-          <ArchivoDropZone
-            tipo="inspeccion"
-            campo="adjunto_acta_inspeccion"
-            onSelectFiles={onSelectFiles}
-            estadoAdjunto={obtenerEstadoAdjunto('inspeccion')}
-          >
-            {(isDragActive) =>
-              isDragActive ? (
-                <p className="font-body text-xs font-medium text-fenix-primario sm:text-sm">Suelta los archivos aquí...</p>
-              ) : (
-                <p className="font-body text-xs text-gray-600 dark:text-gray-300 sm:text-sm">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
-              )
-            }
-          </ArchivoDropZone>
+          <label className="mb-2 flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={Boolean(formData.actaInspeccionNoAplica)}
+              disabled={Boolean(formData.inspeccionNoAplica)}
+              onChange={(e) =>
+                handleChange({
+                  target: { name: 'actaInspeccionNoAplica', value: e.target.checked },
+                })
+              }
+            />
+            <span>Acta no aplica (hubo inspección pero no se elabora acta)</span>
+          </label>
+          {!formData.inspeccionNoAplica && !formData.actaInspeccionNoAplica && (
+            <ArchivoDropZone
+              tipo="inspeccion"
+              campo="adjunto_acta_inspeccion"
+              onSelectFiles={onSelectFiles}
+              estadoAdjunto={obtenerEstadoAdjunto('inspeccion')}
+            >
+              {(isDragActive) =>
+                isDragActive ? (
+                  <p className="font-body text-xs font-medium text-fenix-primario sm:text-sm">Suelta los archivos aquí...</p>
+                ) : (
+                  <p className="font-body text-xs text-gray-600 dark:text-gray-300 sm:text-sm">
+                    Arrastra archivos aquí o haz clic para seleccionar
+                  </p>
+                )
+              }
+            </ArchivoDropZone>
+          )}
         </div>
       </BandejaDesplegable>
 

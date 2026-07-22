@@ -225,7 +225,7 @@ export const ETAPAS_PROTOCOLO_DEFAULT = [
     fase: 4,
     nombre: 'Inspección de campo',
     campoFecha: 'fchaInspccion',
-    campoDoc: 'anexActaInspccion',
+    campoDoc: null,
     referencia: 'fchaContIni',
     limite: { valor: 24, unidad: 'horas' },
     limiteMaximo: { valor: 72, unidad: 'horas' },
