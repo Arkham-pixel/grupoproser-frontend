@@ -23,20 +23,32 @@ import {
   complexBtnFormActionSaveHover,
   complexCard,
   complexHint,
+  complexInput,
   complexLabel,
   complexPageSubtitle,
   complexPageTitle,
   complexSelect,
   complexTextarea,
 } from './complexFenixUi.js';
+import FlujoVisitaCoordinacionPanel from './FlujoVisitaCoordinacionPanel.jsx';
 import {
   ESTADO_LABELS,
   SEMAFORO_STYLES,
+  camposProtocoloDeEtapa,
+  esFlujoVisitaCoordinacion,
+  faltanFechasProtocoloRequeridas,
+  faltanFechasFlujoVisitaParaCerrar,
   formatearDuracionSubtarea,
   formatearFechaHoraSubtarea,
   formatearFechaSubtarea,
+  inicializarFechasProtocoloDesdeSubtarea,
+  subtareaEsSoloFecha,
+  subtareaRequiereDocumento,
   subtareaRequiereFormato,
+  subtareaTieneDocumento,
+  subtareaTieneFechaProtocolo,
   subtareaTieneFormato,
+  etiquetaAdjuntoEtapa,
   urlArchivoSubtarea,
 } from './subtareasComplexUtils.js';
 
@@ -72,6 +84,7 @@ export default function MisSubtareasComplex() {
   const [trabajo, setTrabajo] = useState(null); // { subtarea, caso }
   const [cargandoTrabajo, setCargandoTrabajo] = useState(false);
   const [obs, setObs] = useState('');
+  const [fechasProtocolo, setFechasProtocolo] = useState({});
   const [tipoArchivo, setTipoArchivo] = useState('documento');
   const [guardando, setGuardando] = useState(false);
   const [bandeja, setBandeja] = useState('pendientes'); // pendientes | completadas
@@ -123,6 +136,7 @@ export default function MisSubtareasComplex() {
           },
         });
         setObs(desdeLista.observacionesAsignado || '');
+        setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(desdeLista));
       }
 
       // 2) Enriquecer si el backend ya expone GET /:id
@@ -130,6 +144,7 @@ export default function MisSubtareasComplex() {
         const res = await obtenerSubtareaPorId(id);
         setTrabajo(res);
         setObs(res.subtarea?.observacionesAsignado || '');
+        setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(res.subtarea));
         subtareaActual = res.subtarea || subtareaActual;
       } catch {
         if (!desdeLista) {
@@ -142,6 +157,7 @@ export default function MisSubtareasComplex() {
               caso: { _id: local.casoId, nmroAjste: local.nmroAjste },
             });
             setObs(local.observacionesAsignado || '');
+            setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(local));
             subtareaActual = local;
           } else {
             setError('No se pudo abrir la subtarea. Recargue la lista e intente de nuevo.');
@@ -223,18 +239,65 @@ export default function MisSubtareasComplex() {
       );
       return;
     }
+    if (
+      completar &&
+      subtareaRequiereDocumento(trabajo.subtarea) &&
+      !subtareaTieneDocumento(trabajo.subtarea)
+    ) {
+      setError(
+        `Adjunte el documento de la etapa (${etiquetaAdjuntoEtapa(trabajo.subtarea.etapaTrazabilidad)}) antes de completar. Se enviará a la trazabilidad del caso.`
+      );
+      return;
+    }
+    if (
+      completar &&
+      subtareaTieneFechaProtocolo(trabajo.subtarea.etapaTrazabilidad)
+    ) {
+      const faltantes = esFlujoVisitaCoordinacion(trabajo.subtarea)
+        ? faltanFechasFlujoVisitaParaCerrar(fechasProtocolo)
+        : faltanFechasProtocoloRequeridas(
+            trabajo.subtarea.etapaTrazabilidad,
+            fechasProtocolo
+          );
+      if (faltantes.length) {
+        setError(
+          `Indique las fechas de la etapa (como en trazabilidad): ${faltantes.join(', ')}.`
+        );
+        return;
+      }
+    }
+    if (
+      completar &&
+      esFlujoVisitaCoordinacion(trabajo.subtarea) &&
+      !(trabajo.subtarea.archivos || []).length
+    ) {
+      setError(
+        'Antes de cerrar suba el acta y/o las fotos y datos de la visita.'
+      );
+      return;
+    }
     setGuardando(true);
     setError('');
     try {
       const payload = {
         observacionesAsignado: obs,
         estado: completar ? 'completada' : 'en_progreso',
+        fechasProtocolo,
       };
+      if (esFlujoVisitaCoordinacion(trabajo.subtarea) && completar) {
+        payload.flujoVisitaFase =
+          trabajo.subtarea.flujoVisitaFase || 'decidir';
+      }
+      const primerCampo = camposProtocoloDeEtapa(trabajo.subtarea.etapaTrazabilidad)[0];
+      if (primerCampo?.campo && fechasProtocolo[primerCampo.campo]) {
+        payload.fechaProtocolo = fechasProtocolo[primerCampo.campo];
+      }
       const actualizada = await actualizarSubtarea(trabajo.subtarea._id, payload);
       setTrabajo((prev) => ({ ...prev, subtarea: actualizada }));
+      setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(actualizada));
       if (completar) {
         setAviso(
-          'Subtarea completada. Queda registrada en Completadas con el tiempo de ejecución.'
+          'Subtarea completada. Las fechas quedaron en la trazabilidad del caso y el tiempo de ejecución quedó registrado.'
         );
         setBandeja('completadas');
         // Actualización optimista: que no “desaparezca” aunque /mias tarde o falle
@@ -252,7 +315,12 @@ export default function MisSubtareasComplex() {
         });
         await cargarLista();
       } else {
-        setAviso('Avance guardado.');
+        const hayFechas = Object.values(fechasProtocolo || {}).some(Boolean);
+        setAviso(
+          hayFechas
+            ? 'Avance guardado. Las fechas se sincronizaron con la trazabilidad del caso.'
+            : 'Avance guardado.'
+        );
       }
     } catch (err) {
       setError(err.message);
@@ -261,15 +329,18 @@ export default function MisSubtareasComplex() {
     }
   };
 
-  const onSubir = async (file) => {
+  const onSubir = async (file, tipoForzado) => {
     if (!file || !trabajo?.subtarea?._id) return;
     setGuardando(true);
     setError('');
     try {
-      const res = await subirArchivoSubtarea(trabajo.subtarea._id, file, { tipoArchivo });
+      const tipo = tipoForzado || tipoArchivo;
+      const res = await subirArchivoSubtarea(trabajo.subtarea._id, file, {
+        tipoArchivo: tipo,
+      });
       setTrabajo((prev) => ({ ...prev, subtarea: res.subtarea }));
       setAviso(
-        tipoArchivo === 'formato'
+        tipo === 'formato'
           ? 'Formato cargado y guardado en el caso'
           : 'Documento cargado y guardado en el caso'
       );
@@ -280,7 +351,7 @@ export default function MisSubtareasComplex() {
     }
   };
 
-  const irAFormularioAjuste = async () => {
+  const irAFormularioAjuste = async (estadoInicialForzado) => {
     const s = trabajo?.subtarea;
     if (!s) return;
     setGuardando(true);
@@ -306,8 +377,9 @@ export default function MisSubtareasComplex() {
         {
           returnPath: `/complex/mis-subtareas?abrir=${s._id}`,
           origen: 'subtarea-formato',
-          // Abrir directo en la versión que pide la subtarea (p. ej. informe preliminar)
-          estadoInicial: estadoAjusteDesdeEtapaSubtarea(s.etapaTrazabilidad),
+          estadoInicial:
+            estadoInicialForzado ||
+            estadoAjusteDesdeEtapaSubtarea(s.etapaTrazabilidad),
         }
       );
     } catch (err) {
@@ -315,6 +387,48 @@ export default function MisSubtareasComplex() {
     } finally {
       setGuardando(false);
     }
+  };
+
+  const avanzarFaseFlujo = async (faseNueva, erroresValidacion) => {
+    if (erroresValidacion?.length) {
+      setError(erroresValidacion.join('. '));
+      return;
+    }
+    if (!faseNueva || !trabajo?.subtarea?._id) return;
+    setGuardando(true);
+    setError('');
+    try {
+      const actualizada = await actualizarSubtarea(trabajo.subtarea._id, {
+        observacionesAsignado: obs,
+        fechasProtocolo,
+        flujoVisitaFase: faseNueva,
+        estado: 'en_progreso',
+      });
+      setTrabajo((prev) => ({ ...prev, subtarea: actualizada }));
+      setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(actualizada));
+      setAviso(
+        faseNueva === 'inspeccion'
+          ? 'Coordinación guardada. Continúe con la inspección y el acta.'
+          : faseNueva === 'decidir'
+            ? 'Acta lista. Elija continuar con preliminar o cerrar para el ajustador.'
+            : faseNueva === 'preliminar'
+              ? 'Puede elaborar el informe preliminar o cerrar cuando termine.'
+              : 'Fase actualizada.'
+      );
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const completarFlujoVisita = async (ok, erroresValidacion) => {
+    if (erroresValidacion?.length) {
+      setError(erroresValidacion.join('. '));
+      return;
+    }
+    if (!ok) return;
+    await guardarAvance(true);
   };
 
   if (cargandoTrabajo) {
@@ -335,6 +449,9 @@ export default function MisSubtareasComplex() {
     const cerrada = s.estado === 'completada' || s.estado === 'cancelada';
     const requiereFormato = subtareaRequiereFormato(s);
     const tieneFormato = subtareaTieneFormato(s);
+    const requiereDocumento = subtareaRequiereDocumento(s);
+    const tieneDocumento = subtareaTieneDocumento(s);
+    const soloFecha = subtareaEsSoloFecha(s);
 
     return (
       <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">
@@ -436,6 +553,24 @@ export default function MisSubtareasComplex() {
         </div>
 
         {!cerrada ? (
+          esFlujoVisitaCoordinacion(s) ? (
+            <div className={`${complexCard} space-y-4`}>
+              <FlujoVisitaCoordinacionPanel
+                subtarea={s}
+                obs={obs}
+                setObs={setObs}
+                fechasProtocolo={fechasProtocolo}
+                setFechasProtocolo={setFechasProtocolo}
+                guardando={guardando}
+                onGuardarAvance={() => guardarAvance(false)}
+                onAvanzarFase={avanzarFaseFlujo}
+                onCompletar={completarFlujoVisita}
+                onSubirArchivo={onSubir}
+                onAbrirActa={() => irAFormularioAjuste('actaInspeccion')}
+                onAbrirPreliminar={() => irAFormularioAjuste('inicial')}
+              />
+            </div>
+          ) : (
           <div className={`${complexCard} space-y-4`}>
             {requiereFormato && (
               <div
@@ -450,108 +585,188 @@ export default function MisSubtareasComplex() {
                   : 'Esta etapa exige el formato (informe) como entregable obligatorio: genérelo en el formulario de ajuste y adjúntelo como tipo "Formato" antes de completar.'}
               </div>
             )}
+            {requiereDocumento && !requiereFormato && (
+              <div
+                className={`rounded-lg border px-3 py-2 text-sm ${
+                  tieneDocumento
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                    : 'border-amber-300 bg-amber-50 text-amber-900'
+                }`}
+              >
+                {tieneDocumento
+                  ? `${etiquetaAdjuntoEtapa(s.etapaTrazabilidad)} cargado. Quedará en la trazabilidad del caso.`
+                  : `Esta etapa exige adjuntar: ${etiquetaAdjuntoEtapa(s.etapaTrazabilidad)} (igual que en trazabilidad). Al guardarlo se envía a la bandeja del caso.`}
+              </div>
+            )}
             <div>
-              <label className={complexLabel}>Su reporte / observaciones</label>
+              <label className={complexLabel}>
+                {subtareaEsSoloFecha(s)
+                  ? 'Observaciones de la etapa'
+                  : 'Su reporte / observaciones'}
+              </label>
               <textarea
                 className={complexTextarea}
                 rows={4}
                 value={obs}
                 onChange={(e) => setObs(e.target.value)}
-                placeholder="Describa lo realizado, hallazgos, adjuntos…"
+                placeholder={
+                  subtareaEsSoloFecha(s)
+                    ? 'Observaciones (igual que en trazabilidad)…'
+                    : 'Describa lo realizado, hallazgos, adjuntos…'
+                }
               />
             </div>
 
-            <div className="flex flex-wrap items-end gap-3">
-              <div>
-                <label className={complexLabel}>Tipo de archivo</label>
-                <select
-                  className={complexSelect}
-                  value={tipoArchivo}
-                  onChange={(e) => setTipoArchivo(e.target.value)}
-                >
-                  <option value="documento">Documento</option>
-                  <option value="formato">Formato (ajuste)</option>
-                </select>
+            {subtareaTieneFechaProtocolo(s.etapaTrazabilidad) && (
+              <div className="space-y-3">
+                <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Fechas de protocolo (trazabilidad)
+                </p>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {camposProtocoloDeEtapa(s.etapaTrazabilidad).map((c) => (
+                    <div key={c.campo}>
+                      <label className={complexLabel}>
+                        {c.label}
+                        {c.requerido ? ' *' : ''}
+                      </label>
+                      <input
+                        type="date"
+                        className={complexInput}
+                        value={fechasProtocolo[c.campo] || ''}
+                        onChange={(e) =>
+                          setFechasProtocolo((prev) => ({
+                            ...prev,
+                            [c.campo]: e.target.value,
+                          }))
+                        }
+                        required={Boolean(c.requerido)}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className={complexHint}>
+                  Estas fechas se envían a la trazabilidad del caso (quien asignó la
+                  subtarea) y alimentan los tiempos del protocolo, igual que si se
+                  diligenciaran en la bandeja de trazabilidad.
+                </p>
               </div>
-              {tipoArchivo === 'formato' && (
-                <button
-                  type="button"
-                  disabled={guardando}
-                  className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
-                  onClick={irAFormularioAjuste}
-                  title="Abre el formulario de ajuste igual que el botón Ajuste del reporte"
-                >
-                  Ir a formulario de ajuste
-                </button>
-              )}
-              <label className="cursor-pointer">
-                <span className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}>
-                  {tipoArchivo === 'formato' ? 'Subir formato' : 'Subir archivo'}
-                </span>
-                <input
-                  type="file"
-                  className="hidden"
-                  disabled={guardando}
-                  onChange={(e) => {
-                    onSubir(e.target.files?.[0]);
-                    e.target.value = '';
-                  }}
-                />
-              </label>
-            </div>
-            {tipoArchivo === 'formato' && (
-              <p className={complexHint}>
-                Los formatos se elaboran en el formulario de ajuste (acta / inspección), igual
-                que desde el reporte Complex; luego adjunte aquí el archivo generado.
-              </p>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
-                  <FaPaperclip /> Documentos
-                </p>
-                {docs.length === 0 ? (
-                  <p className={complexHint}>Sin documentos aún.</p>
-                ) : (
-                  <ul className="space-y-1 text-sm">
-                    {docs.map((a, i) => (
-                      <li key={a._id || i}>
-                        {urlArchivoSubtarea(a) ? (
-                          <a href={urlArchivoSubtarea(a)} target="_blank" rel="noreferrer" className="font-semibold text-fenix-primario hover:underline">
-                            {a.nombre}
-                          </a>
-                        ) : (
-                          a.nombre
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
+            {subtareaEsSoloFecha(s) ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+                Esta etapa no requiere documento ni formato: solo fechas y
+                observaciones, como en trazabilidad.
               </div>
-              <div>
-                <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
-                  <FaFileAlt /> Formatos
-                </p>
-                {formatos.length === 0 ? (
-                  <p className={complexHint}>Sin formatos aún.</p>
-                ) : (
-                  <ul className="space-y-1 text-sm">
-                    {formatos.map((a, i) => (
-                      <li key={a._id || i}>
-                        {urlArchivoSubtarea(a) ? (
-                          <a href={urlArchivoSubtarea(a)} target="_blank" rel="noreferrer" className="font-semibold text-fenix-primario hover:underline">
-                            {a.nombre}
-                          </a>
-                        ) : (
-                          a.nombre
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div>
+                    <label className={complexLabel}>
+                      {requiereDocumento
+                        ? etiquetaAdjuntoEtapa(s.etapaTrazabilidad)
+                        : 'Tipo de archivo'}
+                    </label>
+                    {!requiereDocumento || requiereFormato ? (
+                      <select
+                        className={complexSelect}
+                        value={tipoArchivo}
+                        onChange={(e) => setTipoArchivo(e.target.value)}
+                      >
+                        <option value="documento">Documento</option>
+                        <option value="formato">Formato (ajuste)</option>
+                      </select>
+                    ) : (
+                      <p className={complexHint}>
+                        Se guarda en la bandeja de trazabilidad del caso (quien asignó).
+                      </p>
+                    )}
+                  </div>
+                  {tipoArchivo === 'formato' && (
+                    <button
+                      type="button"
+                      disabled={guardando}
+                      className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
+                      onClick={irAFormularioAjuste}
+                      title="Abre el formulario de ajuste igual que el botón Ajuste del reporte"
+                    >
+                      Ir a formulario de ajuste
+                    </button>
+                  )}
+                  <label className="cursor-pointer">
+                    <span className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}>
+                      {requiereDocumento && !requiereFormato
+                        ? `Subir ${etiquetaAdjuntoEtapa(s.etapaTrazabilidad).toLowerCase()}`
+                        : tipoArchivo === 'formato'
+                          ? 'Subir formato'
+                          : 'Subir archivo'}
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      disabled={guardando}
+                      onChange={(e) => {
+                        if (requiereDocumento && !requiereFormato) setTipoArchivo('documento');
+                        onSubir(e.target.files?.[0]);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+                {tipoArchivo === 'formato' && (
+                  <p className={complexHint}>
+                    Los formatos se elaboran en el formulario de ajuste (acta / inspección), igual
+                    que desde el reporte Complex; luego adjunte aquí el archivo generado.
+                  </p>
                 )}
-              </div>
-            </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
+                      <FaPaperclip /> Documentos
+                    </p>
+                    {docs.length === 0 ? (
+                      <p className={complexHint}>Sin documentos aún.</p>
+                    ) : (
+                      <ul className="space-y-1 text-sm">
+                        {docs.map((a, i) => (
+                          <li key={a._id || i}>
+                            {urlArchivoSubtarea(a) ? (
+                              <a href={urlArchivoSubtarea(a)} target="_blank" rel="noreferrer" className="font-semibold text-fenix-primario hover:underline">
+                                {a.nombre}
+                              </a>
+                            ) : (
+                              a.nombre
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  <div>
+                    <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
+                      <FaFileAlt /> Formatos
+                    </p>
+                    {formatos.length === 0 ? (
+                      <p className={complexHint}>Sin formatos aún.</p>
+                    ) : (
+                      <ul className="space-y-1 text-sm">
+                        {formatos.map((a, i) => (
+                          <li key={a._id || i}>
+                            {urlArchivoSubtarea(a) ? (
+                              <a href={urlArchivoSubtarea(a)} target="_blank" rel="noreferrer" className="font-semibold text-fenix-primario hover:underline">
+                                {a.nombre}
+                              </a>
+                            ) : (
+                              a.nombre
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="flex flex-wrap gap-2 pt-2">
               <button
@@ -564,11 +779,17 @@ export default function MisSubtareasComplex() {
               </button>
               <button
                 type="button"
-                disabled={guardando || (requiereFormato && !tieneFormato)}
+                disabled={
+                  guardando ||
+                  (requiereFormato && !tieneFormato) ||
+                  (requiereDocumento && !tieneDocumento)
+                }
                 title={
                   requiereFormato && !tieneFormato
                     ? 'Adjunte primero el formato (informe)'
-                    : undefined
+                    : requiereDocumento && !tieneDocumento
+                      ? `Adjunte: ${etiquetaAdjuntoEtapa(s.etapaTrazabilidad)}`
+                      : undefined
                 }
                 className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
                 onClick={() => guardarAvance(true)}
@@ -578,6 +799,7 @@ export default function MisSubtareasComplex() {
               </button>
             </div>
           </div>
+          )
         ) : (
           <div className={`${complexCard} space-y-2`}>
             <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -597,6 +819,20 @@ export default function MisSubtareasComplex() {
                 Observaciones: {s.observacionesAsignado}
               </p>
             ) : null}
+            {camposProtocoloDeEtapa(s.etapaTrazabilidad).map((c) => {
+              const valor =
+                s.fechasProtocolo?.[c.campo] ||
+                (c.campo === camposProtocoloDeEtapa(s.etapaTrazabilidad)[0]?.campo
+                  ? s.fechaProtocolo
+                  : null);
+              if (!valor) return null;
+              return (
+                <p key={c.campo} className="text-sm text-gray-600">
+                  {c.label}: <strong>{formatearFechaSubtarea(valor)}</strong>
+                  {' '}(enviada a trazabilidad)
+                </p>
+              );
+            })}
           </div>
         )}
       </div>

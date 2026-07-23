@@ -1,15 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   actualizarSubtareaPublica,
   obtenerSubtareaPublica,
   subirArchivoSubtareaPublica,
 } from '../../services/complexSubtareasService.js';
+import { esRolExterno } from '../../config/roles.js';
+import { limpiarSesionLocal } from '../../utils/limpiarSesionLocal.js';
+import FlujoVisitaCoordinacionPanel from './FlujoVisitaCoordinacionPanel.jsx';
 import {
   ESTADO_LABELS,
   SEMAFORO_STYLES,
+  camposProtocoloDeEtapa,
+  esFlujoVisitaCoordinacion,
+  faltanFechasFlujoVisitaParaCerrar,
+  faltanFechasProtocoloRequeridas,
   formatearFechaSubtarea,
+  inicializarFechasProtocoloDesdeSubtarea,
+  subtareaEsSoloFecha,
   subtareaRequiereFormato,
+  subtareaTieneFechaProtocolo,
   subtareaTieneFormato,
 } from './subtareasComplexUtils.js';
 
@@ -20,12 +30,20 @@ export default function PortalSubtareaExterna() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [obs, setObs] = useState('');
+  const [fechasProtocolo, setFechasProtocolo] = useState({});
   const [saving, setSaving] = useState(false);
   const [okMsg, setOkMsg] = useState('');
   const [tipoArchivo, setTipoArchivo] = useState('documento');
 
   const requiereFormato = subtareaRequiereFormato(data);
   const tieneFormato = subtareaTieneFormato(data);
+  const soloFecha = subtareaEsSoloFecha(data);
+  const pideFechas = subtareaTieneFechaProtocolo(data?.etapaTrazabilidad);
+
+  const salirALogin = () => {
+    limpiarSesionLocal();
+    navigate('/login', { replace: true });
+  };
 
   const cargar = async () => {
     setLoading(true);
@@ -34,6 +52,8 @@ export default function PortalSubtareaExterna() {
       const res = await obtenerSubtareaPublica(token);
       setData(res);
       setObs(res.observacionesAsignado || '');
+      setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(res));
+      if (subtareaRequiereFormato(res)) setTipoArchivo('formato');
     } catch (err) {
       setError(err.message || 'No se pudo abrir el enlace');
       setData(null);
@@ -47,23 +67,61 @@ export default function PortalSubtareaExterna() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const guardar = async (completar = false) => {
+  const guardar = async (completar = false, extras = {}) => {
     if (completar && requiereFormato && !tieneFormato) {
       setError(
         'Debe diligenciar y guardar el formulario de ajuste (informe) antes de marcar la tarea completada. Use el botón "Diligenciar formulario de ajuste".'
       );
       return;
     }
+    if (completar && esFlujoVisitaCoordinacion(data)) {
+      const faltantes = faltanFechasFlujoVisitaParaCerrar(fechasProtocolo);
+      if (faltantes.length) {
+        setError(`Indique las fechas: ${faltantes.join(', ')}.`);
+        return;
+      }
+      if (!(data.archivos || []).length) {
+        setError('Antes de cerrar suba el acta y/o las fotos y datos de la visita.');
+        return;
+      }
+    } else if (completar && pideFechas) {
+      const faltantes = faltanFechasProtocoloRequeridas(
+        data?.etapaTrazabilidad,
+        fechasProtocolo
+      );
+      if (faltantes.length) {
+        setError(
+          `Indique las fechas de la etapa (como en trazabilidad): ${faltantes.join(', ')}.`
+        );
+        return;
+      }
+    }
     setSaving(true);
     setOkMsg('');
     setError('');
     try {
-      const payload = { observacionesAsignado: obs };
+      const payload = {
+        observacionesAsignado: obs,
+        fechasProtocolo,
+        ...extras,
+      };
+      const primerCampo = camposProtocoloDeEtapa(data?.etapaTrazabilidad)[0];
+      if (primerCampo?.campo && fechasProtocolo[primerCampo.campo]) {
+        payload.fechaProtocolo = fechasProtocolo[primerCampo.campo];
+      }
       if (completar) payload.estado = 'completada';
       else payload.estado = 'en_progreso';
       const res = await actualizarSubtareaPublica(token, payload);
       setData(res);
-      setOkMsg(completar ? 'Subtarea marcada como completada. Gracias.' : 'Avance guardado.');
+      setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(res));
+      const hayFechas = Object.values(fechasProtocolo || {}).some(Boolean);
+      setOkMsg(
+        completar
+          ? 'Subtarea marcada como completada. Las fechas quedaron en la trazabilidad del caso. Gracias.'
+          : hayFechas
+            ? 'Avance guardado. Las fechas se sincronizaron con la trazabilidad del caso.'
+            : 'Avance guardado.'
+      );
     } catch (err) {
       setError(err.message);
     } finally {
@@ -71,15 +129,16 @@ export default function PortalSubtareaExterna() {
     }
   };
 
-  const onFile = async (file) => {
+  const onFile = async (file, tipoForzado) => {
     if (!file) return;
     setSaving(true);
     setError('');
     try {
-      const res = await subirArchivoSubtareaPublica(token, file, { tipoArchivo });
+      const tipo = tipoForzado || tipoArchivo;
+      const res = await subirArchivoSubtareaPublica(token, file, { tipoArchivo: tipo });
       setData(res.subtarea);
       setOkMsg(
-        tipoArchivo === 'formato'
+        tipo === 'formato'
           ? 'Informe cargado correctamente y guardado en el caso.'
           : 'Archivo cargado correctamente.'
       );
@@ -88,6 +147,24 @@ export default function PortalSubtareaExterna() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const avanzarFaseFlujo = async (faseNueva, erroresValidacion) => {
+    if (erroresValidacion?.length) {
+      setError(erroresValidacion.join('. '));
+      return;
+    }
+    if (!faseNueva) return;
+    await guardar(false, { flujoVisitaFase: faseNueva });
+  };
+
+  const completarFlujoVisita = async (ok, erroresValidacion) => {
+    if (erroresValidacion?.length) {
+      setError(erroresValidacion.join('. '));
+      return;
+    }
+    if (!ok) return;
+    await guardar(true);
   };
 
   const sem = SEMAFORO_STYLES[data?.semaforo] || SEMAFORO_STYLES.amarillo;
@@ -138,6 +215,12 @@ export default function PortalSubtareaExterna() {
                     {data.ciudadSiniestro ? ` · ${data.ciudadSiniestro}` : ''}
                   </p>
                 )}
+                {data.etapaTrazabilidad && (
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                    Etapa: {data.etapaTrazabilidad}
+                    {soloFecha ? ' · solo fechas (sin documento)' : ''}
+                  </p>
+                )}
               </div>
 
               {data.descripcion && (
@@ -156,138 +239,189 @@ export default function PortalSubtareaExterna() {
               )}
 
               {data.estado !== 'completada' && data.estado !== 'cancelada' ? (
+                esFlujoVisitaCoordinacion(data) ? (
+                  <FlujoVisitaCoordinacionPanel
+                    subtarea={data}
+                    obs={obs}
+                    setObs={setObs}
+                    fechasProtocolo={fechasProtocolo}
+                    setFechasProtocolo={setFechasProtocolo}
+                    guardando={saving}
+                    modoExterno
+                    onGuardarAvance={() => guardar(false)}
+                    onAvanzarFase={avanzarFaseFlujo}
+                    onCompletar={completarFlujoVisita}
+                    onSubirArchivo={onFile}
+                    onAbrirActa={() =>
+                      navigate(`/complex/subtarea/${token}/ajuste?estado=actaInspeccion`)
+                    }
+                    onAbrirPreliminar={() =>
+                      navigate(`/complex/subtarea/${token}/ajuste?estado=inicial`)
+                    }
+                  />
+                ) : (
                 <>
                   <div>
                     <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                      Sus observaciones / reporte
+                      {soloFecha ? 'Observaciones de la etapa' : 'Sus observaciones / reporte'}
                     </label>
                     <textarea
                       className="min-h-[120px] w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/20"
                       value={obs}
                       onChange={(e) => setObs(e.target.value)}
-                      placeholder="Describa lo realizado, hallazgos, pendientes…"
+                      placeholder={
+                        soloFecha
+                          ? 'Observaciones (igual que en trazabilidad)…'
+                          : 'Describa lo realizado, hallazgos, pendientes…'
+                      }
                     />
                   </div>
 
-                  {requiereFormato && (
-                    <div
-                      className={`space-y-3 rounded-xl border p-4 ${
-                        tieneFormato
-                          ? 'border-emerald-200 bg-emerald-50'
-                          : 'border-amber-300 bg-amber-50'
-                      }`}
-                    >
-                      {tieneFormato ? (
-                        <p className="text-sm text-emerald-800">
-                          <span className="font-semibold">Informe generado y guardado en el caso.</span>{' '}
-                          Puede volver a abrir el formulario si necesita corregirlo, o marcar
-                          la tarea como completada.
-                        </p>
-                      ) : (
-                        <p className="text-sm text-amber-900">
-                          <span className="font-semibold">
-                            El entregable de esta tarea es el informe estandarizado.
-                          </span>{' '}
-                          Diligencie el formulario de ajuste de la plataforma; al guardarlo,
-                          el informe queda adjunto automáticamente al caso y a esta tarea.
-                        </p>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => navigate(`/complex/subtarea/${token}/ajuste`)}
-                        className="rounded-lg bg-[#c8102e] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-                      >
-                        {tieneFormato
-                          ? 'Abrir formulario de ajuste'
-                          : 'Diligenciar formulario de ajuste (informe)'}
-                      </button>
+                  {pideFechas && (
+                    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Fechas de protocolo (trazabilidad)
+                      </p>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        {camposProtocoloDeEtapa(data.etapaTrazabilidad).map((c) => (
+                          <div key={c.campo}>
+                            <label className="mb-1 block text-sm font-semibold text-slate-700">
+                              {c.label}
+                              {c.requerido ? ' *' : ''}
+                            </label>
+                            <input
+                              type="date"
+                              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-600 focus:outline-none focus:ring-2 focus:ring-red-600/20"
+                              value={fechasProtocolo[c.campo] || ''}
+                              onChange={(e) =>
+                                setFechasProtocolo((prev) => ({
+                                  ...prev,
+                                  [c.campo]: e.target.value,
+                                }))
+                              }
+                              required={Boolean(c.requerido)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-slate-500">
+                        Estas fechas se envían a la trazabilidad del caso y alimentan los
+                        tiempos del protocolo.
+                      </p>
                     </div>
                   )}
 
-                  <div className="flex flex-wrap items-end gap-3">
-                    <div>
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                        ¿Qué está adjuntando?
-                      </label>
-                      <select
-                        className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-red-600 focus:outline-none"
-                        value={tipoArchivo}
-                        onChange={(e) => setTipoArchivo(e.target.value)}
-                      >
-                        <option value="documento">Documento de soporte (fotos, actas, anexos)</option>
-                        <option value="formato">Informe en archivo (Word / PDF)</option>
-                      </select>
+                  {soloFecha ? (
+                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
+                      Esta etapa no requiere documento ni informe: solo fechas y
+                      observaciones, igual que en la bandeja de trazabilidad.
                     </div>
-                    <div className="min-w-[220px] flex-1">
-                      <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                        Adjuntar archivo
-                      </label>
-                      <input
-                        type="file"
-                        disabled={saving}
-                        onChange={(e) => {
-                          onFile(e.target.files?.[0]);
-                          e.target.value = '';
-                        }}
-                        className="block w-full text-sm text-slate-600"
-                      />
-                    </div>
-                  </div>
-
-                  {(data.archivos || []).length > 0 && (
-                    <ul className="space-y-1 text-sm text-slate-700">
-                      {data.archivos.map((a, i) => (
-                        <li key={`${a.nombre}-${i}`}>
-                          <span
-                            className={`mr-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${
-                              a.tipoArchivo === 'formato'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {a.tipoArchivo === 'formato' ? 'Informe' : 'Doc'}
-                          </span>
-                          {a.url ? (
-                            <a href={a.url} target="_blank" rel="noreferrer" className="font-semibold text-red-700 underline">
-                              {a.nombre}
-                            </a>
+                  ) : (
+                    <>
+                      {requiereFormato && (
+                        <div
+                          className={`space-y-3 rounded-xl border p-4 ${
+                            tieneFormato
+                              ? 'border-emerald-200 bg-emerald-50'
+                              : 'border-amber-300 bg-amber-50'
+                          }`}
+                        >
+                          {tieneFormato ? (
+                            <p className="text-sm text-emerald-800">
+                              <span className="font-semibold">Informe generado y guardado en el caso.</span>{' '}
+                              Puede volver a abrir el formulario si necesita corregirlo, o marcar
+                              la tarea como completada.
+                            </p>
                           ) : (
-                            a.nombre
+                            <p className="text-sm text-amber-900">
+                              <span className="font-semibold">
+                                El entregable de esta tarea es el informe estandarizado.
+                              </span>{' '}
+                              Diligencie el formulario de ajuste de la plataforma; al guardarlo,
+                              el informe queda adjunto automáticamente al caso y a esta tarea.
+                            </p>
                           )}
-                          <span className="text-xs text-slate-400"> · {a.subidoPor}</span>
-                        </li>
-                      ))}
-                    </ul>
+                          <Link
+                            to={`/complex/subtarea/${token}/ajuste`}
+                            className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                          >
+                            Diligenciar formulario de ajuste (informe)
+                          </Link>
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+                          Adjuntar archivo
+                        </label>
+                        <select
+                          className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                          value={tipoArchivo}
+                          onChange={(e) => setTipoArchivo(e.target.value)}
+                        >
+                          <option value="documento">Documento</option>
+                          <option value="formato">Formato / informe</option>
+                        </select>
+                        <input
+                          type="file"
+                          className="block w-full text-sm text-slate-600"
+                          disabled={saving}
+                          onChange={(e) => {
+                            onFile(e.target.files?.[0]);
+                            e.target.value = '';
+                          }}
+                        />
+                      </div>
+                    </>
                   )}
 
-                  <div className="flex flex-wrap gap-2 pt-2">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     <button
                       type="button"
                       disabled={saving}
                       onClick={() => guardar(false)}
-                      className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-50"
+                      className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                     >
                       Guardar avance
                     </button>
                     <button
                       type="button"
                       disabled={saving || (requiereFormato && !tieneFormato)}
-                      title={
-                        requiereFormato && !tieneFormato
-                          ? 'Diligencie y guarde primero el formulario de ajuste (informe)'
-                          : undefined
-                      }
                       onClick={() => guardar(true)}
-                      className="rounded-lg bg-[#c8102e] px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
                     >
                       Marcar completada
                     </button>
                   </div>
                 </>
+                )
               ) : (
-                <p className="rounded-lg bg-slate-50 px-3 py-3 text-sm text-slate-600">
-                  Esta subtarea ya no admite cambios ({ESTADO_LABELS[data.estado] || data.estado}).
-                </p>
+                <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
+                  Esta subtarea ya está {ESTADO_LABELS[data.estado] || data.estado}.
+                  {camposProtocoloDeEtapa(data.etapaTrazabilidad).map((c) => {
+                    const valor =
+                      data.fechasProtocolo?.[c.campo] ||
+                      (c.campo === camposProtocoloDeEtapa(data.etapaTrazabilidad)[0]?.campo
+                        ? data.fechaProtocolo
+                        : null);
+                    if (!valor) return null;
+                    return (
+                      <p key={c.campo} className="mt-1">
+                        {c.label}: <strong>{formatearFechaSubtarea(valor)}</strong>
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
+
+              {esRolExterno() && (
+                <button
+                  type="button"
+                  onClick={salirALogin}
+                  className="text-xs font-semibold text-slate-500 underline hover:text-slate-800"
+                >
+                  Cerrar sesión externa
+                </button>
               )}
             </>
           )}

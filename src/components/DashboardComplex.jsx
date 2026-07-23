@@ -766,7 +766,7 @@ setSiniestros(casosFinales);
   // Datos para grÃ¡ficas de retrasos por etapa
   const retrasosPorEtapaData = [
     { etapa: 'Contacto Inicial', retrasados: casosRetrasadosPorEtapa.contactoInicial, limite: '12 horas' },
-    { etapa: 'Inspección', retrasados: casosRetrasadosPorEtapa.inspeccion, limite: '24 horas' },
+    { etapa: 'Inspección', retrasados: casosRetrasadosPorEtapa.inspeccion, limite: '1 día hábil' },
     { etapa: 'Solicitud Docs', retrasados: casosRetrasadosPorEtapa.solicitudDocs, limite: '24 horas' },
     { etapa: 'Informe Preliminar', retrasados: casosRetrasadosPorEtapa.informePreliminar, limite: '24 horas' },
     { etapa: 'Informe Final', retrasados: casosRetrasadosPorEtapa.informeFinal, limite: '3 días' }

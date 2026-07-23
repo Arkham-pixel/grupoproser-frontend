@@ -1,4 +1,6 @@
 import { SESSION_CONFIG, SESSION_MESSAGES } from '../config/session.js';
+import { esRolExterno } from '../config/roles.js';
+import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
 
 // Gestor de sesión con cierre automático por inactividad
 class SessionManager {
@@ -17,6 +19,10 @@ class SessionManager {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    // Sesión limitada del enlace de subtarea: sin heartbeat de plataforma
+    // (el token externo no es un SecurUser y la API lo rechaza con 403).
+    if (esRolExterno()) return;
+
     // Establecer timestamp de inicio de sesión
     localStorage.setItem('sessionStart', Date.now().toString());
     
@@ -29,7 +35,7 @@ class SessionManager {
     // Enviar heartbeat cada 2 minutos para mantener la sesión activa
     this.heartbeatInterval = setInterval(async () => {
       const token = localStorage.getItem('token');
-      if (!token) {
+      if (!token || esRolExterno()) {
         clearInterval(this.heartbeatInterval);
         return;
       }
@@ -276,14 +282,7 @@ this.logout();
       console.error('Error en logout:', error);
     }
 
-    // Limpiar localStorage
-    localStorage.removeItem('token');
-    localStorage.removeItem('rol');
-    localStorage.removeItem('login');
-    localStorage.removeItem('nombre');
-    localStorage.removeItem('tipoUsuario');
-    localStorage.removeItem('sessionStartTime');
-    localStorage.removeItem('sessionStart');
+    limpiarSesionLocal();
 
     // Remover modal si existe
     const modal = document.getElementById('session-warning-modal');

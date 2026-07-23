@@ -59,15 +59,9 @@ const checkAndCloseSessionIfExpired = async () => {
 }
     }
     
-    // Limpiar toda la sesión
-    localStorage.removeItem('token');
-    localStorage.removeItem('rol');
-    localStorage.removeItem('login');
-    localStorage.removeItem('nombre');
-    localStorage.removeItem('tipoUsuario');
-    localStorage.removeItem('sessionStartTime');
-    localStorage.removeItem('sessionStart');
-    localStorage.removeItem('tokenNeedsRenewal');
+    // Limpiar toda la sesión (incluye subtareaExternaReturn)
+    const { limpiarSesionLocal } = await import('../utils/limpiarSesionLocal.js');
+    limpiarSesionLocal();
     
     // Limpiar todos los intervalos
     if (sessionCheckInterval) {

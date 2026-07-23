@@ -28,8 +28,11 @@ import {
 import {
   ESTADO_LABELS,
   SEMAFORO_STYLES,
+  camposProtocoloDeEtapa,
   formatearFechaSubtarea,
   puedeGestionarSubtareasFrontend,
+  subtareaEsSoloFecha,
+  subtareaTieneFechaProtocolo,
 } from './subtareasComplexUtils.js';
 
 function SemaforoDot({ color }) {
@@ -431,6 +434,24 @@ export default function SubtareasComplexPanel({
                     <p className="mt-1 font-body text-xs text-gray-500">
                       {asignadoLabel} · Límite: {formatearFechaSubtarea(s.fechaLimite)} ·{' '}
                       {(s.archivos || []).length} archivo(s)
+                      {subtareaEsSoloFecha(s) ? ' · Solo fechas' : ''}
+                      {camposProtocoloDeEtapa(s.etapaTrazabilidad)
+                        .map((c) => {
+                          const valor =
+                            s.fechasProtocolo?.[c.campo] ||
+                            (c.campo === camposProtocoloDeEtapa(s.etapaTrazabilidad)[0]?.campo
+                              ? s.fechaProtocolo
+                              : null);
+                          return valor
+                            ? ` · ${c.label}: ${formatearFechaSubtarea(valor)}`
+                            : '';
+                        })
+                        .join('')}
+                      {!s.fechaProtocolo &&
+                      !Object.keys(s.fechasProtocolo || {}).length &&
+                      subtareaTieneFechaProtocolo(s.etapaTrazabilidad)
+                        ? ' · Sin fecha de protocolo'
+                        : ''}
                     </p>
                   </button>
                   <div className="flex flex-wrap gap-1.5">

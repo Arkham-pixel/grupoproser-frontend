@@ -78,6 +78,8 @@ export async function navegarAjusteDesdeCasoComplex(navigate, caso, opts = {}) {
           f?.datos?.numeroCaso,
           f?.datos?.numeroAjuste,
           f?.datos?.nmroAjste,
+          f?.datos?.metadata?.numeroAjuste,
+          f?.trazabilidadSecuencia?.numeroAjuste,
         ]
           .map(normalizarClaveCaso)
           .filter(Boolean);

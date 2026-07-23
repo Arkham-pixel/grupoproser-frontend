@@ -3,10 +3,12 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FaSignOutAlt } from 'react-icons/fa'
 import { apiRequest } from '../config/apiConfig.js'
+import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js'
 
-export default function LogoutButton({ variant = 'default' }) {
+export default function LogoutButton({ variant = 'default', label = 'Cerrar sesión' }) {
   const navigate = useNavigate()
   const isSidebar = variant === 'sidebar'
+  const isCompact = variant === 'compact'
 
   const handleLogout = async () => {
     try {
@@ -27,15 +29,22 @@ export default function LogoutButton({ variant = 'default' }) {
     } catch (error) {
       console.error('Error en logout:', error);
     } finally {
-      // Limpiar localStorage
-      localStorage.removeItem('token');
-      localStorage.removeItem('login');
-      localStorage.removeItem('rol');
-      localStorage.removeItem('tipoUsuario');
-      localStorage.removeItem('nombre');
-      localStorage.removeItem('sessionStartTime');
+      limpiarSesionLocal();
       navigate('/login', { replace: true });
     }
+  }
+
+  if (isCompact) {
+    return (
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70"
+      >
+        <FaSignOutAlt className="text-sm" />
+        <span>{label}</span>
+      </button>
+    );
   }
 
   return (
@@ -78,7 +87,7 @@ export default function LogoutButton({ variant = 'default' }) {
       }
     >
       <FaSignOutAlt className="text-sm" />
-      <span>Cerrar sesión</span>
+      <span>{label}</span>
     </button>
   )
 }

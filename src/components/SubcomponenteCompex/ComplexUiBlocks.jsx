@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
 import { FaChartBar, FaChartLine, FaCheckCircle, FaClipboardList, FaExclamationTriangle, FaInbox, FaInfoCircle, FaTable } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../../config/gerentesFacturacion';
 import {
   combinarFechaHoraInputs,
+  combinarHora12A24,
+  normalizarHoraEscrita,
   partirFechaHoraParaInputs,
+  partirHora12Desde24,
 } from '../../utils/complexFechaHoraUtils.js';
 import {
   complexBadge,
@@ -263,8 +266,9 @@ export function SelectFenix({ children, className = '', ...props }) {
 
 /**
  * Fecha + hora de hitos de protocolo.
- * Usa inputs separados (date / time) para poder escribir a mano sin pelear con datetime-local
- * (en Windows el año queda trabado en valores corruptos tipo 0008/1902).
+ * - Fecha: input date nativo.
+ * - Hora: selects 12h (hora / minuto / a.m.|p.m.) + campo de escritura libre
+ *   (acepta 11, 11:00, 1100, 11am…) para no pelear con type="time" en Windows.
  */
 export function InputFechaHoraProtocolo({
   name,
@@ -280,6 +284,24 @@ export function InputFechaHoraProtocolo({
   id,
 }) {
   const { fecha, hora } = partirFechaHoraParaInputs(value);
+  const partes = hora
+    ? partirHora12Desde24(hora)
+    : { hora12: '', minuto: '', ampm: 'am' };
+  const [textoHora, setTextoHora] = useState(() => {
+    if (!hora) return '';
+    const p = partirHora12Desde24(hora);
+    return p.hora12 ? `${p.hora12}:${p.minuto} ${p.ampm === 'pm' ? 'p. m.' : 'a. m.'}` : '';
+  });
+
+  useEffect(() => {
+    if (!hora) {
+      setTextoHora('');
+      return;
+    }
+    const p = partirHora12Desde24(hora);
+    if (!p.hora12) return;
+    setTextoHora(`${p.hora12}:${p.minuto} ${p.ampm === 'pm' ? 'p. m.' : 'a. m.'}`);
+  }, [hora]);
 
   const emitir = (nuevaFecha, nuevaHora) => {
     if (!onChange || !name) return;
@@ -287,9 +309,26 @@ export function InputFechaHoraProtocolo({
     onChange({ target: { name, value: combinado } });
   };
 
+  const emitirDesde12 = (h12, minuto, ampm, fechaBase = fecha) => {
+    const h24 = combinarHora12A24(h12, minuto, ampm);
+    if (!h24 || !fechaBase) return;
+    emitir(fechaBase, h24);
+  };
+
+  const aplicarTextoHora = (texto) => {
+    const normalizada = normalizarHoraEscrita(texto);
+    if (!normalizada) return false;
+    if (!fecha) return false;
+    emitir(fecha, normalizada);
+    return true;
+  };
+
+  const minutosOpts = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  const horasOpts = Array.from({ length: 12 }, (_, i) => String(i + 1));
+
   return (
     <div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
         <input
           id={id}
           type="date"
@@ -304,21 +343,90 @@ export function InputFechaHoraProtocolo({
           onBlur={onBlur}
           aria-label="Fecha"
         />
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-1.5">
+          <select
+            name={`${name}__hora12`}
+            className={`${complexSelect} ${className}`}
+            value={partes.hora12 || ''}
+            disabled={disabled || !fecha}
+            onChange={(e) =>
+              emitirDesde12(e.target.value, partes.minuto || '00', partes.ampm || 'am')
+            }
+            aria-label="Hora"
+          >
+            <option value="">Hora</option>
+            {horasOpts.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </select>
+          <select
+            name={`${name}__minuto`}
+            className={`${complexSelect} ${className}`}
+            value={partes.minuto || ''}
+            disabled={disabled || !fecha}
+            onChange={(e) =>
+              emitirDesde12(partes.hora12 || '12', e.target.value, partes.ampm || 'am')
+            }
+            aria-label="Minutos"
+          >
+            <option value="">Min</option>
+            {minutosOpts.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            name={`${name}__ampm`}
+            className={`${complexSelect} ${className} min-w-[4.5rem]`}
+            value={partes.ampm || 'am'}
+            disabled={disabled || !fecha}
+            onChange={(e) =>
+              emitirDesde12(partes.hora12 || '12', partes.minuto || '00', e.target.value)
+            }
+            aria-label="a. m. o p. m."
+          >
+            <option value="am">a. m.</option>
+            <option value="pm">p. m.</option>
+          </select>
+        </div>
+      </div>
+      <div className="mt-1.5">
         <input
-          type="time"
-          name={`${name}__hora`}
-          value={hora}
+          type="text"
+          inputMode="numeric"
+          name={`${name}__horaTexto`}
+          value={textoHora}
           disabled={disabled || !fecha}
+          placeholder="Escribir hora: 11, 11:30, 11am…"
           className={`${complexInput} ${className}`}
-          onChange={(e) => emitir(fecha, e.target.value)}
-          onBlur={onBlur}
-          aria-label="Hora"
+          onChange={(e) => setTextoHora(e.target.value)}
+          onBlur={(e) => {
+            const ok = aplicarTextoHora(e.target.value);
+            if (!ok && hora) {
+              const p = partirHora12Desde24(hora);
+              setTextoHora(
+                p.hora12 ? `${p.hora12}:${p.minuto} ${p.ampm === 'pm' ? 'p. m.' : 'a. m.'}` : ''
+              );
+            }
+            onBlur?.(e);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              aplicarTextoHora(textoHora);
+              e.currentTarget.blur();
+            }
+          }}
+          aria-label="Escribir hora"
         />
       </div>
       {hint !== false && (
         <p className={complexHint}>
           {hint ||
-            'Puede escribir la fecha y la hora a mano, o usar el calendario. Año mínimo 2024.'}
+            'Elija fecha y hora con las listas, o escriba la hora (ej. 11, 11:30, 11am). La hora no cambia al guardar.'}
         </p>
       )}
     </div>

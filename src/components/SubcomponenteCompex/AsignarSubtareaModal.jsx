@@ -686,6 +686,9 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                 </select>
                 <p className={complexHint}>
                   La fecha límite se calcula con el protocolo de tiempos vigente.
+                  {form.etapaTrazabilidad === 'coordinacionInspeccion'
+                    ? ' Esta asignación incluye el flujo completo: coordinación → inspección/acta → opcionalmente informe preliminar o cierre para el ajustador.'
+                    : ''}
                 </p>
               </div>
 

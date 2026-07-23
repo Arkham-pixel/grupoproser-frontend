@@ -4064,6 +4064,11 @@ if (formData.anexos && formData.anexos.length > 0) {
           ...(datosParaGuardar.metadata || {}),
           complexId: complexIdPersistente
         };
+        // El backend usa datos.casoId para no generar CASO_/RPT- y para
+        // sincronizar el Word en historialDocs de Trazabilidad.
+        if (/^[a-fA-F0-9]{24}$/.test(complexIdPersistente)) {
+          datosParaGuardar.casoId = complexIdPersistente;
+        }
       }
 
       const sanitizarSegmentoCarpeta = (v) =>
@@ -4161,7 +4166,9 @@ const numeroAjusteContinuidad = resolverNumeroAjusteCanonico(
                 f?.numeroCaso,
                 f?.datos?.numeroCaso,
                 f?.datos?.numeroAjuste,
-                f?.datos?.nmroAjste
+                f?.datos?.nmroAjste,
+                f?.datos?.metadata?.numeroAjuste,
+                f?.trazabilidadSecuencia?.numeroAjuste,
               ].map(v => String(v || '').toUpperCase().replace(/\s+/g, '')).filter(Boolean);
               return posibles.includes(clave);
             })
@@ -4624,7 +4631,28 @@ mostrarModalConfirmacion(
             'success',
             'Aceptar',
             false,
-            () => navigate(`/ajuste/editar/${nuevoId}`)
+            () =>
+              navigate(`/ajuste/editar/${nuevoId}`, {
+                state: {
+                  ...(location.state || {}),
+                  complexId:
+                    complexIdPersistente ||
+                    location?.state?.complexId ||
+                    datosParaGuardar?.metadata?.complexId ||
+                    '',
+                  nmroAjste:
+                    numeroAjustePersistente ||
+                    location?.state?.nmroAjste ||
+                    datosParaGuardar?.numeroCaso ||
+                    '',
+                  numeroCaso:
+                    numeroAjustePersistente ||
+                    location?.state?.numeroCaso ||
+                    datosParaGuardar?.numeroCaso ||
+                    '',
+                },
+                replace: true,
+              })
           );
         } else if (nuevoId && typeof nuevoId === 'object' && nuevoId.id) {
           // Si es un objeto con propiedad id
@@ -4634,7 +4662,28 @@ mostrarModalConfirmacion(
             'success',
             'Aceptar',
             false,
-            () => navigate(`/ajuste/editar/${nuevoId.id}`)
+            () =>
+              navigate(`/ajuste/editar/${nuevoId.id}`, {
+                state: {
+                  ...(location.state || {}),
+                  complexId:
+                    complexIdPersistente ||
+                    location?.state?.complexId ||
+                    datosParaGuardar?.metadata?.complexId ||
+                    '',
+                  nmroAjste:
+                    numeroAjustePersistente ||
+                    location?.state?.nmroAjste ||
+                    datosParaGuardar?.numeroCaso ||
+                    '',
+                  numeroCaso:
+                    numeroAjustePersistente ||
+                    location?.state?.numeroCaso ||
+                    datosParaGuardar?.numeroCaso ||
+                    '',
+                },
+                replace: true,
+              })
           );
         } else {
           console.error('❌ ID inválido recibido:', nuevoId);
@@ -4651,26 +4700,57 @@ mostrarModalConfirmacion(
 
       // Si es una versión de actualización o informe final, guardar también en versiones
       if (estadoActual === 'actualizacion' || estadoActual === 'informeFinal') {
-setVersiones(prev => ({
+        const versionId = `${estadoActual}_${Date.now()}`;
+        const fechaVersion = obtenerFechaHoraActualISO();
+        setVersiones((prev) => ({
           ...prev,
           [estadoActual]: {
             ...datosFormulario,
-            fechaVersion: obtenerFechaHoraActualISO(),
-            versionId: `${estadoActual}_${Date.now()}`
-          }
+            fechaVersion,
+            versionId,
+          },
         }));
-        
-        // Guardar en localStorage para persistencia
-        localStorage.setItem(`versiones_${id || 'nuevo'}`, JSON.stringify({
-          ...versiones,
-          [estadoActual]: {
-            ...datosFormulario,
-            fechaVersion: obtenerFechaHoraActualISO(),
-            versionId: `${estadoActual}_${Date.now()}`
+
+        // Solo metadatos ligeros en localStorage (nunca el formulario completo:
+        // fotos/base64/Word saturan la cuota ~5MB y lanzan QuotaExceededError).
+        try {
+          const clave = `versiones_${idParaActualizar || id || 'nuevo'}`;
+          const prevRaw = localStorage.getItem(clave);
+          let prev = {};
+          try {
+            prev = prevRaw ? JSON.parse(prevRaw) : {};
+          } catch {
+            prev = {};
           }
-        }));
-        
-}
+          localStorage.setItem(
+            clave,
+            JSON.stringify({
+              ...prev,
+              [estadoActual]: {
+                fechaVersion,
+                versionId,
+                estadoActual,
+                titulo: datosFormulario?.titulo || '',
+              },
+            })
+          );
+        } catch (storageErr) {
+          if (storageErr?.name === 'QuotaExceededError') {
+            console.warn(
+              '⚠️ localStorage lleno: se omitió caché local de versiones (el guardado en servidor ya se hizo).'
+            );
+            try {
+              Object.keys(localStorage)
+                .filter((k) => k.startsWith('versiones_') || k.startsWith('autosave_'))
+                .forEach((k) => localStorage.removeItem(k));
+            } catch {
+              /* ignore */
+            }
+          } else {
+            console.warn('⚠️ No se pudo guardar metadatos de versión en localStorage:', storageErr);
+          }
+        }
+      }
 
       setCargando(false);
     } catch (error) {

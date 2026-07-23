@@ -27,11 +27,17 @@ export default function PortalAjusteExternoBridge() {
         localStorage.setItem('login', `externo:${res.subtarea?.id || ''}`);
         localStorage.setItem('nombre', res.nombre || 'Externo');
         localStorage.setItem('subtareaExternaReturn', `/complex/subtarea/${token}`);
+        const estadoQuery = new URLSearchParams(window.location.search).get('estado');
+        const etapa = res.subtarea?.etapaTrazabilidad;
         await navegarAjusteDesdeCasoComplex(navigate, res.caso, {
           returnPath: `/complex/subtarea/${token}`,
           origen: 'subtarea-externa',
-          // Abrir directo en la versión que pide la subtarea (p. ej. informe preliminar)
-          estadoInicial: estadoAjusteDesdeEtapaSubtarea(res.subtarea?.etapaTrazabilidad),
+          estadoInicial:
+            estadoQuery ||
+            estadoAjusteDesdeEtapaSubtarea(etapa) ||
+            (String(etapa || '').trim() === 'coordinacionInspeccion'
+              ? 'actaInspeccion'
+              : ''),
         });
       } catch (err) {
         if (activo) setError(err.message || 'No se pudo abrir el formulario de ajuste');
