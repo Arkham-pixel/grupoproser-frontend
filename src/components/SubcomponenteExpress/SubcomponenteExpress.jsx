@@ -269,11 +269,11 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     const formDataToSend = new FormData();
     formDataToSend.append('salvamentoAplica', data.salvamentoAplica || '');
 
+    // Incluir '' para poder limpiar observaciones/montos en el servidor
     Object.entries(payload).forEach(([key, value]) => {
       if (key === 'salvamentoAplica') return;
-      if (value !== null && value !== undefined && value !== '') {
-        formDataToSend.append(key, value);
-      }
+      if (value === null || value === undefined) return;
+      formDataToSend.append(key, value);
     });
 
     formDataToSend.append('_id', casoId);
@@ -730,11 +730,11 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       const formDataToSend = new FormData();
       formDataToSend.append('salvamentoAplica', formData.salvamentoAplica);
 
+      // Incluir '' para poder limpiar observaciones/montos en el servidor
       Object.entries(payload).forEach(([key, value]) => {
         if (key === 'salvamentoAplica') return;
-        if (value !== null && value !== undefined && value !== '') {
-          formDataToSend.append(key, value);
-        }
+        if (value === null || value === undefined) return;
+        formDataToSend.append(key, value);
       });
 
       if (editing) {
@@ -947,11 +947,11 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     <InputFenix
                       id="valorIndemnizacion"
                       name="valorIndemnizacion"
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       value={formData.valorIndemnizacion}
                       onChange={handleChange}
+                      placeholder="Ej: 1.250.000,50"
                       className="flex-1"
                     />
                     <button
@@ -966,9 +966,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                           );
                           return;
                         }
-                        navigate(`/express/liquidador?casoId=${formData._id}`, {
-                          state: { casoExpress: formData },
-                        });
+                        navigate(`/express/liquidador?casoId=${formData._id}`);
                       }}
                       title="Abrir liquidador y guardar documentos en el caso"
                     >
@@ -981,11 +979,11 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                   <InputFenix
                     id="reserva"
                     name="reserva"
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={formData.reserva}
                     onChange={handleChange}
+                    placeholder="Ej: 3.999.999 o 3999999,50"
                   />
                 </Campo>
                   </div>
@@ -1070,12 +1068,11 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                           <InputFenix
                             id="valorSalvamento"
                             name="valorSalvamento"
-                            type="number"
-                            min="0"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             value={formData.valorSalvamento}
                             onChange={handleChange}
-                            placeholder="Ingrese el valor en COP"
+                            placeholder="Ej: 1.250.000 o 1250000,50"
                           />
                         </Campo>
                         <Campo label="Documentos de salvamento">

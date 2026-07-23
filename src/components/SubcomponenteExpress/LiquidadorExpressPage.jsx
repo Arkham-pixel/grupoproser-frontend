@@ -15,7 +15,10 @@ import {
   getSiniestroExpressById,
   guardarLiquidadorEnCasoExpress,
 } from '../../services/expressService.js';
-import { calcularLiquidacion } from './liquidadorExpressHelpers.js';
+import {
+  calcularLiquidacion,
+  aplicaFormatoSalvamento,
+} from './liquidadorExpressHelpers.js';
 import { generarReciboIndemnizacionBlob } from './generarReciboIndemnizacionWord.js';
 import { generarLiquidadorExpressExcelBlob } from './generarLiquidadorExpressExcel.js';
 import {
@@ -28,10 +31,13 @@ export default function LiquidadorExpressPage() {
   const [searchParams] = useSearchParams();
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
 
-  const [casoExpress, setCasoExpress] = useState(location.state?.casoExpress ?? null);
+  // Con casoId siempre partimos de null y esperamos el GET (el state del form no trae liquidador).
+  const [casoExpress, setCasoExpress] = useState(
+    casoIdFromQuery ? null : location.state?.casoExpress ?? null
+  );
   const [liquidadorState, setLiquidadorState] = useState(null);
   const [totalesState, setTotalesState] = useState(null);
-  const [cargandoCaso, setCargandoCaso] = useState(false);
+  const [cargandoCaso, setCargandoCaso] = useState(Boolean(casoIdFromQuery));
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -41,22 +47,28 @@ export default function LiquidadorExpressPage() {
   useEffect(() => {
     let cancelado = false;
     async function cargar() {
-      if (!casoIdFromQuery && location.state?.casoExpress) {
-        setCasoExpress(location.state.casoExpress);
+      if (casoIdFromQuery) {
+        setCargandoCaso(true);
+        setError('');
+        try {
+          const caso = await getSiniestroExpressById(casoIdFromQuery);
+          if (!cancelado) setCasoExpress(caso);
+        } catch (err) {
+          if (!cancelado) {
+            setError(err.message || 'No se pudo cargar el caso Express.');
+            // Fallback: state de navegación si el GET falla
+            if (location.state?.casoExpress) {
+              setCasoExpress(location.state.casoExpress);
+            }
+          }
+        } finally {
+          if (!cancelado) setCargandoCaso(false);
+        }
         return;
       }
-      if (!casoIdFromQuery) return;
-      setCargandoCaso(true);
-      setError('');
-      try {
-        const caso = await getSiniestroExpressById(casoIdFromQuery);
-        if (!cancelado) setCasoExpress(caso);
-      } catch (err) {
-        if (!cancelado) {
-          setError(err.message || 'No se pudo cargar el caso Express.');
-        }
-      } finally {
-        if (!cancelado) setCargandoCaso(false);
+
+      if (location.state?.casoExpress) {
+        setCasoExpress(location.state.casoExpress);
       }
     }
     cargar();
@@ -77,13 +89,13 @@ export default function LiquidadorExpressPage() {
     setTotalesState(tot);
   };
 
-  const handleGuardarEnCaso = async () => {
+  const handleGuardarEnCaso = async (liquidadorArg, totalesArg) => {
     if (!casoId) {
       setError('Debe abrir el liquidador desde un caso Express ya guardado (reporte o carga).');
       return;
     }
-    const liquidador = liquidadorState;
-    const totales = totalesState || calcularLiquidacion(liquidador || {});
+    const liquidador = liquidadorArg || liquidadorState;
+    const totales = totalesArg || totalesState || calcularLiquidacion(liquidador || {});
     if (!liquidador) {
       setError('No hay datos del liquidador para guardar.');
       return;
@@ -93,27 +105,68 @@ export default function LiquidadorExpressPage() {
     setError('');
     setMensaje('');
     try {
-      const [excel, recibo, checklist, salvamento] = await Promise.all([
-        generarLiquidadorExpressExcelBlob(liquidador, totales),
-        generarReciboIndemnizacionBlob(liquidador, totales),
-        generarChecklistExpressBlob(liquidador, totales),
-        generarSalvamentoExpressBlob(liquidador),
-      ]);
-
-      const actualizado = await guardarLiquidadorEnCasoExpress({
+      // 1) Guardar JSON del liquidador primero (no depende de generar Word/Excel)
+      const guardadoInicial = await guardarLiquidadorEnCasoExpress({
         casoId,
         liquidador,
         valorIndemnizacion: totales.totalIndemnizar,
-        archivos: [excel, recibo, checklist, salvamento],
+        archivos: [],
         anexosActuales: casoExpress?.anexos || [],
         anexosSalvamentoActuales: casoExpress?.anexosSalvamento || [],
         casoBase: casoExpress || {},
       });
+      const casoTrasJson = guardadoInicial?.caso || guardadoInicial;
+      setCasoExpress(casoTrasJson);
+      setLiquidadorState(liquidador);
+      setTotalesState(totales);
 
-      setCasoExpress(actualizado);
-      setMensaje(
-        'Liquidador guardado en el caso. Se actualizó el valor de indemnización y se adjuntaron Excel + Word en documentos.'
-      );
+      // 2) Generar y adjuntar documentos (si falla, el liquidador ya quedó en el caso)
+      let archivosOk = true;
+      let archivosError = null;
+      try {
+        const incluirSalvamento = aplicaFormatoSalvamento(liquidador, casoTrasJson || casoExpress);
+        const generadores = [
+          generarLiquidadorExpressExcelBlob(liquidador, totales, { incluirSalvamento }),
+          generarReciboIndemnizacionBlob(liquidador, totales),
+          generarChecklistExpressBlob(liquidador, totales),
+        ];
+        if (incluirSalvamento) {
+          generadores.push(generarSalvamentoExpressBlob(liquidador));
+        }
+
+        const generados = await Promise.all(generadores);
+
+        const guardadoArchivos = await guardarLiquidadorEnCasoExpress({
+          casoId,
+          liquidador,
+          valorIndemnizacion: totales.totalIndemnizar,
+          archivos: generados,
+          anexosActuales: casoTrasJson?.anexos || [],
+          anexosSalvamentoActuales: casoTrasJson?.anexosSalvamento || [],
+          casoBase: casoTrasJson || casoExpress || {},
+        });
+        const casoFinal = guardadoArchivos?.caso || guardadoArchivos;
+        archivosOk = guardadoArchivos?.archivosOk !== false;
+        archivosError = guardadoArchivos?.archivosError || null;
+        setCasoExpress(casoFinal);
+      } catch (errArchivos) {
+        archivosOk = false;
+        archivosError = errArchivos?.message || 'No se pudieron generar/adjuntar Word/Excel';
+        console.error(errArchivos);
+      }
+
+      if (archivosOk) {
+        const conSalvamento = aplicaFormatoSalvamento(liquidador, casoExpress);
+        setMensaje(
+          conSalvamento
+            ? 'Liquidador guardado en el caso. Se actualizó el valor de indemnización y se adjuntaron Excel + Word en documentos.'
+            : 'Liquidador guardado. Salvamento no aplica: se omitió la hoja/formato SALVAMENTO; liquidación, checklist y recibo sí se generaron.'
+        );
+      } else {
+        setMensaje(
+          `Liquidador guardado en el caso (conceptos y totales OK). Advertencia archivos: ${archivosError || 'revise anexos'}.`
+        );
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || 'No se pudo guardar el liquidador en el caso.');
@@ -122,9 +175,11 @@ export default function LiquidadorExpressPage() {
     }
   };
 
-  const volverHref = casoId
-    ? `/express/reporte`
-    : '/express/carga';
+  const volverHref = casoId ? `/express/reporte` : '/express/carga';
+
+  const liquidadorKey = casoExpress
+    ? `${casoExpress._id || 'sin-id'}-${casoExpress.liquidador ? 'con' : 'sin'}-liq`
+    : 'nuevo';
 
   return (
     <div className={expressScope}>
@@ -140,7 +195,7 @@ export default function LiquidadorExpressPage() {
                 <button
                   type="button"
                   className={expressBtnPrimary}
-                  onClick={handleGuardarEnCaso}
+                  onClick={() => handleGuardarEnCaso(liquidadorState, totalesState)}
                   disabled={guardando || cargandoCaso}
                 >
                   <FaSave />
@@ -169,7 +224,7 @@ export default function LiquidadorExpressPage() {
             {mensaje}
           </p>
         )}
-        {!casoId && (
+        {!casoId && !cargandoCaso && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
             Modo maqueta: puede descargar Word/Excel, pero para guardar en documentos del caso ábralo con el botón{' '}
             <strong>Liquidador</strong> desde el reporte o desde la ficha del caso.
@@ -179,15 +234,13 @@ export default function LiquidadorExpressPage() {
         <div className={expressCard}>
           <div className={expressCardBody}>
             {cargandoCaso ? (
-              <p className="font-body text-sm text-gray-500">Cargando caso…</p>
+              <p className="font-body text-sm text-gray-500">Cargando liquidador del caso…</p>
             ) : (
               <LiquidadorExpress
-                key={casoExpress?._id || 'nuevo'}
+                key={liquidadorKey}
                 casoExpress={casoExpress}
                 valorInicial={
-                  casoExpress?.liquidador
-                    ? null
-                    : casoExpress?.valorIndemnizacion
+                  casoExpress?.liquidador ? null : casoExpress?.valorIndemnizacion
                 }
                 casoId={casoId}
                 onEstadoChange={handleEstadoChange}

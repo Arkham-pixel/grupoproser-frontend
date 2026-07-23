@@ -682,9 +682,7 @@ const ReporteExpress = () => {
                           <button
                             type="button"
                             onClick={() =>
-                              navigate(`/express/liquidador?casoId=${item._id}`, {
-                                state: { casoExpress: item },
-                              })
+                              navigate(`/express/liquidador?casoId=${item._id}`)
                             }
                             className={`${expressBtnSecondary} !px-3 !py-1.5 !text-xs`}
                             title={

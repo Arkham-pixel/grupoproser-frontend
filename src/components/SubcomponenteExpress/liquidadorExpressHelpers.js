@@ -216,6 +216,22 @@ export function montoALetras(valor) {
   return texto;
 }
 
+/**
+ * ¿Debe generarse/mostrarse la hoja y el Word de SALVAMENTO?
+ * Prioriza el flag del caso Express; si no hay, usa el checklist del liquidador.
+ */
+export function aplicaFormatoSalvamento(liquidador = {}, casoExpress = null) {
+  const delCaso = casoExpress?.salvamentoAplica;
+  if (delCaso === 'aplica') return true;
+  if (delCaso === 'no_aplica') return false;
+
+  const delChecklist = liquidador?.checklist?.salvamento;
+  if (delChecklist === 'Aplica') return true;
+  if (delChecklist === 'No Aplica') return false;
+
+  return false;
+}
+
 export function mapCasoExpressALiquidador(caso = {}) {
   const hoy = new Date().toISOString().slice(0, 10);
   const base = {
@@ -249,32 +265,45 @@ export function mapCasoExpressALiquidador(caso = {}) {
   };
 
   if (caso.liquidador && typeof caso.liquidador === 'object') {
+    const liq = caso.liquidador;
     return {
-      ...base,
-      ...caso.liquidador,
+      ...DEFAULT_LIQUIDADOR_EXPRESS,
+      ...liq,
       encabezado: {
+        ...DEFAULT_LIQUIDADOR_EXPRESS.encabezado,
         ...base.encabezado,
-        ...(caso.liquidador.encabezado || {}),
+        ...(liq.encabezado || {}),
+        // Preferir lo guardado; si viene vacío, completar desde el caso
+        reclamo: liq.encabezado?.reclamo || base.encabezado.reclamo,
+        zc: liq.encabezado?.zc || base.encabezado.zc,
+        asegurado: liq.encabezado?.asegurado || base.encabezado.asegurado,
+        nit: liq.encabezado?.nit || base.encabezado.nit,
+        poliza: liq.encabezado?.poliza || base.encabezado.poliza,
+        fechaSiniestro: liq.encabezado?.fechaSiniestro || base.encabezado.fechaSiniestro,
+        cobertura: liq.encabezado?.cobertura || base.encabezado.cobertura,
       },
       deducible: {
+        ...DEFAULT_LIQUIDADOR_EXPRESS.deducible,
         ...base.deducible,
-        ...(caso.liquidador.deducible || {}),
+        ...(liq.deducible || {}),
       },
       checklist: {
+        ...DEFAULT_LIQUIDADOR_EXPRESS.checklist,
         ...base.checklist,
-        ...(caso.liquidador.checklist || {}),
-        documentos: Array.isArray(caso.liquidador.checklist?.documentos)
-          ? caso.liquidador.checklist.documentos
+        ...(liq.checklist || {}),
+        documentos: Array.isArray(liq.checklist?.documentos)
+          ? liq.checklist.documentos
           : base.checklist.documentos,
-        itemsAnalisis: Array.isArray(caso.liquidador.checklist?.itemsAnalisis)
-          ? caso.liquidador.checklist.itemsAnalisis
+        itemsAnalisis: Array.isArray(liq.checklist?.itemsAnalisis)
+          ? liq.checklist.itemsAnalisis
           : base.checklist.itemsAnalisis,
       },
       salvamento: {
+        ...DEFAULT_LIQUIDADOR_EXPRESS.salvamento,
         ...base.salvamento,
-        ...(caso.liquidador.salvamento || {}),
+        ...(liq.salvamento || {}),
       },
-      conceptos: Array.isArray(caso.liquidador.conceptos) ? caso.liquidador.conceptos : [],
+      conceptos: Array.isArray(liq.conceptos) ? liq.conceptos : [],
     };
   }
 
@@ -298,15 +327,24 @@ export function totalesItemsAnalisis(items = []) {
   return { totalReclamado, totalAjustado };
 }
 
+function formatearFechaSiniestroLarga(fechaISO) {
+  if (!fechaISO) return '';
+  const raw = String(fechaISO).slice(0, 10);
+  const d = new Date(`${raw}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString('es-CO', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
 export function buildReciboPreview(liquidador, totales) {
   const h = liquidador.encabezado || {};
   const monto = totales.totalIndemnizar;
   const letras = montoALetras(monto);
-  const hoy = new Date().toLocaleDateString('es-CO', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const fechaSiniestro =
+    formatearFechaSiniestroLarga(h.fechaSiniestro) || '—';
   const { texto: descStro } = textoDescripcionSiniestroRecibo(liquidador);
 
   return {
@@ -315,7 +353,7 @@ export function buildReciboPreview(liquidador, totales) {
     asegurado: h.asegurado || '—',
     nit: h.nit || '—',
     poliza: h.poliza || '—',
-    fecha: hoy,
+    fecha: fechaSiniestro,
     valor: formatearMonto(monto),
     valorLetras: letras,
     anio: String(new Date().getFullYear()),

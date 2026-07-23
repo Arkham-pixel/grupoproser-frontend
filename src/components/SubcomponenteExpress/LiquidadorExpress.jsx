@@ -33,6 +33,7 @@ import {
   DOCUMENTOS_SOPORTE,
   formatearMonto,
   mapCasoExpressALiquidador,
+  aplicaFormatoSalvamento,
   NOTAS_SALVAMENTO,
   OPCIONES_APLICA,
   pctDocumentosMarcados,
@@ -45,7 +46,7 @@ import {
 } from './generarFormatosExpressWord.js';
 import { descargarLiquidadorExpressExcel } from './generarLiquidadorExpressExcel.js';
 
-const TABS = [
+const TABS_BASE = [
   { id: 'liquidacion', label: 'Liquidación', icon: FaCalculator },
   { id: 'checklist', label: 'Check-list', icon: FaClipboardCheck },
   { id: 'salvamento', label: 'Salvamento', icon: FaRecycle },
@@ -147,6 +148,23 @@ export default function LiquidadorExpress({
   const [descargandoWord, setDescargandoWord] = useState(false);
   const [errorWord, setErrorWord] = useState('');
 
+  // Si el caso llega después (GET) con liquidador guardado, hidratar una vez.
+  useEffect(() => {
+    if (!casoExpress?.liquidador || typeof casoExpress.liquidador !== 'object') return;
+    const conceptosGuardados = casoExpress.liquidador.conceptos;
+    const tieneDatos =
+      (Array.isArray(conceptosGuardados) && conceptosGuardados.length > 0) ||
+      Boolean(casoExpress.liquidador.encabezado?.reclamo) ||
+      Boolean(casoExpress.liquidador.checklist?.descripcionEvento);
+    if (!tieneDatos) return;
+
+    const conceptosActuales = liquidador?.conceptos || [];
+    if (conceptosActuales.length > 0) return;
+
+    setLiquidador(mapCasoExpressALiquidador(casoExpress));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo hidratar al llegar liquidador vacío→lleno
+  }, [casoExpress]);
+
   const totales = useMemo(() => calcularLiquidacion(liquidador), [liquidador]);
   const recibo = useMemo(
     () => buildReciboPreview(liquidador, totales),
@@ -157,6 +175,18 @@ export default function LiquidadorExpress({
     () => totalesItemsAnalisis(liquidador.checklist?.itemsAnalisis),
     [liquidador.checklist?.itemsAnalisis]
   );
+
+  const salvamentoActivo = aplicaFormatoSalvamento(liquidador, casoExpress);
+  const tabsVisibles = useMemo(
+    () => (salvamentoActivo ? TABS_BASE : TABS_BASE.filter((t) => t.id !== 'salvamento')),
+    [salvamentoActivo]
+  );
+
+  useEffect(() => {
+    if (!salvamentoActivo && tab === 'salvamento') {
+      setTab('liquidacion');
+    }
+  }, [salvamentoActivo, tab]);
 
   useEffect(() => {
     onTotalIndemnizarChange?.(totales.totalIndemnizar);
@@ -257,6 +287,10 @@ export default function LiquidadorExpress({
   };
 
   const handleDescargarSalvamento = async () => {
+    if (!aplicaFormatoSalvamento(liquidador, casoExpress)) {
+      setErrorWord('Salvamento no aplica en este caso: no se genera el formato SALVAMENTO.');
+      return;
+    }
     setDescargandoWord(true);
     setErrorWord('');
     try {
@@ -273,7 +307,9 @@ export default function LiquidadorExpress({
     setDescargandoWord(true);
     setErrorWord('');
     try {
-      await descargarLiquidadorExpressExcel(liquidador, totales);
+      await descargarLiquidadorExpressExcel(liquidador, totales, {
+        incluirSalvamento: aplicaFormatoSalvamento(liquidador, casoExpress),
+      });
     } catch (err) {
       console.error('Error al generar Excel del liquidador:', err);
       setErrorWord('No se pudo generar el archivo Excel del liquidador.');
@@ -302,7 +338,7 @@ export default function LiquidadorExpress({
       {!compact && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap gap-2">
-            {TABS.map((t) => (
+            {tabsVisibles.map((t) => (
               <TabButton key={t.id} tab={t} active={tab === t.id} onClick={setTab} />
             ))}
           </div>
@@ -311,7 +347,7 @@ export default function LiquidadorExpress({
               <button
                 type="button"
                 className={expressBtnPrimary}
-                onClick={onGuardarEnCaso}
+                onClick={() => onGuardarEnCaso(liquidador, totales)}
                 disabled={guardandoCaso || descargandoWord}
               >
                 <FaSave />
@@ -329,7 +365,11 @@ export default function LiquidadorExpress({
               disabled={descargandoWord || guardandoCaso}
             >
               <FaFileExcel />
-              {descargandoWord ? 'Generando…' : 'Descargar Excel (3 hojas)'}
+              {descargandoWord
+                ? 'Generando…'
+                : salvamentoActivo
+                  ? 'Descargar Excel (3 hojas)'
+                  : 'Descargar Excel (2 hojas)'}
             </button>
           </div>
         </div>
@@ -757,7 +797,7 @@ export default function LiquidadorExpress({
         </div>
       )}
 
-      {tab === 'salvamento' && (
+      {tab === 'salvamento' && salvamentoActivo && (
         <div className="space-y-5">
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" className={expressBtnGhost} onClick={handleDescargarExcel} disabled={descargandoWord}>
@@ -877,7 +917,7 @@ export default function LiquidadorExpress({
                   <strong>Póliza:</strong> {recibo.poliza}
                 </p>
                 <p>
-                  <strong>Fecha:</strong> {recibo.fecha}
+                  <strong>Fecha de siniestro:</strong> {recibo.fecha}
                 </p>
                 <p className="mt-4 text-justify leading-relaxed">{recibo.parrafoPrincipal}</p>
                 <p className="text-justify text-xs text-gray-500">

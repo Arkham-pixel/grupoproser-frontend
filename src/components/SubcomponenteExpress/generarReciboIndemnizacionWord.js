@@ -62,7 +62,7 @@ export async function generarReciboIndemnizacionBlob(liquidador, totales) {
     parrafoCampo('Asegurado', recibo.asegurado),
     parrafoCampo('Nit', recibo.nit),
     parrafoCampo('Póliza', recibo.poliza),
-    parrafoCampo('Fecha', recibo.fecha),
+    parrafoCampo('Fecha de siniestro', recibo.fecha),
     parrafoTexto('', { spacingAfter: 80 }),
     parrafoPrincipal,
     parrafoTexto(

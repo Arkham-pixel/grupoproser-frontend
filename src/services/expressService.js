@@ -20,8 +20,35 @@ const toISODate = (value) => {
 
 const toNumber = (value) => {
   if (value === undefined || value === null || value === '') return 0;
-  const parsed = Number(value);
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+
+  let s = String(value).trim().replace(/\s/g, '');
+  if (!s) return 0;
+
+  if (s.includes(',') && s.includes('.')) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (s.includes(',')) {
+    s = s.replace(',', '.');
+  } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+    s = s.replace(/\./g, '');
+  }
+
+  const parsed = Number(s);
   return Number.isNaN(parsed) ? 0 : parsed;
+};
+
+const normalizeLiquidador = (raw) => {
+  if (!raw) return null;
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw;
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
 };
 
 const normalizeExpressItem = (item = {}) => {
@@ -117,7 +144,7 @@ const normalizeExpressItem = (item = {}) => {
     valorSalvamentoNumero,
     anexos: Array.isArray(item.anexos) ? item.anexos : [],
     anexosSalvamento: Array.isArray(item.anexosSalvamento) ? item.anexosSalvamento : [],
-    liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
+    liquidador: normalizeLiquidador(item.liquidador),
   };
 };
 
@@ -165,55 +192,40 @@ export const getSiniestrosExpressPaginado = async ({ page = 1, limit = 100 } = {
 export const fetchAllSiniestrosExpress = async (batchSize = 2000) => {
   const acumulado = [];
   let page = 1;
-  let total = null;
+  let total = Infinity;
 
-  while (true) {
-    const respuesta = await getSiniestrosExpressPaginado({ page, limit: batchSize });
-    const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
-    if (total == null && typeof respuesta?.total === 'number') {
-      total = respuesta.total;
-    }
-    if (!lote.length) break;
+  while (acumulado.length < total) {
+    const res = await getSiniestrosExpressPaginado({ page, limit: batchSize });
+    const lote = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+    if (lote.length === 0) break;
     acumulado.push(...lote);
-    if (total != null && acumulado.length >= total) break;
-    if (lote.length < batchSize) break;
+    total = Number(res?.total);
+    if (!Number.isFinite(total)) {
+      // Sin total: seguir hasta lote incompleto
+      if (lote.length < batchSize) break;
+      total = acumulado.length + 1;
+    }
     page += 1;
+    if (page > 500) break;
   }
 
   return acumulado;
 };
 
 export const deleteSiniestroExpress = async (id) => {
-  if (!id) {
-    throw new Error('Identificador de siniestro express no válido');
-  }
   const token = localStorage.getItem('token');
   const response = await fetch(`${EXPRESS_API_URL}/${id}`, {
     method: 'DELETE',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
-  const rawText = await response.text();
-  let payload = {};
-  try {
-    payload = rawText ? JSON.parse(rawText) : {};
-  } catch {
-    payload = {};
-  }
+  const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
-    if (response.status === 404 && rawText.includes('Cannot DELETE')) {
-      throw new Error(
-        'El servidor no tiene activa la ruta de eliminación. Reinicie el backend (npm start en la carpeta backend).'
-      );
-    }
-    throw new Error(
-      payload?.error || payload?.detalle || `Error al eliminar el siniestro express (${response.status})`
-    );
+    throw new Error(payload?.error || `Error al eliminar el caso Express (${response.status})`);
   }
   return payload;
 };
 
 export const getSiniestroExpressById = async (id) => {
-  if (!id) throw new Error('Identificador de siniestro express no válido');
   const token = localStorage.getItem('token');
   const response = await fetch(`${EXPRESS_API_URL}/${id}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -238,83 +250,56 @@ export const esAnexoLiquidador = (anexo = {}) => {
   return PREFIJOS_ANEXO_LIQUIDADOR.some((p) => nombre.startsWith(p));
 };
 
-/**
- * Guarda liquidador JSON + valor indemnización + archivos generados en anexos del caso.
- * Reemplaza anexos previos del liquidador por nombre.
- */
-export const guardarLiquidadorEnCasoExpress = async ({
-  casoId,
-  liquidador,
-  valorIndemnizacion,
-  archivos = [],
-  anexosActuales = [],
-  anexosSalvamentoActuales = [],
-  casoBase = {},
-}) => {
-  if (!casoId) throw new Error('El caso Express debe estar guardado antes de adjuntar el liquidador.');
+const toFormDate = (value) => {
+  if (value === null || value === undefined || value === '') return '';
+  const str = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+  return str;
+};
 
-  const formData = new FormData();
-  const camposBase = {
-    responsable: casoBase.responsable ?? '',
-    codigoWorkflow: casoBase.codigoWorkflow ?? '',
-    numeroSiniestro: casoBase.numeroSiniestro ?? '',
-    fechaSiniestro: casoBase.fechaSiniestro ?? '',
-    avisoSiniestro: casoBase.avisoSiniestro ?? '',
-    avisoSiniestroCompania: casoBase.avisoSiniestroCompania ?? '',
-    fechaReciboDocumentos: casoBase.fechaReciboDocumentos ?? '',
-    fechaCargueFiniquito: casoBase.fechaCargueFiniquito ?? '',
-    amparo: casoBase.amparo ?? '',
-    valorIndemnizacion:
-      valorIndemnizacion === undefined || valorIndemnizacion === null ? '' : String(valorIndemnizacion),
-    observacionesSeguimiento: casoBase.observacionesSeguimiento ?? '',
-    aseguradora: casoBase.aseguradora ?? '',
-    intermediario: casoBase.intermediario ?? '',
-    ciudadSiniestro: casoBase.ciudadSiniestro ?? '',
-    aseguradoBeneficiario: casoBase.aseguradoBeneficiario ?? '',
-    nit: casoBase.nit ?? '',
-    analista: casoBase.analista ?? '',
-    fechaEnvioAutorizacion: casoBase.fechaEnvioAutorizacion ?? '',
-    fechaRespuestaAnalista: casoBase.fechaRespuestaAnalista ?? '',
-    correoNotificacion: casoBase.correoNotificacion ?? '',
-    fechaCierre: casoBase.fechaCierre ?? '',
-    fechaSolicitudDocumentos: casoBase.fechaSolicitudDocumentos ?? '',
-    fechaPresentacionCifras: casoBase.fechaPresentacionCifras ?? '',
-    fechaFiniquitosFirmado: casoBase.fechaFiniquitosFirmado ?? '',
-    reserva: casoBase.reserva ?? '',
-    estadoProceso: casoBase.estadoProceso ?? '',
-    salvamentoAplica: casoBase.salvamentoAplica || 'no_aplica',
-    valorSalvamento: casoBase.valorSalvamento ?? '',
-  };
+/** Campos del caso necesarios para que el PUT del liquidador no falle validaciones. */
+const buildCamposBaseCaso = (casoBase = {}, valorIndemnizacion) => ({
+  responsable: casoBase.responsable ?? '',
+  codigoWorkflow: casoBase.codigoWorkflow ?? '',
+  numeroSiniestro: casoBase.numeroSiniestro ?? '',
+  fechaSiniestro: toFormDate(casoBase.fechaSiniestro),
+  avisoSiniestro: toFormDate(casoBase.avisoSiniestro),
+  avisoSiniestroCompania: toFormDate(casoBase.avisoSiniestroCompania),
+  fechaReciboDocumentos: toFormDate(casoBase.fechaReciboDocumentos),
+  fechaCargueFiniquito: toFormDate(casoBase.fechaCargueFiniquito),
+  amparo: casoBase.amparo ?? '',
+  valorIndemnizacion:
+    valorIndemnizacion === undefined || valorIndemnizacion === null ? '' : String(valorIndemnizacion),
+  observacionesSeguimiento: casoBase.observacionesSeguimiento ?? '',
+  aseguradora: casoBase.aseguradora ?? '',
+  intermediario: casoBase.intermediario ?? '',
+  ciudadSiniestro: casoBase.ciudadSiniestro ?? '',
+  aseguradoBeneficiario: casoBase.aseguradoBeneficiario ?? '',
+  nit: casoBase.nit ?? '',
+  analista: casoBase.analista ?? '',
+  fechaEnvioAutorizacion: toFormDate(casoBase.fechaEnvioAutorizacion),
+  fechaRespuestaAnalista: toFormDate(casoBase.fechaRespuestaAnalista),
+  correoNotificacion: casoBase.correoNotificacion ?? '',
+  fechaCierre: toFormDate(casoBase.fechaCierre),
+  fechaSolicitudDocumentos: toFormDate(casoBase.fechaSolicitudDocumentos),
+  fechaPresentacionCifras: toFormDate(casoBase.fechaPresentacionCifras),
+  fechaFiniquitosFirmado: toFormDate(casoBase.fechaFiniquitosFirmado),
+  reserva: casoBase.reserva ?? '',
+  estadoProceso: casoBase.estadoProceso ?? '',
+  salvamentoAplica: casoBase.salvamentoAplica || 'no_aplica',
+  valorSalvamento: casoBase.valorSalvamento ?? '',
+});
 
+const appendCamposBase = (formData, camposBase) => {
   Object.entries(camposBase).forEach(([key, value]) => {
-    if (value !== null && value !== undefined && value !== '') {
-      const str = typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(value)
-        ? value.slice(0, 10)
-        : String(value);
-      formData.append(key, str);
-    }
+    if (value === null || value === undefined) return;
+    // Enviar también '' en campos críticos no aplica; el backend preserva con fallback
+    if (value === '' && key !== 'valorIndemnizacion' && key !== 'observacionesSeguimiento') return;
+    formData.append(key, String(value));
   });
+};
 
-  formData.append('liquidador', JSON.stringify(liquidador || {}));
-  formData.append('salvamentoAplica', casoBase.salvamentoAplica || 'no_aplica');
-
-  const anexosSinLiquidador = (Array.isArray(anexosActuales) ? anexosActuales : []).filter(
-    (a) => !esAnexoLiquidador(a)
-  );
-  formData.append('anexosExistentes', JSON.stringify(anexosSinLiquidador));
-  formData.append(
-    'salvamentoAnexosExistentes',
-    JSON.stringify(Array.isArray(anexosSalvamentoActuales) ? anexosSalvamentoActuales : [])
-  );
-
-  (archivos || []).forEach(({ blob, nombre, mime }) => {
-    if (!blob || !nombre) return;
-    const file = new File([blob], nombre, {
-      type: mime || blob.type || 'application/octet-stream',
-    });
-    formData.append('anexos', file, nombre);
-  });
-
+const putCasoExpressFormData = async (casoId, formData) => {
   const token = localStorage.getItem('token');
   const response = await fetch(`${EXPRESS_API_URL}/${casoId}`, {
     method: 'PUT',
@@ -330,3 +315,82 @@ export const guardarLiquidadorEnCasoExpress = async ({
   return normalizeExpressItem(payload?.data ?? payload);
 };
 
+/**
+ * Guarda liquidador JSON + valor indemnización.
+ * Fase 1 (obligatoria): JSON sin archivos — así no depende de S3.
+ * Fase 2 (opcional): adjunta Excel/Word generados.
+ */
+export const guardarLiquidadorEnCasoExpress = async ({
+  casoId,
+  liquidador,
+  valorIndemnizacion,
+  archivos = [],
+  anexosActuales = [],
+  anexosSalvamentoActuales = [],
+  casoBase = {},
+}) => {
+  if (!casoId) throw new Error('El caso Express debe estar guardado antes de adjuntar el liquidador.');
+  if (!liquidador || typeof liquidador !== 'object') {
+    throw new Error('No hay datos del liquidador para guardar.');
+  }
+
+  const camposBase = buildCamposBaseCaso(casoBase, valorIndemnizacion);
+  const anexosSinLiquidador = (Array.isArray(anexosActuales) ? anexosActuales : []).filter(
+    (a) => !esAnexoLiquidador(a)
+  );
+  const salvamentoExistentes = Array.isArray(anexosSalvamentoActuales)
+    ? anexosSalvamentoActuales
+    : [];
+
+  // Fase 1: persistir liquidador sí o sí (sin archivos)
+  const formDatos = new FormData();
+  appendCamposBase(formDatos, camposBase);
+  formDatos.append('liquidador', JSON.stringify(liquidador));
+  formDatos.append('anexosExistentes', JSON.stringify(anexosSinLiquidador));
+  formDatos.append('salvamentoAnexosExistentes', JSON.stringify(salvamentoExistentes));
+
+  let actualizado = await putCasoExpressFormData(casoId, formDatos);
+
+  const archivosValidos = (archivos || []).filter((a) => a?.blob && a?.nombre);
+  if (archivosValidos.length === 0) {
+    return { caso: actualizado, archivosOk: true, archivosError: null };
+  }
+
+  // Fase 2: anexos generados (si falla S3, el liquidador ya quedó guardado)
+  try {
+    const formArchivos = new FormData();
+    appendCamposBase(formArchivos, {
+      ...camposBase,
+      valorIndemnizacion:
+        valorIndemnizacion === undefined || valorIndemnizacion === null
+          ? String(actualizado.valorIndemnizacion ?? '')
+          : String(valorIndemnizacion),
+    });
+    formArchivos.append('liquidador', JSON.stringify(liquidador));
+    formArchivos.append(
+      'anexosExistentes',
+      JSON.stringify((actualizado.anexos || []).filter((a) => !esAnexoLiquidador(a)))
+    );
+    formArchivos.append(
+      'salvamentoAnexosExistentes',
+      JSON.stringify(actualizado.anexosSalvamento || salvamentoExistentes)
+    );
+
+    archivosValidos.forEach(({ blob, nombre, mime }) => {
+      const file = new File([blob], nombre, {
+        type: mime || blob.type || 'application/octet-stream',
+      });
+      formArchivos.append('anexos', file, nombre);
+    });
+
+    actualizado = await putCasoExpressFormData(casoId, formArchivos);
+    return { caso: actualizado, archivosOk: true, archivosError: null };
+  } catch (err) {
+    console.error('Liquidador guardado, pero falló adjuntar Word/Excel:', err);
+    return {
+      caso: actualizado,
+      archivosOk: false,
+      archivosError: err?.message || 'No se pudieron adjuntar los archivos generados',
+    };
+  }
+};

@@ -241,9 +241,11 @@ async function cargarPlantillaWorkbook() {
 
 /**
  * Genera el Excel a partir de la plantilla idéntica a Liquidador.xlsm (sin macros).
+ * Si salvamento no aplica, se omite la hoja SALVAMENTO; el resto se llena normal.
  */
-export async function generarLiquidadorExpressExcelBlob(liquidador, totales) {
+export async function generarLiquidadorExpressExcelBlob(liquidador, totales, opciones = {}) {
   const workbook = await cargarPlantillaWorkbook();
+  const incluirSalvamento = opciones.incluirSalvamento !== false;
 
   const hojaLiq =
     workbook.getWorksheet('FORMATO_LIQUIDACION') || workbook.worksheets[0];
@@ -253,7 +255,12 @@ export async function generarLiquidadorExpressExcelBlob(liquidador, totales) {
 
   if (hojaLiq) rellenarLiquidacion(hojaLiq, liquidador, totales);
   if (hojaChk) rellenarChecklist(hojaChk, liquidador, totales);
-  if (hojaSal) rellenarSalvamento(hojaSal, liquidador);
+
+  if (incluirSalvamento && hojaSal) {
+    rellenarSalvamento(hojaSal, liquidador);
+  } else if (hojaSal) {
+    workbook.removeWorksheet(hojaSal.id);
+  }
 
   workbook.creator = 'Arnald DataFlow';
   workbook.modified = new Date();
@@ -273,7 +280,7 @@ export async function generarLiquidadorExpressExcelBlob(liquidador, totales) {
   };
 }
 
-export async function descargarLiquidadorExpressExcel(liquidador, totales) {
-  const { blob, nombre } = await generarLiquidadorExpressExcelBlob(liquidador, totales);
+export async function descargarLiquidadorExpressExcel(liquidador, totales, opciones = {}) {
+  const { blob, nombre } = await generarLiquidadorExpressExcelBlob(liquidador, totales, opciones);
   saveAs(blob, nombre);
 }
