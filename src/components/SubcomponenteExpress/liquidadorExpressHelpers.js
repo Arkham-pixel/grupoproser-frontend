@@ -22,6 +22,9 @@ export const SMMLV_DEFAULT = SMMLV_POR_ANIO[SMMLV_ANIO_MAS_RECIENTE];
 /** @deprecated usar SMMLV_DEFAULT */
 export const SMMLV_DEFAULT_2026 = SMMLV_DEFAULT;
 
+/** Días del mes para SMDLV (salario mínimo diario legal vigente). */
+export const DIAS_SMDLV = 30;
+
 /** Resuelve año y valor SMMLV (si el año no está en tabla, usa el más cercano ≤ año o el más reciente). */
 export function resolverSmmlvPorAnio(anio) {
   const n = Number(anio);
@@ -80,9 +83,13 @@ export const DEFAULT_LIQUIDADOR_EXPRESS = {
   conceptos: [],
   deducible: {
     porcentaje: 10,
+    /** 'SMMLV' = salario mínimo mensual | 'SMDLV' = salario mínimo diario */
+    tipoMinimo: 'SMMLV',
     cantidadSMMLV: 4,
+    cantidadSMDLV: 10,
     anioSMMLV: SMMLV_ANIO_MAS_RECIENTE,
     valorSMMLV: SMMLV_DEFAULT,
+    valorSMDLV: Math.round(SMMLV_DEFAULT / DIAS_SMDLV),
   },
   checklist: {
     fecha: '',
@@ -145,6 +152,13 @@ export function parsearNumero(valor) {
   return isNaN(n) ? 0 : n;
 }
 
+/** SMDLV = SMMLV / 30 (redondeo a pesos enteros). */
+export function valorSmdlvDesdeSmmlv(valorSMMLV) {
+  const n = parsearNumero(valorSMMLV);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n / DIAS_SMDLV);
+}
+
 export function formatearMonto(valor) {
   const n = typeof valor === 'number' ? valor : parsearNumero(valor);
   if (isNaN(n)) return '0';
@@ -190,20 +204,38 @@ export function calcularLiquidacion(liquidador) {
   const cantidadSMMLV = numDeducible(liquidador.deducible?.cantidadSMMLV, 4);
   const deducibleSMMLV = valorSMMLV * cantidadSMMLV;
 
-  const deducibleAplicado = Math.max(deduciblePorcentaje, deducibleSMMLV);
+  const valorSMDLVAuto = valorSmdlvDesdeSmmlv(valorSMMLV);
+  const valorSMDLV = parsearNumero(
+    liquidador.deducible?.valorSMDLV != null && liquidador.deducible?.valorSMDLV !== ''
+      ? liquidador.deducible.valorSMDLV
+      : valorSMDLVAuto
+  );
+  const cantidadSMDLV = numDeducible(liquidador.deducible?.cantidadSMDLV, 10);
+  const deducibleSMDLV = valorSMDLV * cantidadSMDLV;
+
+  const tipoMinimo =
+    liquidador.deducible?.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  const deducibleMinimo = tipoMinimo === 'SMDLV' ? deducibleSMDLV : deducibleSMMLV;
+  const deducibleAplicado = Math.max(deduciblePorcentaje, deducibleMinimo);
   const totalIndemnizar = totalPerdida - deducibleAplicado;
-  const usaSMMLV = deducibleSMMLV > deduciblePorcentaje;
+  const usaMinimo = deducibleMinimo > deduciblePorcentaje;
 
   return {
     totalPerdida,
     deduciblePorcentaje,
     deducibleSMMLV,
+    deducibleSMDLV,
     deducibleAplicado,
     totalIndemnizar,
-    usaSMMLV,
+    usaSMMLV: tipoMinimo === 'SMMLV' && usaMinimo,
+    usaSMDLV: tipoMinimo === 'SMDLV' && usaMinimo,
+    usaMinimo,
+    tipoMinimo,
     porcentaje,
     cantidadSMMLV,
+    cantidadSMDLV,
     valorSMMLV,
+    valorSMDLV,
     anioSMMLV: smmlvResuelto.anio,
   };
 }
@@ -347,6 +379,7 @@ export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
       ...DEFAULT_LIQUIDADOR_EXPRESS.deducible,
       anioSMMLV: smmlv.anio,
       valorSMMLV: smmlv.valor,
+      valorSMDLV: valorSmdlvDesdeSmmlv(smmlv.valor),
     },
     checklist: {
       ...DEFAULT_LIQUIDADOR_EXPRESS.checklist,
@@ -395,6 +428,15 @@ export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
           const smmlvFix = resolverSmmlvPorAnio(anio);
           dedMerged.anioSMMLV = smmlvFix.anio;
           if (!dedMerged.valorSMMLV) dedMerged.valorSMMLV = smmlvFix.valor;
+        }
+        if (!dedMerged.tipoMinimo) dedMerged.tipoMinimo = 'SMMLV';
+        if (dedMerged.valorSMDLV == null || dedMerged.valorSMDLV === '') {
+          dedMerged.valorSMDLV = valorSmdlvDesdeSmmlv(
+            dedMerged.valorSMMLV || resolverSmmlvPorAnio(dedMerged.anioSMMLV).valor
+          );
+        }
+        if (dedMerged.cantidadSMDLV == null || dedMerged.cantidadSMDLV === '') {
+          dedMerged.cantidadSMDLV = DEFAULT_LIQUIDADOR_EXPRESS.deducible.cantidadSMDLV;
         }
         return dedMerged;
       })(),

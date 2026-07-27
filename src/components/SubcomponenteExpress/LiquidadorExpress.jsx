@@ -48,6 +48,7 @@ import {
   resolverSmmlvPorAnio,
   SMMLV_POR_ANIO,
   totalesItemsAnalisis,
+  valorSmdlvDesdeSmmlv,
 } from './liquidadorExpressHelpers.js';
 import { descargarReciboIndemnizacionWord } from './generarReciboIndemnizacionWord.js';
 import { descargarContratoReembolsoWord } from './generarContratoReembolsoWord.js';
@@ -232,7 +233,7 @@ export default function LiquidadorExpress({
       }
       ref[keys[keys.length - 1]] = valor;
 
-      // Al cambiar fecha de siniestro, alinear SMMLV al año del siniestro
+      // Al cambiar fecha de siniestro, alinear SMMLV/SMDLV al año del siniestro
       if (path === 'encabezado.fechaSiniestro') {
         const anio = anioDesdeFecha(valor);
         if (anio) {
@@ -241,6 +242,7 @@ export default function LiquidadorExpress({
             ...next.deducible,
             anioSMMLV: smmlv.anio,
             valorSMMLV: smmlv.valor,
+            valorSMDLV: valorSmdlvDesdeSmmlv(smmlv.valor),
           };
         }
       }
@@ -256,6 +258,7 @@ export default function LiquidadorExpress({
         ...prev.deducible,
         anioSMMLV: smmlv.anio,
         valorSMMLV: smmlv.valor,
+        valorSMDLV: valorSmdlvDesdeSmmlv(smmlv.valor),
       },
     }));
   };
@@ -602,6 +605,28 @@ export default function LiquidadorExpress({
 
           <section className={expressFormSection}>
             <h3 className={expressSectionTitle}>Deducible</h3>
+            <div className="mb-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={
+                  (ded.tipoMinimo || 'SMMLV') === 'SMMLV'
+                    ? expressBtnPrimary
+                    : expressBtnGhost
+                }
+                onClick={() => actualizar('deducible.tipoMinimo', 'SMMLV')}
+              >
+                Mínimo SMMLV (mensual)
+              </button>
+              <button
+                type="button"
+                className={
+                  ded.tipoMinimo === 'SMDLV' ? expressBtnPrimary : expressBtnGhost
+                }
+                onClick={() => actualizar('deducible.tipoMinimo', 'SMDLV')}
+              >
+                Mínimo SMDLV (diario)
+              </button>
+            </div>
             <div className={grid3}>
               <Campo label="Porcentaje (%)">
                 <InputFenix
@@ -613,39 +638,74 @@ export default function LiquidadorExpress({
                   onChange={(e) => actualizar('deducible.porcentaje', e.target.value === '' ? '' : parseFloat(e.target.value))}
                 />
               </Campo>
-              <Campo label="Cantidad SMMLV">
-                <InputFenix
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={ded.cantidadSMMLV ?? 4}
-                  onChange={(e) => actualizar('deducible.cantidadSMMLV', e.target.value === '' ? '' : parseFloat(e.target.value))}
-                />
-              </Campo>
-              <Campo label="Año SMMLV">
+              <Campo label="Año salario mínimo">
                 <SelectFenix
                   value={ded.anioSMMLV ?? totales.anioSMMLV ?? ANIOS_SMMLV[0]}
                   onChange={(e) => actualizarAnioSmmlv(e.target.value)}
                 >
                   {ANIOS_SMMLV.map((anio) => (
                     <option key={anio} value={anio}>
-                      {anio} — $ {formatearMonto(SMMLV_POR_ANIO[anio])}
+                      {anio} — SMMLV $ {formatearMonto(SMMLV_POR_ANIO[anio])}
                     </option>
                   ))}
                 </SelectFenix>
               </Campo>
-              <Campo label="Valor SMMLV">
-                <InputFenix
-                  value={ded.valorSMMLV ?? ''}
-                  onChange={(e) => actualizar('deducible.valorSMMLV', e.target.value)}
-                  placeholder="$ 1.750.905"
-                  title="Se actualiza al elegir el año; puede ajustarlo manualmente si lo requiere"
-                />
-              </Campo>
+              {(ded.tipoMinimo || 'SMMLV') === 'SMMLV' ? (
+                <>
+                  <Campo label="Cantidad SMMLV">
+                    <InputFenix
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={ded.cantidadSMMLV ?? 4}
+                      onChange={(e) => actualizar('deducible.cantidadSMMLV', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    />
+                  </Campo>
+                  <Campo label="Valor SMMLV (mensual)">
+                    <InputFenix
+                      value={ded.valorSMMLV ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setLiquidador((prev) => ({
+                          ...prev,
+                          deducible: {
+                            ...prev.deducible,
+                            valorSMMLV: v,
+                            valorSMDLV: valorSmdlvDesdeSmmlv(v),
+                          },
+                        }));
+                      }}
+                      placeholder="$ 1.750.905"
+                      title="Se actualiza al elegir el año; puede ajustarlo manualmente"
+                    />
+                  </Campo>
+                </>
+              ) : (
+                <>
+                  <Campo label="Cantidad SMDLV">
+                    <InputFenix
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={ded.cantidadSMDLV ?? 10}
+                      onChange={(e) => actualizar('deducible.cantidadSMDLV', e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    />
+                  </Campo>
+                  <Campo label="Valor SMDLV (diario)">
+                    <InputFenix
+                      value={ded.valorSMDLV ?? valorSmdlvDesdeSmmlv(ded.valorSMMLV) ?? ''}
+                      onChange={(e) => actualizar('deducible.valorSMDLV', e.target.value)}
+                      placeholder="$ 58.364"
+                      title="Por defecto SMMLV ÷ 30; puede ajustarlo manualmente"
+                    />
+                  </Campo>
+                </>
+              )}
             </div>
             <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
-              El valor SMMLV se toma del salario mínimo de Colombia según el año (por defecto el de la fecha de siniestro).
-              Cada enero hay que agregar el nuevo año en la tabla de SMMLV.
+              {(ded.tipoMinimo || 'SMMLV') === 'SMMLV'
+                ? 'SMMLV: salario mínimo mensual. El deducible aplicado es el mayor entre el % y (cantidad × SMMLV).'
+                : `SMDLV: salario mínimo diario (SMMLV ÷ 30). Ejemplo 2026: $ ${formatearMonto(valorSmdlvDesdeSmmlv(ded.valorSMMLV || totales.valorSMMLV))} por día. El deducible aplicado es el mayor entre el % y (cantidad × SMDLV).`}
             </p>
             <div className="mt-4 space-y-2">
               <FilaTotal label="TOTAL PÉRDIDA" valor={totales.totalPerdida} />
@@ -653,12 +713,25 @@ export default function LiquidadorExpress({
                 label={`DEDUCIBLE ${totales.porcentaje}%`}
                 valor={totales.deduciblePorcentaje}
               />
+              {(ded.tipoMinimo || 'SMMLV') === 'SMMLV' ? (
+                <FilaTotal
+                  label={`DEDUCIBLE ${totales.cantidadSMMLV} SMMLV`}
+                  valor={totales.deducibleSMMLV}
+                />
+              ) : (
+                <FilaTotal
+                  label={`DEDUCIBLE ${totales.cantidadSMDLV} SMDLV`}
+                  valor={totales.deducibleSMDLV}
+                />
+              )}
               <FilaTotal
-                label={`DEDUCIBLE ${totales.cantidadSMMLV} SMMLV`}
-                valor={totales.deducibleSMMLV}
-              />
-              <FilaTotal
-                label={`DEDUCIBLE APLICADO (${totales.usaSMMLV ? 'SMMLV' : '%'})`}
+                label={`DEDUCIBLE APLICADO (${
+                  totales.usaMinimo
+                    ? totales.tipoMinimo === 'SMDLV'
+                      ? 'SMDLV'
+                      : 'SMMLV'
+                    : '%'
+                })`}
                 valor={totales.deducibleAplicado}
               />
               <FilaTotal label="TOTAL A INDEMNIZAR" valor={totales.totalIndemnizar} destacado />

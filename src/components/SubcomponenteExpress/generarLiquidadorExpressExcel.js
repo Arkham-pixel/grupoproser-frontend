@@ -80,7 +80,11 @@ function setDateCell(sheet, ref, isoDate) {
 function textoDeducible(liquidador, totales) {
   const texto = liquidador.encabezado?.deducibleTexto?.trim();
   if (texto) return texto;
-  return `${totales.porcentaje}% del Valor de la Pérdida Mínimo ${totales.cantidadSMMLV} SMMLV`;
+  return `${totales.porcentaje}% del Valor de la Pérdida Mínimo ${
+    totales.tipoMinimo === 'SMDLV'
+      ? `${totales.cantidadSMDLV} SMDLV`
+      : `${totales.cantidadSMMLV} SMMLV`
+  }`;
 }
 
 /** Nombre del usuario logueado en la plataforma (para ELABORADO POR). */
@@ -132,8 +136,19 @@ function rellenarLiquidacion(sheet, liquidador, totales) {
 
   // Entradas de deducible (las fórmulas de totales se mantienen)
   setCell(sheet, 'C27', (totales.porcentaje || 0) / 100);
-  setCell(sheet, 'F27', totales.cantidadSMMLV ?? ded.cantidadSMMLV ?? 4);
-  setCell(sheet, 'G27', totales.deducibleSMMLV || null);
+  const usaSmdlv = totales.tipoMinimo === 'SMDLV';
+  setCell(
+    sheet,
+    'F27',
+    usaSmdlv
+      ? totales.cantidadSMDLV ?? ded.cantidadSMDLV ?? 10
+      : totales.cantidadSMMLV ?? ded.cantidadSMMLV ?? 4
+  );
+  setCell(
+    sheet,
+    'G27',
+    usaSmdlv ? totales.deducibleSMDLV || null : totales.deducibleSMMLV || null
+  );
 
   // Fórmulas de totales con resultado precargado (Excel recalcula al abrir/editar)
   sheet.getCell('H26').value = { formula: 'SUM(H14:H25)', result: totales.totalPerdida };
