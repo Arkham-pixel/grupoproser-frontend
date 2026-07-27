@@ -28,6 +28,7 @@ export const normalizeFdmItem = (item = {}) => ({
   municipio: item.municipio ?? '',
   ajustador: item.ajustador ?? '',
   estado: item.estado ?? '',
+  liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   totalPerdidaNumero: toNumber(item.totalPerdida),
   totalLiquidadoNumero: toNumber(item.totalLiquidado),
   valorIndemnizadoNumero: toNumber(item.valorIndemnizado),
@@ -123,4 +124,41 @@ export const deleteCasoFdm = async (id) => {
     throw new Error(payload?.error || `Error al eliminar el caso FDM (${response.status})`);
   }
   return payload;
+};
+
+/**
+ * Guarda el liquidador JSON en el caso y sincroniza totales de liquidación.
+ */
+export const guardarLiquidadorEnCasoFdm = async ({
+  casoId,
+  liquidador,
+  totales = {},
+  casoBase = {},
+}) => {
+  if (!casoId) throw new Error('El caso FDM debe estar guardado antes de adjuntar el liquidador.');
+
+  const payload = {
+    ...casoBase,
+    liquidador: liquidador || {},
+    totalPerdida: totales.totalPerdida ?? casoBase.totalPerdida,
+    deducible: totales.deducibleAplicado ?? casoBase.deducible,
+    totalLiquidado: totales.totalIndemnizar ?? casoBase.totalLiquidado,
+    valorIndemnizado: totales.totalIndemnizar ?? casoBase.valorIndemnizado,
+    valorIndemnizadoAjustador: totales.totalIndemnizar ?? casoBase.valorIndemnizadoAjustador,
+    subsidio: totales.subsidio ?? casoBase.subsidio,
+    perdidaContenidos: totales.subtotalContenidos ?? casoBase.perdidaContenidos,
+    perdidaEdificio: totales.subtotalEdificios ?? casoBase.perdidaEdificio,
+  };
+
+  // No reenviar _id / timestamps
+  delete payload._id;
+  delete payload.__v;
+  delete payload.createdAt;
+  delete payload.updatedAt;
+  delete payload.totalPerdidaNumero;
+  delete payload.totalLiquidadoNumero;
+  delete payload.valorIndemnizadoNumero;
+  delete payload.deducibleNumero;
+
+  return actualizarCasoFdm(casoId, payload);
 };

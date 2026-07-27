@@ -1,10 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FaCamera, FaUpload, FaTrash, FaEye, FaCompress } from 'react-icons/fa';
+import {
+  FaCamera,
+  FaUpload,
+  FaTrash,
+  FaCompress,
+  FaArrowUp,
+  FaArrowDown,
+  FaGripVertical,
+} from 'react-icons/fa';
 import IAInteligente from './IAInteligente';
 import { ImageCompression } from '../../utils/imageCompression';
 import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl, getImageUrlCandidates, createImageErrorHandler } from '../../utils/imageUtils';
 import { isStoredFileReference } from '../../utils/storedFilePath';
+
+const idImagen = (img, index = 0) =>
+  String(img?.id ?? img?.ruta ?? img?.nombre ?? `idx-${index}`);
 
 export default function InspeccionFotograficaAjuste({ formData, onInputChange, onAgregarImagenBase64, numeroSeccion = 4 }) {
   const { theme } = useTheme();
@@ -18,6 +29,8 @@ export default function InspeccionFotograficaAjuste({ formData, onInputChange, o
   const [imagenes, setImagenes] = useState(formData.imagenesInspeccion || []);
   const [imagenSeleccionada, setImagenSeleccionada] = useState(null);
   const [comprimiendo, setComprimiendo] = useState(false);
+  const [arrastrandoId, setArrastrandoId] = useState(null);
+  const [destinoArrastreId, setDestinoArrastreId] = useState(null);
   const descripcionTimeoutRef = useRef(null);
 
   // Usar utilidades centralizadas de imageUtils
@@ -153,6 +166,7 @@ return imagenesProcesadas;
       }));
       
       const todasLasImagenes = [...imagenes, ...nuevasImagenes];
+      isInternalUpdateRef.current = true;
       setImagenes(todasLasImagenes);
       onInputChange('imagenesInspeccion', todasLasImagenes);
       
@@ -174,21 +188,53 @@ return imagenesProcesadas;
     };
     
     const todasLasImagenes = [...imagenes, nuevaImagen];
+    isInternalUpdateRef.current = true;
     setImagenes(todasLasImagenes);
     onInputChange('imagenesInspeccion', todasLasImagenes);
   };
 
+  const persistirOrden = (nuevas) => {
+    isInternalUpdateRef.current = true;
+    setImagenes(nuevas);
+    onInputChange('imagenesInspeccion', nuevas);
+  };
+
   const eliminarImagen = (id) => {
-    const imagenesFiltradas = imagenes.filter(img => img.id !== id);
-    setImagenes(imagenesFiltradas);
-    onInputChange('imagenesInspeccion', imagenesFiltradas);
+    const clave = String(id);
+    const imagenesFiltradas = imagenes.filter((img, idx) => idImagen(img, idx) !== clave);
+    persistirOrden(imagenesFiltradas);
+  };
+
+  /** Mover foto una posición (como en Puertos Actas). */
+  const moverImagen = (id, delta) => {
+    const clave = String(id);
+    const idx = imagenes.findIndex((img, i) => idImagen(img, i) === clave);
+    if (idx < 0) return;
+    const next = idx + delta;
+    if (next < 0 || next >= imagenes.length) return;
+    const copia = [...imagenes];
+    [copia[idx], copia[next]] = [copia[next], copia[idx]];
+    persistirOrden(copia);
+  };
+
+  /** Reordenar por arrastre soltando sobre otra tarjeta. */
+  const reordenarImagenes = (origenId, destinoId) => {
+    if (!origenId || !destinoId || origenId === destinoId) return;
+    const origenIdx = imagenes.findIndex((img, i) => idImagen(img, i) === String(origenId));
+    const destinoIdx = imagenes.findIndex((img, i) => idImagen(img, i) === String(destinoId));
+    if (origenIdx < 0 || destinoIdx < 0) return;
+    const copia = [...imagenes];
+    const [item] = copia.splice(origenIdx, 1);
+    copia.splice(destinoIdx, 0, item);
+    persistirOrden(copia);
   };
 
   const actualizarDescripcion = (id, descripcion) => {
+    const clave = String(id);
     // Usar una función de actualización para evitar problemas de estado asíncrono
     setImagenes(prevImagenes => {
-      const imagenesActualizadas = prevImagenes.map(img => 
-        img.id === id ? { ...img, descripcion } : img
+      const imagenesActualizadas = prevImagenes.map((img, idx) =>
+        idImagen(img, idx) === clave ? { ...img, descripcion } : img
       );
       
       // Usar setTimeout para evitar múltiples actualizaciones rápidas
@@ -237,7 +283,7 @@ return imagenesProcesadas;
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          Registro fotográfico de la inspección del siniestro
+          Registro fotográfico de la inspección del siniestro. Arrastra cada foto o usa las flechas para cambiar el orden (ese orden sale en el Word).
         </p>
       </div>
 
@@ -430,23 +476,70 @@ return imagenesProcesadas;
               Imágenes Cargadas ({imagenes.length})
             </h4>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {imagenes.map((imagen) => {
+              {imagenes.map((imagen, index) => {
                 const imageUrl = getImageUrl(imagen);
+                const clave = idImagen(imagen, index);
+                const esOrigen = arrastrandoId === clave;
+                const esDestino = destinoArrastreId === clave && arrastrandoId && arrastrandoId !== clave;
                 return (
                   <div 
-                    key={imagen.id} 
-                    className="rounded-lg p-3"
+                    key={clave} 
+                    className="rounded-lg p-3 relative transition-shadow"
+                    draggable
+                    onDragStart={(e) => {
+                      setArrastrandoId(clave);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', clave);
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (arrastrandoId && arrastrandoId !== clave) {
+                        setDestinoArrastreId(clave);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (destinoArrastreId === clave) setDestinoArrastreId(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const origenId = e.dataTransfer.getData('text/plain') || arrastrandoId;
+                      reordenarImagenes(origenId, clave);
+                      setArrastrandoId(null);
+                      setDestinoArrastreId(null);
+                    }}
+                    onDragEnd={() => {
+                      setArrastrandoId(null);
+                      setDestinoArrastreId(null);
+                    }}
                     style={{
-                      border: `1px solid ${borderColor}`,
-                      backgroundColor: theme === 'dark' ? '#1F1F1F' : '#F9FAFB'
+                      border: `2px solid ${esDestino ? (theme === 'dark' ? '#C084FC' : '#9333EA') : borderColor}`,
+                      backgroundColor: theme === 'dark' ? '#1F1F1F' : '#F9FAFB',
+                      opacity: esOrigen ? 0.55 : 1,
+                      cursor: 'grab',
+                      boxShadow: esDestino
+                        ? (theme === 'dark' ? '0 0 0 2px rgba(192,132,252,0.35)' : '0 0 0 2px rgba(147,51,234,0.25)')
+                        : undefined,
                     }}
                   >
+                    <div
+                      className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-md px-1.5 py-1 text-xs pointer-events-none"
+                      style={{
+                        backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.9)',
+                        color: textSecondary,
+                      }}
+                      title="Arrastra para reordenar"
+                    >
+                      <FaGripVertical className="h-3 w-3" />
+                      <span>{index + 1}</span>
+                    </div>
                     <div className="relative">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
                           alt={imagen.nombre}
                           className="w-full h-32 object-cover rounded-lg cursor-pointer"
+                          draggable={false}
                           onClick={() => setImagenSeleccionada(imagen)}
                           onError={createImageErrorHandler(imagen, (img, imagenData) => {
                             // Callback personalizado cuando todas las URLs fallan
@@ -475,22 +568,55 @@ return imagenesProcesadas;
                           </span>
                         </div>
                       )}
-                      <button
-                        onClick={() => eliminarImagen(imagen.id)}
-                        className="absolute top-2 right-2 p-1 rounded-full transition-colors"
-                        style={{
-                          backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.2)' : '#EF4444',
-                          color: theme === 'dark' ? '#FCA5A5' : '#FFFFFF'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.target.style.backgroundColor = theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : '#DC2626';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.target.style.backgroundColor = theme === 'dark' ? 'rgba(239, 68, 68, 0.2)' : '#EF4444';
-                        }}
-                      >
-                        <FaTrash className="h-3 w-3" />
-                      </button>
+                      <div className="absolute top-2 right-2 z-10 flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moverImagen(clave, -1);
+                          }}
+                          disabled={index === 0}
+                          className="flex h-7 w-7 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                          style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(30,30,30,0.85)',
+                            color: '#FFFFFF',
+                          }}
+                          title="Mover arriba / anterior"
+                        >
+                          <FaArrowUp className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moverImagen(clave, 1);
+                          }}
+                          disabled={index === imagenes.length - 1}
+                          className="flex h-7 w-7 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40"
+                          style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(30,30,30,0.85)',
+                            color: '#FFFFFF',
+                          }}
+                          title="Mover abajo / siguiente"
+                        >
+                          <FaArrowDown className="h-3 w-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            eliminarImagen(clave);
+                          }}
+                          className="flex h-7 w-7 items-center justify-center rounded-full transition-colors"
+                          style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.85)' : '#EF4444',
+                            color: '#FFFFFF',
+                          }}
+                          title="Eliminar foto"
+                        >
+                          <FaTrash className="h-3 w-3" />
+                        </button>
+                      </div>
                     </div>
                     <div className="mt-2">
                       <p 
@@ -503,7 +629,7 @@ return imagenesProcesadas;
                         value={imagen.descripcion || ''}
                         onChange={(e) => {
                           e.stopPropagation(); // Prevenir propagación de eventos
-                          actualizarDescripcion(imagen.id, e.target.value);
+                          actualizarDescripcion(clave, e.target.value);
                         }}
                         onBlur={(e) => {
                           // Forzar actualización al perder el foco
@@ -512,8 +638,8 @@ return imagenesProcesadas;
                           }
                           const nuevaDescripcion = e.target.value;
                           setImagenes(prevImagenes => {
-                            const imagenesActualizadas = prevImagenes.map(img => 
-                              img.id === imagen.id ? { ...img, descripcion: nuevaDescripcion } : img
+                            const imagenesActualizadas = prevImagenes.map((img, idx) =>
+                              idImagen(img, idx) === clave ? { ...img, descripcion: nuevaDescripcion } : img
                             );
                             // Marcar que esta es una actualización interna para evitar que el useEffect se ejecute
                             isInternalUpdateRef.current = true;
@@ -521,6 +647,7 @@ return imagenesProcesadas;
                             return imagenesActualizadas;
                           });
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
                         placeholder="Descripción de la imagen..."
                         className="w-full mt-1 px-2 py-1 text-xs rounded resize-none focus:outline-none"
                         style={{
@@ -536,6 +663,14 @@ return imagenesProcesadas;
                 );
               })}
             </div>
+            {imagenes.length > 1 && (
+              <p
+                className="text-center text-xs mt-3"
+                style={{ color: textSecondary }}
+              >
+                El orden que definas aquí es el mismo que aparecerá en el documento Word.
+              </p>
+            )}
           </div>
         )}
       </div>

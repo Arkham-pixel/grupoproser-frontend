@@ -10,6 +10,7 @@ import axios from 'axios';
 import { BASE_URL } from '../../config/apiConfig';
 import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import historialService, { TIPOS_FORMULARIOS, ESTADOS_FORMULARIO } from '../../services/historialService';
+import { buildPrefillInspeccionDesdeCasoRiesgo } from '../../utils/prefillInspeccionDesdeCasoRiesgo.js';
 import {
   riesgoBtnInfo,
   riesgoBtnSecondary,
@@ -962,109 +963,23 @@ let historialExistente = null;
         await historialService.guardarFormulario(formularioHistorial);
       }
 
-      // 4. Extraer y normalizar datos para el formulario de inspección
-      // Extraer ciudad (puede ser objeto o string)
-      let ciudadSiniestro = '';
-      let departamentoSiniestro = '';
-      let municipioNombre = '';
-      let ciudadObjeto = null; // Para pasar al Select si es necesario
-      
-      if (datosParaInspeccion.ciudad) {
-        if (typeof datosParaInspeccion.ciudad === 'object' && datosParaInspeccion.ciudad !== null) {
-          // Si es objeto, extraer todos los valores posibles
-          const ciudadLabel = datosParaInspeccion.ciudad.label || '';
-          const ciudadValue = datosParaInspeccion.ciudad.value || datosParaInspeccion.ciudad.descMunicipio || '';
-          const ciudadNombre = datosParaInspeccion.ciudad.descMunicipio || datosParaInspeccion.ciudad.nombre || '';
-          
-          // Extraer solo el nombre de la ciudad (sin el departamento) del label si tiene formato "Ciudad - Departamento"
-          if (ciudadLabel.includes(' - ')) {
-            ciudadSiniestro = ciudadLabel.split(' - ')[0].trim();
-            departamentoSiniestro = ciudadLabel.split(' - ')[1]?.trim() || datosParaInspeccion.ciudad.departamento || datosParaInspeccion.ciudad.descDepto || '';
-          } else {
-            ciudadSiniestro = ciudadNombre || ciudadValue || ciudadLabel;
-            departamentoSiniestro = datosParaInspeccion.ciudad.departamento || datosParaInspeccion.ciudad.descDepto || '';
-          }
-          
-          municipioNombre = ciudadNombre || ciudadSiniestro;
-          
-          // Crear objeto para el Select si tiene la estructura correcta
-          if (ciudadValue || ciudadNombre) {
-            ciudadObjeto = {
-              value: ciudadValue || ciudadNombre || ciudadSiniestro,
-              label: ciudadLabel || `${ciudadSiniestro} - ${departamentoSiniestro}`,
-              departamento: departamentoSiniestro
-            };
-          }
-        } else if (typeof datosParaInspeccion.ciudad === 'string') {
-          // Si es string, puede venir como "Ciudad - Departamento" o solo "Ciudad"
-          if (datosParaInspeccion.ciudad.includes(' - ')) {
-            ciudadSiniestro = datosParaInspeccion.ciudad.split(' - ')[0].trim();
-            departamentoSiniestro = datosParaInspeccion.ciudad.split(' - ')[1]?.trim() || '';
-          } else {
-            ciudadSiniestro = datosParaInspeccion.ciudad;
-          }
-          municipioNombre = ciudadSiniestro;
-        }
-      }
-      
-      // Extraer aseguradora (puede ser código o nombre)
-      let aseguradoraNombre = '';
-      if (datosParaInspeccion.aseguradora) {
-        if (typeof datosParaInspeccion.aseguradora === 'string') {
-          // Buscar el nombre de la aseguradora en la lista
-          const aseguradoraEncontrada = aseguradoras.find(a => 
-            String(a.codiAsgrdra) === String(datosParaInspeccion.aseguradora) ||
-            a.rzonSocial === datosParaInspeccion.aseguradora
-          );
-          aseguradoraNombre = aseguradoraEncontrada ? aseguradoraEncontrada.rzonSocial : datosParaInspeccion.aseguradora;
-        } else {
-          aseguradoraNombre = datosParaInspeccion.aseguradora.rzonSocial || datosParaInspeccion.aseguradora.label || '';
-        }
-      }
-      
-      // Extraer dirección
-      const direccionCompleta = datosParaInspeccion.direccion || datosParaInspeccion.codDireccion || '';
-      
-      // Extraer nombre de empresa/asegurado
-      const nombreEmpresa = datosParaInspeccion.asegurado || datosParaInspeccion.asgrBenfcro || '';
-      
-      // Extraer otros campos
-      const quienSolicitaNombre = datosParaInspeccion.quienSolicita 
-        ? (typeof datosParaInspeccion.quienSolicita === 'object' ? datosParaInspeccion.quienSolicita.label : datosParaInspeccion.quienSolicita)
-        : '';
-      
-      const clasificacionNombre = datosParaInspeccion.clasificacion 
-        ? (typeof datosParaInspeccion.clasificacion === 'object' ? datosParaInspeccion.clasificacion.label : datosParaInspeccion.clasificacion)
-        : '';
+      // 4. Prefill del formulario de inspección (mismo patrón que ajuste desde Complex)
+      const prefill = buildPrefillInspeccionDesdeCasoRiesgo(datosParaInspeccion, {
+        aseguradoras,
+        ciudades,
+      });
 
-// 5. Navegar al formulario de inspección con los datos relevantes
-    navigate('/formularioinspeccion', {
-      state: {
-          ...datosParaInspeccion,
-          // Información general
-          nombreCliente: nombreEmpresa,
-          nombreEmpresa: nombreEmpresa,
-          direccion: direccionCompleta,
-          municipio: municipioNombre,
-          departamento: departamentoSiniestro,
-          // Ciudad: pasar como string (nombre solo) para que el Select lo encuentre
-          ciudad_siniestro: ciudadSiniestro,
-          departamento_siniestro: departamentoSiniestro,
-          ciudad: ciudadSiniestro,
-          // Aseguradora
-          aseguradora: aseguradoraNombre || datosParaInspeccion.aseguradora || '',
-          aseguradora_codigo: typeof datosParaInspeccion.aseguradora === 'string' ? datosParaInspeccion.aseguradora : (datosParaInspeccion.aseguradora?.codiAsgrdra || ''),
-          // Otros campos
-          quienSolicita: quienSolicitaNombre,
-          clasificacion: clasificacionNombre,
-          // Para el mapa (si hay coordenadas disponibles)
-          direccionRiesgo: direccionCompleta,
-          coordenadasRiesgo: datosParaInspeccion.coordenadasRiesgo || datosParaInspeccion.coordenadas || '',
-          // Metadata
-          casoId: casoId,
+      // 5. Navegar al formulario de inspección con los datos del cliente
+      navigate('/formularioinspeccion', {
+        state: {
+          ...prefill,
+          casoId: casoId || prefill.casoId || '',
           desdeRiesgo: true,
-          historialExistente: !!historialExistente
-        }
+          historialExistente: !!historialExistente,
+          prefillDesdeCaso: prefill,
+          returnPath: '/riesgos',
+          origen: 'caso-riesgo',
+        },
       });
     } catch (error) {
       console.error('❌ Error al iniciar inspección:', error);

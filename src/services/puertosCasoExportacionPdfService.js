@@ -831,18 +831,17 @@ async function seccionFotosMercancia(layout, informe) {
   if (!bloque.tieneFotos) return;
 
   layout.espacio(6);
-  layout.barraTituloContenedor('Contenido de la mercancía');
 
-  if (bloque.fila1.length) {
-    await layout.grillaFotos(bloque.fila1, 2, null, 38, {
-      sinCaption: true,
-      leyendaFila: 'Contenido de la mercancía',
+  if (bloque.filaPrincipal?.length) {
+    await layout.grillaFotos(bloque.filaPrincipal, 2, null, 42, {
+      leyendasPorCelda: bloque.leyendasPrincipal,
     });
   }
 
-  if (bloque.fila2.length) {
-    await layout.grillaFotos(bloque.fila2, 2, null, 38, {
-      leyendasPorCelda: bloque.leyendasFila2,
+  for (const fila of bloque.filasExtra || []) {
+    layout.espacio(2);
+    await layout.grillaFotos(fila.imagenes, 2, null, 42, {
+      leyendasPorCelda: fila.leyendas,
     });
   }
 

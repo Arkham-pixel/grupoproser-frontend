@@ -26,6 +26,15 @@ export function esCampoFechaHoraProtocolo(campo) {
 /** Hora por defecto al migrar registros que solo tenían día (mediodía local). */
 export const HORA_DEFECTO_FECHA_SOLO_DIA = 12;
 
+/** Hora actual del dispositivo en formato HH:mm (24h). */
+export function horaActualHHMM(fecha = new Date()) {
+  const d = fecha instanceof Date ? fecha : new Date();
+  if (Number.isNaN(d.getTime())) return '12:00';
+  const hour = String(d.getHours()).padStart(2, '0');
+  const minute = String(d.getMinutes()).padStart(2, '0');
+  return `${hour}:${minute}`;
+}
+
 /**
  * Parsea fecha/hora conservando minutos. Si solo viene el día (yyyy-MM-dd), usa mediodía local.
  *

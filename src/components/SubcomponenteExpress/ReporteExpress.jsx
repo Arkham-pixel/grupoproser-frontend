@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { FaCog, FaCalculator, FaFileExcel, FaTasks, FaTrash } from 'react-icons/fa';
+import { FaCog, FaFileExcel } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { deleteSiniestroExpress, fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import SubcomponenteExpress from './SubcomponenteExpress.jsx';
+import AccionesExpressMenu from './AccionesExpressMenu.jsx';
 import { convertirFechaParaExcelDate } from '../../utils/fechaUtils.js';
 import {
   EXPRESS_COLUMNAS_STORAGE_KEY,
@@ -20,7 +21,6 @@ import {
   useExpressCatalogos,
 } from './expressHelpers.js';
 import {
-  expressBtnDanger,
   expressBtnPrimary,
   expressBtnSecondary,
   expressBtnSuccess,
@@ -669,42 +669,15 @@ const ReporteExpress = () => {
                       key={item._id ?? `${item.numeroSiniestro}-${item.consecutivo}`}
                       className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
                     >
-                      <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => abrirModalEdicion(item)}
-                            className={`${expressBtnPrimary} !px-3 !py-1.5 !text-xs`}
-                          >
-                            <FaTasks className="text-sm" />
-                            Gestionar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              navigate(`/express/liquidador?casoId=${item._id}`)
-                            }
-                            className={`${expressBtnSecondary} !px-3 !py-1.5 !text-xs`}
-                            title={
-                              item.liquidador
-                                ? 'Abrir / actualizar liquidador del caso'
-                                : 'Crear liquidador y guardar documentos en el caso'
-                            }
-                          >
-                            <FaCalculator className="text-sm" />
-                            Liquidador
-                            {item.liquidador ? ' ✓' : ''}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => solicitarEliminar(item)}
-                            className={expressBtnDanger}
-                            title="Eliminar caso"
-                          >
-                            <FaTrash className="text-sm" aria-hidden />
-                            Eliminar
-                          </button>
-                        </div>
+                      <td className="sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                        <AccionesExpressMenu
+                          onGestionar={() => abrirModalEdicion(item)}
+                          onLiquidador={() =>
+                            navigate(`/express/liquidador?casoId=${item._id}`)
+                          }
+                          onEliminar={() => solicitarEliminar(item)}
+                          tieneLiquidador={Boolean(item.liquidador)}
+                        />
                       </td>
                       {columnasVisibles.map((col) => (
                         <td

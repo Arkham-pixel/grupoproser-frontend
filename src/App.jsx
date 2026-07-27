@@ -10,7 +10,6 @@ import ChangePasswordWithToken from './components/ChangePasswordWithToken'
 import Layout from './components/Layout'
 import Inicio from './components/Inicio'
 import FormularioInspeccion from './components/FormularioInspeccion'
-import FormularioInspeccionPropiedades from './components/FormularioInspeccionPropiedades'
 import ReporteCasosMejorado from './components/ReporteCasosMejorado'
 import ReporteCasosPersona from './components/ReporteCasosPersona'
 import DashboardComplex from './components/DashboardComplex'
@@ -50,13 +49,19 @@ import PortalAjusteExternoBridge from './components/SubcomponenteCompex/PortalAj
 import MisSubtareasComplex from './components/SubcomponenteCompex/MisSubtareasComplex';
 import SubcomponenteExpress from './components/SubcomponenteExpress/SubcomponenteExpress';
 import ReporteExpress from './components/SubcomponenteExpress/ReporteExpress';
-import DashboardExpress from './components/SubcomponenteExpress/DashboardExpress';
+import ProtocoloExpress from './components/SubcomponenteExpress/ProtocoloExpress';
 import TableroOperativoExpress from './components/SubcomponenteExpress/TableroOperativoExpress';
 import CatalogosExpress from './components/SubcomponenteExpress/CatalogosExpress';
 import LiquidadorExpressPage from './components/SubcomponenteExpress/LiquidadorExpressPage';
+import AlertasExpress from './components/SubcomponenteExpress/AlertasExpress';
 import FormularioEquidadFdm from './components/SubcomponenteEquidadFdm/FormularioEquidadFdm';
 import ReporteEquidadFdm from './components/SubcomponenteEquidadFdm/ReporteEquidadFdm';
 import DashboardEquidadFdm from './components/SubcomponenteEquidadFdm/DashboardEquidadFdm';
+import LiquidadorEquidadFdmPage from './components/SubcomponenteEquidadFdm/LiquidadorEquidadFdmPage';
+import CargaPropiedades from './components/SubcomponentePropiedades/CargaPropiedades';
+import DashboardPropiedades from './components/SubcomponentePropiedades/DashboardPropiedades';
+import ReportePropiedades from './components/SubcomponentePropiedades/ReportePropiedades';
+import InspeccionDesdeCasoPropiedades from './components/SubcomponentePropiedades/InspeccionDesdeCasoPropiedades';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
 import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
@@ -73,16 +78,27 @@ import { updateCasoComplex } from './services/complexService';
 import { CasosRiesgoProvider } from './context/CasosRiesgoContext'
 import RequireAuth from './components/RequireAuth'
 import RequireRutaPermitida from './components/RequireRutaPermitida'
-import { esRolVisualizador, esRolPuertos, rutaInicioPorRol } from './config/roles'
+import { esRolVisualizador, esRolPuertos, esRolExterno, rutaInicioPorRol } from './config/roles'
 import sessionManager from './services/sessionManager'
 import PaginaError from './components/PaginaError'
 import DetectorConexion from './components/DetectorConexion'
+import { limpiarSesionLocal } from './utils/limpiarSesionLocal.js'
 
 // Comprueba si tenemos un token en localStorage
 const isAuthenticated = () => !!localStorage.getItem('token')
 
 const esRolVisualizadorLocal = () => esRolVisualizador()
 const esRolPuertosLocal = () => esRolPuertos()
+
+/** Raíz: sesión externa no debe reenviar en bucle a la subtarea. */
+function RootRedirect() {
+  if (esRolExterno()) {
+    limpiarSesionLocal();
+    return <Navigate to="/login" replace />;
+  }
+  if (isAuthenticated()) return <Navigate to={rutaInicioPorRol()} replace />;
+  return <Navigate to="/login" replace />;
+}
 
 // Visualizadores solo usan matrices de riesgo: evitar aterrizar en el panel general
 function InicioOrRedirectPorRol() {
@@ -91,8 +107,19 @@ function InicioOrRedirectPorRol() {
   return <Inicio />
 }
 
+function RedirectPropiedadesEdit() {
+  // Rutas antiguas del historial: ir al reporte (la inspección se abre desde el caso)
+  return <Navigate to="/propiedades/reporte" replace />
+}
+
 // Para redirigir al dashboard si ya estás logueado
 function LoginRedirect() {
+  // Sesión limitada del enlace de subtarea: /login debe liberar el acceso
+  // (antes redirigía otra vez a la subtarea y quedabas atrapado).
+  if (esRolExterno()) {
+    limpiarSesionLocal();
+    return <Login />;
+  }
   if (!isAuthenticated()) return <Login />
   return <Navigate to={rutaInicioPorRol()} replace />
 }
@@ -398,14 +425,7 @@ export default function App() {
       <DetectorConexion>
       <Routes>
         {/* Ruta raíz: si estás, vas a /inicio, si no, a /login */}
-        <Route
-          path="/"
-          element={
-            isAuthenticated()
-              ? <Navigate to={rutaInicioPorRol()} replace />
-              : <Navigate to="/login" replace />
-          }
-        />
+        <Route path="/" element={<RootRedirect />} />
 
         {/* Rutas públicas */}
         <Route path="/login" element={<LoginRedirect />} />
@@ -447,8 +467,6 @@ export default function App() {
           <Route path="formularioinspeccion/editar/:id" element={<FormularioInspeccion />} />
           <Route path="acta-inspeccion" element={<Navigate to="/ajuste" replace />} />
           <Route path="acta-inspeccion/editar/:id" element={<ActaInspeccion />} />
-          <Route path="formulario-inspeccion-propiedades" element={<FormularioInspeccionPropiedades />} />
-          <Route path="formulario-inspeccion-propiedades/editar/:id" element={<FormularioInspeccionPropiedades />} />
           <Route path="complex/agregar" element={<FormularioCasoComplexPage />} />
           <Route path="complex/editar" element={<FormularioCasoComplexPage />} />
           <Route path="complex/excel" element={<ReporteCasosMejorado />} />
@@ -480,13 +498,26 @@ export default function App() {
           <Route path="express/carga" element={<SubcomponenteExpress />} />
           <Route path="express/liquidador" element={<LiquidadorExpressPage />} />
           <Route path="express/reporte" element={<ReporteExpress />} />
-          <Route path="express/dashboard" element={<DashboardExpress />} />
+          <Route path="express/protocolo" element={<ProtocoloExpress />} />
+          <Route path="express/dashboard" element={<Navigate to="/express/protocolo" replace />} />
+          <Route path="express/alertas" element={<AlertasExpress />} />
           <Route path="express/tablero" element={<TableroOperativoExpress />} />
           <Route path="express/catalogos" element={<Navigate to="/admin/catalogos-express" replace />} />
 
           <Route path="equidad-fdm/carga" element={<FormularioEquidadFdm />} />
+          <Route path="equidad-fdm/liquidador" element={<LiquidadorEquidadFdmPage />} />
           <Route path="equidad-fdm/reporte" element={<ReporteEquidadFdm />} />
           <Route path="equidad-fdm/dashboard" element={<DashboardEquidadFdm />} />
+
+          <Route path="formulario-inspeccion-propiedades" element={<Navigate to="/propiedades/carga" replace />} />
+          <Route
+            path="formulario-inspeccion-propiedades/editar/:id"
+            element={<RedirectPropiedadesEdit />}
+          />
+          <Route path="propiedades/carga" element={<CargaPropiedades />} />
+          <Route path="propiedades/dashboard" element={<DashboardPropiedades />} />
+          <Route path="propiedades/reporte" element={<ReportePropiedades />} />
+          <Route path="propiedades/inspeccion/:casoId" element={<InspeccionDesdeCasoPropiedades />} />
 
           <Route path="puertos/formulario" element={<PuertosInspeccionMain />} />
           <Route path="puertos/formulario/editar/:id" element={<PuertosInspeccionMain />} />

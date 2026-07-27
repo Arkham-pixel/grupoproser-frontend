@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import * as XLSX from 'xlsx';
-import { FaCog, FaFileExcel, FaTasks, FaTrash } from 'react-icons/fa';
+import { FaCog, FaFileExcel } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { deleteCasoFdm, fetchAllCasosFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
+import AccionesFdmMenu from './AccionesFdmMenu.jsx';
 import { convertirFechaParaExcelDate } from '../../utils/fechaUtils.js';
 import {
   FDM_COLUMNAS_STORAGE_KEY,
@@ -14,7 +16,6 @@ import {
   formatDate,
 } from './equidadFdmHelpers.js';
 import {
-  expressBtnDanger,
   expressBtnPrimary,
   expressBtnSecondary,
   expressBtnSuccess,
@@ -148,6 +149,7 @@ function cargarColumnasGuardadas() {
 }
 
 const ReporteEquidadFdm = () => {
+  const navigate = useNavigate();
   const [casos, setCasos] = useState([]);
   const [filtrados, setFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -561,26 +563,17 @@ const ReporteEquidadFdm = () => {
                       key={item._id ?? `${item.consecutivo}-${item.cedula}`}
                       className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
                     >
-                      <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => abrirModalEdicion(item)}
-                            className={`${expressBtnPrimary} !px-3 !py-1.5 !text-xs`}
-                          >
-                            <FaTasks className="text-sm" />
-                            Gestionar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => solicitarEliminar(item)}
-                            className={expressBtnDanger}
-                            title="Eliminar caso"
-                          >
-                            <FaTrash className="text-sm" aria-hidden />
-                            Eliminar
-                          </button>
-                        </div>
+                      <td className="sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                        <AccionesFdmMenu
+                          onGestionar={() => abrirModalEdicion(item)}
+                          onLiquidador={() =>
+                            navigate(`/equidad-fdm/liquidador?casoId=${item._id}`, {
+                              state: { casoFdm: item },
+                            })
+                          }
+                          onEliminar={() => solicitarEliminar(item)}
+                          tieneLiquidador={Boolean(item.liquidador)}
+                        />
                       </td>
                       {columnasVisibles.map((col) => (
                         <td

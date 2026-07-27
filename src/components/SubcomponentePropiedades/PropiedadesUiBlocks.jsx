@@ -1,20 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaChartLine, FaCalculator, FaPlus, FaTable } from 'react-icons/fa';
+import { FaChartLine, FaPlus, FaTable } from 'react-icons/fa';
 import { expressBadge, expressPageSubtitle, expressPageTitle } from '../SubcomponenteExpress/expressFenixUi.js';
 
-const NAV_FDM = [
-  { path: '/equidad-fdm/carga', icon: FaPlus, label: 'Agregar caso' },
-  { path: '/equidad-fdm/liquidador', icon: FaCalculator, label: 'Liquidador' },
-  { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: 'Dashboard' },
-  { path: '/equidad-fdm/reporte', icon: FaTable, label: 'Reporte' },
+const NAV_PROPIEDADES = [
+  { path: '/propiedades/carga', icon: FaPlus, label: 'Nuevo caso' },
+  { path: '/propiedades/dashboard', icon: FaChartLine, label: 'Dashboard' },
+  { path: '/propiedades/reporte', icon: FaTable, label: 'Reporte' },
 ];
 
-export function FdmNavTabs({ activePath }) {
+export function PropiedadesNavTabs({ activePath }) {
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Navegación Equidad FDM">
-      {NAV_FDM.map(({ path, icon: Icon, label }) => {
-        const activo = activePath === path;
+    <nav className="flex flex-wrap gap-2" aria-label="Navegación Propiedades">
+      {NAV_PROPIEDADES.map(({ path, icon: Icon, label }) => {
+        const activo =
+          activePath === path ||
+          (path === '/propiedades/carga' && String(activePath || '').startsWith('/propiedades/carga'));
         return (
           <Link
             key={path}
@@ -34,7 +35,7 @@ export function FdmNavTabs({ activePath }) {
   );
 }
 
-export function FdmPageHeader({ badge = 'Equidad FDM', title, subtitle, actions, activePath }) {
+export function PropiedadesPageHeader({ badge = 'Propiedades', title, subtitle, actions, activePath }) {
   return (
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="space-y-3">
@@ -43,7 +44,7 @@ export function FdmPageHeader({ badge = 'Equidad FDM', title, subtitle, actions,
           <h1 className={expressPageTitle}>{title}</h1>
           {subtitle && <p className={expressPageSubtitle}>{subtitle}</p>}
         </div>
-        {activePath && <FdmNavTabs activePath={activePath} />}
+        {activePath && <PropiedadesNavTabs activePath={activePath} />}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

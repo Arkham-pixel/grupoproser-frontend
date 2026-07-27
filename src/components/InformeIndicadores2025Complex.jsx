@@ -205,7 +205,7 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
     <div className={embedded ? '' : 'p-4'}>
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h2 className={complexSectionTitle}>Informe de indicadores 2025</h2>
+          <h2 className={complexSectionTitle}>Informe general</h2>
           <p className="font-body text-sm text-gray-600 dark:text-gray-400">
             Genera un archivo Excel con indicadores históricos y del nuevo protocolo para entregar a
             gerencia o archivo del área.

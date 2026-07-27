@@ -26,6 +26,8 @@ import {
   expressTableWrap,
 } from './expressFenixUi.js';
 import {
+  ANIOS_SMMLV,
+  anioDesdeFecha,
   buildReciboPreview,
   calcularLiquidacion,
   conceptosAItemsAnalisis,
@@ -37,6 +39,8 @@ import {
   NOTAS_SALVAMENTO,
   OPCIONES_APLICA,
   pctDocumentosMarcados,
+  resolverSmmlvPorAnio,
+  SMMLV_POR_ANIO,
   totalesItemsAnalisis,
 } from './liquidadorExpressHelpers.js';
 import { descargarReciboIndemnizacionWord } from './generarReciboIndemnizacionWord.js';
@@ -204,8 +208,33 @@ export default function LiquidadorExpress({
         ref = ref[keys[i]];
       }
       ref[keys[keys.length - 1]] = valor;
+
+      // Al cambiar fecha de siniestro, alinear SMMLV al año del siniestro
+      if (path === 'encabezado.fechaSiniestro') {
+        const anio = anioDesdeFecha(valor);
+        if (anio) {
+          const smmlv = resolverSmmlvPorAnio(anio);
+          next.deducible = {
+            ...next.deducible,
+            anioSMMLV: smmlv.anio,
+            valorSMMLV: smmlv.valor,
+          };
+        }
+      }
       return next;
     });
+  };
+
+  const actualizarAnioSmmlv = (anio) => {
+    const smmlv = resolverSmmlvPorAnio(anio);
+    setLiquidador((prev) => ({
+      ...prev,
+      deducible: {
+        ...prev.deducible,
+        anioSMMLV: smmlv.anio,
+        valorSMMLV: smmlv.valor,
+      },
+    }));
   };
 
   const agregarConcepto = () => {
@@ -529,14 +558,31 @@ export default function LiquidadorExpress({
                   onChange={(e) => actualizar('deducible.cantidadSMMLV', e.target.value === '' ? '' : parseFloat(e.target.value))}
                 />
               </Campo>
+              <Campo label="Año SMMLV">
+                <SelectFenix
+                  value={ded.anioSMMLV ?? totales.anioSMMLV ?? ANIOS_SMMLV[0]}
+                  onChange={(e) => actualizarAnioSmmlv(e.target.value)}
+                >
+                  {ANIOS_SMMLV.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio} — $ {formatearMonto(SMMLV_POR_ANIO[anio])}
+                    </option>
+                  ))}
+                </SelectFenix>
+              </Campo>
               <Campo label="Valor SMMLV">
                 <InputFenix
                   value={ded.valorSMMLV ?? ''}
                   onChange={(e) => actualizar('deducible.valorSMMLV', e.target.value)}
                   placeholder="$ 1.750.905"
+                  title="Se actualiza al elegir el año; puede ajustarlo manualmente si lo requiere"
                 />
               </Campo>
             </div>
+            <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
+              El valor SMMLV se toma del salario mínimo de Colombia según el año (por defecto el de la fecha de siniestro).
+              Cada enero hay que agregar el nuevo año en la tabla de SMMLV.
+            </p>
             <div className="mt-4 space-y-2">
               <FilaTotal label="TOTAL PÉRDIDA" valor={totales.totalPerdida} />
               <FilaTotal

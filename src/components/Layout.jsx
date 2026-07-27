@@ -236,12 +236,19 @@ export default function Layout() {
     '/express/carga': 'Carga Express',
     '/express/liquidador': 'Liquidador Express',
     '/express/reporte': 'Reporte Express',
-    '/express/dashboard': 'Dashboard Express',
+    '/express/protocolo': 'Protocolo Express',
+    '/express/dashboard': 'Protocolo Express',
+    '/express/alertas': 'Protocolo Express',
     '/express/tablero': 'Tablero operativo Express',
     '/admin/catalogos-express': 'Catálogos Express',
     '/equidad-fdm/carga': 'Agregar caso Equidad FDM',
+    '/equidad-fdm/liquidador': 'Liquidador Equidad FDM',
     '/equidad-fdm/reporte': 'Reporte Equidad FDM',
     '/equidad-fdm/dashboard': 'Dashboard Equidad FDM',
+    '/propiedades/carga': 'Nuevo caso Propiedades',
+    '/propiedades/dashboard': 'Dashboard Propiedades',
+    '/propiedades/reporte': 'Reporte Propiedades',
+    '/propiedades/inspeccion': 'Inspección de Propiedades',
     '/puertos/actas': 'Puertos — Actas',
     '/puertos/actas/nueva': 'Puertos — Nueva Acta',
     '/puertos/actas/caso/nueva': 'Puertos — Informe Exportación',
@@ -283,6 +290,7 @@ export default function Layout() {
     else if (path.startsWith('/riesgos')) setExpandedSection('riesgos');
     else if (path.startsWith('/express')) setExpandedSection('express');
     else if (path.startsWith('/equidad-fdm')) setExpandedSection('equidadFdm');
+    else if (path.startsWith('/propiedades')) setExpandedSection('propiedades');
     else if (path.startsWith('/puertos')) setExpandedSection('puertos');
     else if (
       path.startsWith('/formulario') ||
@@ -357,19 +365,21 @@ export default function Layout() {
           { path: '/ajuste', icon: FaFileAlt, label: 'Ajuste / Acta de inspección' },
           { path: '/reporte-pol', icon: FaFileInvoice, label: 'Formulario POL' },
           { path: '/formulario-maquinaria', icon: FaTools, label: 'Formulario de Maquinaria' },
-          {
-            path: '/formulario-inspeccion-propiedades',
-            icon: FaClipboardList,
-            label: 'Inspección de Propiedades',
-          },
           { path: '/historial', icon: FaList, label: 'Historial de Formularios' },
+        ]
+      : [],
+    propiedades: !accesoRestringido
+      ? [
+          { path: '/propiedades/carga', icon: FaPlus, label: 'Nuevo caso' },
+          { path: '/propiedades/dashboard', icon: FaChartLine, label: 'Dashboard' },
+          { path: '/propiedades/reporte', icon: FaTable, label: 'Reporte' },
         ]
       : [],
     express: !accesoRestringido
       ? [
           { path: '/express/carga', icon: FaBolt, label: 'Carga Express' },
           { path: '/express/liquidador', icon: FaCalculator, label: 'Liquidador Express' },
-          { path: '/express/dashboard', icon: FaChartLine, label: 'Dashboard Express' },
+          { path: '/express/protocolo', icon: FaChartLine, label: 'Protocolo Express' },
           { path: '/express/tablero', icon: FaClipboardList, label: 'Tablero operativo' },
           { path: '/express/reporte', icon: FaTable, label: 'Reporte Express' },
         ]
@@ -377,6 +387,7 @@ export default function Layout() {
     equidadFdm: !accesoRestringido
       ? [
           { path: '/equidad-fdm/carga', icon: FaPlus, label: 'Agregar caso' },
+          { path: '/equidad-fdm/liquidador', icon: FaCalculator, label: 'Liquidador FDM' },
           { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: 'Dashboard FDM' },
           { path: '/equidad-fdm/reporte', icon: FaTable, label: 'Reporte FDM' },
         ]
@@ -461,6 +472,7 @@ export default function Layout() {
             { key: 'riesgos', title: 'RIESGOS', icon: FaChartBar, items: menuItems.riesgos },
             { key: 'express', title: 'EXPRESS', icon: FaBolt, items: menuItems.express },
             { key: 'equidadFdm', title: 'EQUIDAD FDM', icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
+            { key: 'propiedades', title: 'PROPIEDADES', icon: FaBuilding, items: menuItems.propiedades },
             { key: 'puertos', title: 'PUERTOS', icon: FaShip, items: menuItems.puertos },
             { key: 'formularios', title: 'FORMULARIOS', icon: FaFileInvoice, items: menuItems.formularios },
           ]
@@ -603,14 +615,17 @@ export default function Layout() {
               Formulario asignado · {usuarioActual.nombre || 'Externo'}
             </p>
           </div>
-          {volverUrl && (
-            <Link
-              to={volverUrl}
-              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              Volver a mi tarea
-            </Link>
-          )}
+          <div className="flex items-center gap-2">
+            {volverUrl && (
+              <Link
+                to={volverUrl}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+              >
+                Volver a mi tarea
+              </Link>
+            )}
+            <LogoutButton variant="compact" label="Salir" />
+          </div>
         </header>
         <main className="p-4">
           <Outlet />

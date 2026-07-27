@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FaBolt,
@@ -13,6 +13,14 @@ import {
   FaTable,
   FaTimes,
 } from 'react-icons/fa';
+import {
+  combinarFechaHoraInputs,
+  combinarHora12A24,
+  horaActualHHMM,
+  normalizarHoraEscrita,
+  partirFechaHoraParaInputs,
+  partirHora12Desde24,
+} from '../../utils/complexFechaHoraUtils.js';
 import {
   descargarAnexoExpress,
   puedeAccederAnexoExpress,
@@ -30,6 +38,7 @@ import {
   expressCardHeader,
   expressDropzoneActive,
   expressDropzoneBase,
+  expressHint,
   expressInput,
   expressLabel,
   expressMetricCard,
@@ -42,7 +51,7 @@ import {
 const NAV_EXPRESS = [
   { path: '/express/carga', icon: FaBolt, label: 'Carga' },
   { path: '/express/liquidador', icon: FaCalculator, label: 'Liquidador' },
-  { path: '/express/dashboard', icon: FaChartLine, label: 'Dashboard' },
+  { path: '/express/protocolo', icon: FaChartLine, label: 'Protocolo' },
   { path: '/express/tablero', icon: FaClipboardList, label: 'Tablero' },
   { path: '/express/reporte', icon: FaTable, label: 'Reporte' },
 ];
@@ -136,6 +145,180 @@ export function SelectFenix({ children, className = '', ...props }) {
     <select className={`${expressSelect} ${className}`} {...props}>
       {children}
     </select>
+  );
+}
+
+/**
+ * Fecha + hora de hitos ANS Express (mismo patrón amigable de Complex).
+ * Fecha nativa + hora 12h (a. m. / p. m.) o escritura libre (11, 11:30, 11am).
+ */
+export function InputFechaHoraExpress({
+  name,
+  value = '',
+  onChange,
+  onBlur,
+  hint = false,
+  className = '',
+  min = '2024-01-01',
+  max = '2100-12-31',
+  disabled = false,
+  required = false,
+  id,
+}) {
+  const { fecha, hora } = partirFechaHoraParaInputs(value);
+  const partes = hora
+    ? partirHora12Desde24(hora)
+    : { hora12: '', minuto: '', ampm: 'am' };
+  const [textoHora, setTextoHora] = useState(() => {
+    if (!hora) return '';
+    const p = partirHora12Desde24(hora);
+    return p.hora12 ? `${p.hora12}:${p.minuto} ${p.ampm === 'pm' ? 'p. m.' : 'a. m.'}` : '';
+  });
+
+  useEffect(() => {
+    if (!hora) {
+      setTextoHora('');
+      return;
+    }
+    const p = partirHora12Desde24(hora);
+    if (!p.hora12) return;
+    setTextoHora(`${p.hora12}:${p.minuto} ${p.ampm === 'pm' ? 'p. m.' : 'a. m.'}`);
+  }, [hora]);
+
+  const emitir = (nuevaFecha, nuevaHora) => {
+    if (!onChange || !name) return;
+    const combinado = combinarFechaHoraInputs(nuevaFecha, nuevaHora);
+    onChange({ target: { name, value: combinado } });
+  };
+
+  const emitirDesde12 = (h12, minuto, ampm, fechaBase = fecha) => {
+    const h24 = combinarHora12A24(h12, minuto, ampm);
+    if (!h24 || !fechaBase) return;
+    emitir(fechaBase, h24);
+  };
+
+  const aplicarTextoHora = (texto) => {
+    const normalizada = normalizarHoraEscrita(texto);
+    if (!normalizada || !fecha) return false;
+    emitir(fecha, normalizada);
+    return true;
+  };
+
+  const minutosOpts = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+  const horasOpts = Array.from({ length: 12 }, (_, i) => String(i + 1));
+
+  return (
+    <div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
+        <input
+          id={id}
+          type="date"
+          name={`${name}__fecha`}
+          value={fecha}
+          min={min}
+          max={max}
+          disabled={disabled}
+          required={required}
+          className={`${expressInput} ${className}`}
+          onChange={(e) => {
+            const nuevaFecha = e.target.value;
+            if (!nuevaFecha) {
+              emitir('', '');
+              return;
+            }
+            // Si aún no hay hora, usa la hora actual del dispositivo.
+            emitir(nuevaFecha, hora || horaActualHHMM());
+          }}
+          onBlur={onBlur}
+          aria-label="Fecha"
+        />
+        <div className="grid grid-cols-[1fr_1fr_auto] gap-1.5">
+          <select
+            name={`${name}__hora12`}
+            className={`${expressSelect} ${className}`}
+            value={partes.hora12 || ''}
+            disabled={disabled || !fecha}
+            onChange={(e) =>
+              emitirDesde12(e.target.value, partes.minuto || '00', partes.ampm || 'am')
+            }
+            aria-label="Hora"
+          >
+            <option value="">Hora</option>
+            {horasOpts.map((h) => (
+              <option key={h} value={h}>
+                {h}
+              </option>
+            ))}
+          </select>
+          <select
+            name={`${name}__minuto`}
+            className={`${expressSelect} ${className}`}
+            value={partes.minuto || ''}
+            disabled={disabled || !fecha}
+            onChange={(e) =>
+              emitirDesde12(partes.hora12 || '12', e.target.value, partes.ampm || 'am')
+            }
+            aria-label="Minutos"
+          >
+            <option value="">Min</option>
+            {minutosOpts.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select
+            name={`${name}__ampm`}
+            className={`${expressSelect} ${className} min-w-[4.5rem]`}
+            value={partes.ampm || 'am'}
+            disabled={disabled || !fecha}
+            onChange={(e) =>
+              emitirDesde12(partes.hora12 || '12', partes.minuto || '00', e.target.value)
+            }
+            aria-label="a. m. o p. m."
+          >
+            <option value="am">a. m.</option>
+            <option value="pm">p. m.</option>
+          </select>
+        </div>
+      </div>
+      <div className="mt-1.5">
+        <input
+          type="text"
+          inputMode="numeric"
+          name={`${name}__horaTexto`}
+          value={textoHora}
+          disabled={disabled || !fecha}
+          placeholder="Escribir hora: 11, 11:30, 11am…"
+          className={`${expressInput} ${className}`}
+          onChange={(e) => setTextoHora(e.target.value)}
+          onBlur={(e) => {
+            const ok = aplicarTextoHora(e.target.value);
+            if (!ok && hora) {
+              const p = partirHora12Desde24(hora);
+              setTextoHora(
+                p.hora12 ? `${p.hora12}:${p.minuto} ${p.ampm === 'pm' ? 'p. m.' : 'a. m.'}` : ''
+              );
+            }
+            onBlur?.(e);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              aplicarTextoHora(textoHora);
+              e.currentTarget.blur();
+            }
+          }}
+          aria-label="Escribir hora"
+        />
+      </div>
+      {hint !== false && (
+        <p className={expressHint}>
+          {hint ||
+            'Al elegir la fecha se completa la hora actual; puede ajustarla después.'}
+        </p>
+      )}
+    </div>
   );
 }
 

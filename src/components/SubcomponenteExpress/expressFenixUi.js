@@ -72,7 +72,8 @@ export const expressTextarea = `${expressInput} min-h-[120px] resize-y`;
 
 export const expressSelect = expressInput;
 
-
+export const expressHint =
+  'mt-1 font-body text-xs text-gray-500 dark:text-gray-400';
 
 export const expressBtnPrimary =
 

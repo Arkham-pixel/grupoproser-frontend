@@ -234,9 +234,9 @@ const TableroOperativoExpress = () => {
           subtitle="Vista compacta tipo Excel: tres tablas en paralelo."
           activePath="/express/tablero"
           actions={
-            <Link to="/express/dashboard" className={`${expressBtnSecondary} !py-2 !text-xs`}>
+            <Link to="/express/protocolo" className={`${expressBtnSecondary} !py-2 !text-xs`}>
               <FaChartLine />
-              Dashboard
+              Protocolo
             </Link>
           }
         />

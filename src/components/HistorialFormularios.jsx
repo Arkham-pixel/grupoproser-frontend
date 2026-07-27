@@ -302,7 +302,7 @@ const formularioCompleto = await obtenerFormulario(formulario.id);
           mensajeInfo = '🔍 Redirigiendo al formulario de Inspección (modo edición)...';
           break;
         case 'inspeccion-propiedades':
-          rutaEdicion = `/formulario-inspeccion-propiedades/editar/${formulario.id}`;
+          rutaEdicion = `/propiedades/reporte`;
           mensajeInfo = '🏠 Redirigiendo al formulario de Inspección de Propiedades (modo edición)...';
           break;
         case 'acta_inspeccion':

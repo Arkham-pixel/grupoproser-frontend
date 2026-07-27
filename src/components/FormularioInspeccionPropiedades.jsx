@@ -25,6 +25,9 @@ import { FaCamera, FaUpload, FaTrash, FaPlus, FaEye } from 'react-icons/fa';
 import ChatbotIA from './SubcomponenteFormularioAjuste/ChatbotIA';
 import BotonesHistorial from './BotonesHistorial';
 import historialService, { TIPOS_FORMULARIOS, ESTADOS_FORMULARIO } from '../services/historialService';
+import {
+  vincularInspeccionCasoPropiedades,
+} from '../services/propiedadesService';
 import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
 import { ImageCompression } from '../utils/imageCompression';
 import {
@@ -206,13 +209,18 @@ const migrarFirmasActa = (form) => {
   return f;
 };
 
-export default function FormularioInspeccionPropiedades() {
+export default function FormularioInspeccionPropiedades({
+  casoPropiedadesId = null,
+  casoPrefill = null,
+  inspeccionHistorialId = null,
+} = {}) {
   const t = usePropiedadesTheme();
-  const { id } = useParams();
+  const { id: idParam } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  // 🔑 Inicializar formularioId con id de URL (o null si no existe o es 'nuevo')
-  const [formularioId, setFormularioId] = useState(id && id !== 'nuevo' ? id : null);
+  const idFromRoute = inspeccionHistorialId || (idParam && idParam !== 'nuevo' ? idParam : null);
+  // 🔑 Inicializar formularioId con id de URL / prop del módulo Propiedades
+  const [formularioId, setFormularioId] = useState(idFromRoute || null);
   const [cargando, setCargando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [exportando, setExportando] = useState(false);
@@ -232,7 +240,7 @@ export default function FormularioInspeccionPropiedades() {
   const [seccionesActivas, setSeccionesActivas] = useState(() => normalizarSeccionesActivas());
 
   // Estado principal del formulario
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     // Información General del Inmueble
     claseInmueble: '',
     tipoInmueble: '',
@@ -276,7 +284,8 @@ export default function FormularioInspeccionPropiedades() {
     alcobasConCloset: {},
     /** Áreas creadas por el inspector en este informe */
     areasPersonalizadas: [],
-  });
+    ...(casoPrefill && typeof casoPrefill === 'object' ? casoPrefill : {}),
+  }));
 
   const [historialAreasGlobal, setHistorialAreasGlobal] = useState(() => cargarHistorialAreasGlobal());
   const [nuevaAreaTitulo, setNuevaAreaTitulo] = useState('');
@@ -440,11 +449,12 @@ export default function FormularioInspeccionPropiedades() {
   const lastSavedDataRef = useRef(null);
   const resumenEditadoManualRef = useRef(false);
 
-  // Cargar datos desde localStorage al iniciar (solo si no hay ID)
+  // Cargar datos desde localStorage al iniciar (solo si no hay ID de historial ni caso del módulo)
   useEffect(() => {
     const cargarDatos = async () => {
       if (!AUTO_SAVE_ENABLED) return;
-      if (!id || id === 'nuevo') {
+      if (idFromRoute || casoPropiedadesId) return;
+      if (!idParam || idParam === 'nuevo') {
         const datosGuardados = localStorage.getItem('formularioPropiedades');
         if (datosGuardados) {
           try {
@@ -480,7 +490,7 @@ export default function FormularioInspeccionPropiedades() {
     };
     
     cargarDatos();
-  }, [id]);
+  }, [idFromRoute, casoPropiedadesId, idParam]);
 
   // Guardar datos automáticamente cuando cambien (con debounce para evitar guardados excesivos)
   // Solo se guarda si estamos en la ruta del formulario de propiedades
@@ -1055,24 +1065,26 @@ localStorage.removeItem('formularioPropiedades');
     programarGuardadoAutomatico();
   }, []);
 
-  // Cargar formulario existente si hay ID y sincronizar formularioId con URL
+  // Cargar formulario existente si hay ID y sincronizar formularioId con URL / módulo Propiedades
   useEffect(() => {
-    if (id && id !== 'nuevo') {
-      // 🔑 Sincronizar formularioId con el id de la URL
-if (formularioId !== id) {
-        setFormularioId(id);
+    if (idFromRoute) {
+      if (formularioId !== idFromRoute) {
+        setFormularioId(idFromRoute);
       }
-      cargarFormularioExistente();
-    } else if (id === 'nuevo' && formularioId) {
-      // Si la URL cambió a 'nuevo' pero tenemos un formularioId, limpiar estado
-setFormularioId(null);
+      cargarFormularioExistente(idFromRoute);
+    } else if (casoPrefill && typeof casoPrefill === 'object') {
+      // Nueva inspección desde caso: precargar solo datos básicos (sin pisar si ya hay historial)
+      setFormData((prev) => ({
+        ...prev,
+        ...casoPrefill,
+      }));
     }
-  }, [id]);
+  }, [idFromRoute, casoPropiedadesId]);
 
-  const cargarFormularioExistente = async () => {
+  const cargarFormularioExistente = async (historialId) => {
     try {
       setCargando(true);
-      const formulario = await historialService.obtenerFormulario(id);
+      const formulario = await historialService.obtenerFormulario(historialId);
       
       if (formulario && formulario.datos) {
         const datos = formulario.datos;
@@ -1363,6 +1375,26 @@ let nuevoId;
       const actualizado = await historialService.obtenerFormulario(formularioId);
       await sincronizarFotosDesdeDatosGuardados(actualizado?.datos);
         nuevoId = formularioId;
+        if (casoPropiedadesId) {
+          try {
+            await vincularInspeccionCasoPropiedades(casoPropiedadesId, {
+              inspeccionId: nuevoId,
+              inspeccionTitulo: datosFormulario?.titulo || formData.nombreInmueble || '',
+              inspeccionFecha: new Date().toISOString(),
+              nombreCliente: formData.nombreInmueble,
+              direccion: formData.direccion,
+              localizacion: formData.localizacion,
+              ciudad: formData.ciudad,
+              departamento: formData.departamento,
+              claseInmueble: formData.claseInmueble,
+              tipoInmueble: formData.tipoInmueble,
+              destinacion: formData.destinacion,
+              documento: formData.numeroDocumento,
+            });
+          } catch (vincErr) {
+            console.warn('No se pudo vincular la inspección al caso:', vincErr);
+          }
+        }
 } else {
         // 🆕 Crear nuevo formulario
 const resultado = await historialService.guardarFormulario(datosFormulario);
@@ -1370,7 +1402,34 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
         await sincronizarFotosDesdeDatosGuardados(resultado?.datos);
 // 🔑 Guardar ID y navegar a la URL con el ID para futuras actualizaciones
         setFormularioId(nuevoId);
-navigate(`/formulario-inspeccion-propiedades/editar/${nuevoId}`, { replace: true });
+        if (casoPropiedadesId) {
+          try {
+            await vincularInspeccionCasoPropiedades(casoPropiedadesId, {
+              inspeccionId: nuevoId,
+              inspeccionTitulo: datosFormulario?.titulo || formData.nombreInmueble || '',
+              inspeccionFecha: new Date().toISOString(),
+              nombreCliente: formData.nombreInmueble,
+              direccion: formData.direccion,
+              localizacion: formData.localizacion,
+              ciudad: formData.ciudad,
+              departamento: formData.departamento,
+              claseInmueble: formData.claseInmueble,
+              tipoInmueble: formData.tipoInmueble,
+              destinacion: formData.destinacion,
+              documento: formData.numeroDocumento,
+            });
+          } catch (vincErr) {
+            console.warn('No se pudo vincular la inspección al caso:', vincErr);
+          }
+          navigate(`/propiedades/inspeccion/${casoPropiedadesId}?inspeccionId=${nuevoId}`, {
+            replace: true,
+          });
+        } else {
+          const basePath = location.pathname.startsWith('/propiedades')
+            ? '/propiedades/carga'
+            : '/formulario-inspeccion-propiedades';
+          navigate(`${basePath}/editar/${nuevoId}`, { replace: true });
+        }
       }
       
       mostrarModalConfirmacion(

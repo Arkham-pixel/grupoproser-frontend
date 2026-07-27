@@ -334,7 +334,10 @@ export function construirMercanciaConsolidada(lineas = []) {
 }
 
 /**
- * Distribuye fotos de mercancía: bloque 2×2 del Word (sección 3) y resto para supervisión.
+ * Distribuye fotos de mercancía para el informe:
+ * - Primera fila: Contenido | Contenedor (lado a lado), cuando existen ambos.
+ * - Filas siguientes: resto de fotos de contenido (máx. 4) en cuadrícula de 2.
+ * - Extras de contenedores/vehículos van a supervisión.
  */
 export function prepararFotosSeccion3Mercancia(informe = {}) {
   let cajas = [...(informe.imagenesContenidoCajas || [])];
@@ -346,36 +349,44 @@ export function prepararFotosSeccion3Mercancia(informe = {}) {
     contenedores = legacy.slice(3);
   }
 
-  const fila1 = cajas.splice(0, 2);
-  const cajaFila2 = cajas.shift() || null;
-  let contenedorFila2 = contenedores.shift() || null;
-  let leyendaDerechaFila2 = 'Contenedor (es) asignado (s)';
+  const fotoContenedor = contenedores.shift() || null;
+  const primeraCaja = cajas.shift() || null;
 
-  if (!contenedorFila2 && cajas.length) {
-    contenedorFila2 = cajas.shift();
-    leyendaDerechaFila2 = 'Contenido de la mercancía';
+  /** Fila principal: contenido y contenedor uno al lado del otro. */
+  const filaPrincipal = [];
+  const leyendasPrincipal = [];
+  if (primeraCaja) {
+    filaPrincipal.push(primeraCaja);
+    leyendasPrincipal.push('Contenido de la mercancía');
+  }
+  if (fotoContenedor) {
+    filaPrincipal.push(fotoContenedor);
+    leyendasPrincipal.push('Contenedor (es) asignado (s)');
   }
 
-  const fila2 = [];
-  const leyendasFila2 = [];
-  if (cajaFila2) {
-    fila2.push(cajaFila2);
-    leyendasFila2.push('Contenido de la mercancía');
-  }
-  if (contenedorFila2) {
-    fila2.push(contenedorFila2);
-    leyendasFila2.push(leyendaDerechaFila2);
+  /** Resto de contenido (hasta completar el máximo del formulario) en filas de 2. */
+  const filasExtra = [];
+  while (cajas.length) {
+    const slice = cajas.splice(0, 2);
+    filasExtra.push({
+      imagenes: slice,
+      leyendas: slice.map(() => 'Contenido de la mercancía'),
+    });
   }
 
   return {
-    fila1,
-    fila2,
-    leyendasFila2,
+    filaPrincipal,
+    leyendasPrincipal,
+    filasExtra,
+    /** Compatibilidad con código que aún usa fila1/fila2. */
+    fila1: [],
+    fila2: filaPrincipal,
+    leyendasFila2: leyendasPrincipal,
     extras: {
       contenedores: [...contenedores, ...cajas],
       vehiculos: [...(informe.imagenesVehiculosMercancia || [])],
     },
-    tieneFotos: fila1.length > 0 || fila2.length > 0,
+    tieneFotos: filaPrincipal.length > 0 || filasExtra.length > 0,
   };
 }
 

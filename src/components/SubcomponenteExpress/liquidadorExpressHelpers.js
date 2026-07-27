@@ -1,6 +1,50 @@
 /** Utilidades del liquidador Express (equivalente FORMATO_LIQUIDACION + export Word) */
 
-export const SMMLV_DEFAULT_2026 = 1750905;
+/** SMMLV Colombia por año (actualizar cada enero cuando salga el decreto). */
+export const SMMLV_POR_ANIO = {
+  2018: 781242,
+  2019: 828116,
+  2020: 877803,
+  2021: 908526,
+  2022: 1000000,
+  2023: 1160000,
+  2024: 1300000,
+  2025: 1423500,
+  2026: 1750905,
+};
+
+export const ANIOS_SMMLV = Object.keys(SMMLV_POR_ANIO)
+  .map(Number)
+  .sort((a, b) => b - a);
+
+export const SMMLV_ANIO_MAS_RECIENTE = ANIOS_SMMLV[0];
+export const SMMLV_DEFAULT = SMMLV_POR_ANIO[SMMLV_ANIO_MAS_RECIENTE];
+/** @deprecated usar SMMLV_DEFAULT */
+export const SMMLV_DEFAULT_2026 = SMMLV_DEFAULT;
+
+/** Resuelve año y valor SMMLV (si el año no está en tabla, usa el más cercano ≤ año o el más reciente). */
+export function resolverSmmlvPorAnio(anio) {
+  const n = Number(anio);
+  if (Number.isFinite(n) && SMMLV_POR_ANIO[n] != null) {
+    return { anio: n, valor: SMMLV_POR_ANIO[n] };
+  }
+  if (Number.isFinite(n)) {
+    const menorOIgual = ANIOS_SMMLV.find((a) => a <= n);
+    if (menorOIgual != null) {
+      return { anio: menorOIgual, valor: SMMLV_POR_ANIO[menorOIgual] };
+    }
+    const mayor = ANIOS_SMMLV[ANIOS_SMMLV.length - 1];
+    return { anio: mayor, valor: SMMLV_POR_ANIO[mayor] };
+  }
+  return { anio: SMMLV_ANIO_MAS_RECIENTE, valor: SMMLV_DEFAULT };
+}
+
+export function anioDesdeFecha(fechaISO) {
+  if (!fechaISO) return null;
+  const raw = String(fechaISO).slice(0, 4);
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1990 && n <= 2100 ? n : null;
+}
 
 export const OPCIONES_APLICA = ['Aplica', 'No Aplica'];
 
@@ -37,7 +81,8 @@ export const DEFAULT_LIQUIDADOR_EXPRESS = {
   deducible: {
     porcentaje: 10,
     cantidadSMMLV: 4,
-    valorSMMLV: SMMLV_DEFAULT_2026,
+    anioSMMLV: SMMLV_ANIO_MAS_RECIENTE,
+    valorSMMLV: SMMLV_DEFAULT,
   },
   checklist: {
     fecha: '',
@@ -127,7 +172,14 @@ export function calcularLiquidacion(liquidador) {
   const porcentaje = numDeducible(liquidador.deducible?.porcentaje, 10);
   const deduciblePorcentaje = totalPerdida * (porcentaje / 100);
 
-  const valorSMMLV = parsearNumero(liquidador.deducible?.valorSMMLV ?? SMMLV_DEFAULT_2026);
+  const anioRef =
+    Number(liquidador.deducible?.anioSMMLV) ||
+    anioDesdeFecha(liquidador.encabezado?.fechaSiniestro) ||
+    SMMLV_ANIO_MAS_RECIENTE;
+  const smmlvResuelto = resolverSmmlvPorAnio(anioRef);
+  const valorSMMLV = parsearNumero(
+    liquidador.deducible?.valorSMMLV ?? smmlvResuelto.valor ?? SMMLV_DEFAULT
+  );
   const cantidadSMMLV = numDeducible(liquidador.deducible?.cantidadSMMLV, 4);
   const deducibleSMMLV = valorSMMLV * cantidadSMMLV;
 
@@ -144,6 +196,8 @@ export function calcularLiquidacion(liquidador) {
     usaSMMLV,
     porcentaje,
     cantidadSMMLV,
+    valorSMMLV,
+    anioSMMLV: smmlvResuelto.anio,
   };
 }
 
@@ -234,6 +288,12 @@ export function aplicaFormatoSalvamento(liquidador = {}, casoExpress = null) {
 
 export function mapCasoExpressALiquidador(caso = {}) {
   const hoy = new Date().toISOString().slice(0, 10);
+  const fechaSiniestro = caso.fechaSiniestro
+    ? String(caso.fechaSiniestro).slice(0, 10)
+    : '';
+  const anioSiniestro = anioDesdeFecha(fechaSiniestro) || SMMLV_ANIO_MAS_RECIENTE;
+  const smmlv = resolverSmmlvPorAnio(anioSiniestro);
+
   const base = {
     ...DEFAULT_LIQUIDADOR_EXPRESS,
     encabezado: {
@@ -243,10 +303,13 @@ export function mapCasoExpressALiquidador(caso = {}) {
       asegurado: caso.aseguradoBeneficiario || '',
       nit: caso.nit || '',
       poliza: caso.numeroPoliza || caso.liquidador?.encabezado?.poliza || '',
-      fechaSiniestro: caso.fechaSiniestro
-        ? String(caso.fechaSiniestro).slice(0, 10)
-        : '',
+      fechaSiniestro,
       cobertura: caso.amparo || '',
+    },
+    deducible: {
+      ...DEFAULT_LIQUIDADOR_EXPRESS.deducible,
+      anioSMMLV: smmlv.anio,
+      valorSMMLV: smmlv.valor,
     },
     checklist: {
       ...DEFAULT_LIQUIDADOR_EXPRESS.checklist,
@@ -282,11 +345,22 @@ export function mapCasoExpressALiquidador(caso = {}) {
         fechaSiniestro: liq.encabezado?.fechaSiniestro || base.encabezado.fechaSiniestro,
         cobertura: liq.encabezado?.cobertura || base.encabezado.cobertura,
       },
-      deducible: {
-        ...DEFAULT_LIQUIDADOR_EXPRESS.deducible,
-        ...base.deducible,
-        ...(liq.deducible || {}),
-      },
+      deducible: (() => {
+        const dedMerged = {
+          ...DEFAULT_LIQUIDADOR_EXPRESS.deducible,
+          ...base.deducible,
+          ...(liq.deducible || {}),
+        };
+        if (!dedMerged.anioSMMLV) {
+          const anio =
+            anioDesdeFecha(liq.encabezado?.fechaSiniestro || base.encabezado.fechaSiniestro) ||
+            SMMLV_ANIO_MAS_RECIENTE;
+          const smmlvFix = resolverSmmlvPorAnio(anio);
+          dedMerged.anioSMMLV = smmlvFix.anio;
+          if (!dedMerged.valorSMMLV) dedMerged.valorSMMLV = smmlvFix.valor;
+        }
+        return dedMerged;
+      })(),
       checklist: {
         ...DEFAULT_LIQUIDADOR_EXPRESS.checklist,
         ...base.checklist,

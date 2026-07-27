@@ -12,6 +12,7 @@ import {
   Paragraph,
   ShadingType,
   Table,
+  TableBorders,
   TableCell,
   TableLayoutType,
   TableRow,
@@ -50,9 +51,10 @@ const CONTACTO_BOLIVAR = {
   email: 'Carlos.barrios@segurosbolivar.com',
 };
 
-// Mismos estilos del PDF (puertosCasoExportacionPdfHelpers) traducidos a Word.
-const FONT = 'Roboto Condensed';
-// Tamaños docx en half-points (pt × 2).
+// Tipografía del informe Word: Arial (cuerpo, títulos y tablas).
+const FONT = 'Arial';
+const FONT_FALLBACK = 'Arial';
+// Tamaños docx en half-points (pt × 2) — iguales al PDF.
 const SIZE = {
   headerTitle: 44, // 22pt
   title: 28, // 14pt
@@ -73,13 +75,23 @@ const COLOR = {
   legendBg: '232323',
 };
 
-// Página A4 con los mismos márgenes del PDF (mm): top 18, left/right 15, bottom 20.
+// Página A4: mismos márgenes del PDF (mm) left/right 15, bottom 20.
+// El encabezado va a sangre (ancho completo); el contenido arranca bajo la franja.
 const MM_TO_TWIP = 56.6929;
 const MM_TO_PX = 3.77953;
 const mmTw = (mm) => Math.round(mm * MM_TO_TWIP);
 const mmPx = (mm) => Math.round(mm * MM_TO_PX);
-const CONTENT_W_MM = 180;
+const PAGE_W_MM = 210;
+const PAGE_H_MM = 297;
+const MARGIN_LR_MM = 15;
+const HEADER_BAR_H_MM = 22;
+const HEADER_GAP_MM = 12;
+const CONTENT_W_MM = PAGE_W_MM - MARGIN_LR_MM * 2;
 const CONTENT_W_TW = mmTw(CONTENT_W_MM);
+const PAGE_W_TW = mmTw(PAGE_W_MM);
+/** Zona del logo en el encabezado (igual que el PDF: 40 mm). */
+const HEADER_LOGO_W_MM = 40;
+const HEADER_GREEN_W_MM = PAGE_W_MM - HEADER_LOGO_W_MM;
 
 const BORDE = { style: BorderStyle.SINGLE, size: 4, color: COLOR.border };
 const BORDES_TABLA = {
@@ -90,50 +102,67 @@ const BORDES_TABLA = {
   insideHorizontal: BORDE,
   insideVertical: BORDE,
 };
-const SIN_BORDE = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
-const BORDES_NINGUNO = {
-  top: SIN_BORDE,
-  bottom: SIN_BORDE,
-  left: SIN_BORDE,
-  right: SIN_BORDE,
-  insideHorizontal: SIN_BORDE,
-  insideVertical: SIN_BORDE,
+const BORDES_NINGUNO = TableBorders.NONE;
+const BORDES_CELDA_NINGUNO = {
+  top: { style: BorderStyle.NONE, size: 0, color: COLOR.white },
+  bottom: { style: BorderStyle.NONE, size: 0, color: COLOR.white },
+  left: { style: BorderStyle.NONE, size: 0, color: COLOR.white },
+  right: { style: BorderStyle.NONE, size: 0, color: COLOR.white },
 };
 const MARGEN_CELDA = { top: 40, bottom: 40, left: 60, right: 60 };
+const MARGEN_CERO = { top: 0, bottom: 0, left: 0, right: 0 };
+/** Interlineado 1.15 (240 = sencillo en twips). */
+const LINE_SPACING = 276;
 
-function tr(texto, { bold = false, size = SIZE.body, color = COLOR.text } = {}) {
-  return new TextRun({ text: String(texto ?? ''), bold, size, color, font: FONT });
+function fontRun() {
+  return { ascii: FONT, hAnsi: FONT, eastAsia: FONT_FALLBACK, cs: FONT_FALLBACK };
 }
 
-function parrafo(texto, { bold = false, size = SIZE.body, align = AlignmentType.JUSTIFIED, after = 120 } = {}) {
+function tr(texto, { bold = false, size = SIZE.body, color = COLOR.text } = {}) {
+  return new TextRun({
+    text: String(texto ?? ''),
+    bold,
+    size,
+    color,
+    font: fontRun(),
+  });
+}
+
+function parrafo(
+  texto,
+  { bold = false, size = SIZE.body, align = AlignmentType.JUSTIFIED, after = 100, before = 0 } = {}
+) {
   return new Paragraph({
     alignment: align,
-    spacing: { after },
+    spacing: { after, before, line: LINE_SPACING },
     children: [tr(texto, { bold, size })],
   });
 }
 
 function parrafoCentrado(texto, size = SIZE.body, bold = false) {
-  return parrafo(texto, { size, bold, align: AlignmentType.CENTER, after: 80 });
+  return parrafo(texto, { size, bold, align: AlignmentType.CENTER, after: 60 });
 }
 
 function tituloNumerado(numero, texto) {
   return new Paragraph({
-    spacing: { before: 160, after: 120 },
+    alignment: AlignmentType.LEFT,
+    spacing: { before: 200, after: 120, line: LINE_SPACING },
     children: [tr(`${numero}. ${String(texto).toUpperCase()}`, { bold: true, size: SIZE.title })],
   });
 }
 
 function tituloSeccion(texto) {
   return new Paragraph({
-    spacing: { before: 200, after: 100 },
+    alignment: AlignmentType.LEFT,
+    spacing: { before: 200, after: 100, line: LINE_SPACING },
     children: [tr(String(texto).toUpperCase(), { bold: true, size: SIZE.title })],
   });
 }
 
 function subtitulo(texto) {
   return new Paragraph({
-    spacing: { before: 120, after: 100 },
+    alignment: AlignmentType.LEFT,
+    spacing: { before: 100, after: 80, line: LINE_SPACING },
     children: [tr(texto, { bold: true, size: SIZE.title })],
   });
 }
@@ -141,7 +170,7 @@ function subtitulo(texto) {
 function tituloCentrado(texto) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 160, after: 140 },
+    spacing: { before: 160, after: 120, line: LINE_SPACING },
     children: [tr(texto, { bold: true, size: SIZE.title })],
   });
 }
@@ -150,7 +179,7 @@ function tituloCentrado(texto) {
 function barraTituloContenedor(titulo) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { before: 120, after: 100 },
+    spacing: { before: 120, after: 100, line: LINE_SPACING },
     shading: { type: ShadingType.CLEAR, fill: COLOR.labelBg },
     border: {
       top: { ...BORDE, space: 2 },
@@ -162,13 +191,13 @@ function barraTituloContenedor(titulo) {
   });
 }
 
-/** Barra oscura con leyenda blanca centrada bajo las fotos. */
+/** Barra verde con leyenda blanca centrada bajo las fotos. */
 function leyendaBloqueFotos(texto) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    spacing: { after: 80 },
-    shading: { type: ShadingType.CLEAR, fill: COLOR.legendBg },
-    children: [tr(String(texto || '').trim(), { size: SIZE.caption, color: COLOR.white })],
+    spacing: { after: 80, line: LINE_SPACING },
+    shading: { type: ShadingType.CLEAR, fill: COLOR.greenBrand },
+    children: [tr(String(texto || '').trim(), { size: SIZE.caption, color: COLOR.white, bold: true })],
   });
 }
 
@@ -177,7 +206,8 @@ function listaViñetas(puntos) {
   return items.map(
     (texto) =>
       new Paragraph({
-        spacing: { after: 60 },
+        alignment: AlignmentType.JUSTIFIED,
+        spacing: { after: 60, line: LINE_SPACING },
         indent: { left: mmTw(5), hanging: mmTw(5) },
         children: [tr(`✓ ${texto}`, { size: SIZE.body })],
       })
@@ -707,28 +737,33 @@ function tablaSeguimientoConsolidada(informe) {
   });
 }
 
-/** Encabezado de todas las páginas: franja sage «REPORTE DE SUPERVISIÓN» + logo. */
+/** Encabezado a sangre: franja sage «REPORTE DE SUPERVISIÓN» + logo (igual al PDF). */
 function encabezadoSupervision(logoRun) {
-  const sageW = mmTw(140);
-  const logoW = CONTENT_W_TW - sageW;
+  const greenW = mmTw(HEADER_GREEN_W_MM);
+  const logoW = mmTw(HEADER_LOGO_W_MM);
   return new Header({
     children: [
       new Table({
-        width: { size: CONTENT_W_TW, type: WidthType.DXA },
-        columnWidths: [sageW, logoW],
+        width: { size: PAGE_W_TW, type: WidthType.DXA },
+        columnWidths: [greenW, logoW],
+        // Compensa el margen izquierdo de la página para pegar la franja al borde.
+        indent: { size: -mmTw(MARGIN_LR_MM), type: WidthType.DXA },
         layout: TableLayoutType.FIXED,
         borders: BORDES_NINGUNO,
         rows: [
           new TableRow({
-            height: { value: mmTw(22), rule: HeightRule.EXACT },
+            height: { value: mmTw(HEADER_BAR_H_MM), rule: HeightRule.EXACT },
             children: [
               new TableCell({
-                width: { size: sageW, type: WidthType.DXA },
+                width: { size: greenW, type: WidthType.DXA },
                 verticalAlign: VerticalAlign.CENTER,
+                margins: MARGEN_CERO,
+                borders: BORDES_CELDA_NINGUNO,
                 shading: { type: ShadingType.CLEAR, fill: COLOR.greenBarBg },
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
+                    spacing: { before: 0, after: 0, line: 240 },
                     children: [
                       tr('REPORTE DE SUPERVISIÓN', {
                         bold: true,
@@ -742,11 +777,14 @@ function encabezadoSupervision(logoRun) {
               new TableCell({
                 width: { size: logoW, type: WidthType.DXA },
                 verticalAlign: VerticalAlign.CENTER,
+                margins: MARGEN_CERO,
+                borders: BORDES_CELDA_NINGUNO,
                 shading: { type: ShadingType.CLEAR, fill: COLOR.white },
                 children: [
                   new Paragraph({
                     alignment: AlignmentType.CENTER,
-                    children: logoRun ? [logoRun] : [],
+                    spacing: { before: 0, after: 0, line: 240 },
+                    children: logoRun ? [logoRun] : [tr('')],
                   }),
                 ],
               }),
@@ -754,7 +792,6 @@ function encabezadoSupervision(logoRun) {
           }),
         ],
       }),
-      new Paragraph({ spacing: { after: 120 }, children: [] }),
     ],
   });
 }
@@ -764,10 +801,11 @@ function piePagina() {
     children: [
       new Paragraph({
         alignment: AlignmentType.RIGHT,
+        spacing: { before: 0, after: 0 },
         children: [
           new TextRun({
             children: [PageNumber.CURRENT],
-            font: FONT,
+            font: fontRun(),
             size: SIZE.caption,
             color: COLOR.muted,
           }),
@@ -783,8 +821,13 @@ async function seccionPortada(formData) {
   children.push(
     new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 240 },
-      children: [tr(`Número de solicitud: ${formData.numeroSolicitud || '—'}`, { bold: true })],
+      spacing: { after: 200, line: LINE_SPACING },
+      children: [
+        tr(`Número de solicitud: ${formData.numeroSolicitud || '—'}`, {
+          bold: true,
+          size: SIZE.body,
+        }),
+      ],
     })
   );
 
@@ -907,21 +950,20 @@ async function seccionFotosMercancia(informe) {
 
   const children = [];
   children.push(new Paragraph({ spacing: { after: 120 }, children: [] }));
-  children.push(barraTituloContenedor('Contenido de la mercancía'));
 
-  if (bloque.fila1.length) {
+  if (bloque.filaPrincipal?.length) {
     children.push(
-      ...(await grillaFotos(bloque.fila1, 2, 38, {
-        sinCaption: true,
-        leyendaFila: 'Contenido de la mercancía',
+      ...(await grillaFotos(bloque.filaPrincipal, 2, 42, {
+        leyendasPorCelda: bloque.leyendasPrincipal,
       }))
     );
   }
 
-  if (bloque.fila2.length) {
+  for (const fila of bloque.filasExtra || []) {
+    children.push(new Paragraph({ spacing: { after: 80 }, children: [] }));
     children.push(
-      ...(await grillaFotos(bloque.fila2, 2, 38, {
-        leyendasPorCelda: bloque.leyendasFila2,
+      ...(await grillaFotos(fila.imagenes, 2, 42, {
+        leyendasPorCelda: fila.leyendas,
       }))
     );
   }
@@ -1077,7 +1119,8 @@ export async function generarWordInformeExportacion(
   const informe = formData.informeExportacion || {};
 
   const logoData = await assetImportadoABase64(logoBolivar);
-  const logoRun = logoData ? await imagenRun(logoData, 34, 15) : null;
+  // Logo un poco más angosto que la celda de 40 mm para que quede centrado sin desbordar.
+  const logoRun = logoData ? await imagenRun(logoData, 32, 14) : null;
 
   const children = [];
   children.push(...(await seccionPortada(formData)));
@@ -1094,20 +1137,30 @@ export async function generarWordInformeExportacion(
   const doc = new Document({
     styles: {
       default: {
-        document: { run: { font: FONT, size: SIZE.body, color: COLOR.text } },
+        document: {
+          run: {
+            font: fontRun(),
+            size: SIZE.body,
+            color: COLOR.text,
+          },
+          paragraph: {
+            spacing: { line: LINE_SPACING },
+          },
+        },
       },
     },
     sections: [
       {
         properties: {
           page: {
-            size: { width: mmTw(210), height: mmTw(297) },
+            size: { width: PAGE_W_TW, height: mmTw(PAGE_H_MM) },
             margin: {
-              top: mmTw(28),
+              // Contenido bajo la franja: barH 22 + gap 12 = 34 mm (igual al PDF).
+              top: mmTw(HEADER_BAR_H_MM + HEADER_GAP_MM),
               bottom: mmTw(20),
-              left: mmTw(15),
-              right: mmTw(15),
-              header: mmTw(4),
+              left: mmTw(MARGIN_LR_MM),
+              right: mmTw(MARGIN_LR_MM),
+              header: 0,
               footer: mmTw(8),
             },
           },

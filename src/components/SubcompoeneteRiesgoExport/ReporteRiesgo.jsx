@@ -3,6 +3,8 @@ import { obtenerCasosRiesgo, deleteCasoRiesgo, obtenerResponsables, obtenerEstad
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
 import AgregarCasoRiesgo from '../SubcomponentesRiesgo/AgregarCasoRiesgo';
+import AccionesRiesgoMenu from '../SubcomponentesRiesgo/AccionesRiesgoMenu.jsx';
+import { navegarInspeccionDesdeCasoRiesgo } from '../../utils/navegarInspeccionDesdeCasoRiesgo.js';
 // Nota: para exportar fechas como tipo fecha en Excel (no texto),
 // convertimos a Date y usamos `cellDates: true` en `json_to_sheet`.
 import { useTheme } from '../../context/ThemeContext';
@@ -517,6 +519,24 @@ if (clasificacionesList.length === 0) {
     if (caso) {
       setCasoParaEditar(caso);
       setModalAbierto(true);
+    }
+  };
+
+  const handleInforme = async (caso) => {
+    if (!caso) {
+      alert('No se encontró el caso para generar el informe.');
+      return;
+    }
+    try {
+      await navegarInspeccionDesdeCasoRiesgo(navigate, caso, {
+        returnPath: '/riesgos/exportar',
+        origen: 'reporte-riesgo',
+        aseguradoras,
+        ciudades: ciudades || ciudadesProp || [],
+      });
+    } catch (error) {
+      console.error('Error al abrir el informe de inspección:', error);
+      alert(`Error al abrir el informe: ${error.message || 'Error desconocido'}`);
     }
   };
 
@@ -1558,33 +1578,12 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                     e.currentTarget.style.backgroundColor = index % 2 === 0 ? tableRowBg : (theme === 'dark' ? '#1F1F1F' : '#F9F9F9');
                   }}
                 >
-                  <td className="p-2 whitespace-nowrap space-x-2">
-                    <button
-                      className="text-white px-2 py-1 rounded text-xs transition-colors"
-                      style={{ backgroundColor: '#3B82F6' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#2563EB';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#3B82F6';
-                      }}
-                      onClick={() => handleEdit(caso._id || caso.id_riesgo)}
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button
-                      className="text-white px-2 py-1 rounded text-xs transition-colors"
-                      style={{ backgroundColor: '#EF4444' }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#DC2626';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#EF4444';
-                      }}
-                      onClick={() => handleDelete(caso._id || caso.id_riesgo)}
-                    >
-                      🗑️ Borrar
-                    </button>
+                  <td className="p-2 whitespace-nowrap">
+                    <AccionesRiesgoMenu
+                      onInforme={() => handleInforme(caso)}
+                      onEditar={() => handleEdit(caso._id || caso.id_riesgo)}
+                      onEliminar={() => handleDelete(caso._id || caso.id_riesgo)}
+                    />
                   </td>
                   {camposVisibles.map(({ clave, label }) => (
                     <td 

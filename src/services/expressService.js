@@ -91,7 +91,14 @@ const normalizeExpressItem = (item = {}) => {
   const fechaReciboDocumentos = toISODate(item.fechaReciboDocumentos ?? item.fchaReciboDocu ?? item.fchaReciboDocumentos);
   const fechaCargueFiniquito = toISODate(item.fechaCargueFiniquito ?? item.fchaCargueFiniquito);
   const fechaSolicitudDocumentos = toISODate(item.fechaSolicitudDocumentos ?? item.fchaSoliDocu);
+  const fechaAcuseReciboDocumentos = toISODate(item.fechaAcuseReciboDocumentos);
+  const fechaUltimoDocumento = toISODate(item.fechaUltimoDocumento);
+  const fechaDefinicionCaso = toISODate(item.fechaDefinicionCaso);
+  const fechaSolicitudDocumentosAdicionales = toISODate(item.fechaSolicitudDocumentosAdicionales);
+  const fechaSolicitudCorrecciones = toISODate(item.fechaSolicitudCorrecciones);
+  const fechaCorreccionesPresentadas = toISODate(item.fechaCorreccionesPresentadas);
   const fechaPresentacionCifras = toISODate(item.fechaPresentacionCifras ?? item.fchaPresntCifras ?? item.fchaPresentacionCifras);
+  const fechaDocumentosPago = toISODate(item.fechaDocumentosPago);
   const fechaFiniquitosFirmado = toISODate(item.fechaFiniquitosFirmado ?? item.fchaFiniquitoIndem ?? item.fchaFiniquitosFirmado);
   const fechaEnvioAutorizacion = toISODate(item.fechaEnvioAutorizacion);
   const fechaRespuestaAnalista = toISODate(item.fechaRespuestaAnalista);
@@ -131,7 +138,14 @@ const normalizeExpressItem = (item = {}) => {
     fechaCierre,
     fechaCargueFiniquito,
     fechaSolicitudDocumentos,
+    fechaAcuseReciboDocumentos,
+    fechaUltimoDocumento,
+    fechaDefinicionCaso,
+    fechaSolicitudDocumentosAdicionales,
+    fechaSolicitudCorrecciones,
+    fechaCorreccionesPresentadas,
     fechaPresentacionCifras,
+    fechaDocumentosPago,
     fechaFiniquitosFirmado,
     createdAt,
     updatedAt,

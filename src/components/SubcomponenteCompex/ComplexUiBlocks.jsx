@@ -6,6 +6,7 @@ import { esUsuarioGerenteFacturacion } from '../../config/gerentesFacturacion';
 import {
   combinarFechaHoraInputs,
   combinarHora12A24,
+  horaActualHHMM,
   normalizarHoraEscrita,
   partirFechaHoraParaInputs,
   partirHora12Desde24,
@@ -339,7 +340,15 @@ export function InputFechaHoraProtocolo({
           disabled={disabled}
           required={required}
           className={`${complexInput} ${className}`}
-          onChange={(e) => emitir(e.target.value, hora || '12:00')}
+          onChange={(e) => {
+            const nuevaFecha = e.target.value;
+            if (!nuevaFecha) {
+              emitir('', '');
+              return;
+            }
+            // Si aún no hay hora, usa la hora actual del dispositivo.
+            emitir(nuevaFecha, hora || horaActualHHMM());
+          }}
           onBlur={onBlur}
           aria-label="Fecha"
         />
@@ -426,7 +435,7 @@ export function InputFechaHoraProtocolo({
       {hint !== false && (
         <p className={complexHint}>
           {hint ||
-            'Elija fecha y hora con las listas, o escriba la hora (ej. 11, 11:30, 11am). La hora no cambia al guardar.'}
+            'Al elegir la fecha se completa la hora actual; puede ajustarla después.'}
         </p>
       )}
     </div>

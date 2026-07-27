@@ -11,6 +11,7 @@ import {
   resolverNombreCatalogo,
 } from '../../services/expressCatalogoService.js';
 import { ordenarLista, resolverCodigoResponsable, resolverCodigoAseguradora, resolverCodigoEstado, formatDate } from './expressHelpers.js';
+import { esResponsableExpressPermitido } from '../../config/expressCatalogosPermitidos.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -18,6 +19,7 @@ import {
   expressCardBody,
   expressCardHeader,
   expressFormSection,
+  expressHint,
   expressPageWrap,
   expressRadioOption,
   expressScope,
@@ -33,12 +35,15 @@ import {
   ExpressListaAnexos,
   ExpressModal,
   ExpressPageHeader,
+  InputFechaHoraExpress,
   InputFenix,
   SelectFenix,
   TextareaFenix,
 } from './ExpressUiBlocks.jsx';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
+import AlertasCasoExpressPanel from './AlertasCasoExpressPanel.jsx';
+import { formatearFechaHoraParaInput } from '../../utils/complexFechaHoraUtils.js';
 
 const DEFAULT_FORM = {
   _id: '',
@@ -66,7 +71,14 @@ const DEFAULT_FORM = {
   correoNotificacion: '',
   fechaCierre: '',
   fechaSolicitudDocumentos: '',
+  fechaAcuseReciboDocumentos: '',
+  fechaUltimoDocumento: '',
+  fechaDefinicionCaso: '',
+  fechaSolicitudDocumentosAdicionales: '',
+  fechaSolicitudCorrecciones: '',
+  fechaCorreccionesPresentadas: '',
   fechaPresentacionCifras: '',
+  fechaDocumentosPago: '',
   fechaFiniquitosFirmado: '',
   reserva: '',
   estadoProceso: '',
@@ -117,6 +129,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const [guardandoIntermediario, setGuardandoIntermediario] = useState(false);
 
   const toDateInputValue = useCallback((value) => formatDate(value), []);
+  const toDateTimeInputValue = useCallback((value) => formatearFechaHoraParaInput(value), []);
 
   const toInputTextValue = useCallback((value) => {
     if (value === null || value === undefined) return '';
@@ -168,10 +181,10 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
         codigoWorkflow: toInputTextValue(data.codigoWorkflow),
         numeroSiniestro: toInputTextValue(data.numeroSiniestro),
         fechaSiniestro: toDateInputValue(data.fechaSiniestro),
-        avisoSiniestro: toDateInputValue(data.avisoSiniestro),
-        avisoSiniestroCompania: toDateInputValue(data.avisoSiniestroCompania),
-        fechaReciboDocumentos: toDateInputValue(data.fechaReciboDocumentos),
-        fechaCargueFiniquito: toDateInputValue(data.fechaCargueFiniquito),
+        avisoSiniestro: toDateTimeInputValue(data.avisoSiniestro),
+        avisoSiniestroCompania: toDateTimeInputValue(data.avisoSiniestroCompania),
+        fechaReciboDocumentos: toDateTimeInputValue(data.fechaReciboDocumentos),
+        fechaCargueFiniquito: toDateTimeInputValue(data.fechaCargueFiniquito),
         amparo: resolverNombreCatalogo(amparosExpress, data.amparo) || toInputTextValue(data.amparo),
         valorIndemnizacion: toInputNumberValue(
           data.valorIndemnizacion ?? data.valorIndemnizacionNumero ?? ''
@@ -187,12 +200,21 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
         aseguradoBeneficiario: toInputTextValue(data.aseguradoBeneficiario),
         nit: toInputTextValue(data.nit),
         analista: resolverNombreCatalogo(analistasExpress, data.analista) || toInputTextValue(data.analista),
-        fechaEnvioAutorizacion: toDateInputValue(data.fechaEnvioAutorizacion),
-        fechaRespuestaAnalista: toDateInputValue(data.fechaRespuestaAnalista),
+        fechaEnvioAutorizacion: toDateTimeInputValue(data.fechaEnvioAutorizacion),
+        fechaRespuestaAnalista: toDateTimeInputValue(data.fechaRespuestaAnalista),
         correoNotificacion: toInputTextValue(data.correoNotificacion),
         fechaCierre: toDateInputValue(data.fechaCierre),
-        fechaSolicitudDocumentos: toDateInputValue(data.fechaSolicitudDocumentos),
-        fechaPresentacionCifras: toDateInputValue(data.fechaPresentacionCifras),
+        fechaSolicitudDocumentos: toDateTimeInputValue(data.fechaSolicitudDocumentos),
+        fechaAcuseReciboDocumentos: toDateTimeInputValue(data.fechaAcuseReciboDocumentos),
+        fechaUltimoDocumento: toDateTimeInputValue(data.fechaUltimoDocumento),
+        fechaDefinicionCaso: toDateTimeInputValue(data.fechaDefinicionCaso),
+        fechaSolicitudDocumentosAdicionales: toDateTimeInputValue(
+          data.fechaSolicitudDocumentosAdicionales
+        ),
+        fechaSolicitudCorrecciones: toDateTimeInputValue(data.fechaSolicitudCorrecciones),
+        fechaCorreccionesPresentadas: toDateTimeInputValue(data.fechaCorreccionesPresentadas),
+        fechaPresentacionCifras: toDateTimeInputValue(data.fechaPresentacionCifras),
+        fechaDocumentosPago: toDateTimeInputValue(data.fechaDocumentosPago),
         fechaFiniquitosFirmado: toDateInputValue(data.fechaFiniquitosFirmado),
         reserva: toInputNumberValue(data.reserva ?? data.reservaNumero ?? ''),
         estadoProceso:
@@ -223,7 +245,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
       setExistingSalvamentoAnexos(salvamentoIniciales);
     },
-    [normalizeExistingAnexo, toDateInputValue, toInputNumberValue, toInputTextValue, amparosExpress, analistasExpress, intermediariosExpress, responsables, aseguradoras, estadosExpress]
+    [normalizeExistingAnexo, toDateInputValue, toDateTimeInputValue, toInputNumberValue, toInputTextValue, amparosExpress, analistasExpress, intermediariosExpress, responsables, aseguradoras, estadosExpress]
   );
 
   useEffect(() => {
@@ -472,13 +494,20 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const mappedResponsables = useMemo(() => {
     const opciones = responsables
       .map((resp, index) => ({
-        value: resp.codiRespnsble ?? resp.value ?? resp._id ?? '',
+        value: String(resp.codiRespnsble ?? resp.value ?? resp._id ?? ''),
         label: resp.nmbrRespnsble ?? resp.label ?? resp.nombre ?? '',
         key: resp._id ?? `${resp.codiRespnsble ?? resp.value ?? 'responsable'}-${index}`,
       }))
       .filter((resp) => resp.value && resp.label);
-    return ordenarLista(opciones, (resp) => resp.label);
-  }, [responsables]);
+
+    const permitidos = opciones.filter((resp) => esResponsableExpressPermitido(resp.label));
+    const actual = String(formData.responsable ?? '').trim();
+    if (actual && !permitidos.some((r) => r.value === actual)) {
+      const actualEnLista = opciones.find((r) => r.value === actual);
+      if (actualEnLista) permitidos.push(actualEnLista);
+    }
+    return ordenarLista(permitidos, (resp) => resp.label);
+  }, [responsables, formData.responsable]);
 
   const mappedAseguradoras = useMemo(() => {
     const opciones = aseguradoras
@@ -816,9 +845,10 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   };
 
   const grid2 = 'grid grid-cols-1 gap-4 sm:grid-cols-2';
+  const gridHitos = 'grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3';
 
-  const bloque = (titulo, children) => (
-    <section className={expressFormSection}>
+  const bloque = (titulo, children, className = '') => (
+    <section className={`${expressFormSection} ${className}`}>
       <h3 className={expressSectionTitle}>{titulo}</h3>
       <div className="space-y-4">{children}</div>
     </section>
@@ -868,6 +898,10 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
           }
         />
 
+        {(formData._id || formData.consecutivo) && (
+          <AlertasCasoExpressPanel casoId={formData._id} consecutivo={formData.consecutivo} />
+        )}
+
         <section className={expressCard}>
           <div className={expressCardHeader}>
             <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">Ficha del siniestro</h2>
@@ -877,8 +911,8 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
           </div>
 
           <form id="formulario-express" className={expressCardBody} onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
-              <div className="flex flex-col gap-6 lg:h-full">
+            <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+              <div className="contents">
                 {bloque(
                   'Datos administrativos',
                   <div className={grid2}>
@@ -986,7 +1020,8 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     placeholder="Ej: 3.999.999 o 3999999,50"
                   />
                 </Campo>
-                  </div>
+                  </div>,
+                  'order-1 lg:col-span-6'
                 )}
 
                 {bloque(
@@ -1016,10 +1051,11 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                         onAviso={mostrarAviso}
                       />
                     </Campo>
-                  </>
+                  </>,
+                  'order-4 lg:col-span-6 xl:col-span-4'
                 )}
 
-                <div className="mt-auto">
+                <div className="contents">
                 {bloque(
                   'Salvamento',
                   <>
@@ -1098,12 +1134,13 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                         salvamento.
                       </p>
                     )}
-                  </>
+                  </>,
+                  'order-6 lg:col-span-6 xl:col-span-4'
                 )}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-6 lg:h-full">
+              <div className="contents">
                 {bloque(
                   'Información del siniestro',
                   <div className={grid2}>
@@ -1199,12 +1236,17 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     ))}
                   </SelectFenix>
                 </Campo>
-                  </div>
+                  </div>,
+                  'order-2 lg:col-span-6'
                 )}
 
                 {bloque(
                   'Hitos y fechas del proceso',
-                  <div className={grid2}>
+                  <>
+                    <p className={`${expressHint} !mt-0 mb-1`}>
+                      Al elegir la fecha se completa la hora actual; puede ajustarla después.
+                    </p>
+                    <div className={gridHitos}>
                 <Campo label="Fecha del siniestro">
                   <InputFenix
                     id="fechaSiniestro"
@@ -1215,66 +1257,115 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                   />
                 </Campo>
                 <Campo label="Aviso de siniestro (ajustador)" required>
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="avisoSiniestro"
                     name="avisoSiniestro"
-                    type="date"
                     value={formData.avisoSiniestro}
                     onChange={handleChange}
                     required
                   />
                 </Campo>
                 <Campo label="Aviso de siniestro (compañía)">
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="avisoSiniestroCompania"
                     name="avisoSiniestroCompania"
-                    type="date"
                     value={formData.avisoSiniestroCompania}
                     onChange={handleChange}
                   />
                 </Campo>
                 <Campo label="Fecha solicitud de documentos">
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="fechaSolicitudDocumentos"
                     name="fechaSolicitudDocumentos"
-                    type="date"
                     value={formData.fechaSolicitudDocumentos}
                     onChange={handleChange}
                   />
                 </Campo>
                 <Campo label="Fecha recibo de documentos">
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="fechaReciboDocumentos"
                     name="fechaReciboDocumentos"
-                    type="date"
                     value={formData.fechaReciboDocumentos}
                     onChange={handleChange}
                   />
                 </Campo>
+                <Campo label="Acuse de recibo de documentación (ANS)">
+                  <InputFechaHoraExpress
+                    id="fechaAcuseReciboDocumentos"
+                    name="fechaAcuseReciboDocumentos"
+                    value={formData.fechaAcuseReciboDocumentos}
+                    onChange={handleChange}
+                  />
+                </Campo>
+                <Campo label="Recepción último documento (ANS)">
+                  <InputFechaHoraExpress
+                    id="fechaUltimoDocumento"
+                    name="fechaUltimoDocumento"
+                    value={formData.fechaUltimoDocumento}
+                    onChange={handleChange}
+                  />
+                </Campo>
+                <Campo label="Definición del caso (ANS)">
+                  <InputFechaHoraExpress
+                    id="fechaDefinicionCaso"
+                    name="fechaDefinicionCaso"
+                    value={formData.fechaDefinicionCaso}
+                    onChange={handleChange}
+                  />
+                </Campo>
+                <Campo label="Solicitud docs. adicionales (ANS)">
+                  <InputFechaHoraExpress
+                    id="fechaSolicitudDocumentosAdicionales"
+                    name="fechaSolicitudDocumentosAdicionales"
+                    value={formData.fechaSolicitudDocumentosAdicionales}
+                    onChange={handleChange}
+                  />
+                </Campo>
+                <Campo label="Solicitud de correcciones (ANS)">
+                  <InputFechaHoraExpress
+                    id="fechaSolicitudCorrecciones"
+                    name="fechaSolicitudCorrecciones"
+                    value={formData.fechaSolicitudCorrecciones}
+                    onChange={handleChange}
+                  />
+                </Campo>
+                <Campo label="Correcciones presentadas (ANS)">
+                  <InputFechaHoraExpress
+                    id="fechaCorreccionesPresentadas"
+                    name="fechaCorreccionesPresentadas"
+                    value={formData.fechaCorreccionesPresentadas}
+                    onChange={handleChange}
+                  />
+                </Campo>
                 <Campo label="Envío autorización analista">
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="fechaEnvioAutorizacion"
                     name="fechaEnvioAutorizacion"
-                    type="date"
                     value={formData.fechaEnvioAutorizacion}
                     onChange={handleChange}
                   />
                 </Campo>
                 <Campo label="Respuesta analista">
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="fechaRespuestaAnalista"
                     name="fechaRespuestaAnalista"
-                    type="date"
                     value={formData.fechaRespuestaAnalista}
                     onChange={handleChange}
                   />
                 </Campo>
                 <Campo label="Fecha presentación de cifras">
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="fechaPresentacionCifras"
                     name="fechaPresentacionCifras"
-                    type="date"
                     value={formData.fechaPresentacionCifras}
+                    onChange={handleChange}
+                  />
+                </Campo>
+                <Campo label="Documentos para pago montados (ANS)">
+                  <InputFechaHoraExpress
+                    id="fechaDocumentosPago"
+                    name="fechaDocumentosPago"
+                    value={formData.fechaDocumentosPago}
                     onChange={handleChange}
                   />
                 </Campo>
@@ -1288,10 +1379,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                   />
                 </Campo>
                 <Campo label="Fecha cargue finiquito">
-                  <InputFenix
+                  <InputFechaHoraExpress
                     id="fechaCargueFiniquito"
                     name="fechaCargueFiniquito"
-                    type="date"
                     value={formData.fechaCargueFiniquito}
                     onChange={handleChange}
                   />
@@ -1314,10 +1404,12 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                  </div>
+                    </div>
+                  </>,
+                  'order-3 lg:col-span-12'
                 )}
 
-                <div className="mt-auto">
+                <div className="contents">
                 {bloque(
                   'Estado del proceso',
                   <>
@@ -1347,7 +1439,8 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                         </p>
                       )}
                     </fieldset>
-                  </>
+                  </>,
+                  'order-5 lg:col-span-6 xl:col-span-4'
                 )}
                 </div>
               </div>

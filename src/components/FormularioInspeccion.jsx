@@ -1477,23 +1477,175 @@ await generarManualInspeccion();
   };
 
 
-  useEffect(() => {
-    const datosPrevios = location.state || {}; // ✅ Aquí se declara dentro del efecto
-    setFormData((prev) => ({
-      ...prev,
-      ...datosPrevios,
-    }));
+  const obtenerPrefillDesdeRiesgo = useCallback(() => {
+    const state = location.state || {};
+    if (state.prefillDesdeCaso && typeof state.prefillDesdeCaso === 'object') {
+      return state.prefillDesdeCaso;
+    }
+    if (state.desdeRiesgo) return state;
+    return null;
   }, [location.state]);
 
-    useEffect(() => {
-    if (datosPrevios.nombreCliente) {
-      setNombreCliente(datosPrevios.nombreCliente);
+  /**
+   * Rellena la zona de cliente del informe con datos del caso de riesgo
+   * (asegurado, dirección, ciudad, aseguradora, fechas).
+   */
+  const aplicarPrefillDesdeRiesgo = useCallback((prefill, { overwrite = true } = {}) => {
+    if (!prefill || typeof prefill !== 'object') return;
+
+    const tomar = (actual, siguiente) => {
+      const next = String(siguiente ?? '').trim();
+      if (!next) return actual;
+      if (overwrite) return next;
+      return String(actual ?? '').trim() ? actual : next;
+    };
+
+    const normalizar = (v) =>
+      String(v ?? '')
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase();
+
+    const nombre =
+      prefill.nombreCliente || prefill.nombreEmpresa || prefill.asegurado || '';
+    const dir = prefill.direccion || prefill.direccionRiesgo || '';
+    const ciudadTexto =
+      (typeof prefill.ciudad_siniestro === 'object'
+        ? prefill.ciudad_siniestro?.value || prefill.ciudad_siniestro?.label
+        : prefill.ciudad_siniestro) ||
+      prefill.municipio ||
+      prefill.ciudad ||
+      '';
+    const deptoTexto =
+      prefill.departamento_siniestro || prefill.departamento || '';
+    const aseguradoraRaw = prefill.aseguradora || '';
+
+    // Emparejar aseguradora con las opciones del <select> del informe
+    const opcionesAseguradora = [
+      'ALIANZ SEGURO S.A.',
+      'ASEGURADORA SOLIDARIA DE COLOMBIA',
+      'AXA COLPATRIA SEGUROS S.A.',
+      'BBVA SEGUROS COLOMBIA S.A.',
+      'CD ASESORES DE SEGUROS',
+      'CORPORACION DE VOLQUETEROS CORPORAVOL',
+      'CRAWFORD COLOMBIA S.A.S.',
+      'ECOEQUIPOS COLOMBIA S.A.S',
+      'EGON SEGUROS LTDA',
+      'EUROSEGUROS SU AGENCIA LTDA',
+      'ITAÚ CORREDOR DE SEGUROS',
+      'JANNA SEGUROS LTDA.',
+      'LA EQUIDAD SEGUROS',
+      'LA PREVISORA S.A.',
+      'LIBERTY SEGUROS S.A.',
+      'MAPFRE SEGUROS GENERALES DE COLOMBIA S.A.',
+      'MCA SEGUROS INTEGRLES LTDA',
+      'PROSER AJUSTES SAS',
+      'SBS SEGUROS COLOMBIA S.A.',
+      'SEGUROS ALFA S.A.',
+      'SEGUROS BOLÍVAR',
+      'SEGUROS CONFIANZA S.A.',
+      'SEGUROS DEL ESTADO',
+      'SEGUROS GENERALES SURAMERICANA S.A.',
+      'UNISEG RIESGOS Y SEGUROS',
+      'ZÚRICH COLOMBIA SEGUROS S.A.',
+    ];
+    const aseguradoraMatch =
+      opcionesAseguradora.find((o) => normalizar(o) === normalizar(aseguradoraRaw)) ||
+      opcionesAseguradora.find(
+        (o) =>
+          normalizar(o).includes(normalizar(aseguradoraRaw)) ||
+          normalizar(aseguradoraRaw).includes(normalizar(o))
+      ) ||
+      aseguradoraRaw;
+
+    // Emparejar municipio con colombia.json (value = nombre ciudad)
+    const ciudadStr = String(ciudadTexto || '').split(' - ')[0].trim();
+    const municipioOpt =
+      municipios.find((opt) => normalizar(opt.value) === normalizar(ciudadStr)) ||
+      municipios.find(
+        (opt) =>
+          normalizar(opt.label).includes(normalizar(ciudadStr)) ||
+          normalizar(opt.value).includes(normalizar(ciudadStr))
+      ) ||
+      null;
+    const ciudadFinal = municipioOpt?.value || ciudadStr;
+    const deptoFinal =
+      (municipioOpt?.label || '').split(' - ')[1]?.trim() || deptoTexto;
+
+    if (nombre) {
+      setNombreCliente((prev) => tomar(prev, nombre));
+      setNombreEmpresa((prev) => tomar(prev, nombre));
     }
-  }, [datosPrevios.nombreCliente]);
+    if (dir) {
+      setDireccion((prev) => tomar(prev, dir));
+    }
+    if (ciudadFinal) {
+      setMunicipio((prev) => tomar(prev, ciudadFinal));
+    }
+    if (deptoFinal) {
+      setDepartamento((prev) => tomar(prev, deptoFinal));
+    }
+    if (aseguradoraMatch) {
+      setAseguradora((prev) => tomar(prev, aseguradoraMatch));
+    }
+    const fechaPrefill = prefill.fechaInspeccion || prefill.fecha || prefill.fechaAsignacion || '';
+    if (fechaPrefill) {
+      setFecha((prev) => tomar(prev, fechaPrefill));
+    }
+
+    setFormData((prev) => {
+      const next = { ...prev };
+      const asignar = (campo, valor) => {
+        const texto = String(valor ?? '').trim();
+        if (!texto) return;
+        const actual = String(prev[campo] ?? '').trim();
+        // ciudad_siniestro puede ser objeto del Select
+        const actualObj =
+          campo === 'ciudad_siniestro' && typeof prev[campo] === 'object' && prev[campo]
+            ? String(prev[campo].value || prev[campo].label || '').trim()
+            : actual;
+        if (overwrite || !actualObj) {
+          next[campo] = valor;
+        }
+      };
+
+      asignar('asegurado', nombre);
+      asignar('nombreCliente', nombre);
+      asignar('direccion', dir);
+      asignar('direccionRiesgo', dir);
+      asignar('aseguradora', aseguradoraMatch);
+      if (municipioOpt) {
+        asignar('ciudad_siniestro', municipioOpt);
+        asignar('ciudad', municipioOpt.value);
+        asignar('municipio', municipioOpt.value);
+      } else if (ciudadFinal) {
+        asignar('ciudad_siniestro', ciudadFinal);
+        asignar('ciudad', ciudadFinal);
+        asignar('municipio', ciudadFinal);
+      }
+      asignar('departamento_siniestro', deptoFinal);
+      asignar('departamento', deptoFinal);
+      asignar('fechaInspeccion', fechaPrefill);
+      asignar('coordenadasRiesgo', prefill.coordenadasRiesgo);
+      if (prefill.casoId) asignar('casoId', prefill.casoId);
+      if (prefill.nmroRiesgo) asignar('nmroRiesgo', prefill.nmroRiesgo);
+      return next;
+    });
+  }, [municipios]);
+
+  // Prefill desde caso de riesgo (mismo patrón que ajuste desde Complex)
+  useEffect(() => {
+    const prefill = obtenerPrefillDesdeRiesgo();
+    if (!prefill) return;
+    aplicarPrefillDesdeRiesgo(prefill, { overwrite: true });
+  }, [obtenerPrefillDesdeRiesgo, aplicarPrefillDesdeRiesgo]);
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID)
   useEffect(() => {
     if (!AUTO_SAVE_ENABLED) return;
+    // No sobrescribir con borrador local si venimos con prefill de un caso de riesgo
+    if (location.state?.desdeRiesgo || location.state?.prefillDesdeCaso) return;
     if (!id || id === 'nuevo') {
       const datosGuardados = localStorage.getItem('formularioInspeccion');
       if (datosGuardados) {
@@ -6323,6 +6475,12 @@ setImagenesRegistro([]);
       }
 
       sincronizarSnapshotHistorialDesdeDatos(formulario.datos);
+
+      // Completar zona cliente con datos del caso de riesgo si el historial viene vacío
+      const prefillRiesgo = obtenerPrefillDesdeRiesgo();
+      if (prefillRiesgo) {
+        aplicarPrefillDesdeRiesgo(prefillRiesgo, { overwrite: false });
+      }
       
 }
   } catch (error) {
