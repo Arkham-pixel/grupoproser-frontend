@@ -14,6 +14,7 @@ import {
   faltanFechasFlujoVisitaParaCerrar,
   faltanFechasProtocoloRequeridas,
   faseFlujoVisita,
+  politicaEntregaFlujoVisita,
   subtareaTieneActaVisita,
   urlArchivoSubtarea,
 } from './subtareasComplexUtils.js';
@@ -42,6 +43,7 @@ export default function FlujoVisitaCoordinacionPanel({
   );
   const formatos = (subtarea.archivos || []).filter((a) => a.tipoArchivo === 'formato');
   const tieneActa = subtareaTieneActaVisita(subtarea);
+  const politicaEntrega = politicaEntregaFlujoVisita(subtarea);
   const camposFase = camposProtocoloFlujoVisita(fase);
 
   const avanzarAInspeccion = async () => {
@@ -78,6 +80,11 @@ export default function FlujoVisitaCoordinacionPanel({
         'Debe adjuntar acta y/o fotos de la visita antes de cerrar',
       ]);
     }
+    if (politicaEntrega === 'exige_preliminar' && formatos.length === 0) {
+      return onCompletar(null, [
+        'Esta subtarea exige el informe preliminar antes de cerrar. Genérelo o súbalo como formato.',
+      ]);
+    }
     await onCompletar(true);
   };
 
@@ -88,8 +95,12 @@ export default function FlujoVisitaCoordinacionPanel({
           Flujo de visita: {etiquetaFaseFlujoVisita(fase) || 'Coordinación'}
         </p>
         <p className="mt-1 text-xs opacity-90">
-          Coordinación → inspección y acta → puede continuar con informe preliminar o
-          cerrar para que el ajustador continúe (con fotos y datos de la visita).
+          Coordinación → inspección y acta →{' '}
+          {politicaEntrega === 'exige_preliminar'
+            ? 'debe completar el informe preliminar antes de cerrar.'
+            : politicaEntrega === 'solo_acta'
+              ? 'se entrega el acta y los soportes al ajustador.'
+              : 'puede continuar con informe preliminar o cerrar para que el ajustador continúe.'}
         </p>
         <ol className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
           {['coordinacion', 'inspeccion', 'decidir'].map((f) => (
@@ -319,6 +330,7 @@ export default function FlujoVisitaCoordinacionPanel({
             ajustador continúe con lo subido (acta, fotos y datos de la visita).
           </p>
           <div className="flex flex-wrap gap-2">
+            {politicaEntrega !== 'solo_acta' && (
             <button
               type="button"
               disabled={guardando}
@@ -330,6 +342,8 @@ export default function FlujoVisitaCoordinacionPanel({
             >
               Continuar con informe preliminar
             </button>
+            )}
+            {politicaEntrega !== 'exige_preliminar' && (
             <button
               type="button"
               disabled={guardando}
@@ -339,6 +353,7 @@ export default function FlujoVisitaCoordinacionPanel({
               <FaCheckCircle className="mr-1.5 text-emerald-600" />
               Cerrar y entregar al ajustador
             </button>
+            )}
           </div>
         </div>
       )}
@@ -346,8 +361,9 @@ export default function FlujoVisitaCoordinacionPanel({
       {fase === 'preliminar' && (
         <div className="space-y-3">
           <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
-            Informe preliminar opcional. Genérelo en el formulario de ajuste o súbalo como
-            formato; luego cierre la tarea.
+            {politicaEntrega === 'exige_preliminar'
+              ? 'Informe preliminar obligatorio. Genérelo en el formulario de ajuste o súbalo como formato antes de cerrar la tarea.'
+              : 'Informe preliminar opcional. Genérelo en el formulario de ajuste o súbalo como formato; luego cierre la tarea.'}
             {modoExterno ? ' Use el enlace del formulario de ajuste.' : ''}
           </div>
           <div className="flex flex-wrap gap-2">

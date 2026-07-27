@@ -160,7 +160,9 @@ export const CAMPO_OBS_POR_ETAPA = {
 
 export function subtareaRequiereFormato(subtarea) {
   if (subtarea?.requiereFormato) return true;
-  if (esFlujoVisitaCoordinacion(subtarea)) return false;
+  if (esFlujoVisitaCoordinacion(subtarea)) {
+    return politicaEntregaFlujoVisita(subtarea) === 'exige_preliminar';
+  }
   const etapa = String(subtarea?.etapaTrazabilidad || '').trim();
   if (ETAPAS_SOLO_FECHA.has(etapa)) return false;
   return ETAPAS_REQUIEREN_FORMATO.has(etapa);
@@ -206,6 +208,21 @@ export function etiquetaFaseFlujoVisita(fase) {
     preliminar: '3. Informe preliminar (opcional)',
   };
   return mapa[String(fase || '').trim()] || '';
+}
+
+export function politicaEntregaFlujoVisita(subtarea) {
+  const politica = String(subtarea?.flujoVisitaEntrega || '').trim();
+  return ['asignado_decide', 'exige_preliminar', 'solo_acta'].includes(politica)
+    ? politica
+    : 'asignado_decide';
+}
+
+export function etiquetaPoliticaEntregaFlujoVisita(politica) {
+  return {
+    asignado_decide: 'El asignado decide después del acta',
+    exige_preliminar: 'Informe preliminar obligatorio',
+    solo_acta: 'Solo acta y entrega al ajustador',
+  }[String(politica || '').trim()] || 'El asignado decide después del acta';
 }
 
 /** Campos de fecha visibles según la fase del flujo visita. */

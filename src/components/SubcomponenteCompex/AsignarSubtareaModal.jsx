@@ -11,6 +11,8 @@ import {
   actualizarSubtarea,
   crearSubtareaCaso,
   obtenerResumenSubtareasCaso,
+  reasignarSubtarea,
+  reenviarSubtarea,
   subirArchivoSubtarea,
 } from '../../services/complexSubtareasService.js';
 import {
@@ -29,6 +31,8 @@ import {
   formatearDuracionSubtarea,
   formatearFechaHoraSubtarea,
   formatearFechaSubtarea,
+  etiquetaFaseFlujoVisita,
+  etiquetaPoliticaEntregaFlujoVisita,
   puedeGestionarSubtareasFrontend,
   urlArchivoSubtarea,
 } from './subtareasComplexUtils.js';
@@ -49,6 +53,7 @@ const FORM_INICIAL = {
   emailExterno: '',
   fechaLimite: '',
   etapaProtocoloId: '',
+  flujoVisitaEntrega: 'asignado_decide',
 };
 
 function SemaforoDot({ color }) {
@@ -73,6 +78,9 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
   const [plazoLabel, setPlazoLabel] = useState('');
   const [reabriendoId, setReabriendoId] = useState(null);
   const [motivoReapertura, setMotivoReapertura] = useState('');
+  const [editando, setEditando] = useState(null);
+  const [motivoEdicion, setMotivoEdicion] = useState('');
+  const [notificarEdicion, setNotificarEdicion] = useState(true);
 
   const casoId = resolverCasoId(caso);
   const nmroAjste = caso?.nmroAjste || caso?.numero_ajuste || '';
@@ -133,6 +141,8 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
     setAviso('');
     setError('');
     setDetalleId(null);
+    setEditando(null);
+    setMotivoEdicion('');
     cargar();
   }, [open, casoId, cargar]);
 
@@ -169,16 +179,14 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
     setAviso('');
     setEnlace('');
     try {
-      // Recalcular plazo al enviar por si el protocolo o fechas del caso cambian
+      // Recalcular plazo al crear por si el protocolo o fechas del caso cambian
       const plazo = calcularFechaLimiteTrazabilidad(caso, form.etapaTrazabilidad, protocolo);
       const payload = {
         titulo: form.titulo || plazo.etapaProtocolo?.nombre || form.etapaTrazabilidad,
         descripcion: form.descripcion,
         instrucciones: form.instrucciones,
-        tipoAsignado: form.tipoAsignado,
         fechaLimite: form.fechaLimite || plazo.fechaLimiteInput || undefined,
-        etapaTrazabilidad: form.etapaTrazabilidad,
-        etapaProtocoloId: form.etapaProtocoloId || plazo.etapaProtocoloId,
+        flujoVisitaEntrega: form.flujoVisitaEntrega,
       };
       if (form.tipoAsignado === 'interno') {
         const resp = responsables.find(
@@ -192,7 +200,62 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
         payload.emailExterno = form.emailExterno;
       }
 
-      const result = await crearSubtareaCaso(casoId, payload);
+      if (editando) {
+        const cambioAsignado =
+          form.tipoAsignado !== editando.tipoAsignado ||
+          (form.tipoAsignado === 'interno' &&
+            String(form.codiAsignado) !== String(editando.codiAsignado || '')) ||
+          (form.tipoAsignado === 'externo' &&
+            String(form.emailExterno).trim().toLowerCase() !==
+              String(editando.emailExterno || '').trim().toLowerCase());
+        const cambioFlujo =
+          form.etapaTrazabilidad === 'coordinacionInspeccion' &&
+          form.flujoVisitaEntrega !==
+            (editando.flujoVisitaEntrega || 'asignado_decide');
+        if ((cambioFlujo || cambioAsignado) && !motivoEdicion.trim()) {
+          throw new Error('Indique el motivo de la reasignación o del cambio de entrega.');
+        }
+        await actualizarSubtarea(editando._id, {
+          ...payload,
+          ...(cambioFlujo ? { motivoCambioFlujo: motivoEdicion.trim() } : {}),
+        });
+        let result = null;
+        if (cambioAsignado) {
+          result = await reasignarSubtarea(editando._id, {
+            tipoAsignado: form.tipoAsignado,
+            codiAsignado: form.codiAsignado,
+            nombreAsignado: payload.nombreAsignado,
+            emailAsignado: payload.emailAsignado,
+            nombreExterno: form.nombreExterno,
+            emailExterno: form.emailExterno,
+            motivoReasignacion: motivoEdicion.trim(),
+            notificar: notificarEdicion,
+          });
+        } else if (notificarEdicion) {
+          result = await reenviarSubtarea(editando._id);
+        }
+        if (result?.subtarea?.tokenUnaVez) {
+          setEnlace(`${window.location.origin}/complex/subtarea/${result.subtarea.tokenUnaVez}`);
+        }
+        setAviso(
+          cambioAsignado
+            ? 'Subtarea reasignada y cambios guardados.'
+            : notificarEdicion
+              ? 'Cambios guardados y notificación reenviada.'
+              : 'Cambios guardados.'
+        );
+        setVista('seguimiento');
+        setEditando(null);
+        setMotivoEdicion('');
+        await cargar();
+        return;
+      }
+      const result = await crearSubtareaCaso(casoId, {
+        ...payload,
+        tipoAsignado: form.tipoAsignado,
+        etapaTrazabilidad: form.etapaTrazabilidad,
+        etapaProtocoloId: form.etapaProtocoloId || plazo.etapaProtocoloId,
+      });
       if (result.subtarea?.tokenUnaVez) {
         setEnlace(`${window.location.origin}/complex/subtarea/${result.subtarea.tokenUnaVez}`);
       }
@@ -266,6 +329,26 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
       })
     );
     setVista('nueva');
+  };
+
+  const editarSubtarea = (subtarea) => {
+    setEditando(subtarea);
+    setMotivoEdicion('');
+    setNotificarEdicion(true);
+    setForm({
+      etapaTrazabilidad: subtarea.etapaTrazabilidad || '',
+      titulo: subtarea.titulo || '',
+      descripcion: subtarea.descripcion || '',
+      instrucciones: subtarea.instrucciones || '',
+      tipoAsignado: subtarea.tipoAsignado || 'interno',
+      codiAsignado: subtarea.codiAsignado || '',
+      nombreExterno: subtarea.nombreExterno || '',
+      emailExterno: subtarea.emailExterno || '',
+      fechaLimite: subtarea.fechaLimite ? String(subtarea.fechaLimite).slice(0, 10) : '',
+      etapaProtocoloId: subtarea.etapaProtocoloId || '',
+      flujoVisitaEntrega: subtarea.flujoVisitaEntrega || 'asignado_decide',
+    });
+    setVista('editar');
   };
 
   return (
@@ -508,6 +591,17 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                       <span className="font-body text-[11px] text-gray-500">
                                         {asignado}
                                       </span>
+                                      {puedeGestionar &&
+                                        s.estado !== 'completada' &&
+                                        s.estado !== 'cancelada' && (
+                                          <button
+                                            type="button"
+                                            className={`ml-auto ${complexBtnFormAction}`}
+                                            onClick={() => editarSubtarea(s)}
+                                          >
+                                            Editar sub-tarea
+                                          </button>
+                                        )}
                                     </div>
                                     <p className="mt-1 font-body text-xs text-gray-500">
                                       Límite {formatearFechaSubtarea(s.fechaLimite)} · {docs.length}{' '}
@@ -516,6 +610,12 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                         ? ` · Tiempo: ${formatearDuracionSubtarea(s) || s.duracionAsignacionTexto}`
                                         : ''}
                                     </p>
+                                    {s.etapaTrazabilidad === 'coordinacionInspeccion' && (
+                                      <p className="mt-1 font-body text-xs text-violet-700">
+                                        {etiquetaFaseFlujoVisita(s.flujoVisitaFase)} ·{' '}
+                                        {etiquetaPoliticaEntregaFlujoVisita(s.flujoVisitaEntrega)}
+                                      </p>
+                                    )}
                                     {s.estado === 'completada' && (
                                       <p className="mt-1 font-body text-xs text-gray-500">
                                         Completada {formatearFechaHoraSubtarea(s.fechaCompletada)}
@@ -620,6 +720,35 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                           Mis Subtareas → Marcar completada.
                                         </p>
                                         <div className="flex flex-wrap items-end gap-2">
+                                          {puedeGestionar && (
+                                            <>
+                                              <button
+                                                type="button"
+                                                disabled={guardando}
+                                                className={complexBtnFormAction}
+                                                onClick={async () => {
+                                                  try {
+                                                    setGuardando(true);
+                                                    setError('');
+                                                    const result = await reenviarSubtarea(s._id);
+                                                    if (result?.subtarea?.tokenUnaVez) {
+                                                      setEnlace(
+                                                        `${window.location.origin}/complex/subtarea/${result.subtarea.tokenUnaVez}`
+                                                      );
+                                                    }
+                                                    setAviso('Notificación reenviada.');
+                                                    await cargar();
+                                                  } catch (err) {
+                                                    setError(err.message || 'No se pudo reenviar la notificación');
+                                                  } finally {
+                                                    setGuardando(false);
+                                                  }
+                                                }}
+                                              >
+                                                Reenviar notificación
+                                              </button>
+                                            </>
+                                          )}
                                           <select
                                             className={complexSelect}
                                             value={tipoUpload[s._id] || 'documento'}
@@ -667,7 +796,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
             </>
           )}
 
-          {vista === 'nueva' && puedeGestionar && (
+          {(vista === 'nueva' || vista === 'editar') && puedeGestionar && (
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className={complexLabel}>Etapa de trazabilidad *</label>
@@ -675,6 +804,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                   className={complexSelect}
                   value={form.etapaTrazabilidad}
                   onChange={(e) => onChangeEtapa(e.target.value)}
+                  disabled={vista === 'editar'}
                   required
                 >
                   {tareasTrazabilidad.map((t) => (
@@ -685,7 +815,9 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                   ))}
                 </select>
                 <p className={complexHint}>
-                  La fecha límite se calcula con el protocolo de tiempos vigente.
+                  {vista === 'editar'
+                    ? 'La etapa no se puede cambiar después de asignar para conservar la trazabilidad.'
+                    : 'La fecha límite se calcula con el protocolo de tiempos vigente.'}
                   {form.etapaTrazabilidad === 'coordinacionInspeccion'
                     ? ' Esta asignación incluye el flujo completo: coordinación → inspección/acta → opcionalmente informe preliminar o cierre para el ajustador.'
                     : ''}
@@ -720,8 +852,12 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                     type="date"
                     className={`${complexInput} bg-gray-50 dark:bg-gray-900/40`}
                     value={form.fechaLimite}
-                    readOnly
-                    title="Calculada automáticamente según el protocolo"
+                    readOnly={vista !== 'editar'}
+                    title={
+                      vista === 'editar'
+                        ? 'Puede ajustar la fecha límite.'
+                        : 'Calculada automáticamente según el protocolo'
+                    }
                   />
                   <p className={complexHint}>
                     Plazo:{' '}
@@ -781,6 +917,27 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                 </div>
               )}
 
+              {form.etapaTrazabilidad === 'coordinacionInspeccion' && (
+                <div>
+                  <label className={complexLabel}>Después del acta</label>
+                  <select
+                    className={complexSelect}
+                    value={form.flujoVisitaEntrega}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, flujoVisitaEntrega: e.target.value }))
+                    }
+                  >
+                    <option value="asignado_decide">El asignado decide</option>
+                    <option value="exige_preliminar">Exigir informe preliminar</option>
+                    <option value="solo_acta">Solo acta y entrega al ajustador</option>
+                  </select>
+                  <p className={complexHint}>
+                    Define si el informe preliminar será opcional, obligatorio o no estará
+                    disponible para esta sub-tarea.
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className={complexLabel}>Descripción</label>
                 <textarea
@@ -801,6 +958,29 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                 />
               </div>
 
+              {vista === 'editar' && (
+                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <label className={complexLabel}>
+                    Motivo de reasignación o cambio de entrega
+                  </label>
+                  <textarea
+                    className={complexTextarea}
+                    rows={2}
+                    value={motivoEdicion}
+                    onChange={(e) => setMotivoEdicion(e.target.value)}
+                    placeholder="Obligatorio al reasignar o cambiar el flujo post-acta."
+                  />
+                  <label className="flex items-center gap-2 font-body text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={notificarEdicion}
+                      onChange={(e) => setNotificarEdicion(e.target.checked)}
+                    />
+                    Notificar al asignado sobre los cambios
+                  </label>
+                </div>
+              )}
+
               <div className="flex flex-wrap justify-end gap-2 pt-1">
                 <button
                   type="button"
@@ -814,7 +994,13 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                   disabled={guardando}
                   className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
                 >
-                  {guardando ? 'Asignando…' : 'Asignar y notificar'}
+                  {guardando
+                    ? vista === 'editar'
+                      ? 'Guardando…'
+                      : 'Asignando…'
+                    : vista === 'editar'
+                      ? 'Guardar cambios'
+                      : 'Asignar y notificar'}
                 </button>
               </div>
             </form>

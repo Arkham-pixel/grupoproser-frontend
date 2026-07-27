@@ -51,6 +51,15 @@ export async function actualizarSubtarea(id, payload) {
   return parseJson(res);
 }
 
+export async function reasignarSubtarea(id, payload) {
+  const res = await fetch(`${BASE_URL}/api/complex-subtareas/${id}/reasignar`, {
+    method: 'POST',
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(payload),
+  });
+  return parseJson(res);
+}
+
 export async function cancelarSubtarea(id) {
   const res = await fetch(`${BASE_URL}/api/complex-subtareas/${id}`, {
     method: 'DELETE',
