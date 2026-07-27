@@ -21,6 +21,7 @@ import RecobroAjuste from "./RecobroAjuste";
 import { obtenerNumeracionSecciones } from "./numeracionSeccionesAjuste";
 import LiquidadorAjuste from "./LiquidadorAjuste";
 import ActaInspeccionAjuste from "./ActaInspeccionAjuste";
+import FotosPreliminarFlotante from "./FotosPreliminarFlotante";
 import ChatbotIA from "./ChatbotIA";
 import MapaGoogleEarth from '../MapaGoogleEarth';
 import ModalConfirmacion from '../ModalConfirmacion';
@@ -5560,7 +5561,13 @@ mostrarModalConfirmacion(
 
         {/* Formulario */}
         {estadoActual === 'actaInspeccion' ? (
-          <ActaInspeccionAjuste formData={formData} onInputChange={handleInputChange} />
+          <>
+            <ActaInspeccionAjuste formData={formData} onInputChange={handleInputChange} />
+            <FotosPreliminarFlotante
+              formData={formData}
+              onInputChange={handleInputChange}
+            />
+          </>
         ) : (
         <div 
           className="rounded-lg shadow-lg p-3 sm:p-4 lg:p-6 mb-6 sm:mb-8"
