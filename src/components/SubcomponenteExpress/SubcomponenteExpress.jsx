@@ -1243,9 +1243,6 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                 {bloque(
                   'Hitos y fechas del proceso',
                   <>
-                    <p className={`${expressHint} !mt-0 mb-1`}>
-                      Al elegir la fecha se completa la hora actual; puede ajustarla después.
-                    </p>
                     <div className={gridHitos}>
                 <Campo label="Fecha del siniestro">
                   <InputFenix

@@ -18,8 +18,12 @@ import {
 import {
   calcularLiquidacion,
   aplicaFormatoSalvamento,
+  liquidadorConNombreAjustador,
 } from './liquidadorExpressHelpers.js';
+import { useExpressCatalogos } from './expressHelpers.js';
 import { generarReciboIndemnizacionBlob } from './generarReciboIndemnizacionWord.js';
+import { generarContratoReembolsoBlob } from './generarContratoReembolsoWord.js';
+import { generarContratoTransaccionBlob } from './generarContratoTransaccionWord.js';
 import { generarLiquidadorExpressExcelBlob } from './generarLiquidadorExpressExcel.js';
 import {
   generarChecklistExpressBlob,
@@ -41,6 +45,7 @@ export default function LiquidadorExpressPage() {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const { obtenerNombreResponsable } = useExpressCatalogos();
 
   const casoId = casoExpress?._id || casoIdFromQuery || null;
 
@@ -94,12 +99,17 @@ export default function LiquidadorExpressPage() {
       setError('Debe abrir el liquidador desde un caso Express ya guardado (reporte o carga).');
       return;
     }
-    const liquidador = liquidadorArg || liquidadorState;
-    const totales = totalesArg || totalesState || calcularLiquidacion(liquidador || {});
-    if (!liquidador) {
+    const liquidadorRaw = liquidadorArg || liquidadorState;
+    const totales = totalesArg || totalesState || calcularLiquidacion(liquidadorRaw || {});
+    if (!liquidadorRaw) {
       setError('No hay datos del liquidador para guardar.');
       return;
     }
+    const liquidador = liquidadorConNombreAjustador(
+      liquidadorRaw,
+      obtenerNombreResponsable,
+      casoExpress?.responsable
+    );
 
     setGuardando(true);
     setError('');
@@ -128,6 +138,8 @@ export default function LiquidadorExpressPage() {
         const generadores = [
           generarLiquidadorExpressExcelBlob(liquidador, totales, { incluirSalvamento }),
           generarReciboIndemnizacionBlob(liquidador, totales),
+          generarContratoReembolsoBlob(liquidador, totales),
+          generarContratoTransaccionBlob(liquidador, totales),
           generarChecklistExpressBlob(liquidador, totales),
         ];
         if (incluirSalvamento) {
@@ -160,7 +172,7 @@ export default function LiquidadorExpressPage() {
         setMensaje(
           conSalvamento
             ? 'Liquidador guardado en el caso. Se actualizó el valor de indemnización y se adjuntaron Excel + Word en documentos.'
-            : 'Liquidador guardado. Salvamento no aplica: se omitió la hoja/formato SALVAMENTO; liquidación, checklist y recibo sí se generaron.'
+            : 'Liquidador guardado. Salvamento no aplica: se omitió la hoja/formato SALVAMENTO; liquidación, checklist, recibo y contrato de reembolso sí se generaron.'
         );
       } else {
         setMensaje(

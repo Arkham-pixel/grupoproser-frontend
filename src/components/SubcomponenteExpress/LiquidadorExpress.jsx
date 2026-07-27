@@ -25,18 +25,24 @@ import {
   expressTableHead,
   expressTableWrap,
 } from './expressFenixUi.js';
+import { useExpressCatalogos } from './expressHelpers.js';
 import {
   ANIOS_SMMLV,
   anioDesdeFecha,
+  buildContratoReembolsoPreview,
+  buildContratoTransaccionPreview,
   buildReciboPreview,
   calcularLiquidacion,
   conceptosAItemsAnalisis,
   DEFAULT_LIQUIDADOR_EXPRESS,
   DOCUMENTOS_SOPORTE,
   formatearMonto,
+  liquidadorConNombreAjustador,
   mapCasoExpressALiquidador,
   aplicaFormatoSalvamento,
   NOTAS_SALVAMENTO,
+  normalizarEstadoDocumento,
+  normalizarListaEstadosDocumentos,
   OPCIONES_APLICA,
   pctDocumentosMarcados,
   resolverSmmlvPorAnio,
@@ -44,6 +50,8 @@ import {
   totalesItemsAnalisis,
 } from './liquidadorExpressHelpers.js';
 import { descargarReciboIndemnizacionWord } from './generarReciboIndemnizacionWord.js';
+import { descargarContratoReembolsoWord } from './generarContratoReembolsoWord.js';
+import { descargarContratoTransaccionWord } from './generarContratoTransaccionWord.js';
 import {
   descargarChecklistExpressWord,
   descargarSalvamentoExpressWord,
@@ -131,10 +139,11 @@ export default function LiquidadorExpress({
   casoId = null,
   compact = false,
 }) {
+  const { obtenerNombreResponsable } = useExpressCatalogos();
   const [tab, setTab] = useState('liquidacion');
   const [liquidador, setLiquidador] = useState(() => {
     const base = casoExpress
-      ? mapCasoExpressALiquidador(casoExpress)
+      ? mapCasoExpressALiquidador(casoExpress, { obtenerNombreResponsable })
       : { ...DEFAULT_LIQUIDADOR_EXPRESS, conceptos: [], checklist: { ...DEFAULT_LIQUIDADOR_EXPRESS.checklist, itemsAnalisis: [] } };
     if (valorInicial && !(base.conceptos || []).length) {
       base.conceptos = [
@@ -148,7 +157,7 @@ export default function LiquidadorExpress({
     }
     return base;
   });
-  const [mostrarRecibo, setMostrarRecibo] = useState(false);
+  const [mostrarVistaPrevia, setMostrarVistaPrevia] = useState(null); // 'recibo' | 'reembolso' | 'transaccion'
   const [descargandoWord, setDescargandoWord] = useState(false);
   const [errorWord, setErrorWord] = useState('');
 
@@ -165,14 +174,28 @@ export default function LiquidadorExpress({
     const conceptosActuales = liquidador?.conceptos || [];
     if (conceptosActuales.length > 0) return;
 
-    setLiquidador(mapCasoExpressALiquidador(casoExpress));
+    setLiquidador(mapCasoExpressALiquidador(casoExpress, { obtenerNombreResponsable }));
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo hidratar al llegar liquidador vacío→lleno
-  }, [casoExpress]);
+  }, [casoExpress, obtenerNombreResponsable]);
+
+  const liquidadorParaExport = useMemo(
+    () => liquidadorConNombreAjustador(liquidador, obtenerNombreResponsable, casoExpress?.responsable),
+    [liquidador, obtenerNombreResponsable, casoExpress?.responsable]
+  );
+  const nombreAjustador = liquidadorParaExport.checklist?.ajustador || '—';
 
   const totales = useMemo(() => calcularLiquidacion(liquidador), [liquidador]);
   const recibo = useMemo(
     () => buildReciboPreview(liquidador, totales),
     [liquidador, totales]
+  );
+  const previewReembolso = useMemo(
+    () => buildContratoReembolsoPreview(liquidadorParaExport, totales),
+    [liquidadorParaExport, totales]
+  );
+  const previewTransaccion = useMemo(
+    () => buildContratoTransaccionPreview(liquidadorParaExport, totales),
+    [liquidadorParaExport, totales]
   );
   const pctDocs = pctDocumentosMarcados(liquidador.checklist?.documentos);
   const totalesAnalisis = useMemo(
@@ -194,9 +217,9 @@ export default function LiquidadorExpress({
 
   useEffect(() => {
     onTotalIndemnizarChange?.(totales.totalIndemnizar);
-    onEstadoChange?.(liquidador, totales);
+    onEstadoChange?.(liquidadorParaExport, totales);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- callbacks de padre; evitamos bucles
-  }, [liquidador, totales]);
+  }, [liquidador, totales, liquidadorParaExport]);
 
   const actualizar = (path, valor) => {
     setLiquidador((prev) => {
@@ -285,8 +308,23 @@ export default function LiquidadorExpress({
   const handleLiquidar = () => {
     onTotalIndemnizarChange?.(totales.totalIndemnizar);
     setErrorWord('');
-    setMostrarRecibo(true);
+    setMostrarVistaPrevia('recibo');
     onLiquidar?.({ liquidador, totales, recibo: buildReciboPreview(liquidador, totales) });
+  };
+
+  const abrirVistaPreviaReembolso = () => {
+    setErrorWord('');
+    setMostrarVistaPrevia('reembolso');
+  };
+
+  const abrirVistaPreviaTransaccion = () => {
+    setErrorWord('');
+    setMostrarVistaPrevia('transaccion');
+  };
+
+  const cerrarVistaPrevia = () => {
+    if (descargandoWord) return;
+    setMostrarVistaPrevia(null);
   };
 
   const handleDescargarWord = async () => {
@@ -302,11 +340,37 @@ export default function LiquidadorExpress({
     }
   };
 
+  const handleDescargarContratoReembolso = async () => {
+    setDescargandoWord(true);
+    setErrorWord('');
+    try {
+      await descargarContratoReembolsoWord(liquidadorParaExport, totales);
+    } catch (err) {
+      console.error('Error al generar contrato reembolso Word:', err);
+      setErrorWord('No se pudo generar el contrato de reembolso Word.');
+    } finally {
+      setDescargandoWord(false);
+    }
+  };
+
+  const handleDescargarContratoTransaccion = async () => {
+    setDescargandoWord(true);
+    setErrorWord('');
+    try {
+      await descargarContratoTransaccionWord(liquidadorParaExport, totales);
+    } catch (err) {
+      console.error('Error al generar contrato transacción Word:', err);
+      setErrorWord('No se pudo generar el contrato de transacción Word.');
+    } finally {
+      setDescargandoWord(false);
+    }
+  };
+
   const handleDescargarChecklist = async () => {
     setDescargandoWord(true);
     setErrorWord('');
     try {
-      await descargarChecklistExpressWord(liquidador, totales);
+      await descargarChecklistExpressWord(liquidadorParaExport, totales);
     } catch (err) {
       console.error('Error al generar checklist Word:', err);
       setErrorWord('No se pudo generar el check-list Word.');
@@ -323,7 +387,7 @@ export default function LiquidadorExpress({
     setDescargandoWord(true);
     setErrorWord('');
     try {
-      await descargarSalvamentoExpressWord(liquidador);
+      await descargarSalvamentoExpressWord(liquidadorParaExport);
     } catch (err) {
       console.error('Error al generar salvamento Word:', err);
       setErrorWord('No se pudo generar el formato de salvamento Word.');
@@ -336,7 +400,7 @@ export default function LiquidadorExpress({
     setDescargandoWord(true);
     setErrorWord('');
     try {
-      await descargarLiquidadorExpressExcel(liquidador, totales, {
+      await descargarLiquidadorExpressExcel(liquidadorParaExport, totales, {
         incluirSalvamento: aplicaFormatoSalvamento(liquidador, casoExpress),
       });
     } catch (err) {
@@ -359,7 +423,7 @@ export default function LiquidadorExpress({
 
   return (
     <div className="space-y-5">
-      {errorWord && !mostrarRecibo && (
+      {errorWord && !mostrarVistaPrevia && (
         <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
           {errorWord}
         </p>
@@ -376,7 +440,7 @@ export default function LiquidadorExpress({
               <button
                 type="button"
                 className={expressBtnPrimary}
-                onClick={() => onGuardarEnCaso(liquidador, totales)}
+                onClick={() => onGuardarEnCaso(liquidadorParaExport, totales)}
                 disabled={guardandoCaso || descargandoWord}
               >
                 <FaSave />
@@ -606,9 +670,27 @@ export default function LiquidadorExpress({
               <FaFileExcel />
               {descargandoWord ? 'Generando…' : 'Descargar Excel'}
             </button>
-            <button type="button" className={expressBtnPrimary} onClick={handleLiquidar}>
+            <button type="button" className={expressBtnGhost} onClick={handleLiquidar}>
               <FaFileWord />
-              LIQUIDAR — Vista previa recibo
+              Vista previa recibo
+            </button>
+            <button
+              type="button"
+              className={expressBtnGhost}
+              onClick={abrirVistaPreviaReembolso}
+              disabled={descargandoWord}
+            >
+              <FaFileWord />
+              Vista previa reembolso
+            </button>
+            <button
+              type="button"
+              className={expressBtnGhost}
+              onClick={abrirVistaPreviaTransaccion}
+              disabled={descargandoWord}
+            >
+              <FaFileWord />
+              Vista previa transacción
             </button>
           </div>
         </div>
@@ -718,7 +800,7 @@ export default function LiquidadorExpress({
             <Campo label="Breve descripción del evento" className="mt-4">
               <TextareaFenix value={chk.descripcionEvento} onChange={(e) => actualizar('checklist.descripcionEvento', e.target.value)} rows={4} />
             </Campo>
-            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">Ajustador — {chk.ajustador || '—'}</p>
+            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">Ajustador — {nombreAjustador}</p>
           </section>
 
           <section className={expressFormSection}>
@@ -729,7 +811,7 @@ export default function LiquidadorExpress({
                   <tr>
                     <th className="px-3 py-2 w-12">N°</th>
                     <th className="px-3 py-2">Documento</th>
-                    <th className="px-3 py-2 w-24 text-center">Aplica</th>
+                    <th className="px-3 py-2 w-32 text-center">Estado</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -738,15 +820,21 @@ export default function LiquidadorExpress({
                       <td className="px-3 py-2 text-sm">{idx + 1}</td>
                       <td className="px-3 py-2 text-sm">{texto}</td>
                       <td className="px-3 py-2 text-center">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(chk.documentos?.[idx])}
+                        <SelectFenix
+                          value={normalizarEstadoDocumento(chk.documentos?.[idx])}
+                          className="min-w-[7.5rem] text-sm"
                           onChange={(e) => {
-                            const docs = [...(chk.documentos || DOCUMENTOS_SOPORTE.map(() => false))];
-                            docs[idx] = e.target.checked;
+                            const docs = normalizarListaEstadosDocumentos(
+                              chk.documentos || DOCUMENTOS_SOPORTE.map(() => '')
+                            );
+                            docs[idx] = e.target.value;
                             actualizar('checklist.documentos', docs);
                           }}
-                        />
+                        >
+                          <option value="">Pendiente</option>
+                          <option value="Aplica">Aplica</option>
+                          <option value="No Aplica">No Aplica</option>
+                        </SelectFenix>
                       </td>
                     </tr>
                   ))}
@@ -838,7 +926,7 @@ export default function LiquidadorExpress({
             <Campo label="Comentarios adicionales" className="mt-4">
               <TextareaFenix value={chk.comentariosAdicionales} onChange={(e) => actualizar('checklist.comentariosAdicionales', e.target.value)} rows={3} />
             </Campo>
-            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">Ajustador — {chk.ajustador || '—'}</p>
+            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">Ajustador — {nombreAjustador}</p>
           </section>
         </div>
       )}
@@ -935,47 +1023,132 @@ export default function LiquidadorExpress({
         </div>
       )}
 
-      {mostrarRecibo && (
+      {mostrarVistaPrevia && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="recibo-titulo"
+          aria-labelledby="vista-previa-titulo"
         >
           <div className={`${expressCard} max-h-[90vh] w-full max-w-2xl overflow-y-auto`}>
             <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-              <h2 id="recibo-titulo" className="text-center font-heading text-lg font-bold">
-                {recibo.titulo}
+              <h2 id="vista-previa-titulo" className="text-center font-heading text-lg font-bold">
+                {mostrarVistaPrevia === 'recibo' && recibo.titulo}
+                {mostrarVistaPrevia === 'reembolso' && previewReembolso.titulo}
+                {mostrarVistaPrevia === 'transaccion' && previewTransaccion.titulo}
               </h2>
               <p className="text-center font-body text-sm text-gray-600">
-                Reclamo [{recibo.reclamo}]
+                {mostrarVistaPrevia === 'recibo' && `Reclamo ${recibo.reclamo}`}
+                {mostrarVistaPrevia === 'reembolso' && `Reclamo ${previewReembolso.reclamo}`}
+                {mostrarVistaPrevia === 'transaccion' && `Siniestro ${previewTransaccion.siniestro}`}
               </p>
             </div>
             <div className={expressCardBody}>
-              <div className="space-y-2 font-body text-sm text-gray-800 dark:text-gray-200">
-                <p>
-                  <strong>Asegurado:</strong> {recibo.asegurado}
-                </p>
-                <p>
-                  <strong>NIT:</strong> {recibo.nit}
-                </p>
-                <p>
-                  <strong>Póliza:</strong> {recibo.poliza}
-                </p>
-                <p>
-                  <strong>Fecha de siniestro:</strong> {recibo.fecha}
-                </p>
-                <p className="mt-4 text-justify leading-relaxed">{recibo.parrafoPrincipal}</p>
-                <p className="text-justify text-xs text-gray-500">
-                  Cláusulas de paz y salvo, subrogación y firma incluidas en el documento Word.
-                </p>
-                <p className="mt-4">
-                  <strong>Valor en letras:</strong> {recibo.valorLetras}
-                </p>
-                <p>
-                  <strong>Valor numérico:</strong> ${recibo.valor}
-                </p>
-              </div>
+              {mostrarVistaPrevia === 'recibo' && (
+                <div className="space-y-2 font-body text-sm text-gray-800 dark:text-gray-200">
+                  <p>
+                    <strong>Asegurado:</strong> {recibo.asegurado}
+                  </p>
+                  <p>
+                    <strong>NIT:</strong> {recibo.nit}
+                  </p>
+                  <p>
+                    <strong>Póliza:</strong> {recibo.poliza}
+                  </p>
+                  <p>
+                    <strong>Fecha de siniestro:</strong> {recibo.fecha}
+                  </p>
+                  <p className="mt-4 text-justify leading-relaxed">{recibo.parrafoPrincipal}</p>
+                  <p className="text-justify text-xs text-gray-500">
+                    Cláusulas de paz y salvo, subrogación y firma incluidas en el documento Word.
+                  </p>
+                  <p className="mt-4">
+                    <strong>Valor en letras:</strong> {recibo.valorLetras}
+                  </p>
+                  <p>
+                    <strong>Valor numérico:</strong> ${recibo.valor}
+                  </p>
+                </div>
+              )}
+
+              {mostrarVistaPrevia === 'reembolso' && (
+                <div className="space-y-2 font-body text-sm text-gray-800 dark:text-gray-200">
+                  <p>
+                    <strong>STRO:</strong> {previewReembolso.reclamo}
+                  </p>
+                  <p>
+                    <strong>ZC:</strong> {previewReembolso.zc}
+                  </p>
+                  <p>
+                    <strong>Asegurado:</strong> {previewReembolso.asegurado}
+                  </p>
+                  <p>
+                    <strong>Póliza:</strong> {previewReembolso.poliza}
+                  </p>
+                  <p className="mt-4 text-justify leading-relaxed">
+                    <strong>Descripción del siniestro:</strong> {previewReembolso.descripcion}
+                  </p>
+                  <p className="mt-3">
+                    <strong>Valor total del reclamo:</strong> {previewReembolso.totalReclamoLetras} ($
+                    {previewReembolso.totalReclamo})
+                  </p>
+                  <p>
+                    <strong>Deducible:</strong> ${previewReembolso.deducible}
+                  </p>
+                  <p>
+                    <strong>Valor a indemnizar:</strong> {previewReembolso.totalIndemnizarLetras} ($
+                    {previewReembolso.totalIndemnizar})
+                  </p>
+                  <p className="text-justify text-xs text-gray-500">
+                    El Word completo incluye cláusulas contractuales y firmas de la plantilla.
+                  </p>
+                </div>
+              )}
+
+              {mostrarVistaPrevia === 'transaccion' && (
+                <div className="space-y-2 font-body text-sm text-gray-800 dark:text-gray-200">
+                  <p>
+                    <strong>Póliza:</strong> {previewTransaccion.poliza}
+                  </p>
+                  <p>
+                    <strong>Siniestro:</strong> {previewTransaccion.siniestro}
+                  </p>
+                  <p>
+                    <strong>Tomador:</strong> {previewTransaccion.tomador}
+                  </p>
+                  <p>
+                    <strong>Reclamante:</strong> {previewTransaccion.reclamante}
+                  </p>
+                  <p>
+                    <strong>Documento:</strong> {previewTransaccion.nit}
+                  </p>
+                  <p>
+                    <strong>Vigencia:</strong> {previewTransaccion.vigenciaDesde} al{' '}
+                    {previewTransaccion.vigenciaHasta}
+                  </p>
+                  <p>
+                    <strong>Fecha siniestro:</strong> {previewTransaccion.fechaSiniestro}
+                  </p>
+                  <p className="mt-4 text-justify leading-relaxed">
+                    <strong>Hechos:</strong> {previewTransaccion.descripcion}
+                  </p>
+                  <p>
+                    <strong>Oficina / detalle:</strong> {previewTransaccion.oficina}
+                  </p>
+                  <p className="mt-3">
+                    <strong>Valor a indemnizar:</strong> {previewTransaccion.totalIndemnizarLetras} ($
+                    {previewTransaccion.totalIndemnizar})
+                  </p>
+                  <p>
+                    <strong>Deducible:</strong> {previewTransaccion.deducibleLetras} ($
+                    {previewTransaccion.deducible})
+                  </p>
+                  <p className="text-justify text-xs text-gray-500">
+                    El Word completo incluye consideraciones, acuerdo y firmas de la plantilla.
+                  </p>
+                </div>
+              )}
+
               {errorWord && (
                 <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
                   {errorWord}
@@ -985,20 +1158,44 @@ export default function LiquidadorExpress({
                 <button
                   type="button"
                   className={expressBtnGhost}
-                  onClick={() => setMostrarRecibo(false)}
+                  onClick={cerrarVistaPrevia}
                   disabled={descargandoWord}
                 >
                   Cerrar
                 </button>
-                <button
-                  type="button"
-                  className={expressBtnPrimary}
-                  onClick={handleDescargarWord}
-                  disabled={descargandoWord}
-                >
-                  <FaFileWord />
-                  {descargandoWord ? 'Generando…' : 'Descargar Word'}
-                </button>
+                {mostrarVistaPrevia === 'recibo' && (
+                  <button
+                    type="button"
+                    className={expressBtnGhost}
+                    onClick={handleDescargarWord}
+                    disabled={descargandoWord}
+                  >
+                    <FaFileWord />
+                    {descargandoWord ? 'Generando…' : 'Descargar Recibo Word'}
+                  </button>
+                )}
+                {mostrarVistaPrevia === 'reembolso' && (
+                  <button
+                    type="button"
+                    className={expressBtnGhost}
+                    onClick={handleDescargarContratoReembolso}
+                    disabled={descargandoWord}
+                  >
+                    <FaFileWord />
+                    {descargandoWord ? 'Generando…' : 'Descargar Contrato reembolso'}
+                  </button>
+                )}
+                {mostrarVistaPrevia === 'transaccion' && (
+                  <button
+                    type="button"
+                    className={expressBtnGhost}
+                    onClick={handleDescargarContratoTransaccion}
+                    disabled={descargandoWord}
+                  >
+                    <FaFileWord />
+                    {descargandoWord ? 'Generando…' : 'Descargar Contrato transacción'}
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -1,8 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { FaCog, FaFileExcel } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { deleteSiniestroExpress, fetchAllSiniestrosExpress } from '../../services/expressService.js';
+import { fetchExpressCatalogo } from '../../services/expressCatalogoService.js';
 import SubcomponenteExpress from './SubcomponenteExpress.jsx';
 import AccionesExpressMenu from './AccionesExpressMenu.jsx';
 import { convertirFechaParaExcelDate } from '../../utils/fechaUtils.js';
@@ -12,12 +13,17 @@ import {
   buildOpcionesFiltroResponsable,
   buildOpcionesFiltroAseguradora,
   buildOpcionesFiltroEstado,
+  buildOpcionesFiltroAmparo,
+  cargarFiltrosReporteExpress,
   coincideFiltroResponsable,
   coincideFiltroAseguradora,
   coincideFiltroEstado,
+  coincideFiltroAmparo,
   formatCurrency,
   formatDate,
   avisoEnRango,
+  guardarFiltrosReporteExpress,
+  limpiarFiltrosReporteExpressStorage,
   useExpressCatalogos,
 } from './expressHelpers.js';
 import {
@@ -125,6 +131,8 @@ function cargarColumnasGuardadas() {
 
 const ReporteExpress = () => {
   const navigate = useNavigate();
+  const filtrosIniciales = useMemo(() => cargarFiltrosReporteExpress(), []);
+  const claveFiltrosPrevRef = useRef(null);
   const [siniestros, setSiniestros] = useState([]);
   const [filtrados, setFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -141,13 +149,15 @@ const ReporteExpress = () => {
   const [seleccionTemporal, setSeleccionTemporal] = useState([]);
   const [draggedIndex, setDraggedIndex] = useState(null);
 
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroResponsable, setFiltroResponsable] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [filtroAseguradora, setFiltroAseguradora] = useState('');
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
-  const [paginaActual, setPaginaActual] = useState(1);
+  const [busqueda, setBusqueda] = useState(filtrosIniciales.busqueda);
+  const [filtroResponsable, setFiltroResponsable] = useState(filtrosIniciales.filtroResponsable);
+  const [filtroEstado, setFiltroEstado] = useState(filtrosIniciales.filtroEstado);
+  const [filtroAseguradora, setFiltroAseguradora] = useState(filtrosIniciales.filtroAseguradora);
+  const [filtroAmparo, setFiltroAmparo] = useState(filtrosIniciales.filtroAmparo);
+  const [fechaInicio, setFechaInicio] = useState(filtrosIniciales.fechaInicio);
+  const [fechaFin, setFechaFin] = useState(filtrosIniciales.fechaFin);
+  const [catalogoAmparos, setCatalogoAmparos] = useState([]);
+  const [paginaActual, setPaginaActual] = useState(filtrosIniciales.paginaActual);
   const [confirmEliminar, setConfirmEliminar] = useState({ open: false, registro: null });
   const [eliminando, setEliminando] = useState(false);
   const [avisoEliminar, setAvisoEliminar] = useState({
@@ -206,6 +216,20 @@ const ReporteExpress = () => {
     };
 
     fetchData();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelado = false;
+    fetchExpressCatalogo('amparo')
+      .then((data) => {
+        if (!cancelado) setCatalogoAmparos(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelado) setCatalogoAmparos([]);
+      });
     return () => {
       cancelado = true;
     };
@@ -293,8 +317,41 @@ const ReporteExpress = () => {
     [siniestros, catalogoAseguradoras, obtenerNombreAseguradora]
   );
 
+  const amparos = useMemo(
+    () => buildOpcionesFiltroAmparo(siniestros, catalogoAmparos),
+    [siniestros, catalogoAmparos]
+  );
+
+  const claveFiltros = useMemo(
+    () =>
+      JSON.stringify({
+        busqueda,
+        filtroResponsable,
+        filtroEstado,
+        filtroAseguradora,
+        filtroAmparo,
+        fechaInicio,
+        fechaFin,
+      }),
+    [
+      busqueda,
+      filtroResponsable,
+      filtroEstado,
+      filtroAseguradora,
+      filtroAmparo,
+      fechaInicio,
+      fechaFin,
+    ]
+  );
+
   const filtrosActivos = Boolean(
-    busqueda || filtroResponsable || filtroEstado || filtroAseguradora || fechaInicio || fechaFin
+    busqueda ||
+      filtroResponsable ||
+      filtroEstado ||
+      filtroAseguradora ||
+      filtroAmparo ||
+      fechaInicio ||
+      fechaFin
   );
 
   const limpiarFiltros = () => {
@@ -302,9 +359,34 @@ const ReporteExpress = () => {
     setFiltroResponsable('');
     setFiltroEstado('');
     setFiltroAseguradora('');
+    setFiltroAmparo('');
     setFechaInicio('');
     setFechaFin('');
+    setPaginaActual(1);
+    limpiarFiltrosReporteExpressStorage();
   };
+
+  useEffect(() => {
+    guardarFiltrosReporteExpress({
+      busqueda,
+      filtroResponsable,
+      filtroEstado,
+      filtroAseguradora,
+      filtroAmparo,
+      fechaInicio,
+      fechaFin,
+      paginaActual,
+    });
+  }, [
+    busqueda,
+    filtroResponsable,
+    filtroEstado,
+    filtroAseguradora,
+    filtroAmparo,
+    fechaInicio,
+    fechaFin,
+    paginaActual,
+  ]);
 
   useEffect(() => {
     let resultado = [...siniestros];
@@ -343,6 +425,9 @@ const ReporteExpress = () => {
         coincideFiltroAseguradora(item.aseguradora, filtroAseguradora, catalogoAseguradoras)
       );
     }
+    if (filtroAmparo) {
+      resultado = resultado.filter((item) => coincideFiltroAmparo(item.amparo, filtroAmparo));
+    }
     if (fechaInicio || fechaFin) {
       resultado = resultado.filter((item) =>
         avisoEnRango(item.avisoSiniestro, fechaInicio, fechaFin)
@@ -350,13 +435,18 @@ const ReporteExpress = () => {
     }
 
     setFiltrados(resultado);
-    setPaginaActual(1);
+    if (claveFiltrosPrevRef.current !== null && claveFiltrosPrevRef.current !== claveFiltros) {
+      setPaginaActual(1);
+    }
+    claveFiltrosPrevRef.current = claveFiltros;
   }, [
     siniestros,
+    claveFiltros,
     busqueda,
     filtroResponsable,
     filtroEstado,
     filtroAseguradora,
+    filtroAmparo,
     fechaInicio,
     fechaFin,
     catalogoResponsables,
@@ -598,6 +688,16 @@ const ReporteExpress = () => {
               <SelectFenix value={filtroAseguradora} onChange={(e) => setFiltroAseguradora(e.target.value)}>
                 <option value="">Todas</option>
                 {aseguradoras.map((a) => (
+                  <option key={a.value} value={a.value}>
+                    {a.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label="Amparo">
+              <SelectFenix value={filtroAmparo} onChange={(e) => setFiltroAmparo(e.target.value)}>
+                <option value="">Todos</option>
+                {amparos.map((a) => (
                   <option key={a.value} value={a.value}>
                     {a.label}
                   </option>

@@ -2,6 +2,7 @@ import { Document, Packer, Table, TableRow, WidthType, AlignmentType } from 'doc
 import { saveAs } from 'file-saver';
 import {
   DOCUMENTOS_SOPORTE,
+  etiquetaEstadoDocumento,
   formatearMonto,
   pctDocumentosMarcados,
 } from './liquidadorExpressHelpers.js';
@@ -71,7 +72,7 @@ export async function generarChecklistExpressBlob(liquidador, totales) {
       children: [
         celda(String(idx + 1), { width: 8 }),
         celda(texto, { width: 77 }),
-        celda(chk.documentos?.[idx] ? '✓ Aplica' : '', { width: 15, align: AlignmentType.CENTER }),
+        celda(etiquetaEstadoDocumento(chk.documentos?.[idx]), { width: 15, align: AlignmentType.CENTER }),
       ],
     })
   );

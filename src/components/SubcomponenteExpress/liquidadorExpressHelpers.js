@@ -102,7 +102,7 @@ export const DEFAULT_LIQUIDADOR_EXPRESS = {
     recobro: 'No Aplica',
     indicadoresFraude: 'No Aplica',
     descripcionEvento: '',
-    documentos: DOCUMENTOS_SOPORTE.map(() => false),
+    documentos: DOCUMENTOS_SOPORTE.map(() => ''),
     reclamoFormalizado: 'Sí',
     fechaFormalizacion: '',
     itemsAnalisis: [],
@@ -154,6 +154,13 @@ export function formatearMonto(valor) {
     maximumFractionDigits: 2,
   }).format(Math.abs(n));
   return esNegativo ? `-${formateado}` : formateado;
+}
+
+/** Redondea a pesos enteros (sin centavos). Usado en recibo y documentos legales. */
+export function redondearPesos(valor) {
+  const n = typeof valor === 'number' ? valor : parsearNumero(valor);
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n);
 }
 
 export function numDeducible(valor, defaultVal) {
@@ -286,7 +293,37 @@ export function aplicaFormatoSalvamento(liquidador = {}, casoExpress = null) {
   return false;
 }
 
-export function mapCasoExpressALiquidador(caso = {}) {
+/** Nombre del ajustador para checklist (no cédula/código interno). */
+export function resolverNombreAjustadorChecklist(ajustador, obtenerNombreResponsable, codigoResponsable = '') {
+  if (typeof obtenerNombreResponsable !== 'function') {
+    return String(ajustador || codigoResponsable || '').trim();
+  }
+  for (const codigo of [codigoResponsable, ajustador]) {
+    if (codigo === undefined || codigo === null || codigo === '') continue;
+    const nombre = obtenerNombreResponsable(codigo);
+    if (nombre && String(nombre) !== String(codigo)) return String(nombre).trim();
+  }
+  return String(ajustador || codigoResponsable || '').trim();
+}
+
+export function liquidadorConNombreAjustador(liquidador, obtenerNombreResponsable, codigoResponsable = '') {
+  if (!liquidador) return liquidador;
+  const nombre = resolverNombreAjustadorChecklist(
+    liquidador.checklist?.ajustador,
+    obtenerNombreResponsable,
+    codigoResponsable
+  );
+  return {
+    ...liquidador,
+    checklist: {
+      ...(liquidador.checklist || {}),
+      ajustador: nombre,
+    },
+  };
+}
+
+export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
+  const { obtenerNombreResponsable } = opciones;
   const hoy = new Date().toISOString().slice(0, 10);
   const fechaSiniestro = caso.fechaSiniestro
     ? String(caso.fechaSiniestro).slice(0, 10)
@@ -317,7 +354,7 @@ export function mapCasoExpressALiquidador(caso = {}) {
       riesgoAsegurado: caso.aseguradoBeneficiario || '',
       coberturaAfectada: caso.amparo || '',
       descripcionEvento: caso.observacionesSeguimiento || '',
-      ajustador: caso.responsable || '',
+      ajustador: resolverNombreAjustadorChecklist('', obtenerNombreResponsable, caso.responsable),
       salvamento: caso.salvamentoAplica === 'aplica' ? 'Aplica' : 'No Aplica',
       salvamentoDetalle: caso.valorSalvamento ? String(caso.valorSalvamento) : '',
     },
@@ -365,12 +402,19 @@ export function mapCasoExpressALiquidador(caso = {}) {
         ...DEFAULT_LIQUIDADOR_EXPRESS.checklist,
         ...base.checklist,
         ...(liq.checklist || {}),
-        documentos: Array.isArray(liq.checklist?.documentos)
-          ? liq.checklist.documentos
-          : base.checklist.documentos,
+        documentos: normalizarListaEstadosDocumentos(
+          Array.isArray(liq.checklist?.documentos)
+            ? liq.checklist.documentos
+            : base.checklist.documentos
+        ),
         itemsAnalisis: Array.isArray(liq.checklist?.itemsAnalisis)
           ? liq.checklist.itemsAnalisis
           : base.checklist.itemsAnalisis,
+        ajustador: resolverNombreAjustadorChecklist(
+          liq.checklist?.ajustador ?? base.checklist.ajustador,
+          obtenerNombreResponsable,
+          caso.responsable
+        ),
       },
       salvamento: {
         ...DEFAULT_LIQUIDADOR_EXPRESS.salvamento,
@@ -413,13 +457,331 @@ function formatearFechaSiniestroLarga(fechaISO) {
   });
 }
 
+/** Partes del monto ($88.636. + 936 + ) tal como vienen en la plantilla CONTRATO_REEMBOLSO.docx */
+export function formatearMontoContratoPartes(valor) {
+  const montoFmt = formatearMonto(valor);
+  const lastDot = montoFmt.lastIndexOf('.');
+  if (lastDot < 0) {
+    return {
+      prefijo: `($${montoFmt}.`,
+      sufijo: '00',
+      cierre: ')',
+    };
+  }
+  return {
+    prefijo: `($${montoFmt.slice(0, lastDot + 1)}`,
+    sufijo: montoFmt.slice(lastDot + 1),
+    cierre: ')',
+  };
+}
+
+/**
+ * Descripción del siniestro para ANTECEDENTE - PRIMERO del contrato de reembolso.
+ */
+export function buildContratoReembolsoDescripcion(liquidador = {}) {
+  const chk = liquidador.checklist || {};
+  const propia = (chk.descripcionEvento || '').trim();
+  if (propia) return propia;
+
+  const enc = liquidador.encabezado || {};
+  const { texto } = textoDescripcionSiniestroRecibo(liquidador);
+  if (enc.fechaSiniestro) {
+    const fecha = formatearFechaSiniestroLarga(enc.fechaSiniestro);
+    return `El día ${fecha} ${texto.charAt(0).toLowerCase()}${texto.slice(1)}`;
+  }
+  return texto;
+}
+
+/**
+ * Valores en orden de aparición de los marcadores amarillos en CONTRATO_REEMBOLSO.docx.
+ * Comentarios plantilla:
+ * - PRIMERA estipulación (1.er bloque amarillo): valor total del reclamo (totalPerdida)
+ * - xxx: deducible aplicado
+ * - SEGUNDA estipulación (2.º bloque amarillo): valor a indemnizar (totalIndemnizar)
+ */
+export function buildContratoReembolsoReplacements(liquidador, totales) {
+  const enc = liquidador.encabezado || {};
+  const totalReclamo = totales?.totalPerdida ?? 0;
+  const montoIndemnizar = totales?.totalIndemnizar ?? 0;
+  const deducible = totales?.deducibleAplicado ?? 0;
+
+  const letrasReclamo = `${montoALetras(totalReclamo)} PESOS `;
+  const letrasIndemnizar = `${montoALetras(montoIndemnizar)} PESOS `;
+  const partesReclamo = formatearMontoContratoPartes(totalReclamo);
+  const partesIndemnizar = formatearMontoContratoPartes(montoIndemnizar);
+  const deducibleTxt =
+    deducible > 0 ? `$${formatearMonto(deducible)}` : formatearMonto(deducible);
+
+  const bloqueReclamo = [
+    letrasReclamo,
+    'M/CtE ',
+    partesReclamo.prefijo,
+    partesReclamo.sufijo,
+    partesReclamo.cierre,
+  ];
+  const bloqueIndemnizar = [
+    letrasIndemnizar,
+    'M/CtE ',
+    partesIndemnizar.prefijo,
+    partesIndemnizar.sufijo,
+    partesIndemnizar.cierre,
+  ];
+
+  return [
+    enc.reclamo || '',
+    enc.zc || '',
+    enc.asegurado || '',
+    enc.asegurado || '',
+    '', // «encontraban» en plantilla: queda cubierto por la descripción del siniestro
+    ...bloqueReclamo,
+    deducibleTxt,
+    ...bloqueIndemnizar,
+  ];
+}
+
+/** Vista previa del contrato de reembolso (datos clave del Word). */
+export function buildContratoReembolsoPreview(liquidador, totales) {
+  const enc = liquidador.encabezado || {};
+  const totalReclamo = redondearPesos(totales?.totalPerdida ?? 0);
+  const montoIndemnizar = redondearPesos(totales?.totalIndemnizar ?? 0);
+  const deducible = redondearPesos(totales?.deducibleAplicado ?? 0);
+  return {
+    titulo: 'Contrato de Reembolso',
+    reclamo: enc.reclamo || '—',
+    zc: enc.zc || '—',
+    asegurado: enc.asegurado || '—',
+    poliza: enc.poliza || '—',
+    descripcion: buildContratoReembolsoDescripcion(liquidador),
+    totalReclamo: formatearMonto(totalReclamo),
+    totalReclamoLetras: `${montoALetras(totalReclamo)} PESOS`,
+    deducible: formatearMonto(deducible),
+    totalIndemnizar: formatearMonto(montoIndemnizar),
+    totalIndemnizarLetras: `${montoALetras(montoIndemnizar)} PESOS`,
+  };
+}
+
+/** Vista previa del contrato de transacción (datos clave del Word). */
+export function buildContratoTransaccionPreview(liquidador, totales) {
+  const enc = liquidador.encabezado || {};
+  const chk = liquidador.checklist || {};
+  const montoIndemnizar = redondearPesos(totales?.totalIndemnizar ?? 0);
+  const deducible = redondearPesos(totales?.deducibleAplicado ?? 0);
+  return {
+    titulo: 'Contrato de Transacción',
+    poliza: enc.poliza || '—',
+    siniestro: enc.reclamo || '—',
+    tomador: nombreTomadorContratoTransaccion(liquidador) || '—',
+    reclamante: nombreReclamanteContratoTransaccion(liquidador),
+    nit: enc.nit || '—',
+    vigenciaDesde: chk.vigenciaDesde || '—',
+    vigenciaHasta: chk.vigenciaHasta || '—',
+    fechaSiniestro: formatearFechaSiniestroLarga(enc.fechaSiniestro) || '—',
+    descripcion: buildContratoTransaccionDescripcionSegundo(liquidador) || '—',
+    oficina: oficinaAfectadaContratoTransaccion(liquidador),
+    totalIndemnizar: formatearMonto(montoIndemnizar),
+    totalIndemnizarLetras: `${montoALetras(montoIndemnizar)} PESOS MONEDA CORRIENTE`,
+    deducible: formatearMonto(deducible),
+    deducibleLetras: `${montoALetras(deducible)} PESOS MONEDA CORRIENTE`,
+  };
+}
+
+/** Tomador de la póliza en contrato de transacción (RC). */
+export function nombreTomadorContratoTransaccion(liquidador = {}) {
+  const chk = liquidador.checklist || {};
+  const enc = liquidador.encabezado || {};
+  return (chk.riesgoAsegurado || enc.asegurado || '').trim();
+}
+
+function splitIsoAFechaPartes(iso) {
+  if (!iso) return null;
+  const base = String(iso).slice(0, 10);
+  const [yyyy, mm, dd] = base.split('-');
+  if (!yyyy || !mm || !dd) return null;
+  return {
+    dd: String(Number(dd)),
+    mm: mm.padStart(2, '0'),
+    yyyy,
+  };
+}
+
+/** Partes amarillas de vigencia «desde» (7 runs) en CONTRATO_TRANSACCION.docx */
+export function splitVigenciaDesdeAmarilloTransaccion(iso) {
+  const p = splitIsoAFechaPartes(iso);
+  if (!p) return ['', '', '', '', '', '', ''];
+  return [p.dd, '/', p.mm[0], p.mm[1], `/${p.yyyy.slice(0, 2)}`, p.yyyy[2], p.yyyy[3]];
+}
+
+/** Partes amarillas de vigencia «hasta» (5 runs) en CONTRATO_TRANSACCION.docx */
+export function splitVigenciaHastaAmarilloTransaccion(iso) {
+  const p = splitIsoAFechaPartes(iso);
+  if (!p) return ['', '', '', '', ''];
+  if (p.yyyy.startsWith('202')) {
+    return [p.dd, '/', p.mm, '/202', p.yyyy[3]];
+  }
+  return [p.dd, '/', p.mm, `/${p.yyyy.slice(0, 3)}`, p.yyyy[3]];
+}
+
+/** Partes amarillas de «Que el día … de … de 2.0xx» (6 runs). */
+export function splitFechaSiniestroSegundoTransaccion(iso) {
+  const p = splitIsoAFechaPartes(iso);
+  if (!p) return ['', ' de ', '', ' de 2.0', '', ''];
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  const mes = Number.isNaN(d.getTime())
+    ? ''
+    : d.toLocaleDateString('es-CO', { month: 'long' });
+  return [p.dd, ' de ', mes, ' de 2.0', p.yyyy[2], p.yyyy[3]];
+}
+
+export function bloqueMontoTransaccionAmarillo(valor, numRuns) {
+  const monto = redondearPesos(valor);
+  const letras = montoALetras(monto);
+  const partes = formatearMontoContratoPartes(monto);
+  const texto = `${letras} PESOS MONEDA CORRIENTE ${partes.prefijo}${partes.sufijo}${partes.cierre}`;
+  const out = new Array(numRuns).fill('');
+  out[0] = texto;
+  return out;
+}
+
+/** Cuerpo del SEGUNDO considerando (sin prefijo «Que el día …»). */
+export function buildContratoTransaccionDescripcionSegundo(liquidador = {}) {
+  const chk = liquidador.checklist || {};
+  const propia = (chk.descripcionEvento || '').trim();
+  if (propia) {
+    const match = propia.match(/^que el día\s.+?,\s*(.+)$/i);
+    return match ? match[1].trim() : propia;
+  }
+  const texto = buildContratoReembolsoDescripcion(liquidador);
+  return texto
+    .replace(/^El día\s.+?,\s*/i, '')
+    .replace(/^Que el día\s.+?,\s*/i, '')
+    .trim();
+}
+
+export function oficinaAfectadaContratoTransaccion(liquidador = {}) {
+  const enc = liquidador.encabezado || {};
+  const detalle = (liquidador.conceptos || [])
+    .map((c) => (c.detalle || c.concepto || '').trim())
+    .find(Boolean);
+  return detalle || enc.cobertura || '—';
+}
+
+/**
+ * Valores en orden de los 72 marcadores amarillos en CONTRATO_TRANSACCION.docx.
+ */
+export function buildContratoTransaccionReplacements(liquidador, totales) {
+  const enc = liquidador.encabezado || {};
+  const chk = liquidador.checklist || {};
+  const poliza = enc.poliza || '';
+  const siniestro = enc.reclamo || '';
+  const tomador = nombreTomadorContratoTransaccion(liquidador);
+  const tomadorSinPunto = tomador.replace(/\.\s*$/, '');
+
+  const vigDesde = splitVigenciaDesdeAmarilloTransaccion(chk.vigenciaDesde);
+  const vigHasta = splitVigenciaHastaAmarilloTransaccion(chk.vigenciaHasta);
+  const fechaSiniestro = splitFechaSiniestroSegundoTransaccion(enc.fechaSiniestro);
+  const descSegundo = buildContratoTransaccionDescripcionSegundo(liquidador);
+
+  const bloqueIndemnizar = bloqueMontoTransaccionAmarillo(totales?.totalIndemnizar ?? 0, 21);
+  const bloqueDeducible = bloqueMontoTransaccionAmarillo(totales?.deducibleAplicado ?? 0, 11);
+
+  const cierresTomador = [tomadorSinPunto, '.', tomadorSinPunto, '.', tomadorSinPunto, '.'];
+
+  return [
+    poliza,
+    siniestro,
+    tomador,
+    tomadorSinPunto,
+    '.',
+    poliza,
+    tomadorSinPunto,
+    '.',
+    ...vigDesde,
+    ...vigHasta,
+    poliza,
+    'Que el día ',
+    ...fechaSiniestro,
+    ', ',
+    descSegundo,
+    poliza,
+    tomadorSinPunto,
+    '.',
+    poliza,
+    ...bloqueIndemnizar,
+    ...bloqueDeducible,
+    ...cierresTomador,
+  ];
+}
+
+/** Nombre del reclamante: no usar el de ejemplo «Diego». Línea en blanco para completar. */
+export function nombreReclamanteContratoTransaccion(liquidador = {}) {
+  const enc = liquidador.encabezado || {};
+  const chk = liquidador.checklist || {};
+  const asegurado = (enc.asegurado || '').trim();
+  const tomador = nombreTomadorContratoTransaccion(liquidador);
+  const riesgo = (chk.riesgoAsegurado || '').trim();
+
+  // Solo si el asegurado es claramente distinto del tomador (p. ej. tercero reclamante)
+  if (
+    asegurado &&
+    asegurado.toUpperCase() !== tomador.toUpperCase() &&
+    asegurado.toUpperCase() !== riesgo.toUpperCase() &&
+    !/DIEGO\s+FERNEY/i.test(asegurado)
+  ) {
+    return asegurado;
+  }
+  return '____________________________';
+}
+
+export function buildContratoTransaccionTextReplacements(liquidador = {}) {
+  const enc = liquidador.encabezado || {};
+  const reclamante = nombreReclamanteContratoTransaccion(liquidador);
+  const nit = (enc.nit || '').trim();
+  const oficina = oficinaAfectadaContratoTransaccion(liquidador);
+  const docTxt = nit || '________________';
+  const oficinaTxt = oficina && oficina !== '—' ? oficina : '________';
+
+  return [
+    // Nombre partido en plantilla: «D» + «IEGO FERNEY ROJAS» / firma «Diego Ferney Rojas»
+    ['DIEGO FERNEY ROJAS', reclamante],
+    ['Diego Ferney Rojas', reclamante],
+    // Documento (partido: «XXX de » + «Xxx»)
+    ['XXX de Xxx', docTxt],
+    ['XXX de XXX', docTxt],
+    // Oficina afectada
+    ['oficina XXX', `oficina ${oficinaTxt}`],
+    ['oficina xx', `oficina ${oficinaTxt}`],
+  ];
+}
+
+/**
+ * Detalle del liquidador para el recibo: va justo después del monto (tras la coma).
+ * Prioriza la descripción del evento del checklist; si no hay, usa conceptos; luego texto genérico.
+ */
+export function textoDetalleLiquidadorRecibo(liquidador = {}) {
+  const chk = liquidador.checklist || {};
+  const propia = (chk.descripcionEvento || '').trim();
+  if (propia) return { texto: propia, esGenerico: false };
+
+  const lineas = (liquidador.conceptos || [])
+    .map((c) => {
+      const concepto = (c.concepto || '').trim();
+      const detalle = (c.detalle || '').trim();
+      if (concepto && detalle) return `${concepto}: ${detalle}`;
+      return concepto || detalle;
+    })
+    .filter(Boolean);
+  if (lineas.length) return { texto: lineas.join('; '), esGenerico: false };
+
+  return textoDescripcionSiniestroRecibo(liquidador);
+}
+
 export function buildReciboPreview(liquidador, totales) {
   const h = liquidador.encabezado || {};
-  const monto = totales.totalIndemnizar;
+  const monto = redondearPesos(totales.totalIndemnizar);
   const letras = montoALetras(monto);
   const fechaSiniestro =
     formatearFechaSiniestroLarga(h.fechaSiniestro) || '—';
-  const { texto: descStro } = textoDescripcionSiniestroRecibo(liquidador);
+  const { texto: detalle } = textoDetalleLiquidadorRecibo(liquidador);
 
   return {
     titulo: 'Recibo de Indemnización',
@@ -430,15 +792,40 @@ export function buildReciboPreview(liquidador, totales) {
     fecha: fechaSiniestro,
     valor: formatearMonto(monto),
     valorLetras: letras,
+    detalle,
     anio: String(new Date().getFullYear()),
-    parrafoPrincipal: `Declaramos que hemos recibido de Zúrich Colombia Seguros S.A. la suma de ${letras} MCE ($${formatearMonto(monto)}), como indemnización única, total y definitiva con ocasión de ${descStro}.`,
+    parrafoPrincipal: `Declaramos que hemos recibido de Zúrich Colombia Seguros S.A. la suma de ${letras} MCE ($${formatearMonto(monto)}), ${detalle}.`,
   };
 }
 
+export function normalizarEstadoDocumento(valor) {
+  if (valor === true || valor === 'Aplica') return 'Aplica';
+  if (valor === 'No Aplica') return 'No Aplica';
+  return '';
+}
+
+/** Alinea la lista al catálogo de documentos y convierte booleanos viejos (true → Aplica). */
+export function normalizarListaEstadosDocumentos(documentos = []) {
+  return DOCUMENTOS_SOPORTE.map((_, idx) => normalizarEstadoDocumento(documentos[idx]));
+}
+
+export function documentoChecklistFinalizado(valor) {
+  const estado = normalizarEstadoDocumento(valor);
+  return estado === 'Aplica' || estado === 'No Aplica';
+}
+
+export function etiquetaEstadoDocumento(valor) {
+  const estado = normalizarEstadoDocumento(valor);
+  if (estado === 'Aplica') return '✓ Aplica';
+  if (estado === 'No Aplica') return 'No Aplica';
+  return '';
+}
+
 export function pctDocumentosMarcados(documentos = []) {
-  if (!documentos.length) return 0;
-  const marcados = documentos.filter(Boolean).length;
-  return Math.round((marcados / documentos.length) * 100);
+  const lista = normalizarListaEstadosDocumentos(documentos);
+  if (!lista.length) return 0;
+  const marcados = lista.filter(documentoChecklistFinalizado).length;
+  return Math.round((marcados / lista.length) * 100);
 }
 
 /**

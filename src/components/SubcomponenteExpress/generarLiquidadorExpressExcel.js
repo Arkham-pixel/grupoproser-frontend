@@ -2,6 +2,8 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
   DOCUMENTOS_SOPORTE,
+  documentoChecklistFinalizado,
+  normalizarEstadoDocumento,
   parsearNumero,
   pctDocumentosMarcados,
   totalesItemsAnalisis,
@@ -14,6 +16,43 @@ const FILA_FIN_CONCEPTOS = 25;
 const FILA_INI_DOCS = 38;
 const FILA_INI_ANALISIS = 57;
 const MAX_ITEMS_ANALISIS = 3;
+
+/** Cada hoja del liquidador debe imprimirse / exportarse en una sola página. */
+function configurarImpresionUnaPagina(sheet, printArea) {
+  if (!sheet) return;
+
+  sheet.rowBreaks = [];
+
+  const prev = sheet.pageSetup || {};
+  sheet.pageSetup = {
+    ...prev,
+    paperSize: prev.paperSize ?? 9,
+    orientation: prev.orientation ?? 'portrait',
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: 1,
+    showGridLines: prev.showGridLines ?? false,
+    horizontalCentered: prev.horizontalCentered ?? true,
+  };
+  delete sheet.pageSetup.scale;
+
+  if (printArea) {
+    sheet.pageSetup.printArea = printArea;
+  }
+}
+
+const AREAS_IMPRESION = {
+  FORMATO_LIQUIDACION: 'A1:I37',
+  'FORMATO-CHECK-LIST': 'A1:F70',
+  SALVAMENTO: 'A1:T48',
+};
+
+function aplicarImpresionUnaPagina(workbook) {
+  workbook.worksheets.forEach((sheet) => {
+    const area = AREAS_IMPRESION[sheet.name];
+    configurarImpresionUnaPagina(sheet, area);
+  });
+}
 
 function setCell(sheet, ref, value) {
   const cell = sheet.getCell(ref);
@@ -158,9 +197,9 @@ function rellenarChecklist(sheet, liquidador, totales) {
 
   DOCUMENTOS_SOPORTE.forEach((_, idx) => {
     const row = FILA_INI_DOCS + idx;
-    const aplica = Boolean(chk.documentos?.[idx]);
-    setCell(sheet, `E${row}`, aplica ? 'Aplica' : null);
-    setCell(sheet, `F${row}`, aplica ? 1 : 0);
+    const estado = normalizarEstadoDocumento(chk.documentos?.[idx]);
+    setCell(sheet, `E${row}`, estado || null);
+    setCell(sheet, `F${row}`, documentoChecklistFinalizado(estado) ? 1 : 0);
   });
 
   const rowPct = FILA_INI_DOCS + DOCUMENTOS_SOPORTE.length + 1; // 46
@@ -261,6 +300,8 @@ export async function generarLiquidadorExpressExcelBlob(liquidador, totales, opc
   } else if (hojaSal) {
     workbook.removeWorksheet(hojaSal.id);
   }
+
+  aplicarImpresionUnaPagina(workbook);
 
   workbook.creator = 'Arnald DataFlow';
   workbook.modified = new Date();

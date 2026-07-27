@@ -1,6 +1,6 @@
 import { AlignmentType, Document, Packer, Paragraph, TextRun } from 'docx';
 import { saveAs } from 'file-saver';
-import { buildReciboPreview, textoDescripcionSiniestroRecibo } from './liquidadorExpressHelpers.js';
+import { buildReciboPreview, textoDetalleLiquidadorRecibo } from './liquidadorExpressHelpers.js';
 import { buildZurichSection } from './liquidadorExpressWordShared.js';
 
 const FONT = 'Tahoma';
@@ -35,7 +35,7 @@ const parrafoCampo = (etiqueta, valor) =>
  */
 export async function generarReciboIndemnizacionBlob(liquidador, totales) {
   const recibo = buildReciboPreview(liquidador, totales);
-  const { texto: descStro, esGenerico } = textoDescripcionSiniestroRecibo(liquidador);
+  const { texto: detalle, esGenerico } = textoDetalleLiquidadorRecibo(liquidador);
 
   const parrafoPrincipal = parrafo(
     [
@@ -43,8 +43,8 @@ export async function generarReciboIndemnizacionBlob(liquidador, totales) {
       run(recibo.valorLetras, { bold: true }),
       run(' MCE '),
       run(`($${recibo.valor})`, { bold: true }),
-      run(', como indemnización única, total y definitiva con ocasión de '),
-      run(descStro, esGenerico ? { highlight: 'yellow' } : {}),
+      run(', '),
+      run(detalle, esGenerico ? { highlight: 'yellow' } : {}),
       run('.'),
     ],
     { spacingAfter: 160 }
@@ -55,7 +55,7 @@ export async function generarReciboIndemnizacionBlob(liquidador, totales) {
       align: AlignmentType.CENTER,
       spacingAfter: 160,
     }),
-    parrafo([run(`Reclamo [${recibo.reclamo}]`, { bold: true, size: SIZE_HEADER })], {
+    parrafo([run(`Reclamo ${recibo.reclamo}`, { bold: true, size: SIZE_HEADER })], {
       align: AlignmentType.CENTER,
       spacingAfter: 200,
     }),

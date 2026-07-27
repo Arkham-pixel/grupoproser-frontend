@@ -255,6 +255,8 @@ export const getSiniestroExpressById = async (id) => {
 export const PREFIJOS_ANEXO_LIQUIDADOR = [
   'Liquidador_Express_',
   'Recibo_Indemnizacion_',
+  'Contrato_Reembolso_',
+  'Contrato_Transaccion_',
   'Checklist_Express_',
   'Salvamento_Express_',
 ];

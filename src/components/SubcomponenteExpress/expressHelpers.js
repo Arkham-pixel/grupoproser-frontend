@@ -1,13 +1,60 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { normCatalogoLabel, resolverNombreCatalogo } from '../../services/expressCatalogoService.js';
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const EXPRESS_LIMIT_FETCH = 2000;
 /** Lote por petición al cargar todos los casos Express */
 export const EXPRESS_FETCH_BATCH = EXPRESS_LIMIT_FETCH;
 export const EXPRESS_COLUMNAS_STORAGE_KEY = 'express-reporte-columnas-v1';
+export const EXPRESS_REPORTE_FILTROS_STORAGE_KEY = 'express-reporte-filtros-v1';
 /** Filas visibles por página en el reporte Express */
 export const EXPRESS_REPORTE_PAGE_SIZE = 25;
+
+const FILTROS_REPORTE_EXPRESS_DEFAULT = {
+  busqueda: '',
+  filtroResponsable: '',
+  filtroEstado: '',
+  filtroAseguradora: '',
+  filtroAmparo: '',
+  fechaInicio: '',
+  fechaFin: '',
+  paginaActual: 1,
+};
+
+export function cargarFiltrosReporteExpress() {
+  try {
+    const raw = sessionStorage.getItem(EXPRESS_REPORTE_FILTROS_STORAGE_KEY);
+    if (!raw) return { ...FILTROS_REPORTE_EXPRESS_DEFAULT };
+    const parsed = JSON.parse(raw);
+    return {
+      ...FILTROS_REPORTE_EXPRESS_DEFAULT,
+      ...parsed,
+      paginaActual: Math.max(1, Number(parsed?.paginaActual) || 1),
+    };
+  } catch {
+    return { ...FILTROS_REPORTE_EXPRESS_DEFAULT };
+  }
+}
+
+export function guardarFiltrosReporteExpress(filtros = {}) {
+  try {
+    sessionStorage.setItem(
+      EXPRESS_REPORTE_FILTROS_STORAGE_KEY,
+      JSON.stringify({ ...FILTROS_REPORTE_EXPRESS_DEFAULT, ...filtros })
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+export function limpiarFiltrosReporteExpressStorage() {
+  try {
+    sessionStorage.removeItem(EXPRESS_REPORTE_FILTROS_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 export const ordenarLista = (lista = [], selector = (item) => item) =>
   [...lista].sort((a, b) => {
@@ -325,6 +372,29 @@ export const coincideFiltroEstado = (valorCaso, filtro, catalogoEstados = []) =>
   const codiCaso = resolverCodigoEstado(raw, catalogoEstados);
   const codiFiltro = resolverCodigoEstado(filtro, catalogoEstados);
   return codiCaso === codiFiltro;
+};
+
+export const buildOpcionesFiltroAmparo = (siniestros = [], catalogoAmparos = []) => {
+  const porNorm = new Map();
+
+  for (const item of siniestros) {
+    const raw = String(item?.amparo ?? '').trim();
+    if (!raw) continue;
+    const label = resolverNombreCatalogo(catalogoAmparos, raw) || raw;
+    const key = normCatalogoLabel(label);
+    if (!porNorm.has(key)) {
+      porNorm.set(key, { value: key, label });
+    }
+  }
+
+  return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
+};
+
+export const coincideFiltroAmparo = (valorCaso, filtro) => {
+  if (!filtro) return true;
+  const raw = String(valorCaso ?? '').trim();
+  if (!raw) return false;
+  return normCatalogoLabel(raw) === normCatalogoLabel(filtro);
 };
 
 const indiceCiudadesVacio = () => ({ porCodi: new Map(), porNorm: new Map() });
