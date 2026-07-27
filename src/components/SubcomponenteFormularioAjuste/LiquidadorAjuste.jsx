@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaCalculator } from 'react-icons/fa';
+import { FaPlus, FaTrash, FaCalculator, FaFilePdf } from 'react-icons/fa';
 import { useTheme } from '../../context/ThemeContext';
+import { descargarLiquidadorAjustePdf } from './generarLiquidadorAjustePdf';
 
 export default function LiquidadorAjuste({ formData, onInputChange }) {
   const { theme } = useTheme();
@@ -285,27 +286,48 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
     });
   };
 
+  const descargarPdf = () => {
+    if (!liquidador.items?.length) return;
+    descargarLiquidadorAjustePdf(formData);
+  };
+
   return (
     <div className="space-y-4">
       <div 
-        className="pb-4"
+        className="pb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
         style={{
           borderBottom: `1px solid ${borderColor}`
         }}
       >
-        <h3 
-          className="text-xl font-bold flex items-center"
-          style={{ color: textPrimary }}
+        <div>
+          <h3 
+            className="text-xl font-bold flex items-center"
+            style={{ color: textPrimary }}
+          >
+            <FaCalculator className="mr-3" style={{ color: theme === 'dark' ? '#86EFAC' : '#16A34A' }} />
+            LIQUIDADOR
+          </h3>
+          <p 
+            className="mt-2 text-sm"
+            style={{ color: textSecondary }}
+          >
+            Tabla de liquidación de pérdida con cálculos automáticos
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={descargarPdf}
+          disabled={!liquidador.items?.length}
+          title={!liquidador.items?.length ? 'Agrega al menos un ítem para generar el PDF' : 'Descargar solo el cuadro del liquidador'}
+          className="px-4 py-2 rounded-lg transition-colors flex items-center justify-center font-medium disabled:cursor-not-allowed disabled:opacity-50"
+          style={{
+            backgroundColor: theme === 'dark' ? 'rgba(220, 38, 38, 0.25)' : '#DC2626',
+            color: '#FFFFFF'
+          }}
         >
-          <FaCalculator className="mr-3" style={{ color: theme === 'dark' ? '#86EFAC' : '#16A34A' }} />
-          LIQUIDADOR
-        </h3>
-        <p 
-          className="mt-2 text-sm"
-          style={{ color: textSecondary }}
-        >
-          Tabla de liquidación de pérdida con cálculos automáticos
-        </p>
+          <FaFilePdf className="mr-2" />
+          Descargar PDF
+        </button>
       </div>
 
       {/* Límite Asegurado Global */}

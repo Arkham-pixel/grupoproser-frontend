@@ -361,10 +361,22 @@ export default function Layout() {
       : [],
     formularios: !accesoRestringido
       ? [
+          { path: '/complex/agregar', icon: FaFileAlt, label: 'Formulario Complex' },
           { path: '/formularioinspeccion', icon: FaClipboardList, label: 'Formulario de Riesgo' },
           { path: '/ajuste', icon: FaFileAlt, label: 'Ajuste / Acta de inspección' },
           { path: '/reporte-pol', icon: FaFileInvoice, label: 'Formulario POL' },
           { path: '/formulario-maquinaria', icon: FaTools, label: 'Formulario de Maquinaria' },
+          { path: '/express/carga', icon: FaBolt, label: 'Formulario Express' },
+          { path: '/equidad-fdm/carga', icon: FaHandHoldingHeart, label: 'Formulario Equidad FDM' },
+          { path: '/propiedades/carga', icon: FaBuilding, label: 'Formulario de Propiedades' },
+          { path: '/puertos/formulario', icon: FaShip, label: 'Formulario Puertos — Instalaciones' },
+          {
+            path: '/puertos/actas/inspeccion-asegurado/nueva',
+            icon: FaFileAlt,
+            label: 'Formulario Puertos — Asegurado',
+          },
+          { path: '/puertos/actas/nueva', icon: FaClipboardList, label: 'Formulario Acta Puertos' },
+          { path: '/puertos/actas/caso/nueva', icon: FaFileInvoice, label: 'Formulario Informe Exportación' },
           { path: '/historial', icon: FaList, label: 'Historial de Formularios' },
         ]
       : [],
