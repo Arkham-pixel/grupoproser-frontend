@@ -53,7 +53,21 @@ const buildExportRow = (siniestro, { getNombreResponsable, getNombreAseguradora,
   Responsable: getNombreResponsable(siniestro.responsable) || siniestro.responsable || '',
   'Código Workflow': siniestro.codigoWorkflow ?? '',
   'Número de Siniestro': siniestro.numeroSiniestro ?? '',
-  'Aviso de Siniestro': formatDateForExcel(siniestro.avisoSiniestro),
+  'Fecha de siniestro': formatDateForExcel(siniestro.fechaSiniestro),
+  'Aviso a la compañía': formatDateForExcel(siniestro.avisoSiniestroCompania),
+  'Aviso al ajustador': formatDateForExcel(siniestro.avisoSiniestro),
+  'Solicitud inicial de documentos': formatDateForExcel(siniestro.fechaSolicitudDocumentos),
+  'Último documento': formatDateForExcel(siniestro.fechaUltimoDocumento),
+  'Acuse de recibo': formatDateForExcel(siniestro.fechaAcuseReciboDocumentos),
+  'Definición / autorización compañía': formatDateForExcel(siniestro.fechaDefinicionCaso),
+  'Solicitud docs. adicionales': formatDateForExcel(siniestro.fechaSolicitudDocumentosAdicionales),
+  'Solicitud docs. pendientes': formatDateForExcel(siniestro.fechaSolicitudDocumentosPendientes),
+  'Respuesta del analista': formatDateForExcel(siniestro.fechaRespuestaAnalista),
+  'Presentación de cifras': formatDateForExcel(siniestro.fechaPresentacionCifras),
+  Reconsideración: formatDateForExcel(siniestro.fechaReconsideracion),
+  'Finiquitos firmados': formatDateForExcel(siniestro.fechaFiniquitosFirmado),
+  'Cargue documentos de pago': formatDateForExcel(siniestro.fechaDocumentosPago),
+  'Fecha de recordatorio': formatDateForExcel(siniestro.fechaRecordatorio),
   'Fecha Recibo Documentos': formatDateForExcel(siniestro.fechaReciboDocumentos),
   'Fecha Cargue Finiquito': formatDateForExcel(siniestro.fechaCargueFiniquito),
   Amparo: siniestro.amparo ?? '',
@@ -68,9 +82,6 @@ const buildExportRow = (siniestro, { getNombreResponsable, getNombreAseguradora,
     siniestro.ciudadSiniestro ||
     '',
   'Asegurado/Beneficiario': siniestro.aseguradoBeneficiario ?? '',
-  'Fecha Solicitud Documentos': formatDateForExcel(siniestro.fechaSolicitudDocumentos),
-  'Fecha Presentación Cifras': formatDateForExcel(siniestro.fechaPresentacionCifras),
-  'Fecha Finiquitos Firmado': formatDateForExcel(siniestro.fechaFiniquitosFirmado),
   'Estado del Proceso': getNombreEstado(siniestro.estadoProceso) || siniestro.estadoProceso || '',
   'Observaciones Seguimiento': siniestro.observacionesSeguimiento ?? '',
   'Creado el': formatDateForExcel(siniestro.createdAt),
@@ -84,12 +95,23 @@ const todasLasColumnasExpress = [
   { clave: 'codigoWorkflow', label: 'Código Workflow' },
   { clave: 'aseguradora', label: 'Aseguradora' },
   { clave: 'estadoProceso', label: 'Estado' },
-  { clave: 'avisoSiniestro', label: 'Aviso Siniestro' },
+  { clave: 'fechaSiniestro', label: 'Fecha siniestro' },
+  { clave: 'avisoSiniestroCompania', label: 'Aviso compañía' },
+  { clave: 'avisoSiniestro', label: 'Aviso ajustador' },
+  { clave: 'fechaSolicitudDocumentos', label: 'Solicitud inicial docs' },
+  { clave: 'fechaUltimoDocumento', label: 'Último documento' },
+  { clave: 'fechaAcuseReciboDocumentos', label: 'Acuse de recibo' },
+  { clave: 'fechaDefinicionCaso', label: 'Definición / autorización' },
+  { clave: 'fechaSolicitudDocumentosAdicionales', label: 'Docs adicionales' },
+  { clave: 'fechaSolicitudDocumentosPendientes', label: 'Docs pendientes' },
+  { clave: 'fechaRespuestaAnalista', label: 'Respuesta analista' },
+  { clave: 'fechaPresentacionCifras', label: 'Presentación cifras' },
+  { clave: 'fechaReconsideracion', label: 'Reconsideración' },
+  { clave: 'fechaFiniquitosFirmado', label: 'Finiquitos firmados' },
+  { clave: 'fechaDocumentosPago', label: 'Cargue docs pago' },
+  { clave: 'fechaRecordatorio', label: 'Fecha recordatorio' },
   { clave: 'fechaReciboDocumentos', label: 'Fecha Recibo Documentos' },
   { clave: 'fechaCargueFiniquito', label: 'Fecha Cargue Finiquito' },
-  { clave: 'fechaSolicitudDocumentos', label: 'Fecha Solicitud Documentos' },
-  { clave: 'fechaPresentacionCifras', label: 'Fecha Presentación Cifras' },
-  { clave: 'fechaFiniquitosFirmado', label: 'Fecha Finiquitos Firmado' },
   { clave: 'amparo', label: 'Amparo' },
   { clave: 'valorIndemnizacion', label: 'Valor Indemnización' },
   { clave: 'reserva', label: 'Reservas (COP)' },
@@ -589,14 +611,36 @@ const ReporteExpress = () => {
         return obtenerNombreEstado(item.estadoProceso) || item.estadoProceso || '—';
       case 'avisoSiniestro':
         return formatDate(item.avisoSiniestro) || '—';
+      case 'avisoSiniestroCompania':
+        return formatDate(item.avisoSiniestroCompania) || '—';
+      case 'fechaSiniestro':
+        return formatDate(item.fechaSiniestro) || '—';
       case 'fechaReciboDocumentos':
         return formatDate(item.fechaReciboDocumentos) || '—';
       case 'fechaCargueFiniquito':
         return formatDate(item.fechaCargueFiniquito) || '—';
       case 'fechaSolicitudDocumentos':
         return formatDate(item.fechaSolicitudDocumentos) || '—';
+      case 'fechaUltimoDocumento':
+        return formatDate(item.fechaUltimoDocumento) || '—';
+      case 'fechaAcuseReciboDocumentos':
+        return formatDate(item.fechaAcuseReciboDocumentos) || '—';
+      case 'fechaDefinicionCaso':
+        return formatDate(item.fechaDefinicionCaso) || '—';
+      case 'fechaSolicitudDocumentosAdicionales':
+        return formatDate(item.fechaSolicitudDocumentosAdicionales) || '—';
+      case 'fechaSolicitudDocumentosPendientes':
+        return formatDate(item.fechaSolicitudDocumentosPendientes) || '—';
+      case 'fechaRespuestaAnalista':
+        return formatDate(item.fechaRespuestaAnalista) || '—';
       case 'fechaPresentacionCifras':
         return formatDate(item.fechaPresentacionCifras) || '—';
+      case 'fechaReconsideracion':
+        return formatDate(item.fechaReconsideracion) || '—';
+      case 'fechaDocumentosPago':
+        return formatDate(item.fechaDocumentosPago) || '—';
+      case 'fechaRecordatorio':
+        return formatDate(item.fechaRecordatorio) || '—';
       case 'fechaFiniquitosFirmado':
         return formatDate(item.fechaFiniquitosFirmado) || '—';
       case 'amparo':

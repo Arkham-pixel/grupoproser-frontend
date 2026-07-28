@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ResponsiveContainer } from 'recharts';
 import {
   FaBolt,
   FaChartLine,
@@ -100,6 +101,17 @@ export function ExpressMetricCard({ label, value, hint }) {
       <p className="font-body text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
       <p className="mt-2 font-accent text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
       {hint && <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
+    </div>
+  );
+}
+
+/** Contenedor con altura fija para ResponsiveContainer (evita gráficos colapsados a ancho/alto 0). */
+export function ExpressChartPlot({ height, children }) {
+  return (
+    <div className="w-full min-w-0" style={{ height, minHeight: height }}>
+      <ResponsiveContainer width="100%" height="100%">
+        {children}
+      </ResponsiveContainer>
     </div>
   );
 }

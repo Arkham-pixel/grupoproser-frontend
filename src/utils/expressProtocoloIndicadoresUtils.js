@@ -9,6 +9,7 @@ import {
   SECUENCIA_INDICADORES_TIEMPO_EXPRESS,
 } from '../config/protocoloExpressDefaults.js';
 import { parsearFechaHoraComplex } from './complexFechaHoraUtils.js';
+import { crearFechaLocal } from './fechaUtils.js';
 import { diasHabilesColombiaEntre } from './festivosColombia.js';
 
 /**
@@ -39,6 +40,108 @@ export function casoExpressEnProtocolo(caso) {
   return true;
 }
 
+function normalizarTextoEstadoExpress(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+}
+
+/** Códigos de catálogo Express que cierran/finalizan el caso. */
+export const CODIGOS_ESTADO_EXPRESS_CERRADO = ['2', '4', '5'];
+
+/**
+ * Nombres canónicos de estados finalizados (el nombre del estado implica cierre).
+ * Incluye variantes del filtro de reporte: liquidar, objetado, desistido, etc.
+ */
+export const NOMBRES_ESTADO_EXPRESS_CERRADO = [
+  'DESISTIDO',
+  'LIQUIDAR SINIESTRO',
+  'OBJETADO POR INDEMNIZACIONES',
+  'LIQUIDAR SINIESTRO - OBJETADO POR INDEMNIZACIONES',
+  'CASO CERRADO',
+  'CERRADO',
+  'ANULADO',
+  'ANULAR',
+  'PRESCRITO',
+  'NO RESPONSABILIDAD DEL ASEGURADO',
+  'NO RESPONSABILIDAD ASEGURADO',
+];
+
+const SET_NOMBRES_ESTADO_EXPRESS_CERRADO = new Set(
+  NOMBRES_ESTADO_EXPRESS_CERRADO.map(normalizarTextoEstadoExpress)
+);
+
+/**
+ * ¿El estado (código o nombre) indica caso cerrado/finalizado?
+ * No cuenta «EN ESPERA DE DESISTIMIENTO» ni estados en gestión.
+ */
+export function esEstadoExpressCerrado(valorEstado) {
+  const raw = String(valorEstado ?? '').trim();
+  if (!raw) return false;
+  if (CODIGOS_ESTADO_EXPRESS_CERRADO.includes(raw)) return true;
+
+  const estado = normalizarTextoEstadoExpress(raw);
+  if (!estado || estado === 'SIN_ESTADO' || estado === 'SIN ESTADO') return false;
+  if (SET_NOMBRES_ESTADO_EXPRESS_CERRADO.has(estado)) return true;
+
+  if (estado.includes('ESPERA DE DESISTIMIENTO')) return false;
+  if (estado.includes('OBJETADO')) return true;
+  if (estado.includes('DESISTIDO')) return true;
+  if (estado.includes('LIQUIDAR')) return true;
+  if (estado.includes('ANULAD')) return true;
+  if (estado.includes('PRESCRIT')) return true;
+  if (estado.includes('NO RESPONSABILIDAD')) return true;
+  if (estado === 'CASO CERRADO' || estado === 'CERRADO') return true;
+  return false;
+}
+
+/**
+ * Caso cerrado/finalizado Express: estado de proceso con nombre de cierre
+ * (Liquidar siniestro, Objetado, Desistido, Anulado, Prescrito, Casó cerrado, etc.).
+ */
+export function casoExpressCerrado(caso, obtenerNombreEstado) {
+  const raw = caso?.estadoProceso;
+  if (esEstadoExpressCerrado(raw)) return true;
+  if (typeof obtenerNombreEstado === 'function') {
+    const nombre = obtenerNombreEstado(raw);
+    if (nombre && esEstadoExpressCerrado(nombre)) return true;
+  }
+  return false;
+}
+
+/**
+ * Conteo de casos cerrados desglosado por nombre de estado (para gráfica).
+ */
+export function datosChartEstadosCerradosExpress(casos, obtenerNombreEstado) {
+  const conteo = new Map();
+
+  (casos || []).forEach((caso) => {
+    if (!casoExpressCerrado(caso, obtenerNombreEstado)) return;
+    const raw = caso?.estadoProceso;
+    const nombre =
+      (typeof obtenerNombreEstado === 'function' && obtenerNombreEstado(raw)) ||
+      String(raw || '').trim() ||
+      'Sin estado';
+    const clave = normalizarTextoEstadoExpress(nombre) || 'SIN ESTADO';
+    const actual = conteo.get(clave) || { nombre, cantidad: 0 };
+    actual.cantidad += 1;
+    if (!actual.nombre || actual.nombre === String(raw)) actual.nombre = nombre;
+    conteo.set(clave, actual);
+  });
+
+  return [...conteo.values()]
+    .map((item) => ({
+      nombre: item.nombre,
+      nombreCorto:
+        item.nombre.length > 28 ? `${item.nombre.slice(0, 26)}…` : item.nombre,
+      cantidad: item.cantidad,
+    }))
+    .sort((a, b) => b.cantidad - a.cantidad || a.nombre.localeCompare(b.nombre, 'es'));
+}
+
 export function fechaReferenciaProtocoloExpress(caso) {
   return (
     parsearFechaHoraComplex(caso?.avisoSiniestro) ||
@@ -46,6 +149,32 @@ export function fechaReferenciaProtocoloExpress(caso) {
     parsearFechaHoraComplex(caso?.createdAt) ||
     parsearFechaHoraComplex(caso?.fechaSiniestro)
   );
+}
+
+/** YYYY-MM-DD del aviso (mismo criterio que el reporte Express). */
+export function fechaAvisoExpressISO(caso) {
+  const date = crearFechaLocal(caso?.avisoSiniestro);
+  if (!date) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Filtro por aviso de siniestro — igual que el reporte Express.
+ * No excluye Desistido ni aplica el piso ANS de julio.
+ */
+export function filtrarCasosPorAvisoExpress(casos, desde, hasta) {
+  const tieneRango = Boolean(desde || hasta);
+  return (casos || []).filter((caso) => {
+    if (!tieneRango) return true;
+    const iso = fechaAvisoExpressISO(caso);
+    if (!iso) return false;
+    if (desde && iso < desde) return false;
+    if (hasta && iso > hasta) return false;
+    return true;
+  });
 }
 
 export function filtrarCasosProtocoloExpress(casos, desde, hasta) {
@@ -114,9 +243,9 @@ function crearAcumuladorIndicadores() {
   };
 }
 
-function acumularIndicadores(acumulador, caso) {
+function acumularIndicadores(acumulador, caso, obtenerNombreEstado) {
   acumulador.totalCasos += 1;
-  if (caso?.fechaCierre) acumulador.cerradosPeriodo += 1;
+  if (casoExpressCerrado(caso, obtenerNombreEstado)) acumulador.cerradosPeriodo += 1;
 
   SECUENCIA_INDICADORES_TIEMPO_EXPRESS.forEach((tramo) => {
     const dias = calcularDiasSecuenciaExpress(caso, tramo);
@@ -141,9 +270,9 @@ function mapearIndicadores(acumulador) {
   return resultado;
 }
 
-export function calcularIndicadoresExpressGlobales(casos) {
+export function calcularIndicadoresExpressGlobales(casos, obtenerNombreEstado) {
   const acumulador = crearAcumuladorIndicadores();
-  casos.forEach((caso) => acumularIndicadores(acumulador, caso));
+  casos.forEach((caso) => acumularIndicadores(acumulador, caso, obtenerNombreEstado));
   return mapearIndicadores(acumulador);
 }
 
@@ -161,7 +290,7 @@ export function resolverGrupoAseguradoraExpress(caso, obtenerNombre) {
   return { clave: `aseg:${raw}`, nombre };
 }
 
-export function agruparIndicadoresExpress(casos, resolverGrupo) {
+export function agruparIndicadoresExpress(casos, resolverGrupo, obtenerNombreEstado) {
   const mapa = {};
   casos.forEach((caso) => {
     const grupo = resolverGrupo(caso);
@@ -173,7 +302,7 @@ export function agruparIndicadoresExpress(casos, resolverGrupo) {
         ...crearAcumuladorIndicadores(),
       };
     }
-    acumularIndicadores(mapa[grupo.clave], caso);
+    acumularIndicadores(mapa[grupo.clave], caso, obtenerNombreEstado);
   });
 
   return Object.values(mapa)

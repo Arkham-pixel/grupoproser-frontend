@@ -52,9 +52,6 @@ function resolverFechaCierreEtapa(caso, etapa) {
   if (etapa.criterioCompletitud === 'definicionODocsAdicionalesExpress') {
     return parsearFechaHoraComplex(caso.fechaSolicitudDocumentosAdicionales);
   }
-  if (etapa.criterioCompletitud === 'documentosPagoExpress') {
-    return parsearFechaHoraComplex(caso.fechaCargueFiniquito);
-  }
   return null;
 }
 
@@ -123,17 +120,19 @@ export function datosChartCumplimientoExpress(cumplimientoGlobales, indicadores 
     .filter((ind) => ind.etapaId && ind.muestra)
     .map((ind) => {
       const datos = cumplimientoGlobales?.[ind.muestra];
+      const evaluables = datos?.evaluables ?? 0;
+      const porcentaje = evaluables > 0 ? (datos?.porcentaje ?? 0) : 0;
       return {
         clave: ind.clave,
         muestra: ind.muestra,
         nombre: ind.label,
         nombreCorto: ind.label.length > 28 ? `${ind.label.slice(0, 26)}…` : ind.label,
-        porcentaje: datos?.porcentaje ?? null,
+        porcentaje,
         cumplidos: datos?.cumplidos ?? 0,
-        evaluables: datos?.evaluables ?? 0,
+        evaluables,
+        sinDatos: evaluables === 0,
       };
-    })
-    .filter((item) => item.evaluables > 0);
+    });
 }
 
 function acumularCumplimiento(acumulador, caso, protocolo) {

@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from 'recharts';
 import { FaTable } from 'react-icons/fa';
 import { fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import { obtenerProtocoloExpress } from '../../services/alertasExpressService.js';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import {
-  FECHA_INICIO_PROTOCOLO_EXPRESS,
+  FECHA_DESDE_DEFAULT_PROTOCOLO_EXPRESS,
+  FECHA_DESDE_DEFAULT_PROTOCOLO_EXPRESS_LABEL,
   FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL,
   INDICADORES_PROTOCOLO_EXPRESS_DEF,
   NOTAS_PROTOCOLO_EXPRESS,
@@ -28,6 +29,8 @@ import {
 import {
   agruparIndicadoresExpress,
   calcularIndicadoresExpressGlobales,
+  datosChartEstadosCerradosExpress,
+  filtrarCasosPorAvisoExpress,
   filtrarCasosProtocoloExpress,
   formatearDiasHabilesPromedio,
   resolverGrupoAseguradoraExpress,
@@ -43,6 +46,7 @@ import {
 } from './expressFenixUi.js';
 import {
   Campo,
+  ExpressChartPlot,
   ExpressFilterSection,
   ExpressMetricCard,
   ExpressPageHeader,
@@ -111,7 +115,7 @@ export default function ProtocoloExpress() {
   const [protocolo, setProtocolo] = useState(() => obtenerProtocoloExpressPorDefecto());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [fechaDesde, setFechaDesde] = useState(FECHA_INICIO_PROTOCOLO_EXPRESS);
+  const [fechaDesde, setFechaDesde] = useState(FECHA_DESDE_DEFAULT_PROTOCOLO_EXPRESS);
   const [fechaHasta, setFechaHasta] = useState('');
   const [vista, setVista] = useState('responsable');
 
@@ -119,6 +123,7 @@ export default function ProtocoloExpress() {
     loadingCatalogos,
     obtenerNombreResponsable,
     obtenerNombreAseguradora,
+    obtenerNombreEstado,
   } = useExpressCatalogos();
 
   useEffect(() => {
@@ -151,14 +156,46 @@ export default function ProtocoloExpress() {
     };
   }, []);
 
+  /** Universo tipo reporte: aviso en rango (incluye Desistido / Liquidar / Objetado…). */
+  const casosPorAviso = useMemo(
+    () => filtrarCasosPorAvisoExpress(siniestros, fechaDesde, fechaHasta),
+    [siniestros, fechaDesde, fechaHasta]
+  );
+
+  /** Universo ANS: desde julio + sin Desistido/Complex. */
   const casosPeriodo = useMemo(
     () => filtrarCasosProtocoloExpress(siniestros, fechaDesde, fechaHasta),
     [siniestros, fechaDesde, fechaHasta]
   );
 
+  const indicadoresCerrados = useMemo(
+    () => calcularIndicadoresExpressGlobales(casosPorAviso, obtenerNombreEstado),
+    [casosPorAviso, obtenerNombreEstado]
+  );
+
+  const chartEstadosCerrados = useMemo(
+    () => datosChartEstadosCerradosExpress(casosPorAviso, obtenerNombreEstado),
+    [casosPorAviso, obtenerNombreEstado]
+  );
+
+  const porcentajeCierre = useMemo(() => {
+    const total = indicadoresCerrados.totalCasos || 0;
+    const cerrados = indicadoresCerrados.cerradosPeriodo || 0;
+    if (total <= 0) return null;
+    return (cerrados / total) * 100;
+  }, [indicadoresCerrados.totalCasos, indicadoresCerrados.cerradosPeriodo]);
+
+  const chartEstadosCerradosConPct = useMemo(() => {
+    const total = indicadoresCerrados.totalCasos || 0;
+    return chartEstadosCerrados.map((item) => ({
+      ...item,
+      porcentajeCierre: total > 0 ? (item.cantidad / total) * 100 : 0,
+    }));
+  }, [chartEstadosCerrados, indicadoresCerrados.totalCasos]);
+
   const indicadoresGlobales = useMemo(
-    () => calcularIndicadoresExpressGlobales(casosPeriodo),
-    [casosPeriodo]
+    () => calcularIndicadoresExpressGlobales(casosPeriodo, obtenerNombreEstado),
+    [casosPeriodo, obtenerNombreEstado]
   );
 
   const cumplimientoGlobales = useMemo(
@@ -177,7 +214,11 @@ export default function ProtocoloExpress() {
         ? (caso) => resolverGrupoAseguradoraExpress(caso, obtenerNombreAseguradora)
         : (caso) => resolverGrupoResponsableExpress(caso, obtenerNombreResponsable);
 
-    const indicadores = agruparIndicadoresExpress(casosPeriodo, resolver);
+    const indicadores = agruparIndicadoresExpress(
+      casosPeriodo,
+      resolver,
+      obtenerNombreEstado
+    );
     const cumplimientos = agruparCumplimientoExpress(casosPeriodo, resolver, protocolo);
     const mapaCumpl = new Map(cumplimientos.map((c) => [c.clave, c]));
 
@@ -191,6 +232,7 @@ export default function ProtocoloExpress() {
     protocolo,
     obtenerNombreResponsable,
     obtenerNombreAseguradora,
+    obtenerNombreEstado,
   ]);
 
   const chartDesgloseCumplimiento = useMemo(
@@ -211,9 +253,11 @@ export default function ProtocoloExpress() {
     [filasDesglose]
   );
 
-  const filtrosAplicados = Boolean(fechaDesde || fechaHasta || vista !== 'responsable');
+  const filtrosAplicados = Boolean(
+    fechaDesde !== FECHA_DESDE_DEFAULT_PROTOCOLO_EXPRESS || fechaHasta || vista !== 'responsable'
+  );
   const limpiarFiltros = () => {
-    setFechaDesde(FECHA_INICIO_PROTOCOLO_EXPRESS);
+    setFechaDesde(FECHA_DESDE_DEFAULT_PROTOCOLO_EXPRESS);
     setFechaHasta('');
     setVista('responsable');
   };
@@ -228,8 +272,8 @@ export default function ProtocoloExpress() {
   };
 
   const etiquetaPeriodo = fechaHasta
-    ? `${fechaDesde || FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL} → ${fechaHasta}`
-    : `desde ${fechaDesde || FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL}`;
+    ? `${fechaDesde || FECHA_DESDE_DEFAULT_PROTOCOLO_EXPRESS_LABEL} → ${fechaHasta}`
+    : `desde ${fechaDesde || FECHA_DESDE_DEFAULT_PROTOCOLO_EXPRESS_LABEL}`;
 
   if (loading || loadingCatalogos) {
     return (
@@ -321,9 +365,118 @@ export default function ProtocoloExpress() {
         </section>
 
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          Periodo {etiquetaPeriodo}: {indicadoresGlobales.totalCasos} caso(s),{' '}
-          {indicadoresGlobales.cerradosPeriodo} con fecha de cierre.
+          Periodo {etiquetaPeriodo}: {indicadoresCerrados.totalCasos} caso(s) por aviso,{' '}
+          <strong className="text-gray-700 dark:text-gray-200">
+            {indicadoresCerrados.cerradosPeriodo} cerrados/finalizados
+          </strong>
+          {porcentajeCierre != null && (
+            <>
+              {' '}
+              (
+              <strong className="text-gray-700 dark:text-gray-200">
+                {formatearPorcentajeCumplimiento(porcentajeCierre)}
+              </strong>{' '}
+              de cierre)
+            </>
+          )}
+          . Cumplimiento ANS sobre {indicadoresGlobales.totalCasos} caso(s) desde{' '}
+          {FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL}.
         </p>
+
+        <section>
+          <h2 className={expressSectionTitle}>Casos cerrados / finalizados</h2>
+          <p className="mb-4 font-body text-sm text-gray-500 dark:text-gray-400">
+            Mismo criterio que el reporte: filtro por aviso de siniestro. Cuenta Liquidar siniestro,
+            Objetado, Desistido, Anulado, Prescrito, Caso cerrado, No responsabilidad, etc.
+          </p>
+          <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <ExpressMetricCard
+              label="Porcentaje de cierre"
+              value={formatearPorcentajeCumplimiento(porcentajeCierre)}
+              hint={`${indicadoresCerrados.cerradosPeriodo} de ${indicadoresCerrados.totalCasos} caso(s) con aviso`}
+            />
+            <ExpressMetricCard
+              label="Cerrados / finalizados"
+              value={String(indicadoresCerrados.cerradosPeriodo)}
+              hint={`De ${indicadoresCerrados.totalCasos} caso(s) con aviso en el periodo`}
+            />
+            {chartEstadosCerrados.slice(0, 2).map((item) => (
+              <ExpressMetricCard
+                key={item.nombre}
+                label={item.nombre}
+                value={String(item.cantidad)}
+                hint={
+                  indicadoresCerrados.totalCasos > 0
+                    ? `${formatearPorcentajeCumplimiento(
+                        (item.cantidad / indicadoresCerrados.totalCasos) * 100
+                      )} del periodo`
+                    : 'Estado finalizado'
+                }
+              />
+            ))}
+          </div>
+          {chartEstadosCerradosConPct.length > 0 ? (
+            <ChartCard title="Cantidad de casos por estado cerrado">
+              <ExpressChartPlot height={Math.max(280, chartEstadosCerradosConPct.length * 44)}>
+                <BarChart
+                  data={chartEstadosCerradosConPct}
+                  layout="vertical"
+                  margin={{ top: 8, right: 72, left: 8, bottom: 8 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    tick={{ fill: tickColor, fontSize: 12 }}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="nombreCorto"
+                    width={200}
+                    tick={{ fill: tickColor, fontSize: 11 }}
+                  />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value, _n, props) => [
+                      `${value} (${formatearPorcentajeCumplimiento(props?.payload?.porcentajeCierre)})`,
+                      'Casos',
+                    ]}
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.nombre || ''}
+                  />
+                  <Bar dataKey="cantidad" radius={[0, 4, 4, 0]} maxBarSize={28}>
+                    {chartEstadosCerradosConPct.map((item, index) => (
+                      <Cell key={item.nombre} fill={getFenixChartColor(index, isDark)} />
+                    ))}
+                    <LabelList
+                      dataKey="cantidad"
+                      position="right"
+                      content={({ x, y, width, height, index }) => {
+                        const item = chartEstadosCerradosConPct[index];
+                        if (!item || x == null || y == null) return null;
+                        return (
+                          <text
+                            x={Number(x) + Number(width || 0) + 6}
+                            y={Number(y) + Number(height || 0) / 2}
+                            fill={tickColor}
+                            fontSize={11}
+                            dominantBaseline="middle"
+                          >
+                            {item.cantidad} ({formatearPorcentajeCumplimiento(item.porcentajeCierre)})
+                          </text>
+                        );
+                      }}
+                    />
+                  </Bar>
+                </BarChart>
+              </ExpressChartPlot>
+            </ChartCard>
+          ) : (
+            <p className="text-sm text-gray-500">
+              No hay casos en estados finalizados (Liquidar, Objetado, Desistido, etc.) en este
+              periodo.
+            </p>
+          )}
+        </section>
 
         <section>
           <h2 className={expressSectionTitle}>Cumplimiento vs ANS</h2>
@@ -352,11 +505,17 @@ export default function ProtocoloExpress() {
 
           {chartCumplimiento.length > 0 ? (
             <ChartCard title="Cumplimiento por indicador (vs ANS)">
-              <ResponsiveContainer width="100%" height={Math.max(280, chartCumplimiento.length * 44)}>
+              {cumplimientoGlobales.general.evaluables === 0 && (
+                <p className="mb-3 text-sm text-gray-500">
+                  Aún no hay etapas con ambas fechas; las barras aparecerán en 0 % hasta registrar
+                  hitos.
+                </p>
+              )}
+              <ExpressChartPlot height={Math.max(280, chartCumplimiento.length * 44)}>
                 <BarChart
                   data={chartCumplimiento}
                   layout="vertical"
-                  margin={{ top: 8, right: 48, left: 8, bottom: 8 }}
+                  margin={{ top: 8, right: 56, left: 8, bottom: 8 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
                   <XAxis
@@ -373,7 +532,12 @@ export default function ProtocoloExpress() {
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(value) => [formatearPorcentajeCumplimiento(value), 'Cumplimiento']}
+                    formatter={(value, _n, props) => [
+                      props?.payload?.sinDatos
+                        ? 'Sin datos'
+                        : formatearPorcentajeCumplimiento(value),
+                      'Cumplimiento',
+                    ]}
                     labelFormatter={(_, payload) => {
                       const item = payload?.[0]?.payload;
                       if (!item) return '';
@@ -382,15 +546,46 @@ export default function ProtocoloExpress() {
                   />
                   <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]} maxBarSize={28}>
                     {chartCumplimiento.map((item) => (
-                      <Cell key={item.muestra} fill={colorBarraCumplimiento(item.porcentaje)} />
+                      <Cell
+                        key={item.muestra}
+                        fill={
+                          item.sinDatos
+                            ? isDark
+                              ? '#3F3F46'
+                              : '#D1D5DB'
+                            : colorBarraCumplimiento(item.porcentaje)
+                        }
+                      />
                     ))}
+                    <LabelList
+                      dataKey="porcentaje"
+                      position="right"
+                      content={({ x, y, width, height, index }) => {
+                        const item = chartCumplimiento[index];
+                        if (!item || x == null || y == null) return null;
+                        const texto = item.sinDatos
+                          ? '—'
+                          : formatearPorcentajeCumplimiento(item.porcentaje);
+                        return (
+                          <text
+                            x={Number(x) + Number(width || 0) + 6}
+                            y={Number(y) + Number(height || 0) / 2}
+                            fill={tickColor}
+                            fontSize={11}
+                            dominantBaseline="middle"
+                          >
+                            {texto}
+                          </text>
+                        );
+                      }}
+                    />
                   </Bar>
                 </BarChart>
-              </ResponsiveContainer>
+              </ExpressChartPlot>
             </ChartCard>
           ) : (
             <p className="text-sm text-gray-500">
-              Aún no hay etapas con ambas fechas para calcular cumplimiento.
+              Aún no hay indicadores configurados para el gráfico de cumplimiento.
             </p>
           )}
         </section>
@@ -418,14 +613,14 @@ export default function ProtocoloExpress() {
               hint="Con aviso en el rango filtrado"
             />
             <ExpressMetricCard
+              label="Cerrados"
+              value={String(indicadoresGlobales.cerradosPeriodo)}
+              hint="Liquidar, Objetado, Desistido, Anulado, Prescrito, Caso cerrado, etc."
+            />
+            <ExpressMetricCard
               label="Cumplimiento general"
               value={formatearPorcentajeCumplimiento(cumplimientoGlobales.general.porcentaje)}
               hint={`${cumplimientoGlobales.general.cumplidos}/${cumplimientoGlobales.general.evaluables} etapas`}
-            />
-            <ExpressMetricCard
-              label="Con fecha de cierre"
-              value={String(indicadoresGlobales.cerradosPeriodo)}
-              hint="Casos con fechaCierre registrada"
             />
           </div>
           <div className="flex gap-3 overflow-x-auto pb-2">
@@ -446,14 +641,11 @@ export default function ProtocoloExpress() {
           <ChartCard
             title={`Cumplimiento general — ${vista === 'aseguradora' ? 'por aseguradora' : 'por responsable'}`}
           >
-            <ResponsiveContainer
-              width="100%"
-              height={Math.max(280, chartDesgloseCumplimiento.length * 40)}
-            >
+            <ExpressChartPlot height={Math.max(280, chartDesgloseCumplimiento.length * 40)}>
               <BarChart
                 data={chartDesgloseCumplimiento}
                 layout="vertical"
-                margin={{ top: 8, right: 32, left: 8, bottom: 8 }}
+                margin={{ top: 8, right: 48, left: 8, bottom: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
                 <XAxis type="number" domain={[0, 100]} unit="%" tick={{ fill: tickColor, fontSize: 12 }} />
@@ -478,9 +670,15 @@ export default function ProtocoloExpress() {
                       fill={colorBarraCumplimiento(item.porcentaje) || getFenixChartColor(index, isDark)}
                     />
                   ))}
+                  <LabelList
+                    dataKey="porcentaje"
+                    position="right"
+                    formatter={(v) => formatearPorcentajeCumplimiento(v)}
+                    style={{ fill: tickColor, fontSize: 11 }}
+                  />
                 </Bar>
               </BarChart>
-            </ResponsiveContainer>
+            </ExpressChartPlot>
           </ChartCard>
         ) : null}
 

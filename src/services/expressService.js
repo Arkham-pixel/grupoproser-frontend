@@ -95,11 +95,14 @@ const normalizeExpressItem = (item = {}) => {
   const fechaUltimoDocumento = toISODate(item.fechaUltimoDocumento);
   const fechaDefinicionCaso = toISODate(item.fechaDefinicionCaso);
   const fechaSolicitudDocumentosAdicionales = toISODate(item.fechaSolicitudDocumentosAdicionales);
+  const fechaSolicitudDocumentosPendientes = toISODate(item.fechaSolicitudDocumentosPendientes);
   const fechaSolicitudCorrecciones = toISODate(item.fechaSolicitudCorrecciones);
   const fechaCorreccionesPresentadas = toISODate(item.fechaCorreccionesPresentadas);
   const fechaPresentacionCifras = toISODate(item.fechaPresentacionCifras ?? item.fchaPresntCifras ?? item.fchaPresentacionCifras);
+  const fechaReconsideracion = toISODate(item.fechaReconsideracion);
   const fechaDocumentosPago = toISODate(item.fechaDocumentosPago);
   const fechaFiniquitosFirmado = toISODate(item.fechaFiniquitosFirmado ?? item.fchaFiniquitoIndem ?? item.fchaFiniquitosFirmado);
+  const fechaRecordatorio = toISODate(item.fechaRecordatorio);
   const fechaEnvioAutorizacion = toISODate(item.fechaEnvioAutorizacion);
   const fechaRespuestaAnalista = toISODate(item.fechaRespuestaAnalista);
   const fechaCierre = toISODate(item.fechaCierre);
@@ -142,11 +145,14 @@ const normalizeExpressItem = (item = {}) => {
     fechaUltimoDocumento,
     fechaDefinicionCaso,
     fechaSolicitudDocumentosAdicionales,
+    fechaSolicitudDocumentosPendientes,
     fechaSolicitudCorrecciones,
     fechaCorreccionesPresentadas,
     fechaPresentacionCifras,
+    fechaReconsideracion,
     fechaDocumentosPago,
     fechaFiniquitosFirmado,
+    fechaRecordatorio,
     createdAt,
     updatedAt,
     valorIndemnizacion,
@@ -298,8 +304,18 @@ const buildCamposBaseCaso = (casoBase = {}, valorIndemnizacion) => ({
   correoNotificacion: casoBase.correoNotificacion ?? '',
   fechaCierre: toFormDate(casoBase.fechaCierre),
   fechaSolicitudDocumentos: toFormDate(casoBase.fechaSolicitudDocumentos),
+  fechaAcuseReciboDocumentos: toFormDate(casoBase.fechaAcuseReciboDocumentos),
+  fechaUltimoDocumento: toFormDate(casoBase.fechaUltimoDocumento),
+  fechaDefinicionCaso: toFormDate(casoBase.fechaDefinicionCaso),
+  fechaSolicitudDocumentosAdicionales: toFormDate(casoBase.fechaSolicitudDocumentosAdicionales),
+  fechaSolicitudDocumentosPendientes: toFormDate(casoBase.fechaSolicitudDocumentosPendientes),
+  fechaSolicitudCorrecciones: toFormDate(casoBase.fechaSolicitudCorrecciones),
+  fechaCorreccionesPresentadas: toFormDate(casoBase.fechaCorreccionesPresentadas),
   fechaPresentacionCifras: toFormDate(casoBase.fechaPresentacionCifras),
+  fechaReconsideracion: toFormDate(casoBase.fechaReconsideracion),
+  fechaDocumentosPago: toFormDate(casoBase.fechaDocumentosPago),
   fechaFiniquitosFirmado: toFormDate(casoBase.fechaFiniquitosFirmado),
+  fechaRecordatorio: toFormDate(casoBase.fechaRecordatorio),
   reserva: casoBase.reserva ?? '',
   estadoProceso: casoBase.estadoProceso ?? '',
   salvamentoAplica: casoBase.salvamentoAplica || 'no_aplica',

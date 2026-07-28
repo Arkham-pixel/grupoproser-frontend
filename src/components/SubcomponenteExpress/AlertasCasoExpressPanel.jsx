@@ -39,7 +39,7 @@ export default function AlertasCasoExpressPanel({ casoId, consecutivo }) {
         <FaExclamationTriangle className="mt-0.5 shrink-0 text-fenix-primario" />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-gray-900 dark:text-white">
-            {alertas.totalAlertas} alerta(s) ANS Express
+            {alertas.totalAlertas} alerta(s) Express
             {altas.length > 0 ? ` · ${altas.length} prioridad alta` : ''}
           </p>
           <ul className="mt-2 space-y-1.5">
