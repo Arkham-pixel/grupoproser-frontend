@@ -4,6 +4,7 @@ import {
   DOCUMENTOS_SOPORTE,
   etiquetaEstadoDocumento,
   formatearMonto,
+  nombreAjustadorParaDocumento,
   pctDocumentosMarcados,
 } from './liquidadorExpressHelpers.js';
 import {
@@ -28,6 +29,7 @@ export async function generarChecklistExpressBlob(liquidador, totales) {
   const pct = pctDocumentosMarcados(chk.documentos);
   const items = chk.itemsAnalisis || [];
   const { totalReclamado, totalAjustado } = totalesAnalisisPerdida(items);
+  const nombreAjustador = nombreAjustadorParaDocumento(chk.ajustador) || '—';
 
   const infoGeneral = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
@@ -160,14 +162,14 @@ export async function generarChecklistExpressBlob(liquidador, totales) {
         infoGeneral,
         parrafoTexto('Breve descripción del evento:', { bold: true, spacingAfter: 60 }),
         parrafoTexto(chk.descripcionEvento || '', { spacingAfter: 200 }),
-        parrafoTexto(`Ajustador — ${chk.ajustador || '—'}`, { spacingAfter: 200 }),
+        parrafoTexto(`Ajustador — ${nombreAjustador}`, { spacingAfter: 200 }),
         tituloSeccion('DOCUMENTOS DE SOPORTE'),
         tablaDocs,
         tituloSeccion('ANÁLISIS DE LA PÉRDIDA'),
         tablaAnalisis,
         tituloSeccion('COMENTARIOS ADICIONALES'),
         parrafoTexto(chk.comentariosAdicionales || 'Para este caso no aplica'),
-        parrafoTexto(`Ajustador — ${chk.ajustador || '—'}`, { spacingBefore: 200 }),
+        parrafoTexto(`Ajustador — ${nombreAjustador}`, { spacingBefore: 200 }),
       ]),
     ],
   });
@@ -189,7 +191,7 @@ export async function generarSalvamentoExpressBlob(liquidador) {
   const enc = liquidador.encabezado || {};
   const sal = liquidador.salvamento || {};
 
-  const marcarSiNo = (valor) => (valor === 'SI' ? '☑ SI   ☐ NO' : '☐ SI   ☑ NO');
+  const marcarSiNo = (valor) => (valor === 'SI' ? 'SI' : 'NO');
 
   const infoSalvamento = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },

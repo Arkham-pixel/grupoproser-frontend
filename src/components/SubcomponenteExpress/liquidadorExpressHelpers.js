@@ -325,17 +325,46 @@ export function aplicaFormatoSalvamento(liquidador = {}, casoExpress = null) {
   return false;
 }
 
+/** Nombre del usuario logueado (misma fuente que ELABORADO POR en FORMATO_LIQUIDACION). */
+export function nombreUsuarioPlataforma() {
+  if (typeof localStorage === 'undefined') return '';
+  return (
+    localStorage.getItem('nombre') ||
+    localStorage.getItem('login') ||
+    ''
+  ).trim();
+}
+
+function pareceCodigoOCedula(valor) {
+  return /^\d{5,}$/.test(String(valor || '').trim());
+}
+
+/**
+ * Nombre a mostrar como «Ajustador» en check-list / documentos.
+ * Misma configuración que la primera hoja: prioriza el usuario de la plataforma
+ * cuando el valor guardado es un código/cédula sin resolver.
+ */
+export function nombreAjustadorParaDocumento(ajustadorChecklist = '') {
+  const plataforma = nombreUsuarioPlataforma();
+  const guardado = String(ajustadorChecklist || '').trim();
+  if (plataforma && (!guardado || pareceCodigoOCedula(guardado))) return plataforma;
+  if (guardado && !pareceCodigoOCedula(guardado)) return guardado;
+  return plataforma || guardado;
+}
+
 /** Nombre del ajustador para checklist (no cédula/código interno). */
 export function resolverNombreAjustadorChecklist(ajustador, obtenerNombreResponsable, codigoResponsable = '') {
   if (typeof obtenerNombreResponsable !== 'function') {
-    return String(ajustador || codigoResponsable || '').trim();
+    return nombreAjustadorParaDocumento(ajustador || codigoResponsable || '');
   }
   for (const codigo of [codigoResponsable, ajustador]) {
     if (codigo === undefined || codigo === null || codigo === '') continue;
     const nombre = obtenerNombreResponsable(codigo);
-    if (nombre && String(nombre) !== String(codigo)) return String(nombre).trim();
+    if (nombre && String(nombre) !== String(codigo) && !pareceCodigoOCedula(nombre)) {
+      return String(nombre).trim();
+    }
   }
-  return String(ajustador || codigoResponsable || '').trim();
+  return nombreAjustadorParaDocumento(ajustador || codigoResponsable || '');
 }
 
 export function liquidadorConNombreAjustador(liquidador, obtenerNombreResponsable, codigoResponsable = '') {
@@ -390,6 +419,10 @@ export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
       ajustador: resolverNombreAjustadorChecklist('', obtenerNombreResponsable, caso.responsable),
       salvamento: caso.salvamentoAplica === 'aplica' ? 'Aplica' : 'No Aplica',
       salvamentoDetalle: caso.valorSalvamento ? String(caso.valorSalvamento) : '',
+      fechaFormalizacion: caso.fechaUltimoDocumento
+        ? String(caso.fechaUltimoDocumento).slice(0, 10)
+        : '',
+      reclamoFormalizado: caso.fechaUltimoDocumento ? 'Sí' : 'No',
     },
     salvamento: {
       ...DEFAULT_LIQUIDADOR_EXPRESS.salvamento,
@@ -457,6 +490,13 @@ export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
           obtenerNombreResponsable,
           caso.responsable
         ),
+        // Formalización = fecha de último documento del caso (campo del formulario Express)
+        fechaFormalizacion: caso.fechaUltimoDocumento
+          ? String(caso.fechaUltimoDocumento).slice(0, 10)
+          : liq.checklist?.fechaFormalizacion || base.checklist.fechaFormalizacion || '',
+        reclamoFormalizado: caso.fechaUltimoDocumento
+          ? 'Sí'
+          : liq.checklist?.reclamoFormalizado || base.checklist.reclamoFormalizado || 'No',
       },
       salvamento: {
         ...DEFAULT_LIQUIDADOR_EXPRESS.salvamento,
@@ -472,13 +512,29 @@ export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
 
 /** Sincroniza ítems de análisis desde la tabla de conceptos de liquidación */
 export function conceptosAItemsAnalisis(conceptos = []) {
-  return conceptos.map((c, idx) => ({
-    id: c.id || `${Date.now()}-${idx}`,
-    descripcion: c.concepto || c.detalle || '',
-    reclamado: c.valor || '',
-    ajustado: c.valor || '',
-    observacion: c.observacion || c.detalle || '',
-  }));
+  return conceptos.map((c, idx) => {
+    const concepto = String(c.concepto ?? '').trim();
+    const detalle = String(c.detalle ?? '').trim();
+    // En liquidación, el texto largo suele ir en Detalle; Concepto a veces es solo el ítem (1, 2…).
+    const conceptoEsSoloIndice = /^\d+([.-]\d+)*$/.test(concepto);
+    const descripcion = conceptoEsSoloIndice
+      ? detalle || concepto
+      : concepto || detalle || '';
+
+    const observacionExplicit = String(c.observacion ?? '').trim();
+    // Si Concepto y Detalle son textos distintos, el detalle puede ir como observación.
+    const observacion =
+      observacionExplicit ||
+      (!conceptoEsSoloIndice && concepto && detalle && detalle !== concepto ? detalle : '');
+
+    return {
+      id: c.id || `${Date.now()}-${idx}`,
+      descripcion,
+      reclamado: c.valor || '',
+      ajustado: c.valor || '',
+      observacion: observacion === descripcion ? '' : observacion,
+    };
+  });
 }
 
 export function totalesItemsAnalisis(items = []) {

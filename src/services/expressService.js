@@ -259,18 +259,96 @@ export const getSiniestroExpressById = async (id) => {
 
 /** Prefijos de anexos generados por el liquidador (para reemplazar al actualizar). */
 export const PREFIJOS_ANEXO_LIQUIDADOR = [
+  'Liquidador_Express_PDF_',
   'Liquidador_Express_',
   'Recibo_Indemnizacion_',
   'Contrato_Reembolso_',
   'Contrato_Transaccion_',
+  'Checklist_Express_PDF_',
   'Checklist_Express_',
+  'Salvamento_Express_PDF_',
   'Salvamento_Express_',
+];
+
+/** Etiqueta corta + nombre legible para la lista de anexos del caso. */
+export const ETIQUETAS_ANEXO_LIQUIDADOR = [
+  {
+    prefijo: 'Liquidador_Express_PDF_',
+    badge: 'PDF',
+    titulo: 'Liquidador Express (PDF)',
+  },
+  {
+    prefijo: 'Liquidador_Express_',
+    badge: 'Excel',
+    titulo: 'Liquidador Express (Excel)',
+  },
+  {
+    prefijo: 'Recibo_Indemnizacion_',
+    badge: 'Recibo',
+    titulo: 'Recibo de indemnización',
+  },
+  {
+    prefijo: 'Contrato_Reembolso_',
+    badge: 'Reembolso',
+    titulo: 'Contrato de reembolso',
+  },
+  {
+    prefijo: 'Contrato_Transaccion_',
+    badge: 'Transacción',
+    titulo: 'Contrato de transacción',
+  },
+  {
+    prefijo: 'Checklist_Express_PDF_',
+    badge: 'PDF',
+    titulo: 'Check-list documental (PDF)',
+  },
+  {
+    prefijo: 'Checklist_Express_',
+    badge: 'Check-list',
+    titulo: 'Check-list documental',
+  },
+  {
+    prefijo: 'Salvamento_Express_PDF_',
+    badge: 'PDF',
+    titulo: 'Formato de salvamento (PDF)',
+  },
+  {
+    prefijo: 'Salvamento_Express_',
+    badge: 'Salvamento',
+    titulo: 'Formato de salvamento',
+  },
 ];
 
 export const esAnexoLiquidador = (anexo = {}) => {
   const nombre = String(anexo.nombre || '');
   return PREFIJOS_ANEXO_LIQUIDADOR.some((p) => nombre.startsWith(p));
 };
+
+/** Nombre legible para UI (diferencia recibo, contratos, Excel, etc.). */
+export function etiquetaLegibleAnexoExpress(anexoONombre) {
+  const nombre =
+    typeof anexoONombre === 'string'
+      ? anexoONombre
+      : String(anexoONombre?.nombre || anexoONombre?.filename || '');
+  if (!nombre) {
+    return { esLiquidador: false, badge: null, titulo: 'Documento', archivo: '' };
+  }
+  const match = ETIQUETAS_ANEXO_LIQUIDADOR.find((e) => nombre.startsWith(e.prefijo));
+  if (match) {
+    return {
+      esLiquidador: true,
+      badge: match.badge,
+      titulo: match.titulo,
+      archivo: nombre,
+    };
+  }
+  return {
+    esLiquidador: false,
+    badge: null,
+    titulo: nombre,
+    archivo: nombre,
+  };
+}
 
 const toFormDate = (value) => {
   if (value === null || value === undefined || value === '') return '';

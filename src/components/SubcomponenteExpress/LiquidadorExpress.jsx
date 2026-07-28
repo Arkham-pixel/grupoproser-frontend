@@ -3,6 +3,7 @@ import {
   FaCalculator,
   FaClipboardCheck,
   FaFileExcel,
+  FaFilePdf,
   FaFileWord,
   FaPlus,
   FaRecycle,
@@ -38,6 +39,7 @@ import {
   DOCUMENTOS_SOPORTE,
   formatearMonto,
   liquidadorConNombreAjustador,
+  nombreAjustadorParaDocumento,
   mapCasoExpressALiquidador,
   aplicaFormatoSalvamento,
   NOTAS_SALVAMENTO,
@@ -57,7 +59,12 @@ import {
   descargarChecklistExpressWord,
   descargarSalvamentoExpressWord,
 } from './generarFormatosExpressWord.js';
+import {
+  descargarChecklistExpressPdf,
+  descargarSalvamentoExpressPdf,
+} from './generarFormatosExpressPdf.js';
 import { descargarLiquidadorExpressExcel } from './generarLiquidadorExpressExcel.js';
+import { descargarLiquidadorExpressPdf } from './generarLiquidadorExpressPdf.js';
 
 const TABS_BASE = [
   { id: 'liquidacion', label: 'Liquidación', icon: FaCalculator },
@@ -179,11 +186,34 @@ export default function LiquidadorExpress({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo hidratar al llegar liquidador vacío→lleno
   }, [casoExpress, obtenerNombreResponsable]);
 
+  // Fecha formalización = fecha de último documento del caso Express
+  useEffect(() => {
+    if (!casoExpress?.fechaUltimoDocumento) return;
+    const fecha = String(casoExpress.fechaUltimoDocumento).slice(0, 10);
+    setLiquidador((prev) => {
+      if (
+        prev.checklist?.fechaFormalizacion === fecha &&
+        prev.checklist?.reclamoFormalizado === 'Sí'
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        checklist: {
+          ...(prev.checklist || {}),
+          fechaFormalizacion: fecha,
+          reclamoFormalizado: 'Sí',
+        },
+      };
+    });
+  }, [casoExpress?.fechaUltimoDocumento]);
+
   const liquidadorParaExport = useMemo(
     () => liquidadorConNombreAjustador(liquidador, obtenerNombreResponsable, casoExpress?.responsable),
     [liquidador, obtenerNombreResponsable, casoExpress?.responsable]
   );
-  const nombreAjustador = liquidadorParaExport.checklist?.ajustador || '—';
+  const nombreAjustador =
+    nombreAjustadorParaDocumento(liquidadorParaExport.checklist?.ajustador) || '—';
 
   const totales = useMemo(() => calcularLiquidacion(liquidador), [liquidador]);
   const recibo = useMemo(
@@ -382,6 +412,19 @@ export default function LiquidadorExpress({
     }
   };
 
+  const handleDescargarChecklistPdf = async () => {
+    setDescargandoWord(true);
+    setErrorWord('');
+    try {
+      await descargarChecklistExpressPdf(liquidadorParaExport, totales);
+    } catch (err) {
+      console.error('Error al generar checklist PDF:', err);
+      setErrorWord('No se pudo generar el check-list PDF.');
+    } finally {
+      setDescargandoWord(false);
+    }
+  };
+
   const handleDescargarSalvamento = async () => {
     if (!aplicaFormatoSalvamento(liquidador, casoExpress)) {
       setErrorWord('Salvamento no aplica en este caso: no se genera el formato SALVAMENTO.');
@@ -399,18 +442,46 @@ export default function LiquidadorExpress({
     }
   };
 
+  const handleDescargarSalvamentoPdf = async () => {
+    if (!aplicaFormatoSalvamento(liquidador, casoExpress)) {
+      setErrorWord('Salvamento no aplica en este caso: no se genera el formato SALVAMENTO.');
+      return;
+    }
+    setDescargandoWord(true);
+    setErrorWord('');
+    try {
+      await descargarSalvamentoExpressPdf(liquidadorParaExport);
+    } catch (err) {
+      console.error('Error al generar salvamento PDF:', err);
+      setErrorWord('No se pudo generar el formato de salvamento PDF.');
+    } finally {
+      setDescargandoWord(false);
+    }
+  };
+
   const handleDescargarExcel = async () => {
     setDescargandoWord(true);
     setErrorWord('');
     try {
       await descargarLiquidadorExpressExcel(liquidadorParaExport, totales, {
         incluirSalvamento: aplicaFormatoSalvamento(liquidador, casoExpress),
+        fechaUltimoDocumento: casoExpress?.fechaUltimoDocumento,
       });
     } catch (err) {
       console.error('Error al generar Excel del liquidador:', err);
       setErrorWord('No se pudo generar el archivo Excel del liquidador.');
     } finally {
       setDescargandoWord(false);
+    }
+  };
+
+  const handleDescargarPdf = () => {
+    setErrorWord('');
+    try {
+      descargarLiquidadorExpressPdf(liquidadorParaExport, totales);
+    } catch (err) {
+      console.error('Error al generar PDF del liquidador:', err);
+      setErrorWord('No se pudo generar el PDF del liquidador.');
     }
   };
 
@@ -466,6 +537,15 @@ export default function LiquidadorExpress({
                 : salvamentoActivo
                   ? 'Descargar Excel (3 hojas)'
                   : 'Descargar Excel (2 hojas)'}
+            </button>
+            <button
+              type="button"
+              className={expressBtnGhost}
+              onClick={handleDescargarPdf}
+              disabled={descargandoWord || guardandoCaso}
+            >
+              <FaFilePdf />
+              Descargar PDF
             </button>
           </div>
         </div>
@@ -743,6 +823,10 @@ export default function LiquidadorExpress({
               <FaFileExcel />
               {descargandoWord ? 'Generando…' : 'Descargar Excel'}
             </button>
+            <button type="button" className={expressBtnGhost} onClick={handleDescargarPdf} disabled={descargandoWord}>
+              <FaFilePdf />
+              Descargar PDF
+            </button>
             <button type="button" className={expressBtnGhost} onClick={handleLiquidar}>
               <FaFileWord />
               Vista previa recibo
@@ -775,6 +859,10 @@ export default function LiquidadorExpress({
             <button type="button" className={expressBtnGhost} onClick={handleDescargarExcel} disabled={descargandoWord}>
               <FaFileExcel />
               {descargandoWord ? 'Generando…' : 'Descargar Excel'}
+            </button>
+            <button type="button" className={expressBtnGhost} onClick={handleDescargarChecklistPdf} disabled={descargandoWord}>
+              <FaFilePdf />
+              Descargar PDF
             </button>
             <button type="button" className={expressBtnPrimary} onClick={handleDescargarChecklist} disabled={descargandoWord}>
               <FaFileWord />
@@ -925,7 +1013,16 @@ export default function LiquidadorExpress({
                 </SelectFenix>
               </Campo>
               <Campo label="Fecha formalización">
-                <InputFenix type="date" value={chk.fechaFormalizacion} onChange={(e) => actualizar('checklist.fechaFormalizacion', e.target.value)} />
+                <InputFenix
+                  type="date"
+                  value={chk.fechaFormalizacion}
+                  readOnly
+                  className="bg-gray-50 dark:bg-gray-900/40"
+                  title="Se toma de la fecha de último documento del caso Express"
+                />
+                <p className="mt-1 font-body text-[11px] text-gray-500 dark:text-gray-400">
+                  Se toma de <strong>Fecha de último documento</strong> del caso.
+                </p>
               </Campo>
             </div>
           </section>
@@ -1010,6 +1107,10 @@ export default function LiquidadorExpress({
             <button type="button" className={expressBtnGhost} onClick={handleDescargarExcel} disabled={descargandoWord}>
               <FaFileExcel />
               {descargandoWord ? 'Generando…' : 'Descargar Excel'}
+            </button>
+            <button type="button" className={expressBtnGhost} onClick={handleDescargarSalvamentoPdf} disabled={descargandoWord}>
+              <FaFilePdf />
+              Descargar PDF
             </button>
             <button type="button" className={expressBtnPrimary} onClick={handleDescargarSalvamento} disabled={descargandoWord}>
               <FaFileWord />

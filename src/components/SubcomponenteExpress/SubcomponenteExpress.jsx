@@ -11,6 +11,12 @@ import {
   resolverNombreCatalogo,
 } from '../../services/expressCatalogoService.js';
 import { ordenarLista, resolverCodigoResponsable, resolverCodigoAseguradora, resolverCodigoEstado, formatDate } from './expressHelpers.js';
+import { calcularLiquidacion, liquidadorConNombreAjustador, aplicaFormatoSalvamento } from './liquidadorExpressHelpers.js';
+import { descargarLiquidadorExpressPdf } from './generarLiquidadorExpressPdf.js';
+import {
+  descargarChecklistExpressPdf,
+  descargarSalvamentoExpressPdf,
+} from './generarFormatosExpressPdf.js';
 import { esResponsableExpressPermitido } from '../../config/expressCatalogosPermitidos.js';
 import {
   expressAlertError,
@@ -639,6 +645,90 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     setAvisoModal({ open: true, titulo, mensaje, tipo });
   }, []);
 
+  const prepararLiquidadorExport = useCallback(() => {
+    const liquidadorRaw = initialData?.liquidador;
+    if (!liquidadorRaw || typeof liquidadorRaw !== 'object') {
+      return null;
+    }
+    const obtenerNombre = (codigo) => {
+      const valor = String(codigo ?? '').trim();
+      if (!valor) return '';
+      const hit = mappedResponsables.find((r) => r.value === valor || r.label === valor);
+      return hit?.label || valor;
+    };
+    const liquidador = liquidadorConNombreAjustador(
+      liquidadorRaw,
+      obtenerNombre,
+      formData.responsable || initialData?.responsable
+    );
+    return {
+      liquidador,
+      totales: calcularLiquidacion(liquidador),
+    };
+  }, [initialData, formData.responsable, mappedResponsables]);
+
+  const handleDescargarPdfLiquidador = useCallback(() => {
+    const prep = prepararLiquidadorExport();
+    if (!prep) {
+      mostrarAviso(
+        'No hay liquidador guardado en este caso. Ábralo con el botón Liquidador y guárdelo primero.',
+        'Liquidador',
+        'warning'
+      );
+      return;
+    }
+    try {
+      descargarLiquidadorExpressPdf(prep.liquidador, prep.totales);
+    } catch (err) {
+      console.error('Error al generar PDF del liquidador:', err);
+      mostrarAviso('No se pudo generar el PDF del liquidador.', 'Liquidador', 'error');
+    }
+  }, [prepararLiquidadorExport, mostrarAviso]);
+
+  const handleDescargarPdfChecklist = useCallback(async () => {
+    const prep = prepararLiquidadorExport();
+    if (!prep) {
+      mostrarAviso(
+        'No hay liquidador guardado en este caso. Ábralo con el botón Liquidador y guárdelo primero.',
+        'Check-list',
+        'warning'
+      );
+      return;
+    }
+    try {
+      await descargarChecklistExpressPdf(prep.liquidador, prep.totales);
+    } catch (err) {
+      console.error('Error al generar PDF del check-list:', err);
+      mostrarAviso('No se pudo generar el PDF del check-list.', 'Check-list', 'error');
+    }
+  }, [prepararLiquidadorExport, mostrarAviso]);
+
+  const handleDescargarPdfSalvamento = useCallback(async () => {
+    const prep = prepararLiquidadorExport();
+    if (!prep) {
+      mostrarAviso(
+        'No hay liquidador guardado en este caso. Ábralo con el botón Liquidador y guárdelo primero.',
+        'Salvamento',
+        'warning'
+      );
+      return;
+    }
+    if (!aplicaFormatoSalvamento(prep.liquidador, initialData || formData)) {
+      mostrarAviso(
+        'Salvamento no aplica en este caso: no se genera el formato SALVAMENTO.',
+        'Salvamento',
+        'warning'
+      );
+      return;
+    }
+    try {
+      await descargarSalvamentoExpressPdf(prep.liquidador);
+    } catch (err) {
+      console.error('Error al generar PDF de salvamento:', err);
+      mostrarAviso('No se pudo generar el PDF de salvamento.', 'Salvamento', 'error');
+    }
+  }, [prepararLiquidadorExport, initialData, formData, mostrarAviso]);
+
   const cerrarAviso = useCallback(() => {
     setAvisoModal((prev) => ({ ...prev, open: false }));
   }, []);
@@ -1057,6 +1147,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                         onRemoveExistente={removeExistingAnexo}
                         onRemoveNuevo={removeAnexo}
                         onAviso={mostrarAviso}
+                        onDescargarPdfLiquidador={handleDescargarPdfLiquidador}
+                        onDescargarPdfChecklist={handleDescargarPdfChecklist}
+                        onDescargarPdfSalvamento={handleDescargarPdfSalvamento}
                       />
                     </Campo>
                   </>,

@@ -3,6 +3,8 @@ import { saveAs } from 'file-saver';
 import {
   DOCUMENTOS_SOPORTE,
   documentoChecklistFinalizado,
+  nombreAjustadorParaDocumento,
+  nombreUsuarioPlataforma,
   normalizarEstadoDocumento,
   parsearNumero,
   pctDocumentosMarcados,
@@ -60,6 +62,61 @@ function setCell(sheet, ref, value) {
   return cell;
 }
 
+/** Quita el marco negro grueso del check-list (borde izquierdo col A / derecho col G). */
+function quitarMarcoNegroChecklist(sheet) {
+  if (!sheet) return;
+  const maxRow = Math.max(sheet.rowCount || 70, 70);
+
+  const sinLado = (border, lado) => {
+    if (!border) return border;
+    const next = { ...border };
+    delete next[lado];
+    return Object.keys(next).length ? next : undefined;
+  };
+
+  for (let r = 1; r <= maxRow; r += 1) {
+    const leftCell = sheet.getCell(r, 1); // columna A
+    if (leftCell.border?.left) {
+      leftCell.border = sinLado(leftCell.border, 'left');
+    }
+    const rightCell = sheet.getCell(r, 7); // columna G
+    const rightStyle = rightCell.border?.right?.style;
+    if (rightStyle === 'medium' || rightStyle === 'thick' || rightStyle === 'mediumDashed') {
+      rightCell.border = sinLado(rightCell.border, 'right');
+    }
+  }
+
+  for (let c = 1; c <= 7; c += 1) {
+    const cell = sheet.getCell(2, c); // fila 2
+    const topStyle = cell.border?.top?.style;
+    if (topStyle === 'medium' || topStyle === 'thick') {
+      cell.border = sinLado(cell.border, 'top');
+    }
+  }
+}
+
+function setMoneyCell(sheet, ref, value) {
+  const num = parsearNumero(value);
+  if (!num && value !== 0 && value !== '0') {
+    setCell(sheet, ref, value || null);
+    return;
+  }
+  const cell = setCell(sheet, ref, num);
+  if (!cell.numFmt || cell.numFmt === 'General') {
+    cell.numFmt = '#,##0.00';
+  }
+}
+
+function fechaSoloDia(valor) {
+  if (!valor) return null;
+  const str = String(valor).trim();
+  if (!str) return null;
+  if (/^\d{4}-\d{2}-\d{2}/.test(str)) return str.slice(0, 10);
+  const d = new Date(str);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
 function setDateCell(sheet, ref, isoDate) {
   if (!isoDate) {
     setCell(sheet, ref, null);
@@ -87,22 +144,12 @@ function textoDeducible(liquidador, totales) {
   }`;
 }
 
-/** Nombre del usuario logueado en la plataforma (para ELABORADO POR). */
-function nombreUsuarioPlataforma() {
-  if (typeof localStorage === 'undefined') return '';
-  return (
-    localStorage.getItem('nombre') ||
-    localStorage.getItem('login') ||
-    ''
-  ).trim();
-}
-
 function marcarSi(valor) {
-  return valor === 'SI' ? 1 : 0;
+  return valor === 'SI' ? 'X' : '';
 }
 
 function marcarNo(valor) {
-  return valor === 'SI' ? 0 : 1;
+  return valor === 'SI' ? '' : 'X';
 }
 
 /** Rellena FORMATO_LIQUIDACION preservando estilos/fórmulas/logos de la plantilla. */
@@ -110,14 +157,26 @@ function rellenarLiquidacion(sheet, liquidador, totales) {
   const enc = liquidador.encabezado || {};
   const ded = liquidador.deducible || {};
 
-  setCell(sheet, 'B4', enc.reclamo || null);
-  setCell(sheet, 'B5', enc.zc || null);
-  setCell(sheet, 'B6', enc.asegurado || null);
-  setCell(sheet, 'B7', enc.nit || null);
-  setCell(sheet, 'B8', enc.poliza || null);
-  setDateCell(sheet, 'B9', enc.fechaSiniestro);
-  setCell(sheet, 'B10', enc.cobertura || null);
-  setCell(sheet, 'B11', textoDeducible(liquidador, totales));
+  // Datos del encabezado en columna C (la B queda libre / más limpia)
+  setCell(sheet, 'B4', null);
+  setCell(sheet, 'B5', null);
+  setCell(sheet, 'B6', null);
+  setCell(sheet, 'B7', null);
+  setCell(sheet, 'B8', null);
+  setCell(sheet, 'B9', null);
+  setCell(sheet, 'B10', null);
+  setCell(sheet, 'B11', null);
+
+  setCell(sheet, 'C4', enc.reclamo || null);
+  setCell(sheet, 'C5', enc.zc || null);
+  setCell(sheet, 'C6', enc.asegurado || null);
+  setCell(sheet, 'C7', enc.nit || null);
+  setCell(sheet, 'C8', enc.poliza || null);
+  setDateCell(sheet, 'C9', enc.fechaSiniestro);
+  setCell(sheet, 'C10', enc.cobertura || null);
+  setCell(sheet, 'C11', textoDeducible(liquidador, totales));
+
+  // No forzar anchos de E–G: altera la proporción del logo Zurich de la plantilla.
 
   for (let row = FILA_INI_CONCEPTOS; row <= FILA_FIN_CONCEPTOS; row += 1) {
     setCell(sheet, `A${row}`, null);
@@ -172,12 +231,15 @@ function rellenarLiquidacion(sheet, liquidador, totales) {
 }
 
 /** Rellena FORMATO-CHECK-LIST. */
-function rellenarChecklist(sheet, liquidador, totales) {
+function rellenarChecklist(sheet, liquidador, totales, opciones = {}) {
   const enc = liquidador.encabezado || {};
   const chk = liquidador.checklist || {};
   const pct = pctDocumentosMarcados(chk.documentos);
   const items = chk.itemsAnalisis || [];
   const { totalReclamado, totalAjustado } = totalesItemsAnalisis(items);
+  const fechaFormalizacion =
+    fechaSoloDia(opciones.fechaUltimoDocumento) ||
+    fechaSoloDia(chk.fechaFormalizacion);
 
   setDateCell(sheet, 'D9', chk.fecha || new Date().toISOString().slice(0, 10));
   setCell(sheet, 'D10', enc.zc || null);
@@ -195,7 +257,9 @@ function rellenarChecklist(sheet, liquidador, totales) {
   setCell(sheet, 'D21', chk.objecion || 'No Aplica');
   setCell(sheet, 'D22', chk.tipoPerdida || 'Parcial');
   setCell(sheet, 'D23', chk.aplicaDemerito || 'No Aplica');
-  setCell(sheet, 'D24', chk.limiteAsegurado || null);
+  // Límite/valor asegurado va en columna E (con los demás montos), no en D
+  setCell(sheet, 'D24', null);
+  setMoneyCell(sheet, 'E24', chk.limiteAsegurado);
 
   setCell(sheet, 'E25', totales.totalPerdida || null);
   setCell(sheet, 'E26', totales.deducibleAplicado || null);
@@ -208,7 +272,8 @@ function rellenarChecklist(sheet, liquidador, totales) {
 
   // Descripción del evento (celda fusionada C33)
   setCell(sheet, 'C33', chk.descripcionEvento || null);
-  setCell(sheet, 'C34', chk.ajustador ? `Ajustador - ${chk.ajustador}` : null);
+  const nombreAjustador = nombreAjustadorParaDocumento(chk.ajustador);
+  setCell(sheet, 'C34', nombreAjustador ? `Ajustador - ${nombreAjustador}` : null);
 
   DOCUMENTOS_SOPORTE.forEach((_, idx) => {
     const row = FILA_INI_DOCS + idx;
@@ -217,12 +282,12 @@ function rellenarChecklist(sheet, liquidador, totales) {
     setCell(sheet, `F${row}`, documentoChecklistFinalizado(estado) ? 1 : 0);
   });
 
-  const rowPct = FILA_INI_DOCS + DOCUMENTOS_SOPORTE.length + 1; // 46
   setCell(sheet, 'E46', pct / 100);
   const e46 = sheet.getCell('E46');
   e46.numFmt = '0%';
-  setCell(sheet, 'E48', chk.reclamoFormalizado || 'No');
-  setDateCell(sheet, 'E49', chk.fechaFormalizacion);
+  setCell(sheet, 'E48', chk.reclamoFormalizado || (fechaFormalizacion ? 'Sí' : 'No'));
+  // Fecha formalización = fecha de último documento del caso Express
+  setDateCell(sheet, 'E49', fechaFormalizacion);
 
   for (let i = 0; i < MAX_ITEMS_ANALISIS; i += 1) {
     const row = FILA_INI_ANALISIS + i;
@@ -237,7 +302,7 @@ function rellenarChecklist(sheet, liquidador, totales) {
   setCell(sheet, 'D60', totalReclamado || null);
   setCell(sheet, 'E60', totalAjustado || null);
   setCell(sheet, 'B64', chk.comentariosAdicionales || 'Para este caso no aplica');
-  setCell(sheet, 'C70', chk.ajustador ? `Ajustador - ${chk.ajustador}` : null);
+  setCell(sheet, 'C70', nombreAjustador ? `Ajustador - ${nombreAjustador}` : null);
 }
 
 /** Rellena SALVAMENTO. */
@@ -308,7 +373,12 @@ export async function generarLiquidadorExpressExcelBlob(liquidador, totales, opc
   const hojaSal = workbook.getWorksheet('SALVAMENTO') || workbook.worksheets[2];
 
   if (hojaLiq) rellenarLiquidacion(hojaLiq, liquidador, totales);
-  if (hojaChk) rellenarChecklist(hojaChk, liquidador, totales);
+  if (hojaChk) {
+    quitarMarcoNegroChecklist(hojaChk);
+    rellenarChecklist(hojaChk, liquidador, totales, {
+      fechaUltimoDocumento: opciones.fechaUltimoDocumento,
+    });
+  }
 
   if (incluirSalvamento && hojaSal) {
     rellenarSalvamento(hojaSal, liquidador);

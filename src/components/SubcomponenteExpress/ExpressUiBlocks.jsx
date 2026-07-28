@@ -21,10 +21,12 @@ import {
   partirHora12Desde24,
 } from '../../utils/complexFechaHoraUtils.js';
 import {
+  anexoExpressSePuedePrevisualizar,
   descargarAnexoExpress,
   puedeAccederAnexoExpress,
   verAnexoExpress,
 } from './expressHelpers.js';
+import { etiquetaLegibleAnexoExpress } from '../../services/expressService.js';
 import {
   expressBadge,
   expressBtnGhost,
@@ -430,11 +432,21 @@ export function ExpressAvisoModal({
   );
 }
 
-function FilaAnexoExpress({ anexo, onQuitar, onAviso }) {
+function FilaAnexoExpress({
+  anexo,
+  onQuitar,
+  onAviso,
+  onDescargarPdfLiquidador,
+  onDescargarPdfChecklist,
+  onDescargarPdfSalvamento,
+}) {
   const accesible = puedeAccederAnexoExpress(anexo);
-  const esLiquidador = /^(Liquidador_Express_|Recibo_Indemnizacion_|Contrato_Reembolso_|Contrato_Transaccion_|Checklist_Express_|Salvamento_Express_)/.test(
-    String(anexo?.nombre || '')
-  );
+  const etiqueta = etiquetaLegibleAnexoExpress(anexo);
+  const tituloDescarga = etiqueta.archivo || anexo.nombre || 'documento';
+  const puedeVer = accesible && anexoExpressSePuedePrevisualizar(anexo);
+  const esExcelLiquidador = etiqueta.badge === 'Excel';
+  const esChecklistWord = etiqueta.badge === 'Check-list';
+  const esSalvamentoWord = etiqueta.badge === 'Salvamento';
 
   const handleVer = () => {
     const resultado = verAnexoExpress(anexo);
@@ -444,35 +456,56 @@ function FilaAnexoExpress({ anexo, onQuitar, onAviso }) {
   };
 
   const handleDescargar = () => {
-    const resultado = descargarAnexoExpress(anexo);
+    const resultado = descargarAnexoExpress({ ...anexo, nombre: tituloDescarga });
     if (!resultado.ok && onAviso) {
       onAviso(resultado.error, 'Documento', 'warning');
     }
   };
 
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-100 bg-white px-3 py-2 dark:border-gray-800 dark:bg-[#1A1A1A]">
-      <span
-        className="min-w-0 flex-1 truncate font-body text-sm text-gray-800 dark:text-gray-200"
-        title={anexo.nombre}
-      >
-        {esLiquidador && (
-          <span className="mr-2 inline-block rounded bg-fenix-primario/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fenix-primario">
-            Liquidador
+    <li className="rounded-lg border border-gray-100 bg-white px-3 py-2.5 dark:border-gray-800 dark:bg-[#1A1A1A]">
+      <div className="min-w-0" title={etiqueta.archivo || etiqueta.titulo}>
+        <div className="flex flex-wrap items-center gap-2">
+          {etiqueta.badge && (
+            <span className="shrink-0 rounded bg-fenix-primario/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-fenix-primario">
+              {etiqueta.badge}
+            </span>
+          )}
+          <span className="font-body text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {etiqueta.titulo}
           </span>
+        </div>
+        {etiqueta.esLiquidador && etiqueta.archivo && etiqueta.archivo !== etiqueta.titulo && (
+          <p className="mt-1 break-all font-body text-[11px] text-gray-500 dark:text-gray-400">
+            {etiqueta.archivo}
+          </p>
         )}
-        {anexo.nombre}
-      </span>
-      <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+      </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-gray-100 pt-2 dark:border-gray-800">
+        {puedeVer && (
+          <button type="button" onClick={handleVer} className={expressDocBtn}>
+            Ver
+          </button>
+        )}
         {accesible && (
-          <>
-            <button type="button" onClick={handleVer} className={expressDocBtn}>
-              Ver
-            </button>
-            <button type="button" onClick={handleDescargar} className={expressDocBtn}>
-              Descargar
-            </button>
-          </>
+          <button type="button" onClick={handleDescargar} className={expressDocBtn}>
+            Descargar
+          </button>
+        )}
+        {esExcelLiquidador && typeof onDescargarPdfLiquidador === 'function' && (
+          <button type="button" onClick={onDescargarPdfLiquidador} className={expressDocBtn}>
+            Descargar PDF
+          </button>
+        )}
+        {esChecklistWord && typeof onDescargarPdfChecklist === 'function' && (
+          <button type="button" onClick={onDescargarPdfChecklist} className={expressDocBtn}>
+            Descargar PDF
+          </button>
+        )}
+        {esSalvamentoWord && typeof onDescargarPdfSalvamento === 'function' && (
+          <button type="button" onClick={onDescargarPdfSalvamento} className={expressDocBtn}>
+            Descargar PDF
+          </button>
         )}
         <button type="button" onClick={onQuitar} className={expressDocBtnDanger}>
           Quitar
@@ -488,6 +521,9 @@ export function ExpressListaAnexos({
   onRemoveExistente,
   onRemoveNuevo,
   onAviso,
+  onDescargarPdfLiquidador,
+  onDescargarPdfChecklist,
+  onDescargarPdfSalvamento,
 }) {
   if (!listaExistentes.length && !listaNuevos.length) return null;
 
@@ -501,6 +537,9 @@ export function ExpressListaAnexos({
               anexo={anexo}
               onQuitar={() => onRemoveExistente(index)}
               onAviso={onAviso}
+              onDescargarPdfLiquidador={onDescargarPdfLiquidador}
+              onDescargarPdfChecklist={onDescargarPdfChecklist}
+              onDescargarPdfSalvamento={onDescargarPdfSalvamento}
             />
           ))}
         </ul>
@@ -513,6 +552,9 @@ export function ExpressListaAnexos({
               anexo={anexo}
               onQuitar={() => onRemoveNuevo(anexo.nombre)}
               onAviso={onAviso}
+              onDescargarPdfLiquidador={onDescargarPdfLiquidador}
+              onDescargarPdfChecklist={onDescargarPdfChecklist}
+              onDescargarPdfSalvamento={onDescargarPdfSalvamento}
             />
           ))}
         </ul>

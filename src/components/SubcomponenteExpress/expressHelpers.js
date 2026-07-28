@@ -657,6 +657,16 @@ export function puedeAccederAnexoExpress(anexo) {
   return Boolean(anexo?.url || anexo?.file);
 }
 
+/** Extensiones que el navegador suele abrir sin forzar descarga (vista previa). */
+export function anexoExpressSePuedePrevisualizar(anexo) {
+  const nombre = String(anexo?.nombre || anexo?.filename || anexo?.file?.name || '').toLowerCase();
+  const tipo = String(anexo?.tipo || anexo?.mime || anexo?.mimetype || anexo?.file?.type || '').toLowerCase();
+  if (tipo.startsWith('image/') || tipo === 'application/pdf' || tipo.startsWith('text/')) {
+    return true;
+  }
+  return /\.(pdf|png|jpe?g|gif|webp|bmp|svg|txt|csv)$/i.test(nombre);
+}
+
 export function verAnexoExpress(anexo) {
   const enlace = resolverUrlAnexoExpress(anexo);
   if (!enlace) {

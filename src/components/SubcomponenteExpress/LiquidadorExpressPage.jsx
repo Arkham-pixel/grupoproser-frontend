@@ -25,10 +25,15 @@ import { generarReciboIndemnizacionBlob } from './generarReciboIndemnizacionWord
 import { generarContratoReembolsoBlob } from './generarContratoReembolsoWord.js';
 import { generarContratoTransaccionBlob } from './generarContratoTransaccionWord.js';
 import { generarLiquidadorExpressExcelBlob } from './generarLiquidadorExpressExcel.js';
+import { generarLiquidadorExpressPdfBlob } from './generarLiquidadorExpressPdf.js';
 import {
   generarChecklistExpressBlob,
   generarSalvamentoExpressBlob,
 } from './generarFormatosExpressWord.js';
+import {
+  generarChecklistExpressPdfBlob,
+  generarSalvamentoExpressPdfBlob,
+} from './generarFormatosExpressPdf.js';
 
 export default function LiquidadorExpressPage() {
   const location = useLocation();
@@ -136,14 +141,21 @@ export default function LiquidadorExpressPage() {
       try {
         const incluirSalvamento = aplicaFormatoSalvamento(liquidador, casoTrasJson || casoExpress);
         const generadores = [
-          generarLiquidadorExpressExcelBlob(liquidador, totales, { incluirSalvamento }),
+          generarLiquidadorExpressExcelBlob(liquidador, totales, {
+            incluirSalvamento,
+            fechaUltimoDocumento:
+              casoTrasJson?.fechaUltimoDocumento || casoExpress?.fechaUltimoDocumento,
+          }),
+          generarLiquidadorExpressPdfBlob(liquidador, totales),
           generarReciboIndemnizacionBlob(liquidador, totales),
           generarContratoReembolsoBlob(liquidador, totales),
           generarContratoTransaccionBlob(liquidador, totales),
           generarChecklistExpressBlob(liquidador, totales),
+          generarChecklistExpressPdfBlob(liquidador, totales),
         ];
         if (incluirSalvamento) {
           generadores.push(generarSalvamentoExpressBlob(liquidador));
+          generadores.push(generarSalvamentoExpressPdfBlob(liquidador));
         }
 
         const generados = await Promise.all(generadores);
@@ -171,8 +183,8 @@ export default function LiquidadorExpressPage() {
         const conSalvamento = aplicaFormatoSalvamento(liquidador, casoExpress);
         setMensaje(
           conSalvamento
-            ? 'Liquidador guardado en el caso. Se actualizó el valor de indemnización y se adjuntaron Excel + Word en documentos.'
-            : 'Liquidador guardado. Salvamento no aplica: se omitió la hoja/formato SALVAMENTO; liquidación, checklist, recibo y contrato de reembolso sí se generaron.'
+            ? 'Liquidador guardado en el caso. Se actualizó el valor de indemnización y se adjuntaron Excel, PDF y Word en documentos.'
+            : 'Liquidador guardado. Salvamento no aplica: se omitió la hoja/formato SALVAMENTO; liquidación (Excel/PDF), checklist, recibo y contratos sí se generaron.'
         );
       } else {
         setMensaje(
