@@ -320,9 +320,16 @@ setImagenes(imagenesProcesadas);
   };
 
   const handleDescripcionChange = (index, value) => {
-    setImagenes(prev => prev.map((img, i) => 
+    const imagenesActualizadas = imagenes.map((img, i) =>
       i === index ? { ...img, descripcion: value } : img
-    ));
+    );
+
+    // La estructura de las imágenes no cambia al editar la descripción,
+    // por lo que el efecto de sincronización no detecta esta actualización.
+    // Se notifica explícitamente al formulario padre para que pueda
+    // guardarla y usarla al generar el Word.
+    setImagenes(imagenesActualizadas);
+    onChange?.(imagenesActualizadas);
   };
 
   const eliminarImagen = (index) => {

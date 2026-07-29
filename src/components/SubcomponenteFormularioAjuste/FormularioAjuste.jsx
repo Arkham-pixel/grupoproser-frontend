@@ -294,6 +294,8 @@ const [formData, setFormData] = useState({
       deducibleSMMLV: false,
       valorSMMLV: 0,
       cantidadSMMLV: 4,
+      lucro: '',
+      gastos: '',
       // Valores de la tabla de resumen (editables independientes)
       resumenTotalAjustado: '',
       resumenDeducible15: '',
@@ -1542,7 +1544,8 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         const valorSMMLV = parsearNumeroLiquidador(liquidador.valorSMMLV || 0);
         const cantidadSMMLV = numDeducibleLiquidador(liquidador.cantidadSMMLV, 4);
         const deducibleSMMLV = valorSMMLV * cantidadSMMLV;
-        const totalIndemnizar = totalAjustado - Math.max(deduciblePorcentaje, deducibleSMMLV);
+        const gastos = parsearNumeroLiquidador(liquidador.gastos || 0);
+        const totalIndemnizar = totalAjustado - Math.max(deduciblePorcentaje, deducibleSMMLV) + gastos;
         return { totalReclamado, totalAjustado, totalIndemnizar };
       };
 
@@ -2225,9 +2228,11 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
             const deducibleSMMLVValor = valorSMMLVTotal * cantidadSMMLVTotal;
             // Deducible aplicable (el mayor valor)
             const deducible = Math.max(deduciblePorcentajeValor, deducibleSMMLVValor);
+            const gastos = parsearNumero(fd.liquidador.gastos || 0);
             
-            // Total a indemnizar: Total valor ajustado - deducible aplicable
-            const totalIndemnizar = totalAjustado - deducible;
+            // Total a indemnizar: Total valor ajustado - deducible aplicable + gastos
+            const totalIndemnizar = totalAjustado - deducible + gastos;
+            const lucro = parsearNumero(fd.liquidador.lucro || 0);
 
             secciones.push(
               crearTextoNormal(`${numeroSeccion}. LIQUIDADOR`, { 
@@ -2305,6 +2310,26 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               new TableRow({
                 children: [
                   new TableCell({
+                    children: [crearTextoNormal('LUCRO', { bold: true, size: 20 })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    shading: { fill: '90EE90' },
+                    columnSpan: 3
+                  }),
+                  new TableCell({
+                    children: [crearTextoNormal(`$ ${formatearNumeroMostrar(lucro)}`, { bold: true, size: 20 })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    shading: { fill: '90EE90' }
+                  }),
+                  new TableCell({
+                    children: [crearTextoNormal('', { size: 18 })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    shading: { fill: '90EE90' }
+                  })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({
                     children: [crearTextoNormal('TOTAL', { bold: true, size: 20 })],
                     margins: { top: 100, bottom: 100, left: 100, right: 100 },
                     shading: { fill: '90EE90' },
@@ -2370,6 +2395,26 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               new TableRow({
                 children: [
                   new TableCell({
+                    children: [crearTextoNormal('GASTOS', { bold: true, size: 20 })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    shading: { fill: '90EE90' },
+                    columnSpan: 3
+                  }),
+                  new TableCell({
+                    children: [crearTextoNormal(`$ ${formatearNumeroMostrar(gastos)}`, { bold: true, size: 20 })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    shading: { fill: '90EE90' }
+                  }),
+                  new TableCell({
+                    children: [crearTextoNormal('', { size: 18 })],
+                    margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                    shading: { fill: '90EE90' }
+                  })
+                ]
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({
                     children: [crearTextoNormal('TOTAL A INDEMNIZAR', { bold: true, size: 22 })],
                     margins: { top: 100, bottom: 100, left: 100, right: 100 },
                     shading: { fill: '90EE90' },
@@ -2406,8 +2451,9 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
             const etiquetaDeducibleResumen = usaSMMLVResumen
               ? `deducible ${cantidadSMMLV} SMMLV`
               : `deducible ${deduciblePorcentaje}%`;
-            // Total a indemnizar: Total ajustado - deducible de mayor valor
-            const totalIndemnizarResumen = resumenTotalAjustadoNum - Math.max(resumenDeducible15Num, resumenDeducibleSMMLVNum);
+            const gastosResumen = parsearNumero(fd.liquidador.gastos || 0);
+            // Total a indemnizar: Total ajustado - deducible de mayor valor + gastos
+            const totalIndemnizarResumen = resumenTotalAjustadoNum - Math.max(resumenDeducible15Num, resumenDeducibleSMMLVNum) + gastosResumen;
             const resumenTotalIndemnizar = fd.liquidador.resumenTotalIndemnizar || formatearNumeroMostrar(totalIndemnizarResumen);
 
             // Primero agregar la tabla principal del liquidador
@@ -2453,6 +2499,20 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                       }),
                       new TableCell({
                         children: [crearTextoNormal(`$ ${deducibleSeleccionadoResumen}`, { size: 18 })],
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        shading: { fill: '90EE90' }
+                      })
+                    ]
+                  }),
+                  new TableRow({
+                    children: [
+                      new TableCell({
+                        children: [crearTextoNormal('Gastos', { size: 18 })],
+                        margins: { top: 100, bottom: 100, left: 100, right: 100 },
+                        shading: { fill: '90EE90' }
+                      }),
+                      new TableCell({
+                        children: [crearTextoNormal(`$ ${formatearNumeroMostrar(gastosResumen)}`, { size: 18 })],
                         margins: { top: 100, bottom: 100, left: 100, right: 100 },
                         shading: { fill: '90EE90' }
                       })

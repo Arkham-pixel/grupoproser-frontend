@@ -25,6 +25,8 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
     deducibleSMMLV: false,
     valorSMMLV: 0,
     cantidadSMMLV: 4, // Cantidad de SMMLV para el deducible
+    lucro: '',
+    gastos: '',
     // Valores de la tabla de resumen (editables independientes)
     resumenTotalAjustado: '',
     resumenDeducible15: '',
@@ -98,9 +100,10 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
 
     // Aplicar el deducible de mayor valor
     const deducible = Math.max(deduciblePorcentaje, deducibleSMMLV);
+    const gastos = parseFloat(formatearNumero(liquidador.gastos || 0));
     
-    // Total a indemnizar: Total valor ajustado - Deducible
-    const totalIndemnizar = totalAjustado - deducible;
+    // Total a indemnizar: Total valor ajustado - Deducible + Gastos
+    const totalIndemnizar = totalAjustado - deducible + (isNaN(gastos) ? 0 : gastos);
 
     return {
       totalReclamado,
@@ -108,6 +111,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
       deduciblePorcentaje,
       deducibleSMMLV,
       deducible,
+      gastos: isNaN(gastos) ? 0 : gastos,
       totalIndemnizar
     };
   };
@@ -133,9 +137,10 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
     const usarDeducibleSMMLV = deducibleSMMLVResumen > deducible15Resumen;
     const deducibleSeleccionadoResumen = usarDeducibleSMMLV ? deducibleSMMLVResumen : deducible15Resumen;
 
-    // Total a indemnizar: Total ajustado - deducible de mayor valor
+    const gastos = parseFloat(formatearNumero(liquidador.gastos || 0)) || 0;
+    // Total a indemnizar: Total ajustado - deducible de mayor valor + gastos
     const deducibleMayorResumen = Math.max(deducible15Resumen, deducibleSMMLVResumen);
-    const totalIndemnizarResumen = totalAjustadoResumen - deducibleMayorResumen;
+    const totalIndemnizarResumen = totalAjustadoResumen - deducibleMayorResumen + gastos;
 
     return {
       deducible15: deducible15Resumen,
@@ -182,7 +187,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liquidador.resumenTotalAjustado, liquidador.deduciblePorcentaje, liquidador.valorSMMLV, liquidador.cantidadSMMLV]);
+  }, [liquidador.resumenTotalAjustado, liquidador.deduciblePorcentaje, liquidador.valorSMMLV, liquidador.cantidadSMMLV, liquidador.gastos]);
 
   // Sincronizar automáticamente el total ajustado del cuadro grande al cuadro pequeño
   useEffect(() => {
@@ -214,9 +219,10 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
         const valorSMMLV = parseFloat(formatearNumero(liquidador.valorSMMLV || 0));
         const cantidadSMMLV = numDeducible(liquidador.cantidadSMMLV, 4);
         const deducibleSMMLVCalc = valorSMMLV * cantidadSMMLV;
-        // Total a indemnizar: Total valor ajustado - deducible de mayor valor (puede ser negativo)
+        const gastos = parseFloat(formatearNumero(liquidador.gastos || 0)) || 0;
+        // Total a indemnizar: Total valor ajustado - deducible de mayor valor + gastos
         const deducibleMayorCalc = Math.max(deducibleCalc, deducibleSMMLVCalc);
-        const totalIndemnizarCalc = totalAjustadoParaCalcular - deducibleMayorCalc;
+        const totalIndemnizarCalc = totalAjustadoParaCalcular - deducibleMayorCalc + gastos;
         
         onInputChange('liquidador', {
           ...liquidador,
@@ -228,7 +234,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [totales.totalAjustado, liquidador.items?.length, liquidador.deduciblePorcentaje, liquidador.valorSMMLV, liquidador.cantidadSMMLV]);
+  }, [totales.totalAjustado, liquidador.items?.length, liquidador.deduciblePorcentaje, liquidador.valorSMMLV, liquidador.cantidadSMMLV, liquidador.gastos]);
 
   // Agregar nuevo item
   const agregarItem = () => {
@@ -642,6 +648,39 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
             <tfoot>
               <tr style={{ backgroundColor: totalRowBg }}>
                 <td 
+                  colSpan="3"
+                  className="p-3 font-bold text-sm"
+                  style={{ 
+                    color: totalRowText,
+                    border: `1px solid ${borderColor}`
+                  }}
+                >
+                  LUCRO
+                </td>
+                <td 
+                  className="p-2"
+                  style={{ border: `1px solid ${borderColor}` }}
+                >
+                  <input
+                    type="text"
+                    value={liquidador.lucro || ''}
+                    onChange={(e) => onInputChange('liquidador', {
+                      ...liquidador,
+                      lucro: e.target.value
+                    })}
+                    placeholder="$ 0"
+                    className="w-full px-2 py-1 text-sm rounded focus:outline-none font-bold"
+                    style={{
+                      backgroundColor: inputBg,
+                      color: totalRowText,
+                      border: `1px solid ${borderColor}`
+                    }}
+                  />
+                </td>
+                <td colSpan="2" style={{ border: `1px solid ${borderColor}` }}></td>
+              </tr>
+              <tr style={{ backgroundColor: totalRowBg }}>
+                <td 
                   colSpan="2"
                   className="p-3 font-bold text-sm"
                   style={{ 
@@ -712,6 +751,39 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   }}
                 >
                   $ {formatearNumeroMostrar(totales.deducibleSMMLV)}
+                </td>
+                <td colSpan="2" style={{ border: `1px solid ${borderColor}` }}></td>
+              </tr>
+              <tr style={{ backgroundColor: totalRowBg }}>
+                <td 
+                  colSpan="3"
+                  className="p-3 font-bold text-sm"
+                  style={{ 
+                    color: totalRowText,
+                    border: `1px solid ${borderColor}`
+                  }}
+                >
+                  GASTOS
+                </td>
+                <td 
+                  className="p-2"
+                  style={{ border: `1px solid ${borderColor}` }}
+                >
+                  <input
+                    type="text"
+                    value={liquidador.gastos || ''}
+                    onChange={(e) => onInputChange('liquidador', {
+                      ...liquidador,
+                      gastos: e.target.value
+                    })}
+                    placeholder="$ 0"
+                    className="w-full px-2 py-1 text-sm rounded focus:outline-none font-bold"
+                    style={{
+                      backgroundColor: inputBg,
+                      color: totalRowText,
+                      border: `1px solid ${borderColor}`
+                    }}
+                  />
                 </td>
                 <td colSpan="2" style={{ border: `1px solid ${borderColor}` }}></td>
               </tr>

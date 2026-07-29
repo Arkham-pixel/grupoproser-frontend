@@ -52,7 +52,9 @@ export function descargarLiquidadorAjustePdf(formData = {}) {
   const deduciblePorcentajeValor = totalAjustado * (deduciblePorcentaje / 100);
   const deducibleSMMLV = parsearNumero(liquidador.valorSMMLV) * cantidadSMMLV;
   const deducibleAplicable = Math.max(deduciblePorcentajeValor, deducibleSMMLV);
-  const totalIndemnizar = totalAjustado - deducibleAplicable;
+  const lucro = parsearNumero(liquidador.lucro);
+  const gastos = parsearNumero(liquidador.gastos);
+  const totalIndemnizar = totalAjustado - deducibleAplicable + gastos;
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const margen = 12;
@@ -112,18 +114,20 @@ export function descargarLiquidadorAjustePdf(formData = {}) {
     margin: { left: margen },
     tableWidth: 115,
     body: [
+      ['Lucro', formatearMoneda(lucro)],
       ['Total del valor ajustado', formatearMoneda(totalAjustado)],
       [
         `Deducible aplicable (${deducibleSMMLV > deduciblePorcentajeValor ? `${cantidadSMMLV} SMMLV` : `${deduciblePorcentaje}%`})`,
         formatearMoneda(deducibleAplicable),
       ],
+      ['Gastos', formatearMoneda(gastos)],
       ['Total a indemnizar', formatearMoneda(totalIndemnizar)],
     ],
     theme: 'grid',
     styles: { fontSize: 9, cellPadding: 2.5 },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 78 }, 1: { halign: 'right' } },
     didParseCell: (data) => {
-      if (data.row.index === 2) {
+      if (data.row.index === 3) {
         data.cell.styles.fillColor = [209, 250, 229];
         data.cell.styles.textColor = [6, 95, 70];
         data.cell.styles.fontStyle = 'bold';

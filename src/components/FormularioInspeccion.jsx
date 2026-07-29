@@ -46,6 +46,7 @@ import BotonesHistorial from './BotonesHistorial.jsx';
 import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
 import { BASE_URL } from '../config/apiConfig.js';
+import { fetchImageAsArrayBuffer } from '../utils/imageUtils.js';
 import { generarManualInspeccion } from './generarManualInspeccion.js';
 import {
   SECCIONES_INFORME_INSPECCION,
@@ -4845,35 +4846,12 @@ if (imagenesRegistro.length > 0) {
 
     for (let j = i; j < i + 2 && j < imagenesRegistro.length; j++) {
       const img = imagenesRegistro[j];
-      let imagenBuffer = null;
       
       try {
-        // Intentar obtener la imagen desde diferentes fuentes
-        if (img && img.file && typeof img.file.arrayBuffer === "function") {
-          // Si es un File object
-          imagenBuffer = await img.file.arrayBuffer();
-} else if (img && img.base64) {
-          // Si tiene base64
-          const base64Data = img.base64.split(',')[1] || img.base64;
-          imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-} else if (img && img.preview && typeof img.preview === 'string' && img.preview.startsWith('data:image')) {
-          // Si tiene preview como base64
-          const base64Data = img.preview.split(',')[1] || img.preview;
-          imagenBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
-} else if (img && img.ruta) {
-          // Si tiene ruta del servidor, intentar cargarla
-          try {
-            const imagenUrl = img.ruta.startsWith('http') 
-              ? img.ruta 
-              : `${window.location.origin}${img.ruta}`;
-            const response = await fetch(imagenUrl);
-            if (response.ok) {
-              imagenBuffer = await response.arrayBuffer();
-}
-          } catch (fetchError) {
-            console.error('❌ Error al cargar imagen desde servidor:', fetchError);
-          }
-        }
+        // Usa las mismas URLs y fallbacks que el registro fotográfico.
+        // `window.location.origin` apunta al frontend (5173) y no al
+        // backend que sirve los archivos cargados.
+        const imagenBuffer = await fetchImageAsArrayBuffer(img);
         
         if (imagenBuffer) {
           celdasImagen.push(
@@ -6392,22 +6370,18 @@ const cargarDatosFormulario = async (formularioId) => {
       const imagenesRegistroHistorial = extraerImagenesRegistroDesdeHistorial(formulario);
 
       if (Array.isArray(imagenesRegistroHistorial) && imagenesRegistroHistorial.length > 0) {
-const baseURL = BASE_URL;
-
         const imagenesProcesadas = await Promise.all(
           imagenesRegistroHistorial.map(async (img, index) => {
             // Si tiene ruta (archivo en servidor), cargar desde servidor
             if (img && typeof img === 'object' && img.ruta) {
               try {
-                // Convertir ruta a URL completa
-                const imagenUrl = img.ruta.startsWith('http') 
-                  ? img.ruta 
-                  : `${baseURL}${img.ruta}`;
-                
-                // Cargar imagen como base64 para preview
-                const response = await fetch(imagenUrl);
-                if (response.ok) {
-                  const blob = await response.blob();
+                // `ruta` puede ser una referencia s3:, /uploads/ o una URL.
+                // La utilidad resuelve cada formato mediante el proxy correcto.
+                const imagenBuffer = await fetchImageAsArrayBuffer(img);
+                if (imagenBuffer) {
+                  const blob = new Blob([imagenBuffer], {
+                    type: img.tipoMime || 'image/jpeg',
+                  });
                   const reader = new FileReader();
                   const base64 = await new Promise((resolve, reject) => {
                     reader.onload = () => resolve(reader.result);
@@ -6423,7 +6397,7 @@ const baseURL = BASE_URL;
                     descripcion: img.descripcion || ''
                   };
                 } else {
-                  console.warn(`⚠️ No se pudo cargar imagen desde ${imagenUrl} (status: ${response.status})`);
+                  console.warn(`⚠️ No se pudo cargar imagen desde ${img.ruta}`);
                   // Mantener la ruta para que se use como fallback en getImageUrl
                   return {
                     ...img,
