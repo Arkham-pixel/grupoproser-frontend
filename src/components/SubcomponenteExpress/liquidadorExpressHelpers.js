@@ -341,30 +341,23 @@ function pareceCodigoOCedula(valor) {
 
 /**
  * Nombre a mostrar como «Ajustador» en check-list / documentos.
- * Misma configuración que la primera hoja: prioriza el usuario de la plataforma
- * cuando el valor guardado es un código/cédula sin resolver.
+ * Es quien diligencia o imprime (usuario de sesión), no el responsable asignado al caso.
  */
 export function nombreAjustadorParaDocumento(ajustadorChecklist = '') {
   const plataforma = nombreUsuarioPlataforma();
+  if (plataforma) return plataforma;
   const guardado = String(ajustadorChecklist || '').trim();
-  if (plataforma && (!guardado || pareceCodigoOCedula(guardado))) return plataforma;
   if (guardado && !pareceCodigoOCedula(guardado)) return guardado;
-  return plataforma || guardado;
+  return guardado;
 }
 
-/** Nombre del ajustador para checklist (no cédula/código interno). */
-export function resolverNombreAjustadorChecklist(ajustador, obtenerNombreResponsable, codigoResponsable = '') {
-  if (typeof obtenerNombreResponsable !== 'function') {
-    return nombreAjustadorParaDocumento(ajustador || codigoResponsable || '');
-  }
-  for (const codigo of [codigoResponsable, ajustador]) {
-    if (codigo === undefined || codigo === null || codigo === '') continue;
-    const nombre = obtenerNombreResponsable(codigo);
-    if (nombre && String(nombre) !== String(codigo) && !pareceCodigoOCedula(nombre)) {
-      return String(nombre).trim();
-    }
-  }
-  return nombreAjustadorParaDocumento(ajustador || codigoResponsable || '');
+/**
+ * Nombre del ajustador para checklist: usuario que diligencia/imprime.
+ * `obtenerNombreResponsable` / `codigoResponsable` se conservan por compatibilidad de firma
+ * pero no se usan (antes resolvían al asignado del caso).
+ */
+export function resolverNombreAjustadorChecklist(ajustador, _obtenerNombreResponsable, _codigoResponsable = '') {
+  return nombreAjustadorParaDocumento(ajustador || '');
 }
 
 export function liquidadorConNombreAjustador(liquidador, obtenerNombreResponsable, codigoResponsable = '') {
@@ -416,7 +409,7 @@ export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
       riesgoAsegurado: caso.aseguradoBeneficiario || '',
       coberturaAfectada: caso.amparo || '',
       descripcionEvento: caso.observacionesSeguimiento || '',
-      ajustador: resolverNombreAjustadorChecklist('', obtenerNombreResponsable, caso.responsable),
+      ajustador: resolverNombreAjustadorChecklist('', obtenerNombreResponsable, ''),
       salvamento: caso.salvamentoAplica === 'aplica' ? 'Aplica' : 'No Aplica',
       salvamentoDetalle: caso.valorSalvamento ? String(caso.valorSalvamento) : '',
       fechaFormalizacion: caso.fechaUltimoDocumento
@@ -485,11 +478,9 @@ export function mapCasoExpressALiquidador(caso = {}, opciones = {}) {
         itemsAnalisis: Array.isArray(liq.checklist?.itemsAnalisis)
           ? liq.checklist.itemsAnalisis
           : base.checklist.itemsAnalisis,
-        ajustador: resolverNombreAjustadorChecklist(
-          liq.checklist?.ajustador ?? base.checklist.ajustador,
-          obtenerNombreResponsable,
-          caso.responsable
-        ),
+        // Quien diligencia/imprime ahora; no el responsable histórico del caso ni un nombre guardado previo.
+        ajustador: resolverNombreAjustadorChecklist('', obtenerNombreResponsable, ''),
+
         // Formalización = fecha de último documento del caso (campo del formulario Express)
         fechaFormalizacion: caso.fechaUltimoDocumento
           ? String(caso.fechaUltimoDocumento).slice(0, 10)
