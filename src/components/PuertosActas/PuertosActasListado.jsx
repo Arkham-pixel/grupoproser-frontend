@@ -265,6 +265,18 @@ export default function PuertosActasListado() {
 
   const filtrosActivos = contarFiltrosActivos(filtrosAplicados);
 
+  /** Aseguradora según formato: exportación, inspección asegurado o acta. */
+  const etiquetaAseguradora = (fila) => {
+    const raw = String(fila?.aseguradora || '').trim();
+    if (!raw) return '—';
+    const encontrada = aseguradoraOptions.find(
+      (o) =>
+        String(o.value) === raw ||
+        String(o.label || '').toUpperCase() === raw.toUpperCase()
+    );
+    return encontrada?.label || raw;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -349,6 +361,7 @@ export default function PuertosActasListado() {
                 <th className="px-3 py-2.5 font-semibold">Regional / Ciudad</th>
                 <th className="px-3 py-2.5 font-semibold">Fecha</th>
                 <th className="px-3 py-2.5 font-semibold">Cliente</th>
+                <th className="px-3 py-2.5 font-semibold">Aseguradora</th>
                 <th className="px-3 py-2.5 font-semibold">Beneficiario / Tipo de mercancía</th>
                 <th className="px-3 py-2.5 font-semibold">Estado</th>
                 <th className="px-3 py-2.5 font-semibold">Avance</th>
@@ -357,7 +370,7 @@ export default function PuertosActasListado() {
             <tbody>
               {!cargando && registros.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center font-body text-gray-500">
+                  <td colSpan={11} className="px-4 py-10 text-center font-body text-gray-500">
                     No hay registros con los filtros actuales.
                   </td>
                 </tr>
@@ -403,6 +416,7 @@ export default function PuertosActasListado() {
                   <td className={puertosTableTd}>{fila.regional || '—'}</td>
                   <td className={`${puertosTableTd} whitespace-nowrap`}>{fila.fecha || '—'}</td>
                   <td className={puertosTableTd}>{fila.asegurado || '—'}</td>
+                  <td className={puertosTableTd}>{etiquetaAseguradora(fila)}</td>
                   <td className={puertosTableTd}>{fila.mercancia || fila.beneficiario || '—'}</td>
                   <td className={puertosTableTd}>
                     <span

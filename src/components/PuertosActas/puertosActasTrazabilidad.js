@@ -49,6 +49,7 @@ export function filasTrazabilidadExcel(registros = []) {
     'Consecutivo / N° acta': r.consecutivo || r.nroReferencia || '',
     'N° solicitud': r.numeroSolicitud || '',
     Cliente: r.asegurado || '',
+    Aseguradora: r.aseguradora || '',
     'Exportador / Beneficiario': r.beneficiario || r.mercancia || '',
     'Regional / Ciudad': r.regional || '',
     Lugar: r.lugar || '',
