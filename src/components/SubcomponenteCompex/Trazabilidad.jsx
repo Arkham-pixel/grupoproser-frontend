@@ -140,6 +140,75 @@ const ArchivoDropZone = ({
   );
 };
 
+/**
+ * Debe vivir fuera de Trazabilidad: si se redefine en cada render, React lo
+ * remonta al cambiar una fecha/hora, el <select> pierde el foco y la página salta arriba.
+ */
+const TrazabilidadBandejaCtx = React.createContext(null);
+
+const BandejaDesplegable = memo(function BandejaDesplegable({
+  titulo,
+  children,
+  Icon,
+  tipoDocumento,
+  isOpen,
+  onToggle,
+  ocultarDocumentosSubidos = false,
+}) {
+  const ctx = React.useContext(TrazabilidadBandejaCtx);
+  const diasInfo = ctx?.calcularDiasTranscurridos?.(tipoDocumento);
+  const etiquetaLimite = ctx?.protocolo
+    ? etiquetaLimiteTipoTrazabilidad(tipoDocumento, ctx.protocolo)
+    : null;
+  const tiempoTranscurrido = diasInfo && ctx?.formatearTiempoTranscurrido
+    ? ctx.formatearTiempoTranscurrido(diasInfo)
+    : '';
+
+  return (
+    <div className={`${complexCard} mb-3 overflow-hidden p-0`}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors sm:px-5 ${
+          isOpen ? 'bg-gray-50/80 dark:bg-gray-900/30' : 'hover:bg-gray-50/50 dark:hover:bg-gray-900/20'
+        }`}
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <TrazabilidadIconoEtapa Icon={Icon} />
+          <div className="min-w-0">
+            <h3 className="font-heading text-base font-bold text-gray-900 dark:text-white">
+              {tituloEtapaConFase(tipoDocumento, titulo)}
+            </h3>
+            {etiquetaLimite && (
+              <p className={`${complexHint} mt-0.5`}>
+                Plazo protocolo: {etiquetaLimite}
+              </p>
+            )}
+            {diasInfo && (
+              <div className="mt-1 flex items-center gap-2">
+                <TrazabilidadIndicadorIcono diasInfo={diasInfo} />
+                <span className={`font-body text-xs ${trazabilidadColorClase(diasInfo)}`}>
+                  {tiempoTranscurrido}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+        <TrazabilidadChevron abierto={isOpen} />
+      </button>
+
+      {isOpen && (
+        <div className="border-t border-gray-100 px-6 pb-6 dark:border-gray-800">
+          {children}
+          {!ocultarDocumentosSubidos && ctx?.renderDocumentos?.(tipoDocumento, titulo)}
+        </div>
+      )}
+    </div>
+  );
+});
+
+BandejaDesplegable.displayName = 'BandejaDesplegable';
+
 const Trazabilidad = memo(function Trazabilidad({ 
   formData, 
   handleChange,
@@ -1041,69 +1110,17 @@ const Trazabilidad = memo(function Trazabilidad({
     );
   };
 
-  const BandejaDesplegable = memo(({ titulo, bandeja, children, Icon, tipoDocumento, isOpen, onToggle, ocultarDocumentosSubidos = false }) => {
-    const diasInfo = calcularDiasTranscurridos(tipoDocumento);
-    
-    return (
-      <div className={`${complexCard} mb-3 overflow-hidden p-0`}>
-        <button
-          type="button"
-          onClick={onToggle}
-          className={`flex w-full items-center justify-between gap-3 px-4 py-4 text-left transition-colors sm:px-5 ${
-            isOpen ? 'bg-gray-50/80 dark:bg-gray-900/30' : 'hover:bg-gray-50/50 dark:hover:bg-gray-900/20'
-          }`}
-        >
-          <div className="flex min-w-0 items-center gap-3">
-            <TrazabilidadIconoEtapa Icon={Icon} />
-            <div className="min-w-0">
-              <h3 className="font-heading text-base font-bold text-gray-900 dark:text-white">
-                {tituloEtapaConFase(tipoDocumento, titulo)}
-              </h3>
-              {etiquetaLimiteTipoTrazabilidad(tipoDocumento, protocolo) && (
-                <p className={`${complexHint} mt-0.5`}>
-                  Plazo protocolo: {etiquetaLimiteTipoTrazabilidad(tipoDocumento, protocolo)}
-                </p>
-              )}
-              {diasInfo && (
-                <div className="mt-1 flex items-center gap-2">
-                  <TrazabilidadIndicadorIcono diasInfo={diasInfo} />
-                  <span className={`font-body text-xs ${trazabilidadColorClase(diasInfo)}`}>
-                    {formatearTiempoTranscurrido(diasInfo)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-          <TrazabilidadChevron abierto={isOpen} />
-        </button>
-        
-        {isOpen && (
-          <div className="border-t border-gray-100 px-6 pb-6 dark:border-gray-800">
-            {children}
-            
-            {!ocultarDocumentosSubidos && (
-              <DocumentosSubidos tipo={tipoDocumento} titulo={titulo} />
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }, (prevProps, nextProps) => {
-    // Comparación personalizada para evitar re-renders innecesarios
-    return (
-      prevProps.titulo === nextProps.titulo &&
-      prevProps.bandeja === nextProps.bandeja &&
-      prevProps.Icon === nextProps.Icon &&
-      prevProps.tipoDocumento === nextProps.tipoDocumento &&
-      prevProps.isOpen === nextProps.isOpen &&
-      prevProps.ocultarDocumentosSubidos === nextProps.ocultarDocumentosSubidos &&
-      prevProps.children === nextProps.children
-    );
-  });
-  
-  BandejaDesplegable.displayName = 'BandejaDesplegable';
+  const bandejaCtxValue = {
+    calcularDiasTranscurridos,
+    formatearTiempoTranscurrido,
+    protocolo,
+    renderDocumentos: (tipo, tituloDoc) => (
+      <DocumentosSubidos tipo={tipo} titulo={tituloDoc} />
+    ),
+  };
 
   return (
+    <TrazabilidadBandejaCtx.Provider value={bandejaCtxValue}>
     <div className={complexPageWrap}>
       <h2 className={complexSectionTitle}>Trazabilidad del Caso</h2>
 
@@ -1943,6 +1960,7 @@ const Trazabilidad = memo(function Trazabilidad({
         </div>
       </BandejaDesplegable>
     </div>
+    </TrazabilidadBandejaCtx.Provider>
   );
 }, (prevProps, nextProps) => {
   // Comparación personalizada para evitar re-renders innecesarios

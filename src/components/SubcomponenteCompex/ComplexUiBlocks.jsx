@@ -307,7 +307,35 @@ export function InputFechaHoraProtocolo({
   const emitir = (nuevaFecha, nuevaHora) => {
     if (!onChange || !name) return;
     const combinado = combinarFechaHoraInputs(nuevaFecha, nuevaHora);
+    // Evita el salto de scroll al cambiar selects de hora (Chrome remonta/reflow).
+    const scrollers = [];
+    if (typeof document !== 'undefined') {
+      let el = document.activeElement;
+      while (el && el !== document.body) {
+        const style = window.getComputedStyle(el);
+        const oy = style.overflowY;
+        if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && el.scrollHeight > el.clientHeight) {
+          scrollers.push({ el, top: el.scrollTop });
+        }
+        el = el.parentElement;
+      }
+      scrollers.push({ el: document.documentElement, top: window.scrollY });
+    }
     onChange({ target: { name, value: combinado } });
+    if (!scrollers.length) return;
+    const restaurar = () => {
+      for (const { el, top } of scrollers) {
+        if (el === document.documentElement) {
+          if (Math.abs(window.scrollY - top) > 1) window.scrollTo(0, top);
+        } else if (Math.abs(el.scrollTop - top) > 1) {
+          el.scrollTop = top;
+        }
+      }
+    };
+    requestAnimationFrame(() => {
+      restaurar();
+      requestAnimationFrame(restaurar);
+    });
   };
 
   const emitirDesde12 = (h12, minuto, ampm, fechaBase = fecha) => {
