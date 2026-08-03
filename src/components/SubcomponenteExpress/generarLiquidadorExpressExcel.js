@@ -10,8 +10,11 @@ import {
   pctDocumentosMarcados,
   totalesItemsAnalisis,
 } from './liquidadorExpressHelpers.js';
+import zurichLogoUrl from '../../assets/zurich-logo.png';
 
 const PLANTILLA_URL = '/templates/Liquidador_plantilla.xlsx';
+/** Ancho del logo Zurich en px (96dpi); alto se calcula por proporción natural. */
+const LOGO_ANCHO_PX = 140;
 
 const FILA_INI_CONCEPTOS = 14;
 const FILA_FIN_CONCEPTOS = 25;
@@ -19,8 +22,36 @@ const FILA_INI_DOCS = 38;
 const FILA_INI_ANALISIS = 57;
 const MAX_ITEMS_ANALISIS = 3;
 
+/** Evita que el logo Zurich se deforme: ancla oneCell con proporción natural del PNG. */
+async function corregirLogoZurichLiquidacion(workbook, sheet) {
+  if (!sheet) return;
+  try {
+    sheet._media = [];
+    const response = await fetch(zurichLogoUrl);
+    if (!response.ok) return;
+    const buffer = await response.arrayBuffer();
+    const u8 = new Uint8Array(buffer);
+    let ratio = 671 / 417;
+    if (u8.length >= 24 && u8[0] === 0x89 && u8[1] === 0x50) {
+      const w = (u8[16] << 24) | (u8[17] << 16) | (u8[18] << 8) | u8[19];
+      const h = (u8[20] << 24) | (u8[21] << 16) | (u8[22] << 8) | u8[23];
+      if (w > 0 && h > 0) ratio = w / h;
+    }
+    const width = LOGO_ANCHO_PX;
+    const height = Math.round(width / ratio);
+    const imageId = workbook.addImage({ buffer, extension: 'png' });
+    sheet.addImage(imageId, {
+      tl: { col: 6.2, row: 0.2 },
+      ext: { width, height },
+      editAs: 'oneCell',
+    });
+  } catch (err) {
+    console.warn('[Liquidador Excel] No se pudo corregir logo Zurich:', err);
+  }
+}
+
 /** Cada hoja del liquidador debe imprimirse / exportarse en una sola página. */
-function configurarImpresionUnaPagina(sheet, printArea) {
+function configurarImpresionUnaPagina(sheet, printArea, { orientation } = {}) {
   if (!sheet) return;
 
   sheet.rowBreaks = [];
@@ -29,7 +60,7 @@ function configurarImpresionUnaPagina(sheet, printArea) {
   sheet.pageSetup = {
     ...prev,
     paperSize: prev.paperSize ?? 9,
-    orientation: prev.orientation ?? 'portrait',
+    orientation: orientation || prev.orientation || 'portrait',
     fitToPage: true,
     fitToWidth: 1,
     fitToHeight: 1,
@@ -52,7 +83,9 @@ const AREAS_IMPRESION = {
 function aplicarImpresionUnaPagina(workbook) {
   workbook.worksheets.forEach((sheet) => {
     const area = AREAS_IMPRESION[sheet.name];
-    configurarImpresionUnaPagina(sheet, area);
+    const orientation =
+      sheet.name === 'FORMATO_LIQUIDACION' ? 'landscape' : undefined;
+    configurarImpresionUnaPagina(sheet, area, { orientation });
   });
 }
 
@@ -117,7 +150,7 @@ function fechaSoloDia(valor) {
   return d.toISOString().slice(0, 10);
 }
 
-function setDateCell(sheet, ref, isoDate) {
+function setDateCell(sheet, ref, isoDate, locale = 'es') {
   if (!isoDate) {
     setCell(sheet, ref, null);
     return;
@@ -130,7 +163,9 @@ function setDateCell(sheet, ref, isoDate) {
   const cell = sheet.getCell(ref);
   cell.value = d;
   if (!cell.numFmt || cell.numFmt === 'General') {
-    cell.numFmt = 'd" de "mmmm" de "yyyy';
+    cell.numFmt = String(locale).toLowerCase().startsWith('en')
+      ? '[$-en-US]mmmm d, yyyy'
+      : 'd" de "mmmm" de "yyyy';
   }
 }
 
@@ -153,7 +188,7 @@ function marcarNo(valor) {
 }
 
 /** Rellena FORMATO_LIQUIDACION preservando estilos/fórmulas/logos de la plantilla. */
-function rellenarLiquidacion(sheet, liquidador, totales) {
+function rellenarLiquidacion(sheet, liquidador, totales, opciones = {}) {
   const enc = liquidador.encabezado || {};
   const ded = liquidador.deducible || {};
 
@@ -172,9 +207,17 @@ function rellenarLiquidacion(sheet, liquidador, totales) {
   setCell(sheet, 'C6', enc.asegurado || null);
   setCell(sheet, 'C7', enc.nit || null);
   setCell(sheet, 'C8', enc.poliza || null);
-  setDateCell(sheet, 'C9', enc.fechaSiniestro);
+  setDateCell(sheet, 'C9', enc.fechaSiniestro, opciones.locale);
   setCell(sheet, 'C10', enc.cobertura || null);
   setCell(sheet, 'C11', textoDeducible(liquidador, totales));
+
+  // B27 =B11: limpiar resultado cacheado de la plantilla para que no muestre texto viejo
+  const b27 = sheet.getCell('B27');
+  if (b27.value && typeof b27.value === 'object' && (b27.value.formula || b27.value.sharedFormula)) {
+    b27.value = { formula: 'B11', result: null };
+  } else {
+    setCell(sheet, 'B27', null);
+  }
 
   // No forzar anchos de E–G: altera la proporción del logo Zurich de la plantilla.
 
@@ -241,15 +284,15 @@ function rellenarChecklist(sheet, liquidador, totales, opciones = {}) {
     fechaSoloDia(opciones.fechaUltimoDocumento) ||
     fechaSoloDia(chk.fechaFormalizacion);
 
-  setDateCell(sheet, 'D9', chk.fecha || new Date().toISOString().slice(0, 10));
+  setDateCell(sheet, 'D9', chk.fecha || new Date().toISOString().slice(0, 10), opciones.locale);
   setCell(sheet, 'D10', enc.zc || null);
   setCell(sheet, 'D11', enc.reclamo || null);
   setCell(sheet, 'D12', chk.tipoProducto || 'TRDM');
   setCell(sheet, 'D13', enc.poliza || null);
   setCell(sheet, 'D14', enc.asegurado || null);
-  setDateCell(sheet, 'D15', chk.vigenciaDesde);
-  setDateCell(sheet, 'F15', chk.vigenciaHasta);
-  setDateCell(sheet, 'D16', enc.fechaSiniestro);
+  setDateCell(sheet, 'D15', chk.vigenciaDesde, opciones.locale);
+  setDateCell(sheet, 'F15', chk.vigenciaHasta, opciones.locale);
+  setDateCell(sheet, 'D16', enc.fechaSiniestro, opciones.locale);
   setCell(sheet, 'D17', chk.riesgoAsegurado || enc.asegurado || null);
   setCell(sheet, 'D18', chk.coberturaAfectada || enc.cobertura || null);
   setCell(sheet, 'D19', chk.garantias || 'No Aplica');
@@ -287,7 +330,7 @@ function rellenarChecklist(sheet, liquidador, totales, opciones = {}) {
   e46.numFmt = '0%';
   setCell(sheet, 'E48', chk.reclamoFormalizado || (fechaFormalizacion ? 'Sí' : 'No'));
   // Fecha formalización = fecha de último documento del caso Express
-  setDateCell(sheet, 'E49', fechaFormalizacion);
+  setDateCell(sheet, 'E49', fechaFormalizacion, opciones.locale);
 
   for (let i = 0; i < MAX_ITEMS_ANALISIS; i += 1) {
     const row = FILA_INI_ANALISIS + i;
@@ -358,13 +401,38 @@ async function cargarPlantillaWorkbook() {
   return workbook;
 }
 
+function aplicarEncabezadosLocalizados(workbook, locale = 'es') {
+  const esIngles = String(locale).toLowerCase().startsWith('en');
+  const titulos = esIngles
+    ? {
+        FORMATO_LIQUIDACION: 'EXPRESS LIQUIDATION FORM',
+        'FORMATO-CHECK-LIST': 'EXPRESS CLAIM CHECKLIST',
+        SALVAMENTO: 'SALVAGE FORM',
+      }
+    : {
+        FORMATO_LIQUIDACION: 'FORMATO DE LIQUIDACIÓN EXPRESS',
+        'FORMATO-CHECK-LIST': 'CHECK-LIST DE RECLAMO EXPRESS',
+        SALVAMENTO: 'FORMATO DE SALVAMENTO',
+      };
+
+  workbook.worksheets.forEach((sheet) => {
+    const titulo = titulos[sheet.name];
+    if (!titulo) return;
+    sheet.headerFooter = {
+      ...(sheet.headerFooter || {}),
+      oddHeader: `&C&\"Arial,Bold\"${titulo}`,
+    };
+  });
+}
+
 /**
- * Genera el Excel a partir de la plantilla idéntica a Liquidador.xlsm (sin macros).
- * Si salvamento no aplica, se omite la hoja SALVAMENTO; el resto se llena normal.
+ * Crea el workbook Excel relleno (misma plantilla que la descarga .xlsx).
+ * @param {{ incluirSalvamento?: boolean, soloLiquidacion?: boolean, locale?: string, fechaUltimoDocumento?: string }} opciones
  */
-export async function generarLiquidadorExpressExcelBlob(liquidador, totales, opciones = {}) {
+export async function crearWorkbookLiquidadorExpress(liquidador, totales, opciones = {}) {
   const workbook = await cargarPlantillaWorkbook();
   const incluirSalvamento = opciones.incluirSalvamento !== false;
+  const soloLiquidacion = opciones.soloLiquidacion === true;
 
   const hojaLiq =
     workbook.getWorksheet('FORMATO_LIQUIDACION') || workbook.worksheets[0];
@@ -372,24 +440,44 @@ export async function generarLiquidadorExpressExcelBlob(liquidador, totales, opc
     workbook.getWorksheet('FORMATO-CHECK-LIST') || workbook.worksheets[1];
   const hojaSal = workbook.getWorksheet('SALVAMENTO') || workbook.worksheets[2];
 
-  if (hojaLiq) rellenarLiquidacion(hojaLiq, liquidador, totales);
-  if (hojaChk) {
-    quitarMarcoNegroChecklist(hojaChk);
-    rellenarChecklist(hojaChk, liquidador, totales, {
-      fechaUltimoDocumento: opciones.fechaUltimoDocumento,
-    });
+  if (hojaLiq) {
+    rellenarLiquidacion(hojaLiq, liquidador, totales, opciones);
+    await corregirLogoZurichLiquidacion(workbook, hojaLiq);
   }
 
-  if (incluirSalvamento && hojaSal) {
-    rellenarSalvamento(hojaSal, liquidador);
-  } else if (hojaSal) {
-    workbook.removeWorksheet(hojaSal.id);
+  if (!soloLiquidacion) {
+    if (hojaChk) {
+      quitarMarcoNegroChecklist(hojaChk);
+      rellenarChecklist(hojaChk, liquidador, totales, {
+        fechaUltimoDocumento: opciones.fechaUltimoDocumento,
+      });
+    }
+
+    if (incluirSalvamento && hojaSal) {
+      rellenarSalvamento(hojaSal, liquidador);
+    } else if (hojaSal) {
+      workbook.removeWorksheet(hojaSal.id);
+    }
+  } else {
+    // PDF liquidador: solo la hoja de liquidación
+    if (hojaChk) workbook.removeWorksheet(hojaChk.id);
+    if (hojaSal) workbook.removeWorksheet(hojaSal.id);
   }
 
+  aplicarEncabezadosLocalizados(workbook, opciones.locale);
   aplicarImpresionUnaPagina(workbook);
 
   workbook.creator = 'Arnald DataFlow';
   workbook.modified = new Date();
+  return workbook;
+}
+
+/**
+ * Genera el Excel a partir de la plantilla idéntica a Liquidador.xlsm (sin macros).
+ * Si salvamento no aplica, se omite la hoja SALVAMENTO; el resto se llena normal.
+ */
+export async function generarLiquidadorExpressExcelBlob(liquidador, totales, opciones = {}) {
+  const workbook = await crearWorkbookLiquidadorExpress(liquidador, totales, opciones);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], {
