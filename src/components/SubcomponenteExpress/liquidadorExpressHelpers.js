@@ -93,7 +93,7 @@ export const DEFAULT_LIQUIDADOR_EXPRESS = {
   },
   checklist: {
     fecha: '',
-    tipoProducto: 'TRDM',
+    tipoProducto: '',
     vigenciaDesde: '',
     vigenciaHasta: '',
     riesgoAsegurado: '',

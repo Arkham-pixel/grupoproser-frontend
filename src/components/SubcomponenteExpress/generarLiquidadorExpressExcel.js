@@ -287,7 +287,7 @@ function rellenarChecklist(sheet, liquidador, totales, opciones = {}) {
   setDateCell(sheet, 'D9', chk.fecha || new Date().toISOString().slice(0, 10), opciones.locale);
   setCell(sheet, 'D10', enc.zc || null);
   setCell(sheet, 'D11', enc.reclamo || null);
-  setCell(sheet, 'D12', chk.tipoProducto || 'TRDM');
+  setCell(sheet, 'D12', chk.tipoProducto || null);
   setCell(sheet, 'D13', enc.poliza || null);
   setCell(sheet, 'D14', enc.asegurado || null);
   setDateCell(sheet, 'D15', chk.vigenciaDesde, opciones.locale);

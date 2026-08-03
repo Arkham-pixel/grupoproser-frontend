@@ -37,7 +37,7 @@ export async function generarChecklistExpressBlob(liquidador, totales) {
       filaLabelValor('Fecha', formatearFechaCorta(chk.fecha) || formatearFechaCorta(new Date().toISOString().slice(0, 10))),
       filaLabelValor('ZC', enc.zc),
       filaLabelValor('STRO', enc.reclamo),
-      filaLabelValor('Tipo de producto', chk.tipoProducto || 'TRDM'),
+      filaLabelValor('Tipo de producto', chk.tipoProducto),
       filaLabelValor('Número de póliza', enc.poliza),
       filaLabelValor('Asegurado', enc.asegurado),
       filaLabelValor(

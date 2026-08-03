@@ -204,7 +204,7 @@ export async function generarChecklistExpressPdfBlob(liquidador = {}, totales = 
     ['Fecha', fechaCorta(chk.fecha || new Date().toISOString().slice(0, 10))],
     ['ZC', textoOGuion(enc.zc)],
     ['STRO', textoOGuion(enc.reclamo)],
-    ['Tipo de producto', textoOGuion(chk.tipoProducto || 'TRDM')],
+    ['Tipo de producto', textoOGuion(chk.tipoProducto)],
     ['Número de póliza', textoOGuion(enc.poliza)],
     ['Asegurado', textoOGuion(enc.asegurado)],
     ['Vigencia de la póliza', vigencia],

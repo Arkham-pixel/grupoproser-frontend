@@ -113,10 +113,13 @@ function SelectSiNo({ value, onChange }) {
   );
 }
 
-function FilaInfo({ label, children, destacado = false }) {
+function FilaInfo({ label, children, destacado = false, required = false }) {
   return (
     <div className={`grid grid-cols-1 gap-1 border-b border-gray-100 py-2 sm:grid-cols-[minmax(180px,35%)_1fr] dark:border-gray-800 ${destacado ? 'bg-sky-50/80 dark:bg-sky-950/20' : ''}`}>
-      <span className="font-body text-sm font-semibold text-gray-700 dark:text-gray-300">{label}</span>
+      <span className="font-body text-sm font-semibold text-gray-700 dark:text-gray-300">
+        {label}
+        {required && <span className="ml-0.5 text-fenix-primario">*</span>}
+      </span>
       <div>{children}</div>
     </div>
   );
@@ -252,6 +255,14 @@ export default function LiquidadorExpress({
     onEstadoChange?.(liquidadorParaExport, totales);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- callbacks de padre; evitamos bucles
   }, [liquidador, totales, liquidadorParaExport]);
+
+  const validarTipoProducto = () => {
+    const valor = String(liquidador.checklist?.tipoProducto || '').trim();
+    if (valor) return true;
+    setErrorWord('El tipo de producto es obligatorio.');
+    setTab('checklist');
+    return false;
+  };
 
   const actualizar = (path, valor) => {
     setLiquidador((prev) => {
@@ -401,6 +412,7 @@ export default function LiquidadorExpress({
   };
 
   const handleDescargarChecklist = async () => {
+    if (!validarTipoProducto()) return;
     setDescargandoWord(true);
     setErrorWord('');
     try {
@@ -414,6 +426,7 @@ export default function LiquidadorExpress({
   };
 
   const handleDescargarChecklistPdf = async () => {
+    if (!validarTipoProducto()) return;
     setDescargandoWord(true);
     setErrorWord('');
     try {
@@ -461,6 +474,7 @@ export default function LiquidadorExpress({
   };
 
   const handleDescargarExcel = async () => {
+    if (!validarTipoProducto()) return;
     setDescargandoWord(true);
     setErrorWord('');
     try {
@@ -477,6 +491,7 @@ export default function LiquidadorExpress({
   };
 
   const handleDescargarPdf = () => {
+    if (!validarTipoProducto()) return;
     setErrorWord('');
     try {
       descargarLiquidadorExpressPdf(liquidadorParaExport, totales);
@@ -515,7 +530,10 @@ export default function LiquidadorExpress({
               <button
                 type="button"
                 className={expressBtnPrimary}
-                onClick={() => onGuardarEnCaso(liquidadorParaExport, totales)}
+                onClick={() => {
+                  if (!validarTipoProducto()) return;
+                  onGuardarEnCaso(liquidadorParaExport, totales);
+                }}
                 disabled={guardandoCaso || descargandoWord}
               >
                 <FaSave />
@@ -884,8 +902,13 @@ export default function LiquidadorExpress({
               <FilaInfo label="STRO">
                 <InputFenix value={enc.reclamo} onChange={(e) => actualizar('encabezado.reclamo', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Tipo de producto">
-                <InputFenix value={chk.tipoProducto} onChange={(e) => actualizar('checklist.tipoProducto', e.target.value)} />
+              <FilaInfo label="Tipo de producto" required>
+                <InputFenix
+                  value={chk.tipoProducto}
+                  onChange={(e) => actualizar('checklist.tipoProducto', e.target.value)}
+                  required
+                  aria-required="true"
+                />
               </FilaInfo>
               <FilaInfo label="Número de póliza">
                 <InputFenix value={enc.poliza} onChange={(e) => actualizar('encabezado.poliza', e.target.value)} />
