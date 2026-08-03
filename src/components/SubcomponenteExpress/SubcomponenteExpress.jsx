@@ -11,7 +11,7 @@ import {
   resolverNombreCatalogo,
 } from '../../services/expressCatalogoService.js';
 import { ordenarLista, resolverCodigoResponsable, resolverCodigoAseguradora, resolverCodigoEstado, formatDate } from './expressHelpers.js';
-import { calcularLiquidacion, liquidadorConNombreAjustador, aplicaFormatoSalvamento } from './liquidadorExpressHelpers.js';
+import { calcularLiquidacion, liquidadorConNombreAjustador, aplicaFormatoSalvamento, formatearMontoConPeso } from './liquidadorExpressHelpers.js';
 import { descargarLiquidadorExpressPdf } from './generarLiquidadorExpressPdf.js';
 import {
   descargarChecklistExpressPdf,
@@ -43,6 +43,7 @@ import {
   ExpressPageHeader,
   InputFechaHoraExpress,
   InputFenix,
+  InputMonedaExpress,
   SelectFenix,
   TextareaFenix,
 } from './ExpressUiBlocks.jsx';
@@ -147,7 +148,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
   const toInputNumberValue = useCallback((value) => {
     if (value === null || value === undefined || value === '') return '';
-    return String(value);
+    return formatearMontoConPeso(value);
   }, []);
 
   const normalizeExistingAnexo = useCallback((anexo = {}, index = 0) => {
@@ -1076,14 +1077,12 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                 </Campo>
                 <Campo label="Valor indemnización">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                    <InputFenix
+                    <InputMonedaExpress
                       id="valorIndemnizacion"
                       name="valorIndemnizacion"
-                      type="text"
-                      inputMode="decimal"
                       value={formData.valorIndemnizacion}
                       onChange={handleChange}
-                      placeholder="Ej: 1.250.000,50"
+                      placeholder="Ej: $ 1.250.000,50"
                       className="flex-1"
                     />
                     <button
@@ -1108,14 +1107,12 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                   </div>
                 </Campo>
                 <Campo label="Reserva">
-                  <InputFenix
+                  <InputMonedaExpress
                     id="reserva"
                     name="reserva"
-                    type="text"
-                    inputMode="decimal"
                     value={formData.reserva}
                     onChange={handleChange}
-                    placeholder="Ej: 3.999.999 o 3999999,50"
+                    placeholder="Ej: $ 3.999.999 o $ 3.999.999,50"
                   />
                 </Campo>
                   </div>,
@@ -1202,14 +1199,12 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     {salvamentoAplicaSeleccionado && (
                       <>
                         <Campo label="Valor del salvamento">
-                          <InputFenix
+                          <InputMonedaExpress
                             id="valorSalvamento"
                             name="valorSalvamento"
-                            type="text"
-                            inputMode="decimal"
                             value={formData.valorSalvamento}
                             onChange={handleChange}
-                            placeholder="Ej: 1.250.000 o 1250000,50"
+                            placeholder="Ej: $ 1.250.000 o $ 1.250.000,50"
                           />
                         </Campo>
                         <Campo label="Documentos de salvamento">

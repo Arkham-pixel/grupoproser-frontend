@@ -28,6 +28,10 @@ import {
 } from './expressHelpers.js';
 import { etiquetaLegibleAnexoExpress } from '../../services/expressService.js';
 import {
+  formatearInputMoneda,
+  formatearMontoConPeso,
+} from './liquidadorExpressHelpers.js';
+import {
   expressBadge,
   expressBtnGhost,
   expressBtnPrimary,
@@ -150,6 +154,58 @@ export function Campo({ label, required, children, className = '' }) {
 
 export function InputFenix({ className = '', ...props }) {
   return <input className={`${expressInput} ${className}`} {...props} />;
+}
+
+/**
+ * Input monetario COP: muestra `$` y miles con puntos (es-CO).
+ * Emite el string ya formateado; parsearNumero lo interpreta al calcular/guardar.
+ */
+export function InputMonedaExpress({
+  className = '',
+  value = '',
+  onChange,
+  onBlur,
+  placeholder = '$ 0',
+  name,
+  id,
+  ...props
+}) {
+  const shown =
+    value === '' || value === null || value === undefined
+      ? ''
+      : formatearInputMoneda(value);
+
+  const emitir = (event, nextValue) => {
+    if (!onChange) return;
+    onChange({
+      ...event,
+      target: {
+        ...event.target,
+        name: name ?? event.target?.name,
+        id: id ?? event.target?.id,
+        value: nextValue,
+      },
+    });
+  };
+
+  return (
+    <input
+      {...props}
+      className={`${expressInput} ${className}`}
+      type="text"
+      inputMode="decimal"
+      name={name}
+      id={id}
+      value={shown}
+      placeholder={placeholder}
+      onChange={(e) => emitir(e, formatearInputMoneda(e.target.value))}
+      onBlur={(e) => {
+        const final = formatearMontoConPeso(e.target.value);
+        if (final !== shown) emitir(e, final);
+        onBlur?.(e);
+      }}
+    />
+  );
 }
 
 export function SelectFenix({ children, className = '', ...props }) {

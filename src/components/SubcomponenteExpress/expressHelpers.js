@@ -66,14 +66,26 @@ export const ordenarLista = (lista = [], selector = (item) => item) =>
   });
 
 export const formatCurrency = (value) => {
-  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+  if (value === null || value === undefined || value === '') {
+    return '$0';
+  }
+  const raw =
+    typeof value === 'number'
+      ? value
+      : Number(
+          String(value)
+            .replace(/[$\s]/g, '')
+            .replace(/\./g, '')
+            .replace(/,/g, '.')
+        );
+  if (Number.isNaN(raw)) {
     return '$0';
   }
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
     maximumFractionDigits: 0,
-  }).format(Number(value));
+  }).format(raw);
 };
 
 export const parseDate = (value) => crearFechaLocal(value);

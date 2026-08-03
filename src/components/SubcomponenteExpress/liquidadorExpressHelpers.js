@@ -170,6 +170,54 @@ export function formatearMonto(valor) {
   return esNegativo ? `-${formateado}` : formateado;
 }
 
+/** Formato monetario con símbolo: `$ 1.750.905` o `$ 1.750.905,50`. Vacío si no hay valor. */
+export function formatearMontoConPeso(valor) {
+  if (valor === '' || valor === null || valor === undefined) return '';
+  const stripped = String(valor).replace(/[$\s]/g, '');
+  if (stripped === '' || stripped === '-') return '';
+  const n = typeof valor === 'number' ? valor : parsearNumero(valor);
+  if (!Number.isFinite(n)) return '';
+  return `$ ${formatearMonto(n)}`;
+}
+
+/**
+ * Formatea en vivo mientras se escribe (permite coma decimal en progreso).
+ * Ej: `1750905` → `$ 1.750.905` ; `$ 1.750,` se conserva al teclear decimales.
+ */
+export function formatearInputMoneda(raw) {
+  if (raw === null || raw === undefined) return '';
+  const str = String(raw);
+  const negativo = /^-/.test(str.replace(/[$\s]/g, '')) || str.trim().startsWith('-$');
+  let cleaned = str.replace(/[^\d,]/g, '');
+  if (!cleaned) return '';
+
+  const commaIndex = cleaned.indexOf(',');
+  let intDigits;
+  let decDigits = '';
+  let conComa = false;
+
+  if (commaIndex === -1) {
+    intDigits = cleaned;
+  } else {
+    conComa = true;
+    intDigits = cleaned.slice(0, commaIndex);
+    decDigits = cleaned
+      .slice(commaIndex + 1)
+      .replace(/,/g, '')
+      .slice(0, 2);
+  }
+
+  intDigits = intDigits.replace(/^0+(?=\d)/, '');
+  if (intDigits === '') intDigits = '0';
+
+  const intFormatted = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const signo = negativo ? '-' : '';
+  if (conComa) {
+    return `$ ${signo}${intFormatted},${decDigits}`;
+  }
+  return `$ ${signo}${intFormatted}`;
+}
+
 /** Redondea a pesos enteros (sin centavos). Usado en recibo y documentos legales. */
 export function redondearPesos(valor) {
   const n = typeof valor === 'number' ? valor : parsearNumero(valor);

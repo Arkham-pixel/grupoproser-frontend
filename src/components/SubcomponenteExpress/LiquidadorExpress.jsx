@@ -15,6 +15,7 @@ import {
   expressBtnGhost,
   expressBtnPrimary,
   InputFenix,
+  InputMonedaExpress,
   SelectFenix,
   TextareaFenix,
 } from './ExpressUiBlocks.jsx';
@@ -658,7 +659,7 @@ export default function LiquidadorExpress({
                             />
                           </td>
                           <td className="px-2 py-2 min-w-[140px]">
-                            <InputFenix
+                            <InputMonedaExpress
                               value={item.valor}
                               onChange={(e) => actualizarConcepto(item.id, 'valor', e.target.value)}
                               placeholder="$ 0"
@@ -742,7 +743,7 @@ export default function LiquidadorExpress({
                     />
                   </Campo>
                   <Campo label="Valor SMMLV (mensual)">
-                    <InputFenix
+                    <InputMonedaExpress
                       value={ded.valorSMMLV ?? ''}
                       onChange={(e) => {
                         const v = e.target.value;
@@ -772,7 +773,7 @@ export default function LiquidadorExpress({
                     />
                   </Campo>
                   <Campo label="Valor SMDLV (diario)">
-                    <InputFenix
+                    <InputMonedaExpress
                       value={ded.valorSMDLV ?? valorSmdlvDesdeSmmlv(ded.valorSMMLV) ?? ''}
                       onChange={(e) => actualizar('deducible.valorSMDLV', e.target.value)}
                       placeholder="$ 58.364"
@@ -927,7 +928,7 @@ export default function LiquidadorExpress({
                 <SelectAplica value={chk.aplicaDemerito} onChange={(e) => actualizar('checklist.aplicaDemerito', e.target.value)} />
               </FilaInfo>
               <FilaInfo label="Límite o valor asegurado">
-                <InputFenix value={chk.limiteAsegurado} onChange={(e) => actualizar('checklist.limiteAsegurado', e.target.value)} />
+                <InputMonedaExpress value={chk.limiteAsegurado} onChange={(e) => actualizar('checklist.limiteAsegurado', e.target.value)} />
               </FilaInfo>
               <FilaInfo label="Pérdida ajustada">
                 <span className="font-accent font-semibold">$ {formatearMonto(totales.totalPerdida)}</span>
@@ -1062,13 +1063,13 @@ export default function LiquidadorExpress({
                           }} />
                         </td>
                         <td className="px-2 py-2">
-                          <InputFenix value={item.reclamado} onChange={(e) => {
+                          <InputMonedaExpress value={item.reclamado} onChange={(e) => {
                             const items = chk.itemsAnalisis.map((r) => r.id === item.id ? { ...r, reclamado: e.target.value } : r);
                             actualizar('checklist.itemsAnalisis', items);
                           }} />
                         </td>
                         <td className="px-2 py-2">
-                          <InputFenix value={item.ajustado} onChange={(e) => {
+                          <InputMonedaExpress value={item.ajustado} onChange={(e) => {
                             const items = chk.itemsAnalisis.map((r) => r.id === item.id ? { ...r, ajustado: e.target.value } : r);
                             actualizar('checklist.itemsAnalisis', items);
                           }} />
@@ -1161,7 +1162,7 @@ export default function LiquidadorExpress({
               <Campo label="Genera costos por custodia">
                 <div className="flex gap-2">
                   <SelectSiNo value={sal.generaCustodia} onChange={(e) => actualizar('salvamento.generaCustodia', e.target.value)} />
-                  <InputFenix value={sal.valorCustodia} onChange={(e) => actualizar('salvamento.valorCustodia', e.target.value)} placeholder="Valor $" className="flex-1" />
+                  <InputMonedaExpress value={sal.valorCustodia} onChange={(e) => actualizar('salvamento.valorCustodia', e.target.value)} placeholder="Valor $" className="flex-1" />
                 </div>
               </Campo>
               <Campo label="Registro fotográfico">
@@ -1170,13 +1171,13 @@ export default function LiquidadorExpress({
               <Campo label="Indemnizado">
                 <div className="flex gap-2">
                   <SelectSiNo value={sal.indemnizado} onChange={(e) => actualizar('salvamento.indemnizado', e.target.value)} />
-                  <InputFenix value={sal.valorIndemnizado} onChange={(e) => actualizar('salvamento.valorIndemnizado', e.target.value)} placeholder="Valor $" className="flex-1" />
+                  <InputMonedaExpress value={sal.valorIndemnizado} onChange={(e) => actualizar('salvamento.valorIndemnizado', e.target.value)} placeholder="Valor $" className="flex-1" />
                 </div>
               </Campo>
               <Campo label="Se solicitó oferta Non Cash">
                 <div className="flex gap-2">
                   <SelectSiNo value={sal.ofertaNonCash} onChange={(e) => actualizar('salvamento.ofertaNonCash', e.target.value)} />
-                  <InputFenix value={sal.valorNonCash} onChange={(e) => actualizar('salvamento.valorNonCash', e.target.value)} placeholder="Valor $" className="flex-1" />
+                  <InputMonedaExpress value={sal.valorNonCash} onChange={(e) => actualizar('salvamento.valorNonCash', e.target.value)} placeholder="Valor $" className="flex-1" />
                 </div>
               </Campo>
             </div>
