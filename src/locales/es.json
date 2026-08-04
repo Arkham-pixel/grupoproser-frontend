@@ -6381,7 +6381,11 @@
           "observations": "Observaciones",
           "recommendations": "Recomendaciones",
           "observationsPlaceholder": "Escriba las observaciones del acta…",
-          "recommendationsPlaceholder": "Escriba las recomendaciones…"
+          "recommendationsPlaceholder": "Escriba las recomendaciones…",
+          "instructionLabel": "Instrucción:",
+          "instruction": "(En caso de novedad relacionar valor de la factura y valor de la pérdida / In any case novelties, statement the invoice value and the damage value)",
+          "noteLabel": "Nota:",
+          "note": "Las observaciones son importantes para documentar el estado de la mercancía y cualquier incidente durante la inspección. Puede usar negrita para resaltar contenedores, valores u otros datos clave."
         },
         "billing": {
           "title": "Facturación",

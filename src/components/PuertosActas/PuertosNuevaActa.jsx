@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import PuertosFotosActa from './PuertosFotosActa';
@@ -126,10 +126,12 @@ export default function PuertosNuevaActa() {
   const [errorCatalogos, setErrorCatalogos] = useState(null);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [editorSyncKey, setEditorSyncKey] = useState(() => (esEdicion ? `edit-${id}` : 'nueva'));
+  const observacionesRef = useRef(null);
 
-  const setCampo = (campo, valor) => {
+  const setCampo = useCallback((campo, valor) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
-  };
+  }, []);
 
   const sucursalesFiltradas = useMemo(
     () => filtrarSucursalesPorAseguradora(form.aseguradora, catalogos.sucursal || []),
@@ -216,6 +218,7 @@ export default function PuertosNuevaActa() {
         const doc = await getPuertosActa(id);
         if (cancelado) return;
         setForm(actaApiAFormulario(doc));
+        setEditorSyncKey(`edit-${id}-${doc.updatedAt || doc.actualizadoEn || Date.now()}`);
         setFotos(
           (doc.fotos || []).map((f, i) => ({
             id: f.id || `foto-${i}`,
@@ -245,8 +248,18 @@ export default function PuertosNuevaActa() {
     }
   };
 
+  const obtenerFormConTextos = () => {
+    const textos = observacionesRef.current?.flush?.() || {};
+    return {
+      ...form,
+      observaciones: textos.observaciones ?? form.observaciones,
+      recomendaciones: textos.recomendaciones ?? form.recomendaciones,
+    };
+  };
+
   const handlePdf = async () => {
-    const campoFaltante = validarFormularioActa(form);
+    const formActual = obtenerFormConTextos();
+    const campoFaltante = validarFormularioActa(formActual);
     if (campoFaltante) {
       setError(mensajeValidacion(campoFaltante));
       return;
@@ -254,7 +267,9 @@ export default function PuertosNuevaActa() {
     setGenerandoPdf(true);
     setError('');
     try {
-      await generarPdfActaPuertos(form, fotos, { documentosAdjuntos: form.documentosAdjuntos });
+      await generarPdfActaPuertos(formActual, fotos, {
+        documentosAdjuntos: formActual.documentosAdjuntos,
+      });
     } catch (err) {
       setError(err.message || t('ports.ui.actas.pdfError'));
     } finally {
@@ -263,7 +278,8 @@ export default function PuertosNuevaActa() {
   };
 
   const handleGrabar = async () => {
-    const campoFaltante = validarFormularioActa(form);
+    const formActual = obtenerFormConTextos();
+    const campoFaltante = validarFormularioActa(formActual);
     if (campoFaltante) {
       setError(mensajeValidacion(campoFaltante));
       return;
@@ -272,12 +288,15 @@ export default function PuertosNuevaActa() {
     setError('');
     setMensaje('');
     try {
-      const payload = formularioAActaApi(form, { fotos });
+      const payload = formularioAActaApi(formActual, { fotos });
       const resultado = esEdicion
         ? await actualizarPuertosActa(id, payload)
         : await crearPuertosActa(payload);
 
       setForm(actaApiAFormulario(resultado));
+      setEditorSyncKey(
+        `saved-${resultado._id || id}-${resultado.updatedAt || Date.now()}`
+      );
       setMensaje(
         t('ports.ui.actas.saveSuccess', { id: resultado.nroActa || resultado._id })
       );
@@ -296,6 +315,7 @@ export default function PuertosNuevaActa() {
     setFotos([]);
     setMensaje('');
     setError('');
+    setEditorSyncKey(`nueva-${Date.now()}`);
   };
 
   if (cargandoActa) {
@@ -774,10 +794,12 @@ export default function PuertosNuevaActa() {
       />
       <PuertosFacturacionActa />
       <PuertosObservacionesActa
+        ref={observacionesRef}
         observaciones={form.observaciones}
         recomendaciones={form.recomendaciones}
-        onChange={(campo, valor) => setCampo(campo, valor)}
+        onChange={setCampo}
         soloLectura={soloLectura}
+        syncKey={editorSyncKey}
       />
 
       <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-600">

@@ -6381,7 +6381,11 @@
           "observations": "Observations",
           "recommendations": "Recommendations",
           "observationsPlaceholder": "Enter the report observations…",
-          "recommendationsPlaceholder": "Enter the recommendations…"
+          "recommendationsPlaceholder": "Enter the recommendations…",
+          "instructionLabel": "Instruction:",
+          "instruction": "(En caso de novedad relacionar valor de la factura y valor de la pérdida / In any case novelties, statement the invoice value and the damage value)",
+          "noteLabel": "Note:",
+          "note": "Observations document the cargo condition and any incidents during the inspection. Use bold to highlight containers, amounts, or other key data."
         },
         "billing": {
           "title": "Billing",

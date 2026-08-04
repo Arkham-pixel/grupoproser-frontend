@@ -29,15 +29,170 @@ const C = {
 const LINE_H = 3.8;
 const CELL_PAD = 1.4;
 
+function decodificarEntidadesHtml(str) {
+  return String(str ?? '')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'");
+}
+
 function normalizarTextoPdf(valor) {
-  return String(valor ?? '')
+  return decodificarEntidadesHtml(valor)
     .replace(/\r\n/g, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
     .trim();
+}
+
+/**
+ * Convierte HTML (o texto plano) en párrafos de runs con estilo.
+ * @returns {{ text: string, bold?: boolean, italic?: boolean }[][]}
+ */
+function htmlAParrafosRuns(html) {
+  const raw = String(html ?? '');
+  if (!raw.trim()) return [[{ text: ' ' }]];
+
+  const conSaltos = raw
+    .replace(/\r\n/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/h[1-6]>/gi, '\n')
+    .replace(/<\/li>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<hr\s*\/?>/gi, '\n')
+    .replace(/<\/?(ul|ol|p|div|h[1-6])[^>]*>/gi, '');
+
+  const tokenRe =
+    /<\/?(?:strong|b|em|i|u|span)(?:\s[^>]*)?>|[^<]+|<\/?[^>]+>/gi;
+  const parrafos = [];
+  let runs = [];
+  let bold = 0;
+  let italic = 0;
+
+  const flushParrafo = () => {
+    const limpios = runs
+      .map((r) => ({ ...r, text: decodificarEntidadesHtml(r.text) }))
+      .filter((r) => r.text.length);
+    parrafos.push(limpios.length ? limpios : [{ text: ' ' }]);
+    runs = [];
+  };
+
+  const pushTexto = (t) => {
+    if (!t) return;
+    const partes = t.split('\n');
+    partes.forEach((parte, idx) => {
+      if (parte) {
+        runs.push({
+          text: parte,
+          bold: bold > 0,
+          italic: italic > 0,
+        });
+      }
+      if (idx < partes.length - 1) flushParrafo();
+    });
+  };
+
+  let m;
+  while ((m = tokenRe.exec(conSaltos)) !== null) {
+    const tok = m[0];
+    const lower = tok.toLowerCase();
+    if (lower === '<strong>' || lower === '<b>' || /^<strong\s/i.test(tok) || /^<b\s/i.test(tok)) {
+      bold += 1;
+    } else if (lower === '</strong>' || lower === '</b>') {
+      bold = Math.max(0, bold - 1);
+    } else if (lower === '<em>' || lower === '<i>' || /^<em\s/i.test(tok) || /^<i\s/i.test(tok)) {
+      italic += 1;
+    } else if (lower === '</em>' || lower === '</i>') {
+      italic = Math.max(0, italic - 1);
+    } else if (tok.startsWith('<')) {
+      // ignora otras etiquetas
+    } else {
+      pushTexto(tok);
+    }
+  }
+  if (runs.length) flushParrafo();
+  return parrafos.length ? parrafos : [[{ text: ' ' }]];
+}
+
+function aplicarFuenteRun(doc, run, fontSize = 8.5) {
+  const weight = run.bold ? 'bold' : 'normal';
+  doc.setFont(familiaPdf(weight), 'normal');
+  if (run.italic && !run.bold) {
+    try {
+      doc.setFont(familiaPdf('normal'), 'italic');
+    } catch {
+      doc.setFont(familiaPdf('normal'), 'normal');
+    }
+  }
+  doc.setFontSize(fontSize);
+}
+
+/**
+ * Particiona runs en líneas que caben en maxWidth (respeta negrita/cursiva).
+ */
+function layoutRunsEnLineas(doc, runs, maxWidth, fontSize = 8.5) {
+  const lineas = [];
+  let linea = [];
+  let anchoLinea = 0;
+
+  const medir = (run, textoRun) => {
+    aplicarFuenteRun(doc, run, fontSize);
+    return doc.getTextWidth(textoRun);
+  };
+
+  const empujarLinea = () => {
+    if (linea.length) lineas.push(linea);
+    linea = [];
+    anchoLinea = 0;
+  };
+
+  for (const run of runs) {
+    const palabras = String(run.text || '').split(/(\s+)/);
+    for (const palabra of palabras) {
+      if (!palabra) continue;
+      const w = medir(run, palabra);
+      if (anchoLinea > 0 && anchoLinea + w > maxWidth) {
+        empujarLinea();
+        if (/^\s+$/.test(palabra)) continue;
+      }
+      if (w > maxWidth && linea.length === 0) {
+        let resto = palabra;
+        while (resto) {
+          let cortar = resto.length;
+          while (cortar > 1 && medir(run, resto.slice(0, cortar)) > maxWidth) cortar -= 1;
+          linea.push({ ...run, text: resto.slice(0, cortar) });
+          empujarLinea();
+          resto = resto.slice(cortar);
+        }
+        continue;
+      }
+      linea.push({ ...run, text: palabra });
+      anchoLinea += w;
+    }
+  }
+  empujarLinea();
+  return lineas.length ? lineas : [[{ text: ' ' }]];
+}
+
+function dibujarLineaRuns(doc, linea, x, y, fontSize = 8.5) {
+  let cx = x;
+  for (const run of linea) {
+    aplicarFuenteRun(doc, run, fontSize);
+    doc.setTextColor(...C.text);
+    doc.text(run.text, cx, y);
+    cx += doc.getTextWidth(run.text);
+  }
 }
 
 function texto(valor) {
@@ -162,36 +317,37 @@ function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
     y += sub.length * 3 + 2;
   }
 
-  const contenido = normalizarTextoPdf(cuerpo) || ' ';
-  const parrafos = contenido.split('\n');
-  doc.setFont(familiaPdf('normal'), 'normal');
-  doc.setFontSize(8.5);
-  doc.setTextColor(...C.text);
-
-  // Caja con borde alrededor del texto
+  const maxW = PDF_CONTENT_W - 4;
+  const fontSize = 8.5;
+  const parrafosRuns = htmlAParrafosRuns(cuerpo);
   const lineasTodas = [];
-  for (const p of parrafos) {
-    lineasTodas.push(...doc.splitTextToSize(p || ' ', PDF_CONTENT_W - 4));
+  for (const runs of parrafosRuns) {
+    lineasTodas.push(...layoutRunsEnLineas(doc, runs, maxW, fontSize));
   }
-  const altoCaja = Math.max(12, lineasTodas.length * LINE_H + 4);
-  y = asegurarEspacio(doc, y, Math.min(altoCaja, 40), pageRef);
+
+  y = asegurarEspacio(
+    doc,
+    y,
+    Math.min(Math.max(12, lineasTodas.length * LINE_H + 4), 40),
+    pageRef
+  );
 
   let yTexto = y + 4;
-  const yInicio = y;
+  let yInicio = y;
   doc.setDrawColor(...C.border);
   doc.setLineWidth(0.25);
 
   for (const linea of lineasTodas) {
     if (yTexto + LINE_H > PDF_PAGE.h - PDF_MARGINS.bottom) {
-      // Cerrar caja parcial y nueva página
       doc.rect(PDF_MARGINS.left, yInicio, PDF_CONTENT_W, yTexto - yInicio + 1);
       doc.addPage();
       pageRef.page += 1;
       pintarPiePagina(doc, pageRef);
       y = PDF_MARGINS.top;
+      yInicio = y;
       yTexto = y + 4;
     }
-    doc.text(linea, PDF_MARGINS.left + 2, yTexto);
+    dibujarLineaRuns(doc, linea, PDF_MARGINS.left + 2, yTexto, fontSize);
     yTexto += LINE_H;
   }
 
@@ -465,6 +621,7 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
   );
 
   // —— Datos del asegurado ——
+  // Orden: Aseguradora|Sucursal → Asegurado|Piezas → Empaque|Mercancía → Pedido|Fecha
   y = tituloSeccion(doc, y, 'Datos del Asegurado / Insured Data');
   y = filaCeldas(
     doc,
@@ -484,7 +641,7 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
       { label: 'Asegurado / Insured', value: form.asegurado },
       { label: 'N. de Piezas / No. of Packages', value: form.nroPiezas },
     ],
-    [0.65, 0.35]
+    [0.7, 0.3]
   );
   y = filaCeldas(
     doc,
@@ -511,6 +668,7 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
   );
 
   // —— Transporte exterior ——
+  // Orden: Origen|Puerto Origen → Destino final|Puerto Arribo → Motonave|Doc.|Registro
   y = tituloSeccion(doc, y, 'Transporte Exterior / International Transport');
   y = filaCeldas(
     doc,
@@ -518,7 +676,17 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
     pageRef,
     [
       { label: 'Origen / Origin', value: form.paisOrigen },
-      { label: 'Tipo de Transporte / Type of Transport', value: form.tipoTransporte },
+      { label: 'Puerto Origen / Port of Loading', value: form.puertoOrigen },
+    ],
+    [0.5, 0.5]
+  );
+  y = filaCeldas(
+    doc,
+    y,
+    pageRef,
+    [
+      { label: 'Destino Final / Final Place', value: form.paisDestino },
+      { label: 'Puerto Arribo / Port of Discharge', value: form.puertoArribo },
     ],
     [0.5, 0.5]
   );
@@ -528,21 +696,10 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
     pageRef,
     [
       { label: 'Motonave / Vessel', value: form.motonave },
-      { label: 'Registro / Register', value: form.registro },
       { label: 'Doc. de Transporte / Doc. of Transport', value: form.docTransporte },
+      { label: 'Registro / Register', value: form.registro },
     ],
-    [0.4, 0.25, 0.35]
-  );
-  y = filaCeldas(
-    doc,
-    y,
-    pageRef,
-    [
-      { label: 'Puerto Origen / Port of Loading', value: form.puertoOrigen },
-      { label: 'Puerto Arribo / Port of Discharge', value: form.puertoArribo },
-      { label: 'Destino Final / Final Place', value: form.paisDestino },
-    ],
-    [0.34, 0.33, 0.33]
+    [0.34, 0.36, 0.3]
   );
 
   // —— Transporte interior ——
