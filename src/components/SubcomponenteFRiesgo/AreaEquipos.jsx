@@ -1,8 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import FilaEquipo from './FilaEquipo';
 
 export default function AreaEquipos({ area, onUpdate, onDeleteArea }) {
-  const formatearMoneda = (valor) => `$ ${Number(valor || 0).toLocaleString('es-CO')}`;
+  const { t, i18n } = useTranslation();
+  const locale = String(i18n.language || 'es').toLowerCase().startsWith('en') ? 'en-US' : 'es-CO';
+  const formatearMoneda = (valor) => `$ ${Number(valor || 0).toLocaleString(locale)}`;
 
   const calcularValorFila = (eq = {}) => {
     const cantidad = parseFloat(eq.cantidad) || 0;
@@ -29,7 +32,6 @@ export default function AreaEquipos({ area, onUpdate, onDeleteArea }) {
     if (field === "cantidad" || field === "valorUnitario" || field === "precio") {
       const valorCalculado = calcularValorFila(nuevosEquipos[index]);
       nuevosEquipos[index].valor = valorCalculado ? String(valorCalculado) : "";
-      // compatibilidad con estructuras viejas que usaban precio
       if (field === "precio") {
         nuevosEquipos[index].valorUnitario = value;
       }
@@ -47,27 +49,32 @@ export default function AreaEquipos({ area, onUpdate, onDeleteArea }) {
   return (
     <div className="mb-10 p-4 border rounded shadow">
       <div className="flex items-center justify-between mb-4 bg-gray-100 p-2 rounded">
-        <h3 className="text-xl font-bold">{`${area.nombre} (Subtotal: ${formatearMoneda(subtotal)})`}</h3>
+        <h3 className="text-xl font-bold">
+          {t('inspection.ui.formularioAreas.areaSubtotal', {
+            name: area.nombre,
+            subtotal: formatearMoneda(subtotal),
+          })}
+        </h3>
         <button
           type="button"
           className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
           onClick={onDeleteArea}
         >
-          Eliminar Área
+          {t('inspection.ui.formularioAreas.deleteArea')}
         </button>
       </div>
 
       <table className="min-w-full text-sm border-collapse mb-4">
         <thead>
           <tr className="bg-gray-200">
-            <th className="border p-2">CANT</th>
-            <th className="border p-2">EQUIPO</th>
-            <th className="border p-2">MARCA</th>
-            <th className="border p-2">VALOR UNITARIO</th>
-            <th className="border p-2">VALOR</th>
-            <th className="border p-2">CAPACIDAD</th>
-            <th className="border p-2">APARIENCIA</th>
-            <th className="border p-2">ACCIÓN</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colQty')}</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colEquipment')}</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colBrand')}</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colUnitValue')}</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colValue')}</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colCapacity')}</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colAppearance')}</th>
+            <th className="border p-2">{t('inspection.ui.formularioAreas.colAction')}</th>
           </tr>
         </thead>
         <tbody>
@@ -86,7 +93,7 @@ export default function AreaEquipos({ area, onUpdate, onDeleteArea }) {
         className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
         onClick={handleAgregarEquipo}
       >
-        ➕ Agregar Equipo
+        ➕ {t('inspection.ui.formularioAreas.addEquipment')}
       </button>
     </div>
   );

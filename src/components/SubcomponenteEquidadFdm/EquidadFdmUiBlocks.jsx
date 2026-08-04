@@ -1,19 +1,21 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaChartLine, FaCalculator, FaPlus, FaTable } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { expressBadge, expressPageSubtitle, expressPageTitle } from '../SubcomponenteExpress/expressFenixUi.js';
 
 const NAV_FDM = [
-  { path: '/equidad-fdm/carga', icon: FaPlus, label: 'Agregar caso' },
-  { path: '/equidad-fdm/liquidador', icon: FaCalculator, label: 'Liquidador' },
-  { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: 'Dashboard' },
-  { path: '/equidad-fdm/reporte', icon: FaTable, label: 'Reporte' },
+  { path: '/equidad-fdm/carga', icon: FaPlus, key: 'addCase' },
+  { path: '/equidad-fdm/liquidador', icon: FaCalculator, key: 'settlement' },
+  { path: '/equidad-fdm/dashboard', icon: FaChartLine, key: 'dashboard' },
+  { path: '/equidad-fdm/reporte', icon: FaTable, key: 'report' },
 ];
 
 export function FdmNavTabs({ activePath }) {
+  const { t } = useTranslation();
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Navegación Equidad FDM">
-      {NAV_FDM.map(({ path, icon: Icon, label }) => {
+    <nav className="flex flex-wrap gap-2" aria-label={t('equidadFdm.navigation')}>
+      {NAV_FDM.map(({ path, icon: Icon, key }) => {
         const activo = activePath === path;
         return (
           <Link
@@ -26,7 +28,7 @@ export function FdmNavTabs({ activePath }) {
             }`}
           >
             <Icon className="text-sm" />
-            {label}
+            {t(`equidadFdm.nav.${key}`)}
           </Link>
         );
       })}

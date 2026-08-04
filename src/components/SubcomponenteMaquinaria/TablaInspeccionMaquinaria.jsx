@@ -1,16 +1,6 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FormTable, FormTableRow, TableFieldInput, TableFieldTextarea, TableFieldSelect, SyncedValue } from "./maquinariaUi";
-
-const CAMPOS_SINCRONIZADOS = [
-  ["ASEGURADORA", "aseguradora", "Encabezado"],
-  ["EQUIPO INSPECCIONADO", "equipo", "Encabezado — maquinaria"],
-  ["MARCA", "marca", "Encabezado del formulario"],
-  ["TOMADOR", "tomador", "Encabezado — asegurado"],
-  ["LUGAR INSPECCIÓN", "lugar", "Ciudad en datos generales"],
-  ["UBICACIÓN", "ubicacion", "Autocompletado por ciudad"],
-  ["DEPARTAMENTO", "departamento", "Autocompletado por ciudad"],
-  ["FECHA DE INSPECCIÓN", "fechaInspeccion", "Encabezado del formulario"],
-];
 
 export default function TablaInspeccionMaquinaria({
   aseguradora,
@@ -29,6 +19,19 @@ export default function TablaInspeccionMaquinaria({
   atendido,
   setAtendido,
 }) {
+  const { t } = useTranslation();
+
+  const campos = [
+    { label: t('machinery.ui.table.aseguradora'), key: 'aseguradora', source: t('machinery.ui.sources.header') },
+    { label: t('machinery.ui.table.equipo'), key: 'equipo', source: t('machinery.ui.sources.headerMachinery') },
+    { label: t('machinery.ui.table.marca'), key: 'marca', source: t('machinery.ui.sources.formHeader') },
+    { label: t('machinery.ui.table.tomador'), key: 'tomador', source: t('machinery.ui.sources.headerInsured') },
+    { label: t('machinery.ui.table.lugar'), key: 'lugar', source: t('machinery.ui.sources.cityGeneral') },
+    { label: t('machinery.ui.table.ubicacion'), key: 'ubicacion', source: t('machinery.ui.sources.cityAuto') },
+    { label: t('machinery.ui.table.departamento'), key: 'departamento', source: t('machinery.ui.sources.cityAuto') },
+    { label: t('machinery.ui.table.fecha'), key: 'fechaInspeccion', source: t('machinery.ui.sources.formHeader') },
+  ];
+
   const valores = {
     aseguradora,
     equipo,
@@ -43,25 +46,25 @@ export default function TablaInspeccionMaquinaria({
   return (
     <FormTable>
       <tbody>
-        {CAMPOS_SINCRONIZADOS.map(([label, key, source]) => (
+        {campos.map(({ label, key, source }) => (
           <FormTableRow key={key} label={label}>
             <SyncedValue value={valores[key]} source={source} />
           </FormTableRow>
         ))}
-        <FormTableRow label="REFERENCIA">
+        <FormTableRow label={t('machinery.ui.table.referencia')}>
           <TableFieldTextarea
             rows={2}
             value={referencia}
             onChange={(e) => setReferencia(e.target.value)}
-            placeholder="Escriba la referencia (NIT, póliza, etc.)"
+            placeholder={t('machinery.ui.table.referenciaPlaceholder')}
           />
         </FormTableRow>
-        <FormTableRow label="INSPECTOR">
+        <FormTableRow label={t('machinery.ui.table.inspector')}>
           <TableFieldSelect
             value={codiInspector}
             onChange={(e) => onInspectorChange(e.target.value)}
           >
-            <option value="">Seleccione inspector</option>
+            <option value="">{t('machinery.ui.table.inspectorPlaceholder')}</option>
             {opcionesInspectores.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
@@ -69,11 +72,11 @@ export default function TablaInspeccionMaquinaria({
             ))}
           </TableFieldSelect>
         </FormTableRow>
-        <FormTableRow label="ATENDIDO / CARGO">
+        <FormTableRow label={t('machinery.ui.table.atendido')}>
           <TableFieldInput
             value={atendido}
             onChange={(e) => setAtendido(e.target.value)}
-            placeholder="Cargo o persona atendida"
+            placeholder={t('machinery.ui.table.atendidoPlaceholder')}
           />
         </FormTableRow>
       </tbody>

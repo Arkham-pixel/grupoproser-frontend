@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaFileSignature, FaPen, FaUpload } from 'react-icons/fa';
 import Logo from '../../img/Logo.png';
 import FuncionarioService from '../../services/funcionarioService.js';
 import { FieldLabel, ThemedInput, useMaquinariaTheme } from './maquinariaUi';
 
 function FirmaClienteModal({ open, onClose, onSave, theme }) {
+  const { t } = useTranslation();
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const last = useRef({ x: 0, y: 0 });
@@ -93,9 +95,9 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
         role="dialog"
         aria-modal="true"
       >
-        <h3 className="text-lg font-bold mb-2" style={{ color: text }}>Firma del cliente</h3>
+        <h3 className="text-lg font-bold mb-2" style={{ color: text }}>{t('machinery.ui.firma.modalTitle')}</h3>
         <p className="text-sm mb-4" style={{ color: theme === 'dark' ? '#94a3b8' : '#64748b' }}>
-          Dibuje en el recuadro con el dedo o el ratón.
+          {t('machinery.ui.firma.modalHint')}
         </p>
         <div className="rounded-lg overflow-hidden border-2 mb-4 touch-none" style={{ borderColor: border }}>
           <canvas
@@ -111,8 +113,8 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
           />
         </div>
         <div className="flex flex-wrap gap-2 justify-end">
-          <button type="button" onClick={onClose} className="btn-fenix-secondary text-sm py-2 px-3">Cancelar</button>
-          <button type="button" onClick={initCanvas} className="btn-fenix-secondary text-sm py-2 px-3">Limpiar</button>
+          <button type="button" onClick={onClose} className="btn-fenix-secondary text-sm py-2 px-3">{t('machinery.ui.common.cancel')}</button>
+          <button type="button" onClick={initCanvas} className="btn-fenix-secondary text-sm py-2 px-3">{t('machinery.ui.common.clear')}</button>
           <button
             type="button"
             onClick={() => {
@@ -122,7 +124,7 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
             }}
             className="btn-fenix-primary text-sm py-2 px-3"
           >
-            Usar esta firma
+            {t('machinery.ui.firma.useSignature')}
           </button>
         </div>
       </div>
@@ -148,7 +150,8 @@ export default function FirmaMaquinaria({
   fecha,
   disabled = false,
 }) {
-  const t = useMaquinariaTheme();
+  const { t } = useTranslation();
+  const mq = useMaquinariaTheme();
   const [modalAbierto, setModalAbierto] = useState(false);
   const inputFirmaRef = useRef(null);
   const [funcionarios, setFuncionarios] = useState([]);
@@ -165,18 +168,18 @@ export default function FirmaMaquinaria({
       const arr = Array.isArray(lista) ? lista : [];
       setFuncionarios(arr);
       if (arr.length === 0) {
-        setErrorFuncionarios('No hay funcionarios con firmas en el sistema.');
+        setErrorFuncionarios(t('machinery.ui.firma.noFuncionarios'));
       }
     } catch {
       const local = FuncionarioService.normalizarListaFuncionarios(
         FuncionarioService.cargarDesdeLocalStorage()
       );
       setFuncionarios(local);
-      setErrorFuncionarios(local.length ? 'Lista cargada desde el navegador.' : 'No se pudo cargar funcionarios.');
+      setErrorFuncionarios(local.length ? t('machinery.ui.firma.loadedLocal') : t('machinery.ui.firma.loadError'));
     } finally {
       setCargandoFuncionarios(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     cargarFuncionarios();
@@ -211,7 +214,7 @@ export default function FirmaMaquinaria({
     const file = e.target.files?.[0];
     if (!file) return;
     if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) {
-      alert('Seleccione una imagen válida (PNG, JPG o WEBP).');
+      alert(t('machinery.ui.firma.invalidImage'));
       e.target.value = '';
       return;
     }
@@ -222,8 +225,8 @@ export default function FirmaMaquinaria({
   };
 
   const panelStyle = {
-    borderColor: t.borderColor,
-    backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+    borderColor: mq.borderColor,
+    backgroundColor: mq.theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
   };
 
   return (
@@ -232,43 +235,42 @@ export default function FirmaMaquinaria({
         open={modalAbierto}
         onClose={() => setModalAbierto(false)}
         onSave={setFirmaCliente}
-        theme={t.theme}
+        theme={mq.theme}
       />
 
       <div className="flex items-center gap-2 mb-3">
         <FaFileSignature style={{ color: '#DC2626' }} />
-        <p className="font-semibold" style={{ color: t.textPrimary }}>Firmas del informe</p>
+        <p className="font-semibold" style={{ color: mq.textPrimary }}>{t('machinery.ui.firma.sectionTitle')}</p>
       </div>
-      <p className="mb-4 text-sm leading-relaxed" style={{ color: t.textSecondary }}>
-        El cliente firma aquí (dibujar o subir imagen). El inspector o responsable usa la firma guardada en el sistema,
-        igual que en el acta de inspección.
+      <p className="mb-4 text-sm leading-relaxed" style={{ color: mq.textSecondary }}>
+        {t('machinery.ui.firma.sectionHint')}
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="rounded-xl border-2 p-4" style={panelStyle}>
-          <h3 className="font-bold text-center mb-4" style={{ color: t.textPrimary }}>FIRMA DEL CLIENTE</h3>
-          <FieldLabel>Nombre (como en el Word)</FieldLabel>
+          <h3 className="font-bold text-center mb-4" style={{ color: mq.textPrimary }}>{t('machinery.ui.firma.clientTitle')}</h3>
+          <FieldLabel>{t('machinery.ui.firma.clientName')}</FieldLabel>
           <ThemedInput
             value={clienteNombre}
             onChange={(e) => setClienteNombre(e.target.value)}
-            placeholder="Nombre de quien firma"
+            placeholder={t('machinery.ui.firma.clientNamePlaceholder')}
             disabled={disabled}
             className="mb-3"
           />
-          <FieldLabel>Cargo</FieldLabel>
+          <FieldLabel>{t('machinery.ui.firma.clientRole')}</FieldLabel>
           <ThemedInput
             value={clienteCargo}
             onChange={(e) => setClienteCargo(e.target.value)}
-            placeholder="Ej. Asegurado, representante…"
+            placeholder={t('machinery.ui.firma.clientRolePlaceholder')}
             disabled={disabled}
             className="mb-3"
           />
-          <FieldLabel>Correo (opcional)</FieldLabel>
+          <FieldLabel>{t('machinery.ui.firma.clientEmail')}</FieldLabel>
           <ThemedInput
             type="email"
             value={clienteEmail}
             onChange={(e) => setClienteEmail(e.target.value)}
-            placeholder="correo@ejemplo.com"
+            placeholder={t('machinery.ui.firma.clientEmailPlaceholder')}
             disabled={disabled}
             className="mb-4"
           />
@@ -279,7 +281,7 @@ export default function FirmaMaquinaria({
               disabled={disabled}
               className="btn-fenix-primary text-xs py-2 px-3 inline-flex items-center gap-2"
             >
-              <FaPen /> Dibujar firma
+              <FaPen /> {t('machinery.ui.firma.draw')}
             </button>
             <input
               ref={inputFirmaRef}
@@ -293,43 +295,46 @@ export default function FirmaMaquinaria({
               htmlFor="mq-upload-firma-cliente"
               className="btn-fenix-secondary text-xs py-2 px-3 inline-flex items-center gap-2 cursor-pointer"
             >
-              <FaUpload /> Subir imagen
+              <FaUpload /> {t('machinery.ui.firma.upload')}
             </label>
             {firmaCliente && (
               <button type="button" onClick={() => setFirmaCliente('')} className="btn-fenix-secondary text-xs py-2 px-3" disabled={disabled}>
-                Quitar
+                {t('machinery.ui.common.remove')}
               </button>
             )}
           </div>
           <div
             className="min-h-[120px] rounded-lg border-2 flex items-center justify-center p-3"
-            style={{ borderColor: t.borderColor, backgroundColor: t.tableHeaderBg }}
+            style={{ borderColor: mq.borderColor, backgroundColor: mq.tableHeaderBg }}
           >
             {firmaCliente ? (
-              <img src={firmaCliente} alt="Firma del cliente" className="max-h-28 object-contain" />
+              <img src={firmaCliente} alt={t('machinery.ui.firma.clientAlt')} className="max-h-28 object-contain" />
             ) : (
-              <span className="text-xs text-center" style={{ color: t.textSecondary }}>
-                Aún no hay firma del cliente.
+              <span className="text-xs text-center" style={{ color: mq.textSecondary }}>
+                {t('machinery.ui.firma.noClientSignature')}
               </span>
             )}
           </div>
         </div>
 
         <div className="rounded-xl border-2 p-4" style={panelStyle}>
-          <h3 className="font-bold text-center mb-4" style={{ color: t.textPrimary }}>FIRMA DEL INSPECTOR</h3>
-          <p className="text-xs mb-3" style={{ color: t.textSecondary }}>
-            Inspector en tabla §1: <strong style={{ color: t.textPrimary }}>{inspectorNombre || '—'}</strong>
+          <h3 className="font-bold text-center mb-4" style={{ color: mq.textPrimary }}>{t('machinery.ui.firma.inspectorTitle')}</h3>
+          <p className="text-xs mb-3" style={{ color: mq.textSecondary }}>
+            {t('machinery.ui.firma.inspectorInTable')}{' '}
+            <strong style={{ color: mq.textPrimary }}>{inspectorNombre || t('machinery.ui.common.dash')}</strong>
             {inspectorCargo ? ` · ${inspectorCargo}` : ''}
           </p>
-          <FieldLabel>Funcionario con firma guardada</FieldLabel>
+          <FieldLabel>{t('machinery.ui.firma.funcionarioLabel')}</FieldLabel>
           <div className="flex flex-wrap gap-2 items-center mb-2">
             <button type="button" onClick={() => void cargarFuncionarios()} className="btn-fenix-secondary text-xs py-1 px-2">
-              Recargar lista
+              {t('machinery.ui.firma.reloadList')}
             </button>
-            <span className="text-xs" style={{ color: t.textSecondary }}>{funcionarios.length} funcionario(s)</span>
+            <span className="text-xs" style={{ color: mq.textSecondary }}>
+              {t('machinery.ui.firma.funcionariosCount', { count: funcionarios.length })}
+            </span>
           </div>
           {errorFuncionarios && (
-            <p className="text-xs mb-2 p-2 rounded border" style={{ borderColor: t.borderColor, color: t.textSecondary }}>
+            <p className="text-xs mb-2 p-2 rounded border" style={{ borderColor: mq.borderColor, color: mq.textSecondary }}>
               {errorFuncionarios}
             </p>
           )}
@@ -339,44 +344,44 @@ export default function FirmaMaquinaria({
             disabled={disabled || cargandoFuncionarios}
             className="w-full px-3 py-2 text-sm rounded-md mb-3"
             style={{
-              backgroundColor: t.inputBg,
-              color: t.textPrimary,
-              border: `1px solid ${t.borderColor}`,
+              backgroundColor: mq.inputBg,
+              color: mq.textPrimary,
+              border: `1px solid ${mq.borderColor}`,
             }}
           >
-            <option value="">— Seleccione inspector / responsable —</option>
+            <option value="">{t('machinery.ui.firma.selectInspector')}</option>
             {funcionarios.map((f) => {
               const fid = idFunc(f);
               if (!fid) return null;
               return (
                 <option key={fid} value={fid}>
-                  {f.nombre || 'Sin nombre'}
-                  {!f.firma ? ' (firma al seleccionar)' : ''}
+                  {f.nombre || t('machinery.ui.firma.noName')}
+                  {!f.firma ? t('machinery.ui.firma.firmaOnSelect') : ''}
                 </option>
               );
             })}
           </select>
           <div
             className="min-h-[120px] rounded-lg border-2 flex items-center justify-center p-3"
-            style={{ borderColor: t.borderColor, backgroundColor: t.tableHeaderBg }}
+            style={{ borderColor: mq.borderColor, backgroundColor: mq.tableHeaderBg }}
           >
             {inspectorFirmaImagen ? (
-              <img src={inspectorFirmaImagen} alt="Firma del inspector" className="max-h-28 object-contain" />
+              <img src={inspectorFirmaImagen} alt={t('machinery.ui.firma.inspectorAlt')} className="max-h-28 object-contain" />
             ) : (
-              <span className="text-xs text-center" style={{ color: t.textSecondary }}>
-                Elija un funcionario con firma guardada en Gestión de funcionarios.
+              <span className="text-xs text-center" style={{ color: mq.textSecondary }}>
+                {t('machinery.ui.firma.pickFuncionario')}
               </span>
             )}
           </div>
-          <p className="mt-3 text-xs" style={{ color: t.textSecondary }}>
-            Fecha del informe: {fecha || '—'}
+          <p className="mt-3 text-xs" style={{ color: mq.textSecondary }}>
+            {t('machinery.ui.firma.reportDate', { fecha: fecha || t('machinery.ui.common.dash') })}
           </p>
         </div>
       </div>
 
-      <div className="mt-6 pt-4 border-t flex items-center gap-3" style={{ borderColor: t.borderColor }}>
+      <div className="mt-6 pt-4 border-t flex items-center gap-3" style={{ borderColor: mq.borderColor }}>
         <img src={Logo} alt="PROSER" className="h-10 object-contain" />
-        <span className="text-xs" style={{ color: t.textSecondary }}>Atentamente, GRUPO PROSER</span>
+        <span className="text-xs" style={{ color: mq.textSecondary }}>{t('machinery.ui.firma.closing')}</span>
       </div>
     </div>
   );

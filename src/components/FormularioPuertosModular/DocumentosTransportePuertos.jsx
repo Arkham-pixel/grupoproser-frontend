@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import PuertosDragDropFotos from './PuertosDragDropFotos';
 
 export default function DocumentosTransportePuertos({ formData, onInputChange, onMultipleChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -98,7 +100,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
           className="text-xl font-bold mb-4"
           style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
         >
-          📄 DOCUMENTOS DEL TRANSPORTE
+          {t('ports.ui.formulario.documentosTransporte.titulo')}
         </h3>
 
         {/* Formulario de Documentos */}
@@ -108,7 +110,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              BILL OF LADING
+              {t('ports.ui.formulario.documentosTransporte.billOfLading')}
             </label>
             <input
               type="text"
@@ -121,7 +123,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: AR2509378-9380-9382..."
+              placeholder={t('ports.ui.formulario.documentosTransporte.billOfLadingPlaceholder')}
               disabled={cargando}
             />
           </div>
@@ -131,7 +133,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              CANTIDAD DE VEHÍCULOS
+              {t('ports.ui.formulario.documentosTransporte.cantidadVehiculos')}
             </label>
             <input
               type="number"
@@ -144,7 +146,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: 350"
+              placeholder={t('ports.ui.formulario.documentosTransporte.cantidadVehiculosPlaceholder')}
               disabled={cargando}
             />
           </div>
@@ -154,7 +156,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              TIPO DE MERCANCÍA
+              {t('ports.ui.formulario.documentosTransporte.tipoMercancia')}
             </label>
             <input
               type="text"
@@ -167,7 +169,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: VEHÍCULOS TOYOTA"
+              placeholder={t('ports.ui.formulario.documentosTransporte.tipoMercanciaPlaceholder')}
               disabled={cargando}
             />
           </div>
@@ -177,7 +179,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              TIPO DE EMBARQUE
+              {t('ports.ui.formulario.documentosTransporte.tipoEmbarque')}
             </label>
             <input
               type="text"
@@ -190,7 +192,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: FCL, LCL, RO-RO, etc."
+              placeholder={t('ports.ui.formulario.documentosTransporte.tipoEmbarquePlaceholder')}
               disabled={cargando}
             />
           </div>
@@ -200,7 +202,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              ORIGEN DE LA IMPORTACIÓN
+              {t('ports.ui.formulario.documentosTransporte.origenImportacion')}
             </label>
             <input
               type="text"
@@ -220,7 +222,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: ARGENTINA"
+              placeholder={t('ports.ui.formulario.documentosTransporte.origenImportacionPlaceholder')}
               disabled={cargando}
             />
           </div>
@@ -230,7 +232,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              PUERTO DE EMBARQUE
+              {t('ports.ui.formulario.documentosTransporte.puertoEmbarque')}
             </label>
             <input
               type="text"
@@ -250,7 +252,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: ZARATE"
+              placeholder={t('ports.ui.formulario.documentosTransporte.puertoEmbarquePlaceholder')}
               disabled={cargando}
             />
           </div>
@@ -260,7 +262,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              PUERTO DE DESCARGUE
+              {t('ports.ui.formulario.documentosTransporte.puertoDescargue')}
             </label>
             <input
               type="text"
@@ -273,14 +275,14 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Auto-completado desde ciudad"
+              placeholder={t('ports.ui.formulario.documentosTransporte.puertoDescarguePlaceholder')}
               disabled={cargando}
             />
             <p 
               className="text-xs mt-1"
               style={{ color: textSecondary }}
             >
-              Se completa automáticamente con la ciudad del reporte
+              {t('ports.ui.formulario.documentosTransporte.puertoDescargueAyuda')}
             </p>
           </div>
 
@@ -289,7 +291,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              MOTONAVE
+              {t('ports.ui.formulario.documentosTransporte.motonave')}
             </label>
             <input
               type="text"
@@ -302,14 +304,14 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Auto-completado desde portada"
+              placeholder={t('ports.ui.formulario.documentosTransporte.motonavePlaceholder')}
               disabled={cargando}
             />
             <p 
               className="text-xs mt-1"
               style={{ color: textSecondary }}
             >
-              Se completa automáticamente desde la portada
+              {t('ports.ui.formulario.documentosTransporte.motonaveAyuda')}
             </p>
           </div>
 
@@ -318,7 +320,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              FECHA DE LLEGADA
+              {t('ports.ui.formulario.documentosTransporte.fechaLlegada')}
             </label>
             <input
               type="date"
@@ -343,7 +345,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="text-lg font-bold"
               style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
             >
-              📊 ORIGEN
+              {t('ports.ui.formulario.documentosTransporte.origenTabla')}
             </h4>
             <button
               onClick={handleAgregarFilaOrigen}
@@ -355,7 +357,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               disabled={cargando}
             >
               <FaPlus />
-              Agregar Fila
+              {t('ports.ui.formulario.documentosTransporte.agregarFila')}
             </button>
           </div>
 
@@ -381,7 +383,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                       minWidth: '150px'
                     }}
                   >
-                    B/L No.
+                    {t('ports.ui.formulario.documentosTransporte.colBl')}
                   </th>
                   <th 
                     className="px-3 py-2 text-left font-bold"
@@ -391,7 +393,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                       minWidth: '200px'
                     }}
                   >
-                    PUERTO ORIGEN
+                    {t('ports.ui.formulario.documentosTransporte.colPuertoOrigen')}
                   </th>
                   <th 
                     className="px-3 py-2 text-left font-bold"
@@ -401,7 +403,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                       minWidth: '120px'
                     }}
                   >
-                    CANTIDAD
+                    {t('ports.ui.formulario.documentosTransporte.colCantidad')}
                   </th>
                   <th 
                     className="px-3 py-2 text-left font-bold"
@@ -411,7 +413,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                       minWidth: '150px'
                     }}
                   >
-                    TIPO VEHÍCULO
+                    {t('ports.ui.formulario.documentosTransporte.colTipoVehiculo')}
                   </th>
                   <th 
                     className="px-3 py-2 text-left font-bold"
@@ -421,7 +423,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                       minWidth: '120px'
                     }}
                   >
-                    PESO KGS
+                    {t('ports.ui.formulario.documentosTransporte.colPesoKgs')}
                   </th>
                   <th 
                     className="px-3 py-2 text-center font-bold"
@@ -468,7 +470,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                         fontStyle: 'italic'
                       }}
                     >
-                      {generarPuertoOrigen() || '(AUTO - País + Puerto)'}
+                      {generarPuertoOrigen() || t('ports.ui.formulario.documentosTransporte.autoPuerto')}
                     </td>
                     <td style={{ border: `1px solid ${borderColor}`, padding: '4px' }}>
                       <input
@@ -549,7 +551,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                         color: '#FFFFFF'
                       }}
                     >
-                      TOTALES:
+                      {t('ports.ui.formulario.documentosTransporte.totales')}
                     </td>
                     <td 
                       className="px-3 py-2"
@@ -592,7 +594,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 color: textSecondary
               }}
             >
-              <p className="text-sm">Haz clic en "Agregar Fila" para comenzar a llenar la tabla</p>
+              <p className="text-sm">{t('ports.ui.formulario.documentosTransporte.emptyOrigen')}</p>
             </div>
           )}
         </div>
@@ -603,15 +605,15 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
             className="text-lg font-bold mb-4"
             style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
           >
-            🚢 INSPECCIÓN A BORDO DEL BUQUE
+            {t('ports.ui.formulario.documentosTransporte.inspeccionBordo')}
           </h4>
 
           <PuertosDragDropFotos
             imagenes={imagenesInspeccionBordo}
             onChange={(nuevas) => onInputChange('imagenesInspeccionBordo', nuevas)}
             cargando={cargando}
-            placeholder="Arrastra fotos de aspecto modelo (leyenda: ASPECTO MODELO)"
-            notaS3="Leyenda por defecto en Word: ASPECTO MODELO"
+            placeholder={t('ports.ui.formulario.documentosTransporte.dragPlaceholderBordo')}
+            notaS3={t('ports.ui.formulario.documentosTransporte.notaS3Bordo')}
           />
 
           {/* Espacio para comentarios */}
@@ -620,7 +622,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Comentarios sobre la Inspección a Bordo
+              {t('ports.ui.formulario.documentosTransporte.comentariosBordo')}
             </label>
             <textarea
               value={formData.comentariosInspeccionBordo || ''}
@@ -634,7 +636,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 border: `1px solid ${borderColor}`,
                 resize: 'vertical'
               }}
-              placeholder="Escribe aquí tus observaciones sobre la inspección a bordo del buque..."
+              placeholder={t('ports.ui.formulario.documentosTransporte.comentariosBordoPlaceholder')}
               disabled={cargando}
             />
           </div>
@@ -646,15 +648,15 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
             className="text-lg font-bold mb-4"
             style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
           >
-            🚗 INSPECCIÓN EN APROCHE - DESCARGUE
+            {t('ports.ui.formulario.documentosTransporte.inspeccionDescargue')}
           </h4>
 
           <PuertosDragDropFotos
             imagenes={imagenesInspeccionDescargue}
             onChange={(nuevas) => onInputChange('imagenesInspeccionDescargue', nuevas)}
             cargando={cargando}
-            placeholder="Arrastra fotos del almacenamiento en patio (leyenda: ASPECTO DEL ALMACENAMIENTO)"
-            notaS3="Leyenda por defecto en Word: ASPECTO DEL ALMACENAMIENTO"
+            placeholder={t('ports.ui.formulario.documentosTransporte.dragPlaceholderDescargue')}
+            notaS3={t('ports.ui.formulario.documentosTransporte.notaS3Descargue')}
           />
 
           {/* Espacio para comentarios del descargue */}
@@ -663,7 +665,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Comentarios sobre la Inspección en Descargue
+              {t('ports.ui.formulario.documentosTransporte.comentariosDescargue')}
             </label>
             <textarea
               value={formData.comentariosInspeccionDescargue || ''}
@@ -677,7 +679,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
                 border: `1px solid ${borderColor}`,
                 resize: 'vertical'
               }}
-              placeholder="Ej: Se realizó inspección en el descargue, el tiempo es muy mínimo para detectar posibles averías..."
+              placeholder={t('ports.ui.formulario.documentosTransporte.comentariosDescarguePlaceholder')}
               disabled={cargando}
             />
           </div>

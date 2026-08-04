@@ -1,5 +1,6 @@
 // MapaUbicacion.jsx
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -18,6 +19,7 @@ L.Icon.Default.mergeOptions({
 })
 
 export default function MapaUbicacion({ onMapReady }) {
+  const { t } = useTranslation()
   const [posicion, setPosicion] = useState([7.921417, -72.566972]) // Ubicación por defecto
   const [cargando, setCargando] = useState(true)
   const [mapaListo, setMapaListo] = useState(false)
@@ -62,7 +64,7 @@ export default function MapaUbicacion({ onMapReady }) {
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 z-10">
           <div className="text-center">
             <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-xs sm:text-sm text-gray-600">Cargando mapa...</p>
+            <p className="text-xs sm:text-sm text-gray-600">{t('inspection.ui.formulario_inspeccion.loadingMap')}</p>
           </div>
         </div>
       )}
@@ -71,7 +73,7 @@ export default function MapaUbicacion({ onMapReady }) {
         <div className="absolute inset-0 flex items-center justify-center bg-green-50 z-10">
           <div className="text-center">
             <div className="animate-pulse">
-              <p className="text-xs sm:text-sm text-green-600">🔄 Preparando mapa para captura...</p>
+              <p className="text-xs sm:text-sm text-green-600">{t('map.ui.preparingCapture')}</p>
             </div>
           </div>
         </div>
@@ -91,7 +93,7 @@ export default function MapaUbicacion({ onMapReady }) {
                        <Marker position={posicion}>
                  <Popup>
                    <div className="text-xs sm:text-sm">
-                     Ubicación actual detectada.
+                     {t('map.ui.currentLocationDetected')}
                    </div>
                  </Popup>
                </Marker>

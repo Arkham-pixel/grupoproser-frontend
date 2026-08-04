@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FaBullseye,
   FaChartBar,
@@ -28,28 +29,30 @@ import MatrizMapaDemoEducativo from './MatrizMapaDemoEducativo';
 import './InformacionMatriz.css';
 import './matrizFenixTheme.css';
 
-const DESCRIPCIONES_CATEGORIAS = {
-  estrategico: 'Riesgos de decisiones importantes: cambios de mercado, competencia o dirección.',
-  cumplimiento: 'Riesgos por no cumplir reglas, contratos o regulaciones.',
-  reputacional: 'Riesgos que afectan la imagen y la confianza de la organización.',
-  operativo: 'Riesgos del día a día: equipos, personal y procesos.',
-  financiero: 'Riesgos económicos: pérdidas, flujo de caja o inversiones.',
-  tecnologico: 'Riesgos de sistemas, datos y ciberseguridad.',
-  corrupcion: 'Riesgos de conductas indebidas, fraude o abuso de poder.',
-  ddhh: 'Riesgos relacionados con derechos humanos y trato digno.',
-};
-
-const INFO_TABS = [
-  { id: 'intro', label: 'Inicio Rápido', icon: FaRocket },
-  { id: 'process', label: 'Proceso', icon: FaSyncAlt },
-  { id: 'categories', label: 'Categorías', icon: FaClipboardList },
-  { id: 'criteria', label: 'Criterios', icon: FaChartBar },
-  { id: 'heatmap', label: 'Mapa de Calor', icon: FaFire },
-  { id: 'gestion', label: 'Gestión de Riesgos', icon: FaShieldAlt },
-];
-
 const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = false }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(seccionActiva || 'intro');
+
+  const DESCRIPCIONES_CATEGORIAS = {
+    estrategico: t('riskMatrix.informacion.categoryDescEstrategico'),
+    cumplimiento: t('riskMatrix.informacion.categoryDescCumplimiento'),
+    reputacional: t('riskMatrix.informacion.categoryDescReputacional'),
+    operativo: t('riskMatrix.informacion.categoryDescOperativo'),
+    financiero: t('riskMatrix.informacion.categoryDescFinanciero'),
+    tecnologico: t('riskMatrix.informacion.categoryDescTecnologico'),
+    corrupcion: t('riskMatrix.informacion.categoryDescCorrupcion'),
+    ddhh: t('riskMatrix.informacion.categoryDescDdhh'),
+  };
+
+  const INFO_TABS = [
+    { id: 'intro', label: t('riskMatrix.informacion.tabIntro'), icon: FaRocket },
+    { id: 'process', label: t('riskMatrix.informacion.tabProcess'), icon: FaSyncAlt },
+    { id: 'categories', label: t('riskMatrix.informacion.tabCategories'), icon: FaClipboardList },
+    { id: 'criteria', label: t('riskMatrix.informacion.tabCriteria'), icon: FaChartBar },
+    { id: 'heatmap', label: t('riskMatrix.informacion.tabHeatmap'), icon: FaFire },
+    { id: 'gestion', label: t('riskMatrix.informacion.tabGestion'), icon: FaShieldAlt },
+  ];
+
   const [informacionGeneral, setInformacionGeneral] = useState(() => {
     const defaultData = {
     nombreEmpresa: '',
@@ -178,31 +181,31 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
             <FaBullseye className="text-2xl" />
           </div>
           <h1 className="font-heading text-2xl font-bold sm:text-3xl">
-            ¡Domina la Gestión de Riesgos!
+            {t('riskMatrix.informacion.heroTitle')}
           </h1>
           <p className="mt-3 font-body text-sm leading-relaxed text-gray-300 sm:text-base">
-            Aprende a identificar, evaluar y gestionar riesgos como un profesional.
+            {t('riskMatrix.informacion.heroDescription')}
             <br />
-            <strong className="text-white">¡En solo 3 pasos simples!</strong>
+            <strong className="text-white">{t('riskMatrix.informacion.heroHighlight')}</strong>
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-8 sm:gap-12">
             <div className="text-center">
               <span className="block font-accent text-2xl font-bold text-amber-400 sm:text-3xl">
                 3
               </span>
-              <span className="font-body text-xs text-gray-400 sm:text-sm">Pasos Simples</span>
+              <span className="font-body text-xs text-gray-400 sm:text-sm">{t('riskMatrix.informacion.heroStatSteps')}</span>
             </div>
             <div className="text-center">
               <span className="block font-accent text-2xl font-bold text-amber-400 sm:text-3xl">
                 8
               </span>
-              <span className="font-body text-xs text-gray-400 sm:text-sm">Categorías</span>
+              <span className="font-body text-xs text-gray-400 sm:text-sm">{t('riskMatrix.informacion.heroStatCategories')}</span>
             </div>
             <div className="text-center">
               <span className="block font-accent text-2xl font-bold text-amber-400 sm:text-3xl">
                 100%
               </span>
-              <span className="font-body text-xs text-gray-400 sm:text-sm">Efectivo</span>
+              <span className="font-body text-xs text-gray-400 sm:text-sm">{t('riskMatrix.informacion.heroStatEffective')}</span>
             </div>
           </div>
         </div>
@@ -242,20 +245,20 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
           <div className="intro-tab">
             {!modoReporte && (
             <div className={`welcome-card ${matrizCard}`}>
-              <h2 className={matrizCardTitle}>Bienvenido a la gestión de riesgos</h2>
+              <h2 className={matrizCardTitle}>{t('riskMatrix.informacion.welcomeTitle')}</h2>
               <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                El <strong>90%</strong> de las empresas que gestionan riesgos correctamente
-                sobreviven a las crisis con mayor solidez operativa.
+                {t('riskMatrix.informacion.welcomeBodyPrefix')} <strong>90%</strong>{' '}
+                {t('riskMatrix.informacion.welcomeBodySuffix')}
               </p>
             </div>
             )}
 
             <div className={`info-form-card ${matrizCard}`}>
-              <h3 className={matrizCardTitle}>Información general de la matriz</h3>
+              <h3 className={matrizCardTitle}>{t('riskMatrix.informacion.generalInfoTitle')}</h3>
               <div className="info-form-grid">
                 <div className="form-group">
                   <label htmlFor="nombreEmpresa" className={matrizLabel}>
-                    Nombre de la empresa
+                    {t('riskMatrix.informacion.companyNameLabel')}
                   </label>
                   <input
                     type="text"
@@ -264,13 +267,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                     onChange={(e) =>
                       setInformacionGeneral((prev) => ({ ...prev, nombreEmpresa: e.target.value }))
                     }
-                    placeholder="Ej: Empresa ABC S.A.S."
+                    placeholder={t('riskMatrix.informacion.companyNamePlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group">
                   <label htmlFor="responsable" className={matrizLabel}>
-                    Responsable
+                    {t('riskMatrix.informacion.responsibleLabel')}
                   </label>
                   <input
                     type="text"
@@ -279,13 +282,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                     onChange={(e) =>
                       setInformacionGeneral((prev) => ({ ...prev, responsable: e.target.value }))
                     }
-                    placeholder="Ej: Juan Pérez"
+                    placeholder={t('riskMatrix.informacion.responsiblePlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group">
                   <label htmlFor="version" className={matrizLabel}>
-                    Versión
+                    {t('riskMatrix.informacion.versionLabel')}
                   </label>
                   <input
                     type="text"
@@ -294,13 +297,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                     onChange={(e) =>
                       setInformacionGeneral((prev) => ({ ...prev, version: e.target.value }))
                     }
-                    placeholder="Ej: 1.0"
+                    placeholder={t('riskMatrix.informacion.versionPlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group full-width sm:col-span-2">
                   <label htmlFor="descripcion" className={matrizLabel}>
-                    Descripción
+                    {t('riskMatrix.informacion.descriptionLabel')}
                   </label>
                   <textarea
                     id="descripcion"
@@ -308,7 +311,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                     onChange={(e) =>
                       setInformacionGeneral((prev) => ({ ...prev, descripcion: e.target.value }))
                     }
-                    placeholder="Describe el propósito de esta matriz de riesgos..."
+                    placeholder={t('riskMatrix.informacion.descriptionPlaceholder')}
                     className={matrizTextarea}
                     rows={3}
                   />
@@ -317,14 +320,14 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
             </div>
 
             <div className={`info-form-card ${matrizCard}`}>
-              <h3 className={matrizCardTitle}>Información del ingeniero (visita)</h3>
+              <h3 className={matrizCardTitle}>{t('riskMatrix.informacion.engineerTitle')}</h3>
               <p className="mb-4 font-body text-sm text-gray-500 dark:text-gray-400">
-                Datos de contacto del profesional responsable de recibir la inspección
+                {t('riskMatrix.informacion.engineerSubtitle')}
               </p>
               <div className="info-form-grid">
                 <div className="form-group">
                   <label htmlFor="ingenieroNombre" className={matrizLabel}>
-                    Nombre completo
+                    {t('riskMatrix.informacion.engineerNameLabel')}
                   </label>
                   <input
                     type="text"
@@ -336,13 +339,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                         ingeniero: { ...prev.ingeniero, nombre: e.target.value },
                       }))
                     }
-                    placeholder="Ej: Carlos Alberto Rodríguez"
+                    placeholder={t('riskMatrix.informacion.engineerNamePlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group">
                   <label htmlFor="ingenieroCargo" className={matrizLabel}>
-                    Cargo
+                    {t('riskMatrix.informacion.engineerPositionLabel')}
                   </label>
                   <input
                     type="text"
@@ -354,13 +357,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                         ingeniero: { ...prev.ingeniero, cargo: e.target.value },
                       }))
                     }
-                    placeholder="Ej: Ingeniero de Seguridad"
+                    placeholder={t('riskMatrix.informacion.engineerPositionPlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group">
                   <label htmlFor="ingenieroTelefono" className={matrizLabel}>
-                    Teléfono
+                    {t('riskMatrix.informacion.engineerPhoneLabel')}
                   </label>
                   <input
                     type="tel"
@@ -372,13 +375,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                         ingeniero: { ...prev.ingeniero, telefono: e.target.value },
                       }))
                     }
-                    placeholder="Ej: +57 300 123 4567"
+                    placeholder={t('riskMatrix.informacion.engineerPhonePlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group">
                   <label htmlFor="ingenieroEmail" className={matrizLabel}>
-                    Email
+                    {t('riskMatrix.informacion.engineerEmailLabel')}
                   </label>
                   <input
                     type="email"
@@ -390,13 +393,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                         ingeniero: { ...prev.ingeniero, email: e.target.value },
                       }))
                     }
-                    placeholder="Ej: carlos.rodriguez@empresa.com"
+                    placeholder={t('riskMatrix.informacion.engineerEmailPlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group">
                   <label htmlFor="ingenieroEmpresa" className={matrizLabel}>
-                    Empresa
+                    {t('riskMatrix.informacion.engineerCompanyLabel')}
                   </label>
                   <input
                     type="text"
@@ -408,13 +411,13 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                         ingeniero: { ...prev.ingeniero, empresa: e.target.value },
                       }))
                     }
-                    placeholder="Ej: Constructora ABC S.A.S."
+                    placeholder={t('riskMatrix.informacion.engineerCompanyPlaceholder')}
                     className={matrizInput}
                   />
                 </div>
                 <div className="form-group full-width sm:col-span-2">
                   <label htmlFor="ingenieroDireccion" className={matrizLabel}>
-                    Dirección
+                    {t('riskMatrix.informacion.engineerAddressLabel')}
                   </label>
                   <textarea
                     id="ingenieroDireccion"
@@ -425,7 +428,7 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                         ingeniero: { ...prev.ingeniero, direccion: e.target.value },
                       }))
                     }
-                    placeholder="Dirección completa de la empresa o lugar de la visita..."
+                    placeholder={t('riskMatrix.informacion.engineerAddressPlaceholder')}
                     className={matrizTextarea}
                     rows={2}
                   />
@@ -446,41 +449,41 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
           <div className="process-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaSyncAlt}
-              title="El proceso paso a paso"
-              description="Sigue el flujo de la matriz: identificar, valorar y visualizar."
+              title={t('riskMatrix.informacion.processHeaderTitle')}
+              description={t('riskMatrix.informacion.processHeaderDescription')}
             />
             <div className="process-timeline space-y-3">
               <MatrizTimelineItem
                 numero={1}
                 icon={FaSearch}
-                title="Identificación de riesgos"
-                description="Registra procesos, riesgos identificados y categorías en la tabla de identificación."
+                title={t('riskMatrix.informacion.step1Title')}
+                description={t('riskMatrix.informacion.step1Description')}
                 tips={[
-                  'Piensa en todo lo que puede salir mal',
-                  'Anota todo, aunque parezca menor',
-                  'Consulta con tu equipo',
+                  t('riskMatrix.informacion.step1Tip1'),
+                  t('riskMatrix.informacion.step1Tip2'),
+                  t('riskMatrix.informacion.step1Tip3'),
                 ]}
               />
               <MatrizTimelineItem
                 numero={2}
                 icon={FaChartBar}
-                title="Valoración y análisis"
-                description="Asigna probabilidad, impacto, controles y riesgo residual a cada riesgo."
+                title={t('riskMatrix.informacion.step2Title')}
+                description={t('riskMatrix.informacion.step2Description')}
                 tips={[
-                  'Probabilidad: ¿qué tan probable es que ocurra?',
-                  'Impacto: ¿qué tan grave sería?',
-                  'Usa los criterios de la pestaña Criterios',
+                  t('riskMatrix.informacion.step2Tip1'),
+                  t('riskMatrix.informacion.step2Tip2'),
+                  t('riskMatrix.informacion.step2Tip3'),
                 ]}
               />
               <MatrizTimelineItem
                 numero={3}
                 icon={FaFire}
-                title="Mapa de calor"
-                description="Visualiza inherentes y residuales en la matriz 5×5 con códigos de color."
+                title={t('riskMatrix.informacion.step3Title')}
+                description={t('riskMatrix.informacion.step3Description')}
                 tips={[
-                  'Rojo = prioridad alta, actuar pronto',
-                  'Amarillo = vigilar de cerca',
-                  'Verde = riesgo bajo por ahora',
+                  t('riskMatrix.informacion.step3Tip1'),
+                  t('riskMatrix.informacion.step3Tip2'),
+                  t('riskMatrix.informacion.step3Tip3'),
                 ]}
               />
             </div>
@@ -491,8 +494,8 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
           <div className="categories-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaClipboardList}
-              title="Las 8 categorías de riesgo"
-              description="Marca la categoría que aplique en la tabla de identificación."
+              title={t('riskMatrix.informacion.categoriesHeaderTitle')}
+              description={t('riskMatrix.informacion.categoriesHeaderDescription')}
             />
             <MatrizCategoriasGrid descripciones={DESCRIPCIONES_CATEGORIAS} />
           </div>
@@ -502,208 +505,208 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
           <div className="criteria-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaChartBar}
-              title="Criterios de valoración"
-              description="Escala de probabilidad e impacto para calificar cada riesgo."
+              title={t('riskMatrix.informacion.criteriaHeaderTitle')}
+              description={t('riskMatrix.informacion.criteriaHeaderDescription')}
             />
 
             <div className="criteria-sections">
               <div className="criteria-section">
-                <h3 className={matrizSectionTitle}>Probabilidad: ¿qué tan probable es?</h3>
-                <p>Es como predecir el clima, pero de riesgos</p>
+                <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.probabilitySectionTitle')}</h3>
+                <p>{t('riskMatrix.informacion.probabilitySectionSubtitle')}</p>
                 
                 <div className="probability-cards">
                   <div className="prob-card muy-baja">
                     <div className="prob-header">
                       <span className="prob-number">1</span>
-                      <h4>Muy Baja (Remoto)</h4>
+                      <h4>{t('riskMatrix.informacion.prob1Title')}</h4>
                     </div>
                     <div className="prob-details">
                       <div className="prob-metric">
                         <span className="metric-icon">📅</span>
-                        <span>Máximo 1 vez al año</span>
+                        <span>{t('riskMatrix.informacion.prob1Frequency')}</span>
                       </div>
                       <div className="prob-metric">
                         <span className="metric-icon">📊</span>
-                        <span>0% - 20% de probabilidad</span>
+                        <span>{t('riskMatrix.informacion.prob1Percentage')}</span>
                       </div>
                     </div>
-                    <p className="prob-description">Como que te caiga un meteorito</p>
+                    <p className="prob-description">{t('riskMatrix.informacion.prob1Description')}</p>
                   </div>
 
                   <div className="prob-card baja">
                     <div className="prob-header">
                       <span className="prob-number">2</span>
-                      <h4>Baja (Poco probable)</h4>
+                      <h4>{t('riskMatrix.informacion.prob2Title')}</h4>
                     </div>
                     <div className="prob-details">
                       <div className="prob-metric">
                         <span className="metric-icon">📅</span>
-                        <span>1 vez al año</span>
+                        <span>{t('riskMatrix.informacion.prob2Frequency')}</span>
                       </div>
                       <div className="prob-metric">
                         <span className="metric-icon">📊</span>
-                        <span>21% - 40% de probabilidad</span>
+                        <span>{t('riskMatrix.informacion.prob2Percentage')}</span>
                       </div>
                     </div>
-                    <p className="prob-description">Como que llueva en el desierto</p>
+                    <p className="prob-description">{t('riskMatrix.informacion.prob2Description')}</p>
                   </div>
 
                   <div className="prob-card media">
                     <div className="prob-header">
                       <span className="prob-number">3</span>
-                      <h4>Media (Posible)</h4>
+                      <h4>{t('riskMatrix.informacion.prob3Title')}</h4>
                     </div>
                     <div className="prob-details">
                       <div className="prob-metric">
                         <span className="metric-icon">📅</span>
-                        <span>1 vez cada 6 meses</span>
+                        <span>{t('riskMatrix.informacion.prob3Frequency')}</span>
                       </div>
                       <div className="prob-metric">
                         <span className="metric-icon">📊</span>
-                        <span>41% - 60% de probabilidad</span>
+                        <span>{t('riskMatrix.informacion.prob3Percentage')}</span>
                       </div>
                     </div>
-                    <p className="prob-description">Como que llueva en primavera</p>
+                    <p className="prob-description">{t('riskMatrix.informacion.prob3Description')}</p>
                   </div>
 
                   <div className="prob-card alta">
                     <div className="prob-header">
                       <span className="prob-number">4</span>
-                      <h4>Alta (Probable)</h4>
+                      <h4>{t('riskMatrix.informacion.prob4Title')}</h4>
                     </div>
                     <div className="prob-details">
                       <div className="prob-metric">
                         <span className="metric-icon">📅</span>
-                        <span>1 vez cada 3 meses</span>
+                        <span>{t('riskMatrix.informacion.prob4Frequency')}</span>
                       </div>
                       <div className="prob-metric">
                         <span className="metric-icon">📊</span>
-                        <span>61% - 80% de probabilidad</span>
+                        <span>{t('riskMatrix.informacion.prob4Percentage')}</span>
                       </div>
                     </div>
-                    <p className="prob-description">Como que llueva en invierno</p>
+                    <p className="prob-description">{t('riskMatrix.informacion.prob4Description')}</p>
                   </div>
 
                   <div className="prob-card muy-alta">
                     <div className="prob-header">
                       <span className="prob-number">5</span>
-                      <h4>Muy Alta (Casi seguro)</h4>
+                      <h4>{t('riskMatrix.informacion.prob5Title')}</h4>
                     </div>
                     <div className="prob-details">
                       <div className="prob-metric">
                         <span className="metric-icon">📅</span>
-                        <span>1 vez al mes</span>
+                        <span>{t('riskMatrix.informacion.prob5Frequency')}</span>
                       </div>
                       <div className="prob-metric">
                         <span className="metric-icon">📊</span>
-                        <span>81% - 100% de probabilidad</span>
+                        <span>{t('riskMatrix.informacion.prob5Percentage')}</span>
                       </div>
                     </div>
-                    <p className="prob-description">Como que salga el sol cada día</p>
+                    <p className="prob-description">{t('riskMatrix.informacion.prob5Description')}</p>
                   </div>
                 </div>
               </div>
 
               <div className="criteria-section">
-                <h3 className={matrizSectionTitle}>Impacto: ¿qué tan grave sería?</h3>
-                <p>Es como medir qué tan grande es el problema</p>
+                <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.impactSectionTitle')}</h3>
+                <p>{t('riskMatrix.informacion.impactSectionSubtitle')}</p>
                 
                 <div className="impact-cards">
                   <div className="impact-card insignificante">
                     <div className="impact-header">
                       <span className="impact-number">1</span>
-                      <h4>Insignificante</h4>
+                      <h4>{t('riskMatrix.informacion.impact1Title')}</h4>
                     </div>
                     <div className="impact-areas">
-                      <div className="area-item">💰 <strong>Económico:</strong> Hasta $50 millones</div>
-                      <div className="area-item">⏰ <strong>Operativo:</strong> El evento causa retrasos y/o dificultad en la ejecución de procesos administrativos, sin detenerlos</div>
-                      <div className="area-item">📢 <strong>Reputacional:</strong> El evento afecta la confianza y credibilidad del personal administrativo de la empresa</div>
-                      <div className="area-item">⚖️ <strong>Legal:</strong> Quejas, reclamos u observaciones de miembros de la comunidad empresarial</div>
+                      <div className="area-item">💰 <strong>{t('riskMatrix.informacion.impactAreaEconomic')}</strong> {t('riskMatrix.informacion.impact1Economic')}</div>
+                      <div className="area-item">⏰ <strong>{t('riskMatrix.informacion.impactAreaOperational')}</strong> {t('riskMatrix.informacion.impact1Operational')}</div>
+                      <div className="area-item">📢 <strong>{t('riskMatrix.informacion.impactAreaReputational')}</strong> {t('riskMatrix.informacion.impact1Reputational')}</div>
+                      <div className="area-item">⚖️ <strong>{t('riskMatrix.informacion.impactAreaLegal')}</strong> {t('riskMatrix.informacion.impact1Legal')}</div>
                     </div>
-                    <p className="impact-description">Como un rasguño pequeño</p>
+                    <p className="impact-description">{t('riskMatrix.informacion.impact1Description')}</p>
                   </div>
 
                   <div className="impact-card menor">
                     <div className="impact-header">
                       <span className="impact-number">2</span>
-                      <h4>Menor</h4>
+                      <h4>{t('riskMatrix.informacion.impact2Title')}</h4>
                     </div>
                     <div className="impact-areas">
-                      <div className="area-item">💰 <strong>Económico:</strong> Hasta $100 millones</div>
-                      <div className="area-item">⏰ <strong>Operativo:</strong> El evento causa retrasos y/o dificultad en la ejecución de procesos administrativos, llevando a su detención</div>
-                      <div className="area-item">📢 <strong>Reputacional:</strong> El evento afecta la confianza y credibilidad de los empleados de la empresa</div>
-                      <div className="area-item">⚖️ <strong>Legal:</strong> Incumplimiento de políticas internas, lineamientos, regulaciones y procedimientos</div>
+                      <div className="area-item">💰 <strong>{t('riskMatrix.informacion.impactAreaEconomic')}</strong> {t('riskMatrix.informacion.impact2Economic')}</div>
+                      <div className="area-item">⏰ <strong>{t('riskMatrix.informacion.impactAreaOperational')}</strong> {t('riskMatrix.informacion.impact2Operational')}</div>
+                      <div className="area-item">📢 <strong>{t('riskMatrix.informacion.impactAreaReputational')}</strong> {t('riskMatrix.informacion.impact2Reputational')}</div>
+                      <div className="area-item">⚖️ <strong>{t('riskMatrix.informacion.impactAreaLegal')}</strong> {t('riskMatrix.informacion.impact2Legal')}</div>
                     </div>
-                    <p className="impact-description">Como un golpe en el brazo</p>
+                    <p className="impact-description">{t('riskMatrix.informacion.impact2Description')}</p>
                   </div>
 
                   <div className="impact-card moderado">
                     <div className="impact-header">
                       <span className="impact-number">3</span>
-                      <h4>Moderado</h4>
+                      <h4>{t('riskMatrix.informacion.impact3Title')}</h4>
                     </div>
                     <div className="impact-areas">
-                      <div className="area-item">💰 <strong>Económico:</strong> Hasta $250 millones</div>
-                      <div className="area-item">⏰ <strong>Operativo:</strong> El evento causa retrasos y/o dificultad en la ejecución de procesos misionales críticos, sin detenerlos</div>
-                      <div className="area-item">📢 <strong>Reputacional:</strong> El evento afecta la confianza y credibilidad de los empleados de la empresa y se despliega en redes sociales</div>
-                      <div className="area-item">⚖️ <strong>Legal:</strong> Quejas, reclamos u observaciones de entidades de control o judiciales con plazo para cumplimiento de acciones</div>
+                      <div className="area-item">💰 <strong>{t('riskMatrix.informacion.impactAreaEconomic')}</strong> {t('riskMatrix.informacion.impact3Economic')}</div>
+                      <div className="area-item">⏰ <strong>{t('riskMatrix.informacion.impactAreaOperational')}</strong> {t('riskMatrix.informacion.impact3Operational')}</div>
+                      <div className="area-item">📢 <strong>{t('riskMatrix.informacion.impactAreaReputational')}</strong> {t('riskMatrix.informacion.impact3Reputational')}</div>
+                      <div className="area-item">⚖️ <strong>{t('riskMatrix.informacion.impactAreaLegal')}</strong> {t('riskMatrix.informacion.impact3Legal')}</div>
                     </div>
-                    <p className="impact-description">Como una herida que duele</p>
+                    <p className="impact-description">{t('riskMatrix.informacion.impact3Description')}</p>
                   </div>
 
                   <div className="impact-card mayor">
                     <div className="impact-header">
                       <span className="impact-number">4</span>
-                      <h4>Mayor</h4>
+                      <h4>{t('riskMatrix.informacion.impact4Title')}</h4>
                     </div>
                     <div className="impact-areas">
-                      <div className="area-item">💰 <strong>Económico:</strong> Hasta $500 millones</div>
-                      <div className="area-item">⏰ <strong>Operativo:</strong> El evento causa retrasos y/o dificultad en la ejecución de procesos misionales críticos, hasta su detención</div>
-                      <div className="area-item">📢 <strong>Reputacional:</strong> El evento afecta la confianza y credibilidad del público externo de la empresa (comunidad, proveedores, usuarios, empresas, asociaciones, entre otros) y se despliega en medios de comunicación regionales</div>
-                      <div className="area-item">⚖️ <strong>Legal:</strong> Quejas, reclamos u observaciones de entidades de control o judiciales que impliquen multas o sanciones</div>
+                      <div className="area-item">💰 <strong>{t('riskMatrix.informacion.impactAreaEconomic')}</strong> {t('riskMatrix.informacion.impact4Economic')}</div>
+                      <div className="area-item">⏰ <strong>{t('riskMatrix.informacion.impactAreaOperational')}</strong> {t('riskMatrix.informacion.impact4Operational')}</div>
+                      <div className="area-item">📢 <strong>{t('riskMatrix.informacion.impactAreaReputational')}</strong> {t('riskMatrix.informacion.impact4Reputational')}</div>
+                      <div className="area-item">⚖️ <strong>{t('riskMatrix.informacion.impactAreaLegal')}</strong> {t('riskMatrix.informacion.impact4Legal')}</div>
                     </div>
-                    <p className="impact-description">Como una fractura</p>
+                    <p className="impact-description">{t('riskMatrix.informacion.impact4Description')}</p>
                   </div>
 
                   <div className="impact-card catastrofico">
                     <div className="impact-header">
                       <span className="impact-number">5</span>
-                      <h4>Catastrófico</h4>
+                      <h4>{t('riskMatrix.informacion.impact5Title')}</h4>
                     </div>
                     <div className="impact-areas">
-                      <div className="area-item">💰 <strong>Económico:</strong> Más de $501 millones</div>
-                      <div className="area-item">⏰ <strong>Operativo:</strong> El evento causa retrasos y/o dificultad en la ejecución de procesos misionales críticos y administrativos, llevando a su detención total</div>
-                      <div className="area-item">📢 <strong>Reputacional:</strong> El evento afecta la confianza y credibilidad del público externo de la empresa y se despliega en medios de comunicación nacionales o internacionales</div>
-                      <div className="area-item">⚖️ <strong>Legal:</strong> Intervenciones de entidades de control o judiciales</div>
+                      <div className="area-item">💰 <strong>{t('riskMatrix.informacion.impactAreaEconomic')}</strong> {t('riskMatrix.informacion.impact5Economic')}</div>
+                      <div className="area-item">⏰ <strong>{t('riskMatrix.informacion.impactAreaOperational')}</strong> {t('riskMatrix.informacion.impact5Operational')}</div>
+                      <div className="area-item">📢 <strong>{t('riskMatrix.informacion.impactAreaReputational')}</strong> {t('riskMatrix.informacion.impact5Reputational')}</div>
+                      <div className="area-item">⚖️ <strong>{t('riskMatrix.informacion.impactAreaLegal')}</strong> {t('riskMatrix.informacion.impact5Legal')}</div>
                     </div>
-                    <p className="impact-description">Como un accidente grave</p>
+                    <p className="impact-description">{t('riskMatrix.informacion.impact5Description')}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="tips-section">
-              <h3>💡 Consejos de Experto</h3>
+              <h3>{t('riskMatrix.informacion.expertTipsTitle')}</h3>
               <div className="tips-grid">
                 <div className="tip-card">
                   <span className="tip-icon">📊</span>
-                  <h4>Usa Datos Históricos</h4>
-                  <p>Mira el pasado para predecir el futuro. ¡Es como leer el horóscopo pero con datos reales!</p>
+                  <h4>{t('riskMatrix.informacion.tip1Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tip1Body')}</p>
                 </div>
                 <div className="tip-card">
                   <span className="tip-icon">👥</span>
-                  <h4>Consulta a Expertos</h4>
-                  <p>Pregunta a quienes saben. ¡No seas tímido, todos tienen algo que aportar!</p>
+                  <h4>{t('riskMatrix.informacion.tip2Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tip2Body')}</p>
                 </div>
                 <div className="tip-card">
                   <span className="tip-icon">🎯</span>
-                  <h4>Sé Consistente</h4>
-                  <p>Usa los mismos criterios para todo. ¡Como seguir una receta de cocina!</p>
+                  <h4>{t('riskMatrix.informacion.tip3Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tip3Body')}</p>
                 </div>
                 <div className="tip-card">
                   <span className="tip-icon">🔄</span>
-                  <h4>Revisa Regularmente</h4>
-                  <p>Las cosas cambian. ¡Como actualizar tu teléfono, pero de riesgos!</p>
+                  <h4>{t('riskMatrix.informacion.tip4Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tip4Body')}</p>
                 </div>
               </div>
             </div>
@@ -714,16 +717,17 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
           <div className="heatmap-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaFire}
-              title="Mapa de calor de riesgos"
-              description="Tu brújula visual para priorizar riesgos inherentes y residuales."
+              title={t('riskMatrix.informacion.heatmapHeaderTitle')}
+              description={t('riskMatrix.informacion.heatmapHeaderDescription')}
             />
 
             <div className={`${matrizCard} heatmap-explanation`}>
-              <h3 className={matrizSectionTitle}>¿Qué es un mapa de calor?</h3>
+              <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.heatmapWhatTitle')}</h3>
               <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                Es una visualización que combina la <strong>probabilidad</strong> y el{' '}
-                <strong>impacto</strong> de cada riesgo en una matriz de colores, como un semáforo
-                para priorizar acciones.
+                {t('riskMatrix.informacion.heatmapWhatPart1')} <strong>{t('riskMatrix.informacion.heatmapWhatProbability')}</strong>{' '}
+                {t('riskMatrix.informacion.heatmapWhatPart2')}{' '}
+                <strong>{t('riskMatrix.informacion.heatmapWhatImpact')}</strong>{' '}
+                {t('riskMatrix.informacion.heatmapWhatPart3')}
               </p>
             </div>
 
@@ -731,49 +735,49 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
 
             {/* Cómo Interpretar el Mapa */}
             <div className={`${matrizCard} heatmap-interpretation`}>
-              <h3 className={matrizSectionTitle}>¿Cómo interpretar el mapa?</h3>
+              <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.interpretationTitle')}</h3>
               <p className="interpretation-intro">
-                Cada color tiene un significado específico y te dice exactamente qué acción tomar:
+                {t('riskMatrix.informacion.interpretationIntro')}
               </p>
               
               <div className="interpretation-grid">
                 <div className="interpretation-card critical">
                   <div className="interpretation-icon">🚨</div>
-                  <h4>CRÍTICO</h4>
-                  <p>Riesgos que amenazan la supervivencia de la organización. <strong>Acción inmediata requerida.</strong></p>
+                  <h4>{t('riskMatrix.informacion.interpCriticalLabel')}</h4>
+                  <p>{t('riskMatrix.informacion.interpCriticalBodyPlain')} <strong>{t('riskMatrix.informacion.interpCriticalBodyBold')}</strong></p>
                   <div className="action-required">
-                    <span className="action-label">Acción:</span>
-                    <span className="action-text">Detener operaciones si es necesario</span>
+                    <span className="action-label">{t('riskMatrix.informacion.actionLabel')}</span>
+                    <span className="action-text">{t('riskMatrix.informacion.interpCriticalActionText')}</span>
                   </div>
                 </div>
 
                 <div className="interpretation-card high">
                   <div className="interpretation-icon">🔴</div>
-                  <h4>ALTO</h4>
-                  <p>Riesgos significativos que requieren atención prioritaria. <strong>Plan de acción urgente.</strong></p>
+                  <h4>{t('riskMatrix.informacion.interpHighLabel')}</h4>
+                  <p>{t('riskMatrix.informacion.interpHighBodyPlain')} <strong>{t('riskMatrix.informacion.interpHighBodyBold')}</strong></p>
                   <div className="action-required">
-                    <span className="action-label">Acción:</span>
-                    <span className="action-text">Implementar controles inmediatamente</span>
+                    <span className="action-label">{t('riskMatrix.informacion.actionLabel')}</span>
+                    <span className="action-text">{t('riskMatrix.informacion.interpHighActionText')}</span>
                   </div>
                 </div>
 
                 <div className="interpretation-card medium">
                   <div className="interpretation-icon">🟡</div>
-                  <h4>MEDIO</h4>
-                  <p>Riesgos moderados que necesitan monitoreo y planificación. <strong>Vigilancia activa.</strong></p>
+                  <h4>{t('riskMatrix.informacion.interpMediumLabel')}</h4>
+                  <p>{t('riskMatrix.informacion.interpMediumBodyPlain')} <strong>{t('riskMatrix.informacion.interpMediumBodyBold')}</strong></p>
                   <div className="action-required">
-                    <span className="action-label">Acción:</span>
-                    <span className="action-text">Desarrollar plan de mitigación</span>
+                    <span className="action-label">{t('riskMatrix.informacion.actionLabel')}</span>
+                    <span className="action-text">{t('riskMatrix.informacion.interpMediumActionText')}</span>
                   </div>
                 </div>
 
                 <div className="interpretation-card low">
                   <div className="interpretation-icon">🟢</div>
-                  <h4>BAJO</h4>
-                  <p>Riesgos menores que pueden ser aceptados o manejados con controles básicos. <strong>Monitoreo rutinario.</strong></p>
+                  <h4>{t('riskMatrix.informacion.interpLowLabel')}</h4>
+                  <p>{t('riskMatrix.informacion.interpLowBodyPlain')} <strong>{t('riskMatrix.informacion.interpLowBodyBold')}</strong></p>
                   <div className="action-required">
-                    <span className="action-label">Acción:</span>
-                    <span className="action-text">Monitorear periódicamente</span>
+                    <span className="action-label">{t('riskMatrix.informacion.actionLabel')}</span>
+                    <span className="action-text">{t('riskMatrix.informacion.interpLowActionText')}</span>
                   </div>
                 </div>
               </div>
@@ -781,63 +785,64 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
 
             {/* Por qué es importante */}
             <div className={`${matrizCard} heatmap-importance`}>
-              <h3 className={matrizSectionTitle}>¿Por qué es importante el mapa de calor?</h3>
+              <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.importanceTitle')}</h3>
               <p className="importance-intro">
-                El Mapa de Calor no es solo una visualización bonita, es tu <strong>brújula estratégica</strong> para tomar decisiones inteligentes.
+                {t('riskMatrix.informacion.importanceIntroPrefix')} <strong>{t('riskMatrix.informacion.importanceIntroBold')}</strong>{' '}
+                {t('riskMatrix.informacion.importanceIntroSuffix')}
               </p>
               
               <div className="importance-grid">
                 <div className="importance-card priority">
                   <div className="importance-icon">🎯</div>
-                  <h4>Priorización Inteligente</h4>
-                  <p>Identifica instantáneamente qué riesgos necesitan atención inmediata. Los colores te dicen todo: <span className="highlight red">🔴 Rojos = ¡Acción YA!</span>, <span className="highlight yellow">🟡 Amarillos = Vigila</span>, <span className="highlight green">🟢 Verdes = Todo bien</span></p>
+                  <h4>{t('riskMatrix.informacion.importancePriorityTitle')}</h4>
+                  <p>{t('riskMatrix.informacion.importancePriorityBodyPrefix')} <span className="highlight red">{t('riskMatrix.informacion.importancePriorityRed')}</span>, <span className="highlight yellow">{t('riskMatrix.informacion.importancePriorityYellow')}</span>, <span className="highlight green">{t('riskMatrix.informacion.importancePriorityGreen')}</span></p>
                 </div>
 
                 <div className="importance-card decision">
                   <div className="importance-icon">📈</div>
-                  <h4>Decisiones Basadas en Datos</h4>
-                  <p>No más decisiones a ciegas. El mapa te muestra exactamente dónde invertir tu tiempo y recursos para obtener el mayor impacto en la reducción de riesgos.</p>
+                  <h4>{t('riskMatrix.informacion.importanceDecisionTitle')}</h4>
+                  <p>{t('riskMatrix.informacion.importanceDecisionBody')}</p>
                 </div>
 
                 <div className="importance-card communication">
                   <div className="importance-icon">💬</div>
-                  <h4>Comunicación Efectiva</h4>
-                  <p>Explica riesgos complejos a cualquier audiencia. Un mapa visual es universal: ejecutivos, equipos técnicos y stakeholders entienden inmediatamente la situación.</p>
+                  <h4>{t('riskMatrix.informacion.importanceCommunicationTitle')}</h4>
+                  <p>{t('riskMatrix.informacion.importanceCommunicationBody')}</p>
                 </div>
 
                 <div className="importance-card resource">
                   <div className="importance-icon">💰</div>
-                  <h4>Optimización de Recursos</h4>
-                  <p>Maximiza tu presupuesto asignando recursos donde realmente importan. Evita desperdiciar dinero en riesgos menores cuando hay problemas mayores.</p>
+                  <h4>{t('riskMatrix.informacion.importanceResourceTitle')}</h4>
+                  <p>{t('riskMatrix.informacion.importanceResourceBody')}</p>
                 </div>
 
                 <div className="importance-card compliance">
                   <div className="importance-icon">⚖️</div>
-                  <h4>Cumplimiento Regulatorio</h4>
-                  <p>Demuestra a auditores y reguladores que tienes un proceso estructurado de gestión de riesgos. Es tu evidencia de que estás siendo proactivo.</p>
+                  <h4>{t('riskMatrix.informacion.importanceComplianceTitle')}</h4>
+                  <p>{t('riskMatrix.informacion.importanceComplianceBody')}</p>
                 </div>
 
                 <div className="importance-card competitive">
                   <div className="importance-icon">🏆</div>
-                  <h4>Ventaja Competitiva</h4>
-                  <p>Las empresas que gestionan riesgos bien sobreviven mejor a las crisis. Es tu seguro de supervivencia empresarial en tiempos turbulentos.</p>
+                  <h4>{t('riskMatrix.informacion.importanceCompetitiveTitle')}</h4>
+                  <p>{t('riskMatrix.informacion.importanceCompetitiveBody')}</p>
                 </div>
               </div>
 
               <div className="impact-stats">
-                <h4>📊 El Impacto Real del Mapa de Calor:</h4>
+                <h4>{t('riskMatrix.informacion.impactStatsTitle')}</h4>
                 <div className="stats-grid">
                   <div className="stat-highlight">
-                    <span className="stat-number">85%</span>
-                    <span className="stat-text">de las empresas que usan mapas de calor toman mejores decisiones</span>
+                    <span className="stat-number">{t('riskMatrix.informacion.stat1Number')}</span>
+                    <span className="stat-text">{t('riskMatrix.informacion.stat1Text')}</span>
                   </div>
                   <div className="stat-highlight">
-                    <span className="stat-number">60%</span>
-                    <span className="stat-text">reducción en tiempo de análisis de riesgos</span>
+                    <span className="stat-number">{t('riskMatrix.informacion.stat2Number')}</span>
+                    <span className="stat-text">{t('riskMatrix.informacion.stat2Text')}</span>
                   </div>
                   <div className="stat-highlight">
-                    <span className="stat-number">90%</span>
-                    <span className="stat-text">mejora en comunicación con stakeholders</span>
+                    <span className="stat-number">{t('riskMatrix.informacion.stat3Number')}</span>
+                    <span className="stat-text">{t('riskMatrix.informacion.stat3Text')}</span>
                   </div>
                 </div>
               </div>
@@ -845,38 +850,38 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
 
             {/* Cómo Usar el Mapa */}
             <div className="heatmap-usage">
-              <h3>🚀 ¿Cómo Usar el Mapa de Calor?</h3>
+              <h3>{t('riskMatrix.informacion.usageTitle')}</h3>
               
               <div className="usage-steps">
                 <div className="usage-step">
                   <div className="step-number">1</div>
                   <div className="step-content">
-                    <h4>Identifica Riesgos</h4>
-                    <p>Primero necesitas tener riesgos identificados y categorizados. Usa la pestaña de Identificación.</p>
+                    <h4>{t('riskMatrix.informacion.usageStep1Title')}</h4>
+                    <p>{t('riskMatrix.informacion.usageStep1Body')}</p>
                   </div>
                 </div>
 
                 <div className="usage-step">
                   <div className="step-number">2</div>
                   <div className="step-content">
-                    <h4>Evalúa Probabilidad e Impacto</h4>
-                    <p>Asigna valores de probabilidad e impacto a cada riesgo usando los criterios establecidos.</p>
+                    <h4>{t('riskMatrix.informacion.usageStep2Title')}</h4>
+                    <p>{t('riskMatrix.informacion.usageStep2Body')}</p>
                   </div>
                 </div>
 
                 <div className="usage-step">
                   <div className="step-number">3</div>
                   <div className="step-content">
-                    <h4>Visualiza en el Mapa</h4>
-                    <p>El mapa se genera automáticamente mostrando cada riesgo en su posición correspondiente.</p>
+                    <h4>{t('riskMatrix.informacion.usageStep3Title')}</h4>
+                    <p>{t('riskMatrix.informacion.usageStep3Body')}</p>
                   </div>
                 </div>
 
                 <div className="usage-step">
                   <div className="step-number">4</div>
                   <div className="step-content">
-                    <h4>Toma Acciones</h4>
-                    <p>Enfócate en los riesgos rojos primero, luego amarillos, y mantén vigilancia en los verdes.</p>
+                    <h4>{t('riskMatrix.informacion.usageStep4Title')}</h4>
+                    <p>{t('riskMatrix.informacion.usageStep4Body')}</p>
                   </div>
                 </div>
               </div>
@@ -884,14 +889,14 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
 
             {/* Call to Action específico */}
             <div className="heatmap-cta">
-              <h3>🎯 ¿Listo para Crear tu Mapa de Calor?</h3>
-              <p>Ahora que entiendes la importancia y el funcionamiento del Mapa de Calor, es hora de ponerlo en práctica.</p>
+              <h3>{t('riskMatrix.informacion.heatmapCtaTitle')}</h3>
+              <p>{t('riskMatrix.informacion.heatmapCtaBody')}</p>
               <div className="heatmap-cta-buttons">
                 <button className="cta-button primary">
-                  🔍 Ir a Identificación
+                  {t('riskMatrix.informacion.heatmapCtaButtonIdentification')}
                 </button>
                 <button className="cta-button secondary">
-                  📊 Ir a Valoración
+                  {t('riskMatrix.informacion.heatmapCtaButtonAssessment')}
                 </button>
               </div>
             </div>
@@ -902,99 +907,98 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
           <div className="gestion-tab space-y-4">
             <MatrizTabEncabezado
               icon={FaShieldAlt}
-              title="Gestión de riesgos y recomendaciones"
-              description="Documenta recomendaciones, fechas y seguimiento de avances."
+              title={t('riskMatrix.informacion.gestionHeaderTitle')}
+              description={t('riskMatrix.informacion.gestionHeaderDescription')}
             />
 
             {/* ¿Por qué son importantes las recomendaciones? */}
             <div className={`${matrizCard} gestion-explanation`}>
-              <h3 className={matrizSectionTitle}>¿Por qué son importantes las recomendaciones?</h3>
+              <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.gestionWhyTitle')}</h3>
               <p className="explanation-text">
-                Las recomendaciones son el <strong>puente entre la identificación de riesgos y la acción</strong>. 
-                Sin recomendaciones claras y específicas, los riesgos identificados se quedan como simples 
-                observaciones sin seguimiento ni resolución.
+                {t('riskMatrix.informacion.gestionWhyBodyPrefix')} <strong>{t('riskMatrix.informacion.gestionWhyBodyBold')}</strong>. 
+                {' '}{t('riskMatrix.informacion.gestionWhyBodySuffix')}
               </p>
             </div>
 
             {/* Beneficios de las Recomendaciones */}
             <div className={`${matrizCard} beneficios-section`}>
-              <h3 className={matrizSectionTitle}>Beneficios de implementar recomendaciones</h3>
-              <p className="beneficios-intro">Las recomendaciones bien implementadas transforman tu organización:</p>
+              <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.benefitsTitle')}</h3>
+              <p className="beneficios-intro">{t('riskMatrix.informacion.benefitsIntro')}</p>
               
               <div className="beneficios-grid">
                 <div className="beneficio-card">
                   <div className="beneficio-icon">🎯</div>
-                  <h4>Acción Dirigida</h4>
-                  <p>Conviertes problemas identificados en soluciones específicas y medibles</p>
+                  <h4>{t('riskMatrix.informacion.benefit1Title')}</h4>
+                  <p>{t('riskMatrix.informacion.benefit1Body')}</p>
                 </div>
 
                 <div className="beneficio-card">
                   <div className="beneficio-icon">📈</div>
-                  <h4>Mejora Continua</h4>
-                  <p>Cada recomendación implementada fortalece tu organización</p>
+                  <h4>{t('riskMatrix.informacion.benefit2Title')}</h4>
+                  <p>{t('riskMatrix.informacion.benefit2Body')}</p>
                 </div>
 
                 <div className="beneficio-card">
                   <div className="beneficio-icon">🛡️</div>
-                  <h4>Protección Proactiva</h4>
-                  <p>Previenes problemas antes de que se conviertan en crisis</p>
+                  <h4>{t('riskMatrix.informacion.benefit3Title')}</h4>
+                  <p>{t('riskMatrix.informacion.benefit3Body')}</p>
                 </div>
 
                 <div className="beneficio-card">
                   <div className="beneficio-icon">💰</div>
-                  <h4>Ahorro de Costos</h4>
-                  <p>Es más barato prevenir que corregir después</p>
+                  <h4>{t('riskMatrix.informacion.benefit4Title')}</h4>
+                  <p>{t('riskMatrix.informacion.benefit4Body')}</p>
                 </div>
 
                 <div className="beneficio-card">
                   <div className="beneficio-icon">👥</div>
-                  <h4>Compromiso del Equipo</h4>
-                  <p>Involucra a todos en la mejora de procesos</p>
+                  <h4>{t('riskMatrix.informacion.benefit5Title')}</h4>
+                  <p>{t('riskMatrix.informacion.benefit5Body')}</p>
                 </div>
 
                 <div className="beneficio-card">
                   <div className="beneficio-icon">📊</div>
-                  <h4>Medición de Progreso</h4>
-                  <p>Puedes medir el impacto de tus acciones</p>
+                  <h4>{t('riskMatrix.informacion.benefit6Title')}</h4>
+                  <p>{t('riskMatrix.informacion.benefit6Body')}</p>
                 </div>
               </div>
             </div>
 
             {/* Proceso de Recomendaciones */}
             <div className={`${matrizCard} proceso-section`}>
-              <h3 className={matrizSectionTitle}>Proceso de recomendaciones</h3>
-              <p className="proceso-intro">Sigue estos pasos para maximizar el impacto de tus recomendaciones:</p>
+              <h3 className={matrizSectionTitle}>{t('riskMatrix.informacion.recProcessTitle')}</h3>
+              <p className="proceso-intro">{t('riskMatrix.informacion.recProcessIntro')}</p>
               
               <div className="proceso-timeline">
                 <div className="proceso-item">
                   <div className="proceso-number">1</div>
                   <div className="proceso-content">
-                    <h4>📝 Identificar</h4>
-                    <p>Detecta oportunidades de mejora basadas en los riesgos encontrados</p>
+                    <h4>{t('riskMatrix.informacion.recProcess1Title')}</h4>
+                    <p>{t('riskMatrix.informacion.recProcess1Body')}</p>
                   </div>
                 </div>
 
                 <div className="proceso-item">
                   <div className="proceso-number">2</div>
                   <div className="proceso-content">
-                    <h4>📋 Documentar</h4>
-                    <p>Registra la recomendación con fechas y responsables claros</p>
+                    <h4>{t('riskMatrix.informacion.recProcess2Title')}</h4>
+                    <p>{t('riskMatrix.informacion.recProcess2Body')}</p>
                   </div>
                 </div>
 
                 <div className="proceso-item">
                   <div className="proceso-number">3</div>
                   <div className="proceso-content">
-                    <h4>🎯 Implementar</h4>
-                    <p>Ejecuta la recomendación con seguimiento detallado</p>
+                    <h4>{t('riskMatrix.informacion.recProcess3Title')}</h4>
+                    <p>{t('riskMatrix.informacion.recProcess3Body')}</p>
                   </div>
                 </div>
 
                 <div className="proceso-item">
                   <div className="proceso-number">4</div>
                   <div className="proceso-content">
-                    <h4>📊 Medir</h4>
-                    <p>Evalúa el impacto y documenta los resultados</p>
+                    <h4>{t('riskMatrix.informacion.recProcess4Title')}</h4>
+                    <p>{t('riskMatrix.informacion.recProcess4Body')}</p>
                   </div>
                 </div>
               </div>
@@ -1002,112 +1006,112 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
 
             {/* Call to Action */}
             <div className="gestion-cta">
-              <h3>🚀 ¿Listo para Crear tus Recomendaciones?</h3>
-              <p>Ve a la sección "Gestión de Riesgos" para comenzar a registrar y dar seguimiento a tus recomendaciones.</p>
+              <h3>{t('riskMatrix.informacion.gestionCta1Title')}</h3>
+              <p>{t('riskMatrix.informacion.gestionCta1Body')}</p>
               <div className="gestion-cta-buttons">
                 <button className="cta-button primary" onClick={() => window.location.hash = '#gestion-riesgos'}>
-                  🛡️ Ir a Gestión de Riesgos
+                  {t('riskMatrix.informacion.gestionCta1Button')}
                 </button>
               </div>
             </div>
 
             {/* ¿Qué es la Gestión de Riesgos? */}
             <div className="gestion-explanation">
-              <h3>🎯 ¿Qué es la Gestión de Riesgos?</h3>
+              <h3>{t('riskMatrix.informacion.whatIsTitle')}</h3>
               <p className="explanation-text">
-                La Gestión de Riesgos es el proceso de <strong>identificar, evaluar y controlar</strong> 
-                amenazas que podrían afectar tu organización. Es como tener un <strong>plan de defensa</strong> 
-                que te prepara para cualquier situación.
+                {t('riskMatrix.informacion.whatIsBodyPrefix')} <strong>{t('riskMatrix.informacion.whatIsBodyBold1')}</strong>{' '}
+                {t('riskMatrix.informacion.whatIsBodyMiddle')} <strong>{t('riskMatrix.informacion.whatIsBodyBold2')}</strong>{' '}
+                {t('riskMatrix.informacion.whatIsBodySuffix')}
               </p>
             </div>
 
             {/* Estrategias de Gestión */}
             <div className="estrategias-section">
-              <h3>🚀 Estrategias de Gestión</h3>
-              <p className="estrategias-intro">Cada riesgo requiere un enfoque diferente. Aquí tienes las estrategias más efectivas:</p>
+              <h3>{t('riskMatrix.informacion.strategiesTitle')}</h3>
+              <p className="estrategias-intro">{t('riskMatrix.informacion.strategiesIntro')}</p>
               
               <div className="estrategias-grid">
                 <div className="estrategia-card evitar">
                   <div className="estrategia-header">
                     <span className="estrategia-icon">🚫</span>
-                    <h4>Evitar</h4>
+                    <h4>{t('riskMatrix.informacion.strategyAvoidTitle')}</h4>
                   </div>
                   <p className="estrategia-description">
-                    <strong>Eliminar completamente el riesgo</strong> cambiando la actividad o proceso que lo genera.
+                    <strong>{t('riskMatrix.informacion.strategyAvoidDescBold')}</strong> {t('riskMatrix.informacion.strategyAvoidDescSuffix')}
                   </p>
                   <div className="estrategia-ejemplos">
-                    <h5>Ejemplos:</h5>
+                    <h5>{t('riskMatrix.informacion.examplesLabel')}</h5>
                     <ul>
-                      <li>No realizar actividades peligrosas</li>
-                      <li>Cambiar de proveedor problemático</li>
-                      <li>Eliminar procesos obsoletos</li>
+                      <li>{t('riskMatrix.informacion.strategyAvoidEx1')}</li>
+                      <li>{t('riskMatrix.informacion.strategyAvoidEx2')}</li>
+                      <li>{t('riskMatrix.informacion.strategyAvoidEx3')}</li>
                     </ul>
                   </div>
                   <div className="estrategia-cuando">
-                    <strong>Cuándo usar:</strong> Riesgos críticos que no se pueden controlar
+                    <strong>{t('riskMatrix.informacion.whenToUseLabel')}</strong> {t('riskMatrix.informacion.strategyAvoidWhen')}
                   </div>
                 </div>
 
                 <div className="estrategia-card mitigar">
                   <div className="estrategia-header">
                     <span className="estrategia-icon">🛡️</span>
-                    <h4>Mitigar</h4>
+                    <h4>{t('riskMatrix.informacion.strategyMitigateTitle')}</h4>
                   </div>
                   <p className="estrategia-description">
-                    <strong>Reducir la probabilidad o impacto</strong> del riesgo implementando controles.
+                    <strong>{t('riskMatrix.informacion.strategyMitigateDescBold')}</strong> {t('riskMatrix.informacion.strategyMitigateDescSuffix')}
                   </p>
                   <div className="estrategia-ejemplos">
-                    <h5>Ejemplos:</h5>
+                    <h5>{t('riskMatrix.informacion.examplesLabel')}</h5>
                     <ul>
-                      <li>Capacitación del personal</li>
-                      <li>Implementar sistemas de seguridad</li>
-                      <li>Establecer procedimientos</li>
+                      <li>{t('riskMatrix.informacion.strategyMitigateEx1')}</li>
+                      <li>{t('riskMatrix.informacion.strategyMitigateEx2')}</li>
+                      <li>{t('riskMatrix.informacion.strategyMitigateEx3')}</li>
                     </ul>
                   </div>
                   <div className="estrategia-cuando">
-                    <strong>Cuándo usar:</strong> Riesgos altos que se pueden controlar
+                    <strong>{t('riskMatrix.informacion.whenToUseLabel')}</strong> {t('riskMatrix.informacion.strategyMitigateWhen')}
                   </div>
                 </div>
 
                 <div className="estrategia-card transferir">
                   <div className="estrategia-header">
                     <span className="estrategia-icon">🔄</span>
-                    <h4>Transferir</h4>
+                    <h4>{t('riskMatrix.informacion.strategyTransferTitle')}</h4>
                   </div>
                   <p className="estrategia-description">
-                    <strong>Pasar el riesgo a un tercero</strong> como una aseguradora o socio.
+                    <strong>{t('riskMatrix.informacion.strategyTransferDescBold')}</strong> {t('riskMatrix.informacion.strategyTransferDescSuffix')}
                   </p>
                   <div className="estrategia-ejemplos">
-                    <h5>Ejemplos:</h5>
+                    <h5>{t('riskMatrix.informacion.examplesLabel')}</h5>
                     <ul>
-                      <li>Contratar seguros</li>
-                      <li>Subcontratar servicios</li>
-                      <li>Crear alianzas estratégicas</li>
+                      <li>{t('riskMatrix.informacion.strategyTransferEx1')}</li>
+                      <li>{t('riskMatrix.informacion.strategyTransferEx2')}</li>
+                      <li>{t('riskMatrix.informacion.strategyTransferEx3')}</li>
                     </ul>
                   </div>
                   <div className="estrategia-cuando">
-                    <strong>Cuándo usar:</strong> Riesgos especializados o costosos de manejar
+                    <strong>{t('riskMatrix.informacion.whenToUseLabel')}</strong> {t('riskMatrix.informacion.strategyTransferWhen')}
                   </div>
                 </div>
 
                 <div className="estrategia-card aceptar">
                   <div className="estrategia-header">
                     <span className="estrategia-icon">✅</span>
-                    <h4>Aceptar</h4>
+                    <h4>{t('riskMatrix.informacion.strategyAcceptTitle')}</h4>
                   </div>
                   <p className="estrategia-description">
-                    <strong>Asumir el riesgo</strong> cuando el costo de controlarlo es mayor que el impacto.
+                    <strong>{t('riskMatrix.informacion.strategyAcceptDescBold')}</strong> {t('riskMatrix.informacion.strategyAcceptDescSuffix')}
                   </p>
                   <div className="estrategia-ejemplos">
-                    <h5>Ejemplos:</h5>
+                    <h5>{t('riskMatrix.informacion.examplesLabel')}</h5>
                     <ul>
-                      <li>Riesgos menores con bajo impacto</li>
-                      <li>Riesgos inevitables del negocio</li>
-                      <li>Riesgos con costos de control muy altos</li>
+                      <li>{t('riskMatrix.informacion.strategyAcceptEx1')}</li>
+                      <li>{t('riskMatrix.informacion.strategyAcceptEx2')}</li>
+                      <li>{t('riskMatrix.informacion.strategyAcceptEx3')}</li>
                     </ul>
                   </div>
                   <div className="estrategia-cuando">
-                    <strong>Cuándo usar:</strong> Riesgos bajos o cuando el control es muy costoso
+                    <strong>{t('riskMatrix.informacion.whenToUseLabel')}</strong> {t('riskMatrix.informacion.strategyAcceptWhen')}
                   </div>
                 </div>
               </div>
@@ -1115,26 +1119,26 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
 
             {/* Plan de Acción */}
             <div className="plan-accion-section">
-              <h3>📋 Plan de Acción por Nivel de Riesgo</h3>
-              <p className="plan-intro">Cada nivel de riesgo requiere acciones específicas:</p>
+              <h3>{t('riskMatrix.informacion.actionPlanTitle')}</h3>
+              <p className="plan-intro">{t('riskMatrix.informacion.actionPlanIntro')}</p>
               
               <div className="plan-grid">
                 <div className="plan-card critico">
                   <div className="plan-header">
                     <span className="plan-icon">🚨</span>
-                    <h4>Riesgos Críticos</h4>
+                    <h4>{t('riskMatrix.informacion.planCriticalTitle')}</h4>
                     <span className="plan-color red"></span>
                   </div>
                   <div className="plan-acciones">
-                    <h5>Acciones Inmediatas:</h5>
+                    <h5>{t('riskMatrix.informacion.planCriticalActionsLabel')}</h5>
                     <ul>
-                      <li>Detener la actividad si es posible</li>
-                      <li>Implementar controles de emergencia</li>
-                      <li>Asignar recursos prioritarios</li>
-                      <li>Revisión diaria del estado</li>
+                      <li>{t('riskMatrix.informacion.planCriticalAction1')}</li>
+                      <li>{t('riskMatrix.informacion.planCriticalAction2')}</li>
+                      <li>{t('riskMatrix.informacion.planCriticalAction3')}</li>
+                      <li>{t('riskMatrix.informacion.planCriticalAction4')}</li>
                     </ul>
                     <div className="plan-tiempo">
-                      <strong>⏰ Tiempo:</strong> Inmediato (0-24 horas)
+                      <strong>{t('riskMatrix.informacion.timeLabel')}</strong> {t('riskMatrix.informacion.planCriticalTime')}
                     </div>
                   </div>
                 </div>
@@ -1142,19 +1146,19 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                 <div className="plan-card alto">
                   <div className="plan-header">
                     <span className="plan-icon">🔴</span>
-                    <h4>Riesgos Altos</h4>
+                    <h4>{t('riskMatrix.informacion.planHighTitle')}</h4>
                     <span className="plan-color orange"></span>
                   </div>
                   <div className="plan-acciones">
-                    <h5>Acciones Urgentes:</h5>
+                    <h5>{t('riskMatrix.informacion.planHighActionsLabel')}</h5>
                     <ul>
-                      <li>Desarrollar plan de mitigación</li>
-                      <li>Asignar responsable específico</li>
-                      <li>Implementar controles preventivos</li>
-                      <li>Revisión semanal</li>
+                      <li>{t('riskMatrix.informacion.planHighAction1')}</li>
+                      <li>{t('riskMatrix.informacion.planHighAction2')}</li>
+                      <li>{t('riskMatrix.informacion.planHighAction3')}</li>
+                      <li>{t('riskMatrix.informacion.planHighAction4')}</li>
                     </ul>
                     <div className="plan-tiempo">
-                      <strong>⏰ Tiempo:</strong> Urgente (1-7 días)
+                      <strong>{t('riskMatrix.informacion.timeLabel')}</strong> {t('riskMatrix.informacion.planHighTime')}
                     </div>
                   </div>
                 </div>
@@ -1162,19 +1166,19 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                 <div className="plan-card medio">
                   <div className="plan-header">
                     <span className="plan-icon">🟡</span>
-                    <h4>Riesgos Medios</h4>
+                    <h4>{t('riskMatrix.informacion.planMediumTitle')}</h4>
                     <span className="plan-color yellow"></span>
                   </div>
                   <div className="plan-acciones">
-                    <h5>Acciones Planificadas:</h5>
+                    <h5>{t('riskMatrix.informacion.planMediumActionsLabel')}</h5>
                     <ul>
-                      <li>Evaluar opciones de control</li>
-                      <li>Desarrollar cronograma</li>
-                      <li>Asignar recursos moderados</li>
-                      <li>Revisión mensual</li>
+                      <li>{t('riskMatrix.informacion.planMediumAction1')}</li>
+                      <li>{t('riskMatrix.informacion.planMediumAction2')}</li>
+                      <li>{t('riskMatrix.informacion.planMediumAction3')}</li>
+                      <li>{t('riskMatrix.informacion.planMediumAction4')}</li>
                     </ul>
                     <div className="plan-tiempo">
-                      <strong>⏰ Tiempo:</strong> Planificado (1-4 semanas)
+                      <strong>{t('riskMatrix.informacion.timeLabel')}</strong> {t('riskMatrix.informacion.planMediumTime')}
                     </div>
                   </div>
                 </div>
@@ -1182,19 +1186,19 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
                 <div className="plan-card bajo">
                   <div className="plan-header">
                     <span className="plan-icon">🟢</span>
-                    <h4>Riesgos Bajos</h4>
+                    <h4>{t('riskMatrix.informacion.planLowTitle')}</h4>
                     <span className="plan-color green"></span>
                   </div>
                   <div className="plan-acciones">
-                    <h5>Acciones de Monitoreo:</h5>
+                    <h5>{t('riskMatrix.informacion.planLowActionsLabel')}</h5>
                     <ul>
-                      <li>Monitoreo rutinario</li>
-                      <li>Documentar estado</li>
-                      <li>Revisión periódica</li>
-                      <li>Mantener controles básicos</li>
+                      <li>{t('riskMatrix.informacion.planLowAction1')}</li>
+                      <li>{t('riskMatrix.informacion.planLowAction2')}</li>
+                      <li>{t('riskMatrix.informacion.planLowAction3')}</li>
+                      <li>{t('riskMatrix.informacion.planLowAction4')}</li>
                     </ul>
                     <div className="plan-tiempo">
-                      <strong>⏰ Tiempo:</strong> Continuo (revisión trimestral)
+                      <strong>{t('riskMatrix.informacion.timeLabel')}</strong> {t('riskMatrix.informacion.planLowTime')}
                     </div>
                   </div>
                 </div>
@@ -1203,58 +1207,58 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
 
             {/* Herramientas de Gestión */}
             <div className="herramientas-section">
-              <h3>🔧 Herramientas de Gestión</h3>
-              <p className="herramientas-intro">Utiliza estas herramientas para implementar tu plan de gestión:</p>
+              <h3>{t('riskMatrix.informacion.toolsTitle')}</h3>
+              <p className="herramientas-intro">{t('riskMatrix.informacion.toolsIntro')}</p>
               
               <div className="herramientas-grid">
                 <div className="herramienta-card">
                   <div className="herramienta-icon">📊</div>
-                  <h4>Matriz de Riesgos</h4>
-                  <p>Visualiza y prioriza tus riesgos de forma clara y profesional</p>
+                  <h4>{t('riskMatrix.informacion.tool1Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tool1Body')}</p>
                 </div>
                 
                 <div className="herramienta-card">
                   <div className="herramienta-icon">📋</div>
-                  <h4>Planes de Acción</h4>
-                  <p>Desarrolla estrategias específicas para cada riesgo identificado</p>
+                  <h4>{t('riskMatrix.informacion.tool2Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tool2Body')}</p>
                 </div>
                 
                 <div className="herramienta-card">
                   <div className="herramienta-icon">👥</div>
-                  <h4>Asignación de Responsables</h4>
-                  <p>Define quién se encarga de cada acción y cuándo</p>
+                  <h4>{t('riskMatrix.informacion.tool3Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tool3Body')}</p>
                 </div>
                 
                 <div className="herramienta-card">
                   <div className="herramienta-icon">📅</div>
-                  <h4>Cronogramas</h4>
-                  <p>Establece fechas límite y seguimiento de progreso</p>
+                  <h4>{t('riskMatrix.informacion.tool4Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tool4Body')}</p>
                 </div>
                 
                 <div className="herramienta-card">
                   <div className="herramienta-icon">💰</div>
-                  <h4>Presupuestos</h4>
-                  <p>Asigna recursos financieros para implementar controles</p>
+                  <h4>{t('riskMatrix.informacion.tool5Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tool5Body')}</p>
                 </div>
                 
                 <div className="herramienta-card">
                   <div className="herramienta-icon">📈</div>
-                  <h4>Indicadores</h4>
-                  <p>Mide la efectividad de tus acciones de gestión</p>
+                  <h4>{t('riskMatrix.informacion.tool6Title')}</h4>
+                  <p>{t('riskMatrix.informacion.tool6Body')}</p>
                 </div>
               </div>
             </div>
 
             {/* Call to Action */}
             <div className="gestion-cta">
-              <h3>🎯 ¿Listo para Gestionar tus Riesgos?</h3>
-              <p>Ahora que conoces las estrategias, es hora de implementarlas en tu organización.</p>
+              <h3>{t('riskMatrix.informacion.gestionCta2Title')}</h3>
+              <p>{t('riskMatrix.informacion.gestionCta2Body')}</p>
               <div className="gestion-cta-buttons">
                 <button className="cta-button primary">
-                  🔍 Ver Mis Riesgos
+                  {t('riskMatrix.informacion.gestionCta2ButtonView')}
                 </button>
                 <button className="cta-button secondary">
-                  📊 Crear Plan de Acción
+                  {t('riskMatrix.informacion.gestionCta2ButtonPlan')}
                 </button>
               </div>
             </div>

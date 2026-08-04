@@ -1,8 +1,10 @@
 import React, { useRef } from "react";
+import { useTranslation } from 'react-i18next';
 import Select from "react-select";
 import { useTheme } from '../../context/ThemeContext';
 
 function DropZone({ onFile, label, existingFile }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const inputRef = useRef();
   const [isDragActive, setIsDragActive] = React.useState(false);
@@ -76,7 +78,7 @@ function DropZone({ onFile, label, existingFile }) {
           className="text-xs mt-1"
           style={{ color: textSecondary }}
         >
-          Arrastra un archivo o haz clic aquí
+          {t('risks.ui.dropzone.drag_or_click')}
         </div>
         {existingFile && (
           <div 
@@ -92,6 +94,7 @@ function DropZone({ onFile, label, existingFile }) {
 }
 
 export default function SeguimientoRiesgo({ formData, setFormData, ciudades = [] }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -116,7 +119,7 @@ export default function SeguimientoRiesgo({ formData, setFormData, ciudades = []
         className="text-lg sm:text-xl lg:text-2xl font-bold mb-4 sm:mb-6"
         style={{ color: theme === 'dark' ? '#FFFFFF' : '#1E40AF' }}
       >
-        Seguimiento de Riesgo
+{t('risks.ui.seguimiento_riesgo.titulo')}
       </h2>
 
       {/* Select ciudad y consecutivo */}
@@ -126,13 +129,13 @@ export default function SeguimientoRiesgo({ formData, setFormData, ciudades = []
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Ciudad Sucursal Aseguradora
+{t('risks.ui.seguimiento_riesgo.ciudad_sucursal')}
           </label>
           <Select
             options={ciudades}
             value={ciudadSeleccionada || null}
             onChange={selected => setFormData(prev => ({ ...prev, ciudadSucursal: selected ? selected.value : '' }))}
-            placeholder="Seleccione..."
+            placeholder={t('common.select')}
             isClearable
             className="text-xs sm:text-sm"
             styles={{
@@ -177,7 +180,7 @@ export default function SeguimientoRiesgo({ formData, setFormData, ciudades = []
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Consecutivo Aseguradora
+{t('risks.ui.seguimiento_riesgo.consecutivo')}
           </label>
           <input
             type="text"
@@ -201,16 +204,16 @@ export default function SeguimientoRiesgo({ formData, setFormData, ciudades = []
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Adjunto Inspección
+{t('risks.ui.seguimiento_riesgo.adjunto_inspeccion')}
           </label>
-          <DropZone onFile={file => setFormData(prev => ({ ...prev, adjuntoInspeccion: file }))} label="Adjunta inspección" existingFile={formData.adjuntoInspeccion} />
+          <DropZone onFile={file => setFormData(prev => ({ ...prev, adjuntoInspeccion: file }))} label={t('risks.ui.seguimiento_riesgo.adjunta_inspeccion')} existingFile={formData.adjuntoInspeccion} />
         </div>
         <div>
           <label 
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Observaciones Asignación
+{t('risks.ui.seguimiento_riesgo.obs_asignacion')}
           </label>
           <textarea
             value={formData.observAsignacion || ''}
@@ -232,16 +235,16 @@ export default function SeguimientoRiesgo({ formData, setFormData, ciudades = []
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Adjunto Asignación
+{t('risks.ui.seguimiento_riesgo.adjunto_asignacion')}
           </label>
-          <DropZone onFile={file => setFormData(prev => ({ ...prev, adjuntoAsignacion: file }))} label="Adjunta asignación" existingFile={formData.adjuntoAsignacion} />
+          <DropZone onFile={file => setFormData(prev => ({ ...prev, adjuntoAsignacion: file }))} label={t('risks.ui.seguimiento_riesgo.adjunta_asignacion')} existingFile={formData.adjuntoAsignacion} />
         </div>
         <div>
           <label 
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Fecha de Informe
+{t('risks.ui.seguimiento_riesgo.fecha_informe')}
           </label>
           <input
             type="date"
@@ -264,16 +267,16 @@ export default function SeguimientoRiesgo({ formData, setFormData, ciudades = []
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Adjunto Informe Final
+{t('risks.ui.seguimiento_riesgo.adjunto_informe')}
           </label>
-          <DropZone onFile={file => setFormData(prev => ({ ...prev, anxoInfoFnal: file }))} label="Adjunta informe final" existingFile={formData.anxoInfoFnal} />
+          <DropZone onFile={file => setFormData(prev => ({ ...prev, anxoInfoFnal: file }))} label={t('risks.ui.seguimiento_riesgo.adjunta_informe')} existingFile={formData.anxoInfoFnal} />
         </div>
         <div>
           <label 
             className="font-semibold block mb-1 text-xs sm:text-sm"
             style={{ color: textPrimary }}
           >
-            Observaciones Informe Final
+{t('risks.ui.seguimiento_riesgo.obs_informe')}
           </label>
           <textarea
             value={formData.observInforme || ''}

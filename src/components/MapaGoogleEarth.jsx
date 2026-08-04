@@ -1,6 +1,7 @@
 // MapaGoogleEarth.jsx
 // Componente para mostrar un mapa de Google Earth usando Google Maps API
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useJsApiLoader, GoogleMap, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api'
 import { FaSearch, FaCrosshairs, FaCamera, FaMapMarkerAlt } from 'react-icons/fa'
 import html2canvas from 'html2canvas'
@@ -113,6 +114,7 @@ export default function MapaGoogleEarth({
   /** data URL o URL absoluta de captura ya guardada (historial) */
   capturaInicial
 }) {
+  const { t } = useTranslation()
   // Obtener API key
   const apiKey = apiKeyProp || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
   
@@ -402,10 +404,7 @@ setMap(mapInstance)
     }
 
     if (!dataUrl) {
-      alert(
-        'No se pudo generar la captura del mapa.\n\n' +
-          'Active la API «Maps Static API» para esta clave en Google Cloud Console, o pulse «Capturar» de nuevo cuando el mapa se vea cargado.'
-      )
+      alert(t('inspection.ui.mapaGoogleEarth.captureFailedAlert'))
       return
     }
 
@@ -419,7 +418,7 @@ setMap(mapInstance)
       })
     }
 
-}, [posicion, direccion, onMapaChange, apiKey])
+}, [posicion, direccion, onMapaChange, apiKey, t])
   
   // Forzar captura: Static Maps solo necesita coordenadas + key; html2canvas necesita el DOM listo
   useEffect(() => {
@@ -556,7 +555,7 @@ setMap(mapInstance)
         <div className="w-full h-[300px] flex items-center justify-center bg-gray-100">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-            <p className="text-gray-600">Cargando Google Maps...</p>
+            <p className="text-gray-600">{t('inspection.ui.mapaGoogleEarth.loadingGoogleMaps')}</p>
           </div>
         </div>
       )
@@ -575,7 +574,7 @@ setMap(mapInstance)
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Buscar dirección o lugar..."
+                  placeholder={t('inspection.ui.mapaGoogleEarth.searchAddress')}
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                   onKeyPress={(e) => {
@@ -590,7 +589,7 @@ setMap(mapInstance)
               <input
                 ref={searchInputRef}
                 type="text"
-                placeholder="Cargando búsqueda..."
+                placeholder={t('inspection.ui.mapaGoogleEarth.loadingSearch')}
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 onKeyPress={(e) => {
@@ -610,20 +609,20 @@ setMap(mapInstance)
               onClick={obtenerUbicacionActual}
               disabled={!isLoaded}
               className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              title="Mi ubicación actual"
+              title={t('inspection.ui.mapaGoogleEarth.myCurrentLocation')}
             >
               <FaCrosshairs />
-              <span className="hidden sm:inline">Ubicación</span>
+              <span className="hidden sm:inline">{t('inspection.ui.mapaGoogleEarth.location')}</span>
             </button>
             
             <button
               onClick={capturarMapa}
               disabled={!mapaListo}
               className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
-              title="Capturar mapa"
+              title={t('inspection.ui.mapaGoogleEarth.captureMap')}
             >
               <FaCamera />
-              <span className="hidden sm:inline">Capturar</span>
+              <span className="hidden sm:inline">{t('inspection.ui.mapaGoogleEarth.capture')}</span>
             </button>
           </div>
         </div>
@@ -639,11 +638,11 @@ setMap(mapInstance)
         {posicion && Number.isFinite(posicion.lat) && Number.isFinite(posicion.lng) && (
           <div className="mb-2 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm sm:grid-cols-2">
             <div>
-              <span className="font-semibold text-gray-800">Latitud: </span>
+              <span className="font-semibold text-gray-800">{t('inspection.ui.mapaGoogleEarth.latitudeLabel')} </span>
               <span className="font-mono text-gray-700">{posicion.lat.toFixed(6)}</span>
             </div>
             <div>
-              <span className="font-semibold text-gray-800">Longitud: </span>
+              <span className="font-semibold text-gray-800">{t('inspection.ui.mapaGoogleEarth.longitudeLabel')} </span>
               <span className="font-mono text-gray-700">{posicion.lng.toFixed(6)}</span>
             </div>
           </div>
@@ -653,7 +652,7 @@ setMap(mapInstance)
         <div className="relative w-full isolate overflow-hidden rounded-lg border border-gray-300 bg-gray-100">
           {mapaListo && (
             <div className="pointer-events-none absolute top-2 right-2 z-30 rounded bg-green-500 px-2 py-1 text-xs text-white shadow">
-              ✓ Mapa listo
+              ✓ {t('inspection.ui.mapaGoogleEarth.mapReady')}
             </div>
           )}
 
@@ -671,7 +670,7 @@ setMap(mapInstance)
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-gray-100">
                 <div className="text-center">
                   <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-b-2 border-blue-600 sm:h-8 sm:w-8" />
-                  <p className="text-xs text-gray-600 sm:text-sm">Cargando Google Maps...</p>
+                  <p className="text-xs text-gray-600 sm:text-sm">{t('inspection.ui.mapaGoogleEarth.loadingGoogleMaps')}</p>
                 </div>
               </div>
             )}
@@ -699,10 +698,10 @@ setMap(mapInstance)
                     {infoWindowOpen && (
                       <InfoWindow onCloseClick={() => setInfoWindowOpen(false)}>
                         <div className="text-xs sm:text-sm">
-                          <p className="font-semibold">📍 Ubicación</p>
+                          <p className="font-semibold">📍 {t('inspection.ui.mapaGoogleEarth.location')}</p>
                           {direccion && <p className="mb-1">{direccion}</p>}
-                          <p>Lat: {posicion.lat.toFixed(6)}</p>
-                          <p>Lng: {posicion.lng.toFixed(6)}</p>
+                          <p>{t('inspection.ui.mapaGoogleEarth.latShort')}: {posicion.lat.toFixed(6)}</p>
+                          <p>{t('inspection.ui.mapaGoogleEarth.lngShort')}: {posicion.lng.toFixed(6)}</p>
                         </div>
                       </InfoWindow>
                     )}

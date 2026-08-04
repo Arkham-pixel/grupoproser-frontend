@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { FaSave, FaFilePdf, FaFileWord, FaArrowLeft, FaEdit } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
@@ -34,39 +35,6 @@ import PuertosCasoPagina5 from './PuertosCasoPagina5';
 import { useFormAutoSave } from '../../hooks/useFormAutoSave';
 import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 
-const SECCIONES = [
-  {
-    id: 'portada',
-    numero: 1,
-    titulo: 'Portada — Reporte de supervisión',
-    subtitulo: 'Solicitud, aseguradora, creado por, consecutivo',
-  },
-  {
-    id: 'datosIntro',
-    numero: 2,
-    titulo: 'Datos generales e introducción',
-    subtitulo: 'Exportador, operación portuaria, texto introductorio',
-  },
-  {
-    id: 'buqueMercancia',
-    numero: 3,
-    titulo: 'Particularidades del buque y mercancía',
-    subtitulo: 'Motonave, puertos, tabla de carga',
-  },
-  {
-    id: 'supervision',
-    numero: 4,
-    titulo: 'Reporte de supervisión',
-    subtitulo: 'Seguimiento contenedores, sellos, comentarios',
-  },
-  {
-    id: 'conclusiones',
-    numero: 5,
-    titulo: 'Conclusiones y registro por contenedor',
-    subtitulo: 'Comentarios finales y fotos con sellos por N° contenedor',
-  },
-];
-
 const ABIERTAS_INICIAL = {
   portada: true,
   datosIntro: false,
@@ -76,6 +44,7 @@ const ABIERTAS_INICIAL = {
 };
 
 export default function PuertosCasoExportacionMain() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,6 +52,42 @@ export default function PuertosCasoExportacionMain() {
   const esEdicion = Boolean(id && id !== 'nueva');
   const soloLectura =
     location.pathname.includes('/caso/ver/') || searchParams.get('modo') === 'ver';
+
+  const SECCIONES = useMemo(
+    () => [
+      {
+        id: 'portada',
+        numero: 1,
+        titulo: t('ports.ui.casoExportacion.sections.portada.title'),
+        subtitulo: t('ports.ui.casoExportacion.sections.portada.subtitle'),
+      },
+      {
+        id: 'datosIntro',
+        numero: 2,
+        titulo: t('ports.ui.casoExportacion.sections.datosIntro.title'),
+        subtitulo: t('ports.ui.casoExportacion.sections.datosIntro.subtitle'),
+      },
+      {
+        id: 'buqueMercancia',
+        numero: 3,
+        titulo: t('ports.ui.casoExportacion.sections.buqueMercancia.title'),
+        subtitulo: t('ports.ui.casoExportacion.sections.buqueMercancia.subtitle'),
+      },
+      {
+        id: 'supervision',
+        numero: 4,
+        titulo: t('ports.ui.casoExportacion.sections.supervision.title'),
+        subtitulo: t('ports.ui.casoExportacion.sections.supervision.subtitle'),
+      },
+      {
+        id: 'conclusiones',
+        numero: 5,
+        titulo: t('ports.ui.casoExportacion.sections.conclusiones.title'),
+        subtitulo: t('ports.ui.casoExportacion.sections.conclusiones.subtitle'),
+      },
+    ],
+    [t]
+  );
 
   const [abiertas, setAbiertas] = useState(ABIERTAS_INICIAL);
   const [formData, setFormData] = useState(ESTADO_INICIAL_CASO_EXPORTACION);
@@ -191,7 +196,7 @@ export default function PuertosCasoExportacionMain() {
     getPuertosCaso(id)
       .then((caso) => setFormData(normalizarCasoApiParaFormulario(caso)))
       .catch((err) => {
-        alert(`No se pudo cargar el caso: ${err.message}`);
+        alert(t('ports.ui.casoExportacion.alerts.loadError', { error: err.message }));
         navigate('/puertos/actas');
       })
       .finally(() => setCargando(false));
@@ -284,12 +289,12 @@ export default function PuertosCasoExportacionMain() {
   const handleGuardar = async () => {
     if (soloLectura) return;
     if (!formData.codiAsgrdra?.trim()) {
-      alert('Seleccione el cliente (aseguradora) en la portada.');
+      alert(t('ports.ui.casoExportacion.alerts.selectClient'));
       abrirSeccion('portada');
       return;
     }
     if (!formData.asgrBenfcro?.trim()) {
-      alert('Indique el nombre o razón social del exportador.');
+      alert(t('ports.ui.casoExportacion.alerts.exporterRequired'));
       abrirSeccion('datosIntro');
       return;
     }
@@ -317,7 +322,7 @@ export default function PuertosCasoExportacionMain() {
         ? await actualizarPuertosCaso(id, payload)
         : await crearPuertosCaso(payload);
 
-      alert(`Caso guardado: ${resultado.consecutivo || resultado._id}`);
+      alert(t('ports.ui.casoExportacion.alerts.saved', { id: resultado.consecutivo || resultado._id }));
       if (!esEdicion && resultado._id) {
         navigate(`/puertos/actas/caso/editar/${resultado._id}`, { replace: true });
       } else if (resultado.consecutivo) {
@@ -337,7 +342,7 @@ export default function PuertosCasoExportacionMain() {
         }));
       }
     } catch (err) {
-      alert(`Error al guardar: ${err.message}`);
+      alert(t('ports.ui.casoExportacion.alerts.saveError', { error: err.message }));
     } finally {
       setGuardando(false);
     }
@@ -357,7 +362,7 @@ export default function PuertosCasoExportacionMain() {
       await generarPdfInformeExportacion(formData, { aseguradoraOptions, responsables });
     } catch (err) {
       console.error(err);
-      alert(`No se pudo generar el PDF: ${err.message || 'error desconocido'}`);
+      alert(t('ports.ui.casoExportacion.alerts.pdfError', { error: err.message || t('ports.ui.common.unknownError') }));
     } finally {
       setGenerandoPdf(false);
     }
@@ -369,7 +374,7 @@ export default function PuertosCasoExportacionMain() {
       await generarWordInformeExportacion(formData, { aseguradoraOptions, responsables });
     } catch (err) {
       console.error(err);
-      alert(`No se pudo generar el Word: ${err.message || 'error desconocido'}`);
+      alert(t('ports.ui.casoExportacion.alerts.wordError', { error: err.message || t('ports.ui.common.unknownError') }));
     } finally {
       setGenerandoWord(false);
     }
@@ -377,7 +382,7 @@ export default function PuertosCasoExportacionMain() {
 
   if (cargando) {
     return (
-      <div className={`${puertosFormRoot} py-16 text-center font-body text-gray-500`}>Cargando caso…</div>
+      <div className={`${puertosFormRoot} py-16 text-center font-body text-gray-500`}>{t('ports.ui.casoExportacion.loadingCaso')}</div>
     );
   }
 
@@ -391,10 +396,10 @@ export default function PuertosCasoExportacionMain() {
           </button>
           <div>
             <h2 className={puertosPageTitle}>
-              {soloLectura ? 'Consulta — Informe exportación' : 'Informe exportación — Reporte de supervisión'}
+              {soloLectura ? t('ports.ui.casoExportacion.titleView') : t('ports.ui.casoExportacion.titleEdit')}
             </h2>
             <p className={puertosPageSubtitle}>
-              Formulario único · secciones desplegables
+              {t('ports.ui.casoExportacion.subtitle')}
               {formData.consecutivo ? ` · ${formData.consecutivo}` : ''}
             </p>
           </div>
@@ -406,7 +411,7 @@ export default function PuertosCasoExportacionMain() {
               onClick={() => navigate(`/puertos/actas/caso/editar/${id}`)}
               className={puertosBtnPrimary}
             >
-              <FaEdit /> Editar
+              <FaEdit /> {t('ports.ui.common.edit')}
             </button>
           )}
           {!soloLectura && (
@@ -431,7 +436,7 @@ export default function PuertosCasoExportacionMain() {
           )}
           {!soloLectura && (
             <button type="button" onClick={handleGuardar} disabled={guardando} className={puertosBtnPrimary}>
-              <FaSave /> {guardando ? 'Guardando…' : 'Grabar'}
+              <FaSave /> {guardando ? t('ports.ui.common.saving') : t('ports.ui.common.save')}
             </button>
           )}
           <button
@@ -440,7 +445,7 @@ export default function PuertosCasoExportacionMain() {
             disabled={generandoPdf || generandoWord || guardando}
             className={puertosBtnSecondary}
           >
-            <FaFilePdf /> {generandoPdf ? 'Generando PDF…' : 'PDF'}
+            <FaFilePdf /> {generandoPdf ? t('ports.ui.common.generatingPdf') : t('ports.ui.common.pdf')}
           </button>
           <button
             type="button"
@@ -448,25 +453,26 @@ export default function PuertosCasoExportacionMain() {
             disabled={generandoWord || generandoPdf || guardando}
             className={puertosBtnSecondary}
           >
-            <FaFileWord /> {generandoWord ? 'Generando Word…' : 'Word'}
+            <FaFileWord /> {generandoWord ? t('ports.ui.common.generatingWord') : t('ports.ui.common.word')}
           </button>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-3 font-body text-sm">
         <button type="button" onClick={expandirTodas} className={puertosBtnLink}>
-          Expandir todas
+          {t('ports.ui.casoExportacion.expandAll')}
         </button>
         <span className="text-gray-300">|</span>
         <button type="button" onClick={colapsarTodas} className={puertosBtnLink}>
-          Colapsar todas
+          {t('ports.ui.casoExportacion.collapseAll')}
         </button>
       </div>
 
       {soloLectura && (
-        <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 font-body text-sm text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100">
-          Modo solo consulta: no puede modificar datos. Pulse <strong>Editar</strong> arriba para habilitar cambios.
-        </div>
+        <div
+          className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 font-body text-sm text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100"
+          dangerouslySetInnerHTML={{ __html: t('ports.ui.casoExportacion.readOnlyBanner') }}
+        />
       )}
 
       <div className="space-y-3">
@@ -527,7 +533,7 @@ export default function PuertosCasoExportacionMain() {
       {!soloLectura && (
       <div className="flex justify-end border-t border-gray-200 pt-4 dark:border-gray-800">
         <button type="button" onClick={handleGuardar} disabled={guardando} className={puertosBtnPrimary}>
-          <FaSave /> {guardando ? 'Guardando…' : 'Grabar'}
+          <FaSave /> {guardando ? t('ports.ui.common.saving') : t('ports.ui.common.save')}
         </button>
       </div>
       )}

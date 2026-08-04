@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Seccion, Campo, inputCls } from './PuertosCasoDatosGenerales';
 
-const ETAPAS = [
-  { fecha: 'fchaAsgncion', obs: 'obseContIni', titulo: 'Asignación / Contacto inicial' },
-  { fecha: 'fchaCoordInspeccion', obs: 'obseCoordInspeccion', titulo: 'Coordinación de inspección' },
-  { fecha: 'fchaProgInspeccion', obs: null, titulo: 'Programación' },
-  { fecha: 'fchaInspccion', obs: 'obseInspccion', titulo: 'Inspección en puerto' },
-  { fecha: 'fchaInfoFnal', obs: 'obseInfoFnal', titulo: 'Entrega de informe' },
-  { fecha: 'fchaFactra', obs: null, titulo: 'Facturación' },
-];
-
 export default function PuertosCasoTrazabilidad({ formData, onChange }) {
+  const { t } = useTranslation();
+
+  const ETAPAS = useMemo(
+    () => [
+      { fecha: 'fchaAsgncion', obs: 'obseContIni', titulo: t('ports.ui.casoExportacion.trazabilidad.etapas.asignacion') },
+      { fecha: 'fchaCoordInspeccion', obs: 'obseCoordInspeccion', titulo: t('ports.ui.casoExportacion.trazabilidad.etapas.coordinacion') },
+      { fecha: 'fchaProgInspeccion', obs: null, titulo: t('ports.ui.casoExportacion.trazabilidad.etapas.programacion') },
+      { fecha: 'fchaInspccion', obs: 'obseInspccion', titulo: t('ports.ui.casoExportacion.trazabilidad.etapas.inspeccion') },
+      { fecha: 'fchaInfoFnal', obs: 'obseInfoFnal', titulo: t('ports.ui.casoExportacion.trazabilidad.etapas.informe') },
+      { fecha: 'fchaFactra', obs: null, titulo: t('ports.ui.casoExportacion.trazabilidad.etapas.facturacion') },
+    ],
+    [t]
+  );
+
   const handle = (e) => {
     const { name, value } = e.target;
     onChange(name, value);
@@ -19,15 +25,15 @@ export default function PuertosCasoTrazabilidad({ formData, onChange }) {
   return (
     <div className="space-y-5">
       <p className="font-body text-sm text-gray-600 dark:text-gray-400">
-        Misma lógica de trazabilidad que Complex: fechas por etapa para seguimiento del caso.
+        {t('ports.ui.casoExportacion.trazabilidad.intro')}
       </p>
       {ETAPAS.map(({ fecha, obs, titulo }) => (
         <Seccion key={fecha} titulo={titulo}>
-          <Campo label="Fecha">
+          <Campo label={t('ports.ui.casoExportacion.trazabilidad.fecha')}>
             <input type="date" className={inputCls} name={fecha} value={formData[fecha] || ''} onChange={handle} />
           </Campo>
           {obs && (
-            <Campo label="Observaciones">
+            <Campo label={t('ports.ui.casoExportacion.trazabilidad.observaciones')}>
               <textarea
                 className={`${inputCls} min-h-[72px]`}
                 name={obs}
@@ -38,8 +44,8 @@ export default function PuertosCasoTrazabilidad({ formData, onChange }) {
           )}
         </Seccion>
       ))}
-      <Seccion titulo="Seguimiento general">
-        <Campo label="Observaciones de seguimiento" className="sm:col-span-2">
+      <Seccion titulo={t('ports.ui.casoExportacion.trazabilidad.seguimientoGeneral')}>
+        <Campo label={t('ports.ui.casoExportacion.trazabilidad.observacionesSeguimiento')} className="sm:col-span-2">
           <textarea
             className={`${inputCls} min-h-[100px]`}
             name="obseSegmnto"

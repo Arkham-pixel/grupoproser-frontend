@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import { Link } from 'react-router-dom';
 import { FaChartLine, FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
@@ -38,6 +39,7 @@ import {
 import { TablaHitoPorAjustador, TableroPivotTresColumnas } from './ExpressDashboardPivot.jsx';
 
 const TableroOperativoExpress = () => {
+  const { t } = useTranslation();
   const getMonthSafe = (fecha) => fecha.getMonth() + 1;
   const getYearSafe = (fecha) => fecha.getFullYear();
   const { theme } = useTheme();
@@ -230,19 +232,19 @@ const TableroOperativoExpress = () => {
       <div className={`${expressPageWrap} max-w-6xl`}>
         <ExpressPageHeader
           badge="Express"
-          title="Tablero operativo"
-          subtitle="Vista compacta tipo Excel: tres tablas en paralelo."
+          title={t('express.board.title')}
+          subtitle={t('express.board.subtitle')}
           activePath="/express/tablero"
           actions={
             <Link to="/express/protocolo" className={`${expressBtnSecondary} !py-2 !text-xs`}>
               <FaChartLine />
-              Protocolo
+              {t('express.board.protocol')}
             </Link>
           }
         />
 
         <div className="mb-3 flex flex-wrap items-end gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-[#1A1A1A]">
-          <Campo label="Mes" className="!mb-0 min-w-[7rem]">
+          <Campo label={t('express.board.month')} className="!mb-0 min-w-[7rem]">
             <SelectFenix
               className="!py-1.5 !text-xs"
               value={mesPivot}
@@ -255,7 +257,7 @@ const TableroOperativoExpress = () => {
               ))}
             </SelectFenix>
           </Campo>
-          <Campo label="Año mes" className="!mb-0 min-w-[5.5rem]">
+          <Campo label={t('express.board.monthYear')} className="!mb-0 min-w-[5.5rem]">
             <SelectFenix
               className="!py-1.5 !text-xs"
               value={anioPivot}
@@ -268,7 +270,7 @@ const TableroOperativoExpress = () => {
               ))}
             </SelectFenix>
           </Campo>
-          <Campo label="Año total" className="!mb-0 min-w-[5.5rem]">
+          <Campo label={t('express.board.totalYear')} className="!mb-0 min-w-[5.5rem]">
             <SelectFenix
               className="!py-1.5 !text-xs"
               value={anioTotal}
@@ -284,9 +286,9 @@ const TableroOperativoExpress = () => {
             </SelectFenix>
           </Campo>
           <p className="ml-auto font-body text-xs text-gray-500 dark:text-gray-400">
-            Mes: <strong className="text-gray-800 dark:text-gray-200">{tablaAsignacionMes.granTotal}</strong>
+            {t('express.board.month')}: <strong className="text-gray-800 dark:text-gray-200">{tablaAsignacionMes.granTotal}</strong>
             {' · '}
-            Año: <strong className="text-gray-800 dark:text-gray-200">{tablaEstadoAnio.granTotal}</strong>
+            {t('express.board.year')}: <strong className="text-gray-800 dark:text-gray-200">{tablaEstadoAnio.granTotal}</strong>
           </p>
         </div>
 
@@ -294,13 +296,13 @@ const TableroOperativoExpress = () => {
           tablaAsignacion={tablaAsignacionMes}
           tablaEstadoMes={tablaEstadoMes}
           tablaEstadoAnio={tablaEstadoAnio}
-          tituloAsignacion={`Asignación por ajustador en ${etiquetaPeriodoMes}`}
-          tituloEstadoMes={`Estado casos asignados en ${etiquetaPeriodoMes} por ajustador`}
-          tituloEstadoAnio={`Estado actual del total de casos ${etiquetaAnioTotal}`}
+          tituloAsignacion={t('express.board.assignmentByAdjuster', { period: etiquetaPeriodoMes })}
+          tituloEstadoMes={t('express.board.assignedCaseStatus', { period: etiquetaPeriodoMes })}
+          tituloEstadoAnio={t('express.board.currentStatus', { period: etiquetaAnioTotal })}
         />
 
         <p className="mt-2 font-body text-[10px] text-gray-500 dark:text-gray-400">
-          ▶ en la primera tabla despliega el detalle por fecha de aviso.
+          {t('express.board.expandHint')}
         </p>
 
         <div className="mt-4 border-t border-gray-200 pt-3 dark:border-gray-700">
@@ -310,14 +312,14 @@ const TableroOperativoExpress = () => {
             className="flex w-full items-center gap-2 font-body text-sm font-semibold text-gray-700 hover:text-fenix-primario dark:text-gray-300"
           >
             {extrasAbiertos ? <FaChevronDown /> : <FaChevronRight />}
-            Gráficos y hitos del mes (opcional)
+            {t('express.board.optionalCharts')}
           </button>
 
           {extrasAbiertos && (
             <div className="mt-3 space-y-4">
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 <MiniChart
-                  title={`Estados — ${etiquetaPeriodoMes}`}
+                  title={t('express.board.statusesForPeriod', { period: etiquetaPeriodoMes })}
                   data={chartEstadosMes}
                   total={totalChartMes}
                   leyenda={leyendaEstadosMes}
@@ -328,7 +330,7 @@ const TableroOperativoExpress = () => {
                   formatoLeyenda={formatoLeyendaPie(totalChartMes, 'estado')}
                 />
                 <MiniChart
-                  title={`Estados — año ${anioTotal}`}
+                  title={t('express.board.statusesForYear', { year: anioTotal })}
                   data={chartEstadosAnio}
                   total={totalChartAnio}
                   leyenda={leyendaEstadosAnio}
@@ -341,11 +343,11 @@ const TableroOperativoExpress = () => {
               </div>
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <TablaHitoPorAjustador
-                  titulo={`Presentación cifras — ${etiquetaPeriodoMes}`}
+                  titulo={t('express.board.figuresPresentation', { period: etiquetaPeriodoMes })}
                   datos={tablaCifrasMes}
                 />
                 <TablaHitoPorAjustador
-                  titulo={`Finiquitos firmados — ${etiquetaPeriodoMes}`}
+                  titulo={t('express.board.signedSettlements', { period: etiquetaPeriodoMes })}
                   datos={tablaFiniquitoMes}
                 />
               </div>
@@ -368,6 +370,7 @@ function MiniChart({
   tooltipStyle,
   formatoLeyenda,
 }) {
+  const { t } = useTranslation();
   const [animateIn, setAnimateIn] = useState(true);
   const hasData = Boolean(data?.length);
 
@@ -387,7 +390,7 @@ function MiniChart({
     return (
       <div className="rounded border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-[#1A1A1A]">
         <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-300">{title}</p>
-        <p className="mt-2 font-body text-xs text-gray-500">Sin datos</p>
+        <p className="mt-2 font-body text-xs text-gray-500">{t('express.board.noData')}</p>
       </div>
     );
   }
@@ -478,7 +481,7 @@ function MiniChart({
           className={`mt-2 grid gap-x-3 gap-y-1 px-1 ${
             muchosItems ? 'max-h-44 grid-cols-1 overflow-y-auto sm:grid-cols-2' : 'grid-cols-1'
           }`}
-          aria-label={`Leyenda: ${title}`}
+          aria-label={t('express.board.legend', { title })}
         >
           {leyenda.map((entry) => (
             <li
@@ -497,7 +500,7 @@ function MiniChart({
         </ul>
       </div>
       <p className="mt-1 px-1 font-body text-[11px] font-semibold" style={{ color: tickColor }}>
-        Total: {total}
+        {t('express.board.total')}: {total}
       </p>
     </div>
   );

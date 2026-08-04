@@ -1,69 +1,52 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FaHome, FaRedo, FaSearch, FaWifi } from 'react-icons/fa';
 import { arnaldIcon } from '../config/brandAssets.js';
 import './PaginaError.css';
 
 const IMAGEN_404 = '/error404-arnald.png';
 
-const CONTENIDO = {
-  '404': {
-    mensaje: (
-      <>
-        Lo sentimos,
-        <br />
-        la página que solicitaste <strong>no fue encontrada</strong>.
-      </>
-    ),
-    placeholder: 'Buscar en Arnald DataFlow o volver al inicio…',
-    mostrarReintentar: false,
-  },
-  'sin-conexion': {
-    mensaje: (
-      <>
-        Lo sentimos,
-        <br />
-        parece que <strong>no hay conexión a internet</strong> en este momento.
-      </>
-    ),
-    placeholder: 'Revisa tu red e intenta de nuevo…',
-    mostrarReintentar: true,
-  },
-  servicio: {
-    mensaje: (
-      <>
-        Lo sentimos,
-        <br />
-        el <strong>servicio no está disponible</strong> temporalmente.
-      </>
-    ),
-    placeholder: 'Vuelve a intentarlo en unos minutos…',
-    mostrarReintentar: true,
-  },
-};
-
 export default function PaginaError({ tipoForzado }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [busqueda, setBusqueda] = useState('');
   const tipoParam = searchParams.get('tipo');
+  const contenidoPorTipo = {
+    '404': {
+      mensaje: <>{t('error.sorry')}<br />{t('error.notFoundMessageStart')} <strong>{t('error.notFoundMessageEmphasis')}</strong>.</>,
+      placeholder: t('error.notFoundPlaceholder'),
+      mostrarReintentar: false,
+    },
+    'sin-conexion': {
+      mensaje: <>{t('error.sorry')}<br />{t('error.offlineMessageStart')} <strong>{t('error.offlineMessageEmphasis')}</strong> {t('error.offlineMessageEnd')}.</>,
+      placeholder: t('error.offlinePlaceholder'),
+      mostrarReintentar: true,
+    },
+    servicio: {
+      mensaje: <>{t('error.sorry')}<br />{t('error.serviceMessageStart')} <strong>{t('error.serviceMessageEmphasis')}</strong> {t('error.serviceMessageEnd')}.</>,
+      placeholder: t('error.servicePlaceholder'),
+      mostrarReintentar: true,
+    },
+  };
   const tipo =
     tipoForzado ||
-    (tipoParam && CONTENIDO[tipoParam] ? tipoParam : null) ||
+    (tipoParam && contenidoPorTipo[tipoParam] ? tipoParam : null) ||
     (tipoParam === 'servicio' ? 'servicio' : '404');
 
-  const contenido = CONTENIDO[tipo] || CONTENIDO['404'];
+  const contenido = contenidoPorTipo[tipo] || contenidoPorTipo['404'];
   const autenticado = !!localStorage.getItem('token');
   const destinoInicio = autenticado ? '/inicio' : '/login';
 
   useEffect(() => {
     const titulos = {
-      '404': 'Página no encontrada',
-      'sin-conexion': 'Sin conexión',
-      servicio: 'Servicio no disponible',
+      '404': t('error.notFoundTitle'),
+      'sin-conexion': t('error.offlineTitle'),
+      servicio: t('error.serviceTitle'),
     };
-    document.title = `Arnald DataFlow - ${titulos[tipo] || 'Error'}`;
-  }, [tipo]);
+    document.title = `Arnald DataFlow - ${titulos[tipo] || t('common.error')}`;
+  }, [tipo, t]);
 
   const handleReintentar = () => {
     if (navigator.onLine) {
@@ -105,14 +88,14 @@ export default function PaginaError({ tipoForzado }) {
           </Link>
 
           <nav className="pagina-error-nav">
-            <Link to={destinoInicio}>Inicio</Link>
+            <Link to={destinoInicio}>{t('nav.home')}</Link>
             {autenticado ? (
               <Link to="/complex/excel">Complex</Link>
             ) : (
-              <Link to="/login">Acceder</Link>
+              <Link to="/login">{t('auth.access')}</Link>
             )}
             <button type="button" className="nav-link" onClick={() => navigate(destinoInicio)}>
-              Contacto
+              {t('error.contact')}
             </button>
           </nav>
         </header>
@@ -127,20 +110,20 @@ export default function PaginaError({ tipoForzado }) {
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
               placeholder={contenido.placeholder}
-              aria-label="Buscar o navegar"
+              aria-label={t('error.searchOrNavigate')}
             />
           </form>
 
           <div className="pagina-error-acciones">
             <button type="button" className="btn-espacial-primario" onClick={() => navigate(destinoInicio)}>
               <FaHome />
-              Volver al inicio
+              {t('error.backToHome')}
             </button>
 
             {contenido.mostrarReintentar && (
               <button type="button" className="btn-espacial-secundario" onClick={handleReintentar}>
                 {tipo === 'sin-conexion' ? <FaWifi /> : <FaRedo />}
-                Reintentar
+                {t('error.retry')}
               </button>
             )}
           </div>

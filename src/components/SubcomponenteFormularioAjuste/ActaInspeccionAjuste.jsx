@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import {
   FaUser,
@@ -17,6 +18,7 @@ import { normalizarFirmaClienteDataUrl } from '../../utils/normalizarFirmaImagen
 
 /** Modal para que el cliente dibuje la firma (ratón o dedo) y guardarla como PNG base64 */
 function FirmaClienteModal({ open, onClose, onSave, theme }) {
+  const { t } = useTranslation();
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const last = useRef({ x: 0, y: 0 });
@@ -125,10 +127,10 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
         aria-labelledby="firma-cliente-titulo"
       >
         <h3 id="firma-cliente-titulo" className="text-lg font-bold mb-2" style={{ color: text }}>
-          Firma del cliente
+          {t('adjustment.ui.acta.clientSignModalTitle')}
         </h3>
         <p className="text-sm mb-4" style={{ color: theme === 'dark' ? '#94a3b8' : '#64748b' }}>
-          Dibuje en el recuadro con el dedo o el ratón. Puede borrar y volver a intentar.
+          {t('adjustment.ui.acta.clientSignModalHint')}
         </p>
         <div
           className="rounded-lg overflow-hidden border-2 mb-4 touch-none"
@@ -154,7 +156,7 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
             className="px-4 py-2 rounded-lg text-sm font-medium border-2"
             style={{ borderColor: border, color: text }}
           >
-            Cancelar
+            {t('adjustment.ui.common.cancel')}
           </button>
           <button
             type="button"
@@ -162,7 +164,7 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
             className="px-4 py-2 rounded-lg text-sm font-medium"
             style={{ backgroundColor: theme === 'dark' ? '#334155' : '#f1f5f9', color: text }}
           >
-            Limpiar
+            {t('adjustment.ui.common.clear')}
           </button>
           <button
             type="button"
@@ -170,7 +172,7 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
             className="px-4 py-2 rounded-lg text-sm font-medium text-white"
             style={{ backgroundColor: theme === 'dark' ? '#2563eb' : '#1d4ed8' }}
           >
-            Usar esta firma
+            {t('adjustment.ui.acta.useThisSignature')}
           </button>
         </div>
       </div>
@@ -179,6 +181,7 @@ function FirmaClienteModal({ open, onClose, onSave, theme }) {
 }
 
 export default function ActaInspeccionAjuste({ formData, onInputChange }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [modalFirmaAbierto, setModalFirmaAbierto] = useState(false);
   const inputFirmaClienteRef = useRef(null);
@@ -197,9 +200,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
       const arr = Array.isArray(lista) ? lista : [];
       setFuncionarios(arr);
       if (arr.length === 0) {
-        setErrorListaFuncionarios(
-          'No hay funcionarios en la lista. Compruebe sesión, conexión, o cree funcionarios en el paso Firmas / gestión.'
-        );
+        setErrorListaFuncionarios(t('adjustment.ui.acta.noOfficials'));
       }
     } catch (e) {
       const raw = FuncionarioService.cargarDesdeLocalStorage();
@@ -207,13 +208,13 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
       setFuncionarios(Array.isArray(norm) ? norm : []);
       setErrorListaFuncionarios(
         norm.length === 0
-          ? 'No se pudo cargar funcionarios desde el servidor ni desde el navegador.'
-          : 'Lista cargada solo desde el navegador (sin conexión al servidor).'
+          ? t('adjustment.ui.acta.noOfficials')
+          : t('adjustment.ui.acta.listFromBrowser')
       );
     } finally {
       setCargandoFuncionarios(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     cargarListaFuncionarios();
@@ -268,7 +269,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) {
-      alert('Seleccione una imagen válida (PNG, JPG o WEBP).');
+      alert(t('adjustment.ui.acta.invalidImage'));
       e.target.value = '';
       return;
     }
@@ -285,7 +286,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
       }
     };
     reader.onerror = () => {
-      alert('No se pudo leer la imagen. Intente de nuevo.');
+      alert(t('adjustment.ui.acta.readImageError'));
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -335,10 +336,10 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
                 textShadow: theme === 'dark' ? '0 2px 4px rgba(0,0,0,0.3)' : 'none'
               }}
             >
-              ACTA DE INSPECCIÓN
+              {t('adjustment.ui.acta.title')}
             </h1>
             <p className="text-sm sm:text-base" style={{ color: textSecondary }}>
-              Paso 1 del informe de ajuste · Los datos se guardan con el formulario de ajuste
+              {t('adjustment.ui.acta.subtitle')}
             </p>
           </div>
         </div>
@@ -361,7 +362,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
             <FaUser className="text-xl" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
           </div>
           <h2 className="text-xl sm:text-2xl font-bold" style={{ color: textPrimary }}>
-            DATOS PERSONALES
+            {t('adjustment.ui.acta.personalData')}
           </h2>
         </div>
 
@@ -369,7 +370,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaCalendarAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              FECHA INSPECCIÓN *
+              {t('adjustment.ui.acta.inspectionDate')}
             </label>
             <input
               type="date"
@@ -383,7 +384,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaCalendarAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              HORA INSPECCIÓN
+              {t('adjustment.ui.acta.inspectionTime')}
             </label>
             <input
               type="time"
@@ -397,7 +398,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaMapMarkerAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              CIUDAD *
+              {t('adjustment.ui.acta.city')}
             </label>
             <input
               type="text"
@@ -411,7 +412,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaMapMarkerAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              DIRECCIÓN DEL RIESGO *
+              {t('adjustment.ui.acta.riskAddress')}
             </label>
             <input
               type="text"
@@ -425,13 +426,13 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaExclamationTriangle className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              TIPO DE RIESGO (ACTA)
+              {t('adjustment.ui.acta.riskType')}
             </label>
             <input
               type="text"
               value={formData.tipoRiesgoActa || ''}
               onChange={(e) => onInputChange('tipoRiesgoActa', e.target.value)}
-              placeholder="Ej. Incendio, Daños por agua…"
+              placeholder={t('adjustment.ui.acta.riskTypePlaceholder')}
               className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none"
               style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
             />
@@ -440,7 +441,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaUser className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              ASEGURADO *
+              {t('adjustment.ui.acta.insured')}
             </label>
             <input
               type="text"
@@ -454,7 +455,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaIdCard className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              IDENTIFICACIÓN (ACTA)
+              {t('adjustment.ui.acta.identification')}
             </label>
             <input
               type="text"
@@ -468,7 +469,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaFileAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              No. SINIESTRO
+              {t('adjustment.ui.acta.claimNumber')}
             </label>
             <input
               type="text"
@@ -482,7 +483,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-sm font-semibold" style={{ color: textPrimary }}>
               <FaCalendarAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-              FECHA SINIESTRO
+              {t('adjustment.ui.acta.claimDate')}
             </label>
             <input
               type="date"
@@ -507,7 +508,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
         <div className="flex items-center gap-3 mb-4">
           <FaExclamationTriangle className="text-xl" style={{ color: theme === 'dark' ? '#34D399' : '#059669' }} />
           <h2 className="text-xl sm:text-2xl font-bold" style={{ color: textPrimary }}>
-            DESCRIPCIÓN DE RIESGO
+            {t('adjustment.ui.acta.riskDescription')}
           </h2>
         </div>
         <p className="text-sm mb-3" style={{ color: textSecondary }}>
@@ -516,7 +517,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
         <textarea
           value={formData.descripcionRiesgo || ''}
           onChange={(e) => onInputChange('descripcionRiesgo', e.target.value)}
-          placeholder="Características del riesgo, construcción, materiales, etc."
+          placeholder={t('adjustment.ui.acta.riskDescriptionPlaceholder')}
           rows={7}
           className="w-full px-4 py-3 rounded-lg border-2 resize-y focus:outline-none"
           style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
@@ -535,7 +536,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
         <div className="flex items-center gap-3 mb-2">
           <FaExclamationTriangle className="text-xl" style={{ color: theme === 'dark' ? '#FBBF24' : '#D97706' }} />
           <h2 className="text-xl sm:text-2xl font-bold" style={{ color: textPrimary }}>
-            DESCRIPCIÓN DEL SINIESTRO
+            {t('adjustment.ui.acta.claimDescription')}
           </h2>
         </div>
         <p className="text-sm mb-4" style={{ color: textSecondary }}>
@@ -544,7 +545,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
         <textarea
           value={formData.descripcionSiniestro || ''}
           onChange={(e) => onInputChange('descripcionSiniestro', e.target.value)}
-          placeholder="Hechos, daños observados, circunstancias relevantes"
+          placeholder={t('adjustment.ui.acta.claimDescriptionPlaceholder')}
           rows={7}
           className="w-full px-4 py-3 rounded-lg border-2 resize-y focus:outline-none"
           style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
@@ -563,7 +564,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
         <div className="flex items-center gap-3 mb-2">
           <FaFileAlt className="text-xl" style={{ color: theme === 'dark' ? '#A78BFA' : '#7C3AED' }} />
           <h2 className="text-xl sm:text-2xl font-bold" style={{ color: textPrimary }}>
-            OBSERVACIONES (ACTA)
+            {t('adjustment.ui.acta.observations')}
           </h2>
         </div>
         <p className="text-sm mb-3" style={{ color: textSecondary }}>
@@ -572,7 +573,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
         <textarea
           value={formData.actaObservaciones || ''}
           onChange={(e) => onInputChange('actaObservaciones', e.target.value)}
-          placeholder="Observaciones del acta de inspección"
+          placeholder={t('adjustment.ui.acta.observationsPlaceholder')}
           rows={6}
           className="w-full px-4 py-3 rounded-lg border-2 resize-y focus:outline-none"
           style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
@@ -591,7 +592,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
         <div className="flex items-center gap-3 mb-4">
           <FaFileSignature className="text-xl" style={{ color: theme === 'dark' ? '#F472B6' : '#DB2777' }} />
           <h2 className="text-xl sm:text-2xl font-bold" style={{ color: textPrimary }}>
-            FIRMAS
+            {t('adjustment.ui.acta.signatures')}
           </h2>
         </div>
         <p className="text-sm mb-6" style={{ color: textSecondary }}>
@@ -607,38 +608,38 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
             style={{ borderColor, backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
           >
             <h3 className="font-bold text-center mb-4" style={{ color: textPrimary }}>
-              FIRMA DE CLIENTE
+              {t('adjustment.ui.acta.clientSignature')}
             </h3>
             <label className="block text-sm font-semibold mb-1" style={{ color: textPrimary }}>
-              Nombre (como se imprimirá en el Word)
+              {t('adjustment.ui.acta.clientName')}
             </label>
             <input
               type="text"
               value={formData.actaClienteNombre || ''}
               onChange={(e) => onInputChange('actaClienteNombre', e.target.value)}
-              placeholder="Nombre y apellido del titular o quien firma"
+              placeholder={t('adjustment.ui.acta.clientNamePlaceholder')}
               className="w-full px-3 py-2.5 rounded-lg border-2 mb-3 focus:outline-none"
               style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
             />
             <label className="block text-sm font-semibold mb-1" style={{ color: textPrimary }}>
-              Cargo del cliente (Word)
+              {t('adjustment.ui.acta.clientPosition')}
             </label>
             <input
               type="text"
               value={formData.actaClienteCargo || ''}
               onChange={(e) => onInputChange('actaClienteCargo', e.target.value)}
-              placeholder="Ej. Titular, Apoderado, Administrador…"
+              placeholder={t('adjustment.ui.acta.clientPositionPlaceholder')}
               className="w-full px-3 py-2.5 rounded-lg border-2 mb-3 focus:outline-none"
               style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
             />
             <label className="block text-sm font-semibold mb-1" style={{ color: textPrimary }}>
-              Correo del cliente (Word)
+              {t('adjustment.ui.acta.clientEmail')}
             </label>
             <input
               type="email"
               value={formData.actaClienteEmail || ''}
               onChange={(e) => onInputChange('actaClienteEmail', e.target.value)}
-              placeholder="correo@ejemplo.com"
+              placeholder={t('adjustment.ui.acta.clientEmailPlaceholder')}
               className="w-full px-3 py-2.5 rounded-lg border-2 mb-4 focus:outline-none"
               style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
             />
@@ -649,7 +650,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium text-white"
                 style={{ backgroundColor: theme === 'dark' ? '#2563EB' : '#3B82F6' }}
               >
-                <FaPen /> Dibujar firma
+                <FaPen /> {t('adjustment.ui.acta.drawSignature')}
               </button>
               <input
                 ref={inputFirmaClienteRef}
@@ -668,7 +669,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
                   color: theme === 'dark' ? '#C4B5FD' : '#5B21B6'
                 }}
               >
-                <FaUpload /> Subir imagen
+                <FaUpload /> {t('adjustment.ui.acta.uploadImage')}
               </label>
               {formData.actaClienteFirma && (
                 <button
@@ -677,7 +678,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
                   className="px-4 py-2.5 rounded-lg text-sm font-medium border-2"
                   style={{ borderColor, color: textPrimary }}
                 >
-                  Quitar firma
+                  {t('adjustment.ui.acta.removeSignature')}
                 </button>
               )}
             </div>
@@ -692,7 +693,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
               {formData.actaClienteFirma ? (
                 <img
                   src={formData.actaClienteFirma}
-                  alt="Firma del cliente"
+                  alt={t('adjustment.ui.acta.clientSignature')}
                   className="max-h-36 w-full object-contain"
                 />
               ) : (
@@ -708,10 +709,10 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
             style={{ borderColor, backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)' }}
           >
             <h3 className="font-bold text-center mb-4" style={{ color: textPrimary }}>
-              FIRMA DEL AJUSTADOR
+              {t('adjustment.ui.acta.adjusterSignature')}
             </h3>
             <label className="block text-sm font-semibold mb-1" style={{ color: textPrimary }}>
-              Ajustador (misma base de funcionarios y firmas)
+              {t('adjustment.ui.acta.adjuster')}
             </label>
             <div className="flex flex-wrap gap-2 items-center mb-2">
               <button
@@ -720,7 +721,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
                 className="text-xs px-3 py-1.5 rounded-lg border-2 font-medium"
                 style={{ borderColor, color: textPrimary }}
               >
-                Volver a cargar lista
+                {t('adjustment.ui.acta.reloadList')}
               </button>
               <span className="text-xs" style={{ color: textSecondary }}>
                 {funcionarios.length} funcionario(s)
@@ -745,21 +746,21 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
               className="w-full px-3 py-2.5 rounded-lg border-2 mb-2 focus:outline-none"
               style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}
             >
-              <option value="">— Seleccione ajustador —</option>
+              <option value="">{t('adjustment.ui.acta.selectAdjuster')}</option>
               {funcionarios.map((f) => {
                 const fid = idFunc(f);
                 if (!fid) return null;
                 return (
                   <option key={fid} value={fid}>
-                    {f.nombre || 'Sin nombre'}
-                    {!f.firma ? ' (sin imagen en caché; se pedirá al servidor al elegir)' : ''}
+                    {f.nombre || t('adjustment.ui.acta.noName')}
+                    {!f.firma ? ` ${t('adjustment.ui.acta.noImageCache')}` : ''}
                   </option>
                 );
               })}
             </select>
             {cargandoFuncionarios && (
               <p className="text-xs mb-2" style={{ color: textSecondary }}>
-                Cargando funcionarios…
+                {t('adjustment.ui.acta.loadingOfficials')}
               </p>
             )}
             {(() => {
@@ -777,11 +778,11 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
               className="w-full mb-4 px-3 py-2 rounded-lg text-sm font-medium border-2"
               style={{ borderColor, color: textPrimary }}
             >
-              Copiar desde el paso Firmas del informe (opcional)
+              {t('adjustment.ui.acta.copyFromSignatures')}
             </button>
             <div className="space-y-2 text-sm mb-4" style={{ color: textPrimary }}>
               <p>
-                <span className="font-semibold">Nombre:</span>{' '}
+                <span className="font-semibold">{t('adjustment.ui.acta.name')}</span>{' '}
                 {formData.actaAjustadorNombre ? (
                   formData.actaAjustadorNombre
                 ) : (
@@ -789,11 +790,11 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
                 )}
               </p>
               <p>
-                <span className="font-semibold">Cargo:</span>{' '}
+                <span className="font-semibold">{t('adjustment.ui.acta.positionLabel')}</span>{' '}
                 {formData.actaAjustadorCargo || <span style={{ color: textSecondary }}>—</span>}
               </p>
               <p>
-                <span className="font-semibold">E-mail:</span>{' '}
+                <span className="font-semibold">{t('adjustment.ui.acta.emailLabel')}</span>{' '}
                 {formData.actaAjustadorEmail || <span style={{ color: textSecondary }}>—</span>}
               </p>
             </div>
@@ -804,7 +805,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
               {formData.actaAjustadorFirmaImagen ? (
                 <img
                   src={formData.actaAjustadorFirmaImagen}
-                  alt="Firma del ajustador"
+                  alt={t('adjustment.ui.acta.adjusterSignature')}
                   className="max-h-28 object-contain"
                 />
               ) : (

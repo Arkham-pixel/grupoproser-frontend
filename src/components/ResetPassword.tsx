@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { BASE_URL } from '../config/apiConfig.js';
@@ -8,6 +9,7 @@ import arnaldLogo from '../config/brandAssets.js';
 import { FaEnvelope, FaShieldAlt, FaArrowLeft, FaCheckCircle, FaMoon, FaSun } from 'react-icons/fa';
 
 export default function ResetPassword() {
+  const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const [correo, setCorreo] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -29,13 +31,13 @@ export default function ResetPassword() {
   
   useEffect(() => {
     // Establecer título de la página
-    document.title = 'Arnald DataFlow - Recuperar Contraseña';
+    document.title = t('auth.resetPassword.pageTitle');
     
     const interval = setInterval(() => {
       setLogoScale(prev => prev === 1 ? 1.05 : 1);
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [t]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,11 +54,11 @@ export default function ResetPassword() {
         setEmailError(true);
       }
       
-      setMensaje(response.data.message || "Si el correo está registrado, recibirás un enlace de recuperación.");
+      setMensaje(response.data.message || t('auth.resetPassword.defaultSuccess'));
       setCorreo(""); // Limpiar el campo
     } catch (err: any) {
       console.error('Error al solicitar recuperación:', err);
-      setError(err.response?.data?.message || "Error al solicitar el restablecimiento. Intenta nuevamente.");
+      setError(err.response?.data?.message || t('auth.resetPassword.defaultError'));
     } finally {
       setLoading(false);
     }
@@ -134,7 +136,7 @@ export default function ResetPassword() {
             ? '0 8px 32px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)'
             : '0 8px 32px rgba(220, 38, 38, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.2)'
         }}
-        title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+        title={theme === 'dark' ? t('auth.switchToLightMode') : t('auth.switchToDarkMode')}
       >
         {theme === 'dark' ? (
           <FaSun className="text-lg sm:text-2xl text-yellow-300 animate-pulse" />
@@ -168,7 +170,7 @@ export default function ResetPassword() {
           }}
         >
           <FaShieldAlt className="text-white text-xs sm:text-sm" />
-          <span className="text-white text-[10px] sm:text-xs font-bold tracking-wider">RECUPERACIÓN SEGURA</span>
+          <span className="text-white text-[10px] sm:text-xs font-bold tracking-wider">{t('auth.resetPassword.badge')}</span>
         </div>
 
         <div className="text-center mb-6 sm:mb-8">
@@ -204,7 +206,7 @@ export default function ResetPassword() {
                 : '0 2px 20px rgba(220, 38, 38, 0.2)'
             }}
           >
-            Recuperar Contraseña
+            {t('auth.resetPassword.title')}
           </h1>
           <p 
             className="text-xs sm:text-sm font-medium"
@@ -213,7 +215,7 @@ export default function ResetPassword() {
               lineHeight: '1.6'
             }}
           >
-            Ingresa tu correo electrónico o usuario y te enviaremos<br className="hidden sm:block" />instrucciones para restablecer tu contraseña
+            {t('auth.resetPassword.subtitle')}
           </p>
         </div>
 
@@ -224,7 +226,7 @@ export default function ResetPassword() {
               style={{ color: textPrimary }}
             >
               <FaEnvelope className="text-red-600 text-sm" />
-              Correo Electrónico / Usuario / Cédula
+              {t('auth.resetPassword.label')}
             </label>
             <div className="relative group">
               <div 
@@ -235,7 +237,7 @@ export default function ResetPassword() {
               </div>
               <input
                 type="text"
-                placeholder="correo@ejemplo.com"
+                placeholder={t('auth.resetPassword.placeholder')}
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
                 className="w-full pl-10 pr-3 py-2.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
@@ -255,7 +257,7 @@ export default function ResetPassword() {
               className="text-xs mt-2"
               style={{ color: textSecondary, opacity: 0.8 }}
             >
-              Puedes ingresar tu correo, usuario o cédula registrada
+              {t('auth.resetPassword.hint')}
             </p>
           </div>
 
@@ -304,8 +306,8 @@ export default function ResetPassword() {
                     }}
                   >
                     {emailError 
-                      ? '⚠️ No fue posible enviar el correo'
-                      : '✅ Correo enviado exitosamente'}
+                      ? `⚠️ ${t('auth.resetPassword.emailSendFailed')}`
+                      : `✅ ${t('auth.resetPassword.emailSentSuccess')}`}
                   </p>
                   <p 
                     className="text-xs leading-relaxed mb-2"
@@ -323,7 +325,7 @@ export default function ResetPassword() {
                       color: theme === 'dark' ? '#FCD34D' : '#D97706',
                       opacity: 0.85
                     }}>
-                      Contacta al administrador para revisar la configuracion SMTP del servidor.
+                      {t('auth.resetPassword.smtpContactAdmin')}
                     </p>
                   )}
                 </div>
@@ -353,7 +355,7 @@ export default function ResetPassword() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <p className="font-bold mb-1">Error al enviar</p>
+                  <p className="font-bold mb-1">{t('auth.resetPassword.sendErrorTitle')}</p>
                   <p className="text-xs leading-relaxed opacity-90">{error}</p>
                 </div>
               </div>
@@ -393,12 +395,12 @@ export default function ResetPassword() {
             {loading ? (
               <div className="flex items-center justify-center gap-2">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm">Enviando instrucciones...</span>
+                <span className="text-sm">{t('auth.resetPassword.sending')}</span>
               </div>
             ) : (
               <div className="flex items-center justify-center gap-2">
                 <FaEnvelope className="text-lg" />
-                <span className="text-sm">Enviar Instrucciones</span>
+                <span className="text-sm">{t('auth.resetPassword.sendInstructions')}</span>
               </div>
             )}
           </button>
@@ -421,7 +423,7 @@ export default function ResetPassword() {
             }}
           >
             <FaArrowLeft className="text-xs" />
-            Volver al inicio de sesión
+            {t('auth.backToLogin')}
           </button>
         </form>
 
@@ -436,13 +438,13 @@ export default function ResetPassword() {
             }}
           >
             <span>🔒</span>
-            <span>Conexión Segura SSL</span>
+            <span>{t('auth.resetPassword.secureSsl')}</span>
           </div>
           <p className="text-xs font-medium" style={{ color: textSecondary }}>
-            © 2025 <span style={{ color: theme === 'dark' ? '#EF4444' : '#DC2626', fontWeight: 'bold' }}>Arnald DataFlow</span>
+            {t('auth.resetPassword.copyright')} <span style={{ color: theme === 'dark' ? '#EF4444' : '#DC2626', fontWeight: 'bold' }}>Arnald DataFlow</span>
           </p>
           <p className="text-xs mt-1" style={{ color: textSecondary, opacity: 0.7 }}>
-            El corazón digital de Grupo Proser
+            {t('auth.tagline')}
           </p>
         </div>
       </div>

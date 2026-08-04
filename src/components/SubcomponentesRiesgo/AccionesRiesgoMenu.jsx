@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaChevronDown,
   FaEdit,
@@ -16,6 +17,7 @@ const btnAcciones =
  * El menú se renderiza en portal (fixed) para no quedar cortado por overflow de la tabla.
  */
 export default function AccionesRiesgoMenu({ onInforme, onEditar, onEliminar }) {
+  const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const btnRef = useRef(null);
@@ -82,7 +84,7 @@ export default function AccionesRiesgoMenu({ onInforme, onEditar, onEliminar }) 
             onClick={() => elegir(onInforme)}
           >
             <FaFileAlt className="text-fenix-primario" aria-hidden />
-            Informe
+            {t('riskMatrix.viewReport')}
           </button>
           <button
             type="button"
@@ -91,7 +93,7 @@ export default function AccionesRiesgoMenu({ onInforme, onEditar, onEliminar }) 
             onClick={() => elegir(onEditar)}
           >
             <FaEdit className="text-fenix-primario" aria-hidden />
-            Editar
+            {t('risks.editCase')}
           </button>
           <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
           <button
@@ -101,7 +103,7 @@ export default function AccionesRiesgoMenu({ onInforme, onEditar, onEliminar }) 
             onClick={() => elegir(onEliminar)}
           >
             <FaTrash className="text-[10px]" aria-hidden />
-            Eliminar
+            {t('risks.deleteCase')}
           </button>
         </div>,
         document.body
@@ -117,11 +119,11 @@ export default function AccionesRiesgoMenu({ onInforme, onEditar, onEliminar }) 
         aria-haspopup="menu"
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
-        title="Acciones del caso"
+        title={t('risks.caseActions')}
       >
         <span className="inline-flex items-center gap-1.5">
           <FaEllipsisV className="text-[10px] opacity-70" aria-hidden />
-          Acciones
+          {t('risks.caseActions')}
         </span>
         <FaChevronDown className={`text-[10px] transition ${abierto ? 'rotate-180' : ''}`} aria-hidden />
       </button>

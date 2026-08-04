@@ -1,15 +1,15 @@
 import React from 'react';
 import { FaCalculator, FaPlus, FaTrash } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';
 import { useTheme } from '../../context/ThemeContext';
-import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 import {
-  parsearMontoReserva as parsearMonto,
   formatearMontoReserva as formatearMonto,
   calcularTotalReservaSugeridaItems
 } from '../../utils/reservaSugeridaUtils';
 
 export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroSeccion = 7 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -58,10 +58,10 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
             className="mr-3"
             style={{ color: theme === 'dark' ? '#86EFAC' : '#16A34A' }}
           />
-          {numeroSeccion}. {tituloAjuste('Reserva sugerida')}
+          {numeroSeccion}. {t('adjustment.ui.sections.reserva.title')}
         </h2>
         <p className="mt-2" style={{ color: textSecondary }}>
-          {subtituloAjuste('Determine la reserva sugerida')}
+          {t('adjustment.ui.sections.reserva.subtitle')}
         </p>
       </div>
 
@@ -70,7 +70,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
         style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
       >
         <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-          {subtituloAjuste('Reserva sugerida')}
+          {t('adjustment.ui.sections.reserva.label')}
         </label>
         <textarea
           value={formData.reservaSugerida || ''}
@@ -83,11 +83,8 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Escribe la reserva sugerida aquí. Por ejemplo: 'Se sugiere una reserva de 50 millones de pesos para cubrir los daños estructurales y equipos afectados'"
+          placeholder={t('adjustment.ui.sections.reserva.conceptPlaceholder')}
         />
-        <div className="mt-2 text-sm" style={{ color: textSecondary }}>
-          Mínimo recomendado: 80 palabras para la reserva sugerida
-        </div>
       </div>
 
       <div
@@ -96,7 +93,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-base font-semibold" style={{ color: textPrimary }}>
-            {tituloAjuste('Detalle de reserva sugerida')}
+            {t('adjustment.ui.sections.reserva.subtitle')}
           </h3>
           <button
             type="button"
@@ -107,7 +104,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
               color: theme === 'dark' ? '#86EFAC' : '#FFFFFF'
             }}
           >
-            <FaPlus /> Agregar fila
+            <FaPlus /> {t('adjustment.ui.sections.reserva.addRow')}
           </button>
         </div>
 
@@ -119,19 +116,19 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
                   className="p-3 text-center text-sm font-semibold w-16"
                   style={{ color: tableHeaderText, border: `1px solid ${borderColor}` }}
                 >
-                  ITEM
+                  #
                 </th>
                 <th
                   className="p-3 text-left text-sm font-semibold"
                   style={{ color: tableHeaderText, border: `1px solid ${borderColor}` }}
                 >
-                  DESCRIPCIÓN
+                  {t('adjustment.ui.sections.reserva.concept')}
                 </th>
                 <th
                   className="p-3 text-right text-sm font-semibold"
                   style={{ color: tableHeaderText, border: `1px solid ${borderColor}` }}
                 >
-                  RESERVA SUGERIDA
+                  {t('adjustment.ui.sections.reserva.amount')}
                 </th>
                 <th
                   className="p-3 text-center text-sm font-semibold w-20"
@@ -166,7 +163,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
                         type="text"
                         value={item.descripcion || ''}
                         onChange={(e) => actualizarFila(item.id, 'descripcion', e.target.value)}
-                        placeholder="Descripción del ítem"
+                        placeholder={t('adjustment.ui.sections.reserva.conceptPlaceholder')}
                         className="w-full px-2 py-1.5 text-sm rounded focus:outline-none"
                         style={{
                           backgroundColor: inputBg,
@@ -183,7 +180,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
                         onBlur={(e) =>
                           actualizarFila(item.id, 'reserva', formatearMonto(e.target.value))
                         }
-                        placeholder="1.000.000"
+                        placeholder={t('adjustment.ui.sections.reserva.amountPlaceholder')}
                         className="w-full px-2 py-1.5 text-sm rounded focus:outline-none text-right"
                         style={{
                           backgroundColor: inputBg,
@@ -201,7 +198,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
                           backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.2)' : '#EF4444',
                           color: theme === 'dark' ? '#FCA5A5' : '#FFFFFF'
                         }}
-                        title="Eliminar fila"
+                        title={t('adjustment.ui.sections.reserva.deleteRow')}
                       >
                         <FaTrash />
                       </button>
@@ -215,7 +212,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
                     className="p-4 text-center text-sm"
                     style={{ color: textSecondary, border: `1px solid ${borderColor}` }}
                   >
-                    No hay filas. Haz clic en &quot;Agregar fila&quot; para comenzar.
+                    {t('adjustment.ui.sections.reserva.addRow')}
                   </td>
                 </tr>
               )}
@@ -228,7 +225,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
                     className="p-3 text-sm font-bold text-right"
                     style={{ color: totalRowText, border: `1px solid ${borderColor}` }}
                   >
-                    TOTAL RESERVA
+                    {t('adjustment.ui.sections.reserva.amount')}
                   </td>
                   <td
                     className="p-3 text-sm font-bold text-right"
@@ -249,7 +246,7 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
         onTextoCambiado={(texto) => onInputChange('reservaSugerida', texto)}
         contextoFormulario={formData}
         tipoSeccion="reservaSugerida"
-        tituloSeccion="Reserva Sugerida"
+        tituloSeccion={t('adjustment.ui.sections.reserva.label')}
       />
 
       <div
@@ -260,20 +257,13 @@ export default function ReservaSugeridaAjuste({ formData, onInputChange, numeroS
         }}
       >
         <h3 className="text-lg font-semibold mb-4 flex items-center" style={{ color: sectionYellowText }}>
-          📊 Validación de Calidad
+          📊 {t('adjustment.ui.sections.reserva.recommendationsTitle')}
         </h3>
         <div className="text-sm" style={{ color: sectionYellowText }}>
-          <p className="mb-2">
-            <strong>Recomendaciones para reserva sugerida de calidad:</strong>
-          </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Incluya el monto de la reserva sugerida</li>
-            <li>Justifique el monto basándose en los daños evaluados</li>
-            <li>Mencione los elementos cubiertos por la reserva</li>
-            <li>Describa los criterios de la evaluación</li>
-            <li>Mencione factores que pueden afectar el monto final</li>
-            <li>Sea específico sobre las bases de cálculo utilizadas</li>
-            <li>Detalle cada ítem en la tabla con su valor correspondiente</li>
+            <li>{t('adjustment.ui.sections.reserva.tip1')}</li>
+            <li>{t('adjustment.ui.sections.reserva.tip2')}</li>
+            <li>{t('adjustment.ui.sections.reserva.tip3')}</li>
           </ul>
         </div>
       </div>

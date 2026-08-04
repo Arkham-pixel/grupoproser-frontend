@@ -7,6 +7,7 @@ import {
   FaUndo,
   FaUser,
 } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig.js';
 import {
   crearCasoPropiedades,
@@ -97,6 +98,7 @@ function SeccionCard({ icon: Icon, title, children, hint }) {
  * El formulario de inspección se abre desde el reporte.
  */
 const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose, onSaved }) => {
+  const { t } = useTranslation();
   const esEdicion = Boolean(initialData?._id);
   const [form, setForm] = useState(() =>
     initialData ? construirFormDesdeCaso(initialData) : { ...FORM_VACIO }
@@ -254,7 +256,7 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
     setExito(null);
 
     if (!form.nombreCliente.trim()) {
-      setError('El nombre del cliente es obligatorio.');
+      setError(t('properties.validation.clientNameRequired'));
       return;
     }
 
@@ -268,14 +270,14 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
       }
       setExito(
         esEdicion
-          ? `Caso ${guardado.consecutivo || ''} actualizado correctamente.`
-          : `Caso ${guardado.consecutivo || ''} creado correctamente.`
+          ? t('properties.messages.caseUpdated', { caseNumber: guardado.consecutivo || '' })
+          : t('properties.messages.caseCreated', { caseNumber: guardado.consecutivo || '' })
       );
       if (!esEdicion) setForm({ ...FORM_VACIO });
       if (onSaved) await onSaved(guardado);
     } catch (err) {
       console.error('Error guardando caso Propiedades:', err);
-      setError(err.message || 'No fue posible guardar el caso.');
+      setError(err.message || t('properties.messages.saveError'));
     } finally {
       setGuardando(false);
     }
@@ -313,33 +315,33 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
             </span>
           )}
           {cargandoCatalogos && (
-            <span className="font-body text-xs text-gray-500">Cargando listas…</span>
+            <span className="font-body text-xs text-gray-500">{t('properties.loadingLists')}</span>
           )}
         </div>
       ) : null}
 
       <SeccionCard
         icon={FaUser}
-        title="Datos del cliente"
-        hint="Información de contacto y quien atiende la visita."
+        title={t('properties.sections.clientData')}
+        hint={t('properties.hints.clientData')}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Campo label="Nombre del cliente / inmueble" required className="md:col-span-2 xl:col-span-1">
+          <Campo label={t('properties.fields.clientOrPropertyName')} required className="md:col-span-2 xl:col-span-1">
             <InputFenix
               value={form.nombreCliente}
               onChange={setCampo('nombreCliente')}
-              placeholder="Nombre completo o razón social"
+              placeholder={t('properties.placeholders.clientName')}
               autoComplete="organization"
             />
           </Campo>
-          <Campo label="Documento / NIT">
+          <Campo label={t('properties.fields.document')}>
             <InputFenix
               value={form.documento}
               onChange={setCampo('documento')}
-              placeholder="Cédula o NIT"
+              placeholder={t('properties.placeholders.document')}
             />
           </Campo>
-          <Campo label="Celular">
+          <Campo label={t('properties.fields.mobile')}>
             <InputFenix
               value={form.celular}
               onChange={setCampo('celular')}
@@ -347,28 +349,28 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
               inputMode="tel"
             />
           </Campo>
-          <Campo label="Email">
+          <Campo label={t('properties.fields.email')}>
             <InputFenix
               type="email"
               value={form.email}
               onChange={setCampo('email')}
-              placeholder="correo@ejemplo.com"
+              placeholder={t('properties.placeholders.email')}
             />
           </Campo>
-          <Campo label="Quién recibe la visita">
+          <Campo label={t('properties.fields.visitRecipient')}>
             <InputFenix
               value={form.destinacion}
               onChange={setCampo('destinacion')}
-              placeholder="Nombre de quien recibe"
+              placeholder={t('properties.placeholders.visitRecipient')}
             />
           </Campo>
-          <Campo label="Responsable / ajustador">
+          <Campo label={t('properties.fields.responsibleAdjuster')}>
             <SelectFenix
               value={form.responsable}
               onChange={setCampo('responsable')}
               disabled={cargandoCatalogos && responsables.length === 0}
             >
-              <option value="">Seleccione…</option>
+              <option value="">{t('common.select')}</option>
               {opcionHuerfana(form.responsable, responsables) && (
                 <option value={form.responsable}>{form.responsable}</option>
               )}
@@ -384,31 +386,31 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
 
       <SeccionCard
         icon={FaMapMarkerAlt}
-        title="Ubicación del inmueble"
-        hint="Al elegir la ciudad se completa el departamento automáticamente."
+        title={t('properties.sections.location')}
+        hint={t('properties.hints.location')}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Campo label="Dirección" className="md:col-span-2">
+          <Campo label={t('properties.fields.address')} className="md:col-span-2">
             <InputFenix
               value={form.direccion}
               onChange={setCampo('direccion')}
-              placeholder="Calle, carrera, número…"
+              placeholder={t('properties.placeholders.address')}
             />
           </Campo>
-          <Campo label="Localización">
+          <Campo label={t('properties.fields.location')}>
             <InputFenix
               value={form.localizacion}
               onChange={setCampo('localizacion')}
-              placeholder="Barrio / zona"
+              placeholder={t('properties.placeholders.location')}
             />
           </Campo>
-          <Campo label="Departamento">
+          <Campo label={t('properties.fields.department')}>
             <SelectFenix
               value={form.departamento}
               onChange={setCampo('departamento')}
               disabled={cargandoCatalogos && departamentos.length === 0}
             >
-              <option value="">Seleccione…</option>
+              <option value="">{t('common.select')}</option>
               {opcionHuerfana(form.departamento, departamentos) && (
                 <option value={form.departamento}>{form.departamento}</option>
               )}
@@ -419,14 +421,14 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
               ))}
             </SelectFenix>
           </Campo>
-          <Campo label="Ciudad">
+          <Campo label={t('properties.fields.city')}>
             <SelectFenix
               value={form.ciudad}
               onChange={setCampo('ciudad')}
               disabled={cargandoCatalogos && ciudadesFiltradas.length === 0}
             >
               <option value="">
-                {form.departamento ? 'Seleccione ciudad…' : 'Todas / seleccione ciudad…'}
+                {form.departamento ? t('properties.placeholders.selectCity') : t('properties.placeholders.allOrSelectCity')}
               </option>
               {opcionHuerfana(form.ciudad, ciudadesFiltradas) && (
                 <option value={form.ciudad}>{form.ciudad}</option>
@@ -438,9 +440,9 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
               ))}
             </SelectFenix>
           </Campo>
-          <Campo label="Clase de inmueble">
+          <Campo label={t('properties.fields.propertyClass')}>
             <SelectFenix value={form.claseInmueble} onChange={setCampo('claseInmueble')}>
-              <option value="">Seleccione…</option>
+              <option value="">{t('common.select')}</option>
               {CLASES_INMUEBLE.map((c) => (
                 <option key={c} value={c}>
                   {c}
@@ -448,14 +450,14 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
               ))}
             </SelectFenix>
           </Campo>
-          <Campo label="Tipo de inmueble">
+          <Campo label={t('properties.fields.propertyType')}>
             <SelectFenix
               value={form.tipoInmueble}
               onChange={setCampo('tipoInmueble')}
               disabled={!form.claseInmueble}
             >
               <option value="">
-                {form.claseInmueble ? 'Seleccione…' : 'Seleccione primero una clase'}
+                {form.claseInmueble ? t('common.select') : t('properties.placeholders.selectClassFirst')}
               </option>
               {tiposDisponibles.map((t) => (
                 <option key={t} value={t}>
@@ -469,17 +471,17 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
 
       <SeccionCard
         icon={FaBuilding}
-        title="Póliza / referencia"
-        hint="Datos de la compañía y referencias del caso."
+        title={t('properties.sections.policyReference')}
+        hint={t('properties.hints.policyReference')}
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Campo label="Aseguradora">
+          <Campo label={t('properties.fields.insurer')}>
             <SelectFenix
               value={form.aseguradora}
               onChange={setCampo('aseguradora')}
               disabled={cargandoCatalogos && aseguradoras.length === 0}
             >
-              <option value="">Seleccione…</option>
+              <option value="">{t('common.select')}</option>
               {opcionHuerfana(form.aseguradora, aseguradoras) && (
                 <option value={form.aseguradora}>{form.aseguradora}</option>
               )}
@@ -490,24 +492,24 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
               ))}
             </SelectFenix>
           </Campo>
-          <Campo label="Póliza">
-            <InputFenix value={form.poliza} onChange={setCampo('poliza')} placeholder="Número de póliza" />
+          <Campo label={t('properties.fields.policy')}>
+            <InputFenix value={form.poliza} onChange={setCampo('poliza')} placeholder={t('properties.placeholders.policyNumber')} />
           </Campo>
-          <Campo label="N° siniestro">
+          <Campo label={t('properties.fields.claimNumber')}>
             <InputFenix
               value={form.numeroSiniestro}
               onChange={setCampo('numeroSiniestro')}
-              placeholder="Número de siniestro"
+              placeholder={t('properties.placeholders.claimNumber')}
             />
           </Campo>
-          <Campo label="N° caso">
+          <Campo label={t('properties.fields.caseNumber')}>
             <InputFenix
               value={form.numeroCaso}
               onChange={setCampo('numeroCaso')}
-              placeholder="Número de caso interno"
+              placeholder={t('properties.placeholders.caseNumber')}
             />
           </Campo>
-          <Campo label="Fecha de solicitud">
+          <Campo label={t('properties.fields.requestDate')}>
             <InputFenix
               type="date"
               value={form.fechaSolicitud}
@@ -517,13 +519,13 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
         </div>
       </SeccionCard>
 
-      <SeccionCard icon={FaClipboardList} title="Observaciones">
-        <Campo label="Notas del caso">
+      <SeccionCard icon={FaClipboardList} title={t('properties.sections.observations')}>
+        <Campo label={t('properties.fields.caseNotes')}>
           <TextareaFenix
             value={form.observaciones}
             onChange={setCampo('observaciones')}
             rows={4}
-            placeholder="Observaciones generales del caso…"
+            placeholder={t('properties.placeholders.caseNotes')}
           />
         </Campo>
       </SeccionCard>
@@ -531,15 +533,15 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
       <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border border-gray-100 bg-white/95 px-4 py-3 shadow-sm backdrop-blur dark:border-gray-800 dark:bg-gray-950/95">
         <button type="submit" className={expressBtnPrimary} disabled={guardando}>
           <FaSave className="mr-2" />
-          {guardando ? 'Guardando…' : esEdicion ? 'Actualizar caso' : 'Crear caso'}
+          {guardando ? t('properties.actions.saving') : esEdicion ? t('properties.actions.updateCase') : t('properties.actions.createCase')}
         </button>
         <button type="button" className={expressBtnGhost} onClick={limpiar} disabled={guardando}>
           <FaUndo className="mr-2" />
-          Limpiar
+          {t('properties.actions.clear')}
         </button>
         {embed && onClose && (
           <button type="button" className={expressBtnGhost} onClick={onClose} disabled={guardando}>
-            Cerrar
+          {t('common.close')}
           </button>
         )}
       </div>
@@ -552,8 +554,8 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
     <div className={`${expressScope} ${root}`}>
       <div className={`${expressPageWrap} space-y-6`}>
         <PropiedadesPageHeader
-          title={esEdicion ? 'Editar caso' : 'Nuevo caso'}
-          subtitle="Registre los datos del cliente. El formulario de inspección se diligencia desde el reporte."
+          title={esEdicion ? t('properties.page.editCase') : t('properties.page.newCase')}
+          subtitle={t('properties.page.subtitle')}
           activePath="/propiedades/carga"
         />
         {contenido}

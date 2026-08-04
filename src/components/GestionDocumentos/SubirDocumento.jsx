@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { FaUpload, FaFile, FaTimes } from 'react-icons/fa';
 
 export default function SubirDocumento({ onDocumentoSubido }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [archivo, setArchivo] = useState(null);
   const [nombre, setNombre] = useState('');
@@ -40,7 +42,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
     if (!archivo) {
       setMensaje({
         tipo: 'error',
-        texto: 'Por favor selecciona un archivo'
+        texto: t('admin.ui.documentos.subir.selectFileFirst')
       });
       return;
     }
@@ -63,7 +65,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
 
       setMensaje({
         tipo: 'exito',
-        texto: 'Documento subido exitosamente'
+        texto: t('admin.ui.documentos.subir.uploadSuccess')
       });
 
       // Limpiar formulario
@@ -86,7 +88,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
       console.error('Error subiendo documento:', error);
       setMensaje({
         tipo: 'error',
-        texto: error.response?.data?.message || 'Error al subir el documento'
+        texto: error.response?.data?.message || t('admin.ui.documentos.subir.uploadFailed')
       });
     } finally {
       setSubiendo(false);
@@ -110,7 +112,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
         className="text-xl font-bold mb-4"
         style={{ color: textPrimary }}
       >
-        Subir Documento
+        {t('admin.ui.documentos.subir.title')}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -120,7 +122,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            Archivo
+            {t('admin.ui.documentos.subir.file')}
           </label>
           <div className="relative">
             <input
@@ -139,7 +141,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
             >
               <FaFile className="mr-2" style={{ color: textSecondary }} />
               <span style={{ color: textSecondary }}>
-                {archivo ? archivo.name : 'Seleccionar archivo'}
+                {archivo ? archivo.name : t('admin.ui.documentos.subir.selectFile')}
               </span>
             </label>
           </div>
@@ -166,13 +168,13 @@ export default function SubirDocumento({ onDocumentoSubido }) {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            Nombre del documento
+            {t('admin.ui.documentos.subir.documentName')}
           </label>
           <input
             type="text"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
-            placeholder="Nombre del documento"
+            placeholder={t('admin.ui.documentos.subir.documentName')}
             className="w-full rounded px-3 py-2 text-sm"
             style={{
               backgroundColor: inputBg,
@@ -188,12 +190,12 @@ export default function SubirDocumento({ onDocumentoSubido }) {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            Descripción
+            {t('admin.ui.documentos.subir.description')}
           </label>
           <textarea
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Descripción del documento (opcional)"
+            placeholder={t('admin.ui.documentos.subir.descriptionPlaceholder')}
             rows="3"
             className="w-full rounded px-3 py-2 text-sm resize-none"
             style={{
@@ -210,13 +212,13 @@ export default function SubirDocumento({ onDocumentoSubido }) {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            Etiquetas
+            {t('admin.ui.documentos.subir.tags')}
           </label>
           <input
             type="text"
             value={etiquetas}
             onChange={(e) => setEtiquetas(e.target.value)}
-            placeholder="Etiquetas separadas por comas (opcional)"
+            placeholder={t('admin.ui.documentos.subir.tagsPlaceholder')}
             className="w-full rounded px-3 py-2 text-sm"
             style={{
               backgroundColor: inputBg,
@@ -225,7 +227,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
             }}
           />
           <p className="text-xs mt-1" style={{ color: textSecondary }}>
-            Ejemplo: importante, contrato, factura
+            {t('admin.ui.documentos.subir.tagsExample')}
           </p>
         </div>
 
@@ -267,7 +269,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
           }}
         >
           <FaUpload />
-          {subiendo ? 'Subiendo...' : 'Subir Documento'}
+          {subiendo ? t('admin.ui.documentos.subir.uploading') : t('admin.ui.documentos.subir.title')}
         </button>
       </form>
     </div>

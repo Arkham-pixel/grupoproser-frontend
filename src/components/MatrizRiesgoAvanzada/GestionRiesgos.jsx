@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaCalendarAlt, FaComment, FaPlus, FaShieldAlt, FaTrashAlt } from 'react-icons/fa';
 import MatrizSeccionTitulo from './MatrizSeccionTitulo';
 import {
@@ -6,7 +7,6 @@ import {
   crearRecomendacionVacia,
   crearSeguimientoVacio,
   ESTADOS_RECOMENDACION,
-  etiquetaEstadoRecomendacion,
   normalizarGestionRiesgos,
   obtenerMetaEstadoRecomendacion,
 } from './gestionRiesgosHelpers';
@@ -22,6 +22,7 @@ import {
 import './matrizFenixTheme.css';
 
 const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
+  const { t } = useTranslation();
   const [gestionRiesgos, setGestionRiesgos] = useState(() => normalizarGestionRiesgos(datos));
   const gestionRef = useRef(gestionRiesgos);
   const onDatosChangeRef = useRef(onDatosChange);
@@ -132,10 +133,8 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
     <div className="gestion-riesgos space-y-4">
       <MatrizSeccionTitulo
         icon={FaShieldAlt}
-        title={'Recomendaciones de gesti\u00f3n'}
-        description={
-          'Registra cada recomendaci\u00f3n con estado de avance (4 niveles), porcentaje y seguimiento.'
-        }
+        title={t('riskMatrix.gestionUi.title')}
+        description={t('riskMatrix.gestionUi.description')}
       />
 
       <div className={`recomendaciones-section ${matrizCard}`}>
@@ -152,11 +151,10 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                 <header className="flex items-center justify-between gap-3 border-b border-gray-100 bg-red-50/60 px-4 py-3 dark:border-gray-800 dark:bg-red-950/20 sm:px-5">
                   <div className="min-w-0">
                     <p className="font-heading text-xs font-semibold uppercase tracking-wide text-fenix-primario">
-                      {'Recomendaci\u00f3n '}
-                      {index + 1}
+                      {t('riskMatrix.gestionUi.recommendationN', { n: index + 1 })}
                     </p>
                     <h4 className="font-heading text-sm font-bold text-gray-800 dark:text-white">
-                      {'Datos de la recomendaci\u00f3n'}
+                      {t('riskMatrix.gestionUi.recommendationData')}
                     </h4>
                   </div>
                   {gestionRiesgos.recomendaciones.length > 1 && !modoReporte && (
@@ -164,7 +162,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                       type="button"
                       className={matrizBtnDanger}
                       onClick={() => eliminarRecomendacion(recomendacion.id)}
-                      title={'Eliminar esta recomendaci\u00f3n'}
+                      title={t('riskMatrix.gestionUi.deleteRecommendation')}
                     >
                       <FaTrashAlt />
                     </button>
@@ -175,7 +173,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                   <div className="grid gap-4 lg:grid-cols-[1fr_minmax(200px,240px)]">
                     <div>
                       <label htmlFor={`recomendacion-${recomendacion.id}`} className={matrizLabel}>
-                        {'Texto de la recomendaci\u00f3n'}
+                        {t('riskMatrix.gestionUi.recommendationText')}
                       </label>
                       <textarea
                         id={`recomendacion-${recomendacion.id}`}
@@ -183,9 +181,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                         onChange={(e) =>
                           actualizarRecomendacion(recomendacion.id, 'recomendacion', e.target.value)
                         }
-                        placeholder={
-                          'Describe la recomendaci\u00f3n espec\u00edfica para la gesti\u00f3n de riesgos...'
-                        }
+                        placeholder={t('riskMatrix.gestionUi.recommendationPlaceholder')}
                         className={matrizTextarea}
                         rows={3}
                         readOnly={modoReporte}
@@ -195,7 +191,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                     <div>
                       <label htmlFor={`fechaRecomendacion-${recomendacion.id}`} className={matrizLabel}>
                         <FaCalendarAlt className="mr-1 inline text-fenix-primario" />
-                        {'Fecha de recomendaci\u00f3n'}
+                        {t('riskMatrix.gestionUi.recommendationDate')}
                       </label>
                       <input
                         type="date"
@@ -218,7 +214,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                     <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
                       <div className="min-w-[220px] flex-1">
                         <label htmlFor={`estado-${recomendacion.id}`} className={matrizLabel}>
-                          Estado de progreso
+                          {t('riskMatrix.gestionUi.progressStatus')}
                         </label>
                         <select
                           id={`estado-${recomendacion.id}`}
@@ -231,14 +227,14 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                         >
                           {ESTADOS_RECOMENDACION.map((estado) => (
                             <option key={estado.id} value={estado.id}>
-                              {estado.label} ({estado.avance}%)
+                              {t(estado.labelKey)} ({estado.avance}%)
                             </option>
                           ))}
                         </select>
                       </div>
                       <div className="text-right">
                         <p className="font-heading text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Avance
+                          {t('riskMatrix.gestionUi.progress')}
                         </p>
                         <p
                           className="font-heading text-2xl font-bold"
@@ -247,7 +243,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                           {avance}%
                         </p>
                         <p className="text-xs text-gray-500">
-                          {etiquetaEstadoRecomendacion(recomendacion.estado)}
+                          {t(metaEstado.labelKey || 'riskMatrix.recStatus.open')}
                         </p>
                       </div>
                     </div>
@@ -279,11 +275,10 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <p className="font-heading text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                          Seguimiento
+                          {t('riskMatrix.gestionUi.followUp')}
                         </p>
                         <h5 className="font-heading text-sm font-semibold text-gray-800 dark:text-gray-200">
-                          {'Avances de la recomendaci\u00f3n '}
-                          {index + 1}
+                          {t('riskMatrix.gestionUi.followUpOf', { n: index + 1 })}
                         </h5>
                       </div>
                     </div>
@@ -296,8 +291,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                         >
                           <div className="mb-3 flex items-center justify-between gap-2">
                             <span className="font-heading text-sm font-semibold text-gray-700 dark:text-gray-300">
-                              {'Seguimiento '}
-                              {segIndex + 1}
+                              {t('riskMatrix.gestionUi.followUpN', { n: segIndex + 1 })}
                             </span>
                             {(recomendacion.seguimientos || []).length > 1 && !modoReporte && (
                               <button
@@ -306,7 +300,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                                 onClick={() =>
                                   eliminarSeguimiento(recomendacion.id, seguimiento.id)
                                 }
-                                title="Eliminar este seguimiento"
+                                title={t('riskMatrix.gestionUi.deleteFollowUp')}
                               >
                                 <FaTrashAlt />
                               </button>
@@ -320,7 +314,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                                 className={matrizLabel}
                               >
                                 <FaCalendarAlt className="mr-1 inline text-fenix-primario" />
-                                Fecha de seguimiento
+                                {t('riskMatrix.gestionUi.followUpDate')}
                               </label>
                               <input
                                 type="date"
@@ -345,7 +339,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                                 className={matrizLabel}
                               >
                                 <FaComment className="mr-1 inline text-fenix-primario" />
-                                Comentarios del seguimiento
+                                {t('riskMatrix.gestionUi.followUpComments')}
                               </label>
                               <textarea
                                 id={`comentariosSeguimiento-${recomendacion.id}-${seguimiento.id}`}
@@ -358,7 +352,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                                     e.target.value
                                   )
                                 }
-                                placeholder="Detalle del avance, estado o observaciones..."
+                                placeholder={t('riskMatrix.gestionUi.followUpPlaceholder')}
                                 className={matrizTextarea}
                                 rows={2}
                                 readOnly={modoReporte}
@@ -377,8 +371,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
                           onClick={() => agregarSeguimiento(recomendacion.id)}
                         >
                           <FaPlus />
-                          {'Agregar seguimiento a recomendaci\u00f3n '}
-                          {index + 1}
+                          {t('riskMatrix.gestionUi.addFollowUp', { n: index + 1 })}
                         </button>
                       </div>
                     )}
@@ -393,7 +386,7 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
           <div className="recomendaciones-footer mt-6 flex justify-center border-t border-gray-100 pt-4 dark:border-gray-800">
             <button type="button" className={matrizBtnPrimary} onClick={agregarRecomendacion}>
               <FaPlus />
-              {'Agregar recomendaci\u00f3n'}
+              {t('riskMatrix.gestionUi.addRecommendation')}
             </button>
           </div>
         )}

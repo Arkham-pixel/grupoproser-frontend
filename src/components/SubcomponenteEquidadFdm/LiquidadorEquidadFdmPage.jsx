@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import LiquidadorEquidadFdm from './LiquidadorEquidadFdm.jsx';
@@ -17,6 +18,7 @@ import { calcularLiquidacionFdm } from './liquidadorEquidadFdmHelpers.js';
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
 export default function LiquidadorEquidadFdmPage() {
+  const { t } = useTranslation();
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
@@ -45,7 +47,7 @@ export default function LiquidadorEquidadFdmPage() {
         const caso = await getCasoFdmById(casoIdFromQuery);
         if (!cancelado) setCasoFdm(caso);
       } catch (err) {
-        if (!cancelado) setError(err.message || 'No se pudo cargar el caso Equidad FDM.');
+        if (!cancelado) setError(err.message || t('equidadFdm.settlement.loadError'));
       } finally {
         if (!cancelado) setCargandoCaso(false);
       }
@@ -54,16 +56,16 @@ export default function LiquidadorEquidadFdmPage() {
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, location.state]);
+  }, [casoIdFromQuery, location.state, t]);
 
   const subtitulo = useMemo(() => {
     if (casoFdm?.nombre) {
       return `${casoFdm.nombre}${casoFdm.consecutivo ? ` · ${casoFdm.consecutivo}` : ''}${
-        casoFdm.polizaAfectar ? ` · Póliza ${casoFdm.polizaAfectar}` : ''
+        casoFdm.polizaAfectar ? ` · ${t('equidadFdm.settlement.policy')} ${casoFdm.polizaAfectar}` : ''
       }`;
     }
-    return 'Complete la liquidación o importe un Excel del modelo. Para guardar en el caso, ábralo desde el reporte.';
-  }, [casoFdm]);
+    return t('equidadFdm.settlement.subtitle');
+  }, [casoFdm, t]);
 
   const handleEstadoChange = (liq, tot) => {
     setLiquidadorState(liq);
@@ -72,13 +74,13 @@ export default function LiquidadorEquidadFdmPage() {
 
   const handleGuardarEnCaso = async () => {
     if (!casoId) {
-      setError('Debe abrir el liquidador desde un caso FDM ya guardado (botón Liquidador del reporte).');
+      setError(t('equidadFdm.settlement.savedCaseRequired'));
       return;
     }
     const liquidador = liquidadorState;
     const totales = totalesState || calcularLiquidacionFdm(liquidador || {});
     if (!liquidador) {
-      setError('No hay datos del liquidador para guardar.');
+      setError(t('equidadFdm.settlement.noData'));
       return;
     }
 
@@ -94,11 +96,11 @@ export default function LiquidadorEquidadFdmPage() {
       });
       setCasoFdm(actualizado);
       setMensaje(
-        'Liquidador guardado en el caso. Se actualizaron pérdida, deducible, total liquidado y valor indemnizado.'
+        t('equidadFdm.settlement.savedMessage')
       );
     } catch (err) {
       console.error(err);
-      setError(err.message || 'No se pudo guardar el liquidador en el caso.');
+      setError(err.message || t('equidadFdm.settlement.saveError'));
     } finally {
       setGuardando(false);
     }
@@ -108,7 +110,7 @@ export default function LiquidadorEquidadFdmPage() {
     <div className={`${fdmRoot} ${expressScope}`}>
       <div className={expressPageWrap}>
         <FdmPageHeader
-          title="Liquidador Equidad FDM"
+          title={t('equidadFdm.settlement.title')}
           subtitle={subtitulo}
           activePath="/equidad-fdm/liquidador"
           actions={
@@ -122,15 +124,15 @@ export default function LiquidadorEquidadFdmPage() {
                 >
                   <FaSave />
                   {guardando
-                    ? 'Guardando…'
+                    ? t('equidadFdm.actions.saving')
                     : casoFdm?.liquidador
-                      ? 'Actualizar en caso'
-                      : 'Guardar en caso'}
+                      ? t('equidadFdm.settlement.updateCase')
+                      : t('equidadFdm.settlement.saveCase')}
                 </button>
               )}
               <Link to="/equidad-fdm/reporte" className={expressBtnGhost}>
                 <FaArrowLeft />
-                Volver al reporte
+                {t('equidadFdm.settlement.backToReport')}
               </Link>
             </div>
           }
@@ -148,15 +150,14 @@ export default function LiquidadorEquidadFdmPage() {
         )}
         {!casoId && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-            Modo maqueta: puede importar Excel y descargar Excel/Word, pero para guardar en el caso use el botón{' '}
-            <strong>Liquidador</strong> desde el reporte.
+            {t('equidadFdm.settlement.mockMode')}
           </p>
         )}
 
         <div className={expressCard}>
           <div className={expressCardBody}>
             {cargandoCaso ? (
-              <p className="font-body text-sm text-gray-500">Cargando caso…</p>
+              <p className="font-body text-sm text-gray-500">{t('equidadFdm.settlement.loadingCase')}</p>
             ) : (
               <LiquidadorEquidadFdm
                 key={casoFdm?._id || 'nuevo'}

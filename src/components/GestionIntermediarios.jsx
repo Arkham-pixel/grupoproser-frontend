@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../config/apiConfig';
 import { FaPlus, FaEdit, FaTrash, FaHandshake, FaSave, FaTimes } from 'react-icons/fa';
 
 export default function GestionIntermediarios() {
+  const { t } = useTranslation();
   const [intermediarios, setIntermediarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -48,7 +50,7 @@ export default function GestionIntermediarios() {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!resIntermediarios.ok) throw new Error('Error al cargar intermediarios');
+      if (!resIntermediarios.ok) throw new Error(t('admin.ui.intermediarios.loadError'));
       const dataIntermediarios = await resIntermediarios.json();
       // Manejar ambos formatos: {success: true, data: [...]} o [...]
       if (dataIntermediarios.success && Array.isArray(dataIntermediarios.data)) {
@@ -99,7 +101,7 @@ export default function GestionIntermediarios() {
     setError(null);
     
     if (!formIntermediario.nombre || !formIntermediario.codigo) {
-      alert('El código y el nombre son requeridos');
+      alert(t('admin.ui.intermediarios.requiredFields'));
       return;
     }
 
@@ -123,22 +125,22 @@ export default function GestionIntermediarios() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al guardar intermediario');
+        throw new Error(data.error || data.message || t('admin.ui.intermediarios.saveError'));
       }
 
-      alert(intermediarioEditando ? 'Intermediario actualizado exitosamente' : 'Intermediario creado exitosamente');
+      alert(intermediarioEditando ? t('admin.ui.intermediarios.updated') : t('admin.ui.intermediarios.created'));
       setMostrarForm(false);
       setIntermediarioEditando(null);
       cargarDatos();
     } catch (err) {
       console.error('Error guardando intermediario:', err);
       setError(err.message);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.intermediarios.errorPrefix', { message: err.message }));
     }
   };
 
   const eliminarIntermediario = async (id) => {
-    if (!window.confirm('¿Está seguro de eliminar este intermediario? Esta acción no se puede deshacer.')) {
+    if (!window.confirm(t('admin.ui.intermediarios.confirmDelete'))) {
       return;
     }
 
@@ -154,14 +156,14 @@ export default function GestionIntermediarios() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al eliminar intermediario');
+        throw new Error(data.error || data.message || t('admin.ui.intermediarios.deleteError'));
       }
 
-      alert('Intermediario eliminado exitosamente');
+      alert(t('admin.ui.intermediarios.deleted'));
       cargarDatos();
     } catch (err) {
       console.error('Error eliminando intermediario:', err);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.intermediarios.errorPrefix', { message: err.message }));
     }
   };
 
@@ -169,8 +171,8 @@ export default function GestionIntermediarios() {
     return (
       <div className="container mx-auto p-4">
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <h2 className="text-lg font-medium text-red-800 mb-2">Acceso Denegado</h2>
-          <p className="text-red-700">No tienes permisos para acceder a esta función. Se requieren permisos de administrador o soporte.</p>
+          <h2 className="text-lg font-medium text-red-800 mb-2">{t('admin.ui.intermediarios.accessDeniedTitle')}</h2>
+          <p className="text-red-700">{t('admin.ui.intermediarios.accessDeniedMessage')}</p>
         </div>
       </div>
     );
@@ -179,7 +181,7 @@ export default function GestionIntermediarios() {
   if (loading) {
     return (
       <div className="container mx-auto p-4">
-        <div className="text-center">Cargando...</div>
+        <div className="text-center">{t('admin.ui.intermediarios.loading')}</div>
       </div>
     );
   }
@@ -189,13 +191,13 @@ export default function GestionIntermediarios() {
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
           <FaHandshake className="text-purple-600" />
-          Gestión de Intermediarios
+          {t('admin.ui.intermediarios.title')}
         </h1>
         <button
           onClick={() => abrirForm()}
           className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
         >
-          <FaPlus /> Nuevo Intermediario
+          <FaPlus /> {t('admin.ui.intermediarios.newIntermediary')}
         </button>
       </div>
 
@@ -215,16 +217,16 @@ export default function GestionIntermediarios() {
                   <FaHandshake className="text-purple-600" />
                   <h2 className="text-lg font-bold text-gray-900">{intermediario.nombre}</h2>
                 </div>
-                <p className="text-sm text-gray-500 mb-2">Código: {intermediario.codigo}</p>
+                <p className="text-sm text-gray-500 mb-2">{t('admin.ui.intermediarios.code')}: {intermediario.codigo}</p>
                 <div className="space-y-1 text-sm text-gray-600">
-                  {intermediario.correo && <p><strong>Email:</strong> {intermediario.correo}</p>}
-                  {intermediario.telefono && <p><strong>Teléfono:</strong> {intermediario.telefono}</p>}
-                  {intermediario.direccion && <p><strong>Dirección:</strong> {intermediario.direccion}</p>}
-                  {intermediario.ciudad && <p><strong>Ciudad:</strong> {intermediario.ciudad}</p>}
+                  {intermediario.correo && <p><strong>{t('admin.ui.intermediarios.email')}:</strong> {intermediario.correo}</p>}
+                  {intermediario.telefono && <p><strong>{t('admin.ui.intermediarios.phone')}:</strong> {intermediario.telefono}</p>}
+                  {intermediario.direccion && <p><strong>{t('admin.ui.intermediarios.address')}:</strong> {intermediario.direccion}</p>}
+                  {intermediario.ciudad && <p><strong>{t('admin.ui.intermediarios.city')}:</strong> {intermediario.ciudad}</p>}
                   <p>
-                    <strong>Estado:</strong>{' '}
+                    <strong>{t('admin.ui.intermediarios.status')}:</strong>{' '}
                     <span className={intermediario.estado === 1 ? 'text-green-600' : 'text-red-600'}>
-                      {intermediario.estado === 1 ? 'Activo' : 'Inactivo'}
+                      {intermediario.estado === 1 ? t('admin.ui.intermediarios.active') : t('admin.ui.intermediarios.inactive')}
                     </span>
                   </p>
                 </div>
@@ -233,14 +235,14 @@ export default function GestionIntermediarios() {
                 <button
                   onClick={() => abrirForm(intermediario)}
                   className="text-blue-600 hover:text-blue-800 p-2"
-                  title="Editar intermediario"
+                  title={t('admin.ui.intermediarios.editIntermediary')}
                 >
                   <FaEdit />
                 </button>
                 <button
                   onClick={() => eliminarIntermediario(intermediario._id)}
                   className="text-red-600 hover:text-red-800 p-2"
-                  title="Eliminar intermediario"
+                  title={t('admin.ui.intermediarios.deleteIntermediary')}
                 >
                   <FaTrash />
                 </button>
@@ -253,12 +255,12 @@ export default function GestionIntermediarios() {
       {intermediarios.length === 0 && (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
           <FaHandshake className="mx-auto text-4xl text-gray-400 mb-4" />
-          <p className="text-gray-600">No hay intermediarios registrados</p>
+          <p className="text-gray-600">{t('admin.ui.intermediarios.empty')}</p>
           <button
             onClick={() => abrirForm()}
             className="mt-4 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 mx-auto"
           >
-            <FaPlus /> Crear Primer Intermediario
+            <FaPlus /> {t('admin.ui.intermediarios.createFirst')}
           </button>
         </div>
       )}
@@ -269,7 +271,7 @@ export default function GestionIntermediarios() {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
               <h2 className="text-xl font-bold">
-                {intermediarioEditando ? 'Editar Intermediario' : 'Nuevo Intermediario'}
+                {intermediarioEditando ? t('admin.ui.intermediarios.editTitle') : t('admin.ui.intermediarios.newTitle')}
               </h2>
               <button
                 onClick={() => {
@@ -283,7 +285,7 @@ export default function GestionIntermediarios() {
             </div>
             <form onSubmit={guardarIntermediario} className="p-4 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Código *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.intermediarios.codeRequired')}</label>
                 <input
                   type="text"
                   value={formIntermediario.codigo}
@@ -294,7 +296,7 @@ export default function GestionIntermediarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.intermediarios.nameRequired')}</label>
                 <input
                   type="text"
                   value={formIntermediario.nombre}
@@ -304,7 +306,7 @@ export default function GestionIntermediarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.intermediarios.email')}</label>
                 <input
                   type="email"
                   value={formIntermediario.correo}
@@ -313,7 +315,7 @@ export default function GestionIntermediarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.intermediarios.phone')}</label>
                 <input
                   type="text"
                   value={formIntermediario.telefono}
@@ -322,7 +324,7 @@ export default function GestionIntermediarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.intermediarios.address')}</label>
                 <input
                   type="text"
                   value={formIntermediario.direccion}
@@ -331,7 +333,7 @@ export default function GestionIntermediarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.intermediarios.city')}</label>
                 <input
                   type="text"
                   value={formIntermediario.ciudad}
@@ -340,14 +342,14 @@ export default function GestionIntermediarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.intermediarios.status')}</label>
                 <select
                   value={formIntermediario.estado}
                   onChange={(e) => setFormIntermediario({...formIntermediario, estado: Number(e.target.value)})}
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 >
-                  <option value={1}>Activo</option>
-                  <option value={0}>Inactivo</option>
+                  <option value={1}>{t('admin.ui.intermediarios.active')}</option>
+                  <option value={0}>{t('admin.ui.intermediarios.inactive')}</option>
                 </select>
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
@@ -359,13 +361,13 @@ export default function GestionIntermediarios() {
                   }}
                   className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                 >
-                  Cancelar
+                  {t('admin.ui.intermediarios.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 flex items-center gap-2"
                 >
-                  <FaSave /> Guardar
+                  <FaSave /> {t('admin.ui.intermediarios.save')}
                 </button>
               </div>
             </form>
@@ -375,4 +377,3 @@ export default function GestionIntermediarios() {
     </div>
   );
 }
-

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaFileExcel, FaFilePdf, FaFileWord, FaGlobe, FaShieldAlt } from 'react-icons/fa';
 import {
   exportarReporteExcel,
@@ -8,79 +9,98 @@ import {
 } from '../../../services/exportMatrizReporteService';
 import './reporteEjecutivo.css';
 
-const FORMATOS = [
-  {
-    id: 'html',
-    titulo: 'HTML interactivo',
-    descripcion:
-      'Mismo informe general: dashboard, semáforo, gráficos ejecutivos, tablas y detalle técnico.',
-    ideal: ['Presentaciones gerenciales', 'Análisis interactivo', 'Compartir por enlace/archivo'],
-    icono: FaGlobe,
-    accion: exportarReporteHtml,
-    boton: 'Exportar HTML',
-  },
-  {
-    id: 'pdf',
-    titulo: 'PDF ejecutivo',
-    descripcion: 'Optimizado para impresión y presentación a junta directiva.',
-    ideal: ['Juntas directivas', 'Reportes oficiales', 'Distribución externa'],
-    icono: FaFilePdf,
-    accion: exportarReportePdf,
-    boton: 'Exportar PDF',
-  },
-  {
-    id: 'word',
-    titulo: 'Word editable',
-    descripcion: 'Documento editable para ajustes y comentarios internos.',
-    ideal: ['Edición de contenido', 'Comentarios y ajustes', 'Documentación interna'],
-    icono: FaFileWord,
-    accion: exportarReporteWord,
-    boton: 'Exportar Word',
-  },
-  {
-    id: 'excel',
-    titulo: 'Excel (base de datos)',
-    descripcion: 'Base completa de riesgos, KPIs y recomendaciones.',
-    ideal: ['Análisis avanzado', 'Tablas dinámicas', 'Integración con otros sistemas'],
-    icono: FaFileExcel,
-    accion: exportarReporteExcel,
-    boton: 'Exportar Excel',
-  },
-];
-
 export default function ExportacionReporte({ datosMatriz, tipoReporte, analitica, matrizId }) {
+  const { t, i18n } = useTranslation();
   const [exportando, setExportando] = useState(null);
   const [mensaje, setMensaje] = useState('');
+
+  const formatos = useMemo(
+    () => [
+      {
+        id: 'html',
+        titulo: t('riskMatrix.exec.fmtHtmlTitle'),
+        descripcion: t('riskMatrix.exec.fmtHtmlDesc'),
+        ideal: [
+          t('riskMatrix.exec.fmtHtmlIdeal1'),
+          t('riskMatrix.exec.fmtHtmlIdeal2'),
+          t('riskMatrix.exec.fmtHtmlIdeal3'),
+        ],
+        icono: FaGlobe,
+        accion: exportarReporteHtml,
+        boton: t('riskMatrix.exec.fmtHtmlBtn'),
+      },
+      {
+        id: 'pdf',
+        titulo: t('riskMatrix.exec.fmtPdfTitle'),
+        descripcion: t('riskMatrix.exec.fmtPdfDesc'),
+        ideal: [
+          t('riskMatrix.exec.fmtPdfIdeal1'),
+          t('riskMatrix.exec.fmtPdfIdeal2'),
+          t('riskMatrix.exec.fmtPdfIdeal3'),
+        ],
+        icono: FaFilePdf,
+        accion: exportarReportePdf,
+        boton: t('riskMatrix.exec.fmtPdfBtn'),
+      },
+      {
+        id: 'word',
+        titulo: t('riskMatrix.exec.fmtWordTitle'),
+        descripcion: t('riskMatrix.exec.fmtWordDesc'),
+        ideal: [
+          t('riskMatrix.exec.fmtWordIdeal1'),
+          t('riskMatrix.exec.fmtWordIdeal2'),
+          t('riskMatrix.exec.fmtWordIdeal3'),
+        ],
+        icono: FaFileWord,
+        accion: exportarReporteWord,
+        boton: t('riskMatrix.exec.fmtWordBtn'),
+      },
+      {
+        id: 'excel',
+        titulo: t('riskMatrix.exec.fmtExcelTitle'),
+        descripcion: t('riskMatrix.exec.fmtExcelDesc'),
+        ideal: [
+          t('riskMatrix.exec.fmtExcelIdeal1'),
+          t('riskMatrix.exec.fmtExcelIdeal2'),
+          t('riskMatrix.exec.fmtExcelIdeal3'),
+        ],
+        icono: FaFileExcel,
+        accion: exportarReporteExcel,
+        boton: t('riskMatrix.exec.fmtExcelBtn'),
+      },
+    ],
+    [t]
+  );
 
   const ejecutarExport = async (formato) => {
     setExportando(formato.id);
     setMensaje('');
     try {
       const resultado = await formato.accion(datosMatriz, tipoReporte, { matrizId });
-      setMensaje(resultado.mensaje || `Exportación ${formato.titulo} completada.`);
+      setMensaje(
+        resultado.mensaje || t('riskMatrix.exec.exportDone', { format: formato.titulo })
+      );
     } catch (error) {
-      setMensaje(`Error: ${error.message}`);
+      setMensaje(t('riskMatrix.exec.exportError', { error: error.message }));
     } finally {
       setExportando(null);
     }
   };
 
-  const fechaGen = new Date().toLocaleString('es-ES');
+  const fechaGen = new Date().toLocaleString(i18n.language === 'en' ? 'en-US' : 'es-ES');
 
   return (
     <div className="re-exportacion">
       <header className="re-seccion-header">
         <div>
-          <p className="re-seccion-kicker">Matriz de Riesgos Avanzada</p>
-          <h2 className="re-seccion-titulo">Exportación del reporte</h2>
-          <p className="re-seccion-desc">
-            Elija el formato que mejor se adapte a su análisis o presentación.
-          </p>
+          <p className="re-seccion-kicker">{t('riskMatrix.exec.kicker')}</p>
+          <h2 className="re-seccion-titulo">{t('riskMatrix.exec.exportSectionTitle')}</h2>
+          <p className="re-seccion-desc">{t('riskMatrix.exec.exportSectionDesc')}</p>
         </div>
       </header>
 
       <div className="re-export-grid">
-        {FORMATOS.map((formato) => {
+        {formatos.map((formato) => {
           const Icono = formato.icono;
           return (
             <article key={formato.id} className="re-export-card">
@@ -98,7 +118,7 @@ export default function ExportacionReporte({ datosMatriz, tipoReporte, analitica
                 onClick={() => ejecutarExport(formato)}
                 disabled={Boolean(exportando)}
               >
-                {exportando === formato.id ? 'Generando…' : formato.boton}
+                {exportando === formato.id ? t('riskMatrix.exec.generating') : formato.boton}
               </button>
             </article>
           );
@@ -107,20 +127,21 @@ export default function ExportacionReporte({ datosMatriz, tipoReporte, analitica
 
       <div className="re-export-info">
         <section>
-          <h3>Información del reporte</h3>
+          <h3>{t('riskMatrix.exec.exportInfo')}</h3>
           <ul>
-            <li>Total de riesgos evaluados: {analitica.kpis.totalRiesgos}</li>
-            <li>Procesos evaluados: {analitica.kpis.procesosEvaluados}</li>
-            <li>Fecha de generación: {fechaGen}</li>
-            <li>Versión del reporte: {datosMatriz.informacion?.version || '1.0'}</li>
+            <li>{t('riskMatrix.exec.totalRisksEval', { count: analitica.kpis.totalRiesgos })}</li>
+            <li>{t('riskMatrix.exec.processesEval', { count: analitica.kpis.procesosEvaluados })}</li>
+            <li>{t('riskMatrix.exec.generatedDate', { date: fechaGen })}</li>
+            <li>
+              {t('riskMatrix.exec.reportVersion', {
+                version: datosMatriz.informacion?.version || '1.0',
+              })}
+            </li>
           </ul>
         </section>
         <section className="re-export-seguridad">
           <FaShieldAlt />
-          <p>
-            Este reporte contiene información confidencial de la organización. Compártalo solo con
-            personal autorizado.
-          </p>
+          <p>{t('riskMatrix.exec.confidentialNotice')}</p>
         </section>
       </div>
 

@@ -6,6 +6,7 @@ export const SECCIONES_INFORME_PROPIEDADES = [
     id: 'informe',
     ref: '0.',
     titulo: 'REPORTE DE INSPECCIÓN DE PROPIEDAD',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.informe',
     obligatoria: true,
     seleccionable: false,
   },
@@ -13,23 +14,27 @@ export const SECCIONES_INFORME_PROPIEDADES = [
     id: 'informacionGeneral',
     ref: '1.',
     titulo: 'INFORMACIÓN GENERAL DEL INMUEBLE',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.informacionGeneral',
     obligatoria: true,
   },
   {
     id: 'informacionJuridica',
     ref: '1.2',
     titulo: 'INFORMACIÓN JURÍDICA DEL INMUEBLE',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.informacionJuridica',
     anexoDe: 'informacionGeneral',
   },
   {
     id: 'inspeccionMetrica',
     ref: '2.',
     titulo: 'INSPECCIÓN MÉTRICA',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.inspeccionMetrica',
   },
   {
     id: 'inspeccionPorAreas',
     ref: '3.',
     titulo: 'INSPECCIÓN POR ÁREAS',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.inspeccionPorAreas',
     esGrupo: true,
     seleccionable: false,
   },
@@ -37,22 +42,42 @@ export const SECCIONES_INFORME_PROPIEDADES = [
     id: 'conclusiones',
     ref: '4.',
     titulo: 'CONCLUSIONES',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.conclusiones',
     obligatoria: true,
   },
   {
     id: 'observacionesPrincipales',
     ref: '4.1',
     titulo: 'PRINCIPALES OBSERVACIONES',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.observacionesPrincipales',
     anexoDe: 'conclusiones',
   },
   {
     id: 'firmas',
     ref: '',
     titulo: 'FIRMAS',
+    tituloKey: 'inspection.ui.formulario_propiedades.sections.firmas',
     obligatoria: true,
     seleccionable: false,
   },
 ];
+
+function tituloSeccion(cfg, t) {
+  if (typeof t === 'function' && cfg.tituloKey) {
+    const translated = t(cfg.tituloKey);
+    if (translated && translated !== cfg.tituloKey) return translated;
+  }
+  return cfg.titulo;
+}
+
+function tituloAreaIndice(sub, t) {
+  if (typeof t === 'function' && sub?.id) {
+    const key = `inspection.ui.formulario_propiedades.areas.${sub.id}`;
+    const translated = t(key);
+    if (translated && translated !== key) return String(translated).toUpperCase();
+  }
+  return sub.titulo;
+}
 
 export function obtenerSubIndicesAreas(plantilla = PLANTILLA_RESIDENCIAL) {
   return subIndicesDesdePlantilla(plantilla);
@@ -110,17 +135,19 @@ export function estaSeccionPropiedadesActiva(seccionesActivas, id, plantilla = P
   return seccionesActivas?.[id] !== false;
 }
 
-export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL) {
+export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL, t) {
   const subIndices = obtenerSubIndicesAreas(plantilla);
   const numeracion = new Map();
   let n = 0;
 
   for (const cfg of SECCIONES_INFORME_PROPIEDADES) {
+    const titulo = tituloSeccion(cfg, t);
+
     if (cfg.id === 'informe') {
       numeracion.set('informe', {
         ref: cfg.ref,
-        titulo: cfg.titulo,
-        encabezado: `${cfg.ref} ${cfg.titulo}`.trim(),
+        titulo,
+        encabezado: `${cfg.ref} ${titulo}`.trim(),
       });
       continue;
     }
@@ -132,8 +159,8 @@ export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILL
       const ref = padre?.numero != null ? `${padre.numero}.${sufijo}` : cfg.ref;
       numeracion.set(cfg.id, {
         ref,
-        titulo: cfg.titulo,
-        encabezado: `${ref} ${cfg.titulo}`,
+        titulo,
+        encabezado: `${ref} ${titulo}`,
       });
       continue;
     }
@@ -146,17 +173,18 @@ export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILL
       n += 1;
       const entry = {
         ref: `${n}.`,
-        titulo: cfg.titulo,
-        encabezado: `${n}. ${cfg.titulo}`,
+        titulo,
+        encabezado: `${n}. ${titulo}`,
         numero: n,
         subIndices: [],
       };
       subsActivos.forEach((sub, idx) => {
+        const subTitulo = tituloAreaIndice(sub, t);
         const subEntry = {
           id: sub.id,
           ref: `${n}.${idx + 1}`,
-          titulo: sub.titulo,
-          encabezado: `${n}.${idx + 1} ${sub.titulo}`,
+          titulo: subTitulo,
+          encabezado: `${n}.${idx + 1} ${subTitulo}`,
         };
         entry.subIndices.push(subEntry);
         numeracion.set(sub.id, subEntry);
@@ -166,7 +194,7 @@ export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILL
     }
 
     if (cfg.id === 'firmas') {
-      numeracion.set('firmas', { ref: '', titulo: cfg.titulo, encabezado: cfg.titulo });
+      numeracion.set('firmas', { ref: '', titulo, encabezado: titulo });
       continue;
     }
 
@@ -175,8 +203,8 @@ export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILL
     n += 1;
     numeracion.set(cfg.id, {
       ref: `${n}.`,
-      titulo: cfg.titulo,
-      encabezado: `${n}. ${cfg.titulo}`,
+      titulo,
+      encabezado: `${n}. ${titulo}`,
       numero: n,
     });
   }
@@ -184,9 +212,9 @@ export function construirNumeracionActiva(seccionesActivas, plantilla = PLANTILL
   return numeracion;
 }
 
-export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL) {
+export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL, t) {
   const subIndices = obtenerSubIndicesAreas(plantilla);
-  const numeracion = construirNumeracionActiva(seccionesActivas, plantilla);
+  const numeracion = construirNumeracionActiva(seccionesActivas, plantilla, t);
   const filas = [];
 
   for (const seccion of SECCIONES_INFORME_PROPIEDADES) {
@@ -199,7 +227,7 @@ export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLAN
         tipo: 'principal',
         id: seccion.id,
         ref: algunaActiva && num ? num.ref : '—',
-        titulo: seccion.titulo,
+        titulo: tituloSeccion(seccion, t),
         obligatoria: false,
         seleccionable: false,
         activa: algunaActiva,
@@ -212,7 +240,7 @@ export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLAN
           id: sub.id,
           parentId: seccion.id,
           ref: activa && subNum ? subNum.ref : '—',
-          titulo: sub.titulo,
+          titulo: tituloAreaIndice(sub, t),
           obligatoria: false,
           seleccionable: true,
           activa,
@@ -229,7 +257,7 @@ export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLAN
         id: seccion.id,
         parentId: seccion.anexoDe,
         ref: activa && num ? num.ref : '—',
-        titulo: seccion.titulo,
+        titulo: tituloSeccion(seccion, t),
         obligatoria: Boolean(seccion.obligatoria),
         seleccionable: !seccion.obligatoria && seccion.seleccionable !== false,
         activa,
@@ -244,7 +272,7 @@ export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLAN
       tipo: 'principal',
       id: seccion.id,
       ref: activa && num ? num.ref : '—',
-      titulo: seccion.titulo,
+      titulo: tituloSeccion(seccion, t),
       obligatoria: Boolean(seccion.obligatoria),
       seleccionable: seccion.seleccionable !== false && !seccion.obligatoria,
       activa,
@@ -254,8 +282,8 @@ export function obtenerFilasIndicePropiedades(seccionesActivas, plantilla = PLAN
   return filas;
 }
 
-export function obtenerFilasIndiceWordPropiedades(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL) {
-  return obtenerFilasIndicePropiedades(seccionesActivas, plantilla).filter((fila) => {
+export function obtenerFilasIndiceWordPropiedades(seccionesActivas, plantilla = PLANTILLA_RESIDENCIAL, t) {
+  return obtenerFilasIndicePropiedades(seccionesActivas, plantilla, t).filter((fila) => {
     if (fila.tipo === 'principal') {
       if (fila.id === 'informe') return true;
       return fila.activa;

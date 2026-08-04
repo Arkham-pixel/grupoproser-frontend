@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useState } from 'react';
 import { FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
 import { obtenerAlertasCaso } from '../../services/alertasComplexService.js';
@@ -37,8 +39,7 @@ export default function AlertasCasoPanel({ numeroAjuste, casoId }) {
         <FaExclamationTriangle className="mt-0.5 shrink-0 text-fenix-primario" />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-gray-900 dark:text-white">
-            {alertas.totalAlertas} alerta(s) de protocolo
-            {altas.length > 0 ? ` · ${altas.length} prioridad alta` : ''}
+            {alertas.totalAlertas}{t("complex.ui.alertas_caso_panel.alerta_s_de_protocolo")}{altas.length > 0 ? ` · ${altas.length} prioridad alta` : ''}
           </p>
           <ul className="mt-2 space-y-1.5">
             {alertas.alertas.slice(0, 4).map((a, i) => (
@@ -47,11 +48,11 @@ export default function AlertasCasoPanel({ numeroAjuste, casoId }) {
               </li>
             ))}
             {alertas.alertas.length > 4 && (
-              <li className="text-xs text-gray-500">+ {alertas.alertas.length - 4} más en Mis alertas</li>
+              <li className="text-xs text-gray-500">{t("complex.ui.alertas_caso_panel.texto")}{alertas.alertas.length - 4}{t("complex.ui.alertas_caso_panel.mas_en_mis_alertas")}</li>
             )}
           </ul>
         </div>
-        <FaInfoCircle className="hidden shrink-0 text-gray-400 sm:block" title="Protocolo Arnald" />
+        <FaInfoCircle className="hidden shrink-0 text-gray-400 sm:block" title={t("complex.ui.alertas_caso_panel.protocolo_arnald")} />
       </div>
     </div>
   );

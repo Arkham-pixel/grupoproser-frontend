@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
 /**
@@ -13,16 +14,18 @@ export default function AutoSaveRestoreDialog({
   onDiscard,
   onCancel,
 }) {
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
 
   if (!isOpen) return null;
 
   // Formatear fecha de guardado
   const formatDate = (dateString) => {
-    if (!dateString) return 'Fecha desconocida';
-    
+    if (!dateString) return t('autoSave.ui.restoreDialog.unknownDate');
+
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('es-ES', {
+    const locale = i18n.language?.startsWith('en') ? 'en-US' : 'es-ES';
+    return new Intl.DateTimeFormat(locale, {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(date);
@@ -31,21 +34,21 @@ export default function AutoSaveRestoreDialog({
   // Obtener tiempo transcurrido
   const getTimeAgo = (dateString) => {
     if (!dateString) return '';
-    
+
     const now = new Date();
     const saved = new Date(dateString);
     const diff = Math.floor((now - saved) / 1000); // segundos
-    
-    if (diff < 60) return 'hace unos segundos';
-    if (diff < 3600) return `hace ${Math.floor(diff / 60)} minutos`;
-    if (diff < 86400) return `hace ${Math.floor(diff / 3600)} horas`;
-    return `hace ${Math.floor(diff / 86400)} días`;
+
+    if (diff < 60) return t('autoSave.ui.common.timeAgo.seconds');
+    if (diff < 3600) return t('autoSave.ui.common.timeAgo.minutes', { count: Math.floor(diff / 60) });
+    if (diff < 86400) return t('autoSave.ui.common.timeAgo.hours', { count: Math.floor(diff / 3600) });
+    return t('autoSave.ui.common.timeAgo.days', { count: Math.floor(diff / 86400) });
   };
 
   // Contar campos llenados
   const countFilledFields = (data) => {
     if (!data) return 0;
-    
+
     return Object.values(data).filter(value => {
       if (value === null || value === undefined || value === '') return false;
       if (Array.isArray(value) && value.length === 0) return false;
@@ -121,7 +124,7 @@ export default function AutoSaveRestoreDialog({
                   color: theme === 'dark' ? '#e2e8f0' : '#2d3748',
                 }}
               >
-                Datos guardados encontrados
+                {t('autoSave.ui.restoreDialog.title')}
               </h3>
               <p
                 style={{
@@ -154,7 +157,7 @@ export default function AutoSaveRestoreDialog({
                   marginBottom: '4px',
                 }}
               >
-                📊 Información guardada
+                {t('autoSave.ui.restoreDialog.savedInfo')}
               </div>
               <div
                 style={{
@@ -163,7 +166,7 @@ export default function AutoSaveRestoreDialog({
                   color: theme === 'dark' ? '#e2e8f0' : '#2d3748',
                 }}
               >
-                {filledFields} campos completados
+                {t('autoSave.ui.restoreDialog.fieldsCompleted', { count: filledFields })}
               </div>
             </div>
 
@@ -176,7 +179,7 @@ export default function AutoSaveRestoreDialog({
                     marginBottom: '4px',
                   }}
                 >
-                  🕐 Última actualización
+                  {t('autoSave.ui.restoreDialog.lastUpdate')}
                 </div>
                 <div
                   style={{
@@ -207,9 +210,9 @@ export default function AutoSaveRestoreDialog({
                 lineHeight: '1.5',
               }}
             >
-              <strong>💡 ¿Qué deseas hacer?</strong>
+              <strong>{t('autoSave.ui.restoreDialog.whatToDo')}</strong>
               <br />
-              Puedes restaurar el progreso guardado o descartarlo para empezar de nuevo.
+              {t('autoSave.ui.restoreDialog.whatToDoHint')}
             </p>
           </div>
 
@@ -237,7 +240,7 @@ export default function AutoSaveRestoreDialog({
               onMouseOut={(e) => e.target.style.backgroundColor = '#4299e1'}
             >
               <span>✓</span>
-              <span>Restaurar datos</span>
+              <span>{t('autoSave.ui.restoreDialog.restore')}</span>
             </button>
 
             <button
@@ -268,7 +271,7 @@ export default function AutoSaveRestoreDialog({
               }}
             >
               <span>🗑️</span>
-              <span>Descartar</span>
+              <span>{t('autoSave.ui.restoreDialog.discard')}</span>
             </button>
           </div>
 
@@ -293,7 +296,7 @@ export default function AutoSaveRestoreDialog({
               e.target.style.backgroundColor = 'transparent';
             }}
           >
-            Decidir después
+            {t('autoSave.ui.restoreDialog.decideLater')}
           </button>
         </div>
       </div>

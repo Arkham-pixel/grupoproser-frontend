@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { normCatalogoLabel, resolverNombreCatalogo } from '../../services/expressCatalogoService.js';
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
+import i18n from '../../i18n';
 
 export const EXPRESS_LIMIT_FETCH = 2000;
 /** Lote por petición al cargar todos los casos Express */
@@ -679,19 +680,19 @@ export function anexoExpressSePuedePrevisualizar(anexo) {
   return /\.(pdf|png|jpe?g|gif|webp|bmp|svg|txt|csv)$/i.test(nombre);
 }
 
-export function verAnexoExpress(anexo) {
+export function verAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
   const enlace = resolverUrlAnexoExpress(anexo);
   if (!enlace) {
-    return { ok: false, error: 'No hay URL disponible para ver este documento.' };
+    return { ok: false, error: t('express.ui.attachments.viewUnavailable') };
   }
   window.open(enlace, '_blank', 'noopener,noreferrer');
   return { ok: true };
 }
 
-export function descargarAnexoExpress(anexo) {
+export function descargarAnexoExpress(anexo, t = i18n.t.bind(i18n)) {
   const enlace = resolverUrlAnexoExpress(anexo);
   if (!enlace) {
-    return { ok: false, error: 'No hay URL disponible para descargar este documento.' };
+    return { ok: false, error: t('express.ui.attachments.downloadUnavailable') };
   }
   const link = document.createElement('a');
   link.href = enlace;

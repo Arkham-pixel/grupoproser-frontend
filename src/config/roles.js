@@ -56,13 +56,13 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
   return true;
 }
 
-export function etiquetaRol(rol) {
+export function etiquetaRol(rol, t) {
   const r = normalizarRol(rol);
-  if (r === 'admin' || r === 'administrador') return 'Administrador';
-  if (r === 'soporte') return 'Soporte';
-  if (r === 'visualizador') return 'Visualizador';
-  if (r === 'puertos') return 'Puertos';
-  if (r === 'usuario') return 'Usuario';
-  if (!rol) return 'Usuario';
+  const translate = typeof t === 'function' ? t : (key, fallback) => fallback;
+  if (r === 'admin' || r === 'administrador') return translate('roles.admin', 'Administrador');
+  if (r === 'soporte') return translate('roles.soporte', 'Soporte');
+  if (r === 'visualizador') return translate('roles.visualizador', 'Visualizador');
+  if (r === 'puertos') return translate('roles.puertos', 'Puertos');
+  if (r === 'usuario' || !rol) return translate('roles.usuario', 'Usuario');
   return String(rol).charAt(0).toUpperCase() + String(rol).slice(1);
 }

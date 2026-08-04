@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useMemo, useState } from 'react';
 import { FaTimes, FaPlus, FaTrash, FaSave, FaFileExcel } from 'react-icons/fa';
 import {
@@ -38,7 +40,7 @@ export default function ControlHorasEditor({
   const [emailAnalista, setEmailAnalista] = useState('');
   const [aviso, setAviso] = useState({ open: false, titulo: '', mensaje: '', tipo: 'warning' });
 
-  const mostrarAviso = (mensaje, titulo = 'Atención', tipo = 'warning') => {
+  const mostrarAviso = (mensaje, titulo = t('complex.ui.control_horas_editor.atencion'), tipo = 'warning') => {
     setAviso({ open: true, titulo, mensaje, tipo });
   };
 
@@ -109,13 +111,13 @@ export default function ControlHorasEditor({
     const responsable = formData.nombreResponsable || formData.responsable || '';
     setDatos((prev) => ({
       ...prev,
-      filas: [...prev.filas, crearFilaVacia({ nombre_funcionario: responsable, cargo: 'Ajustador' })],
+      filas: [...prev.filas, crearFilaVacia({ nombre_funcionario: responsable, cargo: t('complex.ui.control_horas_editor.ajustador') })],
     }));
   };
 
   const eliminarFila = (id) => {
     if (datos.filas.length <= 1) {
-      mostrarAviso('Debe conservar al menos una fila de actividad.', 'No se puede eliminar', 'warning');
+      mostrarAviso(t('complex.ui.control_horas_editor.debe_conservar_fila'), t('complex.ui.control_horas_editor.no_se_puede_eliminar'), 'warning');
       return;
     }
     setDatos((prev) => ({
@@ -142,15 +144,15 @@ export default function ControlHorasEditor({
 
   const validar = () => {
     if (!datos.filas.length) {
-      mostrarAviso('Agregue al menos una actividad.', 'Control incompleto', 'warning');
+      mostrarAviso(t('complex.ui.control_horas_editor.agregue_actividad'), t('complex.ui.control_horas_editor.control_incompleto'), 'warning');
       return false;
     }
     if (totales.total_horas <= 0) {
-      mostrarAviso('Registre al menos una hora en las actividades.', 'Control incompleto', 'warning');
+      mostrarAviso(t('complex.ui.control_horas_editor.registre_una_hora'), t('complex.ui.control_horas_editor.control_incompleto'), 'warning');
       return false;
     }
     if (!datos.valor_hora && datos.valor_hora !== 0) {
-      mostrarAviso('Ingrese el valor hora.', 'Control incompleto', 'warning');
+      mostrarAviso(t('complex.ui.control_horas_editor.ingrese_valor_hora'), t('complex.ui.control_horas_editor.control_incompleto'), 'warning');
       return false;
     }
 
@@ -162,8 +164,8 @@ export default function ControlHorasEditor({
     });
     if (filasSinFecha.length > 0) {
       mostrarAviso(
-        'Complete la fecha en todas las actividades con horas o descripción. Las fechas son obligatorias.',
-        'Fechas pendientes',
+        t('complex.ui.control_horas_editor.complete_fechas'),
+        t('complex.ui.control_horas_editor.fechas_pendientes'),
         'warning'
       );
       return false;
@@ -176,8 +178,8 @@ export default function ControlHorasEditor({
     });
     if (filasSinDescripcion.length > 0) {
       mostrarAviso(
-        'Complete la descripción en todas las actividades que tienen horas registradas.',
-        'Descripción pendiente',
+        t('complex.ui.control_horas_editor.complete_descripcion'),
+        t('complex.ui.control_horas_editor.descripcion_pendiente'),
         'warning'
       );
       return false;
@@ -185,8 +187,8 @@ export default function ControlHorasEditor({
 
     if (!cabecera.analista) {
       mostrarAviso(
-        'Asigne el analista de la compañía en Datos Generales antes de guardar el control de horas.',
-        'Analista pendiente',
+        t('complex.ui.control_horas_editor.asigne_analista'),
+        t('complex.ui.control_horas_editor.analista_pendiente'),
         'warning'
       );
       return false;
@@ -195,8 +197,8 @@ export default function ControlHorasEditor({
     const emailLimpio = String(emailAnalista || '').trim();
     if (!emailLimpio || !emailLimpio.includes('@')) {
       mostrarAviso(
-        'El correo del analista de la compañía es obligatorio. Escríbalo en el campo correspondiente.',
-        'Correo del analista',
+        t('complex.ui.control_horas_editor.correo_analista_obligatorio'),
+        t('complex.ui.control_horas_editor.correo_del_analista'),
         'warning'
       );
       return false;
@@ -227,7 +229,7 @@ export default function ControlHorasEditor({
       descargarBlob(blob, nombre);
     } catch (e) {
       console.error(e);
-      mostrarAviso('No se pudo generar el Excel.', 'Error', 'error');
+      mostrarAviso(t('complex.ui.control_horas_editor.no_generar_excel'), t('complex.ui.control_horas_editor.error'), 'error');
     }
   };
 
@@ -238,18 +240,14 @@ export default function ControlHorasEditor({
       <div className="flex max-h-[95vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-[#1A1A1A]">
         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
           <div>
-            <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">
-              Control de horas del caso
-            </h2>
-            <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-              Referencia: {cabecera.referencia || '—'} · Un registro por caso (editable)
-            </p>
+            <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">{t("complex.ui.control_horas_editor.control_de_horas_del_caso")}</h2>
+            <p className="font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.control_horas_editor.referencia")}{cabecera.referencia || '—'}{t("complex.ui.control_horas_editor.un_registro_por_caso_editable")}</p>
           </div>
           <button
             type="button"
             onClick={onCerrar}
             className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
-            aria-label="Cerrar"
+            aria-label={t("complex.ui.control_horas_editor.cerrar")}
           >
             <FaTimes />
           </button>
@@ -258,22 +256,20 @@ export default function ControlHorasEditor({
         <div className="flex-1 overflow-y-auto p-4 space-y-4 text-base">
           {/* Cabecera readonly */}
           <div className={complexCard}>
-            <h3 className="mb-3 font-heading text-base font-bold text-gray-800 dark:text-white">
-              Datos del caso (Datos Generales)
-            </h3>
+            <h3 className="mb-3 font-heading text-base font-bold text-gray-800 dark:text-white">{t("complex.ui.control_horas_editor.datos_del_caso_datos_generales")}</h3>
             <div className="grid gap-2 text-base sm:grid-cols-2 lg:grid-cols-3">
               {[
                 ['Firma', cabecera.firma],
-                ['Compañía', cabecera.compania],
+                [t('complex.ui.control_horas_editor.compania'), cabecera.compania],
                 ['Asegurado', cabecera.asegurado],
-                ['Siniestro', cabecera.siniestro],
+                [t('complex.ui.control_horas_editor.siniestro'), cabecera.siniestro],
                 ['Riesgo', cabecera.riesgo],
                 ['Lugar', cabecera.lugar],
-                ['Analista compañía', cabecera.analista],
-                ['Ajustador Proser', cabecera.ajustador],
-                ['F. siniestro', formatearFechaDisplay(cabecera.fechaSiniestro)],
-                ['F. asignación', formatearFechaDisplay(cabecera.fechaAsignacion)],
-                ['F. inspección', formatearFechaDisplay(cabecera.fechaInspeccion)],
+                [t('complex.ui.control_horas_editor.analista_compania'), cabecera.analista],
+                [t('complex.ui.control_horas_editor.ajustador_proser'), cabecera.ajustador],
+                [t('complex.ui.control_horas_editor.f_siniestro'), formatearFechaDisplay(cabecera.fechaSiniestro)],
+                [t('complex.ui.control_horas_editor.f_asignacion'), formatearFechaDisplay(cabecera.fechaAsignacion)],
+                [t('complex.ui.control_horas_editor.f_inspeccion'), formatearFechaDisplay(cabecera.fechaInspeccion)],
                 ['Referencia', cabecera.referencia],
               ].map(([k, v]) => (
                 <div key={k} className="rounded-lg bg-gray-50/80 px-3 py-2 dark:bg-gray-900/40">
@@ -282,47 +278,37 @@ export default function ControlHorasEditor({
                 </div>
               ))}
               <div className="rounded-lg bg-gray-50/80 px-3 py-2 dark:bg-gray-900/40 sm:col-span-2 lg:col-span-1">
-                <label className="mb-1 block text-sm font-semibold text-gray-500 dark:text-gray-400">
-                  Correo analista *
-                </label>
+                <label className="mb-1 block text-sm font-semibold text-gray-500 dark:text-gray-400">{t("complex.ui.control_horas_editor.correo_analista")}</label>
                 <input
                   type="email"
                   className={complexInput}
                   value={emailAnalista}
                   onChange={(e) => setEmailAnalista(e.target.value)}
-                  placeholder="correo@aseguradora.com"
+                  placeholder={t("complex.ui.control_horas_editor.correo_aseguradora_com")}
                   autoComplete="email"
                 />
-                <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
-                  Si falta en el catálogo, escríbalo aquí. Se guardará en la base de analistas.
-                </p>
+                <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">{t("complex.ui.control_horas_editor.si_falta_en_el_catalogo_escribalo_aqui_se_guardara_en_la")}</p>
               </div>
             </div>
             {!cabecera.analista && (
-              <p className="mt-2 font-body text-sm text-amber-700 dark:text-amber-400">
-                No hay analista de compañía en Datos Generales. Asígnelo para que aparezca en el control y en el Excel.
-              </p>
+              <p className="mt-2 font-body text-sm text-amber-700 dark:text-amber-400">{t("complex.ui.control_horas_editor.no_hay_analista_de_compania_en_datos_generales_asignelo_")}</p>
             )}
           </div>
 
           {/* Liquidación */}
           <div className={complexCard}>
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
-              <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">Liquidación</h3>
+              <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{t("complex.ui.control_horas_editor.liquidacion")}</h3>
               <div className="flex flex-wrap gap-2">
                 {valorHoraPorTarifa && (
                   <button
                     type="button"
                     onClick={() => setEdicionManualValorHora(true)}
                     className={complexBtnSecondary}
-                  >
-                    Editar valor manualmente
-                  </button>
+                  >{t("complex.ui.control_horas_editor.editar_valor_manualmente")}</button>
                 )}
                 {edicionManualValorHora && puedeRestaurarTarifa && (
-                  <button type="button" onClick={reaplicarTarifa} className={complexBtnSecondary}>
-                    Usar tarifa de aseguradora
-                  </button>
+                  <button type="button" onClick={reaplicarTarifa} className={complexBtnSecondary}>{t("complex.ui.control_horas_editor.usar_tarifa_de_aseguradora")}</button>
                 )}
               </div>
             </div>
@@ -333,10 +319,8 @@ export default function ControlHorasEditor({
             )}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
-                <label className={complexLabel}>
-                  Valor hora
-                  {valorHoraPorTarifa && (
-                    <span className="ml-2 font-normal text-fenix-primario">(tarifa automática)</span>
+                <label className={complexLabel}>{t("complex.ui.control_horas_editor.valor_hora")}{valorHoraPorTarifa && (
+                    <span className="ml-2 font-normal text-fenix-primario">{t("complex.ui.control_horas_editor.tarifa_automatica")}</span>
                   )}
                 </label>
                 {valorHoraPorTarifa ? (
@@ -356,19 +340,17 @@ export default function ControlHorasEditor({
                     step="1000"
                     placeholder={
                       tarifaCatalogo.origen === 'manual'
-                        ? 'Ingrese valor hora'
-                        : 'Sin tarifa en catálogo'
+                        ? t('complex.ui.control_horas_editor.ingrese_valor_hora')
+                        : t('complex.ui.control_horas_editor.sin_tarifa_catalogo')
                     }
                   />
                 )}
                 {valorHoraPorTarifa && (
-                  <p className="mt-1 font-body text-sm text-gray-500">
-                    Según tarifa de {nombreAseguradoraResuelto || 'la aseguradora'}.
-                  </p>
+                  <p className="mt-1 font-body text-sm text-gray-500">{t("complex.ui.control_horas_editor.segun_tarifa_de")}{nombreAseguradoraResuelto || t('complex.ui.control_horas_editor.la_aseguradora')}{t("complex.ui.control_horas_editor.texto")}</p>
                 )}
               </div>
               <div>
-                <label className={complexLabel}>Gastos</label>
+                <label className={complexLabel}>{t("complex.ui.control_horas_editor.gastos")}</label>
                 <input
                   type="number"
                   className={complexInput}
@@ -379,50 +361,44 @@ export default function ControlHorasEditor({
                 />
               </div>
               <div className="rounded-lg bg-red-50/50 px-3 py-2 dark:bg-red-950/20">
-                <span className="text-sm text-gray-500">Total horas</span>
+                <span className="text-sm text-gray-500">{t("complex.ui.control_horas_editor.total_horas")}</span>
                 <p className="font-heading text-xl font-bold text-fenix-primario">
                   {totales?.total_horas?.toFixed(2) ?? '0.00'}
                 </p>
               </div>
               <div className="rounded-lg bg-red-50/50 px-3 py-2 dark:bg-red-950/20">
-                <span className="text-sm text-gray-500">Total facturable</span>
+                <span className="text-sm text-gray-500">{t("complex.ui.control_horas_editor.total_facturable")}</span>
                 <p className="font-heading text-xl font-bold text-gray-900 dark:text-white">
                   {formatearMoneda(totales?.total)}
                 </p>
               </div>
             </div>
-            <p className="mt-2 font-body text-sm text-gray-500">
-              Subtotal honorarios: {formatearMoneda(totales?.subtotal_honorarios)}
+            <p className="mt-2 font-body text-sm text-gray-500">{t("complex.ui.control_horas_editor.subtotal_honorarios")}{formatearMoneda(totales?.subtotal_honorarios)}
             </p>
           </div>
 
           {/* Tabla actividades */}
           <div className={complexCard}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">
-                Relación del tiempo empleado
-              </h3>
+              <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{t("complex.ui.control_horas_editor.relacion_del_tiempo_empleado")}</h3>
               <button type="button" onClick={agregarFila} className={complexBtnSecondary}>
-                <FaPlus /> Agregar actividad
-              </button>
+                <FaPlus />{t("complex.ui.control_horas_editor.agregar_actividad")}</button>
             </div>
-            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">
-              Fecha y descripción son obligatorias en cada actividad con horas.
-            </p>
+            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.control_horas_editor.fecha_y_descripcion_son_obligatorias_en_cada_actividad_c")}</p>
             <div className={complexTableWrap}>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-base">
                   <thead>
                     <tr className="bg-gray-50 text-sm uppercase tracking-wide text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                      <th className="px-2 py-2">Fecha *</th>
-                      <th className="min-w-[180px] px-2 py-2">Descripción *</th>
-                      <th className="px-2 py-2">Funcionario</th>
-                      <th className="px-2 py-2">Cargo</th>
-                      <th className="px-2 py-2">Viaje</th>
-                      <th className="px-2 py-2">Campo</th>
-                      <th className="px-2 py-2">Oficina</th>
-                      <th className="px-2 py-2">Secr.</th>
-                      <th className="px-2 py-2">Total</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.fecha")}</th>
+                      <th className="min-w-[180px] px-2 py-2">{t("complex.ui.control_horas_editor.descripcion")}</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.funcionario")}</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.cargo")}</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.viaje")}</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.campo")}</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.oficina")}</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.secr")}</th>
+                      <th className="px-2 py-2">{t("complex.ui.control_horas_editor.total")}</th>
                       <th className="px-2 py-2" />
                     </tr>
                   </thead>
@@ -479,7 +455,7 @@ export default function ControlHorasEditor({
                             type="button"
                             onClick={() => eliminarFila(fila.id)}
                             className="rounded p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                            title="Eliminar fila"
+                            title={t("complex.ui.control_horas_editor.eliminar_fila")}
                           >
                             <FaTrash />
                           </button>
@@ -487,9 +463,7 @@ export default function ControlHorasEditor({
                       </tr>
                     ))}
                     <tr className="border-t-2 border-gray-200 bg-gray-50 font-bold dark:border-gray-700 dark:bg-gray-900/50">
-                      <td colSpan={4} className="px-2 py-2">
-                        TOTAL
-                      </td>
+                      <td colSpan={4} className="px-2 py-2">{t("complex.ui.control_horas_editor.total_2")}</td>
                       <td className="px-2 py-2">{totales?.viaje?.toFixed(2)}</td>
                       <td className="px-2 py-2">{totales?.campo?.toFixed(2)}</td>
                       <td className="px-2 py-2">{totales?.oficina?.toFixed(2)}</td>
@@ -505,15 +479,11 @@ export default function ControlHorasEditor({
         </div>
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 px-4 py-3 dark:border-gray-700">
-          <button type="button" onClick={onCerrar} className={complexBtnSecondary}>
-            Cancelar
-          </button>
+          <button type="button" onClick={onCerrar} className={complexBtnSecondary}>{t("complex.ui.control_horas_editor.cancelar")}</button>
           <button type="button" onClick={handleExportar} className={complexBtnSecondary}>
-            <FaFileExcel className="text-green-700" /> Descargar Excel
-          </button>
+            <FaFileExcel className="text-green-700" />{t("complex.ui.control_horas_editor.descargar_excel")}</button>
           <button type="button" onClick={handleGuardar} className={complexBtnPrimary}>
-            <FaSave /> Guardar control de horas
-          </button>
+            <FaSave />{t("complex.ui.control_horas_editor.guardar_control_de_horas")}</button>
         </div>
       </div>
 

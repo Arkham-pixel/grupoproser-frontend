@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   Document,
@@ -214,7 +215,19 @@ export default function FormularioInspeccionPropiedades({
   casoPrefill = null,
   inspeccionHistorialId = null,
 } = {}) {
-  const t = usePropiedadesTheme();
+  const ui = usePropiedadesTheme();
+  const { t } = useTranslation();
+  const tp = (key, opts) => t(`inspection.ui.formulario_propiedades.${key}`, opts);
+  const labelClase = (clase) => {
+    const key = `inspection.ui.formulario_propiedades.clases.${clase}`;
+    const translated = t(key);
+    return translated !== key ? translated : clase;
+  };
+  const labelTipo = (tipo) => {
+    const key = `inspection.ui.formulario_propiedades.tipos.${tipo}`;
+    const translated = t(key);
+    return translated !== key ? translated : tipo;
+  };
   const { id: idParam } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -232,7 +245,7 @@ export default function FormularioInspeccionPropiedades({
     titulo: '',
     mensaje: '',
     tipo: 'success',
-    botonTexto: 'Aceptar',
+    botonTexto: tp('accept'),
     mostrarCancelar: false,
     onConfirmar: null
   });
@@ -319,8 +332,8 @@ export default function FormularioInspeccionPropiedades({
   }, [areasEfectivas]);
 
   const filasIndiceInforme = useMemo(
-    () => obtenerFilasIndicePropiedades(seccionesActivas, areasEfectivas),
-    [seccionesActivas, areasEfectivas]
+    () => obtenerFilasIndicePropiedades(seccionesActivas, areasEfectivas, t),
+    [seccionesActivas, areasEfectivas, t]
   );
 
   const algunaAreaActiva = useMemo(
@@ -699,14 +712,14 @@ localStorage.removeItem('formularioPropiedades');
     if (cupo <= 0) {
       alert(
         disponiblesTotal <= 0
-          ? `Has alcanzado el límite de ${MAX_FOTOS_TOTAL} fotos en todo el informe.`
-          : `Esta sección ya tiene el máximo de ${MAX_FOTOS_POR_SECCION} fotos.`
+          ? tp('photoLimitTotal', { max: MAX_FOTOS_TOTAL })
+          : tp('photoLimitSection', { max: MAX_FOTOS_POR_SECCION })
       );
       return;
     }
 
     if (cupo < files.length) {
-      alert(`Solo se agregarán ${cupo} foto(s) por el límite del informe.`);
+      alert(tp('photosAddedPartial', { count: cupo }));
     }
 
     setCargando(true);
@@ -755,7 +768,7 @@ localStorage.removeItem('formularioPropiedades');
       guardarAutomatico();
     } catch (error) {
       console.error('Error procesando imágenes:', error);
-      alert('Error al procesar las imágenes');
+      alert(tp('errorProcessingImages'));
     } finally {
       setCargando(false);
     }
@@ -965,14 +978,14 @@ localStorage.removeItem('formularioPropiedades');
     lastSavedDataRef.current = datosString;
     
     try {
-      const nombreCliente = formData.nombreInmueble ? capitalizeFirstLetter(formData.nombreInmueble) : "Sin Nombre";
+      const nombreCliente = formData.nombreInmueble ? capitalizeFirstLetter(formData.nombreInmueble) : tp('untitledClient');
       
       // Procesar fotos antes de guardar (solo las nuevas, mantener las existentes)
       const fotosProcesadas = await procesarFotosParaGuardar();
       
       const datosFormulario = {
         tipo: TIPOS_FORMULARIOS.INSPECCION_PROPIEDADES,
-        titulo: `Inspección de Propiedades - ${nombreCliente}`,
+        titulo: tp('historyTitle', { client: nombreCliente }),
         datos: {
           formData: { ...formData },
           areasData: { ...areasData },
@@ -1008,7 +1021,7 @@ localStorage.removeItem('formularioPropiedades');
   }, [seccionesActivas]);
 
   // Función para mostrar modal de confirmación
-  const mostrarModalConfirmacion = (titulo, mensaje, tipo = 'success', botonTexto = 'Aceptar', mostrarCancelar = false, onConfirmar = null) => {
+  const mostrarModalConfirmacion = (titulo, mensaje, tipo = 'success', botonTexto = tp('accept'), mostrarCancelar = false, onConfirmar = null) => {
     setModalConfirmacion({
       isOpen: true,
       titulo,
@@ -1030,8 +1043,8 @@ localStorage.removeItem('formularioPropiedades');
 
     if (areaPersonalizadaYaExiste(areasEfectivas, tituloNorm)) {
       mostrarModalConfirmacion(
-        'Área existente',
-        `La zona «${tituloNorm}» ya está en el informe. Revise la tabla de contenido si no la ve activa.`,
+        tp('areaExistsTitle'),
+        tp('areaExistsMessage', { title: tituloNorm }),
         'error'
       );
       return;
@@ -1194,7 +1207,7 @@ setFotosAreas(normalizarFotosAreas(fotosProcesadas));
       }
     } catch (error) {
       console.error('Error cargando formulario:', error);
-      setError('Error al cargar el formulario: ' + error.message);
+      setError(tp('errorLoadingForm', { message: error.message }));
     } finally {
       setCargando(false);
     }
@@ -1216,7 +1229,7 @@ return [];
         if (typeof foto === 'string') {
 return {
             id: Date.now() + Math.random(),
-            nombre: 'Imagen',
+            nombre: tp('image'),
             base64: foto.startsWith('data:') ? foto : `data:image/jpeg;base64,${foto}`,
             descripcion: '',
             url: foto.startsWith('data:') ? foto : `data:image/jpeg;base64,${foto}`,
@@ -1230,7 +1243,7 @@ return {
             const base64 = foto[0].startsWith('data:') ? foto[0] : `data:image/jpeg;base64,${foto[0]}`;
             return {
               id: Date.now() + Math.random(),
-              nombre: 'Imagen',
+              nombre: tp('image'),
               base64: base64,
               descripcion: foto[1] || '',
               url: base64,
@@ -1239,7 +1252,7 @@ return {
           // Si no, retornar estructura mínima
           return {
             id: Date.now() + Math.random(),
-            nombre: 'Imagen',
+            nombre: tp('image'),
             descripcion: '',
           };
         }
@@ -1252,7 +1265,7 @@ return {
           
 return {
             id: foto.id || Date.now() + Math.random(),
-            nombre: foto.nombre || 'Imagen',
+            nombre: foto.nombre || tp('image'),
             base64: base64,
             descripcion: foto.descripcion || '',
             url: base64, // Usar base64 como URL para preview
@@ -1277,7 +1290,7 @@ return {
               const url = URL.createObjectURL(blob);
 return {
                 id: foto.id || Date.now() + Math.random(),
-                nombre: foto.nombre || 'Imagen',
+                nombre: foto.nombre || tp('image'),
                 url,
                 ruta: foto.ruta,
                 descripcion: foto.descripcion || '',
@@ -1298,7 +1311,7 @@ return {
         if (foto.url && !foto.url.startsWith('blob:')) {
 return {
             id: foto.id || Date.now() + Math.random(),
-            nombre: foto.nombre || 'Imagen',
+            nombre: foto.nombre || tp('image'),
             url: foto.url,
             ruta: foto.ruta,
             descripcion: foto.descripcion || '',
@@ -1309,7 +1322,7 @@ return {
         if (foto.url && foto.url.startsWith('blob:')) {
 return {
             id: foto.id || Date.now() + Math.random(),
-            nombre: foto.nombre || 'Imagen',
+            nombre: foto.nombre || tp('image'),
             url: foto.url,
             descripcion: foto.descripcion || '',
           };
@@ -1318,7 +1331,7 @@ return {
         // Retornar foto tal cual si no se puede procesar
 return {
           id: foto.id || Date.now() + Math.random(),
-          nombre: foto.nombre || 'Imagen',
+          nombre: foto.nombre || tp('image'),
           descripcion: foto.descripcion || '',
           ...foto
         };
@@ -1349,14 +1362,14 @@ return {
       setGuardando(true);
       setError(null);
       
-      const nombreCliente = formData.nombreInmueble ? capitalizeFirstLetter(formData.nombreInmueble) : "Sin Nombre";
+      const nombreCliente = formData.nombreInmueble ? capitalizeFirstLetter(formData.nombreInmueble) : tp('untitledClient');
       
       // Procesar fotos antes de guardar
       const fotosProcesadas = await prepararFotosAreasParaGuardar(fotosAreas);
 
       const datosFormulario = {
         tipo: TIPOS_FORMULARIOS.INSPECCION_PROPIEDADES,
-        titulo: `Inspección de Propiedades - ${nombreCliente}`,
+        titulo: tp('historyTitle', { client: nombreCliente }),
         datos: {
           formData: { ...formData },
           areasData: { ...areasData },
@@ -1433,16 +1446,16 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
       }
       
       mostrarModalConfirmacion(
-        'Formulario Guardado',
-        'El formulario se ha guardado correctamente en el historial.',
+        tp('formSavedTitle'),
+        tp('formSavedMessage'),
         'success'
       );
       
       lastSavedDataRef.current = JSON.stringify(datosFormulario);
     } catch (error) {
       console.error('Error guardando:', error);
-      setError('Error al guardar: ' + error.message);
-      alert('Error al guardar: ' + error.message);
+      setError(tp('errorSaving', { message: error.message }));
+      alert(tp('errorSaving', { message: error.message }));
     } finally {
       setGuardando(false);
     }
@@ -1463,7 +1476,7 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
             if (foto.base64) {
               return {
                 id: foto.id || Date.now() + Math.random(),
-                nombre: foto.nombre || 'Imagen',
+                nombre: foto.nombre || tp('image'),
                 descripcion: foto.descripcion || '',
                 base64: foto.base64,
                 url: foto.base64 // Usar base64 como URL para preview
@@ -1472,7 +1485,7 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
             // Mantener otros datos
             return {
               id: foto.id || Date.now() + Math.random(),
-              nombre: foto.nombre || 'Imagen',
+              nombre: foto.nombre || tp('image'),
               descripcion: foto.descripcion || '',
               url: foto.url,
               ruta: foto.ruta
@@ -1485,7 +1498,7 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
           if (foto.base64) {
             return {
               id: foto.id || Date.now() + Math.random(),
-              nombre: foto.nombre || 'Imagen',
+              nombre: foto.nombre || tp('image'),
               descripcion: foto.descripcion || '',
               base64: foto.base64,
               url: foto.base64 // Usar base64 como URL para preview
@@ -1494,7 +1507,7 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
           // Mantener otros datos
           return {
             id: foto.id || Date.now() + Math.random(),
-            nombre: foto.nombre || 'Imagen',
+            nombre: foto.nombre || tp('image'),
             descripcion: foto.descripcion || '',
             url: foto.url,
             ruta: foto.ruta
@@ -1511,7 +1524,7 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
     try {
       setCargando(true);
       
-      const nombreCliente = formData.nombreInmueble ? capitalizeFirstLetter(formData.nombreInmueble) : "Sin Nombre";
+      const nombreCliente = formData.nombreInmueble ? capitalizeFirstLetter(formData.nombreInmueble) : tp('untitledClient');
       const nombreClienteMayusculas = nombreCliente.toUpperCase();
       const today = new Date();
       const formattedDate = today.toLocaleDateString("es-CO", {
@@ -1522,7 +1535,7 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
 
       const docContent = [];
       const incluirSeccionWord = (id) => estaSeccionPropiedadesActiva(seccionesActivas, id, areasEfectivas);
-      const numeracionWord = construirNumeracionActiva(seccionesActivas, areasEfectivas);
+      const numeracionWord = construirNumeracionActiva(seccionesActivas, areasEfectivas, t);
       const encabezado = (id, fallback) => numeracionWord.get(id)?.encabezado || fallback;
       const resumenDocumento = resumenEditadoManualRef.current
         ? {
@@ -1898,14 +1911,14 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
       await generarDocumentoWord();
       
 mostrarModalConfirmacion(
-        'Documento Generado',
-        'El documento Word se ha generado y descargado exitosamente.',
+        tp('documentGeneratedTitle'),
+        tp('documentGeneratedMessage'),
         'success'
       );
     } catch (error) {
       console.error('❌ Error exportando:', error);
-      setError('Error al exportar: ' + error.message);
-      alert('Error al exportar: ' + error.message);
+      setError(tp('errorExporting', { message: error.message }));
+      alert(tp('errorExporting', { message: error.message }));
     } finally {
       setExportando(false);
     }
@@ -1920,24 +1933,30 @@ mostrarModalConfirmacion(
     const totalFotos = contarFotosTotales(fotosAreas);
     const seccionLlena = enSeccion >= MAX_FOTOS_POR_SECCION;
     const informeLleno = totalFotos >= MAX_FOTOS_TOTAL;
-    const tituloFotos = tituloArea(area, areasEfectivas, alcobaNum);
+    const tituloFotos = tituloArea(area, areasEfectivas, alcobaNum, t);
     
     // Usar utilidades centralizadas de imageUtils
     
     return (
       <div
         className="mb-6 mt-6 rounded-lg border p-4 sm:p-5"
-        style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
+        style={{ borderColor: ui.borderColor, backgroundColor: ui.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
       >
         <h4
           className="mb-1 font-heading text-base font-bold sm:text-lg"
-          style={{ color: t.textPrimary, textTransform: 'none' }}
+          style={{ color: ui.textPrimary, textTransform: 'none' }}
         >
-          Fotos de {tituloFotos}
+          {tp('photosOf', { area: tituloFotos })}
         </h4>
-        <p className="mb-4 text-xs" style={{ color: t.textSecondary }}>
-          {enSeccion} / {MAX_FOTOS_POR_SECCION} en esta sección · {totalFotos} / {MAX_FOTOS_TOTAL} en el informe ·
-          se suben a S3 al guardar (máx. {MAX_FOTO_TAMANO_MB} MB por archivo, comprimidas a ~{FOTO_COMPRESION_OPCIONES.maxSizeKB} KB)
+        <p className="mb-4 text-xs" style={{ color: ui.textSecondary }}>
+          {tp('photosQuota', {
+            section: enSeccion,
+            maxSection: MAX_FOTOS_POR_SECCION,
+            total: totalFotos,
+            maxTotal: MAX_FOTOS_TOTAL,
+            maxMb: MAX_FOTO_TAMANO_MB,
+            kb: FOTO_COMPRESION_OPCIONES.maxSizeKB,
+          })}
         </p>
         
         <div
@@ -1945,13 +1964,13 @@ mostrarModalConfirmacion(
             seccionLlena || informeLleno ? '' : ''
           }`}
           style={{
-            borderColor: seccionLlena || informeLleno ? '#F59E0B' : t.borderColor,
+            borderColor: seccionLlena || informeLleno ? '#F59E0B' : ui.borderColor,
             backgroundColor: seccionLlena || informeLleno
-              ? (t.theme === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB')
-              : (t.theme === 'dark' ? 'rgba(255,255,255,0.03)' : '#F9FAFB'),
+              ? (ui.theme === 'dark' ? 'rgba(245,158,11,0.1)' : '#FFFBEB')
+              : (ui.theme === 'dark' ? 'rgba(255,255,255,0.03)' : '#F9FAFB'),
           }}
         >
-          <FaUpload className="mx-auto mb-2 h-8 w-8" style={{ color: t.textSecondary }} />
+          <FaUpload className="mx-auto mb-2 h-8 w-8" style={{ color: ui.textSecondary }} />
           <input
             type="file"
             multiple
@@ -1969,11 +1988,11 @@ mostrarModalConfirmacion(
                 : `cursor-pointer ${complexBtnPrimary}`
             }`}
           >
-            {seccionLlena || informeLleno ? 'Límite de fotos alcanzado' : 'Seleccionar imágenes'}
+            {seccionLlena || informeLleno ? tp('photoLimitReached') : tp('selectImages')}
           </label>
           {!seccionLlena && !informeLleno && (
-            <p className="mt-2 text-xs" style={{ color: t.textSecondary }}>
-              Las imágenes se comprimen y se guardan en S3 al guardar el informe
+            <p className="mt-2 text-xs" style={{ color: ui.textSecondary }}>
+              {tp('photosCompressHint')}
             </p>
           )}
         </div>
@@ -1986,25 +2005,25 @@ mostrarModalConfirmacion(
                 <div
                   key={foto.id}
                   className="rounded-lg border p-4 shadow-sm"
-                  style={{ borderColor: t.borderColor, backgroundColor: t.cardBg }}
+                  style={{ borderColor: ui.borderColor, backgroundColor: ui.cardBg }}
                 >
                   <div className="relative mb-3">
                     {imageUrl ? (
                       <img
                         src={imageUrl}
-                        alt={foto.nombre || 'Imagen'}
+                        alt={foto.nombre || tp('image')}
                         className="h-48 w-full cursor-pointer rounded-lg border object-contain"
-                        style={{ backgroundColor: t.inputBg, borderColor: t.borderColor }}
+                        style={{ backgroundColor: ui.inputBg, borderColor: ui.borderColor }}
                         onClick={() => {
                           const modal = document.createElement('div');
                           modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
                           modal.innerHTML = `
                             <div class="bg-white rounded-lg p-6 max-w-4xl max-h-[90vh] overflow-y-auto">
                               <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-xl font-semibold">${foto.nombre || 'Imagen'}</h3>
+                                <h3 class="text-xl font-semibold">${foto.nombre || tp('image')}</h3>
                                 <button onclick="this.closest('.fixed').remove()" class="text-gray-500 hover:text-gray-700 text-2xl font-bold w-8 h-8 flex items-center justify-center">×</button>
                               </div>
-                              <img src="${imageUrl}" alt="${foto.nombre || 'Imagen'}" class="w-full rounded-lg" />
+                              <img src="${imageUrl}" alt="${foto.nombre || tp('image')}" class="w-full rounded-lg" />
                               ${foto.descripcion ? `<p class="mt-4 text-gray-700">${foto.descripcion}</p>` : ''}
                             </div>
                           `;
@@ -2019,11 +2038,10 @@ mostrarModalConfirmacion(
                           if (container && !container.querySelector('.image-error-message')) {
                             const errorDiv = document.createElement('div');
                             errorDiv.className = 'image-error-message flex h-48 w-full items-center justify-center rounded-lg';
-                            errorDiv.style.backgroundColor = t.theme === 'dark' ? '#252525' : '#E5E7EB';
+                            errorDiv.style.backgroundColor = ui.theme === 'dark' ? '#252525' : '#E5E7EB';
                             errorDiv.innerHTML = `
                               <span class="px-2 text-center text-xs text-gray-600">
-                                Imagen no disponible<br/>
-                                en el servidor
+                                ${tp('imageUnavailable')}
                               </span>
                             `;
                             container.appendChild(errorDiv);
@@ -2033,16 +2051,16 @@ mostrarModalConfirmacion(
                     ) : (
                       <div
                         className="flex h-48 w-full items-center justify-center rounded-lg"
-                        style={{ backgroundColor: t.theme === 'dark' ? '#252525' : '#E5E7EB' }}
+                        style={{ backgroundColor: ui.theme === 'dark' ? '#252525' : '#E5E7EB' }}
                       >
-                        <span className="text-sm" style={{ color: t.textSecondary }}>Sin imagen</span>
+                        <span className="text-sm" style={{ color: ui.textSecondary }}>{tp('noImage')}</span>
                       </div>
                     )}
                     <button
                       type="button"
                       onClick={() => eliminarFoto(area, foto.id, alcobaNum)}
                       className={`absolute right-2 top-2 rounded-full p-2 shadow-lg ${complexBtnDanger}`}
-                      title="Eliminar foto"
+                      title={tp('deletePhoto')}
                     >
                       <FaTrash className="h-4 w-4" />
                     </button>
@@ -2050,7 +2068,7 @@ mostrarModalConfirmacion(
                   <ThemedTextarea
                     value={foto.descripcion || ''}
                     onChange={(e) => actualizarDescripcionFoto(area, foto.id, e.target.value, alcobaNum)}
-                    placeholder="Descripción de la foto..."
+                    placeholder={tp('photoDescriptionPlaceholder')}
                     rows={2}
                     className="!resize-none"
                   />
@@ -2068,20 +2086,20 @@ mostrarModalConfirmacion(
     const clave = getClaveAlmacenamientoArea(area);
     const items = clave && alcobaNum ? (areasData?.[clave]?.[alcobaNum] || []) : (areasData?.[area] || []);
     const campos = obtenerCamposArea(area, areasEfectivas);
-    const nombreArea = tituloArea(area, areasEfectivas, alcobaNum);
+    const nombreArea = tituloArea(area, areasEfectivas, alcobaNum, t);
     const tituloItems = nombreArea;
     
     return (
       <div
         className="mb-4 rounded-lg border p-4"
-        style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
+        style={{ borderColor: ui.borderColor, backgroundColor: ui.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
       >
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h4
             className="font-heading text-sm font-semibold sm:text-base"
-            style={{ color: t.textPrimary, textTransform: 'none' }}
+            style={{ color: ui.textPrimary, textTransform: 'none' }}
           >
-            Items de inspección — {tituloItems}
+            {tp('inspectionItems', { area: tituloItems })}
           </h4>
           <button
             type="button"
@@ -2089,22 +2107,22 @@ mostrarModalConfirmacion(
             className={complexBtnPrimary}
           >
             <FaPlus className="h-4 w-4" />
-            Agregar item
+            {tp('addItem')}
           </button>
         </div>
         
         {items.length === 0 ? (
-          <p className="text-sm italic" style={{ color: t.textSecondary }}>
-            No hay items agregados. Use «Agregar item» o los botones de parámetros predefinidos.
+          <p className="text-sm italic" style={{ color: ui.textSecondary }}>
+            {tp('noItemsHint')}
           </p>
         ) : (
           <FormTable>
             <FormTableHead>
-              <FormTableTh className="!w-auto">Parámetro</FormTableTh>
-              <FormTableTh className="!w-auto">Cumple</FormTableTh>
-              <FormTableTh className="!w-auto">Síntoma</FormTableTh>
-              <FormTableTh className="!w-auto">Observación</FormTableTh>
-              <FormTableTh className="!w-auto">Acción</FormTableTh>
+              <FormTableTh className="!w-auto">{tp('parameter')}</FormTableTh>
+              <FormTableTh className="!w-auto">{tp('complies')}</FormTableTh>
+              <FormTableTh className="!w-auto">{tp('symptom')}</FormTableTh>
+              <FormTableTh className="!w-auto">{tp('observation')}</FormTableTh>
+              <FormTableTh className="!w-auto">{tp('action')}</FormTableTh>
             </FormTableHead>
             <tbody>
               {items.map((item) => (
@@ -2114,7 +2132,7 @@ mostrarModalConfirmacion(
                       type="text"
                       value={item.parametro || ''}
                       onChange={(e) => actualizarItem(area, item.id, 'parametro', e.target.value, alcobaNum)}
-                      placeholder="Ej: Muros, Pisos, etc."
+                      placeholder={tp('parameterExample')}
                     />
                   </FormTableTd>
                   <FormTableTd>
@@ -2130,7 +2148,7 @@ mostrarModalConfirmacion(
                       <option value="">--</option>
                       <option value="si">SI</option>
                       <option value="no">NO</option>
-                      <option value="parcialmente">Parcialmente</option>
+                      <option value="parcialmente">{tp('partially')}</option>
                       <option value="na">NA</option>
                     </TableFieldSelect>
                   </FormTableTd>
@@ -2139,7 +2157,7 @@ mostrarModalConfirmacion(
                       type="text"
                       value={item.sintoma || ''}
                       onChange={(e) => actualizarItem(area, item.id, 'sintoma', e.target.value, alcobaNum)}
-                      placeholder="Síntoma observado"
+                      placeholder={tp('symptomPlaceholder')}
                     />
                   </FormTableTd>
                   <FormTableTd>
@@ -2147,7 +2165,7 @@ mostrarModalConfirmacion(
                       type="text"
                       value={item.observacion || ''}
                       onChange={(e) => actualizarItem(area, item.id, 'observacion', e.target.value, alcobaNum)}
-                      placeholder="Observación"
+                      placeholder={tp('observationPlaceholder')}
                     />
                   </FormTableTd>
                   <FormTableTd>
@@ -2155,7 +2173,7 @@ mostrarModalConfirmacion(
                       type="button"
                       onClick={() => eliminarItem(area, item.id, alcobaNum)}
                       className={complexBtnDanger}
-                      title="Eliminar item"
+                      title={tp('deleteItem')}
                     >
                       <FaTrash className="h-4 w-4" />
                     </button>
@@ -2168,7 +2186,7 @@ mostrarModalConfirmacion(
         
         {campos && campos.length > 0 && (
           <div className="mt-4">
-            <p className="mb-2 text-sm" style={{ color: t.textSecondary }}>Agregar parámetros predefinidos:</p>
+            <p className="mb-2 text-sm" style={{ color: ui.textSecondary }}>{tp('addPredefinedParams')}</p>
             <div className="flex flex-wrap gap-2">
               {campos.map((campo) => (
                 <button
@@ -2213,9 +2231,9 @@ mostrarModalConfirmacion(
 
   const renderBloqueAlcobas = (numeroSubseccion) => (
     <>
-      <SubsectionTitle>{numeroSubseccion ? `3.${numeroSubseccion} — Alcobas` : 'Alcobas'}</SubsectionTitle>
+      <SubsectionTitle>{numeroSubseccion ? tp('subsectionAlcobas', { n: numeroSubseccion }) : tp('alcobasLabel')}</SubsectionTitle>
       <div className="mb-4">
-        <FieldLabel>¿Cuántas alcobas hay?</FieldLabel>
+        <FieldLabel>{tp('howManyBedrooms')}</FieldLabel>
         <div className="flex flex-wrap items-center gap-3">
           <ThemedInput
             type="number"
@@ -2233,7 +2251,7 @@ mostrarModalConfirmacion(
             onClick={generateBedrooms}
             className={complexBtnSecondary}
           >
-            Generar alcobas
+            {tp('generateBedrooms')}
           </button>
         </div>
       </div>
@@ -2242,11 +2260,11 @@ mostrarModalConfirmacion(
         <div
           key={alcobaNum}
           className="mb-6 rounded-lg border p-4"
-          style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
+          style={{ borderColor: ui.borderColor, backgroundColor: ui.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
         >
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h4 className="font-heading text-base font-bold" style={{ color: t.textPrimary }}>
-              Alcoba {alcobaNum}
+            <h4 className="font-heading text-base font-bold" style={{ color: ui.textPrimary }}>
+              {tp('areas.alcobaNum', { n: alcobaNum })}
             </h4>
             <div className="flex flex-wrap gap-2">
               <button
@@ -2254,14 +2272,14 @@ mostrarModalConfirmacion(
                 onClick={() => toggleBanoAlcoba(alcobaNum)}
                 className={formData.alcobasConBano?.[alcobaNum] ? complexBtnPrimary : complexBtnGhost}
               >
-                {formData.alcobasConBano?.[alcobaNum] ? 'Ocultar baño' : '+ Agregar baño'}
+                {formData.alcobasConBano?.[alcobaNum] ? tp('hideBathroom') : tp('addBathroom')}
               </button>
               <button
                 type="button"
                 onClick={() => toggleClosetAlcoba(alcobaNum)}
                 className={formData.alcobasConCloset?.[alcobaNum] ? complexBtnPrimary : complexBtnGhost}
               >
-                {formData.alcobasConCloset?.[alcobaNum] ? 'Ocultar closet' : '+ Agregar closet'}
+                {formData.alcobasConCloset?.[alcobaNum] ? tp('hideCloset') : tp('addCloset')}
               </button>
             </div>
           </div>
@@ -2272,12 +2290,12 @@ mostrarModalConfirmacion(
             <div
               className="mt-6 rounded-lg border p-4 pt-6"
               style={{
-                borderColor: t.borderColor,
-                backgroundColor: t.theme === 'dark' ? 'rgba(220,38,38,0.06)' : t.accentSoft,
+                borderColor: ui.borderColor,
+                backgroundColor: ui.theme === 'dark' ? 'rgba(220,38,38,0.06)' : ui.accentSoft,
               }}
             >
-              <h4 className="mb-4 font-heading text-base font-bold" style={{ color: t.textPrimary }}>
-                Baño — Alcoba {alcobaNum}
+              <h4 className="mb-4 font-heading text-base font-bold" style={{ color: ui.textPrimary }}>
+                {tp('areas.banoAlcobaNum', { n: alcobaNum })}
               </h4>
               {renderTablaInspeccion('banoAlcoba', alcobaNum)}
               {renderFotosArea('banoAlcoba', alcobaNum)}
@@ -2288,12 +2306,12 @@ mostrarModalConfirmacion(
             <div
               className="mt-6 rounded-lg border p-4 pt-6"
               style={{
-                borderColor: t.borderColor,
-                backgroundColor: t.theme === 'dark' ? 'rgba(220,38,38,0.06)' : t.accentSoft,
+                borderColor: ui.borderColor,
+                backgroundColor: ui.theme === 'dark' ? 'rgba(220,38,38,0.06)' : ui.accentSoft,
               }}
             >
-              <h4 className="mb-4 font-heading text-base font-bold" style={{ color: t.textPrimary }}>
-                Closet — Alcoba {alcobaNum}
+              <h4 className="mb-4 font-heading text-base font-bold" style={{ color: ui.textPrimary }}>
+                {tp('areas.closetAlcobaNum', { n: alcobaNum })}
               </h4>
               {renderTablaInspeccion('closetAlcoba', alcobaNum)}
               {renderFotosArea('closetAlcoba', alcobaNum)}
@@ -2305,42 +2323,42 @@ mostrarModalConfirmacion(
   );
 
   return (
-    <div className="min-h-screen p-2 sm:p-4 lg:p-8" style={{ backgroundColor: t.bgMain }}>
+    <div className="min-h-screen p-2 sm:p-4 lg:p-8" style={{ backgroundColor: ui.bgMain }}>
       <div
         className="mx-auto max-w-5xl rounded-lg p-3 shadow-lg sm:p-4 lg:p-6"
-        style={{ backgroundColor: t.cardBg, border: `1px solid ${t.borderColor}` }}
+        style={{ backgroundColor: ui.cardBg, border: `1px solid ${ui.borderColor}` }}
       >
         <div
           className="mb-6 flex flex-col items-start justify-between gap-4 border-b pb-4 sm:flex-row sm:items-center"
-          style={{ borderColor: t.borderColor }}
+          style={{ borderColor: ui.borderColor }}
         >
           <img src={Logo} alt="Logo PROSER" className="h-12 object-contain sm:h-16" />
           {formularioId && formularioId !== 'nuevo' && (
             <span
               className="rounded-full px-3 py-1 text-xs font-medium sm:text-sm"
               style={{
-                backgroundColor: t.theme === 'dark' ? 'rgba(34,197,94,0.15)' : '#DCFCE7',
-                color: t.theme === 'dark' ? '#86EFAC' : '#166534',
+                backgroundColor: ui.theme === 'dark' ? 'rgba(34,197,94,0.15)' : '#DCFCE7',
+                color: ui.theme === 'dark' ? '#86EFAC' : '#166534',
               }}
             >
-              Guardado automático activo
+              {tp('autoSaveActive')}
             </span>
           )}
         </div>
 
         <div className="mb-8 text-center">
-          <h1 className="mb-2 font-heading text-2xl font-bold sm:text-3xl" style={{ color: t.textPrimary }}>
-            FORMULARIO DE INSPECCIÓN DE PROPIEDAD
+          <h1 className="mb-2 font-heading text-2xl font-bold sm:text-3xl" style={{ color: ui.textPrimary }}>
+            {tp('pageTitle')}
           </h1>
-          <p className="text-sm" style={{ color: t.textSecondary }}>
-            Complete los campos, agregue ítems por área y adjunte el registro fotográfico
+          <p className="text-sm" style={{ color: ui.textSecondary }}>
+            {tp('pageSubtitle')}
           </p>
         </div>
 
         {formularioId && formularioId !== 'nuevo' && (
           <InfoBanner variant="success">
             <span>✓</span>
-            <span>Los cambios se guardan automáticamente cada 2 segundos</span>
+            <span>{tp('autoSaveHint')}</span>
           </InfoBanner>
         )}
 
@@ -2354,10 +2372,10 @@ mostrarModalConfirmacion(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div
               className="rounded-lg p-6 text-center shadow-xl"
-              style={{ backgroundColor: t.cardBg, border: `1px solid ${t.borderColor}` }}
+              style={{ backgroundColor: ui.cardBg, border: `1px solid ${ui.borderColor}` }}
             >
               <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-b-2" style={{ borderColor: '#DC2626' }} />
-              <p style={{ color: t.textPrimary }}>Procesando, por favor espera...</p>
+              <p style={{ color: ui.textPrimary }}>{tp('processing')}</p>
             </div>
           </div>
         )}
@@ -2366,21 +2384,21 @@ mostrarModalConfirmacion(
 
         <div
           className="mb-8 rounded-lg border p-4"
-          style={{ borderColor: t.borderColor, backgroundColor: t.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
+          style={{ borderColor: ui.borderColor, backgroundColor: ui.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
         >
-          <h2 className="mb-2 font-heading text-lg font-bold" style={{ color: t.textPrimary }}>
-            Tabla de contenido
+          <h2 className="mb-2 font-heading text-lg font-bold" style={{ color: ui.textPrimary }}>
+            {t('inspection.ui.formulario_inspeccion.tableOfContents')}
           </h2>
-          <p className="mb-3 text-sm" style={{ color: t.textSecondary }}>
-            Marque las secciones que desea incluir en el formulario y en el Word. Las secciones obligatorias no se pueden desactivar.
+          <p className="mb-3 text-sm" style={{ color: ui.textSecondary }}>
+            {t('inspection.ui.formulario_inspeccion.contentsInstructions')}
           </p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm" style={{ border: `1px solid ${t.borderColor}` }}>
+            <table className="w-full text-sm" style={{ border: `1px solid ${ui.borderColor}` }}>
               <thead>
-                <tr style={{ backgroundColor: t.theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
-                  <th className="px-3 py-2 text-center font-bold" style={{ border: `1px solid ${t.borderColor}`, width: '48px', color: t.textPrimary }}>✓</th>
-                  <th className="px-3 py-2 text-left font-bold" style={{ border: `1px solid ${t.borderColor}`, color: t.textPrimary }}>REF</th>
-                  <th className="px-3 py-2 text-left font-bold" style={{ border: `1px solid ${t.borderColor}`, color: t.textPrimary }}>SECCIÓN</th>
+                <tr style={{ backgroundColor: ui.theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
+                  <th className="px-3 py-2 text-center font-bold" style={{ border: `1px solid ${ui.borderColor}`, width: '48px', color: ui.textPrimary }}>✓</th>
+                  <th className="px-3 py-2 text-left font-bold" style={{ border: `1px solid ${ui.borderColor}`, color: ui.textPrimary }}>{tp('ref')}</th>
+                  <th className="px-3 py-2 text-left font-bold" style={{ border: `1px solid ${ui.borderColor}`, color: ui.textPrimary }}>{tp('sectionCol')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -2389,12 +2407,12 @@ mostrarModalConfirmacion(
                     key={`${fila.id || fila.ref}-${fila.titulo}-${idx}`}
                     style={{
                       backgroundColor: idx % 2 === 0
-                        ? (t.theme === 'dark' ? '#1A1A1A' : '#FFFFFF')
-                        : (t.theme === 'dark' ? '#1F1F1F' : '#F9FAFB'),
+                        ? (ui.theme === 'dark' ? '#1A1A1A' : '#FFFFFF')
+                        : (ui.theme === 'dark' ? '#1F1F1F' : '#F9FAFB'),
                       opacity: fila.activa ? 1 : 0.55,
                     }}
                   >
-                    <td className="px-3 py-2 text-center" style={{ border: `1px solid ${t.borderColor}` }}>
+                    <td className="px-3 py-2 text-center" style={{ border: `1px solid ${ui.borderColor}` }}>
                       {fila.seleccionable ? (
                         <input
                           type="checkbox"
@@ -2404,14 +2422,14 @@ mostrarModalConfirmacion(
                           className="h-4 w-4"
                         />
                       ) : fila.tipo === 'principal' ? (
-                        <span title="Sección obligatoria o de agrupación" style={{ color: t.textSecondary }}>●</span>
+                        <span title={tp('requiredOrGroupSection')} style={{ color: ui.textSecondary }}>●</span>
                       ) : null}
                     </td>
                     <td
                       className="px-3 py-2"
                       style={{
-                        border: `1px solid ${t.borderColor}`,
-                        color: t.textPrimary,
+                        border: `1px solid ${ui.borderColor}`,
+                        color: ui.textPrimary,
                         paddingLeft: fila.tipo === 'sub' ? '1.5rem' : undefined,
                       }}
                     >
@@ -2420,8 +2438,8 @@ mostrarModalConfirmacion(
                     <td
                       className="px-3 py-2"
                       style={{
-                        border: `1px solid ${t.borderColor}`,
-                        color: t.textPrimary,
+                        border: `1px solid ${ui.borderColor}`,
+                        color: ui.textPrimary,
                         paddingLeft: fila.tipo === 'sub' ? '1.5rem' : undefined,
                         fontStyle: fila.tipo === 'sub' ? 'italic' : 'normal',
                       }}
@@ -2437,28 +2455,28 @@ mostrarModalConfirmacion(
 
         <form className="space-y-6">
           <SectionCard
-            title="1. Información general del inmueble"
-            subtitle="Clase, tipo, ubicación y contacto de quien recibe la visita"
+            title={tp('section1Title')}
+            subtitle={tp('section1Subtitle')}
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <FieldLabel>Clase de inmueble</FieldLabel>
+                <FieldLabel>{tp('propertyClass')}</FieldLabel>
                 <ThemedSelect
                   name="claseInmueble"
                   value={formData.claseInmueble}
                   onChange={(e) => handleClaseInmuebleChange(e.target.value)}
                 >
-                  <option value="">Seleccione una clase...</option>
+                  <option value="">{tp('selectClass')}</option>
                   {formData.claseInmueble && !CLASES_INMUEBLE.includes(formData.claseInmueble) && (
-                    <option value={formData.claseInmueble}>{formData.claseInmueble}</option>
+                    <option value={formData.claseInmueble}>{labelClase(formData.claseInmueble)}</option>
                   )}
                   {CLASES_INMUEBLE.map((clase) => (
-                    <option key={clase} value={clase}>{clase}</option>
+                    <option key={clase} value={clase}>{labelClase(clase)}</option>
                   ))}
                 </ThemedSelect>
               </div>
               <div>
-                <FieldLabel>Tipo de inmueble</FieldLabel>
+                <FieldLabel>{tp('propertyType')}</FieldLabel>
                 <ThemedSelect
                   name="tipoInmueble"
                   value={formData.tipoInmueble}
@@ -2466,18 +2484,18 @@ mostrarModalConfirmacion(
                   disabled={!formData.claseInmueble}
                 >
                   <option value="">
-                    {formData.claseInmueble ? 'Seleccione un tipo...' : 'Seleccione primero una clase'}
+                    {formData.claseInmueble ? tp('selectType') : tp('selectClassFirst')}
                   </option>
                   {formData.tipoInmueble && !tiposInmuebleDisponibles.includes(formData.tipoInmueble) && (
-                    <option value={formData.tipoInmueble}>{formData.tipoInmueble}</option>
+                    <option value={formData.tipoInmueble}>{labelTipo(formData.tipoInmueble)}</option>
                   )}
                   {tiposInmuebleDisponibles.map((tipo) => (
-                    <option key={tipo} value={tipo}>{tipo}</option>
+                    <option key={tipo} value={tipo}>{labelTipo(tipo)}</option>
                   ))}
                 </ThemedSelect>
               </div>
               <div>
-                <FieldLabel>Dirección del inmueble</FieldLabel>
+                <FieldLabel>{tp('propertyAddress')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="direccion"
@@ -2486,7 +2504,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Nombre del cliente</FieldLabel>
+                <FieldLabel>{tp('clientName')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="nombreInmueble"
@@ -2495,7 +2513,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Localización</FieldLabel>
+                <FieldLabel>{tp('localization')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="localizacion"
@@ -2504,7 +2522,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Ciudad</FieldLabel>
+                <FieldLabel>{tp('city')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="ciudad"
@@ -2513,7 +2531,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Departamento</FieldLabel>
+                <FieldLabel>{tp('department')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="departamento"
@@ -2522,7 +2540,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Quien recibe la visita</FieldLabel>
+                <FieldLabel>{tp('visitReceiver')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="destinacion"
@@ -2534,10 +2552,10 @@ mostrarModalConfirmacion(
           </SectionCard>
 
           {incluirSeccion('informacionJuridica') && (
-          <SectionCard title="1.2 Información jurídica del inmueble" subtitle="Documento de propiedad y notaría">
+          <SectionCard title={tp('section12Title')} subtitle={tp('section12Subtitle')}>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <FieldLabel>Tipo de documento de propiedad</FieldLabel>
+                <FieldLabel>{tp('propertyDocType')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="tipoDocumento"
@@ -2546,7 +2564,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Número de documento de propiedad</FieldLabel>
+                <FieldLabel>{tp('propertyDocNumber')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="numeroDocumento"
@@ -2555,7 +2573,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Fecha del documento</FieldLabel>
+                <FieldLabel>{tp('documentDate')}</FieldLabel>
                 <ThemedInput
                   type="date"
                   name="fechaDocumento"
@@ -2564,7 +2582,7 @@ mostrarModalConfirmacion(
                 />
               </div>
               <div>
-                <FieldLabel>Notaría y lugar de expedición</FieldLabel>
+                <FieldLabel>{tp('notaryPlace')}</FieldLabel>
                 <ThemedInput
                   type="text"
                   name="notaria"
@@ -2577,8 +2595,8 @@ mostrarModalConfirmacion(
           )}
 
           {incluirSeccion('inspeccionMetrica') && (
-          <SectionCard title="2. Inspección métrica" subtitle="Observaciones generales de medición y dimensiones">
-            <FieldLabel>Observaciones de inspección métrica</FieldLabel>
+          <SectionCard title={tp('section2Title')} subtitle={tp('section2Subtitle')}>
+            <FieldLabel>{tp('metricObservations')}</FieldLabel>
             <ThemedTextarea
               name="inspeccionMetrica"
               value={formData.inspeccionMetrica}
@@ -2590,7 +2608,7 @@ mostrarModalConfirmacion(
                 formData={formData} 
                 onInputChange={handleInputChange}
                 seccion="inspeccionMetrica"
-                tituloSeccion="Inspección Métrica"
+                tituloSeccion={tp('metricSectionChatTitle')}
                 textoActual={formData.inspeccionMetrica || ''}
                 onTextoCambiado={(texto) => handleInputChange('inspeccionMetrica', texto)}
                 tipoSeccion="inspeccionMetrica"
@@ -2600,40 +2618,46 @@ mostrarModalConfirmacion(
           )}
 
           {formData.claseInmueble && (
-          <SectionCard title="3. Inspección por áreas" subtitle="Tablas de cumplimiento y registro fotográfico por zona">
+          <SectionCard title={tp('section3Title')} subtitle={tp('section3Subtitle')}>
             {formData.claseInmueble && formData.tipoInmueble && (
-              <p className="mb-4 text-sm" style={{ color: t.textSecondary }}>
-                Áreas sugeridas para <strong>{formData.claseInmueble}</strong> — <strong>{formData.tipoInmueble}</strong>.
-                Puede activar o desactivar cada zona en la tabla de contenido.
-              </p>
+              <p
+                className="mb-4 text-sm"
+                style={{ color: ui.textSecondary }}
+                dangerouslySetInnerHTML={{
+                  __html: tp('suggestedAreas', {
+                    clase: labelClase(formData.claseInmueble),
+                    tipo: labelTipo(formData.tipoInmueble),
+                  }),
+                }}
+              />
             )}
             {formData.claseInmueble && !formData.tipoInmueble && (
-              <p className="mb-4 rounded-lg border px-3 py-2 text-sm" style={{ borderColor: t.borderColor, color: t.textSecondary, backgroundColor: t.theme === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB' }}>
-                Seleccione el tipo de inmueble para cargar las áreas de inspección correspondientes.
+              <p className="mb-4 rounded-lg border px-3 py-2 text-sm" style={{ borderColor: ui.borderColor, color: ui.textSecondary, backgroundColor: ui.theme === 'dark' ? 'rgba(245,158,11,0.08)' : '#FFFBEB' }}>
+                {tp('selectTypeForAreas')}
               </p>
             )}
 
             <div
               className="mb-6 rounded-lg border p-4"
               style={{
-                borderColor: t.borderColor,
-                backgroundColor: t.theme === 'dark' ? 'rgba(59,130,246,0.06)' : '#EFF6FF',
+                borderColor: ui.borderColor,
+                backgroundColor: ui.theme === 'dark' ? 'rgba(59,130,246,0.06)' : '#EFF6FF',
               }}
             >
-              <h4 className="mb-1 font-heading text-sm font-bold" style={{ color: t.textPrimary, textTransform: 'none' }}>
-                Agregar área no listada
+              <h4 className="mb-1 font-heading text-sm font-bold" style={{ color: ui.textPrimary, textTransform: 'none' }}>
+                {tp('addUnlistedArea')}
               </h4>
-              <p className="mb-3 text-xs" style={{ color: t.textSecondary }}>
-                Si falta una zona en la plantilla, créela aquí. El formulario recordará las áreas y los ítems que haya usado en informes anteriores.
+              <p className="mb-3 text-xs" style={{ color: ui.textSecondary }}>
+                {tp('addUnlistedAreaHint')}
               </p>
               <div className="mb-3 flex flex-wrap items-end gap-2">
                 <div className="min-w-[200px] flex-1">
-                  <FieldLabel>Nombre del área</FieldLabel>
+                  <FieldLabel>{tp('areaName')}</FieldLabel>
                   <ThemedInput
                     type="text"
                     value={nuevaAreaTitulo}
                     onChange={(e) => setNuevaAreaTitulo(e.target.value)}
-                    placeholder="Ej: Terraza, bodega auxiliar, patio..."
+                    placeholder={tp('areaNamePlaceholder')}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -2648,14 +2672,14 @@ mostrarModalConfirmacion(
                   onClick={() => agregarAreaPersonalizada()}
                 >
                   <FaPlus className="h-4 w-4" />
-                  Agregar área
+                  {tp('addArea')}
                 </button>
               </div>
 
               {historialAreasGlobal.length > 0 && (
                 <div className="mb-3">
-                  <p className="mb-2 text-xs font-semibold" style={{ color: t.textSecondary }}>
-                    Historial de áreas creadas (clic para agregar al informe):
+                  <p className="mb-2 text-xs font-semibold" style={{ color: ui.textSecondary }}>
+                    {tp('areaHistoryHint')}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {historialAreasGlobal.slice(0, 20).map((h) => {
@@ -2669,13 +2693,13 @@ mostrarModalConfirmacion(
                           onClick={() => agregarAreaPersonalizada(h.titulo, h.parametrosFrecuentes || [])}
                           title={
                             h.parametrosFrecuentes?.length
-                              ? `Ítems frecuentes: ${h.parametrosFrecuentes.join(', ')}`
+                              ? tp('frequentItems', { items: h.parametrosFrecuentes.join(', ') })
                               : undefined
                           }
                         >
                           + {h.titulo}
                           {h.parametrosFrecuentes?.length > 0 && (
-                            <span className="ml-1 opacity-70">({h.parametrosFrecuentes.length} ítems)</span>
+                            <span className="ml-1 opacity-70">{tp('itemsCountShort', { count: h.parametrosFrecuentes.length })}</span>
                           )}
                         </button>
                       );
@@ -2685,9 +2709,9 @@ mostrarModalConfirmacion(
               )}
 
               {(formData.areasPersonalizadas?.length > 0) && (
-                <div className="border-t pt-3" style={{ borderColor: t.borderColor }}>
-                  <p className="mb-2 text-xs font-semibold" style={{ color: t.textSecondary }}>
-                    Áreas personalizadas en este informe:
+                <div className="border-t pt-3" style={{ borderColor: ui.borderColor }}>
+                  <p className="mb-2 text-xs font-semibold" style={{ color: ui.textSecondary }}>
+                    {tp('customAreasInReport')}
                   </p>
                   <ul className="space-y-2 text-sm">
                     {formData.areasPersonalizadas.map((a) => {
@@ -2697,17 +2721,16 @@ mostrarModalConfirmacion(
                         <li
                           key={a.id}
                           className="flex flex-wrap items-center justify-between gap-2 rounded border px-3 py-2"
-                          style={{ borderColor: t.borderColor, backgroundColor: t.cardBg }}
+                          style={{ borderColor: ui.borderColor, backgroundColor: ui.cardBg }}
                         >
                           <div>
-                            <span className="font-medium" style={{ color: t.textPrimary }}>{a.titulo}</span>
-                            <span className="ml-2 text-xs" style={{ color: t.textSecondary }}>
-                              {numItems} ítem{numItems !== 1 ? 's' : ''}
+                            <span className="font-medium" style={{ color: ui.textPrimary }}>{a.titulo}</span>
+                            <span className="ml-2 text-xs" style={{ color: ui.textSecondary }}>
+                              {tp(numItems === 1 ? 'itemCount' : 'itemCount_plural', { count: numItems })}
                             </span>
                             {params.length > 0 && (
-                              <p className="mt-0.5 text-xs" style={{ color: t.textSecondary }}>
-                                Ítems: {params.slice(0, 5).join(', ')}
-                                {params.length > 5 ? '…' : ''}
+                              <p className="mt-0.5 text-xs" style={{ color: ui.textSecondary }}>
+                                {tp('itemsLabel', { items: params.slice(0, 5).join(', ') + (params.length > 5 ? '…' : '') })}
                               </p>
                             )}
                           </div>
@@ -2715,7 +2738,7 @@ mostrarModalConfirmacion(
                             type="button"
                             className={complexBtnDanger}
                             onClick={() => eliminarAreaPersonalizada(a.id)}
-                            title="Quitar del informe"
+                            title={tp('removeFromReport')}
                           >
                             <FaTrash className="h-3 w-3" />
                           </button>
@@ -2739,16 +2762,16 @@ mostrarModalConfirmacion(
                 return (
                   <React.Fragment key={areaCfg.id}>
                     <div className="mb-1 flex flex-wrap items-center gap-2">
-                      <SubsectionTitle>3.{subNum} — {areaCfg.titulo}</SubsectionTitle>
+                      <SubsectionTitle>3.{subNum} — {tituloArea(areaCfg.id, areasEfectivas, null, t) || areaCfg.titulo}</SubsectionTitle>
                       {areaCfg.personalizada && (
                         <span
                           className="mb-4 rounded px-2 py-0.5 text-xs font-medium"
                           style={{
-                            backgroundColor: t.theme === 'dark' ? 'rgba(59,130,246,0.2)' : '#DBEAFE',
-                            color: t.theme === 'dark' ? '#93C5FD' : '#1D4ED8',
+                            backgroundColor: ui.theme === 'dark' ? 'rgba(59,130,246,0.2)' : '#DBEAFE',
+                            color: ui.theme === 'dark' ? '#93C5FD' : '#1D4ED8',
                           }}
                         >
-                          Área personalizada
+                          {tp('customAreaBadge')}
                         </span>
                       )}
                     </div>
@@ -2763,26 +2786,28 @@ mostrarModalConfirmacion(
           )}
 
           <SectionCard
-            title="4. Conclusiones"
+            title={tp('section4Title')}
             subtitle={
               resumenInspeccion.hallazgos.length
-                ? `Generadas desde ${resumenInspeccion.hallazgos.length} hallazgo(s) no conforme(s) o parcial(es)`
-                : 'Resumen general de la inspección'
+                ? tp('section4SubtitleFindings', { count: resumenInspeccion.hallazgos.length })
+                : tp('section4SubtitleEmpty')
             }
           >
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm" style={{ color: t.textSecondary }}>
-                Se actualizan solas al marcar ítems como <strong>No</strong> o <strong>Parcialmente</strong> en las áreas.
-              </p>
+              <p
+                className="text-sm"
+                style={{ color: ui.textSecondary }}
+                dangerouslySetInnerHTML={{ __html: tp('conclusionsAutoHint') }}
+              />
               <button
                 type="button"
                 onClick={() => aplicarResumenInspeccion(true)}
                 className={complexBtnSecondary}
               >
-                Actualizar desde inspección
+                {tp('updateFromInspection')}
               </button>
             </div>
-            <FieldLabel>Conclusiones</FieldLabel>
+            <FieldLabel>{tp('conclusions')}</FieldLabel>
             <ThemedTextarea
               name="conclusiones"
               value={formData.conclusiones}
@@ -2797,7 +2822,7 @@ mostrarModalConfirmacion(
                 formData={formData} 
                 onInputChange={handleInputChange}
                 seccion="conclusiones"
-                tituloSeccion="Conclusiones"
+                tituloSeccion={tp('conclusions')}
                 textoActual={formData.conclusiones || ''}
                 onTextoCambiado={(texto) => {
                   marcarResumenEditadoManual();
@@ -2810,14 +2835,14 @@ mostrarModalConfirmacion(
 
           {incluirSeccion('observacionesPrincipales') && (
           <SectionCard
-            title="4.1 Principales observaciones"
+            title={tp('section41Title')}
             subtitle={
               resumenInspeccion.hallazgos.length
-                ? `${resumenInspeccion.hallazgos.length} hallazgo(s) detectado(s) en la inspección`
-                : 'Hallazgos más relevantes del informe'
+                ? tp('section41SubtitleFindings', { count: resumenInspeccion.hallazgos.length })
+                : tp('section41SubtitleEmpty')
             }
           >
-            <FieldLabel>Principales observaciones</FieldLabel>
+            <FieldLabel>{tp('mainObservations')}</FieldLabel>
             <ThemedTextarea
               name="observacionesPrincipales"
               value={formData.observacionesPrincipales}
@@ -2832,7 +2857,7 @@ mostrarModalConfirmacion(
                 formData={formData} 
                 onInputChange={handleInputChange}
                 seccion="observacionesPrincipales"
-                tituloSeccion="Principales Observaciones"
+                tituloSeccion={tp('mainObservationsChatTitle')}
                 textoActual={formData.observacionesPrincipales || ''}
                 onTextoCambiado={(texto) => {
                   marcarResumenEditadoManual();
@@ -2845,26 +2870,26 @@ mostrarModalConfirmacion(
           )}
 
           <SectionCard
-            title="Firmas"
-            subtitle="Quien recibe la visita y el inspector registrado en el sistema"
+            title={tp('signatures')}
+            subtitle={tp('signaturesSubtitle')}
           >
             <SeccionFirmasActa
               formData={formData}
               onInputChange={handleInputChange}
-              tituloCliente="FIRMA DE QUIEN RECIBE LA VISITA"
-              tituloAjustador="FIRMA DEL INSPECTOR"
+              tituloCliente={tp('signatureClientTitle')}
+              tituloAjustador={tp('signatureInspectorTitle')}
               nombreRolProfesional="inspector"
               permitirRegistrarAjustadores
               sinContenedor
             />
           </SectionCard>
 
-          <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${t.borderColor}` }}>
+          <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${ui.borderColor}` }}>
             <BotonesHistorial
               onGuardarEnHistorial={handleGuardarEnHistorial}
               onExportar={handleExportar}
               tipoFormulario={TIPOS_FORMULARIOS.INSPECCION_PROPIEDADES}
-              tituloFormulario="Inspección de Propiedades"
+              tituloFormulario={tp('formHistoryTitle')}
               deshabilitado={false}
               guardando={guardando}
               exportando={exportando}

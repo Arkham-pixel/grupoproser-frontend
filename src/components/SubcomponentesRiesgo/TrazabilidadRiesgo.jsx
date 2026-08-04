@@ -1,8 +1,11 @@
 import React, { useState, useRef, useCallback, useMemo, memo } from 'react';
 import Select from 'react-select';
+import { useTranslation } from 'react-i18next';
 import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { useTheme } from '../../context/ThemeContext';
 import { diasHabilesColombiaEntre } from '../../utils/festivosColombia.js';
+
+const NS = 'risks.ui.trazabilidad_riesgo';
 
 // Componente ArchivoDropZone reutilizable (igual que en Trazabilidad)
 const ArchivoDropZone = ({
@@ -12,6 +15,7 @@ const ArchivoDropZone = ({
   estadoAdjunto,
   children
 }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const inputRef = useRef(null);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -78,12 +82,12 @@ const ArchivoDropZone = ({
       </div>
       {estadoAdjunto?.cargando && (
         <p className="text-xs mt-2" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }}>
-          Subiendo documentos...
+          {t(`${NS}.subiendo_docs`)}
         </p>
       )}
       {estadoAdjunto?.error && (
         <p className="text-xs mt-2" style={{ color: '#EF4444' }}>
-          Error: {estadoAdjunto.error}
+          {t('common.errorShort')}: {estadoAdjunto.error}
         </p>
       )}
     </div>
@@ -100,6 +104,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
   errorAdjuntos = {},
   ciudades = []
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -157,11 +162,11 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
           >
             <span>📥</span>
-            Descargar
+            {t(`${NS}.descargar`)}
           </button>
         ) : (
           <span className="shrink-0 text-xs" style={{ color: theme === 'dark' ? '#FBBF24' : '#B45309' }}>
-            Se subirá al guardar el caso
+            {t(`${NS}.subira_al_guardar`)}
           </span>
         )}
       </div>
@@ -271,23 +276,18 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
   };
 
   const formatearTiempoTranscurrido = (diasInfo) => {
-    if (!diasInfo) return 'Sin tiempo';
+    if (!diasInfo) return t(`${NS}.sin_tiempo`);
     
     if (diasInfo.mostrarHoras && diasInfo.horas !== undefined) {
       const horas = Math.round(diasInfo.horas);
-      if (horas === 0) return '0 horas';
-      if (horas === 1) return '1 hora';
-      return `${horas} horas`;
+      return t(`${NS}.hours`, { count: horas });
     }
     
-    if (diasInfo.dias === 0) return '0 días';
-    if (diasInfo.dias === 1) return '1 día';
     if (diasInfo.dias < 1) {
-      const horas = Math.round((diasInfo.dias * 24));
-      if (horas === 1) return '1 hora';
-      return `${horas} horas`;
+      const horas = Math.round(diasInfo.dias * 24);
+      return t(`${NS}.hours`, { count: horas });
     }
-    return `${Math.round(diasInfo.dias)} días`;
+    return t(`${NS}.days`, { count: Math.round(diasInfo.dias) });
   };
 
   const formatearTiempoLimite = (diasInfo) => {
@@ -295,13 +295,13 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
     
     if (diasInfo.tiempoLimite < 1) {
       const horas = Math.round(diasInfo.tiempoLimite * 24);
-      if (horas === 12) return '12 horas';
-      return `${horas} horas`;
+      if (horas === 12) return t(`${NS}.limit_12h`);
+      return t(`${NS}.hours`, { count: horas });
     }
     
-    if (diasInfo.tiempoLimite === 1) return '1 día';
-    if (diasInfo.tiempoLimite === 2) return '2 días hábiles';
-    return `${diasInfo.tiempoLimite} días`;
+    if (diasInfo.tiempoLimite === 1) return t(`${NS}.limit_1d`);
+    if (diasInfo.tiempoLimite === 2) return t(`${NS}.limit_2_business`);
+    return t(`${NS}.limit_days`, { count: diasInfo.tiempoLimite });
   };
 
   const obtenerColorIndicador = (diasInfo) => {
@@ -338,20 +338,20 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
     );
     
     if (!enlace) {
-      alert('No se puede descargar el documento. URL no disponible.');
+      alert(t(`${NS}.error_descarga_url`));
       return false;
     }
 
     const link = document.createElement('a');
     link.href = enlace;
-    link.download = documento?.nombre || documento?.filename || 'documento';
+    link.download = documento?.nombre || documento?.filename || t(`${NS}.documento_default`);
     link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     
     return false;
-  }, [construirUrlDescarga]);
+  }, [construirUrlDescarga, t]);
 
   const obtenerDocumentosPorTipo = (tipo) => {
     if (!historialDocs || !Array.isArray(historialDocs)) return [];
@@ -368,13 +368,14 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
   };
 
   const DocumentosSubidos = ({ tipo, titulo }) => {
+    const { t: tDocs } = useTranslation();
     const documentos = obtenerDocumentosPorTipo(tipo);
     if (documentos.length === 0) return null;
 
     return (
       <div className="mt-4">
         <h4 className="text-sm font-medium mb-2" style={{ color: textPrimary }}>
-          Documentos subidos ({documentos.length}):
+          {tDocs(`${NS}.docs_subidos`, { count: documentos.length })}
         </h4>
         <div className="space-y-2">
           {documentos.map((doc, idx) => {
@@ -394,7 +395,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate" style={{ color: textPrimary }}>
-                    📎 {doc.nombre || doc.filename || 'Documento'}
+                    📎 {doc.nombre || doc.filename || tDocs('common.document')}
                   </p>
                   {doc.comentario && (
                     <p className="text-xs truncate" style={{ color: textSecondary }}>
@@ -409,7 +410,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                     className="ml-3 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
                   >
                     <span>📥</span>
-                    <span>Descargar</span>
+                    <span>{tDocs(`${NS}.descargar`)}</span>
                   </button>
                 )}
               </div>
@@ -421,6 +422,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
   };
 
   const BandejaDesplegable = memo(({ titulo, bandeja, children, icono, tipoDocumento, isOpen, onToggle }) => {
+    const { t } = useTranslation();
     const diasInfo = useMemo(() => calcularDiasTranscurridos(tipoDocumento), [tipoDocumento, formData]);
     
     return (
@@ -490,7 +492,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
         className="text-lg sm:text-xl lg:text-2xl font-bold mb-4 sm:mb-6"
         style={{ color: textPrimary }}
       >
-        📋 Trazabilidad del Caso
+        {t(`${NS}.titulo`)}
       </h2>
       
       {/* Campos adicionales: Ciudad Sucursal y Consecutivo */}
@@ -500,13 +502,13 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Ciudad Sucursal Aseguradora
+            {t(`${NS}.ciudad_sucursal`)}
           </label>
           <Select
             options={ciudades}
             value={ciudades.find(c => c.value === (formData.ciudadSucursal || formData.ciudad?.value)) || null}
             onChange={selected => setFormData(prev => ({ ...prev, ciudadSucursal: selected ? selected.value : '' }))}
-            placeholder="Seleccione..."
+            placeholder={t('common.select')}
             isClearable
             className="text-xs sm:text-sm"
             styles={{
@@ -551,7 +553,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Consecutivo Aseguradora
+            {t(`${NS}.consecutivo`)}
           </label>
           <input
             type="text"
@@ -583,13 +585,13 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
           className="text-base sm:text-lg font-semibold mb-3 sm:mb-4 flex items-center"
           style={{ color: textPrimary }}
         >
-          📊 Resumen de Trazabilidad
+          {t(`${NS}.resumen_titulo`)}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
           {[
-            { tipo: 'contactoInicial', titulo: 'Contacto Inicial', icono: '📞' },
-            { tipo: 'inspeccion', titulo: 'Inspección', icono: '🔍' },
-            { tipo: 'informeFinal', titulo: 'Informe Final', icono: '📋' }
+            { tipo: 'contactoInicial', titulo: t(`${NS}.etapa_contacto`), icono: '📞' },
+            { tipo: 'inspeccion', titulo: t(`${NS}.etapa_inspeccion`), icono: '🔍' },
+            { tipo: 'informeFinal', titulo: t(`${NS}.etapa_informe`), icono: '📋' }
           ].map(({ tipo, titulo, icono }) => {
             const diasInfo = calcularDiasTranscurridos(tipo);
             const documentos = obtenerDocumentosPorTipo(tipo);
@@ -612,7 +614,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                       color: textSecondary
                     }}
                   >
-                    {documentos.length} docs
+                    {t(`${NS}.docs_count`, { count: documentos.length })}
                   </span>
                 </div>
                 <h4 
@@ -627,10 +629,11 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                     <div className="text-sm sm:text-lg font-bold">
                       {diasInfo.diasRetraso > 0 ? (
                         <span style={{ color: '#DC2626' }}>
-                          {diasInfo.diasRetraso < 1 ? 
-                            `${Math.round(diasInfo.diasRetraso * 24)} horas retraso` :
-                            diasInfo.diasRetraso === 1 ? '1 día retraso' : 
-                            `${Math.round(diasInfo.diasRetraso)} días retraso`}
+                          {diasInfo.diasRetraso < 1
+                            ? t(`${NS}.retraso_hours`, { count: Math.round(diasInfo.diasRetraso * 24) })
+                            : diasInfo.diasRetraso === 1
+                              ? t(`${NS}.retraso_day_one`)
+                              : t(`${NS}.retraso_days`, { count: Math.round(diasInfo.diasRetraso) })}
                         </span>
                       ) : (
                         formatearTiempoTranscurrido(diasInfo)
@@ -638,27 +641,27 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                     </div>
                     <div className="text-xs">
                       {diasInfo.documentoAnterior ? (
-                        <span style={{ color: '#F59E0B' }}>⚠️ Doc. anterior</span>
+                        <span style={{ color: '#F59E0B' }}>{t(`${NS}.doc_anterior`)}</span>
                       ) : diasInfo.diasRetraso > 0 ? (
                         <span style={{ color: '#DC2626', fontWeight: 'bold' }}>
-                          🚨 Retraso
+                          {t(`${NS}.retraso_label`)}
                         </span>
                       ) : (
-                        diasInfo.dias === 0 && !diasInfo.horas ? 'A tiempo' : 
-                        diasInfo.dias <= diasInfo.tiempoLimite ? 'A tiempo' : 
-                        'En proceso'
+                        diasInfo.dias === 0 && !diasInfo.horas ? t(`${NS}.a_tiempo`) :
+                        diasInfo.dias <= diasInfo.tiempoLimite ? t(`${NS}.a_tiempo`) :
+                        t(`${NS}.en_proceso`)
                       )}
                     </div>
                     {diasInfo.tiempoLimite && (
                       <div className="text-xs mt-1" style={{ color: textSecondary }}>
-                        Límite: {formatearTiempoLimite(diasInfo)}
+                        {t(`${NS}.limite_label`)} {formatearTiempoLimite(diasInfo)}
                       </div>
                     )}
                   </div>
                 ) : (
                   <div className="text-center" style={{ color: textSecondary }}>
-                    <div className="text-sm sm:text-lg font-bold">Sin docs</div>
-                    <div className="text-xs">No hay documentos</div>
+                    <div className="text-sm sm:text-lg font-bold">{t(`${NS}.sin_docs`)}</div>
+                    <div className="text-xs">{t(`${NS}.sin_documentos`)}</div>
                   </div>
                 )}
               </div>
@@ -676,7 +679,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               className="text-xs sm:text-sm font-medium"
               style={{ color: textPrimary }}
             >
-              Estado General:
+              {t(`${NS}.estado_general`)}
             </span>
             <div className="flex items-center space-x-2">
               {(() => {
@@ -693,19 +696,19 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                 if (documentosUrgentes > 0) {
                   return (
                     <span className="text-red-600 text-xs sm:text-sm font-medium flex items-center">
-                      🚨 {documentosUrgentes} documentos urgentes
+                      {t(`${NS}.docs_urgentes`, { count: documentosUrgentes })}
                     </span>
                   );
                 } else if (documentosRecientes >= 2) {
                   return (
                     <span className="text-green-600 text-xs sm:text-sm font-medium flex items-center">
-                      ✅ Caso actualizado
+                      {t(`${NS}.caso_actualizado`)}
                     </span>
                   );
                 } else {
                   return (
                     <span className="text-yellow-600 text-xs sm:text-sm font-medium flex items-center">
-                      ⚠️ Necesita atención
+                      {t(`${NS}.necesita_atencion`)}
                     </span>
                   );
                 }
@@ -717,7 +720,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
       
       {/* Contacto Inicial */}
       <BandejaDesplegable 
-        titulo="Contacto Inicial" 
+        titulo={t(`${NS}.etapa_contacto`)} 
         bandeja="contactoInicial" 
         icono="📞" 
         tipoDocumento="contactoInicial"
@@ -730,7 +733,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Fecha de Contacto Inicial
+              {t(`${NS}.fecha_contacto`)}
             </label>
             <input
               type="date"
@@ -751,7 +754,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Observaciones del Contacto Inicial
+              {t(`${NS}.obs_contacto`)}
             </label>
             <textarea
               name="observContIni"
@@ -766,7 +769,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Observaciones del contacto inicial..."
+              placeholder={t(`${NS}.placeholder_obs_contacto`)}
             />
           </div>
         </div>
@@ -776,7 +779,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Adjuntos del Contacto Inicial
+            {t(`${NS}.adj_contacto`)}
           </label>
           <ArchivoDropZone
             tipo="contactoInicial"
@@ -787,11 +790,11 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             {(isDragActive) =>
               isDragActive ? (
                 <p className="text-xs sm:text-sm" style={{ color: theme === 'dark' ? '#DC2626' : '#2563EB' }}>
-                  Suelta los archivos aquí...
+                  {t(`${NS}.drop_active`)}
                 </p>
               ) : (
                 <p className="text-xs sm:text-sm" style={{ color: textSecondary }}>
-                  Arrastra archivos aquí o haz clic para seleccionar
+                  {t(`${NS}.drop_idle`)}
                 </p>
               )
             }
@@ -802,7 +805,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
 
       {/* Inspección */}
       <BandejaDesplegable 
-        titulo="Inspección" 
+        titulo={t(`${NS}.etapa_inspeccion`)} 
         bandeja="inspeccion" 
         icono="🔍" 
         tipoDocumento="inspeccion"
@@ -815,7 +818,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Fecha de Inspección
+              {t(`${NS}.fecha_inspeccion`)}
             </label>
             <input
               type="date"
@@ -836,7 +839,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Observaciones de la Inspección
+              {t(`${NS}.obs_inspeccion`)}
             </label>
             <textarea
               name="observInspeccion"
@@ -851,7 +854,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Observaciones de la inspección..."
+              placeholder={t(`${NS}.placeholder_obs_inspeccion`)}
             />
           </div>
         </div>
@@ -861,7 +864,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Acta de Inspección
+            {t(`${NS}.adj_inspeccion`)}
           </label>
           <ArchivoDropZone
             tipo="inspeccion"
@@ -872,11 +875,11 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             {(isDragActive) =>
               isDragActive ? (
                 <p className="text-xs sm:text-sm" style={{ color: theme === 'dark' ? '#DC2626' : '#2563EB' }}>
-                  Suelta los archivos aquí...
+                  {t(`${NS}.drop_active`)}
                 </p>
               ) : (
                 <p className="text-xs sm:text-sm" style={{ color: textSecondary }}>
-                  Arrastra archivos aquí o haz clic para seleccionar
+                  {t(`${NS}.drop_idle`)}
                 </p>
               )
             }
@@ -887,7 +890,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
 
       {/* Informe Final */}
       <BandejaDesplegable 
-        titulo="Informe Final" 
+        titulo={t(`${NS}.etapa_informe`)} 
         bandeja="informeFinal" 
         icono="📋" 
         tipoDocumento="informeFinal"
@@ -900,7 +903,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Fecha del Informe Final
+              {t(`${NS}.fecha_informe`)}
             </label>
             <input
               type="date"
@@ -921,7 +924,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Observaciones del Informe Final
+              {t(`${NS}.obs_informe`)}
             </label>
             <textarea
               name="observInforme"
@@ -936,7 +939,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Observaciones del informe final..."
+              placeholder={t(`${NS}.placeholder_obs_informe`)}
             />
           </div>
         </div>
@@ -946,7 +949,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Adjunto del Informe Final
+            {t(`${NS}.adj_informe`)}
           </label>
           <ArchivoDropZone
             tipo="informeFinal"
@@ -957,11 +960,11 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
             {(isDragActive) =>
               isDragActive ? (
                 <p className="text-xs sm:text-sm" style={{ color: theme === 'dark' ? '#DC2626' : '#2563EB' }}>
-                  Suelta los archivos aquí...
+                  {t(`${NS}.drop_active`)}
                 </p>
               ) : (
                 <p className="text-xs sm:text-sm" style={{ color: textSecondary }}>
-                  Arrastra archivos aquí o haz clic para seleccionar
+                  {t(`${NS}.drop_idle`)}
                 </p>
               )
             }

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -49,10 +50,31 @@ import {
   subtareaTieneFechaProtocolo,
   subtareaTieneFormato,
   etiquetaAdjuntoEtapa,
+  tituloEtapaSubtarea,
   urlArchivoSubtarea,
 } from './subtareasComplexUtils.js';
 
+const SEMAFORO_I18N_KEYS = {
+  verde: 'al_dia',
+  amarillo: 'en_curso_proximo_a_vencer',
+  rojo: 'vencida',
+  gris: 'cancelada',
+};
+
+const ESTADO_I18N_KEYS = {
+  pendiente: 'estado_pendiente',
+  en_progreso: 'estado_en_progreso',
+  completada: 'estado_completada',
+  cancelada: 'estado_cancelada',
+};
+
+function labelEstado(t, estado) {
+  const key = ESTADO_I18N_KEYS[estado];
+  return key ? t(`complex.ui.mis_subtareas_complex.${key}`) : ESTADO_LABELS[estado] || estado;
+}
+
 function SemaforoCards({ conteo }) {
+  const { t } = useTranslation();
   const c = conteo || { verde: 0, amarillo: 0, rojo: 0, gris: 0 };
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -63,7 +85,7 @@ function SemaforoCards({ conteo }) {
             <div className="flex items-center gap-2">
               <span className={`h-2.5 w-2.5 rounded-full ${estilo.dot}`} />
               <span className="font-body text-[10px] font-semibold uppercase tracking-wide">
-                {estilo.label}
+                {t(`complex.ui.mis_subtareas_complex.${SEMAFORO_I18N_KEYS[key]}`)}
               </span>
             </div>
             <p className="mt-1 font-heading text-2xl font-bold">{c[key] || 0}</p>
@@ -75,6 +97,8 @@ function SemaforoCards({ conteo }) {
 }
 
 export default function MisSubtareasComplex() {
+  const { t, i18n } = useTranslation();
+  const dateLocale = i18n.language?.startsWith('en') ? 'en-US' : 'es-CO';
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState({ total: 0, conteo: {}, subtareas: [], completadas: [] });
@@ -110,7 +134,7 @@ export default function MisSubtareasComplex() {
         setBandeja((prev) => (prev === 'pendientes' ? 'completadas' : prev));
       }
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar las subtareas');
+      setError(err.message || t('complex.ui.mis_subtareas_complex.no_cargar_subtareas'));
     } finally {
       setLoading(false);
     }
@@ -160,7 +184,7 @@ export default function MisSubtareasComplex() {
             setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(local));
             subtareaActual = local;
           } else {
-            setError('No se pudo abrir la subtarea. Recargue la lista e intente de nuevo.');
+            setError(t('complex.ui.mis_subtareas_complex.no_abrir_subtarea'));
             setTrabajo(null);
           }
         }
@@ -182,7 +206,7 @@ export default function MisSubtareasComplex() {
       }
       setCargandoTrabajo(false);
     },
-    [setSearchParams, data.subtareas, data.completadas]
+    [setSearchParams, data.subtareas, data.completadas, t]
   );
 
   useEffect(() => {
@@ -235,7 +259,7 @@ export default function MisSubtareasComplex() {
       !subtareaTieneFormato(trabajo.subtarea)
     ) {
       setError(
-        'Esta etapa exige adjuntar el formato (informe) antes de completarla. Genérelo desde "Ir a formulario de ajuste" o súbalo como tipo "Formato".'
+        t('complex.ui.mis_subtareas_complex.exigencia_formato')
       );
       return;
     }
@@ -245,7 +269,9 @@ export default function MisSubtareasComplex() {
       !subtareaTieneDocumento(trabajo.subtarea)
     ) {
       setError(
-        `Adjunte el documento de la etapa (${etiquetaAdjuntoEtapa(trabajo.subtarea.etapaTrazabilidad)}) antes de completar. Se enviará a la trazabilidad del caso.`
+        t('complex.ui.mis_subtareas_complex.adjunte_documento', {
+          etapa: etiquetaAdjuntoEtapa(trabajo.subtarea.etapaTrazabilidad, t),
+        })
       );
       return;
     }
@@ -261,7 +287,9 @@ export default function MisSubtareasComplex() {
           );
       if (faltantes.length) {
         setError(
-          `Indique las fechas de la etapa (como en trazabilidad): ${faltantes.join(', ')}.`
+          t('complex.ui.mis_subtareas_complex.indique_fechas', {
+            fechas: faltantes.join(', '),
+          })
         );
         return;
       }
@@ -272,7 +300,7 @@ export default function MisSubtareasComplex() {
       !(trabajo.subtarea.archivos || []).length
     ) {
       setError(
-        'Antes de cerrar suba el acta y/o las fotos y datos de la visita.'
+        t('complex.ui.mis_subtareas_complex.suba_acta_fotos')
       );
       return;
     }
@@ -297,7 +325,7 @@ export default function MisSubtareasComplex() {
       setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(actualizada));
       if (completar) {
         setAviso(
-          'Subtarea completada. Las fechas quedaron en la trazabilidad del caso y el tiempo de ejecución quedó registrado.'
+          t('complex.ui.mis_subtareas_complex.subtarea_completada_msg')
         );
         setBandeja('completadas');
         // Actualización optimista: que no “desaparezca” aunque /mias tarde o falle
@@ -318,8 +346,8 @@ export default function MisSubtareasComplex() {
         const hayFechas = Object.values(fechasProtocolo || {}).some(Boolean);
         setAviso(
           hayFechas
-            ? 'Avance guardado. Las fechas se sincronizaron con la trazabilidad del caso.'
-            : 'Avance guardado.'
+            ? t('complex.ui.mis_subtareas_complex.avance_guardado_sync')
+            : t('complex.ui.mis_subtareas_complex.avance_guardado')
         );
       }
     } catch (err) {
@@ -341,8 +369,8 @@ export default function MisSubtareasComplex() {
       setTrabajo((prev) => ({ ...prev, subtarea: res.subtarea }));
       setAviso(
         tipo === 'formato'
-          ? 'Formato cargado y guardado en el caso'
-          : 'Documento cargado y guardado en el caso'
+          ? t('complex.ui.mis_subtareas_complex.formato_cargado')
+          : t('complex.ui.mis_subtareas_complex.documento_cargado')
       );
     } catch (err) {
       setError(err.message);
@@ -383,7 +411,7 @@ export default function MisSubtareasComplex() {
         }
       );
     } catch (err) {
-      setError(err.message || 'No se pudo abrir el formulario de ajuste');
+      setError(err.message || t('complex.ui.mis_subtareas_complex.no_abrir_formulario_ajuste'));
     } finally {
       setGuardando(false);
     }
@@ -408,12 +436,12 @@ export default function MisSubtareasComplex() {
       setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(actualizada));
       setAviso(
         faseNueva === 'inspeccion'
-          ? 'Coordinación guardada. Continúe con la inspección y el acta.'
+          ? t('complex.ui.mis_subtareas_complex.coord_guardada')
           : faseNueva === 'decidir'
-            ? 'Acta lista. Elija continuar con preliminar o cerrar para el ajustador.'
+            ? t('complex.ui.mis_subtareas_complex.acta_lista_elegir')
             : faseNueva === 'preliminar'
-              ? 'Puede elaborar el informe preliminar o cerrar cuando termine.'
-              : 'Fase actualizada.'
+              ? t('complex.ui.mis_subtareas_complex.puede_elaborar_preliminar')
+              : t('complex.ui.mis_subtareas_complex.fase_actualizada')
       );
     } catch (err) {
       setError(err.message);
@@ -434,7 +462,7 @@ export default function MisSubtareasComplex() {
   if (cargandoTrabajo) {
     return (
       <div className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
-        <p className="text-sm text-gray-500">Abriendo subtarea…</p>
+        <p className="text-sm text-gray-500">{t("complex.ui.mis_subtareas_complex.abriendo_subtarea")}</p>
       </div>
     );
   }
@@ -456,22 +484,20 @@ export default function MisSubtareasComplex() {
     return (
       <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">
         <button type="button" className={complexBtnFormAction} onClick={volverLista}>
-          <FaArrowLeft className="mr-1.5" /> Volver a mis subtareas
-        </button>
+          <FaArrowLeft className="mr-1.5" />{t("complex.ui.mis_subtareas_complex.volver_a_mis_subtareas")}</button>
 
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <span className={`h-3 w-3 rounded-full ${estilo.dot}`} />
             <h1 className={complexPageTitle}>{s.titulo}</h1>
             <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${estilo.badge}`}>
-              {ESTADO_LABELS[s.estado] || s.estado}
+              {labelEstado(t, s.estado)}
             </span>
           </div>
-          <p className={complexPageSubtitle}>
-            Caso {caso.nmroAjste || s.nmroAjste || '—'}
+          <p className={complexPageSubtitle}>{t("complex.ui.mis_subtareas_complex.caso")}{caso.nmroAjste || s.nmroAjste || '—'}
             {caso.asgrBenfcro ? ` · ${caso.asgrBenfcro}` : ''}
-            {' · '}Límite {formatearFechaSubtarea(s.fechaLimite)}
-            {' · '}Asignó {s.creadoPorNombre || s.creadoPorLogin || '—'}
+            {' · '}{t("complex.ui.mis_subtareas_complex.limite")}{formatearFechaSubtarea(s.fechaLimite, dateLocale)}
+            {' · '}{t("complex.ui.mis_subtareas_complex.asigno")}{s.creadoPorNombre || s.creadoPorLogin || '—'}
           </p>
         </div>
 
@@ -487,24 +513,25 @@ export default function MisSubtareasComplex() {
         )}
 
         <div className={`${complexCard} space-y-2`}>
-          <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Control de tiempo
-          </p>
+          <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">{t("complex.ui.mis_subtareas_complex.control_de_tiempo")}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             <p className="font-body text-sm text-gray-700 dark:text-gray-300">
-              <strong>Asignada:</strong> {formatearFechaHoraSubtarea(s.createdAt)}
+              <strong>{t("complex.ui.mis_subtareas_complex.asignada")}</strong> {formatearFechaHoraSubtarea(s.createdAt, dateLocale)}
             </p>
             <p className="font-body text-sm text-gray-700 dark:text-gray-300">
-              <strong>Inicio trabajo:</strong>{' '}
-              {formatearFechaHoraSubtarea(s.fechaInicioTrabajo)}
+              <strong>{t("complex.ui.mis_subtareas_complex.inicio_trabajo")}</strong>{' '}
+              {formatearFechaHoraSubtarea(s.fechaInicioTrabajo, dateLocale)}
             </p>
             <p className="font-body text-sm text-gray-700 dark:text-gray-300">
-              <strong>Completada:</strong>{' '}
-              {s.fechaCompletada ? formatearFechaHoraSubtarea(s.fechaCompletada) : '—'}
+              <strong>{t("complex.ui.mis_subtareas_complex.completada")}</strong>{' '}
+              {s.fechaCompletada ? formatearFechaHoraSubtarea(s.fechaCompletada, dateLocale) : '—'}
             </p>
             <p className="font-body text-sm text-gray-700 dark:text-gray-300">
               <strong>
-                {cerrada ? 'Tiempo empleado' : 'Tiempo en curso'}:
+                {cerrada
+                  ? t('complex.ui.mis_subtareas_complex.tiempo_empleado_label')
+                  : t('complex.ui.mis_subtareas_complex.tiempo_en_curso')}
+                {t('complex.ui.mis_subtareas_complex.texto')}
               </strong>{' '}
               {formatearDuracionSubtarea(s) ||
                 s.duracionAsignacionTexto ||
@@ -512,7 +539,9 @@ export default function MisSubtareasComplex() {
               {s.duracionAsignacionTexto &&
               formatearDuracionSubtarea(s) &&
               s.duracionAsignacionTexto !== formatearDuracionSubtarea(s)
-                ? ` (ciclo total ${s.duracionAsignacionTexto})`
+                ? t('complex.ui.mis_subtareas_complex.ciclo_total', {
+                    tiempo: s.duracionAsignacionTexto,
+                  })
                 : ''}
             </p>
           </div>
@@ -520,9 +549,7 @@ export default function MisSubtareasComplex() {
 
         {s.motivoReapertura && !cerrada && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
-            <p className="font-body text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">
-              Subtarea reabierta{s.motivoReaperturaPor ? ` por ${s.motivoReaperturaPor}` : ''} — motivo
-            </p>
+            <p className="font-body text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-300">{t("complex.ui.mis_subtareas_complex.subtarea_reabierta")}{s.motivoReaperturaPor ? t('complex.ui.mis_subtareas_complex.por_quien', { quien: s.motivoReaperturaPor }) : ''}{t("complex.ui.mis_subtareas_complex.motivo")}</p>
             <p className="mt-1 whitespace-pre-wrap font-body text-sm text-amber-900 dark:text-amber-200">
               {s.motivoReapertura}
             </p>
@@ -532,19 +559,17 @@ export default function MisSubtareasComplex() {
         <div className={complexCard + ' space-y-3'}>
           {s.etapaTrazabilidad && (
             <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-              <strong>Etapa:</strong> {s.etapaTrazabilidad}
+              <strong>{t("complex.ui.mis_subtareas_complex.etapa")}</strong> {tituloEtapaSubtarea(s.etapaTrazabilidad, t)}
             </p>
           )}
           {s.descripcion && (
             <p className="font-body text-sm text-gray-700 dark:text-gray-300">
-              <strong>Descripción:</strong> {s.descripcion}
+              <strong>{t("complex.ui.mis_subtareas_complex.descripcion")}</strong> {s.descripcion}
             </p>
           )}
           {s.instrucciones && (
             <div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-900/40">
-              <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Qué debe diligenciar
-              </p>
+              <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">{t("complex.ui.mis_subtareas_complex.que_debe_diligenciar")}</p>
               <p className="mt-1 whitespace-pre-wrap font-body text-sm text-gray-800 dark:text-gray-200">
                 {s.instrucciones}
               </p>
@@ -581,8 +606,8 @@ export default function MisSubtareasComplex() {
                 }`}
               >
                 {tieneFormato
-                  ? 'Formato adjunto. Ya puede marcar la subtarea como completada.'
-                  : 'Esta etapa exige el formato (informe) como entregable obligatorio: genérelo en el formulario de ajuste y adjúntelo como tipo "Formato" antes de completar.'}
+                  ? t('complex.ui.mis_subtareas_complex.formato_adjunto_puede_completar')
+                  : t('complex.ui.mis_subtareas_complex.exigencia_formato_largo')}
               </div>
             )}
             {requiereDocumento && !requiereFormato && (
@@ -594,15 +619,19 @@ export default function MisSubtareasComplex() {
                 }`}
               >
                 {tieneDocumento
-                  ? `${etiquetaAdjuntoEtapa(s.etapaTrazabilidad)} cargado. Quedará en la trazabilidad del caso.`
-                  : `Esta etapa exige adjuntar: ${etiquetaAdjuntoEtapa(s.etapaTrazabilidad)} (igual que en trazabilidad). Al guardarlo se envía a la bandeja del caso.`}
+                  ? t('complex.ui.mis_subtareas_complex.cargado_trazabilidad', {
+                      nombre: etiquetaAdjuntoEtapa(s.etapaTrazabilidad, t),
+                    })
+                  : t('complex.ui.mis_subtareas_complex.exige_adjuntar', {
+                      nombre: etiquetaAdjuntoEtapa(s.etapaTrazabilidad, t),
+                    })}
               </div>
             )}
             <div>
               <label className={complexLabel}>
                 {subtareaEsSoloFecha(s)
-                  ? 'Observaciones de la etapa'
-                  : 'Su reporte / observaciones'}
+                  ? t('complex.ui.mis_subtareas_complex.obs_etapa')
+                  : t('complex.ui.mis_subtareas_complex.su_reporte_observaciones')}
               </label>
               <textarea
                 className={complexTextarea}
@@ -611,17 +640,15 @@ export default function MisSubtareasComplex() {
                 onChange={(e) => setObs(e.target.value)}
                 placeholder={
                   subtareaEsSoloFecha(s)
-                    ? 'Observaciones (igual que en trazabilidad)…'
-                    : 'Describa lo realizado, hallazgos, adjuntos…'
+                    ? t('complex.ui.mis_subtareas_complex.obs_placeholder')
+                    : t('complex.ui.mis_subtareas_complex.describa_realizado')
                 }
               />
             </div>
 
             {subtareaTieneFechaProtocolo(s.etapaTrazabilidad) && (
               <div className="space-y-3">
-                <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Fechas de protocolo (trazabilidad)
-                </p>
+                <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">{t("complex.ui.mis_subtareas_complex.fechas_de_protocolo_trazabilidad")}</p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {camposProtocoloDeEtapa(s.etapaTrazabilidad).map((c) => (
                     <div key={c.campo}>
@@ -644,27 +671,20 @@ export default function MisSubtareasComplex() {
                     </div>
                   ))}
                 </div>
-                <p className={complexHint}>
-                  Estas fechas se envían a la trazabilidad del caso (quien asignó la
-                  subtarea) y alimentan los tiempos del protocolo, igual que si se
-                  diligenciaran en la bandeja de trazabilidad.
-                </p>
+                <p className={complexHint}>{t("complex.ui.mis_subtareas_complex.estas_fechas_se_envian_a_la_trazabilidad_del_caso_quien_")}</p>
               </div>
             )}
 
             {subtareaEsSoloFecha(s) ? (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
-                Esta etapa no requiere documento ni formato: solo fechas y
-                observaciones, como en trazabilidad.
-              </div>
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">{t("complex.ui.mis_subtareas_complex.esta_etapa_no_requiere_documento_ni_formato_solo_fechas_")}</div>
             ) : (
               <>
                 <div className="flex flex-wrap items-end gap-3">
                   <div>
                     <label className={complexLabel}>
                       {requiereDocumento
-                        ? etiquetaAdjuntoEtapa(s.etapaTrazabilidad)
-                        : 'Tipo de archivo'}
+                        ? etiquetaAdjuntoEtapa(s.etapaTrazabilidad, t)
+                        : t('complex.ui.mis_subtareas_complex.tipo_de_archivo')}
                     </label>
                     {!requiereDocumento || requiereFormato ? (
                       <select
@@ -672,13 +692,11 @@ export default function MisSubtareasComplex() {
                         value={tipoArchivo}
                         onChange={(e) => setTipoArchivo(e.target.value)}
                       >
-                        <option value="documento">Documento</option>
-                        <option value="formato">Formato (ajuste)</option>
+                        <option value="documento">{t("complex.ui.mis_subtareas_complex.documento")}</option>
+                        <option value="formato">{t("complex.ui.mis_subtareas_complex.formato_ajuste")}</option>
                       </select>
                     ) : (
-                      <p className={complexHint}>
-                        Se guarda en la bandeja de trazabilidad del caso (quien asignó).
-                      </p>
+                      <p className={complexHint}>{t("complex.ui.mis_subtareas_complex.se_guarda_en_la_bandeja_de_trazabilidad_del_caso_quien_a")}</p>
                     )}
                   </div>
                   {tipoArchivo === 'formato' && (
@@ -687,18 +705,18 @@ export default function MisSubtareasComplex() {
                       disabled={guardando}
                       className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
                       onClick={irAFormularioAjuste}
-                      title="Abre el formulario de ajuste igual que el botón Ajuste del reporte"
-                    >
-                      Ir a formulario de ajuste
-                    </button>
+                      title={t("complex.ui.mis_subtareas_complex.abre_el_formulario_de_ajuste_igual_que_el_boton_ajuste_d")}
+                    >{t("complex.ui.mis_subtareas_complex.ir_a_formulario_de_ajuste")}</button>
                   )}
                   <label className="cursor-pointer">
                     <span className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}>
                       {requiereDocumento && !requiereFormato
-                        ? `Subir ${etiquetaAdjuntoEtapa(s.etapaTrazabilidad).toLowerCase()}`
+                        ? t('complex.ui.mis_subtareas_complex.subir_x', {
+                            nombre: etiquetaAdjuntoEtapa(s.etapaTrazabilidad, t).toLowerCase(),
+                          })
                         : tipoArchivo === 'formato'
-                          ? 'Subir formato'
-                          : 'Subir archivo'}
+                          ? t('complex.ui.mis_subtareas_complex.subir_formato')
+                          : t('complex.ui.mis_subtareas_complex.subir_archivo')}
                     </span>
                     <input
                       type="file"
@@ -713,19 +731,15 @@ export default function MisSubtareasComplex() {
                   </label>
                 </div>
                 {tipoArchivo === 'formato' && (
-                  <p className={complexHint}>
-                    Los formatos se elaboran en el formulario de ajuste (acta / inspección), igual
-                    que desde el reporte Complex; luego adjunte aquí el archivo generado.
-                  </p>
+                  <p className={complexHint}>{t("complex.ui.mis_subtareas_complex.los_formatos_se_elaboran_en_el_formulario_de_ajuste_acta")}</p>
                 )}
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
-                      <FaPaperclip /> Documentos
-                    </p>
+                      <FaPaperclip />{t("complex.ui.mis_subtareas_complex.documentos")}</p>
                     {docs.length === 0 ? (
-                      <p className={complexHint}>Sin documentos aún.</p>
+                      <p className={complexHint}>{t("complex.ui.mis_subtareas_complex.sin_documentos_aun")}</p>
                     ) : (
                       <ul className="space-y-1 text-sm">
                         {docs.map((a, i) => (
@@ -744,10 +758,9 @@ export default function MisSubtareasComplex() {
                   </div>
                   <div>
                     <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
-                      <FaFileAlt /> Formatos
-                    </p>
+                      <FaFileAlt />{t("complex.ui.mis_subtareas_complex.formatos")}</p>
                     {formatos.length === 0 ? (
-                      <p className={complexHint}>Sin formatos aún.</p>
+                      <p className={complexHint}>{t("complex.ui.mis_subtareas_complex.sin_formatos_aun")}</p>
                     ) : (
                       <ul className="space-y-1 text-sm">
                         {formatos.map((a, i) => (
@@ -774,9 +787,7 @@ export default function MisSubtareasComplex() {
                 disabled={guardando}
                 className={complexBtnFormAction}
                 onClick={() => guardarAvance(false)}
-              >
-                Guardar avance
-              </button>
+              >{t("complex.ui.mis_subtareas_complex.guardar_avance")}</button>
               <button
                 type="button"
                 disabled={
@@ -786,37 +797,32 @@ export default function MisSubtareasComplex() {
                 }
                 title={
                   requiereFormato && !tieneFormato
-                    ? 'Adjunte primero el formato (informe)'
+                    ? t('complex.ui.mis_subtareas_complex.adjunte_primero_formato')
                     : requiereDocumento && !tieneDocumento
-                      ? `Adjunte: ${etiquetaAdjuntoEtapa(s.etapaTrazabilidad)}`
+                      ? t('complex.ui.mis_subtareas_complex.adjunte_x', { nombre: etiquetaAdjuntoEtapa(s.etapaTrazabilidad, t) })
                       : undefined
                 }
                 className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
                 onClick={() => guardarAvance(true)}
               >
-                <FaCheckCircle className="mr-1.5 text-emerald-600" />
-                Marcar completada
-              </button>
+                <FaCheckCircle className="mr-1.5 text-emerald-600" />{t("complex.ui.mis_subtareas_complex.marcar_completada")}</button>
             </div>
           </div>
           )
         ) : (
           <div className={`${complexCard} space-y-2`}>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Estado: <strong>{ESTADO_LABELS[s.estado] || s.estado}</strong>. Queda
-              registrada para evidencia, seguimiento y control de horas.
-            </p>
+            <p className="text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.mis_subtareas_complex.estado")}<strong>{labelEstado(t, s.estado)}</strong>{t("complex.ui.mis_subtareas_complex.queda_registrada_para_evidencia_seguimiento_y_control_de")}</p>
             {(formatearDuracionSubtarea(s) || s.duracionAsignacionTexto) && (
-              <p className="text-sm text-gray-700 dark:text-gray-200">
-                Tiempo empleado: <strong>{formatearDuracionSubtarea(s) || '—'}</strong>
+              <p className="text-sm text-gray-700 dark:text-gray-200">{t("complex.ui.mis_subtareas_complex.tiempo_empleado")}<strong>{formatearDuracionSubtarea(s) || '—'}</strong>
                 {s.duracionAsignacionTexto
-                  ? ` · Desde asignación: ${s.duracionAsignacionTexto}`
+                  ? t('complex.ui.mis_subtareas_complex.desde_asignacion', {
+                      tiempo: s.duracionAsignacionTexto,
+                    })
                   : ''}
               </p>
             )}
             {s.observacionesAsignado ? (
-              <p className="text-sm text-gray-600">
-                Observaciones: {s.observacionesAsignado}
+              <p className="text-sm text-gray-600">{t("complex.ui.mis_subtareas_complex.observaciones")}{s.observacionesAsignado}
               </p>
             ) : null}
             {camposProtocoloDeEtapa(s.etapaTrazabilidad).map((c) => {
@@ -828,9 +834,8 @@ export default function MisSubtareasComplex() {
               if (!valor) return null;
               return (
                 <p key={c.campo} className="text-sm text-gray-600">
-                  {c.label}: <strong>{formatearFechaSubtarea(valor)}</strong>
-                  {' '}(enviada a trazabilidad)
-                </p>
+                  {c.label}{t("complex.ui.mis_subtareas_complex.texto")}<strong>{formatearFechaSubtarea(valor, dateLocale)}</strong>
+                  {' '}{t("complex.ui.mis_subtareas_complex.enviada_a_trazabilidad")}</p>
               );
             })}
           </div>
@@ -843,13 +848,8 @@ export default function MisSubtareasComplex() {
     <div className="mx-auto w-full max-w-4xl space-y-5 p-4 sm:p-6">
       <div>
         <h1 className={complexPageTitle}>
-          <FaTasks className="mr-2 inline text-fenix-primario" />
-          Mis subtareas Complex
-        </h1>
-        <p className={complexPageSubtitle}>
-          Semáforo y bandeja de trabajo. Las completadas no se borran: cambian de
-          estado y quedan en Completadas con el tiempo de ejecución.
-        </p>
+          <FaTasks className="mr-2 inline text-fenix-primario" />{t("complex.ui.mis_subtareas_complex.mis_subtareas_complex")}</h1>
+        <p className={complexPageSubtitle}>{t("complex.ui.mis_subtareas_complex.semaforo_y_bandeja_de_trabajo_las_completadas_no_se_borr")}</p>
       </div>
 
       <SemaforoCards conteo={conteo} />
@@ -863,9 +863,7 @@ export default function MisSubtareasComplex() {
               : complexBtnFormAction
           }
           onClick={() => setBandeja('pendientes')}
-        >
-          Pendientes ({(data.subtareas || []).length})
-        </button>
+        >{t("complex.ui.mis_subtareas_complex.pendientes")}{(data.subtareas || []).length}{t("complex.ui.mis_subtareas_complex.texto_2")}</button>
         <button
           type="button"
           className={
@@ -874,9 +872,7 @@ export default function MisSubtareasComplex() {
               : complexBtnFormAction
           }
           onClick={() => setBandeja('completadas')}
-        >
-          Completadas ({(data.completadas || []).length})
-        </button>
+        >{t("complex.ui.mis_subtareas_complex.completadas")}{(data.completadas || []).length}{t("complex.ui.mis_subtareas_complex.texto_2")}</button>
       </div>
 
       {error && (
@@ -886,7 +882,7 @@ export default function MisSubtareasComplex() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Cargando…</p>
+        <p className="text-sm text-gray-500">{t("complex.ui.mis_subtareas_complex.cargando")}</p>
       ) : (
         (() => {
           const lista =
@@ -896,8 +892,8 @@ export default function MisSubtareasComplex() {
               <div className={complexCard}>
                 <p className="text-sm text-gray-500">
                   {bandeja === 'completadas'
-                    ? 'Aún no hay subtareas completadas registradas.'
-                    : 'No tiene subtareas pendientes. Las que cierre pasan a Completadas (con tiempo de ejecución).'}
+                    ? t('complex.ui.mis_subtareas_complex.sin_completadas')
+                    : t('complex.ui.mis_subtareas_complex.sin_pendientes')}
                 </p>
               </div>
             );
@@ -918,32 +914,36 @@ export default function MisSubtareasComplex() {
                           <span
                             className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${estilo.badge}`}
                           >
-                            {ESTADO_LABELS[s.estado]}
+                            {labelEstado(t, s.estado)}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-500">
-                          Caso {s.nmroAjste || '—'} · Asignó{' '}
-                          {s.creadoPorNombre || s.creadoPorLogin || '—'} · Límite{' '}
-                          {formatearFechaSubtarea(s.fechaLimite)}
+                        <p className="mt-1 text-sm text-gray-500">{t("complex.ui.mis_subtareas_complex.caso")}{s.nmroAjste || '—'}{t("complex.ui.mis_subtareas_complex.asigno_2")}{' '}
+                          {s.creadoPorNombre || s.creadoPorLogin || '—'}{t("complex.ui.mis_subtareas_complex.limite_2")}{' '}
+                          {formatearFechaSubtarea(s.fechaLimite, dateLocale)}
                           {(s.archivos || []).length > 0
-                            ? ` · ${s.archivos.length} archivo(s)`
+                            ? t('complex.ui.mis_subtareas_complex.archivos_count', {
+                                count: s.archivos.length,
+                              })
                             : ''}
                           {bandeja === 'completadas' &&
                           (formatearDuracionSubtarea(s) || s.duracionAsignacionTexto)
-                            ? ` · Tiempo: ${formatearDuracionSubtarea(s) || s.duracionAsignacionTexto}`
+                            ? t('complex.ui.mis_subtareas_complex.tiempo_prefix', {
+                                tiempo: formatearDuracionSubtarea(s) || s.duracionAsignacionTexto,
+                              })
                             : bandeja === 'pendientes' &&
                                 (formatearDuracionSubtarea(s) || s.duracionAsignacionTexto)
-                              ? ` · En curso: ${formatearDuracionSubtarea(s) || s.duracionAsignacionTexto}`
+                              ? t('complex.ui.mis_subtareas_complex.en_curso_prefix', {
+                                  tiempo: formatearDuracionSubtarea(s) || s.duracionAsignacionTexto,
+                                })
                               : ''}
                         </p>
                         {bandeja === 'completadas' && s.fechaCompletada && (
-                          <p className="mt-0.5 text-xs text-gray-400">
-                            Cerrada {formatearFechaHoraSubtarea(s.fechaCompletada)}
+                          <p className="mt-0.5 text-xs text-gray-400">{t("complex.ui.mis_subtareas_complex.cerrada")}{formatearFechaHoraSubtarea(s.fechaCompletada, dateLocale)}
                           </p>
                         )}
                         {bandeja === 'pendientes' && s.motivoReapertura && (
                           <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                            <strong>Reabierta:</strong> {s.motivoReapertura}
+                            <strong>{t("complex.ui.mis_subtareas_complex.reabierta")}</strong> {s.motivoReapertura}
                           </p>
                         )}
                       </div>
@@ -952,7 +952,9 @@ export default function MisSubtareasComplex() {
                         className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
                         onClick={() => abrirSubtarea(s._id, s)}
                       >
-                        {bandeja === 'completadas' ? 'Ver registro' : 'Ir a subtarea'}
+                        {bandeja === 'completadas'
+                          ? t('complex.ui.mis_subtareas_complex.ver_registro')
+                          : t('complex.ui.mis_subtareas_complex.ir_a_subtarea')}
                       </button>
                     </div>
                   </li>

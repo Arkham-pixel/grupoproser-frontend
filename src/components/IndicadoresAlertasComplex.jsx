@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import IndicadoresHistoricosComplex from './IndicadoresHistoricosComplex.jsx';
@@ -14,17 +15,6 @@ import {
   complexScope,
 } from './SubcomponenteCompex/complexFenixUi.js';
 
-const TABS_BASE = [
-  { id: 'historicos', label: 'Indicadores históricos' },
-  { id: 'protocolo', label: 'Indicadores protocolo' },
-  { id: 'informe', label: 'Informe general' },
-];
-
-const TABS_SOLO_OSCAR = [
-  { id: 'manual', label: 'Manual de uso' },
-  { id: 'alertas', label: 'Mis alertas' },
-];
-
 function esUsuarioConTabsRestringidos() {
   const login = String(localStorage.getItem('login') || '').trim();
   const cedula = String(localStorage.getItem('cedula') || '').trim();
@@ -32,14 +22,24 @@ function esUsuarioConTabsRestringidos() {
 }
 
 export default function IndicadoresAlertasComplex() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const puedeVerTabsRestringidos = esUsuarioConTabsRestringidos();
 
-  const tabs = useMemo(
-    () => (puedeVerTabsRestringidos ? [...TABS_BASE, ...TABS_SOLO_OSCAR] : TABS_BASE),
-    [puedeVerTabsRestringidos]
-  );
-  const tabValidos = useMemo(() => new Set(tabs.map((t) => t.id)), [tabs]);
+  const tabs = useMemo(() => {
+    const base = [
+      { id: 'historicos', label: t('complex.ui.indicadores_alertas_complex.tab_historicos') },
+      { id: 'protocolo', label: t('complex.ui.indicadores_alertas_complex.tab_protocolo') },
+      { id: 'informe', label: t('complex.ui.indicadores_alertas_complex.tab_informe') },
+    ];
+    if (!puedeVerTabsRestringidos) return base;
+    return [
+      ...base,
+      { id: 'manual', label: t('complex.ui.indicadores_alertas_complex.tab_manual') },
+      { id: 'alertas', label: t('complex.ui.indicadores_alertas_complex.tab_alertas') },
+    ];
+  }, [puedeVerTabsRestringidos, t]);
+  const tabValidos = useMemo(() => new Set(tabs.map((tab) => tab.id)), [tabs]);
 
   const tabParam = searchParams.get('tab') || 'protocolo';
   const tabActiva = tabValidos.has(tabParam) ? tabParam : 'protocolo';
@@ -53,11 +53,11 @@ export default function IndicadoresAlertasComplex() {
       <div className={`${complexScope} ${complexDashboardWrap}`}>
         <ComplexPageHeader
           badge="Complex"
-          title="Indicadores y alertas"
+          title={t("complex.ui.indicadores_alertas_complex.indicadores_y_alertas")}
           subtitle={
             puedeVerTabsRestringidos
-              ? 'Históricos de gestión, cumplimiento del protocolo, informe general, manual de uso y alertas.'
-              : 'Históricos de gestión, cumplimiento del protocolo e informe general.'
+              ? t('complex.ui.indicadores_alertas_complex.subtitle_full')
+              : t('complex.ui.indicadores_alertas_complex.subtitle_base')
           }
           activePath="/complex/indicadores-alertas"
         />

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaPlus } from 'react-icons/fa';
 import PuertosCasoRegistroFotograficoContenedor from './PuertosCasoRegistroFotograficoContenedor';
 import { nuevoRegistroFotograficoContenedor } from './puertosCasoExportacionState';
@@ -21,6 +22,7 @@ export default function PuertosCasoRegistrosFotograficosContenedores({
   campo = 'registrosFotograficosContenedores',
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
   const registros = informe[campo] || [];
 
   const setRegistros = (updater) => {
@@ -48,7 +50,7 @@ export default function PuertosCasoRegistrosFotograficosContenedores({
       });
     });
     if (!numeros.size) {
-      alert('No hay números de contenedor en el seguimiento de la sección 4.');
+      alert(t('ports.ui.casoExportacion.photos.alerts.sinContenedoresSeguimiento'));
       return;
     }
     const existentes = new Set(registros.map((r) => String(r.numeroContenedor || '').trim()));
@@ -56,7 +58,7 @@ export default function PuertosCasoRegistrosFotograficosContenedores({
       .filter((n) => !existentes.has(n))
       .map((n) => nuevoRegistroFotograficoContenedor(n));
     if (!nuevos.length) {
-      alert('Los contenedores del seguimiento ya tienen registro fotográfico.');
+      alert(t('ports.ui.casoExportacion.photos.alerts.contenedoresYaRegistrados'));
       return;
     }
     setRegistros((prev) => [...(prev || []), ...nuevos]);
@@ -67,18 +69,18 @@ export default function PuertosCasoRegistrosFotograficosContenedores({
       <div className={puertosCardBody}>
         <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className={puertosBlockHeader}>Registro fotográfico por contenedor</h3>
+            <h3 className={puertosBlockHeader}>{t('ports.ui.casoExportacion.photos.registroPorContenedorTitle')}</h3>
             <p className={puertosSectionSubtitle}>
-              Cada bloque corresponde a un contenedor con sus sellos, como en el Word (TIIU, CAAU, MRSU…).
+              {t('ports.ui.casoExportacion.photos.registroPorContenedorSubtitle')}
             </p>
           </div>
           {!soloLectura && (
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={importarContenedoresDesdeSeguimiento} className={puertosBtnPrimary}>
-              Desde seguimiento (§4)
+              {t('ports.ui.casoExportacion.photos.desdeSeguimiento')}
             </button>
             <button type="button" onClick={agregarRegistroContenedor} className={puertosBtnPrimary}>
-              <FaPlus /> Registro fotográfico del contenedor
+              <FaPlus /> {t('ports.ui.casoExportacion.photos.agregarRegistro')}
             </button>
           </div>
           )}
@@ -86,7 +88,7 @@ export default function PuertosCasoRegistrosFotograficosContenedores({
 
         {registros.length === 0 && (
           <p className="py-8 text-center font-body text-sm text-gray-500">
-            Sin registros. Use el botón para agregar el primer contenedor o importe los N° del seguimiento.
+            {t('ports.ui.casoExportacion.photos.sinRegistros')}
           </p>
         )}
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FaCalculator,
   FaClipboardCheck,
@@ -66,17 +67,19 @@ import {
 } from './generarFormatosExpressPdf.js';
 import { descargarLiquidadorExpressExcel } from './generarLiquidadorExpressExcel.js';
 import { descargarLiquidadorExpressPdf } from './generarLiquidadorExpressPdf.js';
+import DocumentLanguageSelector from '../DocumentLanguageSelector.jsx';
 
 const TABS_BASE = [
-  { id: 'liquidacion', label: 'Liquidación', icon: FaCalculator },
-  { id: 'checklist', label: 'Check-list', icon: FaClipboardCheck },
-  { id: 'salvamento', label: 'Salvamento', icon: FaRecycle },
+  { id: 'liquidacion', icon: FaCalculator },
+  { id: 'checklist', icon: FaClipboardCheck },
+  { id: 'salvamento', icon: FaRecycle },
 ];
 
 const grid2 = 'grid grid-cols-1 gap-4 sm:grid-cols-2';
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
 function TabButton({ tab, active, onClick }) {
+  const { t } = useTranslation();
   const Icon = tab.icon;
   return (
     <button
@@ -89,7 +92,7 @@ function TabButton({ tab, active, onClick }) {
       }`}
     >
       <Icon className="text-sm" />
-      {tab.label}
+      {t(`express.liquidador.tabs.${tab.id}`)}
     </button>
   );
 }
@@ -105,10 +108,11 @@ function SelectAplica({ value, onChange }) {
 }
 
 function SelectSiNo({ value, onChange }) {
+  const { t } = useTranslation();
   return (
     <SelectFenix value={value || 'NO'} onChange={onChange}>
-      <option value="SI">Sí</option>
-      <option value="NO">No</option>
+      <option value="SI">{t('express.liquidador.yes')}</option>
+      <option value="NO">{t('express.liquidador.no')}</option>
     </SelectFenix>
   );
 }
@@ -150,7 +154,10 @@ export default function LiquidadorExpress({
   tieneLiquidadorGuardado = false,
   casoId = null,
   compact = false,
+  documentLocale = 'es',
+  onDocumentLocaleChange,
 }) {
+  const { t } = useTranslation();
   const { obtenerNombreResponsable } = useExpressCatalogos();
   const [tab, setTab] = useState('liquidacion');
   const [liquidador, setLiquidador] = useState(() => {
@@ -259,7 +266,7 @@ export default function LiquidadorExpress({
   const validarTipoProducto = () => {
     const valor = String(liquidador.checklist?.tipoProducto || '').trim();
     if (valor) return true;
-    setErrorWord('El tipo de producto es obligatorio.');
+    setErrorWord(t('express.liquidador.productTypeRequired'));
     setTab('checklist');
     return false;
   };
@@ -405,7 +412,7 @@ export default function LiquidadorExpress({
       await descargarContratoTransaccionWord(liquidadorParaExport, totales);
     } catch (err) {
       console.error('Error al generar contrato transacción Word:', err);
-      setErrorWord('No se pudo generar el contrato de transacción Word.');
+      setErrorWord(t('express.liquidador.transactionContractError'));
     } finally {
       setDescargandoWord(false);
     }
@@ -430,7 +437,7 @@ export default function LiquidadorExpress({
     setDescargandoWord(true);
     setErrorWord('');
     try {
-      await descargarChecklistExpressPdf(liquidadorParaExport, totales);
+      await descargarChecklistExpressPdf(liquidadorParaExport, totales, { locale: documentLocale });
     } catch (err) {
       console.error('Error al generar checklist PDF:', err);
       setErrorWord('No se pudo generar el check-list PDF.');
@@ -464,7 +471,7 @@ export default function LiquidadorExpress({
     setDescargandoWord(true);
     setErrorWord('');
     try {
-      await descargarSalvamentoExpressPdf(liquidadorParaExport);
+      await descargarSalvamentoExpressPdf(liquidadorParaExport, { locale: documentLocale });
     } catch (err) {
       console.error('Error al generar salvamento PDF:', err);
       setErrorWord('No se pudo generar el formato de salvamento PDF.');
@@ -481,6 +488,7 @@ export default function LiquidadorExpress({
       await descargarLiquidadorExpressExcel(liquidadorParaExport, totales, {
         incluirSalvamento: aplicaFormatoSalvamento(liquidador, casoExpress),
         fechaUltimoDocumento: casoExpress?.fechaUltimoDocumento,
+        locale: documentLocale,
       });
     } catch (err) {
       console.error('Error al generar Excel del liquidador:', err);
@@ -490,11 +498,11 @@ export default function LiquidadorExpress({
     }
   };
 
-  const handleDescargarPdf = () => {
+  const handleDescargarPdf = async () => {
     if (!validarTipoProducto()) return;
     setErrorWord('');
     try {
-      descargarLiquidadorExpressPdf(liquidadorParaExport, totales);
+      await descargarLiquidadorExpressPdf(liquidadorParaExport, totales, { locale: documentLocale });
     } catch (err) {
       console.error('Error al generar PDF del liquidador:', err);
       setErrorWord('No se pudo generar el PDF del liquidador.');
@@ -526,22 +534,27 @@ export default function LiquidadorExpress({
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
+            <DocumentLanguageSelector
+              value={documentLocale}
+              onChange={onDocumentLocaleChange}
+              id="liquidador-document-language"
+            />
             {onGuardarEnCaso && (
               <button
                 type="button"
                 className={expressBtnPrimary}
                 onClick={() => {
                   if (!validarTipoProducto()) return;
-                  onGuardarEnCaso(liquidadorParaExport, totales);
+                  onGuardarEnCaso(liquidadorParaExport, totales, documentLocale);
                 }}
                 disabled={guardandoCaso || descargandoWord}
               >
                 <FaSave />
                 {guardandoCaso
-                  ? 'Guardando…'
+                  ? t('express.liquidador.saving')
                   : tieneLiquidadorGuardado
-                    ? 'Actualizar en caso'
-                    : 'Guardar en caso'}
+                    ? t('express.liquidador.updateCase')
+                    : t('express.liquidador.saveCase')}
               </button>
             )}
             <button
@@ -552,10 +565,10 @@ export default function LiquidadorExpress({
             >
               <FaFileExcel />
               {descargandoWord
-                ? 'Generando…'
+                ? t('express.liquidador.generating')
                 : salvamentoActivo
-                  ? 'Descargar Excel (3 hojas)'
-                  : 'Descargar Excel (2 hojas)'}
+                  ? t('express.liquidador.downloadExcelThreeSheets')
+                  : t('express.liquidador.downloadExcelTwoSheets')}
             </button>
             <button
               type="button"
@@ -564,35 +577,35 @@ export default function LiquidadorExpress({
               disabled={descargandoWord || guardandoCaso}
             >
               <FaFilePdf />
-              Descargar PDF
+              {t('express.liquidador.downloadPdf')}
             </button>
           </div>
         </div>
       )}
       {casoId && tieneLiquidadorGuardado && (
         <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-body text-xs text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100">
-          Este caso ya tiene liquidador guardado. Al actualizar se reemplazan Excel y Word en documentos del caso y se sincroniza el valor a indemnizar.
+          {t('express.liquidador.existingSettlementNotice')}
         </p>
       )}
 
       {tab === 'liquidacion' && (
         <div className="space-y-5">
           <section className={expressFormSection}>
-            <h3 className={expressSectionTitle}>Información del reclamo</h3>
+            <h3 className={expressSectionTitle}>{t('express.liquidador.claimInformation')}</h3>
             <div className={grid2}>
-              <Campo label="Reclamo / Siniestro">
+              <Campo label={t('express.liquidador.claim')}>
                 <InputFenix
                   value={enc.reclamo}
                   onChange={(e) => actualizar('encabezado.reclamo', e.target.value)}
                 />
               </Campo>
-              <Campo label="ZC / Workflow">
+              <Campo label={t('express.liquidador.zcWorkflow')}>
                 <InputFenix
                   value={enc.zc}
                   onChange={(e) => actualizar('encabezado.zc', e.target.value)}
                 />
               </Campo>
-              <Campo label="Asegurado">
+              <Campo label={t('express.liquidador.insured')}>
                 <InputFenix
                   value={enc.asegurado}
                   onChange={(e) => actualizar('encabezado.asegurado', e.target.value)}
@@ -604,30 +617,30 @@ export default function LiquidadorExpress({
                   onChange={(e) => actualizar('encabezado.nit', e.target.value)}
                 />
               </Campo>
-              <Campo label="Póliza">
+              <Campo label={t('express.liquidador.policy')}>
                 <InputFenix
                   value={enc.poliza}
                   onChange={(e) => actualizar('encabezado.poliza', e.target.value)}
                 />
               </Campo>
-              <Campo label="Fecha siniestro">
+              <Campo label={t('express.liquidador.claimDate')}>
                 <InputFenix
                   type="date"
                   value={enc.fechaSiniestro}
                   onChange={(e) => actualizar('encabezado.fechaSiniestro', e.target.value)}
                 />
               </Campo>
-              <Campo label="Cobertura">
+              <Campo label={t('express.liquidador.coverage')}>
                 <InputFenix
                   value={enc.cobertura}
                   onChange={(e) => actualizar('encabezado.cobertura', e.target.value)}
                 />
               </Campo>
-              <Campo label="Deducible (texto póliza)">
+              <Campo label={t('express.liquidador.deductiblePolicyText')}>
                 <InputFenix
                   value={enc.deducibleTexto}
                   onChange={(e) => actualizar('encabezado.deducibleTexto', e.target.value)}
-                  placeholder="Ej: 10% del valor de la pérdida, mínimo 4 SMMLV"
+                  placeholder={t('express.liquidador.deductiblePlaceholder')}
                 />
               </Campo>
             </div>
@@ -635,9 +648,9 @@ export default function LiquidadorExpress({
 
           <section className={expressFormSection}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className={`${expressSectionTitle} mb-0`}>Conceptos de pérdida</h3>
+              <h3 className={`${expressSectionTitle} mb-0`}>{t('express.liquidador.lossConcepts')}</h3>
               <button type="button" onClick={agregarConcepto} className={expressBtnGhost}>
-                <FaPlus /> Agregar concepto
+                <FaPlus /> {t('express.liquidador.addConcept')}
               </button>
             </div>
             <div className={expressTableWrap}>
@@ -645,9 +658,9 @@ export default function LiquidadorExpress({
                 <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
                   <thead className={expressTableHead}>
                     <tr>
-                      <th className="px-3 py-2">Concepto</th>
-                      <th className="px-3 py-2">Detalle</th>
-                      <th className="px-3 py-2">Valor</th>
+                      <th className="px-3 py-2">{t('express.liquidador.conceptColumn')}</th>
+                      <th className="px-3 py-2">{t('express.liquidador.detailColumn')}</th>
+                      <th className="px-3 py-2">{t('express.liquidador.valueColumn')}</th>
                       <th className="px-3 py-2 w-12" />
                     </tr>
                   </thead>
@@ -655,7 +668,7 @@ export default function LiquidadorExpress({
                     {(liquidador.conceptos || []).length === 0 ? (
                       <tr>
                         <td colSpan={4} className="px-3 py-6 text-center text-sm text-gray-500">
-                          Sin conceptos. Agregue filas para calcular la liquidación.
+                          {t('express.liquidador.noConcepts')}
                         </td>
                       </tr>
                     ) : (
@@ -665,7 +678,7 @@ export default function LiquidadorExpress({
                             <InputFenix
                               value={item.concepto}
                               onChange={(e) => actualizarConcepto(item.id, 'concepto', e.target.value)}
-                              placeholder="Concepto"
+                              placeholder={t('express.liquidador.conceptColumn')}
                             />
                           </td>
                           <td className="px-2 py-2">
@@ -673,14 +686,14 @@ export default function LiquidadorExpress({
                               value={item.detalle}
                               onChange={(e) => actualizarConcepto(item.id, 'detalle', e.target.value)}
                               rows={2}
-                              placeholder="Detalle"
+                              placeholder={t('express.liquidador.detailColumn')}
                             />
                           </td>
                           <td className="px-2 py-2 min-w-[140px]">
                             <InputMonedaExpress
                               value={item.valor}
                               onChange={(e) => actualizarConcepto(item.id, 'valor', e.target.value)}
-                              placeholder="$ 0"
+                              placeholder={t('express.liquidador.zeroAmountPlaceholder')}
                             />
                           </td>
                           <td className="px-2 py-2 text-center">
@@ -688,7 +701,7 @@ export default function LiquidadorExpress({
                               type="button"
                               onClick={() => eliminarConcepto(item.id)}
                               className="rounded p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                              aria-label="Eliminar"
+                              aria-label={t('express.menu.delete')}
                             >
                               <FaTrash />
                             </button>
@@ -703,7 +716,7 @@ export default function LiquidadorExpress({
           </section>
 
           <section className={expressFormSection}>
-            <h3 className={expressSectionTitle}>Deducible</h3>
+            <h3 className={expressSectionTitle}>{t('express.liquidador.deductible')}</h3>
             <div className="mb-3 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -714,7 +727,7 @@ export default function LiquidadorExpress({
                 }
                 onClick={() => actualizar('deducible.tipoMinimo', 'SMMLV')}
               >
-                Mínimo SMMLV (mensual)
+                {t('express.liquidador.minimumSmmlv')}
               </button>
               <button
                 type="button"
@@ -723,11 +736,11 @@ export default function LiquidadorExpress({
                 }
                 onClick={() => actualizar('deducible.tipoMinimo', 'SMDLV')}
               >
-                Mínimo SMDLV (diario)
+                {t('express.liquidador.minimumSmdlv')}
               </button>
             </div>
             <div className={grid3}>
-              <Campo label="Porcentaje (%)">
+              <Campo label={t('express.liquidador.percentage')}>
                 <InputFenix
                   type="number"
                   min="0"
@@ -737,7 +750,7 @@ export default function LiquidadorExpress({
                   onChange={(e) => actualizar('deducible.porcentaje', e.target.value === '' ? '' : parseFloat(e.target.value))}
                 />
               </Campo>
-              <Campo label="Año salario mínimo">
+              <Campo label={t('express.liquidador.minimumWageYear')}>
                 <SelectFenix
                   value={ded.anioSMMLV ?? totales.anioSMMLV ?? ANIOS_SMMLV[0]}
                   onChange={(e) => actualizarAnioSmmlv(e.target.value)}
@@ -751,7 +764,7 @@ export default function LiquidadorExpress({
               </Campo>
               {(ded.tipoMinimo || 'SMMLV') === 'SMMLV' ? (
                 <>
-                  <Campo label="Cantidad SMMLV">
+                  <Campo label={t('express.liquidador.smmlvQuantity')}>
                     <InputFenix
                       type="number"
                       min="0"
@@ -760,7 +773,7 @@ export default function LiquidadorExpress({
                       onChange={(e) => actualizar('deducible.cantidadSMMLV', e.target.value === '' ? '' : parseFloat(e.target.value))}
                     />
                   </Campo>
-                  <Campo label="Valor SMMLV (mensual)">
+                  <Campo label={t('express.liquidador.smmlvValue')}>
                     <InputMonedaExpress
                       value={ded.valorSMMLV ?? ''}
                       onChange={(e) => {
@@ -775,13 +788,13 @@ export default function LiquidadorExpress({
                         }));
                       }}
                       placeholder="$ 1.750.905"
-                      title="Se actualiza al elegir el año; puede ajustarlo manualmente"
+                      title={t('express.liquidador.valueUpdatedHint')}
                     />
                   </Campo>
                 </>
               ) : (
                 <>
-                  <Campo label="Cantidad SMDLV">
+                  <Campo label={t('express.liquidador.smdlvQuantity')}>
                     <InputFenix
                       type="number"
                       min="0"
@@ -790,12 +803,12 @@ export default function LiquidadorExpress({
                       onChange={(e) => actualizar('deducible.cantidadSMDLV', e.target.value === '' ? '' : parseFloat(e.target.value))}
                     />
                   </Campo>
-                  <Campo label="Valor SMDLV (diario)">
+                  <Campo label={t('express.liquidador.smdlvValue')}>
                     <InputMonedaExpress
                       value={ded.valorSMDLV ?? valorSmdlvDesdeSmmlv(ded.valorSMMLV) ?? ''}
                       onChange={(e) => actualizar('deducible.valorSMDLV', e.target.value)}
                       placeholder="$ 58.364"
-                      title="Por defecto SMMLV ÷ 30; puede ajustarlo manualmente"
+                      title={t('express.liquidador.smdlvHint')}
                     />
                   </Campo>
                 </>
@@ -803,11 +816,13 @@ export default function LiquidadorExpress({
             </div>
             <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
               {(ded.tipoMinimo || 'SMMLV') === 'SMMLV'
-                ? 'SMMLV: salario mínimo mensual. El deducible aplicado es el mayor entre el % y (cantidad × SMMLV).'
-                : `SMDLV: salario mínimo diario (SMMLV ÷ 30). Ejemplo 2026: $ ${formatearMonto(valorSmdlvDesdeSmmlv(ded.valorSMMLV || totales.valorSMMLV))} por día. El deducible aplicado es el mayor entre el % y (cantidad × SMDLV).`}
+                ? t('express.liquidador.smmlvExplanation')
+                : t('express.liquidador.smdlvExplanation', {
+                    value: formatearMonto(valorSmdlvDesdeSmmlv(ded.valorSMMLV || totales.valorSMMLV)),
+                  })}
             </p>
             <div className="mt-4 space-y-2">
-              <FilaTotal label="TOTAL PÉRDIDA" valor={totales.totalPerdida} />
+              <FilaTotal label={t('express.liquidador.totalLoss')} valor={totales.totalPerdida} />
               <FilaTotal
                 label={`DEDUCIBLE ${totales.porcentaje}%`}
                 valor={totales.deduciblePorcentaje}
@@ -833,22 +848,22 @@ export default function LiquidadorExpress({
                 })`}
                 valor={totales.deducibleAplicado}
               />
-              <FilaTotal label="TOTAL A INDEMNIZAR" valor={totales.totalIndemnizar} destacado />
+              <FilaTotal label={t('express.liquidador.totalIndemnity')} valor={totales.totalIndemnizar} destacado />
             </div>
           </section>
 
           <div className="flex flex-wrap justify-end gap-3">
             <button type="button" className={expressBtnGhost} onClick={handleDescargarExcel} disabled={descargandoWord}>
               <FaFileExcel />
-              {descargandoWord ? 'Generando…' : 'Descargar Excel'}
+              {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadExcel')}
             </button>
             <button type="button" className={expressBtnGhost} onClick={handleDescargarPdf} disabled={descargandoWord}>
               <FaFilePdf />
-              Descargar PDF
+              {t('express.liquidador.downloadPdf')}
             </button>
             <button type="button" className={expressBtnGhost} onClick={handleLiquidar}>
               <FaFileWord />
-              Vista previa recibo
+              {t('express.liquidador.receiptPreview')}
             </button>
             <button
               type="button"
@@ -857,7 +872,7 @@ export default function LiquidadorExpress({
               disabled={descargandoWord}
             >
               <FaFileWord />
-              Vista previa reembolso
+              {t('express.liquidador.reimbursementPreview')}
             </button>
             <button
               type="button"
@@ -866,7 +881,7 @@ export default function LiquidadorExpress({
               disabled={descargandoWord}
             >
               <FaFileWord />
-              Vista previa transacción
+              {t('express.liquidador.transactionPreview')}
             </button>
           </div>
         </div>
@@ -877,32 +892,32 @@ export default function LiquidadorExpress({
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" className={expressBtnGhost} onClick={handleDescargarExcel} disabled={descargandoWord}>
               <FaFileExcel />
-              {descargandoWord ? 'Generando…' : 'Descargar Excel'}
+              {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadExcel')}
             </button>
             <button type="button" className={expressBtnGhost} onClick={handleDescargarChecklistPdf} disabled={descargandoWord}>
               <FaFilePdf />
-              Descargar PDF
+              {t('express.liquidador.downloadPdf')}
             </button>
             <button type="button" className={expressBtnPrimary} onClick={handleDescargarChecklist} disabled={descargandoWord}>
               <FaFileWord />
-              {descargandoWord ? 'Generando…' : 'Descargar Check-list Word'}
+              {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadChecklistWord')}
             </button>
           </div>
 
           <section className={expressFormSection}>
-            <h3 className={expressSectionTitle}>FORMATO ÚNICO ATENCIÓN DE RECLAMOS EXPRESS — PROPERTY</h3>
-            <p className="mb-3 font-body text-xs text-gray-500">Información general del reclamo (sincronizada con pestaña Liquidación)</p>
+            <h3 className={expressSectionTitle}>{t('express.liquidador.checklistFormTitle')}</h3>
+            <p className="mb-3 font-body text-xs text-gray-500">{t('express.liquidador.checklistFormHint')}</p>
             <div className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
-              <FilaInfo label="Fecha">
+              <FilaInfo label={t('express.time.date')}>
                 <InputFenix type="date" value={chk.fecha} onChange={(e) => actualizar('checklist.fecha', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="ZC">
+              <FilaInfo label={t('express.liquidador.zc')}>
                 <InputFenix value={enc.zc} onChange={(e) => actualizar('encabezado.zc', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="STRO">
+              <FilaInfo label={t('express.liquidador.stro')}>
                 <InputFenix value={enc.reclamo} onChange={(e) => actualizar('encabezado.reclamo', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Tipo de producto" required>
+              <FilaInfo label={t('express.liquidador.productType')} required>
                 <InputFenix
                   value={chk.tipoProducto}
                   onChange={(e) => actualizar('checklist.tipoProducto', e.target.value)}
@@ -910,93 +925,93 @@ export default function LiquidadorExpress({
                   aria-required="true"
                 />
               </FilaInfo>
-              <FilaInfo label="Número de póliza">
+              <FilaInfo label={t('express.liquidador.policyNumber')}>
                 <InputFenix value={enc.poliza} onChange={(e) => actualizar('encabezado.poliza', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Asegurado">
+              <FilaInfo label={t('express.liquidador.insured')}>
                 <InputFenix value={enc.asegurado} onChange={(e) => actualizar('encabezado.asegurado', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Vigencia de la póliza">
+              <FilaInfo label={t('express.liquidador.policyTerm')}>
                 <div className="flex flex-wrap items-center gap-2">
                   <InputFenix type="date" value={chk.vigenciaDesde} onChange={(e) => actualizar('checklist.vigenciaDesde', e.target.value)} />
-                  <span className="text-sm text-gray-500">al</span>
+                  <span className="text-sm text-gray-500">{t('express.liquidador.toDate')}</span>
                   <InputFenix type="date" value={chk.vigenciaHasta} onChange={(e) => actualizar('checklist.vigenciaHasta', e.target.value)} />
                 </div>
               </FilaInfo>
-              <FilaInfo label="D.O.L" destacado>
+              <FilaInfo label={t('express.liquidador.dol')} destacado>
                 <InputFenix type="date" value={enc.fechaSiniestro} onChange={(e) => actualizar('encabezado.fechaSiniestro', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Riesgo asegurado">
+              <FilaInfo label={t('express.liquidador.insuredRisk')}>
                 <InputFenix value={chk.riesgoAsegurado} onChange={(e) => actualizar('checklist.riesgoAsegurado', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Cobertura afectada">
+              <FilaInfo label={t('express.liquidador.affectedCoverage')}>
                 <InputFenix value={chk.coberturaAfectada || enc.cobertura} onChange={(e) => actualizar('checklist.coberturaAfectada', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Garantías">
+              <FilaInfo label={t('express.liquidador.warranties')}>
                 <SelectAplica value={chk.garantias} onChange={(e) => actualizar('checklist.garantias', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Exclusiones">
+              <FilaInfo label={t('express.liquidador.exclusions')}>
                 <SelectAplica value={chk.exclusiones} onChange={(e) => actualizar('checklist.exclusiones', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Objeción">
+              <FilaInfo label={t('express.liquidador.objection')}>
                 <SelectAplica value={chk.objecion} onChange={(e) => actualizar('checklist.objecion', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Tipo de pérdida">
+              <FilaInfo label={t('express.liquidador.lossType')}>
                 <SelectFenix value={chk.tipoPerdida} onChange={(e) => actualizar('checklist.tipoPerdida', e.target.value)}>
                   <option value="Parcial">Parcial</option>
                   <option value="Total">Total</option>
                 </SelectFenix>
               </FilaInfo>
-              <FilaInfo label="Aplica demérito">
+              <FilaInfo label={t('express.liquidador.appliesDepreciation')}>
                 <SelectAplica value={chk.aplicaDemerito} onChange={(e) => actualizar('checklist.aplicaDemerito', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Límite o valor asegurado">
+              <FilaInfo label={t('express.liquidador.insuredLimit')}>
                 <InputMonedaExpress value={chk.limiteAsegurado} onChange={(e) => actualizar('checklist.limiteAsegurado', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Pérdida ajustada">
+              <FilaInfo label={t('express.liquidador.adjustedLoss')}>
                 <span className="font-accent font-semibold">$ {formatearMonto(totales.totalPerdida)}</span>
               </FilaInfo>
-              <FilaInfo label="Deducible">
+              <FilaInfo label={t('express.liquidador.deductible')}>
                 <span className="font-accent font-semibold">$ {formatearMonto(totales.deducibleAplicado)}</span>
               </FilaInfo>
-              <FilaInfo label="Valor a indemnizar">
+              <FilaInfo label={t('express.liquidador.indemnityValueLabel')}>
                 <span className="font-accent text-lg font-bold text-emerald-700 dark:text-emerald-300">$ {formatearMonto(totales.totalIndemnizar)}</span>
               </FilaInfo>
-              <FilaInfo label="Salvamento">
+              <FilaInfo label={t('express.liquidador.tabs.salvamento')}>
                 <div className="flex flex-wrap gap-2">
                   <SelectAplica value={chk.salvamento} onChange={(e) => actualizar('checklist.salvamento', e.target.value)} />
                   {chk.salvamento === 'Aplica' && (
                     <InputFenix
                       value={chk.salvamentoDetalle}
                       onChange={(e) => actualizar('checklist.salvamentoDetalle', e.target.value)}
-                      placeholder="Detalle (ej: MOTOR Y CO)"
+                      placeholder={t('express.liquidador.salvageDetailPlaceholder')}
                       className="min-w-[200px] flex-1"
                     />
                   )}
                 </div>
               </FilaInfo>
-              <FilaInfo label="Recobro">
+              <FilaInfo label={t('express.liquidador.recovery')}>
                 <SelectAplica value={chk.recobro} onChange={(e) => actualizar('checklist.recobro', e.target.value)} />
               </FilaInfo>
-              <FilaInfo label="Indicadores de fraude">
+              <FilaInfo label={t('express.liquidador.fraudIndicators')}>
                 <SelectAplica value={chk.indicadoresFraude} onChange={(e) => actualizar('checklist.indicadoresFraude', e.target.value)} />
               </FilaInfo>
             </div>
-            <Campo label="Breve descripción del evento" className="mt-4">
+            <Campo label={t('express.liquidador.eventDescription')} className="mt-4">
               <TextareaFenix value={chk.descripcionEvento} onChange={(e) => actualizar('checklist.descripcionEvento', e.target.value)} rows={4} />
             </Campo>
-            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">Ajustador — {nombreAjustador}</p>
+            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">{t('express.liquidador.adjusterLine', { name: nombreAjustador })}</p>
           </section>
 
           <section className={expressFormSection}>
-            <h3 className={expressSectionTitle}>Documentos de soporte</h3>
+            <h3 className={expressSectionTitle}>{t('express.liquidador.supportDocuments')}</h3>
             <div className={expressTableWrap}>
               <table className="min-w-full">
                 <thead className={expressTableHead}>
                   <tr>
-                    <th className="px-3 py-2 w-12">N°</th>
-                    <th className="px-3 py-2">Documento</th>
-                    <th className="px-3 py-2 w-32 text-center">Estado</th>
+                    <th className="px-3 py-2 w-12">{t('express.liquidador.documentNumber')}</th>
+                    <th className="px-3 py-2">{t('common.document')}</th>
+                    <th className="px-3 py-2 w-32 text-center">{t('express.report.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1027,25 +1042,25 @@ export default function LiquidadorExpress({
               </table>
             </div>
             <div className={`${grid3} mt-4`}>
-              <Campo label="Porcentaje de tareas finalizadas">
+              <Campo label={t('express.liquidador.completionPercentage')}>
                 <InputFenix readOnly value={`${pctDocs}%`} className="bg-gray-50 dark:bg-gray-900/40" />
               </Campo>
-              <Campo label="¿El reclamo está formalizado?">
+              <Campo label={t('express.liquidador.claimFormalized')}>
                 <SelectFenix value={chk.reclamoFormalizado} onChange={(e) => actualizar('checklist.reclamoFormalizado', e.target.value)}>
                   <option value="Sí">Sí</option>
                   <option value="No">No</option>
                 </SelectFenix>
               </Campo>
-              <Campo label="Fecha formalización">
+              <Campo label={t('express.liquidador.formalizationDate')}>
                 <InputFenix
                   type="date"
                   value={chk.fechaFormalizacion}
                   readOnly
                   className="bg-gray-50 dark:bg-gray-900/40"
-                  title="Se toma de la fecha de último documento del caso Express"
+                  title={t('express.liquidador.formalizationDateTitle')}
                 />
                 <p className="mt-1 font-body text-[11px] text-gray-500 dark:text-gray-400">
-                  Se toma de <strong>Fecha de último documento</strong> del caso.
+                  {t('express.liquidador.formalizationHintPrefix')} <strong>{t('express.liquidador.lastDocumentDateLabel')}</strong> {t('express.liquidador.formalizationHintSuffix')}
                 </p>
               </Campo>
             </div>
@@ -1053,13 +1068,13 @@ export default function LiquidadorExpress({
 
           <section className={expressFormSection}>
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <h3 className={`${expressSectionTitle} mb-0`}>Análisis de la pérdida</h3>
+              <h3 className={`${expressSectionTitle} mb-0`}>{t('express.liquidador.lossAnalysis')}</h3>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={sincronizarAnalisisDesdeConceptos} className={expressBtnGhost}>
-                  Sincronizar desde liquidación
+                  {t('express.liquidador.syncFromSettlement')}
                 </button>
                 <button type="button" onClick={agregarItemAnalisis} className={expressBtnGhost}>
-                  <FaPlus /> Agregar ítem
+                  <FaPlus /> {t('express.liquidador.addItem')}
                 </button>
               </div>
             </div>
@@ -1068,11 +1083,11 @@ export default function LiquidadorExpress({
                 <table className="min-w-[900px] w-full divide-y divide-gray-100 dark:divide-gray-800">
                   <thead className={expressTableHead}>
                     <tr>
-                      <th className="px-3 py-2 w-12">ITEM</th>
-                      <th className="px-3 py-2 min-w-[200px]">DESCRIPCIÓN</th>
-                      <th className="px-3 py-2 min-w-[140px]">V/R TOTAL (RECLAMADO)</th>
-                      <th className="px-3 py-2 min-w-[140px]">V/R TOTAL (AJUSTADO)</th>
-                      <th className="px-3 py-2 min-w-[200px]">OBSERVACIÓN</th>
+                      <th className="px-3 py-2 w-12">{t('express.liquidador.itemColumn')}</th>
+                      <th className="px-3 py-2 min-w-[200px]">{t('express.liquidador.descriptionColumn')}</th>
+                      <th className="px-3 py-2 min-w-[140px]">{t('express.liquidador.claimedTotalColumn')}</th>
+                      <th className="px-3 py-2 min-w-[140px]">{t('express.liquidador.adjustedTotalColumn')}</th>
+                      <th className="px-3 py-2 min-w-[200px]">{t('express.liquidador.observationColumn')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1108,7 +1123,7 @@ export default function LiquidadorExpress({
                   </tbody>
                   <tfoot>
                     <tr className="bg-emerald-50 font-bold dark:bg-emerald-950/20">
-                      <td colSpan={2} className="px-3 py-2">Totales</td>
+                      <td colSpan={2} className="px-3 py-2">{t('express.liquidador.totalsRow')}</td>
                       <td className="px-3 py-2">$ {formatearMonto(totalesAnalisis.totalReclamado)}</td>
                       <td className="px-3 py-2">$ {formatearMonto(totalesAnalisis.totalAjustado)}</td>
                       <td />
@@ -1117,10 +1132,10 @@ export default function LiquidadorExpress({
                 </table>
               </div>
             </div>
-            <Campo label="Comentarios adicionales" className="mt-4">
+            <Campo label={t('express.liquidador.additionalComments')} className="mt-4">
               <TextareaFenix value={chk.comentariosAdicionales} onChange={(e) => actualizar('checklist.comentariosAdicionales', e.target.value)} rows={3} />
             </Campo>
-            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">Ajustador — {nombreAjustador}</p>
+            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-400">{t('express.liquidador.adjusterLine', { name: nombreAjustador })}</p>
           </section>
         </div>
       )}
@@ -1130,87 +1145,87 @@ export default function LiquidadorExpress({
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" className={expressBtnGhost} onClick={handleDescargarExcel} disabled={descargandoWord}>
               <FaFileExcel />
-              {descargandoWord ? 'Generando…' : 'Descargar Excel'}
+              {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadExcel')}
             </button>
             <button type="button" className={expressBtnGhost} onClick={handleDescargarSalvamentoPdf} disabled={descargandoWord}>
               <FaFilePdf />
-              Descargar PDF
+              {t('express.liquidador.downloadPdf')}
             </button>
             <button type="button" className={expressBtnPrimary} onClick={handleDescargarSalvamento} disabled={descargandoWord}>
               <FaFileWord />
-              {descargandoWord ? 'Generando…' : 'Descargar Salvamento Word'}
+              {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadSalvageWord')}
             </button>
           </div>
 
           <section className={expressFormSection}>
-            <h3 className={expressSectionTitle}>Formato Salvamentos</h3>
+            <h3 className={expressSectionTitle}>{t('express.liquidador.salvageFormTitle')}</h3>
             <div className={`${grid2} mb-4`}>
-              <Campo label="Póliza"><InputFenix value={enc.poliza} readOnly className="bg-gray-50 dark:bg-gray-900/40" /></Campo>
-              <Campo label="Reclamo"><InputFenix value={enc.reclamo} readOnly className="bg-gray-50 dark:bg-gray-900/40" /></Campo>
-              <Campo label="Sub-tarea">
+              <Campo label={t('express.liquidador.policy')}><InputFenix value={enc.poliza} readOnly className="bg-gray-50 dark:bg-gray-900/40" /></Campo>
+              <Campo label={t('express.liquidador.claim')}><InputFenix value={enc.reclamo} readOnly className="bg-gray-50 dark:bg-gray-900/40" /></Campo>
+              <Campo label={t('express.liquidador.subtask')}>
                 <InputFenix value={sal.subTarea || 'SALVAMENTO'} onChange={(e) => actualizar('salvamento.subTarea', e.target.value)} />
               </Campo>
-              <Campo label="Asegurado"><InputFenix value={enc.asegurado} readOnly className="bg-gray-50 dark:bg-gray-900/40" /></Campo>
+              <Campo label={t('express.liquidador.insured')}><InputFenix value={enc.asegurado} readOnly className="bg-gray-50 dark:bg-gray-900/40" /></Campo>
             </div>
 
-            <h4 className="mb-3 font-heading text-base font-bold text-[#002060]">Información de Salvamento</h4>
+            <h4 className="mb-3 font-heading text-base font-bold text-[#002060]">{t('express.liquidador.salvageInfoHeading')}</h4>
             <div className={grid2}>
-              <Campo label="COMENTARIOS / Descripción salvamento">
-                <TextareaFenix value={sal.descripcion} onChange={(e) => actualizar('salvamento.descripcion', e.target.value)} rows={3} placeholder="Ej: MOTOR Y CO" />
+              <Campo label={t('express.liquidador.salvageDescription')}>
+                <TextareaFenix value={sal.descripcion} onChange={(e) => actualizar('salvamento.descripcion', e.target.value)} rows={3} placeholder={t('express.liquidador.salvageExamplePlaceholder')} />
               </Campo>
-              <Campo label="Especificación del daño y estado actual">
+              <Campo label={t('express.liquidador.damageSpecification')}>
                 <TextareaFenix value={sal.especificacionDano} onChange={(e) => actualizar('salvamento.especificacionDano', e.target.value)} rows={3} />
               </Campo>
-              <Campo label="Cantidad (unidades)">
+              <Campo label={t('express.liquidador.quantityUnits')}>
                 <InputFenix value={sal.cantidad} onChange={(e) => actualizar('salvamento.cantidad', e.target.value)} />
               </Campo>
-              <Campo label="Marca salvamento">
-                <InputFenix value={sal.marca} onChange={(e) => actualizar('salvamento.marca', e.target.value)} placeholder="N/D" />
+              <Campo label={t('express.liquidador.salvageBrand')}>
+                <InputFenix value={sal.marca} onChange={(e) => actualizar('salvamento.marca', e.target.value)} placeholder={t('express.liquidador.notApplicableShort')} />
               </Campo>
-              <Campo label="Serial salvamento">
-                <InputFenix value={sal.serial} onChange={(e) => actualizar('salvamento.serial', e.target.value)} placeholder="N/D" />
+              <Campo label={t('express.liquidador.salvageSerial')}>
+                <InputFenix value={sal.serial} onChange={(e) => actualizar('salvamento.serial', e.target.value)} placeholder={t('express.liquidador.notApplicableShort')} />
               </Campo>
-              <Campo label="Ubicación (dirección y ciudad)">
+              <Campo label={t('express.liquidador.locationAddressCity')}>
                 <TextareaFenix value={sal.ubicacion} onChange={(e) => actualizar('salvamento.ubicacion', e.target.value)} rows={2} />
               </Campo>
-              <Campo label="Contacto persona quien entrega">
+              <Campo label={t('express.liquidador.deliveryContact')}>
                 <TextareaFenix value={sal.contactoEntrega} onChange={(e) => actualizar('salvamento.contactoEntrega', e.target.value)} rows={2} />
               </Campo>
             </div>
 
             <div className={`${grid2} mt-4`}>
-              <Campo label="Salvamento nacionalizado">
+              <Campo label={t('express.liquidador.salvageNationalized')}>
                 <SelectSiNo value={sal.nacionalizado} onChange={(e) => actualizar('salvamento.nacionalizado', e.target.value)} />
               </Campo>
-              <Campo label="Genera costos por custodia">
+              <Campo label={t('express.liquidador.custodyCosts')}>
                 <div className="flex gap-2">
                   <SelectSiNo value={sal.generaCustodia} onChange={(e) => actualizar('salvamento.generaCustodia', e.target.value)} />
-                  <InputMonedaExpress value={sal.valorCustodia} onChange={(e) => actualizar('salvamento.valorCustodia', e.target.value)} placeholder="Valor $" className="flex-1" />
+                  <InputMonedaExpress value={sal.valorCustodia} onChange={(e) => actualizar('salvamento.valorCustodia', e.target.value)} placeholder={t('express.liquidador.valuePlaceholder')} className="flex-1" />
                 </div>
               </Campo>
-              <Campo label="Registro fotográfico">
+              <Campo label={t('express.liquidador.photographicRecord')}>
                 <SelectSiNo value={sal.registroFotografico} onChange={(e) => actualizar('salvamento.registroFotografico', e.target.value)} />
               </Campo>
-              <Campo label="Indemnizado">
+              <Campo label={t('express.liquidador.indemnified')}>
                 <div className="flex gap-2">
                   <SelectSiNo value={sal.indemnizado} onChange={(e) => actualizar('salvamento.indemnizado', e.target.value)} />
-                  <InputMonedaExpress value={sal.valorIndemnizado} onChange={(e) => actualizar('salvamento.valorIndemnizado', e.target.value)} placeholder="Valor $" className="flex-1" />
+                  <InputMonedaExpress value={sal.valorIndemnizado} onChange={(e) => actualizar('salvamento.valorIndemnizado', e.target.value)} placeholder={t('express.liquidador.valuePlaceholder')} className="flex-1" />
                 </div>
               </Campo>
-              <Campo label="Se solicitó oferta Non Cash">
+              <Campo label={t('express.liquidador.nonCashOfferRequested')}>
                 <div className="flex gap-2">
                   <SelectSiNo value={sal.ofertaNonCash} onChange={(e) => actualizar('salvamento.ofertaNonCash', e.target.value)} />
-                  <InputMonedaExpress value={sal.valorNonCash} onChange={(e) => actualizar('salvamento.valorNonCash', e.target.value)} placeholder="Valor $" className="flex-1" />
+                  <InputMonedaExpress value={sal.valorNonCash} onChange={(e) => actualizar('salvamento.valorNonCash', e.target.value)} placeholder={t('express.liquidador.valuePlaceholder')} className="flex-1" />
                 </div>
               </Campo>
             </div>
 
-            <Campo label="Comentarios salvamento" className="mt-4">
+            <Campo label={t('express.liquidador.salvageComments')} className="mt-4">
               <TextareaFenix value={sal.comentarios} onChange={(e) => actualizar('salvamento.comentarios', e.target.value)} rows={4} />
             </Campo>
 
             <div className="mt-6 rounded-lg border border-gray-200 bg-gray-50/80 p-4 dark:border-gray-700 dark:bg-gray-900/30">
-              <h4 className="mb-2 font-body text-sm font-bold text-gray-800 dark:text-gray-200">NOTAS</h4>
+              <h4 className="mb-2 font-body text-sm font-bold text-gray-800 dark:text-gray-200">{t('express.liquidador.notesHeading')}</h4>
               <ol className="list-decimal space-y-2 pl-5 font-body text-xs text-gray-600 dark:text-gray-400">
                 {NOTAS_SALVAMENTO.map((nota) => (
                   <li key={nota}>{nota}</li>
@@ -1236,35 +1251,35 @@ export default function LiquidadorExpress({
                 {mostrarVistaPrevia === 'transaccion' && previewTransaccion.titulo}
               </h2>
               <p className="text-center font-body text-sm text-gray-600">
-                {mostrarVistaPrevia === 'recibo' && `Reclamo ${recibo.reclamo}`}
-                {mostrarVistaPrevia === 'reembolso' && `Reclamo ${previewReembolso.reclamo}`}
-                {mostrarVistaPrevia === 'transaccion' && `Siniestro ${previewTransaccion.siniestro}`}
+                {mostrarVistaPrevia === 'recibo' && t('express.liquidador.preview.claimLine', { value: recibo.reclamo })}
+                {mostrarVistaPrevia === 'reembolso' && t('express.liquidador.preview.claimLine', { value: previewReembolso.reclamo })}
+                {mostrarVistaPrevia === 'transaccion' && t('express.liquidador.preview.claimNumberLine', { value: previewTransaccion.siniestro })}
               </p>
             </div>
             <div className={expressCardBody}>
               {mostrarVistaPrevia === 'recibo' && (
                 <div className="space-y-2 font-body text-sm text-gray-800 dark:text-gray-200">
                   <p>
-                    <strong>Asegurado:</strong> {recibo.asegurado}
+                    <strong>{t('express.liquidador.preview.insured')}</strong> {recibo.asegurado}
                   </p>
                   <p>
-                    <strong>NIT:</strong> {recibo.nit}
+                    <strong>{t('express.liquidador.preview.nit')}</strong> {recibo.nit}
                   </p>
                   <p>
-                    <strong>Póliza:</strong> {recibo.poliza}
+                    <strong>{t('express.liquidador.preview.policy')}</strong> {recibo.poliza}
                   </p>
                   <p>
-                    <strong>Fecha de siniestro:</strong> {recibo.fecha}
+                    <strong>{t('express.liquidador.preview.claimDate')}</strong> {recibo.fecha}
                   </p>
                   <p className="mt-4 text-justify leading-relaxed">{recibo.parrafoPrincipal}</p>
                   <p className="text-justify text-xs text-gray-500">
-                    Cláusulas de paz y salvo, subrogación y firma incluidas en el documento Word.
+                    {t('express.liquidador.preview.wordDisclaimer')}
                   </p>
                   <p className="mt-4">
-                    <strong>Valor en letras:</strong> {recibo.valorLetras}
+                    <strong>{t('express.liquidador.preview.amountInWords')}</strong> {recibo.valorLetras}
                   </p>
                   <p>
-                    <strong>Valor numérico:</strong> ${recibo.valor}
+                    <strong>{t('express.liquidador.preview.numericAmount')}</strong> ${recibo.valor}
                   </p>
                 </div>
               )}
@@ -1272,33 +1287,33 @@ export default function LiquidadorExpress({
               {mostrarVistaPrevia === 'reembolso' && (
                 <div className="space-y-2 font-body text-sm text-gray-800 dark:text-gray-200">
                   <p>
-                    <strong>STRO:</strong> {previewReembolso.reclamo}
+                    <strong>{t('express.liquidador.preview.stro')}</strong> {previewReembolso.reclamo}
                   </p>
                   <p>
-                    <strong>ZC:</strong> {previewReembolso.zc}
+                    <strong>{t('express.liquidador.preview.zc')}</strong> {previewReembolso.zc}
                   </p>
                   <p>
-                    <strong>Asegurado:</strong> {previewReembolso.asegurado}
+                    <strong>{t('express.liquidador.preview.insured')}</strong> {previewReembolso.asegurado}
                   </p>
                   <p>
-                    <strong>Póliza:</strong> {previewReembolso.poliza}
+                    <strong>{t('express.liquidador.preview.policy')}</strong> {previewReembolso.poliza}
                   </p>
                   <p className="mt-4 text-justify leading-relaxed">
-                    <strong>Descripción del siniestro:</strong> {previewReembolso.descripcion}
+                    <strong>{t('express.liquidador.preview.claimDescription')}</strong> {previewReembolso.descripcion}
                   </p>
                   <p className="mt-3">
-                    <strong>Valor total del reclamo:</strong> {previewReembolso.totalReclamoLetras} ($
+                    <strong>{t('express.liquidador.preview.totalClaimAmount')}</strong> {previewReembolso.totalReclamoLetras} ($
                     {previewReembolso.totalReclamo})
                   </p>
                   <p>
-                    <strong>Deducible:</strong> ${previewReembolso.deducible}
+                    <strong>{t('express.liquidador.preview.deductible')}</strong> ${previewReembolso.deducible}
                   </p>
                   <p>
-                    <strong>Valor a indemnizar:</strong> {previewReembolso.totalIndemnizarLetras} ($
+                    <strong>{t('express.liquidador.preview.indemnityAmount')}</strong> {previewReembolso.totalIndemnizarLetras} ($
                     {previewReembolso.totalIndemnizar})
                   </p>
                   <p className="text-justify text-xs text-gray-500">
-                    El Word completo incluye cláusulas contractuales y firmas de la plantilla.
+                    {t('express.liquidador.preview.reimbursementWordDisclaimer')}
                   </p>
                 </div>
               )}
@@ -1306,43 +1321,43 @@ export default function LiquidadorExpress({
               {mostrarVistaPrevia === 'transaccion' && (
                 <div className="space-y-2 font-body text-sm text-gray-800 dark:text-gray-200">
                   <p>
-                    <strong>Póliza:</strong> {previewTransaccion.poliza}
+                    <strong>{t('express.liquidador.preview.policy')}</strong> {previewTransaccion.poliza}
                   </p>
                   <p>
-                    <strong>Siniestro:</strong> {previewTransaccion.siniestro}
+                    <strong>{t('express.liquidador.preview.claimNumberColon')}</strong> {previewTransaccion.siniestro}
                   </p>
                   <p>
-                    <strong>Tomador:</strong> {previewTransaccion.tomador}
+                    <strong>{t('express.liquidador.preview.policyHolder')}</strong> {previewTransaccion.tomador}
                   </p>
                   <p>
-                    <strong>Reclamante:</strong> {previewTransaccion.reclamante}
+                    <strong>{t('express.liquidador.preview.claimant')}</strong> {previewTransaccion.reclamante}
                   </p>
                   <p>
-                    <strong>Documento:</strong> {previewTransaccion.nit}
+                    <strong>{t('express.liquidador.preview.document')}</strong> {previewTransaccion.nit}
                   </p>
                   <p>
-                    <strong>Vigencia:</strong> {previewTransaccion.vigenciaDesde} al{' '}
+                    <strong>{t('express.liquidador.preview.term')}</strong> {previewTransaccion.vigenciaDesde} {t('express.liquidador.preview.termTo')}{' '}
                     {previewTransaccion.vigenciaHasta}
                   </p>
                   <p>
-                    <strong>Fecha siniestro:</strong> {previewTransaccion.fechaSiniestro}
+                    <strong>{t('express.liquidador.preview.claimDateShort')}</strong> {previewTransaccion.fechaSiniestro}
                   </p>
                   <p className="mt-4 text-justify leading-relaxed">
-                    <strong>Hechos:</strong> {previewTransaccion.descripcion}
+                    <strong>{t('express.liquidador.preview.facts')}</strong> {previewTransaccion.descripcion}
                   </p>
                   <p>
-                    <strong>Oficina / detalle:</strong> {previewTransaccion.oficina}
+                    <strong>{t('express.liquidador.preview.office')}</strong> {previewTransaccion.oficina}
                   </p>
                   <p className="mt-3">
-                    <strong>Valor a indemnizar:</strong> {previewTransaccion.totalIndemnizarLetras} ($
+                    <strong>{t('express.liquidador.preview.indemnityAmount')}</strong> {previewTransaccion.totalIndemnizarLetras} ($
                     {previewTransaccion.totalIndemnizar})
                   </p>
                   <p>
-                    <strong>Deducible:</strong> {previewTransaccion.deducibleLetras} ($
+                    <strong>{t('express.liquidador.preview.deductibleAmount')}</strong> {previewTransaccion.deducibleLetras} ($
                     {previewTransaccion.deducible})
                   </p>
                   <p className="text-justify text-xs text-gray-500">
-                    El Word completo incluye consideraciones, acuerdo y firmas de la plantilla.
+                    {t('express.liquidador.preview.transactionWordDisclaimer')}
                   </p>
                 </div>
               )}
@@ -1359,7 +1374,7 @@ export default function LiquidadorExpress({
                   onClick={cerrarVistaPrevia}
                   disabled={descargandoWord}
                 >
-                  Cerrar
+                  {t('express.liquidador.close')}
                 </button>
                 {mostrarVistaPrevia === 'recibo' && (
                   <button
@@ -1369,7 +1384,7 @@ export default function LiquidadorExpress({
                     disabled={descargandoWord}
                   >
                     <FaFileWord />
-                    {descargandoWord ? 'Generando…' : 'Descargar Recibo Word'}
+                    {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadReceiptWord')}
                   </button>
                 )}
                 {mostrarVistaPrevia === 'reembolso' && (
@@ -1380,7 +1395,7 @@ export default function LiquidadorExpress({
                     disabled={descargandoWord}
                   >
                     <FaFileWord />
-                    {descargandoWord ? 'Generando…' : 'Descargar Contrato reembolso'}
+                    {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadReimbursementContract')}
                   </button>
                 )}
                 {mostrarVistaPrevia === 'transaccion' && (
@@ -1391,7 +1406,7 @@ export default function LiquidadorExpress({
                     disabled={descargandoWord}
                   >
                     <FaFileWord />
-                    {descargandoWord ? 'Generando…' : 'Descargar Contrato transacción'}
+                    {descargandoWord ? t('express.liquidador.generating') : t('express.liquidador.downloadTransactionContract')}
                   </button>
                 )}
               </div>

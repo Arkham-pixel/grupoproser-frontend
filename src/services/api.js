@@ -261,6 +261,8 @@ return currentToken; // Devolver token actual para funcionar offline
 // Interceptor para agregar automáticamente el token de autorización y renovarlo si es necesario
 api.interceptors.request.use(
   async (config) => {
+    config.headers['Accept-Language'] = localStorage.getItem('appLocale') || 'es';
+
     // Verificar si la sesión ha excedido las 8 horas ANTES de hacer cualquier petición
     // Esta función también muestra logs informativos del estado de la sesión
     const sessionClosed = await checkAndCloseSessionIfExpired();

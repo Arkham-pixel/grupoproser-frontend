@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig';
 import { FaPlus, FaEdit, FaTrash, FaUserTie, FaSave, FaTimes, FaUserCircle } from 'react-icons/fa';
 
 export default function GestionResponsables() {
+  const { t } = useTranslation();
   const [responsables, setResponsables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,7 +54,7 @@ export default function GestionResponsables() {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!resResponsables.ok) throw new Error('Error al cargar responsables');
+      if (!resResponsables.ok) throw new Error(t('admin.ui.responsables.loadError'));
       const dataResponsables = await resResponsables.json();
       // Manejar ambos formatos: {success: true, data: [...]} o [...]
       if (dataResponsables.success && Array.isArray(dataResponsables.data)) {
@@ -97,7 +99,7 @@ export default function GestionResponsables() {
     setError(null);
 
     if (!formResponsable.nmbrRespnsble || !formResponsable.codiRespnsble) {
-      alert('El código y el nombre son requeridos');
+      alert(t('admin.ui.responsables.requiredFields'));
       return;
     }
 
@@ -121,22 +123,22 @@ export default function GestionResponsables() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al guardar responsable');
+        throw new Error(data.error || data.message || t('admin.ui.responsables.saveError'));
       }
 
-      alert(responsableEditando ? 'Responsable actualizado exitosamente' : 'Responsable creado exitosamente');
+      alert(responsableEditando ? t('admin.ui.responsables.updated') : t('admin.ui.responsables.created'));
       setMostrarFormResponsable(false);
       setResponsableEditando(null);
       cargarDatos();
     } catch (err) {
       console.error('Error guardando responsable:', err);
       setError(err.message);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.responsables.errorPrefix', { message: err.message }));
     }
   };
 
   const eliminarResponsable = async (id) => {
-    if (!window.confirm('¿Está seguro de eliminar este responsable? Esta acción no se puede deshacer.')) {
+    if (!window.confirm(t('admin.ui.responsables.confirmDelete'))) {
       return;
     }
 
@@ -152,14 +154,14 @@ export default function GestionResponsables() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al eliminar responsable');
+        throw new Error(data.error || data.message || t('admin.ui.responsables.deleteError'));
       }
 
-      alert('Responsable eliminado exitosamente');
+      alert(t('admin.ui.responsables.deleted'));
       cargarDatos();
     } catch (err) {
       console.error('Error eliminando responsable:', err);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.responsables.errorPrefix', { message: err.message }));
     }
   };
 
@@ -168,8 +170,8 @@ export default function GestionResponsables() {
       <div className="min-h-screen p-4 sm:p-6" style={{ backgroundColor: '#F5F5F7' }}>
         <div className="max-w-4xl mx-auto">
           <div className="rounded-fenix shadow-lg border p-6" style={{ backgroundColor: '#FFFFFF', borderColor: '#DDDDDD' }}>
-            <h2 className="text-xl font-bold mb-2 font-heading" style={{ color: '#DC2626' }}>Acceso Denegado</h2>
-            <p className="font-body" style={{ color: '#1C1C1C' }}>No tienes permisos para acceder a esta función. Se requieren permisos de administrador o soporte.</p>
+            <h2 className="text-xl font-bold mb-2 font-heading" style={{ color: '#DC2626' }}>{t('admin.ui.responsables.accessDeniedTitle')}</h2>
+            <p className="font-body" style={{ color: '#1C1C1C' }}>{t('admin.ui.responsables.accessDeniedMessage')}</p>
           </div>
         </div>
       </div>
@@ -180,7 +182,7 @@ export default function GestionResponsables() {
     return (
       <div className="min-h-screen p-4 sm:p-6 flex items-center justify-center" style={{ backgroundColor: '#fbf3e6' }}>
         <div className="text-center">
-          <div className="text-2xl font-heading" style={{ color: '#1C1C1C' }}>Cargando...</div>
+          <div className="text-2xl font-heading" style={{ color: '#1C1C1C' }}>{t('admin.ui.responsables.loading')}</div>
         </div>
       </div>
     );
@@ -191,7 +193,7 @@ export default function GestionResponsables() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-3xl sm:text-4xl font-bold font-heading" style={{ color: '#1C1C1C' }}>Gestión de Responsables</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold font-heading" style={{ color: '#1C1C1C' }}>{t('admin.ui.responsables.title')}</h1>
         <button
           onClick={() => abrirFormResponsable()}
             className="text-white px-4 py-2.5 rounded-fenix hover:shadow-md transition-all duration-200 flex items-center gap-2 font-body font-medium"
@@ -209,7 +211,7 @@ export default function GestionResponsables() {
               e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
             }}
         >
-          <FaPlus /> Nuevo Responsable
+          <FaPlus /> {t('admin.ui.responsables.newResponsible')}
         </button>
       </div>
 
@@ -225,7 +227,7 @@ export default function GestionResponsables() {
             <div className="col-span-full">
               <div className="rounded-fenix shadow-lg border p-8 text-center" style={{ backgroundColor: '#FFFFFF', borderColor: '#DDDDDD' }}>
                 <div className="text-4xl mb-4">👤</div>
-                <p className="font-body" style={{ color: '#1C1C1C' }}>No hay responsables registrados</p>
+                <p className="font-body" style={{ color: '#1C1C1C' }}>{t('admin.ui.responsables.empty')}</p>
               </div>
             </div>
           ) : responsables.map((responsable) => {
@@ -266,7 +268,7 @@ export default function GestionResponsables() {
                       <h2 className="text-xl font-bold mb-1 font-heading" style={{ color: '#1C1C1C' }}>{responsable.nmbrRespnsble}</h2>
                       <span className="text-sm font-body" style={{ color: '#6B7280' }}>({responsable.codiRespnsble})</span>
                       {responsable.nombreUsuario && (
-                        <p className="text-xs mt-1 font-body" style={{ color: '#DC2626' }}>Usuario: {responsable.nombreUsuario}</p>
+                        <p className="text-xs mt-1 font-body" style={{ color: '#DC2626' }}>{t('admin.ui.responsables.userLabel', { name: responsable.nombreUsuario })}</p>
                       )}
                     </div>
                     
@@ -305,9 +307,9 @@ export default function GestionResponsables() {
                         e.currentTarget.style.background = 'rgba(220, 38, 38, 0.1)';
                         e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
                       }}
-                  title="Editar responsable"
+                  title={t('admin.ui.responsables.editResponsible')}
                 >
-                      <FaEdit /> Editar
+                      <FaEdit /> {t('admin.ui.responsables.edit')}
                 </button>
                 <button
                   onClick={() => eliminarResponsable(responsable._id)}
@@ -315,7 +317,7 @@ export default function GestionResponsables() {
                       style={{ backgroundColor: 'rgba(220, 38, 38, 0.1)', color: '#1E1E1E', border: '1px solid rgba(220, 38, 38, 0.3)' }}
                       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.15)'; e.currentTarget.style.borderColor = '#DC2626'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.1)'; e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)'; }}
-                  title="Eliminar responsable"
+                  title={t('admin.ui.responsables.deleteResponsible')}
                 >
                   <FaTrash />
                 </button>
@@ -333,11 +335,11 @@ export default function GestionResponsables() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="rounded-fenix shadow-2xl p-6 w-full max-w-md relative border" style={{ backgroundColor: '#FFFFFF', borderColor: '#DDDDDD' }}>
               <h2 className="text-2xl font-bold mb-6 font-heading" style={{ color: '#1C1C1C' }}>
-              {responsableEditando ? 'Editar Responsable' : 'Nuevo Responsable'}
+              {responsableEditando ? t('admin.ui.responsables.editTitle') : t('admin.ui.responsables.newTitle')}
             </h2>
             <form onSubmit={guardarResponsable} className="space-y-4">
               <div>
-                  <label className="block text-sm font-semibold mb-2 font-heading" style={{ color: '#1C1C1C' }}>Código *</label>
+                  <label className="block text-sm font-semibold mb-2 font-heading" style={{ color: '#1C1C1C' }}>{t('admin.ui.responsables.codeRequired')}</label>
                 <input
                   type="text"
                   name="codiRespnsble"
@@ -352,7 +354,7 @@ export default function GestionResponsables() {
                 />
               </div>
               <div>
-                  <label className="block text-sm font-semibold text-fenix-titanio mb-2 font-heading">Nombre *</label>
+                  <label className="block text-sm font-semibold text-fenix-titanio mb-2 font-heading">{t('admin.ui.responsables.nameRequired')}</label>
                 <input
                   type="text"
                   name="nmbrRespnsble"
@@ -366,7 +368,7 @@ export default function GestionResponsables() {
                 />
               </div>
               <div>
-                  <label className="block text-sm font-semibold text-fenix-titanio mb-2 font-heading">Correo</label>
+                  <label className="block text-sm font-semibold text-fenix-titanio mb-2 font-heading">{t('admin.ui.responsables.email')}</label>
                 <input
                   type="email"
                   name="email"
@@ -376,12 +378,12 @@ export default function GestionResponsables() {
                     style={{
                       '--tw-ring-color': '#FF6A00'
                     }}
-                    placeholder="Email del usuario (para conectar con cuenta)"
+                    placeholder={t('admin.ui.responsables.emailPlaceholder')}
                 />
-                  <p className="text-xs text-gray-500 mt-1 font-body">El email debe coincidir con el de una cuenta de usuario para mostrar la foto</p>
+                  <p className="text-xs text-gray-500 mt-1 font-body">{t('admin.ui.responsables.emailHint')}</p>
               </div>
               <div>
-                  <label className="block text-sm font-semibold text-fenix-titanio mb-2 font-heading">Teléfono</label>
+                  <label className="block text-sm font-semibold text-fenix-titanio mb-2 font-heading">{t('admin.ui.responsables.phone')}</label>
                 <input
                   type="text"
                   name="telefono"
@@ -405,7 +407,7 @@ export default function GestionResponsables() {
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F4F3F2'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                 >
-                  <FaTimes /> Cancelar
+                  <FaTimes /> {t('admin.ui.responsables.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -424,7 +426,7 @@ export default function GestionResponsables() {
                       e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.3)';
                     }}
                 >
-                  <FaSave /> {responsableEditando ? 'Actualizar' : 'Guardar'}
+                  <FaSave /> {responsableEditando ? t('admin.ui.responsables.update') : t('admin.ui.responsables.save')}
                 </button>
               </div>
             </form>

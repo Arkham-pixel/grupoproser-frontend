@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import { FaCog, FaFileExcel } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -149,6 +150,7 @@ function cargarColumnasGuardadas() {
 }
 
 const ReporteEquidadFdm = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [casos, setCasos] = useState([]);
   const [filtrados, setFiltrados] = useState([]);
@@ -186,11 +188,11 @@ const ReporteEquidadFdm = () => {
       setFiltrados(data);
     } catch (err) {
       console.error('Error cargando casos Equidad FDM:', err);
-      setError(err.message || 'Error al cargar los casos Equidad FDM');
+      setError(err.message || t('equidadFdm.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     recargar();
@@ -215,14 +217,14 @@ const ReporteEquidadFdm = () => {
     if (!registro?._id) {
       setAviso({
         open: true,
-        titulo: 'No se puede eliminar',
-        mensaje: 'Este registro no tiene identificador válido.',
+        titulo: t('equidadFdm.report.cannotDelete'),
+        mensaje: t('equidadFdm.report.invalidRecord'),
         tipo: 'error',
       });
       return;
     }
     setConfirmEliminar({ open: true, registro });
-  }, []);
+  }, [t]);
 
   const confirmarEliminar = useCallback(async () => {
     const registro = confirmEliminar.registro;
@@ -236,8 +238,8 @@ const ReporteEquidadFdm = () => {
       setConfirmEliminar({ open: false, registro: null });
       setAviso({
         open: true,
-        titulo: 'Eliminado',
-        mensaje: `El caso ${registro.consecutivo || registro.nombre || ''} fue eliminado correctamente.`,
+        titulo: t('equidadFdm.report.deleted'),
+        mensaje: t('equidadFdm.report.caseDeleted', { caseNumber: registro.consecutivo || registro.nombre || '' }),
         tipo: 'success',
       });
     } catch (err) {
@@ -245,14 +247,14 @@ const ReporteEquidadFdm = () => {
       setConfirmEliminar({ open: false, registro: null });
       setAviso({
         open: true,
-        titulo: 'Error al eliminar',
-        mensaje: err.message || 'No se pudo eliminar el registro.',
+        titulo: t('equidadFdm.report.deleteError'),
+        mensaje: err.message || t('equidadFdm.report.deleteErrorMessage'),
         tipo: 'error',
       });
     } finally {
       setEliminando(false);
     }
-  }, [confirmEliminar.registro]);
+  }, [confirmEliminar.registro, t]);
 
   const municipios = useMemo(() => buildOpcionesFiltro(casos, 'municipio'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
@@ -330,8 +332,8 @@ const ReporteEquidadFdm = () => {
     if (filtrados.length === 0) {
       setAviso({
         open: true,
-        titulo: 'Sin datos',
-        mensaje: 'No hay datos para exportar con los filtros actuales.',
+        titulo: t('equidadFdm.report.noData'),
+        mensaje: t('equidadFdm.report.noDataExport'),
         tipo: 'warning',
       });
       return;
@@ -364,8 +366,8 @@ const ReporteEquidadFdm = () => {
       console.error('Error exportando Excel Equidad FDM:', err);
       setAviso({
         open: true,
-        titulo: 'Error al exportar',
-        mensaje: 'No se pudo generar el Excel. Recargue la página e intente de nuevo.',
+        titulo: t('equidadFdm.report.exportError'),
+        mensaje: t('equidadFdm.report.exportErrorMessage'),
         tipo: 'error',
       });
     }
@@ -436,14 +438,14 @@ const ReporteEquidadFdm = () => {
     <div className={`${expressScope} ${fdmReportRoot}`}>
       <div className={fdmPageWrapWide}>
         <FdmPageHeader
-          title="Reporte Equidad FDM"
-          subtitle="Visualiza, filtra y exporta los casos de Fundación de la Mujer registrados en el sistema."
+          title={t('equidadFdm.report.title')}
+          subtitle={t('equidadFdm.report.subtitle')}
           activePath="/equidad-fdm/reporte"
           actions={
             <>
               <button type="button" onClick={abrirPersonalizarColumnas} className={expressBtnSecondary}>
                 <FaCog />
-                Columnas
+                {t('equidadFdm.report.columns')}
               </button>
               <button
                 type="button"
@@ -452,25 +454,25 @@ const ReporteEquidadFdm = () => {
                 disabled={loading || filtrados.length === 0}
               >
                 <FaFileExcel />
-                Exportar Excel
+                {t('equidadFdm.report.exportExcel')}
               </button>
             </>
           }
         />
 
-        <ExpressFilterSection title="Filtros de búsqueda" showClear={filtrosActivos} onClear={limpiarFiltros}>
+        <ExpressFilterSection title={t('equidadFdm.report.filters')} showClear={filtrosActivos} onClear={limpiarFiltros}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Campo label="Buscar">
+            <Campo label={t('common.search')}>
               <InputFenix
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Nombre, cédula, caso, siniestro…"
+                placeholder={t('equidadFdm.report.searchPlaceholder')}
               />
             </Campo>
-            <Campo label="Municipio">
+            <Campo label={t('equidadFdm.fields.municipality')}>
               <SelectFenix value={filtroMunicipio} onChange={(e) => setFiltroMunicipio(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('equidadFdm.report.all')}</option>
                 {municipios.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
@@ -478,9 +480,9 @@ const ReporteEquidadFdm = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Ajustador">
+            <Campo label={t('equidadFdm.fields.adjuster')}>
               <SelectFenix value={filtroAjustador} onChange={(e) => setFiltroAjustador(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('equidadFdm.report.all')}</option>
                 {ajustadores.map((a) => (
                   <option key={a.value} value={a.value}>
                     {a.label}
@@ -488,9 +490,9 @@ const ReporteEquidadFdm = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Estado">
+            <Campo label={t('equidadFdm.fields.status')}>
               <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('equidadFdm.report.all')}</option>
                 {estados.map((es) => (
                   <option key={es.value} value={es.value}>
                     {es.label}
@@ -498,19 +500,19 @@ const ReporteEquidadFdm = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Fecha desde">
+            <Campo label={t('equidadFdm.report.from')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>
-            <Campo label="Fecha hasta">
+            <Campo label={t('equidadFdm.report.to')}>
               <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </Campo>
           </div>
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading
-              ? 'Cargando…'
+              ? t('common.loading')
               : filtrados.length === 0
-                ? '0 registros'
-                : `${filtrados.length} registro(s) · mostrando ${indiceDesde}–${indiceHasta} (página ${paginaActual} de ${totalPaginas})`}
+                ? t('equidadFdm.report.zeroRecords')
+                : t('equidadFdm.report.recordsSummary', { count: filtrados.length, from: indiceDesde, to: indiceHasta, page: paginaActual, totalPages: totalPaginas })}
           </p>
         </ExpressFilterSection>
 
@@ -520,7 +522,7 @@ const ReporteEquidadFdm = () => {
               <thead className={expressTableHead}>
                 <tr>
                   <th scope="col" className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
-                    Acciones
+                    {t('equidadFdm.report.actions')}
                   </th>
                   {columnasVisibles.map((col) => (
                     <th key={col.clave} scope="col" className="px-4 py-3">
@@ -536,7 +538,7 @@ const ReporteEquidadFdm = () => {
                       colSpan={columnasVisibles.length + 1}
                       className="px-4 py-8 text-center font-body text-sm text-gray-500"
                     >
-                      Cargando casos Equidad FDM…
+                      {t('equidadFdm.report.loadingCases')}
                     </td>
                   </tr>
                 ) : error ? (
@@ -554,7 +556,7 @@ const ReporteEquidadFdm = () => {
                       colSpan={columnasVisibles.length + 1}
                       className="px-4 py-8 text-center font-body text-sm text-gray-500"
                     >
-                      No se encontraron casos con los filtros seleccionados.
+                      {t('equidadFdm.report.noCases')}
                     </td>
                   </tr>
                 ) : (
@@ -595,7 +597,7 @@ const ReporteEquidadFdm = () => {
           {!loading && !error && filtrados.length > 0 && totalPaginas > 1 && (
             <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800 sm:flex-row">
               <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-                Página {paginaActual} de {totalPaginas}
+                {t('equidadFdm.report.pageOf', { page: paginaActual, total: totalPaginas })}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -604,7 +606,7 @@ const ReporteEquidadFdm = () => {
                   disabled={paginaActual <= 1}
                   onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
                 >
-                  Anterior
+                  {t('equidadFdm.report.previous')}
                 </button>
                 {Array.from({ length: totalPaginas }, (_, i) => i + 1)
                   .filter((n) => {
@@ -636,7 +638,7 @@ const ReporteEquidadFdm = () => {
                   disabled={paginaActual >= totalPaginas}
                   onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
                 >
-                  Siguiente
+                  {t('equidadFdm.report.next')}
                 </button>
               </div>
             </div>
@@ -647,12 +649,11 @@ const ReporteEquidadFdm = () => {
       <ExpressModal
         open={modalColumnasOpen}
         onClose={() => setModalColumnasOpen(false)}
-        title="Personalizar columnas"
+        title={t('equidadFdm.report.customizeColumns')}
       >
         <div className="p-4 sm:p-6">
           <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-            Arrastra para ordenar. Marca o desmarca para mostrar u ocultar columnas. La configuración se guarda en
-            este navegador.
+            {t('equidadFdm.report.columnsHelp')}
           </p>
           <div className="mb-4 max-h-60 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700 sm:max-h-80">
             {listaColumnasModal.map((campo, index) => (
@@ -684,16 +685,16 @@ const ReporteEquidadFdm = () => {
           </div>
           <div className="flex flex-col justify-end gap-2 sm:flex-row">
             <button type="button" className={expressBtnSecondary} onClick={() => setModalColumnasOpen(false)}>
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button type="button" className={expressBtnPrimary} onClick={guardarColumnasPersonalizadas}>
-              Guardar
+              {t('common.save')}
             </button>
           </div>
         </div>
       </ExpressModal>
 
-      <ExpressModal open={modalAbierto} onClose={cerrarModalEdicion} title="Gestionar caso Equidad FDM" wide>
+      <ExpressModal open={modalAbierto} onClose={cerrarModalEdicion} title={t('equidadFdm.report.manageCase')} wide>
         <div className="p-2 sm:p-4">
           <FormularioEquidadFdm
             initialData={registroEditar}
@@ -707,18 +708,16 @@ const ReporteEquidadFdm = () => {
       <ExpressAvisoModal
         open={confirmEliminar.open}
         onClose={() => !eliminando && setConfirmEliminar({ open: false, registro: null })}
-        titulo="Eliminar caso Equidad FDM"
+        titulo={t('equidadFdm.report.deleteCase')}
         tipo="warning"
         mensaje={
           confirmEliminar.registro
-            ? `¿Confirma eliminar el caso ${
-                confirmEliminar.registro.consecutivo || confirmEliminar.registro.nombre || ''
-              }? Esta acción no se puede deshacer.`
+            ? t('equidadFdm.report.deleteConfirm', { caseNumber: confirmEliminar.registro.consecutivo || confirmEliminar.registro.nombre || '' })
             : ''
         }
         onConfirm={confirmarEliminar}
-        confirmTexto="Eliminar"
-        cancelTexto="Cancelar"
+        confirmTexto={t('equidadFdm.report.delete')}
+        cancelTexto={t('common.cancel')}
         confirmando={eliminando}
       />
 

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { FaExclamationTriangle } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { obtenerAlertasCasoExpress } from '../../services/alertasExpressService.js';
 
 export default function AlertasCasoExpressPanel({ casoId, consecutivo }) {
+  const { t } = useTranslation();
   const [alertas, setAlertas] = useState(null);
   const [loading, setLoading] = useState(false);
   const identificador = casoId || consecutivo;
@@ -39,8 +41,8 @@ export default function AlertasCasoExpressPanel({ casoId, consecutivo }) {
         <FaExclamationTriangle className="mt-0.5 shrink-0 text-fenix-primario" />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-gray-900 dark:text-white">
-            {alertas.totalAlertas} alerta(s) Express
-            {altas.length > 0 ? ` · ${altas.length} prioridad alta` : ''}
+            {t('express.alerts.caseAlerts', { count: alertas.totalAlertas })}
+            {altas.length > 0 ? ` · ${t('express.alerts.highPriority', { count: altas.length })}` : ''}
           </p>
           <ul className="mt-2 space-y-1.5">
             {(alertas.alertas || []).slice(0, 4).map((a, i) => (
@@ -50,7 +52,7 @@ export default function AlertasCasoExpressPanel({ casoId, consecutivo }) {
             ))}
             {(alertas.alertas || []).length > 4 && (
               <li className="text-xs text-gray-500">
-                + {alertas.alertas.length - 4} más en Alertas Express
+                {t('express.alerts.moreAlerts', { count: alertas.alertas.length - 4 })}
               </li>
             )}
           </ul>

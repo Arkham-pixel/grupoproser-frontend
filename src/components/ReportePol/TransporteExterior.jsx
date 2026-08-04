@@ -1,4 +1,9 @@
-import React from "react";
+import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import SelectBuscable from "../SelectBuscable";
+
+const selectCls =
+  "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent";
 
 export default function TransporteExterior({
   origen, setOrigen,
@@ -10,76 +15,93 @@ export default function TransporteExterior({
   puertoArribo, setPuertoArribo,
   destinoFinal, setDestinoFinal
 }) {
+  const { t } = useTranslation();
+
+  const opcionesOrigen = useMemo(
+    () => [
+      { value: "COLOMBIA", label: t("pol.ui.transporteExterior.origenes.colombia") },
+      { value: "MEXICO", label: t("pol.ui.transporteExterior.origenes.mexico") },
+      { value: "ESTADOS UNIDOS", label: t("pol.ui.transporteExterior.origenes.estadosUnidos") },
+      { value: "CHINA", label: t("pol.ui.transporteExterior.origenes.china") },
+      { value: "ALEMANIA", label: t("pol.ui.transporteExterior.origenes.alemania") },
+      { value: "JAPON", label: t("pol.ui.transporteExterior.origenes.japon") },
+      { value: "OTRO", label: t("pol.ui.transporteExterior.origenes.otro") },
+    ],
+    [t]
+  );
+
+  const opcionesTipo = useMemo(
+    () => [
+      { value: "MARITIMO", label: t("pol.ui.transporteExterior.tipos.maritimo") },
+      { value: "AEREO", label: t("pol.ui.transporteExterior.tipos.aereo") },
+      { value: "TERRESTRE", label: t("pol.ui.transporteExterior.tipos.terrestre") },
+      { value: "FERROVIARIO", label: t("pol.ui.transporteExterior.tipos.ferroviario") },
+      { value: "MULTIMODAL", label: t("pol.ui.transporteExterior.tipos.multimodal") },
+    ],
+    [t]
+  );
+
   return (
     <div className="bg-gray-50 p-6 rounded-lg mb-6 border-l-4 border-purple-500">
       <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
         <span className="bg-purple-500 text-white p-2 rounded-lg mr-3">🚢</span>
-        TRANSPORTE EXTERIOR
+        {t('pol.ui.transporteExterior.title')}
       </h2>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Primera fila - 4 campos */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Origen / Origin *
+            {t('pol.ui.transporteExterior.origen')}
           </label>
-          <select
+          <SelectBuscable
+            options={opcionesOrigen}
             value={origen}
-            onChange={(e) => setOrigen(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            <option value="">Seleccionar origen...</option>
-            <option value="COLOMBIA">COLOMBIA</option>
-            <option value="MEXICO">MEXICO</option>
-            <option value="ESTADOS UNIDOS">ESTADOS UNIDOS</option>
-            <option value="CHINA">CHINA</option>
-            <option value="ALEMANIA">ALEMANIA</option>
-            <option value="JAPON">JAPON</option>
-            <option value="OTRO">OTRO</option>
-          </select>
-        </div>
-        
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Tipo de Transporte / Type of Transport *
-          </label>
-          <select
-            value={tipoTransporte}
-            onChange={(e) => setTipoTransporte(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-          >
-            <option value="">Seleccionar tipo...</option>
-            <option value="MARITIMO">MARITIMO</option>
-            <option value="AEREO">AEREO</option>
-            <option value="TERRESTRE">TERRESTRE</option>
-            <option value="FERROVIARIO">FERROVIARIO</option>
-            <option value="MULTIMODAL">MULTIMODAL</option>
-          </select>
-        </div>
-        
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Motonave / Vessel *
-          </label>
-          <input
-            type="text"
-            value={motonave}
-            onChange={(e) => setMotonave(e.target.value)}
-            placeholder="Ej: VANTAGE V.2519W"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            onChange={setOrigen}
+            placeholder={t('pol.ui.transporteExterior.selectOrigen')}
+            searchPlaceholder={t('pol.ui.common.searchList')}
+            noResultsText={t('pol.ui.common.noResults')}
+            buttonClassName={selectCls}
           />
         </div>
         
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Registro / Register *
+            {t('pol.ui.transporteExterior.tipoTransporte')}
+          </label>
+          <SelectBuscable
+            options={opcionesTipo}
+            value={tipoTransporte}
+            onChange={setTipoTransporte}
+            placeholder={t('pol.ui.common.selectType')}
+            searchPlaceholder={t('pol.ui.common.searchList')}
+            noResultsText={t('pol.ui.common.noResults')}
+            buttonClassName={selectCls}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            {t('pol.ui.transporteExterior.motonave')}
+          </label>
+          <input
+            type="text"
+            value={motonave}
+            onChange={(e) => setMotonave(e.target.value)}
+            placeholder={t('pol.ui.transporteExterior.motonavePlaceholder')}
+            className={selectCls}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            {t('pol.ui.transporteExterior.registro')}
           </label>
           <input
             type="text"
             value={registro}
             onChange={(e) => setRegistro(e.target.value)}
-            placeholder="Ej: 1"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            placeholder={t('pol.ui.transporteExterior.registroPlaceholder')}
+            className={selectCls}
           />
         </div>
       </div>
@@ -88,52 +110,52 @@ export default function TransporteExterior({
         {/* Segunda fila - 4 campos */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Doc. de Transporte / Doc. of Transport *
+            {t('pol.ui.transporteExterior.docTransporte')}
           </label>
           <input
             type="text"
             value={docTransporte}
             onChange={(e) => setDocTransporte(e.target.value)}
-            placeholder="Ej: BOGM31506700"
+            placeholder={t('pol.ui.transporteExterior.docTransportePlaceholder')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
         
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Puerto Origen / Port of Loading *
+            {t('pol.ui.transporteExterior.puertoOrigen')}
           </label>
           <input
             type="text"
             value={puertoOrigen}
             onChange={(e) => setPuertoOrigen(e.target.value)}
-            placeholder="Ej: BUENAVENTURA"
+            placeholder={t('pol.ui.transporteExterior.puertoOrigenPlaceholder')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
         
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Puerto Arribo / Port of Discharge *
+            {t('pol.ui.transporteExterior.puertoArribo')}
           </label>
           <input
             type="text"
             value={puertoArribo}
             onChange={(e) => setPuertoArribo(e.target.value)}
-            placeholder="Ej: LAZARO CARDENAS- ARGENTINA"
+            placeholder={t('pol.ui.transporteExterior.puertoArriboPlaceholder')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
         
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Destino Final / Final Place *
+            {t('pol.ui.transporteExterior.destinoFinal')}
           </label>
           <input
             type="text"
             value={destinoFinal}
             onChange={(e) => setDestinoFinal(e.target.value)}
-            placeholder="Ej: MEXICO"
+            placeholder={t('pol.ui.transporteExterior.destinoFinalPlaceholder')}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           />
         </div>
@@ -142,9 +164,9 @@ export default function TransporteExterior({
       {/* Información adicional */}
       <div className="mt-4 p-3 bg-purple-50 rounded-md border border-purple-200">
         <p className="text-sm text-purple-800">
-          <strong>💡 Nota:</strong> Los campos marcados con * son obligatorios para generar el documento POL.
+          <strong>💡 {t('pol.ui.common.noteLabel')}</strong> {t('pol.ui.transporteExterior.note')}
         </p>
       </div>
     </div>
   );
-} 
+}

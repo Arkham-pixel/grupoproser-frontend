@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { FaBook, FaLightbulb, FaCheck, FaCopy } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function AntecedentesAjuste({ formData, onInputChange, numeroSeccion = 1 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -32,13 +34,13 @@ export default function AntecedentesAjuste({ formData, onInputChange, numeroSecc
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#93C5FD' : '#2563EB' }}
           />
-          {numeroSeccion}. ANTECEDENTES
+          {numeroSeccion}. {t('adjustment.ui.sections.antecedentes.title')}
         </h2>
         <p 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          Describa los antecedentes del siniestro
+          {t('adjustment.ui.sections.antecedentes.subtitle')}
         </p>
       </div>
 
@@ -54,7 +56,7 @@ export default function AntecedentesAjuste({ formData, onInputChange, numeroSecc
           className="block text-sm font-medium mb-2"
           style={{ color: textPrimary }}
         >
-          Descripción de Antecedentes
+          {t('adjustment.ui.sections.antecedentes.label')}
         </label>
         <textarea
           value={formData.antecedentes || ''}
@@ -67,13 +69,13 @@ export default function AntecedentesAjuste({ formData, onInputChange, numeroSecc
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Escribe tu idea inicial aquí. Por ejemplo: 'El edificio X tubo un incendio ocasionado por una falla electrica a la hora 11 am segun testigo daños tal tal tal'"
+          placeholder={t('adjustment.ui.sections.antecedentes.placeholder')}
         />
         <div 
           className="mt-2 text-sm"
           style={{ color: textSecondary }}
         >
-          Mínimo recomendado: 50 palabras para un reporte profesional
+          {t('adjustment.ui.sections.antecedentes.minWords')}
         </div>
       </div>
 
@@ -83,7 +85,7 @@ export default function AntecedentesAjuste({ formData, onInputChange, numeroSecc
         onTextoCambiado={(texto) => onInputChange('antecedentes', texto)}
         contextoFormulario={formData}
         tipoSeccion="antecedentes"
-        tituloSeccion="Antecedentes"
+        tituloSeccion={t('adjustment.ui.sections.antecedentes.iaTitle')}
       />
 
       {/* Validación de calidad */}
@@ -98,22 +100,22 @@ export default function AntecedentesAjuste({ formData, onInputChange, numeroSecc
           className="text-lg font-semibold mb-4 flex items-center"
           style={{ color: sectionYellowText }}
         >
-          📊 Validación de Calidad
+          📊 {t('adjustment.ui.sections.antecedentes.qualityTitle')}
         </h3>
         <div 
           className="text-sm"
           style={{ color: sectionYellowText }}
         >
           <p className="mb-2">
-            <strong>Recomendaciones para antecedentes de calidad:</strong>
+            <strong>{t('adjustment.ui.sections.antecedentes.qualityIntro')}</strong>
           </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Incluya fecha y hora exacta del incidente</li>
-            <li>Mencione la ubicación específica donde ocurrió</li>
-            <li>Describa las circunstancias que rodearon el evento</li>
-            <li>Identifique a las personas involucradas o testigos</li>
-            <li>Mencione los sistemas o protocolos activados</li>
-            <li>Sea objetivo y preciso en la descripción</li>
+            <li>{t('adjustment.ui.sections.antecedentes.tip1')}</li>
+            <li>{t('adjustment.ui.sections.antecedentes.tip2')}</li>
+            <li>{t('adjustment.ui.sections.antecedentes.tip3')}</li>
+            <li>{t('adjustment.ui.sections.antecedentes.tip4')}</li>
+            <li>{t('adjustment.ui.sections.antecedentes.tip5')}</li>
+            <li>{t('adjustment.ui.sections.antecedentes.tip6')}</li>
           </ul>
         </div>
       </div>

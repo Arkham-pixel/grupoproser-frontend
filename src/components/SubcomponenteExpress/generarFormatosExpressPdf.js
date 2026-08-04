@@ -34,12 +34,40 @@ function moneda(valor) {
   return `$ ${formatearMonto(parsearNumero(valor))}`;
 }
 
-function fechaCorta(iso) {
+function textosDocumento(locale = 'es') {
+  return String(locale).toLowerCase().startsWith('en')
+    ? {
+        checklistTitulo: 'EXPRESS CLAIM HANDLING FORM',
+        salvamentoTitulo: 'SALVAGE FORM',
+        property: 'PROPERTY — EXPRESS',
+        fecha: 'Date',
+        poliza: 'Policy',
+        reclamo: 'Claim',
+        asegurado: 'Insured',
+        informacionSalvamento: 'SALVAGE INFORMATION',
+        notas: 'NOTES',
+      }
+    : {
+        checklistTitulo: 'FORMATO ÚNICO ATENCIÓN DE RECLAMOS EXPRESS',
+        salvamentoTitulo: 'FORMATO SALVAMENTOS',
+        property: 'PROPERTY — EXPRESS',
+        fecha: 'Fecha',
+        poliza: 'Póliza',
+        reclamo: 'Reclamo',
+        asegurado: 'Asegurado',
+        informacionSalvamento: 'INFORMACIÓN DE SALVAMENTO',
+        notas: 'NOTAS',
+      };
+}
+
+function fechaCorta(iso, locale = 'es') {
   if (!iso) return '—';
   const raw = String(iso).slice(0, 10);
   const d = new Date(`${raw}T12:00:00`);
   if (Number.isNaN(d.getTime())) return raw;
-  return d.toLocaleDateString('es-CO');
+  return d.toLocaleDateString(
+    String(locale).toLowerCase().startsWith('en') ? 'en-US' : 'es-CO'
+  );
 }
 
 function textoOGuion(valor) {
@@ -175,10 +203,12 @@ function estilosTablaInfo() {
  * PDF del check-list Express (layout alineado al Excel FORMATO-CHECK-LIST + branding Zurich).
  * @returns {Promise<{ blob: Blob, nombre: string, mime: string }>}
  */
-export async function generarChecklistExpressPdfBlob(liquidador = {}, totales = {}) {
+export async function generarChecklistExpressPdfBlob(liquidador = {}, totales = {}, opciones = {}) {
   const enc = liquidador.encabezado || {};
   const chk = liquidador.checklist || {};
   const items = Array.isArray(chk.itemsAnalisis) ? chk.itemsAnalisis : [];
+  const locale = opciones.locale || 'es';
+  const texto = textosDocumento(locale);
   const { totalReclamado, totalAjustado } = totalesItemsAnalisis(items);
   const pct = pctDocumentosMarcados(chk.documentos);
   const nombreAjustador = nombreAjustadorParaDocumento(chk.ajustador) || '—';
@@ -187,13 +217,15 @@ export async function generarChecklistExpressPdfBlob(liquidador = {}, totales = 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const margen = 12;
   let y = await dibujarEncabezadoZurich(doc, {
-    titulo: 'FORMATO ÚNICO ATENCIÓN DE RECLAMOS EXPRESS',
+    titulo: texto.checklistTitulo,
     subtitulo: 'PROPERTY',
   });
 
   const vigencia =
     chk.vigenciaDesde || chk.vigenciaHasta
-      ? `${fechaCorta(chk.vigenciaDesde)} al ${fechaCorta(chk.vigenciaHasta)}`
+      ? `${fechaCorta(chk.vigenciaDesde, locale)} ${
+          String(locale).toLowerCase().startsWith('en') ? 'to' : 'al'
+        } ${fechaCorta(chk.vigenciaHasta, locale)}`
       : '—';
   const salvamentoTxt =
     chk.salvamento === 'Aplica' && chk.salvamentoDetalle
@@ -201,14 +233,14 @@ export async function generarChecklistExpressPdfBlob(liquidador = {}, totales = 
       : textoOGuion(chk.salvamento);
 
   const filasInfo = [
-    ['Fecha', fechaCorta(chk.fecha || new Date().toISOString().slice(0, 10))],
+    [texto.fecha, fechaCorta(chk.fecha || new Date().toISOString().slice(0, 10), locale)],
     ['ZC', textoOGuion(enc.zc)],
     ['STRO', textoOGuion(enc.reclamo)],
     ['Tipo de producto', textoOGuion(chk.tipoProducto)],
-    ['Número de póliza', textoOGuion(enc.poliza)],
-    ['Asegurado', textoOGuion(enc.asegurado)],
+    [String(locale).toLowerCase().startsWith('en') ? 'Policy number' : 'Número de póliza', textoOGuion(enc.poliza)],
+    [texto.asegurado, textoOGuion(enc.asegurado)],
     ['Vigencia de la póliza', vigencia],
-    ['D.O.L', fechaCorta(enc.fechaSiniestro)],
+    ['D.O.L', fechaCorta(enc.fechaSiniestro, locale)],
     ['Riesgo asegurado', textoOGuion(chk.riesgoAsegurado || enc.asegurado)],
     ['Cobertura afectada', textoOGuion(chk.coberturaAfectada || enc.cobertura)],
     ['Garantías', textoOGuion(chk.garantias || 'No Aplica')],
@@ -410,8 +442,8 @@ export async function generarChecklistExpressPdfBlob(liquidador = {}, totales = 
   };
 }
 
-export async function descargarChecklistExpressPdf(liquidador, totales) {
-  const { blob, nombre } = await generarChecklistExpressPdfBlob(liquidador, totales);
+export async function descargarChecklistExpressPdf(liquidador, totales, opciones = {}) {
+  const { blob, nombre } = await generarChecklistExpressPdfBlob(liquidador, totales, opciones);
   saveAs(blob, nombre);
 }
 
@@ -419,26 +451,27 @@ export async function descargarChecklistExpressPdf(liquidador, totales) {
  * PDF del formato de salvamento Express (branding Zurich).
  * @returns {Promise<{ blob: Blob, nombre: string, mime: string }>}
  */
-export async function generarSalvamentoExpressPdfBlob(liquidador = {}) {
+export async function generarSalvamentoExpressPdfBlob(liquidador = {}, opciones = {}) {
   const enc = liquidador.encabezado || {};
   const sal = liquidador.salvamento || {};
   const reclamo = enc.reclamo || 'sin-reclamo';
+  const texto = textosDocumento(opciones.locale);
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const margen = 12;
   let y = await dibujarEncabezadoZurich(doc, {
-    titulo: 'FORMATO SALVAMENTOS',
-    subtitulo: 'PROPERTY — EXPRESS',
+    titulo: texto.salvamentoTitulo,
+    subtitulo: texto.property,
   });
 
   autoTable(doc, {
     startY: y,
     margin: { left: margen, right: margen, bottom: MARGEN_INFERIOR_PIE, top: 12 },
     body: [
-      ['Póliza', textoOGuion(enc.poliza)],
-      ['Reclamo', textoOGuion(enc.reclamo)],
+      [texto.poliza, textoOGuion(enc.poliza)],
+      [texto.reclamo, textoOGuion(enc.reclamo)],
       ['Sub-tarea', textoOGuion(sal.subTarea || 'SALVAMENTO')],
-      ['Asegurado', textoOGuion(enc.asegurado)],
+      [texto.asegurado, textoOGuion(enc.asegurado)],
     ],
     ...estilosTablaInfo(),
   });
@@ -446,7 +479,7 @@ export async function generarSalvamentoExpressPdfBlob(liquidador = {}) {
   autoTable(doc, {
     startY: (doc.lastAutoTable?.finalY || y) + 5,
     margin: { left: margen, right: margen, bottom: MARGEN_INFERIOR_PIE, top: 12 },
-    head: [[{ content: 'INFORMACIÓN DE SALVAMENTO', colSpan: 2, styles: { halign: 'center' } }]],
+    head: [[{ content: texto.informacionSalvamento, colSpan: 2, styles: { halign: 'center' } }]],
     body: [
       ['COMENTARIOS / Descripción', textoOGuion(sal.descripcion)],
       ['Cantidad (unidades)', textoOGuion(sal.cantidad)],
@@ -505,7 +538,7 @@ export async function generarSalvamentoExpressPdfBlob(liquidador = {}) {
   doc.setTextColor(255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('NOTAS', margen + 2, y + 4);
+  doc.text(texto.notas, margen + 2, y + 4);
   doc.setTextColor(0);
   y += 8;
   doc.setFont('helvetica', 'normal');
@@ -527,7 +560,7 @@ export async function generarSalvamentoExpressPdfBlob(liquidador = {}) {
   };
 }
 
-export async function descargarSalvamentoExpressPdf(liquidador) {
-  const { blob, nombre } = await generarSalvamentoExpressPdfBlob(liquidador);
+export async function descargarSalvamentoExpressPdf(liquidador, opciones = {}) {
+  const { blob, nombre } = await generarSalvamentoExpressPdfBlob(liquidador, opciones);
   saveAs(blob, nombre);
 }

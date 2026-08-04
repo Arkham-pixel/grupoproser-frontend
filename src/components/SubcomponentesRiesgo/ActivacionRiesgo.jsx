@@ -1,5 +1,6 @@
 import React from "react";
 import Select from "react-select";
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 // import ciudadesData from "../../data/colombia.json";
 
@@ -7,6 +8,7 @@ import { useTheme } from '../../context/ThemeContext';
 // Elimina ciudadesColombia y usa la prop ciudades
 
 const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = [], responsables = [], clasificaciones = [], ciudades = [], funcionarios = [], cargandoFuncionarios = false }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -66,7 +68,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
         className="text-lg sm:text-xl lg:text-2xl font-bold mb-4 sm:mb-6"
         style={{ color: textPrimary }}
       >
-        Iniciar Inspección
+        {t('inspection.activation.title')}
       </h2>
       <form>
         {/* Grid responsive: 1 columna en móvil, 2 en tablet/desktop */}
@@ -78,7 +80,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Cliente
+                {t('inspection.activation.client')}
               </label>
               <select
                 name="aseguradora"
@@ -96,7 +98,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                   border: `1px solid ${borderColor}`
                 }}
               >
-                <option value="">Selecciona una aseguradora</option>
+                <option value="">{t('inspection.activation.selectInsurer')}</option>
                 {Array.isArray(aseguradoras) && aseguradoras
                   .sort((a, b) => {
                     const nameA = (a.rzonSocial || '').toString().toUpperCase();
@@ -113,7 +115,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Clasificación *
+                {t('inspection.activation.classification')}
               </label>
               <select
                 name="codiClasificacion"
@@ -128,7 +130,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 }}
                 required
               >
-                <option value="">Selecciona clasificación</option>
+                <option value="">{t('inspection.activation.selectClassification')}</option>
                 {Array.isArray(clasificaciones) && clasificaciones
                   .filter(cl => cl.codiIdentificador !== undefined && cl.codiIdentificador !== null)
                   .map((cl) => (
@@ -143,13 +145,13 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Ciudad de Inspección *
+                {t('inspection.activation.inspectionCity')}
               </label>
               <Select
                 options={ciudades}
                 value={formData.ciudad}
                 onChange={handleCiudadChange}
-                placeholder="Selecciona o busca ciudad y departamento"
+                placeholder={t('inspection.activation.cityPlaceholder')}
                 isClearable
                 className="text-xs sm:text-sm"
                 styles={{
@@ -194,7 +196,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Asegurado *
+                {t('inspection.activation.insured')}
               </label>
               <input
                 type="text"
@@ -216,7 +218,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Fecha de Inspección
+                {t('inspection.activation.inspectionDate')}
               </label>
               <input
                 type="date"
@@ -240,7 +242,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Inspector *
+                {t('inspection.activation.inspector')}
               </label>
               <select
                 name="responsable"
@@ -255,7 +257,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 }}
                 required
               >
-                <option value="">Seleccionar...</option>
+                <option value="">{t('common.select')}</option>
                 {Array.isArray(responsables) && responsables.map((resp) => (
                   <option key={resp.codiRespnsble} value={resp.codiRespnsble}>{resp.nmbrRespnsble}</option>
                 ))}
@@ -273,7 +275,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                     borderColor: borderColor,
                     border: `1px solid ${borderColor}`
                   }}
-                  title="Inspector no encontrado en la lista actual"
+                  title={t('inspection.activation.inspectorMissing')}
                 />
               )}
             </div>
@@ -282,7 +284,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Quien Solicita *
+                {t('inspection.activation.requester')}
               </label>
               {!formData.aseguradora ? (
                 <div 
@@ -294,14 +296,14 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  Primero selecciona una aseguradora
+                  {t('inspection.activation.selectClientFirst')}
                 </div>
               ) : (
                 <Select
                   options={funcionarios}
                   value={formData.quienSolicita}
                   onChange={handleSolicitaChange}
-                  placeholder={cargandoFuncionarios ? "Cargando funcionarios..." : "Selecciona o busca quien solicita"}
+                  placeholder={cargandoFuncionarios ? t('inspection.activation.loadingRequesters') : t('inspection.activation.requesterPlaceholder')}
                   isClearable
                   isLoading={cargandoFuncionarios}
                   isDisabled={cargandoFuncionarios}
@@ -349,7 +351,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Dirección *
+                {t('inspection.activation.address')}
               </label>
               <input
                 type="text"
@@ -363,7 +365,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Dirección de inspección"
+                placeholder={t('inspection.activation.addressPlaceholder')}
                 required
               />
             </div>
@@ -372,7 +374,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Fecha de Asignación *
+                {t('inspection.activation.assignmentDate')}
               </label>
               <input
                 type="date"
@@ -394,7 +396,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                 className="block text-xs sm:text-sm font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Observaciones Inspección
+                {t('inspection.activation.observations')}
               </label>
               <textarea
                 name="observaciones"
@@ -407,7 +409,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Observaciones de la inspección"
+                placeholder={t('inspection.activation.observationsPlaceholder')}
                 rows="3"
               />
             </div>
@@ -418,7 +420,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Estado *
+            {t('inspection.activation.status')}
           </label>
           <select
             name="codiEstdo"
@@ -433,7 +435,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
             }}
             required
           >
-            <option value="">Selecciona estado</option>
+            <option value="">{t('inspection.activation.selectStatus')}</option>
             {Array.isArray(estados) && estados.map(est => (
               <option key={est.codiEstdo} value={String(est.codiEstdo)}>
                 {est.descEstdo}

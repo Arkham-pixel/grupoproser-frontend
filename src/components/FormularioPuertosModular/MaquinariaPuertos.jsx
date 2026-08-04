@@ -1,8 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import FormularioAreas from '../SubcomponenteFRiesgo/FormularioAreas';
 
 export default function MaquinariaPuertos({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -22,18 +24,18 @@ export default function MaquinariaPuertos({ formData, onInputChange, cargando })
         className="text-xl font-bold mb-4"
         style={{ color: textPrimary }}
       >
-        5. MAQUINARIA, EQUIPOS Y MANTENIMIENTO
+        {t('ports.ui.formulario.maquinaria.titulo')}
       </h2>
 
       <label 
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Descripción del Equipamiento Portuario
+        {t('ports.ui.formulario.maquinaria.descripcion')}
       </label>
       <textarea
         rows={8}
-        placeholder="Ej: El puerto cuenta con grúas pórtico, reach stackers, montacargas, bandas transportadoras..."
+        placeholder={t('ports.ui.formulario.maquinaria.descripcionPlaceholder')}
         value={formData.maquinariaDescripcion || ''}
         onChange={(e) => onInputChange('maquinariaDescripcion', e.target.value)}
         className="w-full rounded px-3 py-2"
@@ -56,4 +58,3 @@ export default function MaquinariaPuertos({ formData, onInputChange, cargando })
     </div>
   );
 }
-

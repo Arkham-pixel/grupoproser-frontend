@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FaCheck, FaEdit, FaPlus, FaTimes, FaTrashAlt } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import {
   actualizarExpressCatalogo,
   crearExpressCatalogo,
@@ -25,14 +26,17 @@ import {
 import EstadosExpressCatalogo from './EstadosExpressCatalogo.jsx';
 import { usuarioAutorizadoCatalogosExpress } from '../../config/expressCatalogosPermitidos.js';
 
-const TABS = [
-  { id: 'estados', label: 'Estados' },
-  { id: 'amparo', label: 'Amparos' },
-  { id: 'analista', label: 'Analistas' },
-  { id: 'intermediario', label: 'Intermediarios' },
-];
-
 const CatalogosExpress = () => {
+  const { t } = useTranslation();
+  const tabs = useMemo(
+    () => [
+      { id: 'estados', label: t('express.catalogs.tabs.statuses') },
+      { id: 'amparo', label: t('express.catalogs.tabs.coverages') },
+      { id: 'analista', label: t('express.catalogs.tabs.analysts') },
+      { id: 'intermediario', label: t('express.catalogs.tabs.brokers') },
+    ],
+    [t]
+  );
   const puedeEditar = usuarioAutorizadoCatalogosExpress(
     localStorage.getItem('cedula'),
     localStorage.getItem('login'),
@@ -94,7 +98,7 @@ const CatalogosExpress = () => {
     try {
       await crearExpressCatalogo(tab, nombre);
       setNuevo('');
-      setSuccess('Ítem agregado al catálogo Express.');
+      setSuccess(t('express.catalogs.itemAdded'));
       await cargar();
     } catch (err) {
       setError(err.message);
@@ -118,7 +122,7 @@ const CatalogosExpress = () => {
   const guardarEdicion = async (item) => {
     const nombre = editandoNombre.trim();
     if (!nombre) {
-      setError('El nombre no puede quedar vacío.');
+      setError(t('express.catalogs.nameRequired'));
       return;
     }
     if (nombre === item.nombre) {
@@ -130,7 +134,7 @@ const CatalogosExpress = () => {
     setSuccess(null);
     try {
       await actualizarExpressCatalogo(item._id, nombre);
-      setSuccess('Nombre actualizado. Los casos Express con ese valor también se actualizaron.');
+      setSuccess(t('express.catalogs.nameUpdated'));
       cancelarEdicion();
       await cargar();
     } catch (err) {
@@ -143,8 +147,8 @@ const CatalogosExpress = () => {
   const confirmarEliminar = (item) => {
     setAviso({
       open: true,
-      titulo: 'Eliminar del catálogo',
-      mensaje: `¿Eliminar «${item.nombre}»? Los casos ya guardados conservan el valor histórico.`,
+      titulo: t('express.catalogs.deleteTitle'),
+      mensaje: t('express.catalogs.deleteConfirm', { name: item.nombre }),
       tipo: 'warning',
       onConfirm: () => eliminar(item),
     });
@@ -157,7 +161,7 @@ const CatalogosExpress = () => {
     setSuccess(null);
     try {
       await eliminarExpressCatalogo(item._id);
-      setSuccess('Ítem eliminado.');
+      setSuccess(t('express.catalogs.itemDeleted'));
       await cargar();
     } catch (err) {
       setError(err.message);
@@ -166,15 +170,14 @@ const CatalogosExpress = () => {
     }
   };
 
-  const tabActual = TABS.find((t) => t.id === tab);
+  const tabActual = tabs.find((item) => item.id === tab);
 
   if (!puedeEditar) {
     return (
       <div className={expressPageWrap}>
         <section className={expressCard}>
           <div className={`${expressCardBody} ${expressAlertError}`}>
-            Acceso denegado. Solo administración, soporte o usuarios autorizados pueden editar los
-            catálogos Express.
+            {t('express.catalogs.accessDenied')}
           </div>
         </section>
       </div>
@@ -186,15 +189,15 @@ const CatalogosExpress = () => {
       <section className={expressCard}>
         <div className={expressCardHeader}>
           <ExpressPageHeader
-            badge="Administración"
-            title="Catálogos Express"
-            subtitle="Estados del proceso, amparos, analistas e intermediarios usados en Carga Express."
+            badge={t('express.catalogs.administration')}
+            title={t('express.catalogs.title')}
+            subtitle={t('express.catalogs.subtitle')}
           />
         </div>
 
         <div className={`${expressCardBody} space-y-6`}>
           <div className="flex flex-wrap gap-2">
-            {TABS.map((t) => (
+            {tabs.map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -217,18 +220,18 @@ const CatalogosExpress = () => {
               <form onSubmit={agregar} className="flex flex-col gap-3 sm:flex-row sm:items-end">
                 <div className="flex-1">
                   <label className="mb-1 block font-body text-sm font-semibold text-gray-700 dark:text-gray-200">
-                    Nuevo {tabActual?.label?.slice(0, -1) ?? 'ítem'}
+                    {t('express.catalogs.newItem', { item: tabActual?.label?.slice(0, -1) ?? t('express.catalogs.item') })}
                   </label>
                   <InputFenix
                     value={nuevo}
                     onChange={(e) => setNuevo(e.target.value)}
-                    placeholder={`Nombre de ${tabActual?.label?.toLowerCase() ?? 'catálogo'}…`}
+                    placeholder={t('express.catalogs.namePlaceholder', { catalog: tabActual?.label?.toLowerCase() ?? t('express.catalogs.catalog') })}
                     disabled={guardando}
                   />
                 </div>
                 <button type="submit" className={expressBtnPrimary} disabled={guardando || !nuevo.trim()}>
                   <FaPlus className="mr-2 inline" />
-                  Agregar
+                  {t('express.catalogs.add')}
                 </button>
               </form>
 
@@ -236,7 +239,7 @@ const CatalogosExpress = () => {
                 <input
                   type="search"
                   className={expressInput}
-                  placeholder="Buscar intermediario…"
+                  placeholder={t('express.catalogs.searchBroker')}
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
                 />
@@ -247,10 +250,10 @@ const CatalogosExpress = () => {
 
               <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
                 {loading ? (
-                  <p className="p-4 font-body text-sm text-gray-500">Cargando…</p>
+                  <p className="p-4 font-body text-sm text-gray-500">{t('common.loading')}</p>
                 ) : filtrados.length === 0 ? (
                   <p className="p-4 font-body text-sm italic text-gray-500">
-                    No hay registros. Agregue uno arriba o ejecute el seed en backend.
+                    {t('express.catalogs.noRecords')}
                   </p>
                 ) : (
                   <ul className="max-h-[28rem] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
@@ -281,7 +284,7 @@ const CatalogosExpress = () => {
                                 className={`${expressBtnPrimary} !py-1.5 !text-xs`}
                                 onClick={() => guardarEdicion(item)}
                                 disabled={guardando}
-                                title="Guardar"
+                                title={t('common.save')}
                               >
                                 <FaCheck />
                               </button>
@@ -290,7 +293,7 @@ const CatalogosExpress = () => {
                                 className={`${expressBtnSecondary} !py-1.5 !text-xs`}
                                 onClick={cancelarEdicion}
                                 disabled={guardando}
-                                title="Cancelar"
+                                title={t('common.cancel')}
                               >
                                 <FaTimes />
                               </button>
@@ -307,7 +310,7 @@ const CatalogosExpress = () => {
                                 className={`${expressBtnSecondary} !py-1.5 !text-xs`}
                                 onClick={() => iniciarEdicion(item)}
                                 disabled={guardando}
-                                title="Editar nombre"
+                                title={t('express.catalogs.editName')}
                               >
                                 <FaEdit />
                               </button>
@@ -316,7 +319,7 @@ const CatalogosExpress = () => {
                                 className={`${expressBtnSecondary} !border-red-200 !py-1.5 !text-xs !text-red-700 hover:!bg-red-50`}
                                 onClick={() => confirmarEliminar(item)}
                                 disabled={guardando}
-                                title="Eliminar"
+                                title={t('express.menu.delete')}
                               >
                                 <FaTrashAlt />
                               </button>
@@ -330,8 +333,7 @@ const CatalogosExpress = () => {
               </div>
 
               <p className="font-body text-xs text-gray-500">
-                {filtrados.length} de {items.length} en {tabActual?.label}. Use el ícono de lápiz para
-                editar el nombre; los casos Express existentes se actualizan automáticamente.
+                {t('express.catalogs.recordsSummary', { filtered: filtrados.length, total: items.length, catalog: tabActual?.label })}
               </p>
             </>
           )}
@@ -345,7 +347,7 @@ const CatalogosExpress = () => {
         mensaje={aviso.mensaje}
         tipo={aviso.tipo}
         onConfirm={aviso.onConfirm}
-        confirmTexto="Eliminar"
+        confirmTexto={t('express.menu.delete')}
       />
     </div>
   );

@@ -1,17 +1,18 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaEraser, FaSearch } from 'react-icons/fa';
 import {
   FILTROS_PUERTOS_VACIOS,
   OPCIONES_TIPO,
 } from './puertosActasTrazabilidad';
-import {
-  puertosBtnLink,
-  puertosBtnSecondary,
-  puertosCard,
-  puertosCardBody,
-  puertosInput,
-  puertosLabel,
-} from './puertosFenixUi';
+import { puertosBtnLink, puertosBtnSecondary, puertosCard, puertosCardBody, puertosInput, puertosLabel } from './puertosFenixUi';
+
+const TIPO_LABEL_KEYS = {
+  '': 'ports.ui.tipos.todos',
+  caso_exportacion: 'ports.ui.tipos.caso_exportacion',
+  inspeccion_asegurado: 'ports.ui.tipos.inspeccion_asegurado',
+  acta: 'ports.ui.tipos.acta',
+};
 
 export default function PuertosActasFiltros({
   filtros,
@@ -23,6 +24,7 @@ export default function PuertosActasFiltros({
   ocultarTipo = false,
   tituloExtra = '',
 }) {
+  const { t } = useTranslation();
   const set = (campo, valor) => onChange({ ...filtros, [campo]: valor });
 
   return (
@@ -31,32 +33,33 @@ export default function PuertosActasFiltros({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="font-heading text-base font-bold text-gray-900 dark:text-white">
-              Filtros de búsqueda{tituloExtra ? ` — ${tituloExtra}` : ''}
+              {t('ports.ui.filtros.title')}
+              {tituloExtra ? ` — ${tituloExtra}` : ''}
             </h3>
             <p className="font-body text-xs text-gray-500 dark:text-gray-400">
-              {total} registro(s) coincidente(s)
+              {t('ports.ui.filtros.matching', { count: total })}
             </p>
           </div>
           <button type="button" onClick={onLimpiar} className={puertosBtnLink}>
-            <FaEraser /> Limpiar filtros
+            <FaEraser /> {t('ports.ui.filtros.clear')}
           </button>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="block sm:col-span-2">
-            <span className={puertosLabel}>Buscar</span>
+          <label className={`block ${ocultarTipo ? 'sm:col-span-2' : 'sm:col-span-2'}`}>
+            <span className={puertosLabel}>{t('ports.ui.filtros.search')}</span>
             <input
               className={puertosInput}
               value={filtros.q}
               onChange={(e) => set('q', e.target.value)}
-              placeholder="Consecutivo, solicitud, cliente, exportador…"
+              placeholder={t('ports.ui.filtros.searchPlaceholder')}
               onKeyDown={(e) => e.key === 'Enter' && onBuscar()}
             />
           </label>
 
           {!ocultarTipo && (
             <label className="block">
-              <span className={puertosLabel}>Tipo</span>
+              <span className={puertosLabel}>{t('ports.ui.filtros.type')}</span>
               <select
                 className={puertosInput}
                 value={filtros.tipo}
@@ -64,7 +67,7 @@ export default function PuertosActasFiltros({
               >
                 {OPCIONES_TIPO.map((o) => (
                   <option key={o.value || 'todos'} value={o.value}>
-                    {o.label}
+                    {t(TIPO_LABEL_KEYS[o.value] || 'ports.ui.tipos.todos')}
                   </option>
                 ))}
               </select>
@@ -72,27 +75,27 @@ export default function PuertosActasFiltros({
           )}
 
           <label className="block">
-            <span className={puertosLabel}>Regional / Ciudad</span>
+            <span className={puertosLabel}>{t('ports.ui.filtros.regional')}</span>
             <input
               className={puertosInput}
               value={filtros.regional}
               onChange={(e) => set('regional', e.target.value)}
-              placeholder="Ej: BARRANQUILLA"
+              placeholder={t('ports.ui.filtros.regionalPlaceholder')}
             />
           </label>
 
           <label className="block">
-            <span className={puertosLabel}>Cliente</span>
+            <span className={puertosLabel}>{t('ports.ui.filtros.client')}</span>
             <input
               className={puertosInput}
               value={filtros.cliente}
               onChange={(e) => set('cliente', e.target.value)}
-              placeholder="Ej: SEGUROS BOLÍVAR"
+              placeholder={t('ports.ui.filtros.clientPlaceholder')}
             />
           </label>
 
           <label className="block">
-            <span className={puertosLabel}>Fecha desde</span>
+            <span className={puertosLabel}>{t('ports.ui.filtros.dateFrom')}</span>
             <input
               type="date"
               className={puertosInput}
@@ -102,7 +105,7 @@ export default function PuertosActasFiltros({
           </label>
 
           <label className="block">
-            <span className={puertosLabel}>Fecha hasta</span>
+            <span className={puertosLabel}>{t('ports.ui.filtros.dateTo')}</span>
             <input
               type="date"
               className={puertosInput}
@@ -114,7 +117,7 @@ export default function PuertosActasFiltros({
 
         <div className="mt-4 flex flex-wrap gap-2">
           <button type="button" onClick={onBuscar} disabled={cargando} className={puertosBtnSecondary}>
-            <FaSearch /> {cargando ? 'Buscando…' : 'Aplicar filtros'}
+            <FaSearch /> {cargando ? t('ports.ui.filtros.searching') : t('ports.ui.filtros.apply')}
           </button>
         </div>
       </div>

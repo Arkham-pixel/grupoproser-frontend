@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import LiquidadorExpress from './LiquidadorExpress.jsx';
 import { ExpressPageHeader } from './ExpressUiBlocks.jsx';
 import {
@@ -36,6 +37,8 @@ import {
 } from './generarFormatosExpressPdf.js';
 
 export default function LiquidadorExpressPage() {
+  const { t } = useTranslation();
+  const tPage = (key, options) => t(`express.ui.settlementPage.${key}`, options);
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
@@ -50,6 +53,7 @@ export default function LiquidadorExpressPage() {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [documentLocale, setDocumentLocale] = useState('es');
   const { obtenerNombreResponsable } = useExpressCatalogos();
 
   const casoId = casoExpress?._id || casoIdFromQuery || null;
@@ -65,7 +69,7 @@ export default function LiquidadorExpressPage() {
           if (!cancelado) setCasoExpress(caso);
         } catch (err) {
           if (!cancelado) {
-            setError(err.message || 'No se pudo cargar el caso Express.');
+            setError(err.message || tPage('loadError'));
             // Fallback: state de navegación si el GET falla
             if (location.state?.casoExpress) {
               setCasoExpress(location.state.casoExpress);
@@ -89,25 +93,30 @@ export default function LiquidadorExpressPage() {
 
   const subtitulo = useMemo(() => {
     if (casoExpress?.numeroSiniestro) {
-      return `Caso ${casoExpress.numeroSiniestro}${casoExpress.consecutivo ? ` · ${casoExpress.consecutivo}` : ''}`;
+      return casoExpress.consecutivo
+        ? tPage('caseSubtitleWithConsecutive', {
+            number: casoExpress.numeroSiniestro,
+            consecutive: casoExpress.consecutivo,
+          })
+        : tPage('caseSubtitle', { number: casoExpress.numeroSiniestro });
     }
-    return 'Complete la liquidación. Para guardar en documentos del caso, ábralo desde un caso Express guardado.';
-  }, [casoExpress]);
+    return tPage('subtitleDefault');
+  }, [casoExpress, tPage]);
 
   const handleEstadoChange = (liq, tot) => {
     setLiquidadorState(liq);
     setTotalesState(tot);
   };
 
-  const handleGuardarEnCaso = async (liquidadorArg, totalesArg) => {
+  const handleGuardarEnCaso = async (liquidadorArg, totalesArg, locale = documentLocale) => {
     if (!casoId) {
-      setError('Debe abrir el liquidador desde un caso Express ya guardado (reporte o carga).');
+      setError(tPage('saveMissingCase'));
       return;
     }
     const liquidadorRaw = liquidadorArg || liquidadorState;
     const totales = totalesArg || totalesState || calcularLiquidacion(liquidadorRaw || {});
     if (!liquidadorRaw) {
-      setError('No hay datos del liquidador para guardar.');
+      setError(tPage('saveMissingData'));
       return;
     }
     const liquidador = liquidadorConNombreAjustador(
@@ -145,17 +154,18 @@ export default function LiquidadorExpressPage() {
             incluirSalvamento,
             fechaUltimoDocumento:
               casoTrasJson?.fechaUltimoDocumento || casoExpress?.fechaUltimoDocumento,
+            locale,
           }),
-          generarLiquidadorExpressPdfBlob(liquidador, totales),
+          generarLiquidadorExpressPdfBlob(liquidador, totales, { locale }),
           generarReciboIndemnizacionBlob(liquidador, totales),
           generarContratoReembolsoBlob(liquidador, totales),
           generarContratoTransaccionBlob(liquidador, totales),
           generarChecklistExpressBlob(liquidador, totales),
-          generarChecklistExpressPdfBlob(liquidador, totales),
+          generarChecklistExpressPdfBlob(liquidador, totales, { locale }),
         ];
         if (incluirSalvamento) {
           generadores.push(generarSalvamentoExpressBlob(liquidador));
-          generadores.push(generarSalvamentoExpressPdfBlob(liquidador));
+          generadores.push(generarSalvamentoExpressPdfBlob(liquidador, { locale }));
         }
 
         const generados = await Promise.all(generadores);
@@ -175,25 +185,23 @@ export default function LiquidadorExpressPage() {
         setCasoExpress(casoFinal);
       } catch (errArchivos) {
         archivosOk = false;
-        archivosError = errArchivos?.message || 'No se pudieron generar/adjuntar Word/Excel';
+        archivosError = errArchivos?.message || tPage('filesGenerationError');
         console.error(errArchivos);
       }
 
       if (archivosOk) {
         const conSalvamento = aplicaFormatoSalvamento(liquidador, casoExpress);
         setMensaje(
-          conSalvamento
-            ? 'Liquidador guardado en el caso. Se actualizó el valor de indemnización y se adjuntaron Excel, PDF y Word en documentos.'
-            : 'Liquidador guardado. Salvamento no aplica: se omitió la hoja/formato SALVAMENTO; liquidación (Excel/PDF), checklist, recibo y contratos sí se generaron.'
+          conSalvamento ? tPage('savedWithSalvage') : tPage('savedWithoutSalvage')
         );
       } else {
         setMensaje(
-          `Liquidador guardado en el caso (conceptos y totales OK). Advertencia archivos: ${archivosError || 'revise anexos'}.`
+          tPage('savedWithFileWarning', { error: archivosError || tPage('filesWarningFallback') })
         );
       }
     } catch (err) {
       console.error(err);
-      setError(err.message || 'No se pudo guardar el liquidador en el caso.');
+      setError(err.message || tPage('saveError'));
     } finally {
       setGuardando(false);
     }
@@ -210,7 +218,7 @@ export default function LiquidadorExpressPage() {
       <div className={expressPageWrap}>
         <ExpressPageHeader
           badge="Express"
-          title="Liquidador Express"
+          title={tPage('title')}
           subtitle={subtitulo}
           activePath="/express/liquidador"
           actions={
@@ -224,15 +232,15 @@ export default function LiquidadorExpressPage() {
                 >
                   <FaSave />
                   {guardando
-                    ? 'Guardando…'
+                    ? t('express.liquidador.saving')
                     : casoExpress?.liquidador
-                      ? 'Actualizar en caso'
-                      : 'Guardar en caso'}
+                      ? t('express.liquidador.updateCase')
+                      : t('express.liquidador.saveCase')}
                 </button>
               )}
               <Link to={volverHref} className={expressBtnGhost}>
                 <FaArrowLeft />
-                Volver
+                {tPage('back')}
               </Link>
             </div>
           }
@@ -250,15 +258,15 @@ export default function LiquidadorExpressPage() {
         )}
         {!casoId && !cargandoCaso && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100">
-            Modo maqueta: puede descargar Word/Excel, pero para guardar en documentos del caso ábralo con el botón{' '}
-            <strong>Liquidador</strong> desde el reporte o desde la ficha del caso.
+            {tPage('mockModePrefix')}{' '}
+            <strong>{t('express.menu.settlement')}</strong> {tPage('mockModeSuffix')}
           </p>
         )}
 
         <div className={expressCard}>
           <div className={expressCardBody}>
             {cargandoCaso ? (
-              <p className="font-body text-sm text-gray-500">Cargando liquidador del caso…</p>
+              <p className="font-body text-sm text-gray-500">{tPage('loadingCase')}</p>
             ) : (
               <LiquidadorExpress
                 key={liquidadorKey}
@@ -271,6 +279,8 @@ export default function LiquidadorExpressPage() {
                 onGuardarEnCaso={casoId ? handleGuardarEnCaso : null}
                 guardandoCaso={guardando}
                 tieneLiquidadorGuardado={Boolean(casoExpress?.liquidador)}
+                documentLocale={documentLocale}
+                onDocumentLocaleChange={setDocumentLocale}
               />
             )}
           </div>

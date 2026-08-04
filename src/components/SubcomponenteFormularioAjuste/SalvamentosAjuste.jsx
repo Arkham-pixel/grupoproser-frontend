@@ -1,9 +1,11 @@
 import React from 'react';
 import { FaBoxOpen } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function SalvamentosAjuste({ formData, onInputChange, numeroSeccion = '9' }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -16,16 +18,16 @@ export default function SalvamentosAjuste({ formData, onInputChange, numeroSecci
       <div className="pb-4" style={{ borderBottom: `1px solid ${borderColor}` }}>
         <h2 className="text-2xl font-bold flex items-center" style={{ color: textPrimary }}>
           <FaBoxOpen className="mr-3" style={{ color: theme === 'dark' ? '#FDBA74' : '#EA580C' }} />
-          {numeroSeccion}. SALVAMENTOS
+          {numeroSeccion}. {t('adjustment.ui.sections.salvamentos.title')}
         </h2>
         <p className="mt-2" style={{ color: textSecondary }}>
-          Bienes recuperables, venta de salvamento y disposición de restos
+          {t('adjustment.ui.sections.salvamentos.subtitle')}
         </p>
       </div>
 
       <div className="p-4 rounded-lg" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
         <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-          Salvamentos
+          {t('adjustment.ui.sections.salvamentos.label')}
         </label>
         <textarea
           value={formData.salvamentos || ''}
@@ -37,7 +39,7 @@ export default function SalvamentosAjuste({ formData, onInputChange, numeroSecci
             color: textPrimary,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Describe los salvamentos identificados, su estado y las acciones recomendadas..."
+          placeholder={t('adjustment.ui.sections.salvamentos.placeholder')}
         />
       </div>
 
@@ -46,7 +48,7 @@ export default function SalvamentosAjuste({ formData, onInputChange, numeroSecci
         onTextoCambiado={(texto) => onInputChange('salvamentos', texto)}
         contextoFormulario={formData}
         tipoSeccion="salvamentos"
-        tituloSeccion="Salvamentos"
+        tituloSeccion={t('adjustment.ui.sections.salvamentos.iaTitle')}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   useMaquinariaTheme,
   SectionCard,
@@ -93,24 +94,26 @@ export function InfoBanner({ children, variant = 'success' }) {
 }
 
 export function LlenadoGuiaPropiedades() {
-  const t = useMaquinariaTheme();
+  const ui = useMaquinariaTheme();
+  const { t } = useTranslation();
+  const tp = (key) => t(`inspection.ui.formulario_propiedades.${key}`);
   const items = [
-    { donde: 'Sección 1', que: 'Clase, tipo, dirección y datos de quien recibe la visita' },
-    { donde: 'Sección 2', que: 'Observaciones de inspección métrica' },
-    { donde: 'Sección 3', que: 'Tablas por área (Cumple: SI / NO / Parcialmente / NA) y fotos por zona' },
-    { donde: 'Sección 4', que: 'Conclusiones, observaciones principales y firmas' },
+    { donde: tp('guideSection1'), que: tp('guideSection1Text') },
+    { donde: tp('guideSection2'), que: tp('guideSection2Text') },
+    { donde: tp('guideSection3'), que: tp('guideSection3Text') },
+    { donde: tp('guideSection4'), que: tp('guideSection4Text') },
   ];
 
   return (
     <div
       className="mb-6 rounded-lg border p-4 text-sm"
-      style={{ borderColor: t.borderColor, backgroundColor: t.accentSoft, color: t.textPrimary }}
+      style={{ borderColor: ui.borderColor, backgroundColor: ui.accentSoft, color: ui.textPrimary }}
     >
-      <p className="mb-2 font-semibold font-heading">Guía de llenado — inspección de propiedad</p>
-      <ul className="space-y-1 text-xs sm:text-sm" style={{ color: t.textSecondary }}>
+      <p className="mb-2 font-semibold font-heading">{tp('guideTitle')}</p>
+      <ul className="space-y-1 text-xs sm:text-sm" style={{ color: ui.textSecondary }}>
         {items.map((item) => (
           <li key={item.donde}>
-            <span style={{ color: t.textPrimary }}>{item.donde}:</span> {item.que}
+            <span style={{ color: ui.textPrimary }}>{item.donde}:</span> {item.que}
           </li>
         ))}
       </ul>

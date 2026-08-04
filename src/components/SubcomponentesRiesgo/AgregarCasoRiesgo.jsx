@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import ActivacionRiesgo from "./ActivacionRiesgo.jsx";
 import SeguimientoRiesgo from "./SeguimientoRiesgo.jsx";
 import FacturacionRiesgo from "./FacturacionRiesgo.jsx";
@@ -191,6 +192,7 @@ const crearFormDataDesdePayload = (payload) => {
 };
 
 const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
+  const { t } = useTranslation();
   const [pestanaActiva, setPestanaActiva] = useState('activacion');
   const [formData, setFormData] = useState(initialFormData);
   const [editando, setEditando] = useState(false);
@@ -202,10 +204,10 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
   const { id } = useParams();
   
   const PESTANAS_RIESGO = [
-    { id: 'activacion', label: 'Activación' },
-    { id: 'trazabilidad', label: 'Trazabilidad' },
-    { id: 'seguimiento', label: 'Seguimiento' },
-    { id: 'facturacion', label: 'Facturación' },
+    { id: 'activacion', label: t('risks.activation') },
+    { id: 'trazabilidad', label: t('risks.traceability') },
+    { id: 'seguimiento', label: t('risks.followUp') },
+    { id: 'facturacion', label: t('risks.billing') },
   ];
   const [estados, setEstados] = useState([]);
   const [aseguradoras, setAseguradoras] = useState([]);
@@ -267,7 +269,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
     });
     setShowRestoreDialog(false);
     enableAutoSave();
-    alert('✅ Datos restaurados exitosamente');
+    alert(t('risks.ui.agregar_caso_riesgo.datos_restaurados'));
   }, [savedDataToRestore, enableAutoSave, formData]);
 
   const handleDiscardSavedData = useCallback(() => {
@@ -801,20 +803,20 @@ axios.get('/api/ciudades/ciudades')
     if (editando) {
       const casoId = obtenerIdCaso(casoInicial, casos, casoEditadoIndex, formData);
       if (!casoId) {
-        alert('⚠️ No fue posible identificar el caso a actualizar.');
+        alert(t('risks.ui.agregar_caso_riesgo.sin_id_actualizar'));
         return;
       }
       try {
         const dataToSend = crearFormDataDesdePayload(nuevoCaso);
         await axios.put(`/api/riesgos/${casoId}`, dataToSend);
         await cargarCasos?.();
-        alert('✅ Caso de riesgo actualizado correctamente.');
+        alert(t('risks.ui.agregar_caso_riesgo.actualizado_ok'));
         // Limpiar autoguardado después de guardado exitoso
 clearSavedData();
         if (onClose) onClose();
       } catch (err) {
         console.error('❌ Error actualizando caso de riesgo:', err);
-        alert('❌ Error al guardar los cambios del caso de riesgo.');
+        alert(t('risks.ui.agregar_caso_riesgo.error_guardar'));
         // Mantener autoguardado en caso de error
       }
     } else if (!editando) {
@@ -860,7 +862,7 @@ const nuevoCaso = construirPayloadRiesgo(formData);
             await cargarCasos();
           }
         } else {
-          throw new Error('No se recibió ID del caso guardado');
+          throw new Error(t('risks.ui.agregar_caso_riesgo.sin_id_guardado'));
         }
       } else {
 }
@@ -919,7 +921,9 @@ let historialExistente = null;
 
           const formularioHistorial = historialService.crearFormulario(
             TIPOS_FORMULARIOS.RIESGOS,
-            `Caso de Riesgo - ${formData.nmroRiesgo || 'Nuevo'}`,
+            formData.nmroRiesgo
+              ? t('risks.ui.agregar_caso_riesgo.titulo_historial', { name: formData.nmroRiesgo })
+              : t('risks.ui.agregar_caso_riesgo.titulo_historial_nuevo'),
             datosParaHistorial,
             null, // archivo (se puede agregar después si es necesario)
             ESTADOS_FORMULARIO.EN_PROCESO
@@ -954,7 +958,9 @@ let historialExistente = null;
 
         const formularioHistorial = historialService.crearFormulario(
           TIPOS_FORMULARIOS.RIESGOS,
-          `Caso de Riesgo - ${formData.nmroRiesgo || 'Nuevo'}`,
+          formData.nmroRiesgo
+            ? t('risks.ui.agregar_caso_riesgo.titulo_historial', { name: formData.nmroRiesgo })
+            : t('risks.ui.agregar_caso_riesgo.titulo_historial_nuevo'),
           datosParaHistorial,
           null,
           ESTADOS_FORMULARIO.EN_PROCESO
@@ -983,7 +989,9 @@ let historialExistente = null;
       });
     } catch (error) {
       console.error('❌ Error al iniciar inspección:', error);
-      alert(`❌ Error al iniciar inspección: ${error.message || 'Error desconocido'}`);
+      alert(t('risks.ui.agregar_caso_riesgo.error_iniciar_inspeccion', {
+        error: error.message || t('common.unknownError'),
+      }));
     }
   };
 
@@ -1073,8 +1081,8 @@ let historialExistente = null;
     <div className={riesgoFormRoot}>
       <div className={`${riesgoScope} ${riesgoPageWrapWide}`}>
         <RiesgoPageHeader
-          title="Gestión de casos de riesgo"
-          subtitle="Activación, trazabilidad, seguimiento y facturación."
+          title={t('risks.caseManagement')}
+          subtitle={t('risks.caseManagementSubtitle')}
           showNav={false}
           actions={
             <FormAutoSaveControls
@@ -1111,7 +1119,7 @@ let historialExistente = null;
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar en el formulario..."
+            placeholder={t('risks.searchForm')}
             className="max-w-lg"
           />
         </div>
@@ -1119,7 +1127,7 @@ let historialExistente = null;
         {formData.nmroRiesgo && (
           <div className="text-center">
             <span className="font-heading text-xl font-bold text-fenix-primario sm:text-2xl">
-              N° Riesgo: {formData.nmroRiesgo}
+              {t('risks.ui.agregar_caso_riesgo.numero_riesgo_label', { number: formData.nmroRiesgo })}
             </span>
           </div>
         )}
@@ -1128,13 +1136,13 @@ let historialExistente = null;
 
         <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
           <button type="button" onClick={guardarCaso} className={`${riesgoBtnSuccess} w-full sm:w-auto`}>
-            Guardar
+            {t('risks.saveCase')}
           </button>
           <button type="button" onClick={nuevoCaso} className={`${riesgoBtnSecondary} w-full sm:w-auto`}>
-            Nuevo caso
+            {t('risks.newCase')}
           </button>
           <button type="button" onClick={iniciarInspeccion} className={`${riesgoBtnInfo} w-full sm:w-auto`}>
-            Iniciar inspección
+            {t('risks.startInspection')}
           </button>
         </div>
 

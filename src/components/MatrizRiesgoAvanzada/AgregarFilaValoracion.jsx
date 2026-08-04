@@ -1,15 +1,17 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const AgregarFilaValoracion = ({ onAgregar, disabled = false }) => {
+  const { t } = useTranslation();
   return (
     <div className="acciones-valoracion">
       <button
         className="btn-agregar"
         onClick={onAgregar}
         disabled={disabled}
-        title="Agregar una nueva fila de valoración"
+        title={t('riskMatrix.valoracionUi.addAssessmentRowTitle')}
       >
-        + Agregar fila de valoración
+        {t('riskMatrix.valoracionUi.addAssessmentRow')}
       </button>
     </div>
   );

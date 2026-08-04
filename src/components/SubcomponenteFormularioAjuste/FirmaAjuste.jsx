@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaSignature, FaUser, FaBuilding, FaPhone, FaEnvelope, FaPlus, FaTrash, FaEdit, FaSave, FaUpload } from 'react-icons/fa';
 import FuncionarioService from '../../services/funcionarioService.js';
 import { useTheme } from '../../context/ThemeContext';
@@ -6,6 +7,7 @@ import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 import firmaIskharlyImg from '../../img/FIRMAISKHARLY.png';
 
 export default function FirmaAjuste({ formData, onInputChange }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -214,7 +216,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
     if (!file) return;
 
     if (!funcionarioSeleccionado) {
-      alert('⚠️ Por favor selecciona un funcionario primero');
+      alert(t('adjustment.ui.firma.selectOfficialFirst'));
       e.target.value = '';
       return;
     }
@@ -233,15 +235,15 @@ export default function FirmaAjuste({ formData, onInputChange }) {
         // Guardar en BD
         await guardarFirmaFuncionario(imagenBase64);
         
-        alert('✅ Firma cargada y guardada correctamente!');
+        alert(t('adjustment.ui.firma.signatureLoaded'));
       };
       reader.onerror = () => {
-        alert('❌ Error al leer el archivo. Por favor intenta de nuevo.');
+        alert(t('adjustment.ui.firma.readImageError'));
       };
       reader.readAsDataURL(file);
     } catch (error) {
       console.error('❌ Error al procesar la imagen:', error);
-      alert('❌ Error al procesar la imagen. Por favor intenta de nuevo.');
+      alert(t('adjustment.ui.firma.processImageError'));
     }
     
     e.target.value = '';
@@ -270,7 +272,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
 
   // Eliminar funcionario
   const eliminarFuncionario = async (id) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este funcionario?')) {
+    if (window.confirm(t('adjustment.ui.firma.deleteOfficialConfirm'))) {
       try {
         await FuncionarioService.eliminarFuncionario(id);
         setFuncionarios(funcionarios.filter(f => f._id !== id));
@@ -292,7 +294,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
         }
       } catch (error) {
         console.error('❌ Error al eliminar funcionario:', error);
-        alert('Error al eliminar el funcionario. Intente nuevamente.');
+        alert(t('adjustment.ui.firma.deleteOfficialError'));
       }
     }
   };
@@ -300,7 +302,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
   // Guardar funcionario (crear o actualizar)
   const guardarFuncionario = async () => {
     if (!funcionarioEditando.nombre || !funcionarioEditando.cargo) {
-      alert('El nombre y cargo son obligatorios');
+      alert(t('adjustment.ui.firma.namePositionRequired'));
       return;
     }
 
@@ -329,13 +331,13 @@ export default function FirmaAjuste({ formData, onInputChange }) {
       });
     } catch (error) {
       console.error('❌ Error al guardar funcionario:', error);
-      alert('Error al guardar el funcionario. Intente nuevamente.');
+      alert(t('adjustment.ui.firma.saveOfficialError'));
     }
   };
 
   // Agregar nuevo cargo
   const agregarCargo = () => {
-    const nuevoCargo = prompt('Ingrese el nuevo cargo:');
+    const nuevoCargo = prompt(t('adjustment.ui.firma.newPositionPrompt'));
     if (nuevoCargo && !cargos.includes(nuevoCargo)) {
       setCargos([...cargos, nuevoCargo]);
     }
@@ -343,7 +345,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
 
   // Eliminar cargo
   const eliminarCargo = (cargo) => {
-    if (window.confirm(`¿Está seguro de que desea eliminar el cargo "${cargo}"?`)) {
+    if (window.confirm(t('adjustment.ui.firma.deletePositionConfirm', { position: cargo }))) {
       setCargos(cargos.filter(c => c !== cargo));
     }
   };
@@ -409,7 +411,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
 
   // Limpiar firma
   const limpiarFirma = async () => {
-    if (window.confirm('¿Estás seguro de eliminar la firma?')) {
+    if (window.confirm(t('adjustment.ui.firma.deleteSignatureConfirm'))) {
       setFirmaImagen(null);
       onInputChange('firmaFuncionario', '');
       onInputChange('actaAjustadorFirmaImagen', '');
@@ -436,13 +438,13 @@ export default function FirmaAjuste({ formData, onInputChange }) {
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#A78BFA' : '#6366F1' }}
           />
-          {tituloAjuste('Sistema de firmas')}
+          {tituloAjuste(t('adjustment.ui.firma.title'))}
         </h2>
         <p 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          {subtituloAjuste('Gestión de funcionarios y firmas personalizables')}
+          {subtituloAjuste(t('adjustment.ui.firma.subtitle'))}
         </p>
         
         <div 
@@ -456,16 +458,16 @@ export default function FirmaAjuste({ formData, onInputChange }) {
             className="font-semibold mb-2"
             style={{ color: sectionBlueText }}
           >
-            📋 ¿Cómo funciona el sistema de firmas?
+            {t('adjustment.ui.firma.howItWorks')}
           </h3>
           <ul 
             className="text-sm space-y-1"
             style={{ color: sectionBlueText }}
           >
-            <li>• <strong>Selecciona un funcionario</strong> del dropdown</li>
-            <li>• <strong>Sube una imagen</strong> de la firma (PNG, JPG)</li>
-            <li>• <strong>La firma se guarda automáticamente</strong> y se recordará cada vez</li>
-            <li>• <strong>Para cambiar la firma:</strong> sube una nueva imagen</li>
+            <li>• {t('adjustment.ui.firma.tip1')}</li>
+            <li>• {t('adjustment.ui.firma.tip2')}</li>
+            <li>• {t('adjustment.ui.firma.tip3')}</li>
+            <li>• {t('adjustment.ui.firma.tip4')}</li>
           </ul>
         </div>
       </div>
@@ -487,7 +489,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
               className="mr-2" 
               style={{ color: theme === 'dark' ? '#93C5FD' : '#2563EB' }}
             />
-            Gestión de Funcionarios
+            {t('adjustment.ui.firma.manageOfficials')}
           </h3>
           <button
             onClick={agregarFuncionario}
@@ -504,7 +506,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
             }}
           >
             <FaPlus className="mr-2" />
-            Agregar Funcionario
+            {t('adjustment.ui.firma.addOfficial')}
           </button>
         </div>
 
@@ -522,7 +524,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                 className="mt-2 text-sm"
                 style={{ color: textSecondary }}
               >
-                Cargando funcionarios...
+                {t('adjustment.ui.common.loading')}
               </p>
             </div>
           ) : funcionarios.length === 0 ? (
@@ -530,7 +532,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
               className="text-center py-4"
               style={{ color: textSecondary }}
             >
-              <p>No hay funcionarios registrados</p>
+              <p>{t('adjustment.ui.firma.noOfficials')}</p>
             </div>
           ) : (
             funcionarios.map((funcionario) => (
@@ -701,7 +703,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
             }}
           >
             <FaPlus className="mr-1" />
-            Agregar Cargo
+            {t('adjustment.ui.firma.addPosition')}
           </button>
         </div>
 
@@ -739,7 +741,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                 onMouseLeave={(e) => {
                   e.target.style.color = theme === 'dark' ? '#FCA5A5' : '#DC2626';
                 }}
-                title="Eliminar cargo"
+                title={t('adjustment.ui.firma.deletePosition')}
               >
                 <FaTrash className="text-xs" />
               </button>
@@ -760,7 +762,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
           className="text-lg font-semibold mb-4"
           style={{ color: textPrimary }}
         >
-          Selección para Firma
+          {t('adjustment.ui.firma.manageOfficials')}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -769,7 +771,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Funcionario
+              {t('adjustment.ui.firma.name')}
             </label>
             <select
               value={funcionarioSeleccionado}
@@ -782,7 +784,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                 border: `1px solid ${borderColor}`
               }}
             >
-              <option value="">Seleccione un funcionario</option>
+              <option value="">{t('adjustment.ui.firma.selectOfficial')}</option>
               {funcionarios.map((funcionario) => (
                 <option key={funcionario._id} value={funcionario._id}>
                   {funcionario.nombre} - {funcionario.cargo}
@@ -796,7 +798,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Cargo
+              {t('adjustment.ui.firma.position')}
             </label>
             <input
               type="text"
@@ -826,7 +828,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
               className="font-medium mb-3"
               style={{ color: sectionBlueText }}
             >
-              Firma del Funcionario
+              {t('adjustment.ui.firma.uploadSignature')}
             </h4>
             
             {/* Botón para subir imagen */}
@@ -854,7 +856,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                   }}
                 >
                 <FaUpload className="mr-2" />
-                📤 Subir Imagen de Firma (PNG, JPG)
+                {t('adjustment.ui.firma.uploadSignature')}
               </label>
               <p 
                 className="text-xs mt-2 text-center"
@@ -878,7 +880,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                     className="text-sm font-medium"
                     style={{ color: sectionGreenText }}
                   >
-                    ✅ Firma guardada
+                    {t('adjustment.ui.firma.signatureLoaded')}
                   </span>
                     <button
                     onClick={limpiarFirma}
@@ -894,13 +896,13 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                       e.target.style.backgroundColor = theme === 'dark' ? 'rgba(239, 68, 68, 0.2)' : '#DC2626';
                       }}
                     >
-                    🗑️ Eliminar
+                    {t('adjustment.ui.common.delete')}
                     </button>
                   </div>
                 <div className="flex justify-center bg-white p-4 rounded">
                 <img 
                     src={firmaImagen} 
-                  alt="Firma del funcionario" 
+                  alt={t('adjustment.ui.firma.officialSignatureAlt')} 
                     className="max-w-xs max-h-32 object-contain"
                   />
                 </div>
@@ -914,7 +916,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                   }}
               >
                 <p style={{ color: textSecondary }}>
-                  No hay firma. Sube una imagen para comenzar.
+                  {t('adjustment.ui.firma.noSignature')}
                 </p>
               </div>
             )}
@@ -934,17 +936,17 @@ export default function FirmaAjuste({ formData, onInputChange }) {
               className="font-medium mb-2"
               style={{ color: sectionBlueText }}
             >
-              Información del Funcionario Seleccionado:
+              {t('adjustment.ui.firma.manageOfficials')}:
             </h4>
             <div 
               className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"
               style={{ color: sectionBlueText }}
             >
               <div>
-                <span className="font-medium">Teléfono:</span> {formData.telefonoFuncionario}
+                <span className="font-medium">{t('adjustment.ui.firma.phone')}</span> {formData.telefonoFuncionario}
               </div>
               <div>
-                <span className="font-medium">Email:</span> {formData.emailFuncionario}
+                <span className="font-medium">{t('adjustment.ui.firma.email')}</span> {formData.emailFuncionario}
               </div>
             </div>
           </div>
@@ -968,7 +970,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
               className="text-lg font-semibold mb-4"
               style={{ color: textPrimary }}
             >
-              {modoEdicion ? 'Editar Funcionario' : 'Agregar Funcionario'}
+              {modoEdicion ? t('adjustment.ui.firma.editOfficial') : t('adjustment.ui.firma.addOfficial')}
             </h3>
             
             <div className="space-y-4">
@@ -977,7 +979,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                   className="block text-sm font-medium mb-1"
                   style={{ color: textPrimary }}
                 >
-                  Nombre *
+                  {t('adjustment.ui.firma.name')} *
                 </label>
                 <input
                   type="text"
@@ -1001,7 +1003,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                   className="block text-sm font-medium mb-1"
                   style={{ color: textPrimary }}
                 >
-                  Cargo *
+                  {t('adjustment.ui.firma.position')} *
                 </label>
                 <select
                   value={funcionarioEditando.cargo}
@@ -1017,7 +1019,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  <option value="">Seleccione un cargo</option>
+                  <option value="">{t('adjustment.ui.firma.selectPosition')}</option>
                   {cargos.map((cargo, index) => (
                     <option key={index} value={cargo}>
                       {cargo}
@@ -1031,7 +1033,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                   className="block text-sm font-medium mb-1"
                   style={{ color: textPrimary }}
                 >
-                  Teléfono
+                  {t('adjustment.ui.firma.phoneField')}
                 </label>
                 <input
                   type="text"
@@ -1055,7 +1057,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                   className="block text-sm font-medium mb-1"
                   style={{ color: textPrimary }}
                 >
-                  Email
+                  {t('adjustment.ui.firma.emailField')}
                 </label>
                 <input
                   type="email"
@@ -1090,7 +1092,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                   e.target.style.backgroundColor = theme === 'dark' ? 'rgba(107, 114, 128, 0.2)' : '#6B7280';
                 }}
               >
-                Cancelar
+                {t('adjustment.ui.common.cancel')}
               </button>
               <button
                 onClick={guardarFuncionario}
@@ -1107,7 +1109,7 @@ export default function FirmaAjuste({ formData, onInputChange }) {
                 }}
               >
                 <FaSave className="mr-2" />
-                Guardar
+                {t('adjustment.ui.common.save')}
               </button>
             </div>
           </div>

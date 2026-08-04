@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { FaCloudUploadAlt, FaTrash, FaImage } from 'react-icons/fa';
 
@@ -11,6 +12,8 @@ export default function PuertosCasoImagenesSeccion({
   onChange,
   max = MAX_DEFAULT,
 }) {
+  const { t } = useTranslation();
+
   const setImagenes = (updater) => {
     if (typeof updater === 'function') {
       onChange(updater(imagenes));
@@ -71,7 +74,7 @@ export default function PuertosCasoImagenesSeccion({
         >
           <input {...getInputProps()} />
           <FaCloudUploadAlt className="text-2xl text-slate-400 mb-2" />
-          <span className="text-xs text-slate-500">Arrastra imágenes o haz clic</span>
+          <span className="text-xs text-slate-500">{t('ports.ui.casoExportacion.photos.dragImages')}</span>
         </div>
       )}
       {imagenes.length > 0 && (
@@ -94,7 +97,7 @@ export default function PuertosCasoImagenesSeccion({
               </button>
               <input
                 className="w-full text-xs px-2 py-1 border-t border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900"
-                placeholder="Descripción"
+                placeholder={t('ports.ui.casoExportacion.photos.description')}
                 value={img.descripcion || ''}
                 onChange={(e) =>
                   setImagenes(

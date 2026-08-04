@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
 import { obtenerCasosComplex, deleteCasoComplex } from '../services/complexService';
@@ -20,126 +21,128 @@ import {
 } from './SubcomponenteCompex/complexFenixUi.js';
 import { useTheme } from '../context/ThemeContext';
 
+const UI_RCP = 'complex.ui.reporte_casos_mejorado';
+
 // Opciones de campos de fecha para el filtro (orden según flujo de trazabilidad)
 const camposFechaDisponibles = [
-  { clave: 'fchaAsgncion', label: 'Fecha de Asignación' },
-  { clave: 'fchaSinstro', label: 'Fecha Siniestro' },
-  { clave: 'fchaContIni', label: 'Fecha Contacto Inicial' },
-  { clave: 'fchaCoordInspeccion', label: 'Fecha Coordinación de Inspección' },
-  { clave: 'fchaProgInspeccion', label: 'Fecha Programada de Inspección' },
-  { clave: 'fchaInspccion', label: 'Fecha de Inspección' },
-  { clave: 'fchaSoliDocu', label: 'Fecha Solicitud Documentos' },
-  { clave: 'fchaInfoPrelm', label: 'Fecha Informe Preliminar' },
-  { clave: 'fchaRepoActi', label: 'Fecha Último Documento / Reporte Actualizado' },
-  { clave: 'fchaInfoFnal', label: 'Fecha Informe Final' },
-  { clave: 'fchaPresentacionCifras', label: 'Fecha Presentación de Cifras' },
-  { clave: 'fchaAceptacionCifrasAseguradora', label: 'Fecha Aceptación de Cifras (Aseguradora)' },
-  { clave: 'fchaEnvioFiniquito', label: 'Fecha Envío de Finiquito' },
-  { clave: 'fchaFactra', label: 'Fecha Factura' },
-  { clave: 'fchaUltSegui', label: 'Fecha Último Seguimiento' },
-  { clave: 'fchaActSegui', label: 'Fecha Actual Seguimiento' },
-  { clave: 'fchaFinqtoIndem', label: 'Fecha Fin Quito Indemnización' },
-  { clave: 'fchaUltRevi', label: 'Fecha Última Revisión' },
-  { clave: 'createdAt', label: 'Fecha de Creación' },
-  { clave: 'updatedAt', label: 'Fecha de Actualización' }
+  { clave: 'fchaAsgncion' },
+  { clave: 'fchaSinstro' },
+  { clave: 'fchaContIni' },
+  { clave: 'fchaCoordInspeccion' },
+  { clave: 'fchaProgInspeccion' },
+  { clave: 'fchaInspccion' },
+  { clave: 'fchaSoliDocu' },
+  { clave: 'fchaInfoPrelm' },
+  { clave: 'fchaRepoActi' },
+  { clave: 'fchaInfoFnal' },
+  { clave: 'fchaPresentacionCifras' },
+  { clave: 'fchaAceptacionCifrasAseguradora' },
+  { clave: 'fchaEnvioFiniquito' },
+  { clave: 'fchaFactra' },
+  { clave: 'fchaUltSegui' },
+  { clave: 'fchaActSegui' },
+  { clave: 'fchaFinqtoIndem' },
+  { clave: 'fchaUltRevi' },
+  { clave: 'createdAt' },
+  { clave: 'updatedAt' }
 ];
 
 // Campos disponibles: orden de columnas alineado con trazabilidad (fechas y anexos por etapa)
 const todosLosCampos = [
-  { clave: 'nmroAjste', label: 'No. Ajuste' },
-  { clave: 'nmroSinstro', label: 'No. de Siniestro' },
-  { clave: 'nombIntermediario', label: 'Intermediario' },
-  { clave: 'codWorkflow', label: 'Cod Workflow' },
-  { clave: 'nmroPolza', label: 'No. de Poliza' },
-  { clave: 'codiRespnsble', label: 'Responsable' },
-  { clave: 'codiAsgrdra', label: 'Aseguradora' },
-  { clave: 'asgrBenfcro', label: 'Asegurado o Beneficiario' },
+  { clave: 'nmroAjste' },
+  { clave: 'nmroSinstro' },
+  { clave: 'nombIntermediario' },
+  { clave: 'codWorkflow' },
+  { clave: 'nmroPolza' },
+  { clave: 'codiRespnsble' },
+  { clave: 'codiAsgrdra' },
+  { clave: 'asgrBenfcro' },
 
-  { clave: 'fchaAsgncion', label: 'Fecha Asignacion' },
-  { clave: 'fchaSinstro', label: 'Fecha Siniestro' },
-  { clave: 'fchaContIni', label: 'Fecha Contacto Inicial' },
-  { clave: 'obseContIni', label: 'Observaciones Contacto Inicial' },
-  { clave: 'anexContIni', label: 'Anexos Contacto Inicial' },
-  { clave: 'fchaCoordInspeccion', label: 'Fecha Coordinación Inspección' },
-  { clave: 'fchaProgInspeccion', label: 'Fecha Programada Inspección' },
-  { clave: 'obseCoordInspeccion', label: 'Observaciones Coordinación Inspección' },
-  { clave: 'fchaInspccion', label: 'Fecha de Inspeccion' },
-  { clave: 'obseInspccion', label: 'Observaciones Inspección' },
-  { clave: 'anexActaInspccion', label: 'Anexos Acta Inspección' },
-  { clave: 'fchaSoliDocu', label: 'Fecha Solicitud Documentos' },
-  { clave: 'obseSoliDocu', label: 'Observaciones Solicitud Docs' },
-  { clave: 'anexSolDoc', label: 'Anexos Solicitud Docs' },
-  { clave: 'fchaInfoPrelm', label: 'Fecha Informe Preliminar' },
-  { clave: 'obseInfoPrelm', label: 'Observaciones Informe Preliminar' },
-  { clave: 'anxoInfPrelim', label: 'Anexos Informe Preliminar' },
-  { clave: 'fchaRepoActi', label: 'Fecha Último Documento / Reporte Actualizado' },
-  { clave: 'obseRepoActi', label: 'Observaciones Último Documento' },
-  { clave: 'anxoRepoActi', label: 'Anexos Último Documento' },
-  { clave: 'fchaInfoFnal', label: 'Fecha Informe Final' },
-  { clave: 'obseInfoFnal', label: 'Observaciones Informe Final' },
-  { clave: 'anxoInfoFnal', label: 'Anexos Informe Final' },
-  { clave: 'fchaPresentacionCifras', label: 'Fecha Presentación de Cifras' },
-  { clave: 'fchaAceptacionCifrasAseguradora', label: 'Fecha Aceptación Cifras (Aseguradora)' },
-  { clave: 'obsePresentacionCifras', label: 'Observaciones Presentación de Cifras' },
-  { clave: 'anxoPresentacionCifras', label: 'Adjunto Presentación de Cifras' },
-  { clave: 'fchaEnvioFiniquito', label: 'Fecha Envío de Finiquito' },
-  { clave: 'obseEnvioFiniquito', label: 'Observaciones Envío de Finiquito' },
-  { clave: 'anxoEnvioFiniquito', label: 'Adjunto Envío de Finiquito' },
+  { clave: 'fchaAsgncion' },
+  { clave: 'fchaSinstro' },
+  { clave: 'fchaContIni' },
+  { clave: 'obseContIni' },
+  { clave: 'anexContIni' },
+  { clave: 'fchaCoordInspeccion' },
+  { clave: 'fchaProgInspeccion' },
+  { clave: 'obseCoordInspeccion' },
+  { clave: 'fchaInspccion' },
+  { clave: 'obseInspccion' },
+  { clave: 'anexActaInspccion' },
+  { clave: 'fchaSoliDocu' },
+  { clave: 'obseSoliDocu' },
+  { clave: 'anexSolDoc' },
+  { clave: 'fchaInfoPrelm' },
+  { clave: 'obseInfoPrelm' },
+  { clave: 'anxoInfPrelim' },
+  { clave: 'fchaRepoActi' },
+  { clave: 'obseRepoActi' },
+  { clave: 'anxoRepoActi' },
+  { clave: 'fchaInfoFnal' },
+  { clave: 'obseInfoFnal' },
+  { clave: 'anxoInfoFnal' },
+  { clave: 'fchaPresentacionCifras' },
+  { clave: 'fchaAceptacionCifrasAseguradora' },
+  { clave: 'obsePresentacionCifras' },
+  { clave: 'anxoPresentacionCifras' },
+  { clave: 'fchaEnvioFiniquito' },
+  { clave: 'obseEnvioFiniquito' },
+  { clave: 'anxoEnvioFiniquito' },
 
-  { clave: 'descSinstro', label: 'Descripción Siniestro' },
-  { clave: 'ciudadSiniestro', label: 'Ciudad Siniestro' },
-  { clave: 'codiEstdo', label: 'Estado del Siniestro' },
-  { clave: 'funcAsgrdra', label: 'Funcionario Aseguradora' },
-  { clave: 'tipoDucumento', label: 'Tipo Documento' },
-  { clave: 'numDocumento', label: 'Número Documento' },
-  { clave: 'tipoPoliza', label: 'Tipo Poliza' },
-  { clave: 'amprAfctdo', label: 'Amparo Afectado' },
-  { clave: 'causa_siniestro', label: 'Causa Siniestro' },
-  { clave: 'dias_transcrrdo', label: 'Días Transcurridos' },
+  { clave: 'descSinstro' },
+  { clave: 'ciudadSiniestro' },
+  { clave: 'codiEstdo' },
+  { clave: 'funcAsgrdra' },
+  { clave: 'tipoDucumento' },
+  { clave: 'numDocumento' },
+  { clave: 'tipoPoliza' },
+  { clave: 'amprAfctdo' },
+  { clave: 'causa_siniestro' },
+  { clave: 'dias_transcrrdo' },
 
-  { clave: 'vlor_resrva', label: 'Valor Reserva' },
-  { clave: 'vlor_reclmo', label: 'Valor del Reclamo' },
-  { clave: 'monto_indmzar', label: 'Monto a Indemnizar' },
-  { clave: 'observacionesValores', label: 'Observaciones Valores' },
+  { clave: 'vlor_resrva' },
+  { clave: 'vlor_reclmo' },
+  { clave: 'monto_indmzar' },
+  { clave: 'observacionesValores' },
 
-  { clave: 'nmroFactra', label: 'Número Factura' },
-  { clave: 'fchaFactra', label: 'Fecha Factura' },
-  { clave: 'vlorServcios', label: 'Valor Servicios' },
-  { clave: 'vlorGastos', label: 'Valor Gastos' },
-  { clave: 'total', label: 'Total Base' },
-  { clave: 'totalGeneral', label: 'Total General' },
-  { clave: 'totalPagado', label: 'Total Pagado' },
-  { clave: 'iva', label: 'IVA' },
-  { clave: 'reteiva', label: 'ReteIVA' },
-  { clave: 'retefuente', label: 'ReteFuente' },
-  { clave: 'reteica', label: 'ReteICA' },
-  { clave: 'porcIva', label: '% IVA' },
-  { clave: 'porcReteiva', label: '% ReteIVA' },
-  { clave: 'porcRetefuente', label: '% ReteFuente' },
-  { clave: 'porcReteica', label: '% ReteICA' },
-  { clave: 'anxoFactra', label: 'Anexos Facturación' },
+  { clave: 'nmroFactra' },
+  { clave: 'fchaFactra' },
+  { clave: 'vlorServcios' },
+  { clave: 'vlorGastos' },
+  { clave: 'total' },
+  { clave: 'totalGeneral' },
+  { clave: 'totalPagado' },
+  { clave: 'iva' },
+  { clave: 'reteiva' },
+  { clave: 'retefuente' },
+  { clave: 'reteica' },
+  { clave: 'porcIva' },
+  { clave: 'porcReteiva' },
+  { clave: 'porcRetefuente' },
+  { clave: 'porcReteica' },
+  { clave: 'anxoFactra' },
 
-  { clave: 'fchaUltSegui', label: 'Fecha Último Seguimiento' },
-  { clave: 'fchaActSegui', label: 'Fecha Actual Seguimiento' },
-  { clave: 'fchaFinqtoIndem', label: 'Fecha Fin Quito Indemnización' },
-  { clave: 'fchaUltRevi', label: 'Fecha Última Revisión' },
-  { clave: 'obseComprmsi', label: 'Observaciones Compromisos' },
-  { clave: 'obseSegmnto', label: 'Observaciones Seguimiento' },
+  { clave: 'fchaUltSegui' },
+  { clave: 'fchaActSegui' },
+  { clave: 'fchaFinqtoIndem' },
+  { clave: 'fchaUltRevi' },
+  { clave: 'obseComprmsi' },
+  { clave: 'obseSegmnto' },
 
-  { clave: 'anxoHonorarios', label: 'Anexos Honorarios' },
-  { clave: 'anxoHonorariosdefinit', label: 'Anexos Honorarios Definitivos' },
-  { clave: 'anxoAutorizacion', label: 'Anexos Autorización' },
-  { clave: 'honorarios', label: 'Honorarios' },
-  { clave: 'honorariosDefinitivos', label: 'Honorarios Definitivos' },
-  { clave: 'autorizacionHonorarios', label: 'Autorización Honorarios' },
+  { clave: 'anxoHonorarios' },
+  { clave: 'anxoHonorariosdefinit' },
+  { clave: 'anxoAutorizacion' },
+  { clave: 'honorarios' },
+  { clave: 'honorariosDefinitivos' },
+  { clave: 'autorizacionHonorarios' },
 
-  { clave: 'liquidacionPerdida', label: 'Liquidación de la Pérdida' },
-  { clave: 'indemnizacion', label: 'Indemnización' },
-  { clave: 'salvamentos', label: 'Salvamentos' },
-  { clave: 'panoramaRiesgos', label: 'Panorama de Riesgos' },
+  { clave: 'liquidacionPerdida' },
+  { clave: 'indemnizacion' },
+  { clave: 'salvamentos' },
+  { clave: 'panoramaRiesgos' },
 
-  { clave: 'createdAt', label: 'Fecha Creación' },
-  { clave: 'updatedAt', label: 'Fecha Actualización' }
+  { clave: 'createdAt' },
+  { clave: 'updatedAt' }
 ];
 
 const columnasIniciales = [
@@ -232,6 +235,15 @@ const sincronizarCamelSnake = (caso) => {
 };
 
 export default function ReporteCasosPersona() {
+  const { t } = useTranslation();
+  const camposFechaConLabel = useMemo(
+    () => camposFechaDisponibles.map(({ clave }) => ({ clave, label: t(`${UI_RCP}.campos_fecha.${clave}`) })),
+    [t]
+  );
+  const todosLosCamposConLabel = useMemo(
+    () => todosLosCampos.map(({ clave }) => ({ clave, label: t(`${UI_RCP}.campos.${clave}`) })),
+    [t]
+  );
   const navigate = useNavigate();
   const location = useLocation();
   const [casos, setCasos] = useState([]);
@@ -239,12 +251,14 @@ export default function ReporteCasosPersona() {
   const [responsables, setResponsables] = useState([]);
   const [aseguradoras, setAseguradoras] = useState([]);
   const [estados, setEstados] = useState([]);
-  const [camposVisibles, setCamposVisibles] = useState(
-    todosLosCampos.filter(c => columnasIniciales.includes(c.clave))
+  const [camposVisibles, setCamposVisibles] = useState(() =>
+    columnasIniciales.map((clave) => ({ clave, label: clave }))
   );
   const [modalColumnasOpen, setModalColumnasOpen] = useState(false);
-  const [seleccionTemporal, setSeleccionTemporal] = useState(camposVisibles.map(c => c.clave));
-  const [columnasOrdenadas, setColumnasOrdenadas] = useState(camposVisibles);
+  const [seleccionTemporal, setSeleccionTemporal] = useState(() => [...columnasIniciales]);
+  const [columnasOrdenadas, setColumnasOrdenadas] = useState(() =>
+    columnasIniciales.map((clave) => ({ clave, label: clave }))
+  );
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [orden, setOrden] = useState({ campo: 'fchaAsgncion', asc: false });
   
@@ -272,6 +286,17 @@ export default function ReporteCasosPersona() {
 
   const rolUsuario = localStorage.getItem('rol') || '';
   const esAdminOSoporte = rolUsuario === 'admin' || rolUsuario === 'soporte';
+
+  // Mantener labels i18n al día sin perder la selección de columnas.
+  useEffect(() => {
+    const conLabel = (lista) =>
+      lista.map((c) => {
+        const found = todosLosCamposConLabel.find((x) => x.clave === c.clave);
+        return found || c;
+      });
+    setCamposVisibles((prev) => conLabel(prev));
+    setColumnasOrdenadas((prev) => conLabel(prev));
+  }, [todosLosCamposConLabel]);
 
   // Restaurar filtros al volver desde el formulario (mismo criterio que reporte completo)
   useEffect(() => {
@@ -381,8 +406,8 @@ export default function ReporteCasosPersona() {
         
         // Si encontramos un nombre válido, actualizar los campos del caso
         if (nombreFuncionario && 
-            nombreFuncionario !== 'Sin asignar' && 
-            nombreFuncionario.toLowerCase() !== 'sin asignar' &&
+            nombreFuncionario !== t(`${UI_RCP}.sin_asignar`) && 
+            nombreFuncionario.toLowerCase() !== t(`${UI_RCP}.sin_asignar`).toLowerCase() &&
             !/^\d+$/.test(String(nombreFuncionario).trim())) {
           casoEnriquecido.funcAsgrdraNombre = nombreFuncionario;
           casoEnriquecido.funcionarioAseguradora = nombreFuncionario;
@@ -409,7 +434,7 @@ export default function ReporteCasosPersona() {
 // Contar casos por estado para debugging
       const casosPorEstado = {};
       casosFinales.forEach(caso => {
-        const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
+        const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || t(`${UI_RCP}.sin_estado`)).trim();
         casosPorEstado[estado] = (casosPorEstado[estado] || 0) + 1;
       });
 setCasos(casosFinales);
@@ -603,7 +628,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
     if (estadoFiltro && estadoFiltro.trim() !== '') {
       const casosPorEstadoFiltrado = {};
       resultados.forEach(caso => {
-        const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
+        const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || t(`${UI_RCP}.sin_estado`)).trim();
         casosPorEstadoFiltrado[estado] = (casosPorEstadoFiltrado[estado] || 0) + 1;
       });
 // Buscar el nombre del estado correspondiente al código
@@ -678,19 +703,19 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
   };
 
   const getNombreResponsable = (caso) => {
-    if (caso.nombreResponsable && caso.nombreResponsable !== 'Sin asignar' && caso.nombreResponsable.toLowerCase() !== 'sin asignar') {
+    if (caso.nombreResponsable && caso.nombreResponsable !== t(`${UI_RCP}.sin_asignar`) && caso.nombreResponsable.toLowerCase() !== t(`${UI_RCP}.sin_asignar`).toLowerCase()) {
       return caso.nombreResponsable;
     }
-    if (caso.responsable_form && caso.responsable_form !== 'Sin asignar') {
+    if (caso.responsable_form && caso.responsable_form !== t(`${UI_RCP}.sin_asignar`)) {
       return caso.responsable_form;
     }
-    if (caso.responsable && caso.responsable !== 'Sin asignar') {
+    if (caso.responsable && caso.responsable !== t(`${UI_RCP}.sin_asignar`)) {
       return caso.responsable;
     }
     
     const codigo = caso.codiRespnsble ?? caso.codi_responble ?? caso.responsable;
-    if (!codigo || codigo === 'Sin asignar') {
-      return usuarioActual.nombre || 'Sin asignar';
+    if (!codigo || codigo === t(`${UI_RCP}.sin_asignar`)) {
+      return usuarioActual.nombre || t(`${UI_RCP}.sin_asignar`);
     }
     
     if (responsables.length > 0) {
@@ -728,21 +753,21 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                              '';
         
         if (nombreDirecto && 
-            nombreDirecto !== 'Sin asignar' && 
-            nombreDirecto.toLowerCase() !== 'sin asignar' &&
+            nombreDirecto !== t(`${UI_RCP}.sin_asignar`) && 
+            nombreDirecto.toLowerCase() !== t(`${UI_RCP}.sin_asignar`).toLowerCase() &&
             !/^\d+$/.test(String(nombreDirecto).trim())) {
           return nombreDirecto;
         }
       }
       
-      return nombreDelMapeo || 'Sin asignar';
+      return nombreDelMapeo || t(`${UI_RCP}.sin_asignar`);
     } catch (error) {
       console.error('❌ Error obteniendo nombre de funcionario:', error);
       // Fallback: intentar obtener desde los campos del caso
       return caso.funcAsgrdraNombre || 
              caso.funcionarioAseguradora || 
              caso.funcAsgrdra || 
-             'Sin asignar';
+             t(`${UI_RCP}.sin_asignar`);
     }
   };
 
@@ -841,7 +866,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
   const handleGestionar = (caso) => {
     const id = caso?._id;
     if (!id) {
-      alert('No se encontró el identificador del caso para editarlo.');
+      alert(t(`${UI_RCP}.no_se_encontro_identificador`));
       return;
     }
     navigate('/complex/editar', {
@@ -863,14 +888,12 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
 
   const handleDelete = async (caso) => {
     if (!esAdminOSoporte) {
-      alert('No tienes permisos para eliminar casos');
+      alert(t(`${UI_RCP}.sin_permiso_eliminar`));
       return;
     }
 
     const numeroAjuste = caso.nmroAjste || caso.numero_ajuste || caso._id;
-    const confirmacion = window.confirm(
-      `¿Estás seguro de que deseas eliminar el caso ${numeroAjuste}?\n\nEsta acción no se puede deshacer.`
-    );
+    const confirmacion = window.confirm(t(`${UI_RCP}.confirmar_eliminar`, { numero: numeroAjuste }));
 
     if (!confirmacion) {
       return;
@@ -879,14 +902,14 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
     try {
       if (caso._id) {
         await deleteCasoComplex(caso._id);
-        alert('Caso eliminado exitosamente');
+        alert(t(`${UI_RCP}.caso_eliminado_ok`));
         cargarCasos();
       } else {
-        alert('Este caso no se puede eliminar desde aquí. Solo se pueden eliminar casos Complex.');
+        alert(t(`${UI_RCP}.no_se_puede_eliminar`));
       }
     } catch (error) {
       console.error('Error al eliminar caso:', error);
-      alert(`Error al eliminar el caso: ${error.message}`);
+      alert(t(`${UI_RCP}.error_eliminar_caso`, { mensaje: error.message }));
     }
   };
 
@@ -896,7 +919,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
     // Inicializar orden con las columnas visibles en su orden actual
     const ordenActual = camposVisibles.map(c => c.clave);
     const columnasVisiblesOrdenadas = [...camposVisibles];
-    const columnasNoVisibles = todosLosCampos.filter(c => !ordenActual.includes(c.clave));
+    const columnasNoVisibles = todosLosCamposConLabel.filter(c => !ordenActual.includes(c.clave));
     setColumnasOrdenadas([...columnasVisiblesOrdenadas, ...columnasNoVisibles]);
     setModalColumnasOpen(true);
   };
@@ -1151,7 +1174,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
     return (
       <div className="min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4">
         <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
-          <p className="font-body text-sm text-gray-600 dark:text-gray-300">Cargando casos…</p>
+          <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t(`${UI_RCP}.cargando_casos`)}</p>
         </div>
       </div>
     );
@@ -1182,19 +1205,20 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
         <header className={card}>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <h1 className={`${title} text-xl sm:text-2xl`}>Mis Casos Asignados</h1>
+              <h1 className={`${title} text-xl sm:text-2xl`}>{t('complex.ui.reporte_casos_persona.title')}</h1>
               <p className={hint}>
-                Casos asignados a <span className="font-semibold">{usuarioActual.nombre || usuarioActual.login}</span>.
+                {t('complex.ui.reporte_casos_persona.casesAssignedTo')}{' '}
+                <span className="font-semibold">{usuarioActual.nombre || usuarioActual.login}</span>.
               </p>
               <div className="flex flex-wrap gap-2 pt-2">
                 <span className={badge}>
-                  {casosFiltrados.length} caso(s)
+                  {t('complex.ui.reporte_casos_persona.casesCount', { count: casosFiltrados.length })}
                 </span>
                 <span className={badge}>
-                  {camposVisibles.length} columnas visibles
+                  {t('complex.ui.reporte_casos_persona.visibleColumns', { count: camposVisibles.length })}
                 </span>
                 <span className={badge}>
-                  {todosLosCampos.length} columnas disponibles
+                  {t('complex.ui.reporte_casos_persona.availableColumns', { count: todosLosCampos.length })}
                 </span>
               </div>
             </div>
@@ -1205,8 +1229,8 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
         <section className={card}>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className={`${title} text-lg`}>Filtros</h2>
-              <p className={hint}>Filtra por fechas, estado, aseguradora y texto.</p>
+              <h2 className={`${title} text-lg`}>{t(`${UI_RCP}.filtros`)}</h2>
+              <p className={hint}>{t(`${UI_RCP}.filtra_por`)}</p>
             </div>
             <button
               type="button"
@@ -1220,15 +1244,15 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                 setTerminoBusqueda('');
               }}
             >
-              Limpiar filtros
+              {t(`${UI_RCP}.limpiar_filtros`)}
             </button>
           </div>
         
           <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className={label}>Campo de fecha</label>
+              <label className={label}>{t(`${UI_RCP}.campo_de_fecha`)}</label>
               <select value={campoFechaFiltro} onChange={(e) => setCampoFechaFiltro(e.target.value)} className={input}>
-                {camposFechaDisponibles.map((campo) => (
+                {camposFechaConLabel.map((campo) => (
                   <option key={campo.clave} value={campo.clave}>
                     {campo.label}
                   </option>
@@ -1237,16 +1261,16 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
             </div>
 
             <div>
-              <label className={label}>Fecha desde</label>
+              <label className={label}>{t(`${UI_RCP}.fecha_desde`)}</label>
               <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className={input} />
             </div>
             <div>
-              <label className={label}>Fecha hasta</label>
+              <label className={label}>{t(`${UI_RCP}.fecha_hasta`)}</label>
               <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className={input} />
             </div>
         
             <div>
-              <label className={label}>Estado</label>
+              <label className={label}>{t(`${UI_RCP}.estado`)}</label>
               <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={input}>
                 <option value="">Todos</option>
                 {estadosUnicos.map((e, index) => (
@@ -1275,7 +1299,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                   type="text"
                   value={terminoBusqueda}
                   onChange={(e) => setTerminoBusqueda(e.target.value)}
-                  placeholder="Número de ajuste, siniestro, asegurado, ciudad…"
+                  placeholder={t(`${UI_RCP}.placeholder_buscar`)}
                   className={`${input} min-w-0 flex-1`}
                 />
                 <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
@@ -1289,7 +1313,8 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                     type="button"
                     className={btnNeutral}
                     onClick={() => {
-                      setCamposVisibles(todosLosCampos);
+                      setCamposVisibles(todosLosCamposConLabel);
+                      setColumnasOrdenadas(todosLosCamposConLabel);
                       setModalColumnasOpen(false);
                     }}
                   >
@@ -1308,7 +1333,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
               <div className="mt-2 flex flex-wrap gap-2">
                 {(fechaDesde || fechaHasta) && (
                   <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">
-                    {camposFechaDisponibles.find((c) => c.clave === campoFechaFiltro)?.label || campoFechaFiltro}
+                    {camposFechaConLabel.find((c) => c.clave === campoFechaFiltro)?.label || campoFechaFiltro}
                   </span>
                 )}
                 {fechaDesde && <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">Desde: {fechaDesde}</span>}
@@ -1503,7 +1528,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                 onClick={() => irAPagina(1)}
                 disabled={paginaActual === 1}
                         className={btnNeutral}
-                title="Primera página"
+                title={t(`${UI_RCP}.primera_pagina`)}
               >
                 ««
               </button>
@@ -1511,7 +1536,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                 onClick={() => irAPagina(paginaActual - 1)}
                 disabled={paginaActual === 1}
                         className={btnNeutral}
-                title="Página anterior"
+                title={t(`${UI_RCP}.pagina_anterior`)}
               >
                 « Anterior
               </button>
@@ -1546,7 +1571,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                 onClick={() => irAPagina(paginaActual + 1)}
                 disabled={paginaActual === totalPaginas}
                         className={btnNeutral}
-                title="Página siguiente"
+                title={t(`${UI_RCP}.pagina_siguiente`)}
               >
                 Siguiente »
               </button>
@@ -1554,7 +1579,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
                 onClick={() => irAPagina(totalPaginas)}
                 disabled={paginaActual === totalPaginas}
                         className={btnNeutral}
-                title="Última página"
+                title={t(`${UI_RCP}.ultima_pagina`)}
               >
                 »»
               </button>

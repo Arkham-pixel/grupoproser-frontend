@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FormTable, FormTableRow, TableFieldInput, TableFieldTextarea, SyncedValue } from "./maquinariaUi";
 
 export default function EstadoGeneralMaquinaria({
@@ -11,12 +12,14 @@ export default function EstadoGeneralMaquinaria({
   funcionamiento,
   mantenimiento, setMantenimiento,
 }) {
+  const { t } = useTranslation();
+
   const areas = [
-    { label: "ELÉCTRICO E INSTRUMENTOS", value: electrico, onChange: setElectrico, rows: 2 },
-    { label: "SISTEMA MECÁNICO", value: mecanico, onChange: setMecanico, rows: 2 },
-    { label: "SISTEMA HIDRÁULICO", value: hidraulico, onChange: setHidraulico, rows: 2 },
-    { label: "PINTURA", value: pintura, onChange: setPintura, rows: 2 },
-    { label: "CHASIS", value: chasis, onChange: setChasis, rows: 2 },
+    { label: t('machinery.ui.estado.electrico'), value: electrico, onChange: setElectrico, rows: 2 },
+    { label: t('machinery.ui.estado.mecanico'), value: mecanico, onChange: setMecanico, rows: 2 },
+    { label: t('machinery.ui.estado.hidraulico'), value: hidraulico, onChange: setHidraulico, rows: 2 },
+    { label: t('machinery.ui.estado.pintura'), value: pintura, onChange: setPintura, rows: 2 },
+    { label: t('machinery.ui.estado.chasis'), value: chasis, onChange: setChasis, rows: 2 },
   ];
 
   return (
@@ -28,21 +31,21 @@ export default function EstadoGeneralMaquinaria({
               rows={rows}
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              placeholder="Escriba aquí"
+              placeholder={t('machinery.ui.common.writeHere')}
             />
           </FormTableRow>
         ))}
-        <FormTableRow label="SISTEMA DE LOCOMOCIÓN">
-          <SyncedValue value={sistemaLocomocion} source="§2 — Sistema de locomoción" />
+        <FormTableRow label={t('machinery.ui.estado.locomocion')}>
+          <SyncedValue value={sistemaLocomocion} source={t('machinery.ui.sources.locomo2')} />
         </FormTableRow>
-        <FormTableRow label="FUNCIONAMIENTO">
-          <SyncedValue value={funcionamiento} source="§2 — Función y estado operativo" />
+        <FormTableRow label={t('machinery.ui.estado.funcionamiento')}>
+          <SyncedValue value={funcionamiento} source={t('machinery.ui.sources.funcion2')} />
         </FormTableRow>
-        <FormTableRow label="MANTENIMIENTO">
+        <FormTableRow label={t('machinery.ui.estado.mantenimiento')}>
           <TableFieldInput
             value={mantenimiento}
             onChange={(e) => setMantenimiento(e.target.value)}
-            placeholder="Escriba aquí"
+            placeholder={t('machinery.ui.common.writeHere')}
           />
         </FormTableRow>
       </tbody>

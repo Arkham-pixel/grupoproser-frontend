@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import {
   FaBolt,
   FaChartLine,
@@ -54,17 +55,18 @@ import {
 } from './expressFenixUi';
 
 const NAV_EXPRESS = [
-  { path: '/express/carga', icon: FaBolt, label: 'Carga' },
-  { path: '/express/liquidador', icon: FaCalculator, label: 'Liquidador' },
-  { path: '/express/protocolo', icon: FaChartLine, label: 'Protocolo' },
-  { path: '/express/tablero', icon: FaClipboardList, label: 'Tablero' },
-  { path: '/express/reporte', icon: FaTable, label: 'Reporte' },
+  { path: '/express/carga', icon: FaBolt, key: 'load' },
+  { path: '/express/liquidador', icon: FaCalculator, key: 'settlement' },
+  { path: '/express/protocolo', icon: FaChartLine, key: 'protocol' },
+  { path: '/express/tablero', icon: FaClipboardList, key: 'board' },
+  { path: '/express/reporte', icon: FaTable, key: 'report' },
 ];
 
 export function ExpressNavTabs({ activePath }) {
+  const { t } = useTranslation();
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Navegación Express">
-      {NAV_EXPRESS.map(({ path, icon: Icon, label }) => {
+    <nav className="flex flex-wrap gap-2" aria-label={t('express.navigation')}>
+      {NAV_EXPRESS.map(({ path, icon: Icon, key }) => {
         const activo = activePath === path;
         return (
           <Link
@@ -77,7 +79,7 @@ export function ExpressNavTabs({ activePath }) {
             }`}
           >
             <Icon className="text-sm" />
-            {label}
+            {t(`express.nav.${key}`)}
           </Link>
         );
       })}
@@ -123,13 +125,14 @@ export function ExpressChartPlot({ height, children }) {
 }
 
 export function ExpressFilterSection({ title = 'Filtros', children, onClear, showClear }) {
+  const { t } = useTranslation();
   return (
     <section className={expressCard}>
       <div className={`${expressCardHeader} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
         <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
         {showClear && onClear && (
           <button type="button" onClick={onClear} className={expressBtnGhost}>
-            Limpiar filtros
+            {t('express.actions.clearFilters')}
           </button>
         )}
       </div>
@@ -238,6 +241,7 @@ export function InputFechaHoraExpress({
   required = false,
   id,
 }) {
+  const { t } = useTranslation();
   const { fecha, hora } = partirFechaHoraParaInputs(value);
   const horaLegible = fecha && hora ? formatearHoraLegibleExpress(hora) : '';
 
@@ -252,7 +256,7 @@ export function InputFechaHoraExpress({
       {horaLegible ? (
         <p
           className="mb-1 font-body text-[11px] leading-tight text-gray-400 dark:text-gray-500"
-          title="Hora guardada automáticamente al registrar la fecha"
+          title={t('express.time.autoSaved')}
         >
           {horaLegible}
         </p>
@@ -283,7 +287,7 @@ export function InputFechaHoraExpress({
           emitir(nuevaFecha, hora || horaActualHHMM());
         }}
         onBlur={onBlur}
-        aria-label={horaLegible ? `Fecha, hora registrada ${horaLegible}` : 'Fecha'}
+        aria-label={horaLegible ? t('express.time.dateTimeRecorded', { time: horaLegible }) : t('express.time.date')}
       />
     </div>
   );
@@ -294,6 +298,7 @@ export function TextareaFenix({ className = '', ...props }) {
 }
 
 export function DropzoneFenix({ getRootProps, getInputProps, isDragActive, children }) {
+  const { t } = useTranslation();
   const rootProps = getRootProps ? getRootProps() : {};
   return (
     <div
@@ -308,8 +313,8 @@ export function DropzoneFenix({ getRootProps, getInputProps, isDragActive, child
           }`}
         >
           {isDragActive
-            ? 'Suelta los archivos aquí…'
-            : 'Arrastra documentos o haz clic para seleccionarlos'}
+            ? t('express.dropzone.dropHere')
+            : t('express.dropzone.selectFiles')}
         </p>
       )}
     </div>
@@ -349,6 +354,7 @@ export function SeccionAcordeon({ abierto, onToggle, icon: Icon, titulo, subtitu
 }
 
 export function ExpressModal({ open, onClose, title, children, wide = false }) {
+  const { t } = useTranslation();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
@@ -368,7 +374,7 @@ export function ExpressModal({ open, onClose, title, children, wide = false }) {
             type="button"
             onClick={onClose}
             className="rounded-lg p-2 text-gray-400 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
-            title="Cerrar"
+            title={t('common.close')}
           >
             <FaTimes />
           </button>

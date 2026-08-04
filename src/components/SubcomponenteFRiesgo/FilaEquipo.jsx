@@ -1,10 +1,14 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function FilaEquipo({ equipo, onChange, onDelete }) {
+  const { t, i18n } = useTranslation();
+  const locale = String(i18n.language || 'es').toLowerCase().startsWith('en') ? 'en-US' : 'es-CO';
+
   const formatearMiles = (valor) => {
     const numero = parseFloat(valor);
     if (Number.isNaN(numero) || !Number.isFinite(numero)) return "";
-    return numero.toLocaleString("es-CO");
+    return numero.toLocaleString(locale);
   };
 
   const limpiarNumero = (valor) => String(valor || "").replace(/[^\d]/g, "");
@@ -74,7 +78,7 @@ export default function FilaEquipo({ equipo, onChange, onDelete }) {
           className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700"
           onClick={onDelete}
         >
-          Eliminar
+          {t('inspection.ui.formularioAreas.delete')}
         </button>
       </td>
     </tr>

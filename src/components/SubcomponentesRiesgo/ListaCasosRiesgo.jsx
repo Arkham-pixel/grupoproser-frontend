@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCasosRiesgo } from '../../context/CasosRiesgoContext';
 import { FaEdit } from 'react-icons/fa';
 import {
@@ -24,6 +25,7 @@ const getCiudadNombre = (codigo, ciudades) => {
 const getEstadoNombre = (codigo, estados) => getEstadoRiesgoNombre(codigo, estados);
 
 const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
+  const { t } = useTranslation();
   const { casos } = useCasosRiesgo();
   const [pagina, setPagina] = useState(1);
   const casosPorPagina = 10;
@@ -49,7 +51,7 @@ const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
     <div className="mt-6 w-full">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:justify-end">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-          <label className={riesgoLabel}>Inspección desde</label>
+          <label className={riesgoLabel}>{t('risks.ui.lista_casos_riesgo.inspeccion_desde')}</label>
           <input
             type="date"
             value={fechaDesde}
@@ -61,7 +63,7 @@ const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
           />
         </div>
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-          <label className={riesgoLabel}>hasta</label>
+          <label className={riesgoLabel}>{t('risks.ui.lista_casos_riesgo.hasta')}</label>
           <input
             type="date"
             value={fechaHasta}
@@ -78,20 +80,20 @@ const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
         <table className="w-full min-w-[720px] text-center text-xs sm:text-sm">
           <thead>
             <tr>
-              <th className={riesgoTableTh}>N° Riesgo</th>
-              <th className={riesgoTableTh}>Consecutivo</th>
-              <th className={riesgoTableTh}>Asegurado</th>
-              <th className={riesgoTableTh}>Ciudad</th>
-              <th className={riesgoTableTh}>Estado</th>
-              <th className={riesgoTableTh}>Fecha inspección</th>
-              <th className={riesgoTableTh}>Acciones</th>
+              <th className={riesgoTableTh}>{t('risks.ui.lista_casos_riesgo.col_numero_riesgo')}</th>
+              <th className={riesgoTableTh}>{t('risks.ui.lista_casos_riesgo.col_consecutivo')}</th>
+              <th className={riesgoTableTh}>{t('risks.ui.lista_casos_riesgo.col_asegurado')}</th>
+              <th className={riesgoTableTh}>{t('risks.city')}</th>
+              <th className={riesgoTableTh}>{t('risks.status')}</th>
+              <th className={riesgoTableTh}>{t('risks.ui.lista_casos_riesgo.col_fecha_inspeccion')}</th>
+              <th className={riesgoTableTh}>{t('common.actions')}</th>
             </tr>
           </thead>
           <tbody>
             {casosFiltrados.length === 0 ? (
               <tr>
                 <td colSpan={7} className={`${riesgoTableTd} py-6 text-gray-500`}>
-                  No hay casos registrados
+                  {t('risks.ui.lista_casos_riesgo.sin_casos')}
                 </td>
               </tr>
             ) : (
@@ -123,10 +125,10 @@ const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
                       onClick={() =>
                         onEditarCaso && onEditarCaso(caso, (pagina - 1) * casosPorPagina + idx)
                       }
-                      aria-label="Editar caso"
-                      title="Editar caso"
+                      aria-label={t('risks.editCase')}
+                      title={t('risks.editCase')}
                     >
-                      <FaEdit className="mr-1 inline" /> Editar
+                      <FaEdit className="mr-1 inline" /> {t('common.edit')}
                     </button>
                   </td>
                 </tr>
@@ -182,7 +184,11 @@ const ListaCasosRiesgo = ({ onEditarCaso, ciudades, estados }) => {
           {'>>'}
         </button>
         <span className="ml-2 font-body text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
-          Mostrando {casosFiltrados.length === 0 ? 0 : desde}-{hasta} de {casosFiltrados.length}
+          {t('risks.ui.lista_casos_riesgo.paginacion', {
+            from: casosFiltrados.length === 0 ? 0 : desde,
+            to: hasta,
+            total: casosFiltrados.length,
+          })}
         </span>
       </div>
     </div>

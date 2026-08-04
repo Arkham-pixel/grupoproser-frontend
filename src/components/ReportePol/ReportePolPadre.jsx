@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import DatosGenerales from "./DatosGenerales";
 import DatosAsegurado from "./DatosAsegurado";
 import TransporteExterior from "./TransporteExterior";
@@ -31,6 +32,8 @@ import BotonesHistorial from '../BotonesHistorial.jsx';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario.js';
 
 export default function ReportePolPadre() {
+  const { t } = useTranslation();
+
   // Estados para el formulario
   const [actaNumero, setActaNumero] = useState("");
   const [ciudad, setCiudad] = useState("");
@@ -814,7 +817,7 @@ export default function ReportePolPadre() {
       <div className="text-center mb-8">
         <div className="flex justify-between items-center mb-4">
           <div className="text-left">
-            <h2 className="text-xl font-bold text-blue-600">POL Versión 2.0</h2>
+            <h2 className="text-xl font-bold text-blue-600">{t('pol.ui.padre.version')}</h2>
           </div>
           <div className="text-right">
             <a 
@@ -829,18 +832,18 @@ export default function ReportePolPadre() {
         </div>
         
         <h1 className="text-3xl font-bold text-gray-800 mb-4">
-          CONTROL PORTUARIO, RISK MANAGEMENT Y AJUSTES DE SINIESTROS
+          {t('pol.ui.padre.title')}
         </h1>
         
         <div className="flex justify-between items-start">
           <div className="text-left">
             <h3 className="text-xl font-semibold text-gray-700">
-              PROSER PUERTOS AJUSTADORES DE SEGUROS
+              {t('pol.ui.padre.company')}
             </h3>
           </div>
           <div className="border-2 border-gray-400 p-4 rounded">
-            <h3 className="text-lg font-bold text-center mb-2">ACTA/REPORT</h3>
-            <p className="text-center font-semibold">No. {actaNumero}</p>
+            <h3 className="text-lg font-bold text-center mb-2">{t('pol.ui.padre.actaReport')}</h3>
+            <p className="text-center font-semibold">{t('pol.ui.padre.actaNumber', { number: actaNumero })}</p>
           </div>
         </div>
       </div>
@@ -931,7 +934,7 @@ export default function ReportePolPadre() {
         onGuardarEnHistorial={handleGuardarEnHistorial}
         onExportar={generarWord}
         tipoFormulario={TIPOS_FORMULARIOS.POL}
-        tituloFormulario="POL"
+        tituloFormulario={t('pol.ui.padre.historyTitle')}
         deshabilitado={!actaNumero || !ciudad || !fecha} // Deshabilitar si faltan campos básicos
         guardando={guardando}
         exportando={exportando}

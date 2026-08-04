@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaInbox, FaSearch, FaSync, FaEdit, FaTrash, FaExclamationTriangle } from 'react-icons/fa';
@@ -13,7 +14,7 @@ import { crearResolverNombreAseguradora } from '../../utils/aseguradoraResolver'
 import { formatearFechaUI } from '../../utils/fechaUtils';
 import {
   GERENTES_FACTURACION_OPCIONES,
-  TIPO_ENVIO_LABELS,
+  labelTipoEnvio,
   esUsuarioGerenteFacturacion,
   puedeElegirGerenteEnBandeja,
   puedeAdministrarBandejaFacturacion,
@@ -40,6 +41,7 @@ import {
 import { ComplexNavTabs } from './ComplexUiBlocks';
 
 export default function BandejaFacturacion() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const login = localStorage.getItem('login') || '';
   const esSupervisor = puedeElegirGerenteEnBandeja(login);
@@ -68,7 +70,7 @@ export default function BandejaFacturacion() {
   const cargar = useCallback(async () => {
     if (!puedeAcceder) return;
     if (!gerenteFiltro && esSupervisor) {
-      setError('Seleccione el jefe para ver su bandeja');
+      setError(t('complex.ui.bandeja_facturacion.seleccione_jefe'));
       setItems([]);
       setCargando(false);
       return;
@@ -85,12 +87,12 @@ export default function BandejaFacturacion() {
       });
       setItems(Array.isArray(data.items) ? data.items : []);
     } catch (e) {
-      setError(e.message || 'No se pudo cargar la bandeja');
+      setError(e.message || t('complex.ui.bandeja_facturacion.error_cargar'));
       setItems([]);
     } finally {
       setCargando(false);
     }
-  }, [puedeAcceder, gerenteFiltro, tipoFiltro, desde, hasta, busqueda, esSupervisor]);
+  }, [puedeAcceder, gerenteFiltro, tipoFiltro, desde, hasta, busqueda, esSupervisor, t]);
 
   useEffect(() => {
     cargar();
@@ -144,7 +146,7 @@ export default function BandejaFacturacion() {
   const abrirSolicitudCorreccionAjustador = (fila) => {
     setFilaCorreccionAjustador(fila);
     setMensajeCorreccion(
-      'Se detectó un error en el control de horas. Por favor corríjalo en ARNALD (Facturación → Control de horas) o reemplace el archivo adjunto y vuelva a notificar.'
+      t('complex.ui.bandeja_facturacion.error_control_horas')
     );
   };
 
@@ -152,7 +154,7 @@ export default function BandejaFacturacion() {
     if (!filaCorreccionAjustador?.casoId) return;
     const mensaje = String(mensajeCorreccion || '').trim();
     if (!mensaje) {
-      alert('Escriba la observación para el ajustador.');
+      alert(t('complex.ui.bandeja_facturacion.escriba_observacion_ajustador'));
       return;
     }
     setEnviandoCorreccion(true);
@@ -163,12 +165,15 @@ export default function BandejaFacturacion() {
         mensaje,
       });
       alert(
-        `✅ Solicitud enviada a ${data.ajustador || 'el ajustador'}\n📧 ${data.emailEnviado || ''}`
+        t('complex.ui.bandeja_facturacion.solicitud_enviada_ajustador', {
+          ajustador: data.ajustador || t('complex.ui.bandeja_facturacion.el_ajustador'),
+          email: data.emailEnviado || '',
+        })
       );
       setFilaCorreccionAjustador(null);
       setMensajeCorreccion('');
     } catch (e) {
-      alert(e.message || 'No se pudo enviar la solicitud');
+      alert(e.message || t('complex.ui.bandeja_facturacion.error_enviar'));
     } finally {
       setEnviandoCorreccion(false);
     }
@@ -188,11 +193,13 @@ export default function BandejaFacturacion() {
       });
       setFilaEditando(null);
       alert(
-        `Destinatario actualizado a ${nombreGerente(nuevoGerenteCorreccion)}. El caso no se duplicó; solo se corrigió el registro del envío.`
+        t('complex.ui.bandeja_facturacion.destinatario_actualizado', {
+          nombre: nombreGerente(nuevoGerenteCorreccion),
+        })
       );
       await cargar();
     } catch (e) {
-      alert(e.message || 'Error al corregir');
+      alert(e.message || t('complex.ui.bandeja_facturacion.error_corregir'));
     } finally {
       setGuardandoAdmin(false);
     }
@@ -200,9 +207,10 @@ export default function BandejaFacturacion() {
 
   const quitarEnvio = async (fila) => {
     const nombre = fila.nombreGerente || nombreGerente(fila.gerente);
-    const msg =
-      `¿Quitar este registro de envío a ${nombre}?\n\n` +
-      `Caso ${fila.nmroAjste || fila.casoId} — no se elimina el caso Complex, solo la línea en la bandeja.`;
+    const msg = t('complex.ui.bandeja_facturacion.confirmar_quitar', {
+      nombre,
+      caso: fila.nmroAjste || fila.casoId,
+    });
     if (!window.confirm(msg)) return;
 
     setGuardandoAdmin(true);
@@ -210,7 +218,7 @@ export default function BandejaFacturacion() {
       await eliminarEnvioBandejaFacturacion(payloadEnvio(fila));
       await cargar();
     } catch (e) {
-      alert(e.message || 'Error al quitar el registro');
+      alert(e.message || t('complex.ui.bandeja_facturacion.error_quitar'));
     } finally {
       setGuardandoAdmin(false);
     }
@@ -220,9 +228,7 @@ export default function BandejaFacturacion() {
     return (
       <div className={complexPageWrapWide}>
         <div className={complexCard}>
-          <p className="text-gray-600 dark:text-gray-300">
-            Esta vista está disponible solo para los jefes de facturación autorizados.
-          </p>
+          <p className="text-gray-600 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.esta_vista_esta_disponible_solo_para_los_jefes_de_factur")}</p>
         </div>
       </div>
     );
@@ -235,17 +241,11 @@ export default function BandejaFacturacion() {
     <div className={complexPageWrapWide}>
       <header className="mb-6 space-y-3">
         <span className="inline-flex items-center gap-2 rounded-full bg-fenix-primario/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-fenix-primario">
-          <FaInbox /> Facturación
-        </span>
-        <h1 className={complexPageTitle}>Bandeja de casos para facturar.</h1>
-        <p className={complexPageSubtitle}>
-          Casos que los ajustadores enviaron a {tituloGerente}. Abra cada caso sin buscarlo en el reporte
-          completo.
-        </p>
+          <FaInbox />{t("complex.ui.bandeja_facturacion.facturacion")}</span>
+        <h1 className={complexPageTitle}>{t("complex.ui.bandeja_facturacion.bandeja_de_casos_para_facturar")}</h1>
+        <p className={complexPageSubtitle}>{t("complex.ui.bandeja_facturacion.casos_que_los_ajustadores_enviaron_a")}{tituloGerente}{t("complex.ui.bandeja_facturacion.abra_cada_caso_sin_buscarlo_en_el_reporte_completo")}</p>
         {/* PRUEBA DE SICRONIZACION CON CO0LIFY */}
-        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-          PRUEBA DE SICRONIZACION CON CO0LIFY.
-        </p>
+        <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">{t("complex.ui.bandeja_facturacion.prueba_de_sicronizacion_con_co0lify")}</p>
         <ComplexNavTabs activePath="/complex/bandeja-facturacion" />
       </header>
 
@@ -253,13 +253,13 @@ export default function BandejaFacturacion() {
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {esSupervisor && (
             <label className="block text-sm">
-              <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">Jefe / gerente</span>
+              <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.jefe_gerente")}</span>
               <select
                 className={complexSelect}
                 value={gerenteFiltro}
                 onChange={(e) => setGerenteFiltro(e.target.value)}
               >
-                <option value="">Seleccione…</option>
+                <option value="">{t("complex.ui.bandeja_facturacion.seleccione")}</option>
                 {GERENTES_FACTURACION_OPCIONES.map((g) => (
                   <option key={g.clave} value={g.clave}>
                     {g.nombre}
@@ -269,36 +269,36 @@ export default function BandejaFacturacion() {
             </label>
           )}
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">Tipo de envío</span>
+            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.tipo_de_envio")}</span>
             <select
               className={complexSelect}
               value={tipoFiltro}
               onChange={(e) => setTipoFiltro(e.target.value)}
             >
-              <option value="todos">Todos</option>
-              <option value="control_horas">Control de horas</option>
-              <option value="gerencia">Gerencia / facturación</option>
+              <option value="todos">{t("complex.ui.bandeja_facturacion.todos")}</option>
+              <option value="control_horas">{t("complex.ui.bandeja_facturacion.control_de_horas")}</option>
+              <option value="gerencia">{t("complex.ui.bandeja_facturacion.gerencia_facturacion")}</option>
             </select>
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">Desde</span>
+            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.desde")}</span>
             <input type="date" className={complexInput} value={desde} onChange={(e) => setDesde(e.target.value)} />
           </label>
           <label className="block text-sm">
-            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">Hasta</span>
+            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.hasta")}</span>
             <input type="date" className={complexInput} value={hasta} onChange={(e) => setHasta(e.target.value)} />
           </label>
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <label className="block flex-1 text-sm">
-            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">Buscar</span>
+            <span className="mb-1 block font-medium text-gray-700 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.buscar")}</span>
             <div className="relative">
               <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="search"
                 className={`${complexInput} pl-9`}
-                placeholder="No. ajuste, siniestro, aseguradora, asegurado…"
+                placeholder={t("complex.ui.bandeja_facturacion.no_ajuste_siniestro_aseguradora_asegurado")}
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && cargar()}
@@ -306,26 +306,22 @@ export default function BandejaFacturacion() {
             </div>
           </label>
           <button type="button" className={complexBtnPrimary} onClick={cargar} disabled={cargando}>
-            <FaSearch className="inline mr-2" />
-            Buscar
-          </button>
+            <FaSearch className="inline mr-2" />{t("complex.ui.bandeja_facturacion.buscar")}</button>
           <button type="button" className={complexBtnSecondary} onClick={cargar} disabled={cargando}>
-            <FaSync className={`inline mr-2 ${cargando ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
+            <FaSync className={`inline mr-2 ${cargando ? 'animate-spin' : ''}`} />{t("complex.ui.bandeja_facturacion.actualizar")}</button>
         </div>
 
         <div className={complexInfoPanel}>
           <p className="text-sm text-gray-600 dark:text-gray-300">
             {cargando
-              ? 'Cargando…'
-              : `${items.length} envío${items.length === 1 ? '' : 's'} registrado${items.length === 1 ? '' : 's'} con el jefe destino del correo. Cada vez que se envía control de horas o gerencia, queda guardado a quién se notificó.`}
+              ? t('complex.ui.bandeja_facturacion.cargando')
+              : t('complex.ui.bandeja_facturacion.envios_registrados', {
+                  count: items.length,
+                  plural: items.length === 1 ? '' : 's',
+                })}
           </p>
           {puedeAdministrar && (
-            <p className="mt-2 text-sm font-medium text-fenix-primario">
-              Como supervisor puede corregir el jefe destinatario o quitar un registro erróneo sin duplicar
-              casos ni borrar el caso en el sistema.
-            </p>
+            <p className="mt-2 text-sm font-medium text-fenix-primario">{t("complex.ui.bandeja_facturacion.como_supervisor_puede_corregir_el_jefe_destinatario_o_qu")}</p>
           )}
         </div>
       </div>
@@ -341,20 +337,20 @@ export default function BandejaFacturacion() {
           <table className={`${complexTableGrid} w-full min-w-[1320px] table-auto`}>
             <thead className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
-                <th className={thClase}>No. Ajuste</th>
-                <th className={thClase}>Siniestro</th>
-                <th className={`${thClase} min-w-[140px]`}>Aseguradora</th>
-                <th className={`${thClase} min-w-[140px]`}>Asegurado</th>
-                <th className={`${thClase} min-w-[120px]`}>Responsable</th>
-                <th className={`${thClase} min-w-[130px]`}>Tipo envío</th>
-                <th className={`${thClase} min-w-[160px]`}>Jefe destino</th>
-                <th className={`${thClase} min-w-[200px]`}>Correo</th>
-                <th className={thClase}>Fecha envío</th>
-                <th className={thClase}>Enviado por</th>
-                <th className={`${thClase} min-w-[180px]`}>Estado</th>
-                <th className={`${thClase} text-center`}>Acción</th>
+                <th className={thClase}>{t("complex.ui.bandeja_facturacion.no_ajuste")}</th>
+                <th className={thClase}>{t("complex.ui.bandeja_facturacion.siniestro")}</th>
+                <th className={`${thClase} min-w-[140px]`}>{t("complex.ui.bandeja_facturacion.aseguradora")}</th>
+                <th className={`${thClase} min-w-[140px]`}>{t("complex.ui.bandeja_facturacion.asegurado")}</th>
+                <th className={`${thClase} min-w-[120px]`}>{t("complex.ui.bandeja_facturacion.responsable")}</th>
+                <th className={`${thClase} min-w-[130px]`}>{t("complex.ui.bandeja_facturacion.tipo_envio")}</th>
+                <th className={`${thClase} min-w-[160px]`}>{t("complex.ui.bandeja_facturacion.jefe_destino")}</th>
+                <th className={`${thClase} min-w-[200px]`}>{t("complex.ui.bandeja_facturacion.correo")}</th>
+                <th className={thClase}>{t("complex.ui.bandeja_facturacion.fecha_envio")}</th>
+                <th className={thClase}>{t("complex.ui.bandeja_facturacion.enviado_por")}</th>
+                <th className={`${thClase} min-w-[180px]`}>{t("complex.ui.bandeja_facturacion.estado")}</th>
+                <th className={`${thClase} text-center`}>{t("complex.ui.bandeja_facturacion.accion")}</th>
                 {puedeAdministrar && (
-                  <th className={`${thClase} text-center min-w-[140px]`}>Corregir</th>
+                  <th className={`${thClase} text-center min-w-[140px]`}>{t("complex.ui.bandeja_facturacion.corregir")}</th>
                 )}
               </tr>
             </thead>
@@ -364,9 +360,7 @@ export default function BandejaFacturacion() {
                   <td
                     colSpan={puedeAdministrar ? 13 : 12}
                     className="px-4 py-10 text-center text-gray-500 dark:text-gray-400"
-                  >
-                    No hay casos en la bandeja con los filtros actuales.
-                  </td>
+                  >{t("complex.ui.bandeja_facturacion.no_hay_casos_en_la_bandeja_con_los_filtros_actuales")}</td>
                 </tr>
               )}
               {items.map((fila, idx) => (
@@ -382,8 +376,8 @@ export default function BandejaFacturacion() {
                   <td className={tdClase}>{fila.asgrBenfcro || '—'}</td>
                   <td className={tdClase}>{fila.nombreResponsable || '—'}</td>
                   <td className={`${tdClase} whitespace-nowrap`}>
-                    {TIPO_ENVIO_LABELS[fila.tipoEnvio] || fila.tipoEnvio}
-                    {fila.rolEnvio === 'copia' ? ' (copia)' : ''}
+                    {labelTipoEnvio(fila.tipoEnvio, t)}
+                    {fila.rolEnvio === 'copia' ? t('complex.ui.bandeja_facturacion.copia') : ''}
                   </td>
                   <td className={tdClase}>{fila.nombreGerente || nombreGerente(fila.gerente)}</td>
                   <td className={`${tdClase} break-all text-xs sm:text-sm`}>{fila.emailDestinatario || '—'}</td>
@@ -400,18 +394,15 @@ export default function BandejaFacturacion() {
                         type="button"
                         className={complexTableBtnGestionar}
                         onClick={() => abrirCaso(fila.casoId)}
-                      >
-                        Ver caso
-                      </button>
+                      >{t("complex.ui.bandeja_facturacion.ver_caso")}</button>
                       {(fila.tipoEnvio === 'control_horas' || fila.tipo === 'control_horas') && (
                         <button
                           type="button"
                           className={`${complexBtnSecondary} !px-2 !py-1 text-xs`}
-                          title="Avisar al ajustador para que corrija el control de horas"
+                          title={t("complex.ui.bandeja_facturacion.avisar_al_ajustador_para_que_corrija_el_control_de_horas")}
                           onClick={() => abrirSolicitudCorreccionAjustador(fila)}
                         >
-                          <FaExclamationTriangle className="inline text-amber-600" /> Corregir
-                        </button>
+                          <FaExclamationTriangle className="inline text-amber-600" />{t("complex.ui.bandeja_facturacion.corregir")}</button>
                       )}
                     </div>
                   </td>
@@ -423,16 +414,15 @@ export default function BandejaFacturacion() {
                           className={`${complexBtnSecondary} !px-2 !py-1 text-xs`}
                           disabled={guardandoAdmin}
                           onClick={() => abrirCorreccion(fila)}
-                          title="Cambiar jefe destinatario"
+                          title={t("complex.ui.bandeja_facturacion.cambiar_jefe_destinatario")}
                         >
-                          <FaEdit className="inline" /> Jefe
-                        </button>
+                          <FaEdit className="inline" />{t("complex.ui.bandeja_facturacion.jefe")}</button>
                         <button
                           type="button"
                           className="rounded-lg border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
                           disabled={guardandoAdmin}
                           onClick={() => quitarEnvio(fila)}
-                          title="Quitar registro de envío"
+                          title={t("complex.ui.bandeja_facturacion.quitar_registro_de_envio")}
                         >
                           <FaTrash className="inline" />
                         </button>
@@ -453,14 +443,12 @@ export default function BandejaFacturacion() {
           aria-modal="true"
         >
           <div className={`${complexCard} w-full max-w-md space-y-4`}>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Corregir jefe destinatario</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Caso <strong>{filaEditando.nmroAjste}</strong> — envío del{' '}
-              {formatearFechaUI(filaEditando.fechaEnvio)} actualmente a{' '}
-              <strong>{nombreGerente(filaEditando.gerente)}</strong>.
-            </p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t("complex.ui.bandeja_facturacion.corregir_jefe_destinatario")}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.caso")}<strong>{filaEditando.nmroAjste}</strong>{t("complex.ui.bandeja_facturacion.envio_del")}{' '}
+              {formatearFechaUI(filaEditando.fechaEnvio)}{t("complex.ui.bandeja_facturacion.actualmente_a")}{' '}
+              <strong>{nombreGerente(filaEditando.gerente)}</strong>{t("complex.ui.bandeja_facturacion.texto")}</p>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium">Nuevo jefe destinatario</span>
+              <span className="mb-1 block font-medium">{t("complex.ui.bandeja_facturacion.nuevo_jefe_destinatario")}</span>
               <select
                 className={complexSelect}
                 value={nuevoGerenteCorreccion}
@@ -473,25 +461,23 @@ export default function BandejaFacturacion() {
                 ))}
               </select>
             </label>
-            <p className="text-xs text-gray-500">
-              No se crea un envío nuevo ni se borra el caso. Solo se actualiza este registro en la bandeja.
-            </p>
+            <p className="text-xs text-gray-500">{t("complex.ui.bandeja_facturacion.no_se_crea_un_envio_nuevo_ni_se_borra_el_caso_solo_se_ac")}</p>
             <div className="flex justify-end gap-2">
               <button
                 type="button"
                 className={complexBtnSecondary}
                 disabled={guardandoAdmin}
                 onClick={() => setFilaEditando(null)}
-              >
-                Cancelar
-              </button>
+              >{t("complex.ui.bandeja_facturacion.cancelar")}</button>
               <button
                 type="button"
                 className={complexBtnPrimary}
                 disabled={guardandoAdmin}
                 onClick={guardarCorreccion}
               >
-                {guardandoAdmin ? 'Guardando…' : 'Guardar corrección'}
+                {guardandoAdmin
+                  ? t('complex.ui.bandeja_facturacion.guardando')
+                  : t('complex.ui.bandeja_facturacion.guardar_correccion')}
               </button>
             </div>
           </div>
@@ -505,22 +491,17 @@ export default function BandejaFacturacion() {
           aria-modal="true"
         >
           <div className={`${complexCard} w-full max-w-lg space-y-4`}>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-              Solicitar corrección al ajustador
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300">
-              Caso <strong>{filaCorreccionAjustador.nmroAjste}</strong> — responsable{' '}
-              <strong>{filaCorreccionAjustador.nombreResponsable || '—'}</strong>.
-              Se le pedirá corregir el control de horas en ARNALD o cambiar el archivo.
-            </p>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">{t("complex.ui.bandeja_facturacion.solicitar_correccion_al_ajustador")}</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.bandeja_facturacion.caso")}<strong>{filaCorreccionAjustador.nmroAjste}</strong>{t("complex.ui.bandeja_facturacion.responsable_2")}{' '}
+              <strong>{filaCorreccionAjustador.nombreResponsable || '—'}</strong>{t("complex.ui.bandeja_facturacion.se_le_pedira_corregir_el_control_de_horas_en_arnald_o_ca")}</p>
             <label className="block text-sm">
-              <span className="mb-1 block font-medium">Observación / error detectado</span>
+              <span className="mb-1 block font-medium">{t("complex.ui.bandeja_facturacion.observacion_error_detectado")}</span>
               <textarea
                 className={complexTextarea}
                 rows={4}
                 value={mensajeCorreccion}
                 onChange={(e) => setMensajeCorreccion(e.target.value)}
-                placeholder="Describa el error encontrado…"
+                placeholder={t("complex.ui.bandeja_facturacion.describa_el_error_encontrado")}
               />
             </label>
             <div className="flex justify-end gap-2">
@@ -529,16 +510,16 @@ export default function BandejaFacturacion() {
                 className={complexBtnSecondary}
                 disabled={enviandoCorreccion}
                 onClick={() => setFilaCorreccionAjustador(null)}
-              >
-                Cancelar
-              </button>
+              >{t("complex.ui.bandeja_facturacion.cancelar")}</button>
               <button
                 type="button"
                 className={complexBtnPrimary}
                 disabled={enviandoCorreccion}
                 onClick={enviarSolicitudCorreccionAjustador}
               >
-                {enviandoCorreccion ? 'Enviando…' : 'Enviar aviso al ajustador'}
+                {enviandoCorreccion
+                  ? t('complex.ui.bandeja_facturacion.enviando')
+                  : t('complex.ui.bandeja_facturacion.enviar_aviso_ajustador')}
               </button>
             </div>
           </div>

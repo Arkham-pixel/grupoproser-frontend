@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as XLSX from 'xlsx';
 import { FaCog, FaFileExcel } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { deleteSiniestroExpress, fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import { fetchExpressCatalogo } from '../../services/expressCatalogoService.js';
 import SubcomponenteExpress from './SubcomponenteExpress.jsx';
@@ -88,40 +89,46 @@ const buildExportRow = (siniestro, { getNombreResponsable, getNombreAseguradora,
   'Actualizado el': formatDateForExcel(siniestro.updatedAt),
 });
 
-const todasLasColumnasExpress = [
-  { clave: 'consecutivo', label: 'Consecutivo' },
-  { clave: 'numeroSiniestro', label: 'Número Siniestro' },
-  { clave: 'responsable', label: 'Responsable' },
-  { clave: 'codigoWorkflow', label: 'Código Workflow' },
-  { clave: 'aseguradora', label: 'Aseguradora' },
-  { clave: 'estadoProceso', label: 'Estado' },
-  { clave: 'fechaSiniestro', label: 'Fecha siniestro' },
-  { clave: 'avisoSiniestroCompania', label: 'Aviso compañía' },
-  { clave: 'avisoSiniestro', label: 'Aviso ajustador' },
-  { clave: 'fechaSolicitudDocumentos', label: 'Solicitud inicial docs' },
-  { clave: 'fechaUltimoDocumento', label: 'Último documento' },
-  { clave: 'fechaAcuseReciboDocumentos', label: 'Acuse de recibo' },
-  { clave: 'fechaDefinicionCaso', label: 'Definición / autorización' },
-  { clave: 'fechaSolicitudDocumentosAdicionales', label: 'Docs adicionales' },
-  { clave: 'fechaSolicitudDocumentosPendientes', label: 'Docs pendientes' },
-  { clave: 'fechaRespuestaAnalista', label: 'Respuesta analista' },
-  { clave: 'fechaPresentacionCifras', label: 'Presentación cifras' },
-  { clave: 'fechaReconsideracion', label: 'Reconsideración' },
-  { clave: 'fechaFiniquitosFirmado', label: 'Finiquitos firmados' },
-  { clave: 'fechaDocumentosPago', label: 'Cargue docs pago' },
-  { clave: 'fechaRecordatorio', label: 'Fecha recordatorio' },
-  { clave: 'fechaReciboDocumentos', label: 'Fecha Recibo Documentos' },
-  { clave: 'fechaCargueFiniquito', label: 'Fecha Cargue Finiquito' },
-  { clave: 'amparo', label: 'Amparo' },
-  { clave: 'valorIndemnizacion', label: 'Valor Indemnización' },
-  { clave: 'reserva', label: 'Reservas (COP)' },
-  { clave: 'intermediario', label: 'Intermediario' },
-  { clave: 'ciudadSiniestro', label: 'Ciudad Siniestro' },
-  { clave: 'aseguradoBeneficiario', label: 'Asegurado/Beneficiario' },
-  { clave: 'observacionesSeguimiento', label: 'Observaciones Seguimiento' },
-  { clave: 'createdAt', label: 'Creado el' },
-  { clave: 'updatedAt', label: 'Actualizado el' },
+const COLUMNAS_CLAVES_EXPRESS = [
+  'consecutivo',
+  'numeroSiniestro',
+  'responsable',
+  'codigoWorkflow',
+  'aseguradora',
+  'estadoProceso',
+  'fechaSiniestro',
+  'avisoSiniestroCompania',
+  'avisoSiniestro',
+  'fechaSolicitudDocumentos',
+  'fechaUltimoDocumento',
+  'fechaAcuseReciboDocumentos',
+  'fechaDefinicionCaso',
+  'fechaSolicitudDocumentosAdicionales',
+  'fechaSolicitudDocumentosPendientes',
+  'fechaRespuestaAnalista',
+  'fechaPresentacionCifras',
+  'fechaReconsideracion',
+  'fechaFiniquitosFirmado',
+  'fechaDocumentosPago',
+  'fechaRecordatorio',
+  'fechaReciboDocumentos',
+  'fechaCargueFiniquito',
+  'amparo',
+  'valorIndemnizacion',
+  'reserva',
+  'intermediario',
+  'ciudadSiniestro',
+  'aseguradoBeneficiario',
+  'observacionesSeguimiento',
+  'createdAt',
+  'updatedAt',
 ];
+
+const getTodasLasColumnasExpress = (t) =>
+  COLUMNAS_CLAVES_EXPRESS.map((clave) => ({
+    clave,
+    label: t(`express.report.columnLabels.${clave}`),
+  }));
 
 const columnasInicialesExpress = [
   'consecutivo',
@@ -136,14 +143,14 @@ const columnasInicialesExpress = [
   'observacionesSeguimiento',
 ];
 
-function cargarColumnasGuardadas() {
+function cargarColumnasGuardadas(todasLasColumnas) {
   try {
     const raw = localStorage.getItem(EXPRESS_COLUMNAS_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed?.claves) || parsed.claves.length === 0) return null;
     const ordenadas = parsed.claves
-      .map((clave) => todasLasColumnasExpress.find((c) => c.clave === clave))
+      .map((clave) => todasLasColumnas.find((c) => c.clave === clave))
       .filter(Boolean);
     return ordenadas.length > 0 ? ordenadas : null;
   } catch {
@@ -152,9 +159,11 @@ function cargarColumnasGuardadas() {
 }
 
 const ReporteExpress = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const filtrosIniciales = useMemo(() => cargarFiltrosReporteExpress(), []);
   const claveFiltrosPrevRef = useRef(null);
+  const todasLasColumnasExpress = useMemo(() => getTodasLasColumnasExpress(t), [t]);
   const [siniestros, setSiniestros] = useState([]);
   const [filtrados, setFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -162,10 +171,23 @@ const ReporteExpress = () => {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [registroEditar, setRegistroEditar] = useState(null);
   const [columnasVisibles, setColumnasVisibles] = useState(() => {
-    const guardadas = cargarColumnasGuardadas();
-    if (guardadas) return guardadas;
-    return todasLasColumnasExpress.filter((c) => columnasInicialesExpress.includes(c.clave));
+    const guardadas = cargarColumnasGuardadas(
+      COLUMNAS_CLAVES_EXPRESS.map((clave) => ({ clave, label: clave }))
+    );
+    const base = guardadas || COLUMNAS_CLAVES_EXPRESS
+      .filter((clave) => columnasInicialesExpress.includes(clave))
+      .map((clave) => ({ clave, label: clave }));
+    return base;
   });
+
+  useEffect(() => {
+    setColumnasVisibles((prev) =>
+      prev.map((col) => ({
+        clave: col.clave,
+        label: t(`express.report.columnLabels.${col.clave}`),
+      }))
+    );
+  }, [t]);
   const [modalColumnasOpen, setModalColumnasOpen] = useState(false);
   const [columnasOrdenadas, setColumnasOrdenadas] = useState([]);
   const [seleccionTemporal, setSeleccionTemporal] = useState([]);
@@ -208,11 +230,11 @@ const ReporteExpress = () => {
       setFiltrados(data);
     } catch (err) {
       console.error('Error recargando siniestros express:', err);
-      setError(err.message || 'Error al recargar los siniestros express');
+      setError(err.message || t('express.report.reloadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelado = false;
@@ -228,7 +250,7 @@ const ReporteExpress = () => {
       } catch (err) {
         console.error('Error cargando siniestros express:', err);
         if (!cancelado) {
-          setError(err.message || 'Error al cargar los siniestros express');
+          setError(err.message || t('express.report.loadError'));
           setSiniestros([]);
           setFiltrados([]);
         }
@@ -241,7 +263,7 @@ const ReporteExpress = () => {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     let cancelado = false;
@@ -266,14 +288,14 @@ const ReporteExpress = () => {
     if (!registro?._id) {
       setAvisoEliminar({
         open: true,
-        titulo: 'No se puede eliminar',
-        mensaje: 'Este registro no tiene identificador válido.',
+        titulo: t('express.report.cannotDelete'),
+        mensaje: t('express.report.invalidRecord'),
         tipo: 'error',
       });
       return;
     }
     setConfirmEliminar({ open: true, registro });
-  }, []);
+  }, [t]);
 
   const cerrarConfirmEliminar = useCallback(() => {
     if (eliminando) return;
@@ -292,10 +314,10 @@ const ReporteExpress = () => {
       setConfirmEliminar({ open: false, registro: null });
       setAvisoEliminar({
         open: true,
-        titulo: 'Eliminado',
-        mensaje: `El caso ${
-          registro.consecutivo || registro.numeroSiniestro || ''
-        } fue eliminado correctamente.`,
+        titulo: t('express.report.deleted'),
+        mensaje: t('express.report.caseDeleted', {
+          caseNumber: registro.consecutivo || registro.numeroSiniestro || '',
+        }),
         tipo: 'success',
       });
     } catch (err) {
@@ -303,14 +325,14 @@ const ReporteExpress = () => {
       setConfirmEliminar({ open: false, registro: null });
       setAvisoEliminar({
         open: true,
-        titulo: 'Error al eliminar',
-        mensaje: err.message || 'No se pudo eliminar el registro.',
+        titulo: t('express.report.deleteError'),
+        mensaje: err.message || t('express.report.deleteErrorMessage'),
         tipo: 'error',
       });
     } finally {
       setEliminando(false);
     }
-  }, [confirmEliminar.registro]);
+  }, [confirmEliminar.registro, t]);
 
   const cerrarModalEdicion = useCallback(() => {
     setModalAbierto(false);
@@ -499,7 +521,7 @@ const ReporteExpress = () => {
 
   const exportarExcel = () => {
     if (filtrados.length === 0) {
-      alert('No hay datos para exportar.');
+      alert(t('express.report.noDataExport'));
       return;
     }
 
@@ -546,7 +568,7 @@ const ReporteExpress = () => {
       XLSX.writeFile(workbook, `reporte-express-${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (err) {
       console.error('Error exportando Excel Express:', err);
-      alert('No se pudo generar el Excel. Recargue la página e intente de nuevo.');
+      alert(t('express.report.exportErrorMessage'));
     }
   };
 
@@ -672,8 +694,8 @@ const ReporteExpress = () => {
     <div className={`${expressScope} ${expressReportRoot}`}>
       <div className={expressPageWrapWide}>
         <ExpressPageHeader
-          title="Reporte Express"
-          subtitle="Visualiza, filtra y exporta los procesos Express registrados en el sistema."
+          title={t('express.report.title')}
+          subtitle={t('express.report.subtitle')}
           activePath="/express/reporte"
           actions={
             <>
@@ -683,7 +705,7 @@ const ReporteExpress = () => {
                 className={expressBtnSecondary}
               >
                 <FaCog />
-                Columnas
+                {t('express.report.columns')}
               </button>
               <button
                 type="button"
@@ -692,25 +714,25 @@ const ReporteExpress = () => {
                 disabled={loading || filtrados.length === 0}
               >
                 <FaFileExcel />
-                Exportar Excel
+                {t('express.report.exportExcel')}
               </button>
             </>
           }
         />
 
-        <ExpressFilterSection title="Filtros de búsqueda" showClear={filtrosActivos} onClear={limpiarFiltros}>
+        <ExpressFilterSection title={t('express.report.filters')} showClear={filtrosActivos} onClear={limpiarFiltros}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Campo label="Buscar">
+            <Campo label={t('common.search')}>
               <InputFenix
                 type="text"
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Número, consecutivo, asegurado…"
+                placeholder={t('express.report.searchPlaceholder')}
               />
             </Campo>
-            <Campo label="Responsable">
+            <Campo label={t('express.report.responsible')}>
               <SelectFenix value={filtroResponsable} onChange={(e) => setFiltroResponsable(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('express.report.all')}</option>
                 {responsables.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
@@ -718,9 +740,9 @@ const ReporteExpress = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Estado">
+            <Campo label={t('express.report.status')}>
               <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('express.report.all')}</option>
                 {estados.map((e) => (
                   <option key={e.value} value={e.value}>
                     {e.label}
@@ -728,9 +750,9 @@ const ReporteExpress = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Aseguradora">
+            <Campo label={t('express.report.insurer')}>
               <SelectFenix value={filtroAseguradora} onChange={(e) => setFiltroAseguradora(e.target.value)}>
-                <option value="">Todas</option>
+                <option value="">{t('express.report.all')}</option>
                 {aseguradoras.map((a) => (
                   <option key={a.value} value={a.value}>
                     {a.label}
@@ -738,9 +760,9 @@ const ReporteExpress = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Amparo">
+            <Campo label={t('express.report.coverage')}>
               <SelectFenix value={filtroAmparo} onChange={(e) => setFiltroAmparo(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('express.report.all')}</option>
                 {amparos.map((a) => (
                   <option key={a.value} value={a.value}>
                     {a.label}
@@ -748,19 +770,19 @@ const ReporteExpress = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Aviso desde">
+            <Campo label={t('express.report.noticeFrom')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>
-            <Campo label="Aviso hasta">
+            <Campo label={t('express.report.noticeTo')}>
               <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </Campo>
           </div>
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading
-              ? 'Cargando…'
+              ? t('common.loading')
               : filtrados.length === 0
-                ? '0 registros'
-                : `${filtrados.length} registro(s) · mostrando ${indiceDesde}–${indiceHasta} (página ${paginaActual} de ${totalPaginas})`}
+                ? t('express.report.zeroRecords')
+                : t('express.report.recordsSummary', { count: filtrados.length, from: indiceDesde, to: indiceHasta, page: paginaActual, totalPages: totalPaginas })}
           </p>
         </ExpressFilterSection>
 
@@ -770,7 +792,7 @@ const ReporteExpress = () => {
               <thead className={expressTableHead}>
                 <tr>
                   <th scope="col" className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
-                    Acciones
+                    {t('express.menu.actions')}
                   </th>
                   {columnasVisibles.map((col) => (
                     <th key={col.clave} scope="col" className="px-4 py-3">
@@ -786,7 +808,7 @@ const ReporteExpress = () => {
                       colSpan={columnasVisibles.length + 1}
                       className="px-4 py-8 text-center font-body text-sm text-gray-500"
                     >
-                      Cargando siniestros express…
+                      {t('express.report.loadingClaims')}
                     </td>
                   </tr>
                 ) : error ? (
@@ -804,7 +826,7 @@ const ReporteExpress = () => {
                       colSpan={columnasVisibles.length + 1}
                       className="px-4 py-8 text-center font-body text-sm text-gray-500"
                     >
-                      No se encontraron siniestros con los filtros seleccionados.
+                      {t('express.report.noClaims')}
                     </td>
                   </tr>
                 ) : (
@@ -843,7 +865,7 @@ const ReporteExpress = () => {
           {!loading && !error && filtrados.length > 0 && totalPaginas > 1 && (
             <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800 sm:flex-row">
               <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-                Página {paginaActual} de {totalPaginas}
+                {t('express.report.pageOf', { page: paginaActual, total: totalPaginas })}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -852,7 +874,7 @@ const ReporteExpress = () => {
                   disabled={paginaActual <= 1}
                   onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
                 >
-                  Anterior
+                  {t('express.report.previous')}
                 </button>
                 {Array.from({ length: totalPaginas }, (_, i) => i + 1)
                   .filter((n) => {
@@ -888,7 +910,7 @@ const ReporteExpress = () => {
                   disabled={paginaActual >= totalPaginas}
                   onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
                 >
-                  Siguiente
+                  {t('express.report.next')}
                 </button>
               </div>
             </div>
@@ -899,12 +921,11 @@ const ReporteExpress = () => {
       <ExpressModal
         open={modalColumnasOpen}
         onClose={() => setModalColumnasOpen(false)}
-        title="Personalizar columnas"
+        title={t('express.report.customizeColumns')}
       >
         <div className="p-4 sm:p-6">
           <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-            Arrastra para ordenar. Marca o desmarca para mostrar u ocultar columnas. La configuración se guarda en este
-            navegador.
+            {t('express.report.columnsHelp')}
           </p>
           <div className="mb-4 max-h-60 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700 sm:max-h-80">
             {listaColumnasModal.map((campo, index) => (
@@ -936,10 +957,10 @@ const ReporteExpress = () => {
           </div>
           <div className="flex flex-col justify-end gap-2 sm:flex-row">
             <button type="button" className={expressBtnSecondary} onClick={() => setModalColumnasOpen(false)}>
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button type="button" className={expressBtnPrimary} onClick={guardarColumnasPersonalizadas}>
-              Guardar
+              {t('common.save')}
             </button>
           </div>
         </div>
@@ -948,7 +969,7 @@ const ReporteExpress = () => {
       <ExpressModal
         open={modalAbierto}
         onClose={cerrarModalEdicion}
-        title="Gestionar proceso Express"
+        title={t('express.report.manageProcess')}
         wide
       >
         <div className="p-2 sm:p-4">
@@ -964,20 +985,20 @@ const ReporteExpress = () => {
       <ExpressAvisoModal
         open={confirmEliminar.open}
         onClose={cerrarConfirmEliminar}
-        titulo="Eliminar caso Express"
+        titulo={t('express.report.deleteCase')}
         tipo="warning"
         mensaje={
           confirmEliminar.registro
-            ? `¿Confirma eliminar el caso ${
-                confirmEliminar.registro.consecutivo ||
-                confirmEliminar.registro.numeroSiniestro ||
-                ''
-              }? Esta acción no se puede deshacer.`
+            ? t('express.report.deleteConfirm', {
+                caseNumber: confirmEliminar.registro.consecutivo ||
+                  confirmEliminar.registro.numeroSiniestro ||
+                  '',
+              })
             : ''
         }
         onConfirm={confirmarEliminar}
-        confirmTexto="Eliminar"
-        cancelTexto="Cancelar"
+        confirmTexto={t('express.menu.delete')}
+        cancelTexto={t('common.cancel')}
         confirmando={eliminando}
       />
 

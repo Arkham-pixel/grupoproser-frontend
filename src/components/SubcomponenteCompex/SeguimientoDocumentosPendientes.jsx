@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useRef, useState } from 'react';
 import { FaCalendarAlt, FaCloudUploadAlt, FaEnvelope, FaFileAlt, FaTrash } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
@@ -114,7 +116,7 @@ export default function SeguimientoDocumentosPendientes({
   const descargarDocumento = (documento) => {
     const enlace = resolverUrl(documento?.ruta || documento?.url || '');
     if (!enlace) {
-      alert('No se puede descargar el archivo. URL no disponible.');
+      alert(t('complex.ui.seguimiento_documentos_pendientes.no_descargar_url'));
       return;
     }
     const link = document.createElement('a');
@@ -149,11 +151,11 @@ export default function SeguimientoDocumentosPendientes({
       return;
     }
     if (!nuevo.fecha) {
-      alert('Indique la fecha del correo de seguimiento.');
+      alert(t('complex.ui.seguimiento_documentos_pendientes.indique_fecha_correo'));
       return;
     }
     if (!nuevo.documento) {
-      alert('Adjunte la evidencia del correo enviado (captura, PDF o .eml).');
+      alert(t('complex.ui.seguimiento_documentos_pendientes.adjunte_evidencia'));
       return;
     }
 
@@ -170,12 +172,12 @@ export default function SeguimientoDocumentosPendientes({
       });
       if (!response.ok) {
         const errorResp = await response.json().catch(() => ({}));
-        throw new Error(errorResp.error || errorResp.message || `Error subiendo archivo (${response.status})`);
+        throw new Error(errorResp.error || errorResp.message || t('complex.ui.seguimiento_documentos_pendientes.error_subiendo_archivo', { status: response.status }));
       }
       const data = await response.json();
       const rutaAlmacenamiento = data.url || data.ruta || '';
       if (!rutaAlmacenamiento) {
-        throw new Error('El servidor no devolvió la ruta del archivo (S3/local).');
+        throw new Error(t('complex.ui.seguimiento_documentos_pendientes.servidor_sin_ruta'));
       }
       documentoSubido = {
         nombre: data.filename || nuevo.documento.name,
@@ -185,14 +187,14 @@ export default function SeguimientoDocumentosPendientes({
         tipoMime: nuevo.documento.type,
       };
     } catch (error) {
-      alert(`Error al subir la evidencia: ${error.message}`);
+      alert(t('complex.ui.seguimiento_documentos_pendientes.error_subir_evidencia', { mensaje: error.message }));
       setSubiendo(false);
       return;
     }
 
     const fechaIngresada = nuevo.fecha;
     const observacionTexto =
-      nuevo.observacion?.trim() || 'Seguimiento a documentación pendiente';
+      nuevo.observacion?.trim() || t('complex.ui.seguimiento_documentos_pendientes.titulo_seguimiento_doc');
     const ahora = new Date();
     const fechaSubidaISO = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}T${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`;
 
@@ -227,7 +229,7 @@ export default function SeguimientoDocumentosPendientes({
   };
 
   const handleEliminar = (id) => {
-    if (!window.confirm('¿Eliminar este registro de seguimiento documental?')) return;
+    if (!window.confirm(t('complex.ui.seguimiento_documentos_pendientes.confirmar_eliminar'))) return;
     if (!updateHistorialDocs) return;
     const eliminado = registros.find((r) => r.id === id);
     updateHistorialDocs((prev) =>
@@ -255,25 +257,19 @@ export default function SeguimientoDocumentosPendientes({
     <div className="mt-4 space-y-5">
       <ProtocoloSeguimientoPanel cfg={CFG} estado={estadoProtocolo} />
 
-      <p className={complexHint}>
-        Adjunte la evidencia de cada correo enviado al asegurado, intermediario o reclamante. El archivo
-        se almacena en S3; pulse <strong>Guardar caso</strong> para persistir en MongoDB.
-      </p>
+      <p className={complexHint}>{t("complex.ui.seguimiento_documentos_pendientes.adjunte_la_evidencia_de_cada_correo_enviado_al_asegurado")}<strong>{t("complex.ui.seguimiento_documentos_pendientes.guardar_caso")}</strong>{t("complex.ui.seguimiento_documentos_pendientes.para_persistir_en_mongodb")}</p>
 
       {registroLocal && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-          Registro agregado en memoria. Pulse <strong>Guardar caso</strong> para persistir en MongoDB.
-        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">{t("complex.ui.seguimiento_documentos_pendientes.registro_agregado_en_memoria_pulse")}<strong>{t("complex.ui.seguimiento_documentos_pendientes.guardar_caso")}</strong>{t("complex.ui.seguimiento_documentos_pendientes.para_persistir_en_mongodb")}</div>
       )}
 
       {/* Formulario nuevo registro */}
       <div className={`${complexCard} space-y-4 p-4 sm:p-5`}>
-        <h4 className={complexSubsectionTitle}>Nuevo correo de seguimiento</h4>
+        <h4 className={complexSubsectionTitle}>{t("complex.ui.seguimiento_documentos_pendientes.nuevo_correo_de_seguimiento")}</h4>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha del correo <span className="text-fenix-primario">*</span>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pendientes.fecha_del_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_documentos_pendientes.texto")}</span>
             </label>
             <input
               type="date"
@@ -284,8 +280,7 @@ export default function SeguimientoDocumentosPendientes({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Destinatario <span className="text-fenix-primario">*</span>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pendientes.destinatario")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_documentos_pendientes.texto")}</span>
             </label>
             <select
               value={nuevo.destinatario}
@@ -303,20 +298,19 @@ export default function SeguimientoDocumentosPendientes({
         </div>
 
         <div>
-          <label className={`${trazabilidadLabelClass} mb-2`}>Notas del seguimiento</label>
+          <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pendientes.notas_del_seguimiento")}</label>
           <textarea
             value={nuevo.observacion}
             onChange={(e) => setNuevo((p) => ({ ...p, observacion: e.target.value }))}
             className={`${trazabilidadInputClass} min-h-[6rem] resize-y`}
             rows={4}
-            placeholder="Documentos solicitados, respuesta del asegurado, compromisos de entrega..."
+            placeholder={t("complex.ui.seguimiento_documentos_pendientes.documentos_solicitados_respuesta_del_asegurado_compromis")}
             disabled={subiendo}
           />
         </div>
 
         <div>
-          <label className={`${trazabilidadLabelClass} mb-2`}>
-            Evidencia del correo <span className="text-fenix-primario">*</span>
+          <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pendientes.evidencia_del_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_documentos_pendientes.texto")}</span>
           </label>
           <input
             ref={inputFileRef}
@@ -353,9 +347,7 @@ export default function SeguimientoDocumentosPendientes({
               </span>
             ) : (
               <span className="flex flex-col items-center gap-2 font-body text-sm text-gray-500 dark:text-gray-400">
-                <FaCloudUploadAlt className="text-2xl" aria-hidden />
-                Arrastra aquí o haz clic para adjuntar captura, PDF o correo (.eml)
-              </span>
+                <FaCloudUploadAlt className="text-2xl" aria-hidden />{t("complex.ui.seguimiento_documentos_pendientes.arrastra_aqui_o_haz_clic_para_adjuntar_captura_pdf_o_cor")}</span>
             )}
           </div>
         </div>
@@ -367,31 +359,25 @@ export default function SeguimientoDocumentosPendientes({
             onClick={handleAgregar}
             disabled={subiendo}
           >
-            {subiendo ? 'Subiendo a S3…' : 'Agregar seguimiento'}
+            {subiendo ? t('complex.ui.seguimiento.subiendo_s3') : t('complex.ui.seguimiento_documentos_pendientes.agregar_seguimiento')}
           </button>
           <button
             type="button"
             className={complexBtnSecondary}
             onClick={resetFormulario}
             disabled={subiendo}
-          >
-            Limpiar
-          </button>
+          >{t("complex.ui.seguimiento_documentos_pendientes.limpiar")}</button>
         </div>
       </div>
 
       {/* Historial */}
       <div className="space-y-3">
-        <h4 className={complexSubsectionTitle}>
-          Historial de correos ({registros.length})
-        </h4>
+        <h4 className={complexSubsectionTitle}>{t("complex.ui.seguimiento_documentos_pendientes.historial_de_correos")}{registros.length}{t("complex.ui.seguimiento_documentos_pendientes.texto_2")}</h4>
 
         {registros.length === 0 ? (
           <div className={`${complexCard} p-6 text-center`}>
             <FaEnvelope className="mx-auto mb-2 text-2xl text-gray-300 dark:text-gray-600" aria-hidden />
-            <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-              Sin seguimientos documentales registrados.
-            </p>
+            <p className="font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.seguimiento_documentos_pendientes.sin_seguimientos_documentales_registrados")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -430,10 +416,10 @@ export default function SeguimientoDocumentosPendientes({
                   type="button"
                   className={`${complexBtnDanger} shrink-0`}
                   onClick={() => handleEliminar(reg.id)}
-                  title="Eliminar registro"
+                  title={t("complex.ui.seguimiento_documentos_pendientes.eliminar_registro")}
                 >
                   <FaTrash aria-hidden />
-                  <span className="sr-only">Eliminar</span>
+                  <span className="sr-only">{t("complex.ui.seguimiento_documentos_pendientes.eliminar")}</span>
                 </button>
               </div>
             ))}
@@ -441,22 +427,22 @@ export default function SeguimientoDocumentosPendientes({
         )}
       </div>
 
-      <ResumenListaPanel titulo="Resumen — seguimiento documental">
-        <ResumenItem label="Total correos registrados:" value={registros.length} />
+      <ResumenListaPanel titulo={t('complex.ui.seguimiento_documentos_pendientes.resumen_documental')}>
+        <ResumenItem label={t("complex.ui.seguimiento_documentos_pendientes.total_correos_registrados")} value={registros.length} />
         <ResumenItem
-          label="Intervalo protocolo:"
-          value={`${estadoProtocolo?.intervaloDias ?? 15} días calendario`}
+          label={t("complex.ui.seguimiento_documentos_pendientes.intervalo_protocolo")}
+          value={`${t('complex.ui.seguimiento_documentos_pendientes.dias_calendario', { n: estadoProtocolo?.intervaloDias ?? 15 })}`}
         />
         <ResumenItem
-          label="Último seguimiento:"
+          label={t("complex.ui.seguimiento_documentos_pendientes.ultimo_seguimiento")}
           value={ultimaFecha ? formatFechaLista(ultimaFecha) : 'No registrado'}
         />
         <ResumenItem
-          label="Acreditación (fchaRepoActi):"
+          label={t("complex.ui.seguimiento_documentos_pendientes.acreditacion_fcharepoacti")}
           value={
             formData?.fchaRepoActi
               ? formatFechaLista(String(formData.fchaRepoActi).slice(0, 10))
-              : 'Pendiente'
+              : t('complex.ui.seguimiento_documentos_pendientes.pendiente')
           }
         />
       </ResumenListaPanel>

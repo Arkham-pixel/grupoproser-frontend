@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import {
   GRACIA_ESPERA_EXTERNA_DIAS_HABILES,
   MAPEO_TRAZABILIDAD_PROTOCOLO,
@@ -8,20 +10,20 @@ import { esDiaHabilColombia } from '../../utils/festivosColombia.js';
 
 /** Etapas de trazabilidad Complex (sin iconos) para subtareas / protocolo. */
 export const ETAPAS_TRAZABILIDAD_SUBTAREA = [
-  { tipo: 'recepcionAsignacion', titulo: 'Recepción de asignación' },
-  { tipo: 'carguePlataforma', titulo: 'Cargue y asignación interna' },
-  { tipo: 'contactoInicial', titulo: 'Contacto Inicial' },
-  { tipo: 'coordinacionInspeccion', titulo: 'Coordinación de Inspección' },
-  { tipo: 'inspeccion', titulo: 'Inspección' },
-  { tipo: 'solicitudDocs', titulo: 'Solicitud Docs' },
-  { tipo: 'informePreliminar', titulo: 'Informe Preliminar' },
-  { tipo: 'seguimientoDocsPendientes', titulo: 'Seguimiento docs pendientes' },
-  { tipo: 'ultimoDocumento', titulo: 'Último Documento' },
-  { tipo: 'informeFinal', titulo: 'Informe Final' },
-  { tipo: 'seguimientoAutorizacionCompania', titulo: 'Seguimiento autorización compañía' },
-  { tipo: 'presentacionCifras', titulo: 'Presentación de Cifras' },
-  { tipo: 'seguimientoDocumentosPago', titulo: 'Seguimiento docs de pago' },
-  { tipo: 'envioFiniquito', titulo: 'Envío de Finiquito' },
+  { tipo: 'recepcionAsignacion', get titulo() { return t('complex.ui.etapas_trazabilidad.recepcion_asignacion'); } },
+  { tipo: 'carguePlataforma', get titulo() { return t('complex.ui.etapas_trazabilidad.cargue_asignacion_interna'); } },
+  { tipo: 'contactoInicial', get titulo() { return t('complex.ui.etapas_trazabilidad.contacto_inicial'); } },
+  { tipo: 'coordinacionInspeccion', get titulo() { return t('complex.ui.etapas_trazabilidad.coordinacion_inspeccion'); } },
+  { tipo: 'inspeccion', get titulo() { return t('complex.ui.etapas_trazabilidad.inspeccion'); } },
+  { tipo: 'solicitudDocs', get titulo() { return t('complex.ui.etapas_trazabilidad.solicitud_docs'); } },
+  { tipo: 'informePreliminar', get titulo() { return t('complex.ui.etapas_trazabilidad.informe_preliminar'); } },
+  { tipo: 'seguimientoDocsPendientes', get titulo() { return t('complex.ui.etapas_trazabilidad.seguimiento_docs_pendientes'); } },
+  { tipo: 'ultimoDocumento', get titulo() { return t('complex.ui.etapas_trazabilidad.ultimo_documento'); } },
+  { tipo: 'informeFinal', get titulo() { return t('complex.ui.etapas_trazabilidad.informe_final'); } },
+  { tipo: 'seguimientoAutorizacionCompania', get titulo() { return t('complex.ui.etapas_trazabilidad.seguimiento_autorizacion_compania'); } },
+  { tipo: 'presentacionCifras', get titulo() { return t('complex.ui.etapas_trazabilidad.presentacion_de_cifras'); } },
+  { tipo: 'seguimientoDocumentosPago', get titulo() { return t('complex.ui.etapas_trazabilidad.seguimiento_docs_de_pago'); } },
+  { tipo: 'envioFiniquito', get titulo() { return t('complex.ui.etapas_trazabilidad.envio_de_finiquito'); } },
 ];
 
 /** Alias de compatibilidad (HMR / imports antiguos). */
@@ -110,12 +112,12 @@ function normalizarEtiquetaPlazo(etiqueta, etapaLike) {
   if (etiqueta && !String(etiqueta).includes('undefined')) return etiqueta;
   const lim = etapaLike?.limite;
   if (lim && lim.valor != null && lim.unidad) {
-    if (lim.unidad === 'horas') return `${lim.valor} horas`;
-    if (lim.unidad === 'dias_habiles') return `${lim.valor} días hábiles`;
-    if (lim.unidad === 'dias') return `${lim.valor} día(s)`;
-    if (lim.unidad === 'mismo_dia') return 'mismo día';
+    if (lim.unidad === 'horas') return t('complex.ui.subtarea_protocolo_utils.horas', { valor: lim.valor });
+    if (lim.unidad === 'dias_habiles') return t('complex.ui.subtarea_protocolo_utils.dias_habiles', { valor: lim.valor });
+    if (lim.unidad === 'dias') return t('complex.ui.subtarea_protocolo_utils.dias', { valor: lim.valor });
+    if (lim.unidad === 'mismo_dia') return t('complex.ui.subtarea_protocolo_utils.mismo_dia');
   }
-  return 'Sin plazo fijo de alerta (ventana operativa 15 días)';
+  return t('complex.ui.subtarea_protocolo_utils.sin_plazo_fijo');
 }
 
 /**

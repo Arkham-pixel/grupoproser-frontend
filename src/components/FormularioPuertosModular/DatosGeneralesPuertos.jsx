@@ -1,12 +1,13 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import Select from 'react-select';
 import { useTheme } from '../../context/ThemeContext';
 import ciudadesData from '../../data/colombia.json';
 
 export default function DatosGeneralesPuertos({ formData, onInputChange, onMultipleChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
-  
-  // Colores según el tema
+
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
@@ -35,31 +36,31 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
   };
 
   return (
-    <div 
+    <div
       className="mt-10 p-6 rounded shadow-sm"
       style={{
         backgroundColor: cardBg,
         border: `1px solid ${borderColor}`
       }}
     >
-      <h2 
+      <h2
         className="text-xl font-bold mb-4"
         style={{ color: textPrimary }}
       >
-        1. INFORMACIÓN GENERAL
+        {t('ports.ui.formulario.datosGenerales.titulo')}
       </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Nombre del Buque
+            {t('ports.ui.formulario.datosGenerales.nombreBuque')}
           </label>
           <input
             type="text"
-            placeholder="Ej: M/N ATLANTIC STAR"
+            placeholder={t('ports.ui.formulario.datosGenerales.nombreBuquePlaceholder')}
             value={formData.nombreMotonave || ''}
             onChange={(e) => onInputChange('nombreMotonave', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -74,15 +75,15 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Nombre del Puerto / Empresa
+            {t('ports.ui.formulario.datosGenerales.nombrePuertoEmpresa')}
           </label>
           <input
             type="text"
-            placeholder="Ej: Puerto de Cartagena"
+            placeholder={t('ports.ui.formulario.datosGenerales.nombrePuertoEmpresaPlaceholder')}
             value={formData.nombreEmpresa || ''}
             onChange={(e) => onInputChange('nombreEmpresa', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -97,15 +98,15 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Dirección
+            {t('ports.ui.formulario.datosGenerales.direccion')}
           </label>
           <input
             type="text"
-            placeholder="Ej: Zona Portuaria Norte"
+            placeholder={t('ports.ui.formulario.datosGenerales.direccionPlaceholder')}
             value={formData.direccion || ''}
             onChange={(e) => onInputChange('direccion', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -120,11 +121,11 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div className="md:col-span-2">
-          <label 
+          <label
             className="block text-sm font-medium"
             style={{ color: textPrimary }}
           >
-            Ciudad
+            {t('ports.ui.formulario.datosGenerales.ciudad')}
           </label>
           <Select
             options={municipios}
@@ -136,14 +137,14 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
               const ciudadStr = String(formData.ciudad_siniestro);
               let encontrada = municipios.find(opt => opt.value === ciudadStr);
               if (!encontrada) {
-                encontrada = municipios.find(opt => 
-                  opt.label === ciudadStr || 
+                encontrada = municipios.find(opt =>
+                  opt.label === ciudadStr ||
                   opt.label.includes(ciudadStr) ||
                   opt.value === ciudadStr
                 );
               }
               if (!encontrada) {
-                encontrada = municipios.find(opt => 
+                encontrada = municipios.find(opt =>
                   opt.label.toLowerCase().includes(ciudadStr.toLowerCase()) ||
                   opt.value.toLowerCase() === ciudadStr.toLowerCase()
                 );
@@ -151,7 +152,7 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
               return encontrada || null;
             })()}
             onChange={handleCiudadChange}
-            placeholder="Selecciona una ciudad..."
+            placeholder={t('ports.ui.formulario.datosGenerales.ciudadPlaceholder')}
             isSearchable
             className="w-full"
             styles={{
@@ -169,12 +170,12 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
               }),
               option: (provided, state) => ({
                 ...provided,
-                backgroundColor: state.isSelected 
+                backgroundColor: state.isSelected
                   ? (theme === 'dark' ? '#DC2626' : '#2563EB')
                   : state.isFocused
                   ? (theme === 'dark' ? '#2A2A2A' : '#F3F4F6')
                   : inputBg,
-                color: state.isSelected 
+                color: state.isSelected
                   ? '#FFFFFF'
                   : textPrimary
               }),
@@ -196,15 +197,15 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Persona Entrevistada
+            {t('ports.ui.formulario.datosGenerales.personaEntrevistada')}
           </label>
           <input
             type="text"
-            placeholder="Ej: Nelson Gómez"
+            placeholder={t('ports.ui.formulario.datosGenerales.personaEntrevistadaPlaceholder')}
             value={formData.personaEntrevistada || ''}
             onChange={(e) => onInputChange('personaEntrevistada', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -219,15 +220,15 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Cargo
+            {t('ports.ui.formulario.datosGenerales.cargo')}
           </label>
           <input
             type="text"
-            placeholder="Ej: Jefe de Operaciones Portuarias"
+            placeholder={t('ports.ui.formulario.datosGenerales.cargoPlaceholder')}
             value={formData.cargo || ''}
             onChange={(e) => onInputChange('cargo', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -242,15 +243,15 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Horario Laboral
+            {t('ports.ui.formulario.datosGenerales.horarioLaboral')}
           </label>
           <input
             type="text"
-            placeholder="24/7 o 6AM - 6PM"
+            placeholder={t('ports.ui.formulario.datosGenerales.horarioLaboralPlaceholder')}
             value={formData.horarioLaboral || ''}
             onChange={(e) => onInputChange('horarioLaboral', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -265,15 +266,15 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Número de Colaboradores
+            {t('ports.ui.formulario.datosGenerales.numeroColaboradores')}
           </label>
           <input
             type="text"
-            placeholder="Ej: 150"
+            placeholder={t('ports.ui.formulario.datosGenerales.numeroColaboradoresPlaceholder')}
             value={formData.colaboladores || ''}
             onChange={(e) => onInputChange('colaboladores', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -288,15 +289,15 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
 
         <div>
-          <label 
+          <label
             className="block text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Aseguradora
+            {t('ports.ui.formulario.datosGenerales.aseguradora')}
           </label>
           <input
             type="text"
-            placeholder="Nombre de la aseguradora"
+            placeholder={t('ports.ui.formulario.datosGenerales.aseguradoraPlaceholder')}
             value={formData.aseguradora || ''}
             onChange={(e) => onInputChange('aseguradora', e.target.value)}
             className="w-full rounded px-3 py-2"
@@ -311,17 +312,16 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
         </div>
       </div>
 
-      {/* Descripción General */}
       <div className="mt-6">
-        <label 
+        <label
           className="block text-sm font-semibold mb-2"
           style={{ color: textPrimary }}
         >
-          Descripción General del Puerto
+          {t('ports.ui.formulario.datosGenerales.descripcionGeneral')}
         </label>
         <textarea
           rows={6}
-          placeholder="Agrega aquí la descripción general del puerto y sus operaciones..."
+          placeholder={t('ports.ui.formulario.datosGenerales.descripcionGeneralPlaceholder')}
           value={formData.descripcionEmpresa || ''}
           onChange={(e) => onInputChange('descripcionEmpresa', e.target.value)}
           className="w-full rounded px-3 py-2"
@@ -337,4 +337,3 @@ export default function DatosGeneralesPuertos({ formData, onInputChange, onMulti
     </div>
   );
 }
-

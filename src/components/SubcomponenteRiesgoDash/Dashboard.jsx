@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { obtenerCasosRiesgo, obtenerResponsables, obtenerEstados, obtenerAseguradoras, obtenerCiudades } from '../../services/riesgoService';
 import {
   BarChart,
@@ -50,7 +51,6 @@ import {
   calcularCumplimientoPorResponsable,
   calcularHistoricosPendientesCorreccion,
   calcularRetrasosPorEtapa,
-  FECHA_INICIO_ARNALD_RIESGO_LABEL,
   resumirSegmentacionTrazabilidad,
 } from '../../utils/riesgoTrazabilidadUtils.js';
 import {
@@ -59,6 +59,7 @@ import {
 } from '../../utils/responsableAgrupacionUtils.js';
 
 const Dashboard = () => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   
@@ -76,7 +77,7 @@ const Dashboard = () => {
 
   // Helper para mostrar nombre de estado
   const getEstadoNombre = codigo => {
-    if (!codigo || codigo === 'null' || codigo === 'undefined' || codigo === '') return 'Sin estado';
+    if (!codigo || codigo === 'null' || codigo === 'undefined' || codigo === '') return t('risks.noStatus');
     if (!estados || estados.length === 0) return String(codigo);
     
     // Buscar por codiEstdo
@@ -94,7 +95,7 @@ const Dashboard = () => {
   };
   // Helper para mostrar nombre de responsable
   const getResponsableNombre = codigo => {
-    if (!codigo || codigo === 'null' || codigo === 'undefined' || codigo === '') return 'Sin asignar';
+    if (!codigo || codigo === 'null' || codigo === 'undefined' || codigo === '') return t('risks.unassigned');
     if (!responsables || responsables.length === 0) return codigo;
     
     // Convertir a string y limpiar
@@ -150,7 +151,7 @@ const Dashboard = () => {
 
   // Helper para mostrar nombre de ciudad
   const getCiudadNombre = codigo => {
-    if (!codigo || codigo === 'null' || codigo === 'undefined' || codigo === '') return 'Sin ciudad';
+    if (!codigo || codigo === 'null' || codigo === 'undefined' || codigo === '') return t('risks.noCity');
     if (!ciudades || ciudades.length === 0) return String(codigo);
     
     // Convertir a string y limpiar
@@ -275,11 +276,14 @@ const Dashboard = () => {
       return acc;
     }, {})
   )
-    .map(([estado, cantidad]) => ({ 
-      estado: estado || 'Sin nombre', 
-      cantidad: cantidad,
-      name: estado || 'Sin nombre' // Agregar name para compatibilidad con Recharts
-    }))
+    .map(([estado, cantidad]) => {
+      const nombre = estado || t('risks.ui.dashboard.sin_nombre');
+      return {
+        estado: nombre,
+        cantidad,
+        name: nombre,
+      };
+    })
     .sort((a, b) => b.cantidad - a.cantidad); // Ordenar por cantidad descendente
 
   // Gráfico de barras horizontal → Top 10 aseguradoras
@@ -345,7 +349,7 @@ const Dashboard = () => {
     casosPorResponsableMapa[clave].cantidad++;
   });
   const casosPorResponsableData = Object.values(casosPorResponsableMapa)
-    .filter((item) => item.responsable && item.responsable !== 'Sin asignar')
+    .filter((item) => item.responsable && item.responsable !== t('risks.unassigned'))
     .sort((a, b) => b.cantidad - a.cantidad);
 
   // Gráfico de barras → Días promedio por responsable (agrupado por persona)
@@ -374,7 +378,7 @@ const Dashboard = () => {
       responsable,
       promedioDias: Math.round(dias.reduce((sum, d) => sum + d, 0) / dias.length),
     }))
-    .filter((item) => item.responsable && item.responsable !== 'Sin asignar')
+    .filter((item) => item.responsable && item.responsable !== t('risks.unassigned'))
     .sort((a, b) => b.promedioDias - a.promedioDias);
 
   // ========== NUEVAS GRÁFICAS ==========
@@ -384,9 +388,10 @@ const Dashboard = () => {
   const casosPorCiudad = Object.entries(
     casosFiltrados.reduce((acc, caso) => {
       // Usar nombreCiudad que viene del backend (ya enriquecido)
-      const nombreCiudad = caso.nombreCiudad || getCiudadNombre(caso.codigoPoblado || caso.ciudadSucursal) || 'Sin ciudad';
+      const sinCiudad = t('risks.noCity');
+      const nombreCiudad = caso.nombreCiudad || getCiudadNombre(caso.codigoPoblado || caso.ciudadSucursal) || sinCiudad;
       
-      if (nombreCiudad && nombreCiudad !== 'Sin ciudad') {
+      if (nombreCiudad && nombreCiudad !== sinCiudad) {
         acc[nombreCiudad] = (acc[nombreCiudad] || 0) + 1;
       }
       return acc;
@@ -465,7 +470,7 @@ const Dashboard = () => {
 
   const formatoLeyendaPie = (total, labelKey) => (value, entry) => {
     const item = entry?.payload ?? {};
-    const etiqueta = item[labelKey] || value || 'Sin nombre';
+    const etiqueta = item[labelKey] || value || t('risks.ui.dashboard.sin_nombre');
     const cantidad = item.cantidad ?? 0;
     const pct = total > 0 ? ((cantidad / total) * 100).toFixed(1) : 0;
     return `${etiqueta}: ${cantidad} (${pct}%)`;
@@ -476,12 +481,12 @@ const Dashboard = () => {
       <table className="w-full min-w-[640px]">
         <thead>
           <tr>
-            <th className={riesgoTableTh}>Responsable</th>
-            <th className={`${riesgoTableTh} text-center`}>Total</th>
-            <th className={`${riesgoTableTh} text-center`}>Cumplidos</th>
-            <th className={`${riesgoTableTh} text-center`}>Retrasados</th>
-            <th className={`${riesgoTableTh} text-center`}>% Cumpl.</th>
-            <th className={`${riesgoTableTh} text-center`}>Prom. retraso</th>
+            <th className={riesgoTableTh}>{t('risks.ui.dashboard.col_responsable')}</th>
+            <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.col_total')}</th>
+            <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.col_cumplidos')}</th>
+            <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.col_retrasados')}</th>
+            <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.col_pct_cumpl')}</th>
+            <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.col_prom_retraso')}</th>
           </tr>
         </thead>
         <tbody>
@@ -505,7 +510,9 @@ const Dashboard = () => {
                 </span>
               </td>
               <td className={`${riesgoTableTd} text-center text-gray-500`}>
-                {resp.promedioDiasRetraso === '0' ? '-' : `${resp.promedioDiasRetraso} días`}
+                {resp.promedioDiasRetraso === '0'
+                  ? '-'
+                  : t('risks.ui.dashboard.dias', { count: Number(resp.promedioDiasRetraso) })}
               </td>
             </tr>
           ))}
@@ -528,7 +535,7 @@ const Dashboard = () => {
               tick={{ fill: tickColor, fontSize: 10 }}
               tickFormatter={(v) => (v && v.length > 25 ? `${v.substring(0, 22)}...` : v)}
             />
-            <Tooltip formatter={(v) => [`${v}%`, 'Cumplimiento']} contentStyle={tooltipStyle} />
+            <Tooltip formatter={(v) => [`${v}%`, t('risks.ui.dashboard.cumplimiento')]} contentStyle={tooltipStyle} />
             <Bar dataKey="porcentajeCumplimiento" radius={[0, 4, 4, 0]}>
               {filas.map((entry, index) => (
                 <Cell key={entry.nombre} fill={getFenixChartColor(index, isDark)} />
@@ -561,29 +568,29 @@ const Dashboard = () => {
     <div className={riesgoReportRoot}>
       <div className={`${riesgoScope} ${riesgoPageWrapWide}`}>
         <RiesgoPageHeader
-          title="Dashboard de Riesgos"
-          subtitle="Métricas, distribución geográfica, evolución temporal y cumplimiento de trazabilidad."
+          title={t('risks.dashboardTitle')}
+          subtitle={t('risks.dashboardSubtitle')}
           showNav={false}
         />
 
         <RiesgoFilterSection
-          title="Filtros del dashboard"
-          subtitle="Navegación del módulo y criterios de análisis en un solo panel."
+          title={t('risks.dashboardFilters')}
+          subtitle={t('risks.dashboardFiltersSubtitle')}
           showClear={filtrosAplicados}
           onClear={limpiarFiltros}
         >
           <RiesgoNavPanel activePath="/riesgos/dashboard" />
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Campo label="Fecha desde">
+            <Campo label={t('risks.dateFrom')}>
               <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
             </Campo>
-            <Campo label="Fecha hasta">
+            <Campo label={t('risks.dateTo')}>
               <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
             </Campo>
-            <Campo label="Estado">
+            <Campo label={t('risks.status')}>
               <SelectFenix value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)}>
-                <option value="">Todos los estados</option>
+                <option value="">{t('risks.ui.dashboard.all_statuses')}</option>
                 {estadosUnicos.map((e, index) => (
                   <option key={`estado-${e.value}-${index}`} value={e.value}>
                     {e.label}
@@ -591,9 +598,9 @@ const Dashboard = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Responsable">
+            <Campo label={t('risks.responsible')}>
               <SelectFenix value={responsableFiltro} onChange={(e) => setResponsableFiltro(e.target.value)}>
-                <option value="">Todos los responsables</option>
+                <option value="">{t('risks.ui.dashboard.all_responsibles')}</option>
                 {responsablesUnicos.map((r, index) => (
                   <option key={`responsable-${r.value}-${index}`} value={r.value}>
                     {r.label}
@@ -601,9 +608,9 @@ const Dashboard = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Aseguradora">
+            <Campo label={t('risks.insurer')}>
               <SelectFenix value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)}>
-                <option value="">Todas las aseguradoras</option>
+                <option value="">{t('risks.ui.dashboard.all_insurers')}</option>
                 {aseguradorasUnicas.map((a, index) => (
                   <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
                     {a.label}
@@ -615,43 +622,57 @@ const Dashboard = () => {
           {filtrosAplicados && (
             <div className={riesgoFilterActiveBox}>
               <p className="mb-2 font-body text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Filtros activos
+                {t('risks.ui.dashboard.filtros_activos')}
               </p>
               <div className="flex flex-wrap gap-1">
-                {fechaDesde && <span className={riesgoFilterChip}>Desde: {fechaDesde}</span>}
-                {fechaHasta && <span className={riesgoFilterChip}>Hasta: {fechaHasta}</span>}
+                {fechaDesde && (
+                  <span className={riesgoFilterChip}>
+                    {t('risks.ui.dashboard.chip_desde', { value: fechaDesde })}
+                  </span>
+                )}
+                {fechaHasta && (
+                  <span className={riesgoFilterChip}>
+                    {t('risks.ui.dashboard.chip_hasta', { value: fechaHasta })}
+                  </span>
+                )}
                 {estadoFiltro && (
-                  <span className={riesgoFilterChip}>Estado: {getEstadoNombre(estadoFiltro)}</span>
+                  <span className={riesgoFilterChip}>
+                    {t('risks.ui.dashboard.chip_estado', { value: getEstadoNombre(estadoFiltro) })}
+                  </span>
                 )}
                 {responsableFiltro && (
                   <span className={riesgoFilterChip}>
-                    Responsable: {getResponsableNombre(responsableFiltro)}
+                    {t('risks.ui.dashboard.chip_responsable', {
+                      value: getResponsableNombre(responsableFiltro),
+                    })}
                   </span>
                 )}
                 {aseguradoraFiltro && (
                   <span className={riesgoFilterChip}>
-                    Aseguradora: {getAseguradoraNombre(aseguradoraFiltro) || aseguradoraFiltro}
+                    {t('risks.ui.dashboard.chip_aseguradora', {
+                      value: getAseguradoraNombre(aseguradoraFiltro) || aseguradoraFiltro,
+                    })}
                   </span>
                 )}
               </div>
               <p className="mt-2 font-body text-xs text-gray-600 dark:text-gray-400">
-                Mostrando {totalCasos} de {casos.length} casos
+                {t('risks.ui.dashboard.mostrando_casos', { shown: totalCasos, total: casos.length })}
               </p>
             </div>
           )}
         </RiesgoFilterSection>
 
         <section className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <RiesgoMetricCard label="Total de casos" value={totalCasos} hint="Con filtros aplicados" />
+          <RiesgoMetricCard label={t('risks.totalCases')} value={totalCasos} hint={t('risks.filtered')} />
           <RiesgoMetricCard
-            label="Casos pendientes"
+            label={t('risks.pendingCases')}
             value={casosPendientes}
-            hint="Estados en proceso o sin asignar"
+            hint={t('risks.pendingHint')}
             accent="primario"
           />
           <div className={`${riesgoMetricCard} sm:col-span-2 lg:col-span-1 xl:col-span-1`}>
             <p className="font-body text-sm font-medium text-gray-500 dark:text-gray-400">
-              Últimos casos registrados
+              {t('risks.ui.dashboard.ultimos_casos')}
             </p>
             <ul className="mt-3 space-y-1">
               {ultimosCasos.map((caso, idx) => (
@@ -672,7 +693,7 @@ const Dashboard = () => {
         </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 gap-4">
-          <RiesgoChartCard title="Evolución temporal de casos" empty={casosPorMes.length === 0}>
+          <RiesgoChartCard title={t('risks.ui.dashboard.chart_evolucion')} empty={casosPorMes.length === 0}>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={casosPorMes}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -682,7 +703,7 @@ const Dashboard = () => {
                 <Line
                   type="monotone"
                   dataKey="cantidad"
-                  name="Casos"
+                  name={t('risks.ui.dashboard.casos')}
                   stroke={lineColors.casos}
                   strokeWidth={2.5}
                   dot={{ fill: lineColors.casos, r: 3 }}
@@ -693,7 +714,7 @@ const Dashboard = () => {
         </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-          <RiesgoChartCard title="Distribución por estado" empty={casosPorEstado.length === 0}>
+          <RiesgoChartCard title={t('risks.ui.dashboard.chart_estado')} empty={casosPorEstado.length === 0}>
             <ResponsiveContainer width="100%" height={320}>
               <PieChart>
                 <Pie
@@ -713,10 +734,13 @@ const Dashboard = () => {
                 </Pie>
                 <Tooltip
                   formatter={(value, name, props) => {
-                    const estado = props.payload?.estado || 'Sin nombre';
+                    const estado = props.payload?.estado || t('risks.ui.dashboard.sin_nombre');
                     const cantidad = props.payload?.cantidad || value || 0;
                     const pct = totalCasos > 0 ? ((cantidad / totalCasos) * 100).toFixed(1) : 0;
-                    return [`${cantidad} casos (${pct}%)`, estado];
+                    return [
+                      t('risks.ui.dashboard.tooltip_casos_pct', { count: cantidad, pct }),
+                      estado,
+                    ];
                   }}
                   contentStyle={tooltipStyle}
                 />
@@ -733,7 +757,7 @@ const Dashboard = () => {
             </ResponsiveContainer>
           </RiesgoChartCard>
 
-          <RiesgoChartCard title="Casos por estado" empty={casosPorEstado.length === 0}>
+          <RiesgoChartCard title={t('risks.ui.dashboard.casos_por_estado')} empty={casosPorEstado.length === 0}>
             <ResponsiveContainer width="100%" height={320}>
               <BarChart data={casosPorEstado} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -751,7 +775,7 @@ const Dashboard = () => {
         </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 gap-4">
-          <RiesgoChartCard title="Top 10 aseguradoras" empty={topAseguradoras.length === 0}>
+          <RiesgoChartCard title={t('risks.ui.dashboard.top_aseguradoras')} empty={topAseguradoras.length === 0}>
             <ResponsiveContainer width="100%" height={Math.max(320, topAseguradoras.length * 36)}>
               <BarChart data={topAseguradoras} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -761,7 +785,9 @@ const Dashboard = () => {
                   type="category"
                   width={160}
                   tick={{ fill: tickColor, fontSize: 10 }}
-                  tickFormatter={(v) => (v && v.length > 28 ? `${v.substring(0, 25)}...` : v || 'Sin aseguradora')}
+                  tickFormatter={(v) =>
+                    v && v.length > 28 ? `${v.substring(0, 25)}...` : v || t('risks.ui.dashboard.sin_aseguradora')
+                  }
                 />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
@@ -776,7 +802,7 @@ const Dashboard = () => {
 
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <RiesgoChartCard
-            title="Casos por responsable"
+            title={t('risks.ui.dashboard.casos_responsable')}
             empty={casosPorResponsableData.length === 0}
           >
             <div style={{ height: Math.max(320, casosPorResponsableData.length * 32) }}>
@@ -789,7 +815,9 @@ const Dashboard = () => {
                     type="category"
                     width={150}
                     tick={{ fill: tickColor, fontSize: 10 }}
-                    tickFormatter={(v) => (v && v.length > 28 ? `${v.substring(0, 25)}...` : v || 'Sin responsable')}
+                    tickFormatter={(v) =>
+                      v && v.length > 28 ? `${v.substring(0, 25)}...` : v || t('risks.unassigned')
+                    }
                   />
                   <Tooltip contentStyle={tooltipStyle} />
                   <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
@@ -803,7 +831,7 @@ const Dashboard = () => {
           </RiesgoChartCard>
 
           <RiesgoChartCard
-            title="Días promedio (cierre → creación) por responsable"
+            title={t('risks.ui.dashboard.promedio_dias')}
             empty={promedioDiasPorResponsable.length === 0}
           >
             <div style={{ height: Math.max(320, promedioDiasPorResponsable.length * 32) }}>
@@ -816,9 +844,17 @@ const Dashboard = () => {
                     type="category"
                     width={150}
                     tick={{ fill: tickColor, fontSize: 10 }}
-                    tickFormatter={(v) => (v && v.length > 28 ? `${v.substring(0, 25)}...` : v || 'Sin responsable')}
+                    tickFormatter={(v) =>
+                      v && v.length > 28 ? `${v.substring(0, 25)}...` : v || t('risks.unassigned')
+                    }
                   />
-                  <Tooltip formatter={(v) => [`${v} días`, 'Promedio']} contentStyle={tooltipStyle} />
+                  <Tooltip
+                    formatter={(v) => [
+                      t('risks.ui.dashboard.dias', { count: Number(v) }),
+                      t('risks.ui.dashboard.promedio'),
+                    ]}
+                    contentStyle={tooltipStyle}
+                  />
                   <Bar dataKey="promedioDias" radius={[0, 4, 4, 0]}>
                     {promedioDiasPorResponsable.map((entry, index) => (
                       <Cell key={entry.responsable} fill={getFenixChartColor(index + 1, isDark)} />
@@ -831,7 +867,7 @@ const Dashboard = () => {
         </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 gap-4">
-          <RiesgoChartCard title="Distribución por ciudad (Top 10)" empty={casosPorCiudad.length === 0}>
+          <RiesgoChartCard title={t('risks.ui.dashboard.chart_ciudad')} empty={casosPorCiudad.length === 0}>
             <div style={{ height: Math.max(320, casosPorCiudad.length * 40) }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={casosPorCiudad} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
@@ -843,7 +879,7 @@ const Dashboard = () => {
                     width={160}
                     tick={{ fill: tickColor, fontSize: 10 }}
                     tickFormatter={(value) => {
-                      if (!value) return 'Sin ciudad';
+                      if (!value) return t('risks.noCity');
                       let nombre = value.includes(', COLOMBIA') ? value.replace(', COLOMBIA', '') : value;
                       const partesUnicas = [...new Set(nombre.split(', '))];
                       nombre = partesUnicas.join(', ');
@@ -864,29 +900,28 @@ const Dashboard = () => {
 
         <section className="space-y-4">
           <div>
-            <h2 className={riesgoSectionTitle}>Métricas de trazabilidad</h2>
+            <h2 className={riesgoSectionTitle}>{t('risks.ui.dashboard.trazabilidad_titulo')}</h2>
             <p className="mt-2 font-body text-sm text-gray-600 dark:text-gray-400">
-              El cumplimiento usa casos con fecha de asignación desde {FECHA_INICIO_ARNALD_RIESGO_LABEL}.
-              Los casos anteriores a esa fecha (plataforma previa) se listan abajo para corrección de fechas.
+              {t('risks.ui.dashboard.trazabilidad_desc')}
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <RiesgoMetricCard
-              label="Casos Arnald"
+              label={t('risks.ui.dashboard.casos_arnald')}
               value={resumenTrazabilidad.casosArnald}
-              hint="Con trazabilidad medible"
+              hint={t('risks.ui.dashboard.hint_arnald')}
               accent="exito"
             />
             <RiesgoMetricCard
-              label="Casos históricos"
+              label={t('risks.ui.dashboard.casos_historicos')}
               value={resumenTrazabilidad.casosHistoricos}
-              hint="Plataforma anterior"
+              hint={t('risks.ui.dashboard.hint_historicos')}
             />
             <RiesgoMetricCard
-              label="Pendientes de corrección"
+              label={t('risks.ui.dashboard.pendientes_correccion')}
               value={resumenTrazabilidad.historicosPendientes}
-              hint="Sin fechas de trazabilidad"
+              hint={t('risks.ui.dashboard.sin_fechas_trazabilidad')}
               accent="primario"
             />
           </div>
@@ -908,14 +943,19 @@ const Dashboard = () => {
                   {item.retrasados}
                 </p>
                 <p className="font-body text-xs text-gray-500 dark:text-gray-400">
-                  {item.retrasados === 1 ? 'retrasado' : 'retrasados'} · Límite: {item.limite}
+                  {item.retrasados === 1
+                    ? t('risks.ui.dashboard.retrasado')
+                    : t('risks.ui.dashboard.retrasados')}{' '}
+                  · {t('risks.ui.dashboard.limite')} {item.limite}
                 </p>
-                <p className="mt-1 font-body text-[11px] text-gray-400 dark:text-gray-500">Solo casos Arnald</p>
+                <p className="mt-1 font-body text-[11px] text-gray-400 dark:text-gray-500">
+                  {t('risks.ui.dashboard.solo_arnald')}
+                </p>
               </div>
             ))}
           </div>
 
-          <RiesgoChartCard title="Casos retrasados por etapa (Arnald)" empty={false}>
+          <RiesgoChartCard title={t('risks.ui.dashboard.retrasos_etapa')} empty={false}>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={retrasosPorEtapaData} margin={{ top: 8, right: 16, left: 0, bottom: 72 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -935,11 +975,11 @@ const Dashboard = () => {
           </RiesgoChartCard>
 
           <RiesgoChartCard
-            title="Cumplimiento Arnald por responsable"
+            title={t('risks.ui.dashboard.cumplimiento_arnald')}
             empty={cumplimientoArnaldArray.length === 0}
           >
             <p className="mb-4 font-body text-sm text-gray-500 dark:text-gray-400">
-              Solo etapas con fecha registrada. No penaliza casos sin fechas de cierre.
+              {t('risks.ui.dashboard.cumplimiento_arnald_desc')}
             </p>
             {cumplimientoArnaldArray.length > 0 && (
               <>
@@ -950,12 +990,11 @@ const Dashboard = () => {
           </RiesgoChartCard>
 
           <RiesgoChartCard
-            title="Casos históricos pendientes de corrección"
+            title={t('risks.ui.dashboard.historicos_titulo')}
             empty={historicosPendientesArray.length === 0}
           >
             <p className="mb-4 font-body text-sm text-gray-500 dark:text-gray-400">
-              Casos importados de la plataforma anterior con fechas de trazabilidad incompletas.
-              Úselos para identificar qué registros deben actualizarse.
+              {t('risks.ui.dashboard.historicos_desc')}
             </p>
             {historicosPendientesArray.length > 0 && (
               <>
@@ -963,11 +1002,11 @@ const Dashboard = () => {
                   <table className="w-full min-w-[720px]">
                     <thead>
                       <tr>
-                        <th className={riesgoTableTh}>Responsable</th>
-                        <th className={`${riesgoTableTh} text-center`}>Pendientes</th>
-                        <th className={`${riesgoTableTh} text-center`}>Sin contacto</th>
-                        <th className={`${riesgoTableTh} text-center`}>Sin inspección</th>
-                        <th className={`${riesgoTableTh} text-center`}>Sin informe</th>
+                        <th className={riesgoTableTh}>{t('risks.ui.dashboard.col_responsable')}</th>
+                        <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.hist_pendientes')}</th>
+                        <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.hist_sin_contacto')}</th>
+                        <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.hist_sin_inspeccion')}</th>
+                        <th className={`${riesgoTableTh} text-center`}>{t('risks.ui.dashboard.hist_sin_informe')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1005,7 +1044,10 @@ const Dashboard = () => {
                         tickFormatter={(v) => (v && v.length > 25 ? `${v.substring(0, 22)}...` : v)}
                       />
                       <Tooltip
-                        formatter={(v) => [`${v} casos`, 'Pendientes de corrección']}
+                        formatter={(v) => [
+                          `${v} ${t('risks.ui.dashboard.casos').toLowerCase()}`,
+                          t('risks.ui.dashboard.pendientes_correccion'),
+                        ]}
                         contentStyle={tooltipStyle}
                       />
                       <Bar dataKey="pendientesCorreccion" radius={[0, 4, 4, 0]}>

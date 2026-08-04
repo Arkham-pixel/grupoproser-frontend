@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import FormularioInspeccionPropiedades from '../FormularioInspeccionPropiedades.jsx';
 import {
@@ -16,6 +17,7 @@ import Loader from '../Loader.jsx';
  *  - /propiedades/inspeccion/:casoId?inspeccionId=xxx (editar historial vinculado)
  */
 export default function InspeccionDesdeCasoPropiedades() {
+  const { t } = useTranslation();
   const { casoId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -29,7 +31,7 @@ export default function InspeccionDesdeCasoPropiedades() {
     let cancelado = false;
     const cargar = async () => {
       if (!casoId) {
-        setError('Falta el identificador del caso.');
+        setError(t('properties.inspection.missingCaseId'));
         setLoading(false);
         return;
       }
@@ -40,7 +42,7 @@ export default function InspeccionDesdeCasoPropiedades() {
         if (!cancelado) setCaso(data);
       } catch (err) {
         if (!cancelado) {
-          setError(err.message || 'No se pudo cargar el caso.');
+          setError(err.message || t('properties.inspection.loadError'));
           setCaso(null);
         }
       } finally {
@@ -51,7 +53,7 @@ export default function InspeccionDesdeCasoPropiedades() {
     return () => {
       cancelado = true;
     };
-  }, [casoId]);
+  }, [casoId, t]);
 
   if (loading) {
     return (
@@ -66,19 +68,19 @@ export default function InspeccionDesdeCasoPropiedades() {
       <div className={`${expressScope} min-h-full bg-fenix-fondo p-6`}>
         <div className={`${expressPageWrap} space-y-4`}>
           <PropiedadesPageHeader
-            title="Inspección de propiedades"
-            subtitle="No se pudo abrir el formulario."
+            title={t('properties.inspection.title')}
+            subtitle={t('properties.inspection.openError')}
             activePath="/propiedades/reporte"
           />
           <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error || 'Caso no encontrado'}
+            {error || t('properties.inspection.caseNotFound')}
           </div>
           <button
             type="button"
             className="rounded-lg bg-fenix-primario px-4 py-2 text-sm font-semibold text-white"
             onClick={() => navigate('/propiedades/reporte')}
           >
-            Volver al reporte
+            {t('properties.inspection.backToReport')}
           </button>
         </div>
       </div>
@@ -92,8 +94,8 @@ export default function InspeccionDesdeCasoPropiedades() {
     <div className={`${expressScope} min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F]`}>
       <div className={`${expressPageWrap} space-y-2 pb-2`}>
         <PropiedadesPageHeader
-          title="Formulario de inspección"
-          subtitle={`Caso ${caso.consecutivo || ''} — ${caso.nombreCliente || ''}. Los datos básicos vienen del caso.`}
+          title={t('properties.inspection.formTitle')}
+          subtitle={t('properties.inspection.caseSubtitle', { caseNumber: caso.consecutivo || '', client: caso.nombreCliente || '' })}
           activePath="/propiedades/reporte"
         />
       </div>

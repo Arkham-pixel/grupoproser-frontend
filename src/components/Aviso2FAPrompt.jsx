@@ -1,5 +1,6 @@
 // Aviso global: invita a configurar verificación en dos pasos (ARNALD DATA FLOW)
 import React, { useEffect, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { FaShieldAlt, FaTimes, FaMobileAlt } from 'react-icons/fa';
@@ -8,6 +9,7 @@ import { BASE_URL } from '../config/apiConfig';
 const RUTAS_CONFIGURACION = ['/cuenta', '/micuenta'];
 
 export default function Aviso2FAPrompt() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [cargando, setCargando] = useState(true);
@@ -84,12 +86,12 @@ export default function Aviso2FAPrompt() {
   };
 
   const titulo = pending
-    ? 'Completa tu verificación en dos pasos'
-    : 'Activa la verificación en dos pasos';
+    ? t('auth.twoFactorPrompt.titlePending')
+    : t('auth.twoFactorPrompt.titleEnable');
 
   const mensaje = pending
-    ? 'Ya escaneaste el código QR pero falta confirmar el código de 6 dígitos en Configuración → Editar cuenta. Sin ese paso, el login no pedirá el código.'
-    : 'Por seguridad, configura ARNALD DATA FLOW en Google Authenticator o Microsoft Authenticator. Solo toma un minuto: escaneas el QR, confirmas el código y listo.';
+    ? t('auth.twoFactorPrompt.messagePending')
+    : t('auth.twoFactorPrompt.messageEnable');
 
   return (
     <>
@@ -102,8 +104,8 @@ export default function Aviso2FAPrompt() {
                 <p className="text-sm font-semibold text-amber-900">{titulo}</p>
                 <p className="text-xs text-amber-800/90 sm:text-sm">
                   {pending
-                    ? 'Tienes una activación pendiente. Ve a Configuración y confirma tu código.'
-                    : 'Configura la verificación en dos pasos para proteger tu cuenta en ARNALD DATA FLOW.'}
+                    ? t('auth.twoFactorPrompt.bannerPending')
+                    : t('auth.twoFactorPrompt.bannerEnable')}
                 </p>
               </div>
             </div>
@@ -113,13 +115,13 @@ export default function Aviso2FAPrompt() {
                 onClick={irAConfigurar}
                 className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-amber-700 sm:text-sm"
               >
-                Configurar ahora
+                {t('auth.twoFactorPrompt.configureNow')}
               </button>
               <button
                 type="button"
                 onClick={cerrarBanner}
                 className="rounded-lg p-1.5 text-amber-700 transition hover:bg-amber-100"
-                title="Ocultar aviso"
+                title={t('auth.twoFactorPrompt.hideNotice')}
               >
                 <FaTimes />
               </button>
@@ -140,7 +142,7 @@ export default function Aviso2FAPrompt() {
               type="button"
               onClick={cerrarModal}
               className="absolute right-4 top-4 rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
-              aria-label="Cerrar"
+              aria-label={t('auth.twoFactorPrompt.close')}
             >
               <FaTimes />
             </button>
@@ -150,7 +152,7 @@ export default function Aviso2FAPrompt() {
                 <FaShieldAlt className="text-xl text-red-600" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-wider text-red-600">Mensaje de seguridad</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-red-600">{t('auth.twoFactorPrompt.securityMessage')}</p>
                 <h2 id="aviso-2fa-titulo" className="text-lg font-bold text-gray-900">{titulo}</h2>
               </div>
             </div>
@@ -161,10 +163,10 @@ export default function Aviso2FAPrompt() {
               <div className="flex items-start gap-3">
                 <FaMobileAlt className="mt-0.5 shrink-0 text-red-500" />
                 <ol className="list-decimal space-y-1 pl-4 text-sm text-gray-700">
-                  <li>Ve a <strong>Configuración → Editar cuenta</strong>.</li>
-                  <li>Busca <strong>Verificación en Dos Pasos</strong>.</li>
-                  <li>Escanea el QR (aparecerá como <strong>ARNALD DATA FLOW</strong> con tu ID).</li>
-                  <li>Confirma el código de 6 dígitos en la plataforma.</li>
+                  <li>{t('auth.twoFactorPrompt.step1')}</li>
+                  <li>{t('auth.twoFactorPrompt.step2')}</li>
+                  <li>{t('auth.twoFactorPrompt.step3')}</li>
+                  <li>{t('auth.twoFactorPrompt.step4')}</li>
                 </ol>
               </div>
             </div>
@@ -175,14 +177,14 @@ export default function Aviso2FAPrompt() {
                 onClick={irAConfigurar}
                 className="flex-1 rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-red-700"
               >
-                Ir a configurar ahora
+                {t('auth.twoFactorPrompt.goConfigure')}
               </button>
               <button
                 type="button"
                 onClick={cerrarModal}
                 className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
               >
-                Más tarde
+                {t('auth.twoFactorPrompt.later')}
               </button>
             </div>
           </div>

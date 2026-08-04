@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
 import { obtenerCasosComplex, deleteCasoComplex } from '../services/complexService';
 import { obtenerResponsables, obtenerAseguradoras, obtenerCiudades } from '../services/riesgoService';
@@ -40,129 +41,131 @@ import {
   complexTableWrap,
 } from './SubcomponenteCompex/complexFenixUi.js';
 
+const UI_RCM = 'complex.ui.reporte_casos_mejorado';
+
 // Opciones de campos de fecha para el filtro (orden según flujo de trazabilidad)
 const camposFechaDisponibles = [
-  { clave: 'fchaAsgncion', label: 'Fecha de Asignación' },
-  { clave: 'fchaSinstro', label: 'Fecha Siniestro' },
-  { clave: 'fchaContIni', label: 'Fecha Contacto Inicial' },
-  { clave: 'fchaCoordInspeccion', label: 'Fecha Coordinación de Inspección' },
-  { clave: 'fchaProgInspeccion', label: 'Fecha Programada de Inspección' },
-  { clave: 'fchaInspccion', label: 'Fecha de Inspección' },
-  { clave: 'fchaSoliDocu', label: 'Fecha Solicitud Documentos' },
-  { clave: 'fchaInfoPrelm', label: 'Fecha Informe Preliminar' },
-  { clave: 'fchaRepoActi', label: 'Fecha Último Documento / Reporte Actualizado' },
-  { clave: 'fchaInfoFnal', label: 'Fecha Informe Final' },
-  { clave: 'fchaPresentacionCifras', label: 'Fecha Presentación de Cifras' },
-  { clave: 'fchaAceptacionCifrasAseguradora', label: 'Fecha Aceptación de Cifras (Aseguradora)' },
-  { clave: 'fchaEnvioFiniquito', label: 'Fecha Envío de Finiquito' },
-  { clave: 'fchaFactra', label: 'Fecha Factura' },
-  { clave: 'fchaUltSegui', label: 'Fecha Último Seguimiento' },
-  { clave: 'fchaActSegui', label: 'Fecha Actual Seguimiento' },
-  { clave: 'fchaFinqtoIndem', label: 'Fecha Fin Quito Indemnización' },
-  { clave: 'fchaUltRevi', label: 'Fecha Última Revisión' },
-  { clave: 'createdAt', label: 'Fecha de Creación' },
-  { clave: 'updatedAt', label: 'Fecha de Actualización' }
+  { clave: 'fchaAsgncion' },
+  { clave: 'fchaSinstro' },
+  { clave: 'fchaContIni' },
+  { clave: 'fchaCoordInspeccion' },
+  { clave: 'fchaProgInspeccion' },
+  { clave: 'fchaInspccion' },
+  { clave: 'fchaSoliDocu' },
+  { clave: 'fchaInfoPrelm' },
+  { clave: 'fchaRepoActi' },
+  { clave: 'fchaInfoFnal' },
+  { clave: 'fchaPresentacionCifras' },
+  { clave: 'fchaAceptacionCifrasAseguradora' },
+  { clave: 'fchaEnvioFiniquito' },
+  { clave: 'fchaFactra' },
+  { clave: 'fchaUltSegui' },
+  { clave: 'fchaActSegui' },
+  { clave: 'fchaFinqtoIndem' },
+  { clave: 'fchaUltRevi' },
+  { clave: 'createdAt' },
+  { clave: 'updatedAt' }
 ];
 
 // Campos disponibles: orden de columnas alineado con trazabilidad (fechas y anexos por etapa)
 const todosLosCampos = [
-  { clave: 'nmroAjste', label: 'No. Ajuste' },
-  { clave: 'nmroSinstro', label: 'No. de Siniestro' },
-  { clave: 'nombIntermediario', label: 'Intermediario' },
-  { clave: 'codWorkflow', label: 'Cod Workflow' },
-  { clave: 'nmroPolza', label: 'No. de Poliza' },
-  { clave: 'codiRespnsble', label: 'Responsable' },
-  { clave: 'codiAsgrdra', label: 'Aseguradora' },
-  { clave: 'asgrBenfcro', label: 'Asegurado o Beneficiario' },
+  { clave: 'nmroAjste' },
+  { clave: 'nmroSinstro' },
+  { clave: 'nombIntermediario' },
+  { clave: 'codWorkflow' },
+  { clave: 'nmroPolza' },
+  { clave: 'codiRespnsble' },
+  { clave: 'codiAsgrdra' },
+  { clave: 'asgrBenfcro' },
 
-  { clave: 'fchaAsgncion', label: 'Fecha Asignacion' },
-  { clave: 'fchaSinstro', label: 'Fecha Siniestro' },
-  { clave: 'fchaContIni', label: 'Fecha Contacto Inicial' },
-  { clave: 'obseContIni', label: 'Observaciones Contacto Inicial' },
-  { clave: 'anexContIni', label: 'Anexos Contacto Inicial' },
-  { clave: 'fchaCoordInspeccion', label: 'Fecha Coordinación Inspección' },
-  { clave: 'fchaProgInspeccion', label: 'Fecha Programada Inspección' },
-  { clave: 'obseCoordInspeccion', label: 'Observaciones Coordinación Inspección' },
-  { clave: 'fchaInspccion', label: 'Fecha de Inspeccion' },
-  { clave: 'obseInspccion', label: 'Observaciones Inspección' },
-  { clave: 'anexActaInspccion', label: 'Anexos Acta Inspección' },
-  { clave: 'fchaSoliDocu', label: 'Fecha Solicitud Documentos' },
-  { clave: 'obseSoliDocu', label: 'Observaciones Solicitud Docs' },
-  { clave: 'anexSolDoc', label: 'Anexos Solicitud Docs' },
-  { clave: 'fchaInfoPrelm', label: 'Fecha Informe Preliminar' },
-  { clave: 'obseInfoPrelm', label: 'Observaciones Informe Preliminar' },
-  { clave: 'anxoInfPrelim', label: 'Anexos Informe Preliminar' },
-  { clave: 'fchaRepoActi', label: 'Fecha Último Documento / Reporte Actualizado' },
-  { clave: 'obseRepoActi', label: 'Observaciones Último Documento' },
-  { clave: 'anxoRepoActi', label: 'Anexos Último Documento' },
-  { clave: 'fchaInfoFnal', label: 'Fecha Informe Final' },
-  { clave: 'obseInfoFnal', label: 'Observaciones Informe Final' },
-  { clave: 'anxoInfoFnal', label: 'Anexos Informe Final' },
-  { clave: 'fchaPresentacionCifras', label: 'Fecha Presentación de Cifras' },
-  { clave: 'fchaAceptacionCifrasAseguradora', label: 'Fecha Aceptación Cifras (Aseguradora)' },
-  { clave: 'obsePresentacionCifras', label: 'Observaciones Presentación de Cifras' },
-  { clave: 'anxoPresentacionCifras', label: 'Adjunto Presentación de Cifras' },
-  { clave: 'fchaEnvioFiniquito', label: 'Fecha Envío de Finiquito' },
-  { clave: 'obseEnvioFiniquito', label: 'Observaciones Envío de Finiquito' },
-  { clave: 'anxoEnvioFiniquito', label: 'Adjunto Envío de Finiquito' },
+  { clave: 'fchaAsgncion' },
+  { clave: 'fchaSinstro' },
+  { clave: 'fchaContIni' },
+  { clave: 'obseContIni' },
+  { clave: 'anexContIni' },
+  { clave: 'fchaCoordInspeccion' },
+  { clave: 'fchaProgInspeccion' },
+  { clave: 'obseCoordInspeccion' },
+  { clave: 'fchaInspccion' },
+  { clave: 'obseInspccion' },
+  { clave: 'anexActaInspccion' },
+  { clave: 'fchaSoliDocu' },
+  { clave: 'obseSoliDocu' },
+  { clave: 'anexSolDoc' },
+  { clave: 'fchaInfoPrelm' },
+  { clave: 'obseInfoPrelm' },
+  { clave: 'anxoInfPrelim' },
+  { clave: 'fchaRepoActi' },
+  { clave: 'obseRepoActi' },
+  { clave: 'anxoRepoActi' },
+  { clave: 'fchaInfoFnal' },
+  { clave: 'obseInfoFnal' },
+  { clave: 'anxoInfoFnal' },
+  { clave: 'fchaPresentacionCifras' },
+  { clave: 'fchaAceptacionCifrasAseguradora' },
+  { clave: 'obsePresentacionCifras' },
+  { clave: 'anxoPresentacionCifras' },
+  { clave: 'fchaEnvioFiniquito' },
+  { clave: 'obseEnvioFiniquito' },
+  { clave: 'anxoEnvioFiniquito' },
 
-  { clave: 'descSinstro', label: 'Descripción Siniestro' },
-  { clave: 'ciudadSiniestro', label: 'Ciudad Siniestro' },
-  { clave: 'codiEstdo', label: 'Estado del Siniestro' },
-  { clave: 'funcAsgrdra', label: 'Funcionario Aseguradora' },
-  { clave: 'tipoDucumento', label: 'Tipo Documento' },
-  { clave: 'numDocumento', label: 'Número Documento' },
-  { clave: 'tipoPoliza', label: 'Tipo Poliza' },
-  { clave: 'amprAfctdo', label: 'Amparo Afectado' },
-  { clave: 'causa_siniestro', label: 'Causa Siniestro' },
-  { clave: 'dias_transcrrdo', label: 'Días Transcurridos' },
+  { clave: 'descSinstro' },
+  { clave: 'ciudadSiniestro' },
+  { clave: 'codiEstdo' },
+  { clave: 'funcAsgrdra' },
+  { clave: 'tipoDucumento' },
+  { clave: 'numDocumento' },
+  { clave: 'tipoPoliza' },
+  { clave: 'amprAfctdo' },
+  { clave: 'causa_siniestro' },
+  { clave: 'dias_transcrrdo' },
 
-  { clave: 'vlor_resrva', label: 'Valor Reserva' },
-  { clave: 'vlor_reclmo', label: 'Valor del Reclamo' },
-  { clave: 'monto_indmzar', label: 'Monto a Indemnizar' },
-  { clave: 'observacionesValores', label: 'Observaciones Valores' },
+  { clave: 'vlor_resrva' },
+  { clave: 'vlor_reclmo' },
+  { clave: 'monto_indmzar' },
+  { clave: 'observacionesValores' },
 
-  { clave: 'nmroFactra', label: 'Número Factura' },
-  { clave: 'fchaFactra', label: 'Fecha Factura' },
-  { clave: 'vlorServcios', label: 'Valor Servicios' },
-  { clave: 'vlorGastos', label: 'Valor Gastos' },
-  { clave: 'total', label: 'Total Base' },
-  { clave: 'totalGeneral', label: 'Total General' },
-  { clave: 'totalPagado', label: 'Total Pagado' },
-  { clave: 'iva', label: 'IVA' },
-  { clave: 'reteiva', label: 'ReteIVA' },
-  { clave: 'retefuente', label: 'ReteFuente' },
-  { clave: 'reteica', label: 'ReteICA' },
-  { clave: 'porcIva', label: '% IVA' },
-  { clave: 'porcReteiva', label: '% ReteIVA' },
-  { clave: 'porcRetefuente', label: '% ReteFuente' },
-  { clave: 'porcReteica', label: '% ReteICA' },
-  { clave: 'anxoFactra', label: 'Anexos Facturación' },
+  { clave: 'nmroFactra' },
+  { clave: 'fchaFactra' },
+  { clave: 'vlorServcios' },
+  { clave: 'vlorGastos' },
+  { clave: 'total' },
+  { clave: 'totalGeneral' },
+  { clave: 'totalPagado' },
+  { clave: 'iva' },
+  { clave: 'reteiva' },
+  { clave: 'retefuente' },
+  { clave: 'reteica' },
+  { clave: 'porcIva' },
+  { clave: 'porcReteiva' },
+  { clave: 'porcRetefuente' },
+  { clave: 'porcReteica' },
+  { clave: 'anxoFactra' },
 
-  { clave: 'fchaUltSegui', label: 'Fecha Último Seguimiento' },
-  { clave: 'fchaActSegui', label: 'Fecha Actual Seguimiento' },
-  { clave: 'fchaFinqtoIndem', label: 'Fecha Fin Quito Indemnización' },
-  { clave: 'fchaUltRevi', label: 'Fecha Última Revisión' },
-  { clave: 'fcha_control_horas', label: 'Fecha Control de Horas' },
-  { clave: 'fcha_envio_control_horas', label: 'Fecha Envío Control de Horas' },
-  { clave: 'fcha_seguimiento_envio_control_horas', label: 'Fecha Seguimiento Envío Control de Horas' },
-  { clave: 'obseComprmsi', label: 'Observaciones Compromisos' },
-  { clave: 'obseSegmnto', label: 'Observaciones Seguimiento' },
+  { clave: 'fchaUltSegui' },
+  { clave: 'fchaActSegui' },
+  { clave: 'fchaFinqtoIndem' },
+  { clave: 'fchaUltRevi' },
+  { clave: 'fcha_control_horas' },
+  { clave: 'fcha_envio_control_horas' },
+  { clave: 'fcha_seguimiento_envio_control_horas' },
+  { clave: 'obseComprmsi' },
+  { clave: 'obseSegmnto' },
 
-  { clave: 'anxoHonorarios', label: 'Anexos Honorarios' },
-  { clave: 'anxoHonorariosdefinit', label: 'Anexos Honorarios Definitivos' },
-  { clave: 'anxoAutorizacion', label: 'Anexos Autorización' },
-  { clave: 'honorarios', label: 'Honorarios' },
-  { clave: 'honorariosDefinitivos', label: 'Honorarios Definitivos' },
-  { clave: 'autorizacionHonorarios', label: 'Autorización Honorarios' },
+  { clave: 'anxoHonorarios' },
+  { clave: 'anxoHonorariosdefinit' },
+  { clave: 'anxoAutorizacion' },
+  { clave: 'honorarios' },
+  { clave: 'honorariosDefinitivos' },
+  { clave: 'autorizacionHonorarios' },
 
-  { clave: 'liquidacionPerdida', label: 'Liquidación de la Pérdida' },
-  { clave: 'indemnizacion', label: 'Indemnización' },
-  { clave: 'salvamentos', label: 'Salvamentos' },
-  { clave: 'panoramaRiesgos', label: 'Panorama de Riesgos' },
+  { clave: 'liquidacionPerdida' },
+  { clave: 'indemnizacion' },
+  { clave: 'salvamentos' },
+  { clave: 'panoramaRiesgos' },
 
-  { clave: 'createdAt', label: 'Fecha Creación' },
-  { clave: 'updatedAt', label: 'Fecha Actualización' }
+  { clave: 'createdAt' },
+  { clave: 'updatedAt' }
 ];
 
 const columnasIniciales = [
@@ -251,6 +254,7 @@ const sincronizarCamelSnake = (caso) => {
 };
 
 export default function ReporteCasosMejorado() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [casos, setCasos] = useState([]);
@@ -259,12 +263,30 @@ export default function ReporteCasosMejorado() {
   const [aseguradoras, setAseguradoras] = useState([]);
   const [estados, setEstados] = useState([]);
   const [ciudades, setCiudades] = useState([]);
-  const [camposVisibles, setCamposVisibles] = useState(
-    todosLosCampos.filter(c => columnasIniciales.includes(c.clave))
+  const [camposVisiblesClaves, setCamposVisiblesClaves] = useState(() =>
+    columnasIniciales.filter((clave) => todosLosCampos.some((c) => c.clave === clave))
+  );
+  const camposVisibles = useMemo(
+    () =>
+      camposVisiblesClaves.map((clave) => ({
+        clave,
+        label: t(`${UI_RCM}.campos.${clave}`),
+      })),
+    [camposVisiblesClaves, t]
+  );
+  const camposFechaConLabel = useMemo(
+    () =>
+      camposFechaDisponibles.map(({ clave }) => ({
+        clave,
+        label: t(`${UI_RCM}.campos_fecha.${clave}`),
+      })),
+    [t]
   );
   const [modalColumnasOpen, setModalColumnasOpen] = useState(false);
-  const [seleccionTemporal, setSeleccionTemporal] = useState(camposVisibles.map(c => c.clave));
-  const [columnasOrdenadas, setColumnasOrdenadas] = useState(camposVisibles);
+  const [seleccionTemporal, setSeleccionTemporal] = useState(() => [...columnasIniciales]);
+  const [columnasOrdenadas, setColumnasOrdenadas] = useState(() =>
+    todosLosCampos.filter((c) => columnasIniciales.includes(c.clave))
+  );
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [orden, setOrden] = useState({ campo: 'fchaAsgncion', asc: false });
   
@@ -453,7 +475,7 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
 // Contar casos por aseguradora para debugging
       const casosPorAseguradora = {};
       casosFinales.forEach(caso => {
-        const codigoAseguradora = String(caso.codiAsgrdra || caso.cod1Asgrdra || 'Sin código').trim();
+        const codigoAseguradora = String(caso.codiAsgrdra || caso.cod1Asgrdra || t(`${UI_RCM}.sin_codigo`)).trim();
         casosPorAseguradora[codigoAseguradora] = (casosPorAseguradora[codigoAseguradora] || 0) + 1;
       });
 // Contar casos por año para debugging
@@ -1086,7 +1108,7 @@ setCasos(casosFinales);
       
       const casosPorAseguradora = {};
       resultados.forEach(caso => {
-        const codigo = String(caso.codiAsgrdra || caso.cod1Asgrdra || 'Sin código').trim();
+        const codigo = String(caso.codiAsgrdra || caso.cod1Asgrdra || t(`${UI_RCM}.sin_codigo`)).trim();
         casosPorAseguradora[codigo] = (casosPorAseguradora[codigo] || 0) + 1;
       });
 }
@@ -1330,7 +1352,7 @@ setCasos(casosFinales);
   const handleGestionar = (caso) => {
     const id = caso?._id;
     if (!id) {
-      alert('No se encontró el identificador del caso para editarlo.');
+      alert(t(`${UI_RCM}.no_se_encontro_identificador`));
       return;
     }
     navigate('/complex/editar', {
@@ -1360,7 +1382,7 @@ setCasos(casosFinales);
 
     const numeroAjuste = caso.nmroAjste || caso.numero_ajuste || caso._id;
     const confirmacion = window.confirm(
-      `¿Estás seguro de que deseas eliminar el caso ${numeroAjuste}?\n\nEsta acción no se puede deshacer.`
+      t(`${UI_RCM}.confirmar_eliminar`, { numero: numeroAjuste })
     );
 
     if (!confirmacion) {
@@ -1375,7 +1397,7 @@ setCasos(casosFinales);
         // Recargar los casos
         cargarCasos();
       } else {
-        alert('Este caso no se puede eliminar desde aquí. Solo se pueden eliminar casos Complex.');
+        alert(t(`${UI_RCM}.no_se_puede_eliminar`));
       }
     } catch (error) {
       console.error('Error al eliminar caso:', error);
@@ -1385,19 +1407,21 @@ setCasos(casosFinales);
 
   // Funciones para personalizar columnas
   const abrirPersonalizarColumnas = () => {
-    setSeleccionTemporal(camposVisibles.map(c => c.clave));
+    setSeleccionTemporal(camposVisiblesClaves);
     // Inicializar orden con las columnas visibles en su orden actual
-    const ordenActual = camposVisibles.map(c => c.clave);
-    const columnasVisiblesOrdenadas = [...camposVisibles];
-    const columnasNoVisibles = todosLosCampos.filter(c => !ordenActual.includes(c.clave));
+    const ordenActual = [...camposVisiblesClaves];
+    const columnasVisiblesOrdenadas = ordenActual.map((clave) => ({ clave }));
+    const columnasNoVisibles = todosLosCampos.filter((c) => !ordenActual.includes(c.clave));
     setColumnasOrdenadas([...columnasVisiblesOrdenadas, ...columnasNoVisibles]);
     setModalColumnasOpen(true);
   };
 
   const guardarColumnasPersonalizadas = () => {
     // Ordenar las columnas seleccionadas según el orden en columnasOrdenadas
-    const columnasSeleccionadasOrdenadas = columnasOrdenadas.filter(c => seleccionTemporal.includes(c.clave));
-    setCamposVisibles(columnasSeleccionadasOrdenadas);
+    const columnasSeleccionadasOrdenadas = columnasOrdenadas
+      .filter((c) => seleccionTemporal.includes(c.clave))
+      .map((c) => c.clave);
+    setCamposVisiblesClaves(columnasSeleccionadasOrdenadas);
     setModalColumnasOpen(false);
   };
 
@@ -1957,7 +1981,7 @@ setCasos(casosFinales);
       <div className={complexReportRoot}>
         <div className={complexPageWrapWide}>
           <div className="rounded-xl border border-gray-100 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
-            <p className="font-body text-sm text-gray-600 dark:text-gray-300">Cargando casos…</p>
+            <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t(`${UI_RCM}.cargando_casos`)}</p>
           </div>
         </div>
       </div>
@@ -1971,14 +1995,17 @@ setCasos(casosFinales);
           <div className="flex items-center gap-2">
             <FaTable className="text-fenix-primario" />
             <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
-              Reporte completo
+              {t(`${UI_RCM}.reporte_completo`)}
             </h1>
           </div>
           <p className="font-body text-sm text-gray-600 dark:text-gray-400">
-            Vista general de casos Complex en el sistema.
+            {t(`${UI_RCM}.vista_general`)}
           </p>
           <p className="font-body text-xs text-gray-500 dark:text-gray-400">
-            {casosFiltrados.length} caso(s) · {camposVisibles.length} columnas visibles
+            {t(`${UI_RCM}.casos_columnas`, {
+              casos: casosFiltrados.length,
+              columnas: camposVisibles.length,
+            })}
           </p>
         </header>
 
@@ -1986,9 +2013,9 @@ setCasos(casosFinales);
         <section className={complexCard}>
           <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">Filtros</h2>
+              <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{t(`${UI_RCM}.filtros`)}</h2>
               <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-                Filtra por fechas, estado, responsable, aseguradora y texto.
+                {t(`${UI_RCM}.filtra_por`)}
               </p>
             </div>
             <button
@@ -2004,16 +2031,16 @@ setCasos(casosFinales);
                 setTerminoBusqueda('');
               }}
             >
-              Limpiar filtros
+              {t(`${UI_RCM}.limpiar_filtros`)}
             </button>
           </div>
         
         {/* Selector de campo de fecha */}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div>
-              <label className={complexLabel}>Campo de fecha</label>
+              <label className={complexLabel}>{t(`${UI_RCM}.campo_de_fecha`)}</label>
               <select value={campoFechaFiltro} onChange={(e) => setCampoFechaFiltro(e.target.value)} className={complexSelect}>
-                {camposFechaDisponibles.map((campo) => (
+                {camposFechaConLabel.map((campo) => (
                   <option key={campo.clave} value={campo.clave}>
                     {campo.label}
                   </option>
@@ -2021,17 +2048,17 @@ setCasos(casosFinales);
               </select>
             </div>
             <div>
-              <label className={complexLabel}>Fecha desde</label>
+              <label className={complexLabel}>{t(`${UI_RCM}.fecha_desde`)}</label>
               <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className={complexInput} />
             </div>
             <div>
-              <label className={complexLabel}>Fecha hasta</label>
+              <label className={complexLabel}>{t(`${UI_RCM}.fecha_hasta`)}</label>
               <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className={complexInput} />
             </div>
             <div>
-              <label className={complexLabel}>Estado</label>
+              <label className={complexLabel}>{t(`${UI_RCM}.estado`)}</label>
               <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={complexSelect}>
-                <option value="">Todos</option>
+                <option value="">{t(`${UI_RCM}.todos`)}</option>
                 {estadosUnicos.map((e, index) => (
                   <option key={`estado-${e.value}-${index}`} value={e.value}>
                     {e.label}
@@ -2040,9 +2067,9 @@ setCasos(casosFinales);
               </select>
             </div>
             <div>
-              <label className={complexLabel}>Aseguradora</label>
+              <label className={complexLabel}>{t(`${UI_RCM}.aseguradora`)}</label>
               <select value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)} className={complexSelect}>
-                <option value="">Todas</option>
+                <option value="">{t(`${UI_RCM}.todas`)}</option>
                 {aseguradorasUnicas.map((a, index) => (
                   <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
                     {a.label}
@@ -2051,9 +2078,9 @@ setCasos(casosFinales);
               </select>
             </div>
             <div>
-              <label className={complexLabel}>Responsable</label>
+              <label className={complexLabel}>{t(`${UI_RCM}.responsable`)}</label>
               <select value={responsableFiltro} onChange={(e) => setResponsableFiltro(e.target.value)} className={complexSelect}>
-                <option value="">Todos</option>
+                <option value="">{t(`${UI_RCM}.todos`)}</option>
                 {responsablesUnicos.map((r, index) => (
                   <option key={`responsable-${r.value}-${index}`} value={r.value}>
                     {r.label}
@@ -2062,33 +2089,33 @@ setCasos(casosFinales);
               </select>
             </div>
             <div className="lg:col-span-3">
-              <label className={complexLabel}>Buscar</label>
+              <label className={complexLabel}>{t(`${UI_RCM}.buscar`)}</label>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <input
                   type="text"
                   value={terminoBusqueda}
                   onChange={(e) => setTerminoBusqueda(e.target.value)}
-                  placeholder="Número de ajuste, siniestro, asegurado, ciudad…"
+                  placeholder={t(`${UI_RCM}.placeholder_buscar`)}
                   className={`${complexInput} min-w-0 flex-1`}
                 />
                 <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
                   <button type="button" className={complexBtnSecondary} onClick={abrirPersonalizarColumnas}>
                     <FaSlidersH />
-                    Columnas
+                    {t(`${UI_RCM}.columnas`)}
                   </button>
                   <button type="button" className={complexBtnSecondary} onClick={exportarExcel}>
                     <FaFileExcel />
-                    Exportar Excel
+                    {t(`${UI_RCM}.exportar_excel`)}
                   </button>
                   <button
                     type="button"
                     className={complexBtnGhost}
                     onClick={() => {
-                      setCamposVisibles(todosLosCampos);
+                      setCamposVisiblesClaves(todosLosCampos.map((c) => c.clave));
                       setModalColumnasOpen(false);
                     }}
                   >
-                    Mostrar todas
+                    {t(`${UI_RCM}.mostrar_todas`)}
                   </button>
                 </div>
               </div>
@@ -2097,9 +2124,12 @@ setCasos(casosFinales);
 
           {(fechaDesde || fechaHasta || estadoFiltro || responsableFiltro || aseguradoraFiltro || terminoBusqueda) && (
             <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-800 dark:bg-gray-900/30">
-              <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-200">Filtros activos</p>
+              <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-200">{t(`${UI_RCM}.filtros_activos`)}</p>
               <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
-                Mostrando {casosFiltrados.length} de {casos.length} casos.
+                {t(`${UI_RCM}.mostrando_de`, {
+                  filtrados: casosFiltrados.length,
+                  total: casos.length,
+                })}
               </p>
             </div>
           )}
@@ -2109,14 +2139,14 @@ setCasos(casosFinales);
         <div className={complexModalOverlay} role="presentation" onClick={() => setModalColumnasOpen(false)}>
           <div className={complexModalShell} role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-              <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">Personalizar columnas</h2>
+              <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{t(`${UI_RCM}.personalizar_columnas`)}</h2>
               <button type="button" className={complexBtnGhost} onClick={() => setModalColumnasOpen(false)}>
-                Cerrar
+                {t(`${UI_RCM}.cerrar`)}
               </button>
             </div>
             <div className="p-5">
               <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-                Arrastra para ordenar. Marca o desmarca para mostrar u ocultar columnas.
+                {t(`${UI_RCM}.arrastra_para_ordenar`)}
               </p>
               <div className="mb-4 max-h-72 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700">
                 {columnasOrdenadas.map((campo, index) => (
@@ -2141,17 +2171,17 @@ setCasos(casosFinales);
                         onChange={() => toggleColumna(campo.clave)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      {campo.label}
+                      {t(`${UI_RCM}.campos.${campo.clave}`)}
                     </label>
                   </div>
                 ))}
               </div>
               <div className="flex flex-col justify-end gap-2 sm:flex-row">
                 <button type="button" className={complexBtnSecondary} onClick={() => setModalColumnasOpen(false)}>
-                  Cancelar
+                  {t(`${UI_RCM}.cancelar`)}
                 </button>
                 <button type="button" className={complexBtnPrimary} onClick={guardarColumnasPersonalizadas}>
-                  Guardar
+                  {t(`${UI_RCM}.guardar`)}
                 </button>
               </div>
             </div>
@@ -2168,7 +2198,7 @@ setCasos(casosFinales);
                     scope="col"
                     className={`${complexTableThDivider} sticky left-0 z-10 bg-gray-50 dark:bg-gray-900/50`}
                   >
-                    Acciones
+                    {t(`${UI_RCM}.acciones`)}
                   </th>
                   {camposVisibles.map(({ clave, label }) => (
                     <th
@@ -2186,7 +2216,7 @@ setCasos(casosFinales);
                 {casosPaginados.length === 0 ? (
                   <tr>
                     <td colSpan={camposVisibles.length + 1} className="px-4 py-8 text-center font-body text-sm text-gray-500">
-                      No hay registros para mostrar.
+                      {t(`${UI_RCM}.no_hay_registros`)}
                     </td>
                   </tr>
                 ) : (
@@ -2264,14 +2294,18 @@ setCasos(casosFinales);
       {casosOrdenados.length > 0 && (
         <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-[#1A1A1A] sm:flex-row">
           <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-            Mostrando <strong className="text-gray-800 dark:text-gray-100">{indiceInicio + 1}</strong> a{' '}
-            <strong className="text-gray-800 dark:text-gray-100">{Math.min(indiceFin, casosOrdenados.length)}</strong>{' '}
-            de <strong className="text-gray-800 dark:text-gray-100">{casosOrdenados.length}</strong>
+            {t(`${UI_RCM}.mostrando_pagina`, {
+              inicio: indiceInicio + 1,
+              fin: Math.min(indiceFin, casosOrdenados.length),
+              total: casosOrdenados.length,
+            })}
             {totalPaginas > 1 && (
               <span>
                 {' '}
-                · Página <strong className="text-gray-800 dark:text-gray-100">{paginaActual}</strong> de{' '}
-                <strong className="text-gray-800 dark:text-gray-100">{totalPaginas}</strong>
+                {t(`${UI_RCM}.pagina_de`, {
+                  actual: paginaActual,
+                  paginas: totalPaginas,
+                })}
               </span>
             )}
           </p>
@@ -2283,7 +2317,7 @@ setCasos(casosFinales);
                 disabled={paginaActual <= 1}
                 onClick={() => irAPagina(paginaActual - 1)}
               >
-                Anterior
+                {t(`${UI_RCM}.anterior`)}
               </button>
               <button
                 type="button"
@@ -2291,7 +2325,7 @@ setCasos(casosFinales);
                 disabled={paginaActual >= totalPaginas}
                 onClick={() => irAPagina(paginaActual + 1)}
               >
-                Siguiente
+                {t(`${UI_RCM}.siguiente`)}
               </button>
             </div>
           )}

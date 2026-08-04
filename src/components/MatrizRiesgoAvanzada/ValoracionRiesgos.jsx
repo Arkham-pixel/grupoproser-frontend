@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaChartBar } from 'react-icons/fa';
 import MatrizSeccionTitulo from './MatrizSeccionTitulo';
 import { matrizCard } from './matrizFenixUi';
@@ -64,12 +65,14 @@ function deduplicarCandidatosIdentificacion(oficiales, borrador, excluidos) {
 }
 
 const ValoracionRiesgos = ({
+  // i18n
   datos,
   onDatosChange,
   riesgosIdentificacion = RIESGOS_IDENTIFICACION_DEFECTO,
   filasIdentificacionFormulario = FILAS_IDENTIFICACION_DEFECTO,
   modoReporte = false,
 }) => {
+  const { t } = useTranslation();
   // Asegurar que datos no sea undefined
   const datosSeguros = datos || {};
   const datosValoracionRef = useRef(datosSeguros);
@@ -158,19 +161,19 @@ const ValoracionRiesgos = ({
   });
 
   const escalaProbabilidad = [
-    { valor: 1, etiqueta: 'Muy Baja', color: '#28a745' },
-    { valor: 2, etiqueta: 'Baja', color: '#6c757d' },
-    { valor: 3, etiqueta: 'Media', color: '#ffc107' },
-    { valor: 4, etiqueta: 'Alta', color: '#fd7e14' },
-    { valor: 5, etiqueta: 'Muy Alta', color: '#dc3545' }
+    { valor: 1, etiqueta: t('riskMatrix.probability.veryLow'), color: '#28a745' },
+    { valor: 2, etiqueta: t('riskMatrix.probability.low'), color: '#6c757d' },
+    { valor: 3, etiqueta: t('riskMatrix.probability.medium'), color: '#ffc107' },
+    { valor: 4, etiqueta: t('riskMatrix.probability.high'), color: '#fd7e14' },
+    { valor: 5, etiqueta: t('riskMatrix.probability.veryHigh'), color: '#dc3545' }
   ];
 
   const escalaImpacto = [
-    { valor: 1, etiqueta: 'Muy Bajo', color: '#28a745' },
-    { valor: 2, etiqueta: 'Bajo', color: '#6c757d' },
-    { valor: 3, etiqueta: 'Medio', color: '#ffc107' },
-    { valor: 4, etiqueta: 'Alto', color: '#fd7e14' },
-    { valor: 5, etiqueta: 'Muy Alto', color: '#dc3545' }
+    { valor: 1, etiqueta: t('riskMatrix.impact.veryLow'), color: '#28a745' },
+    { valor: 2, etiqueta: t('riskMatrix.impact.low'), color: '#6c757d' },
+    { valor: 3, etiqueta: t('riskMatrix.impact.medium'), color: '#ffc107' },
+    { valor: 4, etiqueta: t('riskMatrix.impact.high'), color: '#fd7e14' },
+    { valor: 5, etiqueta: t('riskMatrix.impact.veryHigh'), color: '#dc3545' }
   ];
 
   const calcularNivelRiesgo = (prob, imp) => {
@@ -193,16 +196,30 @@ const ValoracionRiesgos = ({
   const calcularTratamientoSegunNivel = (nivel) => {
     switch (nivel) {
       case 'ACEPTABLE':
-        return 'Asumir el riesgo';
+        return t('riskMatrix.treatment.assume');
       case 'TOLERABLE':
-        return 'Monitorear y revisar periódicamente';
+        return t('riskMatrix.treatment.monitor');
       case 'ALTO':
-        return 'Reducir, evitar, transferir o compartir';
+        return t('riskMatrix.treatment.reduce');
       case 'CRÍTICO':
-        return 'Reducir, evitar, transferir o compartir';
+        return t('riskMatrix.treatment.reduce');
       default:
-        return 'Asumir el riesgo';
+        return t('riskMatrix.treatment.assume');
     }
+  };
+
+  const labelNivelUi = (nivel) => {
+    const map = {
+      Bajo: 'riskMatrix.level.low',
+      Medio: 'riskMatrix.level.medium',
+      Alto: 'riskMatrix.level.high',
+      Crítico: 'riskMatrix.level.critical',
+      ACEPTABLE: 'riskMatrix.residualLevel.acceptable',
+      TOLERABLE: 'riskMatrix.residualLevel.tolerable',
+      ALTO: 'riskMatrix.residualLevel.high',
+      CRÍTICO: 'riskMatrix.residualLevel.critical',
+    };
+    return map[nivel] ? t(map[nivel]) : nivel;
   };
 
   const getColorByValue = (valor, tipo = 'impacto') => {
@@ -366,7 +383,7 @@ const ValoracionRiesgos = ({
     });
   };
 
-  /** Categorías Econ/Oper/Rep/Legal: inherente = residual (como AE:AH = F:I en Excel). */
+  /** Categorías Econ/Oper/Rep/{t('riskMatrix.valoracionUi.legal')}: inherente = residual (como AE:AH = F:I en Excel). */
   const aplicarImpactosRiesgo = (riesgoId, impactosParcial) => {
     const fila = valoraciones.find((v) => v.id === riesgoId);
     const prev =
@@ -880,7 +897,7 @@ const ValoracionRiesgos = ({
     );
 
     if (riesgosCompletos.length === 0) {
-      alert('Por favor, completa al menos un riesgo antes de procesar.');
+      alert(t('riskMatrix.valoracionUi.alertCompleteOne'));
       return;
     }
 
@@ -900,7 +917,7 @@ const ValoracionRiesgos = ({
       resumenProcesado: resumen
     });
 
-    alert(`✅ Riesgos Procesados Exitosamente!\n\n📊 Resumen:\n• Total: ${resumen.total}\n• Críticos: ${resumen.criticos}\n• Altos: ${resumen.altos}\n• Medios: ${resumen.medios}\n• Bajos: ${resumen.bajos}\n\nLos riesgos han sido guardados y están listos para el siguiente paso.`);
+    alert(t('riskMatrix.valoracionUi.alertProcessed', { total: resumen.total, critical: resumen.criticos, high: resumen.altos, medium: resumen.medios, low: resumen.bajos }));
   };
 
   const omitirClave = (obj, id) => {
@@ -935,8 +952,8 @@ const ValoracionRiesgos = ({
     const n = seleccionados.size;
     const msg =
       n === 1
-        ? '¿Eliminar el riesgo seleccionado de la valoración?'
-        : `¿Eliminar los ${n} riesgos seleccionados de la valoración?`;
+        ? t('riskMatrix.valoracionUi.confirmDeleteOne')
+        : t('riskMatrix.valoracionUi.confirmDeleteMany', { count: n });
     if (!window.confirm(msg)) return;
 
     const idsEliminar = new Set(seleccionados);
@@ -1020,16 +1037,15 @@ const ValoracionRiesgos = ({
     <div className="valoracion-riesgos">
       <MatrizSeccionTitulo
         icon={FaChartBar}
-        title="Valoración y análisis del riesgo"
-        description="Evalúa probabilidad, impacto, controles y riesgo residual por cada riesgo identificado."
+        title={t('riskMatrix.valoracionUi.title')}
+        description={t('riskMatrix.valoracionUi.description')}
       />
 
       <div className="valoracion-content">
         {valoraciones.length === 0 && (
           <div className={`${matrizCard} text-center`}>
             <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-              No hay riesgos en valoración. Completa la{' '}
-              <strong>identificación</strong> y procesa el formulario para cargar filas aquí.
+              {t('riskMatrix.valoracionUi.empty')}
             </p>
           </div>
         )}
@@ -1044,12 +1060,12 @@ const ValoracionRiesgos = ({
                   if (el) el.indeterminate = algunSeleccionado && !todosSeleccionados;
                 }}
                 onChange={(e) => seleccionarTodos(e.target.checked)}
-                aria-label="Seleccionar todos los riesgos"
+                aria-label={t('riskMatrix.valoracionUi.selectAllAria')}
               />
               <span>
                 {algunSeleccionado
-                  ? `${seleccionados.size} seleccionado${seleccionados.size !== 1 ? 's' : ''}`
-                  : 'Seleccionar todos'}
+                  ? t('riskMatrix.valoracionUi.selectedCount', { count: seleccionados.size })
+                  : t('riskMatrix.valoracionUi.selectAll')}
               </span>
             </label>
             <button
@@ -1058,7 +1074,7 @@ const ValoracionRiesgos = ({
               disabled={!algunSeleccionado}
               onClick={eliminarSeleccionados}
             >
-              🗑️ Eliminar seleccionados
+              {t('riskMatrix.valoracionUi.deleteSelected')}
             </button>
             {algunSeleccionado && (
               <button
@@ -1066,7 +1082,7 @@ const ValoracionRiesgos = ({
                 className="btn-limpiar-seleccion"
                 onClick={() => setSeleccionados(new Set())}
               >
-                Quitar selección
+                {t('riskMatrix.valoracionUi.clearSelection')}
               </button>
             )}
           </div>
@@ -1076,7 +1092,7 @@ const ValoracionRiesgos = ({
             <thead>
               {/* 1) Fila de GRUPOS */}
               <tr className="thead-grupos">
-                <th rowSpan="3" className="col-sel" title="Seleccionar">
+                <th rowSpan="3" className="col-sel" title={t('riskMatrix.valoracionUi.select')}>
                   <input
                     type="checkbox"
                     className="valoracion-checkbox"
@@ -1085,101 +1101,101 @@ const ValoracionRiesgos = ({
                       if (el) el.indeterminate = algunSeleccionado && !todosSeleccionados;
                     }}
                     onChange={(e) => seleccionarTodos(e.target.checked)}
-                    aria-label="Seleccionar todos"
+                    aria-label={t('riskMatrix.valoracionUi.selectAllShort')}
                   />
                 </th>
-                <th rowSpan="3" className="col-numero">No.</th>
+                <th rowSpan="3" className="col-numero">{t('riskMatrix.valoracionUi.colNo')}</th>
 
                 {/* RIESGO */}
-                <th colSpan="3" className="grupo">RIESGO</th>
+                <th colSpan="3" className="grupo">{t('riskMatrix.valoracionUi.groupRisk')}</th>
 
                 {/* INHERENTE */}
-                <th colSpan="7" className="grupo">VALORACIÓN RIESGO INHERENTE</th>
+                <th colSpan="7" className="grupo">{t('riskMatrix.valoracionUi.groupInherent')}</th>
 
                 {/* CONTROLES */}
-                <th colSpan="2" className="grupo">CONTROLES</th>
+                <th colSpan="2" className="grupo">{t('riskMatrix.valoracionUi.groupControls')}</th>
 
                 {/* divisor prob ↓ debe abarcar las 3 filas */}
-                <th rowSpan="3" className="divisor">¿Los controles disminuyen probabilidad?</th>
+                <th rowSpan="3" className="divisor">{t('riskMatrix.valoracionUi.dividerProb')}</th>
 
                 {/* EFECTIVIDAD */}
-                <th colSpan="13" className="grupo">EVALUACIÓN DE LA EFECTIVIDAD DE LAS MEDIDAS</th>
+                <th colSpan="13" className="grupo">{t('riskMatrix.valoracionUi.groupEffectiveness')}</th>
 
                 {/* divisor impacto ↓ debe abarcar las 3 filas */}
-                <th rowSpan="3" className="divisor">¿Los controles disminuyen impacto?</th>
+                <th rowSpan="3" className="divisor">{t('riskMatrix.valoracionUi.dividerImpact')}</th>
 
                 {/* RESIDUAL */}
                 <th colSpan="8" className="grupo">
-                  VALORACIÓN RIESGO RESIDUAL
+                  {t('riskMatrix.valoracionUi.groupResidual')}
                   <div className="subtitulo">
-                    (Teniendo en cuenta los controles existentes, valore si disminuye la probabilidad y/o el impacto)
+                    {t('riskMatrix.valoracionUi.residualSubtitle')}
                   </div>
                 </th>
 
                 {/* TRATAMIENTO */}
-                <th className="grupo">TRATAMIENTO</th>
+                <th className="grupo">{t('riskMatrix.valoracionUi.groupTreatment')}</th>
               </tr>
 
               {/* 2) Fila de SUBGRUPOS (todas las hojas aquí llevan rowSpan=2 excepto IMPACTO residual) */}
               <tr className="thead-subgrupos">
                 {/* RIESGO */}
-                <th rowSpan="2" className="col-riesgo">RIESGO</th>
-                <th rowSpan="2" className="col-proceso">PROCESO</th>
-                <th rowSpan="2" className="col-riesgo">CAUSAS PROBABLES</th>
+                <th rowSpan="2" className="col-riesgo">{t('riskMatrix.valoracionUi.colRisk')}</th>
+                <th rowSpan="2" className="col-proceso">{t('riskMatrix.valoracionUi.colProcess')}</th>
+                <th rowSpan="2" className="col-riesgo">{t('riskMatrix.valoracionUi.colCauses')}</th>
 
                 {/* INHERENTE */}
-                <th rowSpan="2" className="col-probabilidad">PROBABILIDAD</th>
+                <th rowSpan="2" className="col-probabilidad">{t('riskMatrix.valoracionUi.colProbability')}</th>
                 <th className="col-impacto" colSpan="4">
-                  IMPACTO (1: Muy Bajo, 2: Bajo, 3: Medio, 4: Alto, 5: Muy alto)
+                  {t('riskMatrix.valoracionUi.impactScaleHeader')}
                 </th>
                 <th rowSpan="2" className="col-sum-impacto">
-                  SUMATORIA<br/>IMPACTO<br/>(*)
+                  {t('riskMatrix.valoracionUi.impactSum')}
                 </th>
-                <th rowSpan="2" className="col-num">Calificación</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.rating')}</th>
 
                 {/* CONTROLES */}
-                <th rowSpan="2" className="col-controles">¿Existen controles?</th>
-                <th rowSpan="2" className="col-controles">Controles existentes</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.existControls')}</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.existingControls')}</th>
 
                 {/* EFECTIVIDAD (todas hojas con rowSpan=2) */}
-                <th rowSpan="2" className="col-controles">¿Existen manuales, instructivos o procedimientos para el manejo del control?</th>
-                <th rowSpan="2" className="col-num">Valor en %</th>
-                <th rowSpan="2" className="col-controles">Tipo de control<br/>(Preventivo-Detectivo-Correctivo)</th>
-                <th rowSpan="2" className="col-num">Valor en %</th>
-                <th rowSpan="2" className="col-controles">Grado de automatización<br/>(Automatico,  Manual o Semiautomatico)</th>
-                <th rowSpan="2" className="col-num">Valor en %</th>
-                <th rowSpan="2" className="col-controles">¿Existe responsable de los controles ?</th>
-                <th rowSpan="2" className="col-controles">Cargo del responsable</th>
-                <th rowSpan="2" className="col-num">Valor en %</th>
-                <th rowSpan="2" className="col-controles">Cada cuanto se realiza.</th>
-                <th rowSpan="2" className="col-num">Valor en %</th>
-                <th rowSpan="2" className="col-num">Sumatoria de controles</th>
-                <th rowSpan="2" className="col-num">Probabilidad después de aplicar controles</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.existManuals')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.valuePct')}</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.controlType')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.valuePct')}</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.automation')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.valuePct')}</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.existOwner')}</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.ownerRole')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.valuePct')}</th>
+                <th rowSpan="2" className="col-controles">{t('riskMatrix.valoracionUi.frequency')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.valuePct')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.controlsSum')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.probAfterControls')}</th>
 
                 {/* RESIDUAL (aquí solo IMPACTO tiene sub-subcolumnas) */}
-                <th rowSpan="2" className="col-probabilidad">PROBABILIDAD</th>
+                <th rowSpan="2" className="col-probabilidad">{t('riskMatrix.valoracionUi.colProbability')}</th>
                 <th className="col-impacto" colSpan="4">
-                  IMPACTO (1: Muy Bajo, 2: Bajo, 3: Medio, 4: Alto, 5: Muy alto)
+                  {t('riskMatrix.valoracionUi.impactScaleHeader')}
                 </th>
-                <th rowSpan="2" className="col-sum-impacto">SUMATORIA IMPACTO (*)</th>
-                <th rowSpan="2" className="col-num">Valoración cuantitativa del Riesgo residual</th>
-                <th rowSpan="2" className="col-nivel">Valoración Cualitativa del riesgo residual</th>
+                <th rowSpan="2" className="col-sum-impacto">{t('riskMatrix.valoracionUi.impactSum')}</th>
+                <th rowSpan="2" className="col-num">{t('riskMatrix.valoracionUi.residualQuantitative')}</th>
+                <th rowSpan="2" className="col-nivel">{t('riskMatrix.valoracionUi.residualQualitative')}</th>
                 {/* TRATAMIENTO label */}
-                <th rowSpan="2" className="col-tratamiento">Alternativas según calificación del Riesgo</th>
+                <th rowSpan="2" className="col-tratamiento">{t('riskMatrix.valoracionUi.alternatives')}</th>
               </tr>
 
               {/* 3) Fila SOLO para sub-columnas de IMPACTO (Inherente y Residual) */}
               <tr className="thead-subcols">
                 {/* Inherente */}
-                <th className="col-imp-cat">Económico</th>
-                <th className="col-imp-cat">Operativo</th>
-                <th className="col-imp-cat">Reputacional</th>
-                <th className="col-imp-cat">Legal</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.economic')}</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.operational')}</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.reputational')}</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.legal')}</th>
                 {/* Residual */}
-                <th className="col-imp-cat">Económico</th>
-                <th className="col-imp-cat">Operativo</th>
-                <th className="col-imp-cat">Reputacional</th>
-                <th className="col-imp-cat">Legal</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.economic')}</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.operational')}</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.reputational')}</th>
+                <th className="col-imp-cat">{t('riskMatrix.valoracionUi.legal')}</th>
               </tr>
             </thead>
             <tbody>
@@ -1196,7 +1212,7 @@ const ValoracionRiesgos = ({
                       className="valoracion-checkbox"
                       checked={seleccionados.has(valoracion.id)}
                       onChange={() => alternarSeleccion(valoracion.id)}
-                      aria-label={`Seleccionar riesgo ${valoracion.numero}`}
+                      aria-label={t('riskMatrix.valoracionUi.selectRiskAria', { n: valoracion.numero })}
                     />
                   </td>
                   <td className="col-numero">{valoracion.numero}</td>
@@ -1206,7 +1222,7 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleRiesgoChange(valoracion.id, e.target.value)}
                       className="celda-editable riesgo-input"
                       rows="3"
-                      placeholder="Describe el riesgo identificado..."
+                      placeholder={t('riskMatrix.valoracionUi.placeholderRisk')}
                     />
                   </td>
                   <td className="col-proceso">
@@ -1215,7 +1231,7 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleProcesoChange(valoracion.id, e.target.value)}
                       className="celda-editable proceso-input"
                       rows="2"
-                      placeholder="Nombre del proceso..."
+                      placeholder={t('riskMatrix.valoracionUi.placeholderProcess')}
                     />
                   </td>
                   <td className="col-riesgo">
@@ -1224,7 +1240,7 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleCausasChange(valoracion.id, e.target.value)}
                       className="celda-editable"
                       rows="3"
-                      placeholder="Causas probables..."
+                      placeholder={t('riskMatrix.valoracionUi.placeholderCauses')}
                     />
                   </td>
                   <td className="col-probabilidad">
@@ -1297,8 +1313,8 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'existen', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option>No</option>
-                      <option>Sí</option>
+                      <option value="No">{t('riskMatrix.no')}</option>
+                      <option value="Sí">{t('riskMatrix.yes')}</option>
                     </select>
                   </td>
                   <td className="col-controles">
@@ -1307,7 +1323,7 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'descripcion', e.target.value)}
                       className="celda-editable"
                       rows="2"
-                      placeholder="Describe controles existentes..."
+                      placeholder={t('riskMatrix.valoracionUi.placeholderControls')}
                     />
                   </td>
                   <td className="col-controles">
@@ -1316,8 +1332,8 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'disminuyeProbabilidad', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option>No</option>
-                      <option>Sí</option>
+                      <option value="No">{t('riskMatrix.no')}</option>
+                      <option value="Sí">{t('riskMatrix.yes')}</option>
                     </select>
                   </td>
                   <td className="col-controles">
@@ -1326,10 +1342,10 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'tieneManuales', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option value="">Seleccione...</option>
-                      <option>Documentado y actualizado</option>
-                      <option>Parcialmente documentado</option>
-                      <option>No documentado</option>
+                      <option value="">{t('riskMatrix.selectPlaceholder')}</option>
+                      <option value="Documentado y actualizado">{t('riskMatrix.valoracionUi.documentedUpdated')}</option>
+                      <option value="Parcialmente documentado">{t('riskMatrix.valoracionUi.partiallyDocumented')}</option>
+                      <option value="No documentado">{t('riskMatrix.valoracionUi.notDocumented')}</option>
                     </select>
                   </td>
                   <td className="col-num">
@@ -1343,10 +1359,10 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'tipo', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option value="">Seleccione...</option>
-                      <option>Preventivo</option>
-                      <option>Detectivo</option>
-                      <option>Correctivo</option>
+                      <option value="">{t('riskMatrix.selectPlaceholder')}</option>
+                      <option value="Preventivo">{t('riskMatrix.valoracionUi.preventive')}</option>
+                      <option value="Detectivo">{t('riskMatrix.valoracionUi.detective')}</option>
+                      <option value="Correctivo">{t('riskMatrix.valoracionUi.corrective')}</option>
                     </select>
                   </td>
                   <td className="col-num">
@@ -1358,10 +1374,10 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'gradoAutomatizacion', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option value="">Seleccione...</option>
-                      <option>Automático</option>
-                      <option>Manual</option>
-                      <option>Semiautomático</option>
+                      <option value="">{t('riskMatrix.selectPlaceholder')}</option>
+                      <option value="Automático">{t('riskMatrix.valoracionUi.automatic')}</option>
+                      <option value="Manual">{t('riskMatrix.valoracionUi.manual')}</option>
+                      <option value="Semiautomático">{t('riskMatrix.valoracionUi.semiautomatic')}</option>
                     </select>
                   </td>
                   <td className="col-num">
@@ -1373,8 +1389,8 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'existeResponsable', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option>No</option>
-                      <option>Sí</option>
+                      <option value="No">{t('riskMatrix.no')}</option>
+                      <option value="Sí">{t('riskMatrix.yes')}</option>
                     </select>
                   </td>
                   <td className="col-controles">
@@ -1393,15 +1409,15 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'periodicidad', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option value="">Seleccione...</option>
-                      <option>Diario</option>
-                      <option>Semanal</option>
-                      <option>Mensual</option>
-                      <option>Bimensual</option>
-                      <option>Trimestral</option>
-                      <option>Semestral</option>
-                      <option>Anual</option>
-                      <option>Cuando se Requiera</option>
+                      <option value="">{t('riskMatrix.selectPlaceholder')}</option>
+                      <option value="Diario">{t('riskMatrix.valoracionUi.daily')}</option>
+                      <option value="Semanal">{t('riskMatrix.valoracionUi.weekly')}</option>
+                      <option value="Mensual">{t('riskMatrix.valoracionUi.monthly')}</option>
+                      <option value="Bimensual">{t('riskMatrix.valoracionUi.bimonthly')}</option>
+                      <option value="Trimestral">{t('riskMatrix.valoracionUi.quarterly')}</option>
+                      <option value="Semestral">{t('riskMatrix.valoracionUi.semiannual')}</option>
+                      <option value="Anual">{t('riskMatrix.valoracionUi.annual')}</option>
+                      <option value="Cuando se Requiera">{t('riskMatrix.valoracionUi.asNeeded')}</option>
                     </select>
                   </td>
                   <td className="col-num">
@@ -1425,8 +1441,8 @@ const ValoracionRiesgos = ({
                       onChange={(e) => handleControlesChange(valoracion.id, 'disminuyeImpacto', e.target.value)}
                       className="select-valoracion"
                     >
-                      <option>No</option>
-                      <option>Sí</option>
+                      <option value="No">{t('riskMatrix.no')}</option>
+                      <option value="Sí">{t('riskMatrix.yes')}</option>
                     </select>
                     </td>
                   {/* PROBABILIDAD residual (bucket 1..5, solo lectura) */}
@@ -1493,7 +1509,7 @@ const ValoracionRiesgos = ({
                         bucket1a5(valoracion.sumImpactoResidual || 1);
                       const nivel = calcularNivelRiesgoResidual(valoracionCuantitativa); 
                       return (
-                        <span className="badge-nivel" style={{ backgroundColor: nivel.color }}>{nivel.nivel}</span>
+                        <span className="badge-nivel" style={{ backgroundColor: nivel.color }}>{labelNivelUi(nivel.nivel)}</span>
                       ); 
                     })()}
                   </td>
@@ -1525,7 +1541,7 @@ const ValoracionRiesgos = ({
                 onClick={handleProcesarRiesgos}
               >
                 <span className="btn-icono">⚡</span>
-                Procesar Riesgos Identificados
+                {t('riskMatrix.valoracionUi.processRisks')}
               </button>
             </div>
           )}

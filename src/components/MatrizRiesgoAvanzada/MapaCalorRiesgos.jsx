@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const VALORACIONES_VACIAS = [];
 const MAPA_VACIO = {};
@@ -17,6 +18,13 @@ import { MatrizMapaBloque } from './MatrizUiBlocks';
 import { matrizSectionTitle, matrizTableTh } from './matrizFenixUi';
 import './MapaCalorRiesgos.css';
 import './matrizFenixTheme.css';
+
+const NIVEL_KEY = {
+  Crítico: 'critical',
+  Alto: 'high',
+  Medio: 'medium',
+  Bajo: 'low',
+};
 
 /** Nivel cualitativo a partir del producto prob×impacto (misma escala que valoración). */
 function obtenerNivelRiesgo(clasificacion) {
@@ -58,6 +66,7 @@ function agruparRiesgosPorCelda(riesgos, minEnCelda = 3) {
  * solo se muestra un contador compacto; la lista completa se abre en un modal al hacer clic.
  */
 function MapaCalorMatriz({ riesgos, etiquetaTipo, valoraciones = [] }) {
+  const { t } = useTranslation();
   const [detalleCelda, setDetalleCelda] = useState(null);
 
   useEffect(() => {
@@ -119,12 +128,22 @@ function MapaCalorMatriz({ riesgos, etiquetaTipo, valoraciones = [] }) {
 
         const tituloCelda =
           n === 0
-            ? `Probabilidad ${probabilidad}, Impacto ${impacto}`
+            ? t('riskMatrix.mapaUi.cellEmpty', { p: probabilidad, i: impacto })
             : n === 1
-              ? `${etiquetaTipo}. Prob. ${probabilidad}, Imp. ${impacto} — ${riesgosEnCelda[0].id}`
+              ? t('riskMatrix.mapaUi.cellOne', {
+                  label: etiquetaTipo,
+                  p: probabilidad,
+                  i: impacto,
+                  id: riesgosEnCelda[0].id,
+                })
               : n <= 2
-                ? `${etiquetaTipo}. Prob. ${probabilidad}, Imp. ${impacto}. ${riesgosEnCelda.map((r) => r.id).join(', ')}`
-                : `${etiquetaTipo}. Prob. ${probabilidad}, Imp. ${impacto}. ${n} riesgos. Clic en el número para ver la lista.`;
+                ? t('riskMatrix.mapaUi.cellFew', {
+                    label: etiquetaTipo,
+                    p: probabilidad,
+                    i: impacto,
+                    ids: riesgosEnCelda.map((r) => r.id).join(', '),
+                  })
+                : t('riskMatrix.mapaUi.cellTooltip', { p: probabilidad, i: impacto, count: n });
 
         fila.push(
           <div
@@ -155,10 +174,10 @@ function MapaCalorMatriz({ riesgos, etiquetaTipo, valoraciones = [] }) {
                   e.stopPropagation();
                   setDetalleCelda({ probabilidad, impacto, lista: riesgosEnCelda });
                 }}
-                aria-label={`Ver lista de ${n} riesgos, probabilidad ${probabilidad}, impacto ${impacto}`}
+                aria-label={t('riskMatrix.mapaUi.viewRisksAria', { count: n })}
               >
                 <span className="celda-riesgos-conteo-numero">{n}</span>
-                <span className="celda-riesgos-conteo-etiq">riesgos</span>
+                <span className="celda-riesgos-conteo-etiq">{t('riskMatrix.mapaUi.risksLabel')}</span>
               </button>
             )}
           </div>
@@ -182,10 +201,10 @@ function MapaCalorMatriz({ riesgos, etiquetaTipo, valoraciones = [] }) {
         <div className="heatmap-matrix-fenix rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-[#141414]">
           <div className="mb-2 flex items-end gap-2">
             <span className="w-8 shrink-0 text-center font-heading text-[10px] font-bold uppercase tracking-wide text-gray-500">
-              Prob.
+              {t('riskMatrix.mapaUi.probAxis')}
             </span>
             <span className="flex-1 text-center font-heading text-xs font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200">
-              Impacto
+              {t('riskMatrix.mapaUi.impactAxis')}
             </span>
           </div>
           <div className="matrix-grid">{crearGrid()}</div>
@@ -211,12 +230,19 @@ function MapaCalorMatriz({ riesgos, etiquetaTipo, valoraciones = [] }) {
             <div className="mapa-celda-modal-header">
               <h4 id="mapa-celda-modal-titulo">{etiquetaTipo}</h4>
               <p className="mapa-celda-modal-sub">
-                Celda: probabilidad <strong>{detalleCelda.probabilidad}</strong>, impacto{' '}
-                <strong>{detalleCelda.impacto}</strong>
+                {t('riskMatrix.mapaUi.cellTitle', {
+                  p: detalleCelda.probabilidad,
+                  i: detalleCelda.impacto,
+                })}
                 {' · '}
-                <strong>{detalleCelda.lista.length}</strong> riesgos
+                {t('riskMatrix.mapaUi.cellRisks', { count: detalleCelda.lista.length })}
               </p>
-              <button type="button" className="mapa-celda-modal-cerrar" onClick={cerrarModal} aria-label="Cerrar">
+              <button
+                type="button"
+                className="mapa-celda-modal-cerrar"
+                onClick={cerrarModal}
+                aria-label={t('riskMatrix.mapaUi.closeAria')}
+              >
                 ×
               </button>
             </div>
@@ -231,7 +257,7 @@ function MapaCalorMatriz({ riesgos, etiquetaTipo, valoraciones = [] }) {
                         {nombre}
                       </span>
                     </div>
-                    <span className="mapa-celda-calif">Calificación {r.clasificacion}</span>
+                    <span className="mapa-celda-calif">{t('riskMatrix.mapaUi.scoreLabel', { n: r.clasificacion })}</span>
                   </li>
                 );
               })}
@@ -244,23 +270,25 @@ function MapaCalorMatriz({ riesgos, etiquetaTipo, valoraciones = [] }) {
 }
 
 /** Tabla compacta alineada al ancho del mapa 5×5 (encima de cada mapa de calor). */
-function TablaResumenMapa({ titulo, riesgos, vacio = 'Sin datos' }) {
+function TablaResumenMapa({ titulo, riesgos, vacio }) {
+  const { t } = useTranslation();
+  const vacioTxt = vacio ?? t('riskMatrix.mapaUi.noData');
   return (
     <div className="tabla-resumen-mapa-block w-full max-w-[500px] mx-auto">
       <h4 className={`${matrizSectionTitle} text-center text-sm uppercase tracking-wide`}>{titulo}</h4>
       {riesgos.length === 0 ? (
         <p className="rounded-lg border border-dashed border-gray-200 bg-gray-50 py-3 text-center font-body text-sm text-gray-500">
-          {vacio}
+          {vacioTxt}
         </p>
       ) : (
         <div className="max-h-[min(220px,40vh)] overflow-auto rounded-xl border border-gray-200 dark:border-gray-700">
           <table className="w-full border-collapse text-center text-sm">
             <thead>
               <tr>
-                <th className={matrizTableTh}>Riesgo</th>
-                <th className={matrizTableTh}>Prob.</th>
-                <th className={matrizTableTh}>Imp.</th>
-                <th className={matrizTableTh}>Calif.</th>
+                <th className={matrizTableTh}>{t('riskMatrix.mapaUi.risk')}</th>
+                <th className={matrizTableTh}>{t('riskMatrix.mapaUi.probAxis')}</th>
+                <th className={matrizTableTh}>{t('riskMatrix.mapaUi.impactAxis')}</th>
+                <th className={matrizTableTh}>{t('riskMatrix.mapaUi.score')}</th>
               </tr>
             </thead>
             <tbody>
@@ -287,6 +315,7 @@ function TablaResumenMapa({ titulo, riesgos, vacio = 'Sin datos' }) {
 
 /** Detalle por riesgo (código, nombre, calificación, nivel) alineado al ancho del mapa. */
 function TablaLeyendaMapa({ titulo, valoraciones, riesgosMapa }) {
+  const { t } = useTranslation();
   if (!valoraciones?.length) return null;
 
   return (
@@ -296,10 +325,10 @@ function TablaLeyendaMapa({ titulo, valoraciones, riesgosMapa }) {
         <table className="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th className={matrizTableTh}>Cód.</th>
-              <th className={`${matrizTableTh} text-left`}>Riesgo</th>
-              <th className={matrizTableTh}>Calif.</th>
-              <th className={matrizTableTh}>Nivel</th>
+              <th className={matrizTableTh}>{t('riskMatrix.mapaUi.code')}</th>
+              <th className={`${matrizTableTh} text-left`}>{t('riskMatrix.mapaUi.risk')}</th>
+              <th className={matrizTableTh}>{t('riskMatrix.mapaUi.score')}</th>
+              <th className={matrizTableTh}>{t('riskMatrix.mapaUi.level')}</th>
             </tr>
           </thead>
           <tbody>
@@ -324,7 +353,9 @@ function TablaLeyendaMapa({ titulo, valoraciones, riesgosMapa }) {
                   </td>
                   <td className="tabla-leyenda-mapa-calif">{clasificacion}</td>
                   <td>
-                    <span className={`tabla-leyenda-mapa-nivel ${nivel.clase}`}>{nivel.texto}</span>
+                    <span className={`tabla-leyenda-mapa-nivel ${nivel.clase}`}>
+                      {t(`riskMatrix.level.${NIVEL_KEY[nivel.texto] || 'low'}`)}
+                    </span>
                   </td>
                 </tr>
               );
@@ -337,6 +368,7 @@ function TablaLeyendaMapa({ titulo, valoraciones, riesgosMapa }) {
 }
 
 const MapaCalorRiesgos = ({ datos, onDatosChange }) => {
+  const { t } = useTranslation();
   const [riesgosInherentes, setRiesgosInherentes] = useState([]);
   const [riesgosResiduales, setRiesgosResiduales] = useState([]);
 
@@ -588,10 +620,10 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
         <h3 className="tabla-titulo">{titulo}</h3>
         <div className="tabla-riesgos">
           <div className="tabla-header">
-            <div className="col-riesgo">RIESGO</div>
-            <div className="col-probabilidad">PROBABILIDAD</div>
-            <div className="col-impacto">IMPACTO</div>
-            <div className="col-calificacion">CALIFICACIÓN</div>
+            <div className="col-riesgo">{t('riskMatrix.mapaUi.colRisk')}</div>
+            <div className="col-probabilidad">{t('riskMatrix.mapaUi.colProbability')}</div>
+            <div className="col-impacto">{t('riskMatrix.mapaUi.colImpact')}</div>
+            <div className="col-calificacion">{t('riskMatrix.mapaUi.colScore')}</div>
           </div>
           <div className="tabla-body">
             {riesgos.map((riesgo, index) => (
@@ -620,8 +652,8 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
     <div className="mapa-calor-riesgos">
       <MatrizSeccionTitulo
         icon={FaFire}
-        title="Mapa de calor de riesgos"
-        description="Visualización de riesgos inherentes y residuales según probabilidad e impacto."
+        title={t('riskMatrix.mapaUi.title')}
+        description={t('riskMatrix.mapaUi.description')}
         actions={
           tieneDatosReales ? (
             <>
@@ -629,14 +661,13 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
                 type="button"
                 className="btn-refrescar inline-flex items-center gap-2"
                 onClick={refrescarDatos}
-                title="Refrescar datos del mapa de calor desde la valoración"
+                title={t('riskMatrix.mapaUi.refreshTitle')}
               >
                 <FaSyncAlt />
-                Refrescar datos
+                {t('riskMatrix.mapaUi.refresh')}
               </button>
               <span className="contador-riesgos">
-                {riesgosInherentes.length} riesgo{riesgosInherentes.length !== 1 ? 's' : ''}{' '}
-                identificado{riesgosInherentes.length !== 1 ? 's' : ''}
+                {t('riskMatrix.mapaUi.risksIdentified', { count: riesgosInherentes.length })}
               </span>
             </>
           ) : null
@@ -647,17 +678,15 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
         <div className="mensaje-informativo">
           <div className="mensaje-contenido flex-1">
             <h4 className="font-heading font-bold text-gray-800 dark:text-white">
-              No hay datos de valoración
+              {t('riskMatrix.mapaUi.noDataTitle')}
             </h4>
             <p className="mt-2 font-body text-sm text-gray-600 dark:text-gray-300">
-              Para ver el mapa de calor con tus datos reales, completa primero la sección de{' '}
-              <strong>Valoración</strong>. El mapa mostrará los riesgos que hayas identificado y
-              valorado (R1, R2, R3, etc.).
+              {t('riskMatrix.mapaUi.noDataBody')}
             </p>
             <div className="mensaje-accion mt-4">
               <button type="button" className="btn-ir-valoracion inline-flex items-center gap-2">
                 <FaChartBar />
-                Ir a Valoración
+                {t('riskMatrix.mapaUi.goToAssessment')}
               </button>
             </div>
           </div>
@@ -671,25 +700,21 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
               (r) => Number(r.probabilidad) === 1 && Number(r.impacto) === 1
             ) && (
               <div className="mapa-calor-alerta-concentracion" role="status">
-                <strong>Atención:</strong> los {riesgosInherentes.length} riesgos aparecen todos en la celda
-                probabilidad 1 × impacto 1 (verde). Eso suele indicar que el mapa no está leyendo la misma
-                información que la tabla de valoración (p. ej. falta guardar, o solo hay valores por defecto).
-                Tras guardar la matriz, pulse <strong>Refrescar datos</strong> o vuelva a abrir la sección Valoración
-                y confirme que cada fila tenga probabilidad y sumatoria de impacto distintas de 1 si corresponde.
+                {t('riskMatrix.mapaUi.concentrationAlert', { count: riesgosInherentes.length })}
               </div>
             )}
           {/* tablas movidas encima de cada mapa */}
           <div className="tablas-wrapper tablas-wrapper--oculto" hidden aria-hidden="true">
             <div className="tabla-seccion-valoracion">
-              <h4 className="tabla-seccion-titulo">VALORACIÓN RIESGO INHERENTE</h4>
+              <h4 className="tabla-seccion-titulo">{t('riskMatrix.mapaUi.inherentTitle')}</h4>
               <div className="tabla-riesgos">
                 <table className="tabla-valoracion-estilo">
                   <thead>
                     <tr>
-                      <th>RIESGO</th>
-                      <th>PROBABILIDAD</th>
-                      <th>IMPACTO</th>
-                      <th>CALIFICACIÓN</th>
+                      <th>{t('riskMatrix.mapaUi.colRisk')}</th>
+                      <th>{t('riskMatrix.mapaUi.colProbability')}</th>
+                      <th>{t('riskMatrix.mapaUi.colImpact')}</th>
+                      <th>{t('riskMatrix.mapaUi.colScore')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -712,15 +737,15 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
             </div>
 
             <div className="tabla-seccion-valoracion">
-              <h4 className="tabla-seccion-titulo">VALORACIÓN RIESGO RESIDUAL</h4>
+              <h4 className="tabla-seccion-titulo">{t('riskMatrix.mapaUi.residualTitle')}</h4>
               <div className="tabla-riesgos">
                 <table className="tabla-valoracion-estilo">
                   <thead>
                     <tr>
-                      <th>RIESGO</th>
-                      <th>PROBABILIDAD</th>
-                      <th>IMPACTO</th>
-                      <th>CALIFICACIÓN</th>
+                      <th>{t('riskMatrix.mapaUi.colRisk')}</th>
+                      <th>{t('riskMatrix.mapaUi.colProbability')}</th>
+                      <th>{t('riskMatrix.mapaUi.colImpact')}</th>
+                      <th>{t('riskMatrix.mapaUi.colScore')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -744,45 +769,43 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
           </div>
 
           <details className="mapa-calor-ayuda-details">
-            <summary className="mapa-calor-ayuda-summary">Leyenda de lectura del mapa</summary>
+            <summary className="mapa-calor-ayuda-summary">{t('riskMatrix.mapaUi.legendTitle')}</summary>
             <div className="mapa-calor-ayuda-texto">
-              <p>
-                El <strong>color</strong> de la celda indica la <strong>magnitud</strong> del riesgo. Si varios riesgos
-                caen en la misma celda, verás la <strong>cantidad</strong>; pulsa el número para abrir la lista. El
-                detalle por riesgo está en las <strong>tablas compactas</strong> sobre y debajo de cada mapa y en el{' '}
-                <strong>informe PDF/HTML</strong>.
-              </p>
+              <p>{t('riskMatrix.mapaUi.legendBody')}</p>
             </div>
           </details>
 
           {/* Mapas de calor */}
           <div className="mapas-container grid gap-6 lg:grid-cols-1 xl:grid-cols-2">
-            <MatrizMapaBloque titulo="Mapa de calor — Riesgo inherente">
-              <TablaResumenMapa titulo="Valoración riesgo inherente" riesgos={riesgosInherentes} />
+            <MatrizMapaBloque titulo={t('riskMatrix.mapaUi.inherentTitle')}>
+              <TablaResumenMapa
+                titulo={t('riskMatrix.mapaUi.inherentTitle')}
+                riesgos={riesgosInherentes}
+              />
               <MapaCalorMatriz
                 riesgos={riesgosInherentes}
-                etiquetaTipo="Mapa de calor — Riesgo inherente"
+                etiquetaTipo={t('riskMatrix.mapaUi.inherentTitle')}
                 valoraciones={valoraciones}
               />
               <TablaLeyendaMapa
-                titulo="Identificación — inherente"
+                titulo={t('riskMatrix.mapaUi.inherentTitle')}
                 valoraciones={valoraciones}
                 riesgosMapa={riesgosInherentes}
               />
             </MatrizMapaBloque>
-            <MatrizMapaBloque titulo="Mapa de calor — Riesgo residual">
+            <MatrizMapaBloque titulo={t('riskMatrix.mapaUi.residualTitle')}>
               <TablaResumenMapa
-                titulo="Valoración riesgo residual"
+                titulo={t('riskMatrix.mapaUi.residualTitle')}
                 riesgos={riesgosResiduales}
-                vacio="Sin datos residuales"
+                vacio={t('riskMatrix.mapaUi.noResidual')}
               />
               <MapaCalorMatriz
                 riesgos={riesgosResiduales}
-                etiquetaTipo="Mapa de calor — Riesgo residual"
+                etiquetaTipo={t('riskMatrix.mapaUi.residualTitle')}
                 valoraciones={valoraciones}
               />
               <TablaLeyendaMapa
-                titulo="Identificación — residual"
+                titulo={t('riskMatrix.mapaUi.residualTitle')}
                 valoraciones={valoraciones}
                 riesgosMapa={riesgosResiduales}
               />

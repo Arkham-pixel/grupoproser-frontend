@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from "react-router-dom";
 import axios from "axios";
 import { BASE_URL } from '../config/apiConfig.js';
@@ -8,6 +9,7 @@ import arnaldLogo from '../config/brandAssets.js';
 import { FaLock, FaShieldAlt, FaArrowLeft, FaCheckCircle, FaKey, FaMoon, FaSun } from 'react-icons/fa';
 
 export default function ChangePasswordWithToken() {
+  const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const { token } = useParams<{ token: string }>();
   const [newPassword, setNewPassword] = useState("");
@@ -22,13 +24,13 @@ export default function ChangePasswordWithToken() {
   // Animación del logo
   useEffect(() => {
     // Establecer título de la página
-    document.title = 'Arnald DataFlow - Nueva Contraseña';
+    document.title = t('auth.changePassword.pageTitle');
     
     const interval = setInterval(() => {
       setLogoScale(prev => prev === 1 ? 1.05 : 1);
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [t]);
   
   // Colores según el tema
   const bgMain = theme === 'dark' ? '#0F172A' : '#F8FAFC';
@@ -45,12 +47,12 @@ export default function ChangePasswordWithToken() {
 
     // Validaciones
     if (newPassword.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+      setError(t('auth.changePassword.minLength'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
+      setError(t('auth.changePassword.passwordsMismatch'));
       return;
     }
 
@@ -63,7 +65,7 @@ export default function ChangePasswordWithToken() {
       });
       
       setSuccess(true);
-      setMensaje(response.data.message || "Contraseña actualizada exitosamente.");
+      setMensaje(response.data.message || t('auth.changePassword.defaultSuccess'));
       
       // Redirigir al login después de 3 segundos
       setTimeout(() => {
@@ -72,7 +74,7 @@ export default function ChangePasswordWithToken() {
       
     } catch (err: any) {
       console.error('Error al restablecer contraseña:', err);
-      setError(err.response?.data?.message || "Error al restablecer la contraseña. El enlace puede haber expirado.");
+      setError(err.response?.data?.message || t('auth.changePassword.defaultError'));
     } finally {
       setLoading(false);
     }
@@ -150,7 +152,7 @@ export default function ChangePasswordWithToken() {
             ? '0 8px 32px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)'
             : '0 8px 32px rgba(220, 38, 38, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.2)'
         }}
-        title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+        title={theme === 'dark' ? t('auth.switchToLightMode') : t('auth.switchToDarkMode')}
       >
         {theme === 'dark' ? (
           <FaSun className="text-2xl text-yellow-300 animate-pulse" />
@@ -184,7 +186,7 @@ export default function ChangePasswordWithToken() {
           }}
         >
           <FaKey className="text-white text-sm" />
-          <span className="text-white text-xs font-bold tracking-wider">NUEVA CONTRASEÑA</span>
+          <span className="text-white text-xs font-bold tracking-wider">{t('auth.changePassword.badge')}</span>
         </div>
 
         <div className="text-center mb-8 sm:mb-10">
@@ -220,7 +222,7 @@ export default function ChangePasswordWithToken() {
                 : '0 2px 20px rgba(220, 38, 38, 0.2)'
             }}
           >
-            Nueva Contraseña
+            {t('auth.changePassword.title')}
           </h1>
           <p 
             className="text-xs sm:text-sm font-medium"
@@ -229,7 +231,7 @@ export default function ChangePasswordWithToken() {
               lineHeight: '1.6'
             }}
           >
-            Crea una contraseña segura para tu cuenta
+            {t('auth.changePassword.subtitle')}
           </p>
         </div>
 
@@ -251,13 +253,13 @@ export default function ChangePasswordWithToken() {
                 className="font-bold mb-1 text-sm"
                 style={{ color: theme === 'dark' ? '#FCD34D' : '#92400E' }}
               >
-                Este enlace expira en 30 minutos
+                {t('auth.changePassword.linkExpiresTitle')}
               </p>
               <p 
                 className="text-xs leading-relaxed"
                 style={{ color: theme === 'dark' ? '#FCD34D' : '#92400E', opacity: 0.95 }}
               >
-                Por seguridad, solo puedes usar este enlace <strong>una vez</strong>. Después de cambiar tu contraseña, el enlace dejará de funcionar permanentemente.
+                {t('auth.changePassword.linkExpiresBody')}
               </p>
             </div>
           </div>
@@ -271,7 +273,7 @@ export default function ChangePasswordWithToken() {
                 style={{ color: textPrimary }}
               >
                 <FaLock className="text-red-600" />
-                Nueva Contraseña
+                {t('auth.changePassword.newPasswordLabel')}
               </label>
               <div className="relative group">
                 <div 
@@ -282,7 +284,7 @@ export default function ChangePasswordWithToken() {
                 </div>
                 <input
                   type="password"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('auth.changePassword.newPasswordPlaceholder')}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 rounded-xl text-sm sm:text-base transition-all focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
@@ -303,7 +305,7 @@ export default function ChangePasswordWithToken() {
                 className="text-xs mt-2"
                 style={{ color: textSecondary, opacity: 0.8 }}
               >
-                Usa al menos 6 caracteres con mayúsculas, minúsculas y números
+                {t('auth.changePassword.passwordHint')}
               </p>
             </div>
 
@@ -313,7 +315,7 @@ export default function ChangePasswordWithToken() {
                 style={{ color: textPrimary }}
               >
                 <FaShieldAlt className="text-red-600" />
-                Confirmar Contraseña
+                {t('auth.changePassword.confirmPasswordLabel')}
               </label>
               <div className="relative group">
                 <div 
@@ -324,7 +326,7 @@ export default function ChangePasswordWithToken() {
                 </div>
                 <input
                   type="password"
-                  placeholder="Repite la contraseña"
+                  placeholder={t('auth.changePassword.confirmPasswordPlaceholder')}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="w-full pl-12 pr-4 py-3.5 rounded-xl text-sm sm:text-base transition-all focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
@@ -365,7 +367,7 @@ export default function ChangePasswordWithToken() {
                     </div>
                   </div>
                   <div className="flex-1">
-                    <p className="font-bold mb-1">Error de validación</p>
+                    <p className="font-bold mb-1">{t('auth.changePassword.validationErrorTitle')}</p>
                     <p className="text-xs leading-relaxed opacity-90">{error}</p>
                   </div>
                 </div>
@@ -398,12 +400,12 @@ export default function ChangePasswordWithToken() {
               {loading ? (
                 <div className="flex items-center justify-center gap-3">
                   <div className="w-5 h-5 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Actualizando contraseña...</span>
+                  <span>{t('auth.changePassword.updating')}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-3">
                   <FaKey className="text-xl" />
-                  <span>Actualizar Contraseña</span>
+                  <span>{t('auth.changePassword.updateButton')}</span>
                 </div>
               )}
             </button>
@@ -426,7 +428,7 @@ export default function ChangePasswordWithToken() {
               }}
             >
               <FaArrowLeft className="text-xs" />
-              Volver al inicio de sesión
+              {t('auth.backToLogin')}
             </button>
           </form>
         ) : (
@@ -455,7 +457,7 @@ export default function ChangePasswordWithToken() {
                   className="text-xl font-bold mb-2"
                   style={{ color: theme === 'dark' ? '#86EFAC' : '#166534' }}
                 >
-                  ¡Contraseña Actualizada!
+                  {t('auth.changePassword.successTitle')}
                 </h3>
                 <p 
                   className="text-sm mb-3"
@@ -474,7 +476,7 @@ export default function ChangePasswordWithToken() {
                     className="text-xs font-medium"
                     style={{ color: theme === 'dark' ? '#86EFAC' : '#166534' }}
                   >
-                    Redirigiendo al login en 3 segundos...
+                    {t('auth.changePassword.redirecting')}
                   </span>
                 </div>
               </div>
@@ -491,7 +493,7 @@ export default function ChangePasswordWithToken() {
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-20 transition-opacity duration-500 transform -skew-x-12 group-hover:translate-x-full" style={{width: '200%', left: '-100%'}} />
               <div className="flex items-center justify-center gap-3">
                 <FaArrowLeft className="text-xl" />
-                <span>Ir al Login Ahora</span>
+                <span>{t('auth.changePassword.goToLoginNow')}</span>
               </div>
             </button>
             
@@ -518,13 +520,13 @@ export default function ChangePasswordWithToken() {
             }}
           >
             <span>🔒</span>
-            <span>Conexión Segura SSL</span>
+            <span>{t('auth.changePassword.secureSsl')}</span>
           </div>
           <p className="text-xs font-medium" style={{ color: textSecondary }}>
-            © 2025 <span style={{ color: theme === 'dark' ? '#EF4444' : '#DC2626', fontWeight: 'bold' }}>Arnald DataFlow</span>
+            {t('auth.changePassword.copyright')} <span style={{ color: theme === 'dark' ? '#EF4444' : '#DC2626', fontWeight: 'bold' }}>Arnald DataFlow</span>
           </p>
           <p className="text-xs mt-1" style={{ color: textSecondary, opacity: 0.7 }}>
-            El corazón digital de Grupo Proser
+            {t('auth.tagline')}
           </p>
         </div>
       </div>

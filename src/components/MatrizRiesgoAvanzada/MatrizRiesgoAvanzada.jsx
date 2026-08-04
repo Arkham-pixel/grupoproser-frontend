@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaArrowLeft,
   FaBullseye,
@@ -38,32 +39,32 @@ const DATOS_MATRIZ_VACIOS = {
 const SECCIONES_NAV = [
   {
     id: 'informacion',
-    titulo: 'Información',
-    descripcion: 'Guía de uso y tutorial de la herramienta',
+    titleKey: 'riskMatrix.information',
+    descriptionKey: 'riskMatrix.informationDescription',
     icon: FaBullseye,
   },
   {
     id: 'identificacion',
-    titulo: 'Identificación',
-    descripcion: 'Identificación y categorización de riesgos',
+    titleKey: 'riskMatrix.identification',
+    descriptionKey: 'riskMatrix.identificationDescription',
     icon: FaSearch,
   },
   {
     id: 'valoracion',
-    titulo: 'Valoración',
-    descripcion: 'Valoración y análisis de probabilidad e impacto',
+    titleKey: 'riskMatrix.assessment',
+    descriptionKey: 'riskMatrix.assessmentDescription',
     icon: FaChartBar,
   },
   {
     id: 'mapa-calor',
-    titulo: 'Mapa de Calor',
-    descripcion: 'Visualización de la matriz de riesgos',
+    titleKey: 'riskMatrix.heatMap',
+    descriptionKey: 'riskMatrix.heatMapDescription',
     icon: FaFire,
   },
   {
     id: 'gestion-riesgos',
-    titulo: 'Gestión de Riesgos',
-    descripcion: 'Recomendaciones y seguimiento de implementación',
+    titleKey: 'riskMatrix.management',
+    descriptionKey: 'riskMatrix.managementDescription',
     icon: FaShieldAlt,
   },
 ];
@@ -72,6 +73,7 @@ const inputSelectClass =
   'min-w-[11rem] rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-fenix-primario focus:outline-none focus:ring-1 focus:ring-fenix-primario dark:border-gray-700 dark:bg-[#1A1A1A] dark:text-gray-200';
 
 const MatrizRiesgoAvanzada = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,8 +103,8 @@ const MatrizRiesgoAvanzada = () => {
       const matrizIdActual = id || matrizId;
       if (!matrizIdActual) return;
 
-      const nombreEmpresa = data.informacion?.nombreEmpresa || 'Empresa Sin Nombre';
-      const titulo = `Matriz de Riesgo - ${nombreEmpresa}`;
+      const nombreEmpresa = data.informacion?.nombreEmpresa || t('riskMatrix.companyUntitled');
+      const titulo = t('riskMatrix.matrixTitle', { company: nombreEmpresa });
       const datosCompletos = {
         informacion: data.informacion || {},
         identificacion: data.identificacion || {},
@@ -118,7 +120,7 @@ const MatrizRiesgoAvanzada = () => {
         'en_proceso'
       );
     },
-    [id, matrizId]
+    [id, matrizId, t]
   );
 
   const {
@@ -177,7 +179,7 @@ const MatrizRiesgoAvanzada = () => {
           }
         } catch (error) {
           console.error('Error cargando matriz:', error);
-          alert('Error al cargar la matriz: ' + error.message);
+          alert(t('riskMatrix.loadMatrixError', { error: error.message }));
           navigate('/matrices-riesgo');
         } finally {
           cargandoDesdeServidorRef.current = false;
@@ -240,11 +242,11 @@ const MatrizRiesgoAvanzada = () => {
   const handleGuardarMatriz = async () => {
     try {
       setEstadoGuardado('guardando');
-      setMensajeGuardado('Guardando matriz de riesgo...');
+      setMensajeGuardado(t('riskMatrix.saving'));
 
       const snapshot = datosMatrizRef.current;
-      const nombreEmpresa = snapshot.informacion?.nombreEmpresa || 'Empresa Sin Nombre';
-      const titulo = `Matriz de Riesgo - ${nombreEmpresa}`;
+      const nombreEmpresa = snapshot.informacion?.nombreEmpresa || t('riskMatrix.companyUntitled');
+      const titulo = t('riskMatrix.matrixTitle', { company: nombreEmpresa });
 
       const datosCompletos = {
         informacion: snapshot.informacion || {},
@@ -282,7 +284,7 @@ const MatrizRiesgoAvanzada = () => {
             titulo,
             'en_proceso'
           );
-          setMensajeGuardado('Matriz actualizada exitosamente');
+          setMensajeGuardado(t('riskMatrix.updated'));
         } catch (updateError) {
           const esNoEncontrada =
             updateError.message?.includes('no encontrada') ||
@@ -290,14 +292,14 @@ const MatrizRiesgoAvanzada = () => {
           if (esNoEncontrada) {
             setMatrizId(null);
             resultado = await crearNueva();
-            setMensajeGuardado('Matriz guardada como nueva (la anterior ya no existía)');
+            setMensajeGuardado(t('riskMatrix.savedAsNew'));
           } else {
             throw updateError;
           }
         }
       } else {
         resultado = await crearNueva();
-        setMensajeGuardado('Matriz guardada exitosamente');
+        setMensajeGuardado(t('riskMatrix.saved'));
       }
 
       setEstadoGuardado('guardado');
@@ -309,7 +311,7 @@ const MatrizRiesgoAvanzada = () => {
     } catch (error) {
       console.error('Error guardando matriz:', error);
       setEstadoGuardado('error');
-      setMensajeGuardado(`Error: ${error.message}`);
+      setMensajeGuardado(t('riskMatrix.saveError', { error: error.message }));
       setTimeout(() => {
         setMensajeGuardado('');
         setEstadoGuardado('idle');
@@ -319,7 +321,7 @@ const MatrizRiesgoAvanzada = () => {
 
   const handleVerInformeGeneral = () => {
     try {
-      setMensajeReporte('Abriendo informe general de la matriz…');
+      setMensajeReporte(t('riskMatrix.openingReport'));
       guardarDatosReporteMatriz({
         datosMatriz: datosMatrizRef.current,
         tipoReporte,
@@ -328,16 +330,16 @@ const MatrizRiesgoAvanzada = () => {
       const url = urlReporteMatriz();
       const ventana = window.open(url, '_blank', 'width=1440,height=900,scrollbars=yes,resizable=yes');
       if (!ventana) {
-        setMensajeReporte('Permita ventanas emergentes para ver el informe.');
+        setMensajeReporte(t('riskMatrix.allowPopups'));
       } else {
         setMensajeReporte(
-          'Informe general abierto: información, lectura ejecutiva y detalle técnico.'
+          t('riskMatrix.reportOpened')
         );
       }
       setTimeout(() => setMensajeReporte(''), 6000);
     } catch (error) {
       console.error('Error abriendo informe general:', error);
-      setMensajeReporte('No se pudo abrir el informe general.');
+      setMensajeReporte(t('riskMatrix.reportOpenError'));
       setTimeout(() => setMensajeReporte(''), 5000);
     }
   };
@@ -347,7 +349,7 @@ const MatrizRiesgoAvanzada = () => {
   const handleExportarReporteHTML = async () => {
     try {
       setExportandoPdf(true);
-      setMensajeReporte('Generando archivo .html interactivo…');
+      setMensajeReporte(t('riskMatrix.generatingHtml'));
       const resultado = await ReporteService.exportarReporteHTML(
         datosMatriz,
         'reporte_matriz_riesgos',
@@ -356,15 +358,15 @@ const MatrizRiesgoAvanzada = () => {
       if (resultado.success) {
         setMensajeReporte(
           resultado.mensaje ||
-            'Archivo .html descargado. Ábralo en Chrome o Edge (no en lector de PDF).'
+            t('riskMatrix.htmlDownloaded')
         );
       } else {
-        setMensajeReporte(`Error al exportar: ${resultado.error}`);
+        setMensajeReporte(t('riskMatrix.exportError', { error: resultado.error }));
       }
       setTimeout(() => setMensajeReporte(''), 8000);
     } catch (error) {
       console.error('Error exportando reporte HTML:', error);
-      setMensajeReporte('Error inesperado al exportar el reporte');
+      setMensajeReporte(t('riskMatrix.unexpectedExportError'));
       setTimeout(() => setMensajeReporte(''), 5000);
     } finally {
       setExportandoPdf(false);
@@ -439,7 +441,7 @@ const MatrizRiesgoAvanzada = () => {
       <div className="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-fenix-fondo dark:bg-[#0F0F0F]">
         <FaSpinner className="animate-spin text-3xl text-fenix-primario" aria-hidden />
         <p className="font-body text-sm text-gray-600 dark:text-gray-400">
-          Cargando matriz de riesgo...
+          {t('riskMatrix.loading')}
         </p>
       </div>
     );
@@ -452,7 +454,7 @@ const MatrizRiesgoAvanzada = () => {
         <aside className="flex min-h-0 flex-col border-b border-gray-200 bg-white dark:border-gray-800 dark:bg-[#141414] lg:border-b-0 lg:border-r">
           <div className="shrink-0 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
             <h2 className="font-heading text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-              Secciones
+              {t('riskMatrix.sections')}
             </h2>
           </div>
           <nav className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
@@ -464,7 +466,7 @@ const MatrizRiesgoAvanzada = () => {
                   key={seccion.id}
                   type="button"
                   onClick={() => setSeccionActiva(seccion.id)}
-                  title={seccion.descripcion}
+                  title={t(seccion.descriptionKey)}
                   className={`flex w-full items-start gap-3 rounded-xl border px-3 py-3 text-left transition ${
                     activo
                       ? 'border-l-4 border-fenix-primario border-gray-100 bg-red-50 shadow-sm dark:border-gray-800 dark:bg-red-950/25'
@@ -486,10 +488,10 @@ const MatrizRiesgoAvanzada = () => {
                         activo ? 'text-fenix-primario' : 'text-gray-800 dark:text-gray-200'
                       }`}
                     >
-                      {seccion.titulo}
+                      {t(seccion.titleKey)}
                     </span>
                     <span className="mt-0.5 block font-body text-xs leading-snug text-gray-500 dark:text-gray-400">
-                      {seccion.descripcion}
+                      {t(seccion.descriptionKey)}
                     </span>
                   </span>
                 </button>
@@ -507,12 +509,12 @@ const MatrizRiesgoAvanzada = () => {
               className="mb-3 flex items-center gap-2 font-heading text-lg font-bold text-gray-800 transition hover:text-fenix-primario dark:text-white"
             >
               <FaArrowLeft className="text-sm text-fenix-primario" />
-              Arnald Risk Intelligence
+              {t('riskMatrix.brandTitle')}
             </button>
 
             {navActual && (
               <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">
-                {navActual.descripcion}
+                {t(navActual.descriptionKey)}
               </p>
             )}
 
@@ -522,17 +524,17 @@ const MatrizRiesgoAvanzada = () => {
                   htmlFor="tipo-reporte"
                   className="font-body text-sm font-semibold text-gray-700 dark:text-gray-300"
                 >
-                  Tipo de reporte
+                  {t('riskMatrix.reportType')}
                 </label>
                 <select
                   id="tipo-reporte"
                   value={tipoReporte}
                   onChange={(e) => setTipoReporte(e.target.value)}
                   className={inputSelectClass}
-                  title="Selecciona el tipo de reporte a generar"
+                  title={t('riskMatrix.selectReportType')}
                 >
-                  <option value="inicial">Valoración inicial</option>
-                  <option value="anual">Valoración anual</option>
+                  <option value="inicial">{t('riskMatrix.initialAssessment')}</option>
+                  <option value="anual">{t('riskMatrix.annualAssessment')}</option>
                 </select>
               </div>
 
@@ -561,27 +563,27 @@ const MatrizRiesgoAvanzada = () => {
                   className="btn-fenix-primary min-w-[7.5rem] disabled:opacity-60"
                   onClick={handleGuardarMatriz}
                   disabled={estadoGuardado === 'guardando'}
-                  title="Guardar matriz de riesgo en la base de datos"
+                  title={t('riskMatrix.saveTitle')}
                 >
-                  {estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardar'}
+                  {estadoGuardado === 'guardando' ? t('riskMatrix.saving') : t('common.save')}
                 </button>
                 <button
                   type="button"
                   className="btn-fenix-primary inline-flex min-w-[11rem] items-center justify-center gap-2"
                   onClick={handleVerInformeGeneral}
-                  title="Informe completo: información general, lectura ejecutiva y detalle técnico"
+                  title={t('riskMatrix.viewReportTitle')}
                 >
                   <FaFileAlt />
-                  Ver informe general
+                  {t('riskMatrix.viewReport')}
                 </button>
                 <button
                   type="button"
                   className="btn-fenix-secondary min-w-[9rem] disabled:opacity-60"
                   onClick={handleExportarReporteHTML}
                   disabled={exportandoPdf}
-                  title="Descarga el informe general completo en .html (dashboard, semáforo, gráficos y detalle técnico)"
+                  title={t('riskMatrix.downloadHtmlTitle')}
                 >
-                  {exportandoPdf ? 'Generando…' : 'Descargar .html'}
+                  {exportandoPdf ? t('riskMatrix.generating') : t('riskMatrix.downloadHtml')}
                 </button>
               </div>
             </div>
@@ -611,7 +613,7 @@ const MatrizRiesgoAvanzada = () => {
 
             {!autoguardadoActivo && (
               <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                El autoguardado se activará después de guardar la matriz por primera vez con el botón <strong>Guardar</strong>.
+                {t('riskMatrix.autoSaveHint', { save: t('common.save') })}
               </p>
             )}
           </div>

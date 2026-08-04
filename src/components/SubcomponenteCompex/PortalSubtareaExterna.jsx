@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -24,6 +27,7 @@ import {
 } from './subtareasComplexUtils.js';
 
 export default function PortalSubtareaExterna() {
+  useTranslation();
   const { token } = useParams();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -55,7 +59,7 @@ export default function PortalSubtareaExterna() {
       setFechasProtocolo(inicializarFechasProtocoloDesdeSubtarea(res));
       if (subtareaRequiereFormato(res)) setTipoArchivo('formato');
     } catch (err) {
-      setError(err.message || 'No se pudo abrir el enlace');
+      setError(err.message || t('complex.ui.portal_subtarea_externa.no_abrir_enlace'));
       setData(null);
     } finally {
       setLoading(false);
@@ -70,18 +74,18 @@ export default function PortalSubtareaExterna() {
   const guardar = async (completar = false, extras = {}) => {
     if (completar && requiereFormato && !tieneFormato) {
       setError(
-        'Debe diligenciar y guardar el formulario de ajuste (informe) antes de marcar la tarea completada. Use el botón "Diligenciar formulario de ajuste".'
+        t('complex.ui.portal_subtarea_externa.debe_diligenciar_informe')
       );
       return;
     }
     if (completar && esFlujoVisitaCoordinacion(data)) {
       const faltantes = faltanFechasFlujoVisitaParaCerrar(fechasProtocolo);
       if (faltantes.length) {
-        setError(`Indique las fechas: ${faltantes.join(', ')}.`);
+        setError(t('complex.ui.portal_subtarea_externa.indique_fechas', { faltantes: faltantes.join(', ') }));
         return;
       }
       if (!(data.archivos || []).length) {
-        setError('Antes de cerrar suba el acta y/o las fotos y datos de la visita.');
+        setError(t('complex.ui.portal_subtarea_externa.antes_cerrar_suba_acta'));
         return;
       }
     } else if (completar && pideFechas) {
@@ -91,7 +95,7 @@ export default function PortalSubtareaExterna() {
       );
       if (faltantes.length) {
         setError(
-          `Indique las fechas de la etapa (como en trazabilidad): ${faltantes.join(', ')}.`
+          t('complex.ui.portal_subtarea_externa.indique_fechas_etapa', { faltantes: faltantes.join(', ') })
         );
         return;
       }
@@ -117,9 +121,9 @@ export default function PortalSubtareaExterna() {
       const hayFechas = Object.values(fechasProtocolo || {}).some(Boolean);
       setOkMsg(
         completar
-          ? 'Subtarea marcada como completada. Las fechas quedaron en la trazabilidad del caso. Gracias.'
+          ? t('complex.ui.portal_subtarea_externa.marcada_completada')
           : hayFechas
-            ? 'Avance guardado. Las fechas se sincronizaron con la trazabilidad del caso.'
+            ? t('complex.ui.portal_subtarea_externa.avance_guardado')
             : 'Avance guardado.'
       );
     } catch (err) {
@@ -139,7 +143,7 @@ export default function PortalSubtareaExterna() {
       setData(res.subtarea);
       setOkMsg(
         tipo === 'formato'
-          ? 'Informe cargado correctamente y guardado en el caso.'
+          ? t('complex.ui.portal_subtarea_externa.informe_cargado')
           : 'Archivo cargado correctamente.'
       );
     } catch (err) {
@@ -173,17 +177,13 @@ export default function PortalSubtareaExterna() {
     <div className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200 px-4 py-10 font-sans text-slate-900">
       <div className="mx-auto max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="bg-[#111827] px-6 py-5 text-white">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">
-            Grupo Proser
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight">Apoyo en caso Complex</h1>
-          <p className="mt-1 text-sm text-slate-300">
-            Formulario externo — no requiere usuario de la plataforma
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">{t("complex.ui.portal_subtarea_externa.grupo_proser")}</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight">{t("complex.ui.portal_subtarea_externa.apoyo_en_caso_complex")}</h1>
+          <p className="mt-1 text-sm text-slate-300">{t("complex.ui.portal_subtarea_externa.formulario_externo_no_requiere_usuario_de_la_plataforma")}</p>
         </div>
 
         <div className="space-y-5 px-6 py-6">
-          {loading && <p className="text-sm text-slate-500">Cargando…</p>}
+          {loading && <p className="text-sm text-slate-500">{t("complex.ui.portal_subtarea_externa.cargando")}</p>}
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
@@ -202,38 +202,33 @@ export default function PortalSubtareaExterna() {
                   <span className={`h-2.5 w-2.5 rounded-full ${sem.dot}`} />
                   {ESTADO_LABELS[data.estado] || data.estado}
                 </span>
-                <span className="text-xs text-slate-500">
-                  Caso {data.nmroAjste || '—'} · Límite {formatearFechaSubtarea(data.fechaLimite)}
+                <span className="text-xs text-slate-500">{t("complex.ui.portal_subtarea_externa.caso")}{data.nmroAjste || '—'}{t("complex.ui.portal_subtarea_externa.limite")}{formatearFechaSubtarea(data.fechaLimite)}
                 </span>
               </div>
 
               <div>
                 <h2 className="text-lg font-bold text-slate-900">{data.titulo}</h2>
                 {data.creadoPorNombre && (
-                  <p className="mt-1 text-sm text-slate-500">
-                    Solicitado por {data.creadoPorNombre}
+                  <p className="mt-1 text-sm text-slate-500">{t("complex.ui.portal_subtarea_externa.solicitado_por")}{data.creadoPorNombre}
                     {data.ciudadSiniestro ? ` · ${data.ciudadSiniestro}` : ''}
                   </p>
                 )}
                 {data.etapaTrazabilidad && (
-                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Etapa: {data.etapaTrazabilidad}
-                    {soloFecha ? ' · solo fechas (sin documento)' : ''}
+                  <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-400">{t("complex.ui.portal_subtarea_externa.etapa")}{data.etapaTrazabilidad}
+                    {soloFecha ? t('complex.ui.portal_subtarea_externa.solo_fechas') : ''}
                   </p>
                 )}
               </div>
 
               {data.descripcion && (
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Descripción</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("complex.ui.portal_subtarea_externa.descripcion")}</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{data.descripcion}</p>
                 </div>
               )}
               {data.instrucciones && (
                 <div className="rounded-xl bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Qué debe diligenciar
-                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("complex.ui.portal_subtarea_externa.que_debe_diligenciar")}</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{data.instrucciones}</p>
                 </div>
               )}
@@ -271,7 +266,7 @@ export default function PortalSubtareaExterna() {
                       onChange={(e) => setObs(e.target.value)}
                       placeholder={
                         soloFecha
-                          ? 'Observaciones (igual que en trazabilidad)…'
+                          ? t('complex.ui.portal_subtarea_externa.observaciones_placeholder')
                           : 'Describa lo realizado, hallazgos, pendientes…'
                       }
                     />
@@ -279,9 +274,7 @@ export default function PortalSubtareaExterna() {
 
                   {pideFechas && (
                     <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-                        Fechas de protocolo (trazabilidad)
-                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">{t("complex.ui.portal_subtarea_externa.fechas_de_protocolo_trazabilidad")}</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         {camposProtocoloDeEtapa(data.etapaTrazabilidad).map((c) => (
                           <div key={c.campo}>
@@ -304,18 +297,12 @@ export default function PortalSubtareaExterna() {
                           </div>
                         ))}
                       </div>
-                      <p className="text-xs text-slate-500">
-                        Estas fechas se envían a la trazabilidad del caso y alimentan los
-                        tiempos del protocolo.
-                      </p>
+                      <p className="text-xs text-slate-500">{t("complex.ui.portal_subtarea_externa.estas_fechas_se_envian_a_la_trazabilidad_del_caso_y_alim")}</p>
                     </div>
                   )}
 
                   {soloFecha ? (
-                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-                      Esta etapa no requiere documento ni informe: solo fechas y
-                      observaciones, igual que en la bandeja de trazabilidad.
-                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">{t("complex.ui.portal_subtarea_externa.esta_etapa_no_requiere_documento_ni_informe_solo_fechas_")}</div>
                   ) : (
                     <>
                       {requiereFormato && (
@@ -328,39 +315,27 @@ export default function PortalSubtareaExterna() {
                         >
                           {tieneFormato ? (
                             <p className="text-sm text-emerald-800">
-                              <span className="font-semibold">Informe generado y guardado en el caso.</span>{' '}
-                              Puede volver a abrir el formulario si necesita corregirlo, o marcar
-                              la tarea como completada.
-                            </p>
+                              <span className="font-semibold">{t("complex.ui.portal_subtarea_externa.informe_generado_y_guardado_en_el_caso")}</span>{' '}{t("complex.ui.portal_subtarea_externa.puede_volver_a_abrir_el_formulario_si_necesita_corregirl")}</p>
                           ) : (
                             <p className="text-sm text-amber-900">
-                              <span className="font-semibold">
-                                El entregable de esta tarea es el informe estandarizado.
-                              </span>{' '}
-                              Diligencie el formulario de ajuste de la plataforma; al guardarlo,
-                              el informe queda adjunto automáticamente al caso y a esta tarea.
-                            </p>
+                              <span className="font-semibold">{t("complex.ui.portal_subtarea_externa.el_entregable_de_esta_tarea_es_el_informe_estandarizado")}</span>{' '}{t("complex.ui.portal_subtarea_externa.diligencie_el_formulario_de_ajuste_de_la_plataforma_al_g")}</p>
                           )}
                           <Link
                             to={`/complex/subtarea/${token}/ajuste`}
                             className="inline-flex rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
-                          >
-                            Diligenciar formulario de ajuste (informe)
-                          </Link>
+                          >{t("complex.ui.portal_subtarea_externa.diligenciar_formulario_de_ajuste_informe")}</Link>
                         </div>
                       )}
 
                       <div>
-                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-                          Adjuntar archivo
-                        </label>
+                        <label className="mb-1.5 block text-sm font-semibold text-slate-700">{t("complex.ui.portal_subtarea_externa.adjuntar_archivo")}</label>
                         <select
                           className="mb-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
                           value={tipoArchivo}
                           onChange={(e) => setTipoArchivo(e.target.value)}
                         >
-                          <option value="documento">Documento</option>
-                          <option value="formato">Formato / informe</option>
+                          <option value="documento">{t("complex.ui.portal_subtarea_externa.documento")}</option>
+                          <option value="formato">{t("complex.ui.portal_subtarea_externa.formato_informe")}</option>
                         </select>
                         <input
                           type="file"
@@ -381,24 +356,18 @@ export default function PortalSubtareaExterna() {
                       disabled={saving}
                       onClick={() => guardar(false)}
                       className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-                    >
-                      Guardar avance
-                    </button>
+                    >{t("complex.ui.portal_subtarea_externa.guardar_avance")}</button>
                     <button
                       type="button"
                       disabled={saving || (requiereFormato && !tieneFormato)}
                       onClick={() => guardar(true)}
                       className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
-                    >
-                      Marcar completada
-                    </button>
+                    >{t("complex.ui.portal_subtarea_externa.marcar_completada")}</button>
                   </div>
                 </>
                 )
               ) : (
-                <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">
-                  Esta subtarea ya está {ESTADO_LABELS[data.estado] || data.estado}.
-                  {camposProtocoloDeEtapa(data.etapaTrazabilidad).map((c) => {
+                <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-700">{t("complex.ui.portal_subtarea_externa.esta_subtarea_ya_esta")}{ESTADO_LABELS[data.estado] || data.estado}{t("complex.ui.portal_subtarea_externa.texto")}{camposProtocoloDeEtapa(data.etapaTrazabilidad).map((c) => {
                     const valor =
                       data.fechasProtocolo?.[c.campo] ||
                       (c.campo === camposProtocoloDeEtapa(data.etapaTrazabilidad)[0]?.campo
@@ -407,7 +376,7 @@ export default function PortalSubtareaExterna() {
                     if (!valor) return null;
                     return (
                       <p key={c.campo} className="mt-1">
-                        {c.label}: <strong>{formatearFechaSubtarea(valor)}</strong>
+                        {c.label}{t("complex.ui.portal_subtarea_externa.texto_2")}<strong>{formatearFechaSubtarea(valor)}</strong>
                       </p>
                     );
                   })}
@@ -419,9 +388,7 @@ export default function PortalSubtareaExterna() {
                   type="button"
                   onClick={salirALogin}
                   className="text-xs font-semibold text-slate-500 underline hover:text-slate-800"
-                >
-                  Cerrar sesión externa
-                </button>
+                >{t("complex.ui.portal_subtarea_externa.cerrar_sesion_externa")}</button>
               )}
             </>
           )}

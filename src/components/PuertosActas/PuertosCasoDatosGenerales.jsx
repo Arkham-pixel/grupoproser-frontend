@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import SelectBuscable from '../SelectBuscable';
 import {
   puertosCard,
   puertosCardHeader,
@@ -69,24 +71,35 @@ export default function PuertosCasoDatosGenerales({
   aseguradoraOptions = [],
   responsables = [],
 }) {
+  const { t } = useTranslation();
+
   const handle = (e) => {
     const { name, value } = e.target;
     onChange(name, value);
   };
 
+  const opcionesCliente = useMemo(
+    () => aseguradoraOptions.map((a) => ({ value: a.value, label: a.label })),
+    [aseguradoraOptions]
+  );
+  const opcionesResponsable = useMemo(
+    () => responsables.map((r) => ({ value: r.value, label: r.label })),
+    [responsables]
+  );
+
   return (
     <div className="space-y-5">
-      <Seccion titulo="Identificación del caso">
-        <Campo label="Consecutivo">
+      <Seccion titulo={t('ports.ui.casoExportacion.datosGenerales.identificacionTitle')}>
+        <Campo label={t('ports.ui.casoExportacion.portada.consecutivo')}>
           <input
             className={inputCls}
             name="consecutivo"
             value={formData.consecutivo || ''}
             onChange={handle}
-            placeholder="Se genera al guardar si está vacío"
+            placeholder={t('ports.ui.casoExportacion.datosGenerales.consecutivoPlaceholder')}
           />
         </Campo>
-        <Campo label="Número de solicitud">
+        <Campo label={t('ports.ui.casoExportacion.portada.numeroSolicitud')}>
           <input
             className={inputCls}
             name="numeroSolicitud"
@@ -96,41 +109,33 @@ export default function PuertosCasoDatosGenerales({
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Cliente y responsable (patrón Complex)">
-        <Campo label="Cliente (aseguradora)" obligatorio>
-          <select
-            className={inputCls}
-            name="codiAsgrdra"
+      <Seccion titulo={t('ports.ui.casoExportacion.datosGenerales.clienteResponsableTitle')}>
+        <Campo label={t('ports.ui.casoExportacion.portada.cliente')} obligatorio>
+          <SelectBuscable
+            options={opcionesCliente}
             value={formData.codiAsgrdra || ''}
-            onChange={handle}
-          >
-            <option value="">Seleccionar cliente</option>
-            {aseguradoraOptions.map((a) => (
-              <option key={a.value} value={a.value}>
-                {a.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onChange('codiAsgrdra', v)}
+            placeholder={t('ports.ui.casoExportacion.datosGenerales.selectCliente')}
+            searchPlaceholder={t('ports.ui.common.searchList')}
+            noResultsText={t('ports.ui.common.noResults')}
+            buttonClassName={inputCls}
+          />
         </Campo>
-        <Campo label="Responsable del caso">
-          <select
-            className={inputCls}
-            name="codiRespnsble"
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.responsableCaso')}>
+          <SelectBuscable
+            options={opcionesResponsable}
             value={formData.codiRespnsble || ''}
-            onChange={handle}
-          >
-            <option value="">Seleccionar responsable</option>
-            {responsables.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => onChange('codiRespnsble', v)}
+            placeholder={t('ports.ui.casoExportacion.datosGenerales.selectResponsable')}
+            searchPlaceholder={t('ports.ui.common.searchList')}
+            noResultsText={t('ports.ui.common.noResults')}
+            buttonClassName={inputCls}
+          />
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Exportador y operación">
-        <Campo label="Nombre o razón social del exportador" obligatorio>
+      <Seccion titulo={t('ports.ui.casoExportacion.datosGenerales.exportadorOperacionTitle')}>
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.exportadorNombre')} obligatorio>
           <input
             className={inputCls}
             name="asgrBenfcro"
@@ -138,10 +143,10 @@ export default function PuertosCasoDatosGenerales({
             onChange={handle}
           />
         </Campo>
-        <Campo label="Actividad / mercancía">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.actividadMercancia')}>
           <input className={inputCls} name="actividad" value={formData.actividad || ''} onChange={handle} />
         </Campo>
-        <Campo label="Ciudad del riesgo / puerto">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.ciudadPuerto')}>
           <input
             className={inputCls}
             name="ciudadRiesgo"
@@ -149,10 +154,10 @@ export default function PuertosCasoDatosGenerales({
             onChange={handle}
           />
         </Campo>
-        <Campo label="Lugar de la operación">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.lugarOperacion')}>
           <input className={inputCls} name="lugar" value={formData.lugar || ''} onChange={handle} />
         </Campo>
-        <Campo label="Labor realizada" className="sm:col-span-2">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.laborRealizada')} className="sm:col-span-2">
           <input
             className={inputCls}
             name="laborRealizada"

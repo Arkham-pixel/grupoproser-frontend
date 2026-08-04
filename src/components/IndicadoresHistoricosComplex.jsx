@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Tooltip, XAxis, YAxis } from 'recharts';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
@@ -34,38 +35,42 @@ import {
   SelectFenix,
 } from './SubcomponenteCompex/ComplexUiBlocks.jsx';
 
-const INDICADORES_KPI = [
-  {
-    clave: 'promedioAsignacionContacto',
-    muestra: 'asignacionContacto',
-    titulo: 'Asignación → Primer contacto',
-    descripcion: 'Tiempo desde que se recibe la asignación hasta el primer contacto con el asegurado.',
-  },
-  {
-    clave: 'promedioContactoInspeccion',
-    muestra: 'contactoInspeccion',
-    titulo: 'Primer contacto → Inspección de campo',
-    descripcion: 'Tiempo desde el contacto inicial hasta la inspección en sitio.',
-  },
-  {
-    clave: 'promedioEtapaPreliminar',
-    muestra: 'etapaPreliminar',
-    titulo: 'Inspección o solicitud → Informe preliminar',
-    descripcion:
-      'Días hábiles desde la inspección o solicitud de documentos hasta el informe preliminar (excluye fines de semana y festivos).',
-  },
-  {
-    clave: 'promedioUltimoDocInformeFinal',
-    muestra: 'ultimoDocInformeFinal',
-    titulo: 'Último documento acreditado → Informe final',
-    descripcion:
-      'Días hábiles desde la acreditación del último documento hasta el informe final (excluye fines de semana y festivos).',
-  },
-];
-
 const IndicadoresHistoricosComplex = ({ embedded = false }) => {
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const dateLang = String(i18n.language || 'es').toLowerCase().startsWith('en') ? 'en' : 'es';
+  const datePlaceholder = t('complex.ui.indicadores_historicos_complex.placeholder_fecha');
+
+  const INDICADORES_KPI = useMemo(
+    () => [
+      {
+        clave: 'promedioAsignacionContacto',
+        muestra: 'asignacionContacto',
+        titulo: t('complex.ui.indicadores_historicos_complex.kpi_asignacion_contacto'),
+        descripcion: t('complex.ui.indicadores_historicos_complex.kpi_asignacion_contacto_desc'),
+      },
+      {
+        clave: 'promedioContactoInspeccion',
+        muestra: 'contactoInspeccion',
+        titulo: t('complex.ui.indicadores_historicos_complex.kpi_contacto_inspeccion'),
+        descripcion: t('complex.ui.indicadores_historicos_complex.kpi_contacto_inspeccion_desc'),
+      },
+      {
+        clave: 'promedioEtapaPreliminar',
+        muestra: 'etapaPreliminar',
+        titulo: t('complex.ui.indicadores_historicos_complex.kpi_inspeccion_preliminar'),
+        descripcion: t('complex.ui.indicadores_historicos_complex.kpi_inspeccion_preliminar_desc'),
+      },
+      {
+        clave: 'promedioUltimoDocInformeFinal',
+        muestra: 'ultimoDocInformeFinal',
+        titulo: t('complex.ui.indicadores_historicos_complex.kpi_ultimo_doc_final'),
+        descripcion: t('complex.ui.indicadores_historicos_complex.kpi_ultimo_doc_final_desc'),
+      },
+    ],
+    [t]
+  );
 
   const [casos, setCasos] = useState([]);
   const [responsables, setResponsables] = useState([]);
@@ -132,7 +137,7 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
     }
 
     const codigo = caso.codiRespnsble ?? caso.codi_responble ?? caso.responsable;
-    if (!codigo || codigo === 'Sin asignar') return 'Sin asignar';
+    if (!codigo || codigo === 'Sin asignar') return t('complex.ui.indicadores_historicos_complex.sin_asignar');
 
     const responsable = responsables.find(
       (r) =>
@@ -171,19 +176,20 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
   );
 
   const responsablesUnicos = useMemo(() => {
-    const nombres = new Set(['Sin asignar']);
+    const sinAsignar = t('complex.ui.indicadores_historicos_complex.sin_asignar');
+    const nombres = new Set([sinAsignar]);
     casos.forEach((caso) => {
       const nombre = getNombreResponsable(caso);
       if (nombre) nombres.add(nombre);
     });
     return Array.from(nombres)
       .sort((a, b) => {
-        if (a === 'Sin asignar') return -1;
-        if (b === 'Sin asignar') return 1;
+        if (a === sinAsignar) return -1;
+        if (b === sinAsignar) return 1;
         return a.localeCompare(b);
       })
       .map((nombre) => ({ value: nombre, label: nombre }));
-  }, [casos, responsables]);
+  }, [casos, responsables, t]);
 
   const chartEsperaDocumentos = useMemo(
     () =>
@@ -226,35 +232,41 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
         {!embedded && (
           <ComplexPageHeader
             badge="Complex"
-            title="Indicadores históricos de gestión"
+            title={t("complex.ui.indicadores_historicos_complex.indicadores_historicos_de_gestion")}
             subtitle={`Tiempos de trazabilidad desde ${FECHA_INICIO_INDICADORES_COMPLEX_LABEL} a la fecha. Los promedios se calculan por responsable (ajustador asignado al caso).`}
             activePath="/complex/indicadores-alertas"
           />
         )}
 
         <ComplexFilterSection
-          title="Filtros de búsqueda"
+          title={t("complex.ui.indicadores_historicos_complex.filtros_de_busqueda")}
           showClear={Boolean(fechaHasta || responsableFiltro || fechaDesde !== '2025-01-01')}
           onClear={limpiarFiltros}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Campo label="Desde">
+            <Campo label={t("complex.ui.indicadores_historicos_complex.desde")}>
               <InputFenix
                 type="date"
+                lang={dateLang}
+                title={datePlaceholder}
+                placeholder={datePlaceholder}
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
               />
             </Campo>
-            <Campo label="Hasta">
+            <Campo label={t("complex.ui.indicadores_historicos_complex.hasta")}>
               <InputFenix
                 type="date"
+                lang={dateLang}
+                title={datePlaceholder}
+                placeholder={datePlaceholder}
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
               />
             </Campo>
-            <Campo label="Responsable">
+            <Campo label={t("complex.ui.indicadores_historicos_complex.responsable")}>
               <SelectFenix value={responsableFiltro} onChange={(e) => setResponsableFiltro(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t("complex.ui.indicadores_historicos_complex.todos")}</option>
                 {responsablesUnicos.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
@@ -266,55 +278,54 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
         </ComplexFilterSection>
 
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          {indicadoresGlobales.totalCasos} siniestro(s) en el periodo seleccionado
-          {responsableFiltro ? ` · filtrado por ${responsableFiltro}` : ''}.
-        </p>
+          {indicadoresGlobales.totalCasos}{t("complex.ui.indicadores_historicos_complex.siniestro_s_en_el_periodo_seleccionado")}{responsableFiltro ? t('complex.ui.indicadores_historicos_complex.filtrado_por', { nombre: responsableFiltro }) : ''}{t("complex.ui.indicadores_historicos_complex.texto")}</p>
 
-        <section aria-label="Indicadores globales">
-          <h2 className={complexSectionTitle}>Resumen del periodo</h2>
+        <section aria-label={t("complex.ui.indicadores_historicos_complex.indicadores_globales")}>
+          <h2 className={complexSectionTitle}>{t("complex.ui.indicadores_historicos_complex.resumen_del_periodo")}</h2>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {INDICADORES_KPI.map((ind) => (
               <ComplexMetricCard
                 key={ind.clave}
                 label={ind.titulo}
                 value={formatearTiempoPromedio(indicadoresGlobales[ind.clave])}
-                hint={`${indicadoresGlobales.muestras[ind.muestra]} caso(s) con ambas fechas · ${ind.descripcion}`}
+                hint={t('complex.ui.indicadores_historicos_complex.casos_ambas_fechas', {
+                  count: indicadoresGlobales.muestras[ind.muestra],
+                  descripcion: ind.descripcion,
+                })}
               />
             ))}
             <ComplexMetricCard
-              label="Cerrados (facturado)"
+              label={t("complex.ui.indicadores_historicos_complex.cerrados_facturado")}
               value={String(indicadoresGlobales.cerradosPeriodo ?? 0)}
-              hint="Casos con estado FACTURADO en el periodo (cierre operativo del área)."
+              hint={t("complex.ui.indicadores_historicos_complex.casos_con_estado_facturado_en_el_periodo_cierre_operativ")}
             />
             <ComplexMetricCard
-              label="En espera de documentos"
+              label={t("complex.ui.indicadores_historicos_complex.en_espera_de_documentos")}
               value={String(indicadoresGlobales.casosEsperaDocumentos)}
-              hint="Siniestros con inspección o solicitud de documentos realizada, sin último documento ni informe final (estado actual)."
+              hint={t("complex.ui.indicadores_historicos_complex.siniestros_con_inspeccion_o_solicitud_de_documentos_real")}
             />
           </div>
         </section>
 
-        <section aria-label="Indicadores por responsable" className="mt-8">
-          <h2 className={complexSectionTitle}>Desglose por responsable</h2>
+        <section aria-label={t("complex.ui.indicadores_historicos_complex.indicadores_por_responsable")} className="mt-8">
+          <h2 className={complexSectionTitle}>{t("complex.ui.indicadores_historicos_complex.desglose_por_responsable")}</h2>
           <div className={complexTableWrap}>
             <table className={complexTableSimple}>
               <thead>
                 <tr className={complexTableHead}>
-                  <th className="text-left">Responsable</th>
-                  <th className="text-right">Casos</th>
-                  <th className="text-right">Asignación → Primer contacto</th>
-                  <th className="text-right">Primer contacto → Inspección</th>
-                  <th className="text-right">Inspección o solicitud → Preliminar</th>
-                  <th className="text-right">Último documento → Informe final</th>
-                  <th className="text-right">Espera docs.</th>
+                  <th className="text-left">{t("complex.ui.indicadores_historicos_complex.responsable")}</th>
+                  <th className="text-right">{t("complex.ui.indicadores_historicos_complex.casos")}</th>
+                  <th className="text-right">{t("complex.ui.indicadores_historicos_complex.asignacion_primer_contacto")}</th>
+                  <th className="text-right">{t("complex.ui.indicadores_historicos_complex.primer_contacto_inspeccion")}</th>
+                  <th className="text-right">{t("complex.ui.indicadores_historicos_complex.inspeccion_o_solicitud_preliminar")}</th>
+                  <th className="text-right">{t("complex.ui.indicadores_historicos_complex.ultimo_documento_informe_final")}</th>
+                  <th className="text-right">{t("complex.ui.indicadores_historicos_complex.espera_docs")}</th>
                 </tr>
               </thead>
               <tbody>
                 {indicadoresPorResponsable.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">
-                      No hay casos para los filtros seleccionados.
-                    </td>
+                    <td colSpan={7} className="px-4 py-6 text-center text-sm text-gray-500">{t("complex.ui.indicadores_historicos_complex.no_hay_casos_para_los_filtros_seleccionados")}</td>
                   </tr>
                 ) : (
                   indicadoresPorResponsable.map((fila) => (
@@ -327,33 +338,25 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatearTiempoPromedio(fila.promedioAsignacionContacto)}
                         {fila.muestras.asignacionContacto > 0 && (
-                          <span className="ml-1 text-xs text-gray-400">
-                            ({fila.muestras.asignacionContacto})
-                          </span>
+                          <span className="ml-1 text-xs text-gray-400">{t("complex.ui.indicadores_historicos_complex.texto_2")}{fila.muestras.asignacionContacto}{t("complex.ui.indicadores_historicos_complex.texto_3")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatearTiempoPromedio(fila.promedioContactoInspeccion)}
                         {fila.muestras.contactoInspeccion > 0 && (
-                          <span className="ml-1 text-xs text-gray-400">
-                            ({fila.muestras.contactoInspeccion})
-                          </span>
+                          <span className="ml-1 text-xs text-gray-400">{t("complex.ui.indicadores_historicos_complex.texto_2")}{fila.muestras.contactoInspeccion}{t("complex.ui.indicadores_historicos_complex.texto_3")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatearTiempoPromedio(fila.promedioEtapaPreliminar)}
                         {fila.muestras.etapaPreliminar > 0 && (
-                          <span className="ml-1 text-xs text-gray-400">
-                            ({fila.muestras.etapaPreliminar})
-                          </span>
+                          <span className="ml-1 text-xs text-gray-400">{t("complex.ui.indicadores_historicos_complex.texto_2")}{fila.muestras.etapaPreliminar}{t("complex.ui.indicadores_historicos_complex.texto_3")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums">
                         {formatearTiempoPromedio(fila.promedioUltimoDocInformeFinal)}
                         {fila.muestras.ultimoDocInformeFinal > 0 && (
-                          <span className="ml-1 text-xs text-gray-400">
-                            ({fila.muestras.ultimoDocInformeFinal})
-                          </span>
+                          <span className="ml-1 text-xs text-gray-400">{t("complex.ui.indicadores_historicos_complex.texto_2")}{fila.muestras.ultimoDocInformeFinal}{t("complex.ui.indicadores_historicos_complex.texto_3")}</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-semibold text-amber-600 dark:text-amber-400">
@@ -365,14 +368,12 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
-            Entre paréntesis: cantidad de casos con ambas fechas registradas para calcular el promedio.
-          </p>
+          <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">{t("complex.ui.indicadores_historicos_complex.entre_parentesis_cantidad_de_casos_con_ambas_fechas_regi")}</p>
         </section>
 
         {chartEsperaDocumentos.length > 0 && (
-          <section className="mt-8" aria-label="Gráfica espera de documentos">
-            <ComplexChartCard title="Siniestros en espera de documentos por responsable">
+          <section className="mt-8" aria-label={t("complex.ui.indicadores_historicos_complex.grafica_espera_de_documentos")}>
+            <ComplexChartCard title={t("complex.ui.indicadores_historicos_complex.siniestros_en_espera_de_documentos_por_responsable")}>
               <ComplexChartPlot height={Math.max(280, chartEsperaDocumentos.length * 36)}>
                 <BarChart
                   data={chartEsperaDocumentos}
@@ -389,7 +390,7 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(value) => [value, 'En espera']}
+                    formatter={(value) => [value, t('complex.ui.indicadores_historicos_complex.en_espera')]}
                     labelFormatter={(_, payload) => payload?.[0]?.payload?.nombreCompleto || ''}
                   />
                   <Bar dataKey="cantidad" radius={[0, 4, 4, 0]} maxBarSize={28}>

@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function SeccionRiicp004Puertos({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -19,8 +21,8 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
 
   const codigo = formData.codigoInforme?.trim();
   const tituloSeccion = codigo
-    ? `📄 Informe ${codigo} — Inspección de Asegurado`
-    : '📄 Inspección de Asegurado';
+    ? t('ports.ui.formulario.riicp004.seccion.tituloConCodigo', { codigo })
+    : t('ports.ui.formulario.riicp004.seccion.tituloSinCodigo');
 
   return (
     <div
@@ -35,14 +37,14 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
           {tituloSeccion}
         </h3>
         <p className="text-xs mt-1" style={{ color: textSecondary }}>
-          Formato oficial de informe de inspección vehicular en patios (Seguros Bolívar / asegurado).
+          {t('ports.ui.formulario.riicp004.seccion.descripcion')}
         </p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Código del informe
+            {t('ports.ui.formulario.riicp004.seccion.codigoInforme')}
           </label>
           <input
             type="text"
@@ -50,13 +52,13 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('codigoInforme', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: RII-CP-004"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.codigoInformePlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Asegurado
+            {t('ports.ui.formulario.riicp004.seccion.asegurado')}
           </label>
           <input
             type="text"
@@ -64,13 +66,13 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('asegurado', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: METROKIA"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.aseguradoPlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Patio / Operación
+            {t('ports.ui.formulario.riicp004.seccion.patioOperacion')}
           </label>
           <input
             type="text"
@@ -78,13 +80,13 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('patioOperacion', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: ASPORTRANS OP"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.patioOperacionPlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            N° Póliza / Referencia
+            {t('ports.ui.formulario.riicp004.seccion.numeroPoliza')}
           </label>
           <input
             type="text"
@@ -92,13 +94,13 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('numeroPoliza', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: BV635262/2026"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.numeroPolizaPlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Fecha póliza
+            {t('ports.ui.formulario.riicp004.seccion.fechaPoliza')}
           </label>
           <input
             type="date"
@@ -111,7 +113,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Versión
+            {t('ports.ui.formulario.riicp004.seccion.version')}
           </label>
           <input
             type="text"
@@ -127,7 +129,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Fechas de descargue (texto)
+            {t('ports.ui.formulario.riicp004.seccion.fechasDescargue')}
           </label>
           <input
             type="text"
@@ -135,13 +137,13 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('fechasDescargue', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: 3, 4, 5, 9 y 10 de junio 2026"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.fechasDescarguePlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Inspectores
+            {t('ports.ui.formulario.riicp004.seccion.inspectores')}
           </label>
           <input
             type="text"
@@ -149,7 +151,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('inspectores', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: Brayan Aguirre y Jimmy Grueso"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.inspectoresPlaceholder')}
             disabled={cargando}
           />
         </div>
@@ -157,7 +159,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
 
       <div className="mb-4">
         <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-          Bill of Lading (BLs)
+          {t('ports.ui.formulario.riicp004.seccion.billOfLading')}
         </label>
         <textarea
           value={formData.listaBLs || formData.billOfLading || ''}
@@ -175,7 +177,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Origen / procedencia (texto en el saludo)
+            {t('ports.ui.formulario.riicp004.seccion.origenProcedencia')}
           </label>
           <input
             type="text"
@@ -183,16 +185,16 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('origenImportacion', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: Inchón – Corea"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.origenProcedenciaPlaceholder')}
             disabled={cargando}
           />
           <p className="text-xs mt-1" style={{ color: textSecondary }}>
-            Aparece en el Word después de los BLs: «…amparados con los BLs. …, de Inchón – Corea, descargue…»
+            {t('ports.ui.formulario.riicp004.seccion.origenProcedenciaAyuda')}
           </p>
         </div>
         <div>
           <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-            Fechas de inspección (texto)
+            {t('ports.ui.formulario.riicp004.seccion.fechasInspeccion')}
           </label>
           <input
             type="text"
@@ -200,7 +202,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             onChange={(e) => onInputChange('fechasInspeccion', e.target.value)}
             className={inputClass}
             style={inputStyle}
-            placeholder="Ej: 30 de mayo de 2026"
+            placeholder={t('ports.ui.formulario.riicp004.seccion.fechasInspeccionPlaceholder')}
             disabled={cargando}
           />
         </div>
@@ -208,7 +210,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
 
       <div className="mb-4">
         <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-          Modelos de vehículos
+          {t('ports.ui.formulario.riicp004.seccion.modelosVehiculos')}
         </label>
         <input
           type="text"
@@ -222,7 +224,7 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
 
       <div className="mb-4">
         <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-          Texto introductorio — sección 2 OBSERVACIONES
+          {t('ports.ui.formulario.riicp004.seccion.textoObservaciones')}
         </label>
         <textarea
           value={formData.textoObservacionesGeneral || ''}
@@ -230,11 +232,11 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
           rows={4}
           className="w-full rounded px-2 py-1.5 text-sm"
           style={inputStyle}
-          placeholder="Ej: En el momento de la inspección los vehículos están separados por filas..."
+          placeholder={t('ports.ui.formulario.riicp004.seccion.textoObservacionesPlaceholder')}
           disabled={cargando}
         />
         <p className="text-xs mt-1" style={{ color: textSecondary }}>
-          Debajo de este texto va la tabla VIN / observaciones del vehículo.
+          {t('ports.ui.formulario.riicp004.seccion.textoObservacionesAyuda')}
         </p>
       </div>
     </div>

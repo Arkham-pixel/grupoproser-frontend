@@ -1,4 +1,5 @@
 // Utilidades para manejo correcto de fechas evitando problemas de zona horaria
+import { getAppLocale, getIntlLocale, formatDate } from './locale.js';
 
 /**
  * Convierte una fecha en formato ISO (YYYY-MM-DD) o string a una fecha local
@@ -255,17 +256,20 @@ export const convertirFechaParaExcelDate = (fecha) => {
 /**
  * Formatea una fecha para exportación a Word
  * @param {string|Date} fecha - Fecha a formatear
- * @param {string} locale - Locale para el formateo (default: 'es-CO')
+ * @param {string} locale - 'es'|'en' o BCP-47 ('es-CO'|'en-US'); default app locale
+ * @param {object} [options] - Opciones Intl.DateTimeFormat
  * @returns {string} - Fecha formateada para Word
  */
-export const formatearFechaParaWord = (fecha, locale = 'es-CO') => {
+export const formatearFechaParaWord = (fecha, locale, options = {}) => {
   const fechaLocal = crearFechaLocal(fecha);
   if (!fechaLocal) return '';
-  
-  return fechaLocal.toLocaleDateString(locale, {
+
+  const intlLocale = getIntlLocale(locale || getAppLocale());
+  return formatDate(fechaLocal, intlLocale, {
     day: '2-digit',
     month: '2-digit',
-    year: 'numeric'
+    year: 'numeric',
+    ...options,
   });
 };
 
@@ -292,20 +296,21 @@ export const obtenerFechaHoraActualISO = () => {
 /**
  * Formatea una fecha con hora para mostrar en la interfaz
  * @param {string|Date} fecha - Fecha a formatear
- * @param {string} locale - Locale para el formateo (default: 'es-ES')
+ * @param {string} [locale] - Locale BCP-47 o es|en; default getIntlLocale(getAppLocale())
  * @returns {string} - Fecha y hora formateada
  */
-export const formatearFechaHoraUI = (fecha, locale = 'es-ES') => {
+export const formatearFechaHoraUI = (fecha, locale) => {
   const fechaLocal = crearFechaLocal(fecha);
   if (!fechaLocal) return '';
-  
-  return fechaLocal.toLocaleString(locale, {
+
+  const intlLocale = getIntlLocale(locale || getAppLocale());
+  return fechaLocal.toLocaleString(intlLocale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   });
 };
 
@@ -314,11 +319,11 @@ export const formatearFechaHoraUI = (fecha, locale = 'es-ES') => {
  * @returns {string} - Hora actual en formato HH:MM:SS
  */
 export const obtenerHoraActualColombia = () => {
-  return new Date().toLocaleTimeString('es-CO', { 
+  return new Date().toLocaleTimeString(getIntlLocale(getAppLocale()), {
     timeZone: 'America/Bogota',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   });
 };
 
@@ -341,11 +346,11 @@ export const formatearHoraColombia = (fecha) => {
   if (!fecha) return '';
   const fechaLocal = crearFechaLocal(fecha);
   if (!fechaLocal) return '';
-  
-  return fechaLocal.toLocaleTimeString('es-CO', { 
+
+  return fechaLocal.toLocaleTimeString(getIntlLocale(getAppLocale()), {
     timeZone: 'America/Bogota',
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit'
+    second: '2-digit',
   });
 };

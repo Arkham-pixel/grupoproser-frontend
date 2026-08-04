@@ -1,18 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaChartLine, FaPlus, FaTable } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { expressBadge, expressPageSubtitle, expressPageTitle } from '../SubcomponenteExpress/expressFenixUi.js';
 
 const NAV_PROPIEDADES = [
-  { path: '/propiedades/carga', icon: FaPlus, label: 'Nuevo caso' },
-  { path: '/propiedades/dashboard', icon: FaChartLine, label: 'Dashboard' },
-  { path: '/propiedades/reporte', icon: FaTable, label: 'Reporte' },
+  { path: '/propiedades/carga', icon: FaPlus, key: 'newCase' },
+  { path: '/propiedades/dashboard', icon: FaChartLine, key: 'dashboard' },
+  { path: '/propiedades/reporte', icon: FaTable, key: 'report' },
 ];
 
 export function PropiedadesNavTabs({ activePath }) {
+  const { t } = useTranslation();
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Navegación Propiedades">
-      {NAV_PROPIEDADES.map(({ path, icon: Icon, label }) => {
+    <nav className="flex flex-wrap gap-2" aria-label={t('properties.navigation')}>
+      {NAV_PROPIEDADES.map(({ path, icon: Icon, key }) => {
         const activo =
           activePath === path ||
           (path === '/propiedades/carga' && String(activePath || '').startsWith('/propiedades/carga'));
@@ -27,7 +29,7 @@ export function PropiedadesNavTabs({ activePath }) {
             }`}
           >
             <Icon className="text-sm" />
-            {label}
+            {t(`properties.nav.${key}`)}
           </Link>
         );
       })}

@@ -1,5 +1,7 @@
-import React from 'react';
-import { Seccion, Campo, inputCls, attrsInput, attrsSelect, attrsTextarea } from './PuertosCasoDatosGenerales';
+import React, { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import SelectBuscable from '../SelectBuscable';
+import { Seccion, Campo, inputCls, attrsInput, attrsTextarea } from './PuertosCasoDatosGenerales';
 
 export default function PuertosCasoPagina2({
   formData,
@@ -8,19 +10,26 @@ export default function PuertosCasoPagina2({
   responsables = [],
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
+
   const handle = (e) => {
     onChange(e.target.name, e.target.value);
   };
 
   const informe = formData.informeExportacion || {};
 
+  const opcionesInspector = useMemo(
+    () => responsables.map((r) => ({ value: r.value, label: r.label })),
+    [responsables]
+  );
+
   return (
     <div className="space-y-5">
-      <Seccion titulo="Datos generales">
-        <Campo label="Nombre o razón social (exportador)" obligatorio>
+      <Seccion titulo={t('ports.ui.casoExportacion.datosGenerales.sectionTitle')}>
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.exportador')} obligatorio>
           <input {...attrsInput(soloLectura, { className: inputCls, name: 'asgrBenfcro', value: formData.asgrBenfcro || '', onChange: handle })} />
         </Campo>
-        <Campo label="Actividad">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.actividad')}>
           <input
             className={inputCls}
             name="actividad"
@@ -29,7 +38,7 @@ export default function PuertosCasoPagina2({
             placeholder="ELABORACIÓN DE PRODUCTOS DE MOLINERÍA"
           />
         </Campo>
-        <Campo label="Solicitado por">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.solicitadoPor')}>
           <input
             className={inputCls}
             name="funcAsgrdraNombre"
@@ -38,10 +47,10 @@ export default function PuertosCasoPagina2({
             placeholder="ING. CARLOS BARRIOS G – JORGE RUÍZ, PRECOCIDOS DEL ORIENTE"
           />
         </Campo>
-        <Campo label="Fecha asignación">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.fechaAsignacion')}>
           <input type="date" className={inputCls} name="fchaAsgncion" value={formData.fchaAsgncion || ''} onChange={handle} />
         </Campo>
-        <Campo label="Ciudad del riesgo">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.ciudadRiesgo')}>
           <input
             className={inputCls}
             name="ciudadRiesgo"
@@ -50,10 +59,10 @@ export default function PuertosCasoPagina2({
             placeholder="BARRANQUILLA, ATLÁNTICO"
           />
         </Campo>
-        <Campo label="Labor realizada">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.laborRealizada')}>
           <input className={inputCls} name="laborRealizada" value={formData.laborRealizada || ''} onChange={handle} />
         </Campo>
-        <Campo label="Lugar" className="sm:col-span-2">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.lugar')} className="sm:col-span-2">
           <input
             className={inputCls}
             name="lugar"
@@ -62,38 +71,40 @@ export default function PuertosCasoPagina2({
             placeholder="SPRB PATIO 14 ENMALLADO DE EXPORTACIÓN – BODEGA 9"
           />
         </Campo>
-        <Campo label="Fecha inspección">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.fechaInspeccion')}>
           <input type="date" className={inputCls} name="fchaInspccion" value={formData.fchaInspccion || ''} onChange={handle} />
         </Campo>
-        <Campo label="Inspector" obligatorio>
-          <select className={inputCls} name="codiRespnsble" value={formData.codiRespnsble || ''} onChange={handle}>
-            <option value="">Seleccionar inspector</option>
-            {responsables.map((r) => (
-              <option key={r.value} value={r.value}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.inspector')} obligatorio>
+          <SelectBuscable
+            options={opcionesInspector}
+            value={formData.codiRespnsble || ''}
+            onChange={(v) => onChange('codiRespnsble', v)}
+            placeholder={t('ports.ui.casoExportacion.datosGenerales.selectInspector')}
+            searchPlaceholder={t('ports.ui.common.searchList')}
+            noResultsText={t('ports.ui.common.noResults')}
+            buttonClassName={inputCls}
+            disabled={soloLectura}
+          />
         </Campo>
       </Seccion>
 
-      <Seccion titulo="1. Introducción" cols={1}>
-        <Campo label="Párrafo principal">
+      <Seccion titulo={t('ports.ui.casoExportacion.datosGenerales.introduccionTitle')} cols={1}>
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.parrafoPrincipal')}>
           <textarea
             {...attrsTextarea(soloLectura, {
               className: `${inputCls} min-h-[140px]`,
               value: informe.introduccion || '',
               onChange: (e) => onInformeChange('introduccion', e.target.value),
-              placeholder: 'Por instrucciones de Seguros Bolívar S.A., Proserpuertos Ltda. ha sido nominada para...',
+              placeholder: t('ports.ui.casoExportacion.datosGenerales.introduccionPlaceholder'),
             })}
           />
         </Campo>
-        <Campo label="Propósito de la supervisión">
+        <Campo label={t('ports.ui.casoExportacion.datosGenerales.propositoSupervision')}>
           <textarea
             className={`${inputCls} min-h-[100px]`}
             value={informe.proposito || ''}
             onChange={(e) => onInformeChange('proposito', e.target.value)}
-            placeholder="El propósito de esta supervisión, control de descargue y recibo, es realizar inspección de riesgos..."
+            placeholder={t('ports.ui.casoExportacion.datosGenerales.propositoPlaceholder')}
           />
         </Campo>
       </Seccion>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaMapMarkerAlt, FaSearch, FaCrosshairs, FaInfoCircle, FaGlobe, FaMap, FaHandPointer } from 'react-icons/fa';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -29,6 +30,7 @@ function MapEvents({ onMapClick, onMarkerDragEnd }) {
 }
 
 export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaChange }) {
+  const { t } = useTranslation();
   const [posicion, setPosicion] = useState([4.5709, -74.2973]); // Centro de Colombia por defecto
   const [cargando, setCargando] = useState(true);
   const [mapaListo, setMapaListo] = useState(false);
@@ -82,7 +84,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
         console.error("Error al obtener ubicación:", err);
         // Mantener ubicación por defecto: Centro de Colombia
         setCargando(false);
-        setError('No se pudo obtener tu ubicación. Usando ubicación por defecto.');
+        setError(t('adjustment.ui.mapa.geolocationError'));
       },
       {
         timeout: 10000, // 10 segundos de timeout
@@ -119,7 +121,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
   // Buscar ubicación por dirección (geocodificación básica)
   const buscarUbicacion = async () => {
     if (!direccionCompleta) {
-      setError('No hay dirección configurada para buscar.');
+      setError(t('adjustment.ui.mapa.noAddress'));
       return;
     }
 
@@ -156,18 +158,18 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
         
 setError(null);
       } else {
-        setError('No se pudo encontrar la ubicación exacta. Verifica la dirección.');
+        setError(t('adjustment.ui.mapa.searchError'));
       }
     } catch (error) {
       console.error('Error en geocodificación:', error);
       
       // Mensaje de error más específico
       if (error.message.includes('CSP') || error.message.includes('Content Security Policy')) {
-        setError('Error de seguridad del navegador. Contacta al administrador para configurar los permisos necesarios.');
+        setError(t('adjustment.ui.mapa.connectionError'));
       } else if (error.message.includes('Failed to fetch')) {
-        setError('Error de conexión. Verifica tu conexión a internet e intenta nuevamente.');
+        setError(t('adjustment.ui.mapa.connectionError'));
       } else {
-        setError('Error al buscar la ubicación. Intenta nuevamente.');
+        setError(t('adjustment.ui.mapa.searchError'));
       }
     } finally {
       setCargando(false);
@@ -177,7 +179,7 @@ setError(null);
   // Nueva función para búsqueda libre de direcciones
   const buscarDireccionLibre = async () => {
     if (!busquedaLibre.trim()) {
-      setError('Por favor ingresa una dirección para buscar.');
+      setError(t('adjustment.ui.mapa.searchError'));
       return;
     }
 
@@ -221,18 +223,18 @@ setError(null);
         setBusquedaLibre('');
         
       } else {
-        setError('No se pudo encontrar la dirección ingresada. Verifica la ortografía o intenta con una dirección más específica.');
+        setError(t('adjustment.ui.mapa.searchError'));
       }
     } catch (error) {
       console.error('Error en búsqueda libre:', error);
       
       // Mensaje de error más específico
       if (error.message.includes('CSP') || error.message.includes('Content Security Policy')) {
-        setError('Error de seguridad del navegador. Contacta al administrador para configurar los permisos necesarios.');
+        setError(t('adjustment.ui.mapa.connectionError'));
       } else if (error.message.includes('Failed to fetch')) {
-        setError('Error de conexión. Verifica tu conexión a internet e intenta nuevamente.');
+        setError(t('adjustment.ui.mapa.connectionError'));
       } else {
-        setError('Error al buscar la dirección. Intenta nuevamente.');
+        setError(t('adjustment.ui.mapa.searchError'));
       }
     } finally {
       setBuscando(false);
@@ -277,7 +279,7 @@ setError(null);
   const toggleModoEdicion = () => {
     setModoEdicion(!modoEdicion);
     if (!modoEdicion) {
-      setError('Modo edición activado: Haz clic en el mapa o arrastra el marcador para ajustar la ubicación');
+      setError(t('adjustment.ui.mapa.editMode'));
     } else {
       setError(null);
     }
@@ -387,12 +389,12 @@ setCargando(false);
         },
         (error) => {
           setCargando(false);
-          setError('No se pudo obtener tu ubicación actual. Verifica los permisos del navegador.');
+          setError(t('adjustment.ui.mapa.geolocationError'));
           console.error('Error de geolocalización:', error);
         }
       );
     } else {
-      setError('Tu navegador no soporta geolocalización.');
+      setError(t('adjustment.ui.mapa.geolocationError'));
     }
   };
 
@@ -406,9 +408,9 @@ setCargando(false);
       <div className="border-b border-gray-200 pb-4">
         <h2 className="text-2xl font-bold text-gray-900 flex items-center">
           <FaMap className="mr-3 text-red-600" />
-          🗺️ MAPA DE UBICACIÓN DEL SINIESTRO
+          {t('adjustment.ui.mapa.title')}
         </h2>
-        <p className="text-gray-600 mt-2">Visualización geográfica de la ubicación del incidente usando OpenStreetMap</p>
+        <p className="text-gray-600 mt-2">{t('adjustment.ui.mapa.subtitle')}</p>
       </div>
 
       {/* Panel de información y controles */}
@@ -418,14 +420,14 @@ setCargando(false);
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaMapMarkerAlt className="mr-2 text-red-500" />
-              Información de Ubicación
+              {t('adjustment.ui.mapa.locationInfo')}
             </h3>
             
             <div className="space-y-3">
               {/* Campo de búsqueda libre */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  🔍 Buscar Dirección Libre:
+                  {t('adjustment.ui.mapa.freeAddressSearch')}
                 </label>
                 <div className="flex space-x-2">
                   <input
@@ -433,7 +435,7 @@ setCargando(false);
                     value={busquedaLibre}
                     onChange={(e) => setBusquedaLibre(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Ej: Calle 123 #45-67, Bogotá"
+                    placeholder={t('adjustment.ui.mapa.addressPlaceholder')}
                     className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     disabled={buscando}
                   />
@@ -442,7 +444,7 @@ setCargando(false);
                     disabled={!busquedaLibre.trim() || buscando}
                     className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors text-sm disabled:cursor-not-allowed"
                   >
-                    {buscando ? '🔍' : 'Buscar'}
+                    {buscando ? '🔍' : t('adjustment.ui.mapa.search')}
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -452,11 +454,11 @@ setCargando(false);
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Dirección Actual:
+                  {t('adjustment.ui.mapa.currentAddress')}
                 </label>
                 <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                   <p className="text-gray-800 font-medium">
-                    {direccionCompleta || 'No hay dirección configurada'}
+                    {direccionCompleta || t('adjustment.ui.mapa.noAddress')}
                   </p>
                 </div>
               </div>
@@ -464,7 +466,7 @@ setCargando(false);
               {coordenadas && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Coordenadas GPS:
+                    {t('adjustment.ui.mapa.gpsCoordinates')}
                   </label>
                   <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                     <p className="text-blue-800 font-mono text-sm">
@@ -484,7 +486,7 @@ setCargando(false);
               )}
 
               <div className="text-xs text-gray-500">
-                Estado del mapa: {mapaListo ? '✅ Listo' : '⏳ Cargando...'}
+                {t('adjustment.ui.mapa.mapStatus')} {mapaListo ? t('adjustment.ui.mapa.ready') : t('adjustment.ui.mapa.loading')}
               </div>
             </div>
           </div>
@@ -493,7 +495,7 @@ setCargando(false);
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800 flex items-center">
               <FaGlobe className="mr-2 text-blue-500" />
-              Controles del Mapa
+              {t('adjustment.ui.mapa.mapControls')}
             </h3>
             
             <div className="space-y-3">
@@ -503,7 +505,7 @@ setCargando(false);
                 className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
               >
                 <FaSearch className="mr-2" />
-                {cargando ? 'Buscando...' : 'Buscar Dirección Actual'}
+                {cargando ? t('adjustment.ui.mapa.searching') : t('adjustment.ui.mapa.searchCurrentAddress')}
               </button>
 
               <button
@@ -512,7 +514,7 @@ setCargando(false);
                 className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
               >
                 <FaCrosshairs className="mr-2" />
-                Mi Ubicación Actual
+                {t('adjustment.ui.mapa.myCurrentLocation')}
               </button>
 
               {/* Botón de modo edición */}
@@ -525,7 +527,7 @@ setCargando(false);
                 }`}
               >
                 <FaHandPointer className="mr-2" />
-                {modoEdicion ? 'Desactivar Edición' : 'Activar Edición Manual'}
+                {modoEdicion ? t('adjustment.ui.mapa.disableEdit') : t('adjustment.ui.mapa.enableEdit')}
               </button>
 
               {/* Botón para capturar mapa */}
@@ -534,7 +536,7 @@ setCargando(false);
                 disabled={!mapaListo || cargando}
                 className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
               >
-                📸 Capturar Mapa
+                {t('adjustment.ui.mapa.captureMap')}
               </button>
 
               <div className="grid grid-cols-3 gap-2">
@@ -542,52 +544,46 @@ setCargando(false);
                   onClick={() => cambiarZoom(10)}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
                 >
-                  Ciudad
+                  {t('adjustment.ui.mapa.city')}
                 </button>
                 <button
                   onClick={() => cambiarZoom(15)}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
                 >
-                  Barrio
+                  {t('adjustment.ui.mapa.neighborhood')}
                 </button>
                 <button
                   onClick={() => cambiarZoom(20)}
                   className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-sm transition-colors"
                 >
-                  Calle
+                  {t('adjustment.ui.mapa.street')}
                 </button>
               </div>
 
               {/* Información adicional sobre búsqueda */}
               <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                <h4 className="text-sm font-semibold text-blue-800 mb-2">💡 Consejos de Búsqueda:</h4>
+                <h4 className="text-sm font-semibold text-blue-800 mb-2">{t('adjustment.ui.mapa.searchTips')}</h4>
                 <ul className="text-xs text-blue-700 space-y-1">
-                  <li>• Escribe direcciones completas: "Calle 123 #45-67, Bogotá"</li>
-                  <li>• Incluye la ciudad: "Centro Comercial Andino, Bogotá"</li>
-                  <li>• Usa puntos de referencia: "Plaza de Bolívar, Bogotá"</li>
-                  <li>• Presiona Enter o haz clic en Buscar</li>
+                  <li>• {t('adjustment.ui.mapa.tipSearch1')}</li>
+                  <li>• {t('adjustment.ui.mapa.tipSearch2')}</li>
                 </ul>
               </div>
 
               {/* Información sobre edición manual */}
               <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
-                <h4 className="text-sm font-semibold text-purple-800 mb-2">✋ Edición Manual:</h4>
+                <h4 className="text-sm font-semibold text-purple-800 mb-2">{t('adjustment.ui.mapa.manualEdit')}</h4>
                 <ul className="text-xs text-purple-700 space-y-1">
-                  <li>• <strong>Activa "Edición Manual"</strong> para ajustar la ubicación</li>
-                  <li>• <strong>Arrastra el marcador</strong> a la ubicación exacta</li>
-                  <li>• <strong>Haz clic en el mapa</strong> para mover el marcador</li>
-                  <li>• Las coordenadas se actualizan automáticamente</li>
+                  <li>• {t('adjustment.ui.mapa.tipEdit1')}</li>
+                  <li>• {t('adjustment.ui.mapa.tipEdit2')}</li>
                 </ul>
               </div>
 
               {/* Información sobre captura del mapa */}
               <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
-                <h4 className="text-sm font-semibold text-orange-800 mb-2">📸 Captura del Mapa:</h4>
+                <h4 className="text-sm font-semibold text-orange-800 mb-2">{t('adjustment.ui.mapa.mapCapture')}</h4>
                 <ul className="text-xs text-orange-700 space-y-1">
-                  <li>• <strong>Captura automática:</strong> Se genera al cambiar la ubicación</li>
-                  <li>• <strong>Captura manual:</strong> Usa el botón "Capturar Mapa"</li>
-                  <li>• <strong>Documento Word:</strong> Se incluye automáticamente</li>
-                  <li>• <strong>Alta resolución:</strong> Imagen PNG de calidad</li>
+                  <li>• {t('adjustment.ui.mapa.tipCapture1')}</li>
+                  <li>• {t('adjustment.ui.mapa.tipCapture2')}</li>
                 </ul>
               </div>
             </div>
@@ -603,7 +599,7 @@ setCargando(false);
             <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-lg">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                <p className="text-blue-600 font-medium">Buscando ubicación...</p>
+                <p className="text-blue-600 font-medium">{t('adjustment.ui.mapa.searchingLocation')}</p>
               </div>
             </div>
           )}
@@ -618,7 +614,7 @@ setCargando(false);
               <div className="w-full h-full bg-gray-100 rounded-lg flex items-center justify-center">
                 <div className="text-center text-gray-500">
                   <FaMap className="text-4xl mx-auto mb-4 text-gray-400" />
-                  <p className="text-lg font-medium">Cargando mapa...</p>
+                  <p className="text-lg font-medium">{t('adjustment.ui.mapa.loadingMap')}</p>
                   <p className="text-sm mb-4">Por favor espera mientras se carga OpenStreetMap</p>
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                 </div>
@@ -641,15 +637,15 @@ setCargando(false);
                 <Marker position={posicion} draggable={modoEdicion} onDragEnd={handleMarkerDragEnd}>
                   <Popup>
                     <div className="p-2">
-                      <h3 className="font-bold text-lg text-red-600 mb-2">📍 Ubicación del Siniestro</h3>
-                      <p className="text-sm text-gray-700 mb-2"><strong>Dirección:</strong></p>
-                      <p className="text-sm text-gray-600 mb-3">{direccionCompleta || 'Ubicación actual'}</p>
-                      <p className="text-sm text-gray-700 mb-2"><strong>Coordenadas:</strong></p>
+                      <h3 className="font-bold text-lg text-red-600 mb-2">{t('adjustment.ui.mapa.claimLocation')}</h3>
+                      <p className="text-sm text-gray-700 mb-2"><strong>{t('adjustment.ui.mapa.address')}</strong></p>
+                      <p className="text-sm text-gray-600 mb-3">{direccionCompleta || t('adjustment.ui.mapa.claimLocation')}</p>
+                      <p className="text-sm text-gray-700 mb-2"><strong>{t('adjustment.ui.mapa.coordinates')}</strong></p>
                       <p className="text-sm text-gray-600 font-mono">{posicion[0].toFixed(6)}, {posicion[1].toFixed(6)}</p>
                       {modoEdicion && (
                         <div className="mt-2 p-2 bg-blue-50 rounded">
                           <p className="text-xs text-blue-700">
-                            ✋ <strong>Modo Edición:</strong> Arrastra el marcador o haz clic en el mapa
+                            {t('adjustment.ui.mapa.editMode')}
                           </p>
                         </div>
                       )}
@@ -683,12 +679,12 @@ setCargando(false);
       {imagenMapa && (
         <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900 mb-3">
-            📸 Captura del Mapa
+            {t('adjustment.ui.mapa.mapCapture')}
           </h3>
 
           <img
             src={imagenMapa}
-            alt="Captura del mapa de ubicación"
+            alt={t('adjustment.ui.mapa.mapCapture')}
             className="w-full rounded-lg border border-gray-300 mb-3"
           />
 
@@ -705,21 +701,13 @@ setCargando(false);
       <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
         <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
           <FaInfoCircle className="mr-2" />
-          Información del Mapa
+          {t('adjustment.ui.mapa.mapInfo')}
         </h3>
         <div className="text-sm text-blue-800 space-y-2">
-          <p>• <strong>🔍 Búsqueda Libre:</strong> Escribe cualquier dirección y búscala en el mapa</p>
-          <p>• <strong>📍 Marcador Rojo:</strong> Ubicación exacta del siniestro</p>
-          <p>• <strong>✋ Edición Manual:</strong> Arrastra el marcador o haz clic para ajustar la ubicación exacta</p>
-          <p>• <strong>📸 Captura Automática:</strong> Se genera imagen del mapa para el documento Word</p>
-          <p>• <strong>Haz clic en el marcador</strong> para ver información detallada</p>
-          <p>• <strong>Usa los controles</strong> para cambiar zoom y navegar</p>
-          <p>• <strong>Coordenadas GPS</strong> se guardan automáticamente en el formulario</p>
-          <p>• <strong>Estado:</strong> {mapaListo ? 'Mapa listo para usar' : 'Inicializando mapa...'}</p>
-          <p>• <strong>Tecnología:</strong> OpenStreetMap con Leaflet (sin dependencias externas)</p>
-          <p>• <strong>💡 Tip:</strong> Puedes buscar por dirección exacta, puntos de referencia o nombres de lugares</p>
-          <p>• <strong>🎯 Precisión:</strong> Usa la edición manual para ajustar la ubicación al metro exacto</p>
-          <p>• <strong>📄 Documento:</strong> El mapa se incluye automáticamente en el Word generado</p>
+          <p>• <strong>{t('adjustment.ui.mapa.mapStatus')}</strong> {mapaListo ? t('adjustment.ui.mapa.ready') : t('adjustment.ui.mapa.loading')}</p>
+          <p>• <strong>{t('adjustment.ui.mapa.tipSearch1')}</strong></p>
+          <p>• <strong>{t('adjustment.ui.mapa.tipEdit1')}</strong></p>
+          <p>• <strong>{t('adjustment.ui.mapa.tipCapture1')}</strong></p>
         </div>
       </div>
     </div>

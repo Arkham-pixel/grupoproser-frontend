@@ -215,28 +215,29 @@ export function formularioAActaApi(form, extras = {}) {
 }
 
 const CAMPOS_OBLIGATORIOS = [
-  { key: 'regional', label: 'Regional' },
-  { key: 'nroActa', label: 'Nro. de Acta' },
-  { key: 'fechaActa', label: 'Fecha de Acta' },
-  { key: 'fechaLlegada', label: 'Fecha Llegada' },
-  { key: 'tipoInspeccion', label: 'Tipo de Inspección' },
-  { key: 'inspector', label: 'Inspector' },
-  { key: 'estado', label: 'Estado' },
-  { key: 'aseguradora', label: 'Aseguradora' },
-  { key: 'sucursal', label: 'Sucursal' },
-  { key: 'asegurado', label: 'Asegurado' },
-  { key: 'mercancia', label: 'Tipo de mercancía' },
-  { key: 'empaque', label: 'Empaque' },
-  { key: 'fechaConstruccion', label: 'Fecha Construcción' },
-  { key: 'lugarReconocimiento', label: 'Lugar de Reconocimiento' },
-  { key: 'contacto', label: 'Contacto' },
-  { key: 'averiaSiNo', label: 'Avería SI / NO' },
+  'regional',
+  'nroActa',
+  'fechaActa',
+  'fechaLlegada',
+  'tipoInspeccion',
+  'inspector',
+  'estado',
+  'aseguradora',
+  'sucursal',
+  'asegurado',
+  'mercancia',
+  'empaque',
+  'fechaConstruccion',
+  'lugarReconocimiento',
+  'contacto',
+  'averiaSiNo',
 ];
 
+/** Devuelve la clave del campo faltante, o null si el formulario es válido. */
 export function validarFormularioActa(form) {
-  for (const { key, label } of CAMPOS_OBLIGATORIOS) {
+  for (const key of CAMPOS_OBLIGATORIOS) {
     if (!String(form[key] ?? '').trim()) {
-      return `Complete el campo obligatorio: ${label}`;
+      return key;
     }
   }
   return null;

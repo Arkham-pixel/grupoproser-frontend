@@ -255,9 +255,14 @@ const convertirImagenABuffer = async (imagen) => {
 /**
  * Función principal para generar el documento Word
  * @param {Object} formData - Todos los datos del formulario
+ * @param {boolean} incluirMapaCalor
+ * @param {{ locale?: string }} [options] - locale 'es'|'en' para títulos de sección
  * @returns {Promise<void>}
  */
-export const generarWordPuertos = async (formData, incluirMapaCalor = true) => {
+export const generarWordPuertos = async (formData, incluirMapaCalor = true, options = {}) => {
+  const locale = options?.locale === 'en' ? 'en' : 'es';
+  // Contenido regulatorio permanece en ES hasta aprobación legal (pending legal approval)
+  const L = (es, en) => (locale === 'en' ? en : es);
 const docContent = [];
 
   // Convertir logo a base64
@@ -728,7 +733,7 @@ const docContent = [];
   // ========== PÁGINA 2: DOCUMENTOS DEL TRANSPORTE ==========
   docContent.push(
     new Paragraph({ children: [], pageBreakBefore: true }),
-    seccion("DOCUMENTOS DEL TRANSPORTE")
+    seccion(L("DOCUMENTOS DEL TRANSPORTE", "TRANSPORT DOCUMENTS"))
   );
 
   // Información básica del transporte
@@ -756,7 +761,7 @@ const docContent = [];
   if (tablaOrigen.length > 0) {
     docContent.push(
       new Paragraph({ text: "", spacing: { after: 300 } }),
-      subseccion("ORIGEN")
+      subseccion(L("ORIGEN", "ORIGIN"))
     );
 
     const filasTablaOrigen = [
@@ -840,7 +845,7 @@ const docContent = [];
   if (imagenesInspeccionBordo.length > 0) {
     docContent.push(
       new Paragraph({ text: "", spacing: { after: 300 } }),
-      subseccion("INSPECCIÓN A BORDO DEL BUQUE")
+      subseccion(L("INSPECCIÓN A BORDO DEL BUQUE", "ON-BOARD VESSEL INSPECTION"))
     );
 
     // Insertar imágenes en grid 2x2
@@ -911,7 +916,7 @@ const docContent = [];
   if (imagenesInspeccionDescargue.length > 0) {
     docContent.push(
       new Paragraph({ text: "", spacing: { after: 300 } }),
-      subseccion("INSPECCIÓN EN APROCHE - DESCARGUE")
+      subseccion(L("INSPECCIÓN EN APROCHE - DESCARGUE", "APPROACH / DISCHARGE INSPECTION"))
     );
 
     // Insertar imágenes
@@ -980,7 +985,7 @@ const docContent = [];
   // ========== INSPECCIÓN EN PATIO DE ALMACENAMIENTO ==========
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 300 } }),
-    subseccion("INSPECCIÓN EN PATIO DE ALMACENAMIENTO")
+    subseccion(L("INSPECCIÓN EN PATIO DE ALMACENAMIENTO", "STORAGE YARD INSPECTION"))
   );
 
   // Comentario introductorio
@@ -1024,7 +1029,7 @@ const docContent = [];
   // ========== ANÁLISIS DE RIESGOS ==========
   docContent.push(
     new Paragraph({ children: [], pageBreakBefore: true }),
-    seccion("ANÁLISIS DE RIESGOS")
+    seccion(L("ANÁLISIS DE RIESGOS", "RISK ANALYSIS"))
   );
 
   const tablaAnalisisLibre = formData.tablaAnalisisLibre || [];
@@ -1057,7 +1062,7 @@ const docContent = [];
   if (tablaRiesgos.length > 0) {
     docContent.push(
       new Paragraph({ text: "", spacing: { after: 300 } }),
-      subseccion("CLASIFICACIÓN DEL RIESGO"),
+      subseccion(L("CLASIFICACIÓN DEL RIESGO", "RISK CLASSIFICATION")),
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
@@ -1178,7 +1183,7 @@ const docContent = [];
   if (registrosPorVin.length > 0) {
     docContent.push(
       new Paragraph({ children: [], pageBreakBefore: true }),
-      seccion("INFORME FOTOGRÁFICO")
+      seccion(L("INFORME FOTOGRÁFICO", "PHOTOGRAPHIC REPORT"))
     );
 
     for (const registro of registrosPorVin) {
@@ -1260,7 +1265,7 @@ const docContent = [];
   if (recomendaciones.length > 0) {
     docContent.push(
       new Paragraph({ children: [], pageBreakBefore: true }),
-      seccion("RECOMENDACIONES")
+      seccion(L("RECOMENDACIONES", "RECOMMENDATIONS"))
     );
 
     recomendaciones.forEach((rec, index) => {

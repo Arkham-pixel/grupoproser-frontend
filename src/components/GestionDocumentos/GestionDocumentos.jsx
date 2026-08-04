@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import ListaPerfilesUsuarios from './ListaPerfilesUsuarios';
 import api from '../../services/api';
@@ -9,6 +10,7 @@ import { FaLock, FaExclamationTriangle } from 'react-icons/fa';
 const IDENTIFICADORES_PERMITIDOS = IDENTIFICADORES_GESTION_DOCUMENTOS;
 
 export default function GestionDocumentos() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [tieneAcceso, setTieneAcceso] = useState(null); // null = verificando, true = tiene acceso, false = no tiene acceso
   const [cargando, setCargando] = useState(true);
@@ -63,7 +65,7 @@ export default function GestionDocumentos() {
     return (
       <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
         <div className="text-center py-8" style={{ color: textSecondary }}>
-          Verificando acceso...
+          {t('admin.ui.documentos.checkingAccess')}
         </div>
       </div>
     );
@@ -96,7 +98,7 @@ export default function GestionDocumentos() {
             className="text-2xl font-bold mb-3"
             style={{ color: textPrimary }}
           >
-            Acceso Restringido
+            {t('admin.ui.documentos.accessRestricted.title')}
           </h2>
           <div 
             className="flex items-center justify-center gap-2 mb-4"
@@ -104,15 +106,14 @@ export default function GestionDocumentos() {
           >
             <FaExclamationTriangle />
             <p className="text-base">
-              No tienes permisos para acceder a esta funcionalidad.
+              {t('admin.ui.documentos.accessRestricted.noPermission')}
             </p>
           </div>
           <p 
             className="text-sm"
             style={{ color: textSecondary }}
           >
-            Solo usuarios autorizados pueden gestionar documentos de empleados.
-            Si crees que esto es un error, contacta al administrador del sistema.
+            {t('admin.ui.documentos.accessRestricted.details')}
           </p>
         </div>
       </div>
@@ -132,13 +133,13 @@ export default function GestionDocumentos() {
           className="text-2xl sm:text-3xl font-bold mb-2"
           style={{ color: textPrimary }}
         >
-          Gestión de Documentos por Empleado
+          {t('admin.ui.documentos.pageTitle')}
         </h1>
         <p 
           className="text-sm sm:text-base"
           style={{ color: theme === 'dark' ? '#B0B0B0' : '#6B6B6B' }}
         >
-          Gestiona los documentos de cada empleado. Edita perfiles, sube documentos y consulta el historial.
+          {t('admin.ui.documentos.pageDescription')}
         </p>
       </div>
 

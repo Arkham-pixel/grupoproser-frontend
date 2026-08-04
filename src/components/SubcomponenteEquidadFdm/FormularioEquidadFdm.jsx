@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FaSave, FaUndo } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { crearCasoFdm, actualizarCasoFdm } from '../../services/equidadFdmService.js';
 import {
   expressAlertError,
@@ -88,6 +89,7 @@ const aNumero = (valor) => {
 };
 
 const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSaved }) => {
+  const { t } = useTranslation();
   const esEdicion = Boolean(initialData?._id);
   const [form, setForm] = useState(() =>
     initialData ? construirFormDesdeCaso(initialData) : { ...FORM_VACIO }
@@ -154,11 +156,11 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
     setExito(null);
 
     if (!form.nombre.trim()) {
-      setError('El nombre del asegurado es obligatorio.');
+      setError(t('equidadFdm.validation.insuredNameRequired'));
       return;
     }
     if (!form.estado.trim()) {
-      setError('El estado del caso es obligatorio.');
+      setError(t('equidadFdm.validation.statusRequired'));
       return;
     }
 
@@ -173,8 +175,8 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
       }
       setExito(
         esEdicion
-          ? `Caso ${guardado.consecutivo || ''} actualizado correctamente.`
-          : `Caso ${guardado.consecutivo || ''} creado correctamente.`
+          ? t('equidadFdm.messages.caseUpdated', { caseNumber: guardado.consecutivo || '' })
+          : t('equidadFdm.messages.caseCreated', { caseNumber: guardado.consecutivo || '' })
       );
       if (!esEdicion) {
         setForm({ ...FORM_VACIO });
@@ -182,7 +184,7 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
       if (onSaved) await onSaved(guardado);
     } catch (err) {
       console.error('Error guardando caso Equidad FDM:', err);
-      setError(err.message || 'No fue posible guardar el caso.');
+      setError(err.message || t('equidadFdm.messages.saveError'));
     } finally {
       setGuardando(false);
     }
@@ -194,7 +196,7 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
     setExito(null);
   };
 
-  const selectSimple = (clave, opciones, placeholder = 'Seleccione…') => (
+  const selectSimple = (clave, opciones, placeholder = t('common.select')) => (
     <SelectFenix value={form[clave]} onChange={setCampo(clave)}>
       <option value="">{placeholder}</option>
       {opciones.map((op) => (
@@ -214,109 +216,109 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>Datos del asegurado</h3>
+        <h3 className={expressSectionTitle}>{t('equidadFdm.sections.insured')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Campo label="Nombre" required>
-            <InputFenix value={form.nombre} onChange={setCampo('nombre')} placeholder="Nombre completo" />
+          <Campo label={t('equidadFdm.fields.name')} required>
+            <InputFenix value={form.nombre} onChange={setCampo('nombre')} placeholder={t('equidadFdm.placeholders.fullName')} />
           </Campo>
-          <Campo label="Cédula">
-            <InputFenix value={form.cedula} onChange={setCampo('cedula')} placeholder="Número de cédula" />
+          <Campo label={t('equidadFdm.fields.id')}>
+            <InputFenix value={form.cedula} onChange={setCampo('cedula')} placeholder={t('equidadFdm.placeholders.idNumber')} />
           </Campo>
-          <Campo label="Celular">
-            <InputFenix value={form.celular} onChange={setCampo('celular')} placeholder="Celular de contacto" />
+          <Campo label={t('equidadFdm.fields.mobile')}>
+            <InputFenix value={form.celular} onChange={setCampo('celular')} placeholder={t('equidadFdm.placeholders.contactMobile')} />
           </Campo>
-          <Campo label="Dirección afectada">
+          <Campo label={t('equidadFdm.fields.affectedAddress')}>
             <InputFenix value={form.direccionAfectada} onChange={setCampo('direccionAfectada')} />
           </Campo>
-          <Campo label="Municipio">
-            <InputFenix value={form.municipio} onChange={setCampo('municipio')} placeholder="Ej: LORICA" />
+          <Campo label={t('equidadFdm.fields.municipality')}>
+            <InputFenix value={form.municipio} onChange={setCampo('municipio')} placeholder={t('equidadFdm.placeholders.municipality')} />
           </Campo>
-          <Campo label="Tipo de negocio">
-            <InputFenix value={form.tipoNegocio} onChange={setCampo('tipoNegocio')} placeholder="Ej: TIENDA DE VÍVERES" />
+          <Campo label={t('equidadFdm.fields.businessType')}>
+            <InputFenix value={form.tipoNegocio} onChange={setCampo('tipoNegocio')} placeholder={t('equidadFdm.placeholders.businessType')} />
           </Campo>
         </div>
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>Póliza y cobertura</h3>
+        <h3 className={expressSectionTitle}>{t('equidadFdm.sections.policyCoverage')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Campo label="Póliza daños vigente">
+          <Campo label={t('equidadFdm.fields.damagePolicyActive')}>
             {selectSimple('polizaDanosVigente', OPCIONES_SI_NO)}
           </Campo>
-          <Campo label="Póliza a afectar">
-            <InputFenix value={form.polizaAfectar} onChange={setCampo('polizaAfectar')} placeholder="Ej: AB003005" />
+          <Campo label={t('equidadFdm.fields.policyToAffect')}>
+            <InputFenix value={form.polizaAfectar} onChange={setCampo('polizaAfectar')} placeholder={t('equidadFdm.placeholders.policy')} />
           </Campo>
-          <Campo label="Orden">
+          <Campo label={t('equidadFdm.fields.order')}>
             <InputFenix value={form.orden} onChange={setCampo('orden')} />
           </Campo>
-          <Campo label="Vigencia póliza">
+          <Campo label={t('equidadFdm.fields.policyTerm')}>
             <InputFenix
               value={form.vigenciaPoliza}
               onChange={setCampo('vigenciaPoliza')}
               placeholder="dd/mm/aaaa-dd/mm/aaaa"
             />
           </Campo>
-          <Campo label="Afectaciones anteriores">
+          <Campo label={t('equidadFdm.fields.previousLosses')}>
             {selectSimple('afectacionesAnteriores', OPCIONES_SI_NO)}
           </Campo>
-          <Campo label="Siniestro indemnizado">
+          <Campo label={t('equidadFdm.fields.claimIndemnified')}>
             {selectSimple('siniestroIndemnizado', [...OPCIONES_SI_NO, 'NO APLICA'])}
           </Campo>
-          <Campo label="Primas al día">
+          <Campo label={t('equidadFdm.fields.premiumsCurrent')}>
             {selectSimple('primas', OPCIONES_SI_NO)}
           </Campo>
-          <Campo label="Subsidio empresarial">
+          <Campo label={t('equidadFdm.fields.businessSubsidy')}>
             {selectSimple('subsidioEmpresarial', OPCIONES_APLICA)}
           </Campo>
-          <Campo label="Cobertura">
-            <InputFenix value={form.cobertura} onChange={setCampo('cobertura')} placeholder="Ej: ANEGACION" />
+          <Campo label={t('equidadFdm.fields.coverage')}>
+            <InputFenix value={form.cobertura} onChange={setCampo('cobertura')} placeholder={t('equidadFdm.placeholders.coverage')} />
           </Campo>
         </div>
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>Gestión del caso</h3>
+        <h3 className={expressSectionTitle}>{t('equidadFdm.sections.caseManagement')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Campo label="Ajustador">
+          <Campo label={t('equidadFdm.fields.adjuster')}>
             <InputFenix value={form.ajustador} onChange={setCampo('ajustador')} />
           </Campo>
-          <Campo label="AIF (Asesor Integral)">
+          <Campo label={t('equidadFdm.fields.aif')}>
             <InputFenix value={form.aif} onChange={setCampo('aif')} />
           </Campo>
-          <Campo label="Caso">
-            <InputFenix value={form.caso} onChange={setCampo('caso')} placeholder="Número de caso" />
+          <Campo label={t('equidadFdm.fields.case')}>
+            <InputFenix value={form.caso} onChange={setCampo('caso')} placeholder={t('equidadFdm.placeholders.caseNumber')} />
           </Campo>
-          <Campo label="Siniestro">
-            <InputFenix value={form.siniestro} onChange={setCampo('siniestro')} placeholder="Número de siniestro" />
+          <Campo label={t('equidadFdm.fields.claim')}>
+            <InputFenix value={form.siniestro} onChange={setCampo('siniestro')} placeholder={t('equidadFdm.placeholders.claimNumber')} />
           </Campo>
-          <Campo label="Estado" required>
+          <Campo label={t('equidadFdm.fields.status')} required>
             {selectSimple('estado', ESTADOS_FDM)}
           </Campo>
-          <Campo label="Fecha de aviso">
+          <Campo label={t('equidadFdm.fields.noticeDate')}>
             <InputFenix type="date" value={form.fechaAviso} onChange={setCampo('fechaAviso')} />
           </Campo>
-          <Campo label="Fecha de liquidación">
+          <Campo label={t('equidadFdm.fields.settlementDate')}>
             <InputFenix type="date" value={form.fechaLiquidacion} onChange={setCampo('fechaLiquidacion')} />
           </Campo>
-          <Campo label="Fecha de causación">
+          <Campo label={t('equidadFdm.fields.accrualDate')}>
             <InputFenix type="date" value={form.fechaCausacion} onChange={setCampo('fechaCausacion')} />
           </Campo>
-          <Campo label="Fecha de giro">
+          <Campo label={t('equidadFdm.fields.paymentDate')}>
             <InputFenix type="date" value={form.fechaGiro} onChange={setCampo('fechaGiro')} />
           </Campo>
         </div>
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>Valores asegurados y pérdidas</h3>
+        <h3 className={expressSectionTitle}>{t('equidadFdm.sections.valuesLosses')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Campo label="Valor edificio (COP)">
+          <Campo label={t('equidadFdm.fields.buildingValue')}>
             <InputFenix type="number" min="0" value={form.valorEdificio} onChange={setCampo('valorEdificio')} />
           </Campo>
-          <Campo label="Valor contenido (COP)">
+          <Campo label={t('equidadFdm.fields.contentsValue')}>
             <InputFenix type="number" min="0" value={form.valorContenido} onChange={setCampo('valorContenido')} />
           </Campo>
-          <Campo label="Valores indemnizables (COP)">
+          <Campo label={t('equidadFdm.fields.insurableValues')}>
             <InputFenix
               type="number"
               min="0"
@@ -324,7 +326,7 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
               onChange={setCampo('valoresIndemnizables')}
             />
           </Campo>
-          <Campo label="Pérdida por contenidos (COP)">
+          <Campo label={t('equidadFdm.fields.contentsLoss')}>
             <InputFenix
               type="number"
               min="0"
@@ -332,22 +334,22 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
               onChange={setCampo('perdidaContenidos')}
             />
           </Campo>
-          <Campo label="Pérdida por edificio (COP)">
+          <Campo label={t('equidadFdm.fields.buildingLoss')}>
             <InputFenix type="number" min="0" value={form.perdidaEdificio} onChange={setCampo('perdidaEdificio')} />
           </Campo>
-          <Campo label="Total pérdida (COP)">
+          <Campo label={t('equidadFdm.fields.totalLoss')}>
             <InputFenix type="number" min="0" value={form.totalPerdida} onChange={setCampo('totalPerdida')} />
           </Campo>
-          <Campo label="Deducible (COP)">
+          <Campo label={t('equidadFdm.fields.deductible')}>
             <InputFenix type="number" min="0" value={form.deducible} onChange={setCampo('deducible')} />
           </Campo>
-          <Campo label="Subsidio (COP)">
+          <Campo label={t('equidadFdm.fields.subsidy')}>
             <InputFenix type="number" min="0" value={form.subsidio} onChange={setCampo('subsidio')} />
           </Campo>
-          <Campo label="Total liquidado (COP)">
+          <Campo label={t('equidadFdm.fields.totalSettled')}>
             <InputFenix type="number" min="0" value={form.totalLiquidado} onChange={setCampo('totalLiquidado')} />
           </Campo>
-          <Campo label="Valor indemnizado ajustador (COP)">
+          <Campo label={t('equidadFdm.fields.adjusterIndemnity')}>
             <InputFenix
               type="number"
               min="0"
@@ -355,7 +357,7 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
               onChange={setCampo('valorIndemnizadoAjustador')}
             />
           </Campo>
-          <Campo label="Valor indemnizado (COP)">
+          <Campo label={t('equidadFdm.fields.indemnity')}>
             <InputFenix
               type="number"
               min="0"
@@ -363,23 +365,23 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
               onChange={setCampo('valorIndemnizado')}
             />
           </Campo>
-          <Campo label="Valor / motivo de objeción">
+          <Campo label={t('equidadFdm.fields.objectionValue')}>
             <InputFenix
               value={form.valorObjecion}
               onChange={setCampo('valorObjecion')}
-              placeholder="Valor u observación de la objeción"
+              placeholder={t('equidadFdm.placeholders.objection')}
             />
           </Campo>
         </div>
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>Observaciones</h3>
+        <h3 className={expressSectionTitle}>{t('equidadFdm.sections.observations')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Campo label="Observaciones">
+          <Campo label={t('equidadFdm.fields.observations')}>
             <TextareaFenix value={form.observaciones} onChange={setCampo('observaciones')} />
           </Campo>
-          <Campo label="Detalle">
+          <Campo label={t('equidadFdm.fields.detail')}>
             <TextareaFenix value={form.detalle} onChange={setCampo('detalle')} />
           </Campo>
         </div>
@@ -388,16 +390,16 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
         {embed && onClose && (
           <button type="button" className={expressBtnGhost} onClick={onClose} disabled={guardando}>
-            Cerrar
+            {t('common.close')}
           </button>
         )}
         <button type="button" className={expressBtnGhost} onClick={limpiar} disabled={guardando}>
           <FaUndo />
-          {esEdicion ? 'Restablecer' : 'Limpiar'}
+          {esEdicion ? t('equidadFdm.actions.reset') : t('equidadFdm.actions.clear')}
         </button>
         <button type="submit" className={expressBtnPrimary} disabled={guardando}>
           <FaSave />
-          {guardando ? 'Guardando…' : esEdicion ? 'Guardar cambios' : 'Guardar caso'}
+          {guardando ? t('equidadFdm.actions.saving') : esEdicion ? t('equidadFdm.actions.saveChanges') : t('equidadFdm.actions.saveCase')}
         </button>
       </div>
     </form>
@@ -411,14 +413,16 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
     <div className={`${fdmRoot} ${expressScope}`}>
       <div className={expressPageWrap}>
         <FdmPageHeader
-          title="Agregar caso Equidad FDM"
-          subtitle="Registra los casos de Fundación de la Mujer con los datos de póliza, pérdidas y liquidación."
+          title={t('equidadFdm.page.addTitle')}
+          subtitle={t('equidadFdm.page.addSubtitle')}
           activePath="/equidad-fdm/carga"
         />
         <section className={expressCard}>
           <div className={expressCardHeader}>
             <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
-              {esEdicion ? `Editar caso ${initialData?.consecutivo || ''}` : 'Nuevo caso'}
+              {esEdicion
+                ? t('equidadFdm.page.editCase', { caseNumber: initialData?.consecutivo || '' })
+                : t('equidadFdm.page.newCase')}
             </h2>
           </div>
           <div className={expressCardBody}>{contenidoFormulario}</div>

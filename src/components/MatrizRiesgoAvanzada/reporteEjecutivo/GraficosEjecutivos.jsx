@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Bar,
   BarChart,
@@ -20,6 +21,18 @@ const COLORES_NIVEL = {
   Bajo: '#28a745',
 };
 
+const NIVEL_KEY = {
+  Crítico: 'critical',
+  Alto: 'high',
+  Medio: 'medium',
+  Bajo: 'low',
+};
+
+function tNivel(t, nombre) {
+  const key = NIVEL_KEY[nombre];
+  return key ? t(`riskMatrix.level.${key}`) : nombre;
+}
+
 function WidgetDonut({ titulo, datos, centro }) {
   return (
     <section className="re-widget-card">
@@ -29,7 +42,7 @@ function WidgetDonut({ titulo, datos, centro }) {
           <PieChart>
             <Pie data={datos} dataKey="value" nameKey="name" innerRadius={50} outerRadius={78} paddingAngle={2}>
               {datos.map((entry) => (
-                <Cell key={entry.name} fill={entry.color} />
+                <Cell key={entry.raw || entry.name} fill={entry.color} />
               ))}
             </Pie>
             <Tooltip />
@@ -38,7 +51,7 @@ function WidgetDonut({ titulo, datos, centro }) {
         {centro ? <p className="re-donut-centro">{centro}</p> : null}
         <div className="re-donut-leyenda">
           {datos.map((item) => (
-            <div key={item.name}>
+            <div key={item.raw || item.name}>
               <span style={{ background: item.color }} />
               {item.name}: {item.value}
             </div>
@@ -50,15 +63,17 @@ function WidgetDonut({ titulo, datos, centro }) {
 }
 
 export default function GraficosEjecutivos({ analitica }) {
+  const { t } = useTranslation();
   const { porProceso, porCategoria, porNivel, comparativoPorProceso, estadoRecomendaciones, procesosCriticosAltos, kpis } =
     analitica;
 
   const datosNivel = porNivel
     .filter((item) => item.total > 0)
     .map((item) => ({
-      name: item.nombre,
+      name: tNivel(t, item.nombre),
       value: item.total,
       color: COLORES_NIVEL[item.nombre],
+      raw: item.nombre,
     }));
 
   const datosCategoria = porCategoria.slice(0, 6).map((item, index) => ({
@@ -88,17 +103,15 @@ export default function GraficosEjecutivos({ analitica }) {
     <div className="re-graficos">
       <header className="re-seccion-header">
         <div>
-          <p className="re-seccion-kicker">Matriz de Riesgos Avanzada</p>
-          <h2 className="re-seccion-titulo">Gráficos ejecutivos</h2>
-          <p className="re-seccion-desc">
-            Visualizaciones automáticas para presentación a gerencia y junta directiva.
-          </p>
+          <p className="re-seccion-kicker">{t('riskMatrix.exec.kicker')}</p>
+          <h2 className="re-seccion-titulo">{t('riskMatrix.exec.chartsTitle')}</h2>
+          <p className="re-seccion-desc">{t('riskMatrix.exec.chartsDesc')}</p>
         </div>
       </header>
 
       <div className="re-graficos-grid">
         <section className="re-widget-card">
-          <h3>1. Riesgos por proceso</h3>
+          <h3>{t('riskMatrix.exec.chartByProcess')}</h3>
           <div className="re-barras">
             {topProcesos.map((proceso) => (
               <div key={proceso.nombre} className="re-barra-item">
@@ -120,41 +133,44 @@ export default function GraficosEjecutivos({ analitica }) {
         </section>
 
         <WidgetDonut
-          titulo="2. Riesgos por categoría"
+          titulo={t('riskMatrix.exec.chartByCategory')}
           datos={datosCategoria}
-          centro={`Total: ${kpis.totalRiesgos} riesgos`}
+          centro={t('riskMatrix.exec.totalRisks', { count: kpis.totalRiesgos })}
         />
 
         <WidgetDonut
-          titulo="3. Riesgos por nivel (residual)"
+          titulo={t('riskMatrix.exec.chartByLevel')}
           datos={datosNivel}
-          centro={`Promedio: ${kpis.riesgoResidualPromedio} (${kpis.nivelGeneral})`}
+          centro={t('riskMatrix.exec.avgResidual', {
+            avg: kpis.riesgoResidualPromedio,
+            level: tNivel(t, kpis.nivelGeneral),
+          })}
         />
 
         <section className="re-widget-card re-widget-card--chart">
-          <h3>4. Comparativo inherente vs residual (top 5)</h3>
+          <h3>{t('riskMatrix.exec.chartCompareTop5')}</h3>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={datosComparativo} margin={{ top: 10, right: 10, left: 0, bottom: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
               <XAxis dataKey="proceso" tick={{ fontSize: 10 }} angle={-15} textAnchor="end" height={50} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
-              <Bar dataKey="inherente" name="Inherente" fill="#dc2626" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="residual" name="Residual" fill="#111827" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="inherente" name={t('riskMatrix.exec.inherent')} fill="#dc2626" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="residual" name={t('riskMatrix.exec.residual')} fill="#111827" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <p className="re-nota-widget">
-            Reducción promedio gracias a controles: <strong>{kpis.reduccionPromedio}%</strong>
+            {t('riskMatrix.exec.reductionNote')} <strong>{kpis.reduccionPromedio}%</strong>
           </p>
         </section>
 
-        <WidgetDonut titulo="5. Estado de recomendaciones" datos={datosEstadoRec} />
+        <WidgetDonut titulo={t('riskMatrix.exec.chartRecStatus')} datos={datosEstadoRec} />
 
         <section className="re-widget-card">
-          <h3>6. Procesos con más riesgos críticos y altos</h3>
+          <h3>{t('riskMatrix.exec.chartCriticalProcesses')}</h3>
           <div className="re-barras">
             {topCriticos.length === 0 ? (
-              <p className="re-tabla-vacia">No hay riesgos críticos o altos registrados.</p>
+              <p className="re-tabla-vacia">{t('riskMatrix.exec.noCriticalHigh')}</p>
             ) : (
               topCriticos.map((proceso) => (
                 <div key={proceso.nombre} className="re-barra-item">

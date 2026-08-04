@@ -1,5 +1,7 @@
-import React, { useEffect } from 'react';
-import { Seccion, Campo, inputCls, attrsInput, attrsSelect } from './PuertosCasoDatosGenerales';
+import React, { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import SelectBuscable from '../SelectBuscable';
+import { Seccion, Campo, inputCls, attrsInput } from './PuertosCasoDatosGenerales';
 
 export default function PuertosCasoPagina1({
   formData,
@@ -7,6 +9,8 @@ export default function PuertosCasoPagina1({
   aseguradoraOptions = [],
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
+
   const handle = (e) => {
     onChange(e.target.name, e.target.value);
   };
@@ -24,10 +28,15 @@ export default function PuertosCasoPagina1({
     formData.nombreAseguradora ||
     '';
 
+  const opcionesCliente = useMemo(
+    () => aseguradoraOptions.map((a) => ({ value: a.value, label: a.label })),
+    [aseguradoraOptions]
+  );
+
   return (
     <div className="space-y-5">
-      <Seccion titulo="Portada">
-        <Campo label="Número de solicitud">
+      <Seccion titulo={t('ports.ui.casoExportacion.portada.sectionTitle')}>
+        <Campo label={t('ports.ui.casoExportacion.portada.numeroSolicitud')}>
           <input
             {...attrsInput(soloLectura, {
               className: inputCls,
@@ -38,29 +47,24 @@ export default function PuertosCasoPagina1({
             })}
           />
         </Campo>
-        <Campo label="Cliente (aseguradora)" obligatorio>
-          <select
-            {...attrsSelect(soloLectura, {
-              className: inputCls,
-              name: 'codiAsgrdra',
-              value: formData.codiAsgrdra || '',
-              onChange: handle,
-            })}
-          >
-            <option value="">Seleccionar</option>
-            {aseguradoraOptions.map((a) => (
-              <option key={a.value} value={a.value}>
-                {a.label}
-              </option>
-            ))}
-          </select>
+        <Campo label={t('ports.ui.casoExportacion.portada.cliente')} obligatorio>
+          <SelectBuscable
+            options={opcionesCliente}
+            value={formData.codiAsgrdra || ''}
+            onChange={(v) => onChange('codiAsgrdra', v)}
+            placeholder={t('ports.ui.common.select')}
+            searchPlaceholder={t('ports.ui.common.searchList')}
+            noResultsText={t('ports.ui.common.noResults')}
+            buttonClassName={inputCls}
+            disabled={soloLectura}
+          />
         </Campo>
         {labelCliente && (
-          <Campo label="Nombre en portada">
+          <Campo label={t('ports.ui.casoExportacion.portada.nombrePortada')}>
             <input className={inputCls} readOnly value={labelCliente.toUpperCase()} />
           </Campo>
         )}
-        <Campo label="Creado por">
+        <Campo label={t('ports.ui.casoExportacion.portada.creadoPor')}>
           <input
             {...attrsInput(soloLectura, {
               className: inputCls,
@@ -70,7 +74,7 @@ export default function PuertosCasoPagina1({
             })}
           />
         </Campo>
-        <Campo label="Email">
+        <Campo label={t('ports.ui.casoExportacion.portada.email')}>
           <input
             {...attrsInput(soloLectura, {
               type: 'email',
@@ -82,7 +86,7 @@ export default function PuertosCasoPagina1({
             })}
           />
         </Campo>
-        <Campo label="Fecha del informe">
+        <Campo label={t('ports.ui.casoExportacion.portada.fechaInforme')}>
           <input
             {...attrsInput(soloLectura, {
               type: 'date',
@@ -93,7 +97,7 @@ export default function PuertosCasoPagina1({
             })}
           />
         </Campo>
-        <Campo label="Departamento" className="sm:col-span-2">
+        <Campo label={t('ports.ui.casoExportacion.portada.departamento')} className="sm:col-span-2">
           <input
             {...attrsInput(soloLectura, {
               className: inputCls,
@@ -103,14 +107,14 @@ export default function PuertosCasoPagina1({
             })}
           />
         </Campo>
-        <Campo label="Consecutivo">
+        <Campo label={t('ports.ui.casoExportacion.portada.consecutivo')}>
           <input
             {...attrsInput(soloLectura, {
               className: inputCls,
               name: 'consecutivo',
               value: formData.consecutivo || '',
               onChange: handle,
-              placeholder: 'BT618574/2026 — se genera al guardar si está vacío',
+              placeholder: t('ports.ui.casoExportacion.portada.consecutivoPlaceholder'),
             })}
           />
         </Campo>

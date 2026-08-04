@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
-import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 
 const ObservacionesPreeliminar = ({ formData, onInputChange, numeroSeccion = 10 }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [modoAvanzado, setModoAvanzado] = useState(false);
   const campo = 'actaObservaciones';
@@ -24,7 +25,7 @@ const ObservacionesPreeliminar = ({ formData, onInputChange, numeroSeccion = 10 
       const textoMejorado = `🔍 ANÁLISIS MEJORADO CON IA:\n\n${texto}\n\n✅ Verificaciones realizadas:\n• Ortografía y gramática corregida\n• Estructura mejorada\n• Términos técnicos estandarizados\n• Coherencia verificada`;
       onInputChange(campo, textoMejorado);
     } else {
-      alert('⚠️ Primero escribe algo en el campo de observaciones para mejorarlo con IA');
+      alert(t('adjustment.ui.ia.errorGeneric'));
     }
   };
 
@@ -78,7 +79,7 @@ ${texto}
 
       onInputChange(campo, analisis);
     } else {
-      alert('⚠️ Primero escribe algo en el campo de observaciones para analizarlo');
+      alert(t('adjustment.ui.ia.errorGeneric'));
     }
   };
 
@@ -98,12 +99,10 @@ ${texto}
           >
             {numeroSeccion}
           </span>
-          {tituloAjuste('Observaciones')}
+          {t('adjustment.ui.sections.observacionesPrelim.title')}
         </h3>
         <p className="mt-2" style={{ color: textSecondary }}>
-          {subtituloAjuste(
-            'Texto del acta de inspección (paso 1). Se conserva al avanzar y aparece en el Word en la sección «Observaciones».'
-          )}
+          {t('adjustment.ui.sections.observacionesPrelim.subtitle')}
         </p>
       </div>
 
@@ -114,7 +113,7 @@ ${texto}
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            {subtituloAjuste('Observaciones (acta de inspección)')}
+            {t('adjustment.ui.sections.observacionesPrelim.labelActa')}
           </label>
           <textarea
             id={campo}
@@ -126,13 +125,10 @@ ${texto}
               color: textPrimary,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Observaciones capturadas en el acta de inspección..."
+            placeholder={t('adjustment.ui.sections.observacionesPrelim.placeholder')}
             value={formData[campo] || ''}
             onChange={(e) => onInputChange(campo, e.target.value)}
           />
-          <p className="mt-1 text-sm" style={{ color: textSecondary }}>
-            Puede editarse aquí o en el paso Acta. El informe preliminar usa este mismo texto.
-          </p>
         </div>
       </div>
 
@@ -147,7 +143,7 @@ ${texto}
       >
         <h4 className="text-base font-semibold mb-3 flex items-center" style={{ color: sectionBlueText }}>
           <span className="mr-2">🤖</span>
-          IA Inteligente Avanzada
+          {t('adjustment.ui.sections.analisisCobertura.iaAssistant')}
         </h4>
 
         <div className="flex flex-wrap gap-2 mb-3">
@@ -161,7 +157,7 @@ ${texto}
             }}
           >
             <span>✨</span>
-            <span>Mejorar IA</span>
+            <span>{t('adjustment.ui.sections.observacionesPrelim.improve')}</span>
           </button>
 
           <button
@@ -174,7 +170,7 @@ ${texto}
             }}
           >
             <span>📄</span>
-            <span>Plantilla IA</span>
+            <span>{t('adjustment.ui.sections.observacionesPrelim.template')}</span>
           </button>
 
           <button
@@ -187,7 +183,7 @@ ${texto}
             }}
           >
             <span>🔍</span>
-            <span>Analizar</span>
+            <span>{t('adjustment.ui.sections.observacionesPrelim.analyze')}</span>
           </button>
         </div>
 
@@ -203,10 +199,10 @@ ${texto}
               color: modoAvanzado ? (theme === 'dark' ? '#93C5FD' : '#1E40AF') : textPrimary
             }}
           >
-            {modoAvanzado ? 'Modo Avanzado ON' : 'Modo Básico'}
+            {modoAvanzado ? t('adjustment.ui.ia.advancedMode') : t('adjustment.ui.ia.basicMode')}
           </button>
           <span className="text-xs" style={{ color: textSecondary }}>
-            {modoAvanzado ? 'Funciones IA completas activadas' : 'Funciones básicas'}
+            {modoAvanzado ? t('adjustment.ui.ia.tip3') : t('adjustment.ui.ia.tip1')}
           </span>
         </div>
 
@@ -216,12 +212,12 @@ ${texto}
             style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
           >
             <h5 className="font-medium mb-2 text-sm" style={{ color: textPrimary }}>
-              💡 Cómo usar la IA:
+              💡 {t('adjustment.ui.sections.analisisCobertura.iaAssistant')}
             </h5>
             <ul className="text-xs space-y-1" style={{ color: textSecondary }}>
-              <li>• <strong>Mejorar IA:</strong> Corrige y mejora texto existente</li>
-              <li>• <strong>Plantilla IA:</strong> Crea estructura profesional</li>
-              <li>• <strong>Analizar:</strong> Métricas y recomendaciones</li>
+              <li>• <strong>{t('adjustment.ui.sections.observacionesPrelim.improve')}:</strong> {t('adjustment.ui.ia.tip1')}</li>
+              <li>• <strong>{t('adjustment.ui.sections.observacionesPrelim.template')}:</strong> {t('adjustment.ui.ia.tip2')}</li>
+              <li>• <strong>{t('adjustment.ui.sections.observacionesPrelim.analyze')}:</strong> {t('adjustment.ui.ia.tip3')}</li>
             </ul>
           </div>
         )}
@@ -246,13 +242,10 @@ ${texto}
           </div>
           <div className="ml-3">
             <h3 className="text-sm font-medium" style={{ color: sectionBlueText }}>
-              Información del informe preliminar
+              {t('adjustment.ui.sections.observacionesPrelim.title')}
             </h3>
             <div className="mt-2 text-sm" style={{ color: sectionBlueText }}>
-              <p>
-                Esta sección corresponde a las observaciones del acta de inspección. Se exporta al Word como
-                «Observaciones» y no requiere un bloque adicional al final del formulario.
-              </p>
+              <p>{t('adjustment.ui.sections.observacionesPrelim.subtitle')}</p>
             </div>
           </div>
         </div>

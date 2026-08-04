@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from 'react-i18next';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media, VerticalAlign, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
 import { formatearFechaParaWord, obtenerFechaActualISO, obtenerFechaHoraActualISO } from '../../utils/fechaUtils';
@@ -25,6 +26,8 @@ import FotosPreliminarFlotante from "./FotosPreliminarFlotante";
 import ChatbotIA from "./ChatbotIA";
 import MapaGoogleEarth from '../MapaGoogleEarth';
 import ModalConfirmacion from '../ModalConfirmacion';
+import DocumentLanguageSelector from '../DocumentLanguageSelector.jsx';
+import { getIntlLocale } from '../../utils/locale.js';
 
 import Logo from '../../img/Logo.png';
 import firmaIskharlyImg from '../../img/FIRMAISKHARLY.png';
@@ -96,6 +99,28 @@ export default function FormularioAjuste() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
+
+  const labelVersion = (estado) => {
+    switch (estado) {
+      case 'actaInspeccion': return t('adjustment.ui.versions.actaInspeccion');
+      case 'inicial': return t('adjustment.ui.versions.inicial');
+      case 'preeliminar': return t('adjustment.ui.versions.preeliminar');
+      case 'actualizacion': return t('adjustment.ui.versions.actualizacion');
+      case 'informeFinal': return t('adjustment.ui.versions.informeFinal');
+      default: return estado || t('adjustment.ui.versions.version');
+    }
+  };
+  const tituloVersionHistorial = (estado) => {
+    switch (estado) {
+      case 'actaInspeccion': return t('adjustment.ui.versions.actaInspeccionTitle');
+      case 'inicial': return t('adjustment.ui.versions.inicialTitle');
+      case 'preeliminar': return t('adjustment.ui.versions.preeliminarTitle');
+      case 'actualizacion': return t('adjustment.ui.versions.actualizacionTitle');
+      case 'informeFinal': return t('adjustment.ui.versions.informeFinal');
+      default: return String(estado || t('adjustment.ui.versions.version'));
+    }
+  };
   
   // Colores según el tema
   const bgMain = theme === 'dark' ? '#1A1A1A' : '#F5F5F7';
@@ -356,6 +381,7 @@ const [formData, setFormData] = useState({
   const [error, setError] = useState(null);
   const [archivoGenerado, setArchivoGenerado] = useState(null);
   const [archivoGeneradoBlob, setArchivoGeneradoBlob] = useState(null);
+  const [documentLocale, setDocumentLocale] = useState('es');
   const [autofillState, setAutofillState] = useState({
     loading: false,
     partial: false,
@@ -808,7 +834,7 @@ return {
       }
     } catch (error) {
       console.error('❌ Error cargando formulario:', error);
-      setError('Error al cargar el formulario existente: ' + error.message);
+      setError(t('adjustment.ui.alerts.loadExistingError', { message: error.message }));
     } finally {
       setCargando(false);
       permitirAutoguardadoLocalRef.current = true;
@@ -1149,7 +1175,7 @@ setFormData(prev => {
     const { rellenarDatosGenerales = false } = opciones;
     const identificador = String(idCaso || '').trim();
     if (!identificador) {
-      setAutofillState({ loading: false, partial: false, error: 'Ingresa número de siniestro o caso para autocompletar.' });
+      setAutofillState({ loading: false, partial: false, error: t('adjustment.ui.alerts.autofillNeedNumber') });
       return;
     }
 
@@ -1186,7 +1212,7 @@ setFormData(prev => {
       setAutofillState({
         loading: false,
         partial: false,
-        error: err?.message || 'No se pudo autocompletar desde Complex.'
+        error: err?.message || t('adjustment.ui.alerts.autofillComplexFail')
       });
     }
   };
@@ -3094,18 +3120,19 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
           : await construirElementosFirmasActaWord(fd, { modo: 'informe' });
 
       const obtenerTituloEncabezadoWord = (estado) => {
+        const en = documentLocale === 'en';
         switch (estado) {
           case 'actaInspeccion':
-            return 'INFORME DE INSPECCION';
+            return en ? 'INSPECTION REPORT' : 'INFORME DE INSPECCION';
           case 'informeFinal':
-            return 'INFORME FINAL';
+            return en ? 'FINAL REPORT' : 'INFORME FINAL';
           case 'actualizacion':
-            return 'ACTUALIZACIÓN';
+            return en ? 'UPDATE' : 'ACTUALIZACIÓN';
           case 'inicial':
           case 'preeliminar':
-            return 'INFORME PRELIMINAR';
+            return en ? 'PRELIMINARY REPORT' : 'INFORME PRELIMINAR';
           default:
-            return 'INFORME DE INSPECCION';
+            return en ? 'INSPECTION REPORT' : 'INFORME DE INSPECCION';
         }
       };
 
@@ -3213,7 +3240,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                                     }),
                                     new TableCell({
                                       children: [
-                                        crearTextoNormal(`FECHA: ${formatearFechaParaWord(new Date())}`, { size: 14, alignment: AlignmentType.LEFT })
+                                        crearTextoNormal(`FECHA: ${formatearFechaParaWord(new Date(), documentLocale)}`, { size: 14, alignment: AlignmentType.LEFT })
                                       ],
                                       margins: { top: 100, bottom: 100, left: 100, right: 100 }
                                     })
@@ -3242,7 +3269,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
                     const c = String(fd.ciudad ?? '').trim();
                     const d = String(fd.departamento ?? '').trim();
                     return d ? `${valorTabla(c, 'Ciudad')}, ${d}` : valorTabla(fd.ciudad, 'Ciudad');
-                  })()}, ${formatearFechaParaWord(new Date(), 'es-ES', {
+                  })()}, ${formatearFechaParaWord(new Date(), getIntlLocale(documentLocale), {
                     month: 'long',
                     year: 'numeric'
                   })}`, { size: 24, spacingBefore: 600, spacingAfter: 200 }),
@@ -3965,13 +3992,13 @@ const nombreDocx = `PAGINA_1_${fd.numeroPoliza || 'Sin_Poliza'}_${obtenerFechaAc
         setCargando(false);
 }).catch(error => {
         console.error('❌ Error al generar blob:', error);
-        setError('Error al generar el archivo: ' + error.message);
+        setError(t('adjustment.ui.alerts.generateFileError', { message: error.message }));
         setCargando(false);
       });
 
     } catch (error) {
       console.error('❌ Error al generar documento:', error);
-      setError('Error al generar el documento: ' + error.message);
+      setError(t('adjustment.ui.alerts.generateDocError', { message: error.message }));
       setCargando(false);
     }
   };
@@ -4040,29 +4067,18 @@ if (formData.anexos && formData.anexos.length > 0) {
 }
 
       // Título del historial: formulario + versión + asegurado (fácil de buscar en la lista)
-      const versionTitulo =
-        estadoActual === 'actaInspeccion'
-          ? 'Acta de Inspección'
-          : estadoActual === 'inicial'
-          ? 'Versión Inicial (Informe preliminar)'
-          : estadoActual === 'preeliminar'
-          ? 'Versión Preeliminar'
-          : estadoActual === 'actualizacion'
-          ? 'Versión de Actualización'
-          : estadoActual === 'informeFinal'
-          ? 'Informe Final'
-          : String(estadoActual || 'Versión');
+      const versionTitulo = tituloVersionHistorial(estadoActual);
       const resolverNombreAsegurado = (...candidatos) => {
         for (const raw of candidatos) {
           if (raw == null || raw === '') continue;
           if (typeof raw === 'string') {
-            const t = raw.trim();
-            if (t && t !== 'N/A' && t !== '[object Object]') return t;
+            const trimmed = raw.trim();
+            if (trimmed && trimmed !== 'N/A' && trimmed !== '[object Object]') return trimmed;
             continue;
           }
           if (typeof raw === 'object') {
-            const t = String(raw.nombre || raw.name || raw.razonSocial || raw.asegurado || '').trim();
-            if (t && t !== 'N/A') return t;
+            const trimmed = String(raw.nombre || raw.name || raw.razonSocial || raw.asegurado || '').trim();
+            if (trimmed && trimmed !== 'N/A') return trimmed;
           }
         }
         return '';
@@ -4081,8 +4097,8 @@ if (formData.anexos && formData.anexos.length > 0) {
         datosParaGuardar.asegurado = aseguradoTitulo;
       }
       const tituloFormulario = aseguradoTitulo
-        ? `Informe de Ajuste - ${versionTitulo} - ${aseguradoTitulo}`
-        : `Informe de Ajuste - ${versionTitulo}`;
+        ? t('adjustment.ui.versions.historyTitleWithInsured', { version: versionTitulo, insured: aseguradoTitulo })
+        : t('adjustment.ui.versions.historyTitle', { version: versionTitulo });
 
       const normalizarClaveAjuste = (valor) => String(valor || '').trim().toUpperCase().replace(/\s+/g, '');
       const esClaveReporte = (valor) => normalizarClaveAjuste(valor).startsWith('RPT-');
@@ -4613,8 +4629,8 @@ await historialService.actualizarFormulario(idParaActualizar, datosFormularioAct
           console.warn('⚠️ No se pudo sincronizar documento en historialDocs de Complex (no bloqueante):', errorTrazabilidad?.message || errorTrazabilidad);
         }
 mostrarModalConfirmacion(
-          'Formulario Actualizado',
-          'El formulario se ha actualizado correctamente en el historial.',
+          t('adjustment.ui.alerts.formUpdated'),
+          t('adjustment.ui.alerts.formUpdatedMsg'),
           'success'
         );
         
@@ -4646,8 +4662,8 @@ mostrarModalConfirmacion(
               try { await sincronizarSecuenciaPorNumeroAjuste(String(idExistente)); } catch (_) {}
               try { await sincronizarDocumentoEnTrazabilidadComplex(String(idExistente), archivoSubidoContinuidad); } catch (_) {}
               mostrarModalConfirmacion(
-                'Formulario Actualizado',
-                'Se detectó continuidad del ajuste y se actualizó el formulario existente.',
+                t('adjustment.ui.alerts.formUpdated'),
+                t('adjustment.ui.alerts.formUpdatedContinuity'),
                 'success'
               );
               return;
@@ -4687,10 +4703,10 @@ mostrarModalConfirmacion(
 // Validar que nuevoId sea un string válido
         if (nuevoId && typeof nuevoId === 'string' && nuevoId.trim() !== '') {
 mostrarModalConfirmacion(
-            'Formulario Guardado',
-            'El formulario se ha guardado correctamente en el historial.',
+            t('adjustment.ui.alerts.formSaved'),
+            t('adjustment.ui.alerts.formSavedMsg'),
             'success',
-            'Aceptar',
+            t('adjustment.ui.common.accept'),
             false,
             () =>
               navigate(`/ajuste/editar/${nuevoId}`, {
@@ -4718,10 +4734,10 @@ mostrarModalConfirmacion(
         } else if (nuevoId && typeof nuevoId === 'object' && nuevoId.id) {
           // Si es un objeto con propiedad id
 mostrarModalConfirmacion(
-            'Formulario Guardado',
-            'El formulario se ha guardado correctamente en el historial.',
+            t('adjustment.ui.alerts.formSaved'),
+            t('adjustment.ui.alerts.formSavedMsg'),
             'success',
-            'Aceptar',
+            t('adjustment.ui.common.accept'),
             false,
             () =>
               navigate(`/ajuste/editar/${nuevoId.id}`, {
@@ -4749,10 +4765,10 @@ mostrarModalConfirmacion(
         } else {
           console.error('❌ ID inválido recibido:', nuevoId);
           mostrarModalConfirmacion(
-            'Advertencia',
-            'El formulario se ha guardado pero el ID recibido no es válido. Serás redirigido a la lista de formularios.',
+            t('adjustment.ui.alerts.warning'),
+            t('adjustment.ui.alerts.savedNoId'),
             'warning',
-            'Aceptar',
+            t('adjustment.ui.common.accept'),
             false,
             () => navigate('/ajuste')
           );
@@ -4816,7 +4832,7 @@ mostrarModalConfirmacion(
       setCargando(false);
     } catch (error) {
       console.error('❌ Error guardando formulario:', error);
-      setError('Error al guardar el formulario: ' + error.message);
+      setError(t('adjustment.ui.alerts.saveFormError', { message: error.message }));
       setCargando(false);
     }
   };
@@ -4853,23 +4869,23 @@ mostrarModalConfirmacion(
       switch (estadoActual) {
         case 'actaInspeccion':
           siguienteEstado = 'inicial';
-          mensaje = 'Pasando a INFORME PRELIMINAR...';
+          mensaje = t('adjustment.ui.alerts.goingToPrelim');
           break;
         case 'inicial':
           siguienteEstado = 'actualizacion';
-          mensaje = 'Generando formulario de ACTUALIZACIÓN...';
+          mensaje = t('adjustment.ui.alerts.generatingUpdate');
           break;
         case 'actualizacion':
           siguienteEstado = 'informeFinal';
-          mensaje = 'Generando INFORME FINAL...';
+          mensaje = t('adjustment.ui.alerts.generatingFinal');
           break;
         case 'informeFinal':
           siguienteEstado = 'actaInspeccion';
-          mensaje = 'Creando nuevo caso (Acta de inspección)...';
+          mensaje = t('adjustment.ui.alerts.creatingNewCase');
           break;
         default:
           siguienteEstado = 'preeliminar';
-          mensaje = 'Generando formulario PRELIMINAR...';
+          mensaje = t('adjustment.ui.alerts.generatingPrelim');
       }
 
 // Guardar el formulario actual antes de cambiar
@@ -5023,15 +5039,15 @@ mostrarModalConfirmacion(
 
       // Mostrar mensaje de éxito
       mostrarModalConfirmacion(
-        'Formulario Generado',
-        `${mensaje}\n\nFormulario ${siguienteEstado.toUpperCase()} generado correctamente.`,
+        t('adjustment.ui.alerts.formGenerated'),
+        t('adjustment.ui.alerts.formGeneratedMsg', { message: mensaje, state: siguienteEstado.toUpperCase() }),
         'success'
       );
 
       setCargando(false);
     } catch (error) {
       console.error('Error generando siguiente formulario:', error);
-      setError('Error al generar el siguiente formulario');
+      setError(t('adjustment.ui.alerts.generateNextError'));
       setCargando(false);
     }
   };
@@ -5051,7 +5067,7 @@ mostrarModalConfirmacion(
             className="text-xl"
             style={{ color: textPrimary }}
           >
-            Cargando formulario...
+            {t('adjustment.ui.form.loadingForm')}
           </p>
         </div>
       </div>
@@ -5075,7 +5091,7 @@ mostrarModalConfirmacion(
             className="text-2xl font-bold mb-4"
             style={{ color: textPrimary }}
           >
-            Error
+            {t('adjustment.ui.common.error')}
           </h1>
           <p 
             className="mb-6"
@@ -5097,7 +5113,7 @@ mostrarModalConfirmacion(
               e.target.style.backgroundColor = theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#2563EB';
             }}
           >
-            Recargar Página
+            {t('adjustment.ui.common.reloadPage')}
           </button>
         </div>
       </div>
@@ -5120,19 +5136,19 @@ mostrarModalConfirmacion(
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 gap-4">
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <img src={Logo} alt="Logo Grupo Proser" className="h-10 sm:h-12 w-auto" />
+              <img src={Logo} alt={t('adjustment.ui.form.logoAlt')} className="h-10 sm:h-12 w-auto" />
               <div>
                 <h1 
                   className="text-lg sm:text-xl font-bold"
                   style={{ color: textPrimary }}
                 >
-                  Grupo Proser
+                  {t('adjustment.ui.form.brand')}
                 </h1>
                 <p 
                   className="text-xs sm:text-sm"
                   style={{ color: textSecondary }}
                 >
-                  Sistema de Formularios de Seguros
+                  {t('adjustment.ui.form.systemSubtitle')}
                 </p>
               </div>
             </div>
@@ -5166,11 +5182,11 @@ mostrarModalConfirmacion(
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = theme === 'dark' ? 'rgba(245, 158, 11, 0.2)' : '#F59E0B';
                     }}
-                    title="Volver al caso desde el que se abrió este formulario"
+                    title={t('adjustment.ui.form.backToCaseTitle')}
                   >
                     <span className="mr-1 sm:mr-2">↩️</span>
-                    <span className="hidden sm:inline">Volver al caso</span>
-                    <span className="sm:hidden">Volver</span>
+                    <span className="hidden sm:inline">{t('adjustment.ui.form.backToCase')}</span>
+                    <span className="sm:hidden">{t('adjustment.ui.common.back')}</span>
                   </button>
                 );
               })()}
@@ -5190,12 +5206,8 @@ mostrarModalConfirmacion(
                 }}
               >
                 <span className="mr-1 sm:mr-2">📋</span>
-                <span className="hidden sm:inline">Versión: </span>
-                {estadoActual === 'actaInspeccion' ? 'Acta de inspección' :
-                 estadoActual === 'inicial' ? 'Informe preliminar' :
-                 estadoActual === 'preeliminar' ? 'Preeliminar' :
-                 estadoActual === 'actualizacion' ? 'Actualización' : 
-                 estadoActual === 'informeFinal' ? 'Informe Final' : estadoActual}
+                <span className="hidden sm:inline">{t('adjustment.ui.versions.versionPrefix')} </span>
+                {labelVersion(estadoActual)}
               </button>
               
               <button
@@ -5213,8 +5225,8 @@ mostrarModalConfirmacion(
                 }}
               >
                 <span className="mr-1 sm:mr-2">➡️</span>
-                <span className="hidden sm:inline">Siguiente Paso</span>
-                <span className="sm:hidden">Siguiente</span>
+                <span className="hidden sm:inline">{t('adjustment.ui.form.nextStep')}</span>
+                <span className="sm:hidden">{t('adjustment.ui.form.nextShort')}</span>
               </button>
               
               <button
@@ -5231,7 +5243,7 @@ mostrarModalConfirmacion(
                   e.target.style.backgroundColor = theme === 'dark' ? '#2A2A2A' : '#4B5563';
                 }}
               >
-                📚 Historial
+                📚 {t('adjustment.ui.common.history')}
               </button>
             </div>
           </div>
@@ -5255,7 +5267,7 @@ mostrarModalConfirmacion(
               className="text-base sm:text-lg font-semibold mb-4"
               style={{ color: textPrimary }}
             >
-              Seleccionar Versión
+              {t('adjustment.ui.form.selectVersion')}
             </h3>
             <div className="space-y-3">
               <button
@@ -5284,9 +5296,9 @@ mostrarModalConfirmacion(
                   }
                 }}
               >
-                <div className="font-medium">1 · Acta de Inspección</div>
+                <div className="font-medium">{t('adjustment.ui.form.step1Title')}</div>
                 <div className="text-sm" style={{ color: textSecondary }}>
-                  Primer paso del flujo (datos del acta)
+                  {t('adjustment.ui.form.step1Desc')}
                 </div>
               </button>
 
@@ -5316,12 +5328,12 @@ mostrarModalConfirmacion(
                   }
                 }}
               >
-                <div className="font-medium">2 · Informe preliminar</div>
+                <div className="font-medium">{t('adjustment.ui.form.step2Title')}</div>
                 <div 
                   className="text-sm"
                   style={{ color: textSecondary }}
                 >
-                  Datos generales y cuerpo del informe preliminar
+                  {t('adjustment.ui.form.step2Desc')}
                 </div>
               </button>
               
@@ -5350,12 +5362,12 @@ mostrarModalConfirmacion(
                   }
                 }}
               >
-                <div className="font-medium">3 · Actualización</div>
+                <div className="font-medium">{t('adjustment.ui.form.step3Title')}</div>
                 <div 
                   className="text-sm"
                   style={{ color: textSecondary }}
                 >
-                  Información actualizada del caso
+                  {t('adjustment.ui.form.step3Desc')}
                 </div>
               </button>
               
@@ -5384,12 +5396,12 @@ mostrarModalConfirmacion(
                   }
                 }}
               >
-                <div className="font-medium">4 · Informe final</div>
+                <div className="font-medium">{t('adjustment.ui.form.step4Title')}</div>
                 <div 
                   className="text-sm"
                   style={{ color: textSecondary }}
                 >
-                  Versión definitiva del informe
+                  {t('adjustment.ui.form.step4Desc')}
                 </div>
               </button>
             </div>
@@ -5408,7 +5420,7 @@ mostrarModalConfirmacion(
                 e.target.style.backgroundColor = theme === 'dark' ? '#2A2A2A' : '#4B5563';
               }}
             >
-              Cerrar
+              {t('adjustment.ui.common.close')}
             </button>
           </div>
         </div>
@@ -5431,13 +5443,13 @@ mostrarModalConfirmacion(
               className="text-lg font-semibold mb-4"
               style={{ color: textPrimary }}
             >
-              Siguiente Formulario
+              {t('adjustment.ui.form.nextForm')}
             </h3>
             <p 
               className="text-sm mb-4"
               style={{ color: textSecondary }}
             >
-              Selecciona el siguiente paso en la secuencia del caso:
+              {t('adjustment.ui.form.nextFormHint')}
             </p>
             
             <div className="space-y-3">
@@ -5455,9 +5467,9 @@ mostrarModalConfirmacion(
                     color: theme === 'dark' ? '#93C5FD' : '#1E3A8A'
                   }}
                 >
-                  <div className="font-medium">2 · Informe preliminar</div>
+                  <div className="font-medium">{t('adjustment.ui.form.step2Title')}</div>
                   <div className="text-sm" style={{ color: textSecondary }}>
-                    Datos generales del siniestro y cuerpo del informe preliminar
+                    {t('adjustment.ui.form.step2NextDesc')}
                   </div>
                 </button>
               )}
@@ -5476,9 +5488,9 @@ mostrarModalConfirmacion(
                     color: theme === 'dark' ? '#FDE047' : '#854D0E'
                   }}
                 >
-                  <div className="font-medium">3 · Actualización</div>
+                  <div className="font-medium">{t('adjustment.ui.form.step3Title')}</div>
                   <div className="text-sm" style={{ color: theme === 'dark' ? '#FCD34D' : '#A16207' }}>
-                    Cambios y nueva información del caso
+                    {t('adjustment.ui.form.step3NextDesc')}
                   </div>
                 </button>
               )}
@@ -5497,9 +5509,9 @@ mostrarModalConfirmacion(
                     color: theme === 'dark' ? '#C084FC' : '#6B21A8'
                   }}
                 >
-                  <div className="font-medium">4 · Informe final</div>
+                  <div className="font-medium">{t('adjustment.ui.form.step4Title')}</div>
                   <div className="text-sm" style={{ color: theme === 'dark' ? '#D8B4FE' : '#7C3AED' }}>
-                    Conclusiones, liquidación y cierre del caso
+                    {t('adjustment.ui.form.step4NextDesc')}
                   </div>
                 </button>
               )}
@@ -5518,9 +5530,9 @@ mostrarModalConfirmacion(
                     color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
                   }}
                 >
-                  <div className="font-medium">🆕 Nuevo caso (desde acta)</div>
+                  <div className="font-medium">🆕 {t('adjustment.ui.form.newCaseFromActa')}</div>
                   <div className="text-sm" style={{ color: theme === 'dark' ? '#60A5FA' : '#1E3A8A' }}>
-                    Guarda, limpia el formulario y vuelve al paso 1 · Acta de inspección
+                    {t('adjustment.ui.form.newCaseFromActaDesc')}
                   </div>
                 </button>
               )}
@@ -5544,12 +5556,12 @@ mostrarModalConfirmacion(
                   e.target.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.15)' : '#FAF5FF';
                 }}
               >
-                <div className="font-medium">🎯 Generar Versión Final Completa</div>
+                <div className="font-medium">🎯 {t('adjustment.ui.form.generateFullFinal')}</div>
                 <div 
                   className="text-sm"
                   style={{ color: theme === 'dark' ? '#D8B4FE' : '#7C3AED' }}
                 >
-                  Crear informe final con liquidación, indemnización, salvamentos y recomendaciones
+                  {t('adjustment.ui.form.generateFullFinalDesc')}
                 </div>
               </button>
               
@@ -5572,12 +5584,12 @@ mostrarModalConfirmacion(
                   e.target.style.backgroundColor = theme === 'dark' ? '#1F1F1F' : '#F9FAFB';
                 }}
               >
-                <div className="font-medium">📋 Ver Todas las Versiones</div>
+                <div className="font-medium">📋 {t('adjustment.ui.form.viewAllVersions')}</div>
                 <div 
                   className="text-sm"
                   style={{ color: textSecondary }}
                 >
-                  Cambiar a cualquier versión disponible
+                  {t('adjustment.ui.form.viewAllVersionsDesc')}
                 </div>
               </button>
             </div>
@@ -5596,7 +5608,7 @@ mostrarModalConfirmacion(
                 e.target.style.backgroundColor = theme === 'dark' ? '#2A2A2A' : '#4B5563';
               }}
             >
-              Cerrar
+              {t('adjustment.ui.common.close')}
             </button>
           </div>
         </div>
@@ -5660,7 +5672,7 @@ mostrarModalConfirmacion(
                 className="text-xl font-bold"
                 style={{ color: textPrimary }}
               >
-                💰 {tituloAjuste('Valor de reserva')}
+                💰 {tituloAjuste(t('adjustment.ui.form.reserveValue'))}
               </h2>
               <button
                 onClick={() => {
@@ -5687,7 +5699,7 @@ mostrarModalConfirmacion(
                 }}
               >
                 <span className="mr-2">➕</span>
-                Agregar concepto
+                {t('adjustment.ui.form.addConcept')}
               </button>
             </div>
 
@@ -5696,7 +5708,7 @@ mostrarModalConfirmacion(
               style={{ color: textSecondary }}
             >
               {subtituloAjuste(
-                'Registra el valor de reserva y conceptos relacionados (montos, porcentajes, etc.); en el Word aparecen en la tabla «INFORMACIÓN DETALLADA DEL SINIESTRO» en preliminar o actualización (no en acta de inspección ni en informe final, donde se usan los totales del liquidador).'
+                t('adjustment.ui.form.reserveSubtitle')
               )}
             </p>
 
@@ -5718,7 +5730,7 @@ mostrarModalConfirmacion(
                           className="block text-sm font-medium mb-2"
                           style={{ color: textPrimary }}
                         >
-                          Concepto / Descripción
+                          {t('adjustment.ui.form.conceptDescription')}
                         </label>
                         <input
                           type="text"
@@ -5731,7 +5743,7 @@ mostrarModalConfirmacion(
                               camposPersonalizados: nuevosCampos
                             }));
                           }}
-                          placeholder="Ej: Valor de Reposición, Deducible, etc."
+                          placeholder={t('adjustment.ui.form.conceptPlaceholder')}
                           className="w-full px-3 py-2 rounded-lg border text-sm"
                           style={{
                             backgroundColor: inputBg,
@@ -5745,7 +5757,7 @@ mostrarModalConfirmacion(
                           className="block text-sm font-medium mb-2"
                           style={{ color: textPrimary }}
                         >
-                          Valor
+                          {t('adjustment.ui.form.value')}
                         </label>
                         <input
                           type="text"
@@ -5758,7 +5770,7 @@ mostrarModalConfirmacion(
                               camposPersonalizados: nuevosCampos
                             }));
                           }}
-                          placeholder="Ej: $50.000.000, 15%, 1.5%, etc."
+                          placeholder={t('adjustment.ui.form.valuePlaceholder')}
                           className="w-full px-3 py-2 rounded-lg border text-sm"
                           style={{
                             backgroundColor: inputBg,
@@ -5789,7 +5801,7 @@ mostrarModalConfirmacion(
                       }}
                     >
                       <span className="mr-2">🗑️</span>
-                      Eliminar
+                      {t('adjustment.ui.common.delete')}
                     </button>
                   </div>
                 ))}
@@ -5803,8 +5815,8 @@ mostrarModalConfirmacion(
                   color: textSecondary
                 }}
               >
-                <p className="text-sm">Aún no hay conceptos de valor de reserva agregados.</p>
-                <p className="text-xs mt-2">Haz clic en «Agregar concepto» para incluir montos, porcentajes u otros datos que quieras reflejar en el informe.</p>
+                <p className="text-sm">{t('adjustment.ui.form.noConcepts')}</p>
+                <p className="text-xs mt-2">{t('adjustment.ui.form.noConceptsHint')}</p>
               </div>
             )}
           </div>
@@ -5835,7 +5847,7 @@ mostrarModalConfirmacion(
               className="text-xl font-bold mb-4"
               style={{ color: textPrimary }}
             >
-              Ubicación Geográfica del Siniestro
+              {t('adjustment.ui.form.geoLocation')}
             </h2>
 
             <div
@@ -5846,18 +5858,18 @@ mostrarModalConfirmacion(
               }}
             >
               <h3 className="text-sm font-bold mb-3" style={{ color: textPrimary }}>
-                COORDENADAS DE UBICACIÓN
+                {t('adjustment.ui.form.coordinatesTitle')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <label className="font-semibold block mb-1" style={{ color: textPrimary }}>
-                    LATITUD:
+                    {t('adjustment.ui.form.latitude')}
                   </label>
                   <input
                     type="text"
                     readOnly
                     value={coordenadasMapa.latitud}
-                    placeholder="Se llena desde el mapa"
+                    placeholder={t('adjustment.ui.form.filledFromMap')}
                     className="px-2 py-1.5 rounded w-full font-mono"
                     style={{
                       backgroundColor: theme === 'dark' ? '#1A1A1A' : '#FFFFFF',
@@ -5868,13 +5880,13 @@ mostrarModalConfirmacion(
                 </div>
                 <div>
                   <label className="font-semibold block mb-1" style={{ color: textPrimary }}>
-                    LONGITUD:
+                    {t('adjustment.ui.form.longitude')}
                   </label>
                   <input
                     type="text"
                     readOnly
                     value={coordenadasMapa.longitud}
-                    placeholder="Se llena desde el mapa"
+                    placeholder={t('adjustment.ui.form.filledFromMap')}
                     className="px-2 py-1.5 rounded w-full font-mono"
                     style={{
                       backgroundColor: theme === 'dark' ? '#1A1A1A' : '#FFFFFF',
@@ -5886,13 +5898,13 @@ mostrarModalConfirmacion(
               </div>
               {formData.direccionRiesgo && (
                 <p className="mt-3 text-sm" style={{ color: textSecondary }}>
-                  <span className="font-semibold" style={{ color: textPrimary }}>Dirección: </span>
+                  <span className="font-semibold" style={{ color: textPrimary }}>{t('adjustment.ui.form.address')} </span>
                   {formData.direccionRiesgo}
                 </p>
               )}
               {!coordenadasMapa.latitud && !coordenadasMapa.longitud && (
                 <p className="mt-2 text-xs" style={{ color: textSecondary }}>
-                  Mueva el marcador, busque una dirección o pulse «Ubicación» para cargar las coordenadas.
+                  {t('adjustment.ui.form.moveMarkerHint')}
                 </p>
               )}
             </div>
@@ -5954,7 +5966,7 @@ mostrarModalConfirmacion(
             onAgregarImagenBase64={(base64String, nombre) => {
               const imagenBase64 = {
                 id: Date.now() + Math.random(),
-                nombre: nombre || 'Imagen Base64',
+                nombre: nombre || t('adjustment.ui.form.imageBase64'),
                 base64: base64String,
                 descripcion: ''
               };
@@ -6057,14 +6069,14 @@ mostrarModalConfirmacion(
                   style={{ color: textPrimary }}
                 >
                   <span className="mr-2 sm:mr-3">📊</span>
-                  {numsSeccion.actualizacion}. ACTUALIZACIÓN DEL CASO
+                  {numsSeccion.actualizacion}. {t('adjustment.ui.form.caseUpdate')}
                 </h3>
                 <p 
                   className="text-sm sm:text-base mt-2"
                   style={{ color: textSecondary }}
                 >
                   {subtituloAjuste(
-                    'Información actualizada y cambios desde la versión preeliminar'
+                    t('adjustment.ui.form.caseUpdateSubtitle')
                   )}
                 </p>
               </div>
@@ -6075,13 +6087,13 @@ mostrarModalConfirmacion(
                     className="block text-xs sm:text-sm font-medium mb-2"
                     style={{ color: textPrimary }}
                   >
-                    {subtituloAjuste('Inspector responsable')}
+                    {subtituloAjuste(t('adjustment.ui.form.responsibleInspector'))}
                   </label>
                   <input
                     type="text"
                     value={formData.inspector || ''}
                     onChange={(e) => handleInputChange('inspector', e.target.value)}
-                    placeholder="Nombre del inspector"
+                    placeholder={t('adjustment.ui.form.inspectorPlaceholder')}
                     className="w-full px-2 sm:px-3 py-2 rounded-md focus:outline-none text-sm"
                     style={{
                       backgroundColor: inputBg,
@@ -6098,12 +6110,12 @@ mostrarModalConfirmacion(
                   className="block text-xs sm:text-sm font-medium mb-2"
                   style={{ color: textPrimary }}
                 >
-                  {subtituloAjuste('Cambios desde la versión preeliminar')}
+                  {subtituloAjuste(t('adjustment.ui.form.changesFromPreliminary'))}
                 </label>
                 <textarea
                   value={formData.cambiosDesdePreeliminar || ''}
                   onChange={(e) => handleInputChange('cambiosDesdePreeliminar', e.target.value)}
-                  placeholder="Describe los cambios principales desde la versión preeliminar..."
+                  placeholder={t('adjustment.ui.form.changesFromPreliminaryPlaceholder')}
                   rows={4}
                   className="w-full px-2 sm:px-3 py-2 rounded-md focus:outline-none text-sm"
                   style={{
@@ -6120,7 +6132,7 @@ mostrarModalConfirmacion(
                     formData={formData} 
                     onInputChange={handleInputChange}
                     seccion="cambiosDesdePreeliminar"
-                    tituloSeccion="Cambios desde la Versión Preeliminar"
+                    tituloSeccion={t('adjustment.ui.form.changesFromPreliminaryIa')}
                     textoActual={formData.cambiosDesdePreeliminar || ''}
                     onTextoCambiado={(texto) => handleInputChange('cambiosDesdePreeliminar', texto)}
                     tipoSeccion="cambiosDesdePreeliminar"
@@ -6133,12 +6145,12 @@ mostrarModalConfirmacion(
                   className="block text-sm font-medium mb-2"
                   style={{ color: textPrimary }}
                 >
-                  {subtituloAjuste('Nueva información recopilada')}
+                  {subtituloAjuste(t('adjustment.ui.form.newInfo'))}
                 </label>
                 <textarea
                   value={formData.nuevaInformacion || ''}
                   onChange={(e) => handleInputChange('nuevaInformacion', e.target.value)}
-                  placeholder="Describe la nueva información obtenida..."
+                  placeholder={t('adjustment.ui.form.newInfoPlaceholder')}
                   rows={4}
                   className="w-full px-3 py-2 rounded-md focus:outline-none"
                   style={{
@@ -6155,7 +6167,7 @@ mostrarModalConfirmacion(
                     formData={formData} 
                     onInputChange={handleInputChange}
                     seccion="nuevaInformacion"
-                    tituloSeccion="Nueva Información Recopilada"
+                    tituloSeccion={t('adjustment.ui.form.newInfoIa')}
                     textoActual={formData.nuevaInformacion || ''}
                     onTextoCambiado={(texto) => handleInputChange('nuevaInformacion', texto)}
                     tipoSeccion="nuevaInformacion"
@@ -6166,19 +6178,19 @@ mostrarModalConfirmacion(
               <div className="mt-6">
                 {numsSeccion.observacionesActualizacion != null && (
                   <h4 className="text-lg font-semibold mb-3" style={{ color: textPrimary }}>
-                    {numsSeccion.observacionesActualizacion}. OBSERVACIONES DE ACTUALIZACIÓN
+                    {numsSeccion.observacionesActualizacion}. {t('adjustment.ui.form.updateObservationsTitle')}
                   </h4>
                 )}
                 <label 
                   className="block text-sm font-medium mb-2"
                   style={{ color: textPrimary }}
                 >
-                  Observaciones de Actualización
+                  {t('adjustment.ui.form.updateObservations')}
                 </label>
                 <textarea
                   value={formData.observacionesActualizacion || ''}
                   onChange={(e) => handleInputChange('observacionesActualizacion', e.target.value)}
-                  placeholder="Observaciones específicas de la actualización del caso..."
+                  placeholder={t('adjustment.ui.form.updateObservationsPlaceholder')}
                   rows={4}
                   className="w-full px-3 py-2 rounded-md focus:outline-none"
                   style={{
@@ -6195,7 +6207,7 @@ mostrarModalConfirmacion(
                     formData={formData} 
                     onInputChange={handleInputChange}
                     seccion="observacionesActualizacion"
-                    tituloSeccion="Observaciones de Actualización"
+                    tituloSeccion={t('adjustment.ui.form.updateObservations')}
                     textoActual={formData.observacionesActualizacion || ''}
                     onTextoCambiado={(texto) => handleInputChange('observacionesActualizacion', texto)}
                     tipoSeccion="observacionesActualizacion"
@@ -6225,13 +6237,13 @@ mostrarModalConfirmacion(
                   style={{ color: textPrimary }}
                 >
                   <span className="mr-3">✅</span>
-                  Informe Final
+                  {t('adjustment.ui.form.finalReport')}
                 </h3>
                 <p 
                   className="mt-2"
                   style={{ color: textSecondary }}
                 >
-                  Conclusiones definitivas y recomendaciones finales del caso
+                  {t('adjustment.ui.form.finalReportSubtitle')}
                 </p>
               </div>
 
@@ -6241,13 +6253,13 @@ mostrarModalConfirmacion(
                     className="block text-sm font-medium mb-2"
                     style={{ color: textPrimary }}
                   >
-                    {subtituloAjuste('Inspector responsable')}
+                    {subtituloAjuste(t('adjustment.ui.form.responsibleInspector'))}
                   </label>
                   <input
                     type="text"
                     value={formData.inspector || ''}
                     onChange={(e) => handleInputChange('inspector', e.target.value)}
-                    placeholder="Nombre del inspector"
+                    placeholder={t('adjustment.ui.form.inspectorPlaceholder')}
                     className="w-full px-3 py-2 rounded-md focus:outline-none"
                     style={{
                       backgroundColor: inputBg,
@@ -6261,18 +6273,18 @@ mostrarModalConfirmacion(
 
               <div className="mt-6">
                 <h4 className="text-lg font-semibold mb-3" style={{ color: textPrimary }}>
-                  {numsSeccion.conclusionesFinales}. CONCLUSIONES FINALES
+                  {numsSeccion.conclusionesFinales}. {t('adjustment.ui.form.finalConclusionsTitle')}
                 </h4>
                 <label 
                   className="block text-sm font-medium mb-2"
                   style={{ color: textPrimary }}
                 >
-                  Conclusiones Finales
+                  {t('adjustment.ui.form.finalConclusions')}
                 </label>
                 <textarea
                   value={formData.conclusionesFinales || ''}
                   onChange={(e) => handleInputChange('conclusionesFinales', e.target.value)}
-                  placeholder="Conclusiones definitivas del caso..."
+                  placeholder={t('adjustment.ui.form.finalConclusionsPlaceholder')}
                   rows={4}
                   className="w-full px-3 py-2 rounded-md focus:outline-none"
                   style={{
@@ -6289,7 +6301,7 @@ mostrarModalConfirmacion(
                     formData={formData} 
                     onInputChange={handleInputChange}
                     seccion="conclusionesFinales"
-                    tituloSeccion="Conclusiones Finales"
+                    tituloSeccion={t('adjustment.ui.form.finalConclusions')}
                     textoActual={formData.conclusionesFinales || ''}
                     onTextoCambiado={(texto) => handleInputChange('conclusionesFinales', texto)}
                     tipoSeccion="conclusionesFinales"
@@ -6299,18 +6311,18 @@ mostrarModalConfirmacion(
 
               <div className="mt-6">
                 <h4 className="text-lg font-semibold mb-3" style={{ color: textPrimary }}>
-                  {numsSeccion.recomendacionesFinales}. RECOMENDACIONES FINALES
+                  {numsSeccion.recomendacionesFinales}. {t('adjustment.ui.form.finalRecommendationsTitle')}
                 </h4>
                 <label 
                   className="text-sm font-medium mb-2"
                   style={{ color: textPrimary }}
                 >
-                  Recomendaciones Finales
+                  {t('adjustment.ui.form.finalRecommendations')}
                 </label>
                 <textarea
                   value={formData.recomendacionesFinales || ''}
                   onChange={(e) => handleInputChange('recomendacionesFinales', e.target.value)}
-                  placeholder="Recomendaciones definitivas para el caso..."
+                  placeholder={t('adjustment.ui.form.finalRecommendationsPlaceholder')}
                   rows={4}
                   className="w-full px-3 py-2 rounded-md focus:outline-none"
                   style={{
@@ -6327,7 +6339,7 @@ mostrarModalConfirmacion(
                     formData={formData} 
                     onInputChange={handleInputChange}
                     seccion="recomendacionesFinales"
-                    tituloSeccion="Recomendaciones Finales"
+                    tituloSeccion={t('adjustment.ui.form.finalRecommendations')}
                     textoActual={formData.recomendacionesFinales || ''}
                     onTextoCambiado={(texto) => handleInputChange('recomendacionesFinales', texto)}
                     tipoSeccion="recomendacionesFinales"
@@ -6337,18 +6349,18 @@ mostrarModalConfirmacion(
 
               <div className="mt-6">
                 <h4 className="text-lg font-semibold mb-3" style={{ color: textPrimary }}>
-                  {numsSeccion.observacionesInformeFinal}. OBSERVACIONES DEL INFORME FINAL
+                  {numsSeccion.observacionesInformeFinal}. {t('adjustment.ui.form.finalObservationsTitle')}
                 </h4>
                 <label 
                   className="block text-sm font-medium mb-2"
                   style={{ color: textPrimary }}
                 >
-                  Observaciones del Informe Final
+                  {t('adjustment.ui.form.finalObservations')}
                 </label>
                 <textarea
                   value={formData.observacionesInformeFinal || ''}
                   onChange={(e) => handleInputChange('observacionesInformeFinal', e.target.value)}
-                  placeholder="Observaciones específicas del informe final..."
+                  placeholder={t('adjustment.ui.form.finalObservationsPlaceholder')}
                   rows={4}
                   className="w-full px-3 py-2 rounded-md focus:outline-none"
                   style={{
@@ -6365,7 +6377,7 @@ mostrarModalConfirmacion(
                     formData={formData} 
                     onInputChange={handleInputChange}
                     seccion="observacionesInformeFinal"
-                    tituloSeccion="Observaciones del Informe Final"
+                    tituloSeccion={t('adjustment.ui.form.finalObservations')}
                     textoActual={formData.observacionesInformeFinal || ''}
                     onTextoCambiado={(texto) => handleInputChange('observacionesInformeFinal', texto)}
                     tipoSeccion="observacionesInformeFinal"
@@ -6395,13 +6407,13 @@ mostrarModalConfirmacion(
                   style={{ color: textPrimary }}
                 >
                   <span className="mr-3">🎯</span>
-                  Parte Final del Formulario
+                  {t('adjustment.ui.form.finalPart')}
                 </h3>
                 <p 
                   className="mt-2"
                   style={{ color: textSecondary }}
                 >
-                  Liquidación de pérdida, indemnización, salvamentos y recomendaciones finales
+                  {t('adjustment.ui.form.finalPartSubtitle')}
                 </p>
               </div>
 
@@ -6411,7 +6423,7 @@ mostrarModalConfirmacion(
                   className="text-lg font-semibold mb-4"
                   style={{ color: textPrimary }}
                 >
-                  {numsSeccion.liquidacion}. LIQUIDACIÓN DE LA PÉRDIDA
+                  {numsSeccion.liquidacion}. {t('adjustment.ui.form.lossSettlement')}
                 </h4>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -6420,7 +6432,7 @@ mostrarModalConfirmacion(
                       className="block text-sm font-medium mb-2"
                       style={{ color: textPrimary }}
                     >
-                      Infraseguro
+                      {t('adjustment.ui.form.underinsurance')}
                     </label>
                     <textarea
                       value={formData.liquidacionPerdida?.infraseguro || ''}
@@ -6428,7 +6440,7 @@ mostrarModalConfirmacion(
                         ...formData.liquidacionPerdida,
                         infraseguro: e.target.value
                       })}
-                      placeholder="Describe el infraseguro..."
+                      placeholder={t('adjustment.ui.form.underinsurancePlaceholder')}
                       rows={3}
                       className="w-full px-3 py-2 rounded-md focus:outline-none"
                       style={{
@@ -6445,7 +6457,7 @@ mostrarModalConfirmacion(
                         formData={formData} 
                         onInputChange={handleInputChange}
                         seccion="infraseguro"
-                        tituloSeccion="Infraseguro"
+                        tituloSeccion={t('adjustment.ui.form.underinsurance')}
                         textoActual={formData.liquidacionPerdida?.infraseguro || ''}
                         onTextoCambiado={(texto) => handleInputChange('liquidacionPerdida', {
                           ...formData.liquidacionPerdida,
@@ -6461,7 +6473,7 @@ mostrarModalConfirmacion(
                       className="block text-sm font-medium mb-2"
                       style={{ color: textPrimary }}
                     >
-                      Demérito
+                      {t('adjustment.ui.form.demerit')}
                     </label>
                     <textarea
                       value={formData.liquidacionPerdida?.demerito || ''}
@@ -6469,7 +6481,7 @@ mostrarModalConfirmacion(
                         ...formData.liquidacionPerdida,
                         demerito: e.target.value
                       })}
-                      placeholder="Describe el demérito..."
+                      placeholder={t('adjustment.ui.form.demeritPlaceholder')}
                       rows={3}
                       className="w-full px-3 py-2 rounded-md focus:outline-none"
                       style={{
@@ -6486,7 +6498,7 @@ mostrarModalConfirmacion(
                         formData={formData} 
                         onInputChange={handleInputChange}
                         seccion="demerito"
-                        tituloSeccion="Demérito"
+                        tituloSeccion={t('adjustment.ui.form.demerit')}
                         textoActual={formData.liquidacionPerdida?.demerito || ''}
                         onTextoCambiado={(texto) => handleInputChange('liquidacionPerdida', {
                           ...formData.liquidacionPerdida,
@@ -6503,7 +6515,7 @@ mostrarModalConfirmacion(
                     className="block text-sm font-medium mb-2"
                     style={{ color: textPrimary }}
                   >
-                    Avance Tecnológico
+                    {t('adjustment.ui.form.techAdvance')}
                   </label>
                   <textarea
                     value={formData.liquidacionPerdida?.avanceTecnologico || ''}
@@ -6511,7 +6523,7 @@ mostrarModalConfirmacion(
                       ...formData.liquidacionPerdida,
                       avanceTecnologico: e.target.value
                     })}
-                    placeholder="Describe el avance tecnológico..."
+                    placeholder={t('adjustment.ui.form.techAdvancePlaceholder')}
                     rows={3}
                     className="w-full px-3 py-2 rounded-md focus:outline-none"
                     style={{
@@ -6528,7 +6540,7 @@ mostrarModalConfirmacion(
                       formData={formData} 
                       onInputChange={handleInputChange}
                       seccion="avanceTecnologico"
-                      tituloSeccion="Avance Tecnológico"
+                      tituloSeccion={t('adjustment.ui.form.techAdvance')}
                       textoActual={formData.liquidacionPerdida?.avanceTecnologico || ''}
                       onTextoCambiado={(texto) => handleInputChange('liquidacionPerdida', {
                         ...formData.liquidacionPerdida,
@@ -6546,7 +6558,7 @@ mostrarModalConfirmacion(
                   className="text-lg font-semibold mb-4"
                   style={{ color: textPrimary }}
                 >
-                  {numsSeccion.liquidador}. LIQUIDADOR
+                  {numsSeccion.liquidador}. {t('adjustment.ui.form.liquidator')}
                 </h4>
                 <LiquidadorAjuste 
                   formData={formData} 
@@ -6560,7 +6572,7 @@ mostrarModalConfirmacion(
                   className="text-lg font-semibold mb-4"
                   style={{ color: textPrimary }}
                 >
-                  {numsSeccion.indemnizacion}. INDEMNIZACIÓN
+                  {numsSeccion.indemnizacion}. {t('adjustment.ui.form.indemnization')}
                 </h4>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -6569,7 +6581,7 @@ mostrarModalConfirmacion(
                       className="block text-sm font-medium mb-2"
                       style={{ color: textPrimary }}
                     >
-                      Deducible
+                      {t('adjustment.ui.form.deductible')}
                     </label>
                     <textarea
                       value={formData.indemnizacion?.deducible || ''}
@@ -6577,7 +6589,7 @@ mostrarModalConfirmacion(
                         ...formData.indemnizacion,
                         deducible: e.target.value
                       })}
-                      placeholder="Describe el deducible..."
+                      placeholder={t('adjustment.ui.form.deductiblePlaceholder')}
                       rows={3}
                       className="w-full px-3 py-2 rounded-md focus:outline-none"
                       style={{
@@ -6594,7 +6606,7 @@ mostrarModalConfirmacion(
                         formData={formData} 
                         onInputChange={handleInputChange}
                         seccion="deducible"
-                        tituloSeccion="Deducible"
+                        tituloSeccion={t('adjustment.ui.form.deductible')}
                         textoActual={formData.indemnizacion?.deducible || ''}
                         onTextoCambiado={(texto) => handleInputChange('indemnizacion', {
                           ...formData.indemnizacion,
@@ -6610,7 +6622,7 @@ mostrarModalConfirmacion(
                       className="block text-sm font-medium mb-2"
                       style={{ color: textPrimary }}
                     >
-                      Subrogación
+                      {t('adjustment.ui.form.subrogation')}
                     </label>
                     <textarea
                       value={formData.indemnizacion?.subrogacion || ''}
@@ -6618,7 +6630,7 @@ mostrarModalConfirmacion(
                         ...formData.indemnizacion,
                         subrogacion: e.target.value
                       })}
-                      placeholder="Describe la subrogación..."
+                      placeholder={t('adjustment.ui.form.subrogationPlaceholder')}
                       rows={3}
                       className="w-full px-3 py-2 rounded-md focus:outline-none"
                       style={{
@@ -6635,7 +6647,7 @@ mostrarModalConfirmacion(
                         formData={formData} 
                         onInputChange={handleInputChange}
                         seccion="subrogacion"
-                        tituloSeccion="Subrogación"
+                        tituloSeccion={t('adjustment.ui.form.subrogation')}
                         textoActual={formData.indemnizacion?.subrogacion || ''}
                         onTextoCambiado={(texto) => handleInputChange('indemnizacion', {
                           ...formData.indemnizacion,
@@ -6654,7 +6666,7 @@ mostrarModalConfirmacion(
                   className="text-lg font-semibold mb-4"
                   style={{ color: textPrimary }}
                 >
-                  {numsSeccion.panorama}. RECOMENDACIONES - PANORAMA DE RIESGOS
+                  {numsSeccion.panorama}. {t('adjustment.ui.form.riskPanoramaTitle')}
                 </h4>
                 
                 <div>
@@ -6662,12 +6674,12 @@ mostrarModalConfirmacion(
                     className="block text-sm font-medium mb-2"
                     style={{ color: textPrimary }}
                   >
-                    Panorama de Riesgos
+                    {t('adjustment.ui.form.riskPanorama')}
                   </label>
                   <textarea
                     value={formData.panoramaRiesgos || ''}
                     onChange={(e) => handleInputChange('panoramaRiesgos', e.target.value)}
-                    placeholder="Describe el panorama de riesgos y recomendaciones..."
+                    placeholder={t('adjustment.ui.form.riskPanoramaPlaceholder')}
                     rows={4}
                     className="w-full px-3 py-2 rounded-md focus:outline-none"
                     style={{
@@ -6684,7 +6696,7 @@ mostrarModalConfirmacion(
                       formData={formData} 
                       onInputChange={handleInputChange}
                       seccion="panoramaRiesgos"
-                      tituloSeccion="Panorama de Riesgos"
+                      tituloSeccion={t('adjustment.ui.form.riskPanorama')}
                       textoActual={formData.panoramaRiesgos || ''}
                       onTextoCambiado={(texto) => handleInputChange('panoramaRiesgos', texto)}
                       tipoSeccion="panoramaRiesgos"
@@ -6719,25 +6731,21 @@ mostrarModalConfirmacion(
               className="text-lg font-semibold mb-2"
               style={{ color: textPrimary }}
             >
-              Gestión del Formulario
+              {t('adjustment.ui.form.formManagement')}
             </h3>
             <p 
               className="text-sm"
               style={{ color: textSecondary }}
             >
-              Estado actual: <span className="font-bold">
-                {estadoActual === 'actaInspeccion' ? 'Acta de inspección' :
-                 estadoActual === 'inicial' ? 'Informe preliminar' :
-                 estadoActual === 'preeliminar' ? 'Preeliminar' :
-                 estadoActual === 'actualizacion' ? 'Actualización' : 
-                 estadoActual === 'informeFinal' ? 'Informe Final' : estadoActual}
+              {t('adjustment.ui.form.currentStatus')} <span className="font-bold">
+                {labelVersion(estadoActual)}
               </span>
             </p>
             <p 
               className="text-xs mt-1"
               style={{ color: textSecondary }}
             >
-              El menú «Siguiente paso» guarda el progreso y avanza: 1 Acta → 2 Preliminar → 3 Actualización → 4 Final
+              {t('adjustment.ui.form.sequenceHelp')}
             </p>
             
             {/* Indicador de progreso en la secuencia */}
@@ -6746,25 +6754,25 @@ mostrarModalConfirmacion(
                 <div 
                   className="w-3 h-3 rounded-full" 
                   style={{ backgroundColor: estadoActual === 'actaInspeccion' ? '#DC2626' : (theme === 'dark' ? '#404040' : '#D1D5DB') }}
-                  title="1 · Acta de inspección"
+                  title={t('adjustment.ui.form.progressActa')}
                 ></div>
                 <div style={{ color: textSecondary }}>→</div>
                 <div 
                   className="w-3 h-3 rounded-full" 
                   style={{ backgroundColor: estadoActual === 'inicial' || estadoActual === 'preeliminar' ? '#3B82F6' : (theme === 'dark' ? '#404040' : '#D1D5DB') }}
-                  title="2 · Informe preliminar"
+                  title={t('adjustment.ui.form.progressPrelim')}
                 ></div>
                 <div style={{ color: textSecondary }}>→</div>
                 <div 
                   className="w-3 h-3 rounded-full" 
                   style={{ backgroundColor: estadoActual === 'actualizacion' ? '#EAB308' : (theme === 'dark' ? '#404040' : '#D1D5DB') }}
-                  title="3 · Actualización"
+                  title={t('adjustment.ui.form.progressUpdate')}
                 ></div>
                 <div style={{ color: textSecondary }}>→</div>
                 <div 
                   className="w-3 h-3 rounded-full" 
                   style={{ backgroundColor: estadoActual === 'informeFinal' ? '#8B5CF6' : (theme === 'dark' ? '#404040' : '#D1D5DB') }}
-                  title="4 · Informe final"
+                  title={t('adjustment.ui.form.progressFinal')}
                 ></div>
               </div>
             </div>
@@ -6779,11 +6787,11 @@ mostrarModalConfirmacion(
               }}
             >
               <p className="text-xs text-center">
-                {estadoActual === 'actaInspeccion' && '📋 Acta de inspección — Complete el acta; el Word del informe incluirá esta sección al inicio del cuerpo del documento.'}
-                {estadoActual === 'inicial' && '📝 Informe preliminar — Tras causa: análisis de cobertura, reserva, salvamentos, recobro y observaciones (en ese orden).'}
-                {estadoActual === 'preeliminar' && '📝 Preeliminar — Incluye análisis de cobertura y bloques del informe preliminar.'}
-                {estadoActual === 'actualizacion' && '📊 Actualización — Cambios y nueva información del caso.'}
-                {estadoActual === 'informeFinal' && '✅ Informe final — Conclusiones, liquidación, indemnización y cierre.'}
+                {estadoActual === 'actaInspeccion' && t('adjustment.ui.form.helpActa')}
+                {estadoActual === 'inicial' && t('adjustment.ui.form.helpInicial')}
+                {estadoActual === 'preeliminar' && t('adjustment.ui.form.helpPreeliminar')}
+                {estadoActual === 'actualizacion' && t('adjustment.ui.form.helpActualizacion')}
+                {estadoActual === 'informeFinal' && t('adjustment.ui.form.helpInformeFinal')}
               </p>
             </div>
             
@@ -6797,14 +6805,21 @@ mostrarModalConfirmacion(
               }}
             >
               <p className="text-xs text-center">
-                {estadoActual === 'actaInspeccion' && '📄 Word (acta): encabezado con logo e «INFORME DE INSPECCIÓN» (negro), luego «ACTA DE INSPECCIÓN» (tabla, narrativas, observaciones y firmas); sin carta de destinatario ni tabla «Información detallada».'}
-                {estadoActual === 'inicial' && '📄 Word (informe): … circunstancias, inspección, causa; luego análisis de cobertura, reserva, salvamentos, recobro y observaciones (acta).'}
-                {estadoActual === 'actualizacion' && '📄 Word incluirá: acta + informe con bloque de actualización del caso.'}
-                {estadoActual === 'informeFinal' && '📄 Word incluirá: acta + informe completo con conclusiones, liquidación, indemnización, salvamentos y panorama de riesgos.'}
+                {estadoActual === 'actaInspeccion' && t('adjustment.ui.form.wordActa')}
+                {estadoActual === 'inicial' && t('adjustment.ui.form.wordInicial')}
+                {estadoActual === 'actualizacion' && t('adjustment.ui.form.wordActualizacion')}
+                {estadoActual === 'informeFinal' && t('adjustment.ui.form.wordInformeFinal')}
               </p>
             </div>
           </div>
 
+          <div className="mb-4 flex justify-center">
+            <DocumentLanguageSelector
+              value={documentLocale}
+              onChange={setDocumentLocale}
+              id="ajuste-document-language"
+            />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <button
               onClick={generarDocumento}
@@ -6812,7 +6827,7 @@ mostrarModalConfirmacion(
               className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
             >
               <span className="mr-2">📄</span>
-              {cargando ? 'Generando...' : 'Generar Word'}
+              {cargando ? t('adjustment.ui.common.generating') : t('adjustment.ui.form.generateWord')}
             </button>
 
             <button
@@ -6821,7 +6836,7 @@ mostrarModalConfirmacion(
               className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
             >
               <span className="mr-2">💾</span>
-              {cargando ? 'Guardando...' : 'Guardar'}
+              {cargando ? t('adjustment.ui.common.saving') : t('adjustment.ui.common.save')}
             </button>
 
             <button
@@ -6830,7 +6845,7 @@ mostrarModalConfirmacion(
               className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
             >
               <span className="mr-2">🧪</span>
-              Probar Guardado
+              {t('adjustment.ui.form.testSave')}
             </button>
 
             <button
@@ -6838,7 +6853,7 @@ mostrarModalConfirmacion(
               className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
             >
               <span className="mr-2">📚</span>
-              Historial
+              {t('adjustment.ui.common.history')}
             </button>
 
             <button
@@ -6847,7 +6862,7 @@ mostrarModalConfirmacion(
               className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
             >
               <span className="mr-2">➡️</span>
-              Siguiente Paso
+              {t('adjustment.ui.form.nextStep')}
             </button>
           </div>
         </div>

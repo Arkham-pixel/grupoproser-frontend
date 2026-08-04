@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { FaSearch, FaDownload, FaTrash, FaEdit, FaTimes, FaTag, FaUser, FaCalendar, FaEye } from 'react-icons/fa';
 
 export default function ListaDocumentos() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [documentos, setDocumentos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -56,15 +58,15 @@ export default function ListaDocumentos() {
       setTotal(response.data.total || 0);
     } catch (error) {
       console.error('Error cargando documentos:', error);
-      let mensajeError = 'Error al cargar documentos';
+      let mensajeError = t('admin.ui.documentos.lista.loadFailed');
       
       if (error.response?.status === 404) {
-        mensajeError = 'Ruta no encontrada. Por favor, reinicia el servidor backend.';
+        mensajeError = t('admin.ui.documentos.lista.routeNotFound');
       } else if (error.response?.status === 403) {
         const login = localStorage.getItem('login');
-        mensajeError = `No tienes permisos para acceder. Tu login (${login}) debe estar en la lista de usuarios permitidos en el backend.`;
+        mensajeError = t('admin.ui.documentos.lista.forbidden', { login });
       } else if (error.response?.status === 401) {
-        mensajeError = 'No estás autenticado. Por favor, inicia sesión nuevamente.';
+        mensajeError = t('admin.ui.documentos.lista.unauthenticated');
       } else if (error.response?.data?.message) {
         mensajeError = error.response.data.message;
       }
@@ -110,13 +112,13 @@ export default function ListaDocumentos() {
       console.error('Error descargando documento:', error);
       setMensaje({
         tipo: 'error',
-        texto: 'Error al descargar el documento'
+        texto: t('admin.ui.documentos.lista.downloadFailed')
       });
     }
   };
 
   const handleEliminar = async (documento) => {
-    if (!window.confirm(`¿Estás seguro de que deseas eliminar "${documento.nombre}"?`)) {
+    if (!window.confirm(t('admin.ui.documentos.lista.confirmDelete', { name: documento.nombre }))) {
       return;
     }
 
@@ -124,7 +126,7 @@ export default function ListaDocumentos() {
       await api.delete(`/api/documentos/${documento._id}`);
       setMensaje({
         tipo: 'exito',
-        texto: 'Documento eliminado exitosamente'
+        texto: t('admin.ui.documentos.lista.deleteSuccess')
       });
       cargarDocumentos();
       setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
@@ -132,7 +134,7 @@ export default function ListaDocumentos() {
       console.error('Error eliminando documento:', error);
       setMensaje({
         tipo: 'error',
-        texto: 'Error al eliminar el documento'
+        texto: t('admin.ui.documentos.lista.deleteFailed')
       });
     }
   };
@@ -155,7 +157,7 @@ export default function ListaDocumentos() {
       console.error('Error abriendo vista previa:', error);
       setMensaje({
         tipo: 'error',
-        texto: 'Error al abrir la vista previa'
+        texto: t('admin.ui.documentos.lista.previewFailed')
       });
     }
   };
@@ -192,7 +194,7 @@ export default function ListaDocumentos() {
 
       setMensaje({
         tipo: 'exito',
-        texto: 'Documento actualizado exitosamente'
+        texto: t('admin.ui.documentos.lista.updateSuccess')
       });
 
       setMostrarFormularioEdicion(false);
@@ -203,7 +205,7 @@ export default function ListaDocumentos() {
       console.error('Error actualizando documento:', error);
       setMensaje({
         tipo: 'error',
-        texto: 'Error al actualizar el documento'
+        texto: t('admin.ui.documentos.lista.updateFailed')
       });
     }
   };
@@ -236,7 +238,7 @@ export default function ListaDocumentos() {
         className="text-xl font-bold mb-4"
         style={{ color: textPrimary }}
       >
-        Documentos ({total})
+        {t('admin.ui.documentos.lista.title', { count: total })}
       </h2>
 
       {/* Filtros */}
@@ -254,7 +256,7 @@ export default function ListaDocumentos() {
                 setBusqueda(e.target.value);
                 setPagina(1);
               }}
-              placeholder="Buscar por nombre, descripción o etiquetas..."
+              placeholder={t('admin.ui.documentos.lista.searchPlaceholder')}
               className="w-full pl-10 pr-3 py-2 rounded text-sm"
               style={{
                 backgroundColor: inputBg,
@@ -286,7 +288,7 @@ export default function ListaDocumentos() {
                 border: `1px solid ${borderColor}`
               }}
             >
-              Todas
+              {t('common.all')}
             </button>
             {etiquetasDisponibles.map((etiqueta) => (
               <button
@@ -336,11 +338,11 @@ export default function ListaDocumentos() {
       {/* Lista de documentos */}
       {cargando ? (
         <div className="text-center py-8" style={{ color: textSecondary }}>
-          Cargando documentos...
+          {t('admin.ui.documentos.lista.loading')}
         </div>
       ) : documentos.length === 0 ? (
         <div className="text-center py-8" style={{ color: textSecondary }}>
-          No se encontraron documentos
+          {t('admin.ui.documentos.lista.noDocuments')}
         </div>
       ) : (
         <div className="space-y-3">
@@ -410,7 +412,7 @@ export default function ListaDocumentos() {
                         backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.2)' : '#22C55E',
                         color: theme === 'dark' ? '#86EFAC' : '#FFFFFF'
                       }}
-                      title="Vista previa"
+                      title={t('admin.ui.documentos.lista.preview')}
                     >
                       <FaEye />
                     </button>
@@ -422,7 +424,7 @@ export default function ListaDocumentos() {
                       backgroundColor: buttonPrimary,
                       color: theme === 'dark' ? '#93C5FD' : '#FFFFFF'
                     }}
-                    title="Descargar"
+                    title={t('common.download')}
                   >
                     <FaDownload />
                   </button>
@@ -433,7 +435,7 @@ export default function ListaDocumentos() {
                       backgroundColor: theme === 'dark' ? '#2D2D2D' : '#F3F4F6',
                       color: textPrimary
                     }}
-                    title="Editar"
+                    title={t('common.edit')}
                   >
                     <FaEdit />
                   </button>
@@ -444,7 +446,7 @@ export default function ListaDocumentos() {
                       backgroundColor: buttonDanger,
                       color: theme === 'dark' ? '#FCA5A5' : '#FFFFFF'
                     }}
-                    title="Eliminar"
+                    title={t('admin.ui.documentos.lista.delete')}
                   >
                     <FaTrash />
                   </button>
@@ -468,10 +470,10 @@ export default function ListaDocumentos() {
               border: `1px solid ${borderColor}`
             }}
           >
-            Anterior
+            {t('common.previous')}
           </button>
           <span style={{ color: textSecondary }}>
-            Página {pagina} de {totalPaginas}
+            {t('admin.ui.documentos.lista.pageOf', { page: pagina, total: totalPaginas })}
           </span>
           <button
             onClick={() => setPagina(p => Math.min(totalPaginas, p + 1))}
@@ -483,7 +485,7 @@ export default function ListaDocumentos() {
               border: `1px solid ${borderColor}`
             }}
           >
-            Siguiente
+            {t('common.next')}
           </button>
         </div>
       )}
@@ -505,7 +507,7 @@ export default function ListaDocumentos() {
           >
             <div className="flex justify-between items-center mb-4">
               <h3 style={{ color: textPrimary }} className="text-lg font-bold">
-                Editar Documento
+                {t('admin.ui.documentos.lista.editTitle')}
               </h3>
               <button
                 onClick={() => {
@@ -521,7 +523,7 @@ export default function ListaDocumentos() {
             <form onSubmit={handleGuardarEdicion} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-                  Nombre
+                  {t('admin.ui.editarPerfilUsuario.fields.name')}
                 </label>
                 <input
                   type="text"
@@ -539,7 +541,7 @@ export default function ListaDocumentos() {
 
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-                  Descripción
+                  {t('admin.ui.documentos.subir.description')}
                 </label>
                 <textarea
                   name="descripcion"
@@ -556,13 +558,13 @@ export default function ListaDocumentos() {
 
               <div>
                 <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-                  Etiquetas
+                  {t('admin.ui.documentos.subir.tags')}
                 </label>
                 <input
                   type="text"
                   name="etiquetas"
                   defaultValue={documentoEditando.etiquetas?.join(', ') || ''}
-                  placeholder="Separadas por comas"
+                  placeholder={t('admin.ui.documentos.lista.tagsCommaSeparated')}
                   className="w-full rounded px-3 py-2 text-sm"
                   style={{
                     backgroundColor: inputBg,
@@ -581,7 +583,7 @@ export default function ListaDocumentos() {
                     color: theme === 'dark' ? '#93C5FD' : '#FFFFFF'
                   }}
                 >
-                  Guardar
+                  {t('common.save')}
                 </button>
                 <button
                   type="button"
@@ -596,7 +598,7 @@ export default function ListaDocumentos() {
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
               </div>
             </form>
@@ -686,7 +688,7 @@ export default function ListaDocumentos() {
                       errorDiv.style.color = textPrimary;
                       errorDiv.style.textAlign = 'center';
                       errorDiv.style.padding = '2rem';
-                      errorDiv.innerHTML = 'No se pudo cargar la imagen';
+                      errorDiv.innerHTML = t('admin.ui.documentos.lista.imageLoadFailed');
                       container.appendChild(errorDiv);
                     }
                   }}
@@ -727,13 +729,13 @@ export default function ListaDocumentos() {
                     className="text-xl font-semibold mb-4"
                     style={{ color: textPrimary }}
                   >
-                    Documento PDF
+                    {t('admin.ui.documentos.lista.pdfDocument')}
                   </h4>
                   <p 
                     className="mb-6 text-sm" 
                     style={{ color: textSecondary, maxWidth: '400px' }}
                   >
-                    Para ver este documento, ábrelo en una nueva pestaña o descárgalo.
+                    {t('admin.ui.documentos.lista.pdfOpenOrDownload')}
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -747,7 +749,7 @@ export default function ListaDocumentos() {
                       }}
                     >
                       <FaEye className="inline mr-2" />
-                      Abrir en nueva pestaña
+                      {t('admin.ui.documentos.lista.openInNewTab')}
                     </button>
                     <button
                       onClick={() => handleDescargar(documentoVistaPrevia)}
@@ -759,7 +761,7 @@ export default function ListaDocumentos() {
                       }}
                     >
                       <FaDownload className="inline mr-2" />
-                      Descargar
+                      {t('common.download')}
                     </button>
                   </div>
                 </div>
@@ -771,7 +773,7 @@ export default function ListaDocumentos() {
                   controls
                   className="max-w-full max-h-[80vh] rounded"
                 >
-                  Tu navegador no soporta la reproducción de video.
+                  {t('admin.ui.documentos.lista.videoNotSupported')}
                 </video>
               )}
 
@@ -787,10 +789,10 @@ export default function ListaDocumentos() {
                   }}
                 >
                   <p className="mb-4" style={{ color: textPrimary }}>
-                    Este tipo de archivo no se puede previsualizar en el navegador.
+                    {t('admin.ui.documentos.lista.cannotPreview')}
                   </p>
                   <p className="text-sm mb-4" style={{ color: textSecondary }}>
-                    Tipo: {documentoVistaPrevia.archivo.tipoMime}
+                    {t('admin.ui.documentos.lista.fileType')}: {documentoVistaPrevia.archivo.tipoMime}
                   </p>
                   <button
                     onClick={() => handleDescargar(documentoVistaPrevia)}
@@ -801,7 +803,7 @@ export default function ListaDocumentos() {
                     }}
                   >
                     <FaDownload className="inline mr-2" />
-                    Descargar para ver
+                    {t('admin.ui.documentos.lista.downloadToView')}
                   </button>
                 </div>
               )}
@@ -819,7 +821,7 @@ export default function ListaDocumentos() {
                   }}
                 >
                   <FaDownload className="inline mr-2" />
-                  Descargar
+                  {t('common.download')}
                 </button>
                 <button
                   onClick={() => {
@@ -834,7 +836,7 @@ export default function ListaDocumentos() {
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  Cerrar
+                  {t('common.close')}
                 </button>
               </div>
             )}
@@ -855,7 +857,7 @@ export default function ListaDocumentos() {
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  Cerrar
+                  {t('common.close')}
                 </button>
               </div>
             )}

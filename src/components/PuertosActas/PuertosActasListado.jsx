@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaEdit,
   FaEye,
@@ -43,33 +44,28 @@ import { esRegistroInspeccionAsegurado } from './puertosTipoRegistro.js';
 const FORMATOS = [
   {
     id: 'acta',
-    label: 'Acta',
+    labelKey: 'ports.ui.tipos.acta',
     nuevaTo: '/puertos/actas/nueva',
-    nuevaLabel: 'Nueva Acta',
+    nuevaLabelKey: 'ports.ui.listado.nuevaActa',
     icon: FaPlus,
   },
   {
     id: 'caso_exportacion',
-    label: 'Informe Exportación',
+    labelKey: 'ports.ui.listado.informeExportacion',
     nuevaTo: '/puertos/actas/caso/nueva',
-    nuevaLabel: 'Informe Exportación',
+    nuevaLabelKey: 'ports.ui.listado.informeExportacion',
     icon: FaFileAlt,
   },
   {
     id: 'inspeccion_asegurado',
-    label: 'Inspección Asegurado',
+    labelKey: 'ports.ui.listado.inspeccionAsegurado',
     nuevaTo: '/puertos/actas/inspeccion-asegurado/nueva',
-    nuevaLabel: 'Inspección Asegurado',
+    nuevaLabelKey: 'ports.ui.listado.inspeccionAsegurado',
     icon: FaShip,
   },
 ];
 
 const FORMATOS_VALIDOS = new Set(FORMATOS.map((f) => f.id));
-const TIPO_LABEL = {
-  acta: 'Acta',
-  caso_exportacion: 'Caso exportación',
-  inspeccion_asegurado: 'Inspección asegurado',
-};
 
 function filtrosVaciosFormato(tipo) {
   return { ...FILTROS_PUERTOS_VACIOS, tipo, estado: '' };
@@ -115,6 +111,7 @@ function rutaFotos(registro) {
 export default function PuertosActasListado() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { t } = useTranslation();
 
   const formatoInicial = FORMATOS_VALIDOS.has(searchParams.get('formato'))
     ? searchParams.get('formato')
@@ -148,29 +145,38 @@ export default function PuertosActasListado() {
   const IconoFormato = formatoMeta.icon;
 
   const etiquetaTipo = (registro) => {
-    if (esRegistroInspeccionAsegurado(registro)) return TIPO_LABEL.inspeccion_asegurado;
-    return TIPO_LABEL[registro?.tipoRegistro] || registro?.tipoRegistro || 'Registro';
+    if (esRegistroInspeccionAsegurado(registro)) {
+      return t('ports.ui.tipos.inspeccion_asegurado');
+    }
+    const key = registro?.tipoRegistro;
+    if (key === 'acta' || key === 'caso_exportacion') {
+      return t(`ports.ui.tipos.${key}`);
+    }
+    return key || t('ports.ui.tipos.registro');
   };
 
-  const cargar = useCallback(async (tipo, filtrosBusqueda) => {
-    setCargando(true);
-    setError('');
-    try {
-      const data = await listarRegistrosPuertos(
-        filtrosParaApi({ ...filtrosBusqueda, tipo, estado: '' })
-      );
-      setRegistros(data.registros || []);
-    } catch (err) {
-      setError(err.message || 'Error al cargar registros');
-      setRegistros([]);
-    } finally {
-      setCargando(false);
-    }
-  }, []);
+  const cargar = useCallback(
+    async (tipo, filtrosBusqueda) => {
+      setCargando(true);
+      setError('');
+      try {
+        const data = await listarRegistrosPuertos(
+          filtrosParaApi({ ...filtrosBusqueda, tipo, estado: '' })
+        );
+        setRegistros(data.registros || []);
+      } catch (err) {
+        setError(err.message || t('ports.ui.listado.loadError'));
+        setRegistros([]);
+      } finally {
+        setCargando(false);
+      }
+    },
+    [t]
+  );
 
   useEffect(() => {
     cargar(formato, aplicadosPorFormato[formato]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al montar / cambio de formato vía handler
   }, []);
 
   useEffect(() => {
@@ -218,7 +224,8 @@ export default function PuertosActasListado() {
     setFormato(nuevoFormato);
     setSearchParams(nuevoFormato === 'acta' ? {} : { formato: nuevoFormato }, { replace: true });
     setMostrarFiltros(false);
-    cargar(nuevoFormato, aplicadosPorFormato[nuevoFormato]);
+    const filtrosFmt = aplicadosPorFormato[nuevoFormato];
+    cargar(nuevoFormato, filtrosFmt);
   };
 
   const setFiltrosActuales = (nuevos) => {
@@ -252,10 +259,14 @@ export default function PuertosActasListado() {
         await generarPdfActaPuertosDesdeId(fila.id);
         return;
       }
-      alert('PDF no disponible para este tipo de registro.');
+      alert(t('ports.ui.listado.pdfUnavailable'));
     } catch (err) {
       console.error(err);
-      alert(`No se pudo generar el PDF: ${err.message || 'Error desconocido'}`);
+      alert(
+        t('ports.ui.listado.pdfError', {
+          error: err.message || t('ports.ui.common.unknownError'),
+        })
+      );
     } finally {
       setPdfCargandoId(null);
     }
@@ -267,7 +278,11 @@ export default function PuertosActasListado() {
       await generarWordInformeExportacionDesdeId(fila.id, { aseguradoraOptions, responsables });
     } catch (err) {
       console.error(err);
-      alert(`No se pudo generar el Word: ${err.message || 'Error desconocido'}`);
+      alert(
+        t('ports.ui.listado.wordError', {
+          error: err.message || t('ports.ui.common.unknownError'),
+        })
+      );
     } finally {
       setWordCargandoId(null);
     }
@@ -278,7 +293,7 @@ export default function PuertosActasListado() {
     try {
       exportarTrazabilidadPuertosExcel(registros);
     } catch (err) {
-      alert(err.message || 'No se pudo exportar el Excel.');
+      alert(err.message || t('ports.ui.listado.exportExcelError'));
     } finally {
       setExportandoExcel(false);
     }
@@ -288,7 +303,7 @@ export default function PuertosActasListado() {
     const etiqueta = etiquetaTipo(fila);
     const referencia = fila.nroReferencia || fila.id;
     const confirmar = window.confirm(
-      `¿Eliminar ${etiqueta} "${referencia}"?\n\nEsta acción no se puede deshacer.`
+      t('ports.ui.listado.deleteConfirm', { tipo: etiqueta, referencia })
     );
     if (!confirmar) return;
 
@@ -298,18 +313,29 @@ export default function PuertosActasListado() {
       await eliminarRegistroPuertos(fila);
       setRegistros((prev) => prev.filter((r) => r.id !== fila.id));
     } catch (err) {
-      setError(err.message || 'No se pudo eliminar el registro');
+      setError(err.message || t('ports.ui.listado.deleteError'));
     } finally {
       setEliminandoId(null);
     }
   };
 
   const accionesFila = (fila) => [
-    { icon: FaEdit, title: 'Editar', onClick: () => navigate(rutaEditar(fila)), danger: false },
-    { icon: FaEye, title: 'Ver', onClick: () => navigate(rutaVer(fila)), danger: false },
+    {
+      icon: FaEdit,
+      title: t('ports.ui.common.edit'),
+      onClick: () => navigate(rutaEditar(fila)),
+      danger: false,
+    },
+    {
+      icon: FaEye,
+      title: t('ports.ui.common.view'),
+      onClick: () => navigate(rutaVer(fila)),
+      danger: false,
+    },
     {
       icon: FaFilePdf,
-      title: pdfCargandoId === fila.id ? 'Generando PDF…' : 'PDF',
+      title:
+        pdfCargandoId === fila.id ? t('ports.ui.common.generatingPdf') : t('ports.ui.common.pdf'),
       onClick: () => handlePdf(fila),
       danger: true,
       disabled: pdfCargandoId === fila.id,
@@ -318,17 +344,26 @@ export default function PuertosActasListado() {
       ? [
           {
             icon: FaFileWord,
-            title: wordCargandoId === fila.id ? 'Generando Word…' : 'Word',
+            title:
+              wordCargandoId === fila.id
+                ? t('ports.ui.common.generatingWord')
+                : t('ports.ui.common.word'),
             onClick: () => handleWord(fila),
             danger: false,
             disabled: wordCargandoId === fila.id,
           },
         ]
       : []),
-    { icon: FaCamera, title: 'Fotos', onClick: () => navigate(rutaFotos(fila)), danger: false },
+    {
+      icon: FaCamera,
+      title: t('ports.ui.common.photos'),
+      onClick: () => navigate(rutaFotos(fila)),
+      danger: false,
+    },
     {
       icon: FaTrash,
-      title: eliminandoId === fila.id ? 'Eliminando…' : 'Eliminar',
+      title:
+        eliminandoId === fila.id ? t('ports.ui.common.deleting') : t('ports.ui.common.delete'),
       onClick: () => handleEliminar(fila),
       danger: true,
       disabled: eliminandoId === fila.id,
@@ -336,39 +371,39 @@ export default function PuertosActasListado() {
   ];
 
   const filtrosActivos = contarFiltrosFormato(filtrosAplicados);
+  const dash = t('ports.ui.common.dash');
 
   const etiquetaCliente = (fila) => {
     const cliente = String(fila?.asegurado || '').trim();
     if (cliente) return cliente;
     const beneficiario = String(fila?.beneficiario || '').trim();
-    return beneficiario || '—';
+    return beneficiario || dash;
   };
 
   const etiquetaAseguradora = (fila) => {
     const raw = String(fila?.aseguradora || '').trim();
-    if (!raw) return '—';
+    if (!raw) return dash;
     const encontrada = aseguradoraOptions.find(
       (o) =>
         String(o.value) === raw ||
         String(o.label || '').toUpperCase() === raw.toUpperCase()
     );
-    return String(encontrada?.label || '').trim() || raw;
+    const label = String(encontrada?.label || '').trim();
+    return label || raw;
   };
 
   const columnas = useMemo(() => {
     const base = [
-      { key: 'actions', label: 'Acciones' },
-      { key: 'number', label: 'Nro. / Consecutivo' },
-      { key: 'inspectionType', label: 'Tipo Inspección' },
-      { key: 'regional', label: 'Regional / Ciudad' },
-      { key: 'date', label: 'Fecha' },
-      { key: 'client', label: 'Cliente' },
-      { key: 'insurer', label: 'Aseguradora' },
-      { key: 'beneficiary', label: 'Beneficiario / Tipo de mercancía' },
+      'actions',
+      'number',
+      'inspectionType',
+      'regional',
+      'date',
+      'client',
+      'insurer',
+      'beneficiary',
     ];
-    if (formato === 'caso_exportacion') {
-      base.push({ key: 'progress', label: 'Avance' });
-    }
+    if (formato === 'caso_exportacion') base.push('progress');
     return base;
   }, [formato]);
 
@@ -376,12 +411,16 @@ export default function PuertosActasListado() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className={puertosPageTitle}>Actas y casos de exportación</h2>
+          <h2 className={puertosPageTitle}>{t('ports.ui.listado.title')}</h2>
           <p className={puertosPageSubtitle}>
             {cargando
-              ? 'Cargando…'
-              : `${formatoMeta.label} · ${registros.length} registro(s)${
-                  filtrosActivos ? ` · ${filtrosActivos} filtro(s) activo(s)` : ''
+              ? t('ports.ui.listado.loading')
+              : `${t(formatoMeta.labelKey)} · ${t('ports.ui.listado.recordsCount', {
+                  count: registros.length,
+                })}${
+                  filtrosActivos
+                    ? t('ports.ui.listado.filtersActive', { count: filtrosActivos })
+                    : ''
                 }`}
           </p>
         </div>
@@ -389,12 +428,13 @@ export default function PuertosActasListado() {
           to={formatoMeta.nuevaTo}
           className={formato === 'acta' ? puertosBtnSecondary : puertosBtnPrimary}
         >
-          <IconoFormato /> {formatoMeta.nuevaLabel}
+          <IconoFormato /> {t(formatoMeta.nuevaLabelKey)}
         </Link>
       </div>
 
+      {/* Menú de formatos */}
       <nav className="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-800">
-        {FORMATOS.map(({ id, label, icon: Icon }) => (
+        {FORMATOS.map(({ id, labelKey, icon: Icon }) => (
           <button
             key={id}
             type="button"
@@ -402,14 +442,14 @@ export default function PuertosActasListado() {
             className={formato === id ? puertosTabActive : puertosTabIdle}
           >
             <Icon />
-            {label}
+            {t(labelKey)}
           </button>
         ))}
       </nav>
 
       {error && (
         <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 font-body text-sm text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
-          {error}. Verifique que el backend esté en ejecución.
+          {t('ports.ui.listado.errorBackend', { error })}
         </div>
       )}
 
@@ -419,7 +459,8 @@ export default function PuertosActasListado() {
           onClick={() => setMostrarFiltros((v) => !v)}
           className={puertosBtnSecondary}
         >
-          <FaFilter /> {mostrarFiltros ? 'Ocultar filtros' : 'Filtrar'}
+          <FaFilter />{' '}
+          {mostrarFiltros ? t('ports.ui.listado.hideFilters') : t('ports.ui.listado.showFilters')}
           {filtrosActivos > 0 && (
             <span className="rounded-full bg-fenix-primario px-2 py-0.5 text-xs text-white">
               {filtrosActivos}
@@ -432,7 +473,7 @@ export default function PuertosActasListado() {
           disabled={cargando}
           className={puertosBtnSecondary}
         >
-          <FaSync className={cargando ? 'animate-spin' : ''} /> Actualizar
+          <FaSync className={cargando ? 'animate-spin' : ''} /> {t('ports.ui.listado.update')}
         </button>
         <button
           type="button"
@@ -440,7 +481,8 @@ export default function PuertosActasListado() {
           disabled={exportandoExcel || cargando || registros.length === 0}
           className={puertosBtnSecondary}
         >
-          <FaFileExcel /> {exportandoExcel ? 'Exportando…' : 'Exportar Excel'}
+          <FaFileExcel />{' '}
+          {exportandoExcel ? t('ports.ui.listado.exporting') : t('ports.ui.listado.exportExcel')}
         </button>
       </div>
 
@@ -453,7 +495,7 @@ export default function PuertosActasListado() {
           cargando={cargando}
           total={registros.length}
           ocultarTipo
-          tituloExtra={formatoMeta.label}
+          tituloExtra={t(formatoMeta.labelKey)}
         />
       )}
 
@@ -464,12 +506,12 @@ export default function PuertosActasListado() {
               <tr>
                 {columnas.map((col) => (
                   <th
-                    key={col.key}
+                    key={col}
                     className={`px-3 py-2.5 font-semibold ${
-                      col.key === 'actions' ? 'whitespace-nowrap' : ''
+                      col === 'actions' ? 'whitespace-nowrap' : ''
                     }`}
                   >
-                    {col.label}
+                    {t(`ports.ui.listado.columns.${col}`)}
                   </th>
                 ))}
               </tr>
@@ -481,7 +523,7 @@ export default function PuertosActasListado() {
                     colSpan={columnas.length}
                     className="px-4 py-10 text-center font-body text-gray-500"
                   >
-                    No hay registros con los filtros actuales.
+                    {t('ports.ui.listado.empty')}
                   </td>
                 </tr>
               )}
@@ -491,7 +533,7 @@ export default function PuertosActasListado() {
                     colSpan={columnas.length}
                     className="px-4 py-10 text-center font-body text-gray-500"
                   >
-                    Cargando…
+                    {t('ports.ui.listado.loading')}
                   </td>
                 </tr>
               )}
@@ -524,21 +566,27 @@ export default function PuertosActasListado() {
                       </div>
                     </td>
                     <td className={`${puertosTableTd} font-medium`}>
-                      {fila.nroReferencia || '—'}
+                      {fila.nroReferencia || dash}
                     </td>
-                    <td className={puertosTableTd}>{fila.tipoInspeccion || '—'}</td>
-                    <td className={puertosTableTd}>{fila.regional || '—'}</td>
+                    <td className={puertosTableTd}>{fila.tipoInspeccion || dash}</td>
+                    <td className={`${puertosTableTd} notranslate`} translate="no">
+                      {fila.regional || dash}
+                    </td>
                     <td className={`${puertosTableTd} whitespace-nowrap`}>
-                      {fila.fecha || '—'}
+                      {fila.fecha || dash}
                     </td>
-                    <td className={puertosTableTd}>{etiquetaCliente(fila)}</td>
-                    <td className={puertosTableTd}>{etiquetaAseguradora(fila)}</td>
+                    <td className={`${puertosTableTd} notranslate`} translate="no">
+                      {etiquetaCliente(fila)}
+                    </td>
+                    <td className={`${puertosTableTd} notranslate`} translate="no">
+                      {etiquetaAseguradora(fila)}
+                    </td>
                     <td className={puertosTableTd}>
-                      {fila.mercancia || fila.beneficiario || '—'}
+                      {fila.mercancia || fila.beneficiario || dash}
                     </td>
                     {formato === 'caso_exportacion' && (
                       <td className={`${puertosTableTd} whitespace-nowrap text-center`}>
-                        {fila.avance || '—'}
+                        {fila.avance || dash}
                       </td>
                     )}
                   </tr>

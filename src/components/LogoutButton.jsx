@@ -1,14 +1,17 @@
 // src/components/LogoutButton.jsx
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { FaSignOutAlt } from 'react-icons/fa'
 import { apiRequest } from '../config/apiConfig.js'
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js'
 
-export default function LogoutButton({ variant = 'default', label = 'Cerrar sesión' }) {
+export default function LogoutButton({ variant = 'default', label }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const isSidebar = variant === 'sidebar'
   const isCompact = variant === 'compact'
+  const buttonLabel = label || t('auth.logout')
 
   const handleLogout = async () => {
     try {
@@ -42,7 +45,7 @@ export default function LogoutButton({ variant = 'default', label = 'Cerrar sesi
         className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/70"
       >
         <FaSignOutAlt className="text-sm" />
-        <span>{label}</span>
+        <span>{buttonLabel}</span>
       </button>
     );
   }
@@ -87,7 +90,7 @@ export default function LogoutButton({ variant = 'default', label = 'Cerrar sesi
       }
     >
       <FaSignOutAlt className="text-sm" />
-      <span>{label}</span>
+      <span>{buttonLabel}</span>
     </button>
   )
 }

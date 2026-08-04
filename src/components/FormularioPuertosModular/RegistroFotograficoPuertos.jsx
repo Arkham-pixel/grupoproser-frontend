@@ -1,8 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import PuertosDragDropFotos from './PuertosDragDropFotos';
 
 export default function RegistroFotograficoPuertos({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -19,7 +21,7 @@ export default function RegistroFotograficoPuertos({ formData, onInputChange, ca
       }}
     >
       <h2 className="text-xl font-bold mb-4" style={{ color: textPrimary }}>
-        11. REGISTRO FOTOGRÁFICO
+        {t('ports.ui.formulario.registroFotografico.titulo')}
       </h2>
 
       <PuertosDragDropFotos
@@ -27,7 +29,7 @@ export default function RegistroFotograficoPuertos({ formData, onInputChange, ca
         onChange={(nuevas) => onInputChange('imagenesRegistro', nuevas)}
         cargando={cargando}
         descripcionMultilinea
-        placeholder="Arrastra las fotos del registro fotográfico general"
+        placeholder={t('ports.ui.formulario.registroFotografico.placeholder')}
       />
     </div>
   );

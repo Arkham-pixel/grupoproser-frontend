@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
-function getTimeAgo(date) {
+function getTimeAgo(date, t) {
   if (!date) return '';
 
   const now = new Date();
   const diff = Math.floor((now - new Date(date)) / 1000);
 
-  if (diff < 60) return 'hace unos segundos';
-  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
-  return `hace ${Math.floor(diff / 86400)} días`;
+  if (diff < 60) return t('autoSave.ui.common.timeAgo.seconds');
+  if (diff < 3600) return t('autoSave.ui.common.timeAgo.minutesShort', { count: Math.floor(diff / 60) });
+  if (diff < 86400) return t('autoSave.ui.common.timeAgo.hoursShort', { count: Math.floor(diff / 3600) });
+  return t('autoSave.ui.common.timeAgo.days', { count: Math.floor(diff / 86400) });
 }
 
 function getStatusInfo({
@@ -19,12 +20,13 @@ function getStatusInfo({
   pendingServerSync,
   isOnline,
   isEnabled,
+  t,
 }) {
   if (!isEnabled) {
     return {
       dotColor: '#a0aec0',
-      shortLabel: 'Autoguardado off',
-      detailLabel: 'El autoguardado está desactivado',
+      shortLabel: t('autoSave.ui.notification.status.offShort'),
+      detailLabel: t('autoSave.ui.notification.status.offDetail'),
     };
   }
 
@@ -32,8 +34,8 @@ function getStatusInfo({
     return {
       dotColor: '#f6ad55',
       pulse: true,
-      shortLabel: 'Guardando…',
-      detailLabel: 'Guardando cambios…',
+      shortLabel: t('autoSave.ui.notification.status.savingShort'),
+      detailLabel: t('autoSave.ui.notification.status.savingDetail'),
     };
   }
 
@@ -41,48 +43,48 @@ function getStatusInfo({
     return {
       dotColor: '#4299e1',
       pulse: true,
-      shortLabel: 'Sincronizando…',
-      detailLabel: 'Sincronizando con el servidor…',
+      shortLabel: t('autoSave.ui.notification.status.syncingShort'),
+      detailLabel: t('autoSave.ui.notification.status.syncingDetail'),
     };
   }
 
   if (saveStatus === 'offline-saved') {
     return {
       dotColor: '#ed8936',
-      shortLabel: 'Sin conexión',
-      detailLabel: 'Sin conexión — guardado en este equipo',
+      shortLabel: t('autoSave.ui.notification.status.offlineShort'),
+      detailLabel: t('autoSave.ui.notification.status.offlineDetail'),
     };
   }
 
   if (saveStatus === 'error') {
     return {
       dotColor: '#f56565',
-      shortLabel: 'Error al guardar',
-      detailLabel: 'No se pudo guardar. Intente de nuevo.',
+      shortLabel: t('autoSave.ui.notification.status.errorShort'),
+      detailLabel: t('autoSave.ui.notification.status.errorDetail'),
     };
   }
 
   if (pendingServerSync && isOnline && saveStatus !== 'syncing') {
     return {
       dotColor: '#ecc94b',
-      shortLabel: 'Por sincronizar',
-      detailLabel: 'Cambios pendientes de sincronizar con el servidor',
+      shortLabel: t('autoSave.ui.notification.status.pendingSyncShort'),
+      detailLabel: t('autoSave.ui.notification.status.pendingSyncDetail'),
     };
   }
 
   if (saveStatus === 'saved' && lastSaveTime) {
-    const ago = getTimeAgo(lastSaveTime);
+    const ago = getTimeAgo(lastSaveTime, t);
     return {
       dotColor: '#48bb78',
-      shortLabel: `Guardado ${ago}`,
-      detailLabel: `Último guardado ${ago}`,
+      shortLabel: t('autoSave.ui.notification.status.savedShort', { ago }),
+      detailLabel: t('autoSave.ui.notification.status.savedDetail', { ago }),
     };
   }
 
   return {
     dotColor: '#48bb78',
-    shortLabel: 'Autoguardado',
-    detailLabel: 'Autoguardado activo',
+    shortLabel: t('autoSave.ui.notification.status.activeShort'),
+    detailLabel: t('autoSave.ui.notification.status.activeDetail'),
   };
 }
 
@@ -105,6 +107,7 @@ export default function AutoSaveNotification({
   isOnline = true,
   placement = 'floating',
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [showNotification, setShowNotification] = useState(false);
@@ -119,6 +122,7 @@ export default function AutoSaveNotification({
     pendingServerSync,
     isOnline,
     isEnabled,
+    t,
   });
 
   useEffect(() => {
@@ -242,10 +246,10 @@ export default function AutoSaveNotification({
           }}
         >
           <h4 style={{ margin: '0 0 8px', fontSize: '15px', fontWeight: '600', color: textPrimary }}>
-            Protege tu trabajo
+            {t('autoSave.ui.notification.prompt.title')}
           </h4>
           <p style={{ margin: '0 0 12px', fontSize: '13px', lineHeight: 1.5, color: textMuted }}>
-            Activa el autoguardado para evitar perder información si se cierra la página o hay problemas de conexión.
+            {t('autoSave.ui.notification.prompt.body')}
           </p>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
@@ -263,7 +267,7 @@ export default function AutoSaveNotification({
                 cursor: 'pointer',
               }}
             >
-              Activar
+              {t('autoSave.ui.notification.prompt.activate')}
             </button>
             <button
               type="button"
@@ -278,7 +282,7 @@ export default function AutoSaveNotification({
                 cursor: 'pointer',
               }}
             >
-              Ahora no
+              {t('autoSave.ui.notification.prompt.dismiss')}
             </button>
           </div>
         </div>
@@ -306,7 +310,7 @@ export default function AutoSaveNotification({
           }}
         >
           <span>✓</span>
-          <span>Guardado automáticamente</span>
+          <span>{t('autoSave.ui.notification.toast.saved')}</span>
         </div>
       )}
 
@@ -350,7 +354,9 @@ export default function AutoSaveNotification({
                     color: 'white',
                   }}
                 >
-                  {pendingServerSync ? 'Sincronizar con el servidor' : 'Guardar ahora'}
+                  {pendingServerSync
+                    ? t('autoSave.ui.notification.actions.syncNow')
+                    : t('autoSave.ui.notification.actions.saveNow')}
                 </button>
               )}
 
@@ -365,7 +371,7 @@ export default function AutoSaveNotification({
                     border: `1px solid ${surfaceBorder}`,
                   }}
                 >
-                  Desactivar autoguardado
+                  {t('autoSave.ui.notification.actions.disable')}
                 </button>
               ) : (
                 <button
@@ -377,7 +383,7 @@ export default function AutoSaveNotification({
                     color: 'white',
                   }}
                 >
-                  Activar autoguardado
+                  {t('autoSave.ui.notification.actions.enable')}
                 </button>
               )}
             </div>

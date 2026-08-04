@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import AutoSaveNotification from './AutoSaveNotification';
 import AutoSaveRestoreDialog from './AutoSaveRestoreDialog';
 import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig';
 
 function AutoSaveManualActivate({ onEnable, placement = 'floating' }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const isFloating = placement === 'floating';
@@ -26,16 +28,26 @@ function AutoSaveManualActivate({ onEnable, placement = 'floating' }) {
   if (isFloating) {
     return (
       <div style={{ position: 'fixed', top: '12px', right: '16px', zIndex: 900 }}>
-        <button type="button" onClick={onEnable} style={buttonStyle} title="Activar autoguardado">
-          Activar autoguardado
+        <button
+          type="button"
+          onClick={onEnable}
+          style={buttonStyle}
+          title={t('autoSave.ui.controls.activateAutoSaveTitle')}
+        >
+          {t('autoSave.ui.controls.activateAutoSave')}
         </button>
       </div>
     );
   }
 
   return (
-    <button type="button" onClick={onEnable} style={buttonStyle} title="Activar autoguardado">
-      Activar autoguardado
+    <button
+      type="button"
+      onClick={onEnable}
+      style={buttonStyle}
+      title={t('autoSave.ui.controls.activateAutoSaveTitle')}
+    >
+      {t('autoSave.ui.controls.activateAutoSave')}
     </button>
   );
 }

@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaExclamationTriangle } from 'react-icons/fa';
@@ -30,6 +33,7 @@ function TarjetaAlerta({ alerta }) {
 }
 
 const MisAlertasComplex = ({ embedded = false }) => {
+  useTranslation();
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -70,8 +74,8 @@ const MisAlertasComplex = ({ embedded = false }) => {
         {!embedded && (
           <ComplexPageHeader
             badge="Complex"
-            title="Mis alertas de gestión"
-            subtitle="Vencimientos y seguimientos según el protocolo vigente. Solo casos asignados a usted desde octubre 2025."
+            title={t("complex.ui.mis_alertas_complex.mis_alertas_de_gestion")}
+            subtitle={t("complex.ui.mis_alertas_complex.vencimientos_y_seguimientos_segun_el_protocolo_vigente_s")}
             activePath="/complex/indicadores-alertas"
           />
         )}
@@ -79,36 +83,34 @@ const MisAlertasComplex = ({ embedded = false }) => {
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
-            <button type="button" onClick={cargar} className="ml-3 underline">
-              Reintentar
-            </button>
+            <button type="button" onClick={cargar} className="ml-3 underline">{t("complex.ui.mis_alertas_complex.reintentar")}</button>
           </div>
         )}
 
         <div className="mb-6 grid gap-4 sm:grid-cols-3">
           <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
-            <p className="text-xs text-gray-500">Casos activos</p>
+            <p className="text-xs text-gray-500">{t("complex.ui.mis_alertas_complex.casos_activos")}</p>
             <p className="text-2xl font-bold">{data?.totalCasos ?? 0}</p>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/30">
-            <p className="text-xs text-amber-700 dark:text-amber-400">Con alertas</p>
+            <p className="text-xs text-amber-700 dark:text-amber-400">{t("complex.ui.mis_alertas_complex.con_alertas")}</p>
             <p className="text-2xl font-bold text-amber-800 dark:text-amber-300">
               {data?.casosConAlertas ?? 0}
             </p>
           </div>
           <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
-            <p className="text-xs text-gray-500">Total alertas</p>
+            <p className="text-xs text-gray-500">{t("complex.ui.mis_alertas_complex.total_alertas")}</p>
             <p className="text-2xl font-bold">{data?.totalAlertas ?? 0}</p>
           </div>
         </div>
 
         <section>
-          <h2 className={complexSectionTitle}>Casos que requieren atención</h2>
+          <h2 className={complexSectionTitle}>{t("complex.ui.mis_alertas_complex.casos_que_requieren_atencion")}</h2>
 
           {!data?.casos?.length ? (
             <div className="rounded-xl border border-gray-100 bg-white p-10 text-center dark:border-gray-800 dark:bg-[#1A1A1A]">
-              <p className="text-lg font-medium text-gray-800 dark:text-gray-200">Sin alertas pendientes</p>
-              <p className="mt-2 text-sm text-gray-500">Sus casos están al día según el protocolo.</p>
+              <p className="text-lg font-medium text-gray-800 dark:text-gray-200">{t("complex.ui.mis_alertas_complex.sin_alertas_pendientes")}</p>
+              <p className="mt-2 text-sm text-gray-500">{t("complex.ui.mis_alertas_complex.sus_casos_estan_al_dia_segun_el_protocolo")}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -121,22 +123,18 @@ const MisAlertasComplex = ({ embedded = false }) => {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <FaExclamationTriangle className="text-fenix-primario" />
-                        <h3 className="font-semibold">Caso {caso.numeroAjuste}</h3>
-                        <span className="text-xs text-gray-500">
-                          Siniestro {caso.numeroSiniestro || '—'}
+                        <h3 className="font-semibold">{t("complex.ui.mis_alertas_complex.caso")}{caso.numeroAjuste}</h3>
+                        <span className="text-xs text-gray-500">{t("complex.ui.mis_alertas_complex.siniestro")}{caso.numeroSiniestro || '—'}
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {caso.asegurado || 'Sin asegurado'} · {caso.alertas.length} alerta(s)
-                      </p>
+                        {caso.asegurado || 'Sin asegurado'}{t("complex.ui.mis_alertas_complex.texto")}{caso.alertas.length}{t("complex.ui.mis_alertas_complex.alerta_s")}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => abrirCaso(caso)}
                       className="shrink-0 rounded-lg bg-fenix-primario px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-                    >
-                      Abrir caso
-                    </button>
+                    >{t("complex.ui.mis_alertas_complex.abrir_caso")}</button>
                   </div>
                   <div className="mt-3 space-y-2">
                     {caso.alertas.map((alerta, i) => (
@@ -149,11 +147,7 @@ const MisAlertasComplex = ({ embedded = false }) => {
           )}
         </section>
 
-        <p className="mt-6 text-xs text-gray-500">
-          Las alertas usan el protocolo vigente desde octubre 2025. En esperas de terceros (fecha de
-          inspección, documentos, autorización de compañía, pago) la primera alerta se envía tras 10
-          días hábiles (festivos Colombia).
-        </p>
+        <p className="mt-6 text-xs text-gray-500">{t("complex.ui.mis_alertas_complex.las_alertas_usan_el_protocolo_vigente_desde_octubre_2025")}</p>
     </>
   );
 

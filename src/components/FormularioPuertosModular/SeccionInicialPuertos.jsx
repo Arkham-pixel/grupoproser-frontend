@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import Select from 'react-select';
 import { FaEye, FaTimes } from 'react-icons/fa';
@@ -7,6 +8,7 @@ import MapaGoogleEarth from '../MapaGoogleEarth';
 import { CONTACTOS_BOLIVAR, EMPRESA_BOLIVAR, ASEGURADOS } from './plantillasPuertos';
 
 export default function SeccionInicialPuertos({ formData, onInputChange, onMultipleChange, cargando, forzarCapturaMapa, ocultarGeolocalizacion = false }) {
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const [mostrarVistaPrevia, setMostrarVistaPrevia] = useState(false);
   
@@ -79,8 +81,9 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
       if (fechaStr.includes('-')) {
         const fecha = new Date(fechaStr + 'T00:00:00');
         const dia = fecha.getDate();
-        const mes = fecha.toLocaleDateString("es-CO", { month: "long" });
-        return `${dia} de ${mes}`;
+        const locale = i18n.language?.startsWith('en') ? 'en-US' : 'es-CO';
+        const mes = fecha.toLocaleDateString(locale, { month: 'long' });
+        return t('ports.ui.formulario.seccionInicial.vistaPrevia.fechaArriboFormato', { dia, mes });
       }
       return fechaStr;
     } catch (error) {
@@ -117,7 +120,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
       value: c.id,
       label: c.nombreContacto,
     })),
-    { value: 'personalizado', label: 'Otro contacto (escribir manualmente)' },
+    { value: 'personalizado', label: t('ports.ui.formulario.seccionInicial.otroContactoManual') },
   ];
 
   const esClienteBolivar =
@@ -144,9 +147,9 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
   };
 
   const opcionesClientes = [
-    { value: 'METROKIA_BOLIVAR', label: 'METROKIA → Seguros Bolívar' },
+    { value: 'METROKIA_BOLIVAR', label: t('ports.ui.formulario.seccionInicial.opcionesCliente.metrokiaBolivar') },
     { value: 'TOYOTA', label: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S' },
-    { value: 'BOLIVAR', label: 'SEGUROS BOLÍVAR S.A (solo contacto)' },
+    { value: 'BOLIVAR', label: t('ports.ui.formulario.seccionInicial.opcionesCliente.bolivarSoloContacto') },
   ];
 
   // Función para manejar el cambio de cliente
@@ -182,7 +185,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
           className="text-lg font-bold mb-4"
           style={{ color: theme === 'dark' ? '#DC2626' : '#2563EB' }}
         >
-          📋 INFORMACIÓN DE LA CARTA DE PRESENTACIÓN
+          {t('ports.ui.formulario.seccionInicial.tituloCarta')}
         </h3>
 
         {/* Ciudad y Fecha del Reporte */}
@@ -192,7 +195,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Ciudad del Reporte
+              {t('ports.ui.formulario.seccionInicial.ciudadReporte')}
             </label>
             <Select
               options={municipios}
@@ -201,7 +204,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                 return municipios.find(opt => opt.value === formData.municipio) || null;
               })()}
               onChange={handleCiudadChange}
-              placeholder="Selecciona una ciudad..."
+              placeholder={t('ports.ui.formulario.seccionInicial.seleccionarCiudad')}
               isSearchable
               className="w-full"
               isDisabled={cargando}
@@ -251,7 +254,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
               className="block text-xs sm:text-sm font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Fecha del Reporte
+              {t('ports.ui.formulario.seccionInicial.fechaReporte')}
             </label>
             <input
               type="date"
@@ -275,11 +278,11 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Código de Referencia (Generado Automáticamente)
+            {t('ports.ui.formulario.seccionInicial.codigoReferencia')}
           </label>
           <input
             type="text"
-            value={formData.codigoReferencia || 'CPD-2025-XXX (Se generará al guardar)'}
+            value={formData.codigoReferencia || t('ports.ui.formulario.seccionInicial.codigoReferenciaPlaceholder')}
             className="w-full rounded px-2 sm:px-3 py-2 text-sm"
             style={{
               backgroundColor: theme === 'dark' ? '#0F0F0F' : '#F3F4F6',
@@ -295,7 +298,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             className="text-xs mt-1"
             style={{ color: textSecondary }}
           >
-            El código se generará automáticamente al guardar el formulario
+            {t('ports.ui.formulario.seccionInicial.codigoReferenciaAyuda')}
           </p>
         </div>
 
@@ -311,7 +314,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             className="text-sm font-bold mb-3"
             style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
           >
-            📧 Selección de Cliente
+            {t('ports.ui.formulario.seccionInicial.seleccionCliente')}
           </h4>
 
           <div className="mb-3">
@@ -319,13 +322,13 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
               className="block text-xs font-medium mb-1"
               style={{ color: textPrimary }}
             >
-              Cliente / Empresa
+              {t('ports.ui.formulario.seccionInicial.clienteEmpresa')}
             </label>
             <Select
               options={opcionesClientes}
               value={opcionesClientes.find(opt => opt.value === formData.clienteSeleccionado) || null}
               onChange={handleClienteChange}
-              placeholder="Selecciona un cliente..."
+              placeholder={t('ports.ui.formulario.seccionInicial.seleccionarCliente')}
               isSearchable
               className="w-full"
               isDisabled={cargando}
@@ -362,13 +365,13 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
           {/* Contacto del destinatario */}
           <div className="mt-3">
             <p className="font-bold mb-2 text-sm" style={{ color: theme === 'dark' ? '#60A5FA' : '#1E40AF' }}>
-              Datos del contacto (destinatario de la carta)
+              {t('ports.ui.formulario.seccionInicial.datosContacto')}
             </p>
 
             {esClienteBolivar && (
               <div className="mb-3">
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Contacto Seguros Bolívar
+                  {t('ports.ui.formulario.seccionInicial.contactoBolivar')}
                 </label>
                 <Select
                   options={opcionesContactosBolivar}
@@ -376,7 +379,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                     opcionesContactosBolivar.find((opt) => opt.value === formData.contactoBolivarId) || null
                   }
                   onChange={handleContactoBolivarChange}
-                  placeholder="Seleccione el contacto de Bolívar..."
+                  placeholder={t('ports.ui.formulario.seccionInicial.seleccionarContactoBolivar')}
                   isSearchable
                   className="w-full"
                   isDisabled={cargando}
@@ -408,7 +411,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Nombre del contacto
+                  {t('ports.ui.formulario.seccionInicial.nombreContacto')}
                 </label>
                 <input
                   type="text"
@@ -416,13 +419,13 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   onChange={(e) => onInputChange('nombreContacto', e.target.value)}
                   className="w-full rounded px-2 py-1.5 text-sm"
                   style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
-                  placeholder="Ej: Ing. Andrea Carolina Ramírez Ruiz"
+                  placeholder={t('ports.ui.formulario.seccionInicial.nombreContactoPlaceholder')}
                   disabled={cargando}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Cargo
+                  {t('ports.ui.formulario.seccionInicial.cargo')}
                 </label>
                 <input
                   type="text"
@@ -430,13 +433,13 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   onChange={(e) => onInputChange('cargoContacto', e.target.value)}
                   className="w-full rounded px-2 py-1.5 text-sm"
                   style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
-                  placeholder="Ej: Ingeniera de Prevención y Control de Riesgos"
+                  placeholder={t('ports.ui.formulario.seccionInicial.cargoPlaceholder')}
                   disabled={cargando}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Gerencia / Área
+                  {t('ports.ui.formulario.seccionInicial.gerenciaArea')}
                 </label>
                 <input
                   type="text"
@@ -444,13 +447,13 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   onChange={(e) => onInputChange('gerenciaContacto', e.target.value)}
                   className="w-full rounded px-2 py-1.5 text-sm"
                   style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
-                  placeholder="Ej: Gerencia de Clientes Corporativos"
+                  placeholder={t('ports.ui.formulario.seccionInicial.gerenciaAreaPlaceholder')}
                   disabled={cargando}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Empresa
+                  {t('ports.ui.formulario.seccionInicial.empresa')}
                 </label>
                 <input
                   type="text"
@@ -458,13 +461,13 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   onChange={(e) => onInputChange('empresaCliente', e.target.value)}
                   className="w-full rounded px-2 py-1.5 text-sm"
                   style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
-                  placeholder="Ej: SEGUROS BOLÍVAR S.A"
+                  placeholder={t('ports.ui.formulario.seccionInicial.empresaPlaceholder')}
                   disabled={cargando}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Email
+                  {t('ports.ui.formulario.seccionInicial.email')}
                 </label>
                 <input
                   type="email"
@@ -477,7 +480,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Ciudad
+                  {t('ports.ui.formulario.seccionInicial.ciudad')}
                 </label>
                 <input
                   type="text"
@@ -485,7 +488,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   onChange={(e) => onInputChange('ciudadContacto', e.target.value)}
                   className="w-full rounded px-2 py-1.5 text-sm"
                   style={{ backgroundColor: inputBg, color: textPrimary, borderColor, border: `1px solid ${borderColor}` }}
-                  placeholder="Ej: Bogotá, Colombia"
+                  placeholder={t('ports.ui.formulario.seccionInicial.ciudadPlaceholder')}
                   disabled={cargando}
                 />
               </div>
@@ -505,7 +508,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             className="text-sm font-bold mb-3"
             style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
           >
-            🚢 Datos de la Inspección
+            {t('ports.ui.formulario.seccionInicial.datosInspeccion')}
           </h4>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
@@ -514,7 +517,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                 className="block text-xs font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Fechas de Inspección (texto libre)
+                {t('ports.ui.formulario.seccionInicial.fechasInspeccion')}
               </label>
               <input
                 type="text"
@@ -527,14 +530,14 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: 30 y 31 de Octubre"
+                placeholder={t('ports.ui.formulario.seccionInicial.fechasInspeccionPlaceholder')}
                 disabled={cargando}
               />
               <p 
                 className="text-xs mt-1"
                 style={{ color: textSecondary }}
               >
-                Puede ser uno o varios días
+                {t('ports.ui.formulario.seccionInicial.fechasInspeccionAyuda')}
               </p>
             </div>
 
@@ -543,7 +546,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                 className="block text-xs font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Nombre de la Motonave (Aparecerá en encabezado)
+                {t('ports.ui.formulario.seccionInicial.nombreMotonave')}
               </label>
               <input
                 type="text"
@@ -556,26 +559,25 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Nombre de la motonave"
+                placeholder={t('ports.ui.formulario.seccionInicial.nombreMotonavePlaceholder')}
                 disabled={cargando}
               />
               <p 
                 className="text-xs mt-1"
                 style={{ color: textSecondary }}
               >
-                Este nombre aparecerá en el encabezado del documento
+                {t('ports.ui.formulario.seccionInicial.nombreMotonaveAyuda')}
               </p>
             </div>
           </div>
 
-          {/* Nuevos campos: Fecha de Arribo, Número de Vehículos y Puerto */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-3">
             <div>
               <label 
                 className="block text-xs font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Fecha de Arribo de la Motonave
+                {t('ports.ui.formulario.seccionInicial.fechaArribo')}
               </label>
               <input
                 type="date"
@@ -597,7 +599,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                 className="block text-xs font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Número de Vehículos
+                {t('ports.ui.formulario.seccionInicial.numeroVehiculos')}
               </label>
               <input
                 type="number"
@@ -610,7 +612,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: 350"
+                placeholder={t('ports.ui.formulario.seccionInicial.numeroVehiculosPlaceholder')}
                 min="0"
                 disabled={cargando}
               />
@@ -621,7 +623,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                 className="block text-xs font-medium mb-1"
                 style={{ color: textPrimary }}
               >
-                Puerto de Descargue
+                {t('ports.ui.formulario.seccionInicial.puertoDescargue')}
               </label>
               <input
                 type="text"
@@ -634,7 +636,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: Puerto Bahía"
+                placeholder={t('ports.ui.formulario.seccionInicial.puertoDescarguePlaceholder')}
                 disabled={cargando}
               />
             </div>
@@ -653,7 +655,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
           }}
         >
           <FaEye />
-          <span className="font-medium">{mostrarVistaPrevia ? 'Ocultar' : 'Vista Previa'}</span>
+          <span className="font-medium">{mostrarVistaPrevia ? t('ports.ui.formulario.seccionInicial.ocultar') : t('ports.ui.formulario.seccionInicial.vistaPrevia')}</span>
         </button>
       )}
 
@@ -678,7 +680,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
               className="font-bold text-sm"
               style={{ color: textPrimary }}
             >
-              📄 Vista Previa del Documento
+              {t('ports.ui.formulario.seccionInicial.vistaPreviaDocumento')}
             </h3>
             <button
               onClick={() => setMostrarVistaPrevia(false)}
@@ -693,7 +695,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
           <div className="p-4 text-xs leading-relaxed">
             {/* Ciudad, Fecha y Código */}
             <p className="mb-3" style={{ color: textPrimary }}>
-              <strong>{formData.municipio || 'Ciudad'}, {formatearFechaInspeccion(formData.fecha)}</strong>
+              <strong>{formData.municipio || t('ports.ui.formulario.seccionInicial.vistaPrevia.fallbackCiudad')}, {formatearFechaInspeccion(formData.fecha)}</strong>
               <br />
               <span className="font-bold">{formData.codigoReferencia || 'CPD-2025-XXX'}</span>
             </p>
@@ -704,28 +706,38 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
               <p>{formData.cargoContacto}</p>
               {formData.gerenciaContacto && <p>{formData.gerenciaContacto}</p>}
               <p className="font-bold">{formData.empresaCliente}</p>
-              <p>Email: {formData.emailContacto}</p>
+              <p>{t('ports.ui.formulario.seccionInicial.vistaPrevia.emailLabel')} {formData.emailContacto}</p>
               <p>{formData.ciudadContacto}</p>
             </div>
 
             {/* Título del Informe */}
             <p className="mt-4 mb-3 text-sm font-bold" style={{ color: '#DC2626' }}>
-              INFORME INSPECCIÓN ASEGURADO: {formData.empresaCliente}
+              {t('ports.ui.formulario.seccionInicial.vistaPrevia.tituloInforme', { empresa: formData.empresaCliente })}
             </p>
 
             {/* Párrafo de la inspección */}
             <p className="mb-3" style={{ color: textPrimary }}>
-              De acuerdo con la asignación recibida, me permito remitir el informe de inspección correspondiente a las revisiones efectuadas 
-              {formData.fechasInspeccion ? ` los días ${formData.fechasInspeccion}` : ' los días (Fechas de inspección)'} a 
-              {formData.nombreMotonave ? ` la motonave ${formData.nombreMotonave}` : ' la motonave (Nombre de la motonave)'}
-              {formData.fechaArriboMotonave ? `, arribada el ${formatearFechaArribo(formData.fechaArriboMotonave)}` : ''}
-              {formData.numeroVehiculos ? ` con un total de ${formData.numeroVehiculos} vehículos` : ''}
-              {formData.puertoDescargue ? `, actualmente almacenados en los patios de ${formData.puertoDescargue}.` : ', actualmente almacenados en los patios de Puerto Bahía.'}
+              {t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoInicio')}
+              {formData.fechasInspeccion
+                ? t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoFechas', { fechas: formData.fechasInspeccion })
+                : t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoFechasFallback')}
+              {formData.nombreMotonave
+                ? t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoMotonave', { nombre: formData.nombreMotonave })
+                : t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoMotonaveFallback')}
+              {formData.fechaArriboMotonave
+                ? t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoArribo', { fecha: formatearFechaArribo(formData.fechaArriboMotonave) })
+                : ''}
+              {formData.numeroVehiculos
+                ? t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoVehiculos', { n: formData.numeroVehiculos })
+                : ''}
+              {formData.puertoDescargue
+                ? t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoPuerto', { puerto: formData.puertoDescargue })
+                : t('ports.ui.formulario.seccionInicial.vistaPrevia.parrafoPuertoFallback')}
             </p>
 
             {/* Sección de Geolocalización */}
             <p className="mt-4 mb-2 font-bold text-sm" style={{ color: '#DC2626' }}>
-              GEOLOCALIZACIÓN
+              {t('ports.ui.formulario.seccionInicial.geolocalizacion')}
             </p>
             <div 
               className="p-2 rounded text-center mb-3"
@@ -737,11 +749,11 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             >
               {formData.imagenMapa ? (
                 <>
-                  <img src={formData.imagenMapa} alt="Mapa capturado" className="w-full rounded mb-1" />
-                  <p className="text-xs text-green-600">✓ Mapa capturado</p>
+                  <img src={formData.imagenMapa} alt={t('ports.ui.formulario.seccionInicial.mapaCapturadoAlt')} className="w-full rounded mb-1" />
+                  <p className="text-xs text-green-600">{t('ports.ui.formulario.seccionInicial.mapaCapturado')}</p>
                 </>
               ) : (
-                <p className="text-xs">📍 El mapa aparecerá aquí una vez capturado</p>
+                <p className="text-xs">{t('ports.ui.formulario.seccionInicial.mapaPlaceholder')}</p>
               )}
             </div>
           </div>
@@ -765,7 +777,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
             color: textPrimary
           }}
         >
-          🗺️ GEOLOCALIZACIÓN DEL PUERTO
+          {t('ports.ui.formulario.seccionInicial.geolocalizacionPuerto')}
         </div>
         <div className="p-4" style={{ minHeight: '300px' }}>
           <MapaGoogleEarth 

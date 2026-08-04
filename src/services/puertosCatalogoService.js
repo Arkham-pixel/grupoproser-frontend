@@ -20,6 +20,9 @@ async function parseApiError(res, fallback) {
   if (res.status === 403) {
     throw new Error(detalle || 'No tiene permiso para modificar catálogos de Puertos.');
   }
+  if (res.status === 0 || res.type === 'opaque') {
+    throw new Error('No hay conexión con el servidor. Verifique que el backend esté en ejecución.');
+  }
   throw new Error(detalle || fallback);
 }
 
@@ -49,28 +52,32 @@ export async function fetchTodosPuertosCatalogos() {
   return res.json();
 }
 
-export async function crearPuertosCatalogo(tipo, nombre) {
+export async function crearPuertosCatalogo(tipo, nombre, extras = {}) {
   if (!localStorage.getItem('token')) {
     throw new Error('Debe iniciar sesión para agregar ítems al catálogo.');
   }
   const res = await fetch(`${BASE_URL}/api/puertos/catalogos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ tipo, nombre }),
+    body: JSON.stringify({ tipo, nombre, ...extras }),
   });
   if (!res.ok) await parseApiError(res, 'No se pudo crear el ítem');
   const data = await res.json();
   return data.data;
 }
 
-export async function actualizarPuertosCatalogo(id, nombre) {
+export async function actualizarPuertosCatalogo(id, nombre, extras = {}) {
   if (!localStorage.getItem('token')) {
     throw new Error('Debe iniciar sesión para editar el catálogo.');
   }
+  const payload =
+    typeof nombre === 'object' && nombre !== null
+      ? nombre
+      : { nombre, ...extras };
   const res = await fetch(`${BASE_URL}/api/puertos/catalogos/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ nombre }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) await parseApiError(res, 'No se pudo actualizar el ítem');
   const data = await res.json();

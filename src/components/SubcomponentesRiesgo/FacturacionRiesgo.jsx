@@ -1,8 +1,10 @@
 import React, { useRef, useState } from "react";
+import { useTranslation } from 'react-i18next';
 import { FaCalculator } from "react-icons/fa";
 import { useTheme } from '../../context/ThemeContext';
 
 function DropZone({ onFile, label, existingFile }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const inputRef = useRef();
   const [isDragActive, setIsDragActive] = useState(false);
@@ -74,7 +76,7 @@ function DropZone({ onFile, label, existingFile }) {
           className="text-xs mt-1"
           style={{ color: textSecondary }}
         >
-          Arrastra un archivo y suéltalo aquí
+          {t('risks.ui.dropzone.drag_here')}
         </div>
         {existingFile && (
           <div 
@@ -95,6 +97,7 @@ function moneyInputValue(value) {
 }
 
 function Calculadora({ open, onClose, onResult }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [exp, setExp] = useState("");
   
@@ -113,7 +116,7 @@ function Calculadora({ open, onClose, onResult }) {
     try {
       // Validar que solo contenga números y operadores matemáticos válidos
       if (!/^[\d+\-*/().\s]+$/.test(exp)) {
-        setExp("Error");
+        setExp(t('risks.ui.facturacion_riesgo.calc_error'));
         return;
       }
       // Usar Function en lugar de eval es más seguro con validación previa
@@ -123,10 +126,10 @@ function Calculadora({ open, onClose, onResult }) {
         onResult(String(Math.round(res)));
         onClose();
       } else {
-        setExp("Error");
+        setExp(t('risks.ui.facturacion_riesgo.calc_error'));
       }
     } catch {
-      setExp("Error");
+      setExp(t('risks.ui.facturacion_riesgo.calc_error'));
     }
   };
   return (
@@ -313,7 +316,7 @@ function Calculadora({ open, onClose, onResult }) {
             }}
             onClick={onClose}
           >
-            Cerrar
+            {t('common.close')}
           </button>
         </div>
       </div>
@@ -322,6 +325,7 @@ function Calculadora({ open, onClose, onResult }) {
 }
 
 export default function FacturacionRiesgo({ formData, setFormData }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -370,7 +374,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
             className="block text-xs sm:text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Valor Tarifa Aseguradora
+{t('risks.ui.facturacion_riesgo.tarifa_aseguradora')}
           </label>
           <input
             type="text"
@@ -389,7 +393,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
             className="block text-xs sm:text-sm font-semibold mb-1 flex items-center"
             style={{ color: textPrimary }}
           >
-            Gastos
+{t('risks.ui.facturacion_riesgo.gastos')}
             <button
               type="button"
               className="ml-2 text-xs sm:text-sm transition-colors"
@@ -402,7 +406,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
               }}
               onClick={() => openCalc("vlorGastos")}
               tabIndex={-1}
-              title="Abrir calculadora"
+              title={t('risks.ui.facturacion_riesgo.abrir_calculadora')}
             >
               <FaCalculator />
             </button>
@@ -424,7 +428,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
             className="block text-xs sm:text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Fecha Factura
+{t('risks.ui.facturacion_riesgo.fecha_factura')}
           </label>
           <input
             type="date"
@@ -444,7 +448,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
             className="block text-xs sm:text-sm font-semibold mb-1 flex items-center"
             style={{ color: textPrimary }}
           >
-            Honorarios
+{t('risks.ui.facturacion_riesgo.honorarios')}
             <button
               type="button"
               className="ml-2 text-xs sm:text-sm transition-colors"
@@ -457,7 +461,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
               }}
               onClick={() => openCalc("vlorHonorarios")}
               tabIndex={-1}
-              title="Abrir calculadora"
+              title={t('risks.ui.facturacion_riesgo.abrir_calculadora')}
             >
               <FaCalculator />
             </button>
@@ -479,7 +483,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
             className="block text-xs sm:text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Numero Factura
+{t('risks.ui.facturacion_riesgo.numero_factura')}
           </label>
           <input
             type="text"
@@ -498,7 +502,7 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
             className="block text-xs sm:text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            Total Pagado
+{t('risks.ui.facturacion_riesgo.total_pagado')}
           </label>
           <input
             type="text"
@@ -520,9 +524,9 @@ export default function FacturacionRiesgo({ formData, setFormData }) {
           className="block text-xs sm:text-sm font-semibold mb-1"
           style={{ color: textPrimary }}
         >
-          Adjunto Factura
+{t('risks.ui.facturacion_riesgo.adjunto_factura')}
         </label>
-        <DropZone onFile={file => setFormData(prev => ({ ...prev, anxoFactra: file }))} label="Adjunta la factura" existingFile={formData.anxoFactra} />
+        <DropZone onFile={file => setFormData(prev => ({ ...prev, anxoFactra: file }))} label={t('risks.ui.facturacion_riesgo.adjunta_factura')} existingFile={formData.anxoFactra} />
       </div>
     </div>
   );

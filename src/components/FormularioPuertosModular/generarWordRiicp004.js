@@ -301,7 +301,10 @@ const crearEncabezadoDocumento = (logoBuffer, { asegurado, patio, ciudad, numero
   });
 };
 
-export const generarWordRiicp004 = async (formData) => {
+export const generarWordRiicp004 = async (formData, options = {}) => {
+  const locale = options?.locale === 'en' ? 'en' : 'es';
+  // Contenido regulatorio permanece en ES hasta aprobación legal (pending legal approval)
+  const L = (es, en) => (locale === 'en' ? en : es);
   const docContent = [];
   let logoBuffer = null;
   try {
@@ -340,7 +343,7 @@ export const generarWordRiicp004 = async (formData) => {
   if (formData.empresaCliente) docContent.push(linea(formData.empresaCliente.toUpperCase()));
   if (formData.ciudadContacto) docContent.push(linea(formData.ciudadContacto));
 
-  docContent.push(new Paragraph({ spacing: { after: 150 } }), linea('Cordial Saludo.'));
+  docContent.push(new Paragraph({ spacing: { after: 150 } }), linea(L('Cordial Saludo.', 'Greetings.')));
 
   const motonave = formData.nombreMotonave || 'LA MOTONAVE';
   const totalVeh = formData.numeroVehiculos || formData.cantidadVehiculos || 'N';
@@ -375,7 +378,7 @@ export const generarWordRiicp004 = async (formData) => {
   }
 
   // ——— 2. Observaciones ———
-  docContent.push(seccionRoja('2- OBSERVACIONES:'));
+  docContent.push(seccionRoja(L('2- OBSERVACIONES:', '2- OBSERVATIONS:')));
 
   if (formData.textoObservacionesGeneral) {
     formData.textoObservacionesGeneral.split('\n').forEach((p) => {
@@ -389,7 +392,7 @@ export const generarWordRiicp004 = async (formData) => {
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-          new TableRow({ children: [encabezadoTablaRojo('VIN'), encabezadoTablaRojo('OBSERVACIONES')] }),
+          new TableRow({ children: [encabezadoTablaRojo('VIN'), encabezadoTablaRojo(L('OBSERVACIONES', 'OBSERVATIONS'))] }),
           ...tablaAverias.map(
             (fila) =>
               new TableRow({
@@ -417,7 +420,7 @@ export const generarWordRiicp004 = async (formData) => {
     registrosVin.some((r) => (r.fotos || []).length > 0);
 
   if (hayFotos) {
-    docContent.push(new Paragraph({ children: [], pageBreakBefore: true }), seccionRoja('3- INFORME FOTOGRAFICO'));
+    docContent.push(new Paragraph({ children: [], pageBreakBefore: true }), seccionRoja(L('3- INFORME FOTOGRAFICO', '3- PHOTOGRAPHIC REPORT')));
 
     const renderGrupo = async (imagenes, leyendaDefault) => {
       const grupos = agruparPorLeyenda(imagenes, leyendaDefault);
@@ -448,13 +451,13 @@ export const generarWordRiicp004 = async (formData) => {
   // ——— 4. Recomendaciones ———
   const recomendaciones = formData.recomendaciones || [];
   if (recomendaciones.length > 0) {
-    docContent.push(seccionRoja('4.- RECOMENDACIONES'));
+    docContent.push(seccionRoja(L('4.- RECOMENDACIONES', '4.- RECOMMENDATIONS')));
     recomendaciones.forEach((rec) => docContent.push(linea(rec.texto || rec)));
   }
 
   // ——— 5. Conclusiones ———
   if (formData.conclusiones) {
-    docContent.push(seccionRoja('5.- CONCLUSIONES'), linea(formData.conclusiones));
+    docContent.push(seccionRoja(L('5.- CONCLUSIONES', '5.- CONCLUSIONS')), linea(formData.conclusiones));
   }
 
   // ——— Firma ———

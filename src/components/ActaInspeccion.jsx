@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { FaFileAlt, FaUser, FaMapMarkerAlt, FaCalendarAlt, FaIdCard, FaExclamationTriangle, FaFileSignature, FaPlus, FaTrash } from 'react-icons/fa';
 import { 
@@ -25,6 +26,7 @@ import historialService, { TIPOS_FORMULARIOS } from '../services/historialServic
 import BotonesHistorial from './BotonesHistorial.jsx';
 
 export default function ActaInspeccion() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const location = useLocation();
   const { id } = useParams();
@@ -300,7 +302,7 @@ export default function ActaInspeccion() {
       
 } catch (error) {
       console.error('❌ Error al generar acta:', error);
-      alert('Error al generar el documento. Por favor, intente nuevamente.');
+      alert(t('acta.ui.generateError'));
     } finally {
       setCargando(false);
     }
@@ -355,7 +357,7 @@ export default function ActaInspeccion() {
             <div className="flex-shrink-0">
               <img 
                 src={Logo} 
-                alt="GRUPO PROSER" 
+                alt={t('acta.ui.logoAlt')} 
                 className="h-20 sm:h-24 object-contain"
               />
             </div>
@@ -369,13 +371,13 @@ export default function ActaInspeccion() {
                   textShadow: theme === 'dark' ? '0 2px 4px rgba(0,0,0,0.3)' : 'none'
                 }}
               >
-                ACTA DE INSPECCIÓN
+                {t('acta.ui.title')}
               </h1>
               <p 
                 className="text-sm sm:text-base"
                 style={{ color: textSecondary }}
               >
-                Documento oficial de inspección
+                {t('acta.ui.subtitle')}
               </p>
             </div>
           </div>
@@ -402,7 +404,7 @@ export default function ActaInspeccion() {
               className="text-2xl font-bold"
               style={{ color: textPrimary }}
             >
-              DATOS PERSONALES
+              {t('acta.ui.personalData')}
             </h2>
           </div>
           
@@ -410,7 +412,7 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaCalendarAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                FECHA INSPECCIÓN *
+                {t('acta.ui.inspectionDate')}
               </label>
               <input
                 type="date"
@@ -429,13 +431,13 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaMapMarkerAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                CIUDAD *
+                {t('acta.ui.city')}
               </label>
               <input
                 type="text"
                 value={ciudad}
                 onChange={(e) => setCiudad(e.target.value)}
-                placeholder="Ej: PUERTO CARREÑO, VICHADA"
+                placeholder={t('acta.ui.cityPlaceholder')}
                 className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                 style={{
                   backgroundColor: inputBg,
@@ -448,13 +450,13 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaMapMarkerAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                DIRECCIÓN *
+                {t('acta.ui.address')}
               </label>
               <input
                 type="text"
                 value={direccion}
                 onChange={(e) => setDireccion(e.target.value)}
-                placeholder="Ej: CALLE 19 No. 3-99 BARRIO GAITAN"
+                placeholder={t('acta.ui.addressPlaceholder')}
                 className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                 style={{
                   backgroundColor: inputBg,
@@ -467,13 +469,13 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaExclamationTriangle className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                TIPO DE RIESGO *
+                {t('acta.ui.riskType')}
               </label>
               <input
                 type="text"
                 value={tipoRiesgo}
                 onChange={(e) => setTipoRiesgo(e.target.value)}
-                placeholder="Ej: VIVIENDA"
+                placeholder={t('acta.ui.riskTypePlaceholder')}
                 className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                 style={{
                   backgroundColor: inputBg,
@@ -486,13 +488,13 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaUser className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                ASEGURADO *
+                {t('acta.ui.insured')}
               </label>
               <input
                 type="text"
                 value={asegurado}
                 onChange={(e) => setAsegurado(e.target.value)}
-                placeholder="Nombre completo del asegurado"
+                placeholder={t('acta.ui.insuredPlaceholder')}
                 className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                 style={{
                   backgroundColor: inputBg,
@@ -505,13 +507,13 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaIdCard className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                IDENTIFICACIÓN *
+                {t('acta.ui.identification')}
               </label>
               <input
                 type="text"
                 value={identificacion}
                 onChange={(e) => setIdentificacion(e.target.value)}
-                placeholder="Ej: 12.241.166"
+                placeholder={t('acta.ui.identificationPlaceholder')}
                 className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                 style={{
                   backgroundColor: inputBg,
@@ -524,13 +526,13 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaFileAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                No. SINIESTRO *
+                {t('acta.ui.claimNumber')}
               </label>
               <input
                 type="text"
                 value={numeroSiniestro}
                 onChange={(e) => setNumeroSiniestro(e.target.value)}
-                placeholder="Ej: STRO100012406"
+                placeholder={t('acta.ui.claimNumberPlaceholder')}
                 className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                 style={{
                   backgroundColor: inputBg,
@@ -543,7 +545,7 @@ export default function ActaInspeccion() {
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-semibold mb-2" style={{ color: textPrimary }}>
                 <FaCalendarAlt className="text-xs" style={{ color: theme === 'dark' ? '#60A5FA' : '#2563EB' }} />
-                FECHA SINIESTRO *
+                {t('acta.ui.claimDate')}
               </label>
               <input
                 type="date"
@@ -581,13 +583,13 @@ export default function ActaInspeccion() {
               className="text-2xl font-bold"
               style={{ color: textPrimary }}
             >
-              DESCRIPCIÓN DEL RIESGO
+              {t('acta.ui.riskDescription')}
             </h2>
           </div>
           <textarea
             value={descripcionRiesgo}
             onChange={(e) => setDescripcionRiesgo(e.target.value)}
-            placeholder="Describa las características del riesgo, ubicación, construcción, materiales, etc."
+            placeholder={t('acta.ui.riskDescriptionPlaceholder')}
             rows={8}
             className="w-full px-4 py-3 rounded-lg border-2 resize-vertical transition-all duration-200 focus:outline-none focus:ring-2"
             style={{
@@ -619,13 +621,13 @@ export default function ActaInspeccion() {
               className="text-2xl font-bold"
               style={{ color: textPrimary }}
             >
-              DESCRIPCIÓN DEL SINIESTRO
+              {t('acta.ui.claimDescription')}
             </h2>
           </div>
           <textarea
             value={descripcionSiniestro}
             onChange={(e) => setDescripcionSiniestro(e.target.value)}
-            placeholder="Describa el evento del siniestro, daños observados, causas, etc."
+            placeholder={t('acta.ui.claimDescriptionPlaceholder')}
             rows={8}
             className="w-full px-4 py-3 rounded-lg border-2 resize-vertical transition-all duration-200 focus:outline-none focus:ring-2"
             style={{
@@ -657,13 +659,13 @@ export default function ActaInspeccion() {
               className="text-2xl font-bold"
               style={{ color: textPrimary }}
             >
-              OBSERVACIONES
+              {t('acta.ui.observations')}
             </h2>
           </div>
           <textarea
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
-            placeholder="Agregue observaciones adicionales, recomendaciones, o notas relevantes..."
+            placeholder={t('acta.ui.observationsPlaceholder')}
             rows={8}
             className="w-full px-4 py-3 rounded-lg border-2 resize-vertical transition-all duration-200 focus:outline-none focus:ring-2"
             style={{
@@ -696,7 +698,7 @@ export default function ActaInspeccion() {
                 className="text-2xl font-bold"
                 style={{ color: textPrimary }}
               >
-                FIRMAS
+                {t('acta.ui.signatures')}
               </h2>
             </div>
             <button
@@ -707,7 +709,7 @@ export default function ActaInspeccion() {
                 color: '#FFFFFF'
               }}
             >
-              <FaPlus /> Agregar Firma
+              <FaPlus /> {t('acta.ui.addSignature')}
             </button>
           </div>
 
@@ -722,7 +724,7 @@ export default function ActaInspeccion() {
             >
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-bold text-lg" style={{ color: textPrimary }}>
-                  Firma {index + 1}
+                  {t('acta.ui.signatureN', { n: index + 1 })}
                 </h3>
                 {firmas.length > 1 && (
                   <button
@@ -733,7 +735,7 @@ export default function ActaInspeccion() {
                       color: '#FFFFFF'
                     }}
                   >
-                    <FaTrash /> Eliminar
+                    <FaTrash /> {t('acta.ui.remove')}
                   </button>
                 )}
               </div>
@@ -741,13 +743,13 @@ export default function ActaInspeccion() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold mb-2" style={{ color: textPrimary }}>
-                    NOMBRE *
+                    {t('acta.ui.nameRequired')}
                   </label>
                   <input
                     type="text"
                     value={firma.nombre}
                     onChange={(e) => actualizarFirma(index, 'nombre', e.target.value)}
-                    placeholder="Ej: DANIEL ALBERTO CARDOZO MORALES"
+                    placeholder={t('acta.ui.namePlaceholder')}
                     className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                     style={{
                       backgroundColor: inputBg,
@@ -759,13 +761,13 @@ export default function ActaInspeccion() {
 
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold mb-2" style={{ color: textPrimary }}>
-                    CARGO *
+                    {t('acta.ui.positionRequired')}
                   </label>
                   <input
                     type="text"
                     value={firma.cargo}
                     onChange={(e) => actualizarFirma(index, 'cargo', e.target.value)}
-                    placeholder="Ej: RESPONSABLE DE INSPECCIÓN"
+                    placeholder={t('acta.ui.positionPlaceholder')}
                     className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                     style={{
                       backgroundColor: inputBg,
@@ -777,13 +779,13 @@ export default function ActaInspeccion() {
 
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold mb-2" style={{ color: textPrimary }}>
-                    CC *
+                    {t('acta.ui.ccRequired')}
                   </label>
                   <input
                     type="text"
                     value={firma.cc}
                     onChange={(e) => actualizarFirma(index, 'cc', e.target.value)}
-                    placeholder="Ej: 18.264.262"
+                    placeholder={t('acta.ui.ccPlaceholder')}
                     className="w-full px-4 py-3 rounded-lg border-2 transition-all duration-200 focus:outline-none focus:ring-2"
                     style={{
                       backgroundColor: inputBg,
@@ -795,7 +797,7 @@ export default function ActaInspeccion() {
 
                 <div className="space-y-2">
                   <label className="block text-sm font-semibold mb-2" style={{ color: textPrimary }}>
-                    FIRMA (Imagen)
+                    {t('acta.ui.signatureImage')}
                   </label>
                   <input
                     type="file"
@@ -812,7 +814,7 @@ export default function ActaInspeccion() {
                     <div className="mt-3 p-3 rounded-lg border-2" style={{ borderColor: borderColor, backgroundColor: inputBg }}>
                       <img 
                         src={firma.firma} 
-                        alt="Firma" 
+                        alt={t('acta.ui.signatureAlt')} 
                         className="max-w-xs h-24 object-contain mx-auto"
                       />
                     </div>
@@ -834,7 +836,7 @@ export default function ActaInspeccion() {
               color: '#FFFFFF'
             }}
           >
-            {guardando ? '⏳ Guardando...' : '💾 Guardar en Historial'}
+            {guardando ? t('acta.ui.saving') : t('acta.ui.saveToHistory')}
           </button>
 
           <button
@@ -846,7 +848,7 @@ export default function ActaInspeccion() {
               color: '#FFFFFF'
             }}
           >
-            {cargando ? '⏳ Generando...' : '📄 Generar Word'}
+            {cargando ? t('acta.ui.generating') : t('acta.ui.generateWord')}
           </button>
         </div>
       </div>

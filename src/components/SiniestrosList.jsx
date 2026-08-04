@@ -1,16 +1,18 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSiniestros } from "../hooks/useSiniestros";
 import { deleteSiniestro } from "../services/siniestrosApi";
 import SiniestroForm from "./SiniestroForm";
 
 export default function SiniestrosList() {
+  const { t } = useTranslation();
   const [params, setParams] = useState({ page: 1, limit: 5 });
   const { siniestros, total, page, limit, loading, error, refetch } = useSiniestros(params);
   const [editSiniestro, setEditSiniestro] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Eliminar siniestro?")) {
+    if (window.confirm(t("siniestros.ui.deleteConfirm"))) {
       await deleteSiniestro(id);
       refetch(params);
     }
@@ -27,17 +29,17 @@ export default function SiniestrosList() {
 
   return (
     <div className="p-2 sm:p-4">
-      <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">Listado de Siniestros</h2>
-      {loading && <p className="text-sm">Cargando...</p>}
+      <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4">{t("siniestros.ui.listTitle")}</h2>
+      {loading && <p className="text-sm">{t("siniestros.ui.loading")}</p>}
       {error && <p className="text-red-500 text-sm">{error}</p>}
       <div className="overflow-x-auto">
         <table className="w-full border border-gray-300 text-xs sm:text-sm">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-gray-300 p-2 text-left">ID</th>
-              <th className="border border-gray-300 p-2 text-left">Número Siniestro</th>
-              <th className="border border-gray-300 p-2 text-left">Responsable</th>
-              <th className="border border-gray-300 p-2 text-left">Acciones</th>
+              <th className="border border-gray-300 p-2 text-left">{t("siniestros.ui.colId")}</th>
+              <th className="border border-gray-300 p-2 text-left">{t("siniestros.ui.colClaimNumber")}</th>
+              <th className="border border-gray-300 p-2 text-left">{t("siniestros.ui.colResponsible")}</th>
+              <th className="border border-gray-300 p-2 text-left">{t("siniestros.ui.colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -52,13 +54,13 @@ export default function SiniestrosList() {
                       onClick={() => handleEdit(s)}
                       className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
                     >
-                      Editar
+                      {t("siniestros.ui.edit")}
                     </button>
                     <button 
                       onClick={() => handleDelete(s._id)}
                       className="bg-red-500 text-white px-2 py-1 rounded text-xs hover:bg-red-600"
                     >
-                      Eliminar
+                      {t("siniestros.ui.delete")}
                     </button>
                   </div>
                 </td>
@@ -68,21 +70,23 @@ export default function SiniestrosList() {
         </table>
       </div>
       <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <span className="text-xs sm:text-sm">Página {page} de {Math.ceil(total / limit)}</span>
+        <span className="text-xs sm:text-sm">
+          {t("siniestros.ui.pageOf", { page, total: Math.ceil(total / limit) || 1 })}
+        </span>
         <div className="flex gap-2">
           <button 
             disabled={page <= 1} 
             onClick={() => setParams(p => ({ ...p, page: p.page - 1 }))}
             className="px-3 py-1 bg-gray-500 text-white rounded text-xs disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-gray-600"
           >
-            Anterior
+            {t("siniestros.ui.previous")}
           </button>
           <button 
             disabled={page * limit >= total} 
             onClick={() => setParams(p => ({ ...p, page: p.page + 1 }))}
             className="px-3 py-1 bg-gray-500 text-white rounded text-xs disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-gray-600"
           >
-            Siguiente
+            {t("siniestros.ui.next")}
           </button>
         </div>
       </div>
@@ -94,4 +98,4 @@ export default function SiniestrosList() {
       />
     </div>
   );
-} 
+}

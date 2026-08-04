@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FaArrowDown,
   FaChartBar,
@@ -17,6 +18,18 @@ const COLORES_NIVEL = {
   Medio: '#ffc107',
   Bajo: '#28a745',
 };
+
+const NIVEL_KEY = {
+  Crítico: 'critical',
+  Alto: 'high',
+  Medio: 'medium',
+  Bajo: 'low',
+};
+
+function tNivel(t, nombre) {
+  const key = NIVEL_KEY[nombre];
+  return key ? t(`riskMatrix.level.${key}`) : nombre;
+}
 
 function KpiCard({ titulo, valor, subtitulo, icono: Icono, color = '#C53030', onClick }) {
   const contenido = (
@@ -44,14 +57,16 @@ function KpiCard({ titulo, valor, subtitulo, icono: Icono, color = '#C53030', on
 }
 
 export default function DashboardEjecutivo({ analitica, onNavegar }) {
+  const { t } = useTranslation();
   const { kpis, porNivel, porProceso, hallazgos } = analitica;
 
   const datosDonut = porNivel
     .filter((item) => item.total > 0)
     .map((item) => ({
-      name: item.nombre,
+      name: tNivel(t, item.nombre),
       value: item.total,
       color: COLORES_NIVEL[item.nombre],
+      raw: item.nombre,
     }));
 
   const topProcesos = porProceso.slice(0, 5);
@@ -62,98 +77,100 @@ export default function DashboardEjecutivo({ analitica, onNavegar }) {
     <div className="re-dashboard">
       <header className="re-seccion-header">
         <div>
-          <p className="re-seccion-kicker">Matriz de Riesgos Avanzada</p>
-          <h2 className="re-seccion-titulo">Dashboard ejecutivo</h2>
-          <p className="re-seccion-desc">
-            Lectura gerencial del estado de riesgos, controles y plan de acción.
-          </p>
+          <p className="re-seccion-kicker">{t('riskMatrix.exec.kicker')}</p>
+          <h2 className="re-seccion-titulo">{t('riskMatrix.exec.dashTitle')}</h2>
+          <p className="re-seccion-desc">{t('riskMatrix.exec.dashDesc')}</p>
         </div>
         <div className="re-nivel-general">
           <FaShieldAlt />
           <div>
-            <span>Nivel general</span>
-            <strong style={{ color: kpis.nivelGeneralDetalle.color }}>{kpis.nivelGeneral}</strong>
+            <span>{t('riskMatrix.exec.overallLevel')}</span>
+            <strong style={{ color: kpis.nivelGeneralDetalle.color }}>
+              {tNivel(t, kpis.nivelGeneral)}
+            </strong>
           </div>
         </div>
       </header>
 
       <div className="re-kpi-grid">
         <KpiCard
-          titulo="Riesgos identificados"
+          titulo={t('riskMatrix.exec.risksIdentified')}
           valor={kpis.totalRiesgos}
-          subtitulo="Total evaluados"
+          subtitulo={t('riskMatrix.exec.totalEvaluated')}
           icono={FaTasks}
           onClick={() => onNavegar?.('graficos')}
         />
         <KpiCard
-          titulo="Críticos"
+          titulo={t('riskMatrix.exec.critical')}
           valor={kpis.criticos}
-          subtitulo={`${kpis.totalRiesgos ? Math.round((kpis.criticos / kpis.totalRiesgos) * 100) : 0}% del total`}
+          subtitulo={t('riskMatrix.exec.ofTotal', {
+            pct: kpis.totalRiesgos ? Math.round((kpis.criticos / kpis.totalRiesgos) * 100) : 0,
+          })}
           icono={FaExclamationTriangle}
           color="#dc3545"
           onClick={() => onNavegar?.('top10')}
         />
         <KpiCard
-          titulo="Altos"
+          titulo={t('riskMatrix.exec.high')}
           valor={kpis.altos}
           icono={FaExclamationTriangle}
           color="#fd7e14"
           onClick={() => onNavegar?.('top10')}
         />
         <KpiCard
-          titulo="Medios"
+          titulo={t('riskMatrix.exec.medium')}
           valor={kpis.medios}
           icono={FaChartBar}
           color="#ffc107"
         />
         <KpiCard
-          titulo="Bajos"
+          titulo={t('riskMatrix.exec.low')}
           valor={kpis.bajos}
           icono={FaCheckCircle}
           color="#28a745"
         />
         <KpiCard
-          titulo="Riesgo inherente prom."
+          titulo={t('riskMatrix.exec.inherentAvg')}
           valor={kpis.riesgoInherentePromedio}
-          subtitulo="Escala 1–25"
+          subtitulo={t('riskMatrix.exec.scale125')}
           icono={FaChartBar}
           onClick={() => onNavegar?.('comparativo')}
         />
         <KpiCard
-          titulo="Riesgo residual prom."
+          titulo={t('riskMatrix.exec.residualAvg')}
           valor={kpis.riesgoResidualPromedio}
-          subtitulo="Escala 1–25"
+          subtitulo={t('riskMatrix.exec.scale125')}
           icono={FaShieldAlt}
           onClick={() => onNavegar?.('comparativo')}
         />
         <KpiCard
-          titulo="Reducción del riesgo"
+          titulo={t('riskMatrix.exec.riskReduction')}
           valor={`${kpis.reduccionPromedio}%`}
-          subtitulo="Efectividad de controles"
+          subtitulo={t('riskMatrix.exec.controlEffectiveness')}
           icono={FaArrowDown}
           color="#16a34a"
           onClick={() => onNavegar?.('comparativo')}
         />
         <KpiCard
-          titulo="Procesos evaluados"
+          titulo={t('riskMatrix.exec.processesEvaluated')}
           valor={kpis.procesosEvaluados}
           icono={FaTasks}
           onClick={() => onNavegar?.('semaforo')}
         />
         <KpiCard
-          titulo="Controles documentados"
+          titulo={t('riskMatrix.exec.documentedControls')}
           valor={kpis.controlesDocumentados}
           icono={FaShieldAlt}
         />
         <KpiCard
-          titulo="Recomendaciones abiertas"
+          titulo={t('riskMatrix.exec.openRecommendations')}
           valor={kpis.recomendacionesAbiertas}
           icono={FaClipboardList}
           color="#dc3545"
           onClick={() => onNavegar?.('recomendaciones')}
         />
         <KpiCard
-          titulo="Avance plan de acción"
+          titulo={t('riskMatrix.exec.actionPlanProgress')}
           valor={`${kpis.avancePlanAccion}%`}
           icono={FaCheckCircle}
           color="#C53030"
@@ -163,7 +180,7 @@ export default function DashboardEjecutivo({ analitica, onNavegar }) {
 
       <div className="re-dashboard-widgets">
         <section className="re-widget-card">
-          <h3>Riesgos por nivel (residual)</h3>
+          <h3>{t('riskMatrix.exec.risksByLevel')}</h3>
           <div className="re-donut-wrap">
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
@@ -176,7 +193,7 @@ export default function DashboardEjecutivo({ analitica, onNavegar }) {
                   paddingAngle={2}
                 >
                   {datosDonut.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
+                    <Cell key={entry.raw} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
@@ -184,7 +201,7 @@ export default function DashboardEjecutivo({ analitica, onNavegar }) {
             </ResponsiveContainer>
             <div className="re-donut-leyenda">
               {datosDonut.map((item) => (
-                <div key={item.name}>
+                <div key={item.raw}>
                   <span style={{ background: item.color }} />
                   {item.name}: {item.value}
                 </div>
@@ -194,7 +211,7 @@ export default function DashboardEjecutivo({ analitica, onNavegar }) {
         </section>
 
         <section className="re-widget-card">
-          <h3>Top 5 procesos por exposición</h3>
+          <h3>{t('riskMatrix.exec.top5Processes')}</h3>
           <div className="re-barras">
             {topProcesos.map((proceso) => (
               <div key={proceso.nombre} className="re-barra-item">
@@ -216,16 +233,16 @@ export default function DashboardEjecutivo({ analitica, onNavegar }) {
         </section>
 
         <section className="re-widget-card">
-          <h3>Hallazgo destacado</h3>
+          <h3>{t('riskMatrix.exec.featuredFinding')}</h3>
           {hallazgoDestacado ? (
             <p className="re-hallazgo-destacado">{hallazgoDestacado.texto}</p>
           ) : (
             <p className="re-hallazgo-destacado re-hallazgo-destacado--vacio">
-              Complete la valoración para generar hallazgos automáticos.
+              {t('riskMatrix.exec.noFindings')}
             </p>
           )}
           <button type="button" className="re-link-btn" onClick={() => onNavegar?.('hallazgos')}>
-            Ver todos los hallazgos
+            {t('riskMatrix.exec.viewAllFindings')}
           </button>
         </section>
       </div>

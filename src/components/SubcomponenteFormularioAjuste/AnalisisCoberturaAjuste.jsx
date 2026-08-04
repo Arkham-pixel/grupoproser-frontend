@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
-import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 
 const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [modoAvanzado, setModoAvanzado] = useState(false);
   
@@ -16,7 +17,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
   const sectionBlueText = theme === 'dark' ? '#93C5FD' : '#1E3A8A';
   const sectionBlueBorder = theme === 'dark' ? 'rgba(37, 99, 235, 0.3)' : '#93C5FD';
 
-  // Funciones para los botones de IA
+  // Funciones para los botones de IA (contenido persistido permanece en español)
   const mejorarConIA = () => {
     const campos = ['coberturasAplicables', 'exclusiones', 'garantias'];
     const camposConContenido = campos.filter(campo => formData[campo] && formData[campo].trim());
@@ -28,7 +29,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
         onInputChange(campo, textoMejorado);
       });
     } else {
-      alert('⚠️ Primero escribe algo en al menos uno de los campos para mejorarlo con IA');
+      alert(t('adjustment.ui.ia.errorGeneric'));
     }
   };
 
@@ -124,7 +125,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
       // Aplicar el análisis al primer campo con contenido
       onInputChange(camposConContenido[0], analisisCompleto);
     } else {
-      alert('⚠️ Primero escribe algo en al menos uno de los campos para analizarlo');
+      alert(t('adjustment.ui.ia.errorGeneric'));
     }
   };
 
@@ -140,10 +141,10 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
           className="text-2xl font-bold flex items-center mb-2"
           style={{ color: textPrimary }}
         >
-          {numeroSeccion}. {tituloAjuste('Análisis de cobertura')}
+          {numeroSeccion}. {t('adjustment.ui.sections.analisisCobertura.title')}
         </h2>
         <p className="text-sm" style={{ color: textSecondary }}>
-          {subtituloAjuste('Coberturas aplicables, exclusiones y garantías del siniestro')}
+          {t('adjustment.ui.sections.analisisCobertura.subtitle')}
         </p>
       </div>
 
@@ -162,7 +163,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
           style={{ color: sectionBlueText }}
         >
           <span className="mr-2">🤖</span>
-          {subtituloAjuste('IA inteligente avanzada - análisis de cobertura')}
+          {t('adjustment.ui.sections.analisisCobertura.iaAssistant')}
         </h4>
         
         {/* Botones principales - Versión reducida */}
@@ -180,10 +181,10 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#3B82F6';
             }}
-            title="Mejorar texto existente con IA"
+            title={t('adjustment.ui.ia.improveAdvanced')}
           >
             <span>✨</span>
-            <span>Mejorar IA</span>
+            <span>{t('adjustment.ui.sections.analisisCobertura.improveIa')}</span>
           </button>
           
           <button 
@@ -199,10 +200,10 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = theme === 'dark' ? 'rgba(34, 197, 94, 0.2)' : '#16A34A';
             }}
-            title="Generar plantillas profesionales"
+            title={t('adjustment.ui.ia.generateProfessional')}
           >
             <span>📄</span>
-            <span>Plantillas IA</span>
+            <span>{t('adjustment.ui.sections.analisisCobertura.templatesIa')}</span>
           </button>
           
           <button 
@@ -218,10 +219,10 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = theme === 'dark' ? 'rgba(249, 115, 22, 0.2)' : '#EA580C';
             }}
-            title="Análisis avanzado del contenido"
+            title={t('adjustment.ui.ia.advancedAnalysis')}
           >
             <span>🔍</span>
-            <span>Analizar</span>
+            <span>{t('adjustment.ui.sections.analisisCobertura.analyze')}</span>
           </button>
         </div>
         
@@ -249,13 +250,13 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
               }
             }}
           >
-            {modoAvanzado ? 'Modo Avanzado ON' : 'Modo Básico'}
+            {modoAvanzado ? t('adjustment.ui.ia.advancedMode') : t('adjustment.ui.sections.analisisCobertura.basicMode')}
           </button>
           <span 
             className="text-xs"
             style={{ color: textSecondary }}
           >
-            {modoAvanzado ? 'Funciones IA completas activadas' : 'Funciones básicas'}
+            {modoAvanzado ? t('adjustment.ui.ia.tip3') : t('adjustment.ui.ia.tip1')}
           </span>
         </div>
         
@@ -272,15 +273,15 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
               className="font-medium mb-2 text-sm"
               style={{ color: textPrimary }}
             >
-              💡 Cómo usar la IA para Análisis de Cobertura:
+              💡 {t('adjustment.ui.sections.analisisCobertura.iaAssistant')}
             </h5>
             <ul 
               className="text-xs space-y-1"
               style={{ color: textSecondary }}
             >
-              <li>• <strong>Mejorar IA:</strong> Mejora todos los campos con contenido</li>
-              <li>• <strong>Plantillas IA:</strong> Crea plantillas específicas por campo</li>
-              <li>• <strong>Analizar:</strong> Métricas y análisis completo de cobertura</li>
+              <li>• <strong>{t('adjustment.ui.sections.analisisCobertura.improveIa')}:</strong> {t('adjustment.ui.ia.tip1')}</li>
+              <li>• <strong>{t('adjustment.ui.sections.analisisCobertura.templatesIa')}:</strong> {t('adjustment.ui.ia.tip2')}</li>
+              <li>• <strong>{t('adjustment.ui.sections.analisisCobertura.analyze')}:</strong> {t('adjustment.ui.ia.tip3')}</li>
             </ul>
           </div>
         )}
@@ -294,7 +295,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            ✅ {subtituloAjuste('Coberturas aplicables')}
+            ✅ {t('adjustment.ui.sections.analisisCobertura.coverages')}
           </label>
           <textarea
             id="coberturasAplicables"
@@ -307,7 +308,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Listar y describir las coberturas que aplican al siniestro..."
+            placeholder={t('adjustment.ui.sections.analisisCobertura.coveragesPlaceholder')}
             value={formData.coberturasAplicables || ''}
             onChange={(e) => onInputChange('coberturasAplicables', e.target.value)}
           />
@@ -320,7 +321,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            ❌ Exclusiones
+            ❌ {t('adjustment.ui.sections.analisisCobertura.exclusions')}
           </label>
           <textarea
             id="exclusiones"
@@ -333,7 +334,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Identificar exclusiones que puedan aplicar al siniestro..."
+            placeholder={t('adjustment.ui.sections.analisisCobertura.exclusionsPlaceholder')}
             value={formData.exclusiones || ''}
             onChange={(e) => onInputChange('exclusiones', e.target.value)}
           />
@@ -346,7 +347,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            🛡️ Garantías
+            🛡️ {t('adjustment.ui.sections.analisisCobertura.warranties')}
           </label>
           <textarea
             id="garantias"
@@ -359,7 +360,7 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Describir garantías específicas que apliquen al caso..."
+            placeholder={t('adjustment.ui.sections.analisisCobertura.warrantiesPlaceholder')}
             value={formData.garantias || ''}
             onChange={(e) => onInputChange('garantias', e.target.value)}
           />
@@ -390,11 +391,8 @@ const AnalisisCoberturaAjuste = ({ formData, onInputChange, numeroSeccion = 6 })
               className="text-sm"
               style={{ color: sectionBlueText }}
             >
-              💡 <strong>{subtituloAjuste('Asistente IA disponible')}:</strong>{' '}
-              {subtituloAjuste(
-                'Usa los botones de IA para obtener ayuda en el análisis de cobertura, identificación de exclusiones y evaluación de garantías'
-              )}
-              .
+              💡 <strong>{t('adjustment.ui.sections.analisisCobertura.iaAssistant')}:</strong>{' '}
+              {t('adjustment.ui.ia.tip3')}
             </p>
           </div>
         </div>

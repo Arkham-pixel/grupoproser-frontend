@@ -1,11 +1,13 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import { FaArrowDown, FaArrowUp, FaCloudUploadAlt, FaGripVertical, FaTrash, FaImage } from 'react-icons/fa';
 import { getPuertosImagenDisplayUrl } from './puertosCasoImagenUtils';
 
 const MAX_FOTOS = 20;
 
 export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = false }) {
+  const { t } = useTranslation();
   const puedeEditar = typeof onChange === 'function' && !soloLectura;
   const [arrastrandoId, setArrastrandoId] = useState(null);
   const [destinoArrastreId, setDestinoArrastreId] = useState(null);
@@ -92,9 +94,11 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
           <FaImage />
         </span>
         <div>
-          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Fotos del acta</h3>
+          <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+            {t('ports.ui.actas.photos.title')}
+          </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Arrastra imágenes para subir · arrastra cada foto para cambiar el orden · máximo {MAX_FOTOS} fotos
+            {t('ports.ui.actas.photos.subtitle', { max: MAX_FOTOS })}
           </p>
         </div>
         <span className="ml-auto rounded-full bg-sky-100 dark:bg-sky-900/50 px-3 py-1 text-sm font-medium text-sky-800 dark:text-sky-200">
@@ -120,27 +124,27 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
             />
             {isDragActive ? (
               <p className="text-center font-medium text-sky-700 dark:text-sky-300">
-                Suelta las imágenes aquí…
+                {t('ports.ui.actas.photos.dropHere')}
               </p>
             ) : (
               <>
                 <p className="text-center font-medium text-slate-700 dark:text-slate-200">
-                  Arrastra y suelta tus fotos
+                  {t('ports.ui.actas.photos.dragDrop')}
                 </p>
                 <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">
-                  o haz clic para seleccionar — JPG, JFIF, PNG, GIF, WebP
+                  {t('ports.ui.actas.photos.orClick')}
                 </p>
               </>
             )}
             <p className="mt-3 text-xs text-slate-400">
-              Puedes agregar {MAX_FOTOS - fotos.length} foto(s) más
+              {t('ports.ui.actas.photos.remaining', { count: MAX_FOTOS - fotos.length })}
             </p>
           </div>
         )}
 
         {lleno && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
-            Has alcanzado el límite de {MAX_FOTOS} fotos. Elimina una para agregar otra.
+            {t('ports.ui.actas.photos.limitReached', { max: MAX_FOTOS })}
           </div>
         )}
 
@@ -195,7 +199,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                     {puedeEditar && (
                       <span
                         className="rounded-md bg-black/40 p-1 text-white"
-                        title="Arrastra para reordenar"
+                        title={t('ports.ui.actas.photos.dragToReorder')}
                       >
                         <FaGripVertical className="text-xs" />
                       </span>
@@ -209,7 +213,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                         onClick={() => moverFoto(foto.id, -1)}
                         disabled={index === 0}
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/85 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                        title="Mover arriba"
+                        title={t('ports.ui.actas.photos.moveUp')}
                       >
                         <FaArrowUp className="text-xs" />
                       </button>
@@ -218,7 +222,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                         onClick={() => moverFoto(foto.id, 1)}
                         disabled={index === fotos.length - 1}
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-900/85 text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
-                        title="Mover abajo"
+                        title={t('ports.ui.actas.photos.moveDown')}
                       >
                         <FaArrowDown className="text-xs" />
                       </button>
@@ -226,7 +230,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                         type="button"
                         onClick={() => eliminarFoto(foto.id)}
                         className="flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white hover:bg-red-600"
-                        title="Eliminar foto"
+                        title={t('ports.ui.actas.photos.deletePhoto')}
                       >
                         <FaTrash className="text-xs" />
                       </button>
@@ -236,7 +240,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                   <div className="aspect-[4/3] bg-slate-200 dark:bg-slate-700 pointer-events-none">
                     <img
                       src={displaySrc}
-                      alt={`Foto ${index + 1}`}
+                      alt={t('ports.ui.actas.photos.photoAlt', { n: index + 1 })}
                       className="h-full w-full object-cover"
                       draggable={false}
                     />
@@ -246,7 +250,7 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
                       type="text"
                       value={foto.descripcion}
                       onChange={(e) => actualizarDescripcion(foto.id, e.target.value)}
-                      placeholder="Descripción (opcional)"
+                      placeholder={t('ports.ui.actas.photos.descriptionPlaceholder')}
                       readOnly={soloLectura}
                       className="w-full rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-sm text-slate-800 dark:text-slate-100"
                     />
@@ -257,13 +261,13 @@ export default function PuertosFotosActa({ fotos = [], onChange, soloLectura = f
           </div>
         ) : (
           <p className="text-center text-sm text-slate-400 py-4">
-            Aún no hay fotos. Usa la zona de arrastre para agregar imágenes.
+            {t('ports.ui.actas.photos.empty')}
           </p>
         )}
 
         {puedeEditar && fotos.length > 1 && (
           <p className="text-center text-xs text-slate-400">
-            El orden que definas aquí es el mismo que aparecerá en el PDF del acta.
+            {t('ports.ui.actas.photos.orderHint')}
           </p>
         )}
       </div>

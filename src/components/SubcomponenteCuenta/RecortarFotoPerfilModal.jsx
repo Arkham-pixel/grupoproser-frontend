@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { calcularEscalaBase, generarBlobFotoPerfil } from '../../utils/fotoPerfilUtils.js';
 
 const VIEWPORT = 280;
@@ -13,6 +14,7 @@ export default function RecortarFotoPerfilModal({
   onConfirm,
   subiendo = false,
 }) {
+  const { t } = useTranslation();
   const imgRef = useRef(null);
   const dragRef = useRef({ active: false, startX: 0, startY: 0, originX: 0, originY: 0 });
 
@@ -36,7 +38,7 @@ export default function RecortarFotoPerfilModal({
 
   const handleImageError = () => {
     setImgReady(false);
-    setError('No se pudo cargar la imagen. Intenta seleccionar otra.');
+    setError(t('account.ui.cuenta.crop.loadError'));
   };
 
   const iniciarArrastre = (clientX, clientY) => {
@@ -114,7 +116,7 @@ export default function RecortarFotoPerfilModal({
       });
       await onConfirm(blob);
     } catch (err) {
-      setError(err.message || 'No se pudo procesar la foto');
+      setError(err.message || t('account.ui.cuenta.crop.processError'));
     }
   };
 
@@ -131,10 +133,10 @@ export default function RecortarFotoPerfilModal({
       >
         <div className={`border-b px-5 py-4 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
           <h3 className={`text-lg font-bold ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-            Acomodar foto de perfil
+            {t('account.ui.cuenta.crop.title')}
           </h3>
           <p className={`mt-1 text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-            Arrastra para centrar tu rostro y usa el zoom para ajustar el encuadre.
+            {t('account.ui.cuenta.crop.description')}
           </p>
         </div>
 
@@ -153,7 +155,7 @@ export default function RecortarFotoPerfilModal({
             <img
               ref={imgRef}
               src={imageSrc}
-              alt="Ajustar foto"
+              alt={t('account.ui.cuenta.crop.alt')}
               crossOrigin="anonymous"
               draggable={false}
               onLoad={handleImageLoad}
@@ -165,7 +167,7 @@ export default function RecortarFotoPerfilModal({
 
           <div className="mt-5">
             <label className={`mb-2 block text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Zoom
+              {t('account.ui.cuenta.crop.zoom')}
             </label>
             <input
               type="range"
@@ -198,7 +200,7 @@ export default function RecortarFotoPerfilModal({
                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             } disabled:opacity-50`}
           >
-            Cancelar
+            {t('account.ui.cuenta.crop.cancel')}
           </button>
           <button
             type="button"
@@ -206,7 +208,7 @@ export default function RecortarFotoPerfilModal({
             disabled={!imgReady || subiendo}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {subiendo ? 'Guardando…' : 'Guardar foto'}
+            {subiendo ? t('account.ui.cuenta.crop.saving') : t('account.ui.cuenta.crop.save')}
           </button>
         </div>
       </div>

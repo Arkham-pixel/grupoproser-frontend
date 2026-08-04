@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { SESSION_CONFIG } from '../config/session.js';
 
 const SessionIndicator = () => {
+  const { t } = useTranslation();
   const [timeLeft, setTimeLeft] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -73,7 +75,7 @@ const SessionIndicator = () => {
         fontSize: '12px',
       }
     }}>
-      ⏰ Sesión: {formatTime(timeLeft)}
+      {t('session.ui.sessionShort', { time: formatTime(timeLeft) })}
       <style>{`
         @keyframes pulse {
           0% { opacity: 1; }
@@ -91,4 +93,4 @@ const SessionIndicator = () => {
   );
 };
 
-export default SessionIndicator; 
+export default SessionIndicator;

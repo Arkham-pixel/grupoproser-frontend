@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaCalculator,
   FaChevronDown,
@@ -20,6 +21,7 @@ export default function AccionesFdmMenu({
   onEliminar,
   tieneLiquidador = false,
 }) {
+  const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const btnRef = useRef(null);
@@ -86,7 +88,7 @@ export default function AccionesFdmMenu({
             onClick={() => elegir(onGestionar)}
           >
             <FaFolderOpen className="text-fenix-primario" aria-hidden />
-            Gestionar
+            {t('equidadFdm.menu.manage')}
           </button>
           <button
             type="button"
@@ -95,7 +97,8 @@ export default function AccionesFdmMenu({
             onClick={() => elegir(onLiquidador)}
           >
             <FaCalculator className="text-fenix-primario" aria-hidden />
-            Liquidador{tieneLiquidador ? ' ✓' : ''}
+            {t('equidadFdm.menu.settlement')}
+            {tieneLiquidador ? ' ✓' : ''}
           </button>
           <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
           <button
@@ -105,7 +108,7 @@ export default function AccionesFdmMenu({
             onClick={() => elegir(onEliminar)}
           >
             <FaTrash className="text-[10px]" aria-hidden />
-            Eliminar
+            {t('equidadFdm.menu.delete')}
           </button>
         </div>,
         document.body
@@ -121,11 +124,11 @@ export default function AccionesFdmMenu({
         aria-haspopup="menu"
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
-        title="Acciones del caso"
+        title={t('equidadFdm.menu.caseActions')}
       >
         <span className="inline-flex items-center gap-1.5">
           <FaEllipsisV className="text-[10px] opacity-70" aria-hidden />
-          Acciones
+          {t('equidadFdm.menu.actions')}
         </span>
         <FaChevronDown className={`text-[10px] transition ${abierto ? 'rotate-180' : ''}`} aria-hidden />
       </button>

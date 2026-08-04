@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig.js';
 import { FaClock, FaUser, FaChartLine, FaSync, FaDownload } from 'react-icons/fa';
 
 const EstadisticasTiempoUso = () => {
+  const { t, i18n } = useTranslation();
   const [estadisticas, setEstadisticas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,6 +13,7 @@ const EstadisticasTiempoUso = () => {
   const [detalleUsuario, setDetalleUsuario] = useState(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [tiemposReales, setTiemposReales] = useState({});
+  const dateLocale = i18n.language?.startsWith('en') ? 'en-US' : 'es-CO';
 
   useEffect(() => {
     cargarEstadisticas();
@@ -62,7 +65,7 @@ const EstadisticasTiempoUso = () => {
       }
     } catch (error) {
       console.error('Error cargando estadísticas:', error);
-      setError(error.response?.data?.message || 'Error al cargar estadísticas de tiempo de uso');
+      setError(error.response?.data?.message || t('admin.ui.stats.loadError'));
     } finally {
       setLoading(false);
     }
@@ -138,15 +141,15 @@ const EstadisticasTiempoUso = () => {
       setSelectedUser(usuarioId);
     } catch (error) {
       console.error('Error cargando detalle:', error);
-      alert('Error al cargar el detalle del usuario');
+      alert(t('admin.ui.stats.detailError'));
     } finally {
       setLoadingDetalle(false);
     }
   };
 
   const formatFecha = (fecha) => {
-    if (!fecha) return 'N/A';
-    return new Date(fecha).toLocaleString('es-CO', {
+    if (!fecha) return t('admin.ui.stats.na');
+    return new Date(fecha).toLocaleString(dateLocale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -156,7 +159,16 @@ const EstadisticasTiempoUso = () => {
   };
 
   const exportarCSV = () => {
-    const headers = ['Usuario', 'Login', 'Email', 'Rol', 'Total Sesiones', 'Tiempo Total', 'Última Sesión', 'Primera Sesión'];
+    const headers = [
+      t('admin.ui.stats.csv.user'),
+      t('admin.ui.stats.csv.login'),
+      t('admin.ui.stats.csv.email'),
+      t('admin.ui.stats.csv.role'),
+      t('admin.ui.stats.csv.totalSessions'),
+      t('admin.ui.stats.csv.totalTime'),
+      t('admin.ui.stats.csv.lastSession'),
+      t('admin.ui.stats.csv.firstSession')
+    ];
     const rows = estadisticas.map(stat => [
       stat.nombre,
       stat.login,
@@ -202,7 +214,7 @@ const EstadisticasTiempoUso = () => {
           onClick={cargarEstadisticas}
           className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         >
-          Reintentar
+          {t('admin.ui.stats.retry')}
         </button>
       </div>
     );
@@ -214,10 +226,10 @@ const EstadisticasTiempoUso = () => {
         <div>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-2">
             <FaClock className="inline-block mr-2 text-blue-600" />
-            Estadísticas de Tiempo de Uso
+            {t('admin.ui.stats.title')}
           </h1>
           <p className="text-sm sm:text-base text-gray-600">
-            Total de usuarios: {estadisticas.length}
+            {t('admin.ui.stats.totalUsers', { count: estadisticas.length })}
           </p>
         </div>
         <div className="flex gap-2">
@@ -225,13 +237,13 @@ const EstadisticasTiempoUso = () => {
             onClick={cargarEstadisticas}
             className="px-3 sm:px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors text-xs sm:text-sm flex items-center gap-2"
           >
-            <FaSync /> Actualizar
+            <FaSync /> {t('admin.ui.stats.refresh')}
           </button>
           <button
             onClick={exportarCSV}
             className="px-3 sm:px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-xs sm:text-sm flex items-center gap-2"
           >
-            <FaDownload /> Exportar CSV
+            <FaDownload /> {t('admin.ui.stats.exportCsv')}
           </button>
         </div>
       </div>
@@ -243,25 +255,25 @@ const EstadisticasTiempoUso = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Usuario
+                  {t('admin.ui.stats.columns.user')}
                 </th>
                 <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
+                  {t('admin.ui.stats.columns.email')}
                 </th>
                 <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Rol
+                  {t('admin.ui.stats.columns.role')}
                 </th>
                 <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Sesiones
+                  {t('admin.ui.stats.columns.sessions')}
                 </th>
                 <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Tiempo Total
+                  {t('admin.ui.stats.columns.totalTime')}
                 </th>
                 <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Última Sesión
+                  {t('admin.ui.stats.columns.lastSession')}
                 </th>
                 <th className="px-2 sm:px-4 lg:px-6 py-2 sm:py-3 text-left text-xs sm:text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Acciones
+                  {t('admin.ui.stats.columns.actions')}
                 </th>
               </tr>
             </thead>
@@ -269,7 +281,7 @@ const EstadisticasTiempoUso = () => {
               {estadisticas.length === 0 ? (
                 <tr>
                   <td colSpan="7" className="px-4 py-8 text-center text-gray-500">
-                    No hay estadísticas disponibles aún. Las estadísticas se generan cuando los usuarios cierran sesión.
+                    {t('admin.ui.stats.empty')}
                   </td>
                 </tr>
               ) : (
@@ -277,7 +289,7 @@ const EstadisticasTiempoUso = () => {
                   <tr key={stat.usuarioId} className="hover:bg-gray-50">
                     <td className="px-2 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap">
                       <div className="text-xs sm:text-sm font-medium text-gray-900">{stat.nombre}</div>
-                      <div className="text-xs sm:text-sm text-gray-500">Login: {stat.login}</div>
+                      <div className="text-xs sm:text-sm text-gray-500">{t('admin.ui.stats.loginLabel', { login: stat.login })}</div>
                     </td>
                     <td className="px-2 sm:px-4 lg:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {stat.email}
@@ -301,14 +313,16 @@ const EstadisticasTiempoUso = () => {
                           : stat.tiempoTotal.formato}
                       </div>
                       <div className="text-xs text-gray-500">
-                        ({stat.tieneSesionActiva && tiemposReales[stat.usuarioId]
-                          ? Math.floor(tiemposReales[stat.usuarioId].totalMinutos)
-                          : stat.tiempoTotal.totalMinutos} min)
+                        {t('admin.ui.stats.minutes', {
+                          count: stat.tieneSesionActiva && tiemposReales[stat.usuarioId]
+                            ? Math.floor(tiemposReales[stat.usuarioId].totalMinutos)
+                            : stat.tiempoTotal.totalMinutos
+                        })}
                       </div>
                       {stat.tieneSesionActiva && (
                         <div className="text-xs text-green-600 font-semibold mt-1 flex items-center gap-1">
                           <span className="inline-block w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                          En línea
+                          {t('admin.ui.stats.online')}
                         </div>
                       )}
                     </td>
@@ -320,7 +334,7 @@ const EstadisticasTiempoUso = () => {
                         onClick={() => cargarDetalleUsuario(stat.usuarioId)}
                         className="text-indigo-600 hover:text-indigo-900 bg-indigo-100 hover:bg-indigo-200 px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm font-medium transition-colors w-full sm:w-auto flex items-center gap-1"
                       >
-                        <FaChartLine /> Detalle
+                        <FaChartLine /> {t('admin.ui.stats.detail')}
                       </button>
                     </td>
                   </tr>
@@ -341,7 +355,7 @@ const EstadisticasTiempoUso = () => {
                 setSelectedUser(null);
                 setDetalleUsuario(null);
               }}
-              title="Cerrar"
+              title={t('admin.ui.stats.close')}
             >
               ×
             </button>
@@ -349,7 +363,7 @@ const EstadisticasTiempoUso = () => {
             <div className="mt-3">
               <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-4">
                 <FaUser className="inline-block mr-2" />
-                Detalle de Tiempo de Uso
+                {t('admin.ui.stats.detailTitle')}
               </h3>
               
               {loadingDetalle ? (
@@ -361,20 +375,20 @@ const EstadisticasTiempoUso = () => {
                   {/* Resumen */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                     <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="text-xs text-gray-600">Total Sesiones</div>
+                      <div className="text-xs text-gray-600">{t('admin.ui.stats.summary.totalSessions')}</div>
                       <div className="text-2xl font-bold text-blue-600">{detalleUsuario.totalSesiones}</div>
                     </div>
                     <div className="bg-green-50 p-4 rounded-lg">
-                      <div className="text-xs text-gray-600">Sesiones Cerradas</div>
+                      <div className="text-xs text-gray-600">{t('admin.ui.stats.summary.closedSessions')}</div>
                       <div className="text-2xl font-bold text-green-600">{detalleUsuario.sesionesCerradas}</div>
                     </div>
                     <div className="bg-purple-50 p-4 rounded-lg">
-                      <div className="text-xs text-gray-600">Tiempo Total</div>
+                      <div className="text-xs text-gray-600">{t('admin.ui.stats.summary.totalTime')}</div>
                       <div className="text-xl font-bold text-purple-600">{detalleUsuario.tiempoTotal.formato}</div>
                     </div>
                     {detalleUsuario.sesionActiva && (
                       <div className="bg-yellow-50 p-4 rounded-lg">
-                        <div className="text-xs text-gray-600">Sesión Activa</div>
+                        <div className="text-xs text-gray-600">{t('admin.ui.stats.summary.activeSession')}</div>
                         <div className="text-xl font-bold text-yellow-600">{detalleUsuario.sesionActiva.tiempoTranscurrido.formato}</div>
                       </div>
                     )}
@@ -382,15 +396,15 @@ const EstadisticasTiempoUso = () => {
 
                   {/* Lista de sesiones */}
                   <div className="mt-6">
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3">Historial de Sesiones</h4>
+                    <h4 className="text-sm font-semibold text-gray-700 mb-3">{t('admin.ui.stats.historyTitle')}</h4>
                     <div className="overflow-x-auto">
                       <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Inicio</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Fin</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Duración</th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.ui.stats.history.start')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.ui.stats.history.end')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.ui.stats.history.duration')}</th>
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.ui.stats.history.status')}</th>
                           </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -403,7 +417,7 @@ const EstadisticasTiempoUso = () => {
                                 <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
                                   sesion.activa ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                                 }`}>
-                                  {sesion.activa ? 'Activa' : 'Cerrada'}
+                                  {sesion.activa ? t('admin.ui.stats.status.active') : t('admin.ui.stats.status.closed')}
                                 </span>
                               </td>
                             </tr>
@@ -423,4 +437,3 @@ const EstadisticasTiempoUso = () => {
 };
 
 export default EstadisticasTiempoUso;
-

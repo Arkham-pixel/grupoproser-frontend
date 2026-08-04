@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React from 'react';
 import { FaCheckCircle, FaFileAlt, FaPaperclip } from 'react-icons/fa';
 import {
@@ -64,7 +66,7 @@ export default function FlujoVisitaCoordinacionPanel({
     }
     if (!tieneActa) {
       return onAvanzarFase(null, [
-        'Suba el acta (físico) o genérela con el formato, y las fotos/datos de la visita',
+        t('complex.ui.flujo_visita_coordinacion_panel.suba_acta_fotos'),
       ]);
     }
     await onAvanzarFase('decidir');
@@ -77,12 +79,12 @@ export default function FlujoVisitaCoordinacionPanel({
     }
     if (!tieneActa) {
       return onCompletar(null, [
-        'Debe adjuntar acta y/o fotos de la visita antes de cerrar',
+        t('complex.ui.flujo_visita_coordinacion_panel.debe_adjuntar_acta'),
       ]);
     }
     if (politicaEntrega === 'exige_preliminar' && formatos.length === 0) {
       return onCompletar(null, [
-        'Esta subtarea exige el informe preliminar antes de cerrar. Genérelo o súbalo como formato.',
+        t('complex.ui.flujo_visita_coordinacion_panel.exige_preliminar'),
       ]);
     }
     await onCompletar(true);
@@ -91,16 +93,14 @@ export default function FlujoVisitaCoordinacionPanel({
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100">
-        <p className="font-semibold">
-          Flujo de visita: {etiquetaFaseFlujoVisita(fase) || 'Coordinación'}
+        <p className="font-semibold">{t("complex.ui.flujo_visita_coordinacion_panel.flujo_de_visita")}{etiquetaFaseFlujoVisita(fase) || t('complex.ui.flujo_visita_coordinacion_panel.coordinacion')}
         </p>
-        <p className="mt-1 text-xs opacity-90">
-          Coordinación → inspección y acta →{' '}
+        <p className="mt-1 text-xs opacity-90">{t("complex.ui.flujo_visita_coordinacion_panel.coordinacion_inspeccion_y_acta")}{' '}
           {politicaEntrega === 'exige_preliminar'
-            ? 'debe completar el informe preliminar antes de cerrar.'
+            ? t('complex.ui.flujo_visita_coordinacion_panel.debe_completar_preliminar')
             : politicaEntrega === 'solo_acta'
-              ? 'se entrega el acta y los soportes al ajustador.'
-              : 'puede continuar con informe preliminar o cerrar para que el ajustador continúe.'}
+              ? t('complex.ui.flujo_visita_coordinacion_panel.entrega_acta_soportes')
+              : t('complex.ui.flujo_visita_coordinacion_panel.puede_continuar_o_cerrar')}
         </p>
         <ol className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-wide">
           {['coordinacion', 'inspeccion', 'decidir'].map((f) => (
@@ -121,7 +121,7 @@ export default function FlujoVisitaCoordinacionPanel({
       <div>
         <label className={complexLabel}>
           {fase === 'coordinacion'
-            ? 'Observaciones de la coordinación'
+            ? t('complex.ui.flujo_visita_coordinacion_panel.observaciones_coordinacion')
             : 'Observaciones / datos de la visita'}
         </label>
         <textarea
@@ -131,7 +131,7 @@ export default function FlujoVisitaCoordinacionPanel({
           onChange={(e) => setObs(e.target.value)}
           placeholder={
             fase === 'coordinacion'
-              ? 'Notas de la llamada / coordinación…'
+              ? t('complex.ui.flujo_visita_coordinacion_panel.notas_llamada')
               : 'Hallazgos, personas presentes, datos de la visita…'
           }
         />
@@ -139,9 +139,7 @@ export default function FlujoVisitaCoordinacionPanel({
 
       {camposFase.length > 0 && (
         <div className="space-y-3">
-          <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Fechas de protocolo
-          </p>
+          <p className="font-body text-xs font-semibold uppercase tracking-wide text-gray-500">{t("complex.ui.flujo_visita_coordinacion_panel.fechas_de_protocolo")}</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {camposFase.map((c) => (
               <div key={c.campo}>
@@ -173,17 +171,13 @@ export default function FlujoVisitaCoordinacionPanel({
             disabled={guardando}
             className={complexBtnFormAction}
             onClick={() => onGuardarAvance()}
-          >
-            Guardar avance
-          </button>
+          >{t("complex.ui.flujo_visita_coordinacion_panel.guardar_avance")}</button>
           <button
             type="button"
             disabled={guardando}
             className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
             onClick={avanzarAInspeccion}
-          >
-            Continuar a inspección
-          </button>
+          >{t("complex.ui.flujo_visita_coordinacion_panel.continuar_a_inspeccion")}</button>
         </div>
       )}
 
@@ -191,8 +185,8 @@ export default function FlujoVisitaCoordinacionPanel({
         <>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             {tieneActa
-              ? 'Ya hay acta/documentos de visita cargados. Quedarán en la trazabilidad del caso (Inspección).'
-              : 'Debe elaborar el acta (subir físico o generar con el formato) y cargar fotos / datos de la visita.'}
+              ? t('complex.ui.flujo_visita_coordinacion_panel.ya_hay_acta')
+              : t('complex.ui.flujo_visita_coordinacion_panel.debe_elaborar_acta')}
           </div>
 
           <div className="flex flex-wrap items-end gap-3">
@@ -201,14 +195,10 @@ export default function FlujoVisitaCoordinacionPanel({
               disabled={guardando}
               className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
               onClick={onAbrirActa}
-              title="Abre el Formulario de Ajuste en Acta de inspección"
-            >
-              Generar acta (formato)
-            </button>
+              title={t("complex.ui.flujo_visita_coordinacion_panel.abre_el_formulario_de_ajuste_en_acta_de_inspeccion")}
+            >{t("complex.ui.flujo_visita_coordinacion_panel.generar_acta_formato")}</button>
             <label className="cursor-pointer">
-              <span className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}>
-                Subir acta física
-              </span>
+              <span className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}>{t("complex.ui.flujo_visita_coordinacion_panel.subir_acta_fisica")}</span>
               <input
                 type="file"
                 className="hidden"
@@ -221,7 +211,7 @@ export default function FlujoVisitaCoordinacionPanel({
               />
             </label>
             <label className="cursor-pointer">
-              <span className={complexBtnFormAction}>Subir fotos / datos visita</span>
+              <span className={complexBtnFormAction}>{t("complex.ui.flujo_visita_coordinacion_panel.subir_fotos_datos_visita")}</span>
               <input
                 type="file"
                 className="hidden"
@@ -235,18 +225,14 @@ export default function FlujoVisitaCoordinacionPanel({
               />
             </label>
           </div>
-          <p className={complexHint}>
-            Puede subir varios archivos (acta, fotos, croquis, etc.). Cada uno se envía a
-            la bandeja de Inspección del caso.
-          </p>
+          <p className={complexHint}>{t("complex.ui.flujo_visita_coordinacion_panel.puede_subir_varios_archivos_acta_fotos_croquis_etc_cada_")}</p>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
               <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
-                <FaPaperclip /> Documentos / fotos
-              </p>
+                <FaPaperclip />{t("complex.ui.flujo_visita_coordinacion_panel.documentos_fotos")}</p>
               {docs.length === 0 ? (
-                <p className={complexHint}>Sin archivos aún.</p>
+                <p className={complexHint}>{t("complex.ui.flujo_visita_coordinacion_panel.sin_archivos_aun")}</p>
               ) : (
                 <ul className="space-y-1 text-sm">
                   {docs.map((a, i) => (
@@ -270,10 +256,9 @@ export default function FlujoVisitaCoordinacionPanel({
             </div>
             <div>
               <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-500">
-                <FaFileAlt /> Formatos generados
-              </p>
+                <FaFileAlt />{t("complex.ui.flujo_visita_coordinacion_panel.formatos_generados")}</p>
               {formatos.length === 0 ? (
-                <p className={complexHint}>Sin formatos aún.</p>
+                <p className={complexHint}>{t("complex.ui.flujo_visita_coordinacion_panel.sin_formatos_aun")}</p>
               ) : (
                 <ul className="space-y-1 text-sm">
                   {formatos.map((a, i) => (
@@ -306,29 +291,20 @@ export default function FlujoVisitaCoordinacionPanel({
             disabled={guardando}
             className={complexBtnFormAction}
             onClick={() => onGuardarAvance()}
-          >
-            Guardar avance
-          </button>
+          >{t("complex.ui.flujo_visita_coordinacion_panel.guardar_avance")}</button>
           <button
             type="button"
             disabled={guardando || !tieneActa}
             className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
             onClick={pasarADecidir}
-          >
-            Continuar (decidir entrega)
-          </button>
+          >{t("complex.ui.flujo_visita_coordinacion_panel.continuar_decidir_entrega")}</button>
         </div>
       )}
 
       {fase === 'decidir' && (
         <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-          <p className="text-sm font-semibold text-emerald-900">
-            ¿Qué sigue después del acta?
-          </p>
-          <p className="text-xs text-emerald-800">
-            Puede elaborar el informe preliminar ahora, o cerrar la tarea para que el
-            ajustador continúe con lo subido (acta, fotos y datos de la visita).
-          </p>
+          <p className="text-sm font-semibold text-emerald-900">{t("complex.ui.flujo_visita_coordinacion_panel.que_sigue_despues_del_acta")}</p>
+          <p className="text-xs text-emerald-800">{t("complex.ui.flujo_visita_coordinacion_panel.puede_elaborar_el_informe_preliminar_ahora_o_cerrar_la_t")}</p>
           <div className="flex flex-wrap gap-2">
             {politicaEntrega !== 'solo_acta' && (
             <button
@@ -339,9 +315,7 @@ export default function FlujoVisitaCoordinacionPanel({
                 await onAvanzarFase('preliminar');
                 onAbrirPreliminar?.();
               }}
-            >
-              Continuar con informe preliminar
-            </button>
+            >{t("complex.ui.flujo_visita_coordinacion_panel.continuar_con_informe_preliminar")}</button>
             )}
             {politicaEntrega !== 'exige_preliminar' && (
             <button
@@ -350,9 +324,7 @@ export default function FlujoVisitaCoordinacionPanel({
               className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
               onClick={cerrarAlAjustador}
             >
-              <FaCheckCircle className="mr-1.5 text-emerald-600" />
-              Cerrar y entregar al ajustador
-            </button>
+              <FaCheckCircle className="mr-1.5 text-emerald-600" />{t("complex.ui.flujo_visita_coordinacion_panel.cerrar_y_entregar_al_ajustador")}</button>
             )}
           </div>
         </div>
@@ -362,8 +334,8 @@ export default function FlujoVisitaCoordinacionPanel({
         <div className="space-y-3">
           <div className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
             {politicaEntrega === 'exige_preliminar'
-              ? 'Informe preliminar obligatorio. Genérelo en el formulario de ajuste o súbalo como formato antes de cerrar la tarea.'
-              : 'Informe preliminar opcional. Genérelo en el formulario de ajuste o súbalo como formato; luego cierre la tarea.'}
+              ? t('complex.ui.flujo_visita_coordinacion_panel.preliminar_obligatorio')
+              : t('complex.ui.flujo_visita_coordinacion_panel.preliminar_opcional')}
             {modoExterno ? ' Use el enlace del formulario de ajuste.' : ''}
           </div>
           <div className="flex flex-wrap gap-2">
@@ -372,11 +344,9 @@ export default function FlujoVisitaCoordinacionPanel({
               disabled={guardando}
               className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
               onClick={onAbrirPreliminar}
-            >
-              Abrir informe preliminar
-            </button>
+            >{t("complex.ui.flujo_visita_coordinacion_panel.abrir_informe_preliminar")}</button>
             <label className="cursor-pointer">
-              <span className={complexBtnFormAction}>Subir formato preliminar</span>
+              <span className={complexBtnFormAction}>{t("complex.ui.flujo_visita_coordinacion_panel.subir_formato_preliminar")}</span>
               <input
                 type="file"
                 className="hidden"
@@ -392,18 +362,14 @@ export default function FlujoVisitaCoordinacionPanel({
               disabled={guardando}
               className={complexBtnFormAction}
               onClick={() => onGuardarAvance()}
-            >
-              Guardar avance
-            </button>
+            >{t("complex.ui.flujo_visita_coordinacion_panel.guardar_avance")}</button>
             <button
               type="button"
               disabled={guardando}
               className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
               onClick={cerrarAlAjustador}
             >
-              <FaCheckCircle className="mr-1.5 text-emerald-600" />
-              Cerrar tarea
-            </button>
+              <FaCheckCircle className="mr-1.5 text-emerald-600" />{t("complex.ui.flujo_visita_coordinacion_panel.cerrar_tarea")}</button>
           </div>
         </div>
       )}

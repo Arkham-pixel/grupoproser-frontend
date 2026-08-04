@@ -427,14 +427,18 @@ export function resolverEtapaProtocoloPorTipo(tipo, protocolo) {
   return null;
 }
 
-export function etiquetaLimiteTipoTrazabilidad(tipo, protocolo) {
+export function etiquetaLimiteTipoTrazabilidad(tipo, protocolo, t) {
   const cfg = MAPEO_TRAZABILIDAD_PROTOCOLO[tipo];
   if (!cfg || !protocolo) return null;
+  const tr = typeof t === 'function' ? t : null;
+  const baseKey = 'complex.ui.trazabilidad';
 
   if (cfg.esperaExternaId) {
     const gracia =
       protocolo.graciaEsperaExternaDiasHabiles ?? GRACIA_ESPERA_EXTERNA_DIAS_HABILES;
-    return `${gracia} días hábiles (espera externa)`;
+    return tr
+      ? tr(`${baseKey}.plazo_gracia_espera_externa`, { n: gracia })
+      : `${gracia} días hábiles (espera externa)`;
   }
 
   if (cfg.seguimientoId) {
@@ -442,9 +446,16 @@ export function etiquetaLimiteTipoTrazabilidad(tipo, protocolo) {
     if (!seg) return null;
     const gracia = seg.graciaDiasHabiles ?? GRACIA_ESPERA_EXTERNA_DIAS_HABILES;
     if (seg.dependenciaExterna) {
-      return `${gracia} días hábiles + cada ${seg.intervaloDias} días calendario`;
+      return tr
+        ? tr(`${baseKey}.plazo_gracia_mas_intervalo`, {
+            gracia,
+            intervalo: seg.intervaloDias,
+          })
+        : `${gracia} días hábiles + cada ${seg.intervaloDias} días calendario`;
     }
-    return `cada ${seg.intervaloDias} días calendario`;
+    return tr
+      ? tr(`${baseKey}.plazo_cada_dias_calendario`, { n: seg.intervaloDias })
+      : `cada ${seg.intervaloDias} días calendario`;
   }
 
   const etapa = protocolo.etapas?.find((e) => e.id === cfg.etapaId);
@@ -452,19 +463,28 @@ export function etiquetaLimiteTipoTrazabilidad(tipo, protocolo) {
 
   if (etapa.dependenciaExterna) {
     const gracia = etapa.graciaDiasHabiles ?? GRACIA_ESPERA_EXTERNA_DIAS_HABILES;
-    return `${gracia} días hábiles (espera externa)`;
+    return tr
+      ? tr(`${baseKey}.plazo_gracia_espera_externa`, { n: gracia })
+      : `${gracia} días hábiles (espera externa)`;
   }
 
-  const ideal = etiquetaLimite(etapa.limite);
+  const ideal = etiquetaLimite(etapa.limite, tr);
   if (etapa.limiteMaximo) {
-    return `ideal ${ideal} · máx. ${etiquetaLimite(etapa.limiteMaximo)}`;
+    const max = etiquetaLimite(etapa.limiteMaximo, tr);
+    return tr
+      ? tr(`${baseKey}.plazo_ideal_max`, { ideal, max })
+      : `ideal ${ideal} · máx. ${max}`;
   }
   return ideal;
 }
 
-export function tituloEtapaConFase(tipo, tituloBase) {
+export function tituloEtapaConFase(tipo, tituloBase, t) {
   const fase = MAPEO_TRAZABILIDAD_PROTOCOLO[tipo]?.fase;
-  return fase ? `Fase ${fase} · ${tituloBase}` : tituloBase;
+  if (!fase) return tituloBase;
+  if (typeof t === 'function') {
+    return t('complex.ui.trazabilidad.fase_n', { n: fase, titulo: tituloBase });
+  }
+  return `Fase ${fase} · ${tituloBase}`;
 }
 
 /** Límites en días (aprox.) por bandeja de trazabilidad, según protocolo activo. */
@@ -486,23 +506,93 @@ export function mapaTiemposLimiteDias(protocolo) {
   return mapa;
 }
 
-export function plazoObjetivoIndicador(clave, protocolo) {
+export function plazoObjetivoIndicador(clave, protocolo, t, plazoFallback) {
   const def = INDICADORES_PROTOCOLO_DEF.find((i) => i.clave === clave);
   if (!def) return '';
+  const fallback = plazoFallback || def.plazoObjetivo || '';
   const etapa = def.etapaId && protocolo?.etapas?.find((e) => e.id === def.etapaId);
-  if (!etapa?.limite) return def.plazoObjetivo;
-  const base = etiquetaLimite(etapa.limite);
+  if (!etapa?.limite) return fallback;
+  const base = etiquetaLimite(etapa.limite, t);
   if (etapa.limiteMaximo) {
-    return `${base} (máx. ${etiquetaLimite(etapa.limiteMaximo)})`;
+    const max = etiquetaLimite(etapa.limiteMaximo, t);
+    if (typeof t === 'function') {
+      return t('complex.ui.indicadores_protocolo_complex.plazo_base_max', {
+        base,
+        max,
+      });
+    }
+    return `${base} (máx. ${max})`;
   }
   return base;
 }
 
-export function etiquetaLimite(limite) {
+export function etiquetaLimite(limite, t) {
   if (!limite) return '';
   const { valor, unidad } = limite;
-  if (unidad === 'mismo_dia') return 'mismo día';
+  const tr = typeof t === 'function' ? t : null;
+  if (unidad === 'mismo_dia') {
+    return tr ? tr('complex.ui.indicadores_protocolo_complex.limite_mismo_dia') : 'mismo día';
+  }
   if (unidad === 'horas') return `${valor} h`;
-  if (unidad === 'dias_habiles') return `${valor} día${valor !== 1 ? 's' : ''} hábil${valor !== 1 ? 'es' : ''}`;
+  if (unidad === 'dias_habiles') {
+    if (tr) {
+      return valor === 1
+        ? tr('complex.ui.indicadores_protocolo_complex.limite_1_dia_habil')
+        : tr('complex.ui.indicadores_protocolo_complex.limite_n_dias_habiles', { n: valor });
+    }
+    return `${valor} día${valor !== 1 ? 's' : ''} hábil${valor !== 1 ? 'es' : ''}`;
+  }
+  if (tr) {
+    return valor === 1
+      ? tr('complex.ui.indicadores_protocolo_complex.limite_1_dia')
+      : tr('complex.ui.indicadores_protocolo_complex.limite_n_dias', { n: valor });
+  }
   return `${valor} día${valor !== 1 ? 's' : ''}`;
+}
+
+/** Nombre de etapa del protocolo (UI admin / tablas) vía i18n. */
+export function nombreEtapaProtocoloUi(etapaOId, t) {
+  const id = typeof etapaOId === 'string' ? etapaOId : etapaOId?.id;
+  const fallback =
+    (typeof etapaOId === 'object' && etapaOId?.nombre) ||
+    ETAPAS_PROTOCOLO_DEFAULT.find((e) => e.id === id)?.nombre ||
+    id ||
+    '';
+  if (!id || typeof t !== 'function') return fallback;
+  return t(`complex.ui.protocolo_tiempos_complex.etapa_${id}`, { defaultValue: fallback });
+}
+
+/** Nombre de seguimiento recurrente vía i18n. */
+export function nombreSeguimientoProtocoloUi(segOId, t) {
+  const id = typeof segOId === 'string' ? segOId : segOId?.id;
+  const fallback =
+    (typeof segOId === 'object' && segOId?.nombre) ||
+    SEGUIMIENTOS_RECURRENTES_DEFAULT.find((s) => s.id === id)?.nombre ||
+    id ||
+    '';
+  if (!id || typeof t !== 'function') return fallback;
+  return t(`complex.ui.protocolo_tiempos_complex.seg_${id}`, { defaultValue: fallback });
+}
+
+/** Descripción de seguimiento recurrente vía i18n. */
+export function descripcionSeguimientoProtocoloUi(segOId, t) {
+  const id = typeof segOId === 'string' ? segOId : segOId?.id;
+  const fallback =
+    (typeof segOId === 'object' && (segOId?.descripcion || segOId?.referencia)) ||
+    SEGUIMIENTOS_RECURRENTES_DEFAULT.find((s) => s.id === id)?.descripcion ||
+    '';
+  if (!id || typeof t !== 'function') return fallback;
+  return t(`complex.ui.protocolo_tiempos_complex.seg_${id}_desc`, { defaultValue: fallback });
+}
+
+/** Nombre de alerta de espera externa vía i18n. */
+export function nombreAlertaEsperaExternaUi(alertaOId, t) {
+  const id = typeof alertaOId === 'string' ? alertaOId : alertaOId?.id;
+  const fallback =
+    (typeof alertaOId === 'object' && alertaOId?.nombre) ||
+    ALERTAS_ESPERA_EXTERNA_DEFAULT.find((a) => a.id === id)?.nombre ||
+    id ||
+    '';
+  if (!id || typeof t !== 'function') return fallback;
+  return t(`complex.ui.protocolo_tiempos_complex.alerta_${id}`, { defaultValue: fallback });
 }

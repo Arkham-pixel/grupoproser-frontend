@@ -1,4 +1,5 @@
 /** Utilidades puras para lectura ejecutiva de la matriz de riesgos */
+import i18n from '../i18n';
 
 export const NIVELES_EJECUTIVOS = ['Bajo', 'Medio', 'Alto', 'Crítico'];
 
@@ -87,12 +88,12 @@ export function maxNivelEjecutivo(niveles = []) {
 export function etiquetasCategorias(categorias = {}, catalogo = []) {
   return catalogo
     .filter((cat) => categorias?.[cat.valor])
-    .map((cat) => cat.etiqueta);
+    .map((cat) => (cat.etiquetaKey ? i18n.t(cat.etiquetaKey) : cat.etiqueta));
 }
 
 export function categoriaPrincipal(categorias = {}, catalogo = []) {
   const etiquetas = etiquetasCategorias(categorias, catalogo);
-  return etiquetas[0] || 'Sin categoría';
+  return etiquetas[0] || i18n.t('riskMatrix.analytics.noCategory');
 }
 
 export function extraerValoraciones(valoracion) {

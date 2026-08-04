@@ -1,4 +1,5 @@
 /** Utilidades del liquidador Equidad FDM (ModeloLiquidación + Constancia Word) */
+import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 
 export const SMMLV_POR_ANIO = {
   2020: 877803,
@@ -62,18 +63,18 @@ export function parsearNumero(valor) {
 export function formatearMonto(valor, { decimals = 2 } = {}) {
   const n = typeof valor === 'number' ? valor : parsearNumero(valor);
   if (Number.isNaN(n)) return '0';
-  return new Intl.NumberFormat('es-CO', {
+  return formatNumber(n, getAppLocale(), {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(n);
+  });
 }
 
 export function formatearMontoConstancia(valor) {
   const n = typeof valor === 'number' ? valor : parsearNumero(valor);
-  return new Intl.NumberFormat('es-CO', {
+  return formatNumber(Number.isNaN(n) ? 0 : n, getAppLocale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(Number.isNaN(n) ? 0 : n);
+  });
 }
 
 const UNIDADES = [
@@ -307,7 +308,7 @@ export function fechaLargaEs(value) {
     d = new Date(value);
   }
   if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleDateString('es-CO', {
+  return formatDate(d, getAppLocale(), {
     weekday: 'long',
     year: 'numeric',
     month: 'long',

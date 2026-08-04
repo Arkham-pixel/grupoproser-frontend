@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaChartBar } from 'react-icons/fa';
 import { matrizCard, matrizCardTitle } from './matrizFenixUi';
 import { BENEFICIOS_HERRAMIENTA, CATEGORIAS_RIESGO, PASOS_INICIO_RAPIDO } from './matrizContenidoShared';
@@ -20,9 +21,15 @@ export function MatrizTabEncabezado({ icon: Icon, title, description }) {
 
 /** 3 pasos — Inicio rápido */
 export function MatrizPasosGrid() {
+  const { t } = useTranslation();
+  const pasos = [
+    { paso: 1, titulo: t('riskMatrix.didactic.step1Title'), descripcion: t('riskMatrix.didactic.step1Desc'), icon: PASOS_INICIO_RAPIDO[0].icon },
+    { paso: 2, titulo: t('riskMatrix.didactic.step2Title'), descripcion: t('riskMatrix.didactic.step2Desc'), icon: PASOS_INICIO_RAPIDO[1].icon },
+    { paso: 3, titulo: t('riskMatrix.didactic.step3Title'), descripcion: t('riskMatrix.didactic.step3Desc'), icon: PASOS_INICIO_RAPIDO[2].icon },
+  ];
   return (
     <div className="grid gap-4 sm:grid-cols-3">
-      {PASOS_INICIO_RAPIDO.map((item) => {
+      {pasos.map((item) => {
         const Icon = item.icon;
         return (
           <div
@@ -45,14 +52,22 @@ export function MatrizPasosGrid() {
 }
 
 /** Beneficios — ¿Por qué usar esta herramienta? */
-export function MatrizBeneficios({ titulo = '¿Por qué usar esta herramienta?' }) {
+export function MatrizBeneficios({ titulo }) {
+  const { t } = useTranslation();
+  const heading = titulo || t('riskMatrix.didactic.benefitsTitle');
+  const beneficios = [
+    { titulo: t('riskMatrix.didactic.benefit1Title'), descripcion: t('riskMatrix.didactic.benefit1Desc'), icon: BENEFICIOS_HERRAMIENTA[0].icon },
+    { titulo: t('riskMatrix.didactic.benefit2Title'), descripcion: t('riskMatrix.didactic.benefit2Desc'), icon: BENEFICIOS_HERRAMIENTA[1].icon },
+    { titulo: t('riskMatrix.didactic.benefit3Title'), descripcion: t('riskMatrix.didactic.benefit3Desc'), icon: BENEFICIOS_HERRAMIENTA[2].icon },
+    { titulo: t('riskMatrix.didactic.benefit4Title'), descripcion: t('riskMatrix.didactic.benefit4Desc'), icon: BENEFICIOS_HERRAMIENTA[3].icon },
+  ];
   return (
     <div className={`${matrizCard} mt-4`}>
       <h3 className="mb-4 text-center font-heading text-lg font-bold text-gray-800 dark:text-white">
-        {titulo}
+        {heading}
       </h3>
       <div className="grid gap-3 sm:grid-cols-2">
-        {BENEFICIOS_HERRAMIENTA.map((b) => {
+        {beneficios.map((b) => {
           const Icon = b.icon;
           return (
             <div
@@ -123,20 +138,21 @@ export function MatrizCategoriasGrid({ descripciones = {} }) {
 
 /** Resumen identificación — sustituye bloque morado */
 export function MatrizResumenIdentificacion({ riesgos = [], categorias = CATEGORIAS_RIESGO }) {
+  const { t } = useTranslation();
   const procesosUnicos = new Set(riesgos.map((r) => r.nombreProceso).filter(Boolean)).size;
   const tiposUnicos = new Set(riesgos.map((r) => r.tipoProceso).filter(Boolean)).size;
 
   const metricas = [
-    { label: 'Total de riesgos', valor: riesgos.length },
-    { label: 'Procesos únicos', valor: procesosUnicos },
-    { label: 'Tipos de proceso', valor: tiposUnicos },
+    { label: t('riskMatrix.identUi.summaryTotalRisks'), valor: riesgos.length },
+    { label: t('riskMatrix.identUi.summaryUniqueProcesses'), valor: procesosUnicos },
+    { label: t('riskMatrix.identUi.summaryProcessTypes'), valor: tiposUnicos },
   ];
 
   return (
     <div className={`${matrizCard} resumen-identificacion-fenix`}>
       <h4 className={matrizCardTitle}>
         <FaChartBar className="text-fenix-primario" />
-        Resumen de identificación
+        {t('riskMatrix.identUi.summaryTitle')}
       </h4>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-3">
@@ -154,7 +170,7 @@ export function MatrizResumenIdentificacion({ riesgos = [], categorias = CATEGOR
       </div>
 
       <p className="mb-3 font-heading text-sm font-semibold text-gray-700 dark:text-gray-300">
-        Riesgos por categoría
+        {t('riskMatrix.identUi.summaryByCategory')}
       </p>
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {categorias.map((cat) => {
@@ -169,7 +185,7 @@ export function MatrizResumenIdentificacion({ riesgos = [], categorias = CATEGOR
                 <Icon className="text-sm" />
               </span>
               <span className="min-w-0 flex-1 truncate font-body text-sm text-gray-700 dark:text-gray-300">
-                {cat.etiqueta}
+                {cat.etiquetaKey ? t(cat.etiquetaKey) : cat.etiqueta}
               </span>
               <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-fenix-primario px-1.5 text-xs font-bold text-white">
                 {count}

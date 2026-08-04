@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaArrowLeft,
   FaBullseye,
@@ -49,70 +50,70 @@ const FILAS_IDENTIFICACION_VACIAS = [];
 
 const SECCION_INFORMACION_GENERAL = {
   id: 'informacion',
-  titulo: 'Información general',
-  descripcion: 'Datos de la empresa y responsables',
+  titleKey: 'riskMatrix.reportView.infoTitle',
+  descriptionKey: 'riskMatrix.reportView.infoDesc',
   icon: FaBullseye,
 };
 
 const SECCIONES_EJECUTIVAS = [
   {
     id: 'dashboard',
-    titulo: 'Dashboard ejecutivo',
-    descripcion: 'Panorama gerencial de la matriz',
+    titleKey: 'riskMatrix.reportView.dashTitle',
+    descriptionKey: 'riskMatrix.reportView.dashDesc',
     icon: FaTachometerAlt,
   },
   {
     id: 'top10',
-    titulo: 'Top 10 prioritarios',
-    descripcion: 'Riesgos con mayor exposición residual',
+    titleKey: 'riskMatrix.reportView.top10Title',
+    descriptionKey: 'riskMatrix.reportView.top10Desc',
     icon: FaExclamationTriangle,
   },
   {
     id: 'semaforo',
-    titulo: 'Semáforo gerencial',
-    descripcion: 'Lectura rápida por frente y proceso',
+    titleKey: 'riskMatrix.reportView.trafficTitle',
+    descriptionKey: 'riskMatrix.reportView.trafficDesc',
     icon: FaTrafficLight,
   },
   {
     id: 'hallazgos',
-    titulo: 'Hallazgos automáticos',
-    descripcion: 'Conclusiones generadas por el sistema',
+    titleKey: 'riskMatrix.reportView.findingsTitle',
+    descriptionKey: 'riskMatrix.reportView.findingsDesc',
     icon: FaLightbulb,
   },
   {
     id: 'comparativo',
-    titulo: 'Comparativo inh. vs res.',
-    descripcion: 'Efectividad de los controles',
+    titleKey: 'riskMatrix.reportView.compareTitle',
+    descriptionKey: 'riskMatrix.reportView.compareDesc',
     icon: FaChartLine,
   },
   {
     id: 'graficos',
-    titulo: 'Gráficos ejecutivos',
-    descripcion: 'Visualizaciones para gerencia',
+    titleKey: 'riskMatrix.reportView.chartsTitle',
+    descriptionKey: 'riskMatrix.reportView.chartsDesc',
     icon: FaChartBar,
   },
   {
     id: 'recomendaciones-priorizadas',
-    titulo: 'Recomendaciones priorizadas',
-    descripcion: 'Plan de acción por prioridad',
+    titleKey: 'riskMatrix.reportView.recTitle',
+    descriptionKey: 'riskMatrix.reportView.recDesc',
     icon: FaClipboardList,
   },
   {
     id: 'resumen-ejecutivo',
-    titulo: 'Resumen ejecutivo',
-    descripcion: 'Conclusiones para junta directiva',
+    titleKey: 'riskMatrix.reportView.summaryTitle',
+    descriptionKey: 'riskMatrix.reportView.summaryDesc',
     icon: FaFileAlt,
   },
   {
     id: 'madurez',
-    titulo: 'Indicador de madurez',
-    descripcion: 'Nivel de gestión de riesgos (1–5)',
+    titleKey: 'riskMatrix.reportView.maturityTitle',
+    descriptionKey: 'riskMatrix.reportView.maturityDesc',
     icon: FaGraduationCap,
   },
   {
     id: 'exportacion',
-    titulo: 'Exportación',
-    descripcion: 'HTML, PDF, Word y Excel',
+    titleKey: 'riskMatrix.reportView.exportTitle',
+    descriptionKey: 'riskMatrix.reportView.exportDesc',
     icon: FaUpload,
   },
 ];
@@ -120,26 +121,26 @@ const SECCIONES_EJECUTIVAS = [
 const SECCIONES_TECNICAS = [
   {
     id: 'identificacion',
-    titulo: 'Identificación',
-    descripcion: 'Riesgos identificados por proceso',
+    titleKey: 'riskMatrix.reportView.techIdentTitle',
+    descriptionKey: 'riskMatrix.reportView.techIdentDesc',
     icon: FaSearch,
   },
   {
     id: 'valoracion',
-    titulo: 'Valoración',
-    descripcion: 'Probabilidad, impacto y controles',
+    titleKey: 'riskMatrix.reportView.techAssessTitle',
+    descriptionKey: 'riskMatrix.reportView.techAssessDesc',
     icon: FaChartBar,
   },
   {
     id: 'mapa-calor',
-    titulo: 'Mapa de calor',
-    descripcion: 'Visualización inherente y residual',
+    titleKey: 'riskMatrix.reportView.techHeatTitle',
+    descriptionKey: 'riskMatrix.reportView.techHeatDesc',
     icon: FaFire,
   },
   {
     id: 'gestion-riesgos',
-    titulo: 'Recomendaciones',
-    descripcion: 'Gestión y seguimiento',
+    titleKey: 'riskMatrix.reportView.techMgmtTitle',
+    descriptionKey: 'riskMatrix.reportView.techMgmtDesc',
     icon: FaShieldAlt,
   },
 ];
@@ -152,6 +153,7 @@ function scrollASeccion(id) {
 }
 
 export default function VistaReporteMatriz() {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [payload] = useState(() => leerDatosReporteMatriz());
   const [listoParaImprimir, setListoParaImprimir] = useState(false);
@@ -225,7 +227,7 @@ export default function VistaReporteMatriz() {
     return () => {
       cancelado = true;
     };
-  }, [datosMatriz, informacion.nombreEmpresa, matrizId]);
+  }, [datosMatriz, informacion.nombreEmpresa, matrizId, i18n.language]);
 
   const navegarSeccion = useCallback((id) => {
     const destino = {
@@ -236,25 +238,26 @@ export default function VistaReporteMatriz() {
 
   const fechaTexto = useMemo(() => {
     const fecha = new Date();
-    return `${fecha.toLocaleDateString('es-ES', {
+    const locale = i18n.language === 'en' ? 'en-US' : 'es-ES';
+    return `${fecha.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
-    })} · ${fecha.toLocaleTimeString('es-ES')}`;
-  }, []);
+    })} · ${fecha.toLocaleTimeString(locale)}`;
+  }, [i18n.language]);
 
   if (!payload || !datosMatriz) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-fenix-fondo p-6 text-center">
         <p className="font-body text-gray-600">
-          No hay datos de reporte. Genere el reporte desde la matriz de riesgos.
+          {t('riskMatrix.reportView.empty')}
         </p>
         <button
           type="button"
           className="reporte-print-btn matriz-btn-primary"
           onClick={() => navigate('/matrices-riesgo')}
         >
-          Ir a matrices de riesgo
+          {t('riskMatrix.reportView.goToMatrices')}
         </button>
       </div>
     );
@@ -270,28 +273,28 @@ export default function VistaReporteMatriz() {
             onClick={() => navigate(-1)}
           >
             <FaArrowLeft />
-            Volver
+            {t('riskMatrix.reportView.back')}
           </button>
-          <p>
-            <strong>Informe general de la matriz</strong> — arrastre las tablas anchas con el mouse.
-          </p>
+          <p>{t('riskMatrix.reportView.barHint')}</p>
         </div>
         <button
           type="button"
           className="reporte-print-btn matriz-btn-primary"
           onClick={descargarHtml}
           disabled={descargando}
-          title="Descarga este informe general con dashboard, semáforo y gráficos ejecutivos en un archivo .html autónomo"
+          title={t('riskMatrix.reportView.downloadHtmlTitle')}
         >
           <FaDownload />
-          {descargando ? 'Generando…' : 'Descargar .html con gráficas'}
+          {descargando
+            ? t('riskMatrix.reportView.generating')
+            : t('riskMatrix.reportView.downloadHtml')}
         </button>
       </div>
 
       <div className="reporte-layout-grid">
-        <aside className="reporte-sidebar no-print" aria-label="Navegación del reporte">
+        <aside className="reporte-sidebar no-print" aria-label={t('riskMatrix.reportView.navAria')}>
           <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Informe general
+            {t('riskMatrix.reportView.generalReport')}
           </p>
           {(() => {
             const IconInfo = SECCION_INFORMACION_GENERAL.icon;
@@ -305,14 +308,18 @@ export default function VistaReporteMatriz() {
                   <IconInfo />
                 </span>
                 <span>
-                  <span className="reporte-nav-texto-titulo">{SECCION_INFORMACION_GENERAL.titulo}</span>
-                  <span className="reporte-nav-texto-desc">{SECCION_INFORMACION_GENERAL.descripcion}</span>
+                  <span className="reporte-nav-texto-titulo">
+                    {t(SECCION_INFORMACION_GENERAL.titleKey)}
+                  </span>
+                  <span className="reporte-nav-texto-desc">
+                    {t(SECCION_INFORMACION_GENERAL.descriptionKey)}
+                  </span>
                 </span>
               </button>
             );
           })()}
           <p className="mb-3 mt-4 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Lectura ejecutiva
+            {t('riskMatrix.reportView.executiveReading')}
           </p>
           {SECCIONES_EJECUTIVAS.map((seccion) => {
             const Icon = seccion.icon;
@@ -327,14 +334,14 @@ export default function VistaReporteMatriz() {
                   <Icon />
                 </span>
                 <span>
-                  <span className="reporte-nav-texto-titulo">{seccion.titulo}</span>
-                  <span className="reporte-nav-texto-desc">{seccion.descripcion}</span>
+                  <span className="reporte-nav-texto-titulo">{t(seccion.titleKey)}</span>
+                  <span className="reporte-nav-texto-desc">{t(seccion.descriptionKey)}</span>
                 </span>
               </button>
             );
           })}
           <p className="mb-3 mt-5 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500">
-            Detalle técnico
+            {t('riskMatrix.reportView.technicalDetail')}
           </p>
           {SECCIONES_TECNICAS.map((seccion) => {
             const Icon = seccion.icon;
@@ -349,8 +356,8 @@ export default function VistaReporteMatriz() {
                   <Icon />
                 </span>
                 <span>
-                  <span className="reporte-nav-texto-titulo">{seccion.titulo}</span>
-                  <span className="reporte-nav-texto-desc">{seccion.descripcion}</span>
+                  <span className="reporte-nav-texto-titulo">{t(seccion.titleKey)}</span>
+                  <span className="reporte-nav-texto-desc">{t(seccion.descriptionKey)}</span>
                 </span>
               </button>
             );
@@ -373,13 +380,17 @@ export default function VistaReporteMatriz() {
               <img src={logoProser} alt="Grupo Proser" className="reporte-logo-proser" />
             </div>
             <div className="reporte-cabecera-titulo">
-              <h1>Informe general — Matriz de Riesgos</h1>
+              <h1>{t('riskMatrix.reportView.title')}</h1>
               <p>
-                {informacion.nombreEmpresa || 'Empresa'} ·{' '}
-                {tipoReporte === 'anual' ? 'Valoración anual' : 'Valoración inicial'}
+                {informacion.nombreEmpresa || t('riskMatrix.reportView.companyFallback')} ·{' '}
+                {tipoReporte === 'anual'
+                  ? t('riskMatrix.annualAssessment')
+                  : t('riskMatrix.initialAssessment')}
               </p>
-              <p>Generado el {fechaTexto}</p>
-              {informacion.responsable ? <p>Responsable: {informacion.responsable}</p> : null}
+              <p>{t('riskMatrix.reportView.generatedOn', { date: fechaTexto })}</p>
+              {informacion.responsable ? (
+                <p>{t('riskMatrix.reportView.responsible', { name: informacion.responsable })}</p>
+              ) : null}
             </div>
           </header>
 
@@ -436,17 +447,17 @@ export default function VistaReporteMatriz() {
             </>
           ) : (
             <div className="reporte-seccion-bloque p-6 text-center text-gray-500">
-              Cargando análisis ejecutivo de la matriz…
+              {t('riskMatrix.reportView.loadingAnalytics')}
             </div>
           )}
 
           <section id="reporte-identificacion" className="reporte-seccion-bloque">
-            <ReporteAvisoTablaAncha titulo="Identificación de riesgos" />
+            <ReporteAvisoTablaAncha titulo={t('riskMatrix.reportView.identificationNotice')} />
             <IdentificacionRiesgos datos={datosMatriz.identificacion} onDatosChange={noop} modoReporte />
           </section>
 
           <section id="reporte-valoracion" className="reporte-seccion-bloque">
-            <ReporteAvisoTablaAncha titulo="Valoración de riesgos (tabla tipo Excel)" />
+            <ReporteAvisoTablaAncha titulo={t('riskMatrix.reportView.assessmentNotice')} />
             <ValoracionRiesgos
               datos={datosMatriz.valoracion}
               onDatosChange={noop}
@@ -467,8 +478,8 @@ export default function VistaReporteMatriz() {
           </section>
 
           <footer className="reporte-pie-pagina rounded-xl border border-gray-200 bg-white p-5 text-center text-sm text-gray-500">
-            <p className="font-semibold text-gray-700">ARNALD Data Flow · Grupo Proser</p>
-            <p className="mt-1">Documento confidencial generado desde la plataforma de matriz de riesgos.</p>
+            <p className="font-semibold text-gray-700">{t('riskMatrix.reportView.footerBrand')}</p>
+            <p className="mt-1">{t('riskMatrix.reportView.footerConfidential')}</p>
           </footer>
         </main>
       </div>

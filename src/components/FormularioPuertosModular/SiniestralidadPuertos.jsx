@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function SiniestralidadPuertos({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -21,18 +23,18 @@ export default function SiniestralidadPuertos({ formData, onInputChange, cargand
         className="text-xl font-bold mb-4"
         style={{ color: textPrimary }}
       >
-        9. SINIESTRALIDAD
+        {t('ports.ui.formulario.siniestralidad.titulo')}
       </h2>
 
       <label 
         className="block text-sm font-semibold mb-2"
         style={{ color: textPrimary }}
       >
-        Historial de Siniestros y Observaciones
+        {t('ports.ui.formulario.siniestralidad.historial')}
       </label>
       <textarea
         rows={6}
-        placeholder="Describa el historial de siniestros en el puerto, eventos pasados, etc..."
+        placeholder={t('ports.ui.formulario.siniestralidad.historialPlaceholder')}
         value={formData.siniestralidad || ''}
         onChange={(e) => onInputChange('siniestralidad', e.target.value)}
         className="w-full rounded px-3 py-2"
@@ -47,4 +49,3 @@ export default function SiniestralidadPuertos({ formData, onInputChange, cargand
     </div>
   );
 }
-

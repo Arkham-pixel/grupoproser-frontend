@@ -1,6 +1,10 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
+import { formatCurrency } from "../../utils/locale.js";
 
 export default function CuadroEquipos({ datos, onChange }) {
+  const { t } = useTranslation();
+
   const handleInputChange = (zonaIndex, equipoIndex, field, value) => {
     const newDatos = [...datos];
     newDatos[zonaIndex].equipos[equipoIndex][field] = value;
@@ -11,16 +15,18 @@ export default function CuadroEquipos({ datos, onChange }) {
     <div>
       {datos.map((zona, zonaIndex) => (
         <div key={zonaIndex} style={{ marginBottom: "2rem" }}>
-          <h3>{zona.zona} (Subtotal: ${zona.subtotal.toLocaleString("es-CO")})</h3>
+          <h3>
+            {zona.zona} ({t("equipment.ui.subtotal", { value: formatCurrency(zona.subtotal) })})
+          </h3>
           <table border="1" cellPadding="5" width="100%">
             <thead>
               <tr>
-                <th>CANT</th>
-                <th>EQUIPO</th>
-                <th>MARCA</th>
-                <th>PRECIO</th>
-                <th>CAPACIDAD</th>
-                <th>APARIENCIA</th>
+                <th>{t("equipment.ui.headers.qty")}</th>
+                <th>{t("equipment.ui.headers.equipment")}</th>
+                <th>{t("equipment.ui.headers.brand")}</th>
+                <th>{t("equipment.ui.headers.price")}</th>
+                <th>{t("equipment.ui.headers.capacity")}</th>
+                <th>{t("equipment.ui.headers.appearance")}</th>
               </tr>
             </thead>
             <tbody>

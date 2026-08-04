@@ -1,9 +1,11 @@
 import React from 'react';
 import { FaExclamationTriangle } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, numeroSeccion = 3 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -32,14 +34,13 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
           />
-          {numeroSeccion}. CIRCUNSTANCIAS DEL SINIESTRO
+          {numeroSeccion}. {t('adjustment.ui.sections.circunstancia.title')}
         </h2>
         <p 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          Texto propio del informe preliminar. Puede partir de lo del acta, pero al editarlo aquí
-          no se modifica el acta de inspección. En el Word del preliminar sale este campo.
+          {t('adjustment.ui.sections.circunstancia.subtitle')}
         </p>
       </div>
 
@@ -55,7 +56,7 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
           className="block text-sm font-medium mb-2"
           style={{ color: textPrimary }}
         >
-          Circunstancias del Siniestro
+          {t('adjustment.ui.sections.circunstancia.label')}
         </label>
         <textarea
           value={formData.circunstanciasSiniestro || formData.descripcionSiniestro || ''}
@@ -79,13 +80,13 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Escribe las circunstancias del siniestro para el informe preliminar..."
+          placeholder={t('adjustment.ui.sections.circunstancia.placeholder')}
         />
         <div 
           className="mt-2 text-sm"
           style={{ color: textSecondary }}
         >
-          Mínimo recomendado: 80 palabras para describir las circunstancias del siniestro
+          {t('adjustment.ui.sections.circunstancia.minWords')}
         </div>
       </div>
 
@@ -95,7 +96,7 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
         onTextoCambiado={(texto) => onInputChange('circunstanciasSiniestro', texto)}
         contextoFormulario={formData}
         tipoSeccion="circunstanciasSiniestro"
-        tituloSeccion="Circunstancias del Siniestro"
+        tituloSeccion={t('adjustment.ui.sections.circunstancia.iaTitle')}
       />
 
       {/* Validación de calidad */}
@@ -110,22 +111,20 @@ export default function CircunstanciaSiniestroAjuste({ formData, onInputChange, 
           className="text-lg font-semibold mb-4 flex items-center"
           style={{ color: sectionYellowText }}
         >
-          📊 Validación de Calidad
+          📊 {t('adjustment.ui.sections.circunstancia.qualityTitle')}
         </h3>
         <div 
           className="text-sm"
           style={{ color: sectionYellowText }}
         >
           <p className="mb-2">
-            <strong>Recomendaciones para circunstancias del siniestro de calidad:</strong>
+            <strong>{t('adjustment.ui.sections.circunstancia.qualityIntro')}</strong>
           </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Describa cómo se inició el incidente</li>
-            <li>Mencione la secuencia de eventos que ocurrieron</li>
-            <li>Incluya el tiempo de respuesta de las autoridades</li>
-            <li>Detalle las acciones tomadas durante el incidente</li>
-            <li>Mencione factores que agravaron la situación</li>
-            <li>Sea específico sobre el impacto y consecuencias</li>
+            <li>{t('adjustment.ui.sections.circunstancia.tip1')}</li>
+            <li>{t('adjustment.ui.sections.circunstancia.tip2')}</li>
+            <li>{t('adjustment.ui.sections.circunstancia.tip3')}</li>
+            <li>{t('adjustment.ui.sections.circunstancia.tip4')}</li>
           </ul>
         </div>
       </div>

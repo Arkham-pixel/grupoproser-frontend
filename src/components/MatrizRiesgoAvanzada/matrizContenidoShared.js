@@ -17,14 +17,14 @@ import {
 
 /** Categorías de riesgo (identificación + pestaña Categorías) */
 export const CATEGORIAS_RIESGO = [
-  { valor: 'estrategico', etiqueta: 'Estratégico', icon: FaBullseye, ejemplos: ['Decisiones malas', 'Cambios de mercado', 'Competencia'] },
-  { valor: 'cumplimiento', etiqueta: 'Cumplimiento', icon: FaBalanceScale, ejemplos: ['Multas', 'Regulaciones', 'Contratos'] },
-  { valor: 'reputacional', etiqueta: 'Reputacional', icon: FaBullhorn, ejemplos: ['Redes sociales', 'Imagen', 'Clientes'] },
-  { valor: 'operativo', etiqueta: 'Operativo', icon: FaBuilding, ejemplos: ['Equipos', 'Personal', 'Procesos'] },
-  { valor: 'financiero', etiqueta: 'Financiero', icon: FaDollarSign, ejemplos: ['Pérdidas', 'Flujo de caja', 'Inversión'] },
-  { valor: 'tecnologico', etiqueta: 'Tecnológico', icon: FaLaptop, ejemplos: ['Ciberseguridad', 'Sistemas', 'Datos'] },
-  { valor: 'corrupcion', etiqueta: 'Corrupción', icon: FaBan, ejemplos: ['Sobornos', 'Fraude', 'Abuso'] },
-  { valor: 'ddhh', etiqueta: 'DDHH', icon: FaUsers, ejemplos: ['Discriminación', 'Maltrato', 'Derechos'] },
+  { valor: 'estrategico', etiqueta: 'Estratégico', etiquetaKey: 'riskMatrix.categories.strategic', icon: FaBullseye, ejemplos: ['Decisiones malas', 'Cambios de mercado', 'Competencia'] },
+  { valor: 'cumplimiento', etiqueta: 'Cumplimiento', etiquetaKey: 'riskMatrix.categories.compliance', icon: FaBalanceScale, ejemplos: ['Multas', 'Regulaciones', 'Contratos'] },
+  { valor: 'reputacional', etiqueta: 'Reputacional', etiquetaKey: 'riskMatrix.categories.reputational', icon: FaBullhorn, ejemplos: ['Redes sociales', 'Imagen', 'Clientes'] },
+  { valor: 'operativo', etiqueta: 'Operativo', etiquetaKey: 'riskMatrix.categories.operational', icon: FaBuilding, ejemplos: ['Equipos', 'Personal', 'Procesos'] },
+  { valor: 'financiero', etiqueta: 'Financiero', etiquetaKey: 'riskMatrix.categories.financial', icon: FaDollarSign, ejemplos: ['Pérdidas', 'Flujo de caja', 'Inversión'] },
+  { valor: 'tecnologico', etiqueta: 'Tecnológico', etiquetaKey: 'riskMatrix.categories.technological', icon: FaLaptop, ejemplos: ['Ciberseguridad', 'Sistemas', 'Datos'] },
+  { valor: 'corrupcion', etiqueta: 'Corrupción', etiquetaKey: 'riskMatrix.categories.corruption', icon: FaBan, ejemplos: ['Sobornos', 'Fraude', 'Abuso'] },
+  { valor: 'ddhh', etiqueta: 'DDHH', etiquetaKey: 'riskMatrix.categories.humanRights', icon: FaUsers, ejemplos: ['Discriminación', 'Maltrato', 'Derechos'] },
 ];
 
 export const PASOS_INICIO_RAPIDO = [

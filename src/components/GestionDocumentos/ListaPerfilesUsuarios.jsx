@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { BASE_URL } from '../../config/apiConfig';
@@ -8,6 +9,7 @@ import VerDocumentosUsuario from './VerDocumentosUsuario';
 import { esPerfilAseguradoraDocumentos } from './documentosPerfilHelpers';
 
 export default function ListaPerfilesUsuarios() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -177,30 +179,30 @@ export default function ListaPerfilesUsuarios() {
       await cargarUsuarios();
     } catch (error) {
       console.error('Error creando perfil externo:', error);
-      alert(error.response?.data?.message || 'Error al crear la persona');
+      alert(error.response?.data?.message || t('admin.ui.documentos.perfiles.createPersonFailed'));
     } finally {
       setGuardandoNuevo(false);
     }
   };
 
   const handleEliminar = async (usuario) => {
-    const nombre = usuario.name || usuario.nombre || 'esta persona';
+    const nombre = usuario.name || usuario.nombre || t('admin.ui.documentos.perfiles.thisPerson');
 
     if (usuario.esExterno) {
-      const confirmar = window.confirm(`¿Eliminar a ${nombre} del listado de documentos?`);
+      const confirmar = window.confirm(t('admin.ui.documentos.perfiles.confirmDeleteExternal', { name: nombre }));
       if (!confirmar) return;
       try {
         await api.delete(`/api/documentos/perfiles-externos/${usuario._id || usuario.id}`);
         await cargarUsuarios();
       } catch (error) {
         console.error('Error eliminando perfil externo:', error);
-        alert(error.response?.data?.message || 'Error al eliminar la persona');
+        alert(error.response?.data?.message || t('admin.ui.documentos.perfiles.deletePersonFailed'));
       }
       return;
     }
 
     const confirmar = window.confirm(
-      `¿Ocultar a ${nombre} solo en esta pantalla? El usuario seguirá existiendo en la plataforma.`
+      t('admin.ui.documentos.perfiles.confirmHide', { name: nombre })
     );
     if (!confirmar) return;
 
@@ -214,7 +216,7 @@ export default function ListaPerfilesUsuarios() {
       await cargarUsuarios();
     } catch (error) {
       console.error('Error ocultando usuario en documentos:', error);
-      alert(error.response?.data?.message || 'No se pudo ocultar el usuario');
+      alert(error.response?.data?.message || t('admin.ui.documentos.perfiles.hideFailed'));
     }
   };
 
@@ -225,7 +227,7 @@ export default function ListaPerfilesUsuarios() {
         await cargarUsuarios();
       } catch (error) {
         console.error('Error restaurando perfil externo:', error);
-        alert(error.response?.data?.message || 'Error al restaurar la persona');
+        alert(error.response?.data?.message || t('admin.ui.documentos.perfiles.restorePersonFailed'));
       }
       return;
     }
@@ -240,7 +242,7 @@ export default function ListaPerfilesUsuarios() {
         await cargarUsuarios();
       } catch (error) {
         console.error('Error restaurando visibilidad:', error);
-        alert(error.response?.data?.message || 'No se pudo restaurar el usuario en esta vista');
+        alert(error.response?.data?.message || t('admin.ui.documentos.perfiles.restoreVisibilityFailed'));
       }
     }
   };
@@ -259,7 +261,7 @@ export default function ListaPerfilesUsuarios() {
   });
 
   const formatearFecha = (fecha) => {
-    if (!fecha) return 'N/A';
+    if (!fecha) return t('admin.ui.documentos.perfiles.notAvailable');
     try {
       // Si es un string en formato YYYY-MM-DD, parsearlo como fecha local
       let date;
@@ -282,7 +284,7 @@ export default function ListaPerfilesUsuarios() {
         day: 'numeric'
       });
     } catch {
-      return 'N/A';
+      return t('admin.ui.documentos.perfiles.notAvailable');
     }
   };
 
@@ -316,7 +318,7 @@ export default function ListaPerfilesUsuarios() {
         className="text-xl font-bold mb-4"
         style={{ color: textPrimary }}
       >
-        Gestión de Documentos por Empleado
+        {t('admin.ui.documentos.pageTitle')}
       </h2>
 
       {/* Búsqueda y acciones */}
@@ -330,7 +332,7 @@ export default function ListaPerfilesUsuarios() {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar por nombre, cédula, email o login..."
+            placeholder={t('admin.ui.documentos.perfiles.searchPlaceholder')}
             className="w-full pl-10 pr-3 py-2 rounded text-sm"
             style={{
               backgroundColor: inputBg,
@@ -348,7 +350,7 @@ export default function ListaPerfilesUsuarios() {
           }}
         >
           <FaPlus />
-          Agregar persona
+          {t('admin.ui.documentos.perfiles.addPerson')}
         </button>
         <button
           onClick={() => {
@@ -366,7 +368,7 @@ export default function ListaPerfilesUsuarios() {
             border: `1px solid ${borderColor}`
           }}
         >
-          {mostrarEliminados ? 'Volver a todos' : 'Ver solo eliminados (externos)'}
+          {mostrarEliminados ? t('admin.ui.documentos.perfiles.backToAll') : t('admin.ui.documentos.perfiles.viewOnlyDeleted')}
         </button>
         <button
           onClick={() => {
@@ -384,18 +386,18 @@ export default function ListaPerfilesUsuarios() {
             border: `1px solid ${borderColor}`
           }}
         >
-          {mostrarOcultosPlataforma ? 'Volver a todos' : 'Ocultos (plataforma)'}
+          {mostrarOcultosPlataforma ? t('admin.ui.documentos.perfiles.backToAll') : t('admin.ui.documentos.perfiles.hiddenPlatform')}
         </button>
       </div>
 
       {/* Lista de usuarios */}
       {cargando ? (
         <div className="text-center py-8" style={{ color: textSecondary }}>
-          Cargando usuarios...
+          {t('admin.ui.documentos.perfiles.loadingUsers')}
         </div>
       ) : usuariosFiltrados.length === 0 ? (
         <div className="text-center py-8" style={{ color: textSecondary }}>
-          No se encontraron usuarios
+          {t('admin.ui.documentos.perfiles.noUsersFound')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -428,11 +430,11 @@ export default function ListaPerfilesUsuarios() {
                     className="font-bold text-lg"
                     style={{ color: textPrimary }}
                   >
-                    {usuario.name || usuario.nombre || 'Sin nombre'}
+                    {usuario.name || usuario.nombre || t('admin.ui.documentos.perfiles.noName')}
                   </h3>
                   {usuario.esExterno && (
                     <p className="text-xs font-semibold" style={{ color: textSecondary }}>
-                      {usuario.activo === false ? 'Perfil externo (eliminado)' : 'Perfil externo'}
+                      {usuario.activo === false ? t('admin.ui.documentos.perfiles.externalProfileDeleted') : t('admin.ui.documentos.perfiles.externalProfile')}
                     </p>
                   )}
                   {usuario.esExterno && (
@@ -447,7 +449,7 @@ export default function ListaPerfilesUsuarios() {
                           : (theme === 'dark' ? '#86EFAC' : '#166534')
                       }}
                     >
-                      {usuario.activo === false ? 'ELIMINADO' : 'ACTIVO'}
+                      {usuario.activo === false ? t('admin.ui.documentos.perfiles.deletedBadge') : t('admin.ui.usuarios.table.active').toUpperCase()}
                     </span>
                   )}
                   {!usuario.esExterno && usuario.ocultoEnDocumentos && (
@@ -458,7 +460,7 @@ export default function ListaPerfilesUsuarios() {
                         color: theme === 'dark' ? '#FDBA74' : '#C2410C'
                       }}
                     >
-                      OCULTO EN ESTA VISTA
+                      {t('admin.ui.documentos.perfiles.hiddenInThisView')}
                     </span>
                   )}
                   {usuario.cedula && (
@@ -466,7 +468,7 @@ export default function ListaPerfilesUsuarios() {
                       className="text-xs"
                       style={{ color: textSecondary }}
                     >
-                      CC: {usuario.cedula}
+                      {t('admin.ui.documentos.perfiles.idAbbrev')}: {usuario.cedula}
                     </p>
                   )}
                 </div>
@@ -477,43 +479,43 @@ export default function ListaPerfilesUsuarios() {
                 {/* Datos Personales */}
                 {usuario.fechaNacimiento && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Fecha Nacimiento:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.birthDate')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{formatearFecha(usuario.fechaNacimiento)}</span>
                   </div>
                 )}
                 {usuario.tipoSangre && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Tipo Sangre:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.bloodType')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{usuario.tipoSangre}</span>
                   </div>
                 )}
                 {usuario.direccion && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Dirección:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.address')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium truncate ml-2" title={usuario.direccion}>{usuario.direccion}</span>
                   </div>
                 )}
                 {usuario.telefonoFijo && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Teléfono Fijo:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.landline')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{usuario.telefonoFijo}</span>
                   </div>
                 )}
                 {usuario.celulares && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Celular(es):</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.mobile')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{usuario.celulares}</span>
                   </div>
                 )}
                 {usuario.email && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Email:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.usuarios.table.email')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium truncate ml-2" title={usuario.email}>{usuario.email}</span>
                   </div>
                 )}
                 {usuario.correosElectronicos && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Correos:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.emails')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium truncate ml-2" title={usuario.correosElectronicos}>{usuario.correosElectronicos}</span>
                   </div>
                 )}
@@ -524,37 +526,37 @@ export default function ListaPerfilesUsuarios() {
                 {/* Datos Laborales */}
                 {usuario.empresa && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Empresa:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.company')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{usuario.empresa}</span>
                   </div>
                 )}
                 {usuario.sucursal && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Sucursal:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.branch')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{usuario.sucursal}</span>
                   </div>
                 )}
                 {usuario.cargos && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Cargo:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.position')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{usuario.cargos}</span>
                   </div>
                 )}
                 {usuario.fechaIngreso && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Ingreso:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.hireDate')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{formatearFecha(usuario.fechaIngreso)}</span>
                   </div>
                 )}
                 {usuario.tipoContrato && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Contrato:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.contractType')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">{usuario.tipoContrato}</span>
                   </div>
                 )}
                 {usuario.salario && (
                   <div className="flex justify-between text-xs">
-                    <span style={{ color: textSecondary }}>Salario:</span>
+                    <span style={{ color: textSecondary }}>{t('admin.ui.documentos.perfiles.fields.salary')}:</span>
                     <span style={{ color: textPrimary }} className="font-medium">
                       ${typeof usuario.salario === 'number' 
                         ? usuario.salario.toLocaleString('es-CO') 
@@ -576,10 +578,10 @@ export default function ListaPerfilesUsuarios() {
                     opacity: bloqueadoTarjeta ? 0.55 : 1,
                     cursor: bloqueadoTarjeta ? 'not-allowed' : 'pointer'
                   }}
-                  title="Editar perfil y agregar documentos"
+                  title={t('admin.ui.documentos.perfiles.editTitle')}
                 >
                   <FaEdit />
-                  Editar
+                  {t('common.edit')}
                 </button>
                 <button
                   onClick={() => handleVer(usuario)}
@@ -591,10 +593,10 @@ export default function ListaPerfilesUsuarios() {
                     opacity: bloqueadoTarjeta ? 0.55 : 1,
                     cursor: bloqueadoTarjeta ? 'not-allowed' : 'pointer'
                   }}
-                  title="Ver documentos"
+                  title={t('admin.ui.documentos.perfiles.viewDocumentsTitle')}
                 >
                   <FaEye />
-                  Ver
+                  {t('admin.ui.documentos.perfiles.view')}
                 </button>
                 {(usuario.esExterno && usuario.activo === false) || usuario.ocultoEnDocumentos ? (
                   <button
@@ -606,12 +608,12 @@ export default function ListaPerfilesUsuarios() {
                     }}
                     title={
                       usuario.ocultoEnDocumentos
-                        ? 'Mostrar de nuevo en esta pantalla'
-                        : 'Restaurar persona externa'
+                        ? t('admin.ui.documentos.perfiles.showAgainTitle')
+                        : t('admin.ui.documentos.perfiles.restoreExternalTitle')
                     }
                   >
                     <FaUndo />
-                    Restaurar
+                    {t('admin.ui.documentos.perfiles.restore')}
                   </button>
                 ) : (
                   <button
@@ -623,12 +625,12 @@ export default function ListaPerfilesUsuarios() {
                     }}
                     title={
                       usuario.esExterno
-                        ? 'Eliminar del listado de documentos'
-                        : 'Ocultar solo en esta pantalla'
+                        ? t('admin.ui.documentos.perfiles.deleteFromListTitle')
+                        : t('admin.ui.documentos.perfiles.hideOnlyHereTitle')
                     }
                   >
                     <FaTrash />
-                    Eliminar
+                    {t('admin.ui.documentos.lista.delete')}
                   </button>
                 )}
               </div>
@@ -650,7 +652,7 @@ export default function ListaPerfilesUsuarios() {
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold" style={{ color: textPrimary }}>
-                Agregar persona (sin usuario de plataforma)
+                {t('admin.ui.documentos.perfiles.addPersonModalTitle')}
               </h3>
               <button
                 onClick={() => setMostrarModalAgregar(false)}
@@ -663,7 +665,7 @@ export default function ListaPerfilesUsuarios() {
 
             <form onSubmit={handleCrearNuevoPerfil} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Nombre *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.name')} *</label>
                 <input
                   name="nombre"
                   value={nuevoPerfil.nombre}
@@ -674,7 +676,7 @@ export default function ListaPerfilesUsuarios() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>ID (Cédula) *</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.idNumber')} *</label>
                 <input
                   name="cedula"
                   value={nuevoPerfil.cedula}
@@ -685,7 +687,7 @@ export default function ListaPerfilesUsuarios() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Celular</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.mobileShort')}</label>
                 <input
                   name="celulares"
                   value={nuevoPerfil.celulares}
@@ -695,7 +697,7 @@ export default function ListaPerfilesUsuarios() {
                 />
               </div>
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Email</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.usuarios.table.email')}</label>
                 <input
                   name="email"
                   value={nuevoPerfil.email}
@@ -705,7 +707,7 @@ export default function ListaPerfilesUsuarios() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Empresa</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.company')}</label>
                 <select
                   name="empresa"
                   value={nuevoPerfil.empresa}
@@ -719,7 +721,7 @@ export default function ListaPerfilesUsuarios() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Cargo</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.position')}</label>
                 <input
                   name="cargo"
                   value={nuevoPerfil.cargo}
@@ -739,7 +741,7 @@ export default function ListaPerfilesUsuarios() {
                     color: theme === 'dark' ? '#93C5FD' : '#FFFFFF'
                   }}
                 >
-                  {guardandoNuevo ? 'Guardando...' : 'Guardar persona'}
+                  {guardandoNuevo ? t('admin.ui.editarPerfilUsuario.saving') : t('admin.ui.documentos.perfiles.savePerson')}
                 </button>
               </div>
             </form>

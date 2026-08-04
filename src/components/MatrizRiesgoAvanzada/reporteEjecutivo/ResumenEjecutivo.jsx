@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaCheckCircle, FaShieldAlt } from 'react-icons/fa';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import './reporteEjecutivo.css';
@@ -10,15 +11,29 @@ const COLORES_NIVEL = {
   Bajo: '#28a745',
 };
 
+const NIVEL_KEY = {
+  Crítico: 'critical',
+  Alto: 'high',
+  Medio: 'medium',
+  Bajo: 'low',
+};
+
+function tNivel(t, nombre) {
+  const key = NIVEL_KEY[nombre];
+  return key ? t(`riskMatrix.level.${key}`) : nombre;
+}
+
 export default function ResumenEjecutivo({ analitica }) {
+  const { t } = useTranslation();
   const { kpis, resumenEjecutivo, porNivel, porProceso, semaforoCategorias, hallazgos } = analitica;
 
   const datosNivel = porNivel
     .filter((item) => item.total > 0)
     .map((item) => ({
-      name: item.nombre,
+      name: tNivel(t, item.nombre),
       value: item.total,
       color: COLORES_NIVEL[item.nombre],
+      raw: item.nombre,
     }));
 
   const topProcesos = porProceso.slice(0, 5);
@@ -28,51 +43,51 @@ export default function ResumenEjecutivo({ analitica }) {
     <div className="re-resumen">
       <header className="re-seccion-header">
         <div>
-          <p className="re-seccion-kicker">Matriz de Riesgos Avanzada</p>
-          <h2 className="re-seccion-titulo">Resumen ejecutivo para gerencia</h2>
-          <p className="re-seccion-desc">
-            Conclusiones principales en lenguaje gerencial, listas para junta directiva.
-          </p>
+          <p className="re-seccion-kicker">{t('riskMatrix.exec.kicker')}</p>
+          <h2 className="re-seccion-titulo">{t('riskMatrix.exec.summaryTitle')}</h2>
+          <p className="re-seccion-desc">{t('riskMatrix.exec.summaryDesc')}</p>
         </div>
         <div className="re-nivel-general">
           <FaShieldAlt />
           <div>
-            <span>Nivel general</span>
-            <strong style={{ color: kpis.nivelGeneralDetalle.color }}>{kpis.nivelGeneral}</strong>
+            <span>{t('riskMatrix.exec.overallLevel')}</span>
+            <strong style={{ color: kpis.nivelGeneralDetalle.color }}>
+              {tNivel(t, kpis.nivelGeneral)}
+            </strong>
           </div>
         </div>
       </header>
 
       <div className="re-kpi-grid re-kpi-grid--resumen">
         <div className="re-kpi-mini">
-          <span>Nivel general</span>
-          <strong>{kpis.nivelGeneral}</strong>
+          <span>{t('riskMatrix.exec.overallLevel')}</span>
+          <strong>{tNivel(t, kpis.nivelGeneral)}</strong>
         </div>
         <div className="re-kpi-mini">
-          <span>Riesgos</span>
+          <span>{t('riskMatrix.exec.risks')}</span>
           <strong>{kpis.totalRiesgos}</strong>
         </div>
         <div className="re-kpi-mini">
-          <span>Críticos</span>
+          <span>{t('riskMatrix.exec.critical')}</span>
           <strong>{kpis.criticos}</strong>
         </div>
         <div className="re-kpi-mini">
-          <span>Residual prom.</span>
+          <span>{t('riskMatrix.exec.residualAvgShort')}</span>
           <strong>{kpis.riesgoResidualPromedio}</strong>
         </div>
         <div className="re-kpi-mini">
-          <span>Reducción</span>
+          <span>{t('riskMatrix.exec.reduction')}</span>
           <strong>{kpis.reduccionPromedio}%</strong>
         </div>
         <div className="re-kpi-mini">
-          <span>Rec. abiertas</span>
+          <span>{t('riskMatrix.exec.openRecShort')}</span>
           <strong>{kpis.recomendacionesAbiertas}</strong>
         </div>
       </div>
 
       <div className="re-resumen-layout">
         <section className="re-widget-card">
-          <h3>Conclusiones principales</h3>
+          <h3>{t('riskMatrix.exec.mainConclusions')}</h3>
           <ol className="re-conclusiones-lista">
             {resumenEjecutivo.conclusiones.map((item) => (
               <li key={item.titulo}>
@@ -83,12 +98,12 @@ export default function ResumenEjecutivo({ analitica }) {
         </section>
 
         <section className="re-widget-card">
-          <h3>Riesgos por nivel (residual)</h3>
+          <h3>{t('riskMatrix.exec.risksByLevel')}</h3>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
               <Pie data={datosNivel} dataKey="value" nameKey="name" innerRadius={45} outerRadius={70}>
                 {datosNivel.map((entry) => (
-                  <Cell key={entry.name} fill={entry.color} />
+                  <Cell key={entry.raw} fill={entry.color} />
                 ))}
               </Pie>
               <Tooltip />
@@ -97,7 +112,7 @@ export default function ResumenEjecutivo({ analitica }) {
         </section>
 
         <section className="re-widget-card">
-          <h3>Top 5 procesos por exposición</h3>
+          <h3>{t('riskMatrix.exec.top5Processes')}</h3>
           <div className="re-barras">
             {topProcesos.map((proceso) => (
               <div key={proceso.nombre} className="re-barra-item">
@@ -117,7 +132,7 @@ export default function ResumenEjecutivo({ analitica }) {
         </section>
 
         <section className="re-widget-card">
-          <h3>Semáforo por frente de riesgo</h3>
+          <h3>{t('riskMatrix.exec.trafficByFront')}</h3>
           <div className="re-semaforo-lista">
             {semaforoCategorias.map((item) => (
               <div key={item.nombre} className="re-semaforo-item">
@@ -127,7 +142,7 @@ export default function ResumenEjecutivo({ analitica }) {
                 />
                 <div>
                   <strong>{item.nombre}</strong>
-                  <span>{item.nivel}</span>
+                  <span>{tNivel(t, item.nivel)}</span>
                 </div>
               </div>
             ))}
@@ -135,7 +150,7 @@ export default function ResumenEjecutivo({ analitica }) {
         </section>
 
         <section className="re-widget-card re-widget-card--wide">
-          <h3>Próximos pasos recomendados</h3>
+          <h3>{t('riskMatrix.exec.nextSteps')}</h3>
           <ul className="re-pasos-lista">
             {resumenEjecutivo.proximosPasos.map((paso) => (
               <li key={paso}>
@@ -148,7 +163,7 @@ export default function ResumenEjecutivo({ analitica }) {
       </div>
 
       <section className="re-conclusion-box">
-        <h3>Conclusión general del análisis</h3>
+        <h3>{t('riskMatrix.exec.analysisConclusion')}</h3>
         <p>{hallazgos.conclusion}</p>
       </section>
     </div>

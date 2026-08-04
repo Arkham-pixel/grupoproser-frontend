@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
@@ -57,22 +58,26 @@ function mapearOpcionFuncionarioAseguradora(f) {
 }
 
 export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false }) {
+  const { t } = useTranslation();
   const autoguardadoEfectivo = AUTO_SAVE_ENABLED && autoGuardadoActivo;
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
   const [tabActiva, setTabActiva] = useState('datosGenerales');
 
-  const FORM_TABS = [
-    { id: 'datosGenerales', label: 'Datos Generales' },
-    { id: 'valores', label: 'Valores y Prestaciones' },
-    { id: 'trazabilidad', label: 'Trazabilidad' },
-    { id: 'facturacion', label: 'Facturación' },
-    { id: 'honorarios', label: 'Honorarios' },
-    { id: 'seguimiento', label: 'Seguimiento' },
-    { id: 'observacionesPendientes', label: 'Observaciones Pendientes' },
-    { id: 'observaciones', label: 'Observaciones Clientes' },
-  ];
+  const FORM_TABS = useMemo(
+    () => [
+      { id: 'datosGenerales', label: t('complex.ui.formulario_caso_complex.tab_datos_generales') },
+      { id: 'valores', label: t('complex.ui.formulario_caso_complex.tab_valores') },
+      { id: 'trazabilidad', label: t('complex.ui.formulario_caso_complex.tab_trazabilidad') },
+      { id: 'facturacion', label: t('complex.ui.formulario_caso_complex.tab_facturacion') },
+      { id: 'honorarios', label: t('complex.ui.formulario_caso_complex.tab_honorarios') },
+      { id: 'seguimiento', label: t('complex.ui.formulario_caso_complex.tab_seguimiento') },
+      { id: 'observacionesPendientes', label: t('complex.ui.formulario_caso_complex.tab_observaciones_pendientes') },
+      { id: 'observaciones', label: t('complex.ui.formulario_caso_complex.tab_observaciones') },
+    ],
+    [t]
+  );
   const [formData, setFormData] = useState({
     nmroAjste: '',
     nmroSinstro: '',
@@ -704,7 +709,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
         } catch (error) {
           aplicandoDesdeServidorRef.current = false;
           console.error('❌ [Cargar Caso por ID] Error cargando caso:', error);
-          alert('Error al cargar el caso. Por favor, verifica que el caso exista.');
+          alert(t('complex.ui.formulario_caso_complex.error_cargar_caso'));
         }
       }
     };
@@ -924,9 +929,7 @@ localStorage.removeItem('formularioComplex');
         const confirmar = window.confirm(
           'Este caso ya tiene un control de horas montado.' +
             detalleDocs +
-            '\n\n¿Está seguro de que necesita subir otro?\n\n' +
-            'Aceptar = subir de todas formas\n' +
-            'Cancelar = no subir nada'
+            t('complex.ui.formulario_caso_complex.confirmar_otro_archivo')
         );
 
         if (!confirmar) {
@@ -1132,18 +1135,19 @@ localStorage.removeItem('formularioComplex');
       }
 
       if (archivosEvidencia.length === 0) {
-        alert('No se encontraron archivos de evidencia. Por favor, suba los documentos primero.');
+        alert(t('complex.ui.formulario_caso_complex.no_archivos_evidencia'));
         return;
       }
 
-      const numeroCaso = formData.nmroAjste || initialData?.nmroAjste || 'Sin número';
+      const sinNumero = t('complex.ui.formulario_caso_complex.sin_numero');
+      const numeroCaso = formData.nmroAjste || initialData?.nmroAjste || sinNumero;
       const numeroSiniestro = formData.nmroSinstro || initialData?.nmroSinstro;
       const responsable = formData.codiRespnsble || initialData?.codiRespnsble;
       const usuario = localStorage.getItem('login') || localStorage.getItem('usuario') || 'unknown';
       let casoId = formData._id || initialData?._id || null;
 
       // Si no hay casoId pero hay número de caso, intentar buscar el caso
-      if (!casoId && numeroCaso && numeroCaso !== 'Sin número') {
+      if (!casoId && numeroCaso && numeroCaso !== sinNumero) {
         try {
 const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -1197,7 +1201,7 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
           contentType,
           body: errorText.substring(0, 200)
         });
-        throw new Error('El servidor devolvió una respuesta no válida (no es JSON)');
+        throw new Error(t('complex.ui.formulario_caso_complex.respuesta_no_valida'));
       }
 
       const resultado = await response.json();
@@ -1217,24 +1221,28 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
           resultado.resultado?.destinatarios?.[0] ||
           '';
         let mensaje = emailEnviado
-          ? `✅ Notificación enviada a ${nombreGerente}\n📧 ${emailEnviado}`
-          : `✅ Notificación enviada exitosamente a ${nombreGerente}`;
+          ? t('complex.ui.formulario_caso_complex.notificacion_enviada_email', {
+              nombre: nombreGerente,
+              email: emailEnviado,
+            })
+          : t('complex.ui.formulario_caso_complex.notificacion_enviada_ok', {
+              nombre: nombreGerente,
+            });
         if (resultado.envioRegistrado) {
-          mensaje += '\n\n📋 Quedó registrado en la bandeja de facturación del jefe.';
+          mensaje += t('complex.ui.formulario_caso_complex.registrado_bandeja');
         } else if (resultado.motivoNoRegistro === 'caso_no_encontrado') {
-          mensaje +=
-            '\n\n⚠️ Guarde el caso en el sistema (con número de ajuste) para que el jefe lo vea en su bandeja.';
+          mensaje += t('complex.ui.formulario_caso_complex.guarde_caso_bandeja');
         }
         alert(mensaje);
       } else {
-        throw new Error(resultado.error || 'Error al enviar la notificación');
+        throw new Error(resultado.error || t('complex.ui.formulario_caso_complex.error_enviar_notificacion'));
       }
     } catch (error) {
       console.error('❌ Error enviando notificación de gerencia:', error);
-      alert(`❌ Error al enviar la notificación: ${error.message}`);
+      alert(t('complex.ui.formulario_caso_complex.error_enviar_notificacion_msg', { mensaje: error.message }));
       throw error;
     }
-  }, [formData, initialData, construirUrlArchivo]);
+  }, [formData, initialData, construirUrlArchivo, t]);
 
   const persistirControlHorasEnServidor = useCallback(
     async (controlHoras, totales) => {
@@ -1325,9 +1333,7 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
       const tieneControlHorasEnSistema = Boolean(formData.control_horas?.filas?.length);
 
       if (archivosControlHoras.length === 0 && !tieneControlHorasEnSistema) {
-        alert(
-          'Registre el control de horas en el sistema o suba los documentos antes de enviar la notificación.'
-        );
+        alert(t('complex.ui.formulario_caso_complex.registre_control_horas'));
         return;
       }
 
@@ -1335,14 +1341,15 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
         ? calcularTotalesControlHoras(formData.control_horas)
         : null;
 
-      const numeroCaso = formData.nmroAjste || initialData?.nmroAjste || 'Sin número';
+      const sinNumero = t('complex.ui.formulario_caso_complex.sin_numero');
+      const numeroCaso = formData.nmroAjste || initialData?.nmroAjste || sinNumero;
       const numeroSiniestro = formData.nmroSinstro || initialData?.nmroSinstro;
       const responsable = formData.codiRespnsble || initialData?.codiRespnsble;
       const usuario = localStorage.getItem('login') || localStorage.getItem('usuario') || 'unknown';
       let casoId = formData._id || initialData?._id || null; // ID del caso para el enlace directo
 
       // Si no hay casoId pero hay número de caso, intentar buscar el caso
-      if (!casoId && numeroCaso && numeroCaso !== 'Sin número') {
+      if (!casoId && numeroCaso && numeroCaso !== sinNumero) {
         try {
 const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -1389,10 +1396,15 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
           : 'danalyst@proserpuertos.com.co (Prueba)';
         const emailEnviado = resultado.resultado?.destinatarioPrincipal || '';
         let mensaje = emailEnviado
-          ? `✅ Notificación enviada a ${nombreGerente}\n📧 ${emailEnviado}`
-          : `✅ Notificación enviada exitosamente a ${nombreGerente}`;
+          ? t('complex.ui.formulario_caso_complex.notificacion_enviada_email', {
+              nombre: nombreGerente,
+              email: emailEnviado,
+            })
+          : t('complex.ui.formulario_caso_complex.notificacion_enviada_ok', {
+              nombre: nombreGerente,
+            });
         if (resultado.envioRegistrado) {
-          mensaje += '\n\n📋 Quedó registrado en la bandeja de facturación del jefe.';
+          mensaje += t('complex.ui.formulario_caso_complex.registrado_bandeja');
           if (tieneControlHorasEnSistema) {
             datosInicialesAutoSaveRef.current = {
               ...(datosInicialesAutoSaveRef.current || {}),
@@ -1400,28 +1412,26 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
             };
           }
         } else if (resultado.motivoNoRegistro === 'caso_no_encontrado') {
-          mensaje +=
-            '\n\n⚠️ Guarde el caso en el sistema (con número de ajuste) para que el jefe lo vea en su bandeja.';
+          mensaje += t('complex.ui.formulario_caso_complex.guarde_caso_bandeja');
         } else if (tieneControlHorasEnSistema && casoId) {
           const persistido = await persistirControlHorasEnServidor(
             formData.control_horas,
             resumenControlHoras
           );
           if (!persistido) {
-            mensaje +=
-              '\n\n⚠️ El correo se envió pero no se pudo guardar el control de horas en el caso. Use Guardar en el formulario.';
+            mensaje += t('complex.ui.formulario_caso_complex.correo_ok_no_guardo_horas');
           }
         }
         alert(mensaje);
       } else {
-        throw new Error(resultado.error || 'Error al enviar la notificación');
+        throw new Error(resultado.error || t('complex.ui.formulario_caso_complex.error_enviar_notificacion'));
       }
             } catch (error) {
       console.error('❌ Error enviando notificación de control de horas:', error);
-      alert(`❌ Error al enviar la notificación: ${error.message}`);
+      alert(t('complex.ui.formulario_caso_complex.error_enviar_notificacion_msg', { mensaje: error.message }));
       throw error;
     }
-  }, [formData, initialData, persistirControlHorasEnServidor]);
+  }, [formData, initialData, persistirControlHorasEnServidor, t, construirUrlArchivo]);
 
   const createDropzone = (tipoDocumento, campoFormData) =>
     useDropzone({
@@ -2716,7 +2726,7 @@ setFormData(prev => ({
       setShowRestoreDialog(false);
       enableAutoSave();
       
-alert('✅ Datos restaurados exitosamente');
+alert(t('complex.ui.formulario_caso_complex.datos_restaurados'));
     }
   }, [savedDataToRestore, enableAutoSave, formData]);
 
@@ -2749,7 +2759,7 @@ setShowRestoreDialog(false);
     // Evitar guardar mientras haya cargas de adjuntos en progreso para no perder documentos.
     const hayAdjuntosSubiendo = Object.values(cargandoAdjuntos || {}).some(Boolean);
     if (hayAdjuntosSubiendo) {
-      alert('Hay documentos en proceso de carga. Espera a que terminen para guardar el caso.');
+      alert(t('complex.ui.formulario_caso_complex.docs_en_carga'));
       return;
     }
      
@@ -2774,7 +2784,7 @@ setShowRestoreDialog(false);
     const formDataConTextareas = { ...formData };
     const codigoEstado = resolverEstadoParaSelect(formDataConTextareas, estados);
     if (!codigoEstado) {
-      alert('El estado del siniestro es obligatorio. Selecciona un estado en la pestaña Datos Generales.');
+      alert(t('complex.ui.formulario_caso_complex.estado_obligatorio'));
       setTabActiva('datosGenerales');
       return;
     }
@@ -2790,7 +2800,7 @@ setShowRestoreDialog(false);
     });
     
 if (!onSave) {
-       alert('Guardar (sin acción definida)');
+       alert(t('complex.ui.formulario_caso_complex.guardar_sin_accion'));
        return;
      }
     const payload = { ...mapFormDataToBackend(formDataConTextareas), ...extra };
@@ -3054,7 +3064,7 @@ clearSavedData();
       }
 
       if (respuestaServidor === false || respuestaServidor?.error) {
-        throw new Error('Autoguardado rechazado por el servidor');
+        throw new Error(t('complex.ui.formulario_caso_complex.autoguardado_rechazado'));
       }
 
       fechasHitoEditadasRef.current.clear();
@@ -3330,8 +3340,7 @@ clearSavedData();
                 fontSize: '13px',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
               }}
-            >
-              Otra ventana guardó este caso.{' '}
+            >{t("complex.ui.formulario_caso_complex.otra_ventana_guardo_este_caso")}{' '}
               <button
                 type="button"
                 onClick={() => setForceReloadCaso((n) => n + 1)}
@@ -3344,9 +3353,7 @@ clearSavedData();
                   cursor: 'pointer',
                   fontSize: '13px',
                 }}
-              >
-                Recargar ahora
-              </button>
+              >{t("complex.ui.formulario_caso_complex.recargar_ahora")}</button>
             </div>
           )}
 

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useRef, useCallback, useMemo, memo, useEffect } from 'react';
 import { FaFileAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +36,7 @@ import {
   TrazabilidadChevron,
   TrazabilidadIconoEtapa,
   TrazabilidadIndicadorIcono,
+  tituloEtapaTrazabilidad,
   trazabilidadColorClase,
   trazabilidadInputClass,
   trazabilidadLabelClass,
@@ -44,7 +46,6 @@ import {
   etiquetaLimiteTipoTrazabilidad,
   MAPEO_TRAZABILIDAD_PROTOCOLO,
   PROTOCOLO_DOCUMENTO,
-  PROTOCOLO_OBJETIVO,
   PROTOCOLO_VERSION,
   resolverEtapaProtocoloPorTipo,
   tituloEtapaConFase,
@@ -77,6 +78,7 @@ const ArchivoDropZone = ({
   estadoAdjunto,
   children
 }) => {
+  const { t } = useTranslation();
   const inputRef = useRef(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const onFilesSelected = onSelectFiles || (() => {});
@@ -131,10 +133,10 @@ const ArchivoDropZone = ({
         {children(isDragActive)}
       </div>
       {estadoAdjunto?.cargando && (
-        <p className={complexHint}>Subiendo documentos...</p>
+        <p className={complexHint}>{t("complex.ui.trazabilidad.subiendo_documentos")}</p>
       )}
       {estadoAdjunto?.error && (
-        <p className={complexAlertError}>Error: {estadoAdjunto.error}</p>
+        <p className={complexAlertError}>{t("complex.ui.trazabilidad.error")}{estadoAdjunto.error}</p>
       )}
     </div>
   );
@@ -155,10 +157,11 @@ const BandejaDesplegable = memo(function BandejaDesplegable({
   onToggle,
   ocultarDocumentosSubidos = false,
 }) {
+  const { t } = useTranslation();
   const ctx = React.useContext(TrazabilidadBandejaCtx);
   const diasInfo = ctx?.calcularDiasTranscurridos?.(tipoDocumento);
   const etiquetaLimite = ctx?.protocolo
-    ? etiquetaLimiteTipoTrazabilidad(tipoDocumento, ctx.protocolo)
+    ? etiquetaLimiteTipoTrazabilidad(tipoDocumento, ctx.protocolo, t)
     : null;
   const tiempoTranscurrido = diasInfo && ctx?.formatearTiempoTranscurrido
     ? ctx.formatearTiempoTranscurrido(diasInfo)
@@ -177,11 +180,12 @@ const BandejaDesplegable = memo(function BandejaDesplegable({
           <TrazabilidadIconoEtapa Icon={Icon} />
           <div className="min-w-0">
             <h3 className="font-heading text-base font-bold text-gray-900 dark:text-white">
-              {tituloEtapaConFase(tipoDocumento, titulo)}
+              {tituloEtapaConFase(tipoDocumento, titulo, t)}
             </h3>
             {etiquetaLimite && (
               <p className={`${complexHint} mt-0.5`}>
-                Plazo protocolo: {etiquetaLimite}
+                {t('complex.ui.trazabilidad.plazo_protocolo')}
+                {etiquetaLimite}
               </p>
             )}
             {diasInfo && (
@@ -220,6 +224,7 @@ const Trazabilidad = memo(function Trazabilidad({
   cargandoAdjuntos = {},
   errorAdjuntos = {}
 }) {
+  const { t, i18n } = useTranslation();
   // Refs para los textareas
   const textareaRefs = useRef({});
 
@@ -464,7 +469,7 @@ const Trazabilidad = memo(function Trazabilidad({
         esReciente: true,
         esUrgente: false,
         tieneDocumentos: false,
-        etiquetaEstado: `Recibido ${fechaAsignacion.toLocaleDateString('es-CO')}`,
+        etiquetaEstado: t('complex.ui.trazabilidad.recibido_fecha', { fecha: fechaAsignacion.toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'es-CO') }),
       };
     }
 
@@ -477,7 +482,7 @@ const Trazabilidad = memo(function Trazabilidad({
       const tieneAjustador =
         codigoResponsable &&
         String(codigoResponsable).trim() !== '' &&
-        String(codigoResponsable).toLowerCase() !== 'sin asignar';
+        String(codigoResponsable).toLowerCase() !== t('complex.ui.trazabilidad.sin_asignar') && String(codigoResponsable).toLowerCase() !== 'sin asignar' && String(codigoResponsable).toLowerCase() !== 'unassigned';
 
       if (tieneAjustador) {
         return {
@@ -491,7 +496,7 @@ const Trazabilidad = memo(function Trazabilidad({
           esReciente: true,
           esUrgente: false,
           tieneDocumentos: false,
-          etiquetaEstado: 'Ajustador asignado',
+          etiquetaEstado: t('complex.ui.trazabilidad.ajustador_asignado_estado'),
         };
       }
 
@@ -512,7 +517,7 @@ const Trazabilidad = memo(function Trazabilidad({
         esUrgente: diasRetraso > 0,
         tieneDocumentos: false,
         mostrarHoras: true,
-        etiquetaEstado: 'Sin ajustador asignado',
+        etiquetaEstado: t('complex.ui.trazabilidad.sin_ajustador_asignado'),
       };
     }
 
@@ -702,37 +707,37 @@ const Trazabilidad = memo(function Trazabilidad({
   };
   // Función para formatear el tiempo transcurrido (horas o días)
   const formatearTiempoTranscurrido = (diasInfo) => {
-    if (!diasInfo) return 'Sin tiempo';
+    if (!diasInfo) return t('complex.ui.trazabilidad.sin_tiempo');
     
     if (diasInfo.mostrarHoras && diasInfo.horas !== undefined) {
       const horas = Math.round(diasInfo.horas);
-      if (horas === 0) return '0 horas';
-      if (horas === 1) return '1 hora';
-      return `${horas} horas`;
+      if (horas === 0) return t('complex.ui.trazabilidad.cero_horas');
+      if (horas === 1) return t('complex.ui.trazabilidad.una_hora');
+      return t('complex.ui.trazabilidad.n_horas', { n: horas });
     }
     
-    if (diasInfo.dias === 0) return '0 días';
-    if (diasInfo.dias === 1) return '1 día';
+    if (diasInfo.dias === 0) return t('complex.ui.trazabilidad.cero_dias');
+    if (diasInfo.dias === 1) return t('complex.ui.trazabilidad.un_dia');
     if (diasInfo.dias < 1) {
       const horas = Math.round((diasInfo.dias * 24));
-      if (horas === 1) return '1 hora';
-      return `${horas} horas`;
+      if (horas === 1) return t('complex.ui.trazabilidad.una_hora');
+      return t('complex.ui.trazabilidad.n_horas', { n: horas });
     }
-    return `${Math.round(diasInfo.dias)} días`;
+    return t('complex.ui.trazabilidad.n_dias', { n: Math.round(diasInfo.dias) });
   };
 
   // Función para formatear el tiempo límite
   const formatearTiempoLimite = (diasInfo) => {
-    if (!diasInfo || diasInfo.tiempoLimite === null || diasInfo.tiempoLimite === undefined) return 'Sin límite';
+    if (!diasInfo || diasInfo.tiempoLimite === null || diasInfo.tiempoLimite === undefined) return t('complex.ui.trazabilidad.sin_limite');
     
     if (diasInfo.tiempoLimite < 1) {
       const horas = Math.round(diasInfo.tiempoLimite * 24);
-      if (horas === 12) return '12 horas';
-      return `${horas} horas`;
+      if (horas === 12) return t('complex.ui.trazabilidad.doce_horas');
+      return t('complex.ui.trazabilidad.n_horas', { n: horas });
     }
     
-    if (diasInfo.tiempoLimite === 1) return '1 día';
-    return `${diasInfo.tiempoLimite} días`;
+    if (diasInfo.tiempoLimite === 1) return t('complex.ui.trazabilidad.un_dia');
+    return t('complex.ui.trazabilidad.n_dias', { n: diasInfo.tiempoLimite });
   };
 
   const diasRespuestaAseguradoraCifra = useMemo(() => {
@@ -767,7 +772,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
     const formularioId = documento?.formularioId || documento?.idHistorial || documento?.historialId;
     if (!formularioId) {
-      alert('No se puede editar este documento: no tiene un identificador de formulario asociado.');
+      alert(t('complex.ui.trazabilidad.no_editar_sin_formulario'));
       return false;
     }
 
@@ -798,7 +803,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
     if (!esRutaAlmacenada && !esRutaAbsoluta && documento?.formularioId) {
       historialService.descargarFormulario(documento.formularioId).catch((error) => {
-        alert(error?.message || 'No se pudo descargar el documento.');
+        alert(error?.message || t('complex.ui.trazabilidad.no_descargar_documento'));
       });
       return false;
     }
@@ -810,7 +815,7 @@ const Trazabilidad = memo(function Trazabilidad({
     );
     
     if (!enlace) {
-      alert('No se puede descargar el documento. URL no disponible.');
+      alert(t('complex.ui.trazabilidad.no_descargar_url'));
       return false; // Retornar false para prevenir cualquier acción adicional
     }
 
@@ -896,10 +901,9 @@ const Trazabilidad = memo(function Trazabilidad({
     if (documentos.length === 0) {
       return (
         <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50/80 p-4 text-center dark:border-gray-800 dark:bg-gray-900/40">
-          <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-            No hay documentos subidos para {titulo}
+          <p className="font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.trazabilidad.no_hay_documentos_subidos_para")}{titulo}
           </p>
-          <p className={`${complexHint} mt-1`}>Sin documentos</p>
+          <p className={`${complexHint} mt-1`}>{t("complex.ui.trazabilidad.sin_documentos")}</p>
         </div>
       );
     }
@@ -912,21 +916,19 @@ const Trazabilidad = memo(function Trazabilidad({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-2">
                 <TrazabilidadIndicadorIcono diasInfo={diasInfo} />
-                <span className="font-body text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Último documento subido:
-                </span>
+                <span className="font-body text-sm font-medium text-gray-700 dark:text-gray-300">{t("complex.ui.trazabilidad.ultimo_documento_subido")}</span>
                 <span className="font-body text-sm text-gray-600 dark:text-gray-400">
                   {diasInfo.fechaReferencia && (() => {
                     const year = diasInfo.fechaReferencia.getFullYear();
                     const month = String(diasInfo.fechaReferencia.getMonth() + 1).padStart(2, '0');
                     const day = String(diasInfo.fechaReferencia.getDate()).padStart(2, '0');
-                    return `Referencia: ${day}/${month}/${year}`;
+                    return t('complex.ui.trazabilidad.referencia', { fecha: `${day}/${month}/${year}` });
                   })()}
                   {diasInfo.fecha && (() => {
                     const year = diasInfo.fecha.getFullYear();
                     const month = String(diasInfo.fecha.getMonth() + 1).padStart(2, '0');
                     const day = String(diasInfo.fecha.getDate()).padStart(2, '0');
-                    return ` • Agregado: ${day}/${month}/${year}`;
+                    return t('complex.ui.trazabilidad.agregado', { fecha: `${day}/${month}/${year}` });
                   })()}
                 </span>
               </div>
@@ -935,25 +937,25 @@ const Trazabilidad = memo(function Trazabilidad({
                   {formatearTiempoTranscurrido(diasInfo)}
                 </div>
                 <div className="font-body text-xs">
-                  {diasInfo.dias === 0 && !diasInfo.horas ? 'Sin tiempo' : 
-                   diasInfo.mostrarHoras ? `Desde referencia` :
-                   diasInfo.dias === 0 ? 'Mismo día' : 
+                  {diasInfo.dias === 0 && !diasInfo.horas ? t('complex.ui.trazabilidad.sin_tiempo') : 
+                   diasInfo.mostrarHoras ? t('complex.ui.trazabilidad.desde_referencia') :
+                   diasInfo.dias === 0 ? t('complex.ui.trazabilidad.mismo_dia') : 
                    diasInfo.dias === 1
-                     ? (diasInfo.usaDiasHabiles ? '1 día hábil desde referencia' : '1 día desde referencia')
-                     : `${Math.round(diasInfo.dias)} ${diasInfo.usaDiasHabiles ? 'días hábiles' : 'días'} desde referencia`}
+                     ? (diasInfo.usaDiasHabiles ? t('complex.ui.trazabilidad.un_dia_habil_desde_referencia') : t('complex.ui.trazabilidad.un_dia_desde_referencia'))
+                     : (diasInfo.usaDiasHabiles
+                        ? t('complex.ui.trazabilidad.n_dias_habiles_desde_referencia', { n: Math.round(diasInfo.dias) })
+                        : t('complex.ui.trazabilidad.n_dias_desde_referencia', { n: Math.round(diasInfo.dias) }))}
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        <h4 className="mb-3 font-body text-sm font-semibold text-gray-700 dark:text-gray-300">
-          Documentos subidos ({documentos.length})
-        </h4>
+        <h4 className="mb-3 font-body text-sm font-semibold text-gray-700 dark:text-gray-300">{t("complex.ui.trazabilidad.documentos_subidos")}{documentos.length}{t("complex.ui.trazabilidad.texto")}</h4>
         <div className="space-y-2">
           {documentos.map((doc, index) => {
             const tieneUrl = doc.url || doc.ruta || doc.data || doc.formularioId;
-            const nombreArchivo = doc.nombre || doc.filename || `Documento ${index + 1}`;
+            const nombreArchivo = doc.nombre || doc.filename || t('complex.ui.trazabilidad.documento_n', { n: index + 1 });
             
             return (
               <div 
@@ -978,7 +980,7 @@ const Trazabilidad = memo(function Trazabilidad({
                           descargarDocumento(doc, e);
                         }}
                         className="flex w-full items-center gap-1 text-left font-body text-sm font-semibold text-gray-800 underline decoration-gray-300 underline-offset-2 hover:text-gray-900 dark:text-gray-200"
-                        title="Haz clic para descargar"
+                        title={t("complex.ui.trazabilidad.haz_clic_para_descargar")}
                       >
                         <span>{nombreArchivo}</span>
                       </button>
@@ -1041,20 +1043,17 @@ const Trazabilidad = memo(function Trazabilidad({
                           }
                         }
 
-                        if (!textoFechas) return 'Sin fecha';
+                        if (!textoFechas) return t('complex.ui.trazabilidad.sin_fecha');
                         return textoFechas;
                       })()}
                       {doc.usuario && ` • Subido por: ${doc.usuario}`}
                     </p>
                     {doc.error && (
-                      <p className="text-xs text-red-500 mt-1">
-                        ⚠️ {doc.error}
+                      <p className="text-xs text-red-500 mt-1">{t("complex.ui.trazabilidad.texto_2")}{doc.error}
                       </p>
                     )}
                     {doc.tamano && (
-                      <p className="text-xs text-gray-400 mt-1">
-                        Tamaño: {(doc.tamano / 1024).toFixed(2)} KB
-                      </p>
+                      <p className="text-xs text-gray-400 mt-1">{t("complex.ui.trazabilidad.tamano")}{(doc.tamano / 1024).toFixed(2)}{t("complex.ui.trazabilidad.kb")}</p>
                     )}
                   </div>
                 </div>
@@ -1068,17 +1067,13 @@ const Trazabilidad = memo(function Trazabilidad({
                         editarFormulario(doc, e);
                       }}
                       className={complexBtnSecondary}
-                      title="Editar este documento en el formulario de ajuste"
-                    >
-                      Editar
-                    </button>
+                      title={t("complex.ui.trazabilidad.editar_este_documento_en_el_formulario_de_ajuste")}
+                    >{t("complex.ui.trazabilidad.editar")}</button>
                   ) : (
                     <span
                       className="rounded-lg bg-gray-100 px-3 py-1.5 font-body text-xs text-gray-500 dark:bg-gray-800"
-                      title="Documento sin formulario asociado"
-                    >
-                      Sin form.
-                    </span>
+                      title={t("complex.ui.trazabilidad.documento_sin_formulario_asociado")}
+                    >{t("complex.ui.trazabilidad.sin_form")}</span>
                   )}
                   {tieneUrl ? (
                     <button
@@ -1089,17 +1084,13 @@ const Trazabilidad = memo(function Trazabilidad({
                         descargarDocumento(doc, e);
                       }}
                       className={complexTableBtnNeutral}
-                      title="Descargar documento"
-                    >
-                      Descargar
-                    </button>
+                      title={t("complex.ui.trazabilidad.descargar_documento")}
+                    >{t("complex.ui.trazabilidad.descargar")}</button>
                   ) : (
                     <span
                       className="rounded-lg bg-gray-100 px-3 py-1.5 font-body text-xs text-gray-500 dark:bg-gray-800"
-                      title="Documento sin URL"
-                    >
-                      Sin URL
-                    </span>
+                      title={t("complex.ui.trazabilidad.documento_sin_url")}
+                    >{t("complex.ui.trazabilidad.sin_url")}</span>
                   )}
                 </div>
               </div>
@@ -1122,7 +1113,7 @@ const Trazabilidad = memo(function Trazabilidad({
   return (
     <TrazabilidadBandejaCtx.Provider value={bandejaCtxValue}>
     <div className={complexPageWrap}>
-      <h2 className={complexSectionTitle}>Trazabilidad del Caso</h2>
+      <h2 className={complexSectionTitle}>{t("complex.ui.trazabilidad.trazabilidad_del_caso")}</h2>
 
       {mostrarAvisoProtocolo && (
         <div
@@ -1138,22 +1129,19 @@ const Trazabilidad = memo(function Trazabilidad({
             type="button"
             onClick={ocultarAvisoProtocolo}
             className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-200 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-            aria-label="Cerrar aviso del protocolo"
-            title="Cerrar"
+            aria-label={t("complex.ui.trazabilidad.cerrar_aviso_del_protocolo")}
+            title={t("complex.ui.trazabilidad.cerrar")}
           >
             <FaTimes aria-hidden />
           </button>
-          <p className="text-xs font-semibold uppercase tracking-wide text-fenix-primario pr-8">
-            Protocolo de atención
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-fenix-primario pr-8">{t("complex.ui.trazabilidad.protocolo_de_atencion")}</p>
           <p className="mt-1 text-sm font-medium text-gray-800 dark:text-gray-200">
             {PROTOCOLO_DOCUMENTO}
           </p>
-          <p className={`${complexHint} mt-2`}>{PROTOCOLO_OBJETIVO}</p>
-          <p className={`${complexHint} mt-1`}>
-            Cada etapa muestra su fase del protocolo y el plazo objetivo configurado en ARNALD.
-            Este aviso se oculta solo en unos segundos.
+          <p className={`${complexHint} mt-2`}>
+            {t('complex.ui.indicadores_protocolo_complex.protocolo_objetivo')}
           </p>
+          <p className={`${complexHint} mt-1`}>{t("complex.ui.trazabilidad.cada_etapa_muestra_su_fase_del_protocolo_y_el_plazo_obje")}</p>
         </div>
       )}
 
@@ -1161,20 +1149,21 @@ const Trazabilidad = memo(function Trazabilidad({
       
       {/* Resumen General de Trazabilidad */}
       <div className={`${complexCard} space-y-4`}>
-        <h3 className={complexSubsectionTitle}>Resumen de Trazabilidad</h3>
+        <h3 className={complexSubsectionTitle}>{t("complex.ui.trazabilidad.resumen_de_trazabilidad")}</h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {ETAPAS_TRAZABILIDAD.map(({ tipo, titulo, Icon }) => {
+          {ETAPAS_TRAZABILIDAD.map(({ tipo, tituloKey, Icon }) => {
             const diasInfo = calcularDiasTranscurridos(tipo);
             const documentos = obtenerDocumentosPorTipo(tipo);
+            const titulo = tituloEtapaTrazabilidad(t, tipo);
 
             return (
               <div key={tipo} className={`${complexMetricCard} p-3 sm:p-4`}>
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <TrazabilidadIconoEtapa Icon={Icon} />
-                  <span className={complexBadge}>{documentos.length} docs</span>
+                  <span className={complexBadge}>{documentos.length}{t("complex.ui.trazabilidad.docs")}</span>
                 </div>
                 <h4 className="mb-2 font-body text-xs font-semibold text-gray-800 dark:text-gray-200 sm:text-sm">
-                  {tituloEtapaConFase(tipo, titulo)}
+                  {tituloEtapaConFase(tipo, titulo, t)}
                 </h4>
 
                 {diasInfo ? (
@@ -1184,39 +1173,38 @@ const Trazabilidad = memo(function Trazabilidad({
                         ? diasInfo.etiquetaEstado
                         : diasInfo.diasRetraso > 0
                         ? diasInfo.diasRetraso < 1
-                          ? `${Math.round(diasInfo.diasRetraso * 24)} h retraso`
+                          ? t('complex.ui.trazabilidad.h_retraso', { n: Math.round(diasInfo.diasRetraso * 24) })
                           : diasInfo.diasRetraso === 1
-                            ? (diasInfo.usaDiasHabiles ? '1 día hábil retraso' : '1 día retraso')
-                            : `${Math.round(diasInfo.diasRetraso)} ${diasInfo.usaDiasHabiles ? 'días hábiles' : 'días'} retraso`
+                            ? (diasInfo.usaDiasHabiles ? t('complex.ui.trazabilidad.un_dia_habil_retraso') : t('complex.ui.trazabilidad.un_dia_retraso'))
+                            : (diasInfo.usaDiasHabiles
+                              ? t('complex.ui.trazabilidad.n_dias_habiles_retraso', { n: Math.round(diasInfo.diasRetraso) })
+                              : t('complex.ui.trazabilidad.n_dias_retraso', { n: Math.round(diasInfo.diasRetraso) }))
                         : formatearTiempoTranscurrido(diasInfo)}
                     </div>
                     <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
                       {diasInfo.documentoAnterior
-                        ? 'Doc. anterior pendiente'
+                        ? t('complex.ui.trazabilidad.doc_anterior_pendiente')
                         : diasInfo.enGraciaExterna
-                          ? 'En prórroga (espera externa)'
+                          ? t('complex.ui.trazabilidad.en_prorroga_espera_externa')
                           : diasInfo.esperaExterna
-                            ? 'Espera externa (no imputa)'
+                            ? t('complex.ui.trazabilidad.espera_externa_no_imputa')
                             : diasInfo.diasRetraso > 0
-                              ? 'Retraso'
+                              ? t('complex.ui.trazabilidad.retraso')
                               : diasInfo.dias === 0 && !diasInfo.horas
-                                ? 'A tiempo'
+                                ? t('complex.ui.trazabilidad.a_tiempo')
                                 : diasInfo.tiempoLimite != null && diasInfo.dias <= diasInfo.tiempoLimite
-                                  ? 'A tiempo'
-                                  : 'En proceso'}
+                                  ? t('complex.ui.trazabilidad.a_tiempo')
+                                  : t('complex.ui.trazabilidad.en_proceso')}
                     </p>
                     {diasInfo.tiempoLimite != null && (
-                      <p className={`${complexHint} mt-1`}>
-                        Límite: {formatearTiempoLimite(diasInfo)}
+                      <p className={`${complexHint} mt-1`}>{t("complex.ui.trazabilidad.limite")}{formatearTiempoLimite(diasInfo)}
                       </p>
                     )}
                   </div>
                 ) : (
                   <div className="text-center">
-                    <p className="font-heading text-sm font-bold text-gray-500 dark:text-gray-400 sm:text-base">
-                      Sin docs
-                    </p>
-                    <p className={complexHint}>No hay documentos</p>
+                    <p className="font-heading text-sm font-bold text-gray-500 dark:text-gray-400 sm:text-base">{t("complex.ui.trazabilidad.sin_docs")}</p>
+                    <p className={complexHint}>{t("complex.ui.trazabilidad.no_hay_documentos")}</p>
                   </div>
                 )}
               </div>
@@ -1225,9 +1213,7 @@ const Trazabilidad = memo(function Trazabilidad({
         </div>
 
         <div className="flex flex-col gap-2 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
-          <span className="font-body text-sm font-semibold text-gray-700 dark:text-gray-300">
-            Estado general
-          </span>
+          <span className="font-body text-sm font-semibold text-gray-700 dark:text-gray-300">{t("complex.ui.trazabilidad.estado_general")}</span>
           <EstadoGeneralTrazabilidad
             tipos={ETAPAS_TRAZABILIDAD.map((e) => e.tipo)}
             calcularDias={calcularDiasTranscurridos}
@@ -1236,7 +1222,7 @@ const Trazabilidad = memo(function Trazabilidad({
       </div>
 
       <BandejaDesplegable
-        titulo="Recepción de asignación"
+        titulo={t('complex.ui.etapas_trazabilidad.recepcion_asignacion')}
         bandeja="recepcionAsignacion"
         Icon={iconoPorTipo.recepcionAsignacion}
         tipoDocumento="recepcionAsignacion"
@@ -1246,7 +1232,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className={trazabilidadLabelClass}>Fecha y hora de asignación</label>
+            <label className={trazabilidadLabelClass}>{t("complex.ui.trazabilidad.fecha_y_hora_de_asignacion")}</label>
             <InputFechaHoraProtocolo
               name="fchaAsgncion"
               value={formData.fchaAsgncion || ''}
@@ -1257,20 +1243,17 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={trazabilidadLabelClass}>N.º de ajuste</label>
+            <label className={trazabilidadLabelClass}>{t("complex.ui.trazabilidad.n_de_ajuste")}</label>
             <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
               {formData.nmroAjste || '—'}
             </p>
           </div>
         </div>
-        <p className={`${complexHint} mt-3`}>
-          Registre fecha y hora en cada hito para medir plazos del protocolo (12 h, 24 h, etc.).
-          Fase 1: día 0 de la asignación. Correo automático al asignar ajustador.
-        </p>
+        <p className={`${complexHint} mt-3`}>{t("complex.ui.trazabilidad.registre_fecha_y_hora_en_cada_hito_para_medir_plazos_del")}</p>
       </BandejaDesplegable>
 
       <BandejaDesplegable
-        titulo="Cargue y asignación interna"
+        titulo={t('complex.ui.etapas_trazabilidad.cargue_asignacion_interna')}
         bandeja="carguePlataforma"
         Icon={iconoPorTipo.carguePlataforma}
         tipoDocumento="carguePlataforma"
@@ -1280,29 +1263,25 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className={trazabilidadLabelClass}>Ajustador asignado</label>
+            <label className={trazabilidadLabelClass}>{t("complex.ui.trazabilidad.ajustador_asignado")}</label>
             <p className="mt-1 text-sm font-medium text-gray-800 dark:text-gray-200">
               {formData.nombreResponsable ||
                 formData.codiRespnsble ||
                 formData.codi_responble ||
-                'Sin asignar'}
+                t('complex.ui.trazabilidad.sin_asignar')}
             </p>
           </div>
           <div>
-            <label className={trazabilidadLabelClass}>Plazo soporte</label>
-            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              12 horas desde la asignación para cargue en ARNALD
-            </p>
+            <label className={trazabilidadLabelClass}>{t("complex.ui.trazabilidad.plazo_soporte")}</label>
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t("complex.ui.trazabilidad.12_horas_desde_la_asignacion_para_cargue_en_arnald")}</p>
           </div>
         </div>
-        <p className={`${complexHint} mt-3`}>
-          Fase 2 del protocolo: gestión de soporte/coordinación. El ajustador inicia en la fase 3.
-        </p>
+        <p className={`${complexHint} mt-3`}>{t("complex.ui.trazabilidad.fase_2_del_protocolo_gestion_de_soporte_coordinacion_el_")}</p>
       </BandejaDesplegable>
       
       {/* Contacto Inicial */}
       <BandejaDesplegable 
-        titulo="Contacto Inicial" 
+        titulo={t('complex.ui.etapas_trazabilidad.contacto_inicial')} 
         bandeja="contactoInicial" 
         Icon={iconoPorTipo.contactoInicial}
         tipoDocumento="contactoInicial"
@@ -1311,9 +1290,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
-              Fecha de Contacto Inicial
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>{t("complex.ui.trazabilidad.fecha_de_contacto_inicial")}</label>
             <InputFechaHoraProtocolo
               name="fchaContIni"
               value={formData.fchaContIni || ''}
@@ -1323,9 +1300,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
-              Observaciones del Contacto Inicial
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>{t("complex.ui.trazabilidad.observaciones_del_contacto_inicial")}</label>
             <textarea
               key="textarea-obseContIni"
               name="obseContIni"
@@ -1334,7 +1309,7 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones del contacto inicial..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_del_contacto_inicial_2")}
             />
           </div>
         </div>
@@ -1345,9 +1320,7 @@ const Trazabilidad = memo(function Trazabilidad({
         />
         
         <div className="mt-3 sm:mt-4">
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-            Adjuntos del Contacto Inicial
-          </label>
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">{t("complex.ui.trazabilidad.adjuntos_del_contacto_inicial")}</label>
           <ArchivoDropZone
             tipo="contactoInicial"
             campo="adjuntos_contacto_inicial"
@@ -1356,11 +1329,9 @@ const Trazabilidad = memo(function Trazabilidad({
           >
             {(isDragActive) =>
               isDragActive ? (
-                <p className="font-body text-xs font-medium text-fenix-primario sm:text-sm">Suelta los archivos aquí...</p>
+                <p className="font-body text-xs font-medium text-fenix-primario sm:text-sm">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
               ) : (
-                <p className="font-body text-xs text-gray-600 dark:text-gray-300 sm:text-sm">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
+                <p className="font-body text-xs text-gray-600 dark:text-gray-300 sm:text-sm">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
               )
             }
           </ArchivoDropZone>
@@ -1369,7 +1340,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Coordinación de Inspección */}
       <BandejaDesplegable 
-        titulo="Coordinación de Inspección" 
+        titulo={t('complex.ui.etapas_trazabilidad.coordinacion_inspeccion')} 
         bandeja="coordinacionInspeccion" 
         Icon={iconoPorTipo.coordinacionInspeccion}
         tipoDocumento="coordinacionInspeccion"
@@ -1378,9 +1349,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
-              Fecha de la Llamada
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>{t("complex.ui.trazabilidad.fecha_de_la_llamada")}</label>
             <InputFechaHoraProtocolo
               name="fchaCoordInspeccion"
               value={formData.fchaCoordInspeccion || ''}
@@ -1390,9 +1359,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
-              Fecha Programada de Inspección
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>{t("complex.ui.trazabilidad.fecha_programada_de_inspeccion")}</label>
             <InputFechaHoraProtocolo
               name="fchaProgInspeccion"
               value={formData.fchaProgInspeccion || ''}
@@ -1403,9 +1370,7 @@ const Trazabilidad = memo(function Trazabilidad({
           </div>
         </div>
         <div className="mt-3 sm:mt-4">
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-            Observaciones de la Coordinación
-          </label>
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">{t("complex.ui.trazabilidad.observaciones_de_la_coordinacion")}</label>
           <textarea
             key="textarea-obseCoordInspeccion"
             name="obseCoordInspeccion"
@@ -1414,14 +1379,14 @@ const Trazabilidad = memo(function Trazabilidad({
             onBlur={handleBlur}
             rows="3"
             className={trazabilidadInputClass}
-            placeholder="Observaciones de la coordinación de inspección..."
+            placeholder={t("complex.ui.trazabilidad.observaciones_de_la_coordinacion_de_inspeccion")}
           />
         </div>
       </BandejaDesplegable>
 
       {/* Inspección */}
       <BandejaDesplegable 
-        titulo="Inspección" 
+        titulo={t('complex.ui.etapas_trazabilidad.inspeccion')} 
         bandeja="inspeccion" 
         Icon={iconoPorTipo.inspeccion}
         tipoDocumento="inspeccion"
@@ -1430,9 +1395,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mt-3 sm:mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
-              Fecha de Inspección
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>{t("complex.ui.trazabilidad.fecha_de_inspeccion")}</label>
             <InputFechaHoraProtocolo
               name="fchaInspccion"
               value={formData.fchaInspccion || ''}
@@ -1452,13 +1415,11 @@ const Trazabilidad = memo(function Trazabilidad({
                   })
                 }
               />
-              <span>Inspección no aplica (no generar alertas de inspección ni de acta)</span>
+              <span>{t("complex.ui.trazabilidad.inspeccion_no_aplica_no_generar_alertas_de_inspeccion_ni")}</span>
             </label>
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>
-              Observaciones de la Inspección
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-1 sm:mb-2`}>{t("complex.ui.trazabilidad.observaciones_de_la_inspeccion")}</label>
             <textarea
               key="textarea-obseInspccion"
               name="obseInspccion"
@@ -1467,15 +1428,13 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones de la inspección..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_de_la_inspeccion_2")}
             />
           </div>
         </div>
         
         <div className="mt-3 sm:mt-4">
-          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">
-            Acta de Inspección
-          </label>
+          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2">{t("complex.ui.trazabilidad.acta_de_inspeccion")}</label>
           <label className="mb-2 flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400 sm:text-sm">
             <input
               type="checkbox"
@@ -1488,7 +1447,7 @@ const Trazabilidad = memo(function Trazabilidad({
                 })
               }
             />
-            <span>Acta no aplica (hubo inspección pero no se elabora acta)</span>
+            <span>{t("complex.ui.trazabilidad.acta_no_aplica_hubo_inspeccion_pero_no_se_elabora_acta")}</span>
           </label>
           {!formData.inspeccionNoAplica && !formData.actaInspeccionNoAplica && (
             <ArchivoDropZone
@@ -1499,11 +1458,9 @@ const Trazabilidad = memo(function Trazabilidad({
             >
               {(isDragActive) =>
                 isDragActive ? (
-                  <p className="font-body text-xs font-medium text-fenix-primario sm:text-sm">Suelta los archivos aquí...</p>
+                  <p className="font-body text-xs font-medium text-fenix-primario sm:text-sm">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
                 ) : (
-                  <p className="font-body text-xs text-gray-600 dark:text-gray-300 sm:text-sm">
-                    Arrastra archivos aquí o haz clic para seleccionar
-                  </p>
+                  <p className="font-body text-xs text-gray-600 dark:text-gray-300 sm:text-sm">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
                 )
               }
             </ArchivoDropZone>
@@ -1513,7 +1470,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Solicitud de Documentos */}
       <BandejaDesplegable 
-        titulo="Solicitud de Documentos" 
+        titulo={t('complex.ui.etapas_trazabilidad.solicitud_docs')} 
         bandeja="solicitudDocs" 
         Icon={iconoPorTipo.solicitudDocs}
         tipoDocumento="solicitudDocs"
@@ -1522,9 +1479,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha de Solicitud de Documentos
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.fecha_de_solicitud_de_documentos")}</label>
             <InputFechaHoraProtocolo
               name="fchaSoliDocu"
               value={formData.fchaSoliDocu || ''}
@@ -1534,9 +1489,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Observaciones de la Solicitud
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.observaciones_de_la_solicitud")}</label>
             <textarea
               key="textarea-obseSoliDocu"
               name="obseSoliDocu"
@@ -1545,15 +1498,13 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones de la solicitud..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_de_la_solicitud_2")}
             />
           </div>
         </div>
         
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Adjuntos de la Solicitud
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("complex.ui.trazabilidad.adjuntos_de_la_solicitud")}</label>
           <ArchivoDropZone
             tipo="solicitudDocs"
             campo="adjunto_solicitud_documento"
@@ -1562,11 +1513,9 @@ const Trazabilidad = memo(function Trazabilidad({
           >
             {(isDragActive) =>
               isDragActive ? (
-                <p className="font-body text-sm font-medium text-fenix-primario">Suelta los archivos aquí...</p>
+                <p className="font-body text-sm font-medium text-fenix-primario">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
               ) : (
-                <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
+                <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
               )
             }
           </ArchivoDropZone>
@@ -1575,7 +1524,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Seguimiento de documentos pendientes — protocolo fase 8 */}
       <BandejaDesplegable
-        titulo="Seguimiento de documentos pendientes"
+        titulo={t('complex.ui.etapas_trazabilidad.seguimiento_documentos_pendientes')}
         bandeja="seguimientoDocsPendientes"
         Icon={iconoPorTipo.seguimientoDocsPendientes}
         tipoDocumento="seguimientoDocsPendientes"
@@ -1594,7 +1543,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Informe Preliminar */}
       <BandejaDesplegable 
-        titulo="Informe Preliminar" 
+        titulo={t('complex.ui.etapas_trazabilidad.informe_preliminar')} 
         bandeja="informePreliminar" 
         Icon={iconoPorTipo.informePreliminar}
         tipoDocumento="informePreliminar"
@@ -1603,9 +1552,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha del Informe Preliminar
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.fecha_del_informe_preliminar")}</label>
             <InputFechaHoraProtocolo
               name="fchaInfoPrelm"
               value={formData.fchaInfoPrelm || ''}
@@ -1615,9 +1562,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Observaciones del Informe Preliminar
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.observaciones_del_informe_preliminar")}</label>
             <textarea
               key="textarea-obseInfoPrelm"
               name="obseInfoPrelm"
@@ -1626,15 +1571,13 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones del informe preliminar..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_del_informe_preliminar_2")}
             />
           </div>
         </div>
         
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Adjunto del Informe Preliminar
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("complex.ui.trazabilidad.adjunto_del_informe_preliminar")}</label>
           <ArchivoDropZone
             tipo="informePreliminar"
             campo="adjunto_informe_preliminar"
@@ -1643,11 +1586,9 @@ const Trazabilidad = memo(function Trazabilidad({
           >
             {(isDragActive) =>
               isDragActive ? (
-                <p className="font-body text-sm font-medium text-fenix-primario">Suelta los archivos aquí...</p>
+                <p className="font-body text-sm font-medium text-fenix-primario">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
               ) : (
-                <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
+                <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
               )
             }
           </ArchivoDropZone>
@@ -1656,7 +1597,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Último Documento */}
       <BandejaDesplegable 
-        titulo="Último Documento" 
+        titulo={t('complex.ui.etapas_trazabilidad.ultimo_documento')} 
         bandeja="ultimoDocumento" 
         Icon={iconoPorTipo.ultimoDocumento}
         tipoDocumento="ultimoDocumento"
@@ -1665,9 +1606,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha del Último Documento
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.fecha_del_ultimo_documento")}</label>
             <InputFechaHoraProtocolo
               name="fchaRepoActi"
               value={formData.fchaRepoActi || ''}
@@ -1677,9 +1616,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Observaciones del Último Documento
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.observaciones_del_ultimo_documento")}</label>
             <textarea
               key="textarea-obseRepoActi"
               name="obseRepoActi"
@@ -1688,15 +1625,13 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones del último documento..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_del_ultimo_documento_2")}
             />
           </div>
         </div>
         
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Adjunto del Último Documento
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("complex.ui.trazabilidad.adjunto_del_ultimo_documento")}</label>
           <ArchivoDropZone
             tipo="ultimoDocumento"
             campo="adjunto_entrega_ultimo_documento"
@@ -1705,11 +1640,9 @@ const Trazabilidad = memo(function Trazabilidad({
           >
             {(isDragActive) =>
               isDragActive ? (
-                <p className="font-body text-sm font-medium text-fenix-primario">Suelta los archivos aquí...</p>
+                <p className="font-body text-sm font-medium text-fenix-primario">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
               ) : (
-                <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
+                <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
               )
             }
           </ArchivoDropZone>
@@ -1718,7 +1651,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Informe Final */}
       <BandejaDesplegable 
-        titulo="Informe Final" 
+        titulo={t('complex.ui.etapas_trazabilidad.informe_final')} 
         bandeja="informeFinal" 
         Icon={iconoPorTipo.informeFinal}
         tipoDocumento="informeFinal"
@@ -1727,9 +1660,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha del Informe Final
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.fecha_del_informe_final")}</label>
             <InputFechaHoraProtocolo
               name="fchaInfoFnal"
               value={formData.fchaInfoFnal || ''}
@@ -1739,9 +1670,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Observaciones del Informe Final
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.observaciones_del_informe_final")}</label>
             <textarea
               key="textarea-obseInfoFnal"
               name="obseInfoFnal"
@@ -1750,15 +1679,13 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones del informe final..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_del_informe_final_2")}
             />
           </div>
         </div>
         
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Adjunto del Informe Final
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("complex.ui.trazabilidad.adjunto_del_informe_final")}</label>
           <ArchivoDropZone
             tipo="informeFinal"
             campo="adjunto_informe_final"
@@ -1767,11 +1694,9 @@ const Trazabilidad = memo(function Trazabilidad({
           >
             {(isDragActive) =>
               isDragActive ? (
-                <p className="font-body text-sm font-medium text-fenix-primario">Suelta los archivos aquí...</p>
+                <p className="font-body text-sm font-medium text-fenix-primario">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
               ) : (
-                <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
+                <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
               )
             }
           </ArchivoDropZone>
@@ -1780,7 +1705,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Seguimiento de autorización por parte de la compañía — protocolo fase 11 */}
       <BandejaDesplegable
-        titulo="Seguimiento de autorización por parte de la compañía"
+        titulo={t('complex.ui.etapas_trazabilidad.seguimiento_autorizacion_compania_largo')}
         bandeja="seguimientoAutorizacionCompania"
         Icon={iconoPorTipo.seguimientoAutorizacionCompania}
         tipoDocumento="seguimientoAutorizacionCompania"
@@ -1799,7 +1724,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Presentación de Cifras */}
       <BandejaDesplegable 
-        titulo="Presentación de Cifras" 
+        titulo={t('complex.ui.etapas_trazabilidad.presentacion_de_cifras')} 
         bandeja="presentacionCifras" 
         Icon={iconoPorTipo.presentacionCifras}
         tipoDocumento="presentacionCifras"
@@ -1808,9 +1733,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha de Presentación de Cifras
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.fecha_de_presentacion_de_cifras")}</label>
             <InputFechaHoraProtocolo
               name="fchaPresentacionCifras"
               value={formData.fchaPresentacionCifras || ''}
@@ -1820,9 +1743,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha en que la aseguradora acepta la cifra
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.fecha_en_que_la_aseguradora_acepta_la_cifra")}</label>
             <InputFechaHoraProtocolo
               name="fchaAceptacionCifrasAseguradora"
               value={formData.fchaAceptacionCifrasAseguradora || ''}
@@ -1832,9 +1753,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div className="md:col-span-2">
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Observaciones de Presentación de Cifras
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.observaciones_de_presentacion_de_cifras")}</label>
             <textarea
               key="textarea-obsePresentacionCifras"
               name="obsePresentacionCifras"
@@ -1843,23 +1762,20 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones de presentación de cifras..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_de_presentacion_de_cifras_2")}
             />
           </div>
         </div>
         {diasRespuestaAseguradoraCifra != null && (
-          <p className={`${complexHint} mt-3 px-1`}>
-            Tiempo de respuesta de la aseguradora (presentación → aceptación):{' '}
+          <p className={`${complexHint} mt-3 px-1`}>{t("complex.ui.trazabilidad.tiempo_de_respuesta_de_la_aseguradora_presentacion_acept")}{' '}
             <span className="font-semibold text-gray-800 dark:text-gray-200">
-              {diasRespuestaAseguradoraCifra} día{diasRespuestaAseguradoraCifra !== 1 ? 's' : ''}
+              {diasRespuestaAseguradoraCifra}{t("complex.ui.trazabilidad.dia")}{diasRespuestaAseguradoraCifra !== 1 ? 's' : ''}
             </span>
           </p>
         )}
         
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Adjunto de Presentación de Cifras
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("complex.ui.trazabilidad.adjunto_de_presentacion_de_cifras")}</label>
           <ArchivoDropZone
             tipo="presentacionCifras"
             campo="adjunto_presentacion_cifras"
@@ -1868,11 +1784,9 @@ const Trazabilidad = memo(function Trazabilidad({
           >
             {(isDragActive) =>
               isDragActive ? (
-                <p className="font-body text-sm font-medium text-fenix-primario">Suelta los archivos aquí...</p>
+                <p className="font-body text-sm font-medium text-fenix-primario">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
               ) : (
-                <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
+                <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
               )
             }
           </ArchivoDropZone>
@@ -1881,7 +1795,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Seguimiento de documentos de pago — protocolo fase 13 */}
       <BandejaDesplegable
-        titulo="Seguimiento de documentos de pago"
+        titulo={t('complex.ui.etapas_trazabilidad.seguimiento_documentos_pago_largo')}
         bandeja="seguimientoDocumentosPago"
         Icon={iconoPorTipo.seguimientoDocumentosPago}
         tipoDocumento="seguimientoDocumentosPago"
@@ -1900,7 +1814,7 @@ const Trazabilidad = memo(function Trazabilidad({
 
       {/* Envío de Finiquito */}
       <BandejaDesplegable 
-        titulo="Envío de Finiquito" 
+        titulo={t('complex.ui.etapas_trazabilidad.envio_de_finiquito')} 
         bandeja="envioFiniquito" 
         Icon={iconoPorTipo.envioFiniquito}
         tipoDocumento="envioFiniquito"
@@ -1909,9 +1823,7 @@ const Trazabilidad = memo(function Trazabilidad({
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha de Envío de Finiquito
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.fecha_de_envio_de_finiquito")}</label>
             <InputFechaHoraProtocolo
               name="fchaEnvioFiniquito"
               value={formData.fchaEnvioFiniquito || ''}
@@ -1921,9 +1833,7 @@ const Trazabilidad = memo(function Trazabilidad({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Observaciones de Envío de Finiquito
-            </label>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.trazabilidad.observaciones_de_envio_de_finiquito")}</label>
             <textarea
               key="textarea-obseEnvioFiniquito"
               name="obseEnvioFiniquito"
@@ -1932,15 +1842,13 @@ const Trazabilidad = memo(function Trazabilidad({
               onBlur={handleBlur}
               rows="3"
               className={trazabilidadInputClass}
-              placeholder="Observaciones de envío de finiquito..."
+              placeholder={t("complex.ui.trazabilidad.observaciones_de_envio_de_finiquito_2")}
             />
           </div>
         </div>
         
         <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Adjunto de Envío de Finiquito
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t("complex.ui.trazabilidad.adjunto_de_envio_de_finiquito")}</label>
           <ArchivoDropZone
             tipo="envioFiniquito"
             campo="adjunto_envio_finiquito"
@@ -1949,11 +1857,9 @@ const Trazabilidad = memo(function Trazabilidad({
           >
             {(isDragActive) =>
               isDragActive ? (
-                <p className="font-body text-sm font-medium text-fenix-primario">Suelta los archivos aquí...</p>
+                <p className="font-body text-sm font-medium text-fenix-primario">{t("complex.ui.trazabilidad.suelta_los_archivos_aqui")}</p>
               ) : (
-                <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-                  Arrastra archivos aquí o haz clic para seleccionar
-                </p>
+                <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.trazabilidad.arrastra_archivos_aqui_o_haz_clic_para_seleccionar")}</p>
               )
             }
           </ArchivoDropZone>

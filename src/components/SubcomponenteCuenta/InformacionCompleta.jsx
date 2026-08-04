@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import axios from "axios";
 import { BASE_URL } from '../../config/apiConfig';
 import { useTheme } from '../../context/ThemeContext';
@@ -22,8 +23,9 @@ const esUsuarioAutorizado = () => {
 };
 
 // Función helper para formatear fechas evitando problemas de zona horaria
-const formatearFechaParaMostrar = (fecha) => {
+const formatearFechaParaMostrar = (fecha, locale) => {
   if (!fecha) return "";
+  const dateLocale = locale?.startsWith('en') ? 'en-US' : 'es-ES';
   try {
     if (typeof fecha === 'string') {
       const match = fecha.match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -33,7 +35,7 @@ const formatearFechaParaMostrar = (fecha) => {
         const day = parseInt(match[3]);
         if (year >= 1900 && year <= 2100 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
           const fechaLocal = new Date(year, month - 1, day);
-          return fechaLocal.toLocaleDateString('es-ES', {
+          return fechaLocal.toLocaleDateString(dateLocale, {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -47,7 +49,7 @@ const formatearFechaParaMostrar = (fecha) => {
       const month = fecha.getUTCMonth();
       const day = fecha.getUTCDate();
       const fechaLocal = new Date(year, month, day);
-      return fechaLocal.toLocaleDateString('es-ES', {
+      return fechaLocal.toLocaleDateString(dateLocale, {
         year: 'numeric',
         month: 'long',
         day: 'numeric'
@@ -62,7 +64,7 @@ const formatearFechaParaMostrar = (fecha) => {
     const day = date.getUTCDate();
     const fechaLocal = new Date(year, month, day);
     
-    return fechaLocal.toLocaleDateString('es-ES', {
+    return fechaLocal.toLocaleDateString(dateLocale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
@@ -74,11 +76,13 @@ const formatearFechaParaMostrar = (fecha) => {
 };
 
 export default function InformacionCompleta() {
+  const { t, i18n } = useTranslation();
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const numberLocale = i18n.language?.startsWith('en') ? 'en-US' : 'es-CO';
 
   useEffect(() => {
     // Verificar autorización
@@ -140,7 +144,7 @@ setUsuarios(usuariosData);
   if (loading) {
     return (
       <div className={`text-center mt-16 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-        <p>Cargando información completa…</p>
+        <p>{t('account.ui.informacionCompleta.loading')}</p>
       </div>
     );
   }
@@ -153,10 +157,10 @@ setUsuarios(usuariosData);
     }`}>
       <div className="mb-6">
         <h1 className={`text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>
-          📊 Información Completa de Empleados
+          📊 {t('account.ui.informacionCompleta.title')}
         </h1>
         <p className={`text-sm sm:text-base ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
-          Vista completa de información laboral, contractual y adicional de todos los empleados
+          {t('account.ui.informacionCompleta.subtitle')}
         </p>
       </div>
 
@@ -169,11 +173,11 @@ setUsuarios(usuariosData);
             {/* Encabezado del usuario */}
             <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-gray-300 dark:border-gray-600">
               <div className={`text-2xl sm:text-3xl font-bold ${isDark ? 'text-blue-300' : 'text-blue-700'}`}>
-                {usuario.name || usuario.nombre || 'Usuario'} {usuario.apellido || ''}
+                {usuario.name || usuario.nombre || t('account.ui.cuenta.miCuenta.userFallback')} {usuario.apellido || ''}
               </div>
               {usuario.sucursal && (
                 <div className={`ml-auto px-4 py-2 rounded-lg ${isDark ? 'bg-blue-800/50 text-blue-200' : 'bg-blue-100 text-blue-800'}`}>
-                  <div className="text-xs font-semibold uppercase">Sucursal</div>
+                  <div className="text-xs font-semibold uppercase">{t('account.ui.cuenta.fields.sucursal')}</div>
                   <div className="text-sm font-bold">{usuario.sucursal}</div>
                 </div>
               )}
@@ -182,73 +186,73 @@ setUsuarios(usuariosData);
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Información Personal */}
               <div className={`${isDark ? 'bg-blue-900/30 border-blue-800/50' : 'bg-blue-50 border-blue-200'} p-4 rounded-xl border-2`}>
-                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>📋 Información Personal</h3>
+                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-blue-300' : 'text-blue-800'}`}>📋 {t('account.ui.cuenta.sections.personal')}</h3>
                 <div className="space-y-2 text-sm">
                   {usuario.cedula && (
-                    <div><span className="font-semibold">Cédula:</span> {usuario.cedula}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.cedula')}:</span> {usuario.cedula}</div>
                   )}
                   {usuario.fechaNacimiento && (
-                    <div><span className="font-semibold">Fecha Nacimiento:</span> {formatearFechaParaMostrar(usuario.fechaNacimiento)}</div>
+                    <div><span className="font-semibold">{t('account.ui.informacionCompleta.fields.fechaNacimientoShort')}:</span> {formatearFechaParaMostrar(usuario.fechaNacimiento, i18n.language)}</div>
                   )}
                   {usuario.tipoSangre && (
-                    <div><span className="font-semibold">Tipo Sangre:</span> {usuario.tipoSangre}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.tipoSangre')}:</span> {usuario.tipoSangre}</div>
                   )}
                   {usuario.direccion && (
-                    <div><span className="font-semibold">Dirección:</span> {usuario.direccion}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.direccion')}:</span> {usuario.direccion}</div>
                   )}
                 </div>
               </div>
 
               {/* Información de Contacto */}
               <div className={`${isDark ? 'bg-indigo-900/30 border-indigo-800/50' : 'bg-indigo-50 border-indigo-200'} p-4 rounded-xl border-2`}>
-                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-indigo-300' : 'text-indigo-800'}`}>📞 Información de Contacto</h3>
+                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-indigo-300' : 'text-indigo-800'}`}>📞 {t('account.ui.cuenta.sections.contacto')}</h3>
                 <div className="space-y-2 text-sm">
                   {usuario.telefonoFijo && (
-                    <div><span className="font-semibold">Teléfono Fijo:</span> {usuario.telefonoFijo}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.telefonoFijo')}:</span> {usuario.telefonoFijo}</div>
                   )}
                   {(usuario.celular || usuario.celulares) && (
-                    <div><span className="font-semibold">Celular(es):</span> {usuario.celulares || usuario.celular}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.celulares')}:</span> {usuario.celulares || usuario.celular}</div>
                   )}
                   {(usuario.correo || usuario.email || usuario.correosElectronicos) && (
-                    <div><span className="font-semibold">Correo(s):</span> {usuario.correosElectronicos || usuario.correo || usuario.email}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.correos')}:</span> {usuario.correosElectronicos || usuario.correo || usuario.email}</div>
                   )}
                 </div>
               </div>
 
               {/* Información Laboral */}
               <div className={`${isDark ? 'bg-green-900/30 border-green-800/50' : 'bg-green-50 border-green-200'} p-4 rounded-xl border-2`}>
-                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-green-300' : 'text-green-800'}`}>💼 Información Laboral</h3>
+                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-green-300' : 'text-green-800'}`}>💼 {t('account.ui.cuenta.sections.laboral')}</h3>
                 <div className="space-y-2 text-sm">
                   {usuario.empresa && (
-                    <div><span className="font-semibold">Empresa:</span> {usuario.empresa}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.empresa')}:</span> {usuario.empresa}</div>
                   )}
                   {usuario.fechaIngreso && (
-                    <div><span className="font-semibold">Fecha Ingreso:</span> {formatearFechaParaMostrar(usuario.fechaIngreso)}</div>
+                    <div><span className="font-semibold">{t('account.ui.informacionCompleta.fields.fechaIngresoShort')}:</span> {formatearFechaParaMostrar(usuario.fechaIngreso, i18n.language)}</div>
                   )}
                   {usuario.cargos && (
-                    <div><span className="font-semibold">Cargo(s):</span> {usuario.cargos}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.cargos')}:</span> {usuario.cargos}</div>
                   )}
                   {usuario.salario && (
-                    <div><span className="font-semibold">Salario:</span> ${usuario.salario?.toLocaleString('es-CO') || usuario.salario}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.salario')}:</span> ${usuario.salario?.toLocaleString(numberLocale) || usuario.salario}</div>
                   )}
                   {usuario.fechaModificacionSueldo && (
-                    <div><span className="font-semibold">Fecha Mod. Sueldo:</span> {formatearFechaParaMostrar(usuario.fechaModificacionSueldo)}</div>
+                    <div><span className="font-semibold">{t('account.ui.informacionCompleta.fields.fechaModSueldoShort')}:</span> {formatearFechaParaMostrar(usuario.fechaModificacionSueldo, i18n.language)}</div>
                   )}
                 </div>
               </div>
 
               {/* Información Contractual */}
               <div className={`${isDark ? 'bg-orange-900/30 border-orange-800/50' : 'bg-orange-50 border-orange-200'} p-4 rounded-xl border-2`}>
-                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>📄 Información Contractual</h3>
+                <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-orange-300' : 'text-orange-800'}`}>📄 {t('account.ui.cuenta.sections.contractual')}</h3>
                 <div className="space-y-2 text-sm">
                   {usuario.tipoContrato && (
-                    <div><span className="font-semibold">Tipo Contrato:</span> {usuario.tipoContrato}</div>
+                    <div><span className="font-semibold">{t('account.ui.informacionCompleta.fields.tipoContratoShort')}:</span> {usuario.tipoContrato}</div>
                   )}
                   {usuario.fechaModificacionContrato && (
-                    <div><span className="font-semibold">Fecha Mod. Contrato:</span> {formatearFechaParaMostrar(usuario.fechaModificacionContrato)}</div>
+                    <div><span className="font-semibold">{t('account.ui.informacionCompleta.fields.fechaModContratoShort')}:</span> {formatearFechaParaMostrar(usuario.fechaModificacionContrato, i18n.language)}</div>
                   )}
                   {usuario.vencimiento && (
-                    <div><span className="font-semibold">Vencimiento:</span> {formatearFechaParaMostrar(usuario.vencimiento)}</div>
+                    <div><span className="font-semibold">{t('account.ui.cuenta.fields.vencimiento')}:</span> {formatearFechaParaMostrar(usuario.vencimiento, i18n.language)}</div>
                   )}
                 </div>
               </div>
@@ -256,39 +260,39 @@ setUsuarios(usuariosData);
 
             {/* Aportes y Evaluación */}
             <div className={`mt-6 ${isDark ? 'bg-purple-900/30 border-purple-800/50' : 'bg-purple-50 border-purple-200'} p-4 rounded-xl border-2`}>
-              <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>📊 Información Adicional</h3>
+              <h3 className={`text-lg font-bold mb-4 ${isDark ? 'text-purple-300' : 'text-purple-800'}`}>📊 {t('account.ui.cuenta.sections.adicional')}</h3>
               
               {(usuario.aportesSalud || usuario.aportesPension || usuario.aportesCesantias || usuario.aportesARL || usuario.aportesCCF) && (
                 <div className="mb-4">
-                  <h4 className={`text-base font-bold mb-3 ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>APORTES</h4>
+                  <h4 className={`text-base font-bold mb-3 ${isDark ? 'text-purple-300' : 'text-purple-700'}`}>{t('account.ui.cuenta.sections.aportes')}</h4>
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-sm">
                     {usuario.aportesSalud && (
                       <div>
-                        <div className="font-semibold text-xs uppercase mb-1">SALUD</div>
+                        <div className="font-semibold text-xs uppercase mb-1">{t('account.ui.cuenta.aportes.salud')}</div>
                         <div>{usuario.aportesSalud}</div>
                       </div>
                     )}
                     {usuario.aportesPension && (
                       <div>
-                        <div className="font-semibold text-xs uppercase mb-1">PENSION</div>
+                        <div className="font-semibold text-xs uppercase mb-1">{t('account.ui.cuenta.aportes.pension')}</div>
                         <div>{usuario.aportesPension}</div>
                       </div>
                     )}
                     {usuario.aportesCesantias && (
                       <div>
-                        <div className="font-semibold text-xs uppercase mb-1">CESANTIAS</div>
+                        <div className="font-semibold text-xs uppercase mb-1">{t('account.ui.cuenta.aportes.cesantias')}</div>
                         <div>{usuario.aportesCesantias}</div>
                       </div>
                     )}
                     {usuario.aportesARL && (
                       <div>
-                        <div className="font-semibold text-xs uppercase mb-1">ARL</div>
+                        <div className="font-semibold text-xs uppercase mb-1">{t('account.ui.cuenta.aportes.arl')}</div>
                         <div>{usuario.aportesARL}</div>
                       </div>
                     )}
                     {usuario.aportesCCF && (
                       <div>
-                        <div className="font-semibold text-xs uppercase mb-1">C.C.F.</div>
+                        <div className="font-semibold text-xs uppercase mb-1">{t('account.ui.cuenta.aportes.ccf')}</div>
                         <div>{usuario.aportesCCF}</div>
                       </div>
                     )}
@@ -298,13 +302,17 @@ setUsuarios(usuariosData);
               
               {usuario.evaluacionPeriodoPrueba !== undefined && usuario.evaluacionPeriodoPrueba !== null && (
                 <div>
-                  <div className="font-semibold text-sm mb-1">Evaluación Período de Prueba</div>
+                  <div className="font-semibold text-sm mb-1">{t('account.ui.cuenta.fields.evaluacionPeriodoPrueba')}</div>
                   <span className={`inline-block px-3 py-1 rounded-lg text-sm ${
                     usuario.evaluacionPeriodoPrueba === 'Aprobado' || usuario.evaluacionPeriodoPrueba === true
                       ? (isDark ? 'bg-green-800/50 text-green-200' : 'bg-green-100 text-green-800')
                       : (isDark ? 'bg-yellow-800/50 text-yellow-200' : 'bg-yellow-100 text-yellow-800')
                   }`}>
-                    {usuario.evaluacionPeriodoPrueba === true ? 'Aprobado' : usuario.evaluacionPeriodoPrueba === false ? 'Pendiente' : usuario.evaluacionPeriodoPrueba}
+                    {usuario.evaluacionPeriodoPrueba === true
+                      ? t('account.ui.cuenta.evaluation.aprobado')
+                      : usuario.evaluacionPeriodoPrueba === false
+                        ? t('account.ui.cuenta.evaluation.pendiente')
+                        : usuario.evaluacionPeriodoPrueba}
                   </span>
                 </div>
               )}
@@ -315,4 +323,3 @@ setUsuarios(usuariosData);
     </div>
   );
 }
-

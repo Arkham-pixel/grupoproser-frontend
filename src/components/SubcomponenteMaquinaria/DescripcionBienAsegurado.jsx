@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { FormTable, FormTableRow, TableFieldInput, TableFieldTextarea, SyncedValue } from "./maquinariaUi";
 
 export default function DescripcionBienAsegurado({
@@ -16,55 +17,57 @@ export default function DescripcionBienAsegurado({
   equipoRadio, setEquipoRadio,
   radiodeOperacion, setRadiodeOperacion,
 }) {
+  const { t } = useTranslation();
+
   const filas = [
-    { label: "MODELO", value: modelo, onChange: setModelo },
-    { label: "LÍNEA", value: linea, onChange: setLinea },
-    { label: "MOTOR DIESEL", value: motorDiesel, onChange: setMotorDiesel },
-    { label: "COLOR", value: color, onChange: setColor },
-    { label: "ESTADO OPERATIVO", value: estadoOperativo, onChange: setEstadoOperativo },
-    { label: "CABINA", value: cabina, onChange: setCabina },
-    { label: "EQUIPO CONTRAINCENDIO", value: equipoContraincendio, onChange: setEquipoContraincendio },
-    { label: "EQUIPO DE RADIO COMUNICACIÓN", value: equipoRadio, onChange: setEquipoRadio },
-    { label: "RADIO DE OPERACIÓN", value: radiodeOperacion, onChange: setRadiodeOperacion },
+    { label: t('machinery.ui.description.modelo'), value: modelo, onChange: setModelo },
+    { label: t('machinery.ui.description.linea'), value: linea, onChange: setLinea },
+    { label: t('machinery.ui.description.motorDiesel'), value: motorDiesel, onChange: setMotorDiesel },
+    { label: t('machinery.ui.description.color'), value: color, onChange: setColor },
+    { label: t('machinery.ui.description.estadoOperativo'), value: estadoOperativo, onChange: setEstadoOperativo },
+    { label: t('machinery.ui.description.cabina'), value: cabina, onChange: setCabina },
+    { label: t('machinery.ui.description.equipoContraincendio'), value: equipoContraincendio, onChange: setEquipoContraincendio },
+    { label: t('machinery.ui.description.equipoRadio'), value: equipoRadio, onChange: setEquipoRadio },
+    { label: t('machinery.ui.description.radioOperacion'), value: radiodeOperacion, onChange: setRadiodeOperacion },
   ];
 
   return (
     <FormTable>
       <tbody>
-        <FormTableRow label="DESCRIPCIÓN">
+        <FormTableRow label={t('machinery.ui.description.descripcion')}>
           <TableFieldTextarea
             rows={3}
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
-            placeholder="Descripción general del bien"
+            placeholder={t('machinery.ui.description.descripcionPlaceholder')}
           />
         </FormTableRow>
 
-        <FormTableRow label="MARCA">
-          <SyncedValue value={marca} source="Encabezado del formulario" />
+        <FormTableRow label={t('machinery.ui.description.marca')}>
+          <SyncedValue value={marca} source={t('machinery.ui.sources.formHeader')} />
         </FormTableRow>
 
         {filas.map(({ label, value, onChange }) => (
           <FormTableRow key={label} label={label}>
-            <TableFieldInput value={value} onChange={(e) => onChange(e.target.value)} placeholder="Escriba aquí" />
+            <TableFieldInput value={value} onChange={(e) => onChange(e.target.value)} placeholder={t('machinery.ui.common.writeHere')} />
           </FormTableRow>
         ))}
 
-        <FormTableRow label="SISTEMA DE LOCOMOCIÓN">
+        <FormTableRow label={t('machinery.ui.description.locomocion')}>
           <TableFieldTextarea
             rows={2}
             value={sistemaLocomocion}
             onChange={(e) => setSistemaLocomocion(e.target.value)}
-            placeholder="Describa el sistema de locomoción"
+            placeholder={t('machinery.ui.description.locomocionPlaceholder')}
           />
         </FormTableRow>
 
-        <FormTableRow label="FUNCIÓN">
+        <FormTableRow label={t('machinery.ui.description.funcion')}>
           <TableFieldTextarea
             rows={2}
             value={funcion}
             onChange={(e) => setFuncion(e.target.value)}
-            placeholder="Función del equipo"
+            placeholder={t('machinery.ui.description.funcionPlaceholder')}
           />
         </FormTableRow>
       </tbody>

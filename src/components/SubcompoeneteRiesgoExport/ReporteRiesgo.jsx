@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { obtenerCasosRiesgo, deleteCasoRiesgo, obtenerResponsables, obtenerEstados, obtenerAseguradoras, obtenerCiudades } from '../../services/riesgoService'; // Ajusta la ruta si es necesario
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -272,50 +273,54 @@ const obtenerValorBusquedaCaso = (caso, campo) => {
   return valorEncontrado ?? '';
 };
 
-// Lista completa de columnas posibles (puedes agregar más si tu base tiene más campos)
-const todasLasColumnas = [
-  { clave: 'nmroRiesgo', label: 'N° Riesgo' },
-  { clave: 'asgrBenfcro', label: 'Asegurado' },
-  { clave: 'codiAsgrdra', label: 'Cód. Aseguradora' },
-  { clave: 'codigoPoblado', label: 'Ciudad' },
-  { clave: 'ciudadSucursalAseguradora', label: 'Ciudad Sucursal Aseguradora', esCalculada: true },
-  { clave: 'nmroConsecutivo', label: 'Consecutivo de Aseguradora' },
-  { clave: 'codiEstdo', label: 'Estado' },
-  { clave: 'fchaAsgncion', label: 'Fecha Asignación' },
-  { clave: 'fchaInspccion', label: 'Fecha Inspección' },
-  { clave: 'fchaInforme', label: 'Fecha Informe Final' },
-  { clave: 'codiIspector', label: 'Inspector' },
-  { clave: 'observInspeccion', label: 'Observaciones Inspección' },
-  { clave: 'observAsignacion', label: 'Observaciones Asignación' },
-  { clave: 'vlorTarifaAseguradora', label: 'Tarifa Aseguradora' },
-  { clave: 'vlorHonorarios', label: 'Honorarios' },
-  { clave: 'vlorGastos', label: 'Gastos' },
-  { clave: 'totalPagado', label: 'Total Pagado' },
-  { clave: 'adjuntoAsignacion', label: 'Adjunto Asignación' },
-  { clave: 'adjuntoInspeccion', label: 'Adjunto Inspección' },
-  { clave: 'anxoInfoFnal', label: 'Adjunto Informe Final' },
-  { clave: 'anxoFactra', label: 'Adjunto Factura' },
-  { clave: 'fchaFactra', label: 'Fecha Factura' },
-  { clave: 'nmroFactra', label: 'Número Factura' },
-  { clave: 'funcSolicita', label: 'Quien Solicita' },
-  { clave: 'codDireccion', label: 'Dirección' },
-  { clave: 'codigoPoblado', label: 'Código Poblado' },
-  { clave: 'codiClasificacion', label: 'Clasificación' },
-  { clave: 'observInforme', label: 'Observaciones Informe' },
-  { clave: 'codiRespnsble', label: 'Código Responsable' },
-  { clave: 'codiPais', label: 'Código País' },
-  { clave: 'codiDepto', label: 'Código Departamento' },
-  { clave: 'codiMpio', label: 'Código Municipio' },
-  { clave: 'codiCpoblado', label: 'Código Poblado' },
-  { clave: 'descIva', label: 'Descripción IVA' },
-  { clave: 'reteIva', label: 'Retención IVA' },
-  { clave: 'reteFuente', label: 'Retención Fuente' },
-  { clave: 'reteIca', label: 'Retención ICA' }
-];
+const getTodasLasColumnas = (t) => {
+  const col = (key) => t(`risks.ui.reporte_riesgo.columns.${key}`);
+
+  return [
+    { clave: 'nmroRiesgo', label: col('nmroRiesgo') },
+    { clave: 'asgrBenfcro', label: col('asgrBenfcro') },
+    { clave: 'codiAsgrdra', label: col('codiAsgrdra') },
+    { clave: 'codigoPoblado', label: col('codigoPoblado') },
+    { clave: 'ciudadSucursalAseguradora', label: col('ciudadSucursalAseguradora'), esCalculada: true },
+    { clave: 'nmroConsecutivo', label: col('nmroConsecutivo') },
+    { clave: 'codiEstdo', label: col('codiEstdo') },
+    { clave: 'fchaAsgncion', label: col('fchaAsgncion') },
+    { clave: 'fchaInspccion', label: col('fchaInspccion') },
+    { clave: 'fchaInforme', label: col('fchaInforme') },
+    { clave: 'codiIspector', label: col('codiIspector') },
+    { clave: 'observInspeccion', label: col('observInspeccion') },
+    { clave: 'observAsignacion', label: col('observAsignacion') },
+    { clave: 'vlorTarifaAseguradora', label: col('vlorTarifaAseguradora') },
+    { clave: 'vlorHonorarios', label: col('vlorHonorarios') },
+    { clave: 'vlorGastos', label: col('vlorGastos') },
+    { clave: 'totalPagado', label: col('totalPagado') },
+    { clave: 'adjuntoAsignacion', label: col('adjuntoAsignacion') },
+    { clave: 'adjuntoInspeccion', label: col('adjuntoInspeccion') },
+    { clave: 'anxoInfoFnal', label: col('anxoInfoFnal') },
+    { clave: 'anxoFactra', label: col('anxoFactra') },
+    { clave: 'fchaFactra', label: col('fchaFactra') },
+    { clave: 'nmroFactra', label: col('nmroFactra') },
+    { clave: 'funcSolicita', label: col('funcSolicita') },
+    { clave: 'codDireccion', label: col('codDireccion') },
+    { clave: 'codiClasificacion', label: col('codiClasificacion') },
+    { clave: 'observInforme', label: col('observInforme') },
+    { clave: 'codiRespnsble', label: col('codiRespnsble') },
+    { clave: 'codiPais', label: col('codiPais') },
+    { clave: 'codiDepto', label: col('codiDepto') },
+    { clave: 'codiMpio', label: col('codiMpio') },
+    { clave: 'codiCpoblado', label: col('codiCpoblado') },
+    { clave: 'descIva', label: col('descIva') },
+    { clave: 'reteIva', label: col('reteIva') },
+    { clave: 'reteFuente', label: col('reteFuente') },
+    { clave: 'reteIca', label: col('reteIca') },
+  ];
+};
 
 const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const todasLasColumnas = useMemo(() => getTodasLasColumnas(t), [t]);
   const selectStyles = useMemo(() => getRiesgoSelectStyles(isDark), [isDark]);
   const [casos, setCasos] = useState([]);
   const [responsables, setResponsables] = useState([]);
@@ -524,7 +529,7 @@ if (clasificacionesList.length === 0) {
 
   const handleInforme = async (caso) => {
     if (!caso) {
-      alert('No se encontró el caso para generar el informe.');
+      alert(t('risks.ui.reporte_riesgo.caso_no_encontrado_informe'));
       return;
     }
     try {
@@ -536,7 +541,11 @@ if (clasificacionesList.length === 0) {
       });
     } catch (error) {
       console.error('Error al abrir el informe de inspección:', error);
-      alert(`Error al abrir el informe: ${error.message || 'Error desconocido'}`);
+      alert(
+        t('risks.ui.reporte_riesgo.error_abrir_informe', {
+          error: error.message || t('common.unknownError'),
+        })
+      );
     }
   };
 
@@ -547,14 +556,14 @@ if (clasificacionesList.length === 0) {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este caso?')) {
+    if (window.confirm(t('risks.ui.reporte_riesgo.confirm_eliminar'))) {
       try {
         await deleteCasoRiesgo(id);
-        alert('Caso eliminado correctamente');
+        alert(t('risks.ui.reporte_riesgo.eliminado_ok'));
         obtenerCasos();
       } catch (error) {
         console.error('Error al eliminar el caso:', error);
-        alert('Error al eliminar el caso');
+        alert(t('risks.ui.reporte_riesgo.error_eliminar'));
       }
     }
   };
@@ -1316,75 +1325,75 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
     <div className={riesgoReportRoot}>
       <div className={`${riesgoScope} ${riesgoPageWrapWide}`}>
         <RiesgoPageHeader
-          title="Reporte de casos de riesgo"
-          subtitle="Consulta, filtra y exporta el listado de casos."
+          title={t('risks.reportTitle')}
+          subtitle={t('risks.reportSubtitle')}
           showNav={false}
         />
 
         <RiesgoFilterSection
-          title="Filtros y consulta"
-          subtitle="Navegación, fechas, catálogos, búsqueda y exportación en un solo panel."
+          title={t('risks.filterTitle')}
+          subtitle={t('risks.filterSubtitle')}
           showClear={mostrarLimpiar}
           onClear={limpiarFiltros}
         >
           <RiesgoNavPanel activePath="/riesgos/exportar" />
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Campo label="Fecha desde">
+            <Campo label={t('risks.dateFrom')}>
               <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
             </Campo>
-            <Campo label="Fecha hasta">
+            <Campo label={t('risks.dateTo')}>
               <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
             </Campo>
           </div>
         
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Campo label="Estado">
+            <Campo label={t('risks.status')}>
               <Select
                 isMulti
                 options={estadosUnicos}
                 value={estadoFiltro}
                 onChange={(selected) => setEstadoFiltro(selected || [])}
-                placeholder="Todos los estados"
+                placeholder={t('risks.ui.reporte_riesgo.all_statuses')}
                 isClearable
                 menuPortalTarget={document.body}
                 menuPosition="fixed"
                 styles={selectStyles}
               />
             </Campo>
-            <Campo label="Responsable">
+            <Campo label={t('risks.responsible')}>
               <Select
                 isMulti
                 options={responsablesUnicos}
                 value={responsableFiltro}
                 onChange={(selected) => setResponsableFiltro(selected || [])}
-                placeholder="Todos los responsables"
+                placeholder={t('risks.ui.reporte_riesgo.all_responsibles')}
                 isClearable
                 menuPortalTarget={document.body}
                 menuPosition="fixed"
                 styles={selectStyles}
               />
             </Campo>
-            <Campo label="Aseguradora">
+            <Campo label={t('risks.insurer')}>
               <Select
                 isMulti
                 options={aseguradorasUnicas}
                 value={aseguradoraFiltro}
                 onChange={(selected) => setAseguradoraFiltro(selected || [])}
-                placeholder="Todas las aseguradoras"
+                placeholder={t('risks.ui.reporte_riesgo.all_insurers')}
                 isClearable
                 menuPortalTarget={document.body}
                 menuPosition="fixed"
                 styles={selectStyles}
               />
             </Campo>
-            <Campo label="Ciudad">
+            <Campo label={t('risks.city')}>
               <Select
                 isMulti
                 options={ciudadesUnicas}
                 value={ciudadFiltro}
                 onChange={(selected) => setCiudadFiltro(selected || [])}
-                placeholder="Todas las ciudades"
+                placeholder={t('risks.ui.reporte_riesgo.all_cities')}
                 isClearable
                 menuPortalTarget={document.body}
                 menuPosition="fixed"
@@ -1395,14 +1404,14 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
 
           <div className={riesgoFilterDivider}>
             <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
-              Búsqueda y acciones
+              {t('risks.ui.reporte_riesgo.busqueda_acciones')}
             </p>
             <div className={riesgoToolbarRow}>
               <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-2xl">
-                <Campo label="Buscar por">
+                <Campo label={t('risks.searchBy')}>
                   <SelectFenix value={campoBusqueda} onChange={(e) => setCampoBusqueda(e.target.value)}>
                     <option value="" disabled>
-                      Selecciona filtro
+                      {t('risks.ui.reporte_riesgo.selecciona_filtro')}
                     </option>
                     {camposVisibles.map((c) => (
                       <option key={c.clave} value={c.clave}>
@@ -1412,32 +1421,35 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                   </SelectFenix>
                   {!campoBusqueda && (
                     <p className="mt-1 font-body text-xs text-fenix-primario">
-                      Selecciona un filtro para buscar.
+                      {t('risks.ui.reporte_riesgo.hint_selecciona_filtro')}
                     </p>
                   )}
                 </Campo>
-                <Campo label="Término">
+                <Campo label={t('risks.term')}>
                   <InputFenix
                     type="text"
                     value={terminoBusqueda}
                     onChange={(e) => setTerminoBusqueda(e.target.value)}
                     disabled={!campoBusqueda}
-                    placeholder="Escribe el valor a buscar…"
+                    placeholder={t('risks.searchValue')}
                   />
                 </Campo>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
                 <button type="button" className={riesgoBtnPrimary} onClick={obtenerCasos}>
-                  Buscar
+                  {t('risks.search')}
                 </button>
                 <button type="button" className={riesgoBtnSecondary} onClick={abrirModalColumnas}>
-                  Columnas
+                  {t('risks.configureColumns')}
                 </button>
                 <button type="button" className={riesgoBtnSuccess} onClick={exportarExcel}>
-                  Exportar Excel
+                  {t('risks.exportExcel')}
                 </button>
                 <span className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
-                  {camposVisibles.length} de {todasLasColumnas.length} columnas
+                  {t('risks.ui.reporte_riesgo.columnas_count', {
+                    shown: camposVisibles.length,
+                    total: todasLasColumnas.length,
+                  })}
                 </span>
               </div>
             </div>
@@ -1446,45 +1458,68 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
           {(filtrosAplicados || hayBusqueda) && (
             <div className={`${riesgoFilterActiveBox} mt-4`}>
               <p className="mb-2 font-body text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Filtros activos
+                {t('risks.ui.reporte_riesgo.filtros_activos')}
               </p>
               <div className="flex flex-wrap gap-1">
-                {fechaDesde && <span className={riesgoFilterChip}>Desde: {fechaDesde}</span>}
-                {fechaHasta && <span className={riesgoFilterChip}>Hasta: {fechaHasta}</span>}
+                {fechaDesde && (
+                  <span className={riesgoFilterChip}>
+                    {t('risks.ui.dashboard.chip_desde', { value: fechaDesde })}
+                  </span>
+                )}
+                {fechaHasta && (
+                  <span className={riesgoFilterChip}>
+                    {t('risks.ui.dashboard.chip_hasta', { value: fechaHasta })}
+                  </span>
+                )}
                 {estadoFiltro.map((filtro, index) => (
                   <span key={`estado-${index}`} className={riesgoFilterChip}>
-                    Estado: {filtro.label || getEstadoNombre(filtro.value, estadosLocales)}
+                    {t('risks.ui.dashboard.chip_estado', {
+                      value: filtro.label || getEstadoNombre(filtro.value, estadosLocales),
+                    })}
                   </span>
                 ))}
                 {responsableFiltro.map((filtro, index) => (
                   <span key={`responsable-${index}`} className={riesgoFilterChip}>
-                    Responsable: {filtro.label || getResponsableNombre(filtro.value, responsables)}
+                    {t('risks.ui.dashboard.chip_responsable', {
+                      value: filtro.label || getResponsableNombre(filtro.value, responsables),
+                    })}
                   </span>
                 ))}
                 {aseguradoraFiltro.map((filtro, index) => (
                   <span key={`aseguradora-${index}`} className={riesgoFilterChip}>
-                    Aseguradora: {filtro.label || getAseguradoraNombre(filtro.value, aseguradoras)}
+                    {t('risks.ui.dashboard.chip_aseguradora', {
+                      value: filtro.label || getAseguradoraNombre(filtro.value, aseguradoras),
+                    })}
                   </span>
                 ))}
                 {ciudadFiltro.map((filtro, index) => (
                   <span key={`ciudad-${index}`} className={riesgoFilterChip}>
-                    Ciudad: {filtro.label || getCiudadNombre(filtro.value, ciudades)}
+                    {t('risks.city')}: {filtro.label || getCiudadNombre(filtro.value, ciudades)}
                   </span>
                 ))}
                 {campoBusqueda && terminoBusqueda && (
                   <span className={riesgoFilterChip}>
-                    Búsqueda: {camposVisibles.find((c) => c.clave === campoBusqueda)?.label || campoBusqueda} ={' '}
+                    {t('risks.searchBy')}:{' '}
+                    {camposVisibles.find((c) => c.clave === campoBusqueda)?.label || campoBusqueda} ={' '}
                     {terminoBusqueda}
                   </span>
                 )}
               </div>
               <p className="mt-2 font-body text-xs text-gray-600 dark:text-gray-400">
-                Mostrando {casosFiltrados.length} de {casos.length} casos
-                {totalPaginas > 1 ? ` · Página ${paginaActual} de ${totalPaginas}` : ''}
+                {t('risks.ui.dashboard.mostrando_casos', {
+                  shown: casosFiltrados.length,
+                  total: casos.length,
+                })}
+                {totalPaginas > 1
+                  ? ` · ${t('risks.ui.reporte_riesgo.pagina_de', {
+                      page: paginaActual,
+                      total: totalPaginas,
+                    })}`
+                  : ''}
               </p>
               {hayFiltroResponsable && (
                 <p className="mt-1 font-body text-xs font-medium text-fenix-exito">
-                  Mostrando todos los casos del responsable seleccionado (sin paginación)
+                  {t('risks.ui.reporte_riesgo.sin_paginacion_responsable')}
                 </p>
               )}
             </div>
@@ -1494,7 +1529,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
         {totalPaginas > 1 && (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
             <span className="font-body text-sm text-gray-700 dark:text-gray-300">
-              Página {paginaActual} de {totalPaginas}
+              {t('risks.ui.reporte_riesgo.pagina_de', { page: paginaActual, total: totalPaginas })}
             </span>
             <div className="flex flex-wrap gap-2">
               <button
@@ -1503,7 +1538,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                 disabled={paginaActual === 1}
                 className={riesgoPaginationBtn}
               >
-                Anterior
+                {t('common.previous')}
               </button>
               <button
                 type="button"
@@ -1511,7 +1546,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                 disabled={paginaActual === totalPaginas}
                 className={riesgoPaginationBtn}
               >
-                Siguiente
+                {t('common.next')}
               </button>
             </div>
           </div>
@@ -1528,7 +1563,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                   borderColor: borderColor
                 }}
               >
-                Acciones
+                {t('risks.ui.reporte_riesgo.col_acciones')}
               </th>
               {camposVisibles.map(({ clave, label }) => (
                 <th
@@ -1559,7 +1594,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                   className="text-center py-6"
                   style={{ color: textSecondary }}
                 >
-                  No hay registros para mostrar
+                  {t('risks.ui.reporte_riesgo.sin_registros')}
                 </td>
               </tr>
               ) : 
@@ -1679,7 +1714,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                 className="text-base font-semibold sm:text-lg"
                 style={{ color: textPrimary }}
               >
-                Editar caso de riesgo
+                {t('risks.ui.reporte_riesgo.modal_editar_titulo')}
               </h2>
               <button
                 className="rounded-full p-1 transition"
@@ -1693,7 +1728,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                   e.currentTarget.style.color = textSecondary;
                 }}
                 onClick={handleCloseModal}
-                title="Cerrar"
+                title={t('common.close')}
               >
                 <span className="text-2xl leading-none">&times;</span>
               </button>
@@ -1724,7 +1759,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                 e.currentTarget.style.color = textSecondary;
               }}
               onClick={() => setModalColumnas(false)}
-              title="Cerrar"
+              title={t('common.close')}
             >
               ×
             </button>
@@ -1732,10 +1767,10 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
               className="text-lg font-bold mb-2"
               style={{ color: textPrimary }}
             >
-              Personalizar columnas
+              {t('risks.ui.reporte_riesgo.personalizar_columnas')}
             </h3>
             <p className="text-xs sm:text-sm mb-3" style={{ color: textSecondary }}>
-              Arrastra las columnas para cambiar su orden. Marca/desmarca para mostrar/ocultar.
+              {t('risks.ui.reporte_riesgo.columnas_instrucciones')}
             </p>
             <div className="flex flex-col gap-2 max-h-80 overflow-y-auto mb-4 border rounded p-2" style={{ borderColor: borderColor }}>
               {(columnasOrdenadas.length > 0 ? columnasOrdenadas : todasLasColumnas).map((col, index) => (
@@ -1784,7 +1819,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                 }}
                 onClick={() => setModalColumnas(false)}
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button
                 className="text-white px-4 py-2 rounded transition-colors"
@@ -1797,7 +1832,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                 }}
                 onClick={guardarColumnasPersonalizadas}
               >
-                Guardar
+                {t('common.save')}
               </button>
             </div>
           </div>

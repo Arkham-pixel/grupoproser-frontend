@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { esEstadoComplex } from './expressDashboardStats.js';
 import {
   pivotRowEven,
@@ -16,6 +17,7 @@ import {
 } from './expressFenixUi.js';
 
 function PivotTableShell({ title, titleVariant = 'mes', children, empty }) {
+  const { t } = useTranslation();
   const titleBar =
     titleVariant === 'anio'
       ? pivotTitleAnio
@@ -36,7 +38,7 @@ function PivotTableShell({ title, titleVariant = 'mes', children, empty }) {
       </div>
       <div className="max-h-[min(52vh,420px)] flex-1 overflow-auto bg-white dark:bg-[#1A1A1A]">
         {empty ? (
-          <p className="p-3 font-body text-xs text-fenix-textoMedio">Sin datos</p>
+          <p className="p-3 font-body text-xs text-fenix-textoMedio">{t('express.board.noData')}</p>
         ) : (
           children
         )}
@@ -74,8 +76,10 @@ function TheadPivot({ cols }) {
 /** Tabla 1: totales por ajustador (expandible al detalle por fecha) */
 export function TablaAsignacionResumenAjustador({
   datos,
-  title = 'Asignación por ajustador',
+  title,
 }) {
+  const { t } = useTranslation();
+  const tituloFinal = title ?? t('express.ui.pivot.assignmentByAdjusterDefault');
   const { grupos = [], granTotal = 0 } = datos ?? {};
   const [expandidos, setExpandidos] = useState(() => new Set());
   const vacio = grupos.length === 0;
@@ -90,13 +94,13 @@ export function TablaAsignacionResumenAjustador({
   };
 
   return (
-    <PivotTableShell title={title} titleVariant="mes" empty={vacio}>
+    <PivotTableShell title={tituloFinal} titleVariant="mes" empty={vacio}>
       <table className="w-full min-w-[220px] border-collapse font-body text-xs">
         <TheadPivot
           cols={[
-            { key: 'aj', label: 'Ajustador' },
-            { key: 'av', label: 'Aviso siniestro' },
-            { key: 'cnt', label: 'Cant.', align: 'right' },
+            { key: 'aj', label: t('express.ui.pivot.adjuster') },
+            { key: 'av', label: t('express.ui.pivot.claimNotice') },
+            { key: 'cnt', label: t('express.ui.pivot.qty'), align: 'right' },
           ]}
         />
         <tbody>
@@ -115,7 +119,7 @@ export function TablaAsignacionResumenAjustador({
                     <span className="mr-0.5 text-[10px] text-fenix-textoMedio">
                       {abierto ? '▼' : '▶'}
                     </span>
-                    Total {grupo.ajustador}
+                    {t('express.ui.pivot.totalOf', { name: grupo.ajustador })}
                   </td>
                   <td className="px-2 py-1 text-fenix-textoMedio">—</td>
                   <td className="px-2 py-1 text-right tabular-nums">{grupo.total}</td>
@@ -141,7 +145,7 @@ export function TablaAsignacionResumenAjustador({
           })}
           <tr className={pivotTotalRow}>
             <td className="px-2 py-1.5" colSpan={2}>
-              Suma total
+              {t('express.ui.pivot.sumTotal')}
             </td>
             <td className="px-2 py-1.5 text-right tabular-nums">{granTotal}</td>
           </tr>
@@ -152,19 +156,21 @@ export function TablaAsignacionResumenAjustador({
 }
 
 /** Tabla 2: estado por ajustador (mes) */
-export function TablaEstadoPorAjustador({ datos, title = 'Estado por ajustador' }) {
+export function TablaEstadoPorAjustador({ datos, title }) {
+  const { t } = useTranslation();
+  const tituloFinal = title ?? t('express.ui.pivot.statusByAdjusterDefault');
   const { grupos = [], granTotal = 0 } = datos ?? {};
   const vacio = grupos.length === 0;
   let globalIdx = 0;
 
   return (
-    <PivotTableShell title={title} titleVariant="mes" empty={vacio}>
+    <PivotTableShell title={tituloFinal} titleVariant="mes" empty={vacio}>
       <table className="w-full min-w-[260px] border-collapse font-body text-xs">
         <TheadPivot
           cols={[
-            { key: 'aj', label: 'Ajustador' },
-            { key: 'est', label: 'Estado siniestro' },
-            { key: 'cnt', label: 'Cant.', align: 'right' },
+            { key: 'aj', label: t('express.ui.pivot.adjuster') },
+            { key: 'est', label: t('express.ui.pivot.claimStatus') },
+            { key: 'cnt', label: t('express.ui.pivot.qty'), align: 'right' },
           ]}
         />
         <tbody>
@@ -187,7 +193,7 @@ export function TablaEstadoPorAjustador({ datos, title = 'Estado por ajustador' 
               })}
               <tr className={pivotSubtotalRow}>
                 <td className="px-2 py-1" colSpan={2}>
-                  Total {grupo.ajustador}
+                  {t('express.ui.pivot.totalOf', { name: grupo.ajustador })}
                 </td>
                 <td className="px-2 py-1 text-right tabular-nums">{grupo.total}</td>
               </tr>
@@ -195,7 +201,7 @@ export function TablaEstadoPorAjustador({ datos, title = 'Estado por ajustador' 
           ))}
           <tr className={pivotTotalRow}>
             <td className="px-2 py-1.5" colSpan={2}>
-              Suma total
+              {t('express.ui.pivot.sumTotal')}
             </td>
             <td className="px-2 py-1.5 text-right tabular-nums">{granTotal}</td>
           </tr>
@@ -206,17 +212,19 @@ export function TablaEstadoPorAjustador({ datos, title = 'Estado por ajustador' 
 }
 
 /** Tabla 3: estado total año */
-export function TablaEstadoTotalAnio({ datos, title = 'Estado total año' }) {
+export function TablaEstadoTotalAnio({ datos, title }) {
+  const { t } = useTranslation();
+  const tituloFinal = title ?? t('express.ui.pivot.statusTotalYearDefault');
   const { filas = [], granTotal = 0 } = datos ?? {};
   const vacio = filas.length === 0;
 
   return (
-    <PivotTableShell title={title} titleVariant="anio" empty={vacio}>
+    <PivotTableShell title={tituloFinal} titleVariant="anio" empty={vacio}>
       <table className="w-full min-w-[200px] border-collapse font-body text-xs">
         <TheadPivot
           cols={[
-            { key: 'est', label: 'Estado casos' },
-            { key: 'cnt', label: 'Cant.', align: 'right' },
+            { key: 'est', label: t('express.ui.pivot.caseStatus') },
+            { key: 'cnt', label: t('express.ui.pivot.qty'), align: 'right' },
           ]}
         />
         <tbody>
@@ -229,7 +237,7 @@ export function TablaEstadoTotalAnio({ datos, title = 'Estado total año' }) {
             </tr>
           ))}
           <tr className={pivotTotalRow}>
-            <td className="px-2 py-1.5">Suma total</td>
+            <td className="px-2 py-1.5">{t('express.ui.pivot.sumTotal')}</td>
             <td className="px-2 py-1.5 text-right tabular-nums">{granTotal}</td>
           </tr>
         </tbody>
@@ -243,6 +251,7 @@ export function TablaAsignacionPorAjustador({ datos, title }) {
 }
 
 export function TablaHitoPorAjustador({ titulo, datos }) {
+  const { t } = useTranslation();
   const { grupos = [], granTotal = 0 } = datos ?? {};
   const [expandidos, setExpandidos] = useState(() => new Set());
   const vacio = grupos.length === 0;
@@ -261,9 +270,9 @@ export function TablaHitoPorAjustador({ titulo, datos }) {
       <table className="w-full border-collapse font-body text-xs">
         <TheadPivot
           cols={[
-            { key: 'aj', label: 'Ajustador' },
-            { key: 'f', label: 'Fecha' },
-            { key: 'c', label: 'Cant.', align: 'right' },
+            { key: 'aj', label: t('express.ui.pivot.adjuster') },
+            { key: 'f', label: t('express.ui.pivot.date') },
+            { key: 'c', label: t('express.ui.pivot.qty'), align: 'right' },
           ]}
         />
         <tbody>
@@ -299,7 +308,7 @@ export function TablaHitoPorAjustador({ titulo, datos }) {
           })}
           <tr className={pivotTotalRow}>
             <td className="px-2 py-1" colSpan={2}>
-              Suma total
+              {t('express.ui.pivot.sumTotal')}
             </td>
             <td className="px-2 py-1 text-right">{granTotal}</td>
           </tr>

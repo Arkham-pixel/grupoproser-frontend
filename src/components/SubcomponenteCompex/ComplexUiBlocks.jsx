@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer } from 'recharts';
@@ -59,17 +60,23 @@ const COMPLEX_AVISO_ESTILOS = {
 export function ComplexAvisoModal({
   open,
   onClose,
-  titulo = 'Atención',
+  titulo,
   mensaje = '',
   tipo = 'info',
-  botonTexto = 'Entendido',
+  botonTexto,
   onConfirm,
-  confirmTexto = 'Sí',
-  cancelTexto = 'No',
+  confirmTexto,
+  cancelTexto,
   confirmVariant = 'danger',
   zIndexClass = 'z-[60]',
 }) {
+  const { t } = useTranslation();
   if (!open) return null;
+
+  const tituloFinal = titulo ?? t('complex.ui.complex_ui_blocks.atencion');
+  const botonTextoFinal = botonTexto ?? t('complex.ui.complex_ui_blocks.entendido');
+  const confirmTextoFinal = confirmTexto ?? t('complex.ui.complex_ui_blocks.si');
+  const cancelTextoFinal = cancelTexto ?? t('complex.ui.complex_ui_blocks.no');
 
   const estilo = COMPLEX_AVISO_ESTILOS[tipo] || COMPLEX_AVISO_ESTILOS.info;
   const Icono = estilo.icon;
@@ -100,7 +107,7 @@ export function ComplexAvisoModal({
               id="complex-aviso-titulo"
               className="font-heading text-lg font-bold text-gray-900 dark:text-white"
             >
-              {titulo}
+              {tituloFinal}
             </h2>
             <p
               id="complex-aviso-mensaje"
@@ -114,15 +121,15 @@ export function ComplexAvisoModal({
           {esConfirmacion ? (
             <>
               <button type="button" className={complexBtnFormAction} onClick={onClose}>
-                {cancelTexto}
+                {cancelTextoFinal}
               </button>
               <button type="button" className={confirmClass} onClick={onConfirm}>
-                {confirmTexto}
+                {confirmTextoFinal}
               </button>
             </>
           ) : (
             <button type="button" className={complexBtnFormAction} onClick={onClose}>
-              {botonTexto}
+              {botonTextoFinal}
             </button>
           )}
         </div>
@@ -131,32 +138,29 @@ export function ComplexAvisoModal({
   );
 }
 
-const NAV_COMPLEX_BASE = [
-  { path: '/complex/dashboard', icon: FaChartLine, label: 'Dashboard' },
-  { path: '/complex/indicadores-alertas', icon: FaChartBar, label: 'Indicadores y alertas' },
-  { path: '/complex/excel', icon: FaTable, label: 'Reporte' },
-  { path: '/complex/mis-casos', icon: FaClipboardList, label: 'Mis casos' },
-];
-
-const NAV_BANDEJA = {
-  path: '/complex/bandeja-facturacion',
-  icon: FaInbox,
-  label: 'Bandeja facturación',
-};
-
 function navComplexItems() {
+  const base = [
+    { path: '/complex/dashboard', icon: FaChartLine, labelKey: 'nav.dashboard' },
+    { path: '/complex/indicadores-alertas', icon: FaChartBar, labelKey: 'nav.indicators' },
+    { path: '/complex/excel', icon: FaTable, labelKey: 'nav.report' },
+    { path: '/complex/mis-casos', icon: FaClipboardList, labelKey: 'nav.myCases' },
+  ];
   const login = localStorage.getItem('login') || '';
   if (esUsuarioGerenteFacturacion(login)) {
-    return [...NAV_COMPLEX_BASE, NAV_BANDEJA];
+    return [
+      ...base,
+      { path: '/complex/bandeja-facturacion', icon: FaInbox, labelKey: 'nav.billingTray' },
+    ];
   }
-  return NAV_COMPLEX_BASE;
+  return base;
 }
 
 export function ComplexNavTabs({ activePath }) {
+  const { t: translate } = useTranslation();
   const items = navComplexItems();
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Navegación Complex">
-      {items.map(({ path, icon: Icon, label }) => {
+    <nav className="flex flex-wrap gap-2" aria-label={translate("complex.ui.complex_ui_blocks.navegacion_complex")}>
+      {items.map(({ path, icon: Icon, labelKey }) => {
         const activo = activePath === path;
         return (
           <Link
@@ -165,7 +169,7 @@ export function ComplexNavTabs({ activePath }) {
             className={activo ? complexNavTabActive : complexNavTabIdle}
           >
             <Icon className="text-sm" />
-            {label}
+            {translate(labelKey)}
           </Link>
         );
       })}
@@ -199,15 +203,15 @@ export function ComplexMetricCard({ label, value, hint }) {
   );
 }
 
-export function ComplexFilterSection({ title = 'Filtros', children, onClear, showClear }) {
+export function ComplexFilterSection({ title, children, onClear, showClear }) {
+  const { t } = useTranslation();
+  const titleFinal = title ?? t('complex.ui.complex_ui_blocks.filtros');
   return (
     <section className={complexCard}>
       <div className={`${complexCardHeader} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}>
-        <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+        <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{titleFinal}</h2>
         {showClear && onClear && (
-          <button type="button" onClick={onClear} className={complexBtnGhost}>
-            Limpiar filtros
-          </button>
+          <button type="button" onClick={onClear} className={complexBtnGhost}>{t("complex.ui.complex_ui_blocks.limpiar_filtros")}</button>
         )}
       </div>
       <div className={complexCardBody}>{children}</div>
@@ -216,6 +220,7 @@ export function ComplexFilterSection({ title = 'Filtros', children, onClear, sho
 }
 
 export function ComplexChartCard({ title, empty, children, className = '', subtitle }) {
+  const { t } = useTranslation();
   return (
     <div className={`${complexChartCard} min-w-0 ${className}`}>
       <div className="mb-4">
@@ -225,7 +230,7 @@ export function ComplexChartCard({ title, empty, children, className = '', subti
         )}
       </div>
       {empty ? (
-        <p className="font-body text-sm text-gray-500 dark:text-gray-400">No hay datos disponibles para mostrar.</p>
+        <p className="font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.complex_ui_blocks.no_hay_datos_disponibles_para_mostrar")}</p>
       ) : (
         <div className="min-w-0">{children}</div>
       )}
@@ -284,6 +289,7 @@ export function InputFechaHoraProtocolo({
   required = false,
   id,
 }) {
+  const { t } = useTranslation();
   const { fecha, hora } = partirFechaHoraParaInputs(value);
   const partes = hora
     ? partirHora12Desde24(hora)
@@ -378,7 +384,7 @@ export function InputFechaHoraProtocolo({
             emitir(nuevaFecha, hora || horaActualHHMM());
           }}
           onBlur={onBlur}
-          aria-label="Fecha"
+          aria-label={t("complex.ui.complex_ui_blocks.fecha")}
         />
         <div className="grid grid-cols-[1fr_1fr_auto] gap-1.5">
           <select
@@ -389,9 +395,9 @@ export function InputFechaHoraProtocolo({
             onChange={(e) =>
               emitirDesde12(e.target.value, partes.minuto || '00', partes.ampm || 'am')
             }
-            aria-label="Hora"
+            aria-label={t("complex.ui.complex_ui_blocks.hora")}
           >
-            <option value="">Hora</option>
+            <option value="">{t("complex.ui.complex_ui_blocks.hora")}</option>
             {horasOpts.map((h) => (
               <option key={h} value={h}>
                 {h}
@@ -406,9 +412,9 @@ export function InputFechaHoraProtocolo({
             onChange={(e) =>
               emitirDesde12(partes.hora12 || '12', e.target.value, partes.ampm || 'am')
             }
-            aria-label="Minutos"
+            aria-label={t("complex.ui.complex_ui_blocks.minutos")}
           >
-            <option value="">Min</option>
+            <option value="">{t("complex.ui.complex_ui_blocks.min")}</option>
             {minutosOpts.map((m) => (
               <option key={m} value={m}>
                 {m}
@@ -423,10 +429,10 @@ export function InputFechaHoraProtocolo({
             onChange={(e) =>
               emitirDesde12(partes.hora12 || '12', partes.minuto || '00', e.target.value)
             }
-            aria-label="a. m. o p. m."
+            aria-label={t("complex.ui.complex_ui_blocks.a_m_o_p_m")}
           >
-            <option value="am">a. m.</option>
-            <option value="pm">p. m.</option>
+            <option value="am">{t("complex.ui.complex_ui_blocks.a_m")}</option>
+            <option value="pm">{t("complex.ui.complex_ui_blocks.p_m")}</option>
           </select>
         </div>
       </div>
@@ -437,7 +443,7 @@ export function InputFechaHoraProtocolo({
           name={`${name}__horaTexto`}
           value={textoHora}
           disabled={disabled || !fecha}
-          placeholder="Escribir hora: 11, 11:30, 11am…"
+          placeholder={t("complex.ui.complex_ui_blocks.escribir_hora_11_11_30_11am")}
           className={`${complexInput} ${className}`}
           onChange={(e) => setTextoHora(e.target.value)}
           onBlur={(e) => {
@@ -457,13 +463,12 @@ export function InputFechaHoraProtocolo({
               e.currentTarget.blur();
             }
           }}
-          aria-label="Escribir hora"
+          aria-label={t("complex.ui.complex_ui_blocks.escribir_hora")}
         />
       </div>
       {hint !== false && (
         <p className={complexHint}>
-          {hint ||
-            'Al elegir la fecha se completa la hora actual; puede ajustarla después.'}
+          {hint || t('complex.ui.complex_ui_blocks.hint_fecha_hora')}
         </p>
       )}
     </div>

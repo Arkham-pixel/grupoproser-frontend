@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { FaCloudUploadAlt, FaTrash, FaTimes, FaSearchPlus } from 'react-icons/fa';
 import { useTheme } from '../../context/ThemeContext';
@@ -12,13 +13,17 @@ export default function PuertosDragDropFotos({
   onChange,
   cargando = false,
   max = 15,
-  placeholder = 'Arrastra imágenes aquí o haz clic para seleccionar',
-  notaS3 = 'Se guardan en S3 al grabar el informe',
+  placeholder: placeholderProp,
+  notaS3: notaS3Prop,
   mostrarContador = true,
   descripcionMultilinea = false,
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [imagenAmpliada, setImagenAmpliada] = useState(null);
+
+  const placeholder = placeholderProp ?? t('ports.ui.formulario.dragDrop.placeholder');
+  const notaS3 = notaS3Prop ?? t('ports.ui.formulario.dragDrop.notaS3');
 
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -37,13 +42,13 @@ export default function PuertosDragDropFotos({
   const onDrop = useCallback(
     (acceptedFiles, rejectedFiles) => {
       if (rejectedFiles?.length) {
-        alert('Algunas imágenes no se añadieron (tamaño o formato no válido). Máx. recomendado: 5 MB por foto.');
+        alert(t('ports.ui.formulario.dragDrop.alertRechazadas'));
       }
       if (!acceptedFiles.length) return;
       const maxBytes = 5 * 1024 * 1024;
       const validas = acceptedFiles.filter((f) => {
         if (f.size > maxBytes) {
-          alert(`"${f.name}" supera 5 MB. Comprímala o elija otra imagen.`);
+          alert(t('ports.ui.formulario.dragDrop.alertTamano', { name: f.name }));
           return false;
         }
         return true;
@@ -51,13 +56,13 @@ export default function PuertosDragDropFotos({
       const disponibles = max - (imagenes?.length || 0);
       const nuevas = validas.slice(0, disponibles).map(crearImagenPendiente);
       if (validas.length > disponibles) {
-        alert(`Solo se permiten ${max} fotos en este bloque.`);
+        alert(t('ports.ui.formulario.dragDrop.alertMaxFotos', { max }));
       }
       if (nuevas.length) {
         aplicarCambio((prev) => [...prev, ...nuevas]);
       }
     },
-    [aplicarCambio, imagenes?.length, max]
+    [aplicarCambio, imagenes?.length, max, t]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -103,7 +108,7 @@ export default function PuertosDragDropFotos({
           <div className="max-w-7xl max-h-full overflow-auto" onClick={(e) => e.stopPropagation()}>
             <img
               src={getPuertosImagenDisplayUrl(imagenAmpliada)}
-              alt={imagenAmpliada.descripcion || 'Vista ampliada'}
+              alt={imagenAmpliada.descripcion || t('ports.ui.formulario.dragDrop.vistaAmpliada')}
               className="max-w-full max-h-[90vh] object-contain rounded"
             />
             {imagenAmpliada.descripcion && (
@@ -128,7 +133,7 @@ export default function PuertosDragDropFotos({
               style={{ color: theme === 'dark' ? '#6B7280' : '#9CA3AF' }}
             />
             <span className="text-sm font-medium text-center" style={{ color: textPrimary }}>
-              {isDragActive ? 'Suelta las imágenes aquí…' : placeholder}
+              {isDragActive ? t('ports.ui.formulario.dragDrop.sueltaAqui') : placeholder}
             </span>
             <span className="mt-1 text-xs text-center" style={{ color: textSecondary }}>
               {imagenes?.length || 0} / {max} · {notaS3}
@@ -156,7 +161,7 @@ export default function PuertosDragDropFotos({
                     {displayUrl ? (
                       <img
                         src={displayUrl}
-                        alt={imagen.descripcion || imagen.nombre || 'Foto'}
+                        alt={imagen.descripcion || imagen.nombre || t('ports.ui.formulario.dragDrop.foto')}
                         className="w-full h-48 object-cover"
                       />
                     ) : (
@@ -164,7 +169,7 @@ export default function PuertosDragDropFotos({
                         className="w-full h-48 flex items-center justify-center text-xs"
                         style={{ color: textSecondary }}
                       >
-                        Sin vista previa
+                        {t('ports.ui.formulario.dragDrop.sinVistaPrevia')}
                       </div>
                     )}
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all flex items-center justify-center">
@@ -195,7 +200,7 @@ export default function PuertosDragDropFotos({
                       <textarea
                         value={imagen.descripcion || ''}
                         onChange={(e) => actualizarDescripcion(imagen.id, e.target.value)}
-                        placeholder="Descripción de la imagen..."
+                        placeholder={t('ports.ui.formulario.dragDrop.descripcionPlaceholder')}
                         rows={3}
                         className="w-full rounded px-2 py-1 text-sm"
                         style={{
@@ -210,7 +215,7 @@ export default function PuertosDragDropFotos({
                         type="text"
                         value={imagen.descripcion || ''}
                         onChange={(e) => actualizarDescripcion(imagen.id, e.target.value)}
-                        placeholder="Descripción de la imagen..."
+                        placeholder={t('ports.ui.formulario.dragDrop.descripcionPlaceholder')}
                         className="w-full rounded px-2 py-1 text-sm"
                         style={{
                           backgroundColor: inputBg,
@@ -227,13 +232,13 @@ export default function PuertosDragDropFotos({
           </div>
         ) : (
           <p className="text-xs text-center py-2" style={{ color: textSecondary }}>
-            Aún no hay fotos en esta sección.
+            {t('ports.ui.formulario.dragDrop.sinFotos')}
           </p>
         )}
 
         {mostrarContador && imagenes?.length > 0 && (
           <p className="text-sm text-right" style={{ color: textSecondary }}>
-            Total: {imagenes.length} imagen(es)
+            {t('ports.ui.formulario.dragDrop.total', { count: imagenes.length })}
           </p>
         )}
       </div>

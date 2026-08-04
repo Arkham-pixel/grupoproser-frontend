@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import PuertosDragDropFotos from './PuertosDragDropFotos';
 
 export default function InformeFotograficoPuertos({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -59,7 +61,7 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
           className="text-xl font-bold"
           style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
         >
-          📸 INFORME FOTOGRÁFICO
+          {t('ports.ui.formulario.informeFotografico.titulo')}
         </h3>
         <button
           type="button"
@@ -72,7 +74,7 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
           disabled={cargando}
         >
           <FaPlus />
-          Agregar VIN
+          {t('ports.ui.formulario.informeFotografico.agregarVin')}
         </button>
       </div>
 
@@ -89,7 +91,7 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  VIN del Vehículo
+                  {t('ports.ui.formulario.informeFotografico.vinVehiculo')}
                 </label>
                 <input
                   type="text"
@@ -102,13 +104,13 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
                     borderColor,
                     border: `1px solid ${borderColor}`,
                   }}
-                  placeholder="Ej: 8AJCA3GS1T0985771"
+                  placeholder={t('ports.ui.formulario.informeFotografico.vinPlaceholder')}
                   disabled={cargando}
                 />
               </div>
               <div>
                 <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                  Daños Registrados
+                  {t('ports.ui.formulario.informeFotografico.danosRegistrados')}
                 </label>
                 <input
                   type="text"
@@ -121,7 +123,7 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
                     borderColor,
                     border: `1px solid ${borderColor}`,
                   }}
-                  placeholder="Ej: parachoque D desconche"
+                  placeholder={t('ports.ui.formulario.informeFotografico.danosPlaceholder')}
                   disabled={cargando}
                 />
               </div>
@@ -131,7 +133,7 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
               onClick={() => handleEliminarRegistroVin(registro.id)}
               className="ml-3 p-2 rounded hover:bg-red-500 hover:text-white transition-colors"
               style={{ color: '#EF4444' }}
-              title="Eliminar registro completo"
+              title={t('ports.ui.formulario.informeFotografico.eliminarRegistro')}
             >
               <FaTrash />
             </button>
@@ -146,7 +148,7 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
                 color: textPrimary,
               }}
             >
-              {registro.vin && <span>VIN Nro. {registro.vin}</span>}
+              {registro.vin && <span>{t('ports.ui.formulario.informeFotografico.vinNro', { vin: registro.vin })}</span>}
               {registro.vin && registro.danos && <span> - </span>}
               {registro.danos && <span>{registro.danos}</span>}
             </div>
@@ -156,7 +158,9 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
             imagenes={registro.fotos || []}
             onChange={(fotos) => actualizarFotosRegistro(registro.id, fotos)}
             cargando={cargando}
-            placeholder={`Arrastra las fotos del VIN ${registro.vin || '(sin VIN)'}`}
+            placeholder={t('ports.ui.formulario.informeFotografico.dragPlaceholder', {
+              vin: registro.vin || t('ports.ui.formulario.informeFotografico.sinVin'),
+            })}
           />
         </div>
       ))}
@@ -170,8 +174,8 @@ export default function InformeFotograficoPuertos({ formData, onInputChange, car
             color: textSecondary,
           }}
         >
-          <p className="text-sm mb-2">No hay registros fotográficos aún</p>
-          <p className="text-xs">Haz clic en &quot;Agregar VIN&quot; para comenzar</p>
+          <p className="text-sm mb-2">{t('ports.ui.formulario.informeFotografico.empty')}</p>
+          <p className="text-xs">{t('ports.ui.formulario.informeFotografico.emptyAyuda')}</p>
         </div>
       )}
     </div>

@@ -1,3 +1,6 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
+import { useTranslation } from 'react-i18next';
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   FaClock,
@@ -63,6 +66,7 @@ export default function Facturacion({
   historialDocs,
   updateHistorialDocs,
 }) {
+  const { t } = useTranslation();
   const [enviando, setEnviando] = useState(false);
   const [enviandoGerencia, setEnviandoGerencia] = useState(false);
   const [controlHorasAbierto, setControlHorasAbierto] = useState(true);
@@ -93,7 +97,7 @@ export default function Facturacion({
         documento?.url || documento?.ruta || documento?.path || documento?.data || ''
       );
       if (!enlace) {
-        alert('No se puede descargar el documento. URL no disponible.');
+        alert(t('complex.ui.facturacion.no_descargar_url'));
         return false;
       }
       const link = document.createElement('a');
@@ -113,7 +117,7 @@ export default function Facturacion({
     (documento, tipo) => {
       if (
         !window.confirm(
-          `¿Está seguro de que desea eliminar "${documento.nombre || documento.filename || 'este documento'}"?`
+          t('complex.ui.facturacion.confirmar_eliminar_documento', { nombre: documento.nombre || documento.filename || t('complex.ui.facturacion.este_documento') })
         )
       ) {
         return;
@@ -205,7 +209,7 @@ export default function Facturacion({
               open: true,
               mensaje:
                 data.error ||
-                'El control se guardó en el formulario, pero no se pudo actualizar el correo en el catálogo de analistas.',
+                t('complex.ui.facturacion.control_guardado_correo_fallo'),
             });
           }
         } catch (error) {
@@ -213,7 +217,7 @@ export default function Facturacion({
           setAvisoCatalogoEmail({
             open: true,
             mensaje:
-              'El control se guardó en el formulario, pero no se pudo actualizar el correo en el catálogo de analistas.',
+              t('complex.ui.facturacion.control_guardado_correo_fallo'),
           });
         }
       }
@@ -243,7 +247,7 @@ export default function Facturacion({
       if (
         tieneControlHorasGuardado &&
         !window.confirm(
-          '¿Desea reemplazar el control de horas actual con los datos del archivo Excel?'
+          t('complex.ui.facturacion.reemplazar_control_excel')
         )
       ) {
         return;
@@ -263,7 +267,7 @@ export default function Facturacion({
         console.error('Importar control de horas:', error);
         alert(
           error?.message ||
-            'No se pudo leer el Excel. Use la plantilla exportada desde el sistema o un formato con las mismas columnas.'
+            t('complex.ui.facturacion.no_leer_excel')
         );
       } finally {
         setImportandoExcel(false);
@@ -275,12 +279,13 @@ export default function Facturacion({
       setFormData,
       tieneControlHorasGuardado,
       handleGuardarControlHoras,
+      t,
     ]
   );
 
   const handleExportarExcelControlHoras = useCallback(async () => {
     if (!tieneControlHorasGuardado) {
-      alert('Primero guarde el control de horas desde el editor.');
+      alert(t('complex.ui.facturacion.guarde_control_antes_exportar'));
       return;
     }
     setExportandoExcel(true);
@@ -293,28 +298,29 @@ export default function Facturacion({
       descargarBlob(blob, nombre);
     } catch (e) {
       console.error(e);
-      alert('No se pudo generar el Excel.');
+      alert(t('complex.ui.facturacion.no_generar_excel'));
     } finally {
       setExportandoExcel(false);
     }
-  }, [formData, nombreAseguradora, tieneControlHorasGuardado]);
+  }, [formData, nombreAseguradora, tieneControlHorasGuardado, t]);
   const documentosFactura = obtenerDocumentosPorTipo('factura');
   const documentosEvidencia = obtenerDocumentosPorTipo('evidencia');
   const documentosSeguimientoEvidencia = obtenerDocumentosPorTipo('seguimientoEvidencia');
 
-  const hintArchivos = (valor) => `Archivos seleccionados: ${valor || 'Ninguno'}`;
+  const hintArchivos = (valor) =>
+    t('complex.ui.facturacion.archivos_seleccionados', {
+      valor: valor || t('complex.ui.facturacion.ninguno'),
+    });
 
   return (
     <div className={`${complexScope} ${complexPageWrap}`}>
       <h2 className={complexSectionTitle}>
-        <FaFileInvoice className="text-fenix-primario" />
-        Facturación
-      </h2>
+        <FaFileInvoice className="text-fenix-primario" />{t("complex.ui.facturacion.facturacion")}</h2>
 
       {/* Valores principales */}
       <div className={complexCard}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Campo label="Número de Factura">
+          <Campo label={t("complex.ui.facturacion.numero_de_factura")}>
             <InputFenix
               type="number"
               name="numero_factura"
@@ -322,7 +328,7 @@ export default function Facturacion({
               onChange={handleChange}
             />
           </Campo>
-          <Campo label="Valor Servicios">
+          <Campo label={t("complex.ui.facturacion.valor_servicios")}>
             <InputFenix
               type="number"
               name="valor_servicio"
@@ -330,7 +336,7 @@ export default function Facturacion({
               onChange={handleChange}
             />
           </Campo>
-          <Campo label="Valor Gastos">
+          <Campo label={t("complex.ui.facturacion.valor_gastos")}>
             <InputFenix
               type="number"
               name="valor_gastos"
@@ -338,7 +344,7 @@ export default function Facturacion({
               onChange={handleChange}
             />
           </Campo>
-          <Campo label="Fecha Última Revisión">
+          <Campo label={t("complex.ui.facturacion.fecha_ultima_revision")}>
             <InputFenix
               type="date"
               name="fecha_ultima_revision"
@@ -355,41 +361,36 @@ export default function Facturacion({
           abierto={controlHorasAbierto}
           onToggle={() => setControlHorasAbierto(!controlHorasAbierto)}
           icon={FaClock}
-          titulo="Control de Horas"
-          subtitulo="Fase 1: liquidación y envío a Elkin o Iskharly"
+          titulo={t('complex.ui.facturacion.control_de_horas')}
+          subtitulo={t('complex.ui.facturacion.fase1_liquidacion')}
         >
           <div className={complexInfoPanel}>
-            <p className="mb-3 font-body text-base text-gray-600 dark:text-gray-400">
-              Un control de horas por caso. Puede crearlo en el sistema, importarlo desde su Excel
-              tradicional o descargar la plantilla. Al guardar el caso se actualizan servicios y gastos.
-            </p>
+            <p className="mb-3 font-body text-base text-gray-600 dark:text-gray-400">{t("complex.ui.facturacion.un_control_de_horas_por_caso_puede_crearlo_en_el_sistema")}</p>
             {resumenControlHoras ? (
               <div className="mb-4 grid grid-cols-2 gap-2 text-base sm:grid-cols-4">
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400">Total horas</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t("complex.ui.facturacion.total_horas")}</span>
                   <p className="text-lg font-semibold text-fenix-primario">
                     {resumenControlHoras.total_horas.toFixed(2)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400">Valor hora</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t("complex.ui.facturacion.valor_hora")}</span>
                   <p className="text-lg font-semibold">{formatearMoneda(resumenControlHoras.valor_hora)}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400">Honorarios</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t("complex.ui.facturacion.honorarios")}</span>
                   <p className="text-lg font-semibold">
                     {formatearMoneda(resumenControlHoras.subtotal_honorarios)}
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500 dark:text-gray-400">Total liquidación</span>
+                  <span className="text-gray-500 dark:text-gray-400">{t("complex.ui.facturacion.total_liquidacion")}</span>
                   <p className="text-lg font-semibold">{formatearMoneda(resumenControlHoras.total)}</p>
                 </div>
               </div>
             ) : (
-              <p className="mb-4 text-base italic text-gray-500 dark:text-gray-400">
-                Aún no hay control de horas registrado para este caso.
-              </p>
+              <p className="mb-4 text-base italic text-gray-500 dark:text-gray-400">{t("complex.ui.facturacion.aun_no_hay_control_de_horas_registrado_para_este_caso")}</p>
             )}
             <div className="flex flex-wrap gap-2">
               <button
@@ -399,7 +400,9 @@ export default function Facturacion({
                 style={{ width: 'auto' }}
               >
                 <FaEdit />
-                {tieneControlHorasGuardado ? 'Editar control de horas' : 'Realizar control de horas'}
+                {tieneControlHorasGuardado
+                  ? t('complex.ui.facturacion.editar_control_horas')
+                  : t('complex.ui.facturacion.realizar_control_horas')}
               </button>
               <button
                 type="button"
@@ -408,7 +411,9 @@ export default function Facturacion({
                 className={complexBtnSecondary}
               >
                 <FaFileUpload className="text-fenix-primario" />
-                {importandoExcel ? 'Leyendo Excel...' : 'Importar desde Excel'}
+                {importandoExcel
+                  ? t('complex.ui.facturacion.leyendo_excel')
+                  : t('complex.ui.facturacion.importar_desde_excel')}
               </button>
               <button
                 type="button"
@@ -417,7 +422,7 @@ export default function Facturacion({
                 className={complexBtnSecondary}
               >
                 <FaFileExcel className="text-green-700" />
-                {exportandoExcel ? 'Generando...' : 'Descargar Excel'}
+                {exportandoExcel ? t('complex.ui.facturacion.generando') : t('complex.ui.facturacion.descargar_excel')}
               </button>
               <input
                 ref={inputExcelControlHorasRef}
@@ -429,7 +434,7 @@ export default function Facturacion({
             </div>
           </div>
 
-          <Campo label="Fecha de Control de Horas">
+          <Campo label={t("complex.ui.facturacion.fecha_de_control_de_horas")}>
             <InputFenix
               type="date"
               name="fecha_control_horas"
@@ -438,7 +443,7 @@ export default function Facturacion({
             />
           </Campo>
 
-          <Campo label="Documentos de Control de Horas">
+          <Campo label={t("complex.ui.facturacion.documentos_de_control_de_horas")}>
             <DropzoneFenix
               getRootProps={getRootPropsControlHoras}
               getInputProps={getInputPropsControlHoras}
@@ -448,23 +453,23 @@ export default function Facturacion({
           </Campo>
 
           <ListaDocumentos
-            titulo="Documentos subidos"
+            titulo={t('complex.ui.facturacion.documentos_subidos')}
             documentos={documentosControlHoras}
             onDescargar={descargarDocumento}
             onEliminar={eliminarDocumento}
             tipoEliminar="controlHoras"
           />
 
-          <Campo label="Enviar notificación a">
+          <Campo label={t("complex.ui.facturacion.enviar_notificacion_a")}>
             <SelectFenix
               name="gerente_control_horas"
               value={formData.gerente_control_horas || ''}
               onChange={handleChange}
             >
-              <option value="">Seleccione un gerente...</option>
-              <option value="elkin">Elkin Tapia Gutiérrez</option>
-              <option value="iskharly">Iskharly José Tapia Gutierrez</option>
-              <option value="test">🧪 Prueba (danalyst@proserpuertos.com.co)</option>
+              <option value="">{t("complex.ui.facturacion.seleccione_un_gerente")}</option>
+              <option value="elkin">{t("complex.ui.facturacion.elkin_tapia_gutierrez")}</option>
+              <option value="iskharly">{t("complex.ui.facturacion.iskharly_jose_tapia_gutierrez")}</option>
+              <option value="test">{t("complex.ui.facturacion.prueba_danalyst_proserpuertos_com_co")}</option>
             </SelectFenix>
           </Campo>
 
@@ -475,12 +480,12 @@ export default function Facturacion({
               onClick={async () => {
                 if (!puedeEnviarNotificacionControlHoras) {
                   alert(
-                    'Registre el control de horas en el sistema o suba los documentos antes de enviar la notificación.'
+                    t('complex.ui.facturacion.registre_control_antes_notificar')
                   );
                   return;
                 }
                 if (!formData.fecha_control_horas) {
-                  alert('Indique la fecha de control de horas antes de enviar la notificación.');
+                  alert(t('complex.ui.facturacion.indique_fecha_control'));
                   return;
                 }
                 const filasSinFecha = (formData.control_horas?.filas || []).filter((fila) => {
@@ -495,7 +500,7 @@ export default function Facturacion({
                 });
                 if (filasSinFecha.length > 0) {
                   alert(
-                    'El control de horas tiene actividades sin fecha. Edítelo y complete las fechas antes de enviar.'
+                    t('complex.ui.facturacion.actividades_sin_fecha')
                   );
                   return;
                 }
@@ -506,13 +511,15 @@ export default function Facturacion({
                   }
                 } catch (error) {
                   console.error('Error enviando notificación:', error);
-                  alert('Error al enviar la notificación. Por favor, intente nuevamente.');
+                  alert(t('complex.ui.facturacion.error_enviar_notificacion'));
                 } finally {
                   setEnviando(false);
                 }
               }}
             >
-              {enviando ? 'Enviando...' : 'Enviar Control de Horas a Gerente'}
+              {enviando
+                ? t('complex.ui.facturacion.enviando')
+                : t('complex.ui.facturacion.enviar_control_horas_gerente')}
             </BotonEnviar>
           )}
         </SeccionAcordeon>
@@ -522,11 +529,11 @@ export default function Facturacion({
           abierto={envioControlHorasAbierto}
           onToggle={() => setEnvioControlHorasAbierto(!envioControlHorasAbierto)}
           icon={FaPaperPlane}
-          titulo="Envío de Control de Horas"
-          subtitulo="Fase 2: evidencia y notificación a facturación (Adriana)"
+          titulo={t('complex.ui.facturacion.envio_control_horas')}
+          subtitulo={t('complex.ui.facturacion.fase2_evidencia')}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Campo label="Fecha de envío">
+            <Campo label={t("complex.ui.facturacion.fecha_de_envio")}>
               <InputFenix
                 type="date"
                 name="fecha_envio_control_horas"
@@ -534,7 +541,7 @@ export default function Facturacion({
                 onChange={handleChange}
               />
             </Campo>
-            <Campo label="Fecha de recibido">
+            <Campo label={t("complex.ui.facturacion.fecha_de_recibido")}>
               <InputFenix
                 type="date"
                 name="fecha_recibido_control_horas"
@@ -544,7 +551,7 @@ export default function Facturacion({
             </Campo>
           </div>
 
-          <Campo label="Adjunto de Evidencia">
+          <Campo label={t("complex.ui.facturacion.adjunto_de_evidencia")}>
             <DropzoneFenix
               getRootProps={getRootPropsEvidencia}
               getInputProps={getInputPropsEvidencia}
@@ -554,22 +561,22 @@ export default function Facturacion({
           </Campo>
 
           <ListaDocumentos
-            titulo="Documentos subidos"
+            titulo={t('complex.ui.facturacion.documentos_subidos')}
             documentos={documentosEvidencia}
             onDescargar={descargarDocumento}
             onEliminar={eliminarDocumento}
             tipoEliminar="evidencia"
           />
 
-          <Campo label="Enviar notificación a">
+          <Campo label={t("complex.ui.facturacion.enviar_notificacion_a")}>
             <SelectFenix
               name="gerente_gerencia"
               value={formData.gerente_gerencia || ''}
               onChange={handleChange}
             >
-              <option value="">Seleccione un gerente...</option>
-              <option value="adriana">Adriana Angulo Funes (facturación.ajustes@proserpuertos.com.co)</option>
-              <option value="test">🧪 Prueba (danalyst@proserpuertos.com.co)</option>
+              <option value="">{t("complex.ui.facturacion.seleccione_un_gerente")}</option>
+              <option value="adriana">{t("complex.ui.facturacion.adriana_angulo_funes_facturacion_ajustes_proserpuertos_c")}</option>
+              <option value="test">{t("complex.ui.facturacion.prueba_danalyst_proserpuertos_com_co")}</option>
             </SelectFenix>
           </Campo>
 
@@ -578,8 +585,12 @@ export default function Facturacion({
               disabled={enviandoGerencia || !formData.gerente_gerencia}
               enviando={enviandoGerencia}
               onClick={async () => {
-                if (!formData.adjunto_evidencia || formData.adjunto_evidencia === 'Ninguno') {
-                  alert('Por favor, suba primero los documentos de evidencia');
+                if (
+                  !formData.adjunto_evidencia ||
+                  formData.adjunto_evidencia === 'Ninguno' ||
+                  formData.adjunto_evidencia === t('complex.ui.facturacion.ninguno')
+                ) {
+                  alert(t('complex.ui.facturacion.subir_evidencia_primero'));
                   return;
                 }
                 setEnviandoGerencia(true);
@@ -589,13 +600,15 @@ export default function Facturacion({
                   }
                 } catch (error) {
                   console.error('Error enviando notificación:', error);
-                  alert('Error al enviar la notificación. Por favor, intente nuevamente.');
+                  alert(t('complex.ui.facturacion.error_enviar_notificacion'));
                 } finally {
                   setEnviandoGerencia(false);
                 }
               }}
             >
-              {enviandoGerencia ? 'Enviando...' : 'Enviar a Gerencia'}
+              {enviandoGerencia
+                ? t('complex.ui.facturacion.enviando')
+                : t('complex.ui.facturacion.enviar_a_gerencia')}
             </BotonEnviar>
           )}
         </SeccionAcordeon>
@@ -605,10 +618,10 @@ export default function Facturacion({
           abierto={seguimientoAbierto}
           onToggle={() => setSeguimientoAbierto(!seguimientoAbierto)}
           icon={FaCheckCircle}
-          titulo="Autorización"
-          subtitulo="Fechas, comentarios y documentos de autorización"
+          titulo={t('complex.ui.facturacion.autorizacion')}
+          subtitulo={t('complex.ui.facturacion.fechas_comentarios_docs_autorizacion')}
         >
-          <Campo label="Fecha de Autorización">
+          <Campo label={t("complex.ui.facturacion.fecha_de_autorizacion")}>
             <InputFenix
               type="date"
               name="fecha_seguimiento_envio_control_horas"
@@ -617,17 +630,17 @@ export default function Facturacion({
             />
           </Campo>
 
-          <Campo label="Comentarios de Autorización">
+          <Campo label={t("complex.ui.facturacion.comentarios_de_autorizacion")}>
             <TextareaFenix
               name="observacion_seguimiento_envio_control_horas"
               value={formData.observacion_seguimiento_envio_control_horas || ''}
               onChange={handleChange}
               rows={4}
-              placeholder="Ingrese los comentarios de autorización..."
+              placeholder={t("complex.ui.facturacion.ingrese_los_comentarios_de_autorizacion")}
             />
           </Campo>
 
-          <Campo label="Adjunto de Documentos de Autorización">
+          <Campo label={t("complex.ui.facturacion.adjunto_de_documentos_de_autorizacion")}>
             <DropzoneFenix
               getRootProps={getRootPropsSeguimientoEvidencia}
               getInputProps={getInputPropsSeguimientoEvidencia}
@@ -637,7 +650,7 @@ export default function Facturacion({
           </Campo>
 
           <ListaDocumentos
-            titulo="Documentos subidos"
+            titulo={t('complex.ui.facturacion.documentos_subidos')}
             documentos={documentosSeguimientoEvidencia}
             onDescargar={descargarDocumento}
             onEliminar={eliminarDocumento}
@@ -650,10 +663,10 @@ export default function Facturacion({
           abierto={facturacionAbierto}
           onToggle={() => setFacturacionAbierto(!facturacionAbierto)}
           icon={FaFileInvoiceDollar}
-          titulo="Facturación"
-          subtitulo="Documentos y fechas de facturación"
+          titulo={t('complex.ui.facturacion.facturacion')}
+          subtitulo={t('complex.ui.facturacion.documentos_y_fechas_facturacion')}
         >
-          <Campo label="Fecha de Factura">
+          <Campo label={t("complex.ui.facturacion.fecha_de_factura")}>
             <InputFenix
               type="date"
               name="fecha_factura"
@@ -662,7 +675,7 @@ export default function Facturacion({
             />
           </Campo>
 
-          <Campo label="Adjunto Factura">
+          <Campo label={t("complex.ui.facturacion.adjunto_factura")}>
             <DropzoneFenix
               getRootProps={getRootPropsFactura}
               getInputProps={getInputPropsFactura}
@@ -672,7 +685,7 @@ export default function Facturacion({
           </Campo>
 
           <ListaDocumentos
-            titulo="Documentos subidos"
+            titulo={t('complex.ui.facturacion.documentos_subidos')}
             documentos={documentosFactura}
             onDescargar={descargarDocumento}
             onEliminar={eliminarDocumento}
@@ -682,20 +695,17 @@ export default function Facturacion({
       </div>
 
       <div className={complexCard}>
-        <Campo label="Observaciones y Compromisos">
+        <Campo label={t("complex.ui.facturacion.observaciones_y_compromisos")}>
           <TextareaFenix
             name="observacion_compromisos"
             value={formData.observacion_compromisos || ''}
             onChange={handleChange}
             rows={4}
-            placeholder="Escribe tus observaciones y compromisos..."
+            placeholder={t("complex.ui.facturacion.escribe_tus_observaciones_y_compromisos")}
           />
         </Campo>
         <div className={`${complexInfoPanel} mt-4`}>
-          <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-            Registra aquí acuerdos, compromisos o notas relevantes para el proceso de facturación del caso
-            Complex.
-          </p>
+          <p className="font-body text-sm text-gray-600 dark:text-gray-300">{t("complex.ui.facturacion.registra_aqui_acuerdos_compromisos_o_notas_relevantes_pa")}</p>
         </div>
       </div>
 
@@ -713,24 +723,23 @@ export default function Facturacion({
       <ComplexAvisoModal
         open={avisoGuardarCaso}
         onClose={() => setAvisoGuardarCaso(false)}
-        titulo="Guarde el caso"
+        titulo={t('complex.ui.facturacion.guarde_el_caso')}
         mensaje={
-          'Control de horas listo en el formulario.\n\n' +
-          'IMPORTANTE: Debe hacer clic en el botón «Guardar» que está arriba del caso para guardar los cambios.\n\n' +
-          'Si no lo hace, el control de horas no quedará guardado.'
+          t('complex.ui.facturacion.control_horas_listo') +
+          t('complex.ui.facturacion.importante_guardar_caso')
         }
         tipo="warning"
-        botonTexto="Entendido"
+        botonTexto={t('complex.ui.facturacion.entendido')}
         zIndexClass="z-[120]"
       />
 
       <ComplexAvisoModal
         open={avisoCatalogoEmail.open}
         onClose={() => setAvisoCatalogoEmail({ open: false, mensaje: '' })}
-        titulo="Correo del analista"
+        titulo={t('complex.ui.facturacion.correo_del_analista')}
         mensaje={avisoCatalogoEmail.mensaje}
         tipo="warning"
-        botonTexto="Entendido"
+        botonTexto={t('complex.ui.facturacion.entendido')}
         zIndexClass="z-[130]"
       />
     </div>

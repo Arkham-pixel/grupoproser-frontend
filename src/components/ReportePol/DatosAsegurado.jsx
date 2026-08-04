@@ -1,6 +1,11 @@
 import React, { useMemo, useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { aseguradorasConFuncionarios } from "../../data/aseguradorasFuncionarios";
 import { generarSucursalesParaAseguradora, buscarSucursales } from "../../data/sucursales";
+import SelectBuscable from "../SelectBuscable";
+
+const selectCls =
+  "w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent";
 
 export default function DatosAsegurado({
   aseguradora, setAseguradora,
@@ -12,229 +17,217 @@ export default function DatosAsegurado({
   pedidoNo, setPedidoNo,
   fechaConstruccion, setFechaConstruccion
 }) {
-  // Extraer la lista de aseguradoras
-  const aseguradoras = useMemo(() => Object.keys(aseguradorasConFuncionarios).sort((a, b) => a.localeCompare(b, 'es')), []);
-  
-  // Estado para las sucursales filtradas
+  const { t } = useTranslation();
+
+  const aseguradoras = useMemo(
+    () => Object.keys(aseguradorasConFuncionarios).sort((a, b) => a.localeCompare(b, "es")),
+    []
+  );
+
   const [sucursalesFiltradas, setSucursalesFiltradas] = useState([]);
-  const [sucursalBuscada, setSucursalBuscada] = useState("");
-  
-  // Generar lista de sucursales para la aseguradora seleccionada
+
   useEffect(() => {
     if (aseguradora) {
-      const sucursales = generarSucursalesParaAseguradora(aseguradora);
-      setSucursalesFiltradas(sucursales);
+      setSucursalesFiltradas(generarSucursalesParaAseguradora(aseguradora));
     } else {
       setSucursalesFiltradas([]);
     }
   }, [aseguradora]);
 
-  // Filtrar sucursales basado en la búsqueda
-  const sucursalesMostradas = useMemo(() => {
-    return buscarSucursales(sucursalesFiltradas, sucursalBuscada);
-  }, [sucursalesFiltradas, sucursalBuscada]);
-
-  // Limpiar sucursal cuando cambie la aseguradora
   useEffect(() => {
     setSucursal("");
-    setSucursalBuscada("");
   }, [aseguradora, setSucursal]);
+
+  const opcionesAseguradora = useMemo(
+    () => aseguradoras.map((a) => ({ value: a, label: a })),
+    [aseguradoras]
+  );
+
+  const opcionesSucursal = useMemo(
+    () => sucursalesFiltradas.map((s) => ({ value: s, label: s })),
+    [sucursalesFiltradas]
+  );
+
+  const opcionesEmpaque = useMemo(
+    () => [
+      { value: "CONTENEDOR DE 40 PIES", label: t("pol.ui.datosAsegurado.tiposEmpaque.contenedor40") },
+      { value: "CONTENEDOR DE 20 PIES", label: t("pol.ui.datosAsegurado.tiposEmpaque.contenedor20") },
+      { value: "CONTENEDOR DE 45 PIES", label: t("pol.ui.datosAsegurado.tiposEmpaque.contenedor45") },
+      { value: "CARGA SUELTA", label: t("pol.ui.datosAsegurado.tiposEmpaque.cargaSuelta") },
+      { value: "PALETIZADO", label: t("pol.ui.datosAsegurado.tiposEmpaque.paletizado") },
+      { value: "OTRO", label: t("pol.ui.datosAsegurado.tiposEmpaque.otro") },
+    ],
+    [t]
+  );
 
   return (
     <div className="bg-gray-50 p-6 rounded-lg mb-6 border-l-4 border-green-500">
       <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center">
         <span className="bg-green-500 text-white p-2 rounded-lg mr-3">🏢</span>
-        DATOS DEL ASEGURADO
+        {t("pol.ui.datosAsegurado.title")}
       </h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Primera fila */}
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Aseguradora / Insurer *
+            {t("pol.ui.datosAsegurado.aseguradora")}
           </label>
-          <select
+          <SelectBuscable
+            options={opcionesAseguradora}
             value={aseguradora}
-            onChange={(e) => setAseguradora(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-          >
-            <option value="">Seleccionar aseguradora...</option>
-            {aseguradoras
-              .sort((a, b) => a.localeCompare(b))
-              .map((aseg) => (
-                <option key={aseg} value={aseg}>
-                  {aseg}
-                </option>
-              ))}
-          </select>
+            onChange={setAseguradora}
+            placeholder={t("pol.ui.datosAsegurado.selectAseguradora")}
+            searchPlaceholder={t("pol.ui.datosAsegurado.searchAseguradora")}
+            noResultsText={t("pol.ui.common.noResults")}
+            buttonClassName={selectCls}
+          />
         </div>
-        
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Sucursal / Branch *
+            {t("pol.ui.datosAsegurado.sucursal")}
           </label>
-          <div className="space-y-2">
-            {aseguradora ? (
-              <>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={sucursalBuscada}
-                    onChange={(e) => setSucursalBuscada(e.target.value)}
-                    placeholder="Buscar sucursal..."
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                  <button
-                    onClick={() => setSucursalBuscada("")}
-                    className="px-3 py-2 bg-gray-200 hover:bg-gray-300 text-gray-600 rounded-md transition-colors duration-200"
-                    title="Limpiar búsqueda"
-                  >
-                    ✕
-                  </button>
-                </div>
-                <select
-                  value={sucursal}
-                  onChange={(e) => setSucursal(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                >
-                  <option value="">Seleccionar sucursal...</option>
-                  {sucursalesMostradas.map((suc) => (
-                    <option key={suc} value={suc}>
-                      {suc}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex justify-between items-center text-xs text-gray-500">
-                  <span>{sucursalesMostradas.length} sucursales disponibles</span>
-                  {sucursalBuscada && (
-                    <span>Filtradas por: "{sucursalBuscada}"</span>
-                  )}
-                </div>
-                
-                {/* Campo para sucursal personalizada */}
-                <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-200">
-                  <p className="text-xs text-blue-800 mb-2">
-                    <strong>💡 Opción personalizada:</strong> Si no encuentras la sucursal, puedes escribirla manualmente:
-                  </p>
-                  <input
-                    type="text"
-                    value={sucursal && sucursal.startsWith(aseguradora) ? sucursal.replace(`${aseguradora} `, '') : ""}
-                    onChange={(e) => {
-                      const valor = e.target.value;
-                      if (valor) {
-                        setSucursal(`${aseguradora} ${valor}`);
-                      } else {
-                        setSucursal("");
-                      }
-                    }}
-                    placeholder={`Escribir sucursal personalizada...`}
-                    className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-500">
-                Primero selecciona una aseguradora
+          {aseguradora ? (
+            <div className="space-y-2">
+              <SelectBuscable
+                options={opcionesSucursal}
+                value={
+                  sucursal && sucursalesFiltradas.includes(sucursal) ? sucursal : ""
+                }
+                onChange={setSucursal}
+                placeholder={t("pol.ui.datosAsegurado.selectSucursal")}
+                searchPlaceholder={t("pol.ui.datosAsegurado.searchSucursal")}
+                noResultsText={t("pol.ui.common.noResults")}
+                buttonClassName={selectCls}
+              />
+              <div className="text-xs text-gray-500">
+                {t("pol.ui.datosAsegurado.sucursalesDisponibles", {
+                  count: buscarSucursales(sucursalesFiltradas, "").length,
+                })}
               </div>
-            )}
-          </div>
+
+              <div className="mt-2 p-2 bg-blue-50 rounded-md border border-blue-200">
+                <p className="text-xs text-blue-800 mb-2">
+                  <strong>💡 {t("pol.ui.datosAsegurado.opcionPersonalizada")}</strong>{" "}
+                  {t("pol.ui.datosAsegurado.opcionPersonalizadaHint")}
+                </p>
+                <input
+                  type="text"
+                  value={
+                    sucursal && sucursal.startsWith(aseguradora)
+                      ? sucursal.replace(`${aseguradora} `, "")
+                      : sucursal && !sucursalesFiltradas.includes(sucursal)
+                        ? sucursal
+                        : ""
+                  }
+                  onChange={(e) => {
+                    const valor = e.target.value;
+                    if (valor) {
+                      setSucursal(
+                        valor.startsWith(aseguradora) ? valor : `${aseguradora} ${valor}`
+                      );
+                    } else {
+                      setSucursal("");
+                    }
+                  }}
+                  placeholder={t("pol.ui.datosAsegurado.sucursalPersonalizadaPlaceholder")}
+                  className="w-full px-2 py-1 text-sm border border-blue-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-500">
+              {t("pol.ui.datosAsegurado.selectAseguradoraFirst")}
+            </div>
+          )}
         </div>
-        
-        {/* Segunda fila */}
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Asegurado / Insured *
+            {t("pol.ui.datosAsegurado.asegurado")}
           </label>
           <input
             type="text"
             value={asegurado}
             onChange={(e) => setAsegurado(e.target.value)}
-            placeholder="Ej: CONSUMER ELECTRONICS GROUP S.A.S"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder={t("pol.ui.datosAsegurado.aseguradoPlaceholder")}
+            className={selectCls}
           />
         </div>
-        
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            N. de Piezas / No. of Packages *
+            {t("pol.ui.datosAsegurado.numPiezas")}
           </label>
           <input
             type="number"
             value={numPiezas}
             onChange={(e) => setNumPiezas(e.target.value)}
-            placeholder="Ej: 1"
+            placeholder={t("pol.ui.datosAsegurado.numPiezasPlaceholder")}
             min="1"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className={selectCls}
           />
         </div>
-        
-        {/* Tercera fila */}
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Tipo de Empaque / Type of Package *
+            {t("pol.ui.datosAsegurado.tipoEmpaque")}
           </label>
-          <select
+          <SelectBuscable
+            options={opcionesEmpaque}
             value={tipoEmpaque}
-            onChange={(e) => setTipoEmpaque(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-          >
-            <option value="">Seleccionar tipo...</option>
-            <option value="CONTENEDOR DE 40 PIES">CONTENEDOR DE 40 PIES</option>
-            <option value="CONTENEDOR DE 20 PIES">CONTENEDOR DE 20 PIES</option>
-            <option value="CONTENEDOR DE 45 PIES">CONTENEDOR DE 45 PIES</option>
-            <option value="CARGA SUELTA">CARGA SUELTA</option>
-            <option value="PALETIZADO">PALETIZADO</option>
-            <option value="OTRO">OTRO</option>
-          </select>
+            onChange={setTipoEmpaque}
+            placeholder={t("pol.ui.common.selectType")}
+            searchPlaceholder={t("pol.ui.common.searchList")}
+            noResultsText={t("pol.ui.common.noResults")}
+            buttonClassName={selectCls}
+          />
         </div>
-        
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Clase de Mercancía / Type of commodities *
+            {t("pol.ui.datosAsegurado.claseMercancia")}
           </label>
           <input
             type="text"
             value={claseMercancia}
             onChange={(e) => setClaseMercancia(e.target.value)}
-            placeholder="Ej: TELEVISORES"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder={t("pol.ui.datosAsegurado.claseMercanciaPlaceholder")}
+            className={selectCls}
           />
         </div>
-        
-        {/* Cuarta fila */}
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Pedido No. / Order No. *
+            {t("pol.ui.datosAsegurado.pedidoNo")}
           </label>
           <input
             type="text"
             value={pedidoNo}
             onChange={(e) => setPedidoNo(e.target.value)}
-            placeholder="Ej: EXPO-274-25"
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            placeholder={t("pol.ui.datosAsegurado.pedidoNoPlaceholder")}
+            className={selectCls}
           />
         </div>
-        
+
         <div className="space-y-2">
           <label className="block text-sm font-medium text-gray-700">
-            Fecha de Construcción / Construction Date *
+            {t("pol.ui.datosAsegurado.fechaConstruccion")}
           </label>
           <input
             type="datetime-local"
             value={fechaConstruccion}
             onChange={(e) => setFechaConstruccion(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            className={selectCls}
           />
         </div>
       </div>
-      
-      {/* Información adicional */}
+
       <div className="mt-4 p-3 bg-green-50 rounded-md border border-green-200">
         <p className="text-sm text-green-800">
-          <strong>💡 Nota:</strong> Los campos marcados con * son obligatorios para generar el documento POL. 
-          La sucursal se filtra automáticamente según la aseguradora seleccionada.
+          <strong>💡 {t("pol.ui.common.noteLabel")}</strong> {t("pol.ui.datosAsegurado.note")}
         </p>
       </div>
     </div>
   );
-} 
+}

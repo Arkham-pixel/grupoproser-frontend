@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { getUploadsUrlCandidates } from '../../config/apiConfig';
 import { FaTimes, FaDownload, FaEye, FaCalendar, FaFile, FaTag } from 'react-icons/fa';
 
 export default function VerDocumentosUsuario({ usuario, onCerrar }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [documentos, setDocumentos] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -87,7 +89,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
   };
 
   const formatearFecha = (fecha) => {
-    if (!fecha) return 'N/A';
+    if (!fecha) return t('admin.ui.documentos.perfiles.notAvailable');
     try {
       // Si es un string en formato YYYY-MM-DD, parsearlo como fecha local
       let date;
@@ -112,7 +114,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
         minute: '2-digit'
       });
     } catch {
-      return 'N/A';
+      return t('admin.ui.documentos.perfiles.notAvailable');
     }
   };
 
@@ -134,7 +136,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
     <div className="p-3 sm:p-4 lg:p-6">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{ color: textPrimary }}>
-          Documentos de {usuario.name || usuario.nombre || 'Usuario'}
+          {t('admin.ui.documentos.verUsuario.title', { name: usuario.name || usuario.nombre || t('admin.ui.documentos.verUsuario.defaultUser') })}
         </h3>
         <button
           onClick={onCerrar}
@@ -158,7 +160,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
             type="text"
             value={busqueda}
             onChange={(e) => setBusqueda(e.target.value)}
-            placeholder="Buscar documentos..."
+            placeholder={t('admin.ui.documentos.verUsuario.searchPlaceholder')}
             className="w-full px-3 py-2 rounded text-sm"
             style={{
               backgroundColor: inputBg,
@@ -171,13 +173,13 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
         {/* Lista de documentos */}
         {cargando ? (
           <div className="text-center py-8" style={{ color: textSecondary }}>
-            Cargando documentos...
+            {t('admin.ui.documentos.lista.loading')}
           </div>
         ) : documentosFiltrados.length === 0 ? (
           <div className="text-center py-8" style={{ color: textSecondary }}>
             {documentos.length === 0 
-              ? 'No hay documentos subidos para este usuario'
-              : 'No se encontraron documentos con la búsqueda'
+              ? t('admin.ui.documentos.verUsuario.noDocumentsForUser')
+              : t('admin.ui.documentos.verUsuario.noDocumentsFound')
             }
           </div>
         ) : (
@@ -238,7 +240,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                           backgroundColor: buttonSecondary,
                           color: theme === 'dark' ? '#86EFAC' : '#FFFFFF'
                         }}
-                        title="Vista previa"
+                        title={t('admin.ui.documentos.lista.preview')}
                       >
                         <FaEye />
                       </button>
@@ -250,7 +252,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                         backgroundColor: buttonPrimary,
                         color: theme === 'dark' ? '#93C5FD' : '#FFFFFF'
                       }}
-                      title="Descargar"
+                      title={t('common.download')}
                     >
                       <FaDownload />
                     </button>
@@ -338,10 +340,10 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                   border: `1px solid ${borderColor}`
                 }}>
                   <h4 className="text-xl font-semibold mb-4" style={{ color: textPrimary }}>
-                    Documento PDF
+                    {t('admin.ui.documentos.lista.pdfDocument')}
                   </h4>
                   <p className="mb-6 text-sm" style={{ color: textSecondary, maxWidth: '400px' }}>
-                    Para ver este documento, ábrelo en una nueva pestaña o descárgalo.
+                    {t('admin.ui.documentos.lista.pdfOpenOrDownload')}
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -355,7 +357,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                       }}
                     >
                       <FaEye className="inline mr-2" />
-                      Abrir en nueva pestaña
+                      {t('admin.ui.documentos.lista.openInNewTab')}
                     </button>
                     <button
                       onClick={() => handleDescargar(documentoVistaPrevia)}
@@ -367,7 +369,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                       }}
                     >
                       <FaDownload className="inline mr-2" />
-                      Descargar
+                      {t('common.download')}
                     </button>
                   </div>
                 </div>
@@ -379,7 +381,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                   controls
                   className="max-w-full max-h-[80vh] rounded"
                 >
-                  Tu navegador no soporta la reproducción de video.
+                  {t('admin.ui.documentos.lista.videoNotSupported')}
                 </video>
               )}
 
@@ -392,7 +394,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                   border: `1px solid ${borderColor}`
                 }}>
                   <p className="mb-4" style={{ color: textPrimary }}>
-                    Este tipo de archivo no se puede previsualizar en el navegador.
+                    {t('admin.ui.documentos.lista.cannotPreview')}
                   </p>
                   <button
                     onClick={() => handleDescargar(documentoVistaPrevia)}
@@ -403,7 +405,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                     }}
                   >
                     <FaDownload className="inline mr-2" />
-                    Descargar para ver
+                    {t('admin.ui.documentos.lista.downloadToView')}
                   </button>
                 </div>
               )}
@@ -423,7 +425,7 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
                   border: `1px solid ${borderColor}`
                 }}
               >
-                Cerrar
+                {t('common.close')}
               </button>
             </div>
           </div>

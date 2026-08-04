@@ -1,8 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const Portada = ({ datos = {} }) => {
+  const { t } = useTranslation();
   const empresa = datos.empresa || datos?.informacion?.empresa || '';
-  const titulo = datos.titulo || 'Informe de Inspección y Evaluación de Riesgos';
+  const titulo = datos.titulo || t('informeMadre.ui.portada.defaultTitle');
   const fecha = datos.fecha || new Date().toLocaleDateString();
 
   return (
@@ -17,5 +19,3 @@ const Portada = ({ datos = {} }) => {
 };
 
 export default Portada;
-
-

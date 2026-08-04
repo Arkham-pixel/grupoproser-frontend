@@ -1,51 +1,52 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function SeguridadPuertos({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
-  
+
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
 
   return (
-    <div 
+    <div
       className="mt-8 p-6 rounded shadow-sm"
       style={{
         backgroundColor: cardBg,
         border: `1px solid ${borderColor}`
       }}
     >
-      <h2 
+      <h2
         className="text-xl font-bold mb-4"
         style={{ color: textPrimary }}
       >
-        8. SEGURIDAD
+        {t('ports.ui.formulario.seguridad.titulo')}
       </h2>
 
-      {/* Seguridad Electrónica */}
       <div className="mb-6">
-        <h3 
+        <h3
           className="text-lg font-semibold mb-3"
           style={{ color: textPrimary }}
         >
-          Seguridad Electrónica
+          {t('ports.ui.formulario.seguridad.seguridadElectronica')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Alarma Monitoreada
+              {t('ports.ui.formulario.seguridad.alarmaMonitoreada')}
             </label>
             <input
               type="text"
               value={formData.alarmaMonitoreada || ''}
               onChange={(e) => onInputChange('alarmaMonitoreada', e.target.value)}
-              placeholder="Sí/No - Empresa monitoreadora"
+              placeholder={t('ports.ui.formulario.seguridad.alarmaMonitoreadaPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -57,17 +58,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              CCTV
+              {t('ports.ui.formulario.seguridad.cctv')}
             </label>
             <input
               type="text"
               value={formData.cctv || ''}
               onChange={(e) => onInputChange('cctv', e.target.value)}
-              placeholder="Cantidad de cámaras y ubicación"
+              placeholder={t('ports.ui.formulario.seguridad.cctvPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -79,17 +80,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div className="md:col-span-2">
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Mantenimiento de Seguridad
+              {t('ports.ui.formulario.seguridad.mantenimientoSeguridad')}
             </label>
             <textarea
               value={formData.mantenimientoSeguridad || ''}
               onChange={(e) => onInputChange('mantenimientoSeguridad', e.target.value)}
               rows={2}
-              placeholder="Frecuencia y tipo de mantenimiento..."
+              placeholder={t('ports.ui.formulario.seguridad.mantenimientoSeguridadPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -101,17 +102,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div className="md:col-span-2">
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Comentarios Seguridad Electrónica
+              {t('ports.ui.formulario.seguridad.comentariosSeguridadElectronica')}
             </label>
             <textarea
               value={formData.comentariosSeguridadElectronica || ''}
               onChange={(e) => onInputChange('comentariosSeguridadElectronica', e.target.value)}
               rows={3}
-              placeholder="Observaciones adicionales..."
+              placeholder={t('ports.ui.formulario.seguridad.observacionesAdicionales')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -124,28 +125,27 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
         </div>
       </div>
 
-      {/* Seguridad Física */}
       <div>
-        <h3 
+        <h3
           className="text-lg font-semibold mb-3"
           style={{ color: textPrimary }}
         >
-          Seguridad Física
+          {t('ports.ui.formulario.seguridad.seguridadFisica')}
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Tipo de Vigilancia
+              {t('ports.ui.formulario.seguridad.tipoVigilancia')}
             </label>
             <input
               type="text"
               value={formData.tipoVigilancia || ''}
               onChange={(e) => onInputChange('tipoVigilancia', e.target.value)}
-              placeholder="Ej: Empresa especializada, propia..."
+              placeholder={t('ports.ui.formulario.seguridad.tipoVigilanciaPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -157,17 +157,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Horarios de Vigilancia
+              {t('ports.ui.formulario.seguridad.horariosVigilancia')}
             </label>
             <input
               type="text"
               value={formData.horariosVigilancia || ''}
               onChange={(e) => onInputChange('horariosVigilancia', e.target.value)}
-              placeholder="Ej: 24/7"
+              placeholder={t('ports.ui.formulario.seguridad.horariosVigilanciaPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -179,17 +179,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Accesos
+              {t('ports.ui.formulario.seguridad.accesos')}
             </label>
             <input
               type="text"
               value={formData.accesos || ''}
               onChange={(e) => onInputChange('accesos', e.target.value)}
-              placeholder="Número y tipo de accesos..."
+              placeholder={t('ports.ui.formulario.seguridad.accesosPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -201,17 +201,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Personal de Cierre
+              {t('ports.ui.formulario.seguridad.personalCierre')}
             </label>
             <input
               type="text"
               value={formData.personalCierre || ''}
               onChange={(e) => onInputChange('personalCierre', e.target.value)}
-              placeholder="Personal responsable del cierre..."
+              placeholder={t('ports.ui.formulario.seguridad.personalCierrePlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -223,17 +223,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Cerramiento del Predio
+              {t('ports.ui.formulario.seguridad.cerramientoPredio')}
             </label>
             <input
               type="text"
               value={formData.cerramientoPredio || ''}
               onChange={(e) => onInputChange('cerramientoPredio', e.target.value)}
-              placeholder="Tipo de cerramiento..."
+              placeholder={t('ports.ui.formulario.seguridad.cerramientoPredioPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -245,17 +245,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div>
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Otros Cerramientos
+              {t('ports.ui.formulario.seguridad.otrosCerramientos')}
             </label>
             <input
               type="text"
               value={formData.otrosCerramiento || ''}
               onChange={(e) => onInputChange('otrosCerramiento', e.target.value)}
-              placeholder="Concertinas, mallas, etc..."
+              placeholder={t('ports.ui.formulario.seguridad.otrosCerramientosPlaceholder')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -267,17 +267,17 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
           </div>
 
           <div className="md:col-span-2">
-            <label 
+            <label
               className="block text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              Comentarios Seguridad Física
+              {t('ports.ui.formulario.seguridad.comentariosSeguridadFisica')}
             </label>
             <textarea
               value={formData.comentariosSeguridadFisica || ''}
               onChange={(e) => onInputChange('comentariosSeguridadFisica', e.target.value)}
               rows={3}
-              placeholder="Observaciones adicionales..."
+              placeholder={t('ports.ui.formulario.seguridad.observacionesAdicionales')}
               className="w-full rounded px-3 py-2"
               style={{
                 backgroundColor: inputBg,
@@ -292,4 +292,3 @@ export default function SeguridadPuertos({ formData, onInputChange, cargando }) 
     </div>
   );
 }
-

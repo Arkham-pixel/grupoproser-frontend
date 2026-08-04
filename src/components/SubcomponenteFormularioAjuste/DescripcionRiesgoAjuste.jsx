@@ -1,9 +1,11 @@
 import React from 'react';
 import { FaShieldAlt } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function DescripcionRiesgoAjuste({ formData, onInputChange, numeroSeccion = 2 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -32,13 +34,13 @@ export default function DescripcionRiesgoAjuste({ formData, onInputChange, numer
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#86EFAC' : '#16A34A' }}
           />
-          {numeroSeccion}. DESCRIPCIÓN DE RIESGO
+          {numeroSeccion}. {t('adjustment.ui.sections.descripcionRiesgo.title')}
         </h2>
         <p 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          Describa las características del riesgo asegurado
+          {t('adjustment.ui.sections.descripcionRiesgo.subtitle')}
         </p>
       </div>
 
@@ -54,7 +56,7 @@ export default function DescripcionRiesgoAjuste({ formData, onInputChange, numer
           className="block text-sm font-medium mb-2"
           style={{ color: textPrimary }}
         >
-          Descripción del Riesgo Asegurado
+          {t('adjustment.ui.sections.descripcionRiesgo.label')}
         </label>
         <textarea
           value={formData.descripcionRiesgo || ''}
@@ -67,13 +69,13 @@ export default function DescripcionRiesgoAjuste({ formData, onInputChange, numer
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Escribe tu descripción del riesgo aquí. Por ejemplo: 'El edificio es de construcción antigua, tiene 3 pisos, está ubicado en zona comercial, no tiene sistema de alarmas moderno'"
+          placeholder={t('adjustment.ui.sections.descripcionRiesgo.placeholder')}
         />
         <div 
           className="mt-2 text-sm"
           style={{ color: textSecondary }}
         >
-          Mínimo recomendado: 100 palabras para una descripción profesional del riesgo
+          {t('adjustment.ui.sections.descripcionRiesgo.minWords')}
         </div>
       </div>
 
@@ -83,7 +85,7 @@ export default function DescripcionRiesgoAjuste({ formData, onInputChange, numer
         onTextoCambiado={(texto) => onInputChange('descripcionRiesgo', texto)}
         contextoFormulario={formData}
         tipoSeccion="descripcionRiesgo"
-        tituloSeccion="Descripción del Riesgo"
+        tituloSeccion={t('adjustment.ui.sections.descripcionRiesgo.iaTitle')}
       />
 
       {/* Validación de calidad */}
@@ -98,22 +100,21 @@ export default function DescripcionRiesgoAjuste({ formData, onInputChange, numer
           className="text-lg font-semibold mb-4 flex items-center"
           style={{ color: sectionYellowText }}
         >
-          📊 Validación de Calidad
+          📊 {t('adjustment.ui.sections.descripcionRiesgo.qualityTitle')}
         </h3>
         <div 
           className="text-sm"
           style={{ color: sectionYellowText }}
         >
           <p className="mb-2">
-            <strong>Recomendaciones para descripción de riesgo de calidad:</strong>
+            <strong>{t('adjustment.ui.sections.descripcionRiesgo.qualityIntro')}</strong>
           </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Incluya la ubicación exacta y características del terreno</li>
-            <li>Describa el tipo de construcción y materiales utilizados</li>
-            <li>Mencione los sistemas de seguridad implementados</li>
-            <li>Identifique factores que influyen en el nivel de riesgo</li>
-            <li>Detalle los puntos críticos y medidas de protección</li>
-            <li>Sea específico sobre vulnerabilidades identificadas</li>
+            <li>{t('adjustment.ui.sections.descripcionRiesgo.tip1')}</li>
+            <li>{t('adjustment.ui.sections.descripcionRiesgo.tip2')}</li>
+            <li>{t('adjustment.ui.sections.descripcionRiesgo.tip3')}</li>
+            <li>{t('adjustment.ui.sections.descripcionRiesgo.tip4')}</li>
+            <li>{t('adjustment.ui.sections.descripcionRiesgo.tip5')}</li>
           </ul>
         </div>
       </div>

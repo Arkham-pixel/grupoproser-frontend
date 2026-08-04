@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaLightbulb } from 'react-icons/fa';
 import './reporteEjecutivo.css';
 
@@ -9,13 +10,25 @@ const COLORES_NIVEL = {
   Bajo: '#28a745',
 };
 
-function SemaforoLista({ titulo, items = [] }) {
+const NIVEL_KEY = {
+  Crítico: 'critical',
+  Alto: 'high',
+  Medio: 'medium',
+  Bajo: 'low',
+};
+
+function tNivel(t, nombre) {
+  const key = NIVEL_KEY[nombre];
+  return key ? t(`riskMatrix.level.${key}`) : nombre;
+}
+
+function SemaforoLista({ titulo, items = [], t }) {
   return (
     <section className="re-widget-card">
       <h3>{titulo}</h3>
       <div className="re-semaforo-lista">
         {items.length === 0 ? (
-          <p className="re-tabla-vacia">Sin datos para mostrar.</p>
+          <p className="re-tabla-vacia">{t('riskMatrix.exec.noData')}</p>
         ) : (
           items.map((item) => (
             <div key={item.nombre} className="re-semaforo-item">
@@ -26,7 +39,7 @@ function SemaforoLista({ titulo, items = [] }) {
               <div>
                 <strong>{item.nombre}</strong>
                 <span>
-                  {item.nivel} · {item.totalRiesgos} riesgo(s)
+                  {tNivel(t, item.nivel)} · {t('riskMatrix.exec.riskCount', { count: item.totalRiesgos })}
                 </span>
               </div>
             </div>
@@ -38,37 +51,45 @@ function SemaforoLista({ titulo, items = [] }) {
 }
 
 export default function SemaforoGerencial({ analitica }) {
+  const { t } = useTranslation();
   return (
     <div className="re-semaforo">
       <header className="re-seccion-header">
         <div>
-          <p className="re-seccion-kicker">Matriz de Riesgos Avanzada</p>
-          <h2 className="re-seccion-titulo">Semáforo gerencial</h2>
-          <p className="re-seccion-desc">
-            Lectura rápida por frente de riesgo y por proceso evaluado.
-          </p>
+          <p className="re-seccion-kicker">{t('riskMatrix.exec.kicker')}</p>
+          <h2 className="re-seccion-titulo">{t('riskMatrix.exec.trafficTitle')}</h2>
+          <p className="re-seccion-desc">{t('riskMatrix.exec.trafficDesc')}</p>
         </div>
       </header>
 
       <div className="re-dashboard-widgets re-dashboard-widgets--2col">
-        <SemaforoLista titulo="Por categoría / frente" items={analitica.semaforoCategorias} />
-        <SemaforoLista titulo="Por proceso" items={analitica.semaforoProcesos} />
+        <SemaforoLista
+          titulo={t('riskMatrix.exec.byCategory')}
+          items={analitica.semaforoCategorias}
+          t={t}
+        />
+        <SemaforoLista
+          titulo={t('riskMatrix.exec.byProcess')}
+          items={analitica.semaforoProcesos}
+          t={t}
+        />
       </div>
     </div>
   );
 }
 
 export function HallazgosAutomaticos({ analitica }) {
+  const { t } = useTranslation();
   const { hallazgos, kpis } = analitica;
 
   return (
     <div className="re-hallazgos">
       <header className="re-seccion-header">
         <div>
-          <p className="re-seccion-kicker">Matriz de Riesgos Avanzada</p>
-          <h2 className="re-seccion-titulo">Hallazgos clave automáticos</h2>
+          <p className="re-seccion-kicker">{t('riskMatrix.exec.kicker')}</p>
+          <h2 className="re-seccion-titulo">{t('riskMatrix.exec.autoFindingsTitle')}</h2>
           <p className="re-seccion-desc">
-            Conclusiones generadas a partir de {kpis.totalRiesgos} riesgos evaluados.
+            {t('riskMatrix.exec.autoFindingsDesc', { count: kpis.totalRiesgos })}
           </p>
         </div>
       </header>
@@ -84,7 +105,7 @@ export function HallazgosAutomaticos({ analitica }) {
       </div>
 
       <section className="re-conclusion-box">
-        <h3>Conclusión general</h3>
+        <h3>{t('riskMatrix.exec.generalConclusion')}</h3>
         <p>{hallazgos.conclusion}</p>
       </section>
     </div>

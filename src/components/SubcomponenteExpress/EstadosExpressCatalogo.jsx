@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FaCheck, FaEdit, FaPlus, FaTimes, FaTrashAlt } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import {
   actualizarEstadoExpress,
   crearEstadoExpress,
@@ -21,6 +22,7 @@ const codigoDe = (estado) => Number(estado?.codiEstdo ?? estado?.codiEstado) || 
 const descDe = (estado) => String(estado?.descEstdo ?? estado?.descEstado ?? '').trim();
 
 export function EstadosExpressCatalogo() {
+  const { t } = useTranslation();
   const [estados, setEstados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -79,7 +81,7 @@ export function EstadosExpressCatalogo() {
     const codiEstdo = Number(nuevo.codiEstdo);
     const descEstdo = nuevo.descEstdo.trim();
     if (!codiEstdo || !descEstdo) {
-      setError('Código y descripción son obligatorios.');
+      setError(t('express.statusCatalog.codeAndDescriptionRequired'));
       return;
     }
     setGuardando(true);
@@ -87,7 +89,7 @@ export function EstadosExpressCatalogo() {
     setSuccess(null);
     try {
       await crearEstadoExpress(codiEstdo, descEstdo);
-      setSuccess('Estado Express creado.');
+      setSuccess(t('express.statusCatalog.created'));
       setMostrarFormulario(false);
       setNuevo({ codiEstdo: '', descEstdo: '' });
       await cargar();
@@ -117,7 +119,7 @@ export function EstadosExpressCatalogo() {
     const codiEstdo = Number(editando.codiEstdo);
     const descEstdo = editando.descEstdo.trim();
     if (!codiEstdo || !descEstdo) {
-      setError('Código y descripción son obligatorios.');
+      setError(t('express.statusCatalog.codeAndDescriptionRequired'));
       return;
     }
     setGuardando(true);
@@ -125,7 +127,7 @@ export function EstadosExpressCatalogo() {
     setSuccess(null);
     try {
       await actualizarEstadoExpress(estado._id, { codiEstdo, descEstdo });
-      setSuccess('Estado actualizado. Los casos Express vinculados se actualizaron al nuevo código.');
+      setSuccess(t('express.statusCatalog.updated'));
       cancelarEdicion();
       await cargar();
     } catch (err) {
@@ -138,8 +140,8 @@ export function EstadosExpressCatalogo() {
   const confirmarEliminar = (estado) => {
     setAviso({
       open: true,
-      titulo: 'Eliminar estado Express',
-      mensaje: `¿Eliminar «${descDe(estado)}» (código ${codigoDe(estado)})? Solo se permite si ningún caso lo usa.`,
+      titulo: t('express.statusCatalog.deleteTitle'),
+      mensaje: t('express.statusCatalog.deleteConfirm', { description: descDe(estado), code: codigoDe(estado) }),
       tipo: 'warning',
       onConfirm: () => eliminar(estado),
     });
@@ -152,7 +154,7 @@ export function EstadosExpressCatalogo() {
     setSuccess(null);
     try {
       await eliminarEstadoExpress(estado._id);
-      setSuccess('Estado eliminado.');
+      setSuccess(t('express.statusCatalog.deleted'));
       await cargar();
     } catch (err) {
       setError(err.message);
@@ -165,7 +167,7 @@ export function EstadosExpressCatalogo() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-body text-sm text-gray-600 dark:text-gray-400">
-          Estados del proceso Express (código + descripción). Se usan en Carga, Reporte y Tablero.
+          {t('express.statusCatalog.description')}
         </p>
         <button
           type="button"
@@ -176,12 +178,12 @@ export function EstadosExpressCatalogo() {
           {mostrarFormulario ? (
             <>
               <FaTimes className="mr-2 inline" />
-              Cancelar
+              {t('common.cancel')}
             </>
           ) : (
             <>
               <FaPlus className="mr-2 inline" />
-              Nuevo estado
+              {t('express.statusCatalog.newStatus')}
             </>
           )}
         </button>
@@ -194,7 +196,7 @@ export function EstadosExpressCatalogo() {
         >
           <div>
             <label className="mb-1 block font-body text-sm font-semibold text-gray-700 dark:text-gray-200">
-              Código *
+              {t('express.statusCatalog.code')} *
             </label>
             <InputFenix
               type="number"
@@ -206,18 +208,18 @@ export function EstadosExpressCatalogo() {
           </div>
           <div>
             <label className="mb-1 block font-body text-sm font-semibold text-gray-700 dark:text-gray-200">
-              Descripción *
+              {t('express.statusCatalog.descriptionLabel')} *
             </label>
             <InputFenix
               value={nuevo.descEstdo}
               onChange={(e) => setNuevo((p) => ({ ...p, descEstdo: e.target.value }))}
-              placeholder="Ej: EN ESPERA DE DOCUMENTOS"
+              placeholder={t('express.statusCatalog.descriptionPlaceholder')}
               disabled={guardando}
             />
           </div>
           <div className="sm:col-span-2 flex justify-end">
             <button type="submit" className={expressBtnPrimary} disabled={guardando}>
-              Guardar estado
+              {t('express.statusCatalog.saveStatus')}
             </button>
           </div>
         </form>
@@ -226,7 +228,7 @@ export function EstadosExpressCatalogo() {
       <input
         type="search"
         className={expressInput}
-        placeholder="Buscar por código o descripción…"
+        placeholder={t('express.statusCatalog.searchPlaceholder')}
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}
       />
@@ -239,22 +241,22 @@ export function EstadosExpressCatalogo() {
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
             <thead className={expressTableHead}>
               <tr>
-                <th className="px-4 py-3 text-left">Código</th>
-                <th className="px-4 py-3 text-left">Descripción</th>
-                <th className="px-4 py-3 text-right">Acciones</th>
+                <th className="px-4 py-3 text-left">{t('express.statusCatalog.code')}</th>
+                <th className="px-4 py-3 text-left">{t('express.statusCatalog.descriptionLabel')}</th>
+                <th className="px-4 py-3 text-right">{t('express.menu.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
               {loading ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-sm text-gray-500">
-                    Cargando estados…
+                    {t('express.statusCatalog.loading')}
                   </td>
                 </tr>
               ) : filtrados.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-8 text-center text-sm italic text-gray-500">
-                    No hay estados. Cree uno con «Nuevo estado».
+                    {t('express.statusCatalog.noStatuses')}
                   </td>
                 </tr>
               ) : (
@@ -321,7 +323,7 @@ export function EstadosExpressCatalogo() {
                               className={`${expressBtnSecondary} !py-1.5 !text-xs`}
                               onClick={() => iniciarEdicion(estado)}
                               disabled={guardando}
-                              title="Editar"
+                              title={t('express.catalogs.editName')}
                             >
                               <FaEdit />
                             </button>
@@ -330,7 +332,7 @@ export function EstadosExpressCatalogo() {
                               className={`${expressBtnSecondary} !border-red-200 !py-1.5 !text-xs !text-red-700 hover:!bg-red-50`}
                               onClick={() => confirmarEliminar(estado)}
                               disabled={guardando}
-                              title="Eliminar"
+                              title={t('express.menu.delete')}
                             >
                               <FaTrashAlt />
                             </button>
@@ -347,8 +349,7 @@ export function EstadosExpressCatalogo() {
       </div>
 
       <p className="font-body text-xs text-gray-500">
-        {filtrados.length} de {estados.length} estados. No se puede eliminar un estado si hay casos Express
-        que lo usan.
+        {t('express.statusCatalog.summary', { filtered: filtrados.length, total: estados.length })}
       </p>
 
       <ExpressAvisoModal
@@ -358,7 +359,7 @@ export function EstadosExpressCatalogo() {
         mensaje={aviso.mensaje}
         tipo={aviso.tipo}
         onConfirm={aviso.onConfirm}
-        confirmTexto="Eliminar"
+        confirmTexto={t('express.menu.delete')}
       />
     </div>
   );

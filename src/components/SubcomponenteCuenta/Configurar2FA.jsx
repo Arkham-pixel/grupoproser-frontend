@@ -3,9 +3,11 @@
 
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig';
 
 export default function Configurar2FA({ isDark }) {
+  const { t } = useTranslation();
   const [cargando, setCargando] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [pending, setPending] = useState(false);
@@ -43,7 +45,7 @@ export default function Configurar2FA({ isDark }) {
 
         if (res.data.pending && !res.data.enabled) {
           await cargarQr();
-          setMensaje('Tienes una activación pendiente. Escanea el QR y confirma con el código de 6 dígitos para que el login te lo pida.');
+          setMensaje(t('account.ui.cuenta.twoFa.pendingMessage'));
         }
       } catch (err) {
         console.error('Error consultando estado 2FA:', err);
@@ -61,7 +63,7 @@ export default function Configurar2FA({ isDark }) {
     try {
       await cargarQr();
     } catch (err) {
-      setError(err.response?.data?.message || 'Error generando el código QR');
+      setError(err.response?.data?.message || t('account.ui.cuenta.twoFa.qrError'));
     } finally {
       setBusy(false);
     }
@@ -77,10 +79,10 @@ export default function Configurar2FA({ isDark }) {
       setPending(false);
       setSetupData(null);
       setCode('');
-      setMensaje(res.data.message || 'Verificación activada. Al cerrar sesión, el login pedirá el código de ARNALD DATA FLOW.');
+      setMensaje(res.data.message || t('account.ui.cuenta.twoFa.activateSuccess'));
       window.dispatchEvent(new Event('2fa-actualizado'));
     } catch (err) {
-      setError(err.response?.data?.message || 'Código incorrecto');
+      setError(err.response?.data?.message || t('account.ui.cuenta.twoFa.codeError'));
     } finally {
       setBusy(false);
     }
@@ -96,20 +98,20 @@ export default function Configurar2FA({ isDark }) {
       setPending(false);
       setDisableMode(false);
       setCode('');
-      setMensaje(res.data.message || 'Verificación en dos pasos desactivada');
+      setMensaje(res.data.message || t('account.ui.cuenta.twoFa.disableSuccess'));
       window.dispatchEvent(new Event('2fa-actualizado'));
     } catch (err) {
-      setError(err.response?.data?.message || 'Código incorrecto');
+      setError(err.response?.data?.message || t('account.ui.cuenta.twoFa.codeError'));
     } finally {
       setBusy(false);
     }
   };
 
   const estadoBadge = enabled
-    ? 'Activada'
+    ? t('account.ui.cuenta.twoFa.status.enabled')
     : pending
-      ? 'Pendiente'
-      : 'Desactivada';
+      ? t('account.ui.cuenta.twoFa.status.pending')
+      : t('account.ui.cuenta.twoFa.status.disabled');
 
   const inputCodigo = (
     <input
@@ -137,9 +139,9 @@ export default function Configurar2FA({ isDark }) {
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className={`text-lg sm:text-xl font-bold ${isDark ? 'text-cyan-300' : 'text-cyan-800'}`}>Verificación en Dos Pasos</h3>
+          <h3 className={`text-lg sm:text-xl font-bold ${isDark ? 'text-cyan-300' : 'text-cyan-800'}`}>{t('account.ui.cuenta.twoFa.title')}</h3>
           <p className={`text-xs sm:text-sm ${isDark ? 'text-cyan-200/70' : 'text-cyan-700/80'}`}>
-            En la app aparecerá como <strong>ARNALD DATA FLOW</strong> con tu ID (cédula)
+            {t('account.ui.cuenta.twoFa.subtitle')}
           </p>
         </div>
         {!cargando && (
@@ -156,7 +158,7 @@ export default function Configurar2FA({ isDark }) {
       </div>
 
       {cargando ? (
-        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Consultando estado...</p>
+        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{t('account.ui.cuenta.twoFa.loading')}</p>
       ) : (
         <>
           {mensaje && (
@@ -181,26 +183,26 @@ export default function Configurar2FA({ isDark }) {
                   : 'bg-cyan-600 text-white hover:bg-cyan-700'
               }`}
             >
-              {busy ? 'Generando QR...' : 'Activar verificación en dos pasos'}
+              {busy ? t('account.ui.cuenta.twoFa.generating') : t('account.ui.cuenta.twoFa.activate')}
             </button>
           )}
 
           {!enabled && setupData && (
             <div className="flex flex-col sm:flex-row gap-5 items-center sm:items-start">
               <div className="flex-shrink-0 p-3 bg-white rounded-xl shadow-md">
-                <img src={setupData.qr} alt="Código QR ARNALD DATA FLOW" className="w-52 h-52" />
+                <img src={setupData.qr} alt={t('account.ui.cuenta.twoFa.qrAlt')} className="w-52 h-52" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className={`text-sm font-semibold mb-3 ${isDark ? 'text-cyan-200' : 'text-cyan-800'}`}>
-                  En la app verás: <strong>ARNALD DATA FLOW</strong> — {setupData.label || cuentaId}
+                  {t('account.ui.cuenta.twoFa.seeInApp', { label: setupData.label || cuentaId })}
                 </p>
                 <ol className={`list-decimal list-inside space-y-2 text-sm mb-4 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                  <li>Abre <strong>Google Authenticator</strong> o <strong>Microsoft Authenticator</strong>.</li>
-                  <li>Escanea este QR (ID: <strong>{setupData.label || cuentaId}</strong>).</li>
-                  <li><strong>Importante:</strong> ingresa aquí el código de 6 dígitos y pulsa <strong>Confirmar y activar</strong>. Sin este paso, el login no pedirá el código.</li>
+                  <li>{t('account.ui.cuenta.twoFa.step1')}</li>
+                  <li>{t('account.ui.cuenta.twoFa.step2', { label: setupData.label || cuentaId })}</li>
+                  <li>{t('account.ui.cuenta.twoFa.step3')}</li>
                 </ol>
                 <p className={`text-xs mb-4 break-all ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Clave manual: <span className="font-mono font-bold">{setupData.secret}</span>
+                  {t('account.ui.cuenta.twoFa.manualKey')} <span className="font-mono font-bold">{setupData.secret}</span>
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
                   {inputCodigo}
@@ -212,7 +214,7 @@ export default function Configurar2FA({ isDark }) {
                       isDark ? 'bg-green-700 text-white hover:bg-green-600' : 'bg-green-600 text-white hover:bg-green-700'
                     }`}
                   >
-                    {busy ? 'Verificando...' : 'Confirmar y activar'}
+                    {busy ? t('account.ui.cuenta.twoFa.verifying') : t('account.ui.cuenta.twoFa.confirmActivate')}
                   </button>
                   <button
                     type="button"
@@ -221,7 +223,7 @@ export default function Configurar2FA({ isDark }) {
                       isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    Cancelar
+                    {t('account.ui.cuenta.twoFa.cancel')}
                   </button>
                 </div>
               </div>
@@ -231,7 +233,7 @@ export default function Configurar2FA({ isDark }) {
           {enabled && !disableMode && (
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
               <p className={`flex-1 text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                Al iniciar sesión se te pedirá el código de 6 dígitos de <strong>ARNALD DATA FLOW</strong> en tu app.
+                {t('account.ui.cuenta.twoFa.enabledHint')}
               </p>
               <button
                 type="button"
@@ -240,7 +242,7 @@ export default function Configurar2FA({ isDark }) {
                   isDark ? 'bg-red-900/50 text-red-200 hover:bg-red-900/70 border border-red-800' : 'bg-red-50 text-red-700 hover:bg-red-100 border border-red-200'
                 }`}
               >
-                Desactivar
+                {t('account.ui.cuenta.twoFa.deactivate')}
               </button>
             </div>
           )}
@@ -248,7 +250,7 @@ export default function Configurar2FA({ isDark }) {
           {enabled && disableMode && (
             <div className="flex flex-wrap items-center gap-3">
               <p className={`w-full text-sm ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                Para desactivar, ingresa el código actual de ARNALD DATA FLOW en tu app:
+                {t('account.ui.cuenta.twoFa.disableHint')}
               </p>
               {inputCodigo}
               <button
@@ -259,7 +261,7 @@ export default function Configurar2FA({ isDark }) {
                   isDark ? 'bg-red-700 text-white hover:bg-red-600' : 'bg-red-600 text-white hover:bg-red-700'
                 }`}
               >
-                {busy ? 'Verificando...' : 'Confirmar desactivación'}
+                {busy ? t('account.ui.cuenta.twoFa.verifying') : t('account.ui.cuenta.twoFa.confirmDeactivate')}
               </button>
               <button
                 type="button"
@@ -268,7 +270,7 @@ export default function Configurar2FA({ isDark }) {
                   isDark ? 'bg-gray-700 text-gray-200 hover:bg-gray-600' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                Cancelar
+                {t('account.ui.cuenta.twoFa.cancel')}
               </button>
             </div>
           )}

@@ -30,14 +30,23 @@ export function esEstadoPlaceholder(texto) {
   return !t || PLACEHOLDER_ESTADO.test(t);
 }
 
-/** Etiqueta para mostrar en UI (nunca devuelve xxxxxxx). */
-export function resolverEtiquetaEstadoPuertos(fila = {}) {
+/**
+ * Etiqueta para mostrar en UI (nunca devuelve xxxxxxx).
+ * Si se pasa `t` (i18n), traduce códigos conocidos vía `ports.ui.estados.*`.
+ */
+export function resolverEtiquetaEstadoPuertos(fila = {}, t) {
   const codigo = normalizarCodigoEstadoPuertos(fila.estadoCodigo);
   if (codigo && ETIQUETAS_ESTADO_PUERTOS[codigo]) {
+    if (typeof t === 'function') {
+      return t(`ports.ui.estados.${codigo}`);
+    }
     return ETIQUETAS_ESTADO_PUERTOS[codigo];
   }
   if (!esEstadoPlaceholder(fila.estado)) {
     return String(fila.estado).trim();
+  }
+  if (typeof t === 'function') {
+    return t('ports.ui.estados.borrador');
   }
   return ETIQUETAS_ESTADO_PUERTOS.borrador;
 }

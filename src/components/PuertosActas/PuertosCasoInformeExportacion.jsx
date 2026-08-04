@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Seccion, Campo, inputCls } from './PuertosCasoDatosGenerales';
 
 export default function PuertosCasoInformeExportacion({ formData, onInformeChange, onNestedChange }) {
+  const { t } = useTranslation();
   const buque = formData.informeExportacion?.buque || {};
   const intro = formData.informeExportacion?.introduccion || '';
   const conclusiones = formData.informeExportacion?.conclusiones || '';
@@ -16,12 +18,11 @@ export default function PuertosCasoInformeExportacion({ formData, onInformeChang
   return (
     <div className="space-y-5">
       <p className="text-sm text-slate-600 dark:text-slate-400">
-        Informe de exportación (formato Precocidos del Oriente). Se ampliará con tablas de mercancía,
-        seguimiento de contenedores y registro fotográfico.
+        {t('ports.ui.casoExportacion.informeLegacy.intro')}
       </p>
 
-      <Seccion titulo="Introducción" cols={1}>
-        <Campo label="Texto introductorio">
+      <Seccion titulo={t('ports.ui.casoExportacion.informeLegacy.introduccionTitle')} cols={1}>
+        <Campo label={t('ports.ui.casoExportacion.informeLegacy.textoIntroductorio')}>
           <textarea
             className={`${inputCls} min-h-[120px]`}
             value={intro}
@@ -30,29 +31,29 @@ export default function PuertosCasoInformeExportacion({ formData, onInformeChang
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Particularidades del buque">
-        <Campo label="Nombre motonave">
+      <Seccion titulo={t('ports.ui.casoExportacion.informeLegacy.buqueTitle')}>
+        <Campo label={t('ports.ui.casoExportacion.buque.nombreMotonave')}>
           <input
             className={inputCls}
             value={buque.nombre || ''}
             onChange={(e) => setBuque('nombre', e.target.value)}
           />
         </Campo>
-        <Campo label="Puerto de embarque">
+        <Campo label={t('ports.ui.casoExportacion.buque.puertoEmbarque')}>
           <input
             className={inputCls}
             value={buque.puertoEmbarque || ''}
             onChange={(e) => setBuque('puertoEmbarque', e.target.value)}
           />
         </Campo>
-        <Campo label="Puerto de descargue">
+        <Campo label={t('ports.ui.casoExportacion.buque.puertoDescargue')}>
           <input
             className={inputCls}
             value={buque.puertoDescargue || ''}
             onChange={(e) => setBuque('puertoDescargue', e.target.value)}
           />
         </Campo>
-        <Campo label="Fecha de arribo">
+        <Campo label={t('ports.ui.casoExportacion.buque.fechaArribo')}>
           <input
             type="date"
             className={inputCls}
@@ -60,14 +61,14 @@ export default function PuertosCasoInformeExportacion({ formData, onInformeChang
             onChange={(e) => setBuque('fechaArribo', e.target.value)}
           />
         </Campo>
-        <Campo label="IMO">
+        <Campo label={t('ports.ui.casoExportacion.buque.imo')}>
           <input
             className={inputCls}
             value={buque.imo || ''}
             onChange={(e) => setBuque('imo', e.target.value)}
           />
         </Campo>
-        <Campo label="Bandera">
+        <Campo label={t('ports.ui.casoExportacion.buque.bandera')}>
           <input
             className={inputCls}
             value={buque.bandera || ''}
@@ -76,8 +77,8 @@ export default function PuertosCasoInformeExportacion({ formData, onInformeChang
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Conclusiones" cols={1}>
-        <Campo label="Conclusiones y comentarios">
+      <Seccion titulo={t('ports.ui.casoExportacion.informeLegacy.conclusionesTitle')} cols={1}>
+        <Campo label={t('ports.ui.casoExportacion.informeLegacy.conclusionesLabel')}>
           <textarea
             className={`${inputCls} min-h-[120px]`}
             value={conclusiones}

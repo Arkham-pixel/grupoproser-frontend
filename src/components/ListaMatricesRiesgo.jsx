@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaBuilding,
   FaChartBar,
@@ -29,6 +30,7 @@ const BADGE_CLASS = {
 };
 
 const ListaMatricesRiesgo = () => {
+  const { t, i18n } = useTranslation();
   const [matrices, setMatrices] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -47,7 +49,7 @@ const ListaMatricesRiesgo = () => {
       setMatrices(resultado.data || []);
     } catch (err) {
       console.error('Error cargando matrices:', err);
-      setError(err.message || 'Error al cargar las matrices de riesgo');
+      setError(err.message || t('riskMatrix.loadError'));
       setMatrices([]);
     } finally {
       setCargando(false);
@@ -56,14 +58,14 @@ const ListaMatricesRiesgo = () => {
 
   const handleEliminar = async (id, e) => {
     e.stopPropagation();
-    if (!window.confirm('¿Estás seguro de que deseas eliminar esta matriz de riesgo?')) {
+    if (!window.confirm(t('riskMatrix.deleteConfirmation'))) {
       return;
     }
     try {
       await MatrizRiesgoService.eliminarMatrizRiesgo(id);
       cargarMatrices();
     } catch (err) {
-      alert('Error al eliminar la matriz: ' + err.message);
+      alert(t('riskMatrix.deleteError', { error: err.message }));
     }
   };
 
@@ -80,7 +82,7 @@ const ListaMatricesRiesgo = () => {
   const formatearFecha = (fecha) => {
     if (!fecha) return 'N/A';
     try {
-      return new Date(fecha).toLocaleDateString('es-ES', {
+      return new Date(fecha).toLocaleDateString(i18n.language === 'en' ? 'en-US' : 'es-ES', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',
@@ -94,10 +96,10 @@ const ListaMatricesRiesgo = () => {
 
   const getEstadoBadge = (estado) => {
     const map = {
-      inicial: 'Inicial',
-      en_proceso: 'En proceso',
-      final: 'Final',
-      completado: 'Completado',
+      inicial: t('riskMatrix.statusInitial'),
+      en_proceso: t('riskMatrix.statusInProgress'),
+      final: t('riskMatrix.statusFinal'),
+      completado: t('riskMatrix.statusCompleted'),
     };
     const texto = map[estado] || estado;
     const clase = BADGE_CLASS[estado] || 'bg-gray-100 text-gray-600';
@@ -112,12 +114,12 @@ const ListaMatricesRiesgo = () => {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h1 className="flex items-center gap-2 border-l-4 border-fenix-primario pl-3 font-heading text-xl font-bold text-gray-800 dark:text-white sm:text-2xl">
             <FaChartBar className="text-fenix-primario" />
-            Matrices de riesgo guardadas
+            {t('riskMatrix.savedMatrices')}
           </h1>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={matrizBtnPrimary} onClick={handleNuevaMatriz}>
               <FaPlus />
-              Nueva matriz
+              {t('riskMatrix.newMatrix')}
             </button>
             <button
               type="button"
@@ -126,7 +128,7 @@ const ListaMatricesRiesgo = () => {
               disabled={cargando}
             >
               <FaSyncAlt className={cargando ? 'animate-spin' : ''} />
-              Refrescar
+              {t('riskMatrix.refresh')}
             </button>
           </div>
         </div>
@@ -134,7 +136,7 @@ const ListaMatricesRiesgo = () => {
         <div className={`${matrizCard} flex flex-wrap gap-4`}>
           <div className="min-w-[160px] flex-1">
             <label htmlFor="filtro-estado" className={matrizLabel}>
-              Estado
+              {t('riskMatrix.status')}
             </label>
             <select
               id="filtro-estado"
@@ -142,21 +144,21 @@ const ListaMatricesRiesgo = () => {
               onChange={(e) => setFiltros({ ...filtros, estado: e.target.value })}
               className={matrizInput}
             >
-              <option value="">Todos</option>
-              <option value="inicial">Inicial</option>
-              <option value="en_proceso">En proceso</option>
-              <option value="final">Final</option>
-              <option value="completado">Completado</option>
+              <option value="">{t('riskMatrix.all')}</option>
+              <option value="inicial">{t('riskMatrix.statusInitial')}</option>
+              <option value="en_proceso">{t('riskMatrix.statusInProgress')}</option>
+              <option value="final">{t('riskMatrix.statusFinal')}</option>
+              <option value="completado">{t('riskMatrix.statusCompleted')}</option>
             </select>
           </div>
           <div className="min-w-[200px] flex-[2]">
             <label htmlFor="filtro-empresa" className={matrizLabel}>
-              Empresa
+              {t('riskMatrix.company')}
             </label>
             <input
               id="filtro-empresa"
               type="text"
-              placeholder="Buscar por empresa..."
+              placeholder={t('riskMatrix.searchCompany')}
               value={filtros.empresa}
               onChange={(e) => setFiltros({ ...filtros, empresa: e.target.value })}
               className={matrizInput}
@@ -173,18 +175,18 @@ const ListaMatricesRiesgo = () => {
         {cargando ? (
           <div className={`${matrizCard} flex items-center justify-center gap-2 py-12`}>
             <FaSyncAlt className="animate-spin text-fenix-primario" />
-            <p className="font-body text-gray-600 dark:text-gray-400">Cargando matrices...</p>
+            <p className="font-body text-gray-600 dark:text-gray-400">{t('riskMatrix.loadingMatrices')}</p>
           </div>
         ) : matrices.length === 0 ? (
           <div className={`${matrizCard} py-12 text-center`}>
-            <p className="font-body text-gray-600 dark:text-gray-400">No se encontraron matrices de riesgo</p>
+            <p className="font-body text-gray-600 dark:text-gray-400">{t('riskMatrix.noMatrices')}</p>
             <button
               type="button"
               className={`${matrizBtnPrimary} mt-4`}
               onClick={handleNuevaMatriz}
             >
               <FaPlus />
-              Crear nueva matriz
+              {t('riskMatrix.createMatrix')}
             </button>
           </div>
         ) : (
@@ -200,25 +202,25 @@ const ListaMatricesRiesgo = () => {
               >
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">
-                    {matriz.titulo || 'Sin título'}
+                    {matriz.titulo || t('riskMatrix.untitled')}
                   </h3>
                   {getEstadoBadge(matriz.estado)}
                 </div>
                 <div className="space-y-2 font-body text-sm text-gray-600 dark:text-gray-300">
                   <p className="flex items-center gap-2">
                     <FaBuilding className="shrink-0 text-fenix-primario" />
-                    {matriz.nombreEmpresa || 'N/A'}
+                    {matriz.nombreEmpresa || t('riskMatrix.na')}
                   </p>
                   {matriz.ajustador && (
                     <p className="flex items-center gap-2">
                       <FaUser className="shrink-0 text-gray-400" />
-                      {matriz.ajustador.nombre || 'N/A'}
+                      {matriz.ajustador.nombre || t('riskMatrix.na')}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500">Creada: {formatearFecha(matriz.fechaCreacion)}</p>
+                  <p className="text-xs text-gray-500">{t('riskMatrix.created')}: {formatearFecha(matriz.fechaCreacion)}</p>
                   {matriz.fechaModificacion && (
                     <p className="text-xs text-gray-500">
-                      Modificada: {formatearFecha(matriz.fechaModificacion)}
+                      {t('riskMatrix.modified')}: {formatearFecha(matriz.fechaModificacion)}
                     </p>
                   )}
                 </div>
@@ -232,7 +234,7 @@ const ListaMatricesRiesgo = () => {
                     }}
                   >
                     <FaEye />
-                    Ver
+                    {t('riskMatrix.view')}
                   </button>
                   <button
                     type="button"
@@ -240,7 +242,7 @@ const ListaMatricesRiesgo = () => {
                     onClick={(e) => handleEliminar(matriz._id, e)}
                   >
                     <FaTrashAlt />
-                    Eliminar
+                    {t('riskMatrix.delete')}
                   </button>
                 </div>
               </div>

@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import { esUsuarioGerenteFacturacion } from '../../config/gerentesFacturacion';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 
@@ -46,32 +48,32 @@ export function puedeGestionarSubtareasFrontend(codiRespnsbleCaso) {
 
 export const SEMAFORO_STYLES = {
   verde: {
-    label: 'Al día',
+    get label() { return t('complex.ui.subtareas_complex_utils.al_dia'); },
     dot: 'bg-emerald-500',
     badge: 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900/50',
   },
   amarillo: {
-    label: 'En curso / próximo a vencer',
+    get label() { return t('complex.ui.subtareas_complex_utils.en_curso_proximo_a_vencer'); },
     dot: 'bg-amber-400',
     badge: 'bg-amber-50 text-amber-900 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900/50',
   },
   rojo: {
-    label: 'Vencida',
+    get label() { return t('complex.ui.subtareas_complex_utils.vencida'); },
     dot: 'bg-red-500',
     badge: 'bg-red-50 text-red-800 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900/50',
   },
   gris: {
-    label: 'Cancelada',
+    get label() { return t('complex.ui.subtareas_complex_utils.cancelada'); },
     dot: 'bg-gray-400',
     badge: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700',
   },
 };
 
 export const ESTADO_LABELS = {
-  pendiente: 'Pendiente',
-  en_progreso: 'En progreso',
-  completada: 'Completada',
-  cancelada: 'Cancelada',
+  get pendiente() { return t('complex.ui.subtareas_complex_utils.pendiente'); },
+  get en_progreso() { return t('complex.ui.subtareas_complex_utils.en_progreso'); },
+  get completada() { return t('complex.ui.subtareas_complex_utils.completada'); },
+  get cancelada() { return t('complex.ui.subtareas_complex_utils.cancelada'); },
 };
 
 /** Etapas cuyo entregable es un formato (informe): exigen adjuntarlo para completar. */
@@ -100,54 +102,54 @@ export const ETAPAS_SOLO_FECHA = new Set([
  */
 export const CAMPOS_PROTOCOLO_POR_ETAPA = {
   recepcionAsignacion: [
-    { campo: 'fchaAsgncion', label: 'Fecha de recepción / asignación', requerido: true },
+    { campo: 'fchaAsgncion', get label() { return t('complex.ui.subtareas_complex_utils.fecha_recepcion_asignacion'); }, requerido: true },
   ],
   carguePlataforma: [
-    { campo: 'fchaAsgncion', label: 'Fecha de cargue / asignación', requerido: true },
+    { campo: 'fchaAsgncion', get label() { return t('complex.ui.subtareas_complex_utils.fecha_cargue_asignacion'); }, requerido: true },
   ],
   contactoInicial: [
-    { campo: 'fchaContIni', label: 'Fecha de contacto inicial', requerido: true },
+    { campo: 'fchaContIni', get label() { return t('complex.ui.subtareas_complex_utils.fecha_contacto_inicial'); }, requerido: true },
   ],
   coordinacionInspeccion: [
-    { campo: 'fchaCoordInspeccion', label: 'Fecha de la llamada', requerido: true },
-    { campo: 'fchaProgInspeccion', label: 'Fecha programada de inspección', requerido: true },
+    { campo: 'fchaCoordInspeccion', get label() { return t('complex.ui.subtareas_complex_utils.fecha_de_la_llamada'); }, requerido: true },
+    { campo: 'fchaProgInspeccion', get label() { return t('complex.ui.subtareas_complex_utils.fecha_programada_inspeccion'); }, requerido: true },
   ],
   inspeccion: [
-    { campo: 'fchaInspccion', label: 'Fecha de inspección', requerido: true },
+    { campo: 'fchaInspccion', get label() { return t('complex.ui.subtareas_complex_utils.fecha_inspeccion'); }, requerido: true },
   ],
   solicitudDocs: [
-    { campo: 'fchaSoliDocu', label: 'Fecha de solicitud de documentos', requerido: true },
+    { campo: 'fchaSoliDocu', get label() { return t('complex.ui.subtareas_complex_utils.fecha_solicitud_documentos'); }, requerido: true },
   ],
   informePreliminar: [
-    { campo: 'fchaInfoPrelm', label: 'Fecha de informe preliminar', requerido: true },
+    { campo: 'fchaInfoPrelm', get label() { return t('complex.ui.subtareas_complex_utils.fecha_informe_preliminar'); }, requerido: true },
   ],
   seguimientoDocsPendientes: [
-    { campo: 'fchaUltSegui', label: 'Fecha de seguimiento de documentos', requerido: true },
+    { campo: 'fchaUltSegui', get label() { return t('complex.ui.subtareas_complex_utils.fecha_seguimiento_documentos'); }, requerido: true },
   ],
   ultimoDocumento: [
-    { campo: 'fchaRepoActi', label: 'Fecha de reporte de actividades', requerido: true },
+    { campo: 'fchaRepoActi', get label() { return t('complex.ui.subtareas_complex_utils.fecha_reporte_actividades'); }, requerido: true },
   ],
   reporteActividades: [
-    { campo: 'fchaRepoActi', label: 'Fecha de reporte de actividades', requerido: true },
+    { campo: 'fchaRepoActi', get label() { return t('complex.ui.subtareas_complex_utils.fecha_reporte_actividades'); }, requerido: true },
   ],
   informeFinal: [
-    { campo: 'fchaInfoFnal', label: 'Fecha de informe final', requerido: true },
+    { campo: 'fchaInfoFnal', get label() { return t('complex.ui.subtareas_complex_utils.fecha_informe_final'); }, requerido: true },
   ],
   seguimientoAutorizacionCompania: [
     {
       campo: 'fchaAceptacionCifrasAseguradora',
-      label: 'Fecha de aceptación / autorización compañía',
+      get label() { return t('complex.ui.subtareas_complex_utils.fecha_aceptacion_autorizacion'); },
       requerido: true,
     },
   ],
   presentacionCifras: [
-    { campo: 'fchaPresentacionCifras', label: 'Fecha de presentación de cifras', requerido: true },
+    { campo: 'fchaPresentacionCifras', get label() { return t('complex.ui.subtareas_complex_utils.fecha_presentacion_cifras'); }, requerido: true },
   ],
   seguimientoDocumentosPago: [
-    { campo: 'fchaUltSegui', label: 'Fecha de seguimiento docs de pago', requerido: true },
+    { campo: 'fchaUltSegui', get label() { return t('complex.ui.subtareas_complex_utils.fecha_seguimiento_docs_pago'); }, requerido: true },
   ],
   envioFiniquito: [
-    { campo: 'fchaEnvioFiniquito', label: 'Fecha de envío de finiquito', requerido: true },
+    { campo: 'fchaEnvioFiniquito', get label() { return t('complex.ui.subtareas_complex_utils.fecha_envio_finiquito'); }, requerido: true },
   ],
 };
 
@@ -202,12 +204,12 @@ export function faseFlujoVisita(subtarea) {
 
 export function etiquetaFaseFlujoVisita(fase) {
   const mapa = {
-    coordinacion: '1. Coordinación',
-    inspeccion: '2. Inspección y acta',
-    decidir: '3. Entrega al ajustador',
-    preliminar: '3. Informe preliminar (opcional)',
+    coordinacion: () => t('complex.ui.subtareas_complex_utils.fase_1_coordinacion'),
+    inspeccion: () => t('complex.ui.subtareas_complex_utils.fase_2_inspeccion_acta'),
+    decidir: () => t('complex.ui.subtareas_complex_utils.fase_3_entrega_ajustador'),
+    preliminar: () => t('complex.ui.subtareas_complex_utils.fase_3_informe_preliminar'),
   };
-  return mapa[String(fase || '').trim()] || '';
+  return mapa[String(fase || '').trim()]?.() || '';
 }
 
 export function politicaEntregaFlujoVisita(subtarea) {
@@ -218,11 +220,12 @@ export function politicaEntregaFlujoVisita(subtarea) {
 }
 
 export function etiquetaPoliticaEntregaFlujoVisita(politica) {
-  return {
-    asignado_decide: 'El asignado decide después del acta',
-    exige_preliminar: 'Informe preliminar obligatorio',
-    solo_acta: 'Solo acta y entrega al ajustador',
-  }[String(politica || '').trim()] || 'El asignado decide después del acta';
+  const mapa = {
+    asignado_decide: () => t('complex.ui.subtareas_complex_utils.politica_asignado_decide'),
+    exige_preliminar: () => t('complex.ui.subtareas_complex_utils.politica_exige_preliminar'),
+    solo_acta: () => t('complex.ui.subtareas_complex_utils.politica_solo_acta'),
+  };
+  return mapa[String(politica || '').trim()]?.() || t('complex.ui.subtareas_complex_utils.politica_asignado_decide');
 }
 
 /** Campos de fecha visibles según la fase del flujo visita. */
@@ -262,22 +265,41 @@ export function subtareaTieneFormato(subtarea) {
 }
 
 /** Etiquetas de adjunto según etapa (espejo de trazabilidad). */
-export const ETIQUETA_ADJUNTO_POR_ETAPA = {
-  contactoInicial: 'Adjuntos del contacto inicial',
-  inspeccion: 'Acta de inspección',
-  solicitudDocs: 'Adjunto de solicitud de documentos',
-  informePreliminar: 'Adjunto del informe preliminar',
-  ultimoDocumento: 'Adjunto del último documento',
-  reporteActividades: 'Adjunto del reporte de actividades',
-  informeFinal: 'Adjunto del informe final',
-  presentacionCifras: 'Adjunto de presentación de cifras',
-  envioFiniquito: 'Adjunto de envío de finiquito',
+const ETIQUETA_ADJUNTO_KEYS = {
+  contactoInicial: 'adjunto_contacto_inicial',
+  inspeccion: 'adjunto_inspeccion',
+  solicitudDocs: 'adjunto_solicitud_docs',
+  informePreliminar: 'adjunto_informe_preliminar',
+  ultimoDocumento: 'adjunto_ultimo_documento',
+  reporteActividades: 'adjunto_reporte_actividades',
+  informeFinal: 'adjunto_informe_final',
+  presentacionCifras: 'adjunto_presentacion_cifras',
+  envioFiniquito: 'adjunto_envio_finiquito',
 };
 
-export function etiquetaAdjuntoEtapa(etapa) {
-  return (
-    ETIQUETA_ADJUNTO_POR_ETAPA[String(etapa || '').trim()] || 'Adjuntar documento de la etapa'
-  );
+/** @deprecated Prefer etiquetaAdjuntoEtapa(etapa, t) */
+export const ETIQUETA_ADJUNTO_POR_ETAPA = Object.fromEntries(
+  Object.entries(ETIQUETA_ADJUNTO_KEYS).map(([k, key]) => [
+    k,
+    () => t(`complex.ui.mis_subtareas_complex.${key}`),
+  ])
+);
+
+export function etiquetaAdjuntoEtapa(etapa, translate) {
+  const tr = typeof translate === 'function' ? translate : t;
+  const key = String(etapa || '').trim();
+  const i18nKey = ETIQUETA_ADJUNTO_KEYS[key];
+  if (i18nKey) return tr(`complex.ui.mis_subtareas_complex.${i18nKey}`);
+  return tr('complex.ui.mis_subtareas_complex.adjuntar_documento_etapa');
+}
+
+export function tituloEtapaSubtarea(etapa, translate) {
+  const tr = typeof translate === 'function' ? translate : t;
+  const key = String(etapa || '').trim();
+  if (!key) return '';
+  const i18nKey = `complex.ui.mis_subtareas_complex.titulo_etapa_${key}`;
+  const translated = tr(i18nKey);
+  return translated && translated !== i18nKey ? translated : key;
 }
 
 /**
@@ -313,10 +335,11 @@ export function camposProtocoloDeEtapa(etapa) {
   return CAMPOS_PROTOCOLO_POR_ETAPA[String(etapa || '').trim()] || [];
 }
 
-export function formatearFechaSubtarea(fecha) {
+export function formatearFechaSubtarea(fecha, locale) {
   if (!fecha) return '—';
   try {
-    return new Date(fecha).toLocaleDateString('es-CO', {
+    const loc = locale || 'es-CO';
+    return new Date(fecha).toLocaleDateString(loc, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -348,8 +371,8 @@ export function fechaInputDesdeValor(fecha) {
 export function etiquetaFechaProtocoloSubtarea(etapa) {
   const campos = camposProtocoloDeEtapa(etapa);
   if (campos.length === 1) return campos[0].label;
-  if (campos.length > 1) return 'Fechas de la etapa (protocolo)';
-  return 'Fecha de la etapa (protocolo)';
+  if (campos.length > 1) return t('complex.ui.subtareas_complex_utils.fechas_etapa_protocolo');
+  return t('complex.ui.subtareas_complex_utils.fecha_etapa_protocolo');
 }
 
 /** True si la etapa tiene hitos de fecha en trazabilidad. */
@@ -401,10 +424,11 @@ export function faltanFechasProtocoloRequeridas(etapa, fechasProtocolo) {
   return faltantes;
 }
 
-export function formatearFechaHoraSubtarea(fecha) {
+export function formatearFechaHoraSubtarea(fecha, locale) {
   if (!fecha) return '—';
   try {
-    return new Date(fecha).toLocaleString('es-CO', {
+    const loc = locale || 'es-CO';
+    return new Date(fecha).toLocaleString(loc, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

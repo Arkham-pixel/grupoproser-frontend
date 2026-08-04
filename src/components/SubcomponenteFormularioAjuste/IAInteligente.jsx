@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FaMagic, FaSpellCheck, FaLightbulb, FaChartLine, FaCopy, FaCheck, FaBrain, FaRocket, FaStar } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAService from '../../services/iaService';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -10,6 +11,7 @@ export default function IAInteligente({
   tipoSeccion,
   tituloSeccion 
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -32,7 +34,7 @@ export default function IAInteligente({
   // Función principal para mejorar el texto con IA avanzada
   const mejorarTexto = async () => {
     if (!textoActual || textoActual.trim().length < 10) {
-      alert('Por favor, escribe al menos 10 palabras para que la IA pueda ayudarte a mejorar el texto.');
+      alert(t('adjustment.ui.ia.errorGeneric'));
       return;
     }
 
@@ -137,7 +139,7 @@ export default function IAInteligente({
             }}
           >
             <FaRocket className="inline mr-1" />
-            {modoAvanzado ? 'Modo Avanzado' : 'Modo Básico'}
+            {modoAvanzado ? t('adjustment.ui.ia.advancedMode') : t('adjustment.ui.ia.basicMode')}
           </button>
           <button
             onClick={() => setMostrandoIA(!mostrandoIA)}
@@ -189,12 +191,12 @@ export default function IAInteligente({
           {procesando ? (
             <>
               <FaSpellCheck className="mr-3 animate-spin text-xl" />
-              <span className="text-lg font-medium">Procesando IA Avanzada...</span>
+              <span className="text-lg font-medium">{t('adjustment.ui.ia.processing')}</span>
             </>
           ) : (
             <>
               <FaSpellCheck className="mr-3 text-xl" />
-              <span className="text-lg font-medium">🚀 Mejorar con IA Avanzada</span>
+              <span className="text-lg font-medium">🚀 {t('adjustment.ui.ia.improveAdvanced')}</span>
             </>
           )}
         </button>
@@ -220,7 +222,7 @@ export default function IAInteligente({
           }}
         >
           <FaLightbulb className="mr-3 text-xl" />
-          <span className="text-lg font-medium">✨ Generar Texto Profesional</span>
+          <span className="text-lg font-medium">✨ {t('adjustment.ui.ia.generateProfessional')}</span>
         </button>
 
         <button
@@ -248,7 +250,7 @@ export default function IAInteligente({
           }}
         >
           <FaChartLine className="mr-3 text-xl" />
-          <span className="text-lg font-medium">📊 Análisis Avanzado</span>
+          <span className="text-lg font-medium">📊 {t('adjustment.ui.ia.advancedAnalysis')}</span>
         </button>
       </div>
 
@@ -654,7 +656,7 @@ export default function IAInteligente({
                   }}
                 >
                   <FaCheck className="mr-2" />
-                  ✅ Aplicar Texto Mejorado
+                  ✅ {t('adjustment.ui.ia.applyImproved')}
                 </button>
                 <button
                   onClick={() => copiarTexto(textoMejorado)}
@@ -678,7 +680,7 @@ export default function IAInteligente({
                   }}
                 >
                   <FaCopy className="mr-2" />
-                  📋 Copiar al Portapapeles
+                  📋 {t('adjustment.ui.ia.copyClipboard')}
                 </button>
               </div>
             </div>
@@ -977,14 +979,12 @@ export default function IAInteligente({
               className="inline mr-2" 
               style={{ color: theme === 'dark' ? '#C084FC' : '#9333EA' }}
             />
-            🚀 Cómo usar la IA Inteligente Avanzada:
+            🚀 {t('adjustment.ui.sections.analisisCobertura.iaAssistant')}
           </p>
           <ul className="list-disc list-inside space-y-2 ml-4">
-            <li><strong>Escribe tu idea inicial</strong> en el campo de texto de la sección</li>
-            <li><strong>Haz clic en "Mejorar con IA Avanzada"</strong> para corrección ortográfica, mejora de argumentos y análisis profundo</li>
-            <li><strong>Usa "Generar Texto Profesional"</strong> para crear contenido desde cero con plantillas inteligentes</li>
-            <li><strong>Analiza la calidad</strong> con métricas avanzadas y recomendaciones específicas</li>
-            <li><strong>Activa el "Modo Avanzado"</strong> para análisis profundo y métricas detalladas</li>
+            <li>{t('adjustment.ui.ia.tip1')}</li>
+            <li>{t('adjustment.ui.ia.tip2')}</li>
+            <li>{t('adjustment.ui.ia.tip3')}</li>
           </ul>
         </div>
       )}

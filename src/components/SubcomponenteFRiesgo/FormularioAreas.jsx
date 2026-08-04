@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AreaEquipos from './AreaEquipos';
 
 export default function FormularioAreas({ onChange, areasIniciales = [] }) {
+  const { t, i18n } = useTranslation();
   const [areas, setAreas] = useState([]);
   const [nuevaArea, setNuevaArea] = useState("");
-  const formatearMoneda = (valor) => `$ ${Number(valor || 0).toLocaleString('es-CO')}`;
+  const locale = String(i18n.language || 'es').toLowerCase().startsWith('en') ? 'en-US' : 'es-CO';
+  const formatearMoneda = (valor) => `$ ${Number(valor || 0).toLocaleString(locale)}`;
 
-  // Sincroniza el inventario cuando se carga desde historial
   useEffect(() => {
     if (Array.isArray(areasIniciales)) {
       setAreas(areasIniciales);
@@ -19,16 +21,13 @@ export default function FormularioAreas({ onChange, areasIniciales = [] }) {
     setAreas(nuevasAreas);
     setNuevaArea("");
     if (onChange) onChange(nuevasAreas);
-
   };
 
   const handleActualizarArea = (index, updatedArea) => {
     const nuevasAreas = [...areas];
     nuevasAreas[index] = updatedArea;
     setAreas(nuevasAreas);
-    
-      if (onChange) onChange(nuevasAreas);
-
+    if (onChange) onChange(nuevasAreas);
   };
 
   const handleEliminarArea = (index) => {
@@ -37,7 +36,6 @@ export default function FormularioAreas({ onChange, areasIniciales = [] }) {
     if (onChange) onChange(nuevasAreas);
   };
 
-  // Calcula subtotales
   const calcularSubtotal = (equipos) =>
     equipos.reduce((sum, eq) => {
       const cantidad = parseFloat(eq.cantidad) || 0;
@@ -52,7 +50,9 @@ export default function FormularioAreas({ onChange, areasIniciales = [] }) {
 
   return (
     <div className="p-4 w-full">
-      <h2 className="text-2xl font-bold mb-4">🛠️ Inventario de Equipos Eléctricos y Electrónicos</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        🛠️ {t('inspection.ui.formularioAreas.equipmentInventory')}
+      </h2>
 
       <div className="flex gap-2 mb-6">
         <input
@@ -60,12 +60,13 @@ export default function FormularioAreas({ onChange, areasIniciales = [] }) {
           className="border rounded p-2 flex-1"
           value={nuevaArea}
           onChange={(e) => setNuevaArea(e.target.value)}
+          placeholder={t('inspection.ui.formularioAreas.areaNamePlaceholder')}
         />
         <button
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           onClick={handleAgregarArea}
         >
-          ➕ Agregar Área
+          ➕ {t('inspection.ui.formularioAreas.addArea')}
         </button>
       </div>
 
@@ -80,7 +81,9 @@ export default function FormularioAreas({ onChange, areasIniciales = [] }) {
 
       {areas.length > 0 && (
         <div className="mt-8 p-4 bg-green-100 rounded border border-green-400">
-          <h3 className="text-xl font-bold">✅ TOTAL VALOR ESTIMADO:</h3>
+          <h3 className="text-xl font-bold">
+            ✅ {t('inspection.ui.formularioAreas.totalEstimatedValue')}
+          </h3>
           <p className="text-green-800 font-bold text-lg">
             {formatearMoneda(totalGeneral)}
           </p>

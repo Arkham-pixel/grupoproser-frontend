@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import { FaCloudUploadAlt, FaSearchPlus, FaTimes, FaTrash } from 'react-icons/fa';
 import { createImageErrorHandler, getImageUrl } from '../../utils/imageUtils';
 import { ThemedInput, useMaquinariaTheme } from './maquinariaUi';
@@ -16,7 +17,8 @@ export default function RegistroFotograficoMaquinaria({
   max = MAX_FOTOS_REGISTRO_MAQUINARIA,
   disabled = false,
 }) {
-  const t = useMaquinariaTheme();
+  const { t } = useTranslation();
+  const mq = useMaquinariaTheme();
   const [fotos, setFotos] = useState([]);
   const [imagenAmpliada, setImagenAmpliada] = useState(null);
   const inicialRef = useRef(null);
@@ -85,7 +87,7 @@ export default function RegistroFotograficoMaquinaria({
           <div className="max-h-full max-w-7xl overflow-auto" onClick={(e) => e.stopPropagation()}>
             <img
               src={imagenAmpliada.url}
-              alt={imagenAmpliada.descripcion || 'Vista ampliada'}
+              alt={imagenAmpliada.descripcion || t('machinery.ui.fotos.enlargedAlt')}
               className="max-h-[90vh] max-w-full rounded object-contain"
             />
           </div>
@@ -93,11 +95,11 @@ export default function RegistroFotograficoMaquinaria({
       )}
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs" style={{ color: t.textSecondary }}>
-          {fotos.length} / {max} fotos · arrastre varias a la vez
+        <p className="text-xs" style={{ color: mq.textSecondary }}>
+          {t('machinery.ui.fotos.counter', { count: fotos.length, max })}
         </p>
-        <p className="text-xs" style={{ color: t.textSecondary }}>
-          S3 al guardar o exportar
+        <p className="text-xs" style={{ color: mq.textSecondary }}>
+          {t('machinery.ui.fotos.s3Hint')}
         </p>
       </div>
 
@@ -106,19 +108,19 @@ export default function RegistroFotograficoMaquinaria({
           {...getRootProps()}
           className="mb-6 flex min-h-[140px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-6 transition-colors"
           style={{
-            borderColor: isDragActive ? '#DC2626' : t.borderColor,
-            backgroundColor: isDragActive ? t.accentSoft : t.tableHeaderBg,
+            borderColor: isDragActive ? '#DC2626' : mq.borderColor,
+            backgroundColor: isDragActive ? mq.accentSoft : mq.tableHeaderBg,
             opacity: disabled ? 0.6 : 1,
             pointerEvents: disabled ? 'none' : 'auto',
           }}
         >
           <input {...getInputProps()} />
-          <FaCloudUploadAlt className="mb-2 text-2xl" style={{ color: t.textSecondary }} />
-          <span className="text-sm" style={{ color: t.textPrimary }}>
-            Arrastra imágenes aquí o haz clic para seleccionar
+          <FaCloudUploadAlt className="mb-2 text-2xl" style={{ color: mq.textSecondary }} />
+          <span className="text-sm" style={{ color: mq.textPrimary }}>
+            {t('machinery.ui.fotos.drop')}
           </span>
-          <span className="mt-1 text-xs" style={{ color: t.textSecondary }}>
-            Máximo {max} fotos en total
+          <span className="mt-1 text-xs" style={{ color: mq.textSecondary }}>
+            {t('machinery.ui.fotos.maxHint', { max })}
           </span>
         </div>
       )}
@@ -131,13 +133,13 @@ export default function RegistroFotograficoMaquinaria({
               <div
                 key={foto.id || `foto-${i}`}
                 className="rounded-lg border p-3"
-                style={{ borderColor: t.borderColor, backgroundColor: t.cardBg }}
+                style={{ borderColor: mq.borderColor, backgroundColor: mq.cardBg }}
               >
                 {imageUrl ? (
                   <div className="relative mb-2 group">
                     <img
                       src={imageUrl}
-                      alt={`Foto ${i + 1}`}
+                      alt={t('machinery.ui.fotos.photoAlt', { n: i + 1 })}
                       className="h-48 w-full cursor-pointer rounded object-cover"
                       onClick={() => setImagenAmpliada({ url: imageUrl, descripcion: foto.descripcion })}
                       onError={createImageErrorHandler(foto)}
@@ -152,16 +154,16 @@ export default function RegistroFotograficoMaquinaria({
                 ) : (
                   <div
                     className="mb-2 flex h-48 items-center justify-center rounded text-sm"
-                    style={{ backgroundColor: t.tableHeaderBg, color: t.textSecondary }}
+                    style={{ backgroundColor: mq.tableHeaderBg, color: mq.textSecondary }}
                   >
-                    Sin vista previa
+                    {t('machinery.ui.fotos.noPreview')}
                   </div>
                 )}
                 <ThemedInput
                   value={foto.descripcion || ''}
                   onChange={(e) => cambiarDescripcion(i, e.target.value)}
                   className="mb-2 text-xs"
-                  placeholder={`Descripción foto ${i + 1}`}
+                  placeholder={t('machinery.ui.fotos.descriptionPlaceholder', { n: i + 1 })}
                   disabled={disabled}
                 />
                 <button
@@ -170,7 +172,7 @@ export default function RegistroFotograficoMaquinaria({
                   className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700"
                   disabled={disabled}
                 >
-                  <FaTrash /> Eliminar
+                  <FaTrash /> {t('machinery.ui.fotos.delete')}
                 </button>
               </div>
             );

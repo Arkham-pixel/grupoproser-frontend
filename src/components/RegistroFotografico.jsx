@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useId } from "react";
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { FaTimes, FaSearchPlus, FaUpload, FaCompress } from 'react-icons/fa';
 import { getUploadsUrlCandidates } from '../config/apiConfig';
@@ -8,10 +9,13 @@ import { ImageCompression } from '../utils/imageCompression';
 export default function RegistroFotografico({
   onChange,
   imagenesIniciales = [],
-  tituloSeccion = "17. REGISTRO FOTOGRÁFICO",
-  descripcionPlaceholder = "Descripción de la imagen",
+  tituloSeccion,
+  descripcionPlaceholder,
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
+  const titulo = tituloSeccion || t('inspection.ui.registroFotografico.sectionTitle');
+  const placeholderDesc = descripcionPlaceholder || t('inspection.ui.registroFotografico.descriptionPlaceholder');
   
   // Colores según el tema
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -407,7 +411,7 @@ setImagenes(imagenesProcesadas);
           className="text-xl font-bold mb-4"
           style={{ color: textPrimary }}
         >
-          {tituloSeccion}
+          {titulo}
         </h2>
 
         <div
@@ -430,19 +434,19 @@ setImagenes(imagenesProcesadas);
                 style={{ color: theme === 'dark' ? '#C084FC' : '#9333EA' }}
               />
               <p className="font-medium text-sm" style={{ color: textPrimary }}>
-                Comprimiendo imágenes…
+                {t('inspection.ui.registroFotografico.compressing')}
               </p>
             </div>
           ) : (
             <>
               <FaUpload className="mx-auto h-10 w-10 mb-3" style={{ color: textSecondary }} />
               <div className="mb-4" style={{ color: textPrimary }}>
-                <p className="font-medium">Arrastra y suelta las imágenes aquí</p>
+                <p className="font-medium">{t('inspection.ui.registroFotografico.dragDrop')}</p>
                 <p className="text-sm" style={{ color: textSecondary }}>
-                  o haz clic para seleccionar varias a la vez
+                  {t('inspection.ui.registroFotografico.orClick')}
                 </p>
                 <p className="text-xs mt-1" style={{ color: textSecondary }}>
-                  Se comprimen automáticamente para un guardado más liviano
+                  {t('inspection.ui.registroFotografico.autoCompress')}
                 </p>
               </div>
               <input
@@ -462,7 +466,7 @@ setImagenes(imagenesProcesadas);
                   color: theme === 'dark' ? '#93C5FD' : '#FFFFFF',
                 }}
               >
-                Seleccionar imágenes
+                {t('inspection.ui.registroFotografico.selectImages')}
               </label>
             </>
           )}
@@ -471,7 +475,7 @@ setImagenes(imagenesProcesadas);
         <div className="flex flex-col gap-6">
           {imagenes.length === 0 && inicializado ? (
             <p style={{ color: textSecondary, fontStyle: 'italic' }}>
-              No hay imágenes aún. Usa el cuadro de arriba para agregar fotos.
+              {t('inspection.ui.registroFotografico.noImagesYet')}
             </p>
           ) : null}
           {imagenes.map((img, index) => {
@@ -564,7 +568,7 @@ setImagenes(imagenesProcesadas);
                 </div>
                 <input
                   type="text"
-                  {...(descripcionPlaceholder ? { placeholder: descripcionPlaceholder } : {})}
+                  placeholder={placeholderDesc}
                   value={img.descripcion}
                   onChange={(e) => handleDescripcionChange(index, e.target.value)}
                   className="mt-2 w-full rounded px-2 py-1 text-sm"

@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useRef, useState } from 'react';
 import { FaBuilding, FaCalendarAlt, FaCloudUploadAlt, FaFileAlt, FaTrash } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
@@ -107,7 +109,7 @@ export default function SeguimientoAutorizacionCompania({
   const descargarDocumento = (documento) => {
     const enlace = resolverUrl(documento?.ruta || documento?.url || '');
     if (!enlace) {
-      alert('No se puede descargar el archivo. URL no disponible.');
+      alert(t('complex.ui.seguimiento_autorizacion_compania.no_descargar_url'));
       return;
     }
     const link = document.createElement('a');
@@ -127,11 +129,11 @@ export default function SeguimientoAutorizacionCompania({
       return;
     }
     if (!nuevo.fecha) {
-      alert('Indique la fecha del correo enviado a la compañía.');
+      alert(t('complex.ui.seguimiento_autorizacion_compania.indique_fecha_correo'));
       return;
     }
     if (!nuevo.documento) {
-      alert('Adjunte la evidencia del correo (captura, PDF o .eml).');
+      alert(t('complex.ui.seguimiento_autorizacion_compania.adjunte_evidencia'));
       return;
     }
 
@@ -148,12 +150,12 @@ export default function SeguimientoAutorizacionCompania({
       });
       if (!response.ok) {
         const errorResp = await response.json().catch(() => ({}));
-        throw new Error(errorResp.error || errorResp.message || `Error subiendo archivo (${response.status})`);
+        throw new Error(errorResp.error || errorResp.message || t('complex.ui.seguimiento_autorizacion_compania.error_subiendo_archivo', { status: response.status }));
       }
       const data = await response.json();
       const rutaAlmacenamiento = data.url || data.ruta || '';
       if (!rutaAlmacenamiento) {
-        throw new Error('El servidor no devolvió la ruta del archivo (S3/local).');
+        throw new Error(t('complex.ui.seguimiento_autorizacion_compania.servidor_sin_ruta'));
       }
       documentoSubido = {
         nombre: data.filename || nuevo.documento.name,
@@ -163,7 +165,7 @@ export default function SeguimientoAutorizacionCompania({
         tipoMime: nuevo.documento.type,
       };
     } catch (error) {
-      alert(`Error al subir la evidencia: ${error.message}`);
+      alert(t('complex.ui.seguimiento_autorizacion_compania.error_subir_evidencia', { mensaje: error.message }));
       setSubiendo(false);
       return;
     }
@@ -171,7 +173,7 @@ export default function SeguimientoAutorizacionCompania({
     const fechaIngresada = nuevo.fecha;
     const observacionTexto =
       nuevo.observacion?.trim() ||
-      `${etiquetaTipoCorreo(nuevo.tipoCorreo)} a la compañía de seguros`;
+      `${t('complex.ui.seguimiento_autorizacion_compania.a_compania_seguros', { tipo: etiquetaTipoCorreo(nuevo.tipoCorreo) })}`;
     const ahora = new Date();
     const fechaSubidaISO = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}T${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`;
 
@@ -216,7 +218,7 @@ export default function SeguimientoAutorizacionCompania({
   };
 
   const handleEliminar = (id) => {
-    if (!window.confirm('¿Eliminar este registro de seguimiento a la compañía?')) return;
+    if (!window.confirm(t('complex.ui.seguimiento_autorizacion_compania.confirmar_eliminar'))) return;
     if (!updateHistorialDocs) return;
     const eliminado = registros.find((r) => r.id === id);
     updateHistorialDocs((prev) =>
@@ -243,24 +245,18 @@ export default function SeguimientoAutorizacionCompania({
     <div className="mt-4 space-y-5">
       <ProtocoloSeguimientoPanel cfg={CFG} estado={estadoProtocolo} />
 
-      <p className={complexHint}>
-        Registre la evidencia del correo enviado <strong>exclusivamente a la compañía de seguros</strong>.
-        Pulse <strong>Guardar caso</strong> para persistir en MongoDB.
-      </p>
+      <p className={complexHint}>{t("complex.ui.seguimiento_autorizacion_compania.registre_la_evidencia_del_correo_enviado")}<strong>{t("complex.ui.seguimiento_autorizacion_compania.exclusivamente_a_la_compania_de_seguros")}</strong>{t("complex.ui.seguimiento_autorizacion_compania.pulse")}<strong>{t("complex.ui.seguimiento_autorizacion_compania.guardar_caso")}</strong>{t("complex.ui.seguimiento_autorizacion_compania.para_persistir_en_mongodb")}</p>
 
       {registroLocal && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-          Registro agregado en memoria. Pulse <strong>Guardar caso</strong> para persistir en MongoDB.
-        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">{t("complex.ui.seguimiento_autorizacion_compania.registro_agregado_en_memoria_pulse")}<strong>{t("complex.ui.seguimiento_autorizacion_compania.guardar_caso")}</strong>{t("complex.ui.seguimiento_autorizacion_compania.para_persistir_en_mongodb")}</div>
       )}
 
       <div className={`${complexCard} space-y-4 p-4 sm:p-5`}>
-        <h4 className={complexSubsectionTitle}>Nuevo correo a la compañía</h4>
+        <h4 className={complexSubsectionTitle}>{t("complex.ui.seguimiento_autorizacion_compania.nuevo_correo_a_la_compania")}</h4>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha del correo <span className="text-fenix-primario">*</span>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_autorizacion_compania.fecha_del_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_autorizacion_compania.texto")}</span>
             </label>
             <input
               type="date"
@@ -271,8 +267,7 @@ export default function SeguimientoAutorizacionCompania({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Tipo de correo <span className="text-fenix-primario">*</span>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_autorizacion_compania.tipo_de_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_autorizacion_compania.texto")}</span>
             </label>
             <select
               value={nuevo.tipoCorreo}
@@ -290,20 +285,19 @@ export default function SeguimientoAutorizacionCompania({
         </div>
 
         <div>
-          <label className={`${trazabilidadLabelClass} mb-2`}>Notas del seguimiento</label>
+          <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_autorizacion_compania.notas_del_seguimiento")}</label>
           <textarea
             value={nuevo.observacion}
             onChange={(e) => setNuevo((p) => ({ ...p, observacion: e.target.value }))}
             className={`${trazabilidadInputClass} min-h-[6rem] resize-y`}
             rows={4}
-            placeholder="Detalle de la solicitud, plazos acordados, respuesta de la compañía..."
+            placeholder={t("complex.ui.seguimiento_autorizacion_compania.detalle_de_la_solicitud_plazos_acordados_respuesta_de_la")}
             disabled={subiendo}
           />
         </div>
 
         <div>
-          <label className={`${trazabilidadLabelClass} mb-2`}>
-            Evidencia del correo <span className="text-fenix-primario">*</span>
+          <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_autorizacion_compania.evidencia_del_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_autorizacion_compania.texto")}</span>
           </label>
           <input
             ref={inputFileRef}
@@ -340,9 +334,7 @@ export default function SeguimientoAutorizacionCompania({
               </span>
             ) : (
               <span className="flex flex-col items-center gap-2 font-body text-sm text-gray-500 dark:text-gray-400">
-                <FaCloudUploadAlt className="text-2xl" aria-hidden />
-                Arrastra aquí o haz clic para adjuntar captura, PDF o correo (.eml)
-              </span>
+                <FaCloudUploadAlt className="text-2xl" aria-hidden />{t("complex.ui.seguimiento_autorizacion_compania.arrastra_aqui_o_haz_clic_para_adjuntar_captura_pdf_o_cor")}</span>
             )}
           </div>
         </div>
@@ -354,30 +346,24 @@ export default function SeguimientoAutorizacionCompania({
             onClick={handleAgregar}
             disabled={subiendo}
           >
-            {subiendo ? 'Subiendo a S3…' : 'Agregar seguimiento'}
+            {subiendo ? t('complex.ui.seguimiento.subiendo_s3') : t('complex.ui.seguimiento_autorizacion_compania.agregar_seguimiento')}
           </button>
           <button
             type="button"
             className={complexBtnSecondary}
             onClick={resetFormulario}
             disabled={subiendo}
-          >
-            Limpiar
-          </button>
+          >{t("complex.ui.seguimiento_autorizacion_compania.limpiar")}</button>
         </div>
       </div>
 
       <div className="space-y-3">
-        <h4 className={complexSubsectionTitle}>
-          Historial de correos a la compañía ({registros.length})
-        </h4>
+        <h4 className={complexSubsectionTitle}>{t("complex.ui.seguimiento_autorizacion_compania.historial_de_correos_a_la_compania")}{registros.length}{t("complex.ui.seguimiento_autorizacion_compania.texto_2")}</h4>
 
         {registros.length === 0 ? (
           <div className={`${complexCard} p-6 text-center`}>
             <FaBuilding className="mx-auto mb-2 text-2xl text-gray-300 dark:text-gray-600" aria-hidden />
-            <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-              Sin seguimientos de autorización registrados.
-            </p>
+            <p className="font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.seguimiento_autorizacion_compania.sin_seguimientos_de_autorizacion_registrados")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -416,10 +402,10 @@ export default function SeguimientoAutorizacionCompania({
                   type="button"
                   className={`${complexBtnDanger} shrink-0`}
                   onClick={() => handleEliminar(reg.id)}
-                  title="Eliminar registro"
+                  title={t("complex.ui.seguimiento_autorizacion_compania.eliminar_registro")}
                 >
                   <FaTrash aria-hidden />
-                  <span className="sr-only">Eliminar</span>
+                  <span className="sr-only">{t("complex.ui.seguimiento_autorizacion_compania.eliminar")}</span>
                 </button>
               </div>
             ))}
@@ -427,22 +413,22 @@ export default function SeguimientoAutorizacionCompania({
         )}
       </div>
 
-      <ResumenListaPanel titulo="Resumen — autorización compañía">
-        <ResumenItem label="Total correos registrados:" value={registros.length} />
+      <ResumenListaPanel titulo={t('complex.ui.seguimiento_autorizacion_compania.resumen_autorizacion')}>
+        <ResumenItem label={t("complex.ui.seguimiento_autorizacion_compania.total_correos_registrados")} value={registros.length} />
         <ResumenItem
-          label="Intervalo protocolo:"
-          value={`${estadoProtocolo?.intervaloDias ?? 5} días calendario`}
+          label={t("complex.ui.seguimiento_autorizacion_compania.intervalo_protocolo")}
+          value={`${t('complex.ui.seguimiento_autorizacion_compania.dias_calendario', { n: estadoProtocolo?.intervaloDias ?? 5 })}`}
         />
         <ResumenItem
-          label="Último seguimiento:"
+          label={t("complex.ui.seguimiento_autorizacion_compania.ultimo_seguimiento")}
           value={ultimaFecha ? formatFechaLista(ultimaFecha) : 'No registrado'}
         />
         <ResumenItem
-          label="Aceptación aseguradora:"
+          label={t("complex.ui.seguimiento_autorizacion_compania.aceptacion_aseguradora")}
           value={
             formData?.fchaAceptacionCifrasAseguradora
               ? formatFechaLista(String(formData.fchaAceptacionCifrasAseguradora).slice(0, 10))
-              : 'Pendiente'
+              : t('complex.ui.seguimiento_autorizacion_compania.pendiente')
           }
         />
       </ResumenListaPanel>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 const BotonesHistorial = ({ 
   onGuardarEnHistorial, 
@@ -9,6 +10,8 @@ const BotonesHistorial = ({
   guardando = false,
   exportando = false
 }) => {
+  const { t } = useTranslation();
+
   return (
     <div className="mb-8 mt-8 flex flex-col justify-center gap-3 sm:flex-row sm:space-x-4">
       <button
@@ -17,9 +20,9 @@ const BotonesHistorial = ({
         className={`btn-fenix-primary flex items-center justify-center gap-2 py-3 px-6 font-bold shadow-lg transition duration-300 ${
           deshabilitado || guardando ? 'cursor-not-allowed opacity-50' : ''
         }`}
-        title={deshabilitado ? 'Complete los campos requeridos para guardar' : 'Guardar progreso en el historial'}
+        title={deshabilitado ? t('common.historyButtons.completeRequiredToSave') : t('common.historyButtons.saveProgressTitle')}
       >
-        {guardando ? '⏳ Guardando...' : '💾 Guardar en Historial'}
+        {guardando ? t('common.historyButtons.saving') : t('common.historyButtons.saveToHistory')}
       </button>
       
       <button
@@ -28,9 +31,9 @@ const BotonesHistorial = ({
         className={`btn-fenix-secondary flex items-center justify-center gap-2 py-3 px-6 font-bold shadow-lg transition duration-300 ${
           deshabilitado || exportando ? 'cursor-not-allowed opacity-50' : ''
         }`}
-        title={deshabilitado ? 'Complete los campos requeridos para exportar' : `Exportar ${tituloFormulario}`}
+        title={deshabilitado ? t('common.historyButtons.completeRequiredToExport') : t('common.historyButtons.exportTitle', { title: tituloFormulario })}
       >
-        {exportando ? '⏳ Exportando...' : `📄 Exportar ${tituloFormulario}`}
+        {exportando ? t('common.historyButtons.exporting') : t('common.historyButtons.exportForm', { title: tituloFormulario })}
       </button>
     </div>
   );

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, Tooltip, XAxis, YAxis } from 'recharts';
 import { FaTable } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { fetchAllSiniestrosExpress } from '../../services/expressService.js';
 import { obtenerProtocoloExpress } from '../../services/alertasExpressService.js';
 import Loader from '../Loader.jsx';
@@ -109,6 +110,7 @@ function TarjetaEtapa({ etapa, valor, muestra, cumplimiento, protocolo }) {
 }
 
 export default function ProtocoloExpress() {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [siniestros, setSiniestros] = useState([]);
@@ -143,7 +145,7 @@ export default function ProtocoloExpress() {
         }
       } catch (err) {
         if (!cancelado) {
-          setError(err.message || 'No fue posible cargar Protocolo Express.');
+          setError(err.message || t('express.protocol.loadError'));
           setSiniestros([]);
         }
       } finally {
@@ -154,7 +156,7 @@ export default function ProtocoloExpress() {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [t]);
 
   /** Universo tipo reporte: aviso en rango (incluye Desistido / Liquidar / Objetado…). */
   const casosPorAviso = useMemo(
@@ -297,34 +299,34 @@ export default function ProtocoloExpress() {
     <div className={`${expressRoot} ${expressScope} p-4 sm:p-6`}>
       <div className={`${expressPageWrap} min-w-0 space-y-6`}>
         <ExpressPageHeader
-          title="Protocolo Express"
-          subtitle="Indicadores de cumplimiento ANS en días hábiles (Colombia)."
+          title={t('express.protocol.title')}
+          subtitle={t('express.protocol.subtitle')}
           activePath="/express/protocolo"
           actions={
             <Link to="/express/tablero" className={expressBtnSecondary}>
               <FaTable />
-              Tablero operativo
+              {t('express.protocol.operationalBoard')}
             </Link>
           }
         />
 
-        <ExpressFilterSection title="Filtros" showClear={filtrosAplicados} onClear={limpiarFiltros}>
+        <ExpressFilterSection title={t('express.protocol.filters')} showClear={filtrosAplicados} onClear={limpiarFiltros}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <Campo label="Desde">
+            <Campo label={t('express.protocol.from')}>
               <InputFenix
                 type="date"
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
               />
             </Campo>
-            <Campo label="Hasta">
+            <Campo label={t('express.protocol.to')}>
               <InputFenix
                 type="date"
                 value={fechaHasta}
                 onChange={(e) => setFechaHasta(e.target.value)}
               />
             </Campo>
-            <Campo label="Desglose">
+            <Campo label={t('express.protocol.breakdown')}>
               <SelectFenix value={vista} onChange={(e) => setVista(e.target.value)}>
                 {VISTAS.map((v) => (
                   <option key={v.value} value={v.value}>
@@ -338,12 +340,12 @@ export default function ProtocoloExpress() {
 
         <section className={expressCard}>
           <div className="p-4">
-            <h2 className={expressSectionTitle}>Protocolo oficial ANS</h2>
+            <h2 className={expressSectionTitle}>{t('express.protocol.officialProtocol')}</h2>
             <p className="mt-2 font-body text-sm text-gray-600 dark:text-gray-300">
               {PROTOCOLO_EXPRESS_OBJETIVO}
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              {PROTOCOLO_EXPRESS_DOCUMENTO} · vigente desde {FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL}
+              {t('express.protocol.documentCurrentSince', { document: PROTOCOLO_EXPRESS_DOCUMENTO, date: FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL })}
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {RESUMEN_PLAZOS_PROTOCOLO_EXPRESS.map((item) => (
@@ -365,9 +367,9 @@ export default function ProtocoloExpress() {
         </section>
 
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          Periodo {etiquetaPeriodo}: {indicadoresCerrados.totalCasos} caso(s) por aviso,{' '}
+          {t('express.protocol.periodSummary', { period: etiquetaPeriodo, count: indicadoresCerrados.totalCasos })}{' '}
           <strong className="text-gray-700 dark:text-gray-200">
-            {indicadoresCerrados.cerradosPeriodo} cerrados/finalizados
+            {t('express.protocol.closedFinalized', { count: indicadoresCerrados.cerradosPeriodo })}
           </strong>
           {porcentajeCierre != null && (
             <>
@@ -376,29 +378,27 @@ export default function ProtocoloExpress() {
               <strong className="text-gray-700 dark:text-gray-200">
                 {formatearPorcentajeCumplimiento(porcentajeCierre)}
               </strong>{' '}
-              de cierre)
+              {t('express.protocol.closureRate')})
             </>
           )}
-          . Cumplimiento ANS sobre {indicadoresGlobales.totalCasos} caso(s) desde{' '}
-          {FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL}.
+          {t('express.protocol.complianceSince', { count: indicadoresGlobales.totalCasos, date: FECHA_INICIO_PROTOCOLO_EXPRESS_LABEL })}
         </p>
 
         <section>
-          <h2 className={expressSectionTitle}>Casos cerrados / finalizados</h2>
+          <h2 className={expressSectionTitle}>{t('express.protocol.closedCases')}</h2>
           <p className="mb-4 font-body text-sm text-gray-500 dark:text-gray-400">
-            Mismo criterio que el reporte: filtro por aviso de siniestro. Cuenta Liquidar siniestro,
-            Objetado, Desistido, Anulado, Prescrito, Caso cerrado, No responsabilidad, etc.
+            {t('express.protocol.closedCasesHelp')}
           </p>
           <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ExpressMetricCard
-              label="Porcentaje de cierre"
+              label={t('express.protocol.closurePercentage')}
               value={formatearPorcentajeCumplimiento(porcentajeCierre)}
-              hint={`${indicadoresCerrados.cerradosPeriodo} de ${indicadoresCerrados.totalCasos} caso(s) con aviso`}
+              hint={t('express.protocol.closedWithNotice', { closed: indicadoresCerrados.cerradosPeriodo, total: indicadoresCerrados.totalCasos })}
             />
             <ExpressMetricCard
-              label="Cerrados / finalizados"
+              label={t('express.protocol.closedFinalizedLabel')}
               value={String(indicadoresCerrados.cerradosPeriodo)}
-              hint={`De ${indicadoresCerrados.totalCasos} caso(s) con aviso en el periodo`}
+              hint={t('express.protocol.totalWithNotice', { total: indicadoresCerrados.totalCasos })}
             />
             {chartEstadosCerrados.slice(0, 2).map((item) => (
               <ExpressMetricCard
@@ -410,13 +410,13 @@ export default function ProtocoloExpress() {
                     ? `${formatearPorcentajeCumplimiento(
                         (item.cantidad / indicadoresCerrados.totalCasos) * 100
                       )} del periodo`
-                    : 'Estado finalizado'
+                    : t('express.protocol.finalizedStatus')
                 }
               />
             ))}
           </div>
           {chartEstadosCerradosConPct.length > 0 ? (
-            <ChartCard title="Cantidad de casos por estado cerrado">
+            <ChartCard title={t('express.protocol.closedCasesByStatus')}>
               <ExpressChartPlot height={Math.max(280, chartEstadosCerradosConPct.length * 44)}>
                 <BarChart
                   data={chartEstadosCerradosConPct}
@@ -439,7 +439,7 @@ export default function ProtocoloExpress() {
                     contentStyle={tooltipStyle}
                     formatter={(value, _n, props) => [
                       `${value} (${formatearPorcentajeCumplimiento(props?.payload?.porcentajeCierre)})`,
-                      'Casos',
+                      t('express.protocol.cases'),
                     ]}
                     labelFormatter={(_, payload) => payload?.[0]?.payload?.nombre || ''}
                   />
@@ -472,23 +472,21 @@ export default function ProtocoloExpress() {
             </ChartCard>
           ) : (
             <p className="text-sm text-gray-500">
-              No hay casos en estados finalizados (Liquidar, Objetado, Desistido, etc.) en este
-              periodo.
+              {t('express.protocol.noClosedCases')}
             </p>
           )}
         </section>
 
         <section>
-          <h2 className={expressSectionTitle}>Cumplimiento vs ANS</h2>
+          <h2 className={expressSectionTitle}>{t('express.protocol.complianceVsSla')}</h2>
           <p className="mb-4 font-body text-sm text-gray-500 dark:text-gray-400">
-            Porcentaje de etapas completadas dentro del plazo oficial. Solo casos con ambas fechas
-            registradas. Días hábiles Colombia.
+            {t('express.protocol.complianceHelp')}
           </p>
           <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <ExpressMetricCard
-              label="Cumplimiento general"
+              label={t('express.protocol.generalCompliance')}
               value={formatearPorcentajeCumplimiento(cumplimientoGlobales.general.porcentaje)}
-              hint={`${cumplimientoGlobales.general.cumplidos} de ${cumplimientoGlobales.general.evaluables} etapas en plazo`}
+              hint={t('express.protocol.stagesOnTime', { completed: cumplimientoGlobales.general.cumplidos, total: cumplimientoGlobales.general.evaluables })}
             />
             {INDICADORES_PROTOCOLO_EXPRESS_DEF.map((ind) => {
               const datos = cumplimientoGlobales[ind.muestra];
@@ -504,11 +502,10 @@ export default function ProtocoloExpress() {
           </div>
 
           {chartCumplimiento.length > 0 ? (
-            <ChartCard title="Cumplimiento por indicador (vs ANS)">
+            <ChartCard title={t('express.protocol.complianceByIndicator')}>
               {cumplimientoGlobales.general.evaluables === 0 && (
                 <p className="mb-3 text-sm text-gray-500">
-                  Aún no hay etapas con ambas fechas; las barras aparecerán en 0 % hasta registrar
-                  hitos.
+                  {t('express.protocol.noComparableStages')}
                 </p>
               )}
               <ExpressChartPlot height={Math.max(280, chartCumplimiento.length * 44)}>
@@ -534,9 +531,9 @@ export default function ProtocoloExpress() {
                     contentStyle={tooltipStyle}
                     formatter={(value, _n, props) => [
                       props?.payload?.sinDatos
-                        ? 'Sin datos'
+                        ? t('express.protocol.noData')
                         : formatearPorcentajeCumplimiento(value),
-                      'Cumplimiento',
+                      t('express.protocol.compliance'),
                     ]}
                     labelFormatter={(_, payload) => {
                       const item = payload?.[0]?.payload;
@@ -585,13 +582,13 @@ export default function ProtocoloExpress() {
             </ChartCard>
           ) : (
             <p className="text-sm text-gray-500">
-              Aún no hay indicadores configurados para el gráfico de cumplimiento.
+              {t('express.protocol.noIndicators')}
             </p>
           )}
         </section>
 
         <section>
-          <h2 className={expressSectionTitle}>Promedio general (vs. ANS)</h2>
+          <h2 className={expressSectionTitle}>{t('express.protocol.generalAverage')}</h2>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {INDICADORES_PROTOCOLO_EXPRESS_DEF.map((ind) => (
               <ExpressMetricCard
@@ -605,20 +602,20 @@ export default function ProtocoloExpress() {
         </section>
 
         <section>
-          <h2 className={expressSectionTitle}>Consolidado — secuencia ANS</h2>
+          <h2 className={expressSectionTitle}>{t('express.protocol.slaSequence')}</h2>
           <div className="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <ExpressMetricCard
-              label="Casos en el periodo"
+              label={t('express.protocol.casesInPeriod')}
               value={String(indicadoresGlobales.totalCasos)}
-              hint="Con aviso en el rango filtrado"
+              hint={t('express.protocol.noticeInRange')}
             />
             <ExpressMetricCard
-              label="Cerrados"
+              label={t('express.protocol.closed')}
               value={String(indicadoresGlobales.cerradosPeriodo)}
-              hint="Liquidar, Objetado, Desistido, Anulado, Prescrito, Caso cerrado, etc."
+              hint={t('express.protocol.closedStatuses')}
             />
             <ExpressMetricCard
-              label="Cumplimiento general"
+              label={t('express.protocol.generalCompliance')}
               value={formatearPorcentajeCumplimiento(cumplimientoGlobales.general.porcentaje)}
               hint={`${cumplimientoGlobales.general.cumplidos}/${cumplimientoGlobales.general.evaluables} etapas`}
             />
@@ -639,7 +636,7 @@ export default function ProtocoloExpress() {
 
         {chartDesgloseCumplimiento.length > 0 ? (
           <ChartCard
-            title={`Cumplimiento general — ${vista === 'aseguradora' ? 'por aseguradora' : 'por responsable'}`}
+            title={t('express.protocol.generalComplianceBy', { dimension: vista === 'aseguradora' ? t('express.protocol.byInsurer') : t('express.protocol.byResponsible') })}
           >
             <ExpressChartPlot height={Math.max(280, chartDesgloseCumplimiento.length * 40)}>
               <BarChart
@@ -684,20 +681,20 @@ export default function ProtocoloExpress() {
 
         <section>
           <h2 className={expressSectionTitle}>
-            Desglose {vista === 'aseguradora' ? 'por aseguradora' : 'por responsable'}
+            {t('express.protocol.breakdownBy', { dimension: vista === 'aseguradora' ? t('express.protocol.byInsurer') : t('express.protocol.byResponsible') })}
           </h2>
           <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
             <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-900/60">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold text-gray-600 dark:text-gray-300">
-                    Grupo
+                    {t('express.protocol.group')}
                   </th>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600 dark:text-gray-300">
-                    Casos
+                    {t('express.protocol.cases')}
                   </th>
                   <th className="px-3 py-2 text-right font-semibold text-gray-600 dark:text-gray-300">
-                    Cumplimiento
+                    {t('express.protocol.compliance')}
                   </th>
                   {ETAPAS_DESGLOSE.map((e) => (
                     <th
@@ -708,13 +705,13 @@ export default function ProtocoloExpress() {
                     </th>
                   ))}
                   <th className="px-3 py-2 text-right font-semibold text-gray-600 dark:text-gray-300">
-                    Cerrados
+                    {t('express.protocol.closed')}
                   </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
                 <tr className="bg-red-50/50 font-semibold dark:bg-red-950/20">
-                  <td className="px-3 py-2 text-gray-900 dark:text-white">TOTAL GENERAL</td>
+                  <td className="px-3 py-2 text-gray-900 dark:text-white">{t('express.protocol.grandTotal')}</td>
                   <td className="px-3 py-2 text-right">{indicadoresGlobales.totalCasos}</td>
                   <td
                     className={`px-3 py-2 text-right ${claseColorCumplimiento(cumplimientoGlobales.general.porcentaje)}`}
@@ -756,7 +753,7 @@ export default function ProtocoloExpress() {
                 {filasDesglose.length === 0 ? (
                   <tr>
                     <td colSpan={4 + ETAPAS_DESGLOSE.length} className="px-3 py-6 text-center text-gray-500">
-                      No hay casos en el periodo para desglosar.
+                      {t('express.protocol.noCasesToBreakdown')}
                     </td>
                   </tr>
                 ) : null}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import Logo from '../../img/Logo.png';
 import { generarWordPuertos } from './generarWordPuertos';
@@ -26,6 +27,7 @@ import {
   recortarFotosInspeccionAlLimite,
 } from '../PuertosActas/puertosFotosLimites.js';
 import { esCasoInspeccionAsegurado } from '../PuertosActas/puertosTipoRegistro.js';
+import DocumentLanguageSelector from '../DocumentLanguageSelector.jsx';
 
 // Importar subcomponentes
 import SeccionInicialPuertos from './SeccionInicialPuertos';
@@ -44,6 +46,7 @@ import FormAutoSaveControls from '../AutoSave/FormAutoSaveControls';
 const esIdPersistido = (valor) => Boolean(valor && !['nuevo', 'nueva'].includes(valor));
 
 export default function PuertosInspeccionMain({ tipoInicial, modoActas } = {}) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -80,6 +83,7 @@ export default function PuertosInspeccionMain({ tipoInicial, modoActas } = {}) {
   const [savedDataToRestore, setSavedDataToRestore] = useState(null);
   const [guardandoActas, setGuardandoActas] = useState(false);
   const [progresoSubida, setProgresoSubida] = useState(null);
+  const [documentLocale, setDocumentLocale] = useState('es');
   
   // Hook para historial - Tipo específico para PUERTOS
   const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION_PUERTOS);
@@ -293,10 +297,10 @@ return fechaFormateada;
     try {
       setGenerandoManual(true);
 await generarManualPuertos();
-      alert('✅ Manual generado exitosamente. Revisa la carpeta de descargas.');
+      alert(t('ports.ui.inspeccion.alerts.manualOk'));
     } catch (error) {
       console.error('❌ Error al generar manual:', error);
-      alert('Error al generar el manual. Por favor, intente nuevamente.');
+      alert(t('ports.ui.inspeccion.alerts.manualError'));
     } finally {
       setGenerandoManual(false);
     }
@@ -386,13 +390,15 @@ await generarManualPuertos();
 
       if (!silencioso) {
         alert(
-          `✅ Informe guardado en Actas y Descargues${resultado.consecutivo ? `: ${resultado.consecutivo}` : ''}`
+          t('ports.ui.inspeccion.alerts.guardadoActas', {
+            consecutivo: resultado.consecutivo ? `: ${resultado.consecutivo}` : '',
+          })
         );
       }
 
       return resultado;
     },
-    [formularioId, navigate]
+    [formularioId, navigate, t]
   );
 
   const onAutoSaveServidor = useCallback(
@@ -473,7 +479,7 @@ await generarManualPuertos();
       setCargando(true);
       const caso = await getPuertosCaso(casoId);
       if (!esCasoInspeccionAsegurado(caso)) {
-        alert('Este registro no es un informe de inspección asegurado.');
+        alert(t('ports.ui.inspeccion.alerts.noEsAsegurado'));
         navigate('/puertos/actas');
         return;
       }
@@ -481,7 +487,7 @@ await generarManualPuertos();
       setFormData((prev) => ({ ...prev, ...datos }));
       if (huboRecorte) {
         alert(
-          `Este informe tenía más de ${MAX_FOTOS_SECCION_INSPECCION_ASEGURADO} fotos en alguna sección. Se muestran solo las primeras ${MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}. Guarde para aplicar el límite en el servidor.`
+          t('ports.ui.inspeccion.alerts.fotosRecortadas', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })
         );
       }
       setFormularioId(casoId);
@@ -489,7 +495,7 @@ await generarManualPuertos();
       setTipoInforme('riicp004');
     } catch (error) {
       console.error('❌ Error al cargar caso actas:', error);
-      alert(`Error al cargar el informe: ${error.message}`);
+      alert(t('ports.ui.inspeccion.alerts.cargarInformeError', { error: error.message }));
     } finally {
       setCargando(false);
     }
@@ -502,7 +508,7 @@ await generarManualPuertos();
       return await persistirEnActas(formData, options);
     } catch (error) {
       console.error('❌ Error al guardar en actas:', error);
-      alert(`Error al guardar: ${error.message}`);
+      alert(t('ports.ui.inspeccion.alerts.guardarError', { error: error.message }));
       throw error;
     } finally {
       setProgresoSubida(null);
@@ -519,8 +525,12 @@ await generarManualPuertos();
       if (!esRiicp004) {
         setForzarCapturaMapa((prev) => prev + 1);
         await new Promise((resolve) => setTimeout(resolve, 2000));
-        await generarWordPuertos(formData, incluirMapaCalor);
-        alert(`✅ Documento ${incluirMapaCalor ? 'Completo' : 'Diario'} generado exitosamente`);
+        await generarWordPuertos(formData, incluirMapaCalor, { locale: documentLocale });
+        alert(t('ports.ui.inspeccion.alerts.documentoGenerado', {
+          tipo: incluirMapaCalor
+            ? t('ports.ui.inspeccion.reportFull')
+            : t('ports.ui.inspeccion.reportDaily'),
+        }));
       } else {
         if (esFlujoActas) {
           const resultado = await persistirEnActas(formData, { silencioso: true });
@@ -528,15 +538,19 @@ await generarManualPuertos();
             ...formData,
             ...casoToFormDataInspeccionAsegurado(resultado),
           };
-          await generarWordRiicp004(dataWord);
+          await generarWordRiicp004(dataWord, { locale: documentLocale });
         } else {
-          await generarWordRiicp004(formData);
+          await generarWordRiicp004(formData, { locale: documentLocale });
         }
-        alert(`✅ Informe ${formData.codigoInforme?.trim() || 'de inspección de asegurado'} generado exitosamente`);
+        alert(t('ports.ui.inspeccion.alerts.informeRiicpGenerado', {
+          codigo: formData.codigoInforme?.trim() || t('ports.ui.inspeccion.alerts.informeRiicpFallback'),
+        }));
       }
     } catch (error) {
       console.error('❌ Error al generar Word:', error);
-      alert(`Error al generar el documento: ${error.message || 'intente nuevamente'}`);
+      alert(t('ports.ui.inspeccion.alerts.generarDocumentoError', {
+        error: error.message || t('ports.ui.inspeccion.alerts.intenteNuevamente'),
+      }));
     } finally {
       setGenerandoWord(false);
     }
@@ -589,7 +603,7 @@ let formularioGuardado;
       // 🔑 Si ya tenemos un formularioId, ACTUALIZAR; si no, CREAR
       if (esIdPersistido(formularioId)) {
 formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
-alert('✅ Formulario actualizado en historial exitosamente');
+alert(t('ports.ui.inspeccion.alerts.historialActualizado'));
       } else {
 formularioGuardado = await historialService.guardarFormulario(datosFormulario);
 // 🔑 Guardar el ID del formulario creado y navegar a la URL con el ID
@@ -598,11 +612,11 @@ formularioGuardado = await historialService.guardarFormulario(datosFormulario);
 navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
         setModoEdicion(true);
         
-        alert('✅ Formulario guardado en historial exitosamente');
+        alert(t('ports.ui.inspeccion.alerts.historialGuardado'));
       }
     } catch (error) {
       console.error('❌ Error al guardar:', error);
-      alert('Error al guardar en historial: ' + error.message);
+      alert(t('ports.ui.inspeccion.alerts.historialError', { error: error.message }));
     } finally {
       setCargando(false);
     }
@@ -621,7 +635,7 @@ navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
             ...formData,
             ...casoToFormDataInspeccionAsegurado(resultado),
           };
-          await generarWordRiicp004(dataWord);
+          await generarWordRiicp004(dataWord, { locale: documentLocale });
         }
         return;
       }
@@ -639,9 +653,9 @@ navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
       };
       
       if (tipoInforme === 'riicp004') {
-        await generarWordRiicp004(formDataActualizado);
+        await generarWordRiicp004(formDataActualizado, { locale: documentLocale });
       } else {
-        await generarWordPuertos(formDataActualizado, true);
+        await generarWordPuertos(formDataActualizado, true, { locale: documentLocale });
       }
 
       const casoIdHistorial = esIdPersistido(formularioId) ? formularioId : null;
@@ -676,7 +690,7 @@ let formularioGuardado;
       // 🔑 Si ya tenemos un formularioId, ACTUALIZAR; si no, CREAR
       if (esIdPersistido(formularioId)) {
 formularioGuardado = await historialService.actualizarFormulario(formularioId, datosFormulario);
-alert('✅ Documento generado y formulario actualizado exitosamente');
+alert(t('ports.ui.inspeccion.alerts.docYHistorialActualizado'));
       } else {
 formularioGuardado = await historialService.guardarFormulario(datosFormulario);
 // 🔑 Guardar el ID del formulario creado y navegar a la URL con el ID
@@ -685,11 +699,11 @@ formularioGuardado = await historialService.guardarFormulario(datosFormulario);
 navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
         setModoEdicion(true);
         
-        alert('✅ Documento generado y guardado en historial exitosamente');
+        alert(t('ports.ui.inspeccion.alerts.docYHistorialGuardado'));
       }
     } catch (error) {
       console.error('Error:', error);
-      alert('Error en el proceso: ' + error.message);
+      alert(t('ports.ui.inspeccion.alerts.procesoError', { error: error.message }));
     } finally {
       setGenerandoWord(false);
       setCargando(false);
@@ -786,11 +800,11 @@ return img;
         
 } else {
         console.error('❌ No se pudo obtener el formulario');
-        alert('No se pudo cargar el formulario');
+        alert(t('ports.ui.inspeccion.alerts.cargarFormularioFallo'));
       }
     } catch (error) {
       console.error('❌ Error al cargar formulario:', error);
-      alert(`Error al cargar el formulario: ${error.message}`);
+      alert(t('ports.ui.inspeccion.alerts.cargarFormularioError', { error: error.message }));
     } finally {
       setCargando(false);
     }
@@ -886,7 +900,7 @@ return img;
                   color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
                 }}
               >
-                ✏️ Modo Edición
+                ✏️ {t('ports.ui.inspeccion.editMode')}
               </div>
             )}
           </div>
@@ -895,7 +909,7 @@ return img;
               className="text-xs sm:text-sm font-semibold mb-1"
               style={{ color: textPrimary }}
             >
-              FECHA:
+              {t('ports.ui.inspeccion.date')}
             </p>
             <input
               type="date"
@@ -919,15 +933,15 @@ return img;
             className="text-2xl sm:text-3xl font-bold mb-2"
             style={{ color: textPrimary }}
           >
-            FORMULARIO DE INSPECCIÓN DE PUERTOS
+            {t('ports.ui.inspeccion.title')}
           </h1>
           <p 
             className="text-sm"
             style={{ color: textSecondary }}
           >
             {tipoInforme === 'riicp004'
-              ? 'Inspección de asegurado en patios (vehículos)'
-              : 'Sistema modular para inspección de riesgos en puertos'}
+              ? t('ports.ui.inspeccion.subtitleRiicp')
+              : t('ports.ui.inspeccion.subtitleDiario')}
           </p>
         </div>
 
@@ -944,7 +958,7 @@ return img;
             className="text-sm font-medium"
             style={{ color: textPrimary }}
           >
-            Tipo de Informe:
+            {t('ports.ui.inspeccion.reportType')}
           </label>
           <select
             value={tipoInforme}
@@ -962,8 +976,8 @@ return img;
             }}
             disabled={generandoWord || cargando}
           >
-            <option value="diario">📅 Informe Diario</option>
-            <option value="completo">📊 Informe Completo</option>
+            <option value="diario">📅 {t('ports.ui.inspeccion.reportDaily')}</option>
+            <option value="completo">📊 {t('ports.ui.inspeccion.reportFull')}</option>
           </select>
         </div>
         )}
@@ -1001,7 +1015,7 @@ return img;
               formData={formData}
               onInputChange={handleInputChange}
               cargando={cargando}
-              tituloSeccion="4 — RECOMENDACIONES"
+              tituloSeccion={t('ports.ui.formulario.recomendaciones.tituloRiicp')}
             />
             <ConclusionesRiicp004
               formData={formData}
@@ -1070,14 +1084,23 @@ return img;
                   border: `2px solid ${theme === 'dark' ? '#FCA5A5' : '#DC2626'}`
                 }}
                 disabled={generandoManual || cargando}
-                title="Genera un documento Word con las instrucciones completas de uso del formulario"
+                title={t('ports.ui.inspeccion.generateManualTitle')}
               >
-                {generandoManual ? '⏳ Generando Manual...' : '📘 Generar Manual de Uso'}
+                {generandoManual
+                  ? `⏳ ${t('ports.ui.inspeccion.generatingManual')}`
+                  : `📘 ${t('ports.ui.inspeccion.generateManual')}`}
               </button>
             </div>
           )}
 
           {/* Botones principales del formulario */}
+          <div className="mb-4 flex justify-center">
+            <DocumentLanguageSelector
+              value={documentLocale}
+              onChange={setDocumentLocale}
+              id="puertos-document-language"
+            />
+          </div>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               onClick={handleGuardarHistorial}
@@ -1091,14 +1114,17 @@ return img;
               {(esFlujoActas ? guardandoActas : guardando) || cargando
                 ? progresoSubida
                   ? progresoSubida.totalLotes > 1
-                    ? `⏳ Subiendo foto ${progresoSubida.lote}/${progresoSubida.totalLotes}…`
-                    : '⏳ Subiendo fotos y guardando…'
+                    ? `⏳ ${t('ports.ui.inspeccion.uploadingBatch', {
+                        lote: progresoSubida.lote,
+                        total: progresoSubida.totalLotes,
+                      })}`
+                    : `⏳ ${t('ports.ui.inspeccion.uploadingPhotos')}`
                   : hayImagenesPendientesInspeccion(formData)
-                    ? '⏳ Subiendo fotos y guardando…'
-                    : '⏳ Guardando...'
+                    ? `⏳ ${t('ports.ui.inspeccion.uploadingPhotos')}`
+                    : `⏳ ${t('ports.ui.inspeccion.saving')}`
                 : esModoActas || tipoInforme === 'riicp004'
-                  ? '💾 Guardar en Actas'
-                  : '💾 Guardar en Historial'}
+                  ? `💾 ${t('ports.ui.inspeccion.saveActas')}`
+                  : `💾 ${t('ports.ui.inspeccion.saveHistorial')}`}
             </button>
 
             <button
@@ -1112,7 +1138,9 @@ return img;
               }}
               disabled={generandoWord || cargando}
             >
-              {generandoWord ? '⏳ Generando...' : '📄 Generar Word'}
+              {generandoWord
+                ? `⏳ ${t('ports.ui.inspeccion.exporting')}`
+                : `📄 ${t('ports.ui.inspeccion.exportWord')}`}
             </button>
 
             <button
@@ -1124,7 +1152,7 @@ return img;
               }}
               disabled={generandoWord || cargando || exportando}
             >
-              {(generandoWord || exportando) ? '⏳ Procesando...' : '🚀 Exportar y Guardar'}
+              {(generandoWord || exportando) ? t('ports.ui.inspeccion.processing') : t('ports.ui.inspeccion.exportAndSave')}
             </button>
           </div>
         </div>

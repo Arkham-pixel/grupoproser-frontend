@@ -2,9 +2,11 @@ import { CATEGORIAS_RIESGO } from '../components/MatrizRiesgoAvanzada/matrizCont
 import {
   etiquetaEstadoRecomendacion,
   normalizarGestionRiesgos,
+  obtenerMetaEstadoRecomendacion,
   resolverAvanceRecomendacion,
   resolverEstadoRecomendacion,
 } from '../components/MatrizRiesgoAvanzada/gestionRiesgosHelpers';
+import i18n from '../i18n';
 import {
   calcularMaxImpacto,
   calcularNivelEjecutivo,
@@ -22,6 +24,20 @@ import {
   roundPct,
   tieneControlDocumentado,
 } from './matrizAnaliticaUtils';
+
+const t = (key, opts) => i18n.t(key, opts);
+
+function labelNivel(nivel) {
+  const map = {
+    Crítico: 'riskMatrix.level.critical',
+    Alto: 'riskMatrix.level.high',
+    Medio: 'riskMatrix.level.medium',
+    Bajo: 'riskMatrix.level.low',
+    CRÍTICO: 'riskMatrix.level.critical',
+    ALTO: 'riskMatrix.level.high',
+  };
+  return map[nivel] ? t(map[nivel]) : nivel;
+}
 
 function mapaRiesgosIdentificacion(identificacion = {}) {
   const mapa = new Map();
@@ -60,8 +76,8 @@ function construirRiesgoEnriquecido(val, identificacionRiesgo = null) {
   return {
     id: val.id,
     numero: val.numero,
-    nombre: val.riesgoIdentificado || identificacionRiesgo?.riesgoIdentificado || 'Sin nombre',
-    proceso: val.nombreProceso || identificacionRiesgo?.nombreProceso || 'Sin proceso',
+    nombre: val.riesgoIdentificado || identificacionRiesgo?.riesgoIdentificado || t('riskMatrix.analytics.unnamed'),
+    proceso: val.nombreProceso || identificacionRiesgo?.nombreProceso || t('riskMatrix.analytics.noProcess'),
     tipoProceso: identificacionRiesgo?.tipoProceso || '',
     categorias: etiquetasCategorias(categorias, CATEGORIAS_RIESGO),
     categoriaPrincipal: categoriaPrincipal(categorias, CATEGORIAS_RIESGO),
@@ -126,14 +142,17 @@ function analizarRecomendaciones(datosMatriz = {}, riesgos = []) {
       return {
         id: rec.id ?? index,
         recomendacion: rec.recomendacion,
-        riesgoAsociado: riesgoReferencia?.nombre || 'Matriz general',
+        riesgoAsociado: riesgoReferencia?.nombre || t('riskMatrix.analytics.generalMatrix'),
         proceso: riesgoReferencia?.proceso || '',
         nivelResidual: riesgoReferencia?.nivelResidual || 'Medio',
         scoreResidual: riesgoReferencia?.scoreResidual || 0,
         responsable: riesgoReferencia?.responsable || '',
         fechaObjetivo: rec.fechaRecomendacion || '',
         estado,
-        estadoEtiqueta: etiquetaEstadoRecomendacion(estado),
+        estadoEtiqueta: (() => {
+          const meta = obtenerMetaEstadoRecomendacion(estado);
+          return meta.labelKey ? t(meta.labelKey) : etiquetaEstadoRecomendacion(estado);
+        })(),
         avance,
         prioridad: prioridadRecomendacion(riesgoReferencia?.nivelResidual),
         comentarioSeguimiento:
@@ -155,7 +174,7 @@ function analizarRecomendaciones(datosMatriz = {}, riesgos = []) {
 function contarPorCampo(riesgos, campo) {
   const mapa = new Map();
   for (const riesgo of riesgos) {
-    const clave = riesgo[campo] || 'Sin dato';
+    const clave = riesgo[campo] || t('riskMatrix.analytics.noData');
     mapa.set(clave, (mapa.get(clave) || 0) + 1);
   }
   return [...mapa.entries()]
@@ -170,7 +189,7 @@ function contarPorCampo(riesgos, campo) {
 function semaforoPorCampo(riesgos, campo) {
   const mapa = new Map();
   for (const riesgo of riesgos) {
-    const clave = riesgo[campo] || 'Sin dato';
+    const clave = riesgo[campo] || t('riskMatrix.analytics.noData');
     const actual = mapa.get(clave) || [];
     actual.push(riesgo.nivelResidual);
     mapa.set(clave, actual);
@@ -192,35 +211,45 @@ function generarHallazgos({ riesgos, kpis, porProceso, porCategoria, recomendaci
   if (topProcesos.length >= 2) {
     hallazgos.push({
       id: 'concentracion-procesos',
-      texto: `El ${roundPct(concentracionProcesos)}% de los riesgos se concentra en los procesos ${topProcesos[0].nombre} y ${topProcesos[1].nombre}.`,
+      texto: t('riskMatrix.analytics.findingConcentration', {
+        pct: roundPct(concentracionProcesos),
+        p1: topProcesos[0].nombre,
+        p2: topProcesos[1].nombre,
+      }),
     });
   }
 
   if (kpis.criticos > 0) {
     hallazgos.push({
       id: 'riesgos-criticos',
-      texto: `Existen ${kpis.criticos} riesgos críticos que requieren intervención prioritaria (${roundPct((kpis.criticos / Math.max(kpis.totalRiesgos, 1)) * 100)}% del total).`,
+      texto: t('riskMatrix.analytics.findingCritical', {
+        count: kpis.criticos,
+        pct: roundPct((kpis.criticos / Math.max(kpis.totalRiesgos, 1)) * 100),
+      }),
     });
   }
 
   if (kpis.reduccionPromedio > 0) {
     hallazgos.push({
       id: 'reduccion-controles',
-      texto: `Los controles actuales reducen el riesgo promedio en un ${kpis.reduccionPromedio}%.`,
+      texto: t('riskMatrix.analytics.findingReduction', { pct: kpis.reduccionPromedio }),
     });
   }
 
   if (porProceso[0]) {
     hallazgos.push({
       id: 'mayor-exposicion',
-      texto: `El proceso ${porProceso[0].nombre} presenta la mayor exposición al riesgo.`,
+      texto: t('riskMatrix.analytics.findingExposure', { process: porProceso[0].nombre }),
     });
   }
 
   if (porCategoria[0]) {
     hallazgos.push({
       id: 'categoria-dominante',
-      texto: `La categoría ${porCategoria[0].nombre} concentra el ${porCategoria[0].porcentaje}% del total de riesgos.`,
+      texto: t('riskMatrix.analytics.findingCategory', {
+        category: porCategoria[0].nombre,
+        pct: porCategoria[0].porcentaje,
+      }),
     });
   }
 
@@ -228,69 +257,84 @@ function generarHallazgos({ riesgos, kpis, porProceso, porCategoria, recomendaci
     const pctAbiertas = roundPct((recomendaciones.abiertas / recomendaciones.total) * 100);
     hallazgos.push({
       id: 'recomendaciones-abiertas',
-      texto: `El ${pctAbiertas}% de las recomendaciones se encuentra abierta.`,
+      texto: t('riskMatrix.analytics.findingOpenRecs', { pct: pctAbiertas }),
     });
   }
 
   const conclusion = [
-    `La organización presenta un nivel de riesgo ${kpis.nivelGeneral}.`,
+    t('riskMatrix.analytics.conclusionLevel', { level: labelNivel(kpis.nivelGeneral) }),
     kpis.reduccionPromedio > 0
-      ? `Los controles reducen el riesgo en un ${kpis.reduccionPromedio}%.`
-      : 'Aún no se evidencia reducción significativa del riesgo residual.',
+      ? t('riskMatrix.analytics.conclusionReduction', { pct: kpis.reduccionPromedio })
+      : t('riskMatrix.analytics.conclusionNoReduction'),
     kpis.criticos > 0
-      ? `Se identificaron ${kpis.criticos} riesgos críticos que requieren atención inmediata.`
-      : 'No se registran riesgos críticos en esta evaluación.',
+      ? t('riskMatrix.analytics.conclusionCritical', { count: kpis.criticos })
+      : t('riskMatrix.analytics.conclusionNoCritical'),
   ].join(' ');
 
   return { lista: hallazgos.slice(0, 8), conclusion };
 }
 
-const NIVELES_MADUREZ = [
+const NIVELES_MADUREZ_KEYS = [
   {
     nivel: 1,
-    nombre: 'INICIAL',
-    descripcion: 'Procesos ad-hoc. Sin estructura definida.',
+    nombreKey: 'riskMatrix.analytics.maturityInitial',
+    descripcionKey: 'riskMatrix.analytics.maturityInitialDesc',
   },
   {
     nivel: 2,
-    nombre: 'BÁSICO',
-    descripcion: 'Procesos definidos parcialmente.',
+    nombreKey: 'riskMatrix.analytics.maturityBasic',
+    descripcionKey: 'riskMatrix.analytics.maturityBasicDesc',
   },
   {
     nivel: 3,
-    nombre: 'CONTROLADO',
-    descripcion: 'Procesos estandarizados y documentados.',
+    nombreKey: 'riskMatrix.analytics.maturityControlled',
+    descripcionKey: 'riskMatrix.analytics.maturityControlledDesc',
   },
   {
     nivel: 4,
-    nombre: 'GESTIONADO',
-    descripcion: 'Gestión proactiva y medición continua.',
+    nombreKey: 'riskMatrix.analytics.maturityManaged',
+    descripcionKey: 'riskMatrix.analytics.maturityManagedDesc',
   },
   {
     nivel: 5,
-    nombre: 'OPTIMIZADO',
-    descripcion: 'Mejora continua e innovación.',
+    nombreKey: 'riskMatrix.analytics.maturityOptimized',
+    descripcionKey: 'riskMatrix.analytics.maturityOptimizedDesc',
   },
 ];
 
-const ACCIONES_MADUREZ = [
+const ACCIONES_MADUREZ_KEYS = [
   {
-    titulo: 'Fortalecer cultura de riesgos',
-    descripcion: 'Capacitación y sensibilización en gestión de riesgos.',
+    tituloKey: 'riskMatrix.analytics.actionCultureTitle',
+    descripcionKey: 'riskMatrix.analytics.actionCultureDesc',
   },
   {
-    titulo: 'Mejorar evaluación de riesgos',
-    descripcion: 'Análisis cuantitativo para riesgos críticos.',
+    tituloKey: 'riskMatrix.analytics.actionEvalTitle',
+    descripcionKey: 'riskMatrix.analytics.actionEvalDesc',
   },
   {
-    titulo: 'Automatizar seguimiento',
-    descripcion: 'Herramientas de monitoreo en tiempo real.',
+    tituloKey: 'riskMatrix.analytics.actionAutoTitle',
+    descripcionKey: 'riskMatrix.analytics.actionAutoDesc',
   },
   {
-    titulo: 'Medir y reportar indicadores',
-    descripcion: 'KPIs de riesgo para alta dirección.',
+    tituloKey: 'riskMatrix.analytics.actionKpiTitle',
+    descripcionKey: 'riskMatrix.analytics.actionKpiDesc',
   },
 ];
+
+function nivelesMadurezTraducidos() {
+  return NIVELES_MADUREZ_KEYS.map((n) => ({
+    nivel: n.nivel,
+    nombre: t(n.nombreKey),
+    descripcion: t(n.descripcionKey),
+  }));
+}
+
+function accionesMadurezTraducidas() {
+  return ACCIONES_MADUREZ_KEYS.map((a) => ({
+    titulo: t(a.tituloKey),
+    descripcion: t(a.descripcionKey),
+  }));
+}
 
 function clamp15(n) {
   return Math.max(1, Math.min(5, round1(n)));
@@ -312,35 +356,36 @@ function calcularIndicadorMadurez(kpis, riesgos, recomendaciones) {
   const factores = [
     {
       id: 'gobernanza',
-      etiqueta: 'Gobernanza y cultura',
+      etiqueta: t('riskMatrix.analytics.factorGovernance'),
       puntaje: clamp15(avance * 2.5 + pctSeguimiento * 2.5),
     },
     {
       id: 'identificacion',
-      etiqueta: 'Identificación de Riesgos',
+      etiqueta: t('riskMatrix.analytics.factorIdentification'),
       puntaje: clamp15(pctValorados * 5),
     },
     {
       id: 'evaluacion',
-      etiqueta: 'Evaluación y Priorización',
+      etiqueta: t('riskMatrix.analytics.factorEvaluation'),
       puntaje: clamp15(pctValorados * 3.5 + (1 - kpis.criticos / total) * 1.5),
     },
     {
       id: 'respuesta',
-      etiqueta: 'Respuesta al Riesgo',
+      etiqueta: t('riskMatrix.analytics.factorResponse'),
       puntaje: clamp15(pctControles * 2.5 + pctReduccion * 2.5),
     },
     {
       id: 'monitoreo',
-      etiqueta: 'Monitoreo y Mejora Continua',
+      etiqueta: t('riskMatrix.analytics.factorMonitoring'),
       puntaje: clamp15(pctSeguimiento * 2.5 + avance * 2.5),
     },
   ];
 
   const promedioMadurez = promedio(factores, (f) => f.puntaje);
   const nivelActual = Math.max(1, Math.min(5, Math.round(promedioMadurez)));
-  const nivelDetalle = NIVELES_MADUREZ.find((n) => n.nivel === nivelActual) || NIVELES_MADUREZ[0];
-  const proximoNivel = NIVELES_MADUREZ.find((n) => n.nivel === Math.min(5, nivelActual + 1));
+  const niveles = nivelesMadurezTraducidos();
+  const nivelDetalle = niveles.find((n) => n.nivel === nivelActual) || niveles[0];
+  const proximoNivel = niveles.find((n) => n.nivel === Math.min(5, nivelActual + 1));
 
   return {
     factores,
@@ -348,9 +393,12 @@ function calcularIndicadorMadurez(kpis, riesgos, recomendaciones) {
     nivelActual,
     nivelDetalle,
     proximoNivel,
-    niveles: NIVELES_MADUREZ,
-    acciones: ACCIONES_MADUREZ,
-    resumen: `La organización se encuentra en nivel ${nivelDetalle.nombre} porque los procesos están ${nivelDetalle.descripcion.toLowerCase()}`,
+    niveles,
+    acciones: accionesMadurezTraducidas(),
+    resumen: t('riskMatrix.analytics.maturitySummary', {
+      name: nivelDetalle.nombre,
+      desc: nivelDetalle.descripcion.toLowerCase(),
+    }),
   };
 }
 
@@ -390,7 +438,7 @@ function procesosConCriticosAltos(riesgos = []) {
   const mapa = new Map();
   for (const riesgo of riesgos) {
     if (riesgo.nivelResidual !== 'Crítico' && riesgo.nivelResidual !== 'Alto') continue;
-    const clave = riesgo.proceso || 'Sin proceso';
+    const clave = riesgo.proceso || t('riskMatrix.analytics.noProcess');
     mapa.set(clave, (mapa.get(clave) || 0) + 1);
   }
   return [...mapa.entries()]
@@ -427,69 +475,78 @@ function generarResumenEjecutivo({
   comparativoPorProceso,
 }) {
   const procesosTop = porProceso.slice(0, 2);
-  const nombresProcesos = procesosTop.map((p) => p.nombre).join(' y ');
+  const nombresProcesos = procesosTop.map((p) => p.nombre).join(t('riskMatrix.analytics.andJoin'));
   const mayorReduccion =
     [...comparativoPorProceso].sort((a, b) => b.reduccion - a.reduccion)[0] || null;
 
   const conclusiones = [
     {
-      titulo: 'Nivel general de riesgo',
-      texto: `La organización presenta un nivel de riesgo ${kpis.nivelGeneral} (residual promedio ${kpis.riesgoResidualPromedio}).`,
+      titulo: t('riskMatrix.analytics.concLevelTitle'),
+      texto: t('riskMatrix.analytics.concLevelText', {
+        level: labelNivel(kpis.nivelGeneral),
+        avg: kpis.riesgoResidualPromedio,
+      }),
     },
     {
-      titulo: 'Procesos más críticos',
+      titulo: t('riskMatrix.analytics.concProcessesTitle'),
       texto:
         procesosTop.length >= 2
-          ? `Los procesos ${nombresProcesos} concentran la mayor exposición al riesgo.`
-          : 'Aún no hay suficientes procesos evaluados para determinar concentración.',
+          ? t('riskMatrix.analytics.concProcessesText', { names: nombresProcesos })
+          : t('riskMatrix.analytics.concProcessesEmpty'),
     },
     {
-      titulo: 'Riesgos que requieren acción inmediata',
+      titulo: t('riskMatrix.analytics.concImmediateTitle'),
       texto:
         kpis.criticos > 0
-          ? `Se identificaron ${kpis.criticos} riesgos críticos que requieren intervención prioritaria.`
-          : 'No se registran riesgos críticos en esta evaluación.',
+          ? t('riskMatrix.analytics.concImmediateText', { count: kpis.criticos })
+          : t('riskMatrix.analytics.concImmediateEmpty'),
     },
     {
-      titulo: 'Efectividad de controles',
+      titulo: t('riskMatrix.analytics.concControlsTitle'),
       texto:
         kpis.reduccionPromedio > 0
-          ? `Los controles reducen el riesgo promedio en un ${kpis.reduccionPromedio}%${
-              mayorReduccion ? `; el mayor impacto se observa en ${mayorReduccion.proceso}.` : '.'
-            }`
-          : 'Los controles actuales no evidencian reducción significativa del riesgo.',
+          ? mayorReduccion
+            ? t('riskMatrix.analytics.concControlsTextWithProcess', {
+                pct: kpis.reduccionPromedio,
+                process: mayorReduccion.proceso,
+              })
+            : t('riskMatrix.analytics.concControlsText', { pct: kpis.reduccionPromedio })
+          : t('riskMatrix.analytics.concControlsEmpty'),
     },
     {
-      titulo: 'Recomendaciones prioritarias',
+      titulo: t('riskMatrix.analytics.concRecsTitle'),
       texto:
         recomendaciones.abiertas > 0
-          ? `Hay ${recomendaciones.abiertas} recomendaciones abiertas (${recomendaciones.porPrioridad.alta.length} de prioridad alta).`
-          : 'No hay recomendaciones pendientes de ejecución.',
+          ? t('riskMatrix.analytics.concRecsText', {
+              open: recomendaciones.abiertas,
+              high: recomendaciones.porPrioridad.alta.length,
+            })
+          : t('riskMatrix.analytics.concRecsEmpty'),
     },
     {
-      titulo: 'Conclusión general',
+      titulo: t('riskMatrix.analytics.concGeneralTitle'),
       texto: hallazgos.conclusion,
     },
   ];
 
   const proximosPasos = [];
   if (kpis.criticos > 0) {
-    proximosPasos.push(`Atender los ${kpis.criticos} riesgos críticos identificados.`);
+    proximosPasos.push(t('riskMatrix.analytics.stepCritical', { count: kpis.criticos }));
   }
   if (procesosTop[0]) {
-    proximosPasos.push(`Fortalecer controles en el proceso ${procesosTop[0].nombre}.`);
+    proximosPasos.push(t('riskMatrix.analytics.stepProcess', { process: procesosTop[0].nombre }));
   }
   if (recomendaciones.porPrioridad.alta.length > 0) {
-    proximosPasos.push('Ejecutar las recomendaciones de prioridad alta.');
+    proximosPasos.push(t('riskMatrix.analytics.stepHighPriority'));
   }
   if (porCategoria[0]) {
-    proximosPasos.push(`Revisar riesgos de la categoría ${porCategoria[0].nombre}.`);
+    proximosPasos.push(t('riskMatrix.analytics.stepCategory', { category: porCategoria[0].nombre }));
   }
   if (top10[0]) {
-    proximosPasos.push(`Monitorear de cerca: ${top10[0].nombre}.`);
+    proximosPasos.push(t('riskMatrix.analytics.stepMonitor', { risk: top10[0].nombre }));
   }
   if (!proximosPasos.length) {
-    proximosPasos.push('Mantener el monitoreo periódico de la matriz de riesgos.');
+    proximosPasos.push(t('riskMatrix.analytics.stepKeepMonitoring'));
   }
 
   return { conclusiones, proximosPasos, mayorReduccion };
@@ -564,8 +621,8 @@ export function calcularAnaliticaMatriz(datosMatriz = {}, opciones = {}) {
       recomendacionPrincipal:
         recomendaciones.lista.find((r) => r.prioridad === 'alta')?.recomendacion ||
         recomendaciones.lista[0]?.recomendacion ||
-        'Definir plan de tratamiento',
-      estadoTratamiento: riesgo.nivelResidual,
+        t('riskMatrix.analytics.defineTreatmentPlan'),
+      estadoTratamiento: labelNivel(riesgo.nivelResidual),
     }));
 
   const comparativo = riesgos
@@ -618,10 +675,10 @@ export function calcularAnaliticaMatriz(datosMatriz = {}, opciones = {}) {
   });
 
   const estadoRecomendaciones = [
-    { nombre: 'No iniciadas', total: recomendaciones.abiertas, color: '#dc3545' },
-    { nombre: 'En proceso', total: recomendaciones.enProceso, color: '#fd7e14' },
-    { nombre: 'Avanzadas', total: recomendaciones.avanzadas, color: '#eab308' },
-    { nombre: 'Completadas', total: recomendaciones.cerradas, color: '#28a745' },
+    { nombre: t('riskMatrix.analytics.recNotStarted'), total: recomendaciones.abiertas, color: '#dc3545' },
+    { nombre: t('riskMatrix.analytics.recInProgress'), total: recomendaciones.enProceso, color: '#fd7e14' },
+    { nombre: t('riskMatrix.analytics.recAdvanced'), total: recomendaciones.avanzadas, color: '#eab308' },
+    { nombre: t('riskMatrix.analytics.recCompleted'), total: recomendaciones.cerradas, color: '#28a745' },
   ].filter((item) => item.total > 0);
 
   const madurez = calcularIndicadorMadurez(kpis, riesgos, recomendaciones);

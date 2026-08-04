@@ -1,4 +1,4 @@
-﻿import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { CODIGOS_ESTADO_FILTRO } from './puertosEstadoLabels.js';
 
 export const FILTROS_PUERTOS_VACIOS = {
@@ -48,7 +48,7 @@ export function filasTrazabilidadExcel(registros = []) {
     'Tipo registro': TIPO_LABEL[r.tipoRegistro] || r.tipoRegistro || '',
     'Consecutivo / N° acta': r.consecutivo || r.nroReferencia || '',
     'N° solicitud': r.numeroSolicitud || '',
-    Cliente: r.asegurado || '',
+    Cliente: r.asegurado || r.beneficiario || '',
     Aseguradora: r.aseguradora || '',
     'Exportador / Beneficiario': r.beneficiario || r.mercancia || '',
     'Regional / Ciudad': r.regional || '',

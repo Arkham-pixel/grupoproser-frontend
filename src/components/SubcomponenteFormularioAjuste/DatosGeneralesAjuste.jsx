@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaUser, FaBuilding, FaMapMarkerAlt, FaCalendarAlt, FaFileAlt, FaShieldAlt, FaChevronDown } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 import { resolverFechaAsignacionDesdeCaso } from '../../utils/prefillAjusteDesdeCasoComplex';
@@ -13,6 +14,7 @@ export default function DatosGeneralesAjuste({
   mostrarResumenTablaInforme = true,
   estadoActual = 'inicial'
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -148,15 +150,13 @@ export default function DatosGeneralesAjuste({
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#93C5FD' : '#2563EB' }}
           />
-          {tituloAjuste('Datos generales del siniestro')}
+          {tituloAjuste(t('adjustment.ui.datosGenerales.title'))}
         </h2>
         <p 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          {subtituloAjuste(
-            'Complete la información básica del siniestro. Al abrir el ajuste desde el reporte de casos o al pasar del acta al informe preliminar, se autocompletan destinatario, póliza, aseguradora, fechas, ciudad y demás datos disponibles en Complex. Las descripciones del siniestro y del riesgo las completa el ajustador en el acta o en el informe.'
-          )}
+          {subtituloAjuste(t('adjustment.ui.datosGenerales.subtitle'))}
         </p>
         {!!autofillState.error && (
           <p className="mt-2 text-sm" style={{ color: '#DC2626' }}>
@@ -165,7 +165,7 @@ export default function DatosGeneralesAjuste({
         )}
         {autofillState.partial && !autofillState.error && (
           <p className="mt-2 text-sm" style={{ color: theme === 'dark' ? '#FCD34D' : '#92400E' }}>
-            Se completó parcialmente: algunos datos no estaban disponibles en Complex.
+            {t('adjustment.ui.datosGenerales.partialAutofill')}
           </p>
         )}
       </div>
@@ -183,7 +183,7 @@ export default function DatosGeneralesAjuste({
           style={{ color: sectionBlueText }}
         >
           <FaUser className="mr-2" />
-          {tituloAjuste('Información del destinatario')}
+          {tituloAjuste(t('adjustment.ui.datosGenerales.recipientInfo'))}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -191,7 +191,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Señor(a) / Destinatario
+              {t('adjustment.ui.datosGenerales.recipient')}
             </label>
             <input
               type="text"
@@ -204,7 +204,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Nombre del destinatario"
+              placeholder={t('adjustment.ui.datosGenerales.recipientPlaceholder')}
             />
           </div>
           <div>
@@ -212,7 +212,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Cargo
+              {t('adjustment.ui.datosGenerales.position')}
             </label>
             <input
               type="text"
@@ -225,7 +225,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Cargo del destinatario"
+              placeholder={t('adjustment.ui.datosGenerales.positionPlaceholder')}
             />
           </div>
           <div>
@@ -233,7 +233,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Empresa
+              {t('adjustment.ui.datosGenerales.company')}
             </label>
             <input
               type="text"
@@ -246,7 +246,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Nombre de la empresa"
+              placeholder={t('adjustment.ui.datosGenerales.companyPlaceholder')}
             />
           </div>
           <div>
@@ -254,7 +254,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Dirección
+              {t('adjustment.ui.datosGenerales.address')}
             </label>
             <input
               type="text"
@@ -266,7 +266,7 @@ export default function DatosGeneralesAjuste({
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Dirección de la empresa"
+              placeholder={t('adjustment.ui.datosGenerales.addressPlaceholder')}
             />
           </div>
           <div>
@@ -274,7 +274,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Ciudad
+              {t('adjustment.ui.datosGenerales.city')}
             </label>
             <input
               type="text"
@@ -286,7 +286,7 @@ export default function DatosGeneralesAjuste({
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ciudad de la empresa"
+              placeholder={t('adjustment.ui.datosGenerales.cityPlaceholder')}
             />
           </div>
           <div>
@@ -294,7 +294,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Teléfono
+              {t('adjustment.ui.datosGenerales.phone')}
             </label>
             <input
               type="tel"
@@ -306,7 +306,7 @@ export default function DatosGeneralesAjuste({
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Teléfono de contacto"
+              placeholder={t('adjustment.ui.datosGenerales.phonePlaceholder')}
             />
           </div>
           <div>
@@ -314,7 +314,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Email
+              {t('adjustment.ui.datosGenerales.email')}
             </label>
             <input
               type="email"
@@ -326,7 +326,7 @@ export default function DatosGeneralesAjuste({
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Email de contacto"
+              placeholder={t('adjustment.ui.datosGenerales.emailPlaceholder')}
             />
           </div>
           <div>
@@ -334,7 +334,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Ciudad Destino
+              {t('adjustment.ui.datosGenerales.destinationCity')}
             </label>
             <input
               type="text"
@@ -346,7 +346,7 @@ export default function DatosGeneralesAjuste({
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ciudad de destino del reporte"
+              placeholder={t('adjustment.ui.datosGenerales.destinationCity')}
             />
           </div>
           <div>
@@ -354,7 +354,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              País Destino
+              {t('adjustment.ui.datosGenerales.destinationCountry')}
             </label>
             <input
               type="text"
@@ -366,7 +366,7 @@ export default function DatosGeneralesAjuste({
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="País de destino del reporte"
+              placeholder={t('adjustment.ui.datosGenerales.destinationCountry')}
             />
           </div>
         </div>
@@ -385,7 +385,7 @@ export default function DatosGeneralesAjuste({
           style={{ color: sectionRedText }}
         >
           <FaShieldAlt className="mr-2" />
-          {tituloAjuste('Información del siniestro')}
+          {tituloAjuste(t('adjustment.ui.datosGenerales.claimInfo'))}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -394,7 +394,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Número de Siniestro *
+              {t('adjustment.ui.datosGenerales.claimNumber')}
             </label>
             <input
               type="text"
@@ -407,7 +407,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Número de siniestro asignado"
+              placeholder={t('adjustment.ui.datosGenerales.claimNumberPlaceholder')}
               required
             />
           </div>
@@ -417,7 +417,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Fecha de Ocurrencia *
+              {t('adjustment.ui.datosGenerales.occurrenceDate')}
             </label>
             <input
               type="date"
@@ -439,7 +439,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Hora de Ocurrencia
+              {t('adjustment.ui.datosGenerales.occurrenceTime')}
             </label>
             <input
               type="time"
@@ -460,7 +460,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Tipo de Evento *
+              {t('adjustment.ui.datosGenerales.eventType')}
             </label>
             <div className="relative">
               <input
@@ -477,7 +477,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-                placeholder="Escribe para buscar tipo de evento..."
+                placeholder={t('adjustment.ui.datosGenerales.eventTypePlaceholder')}
                 required
               />
               {sugerenciasIA.tipoEvento && sugerenciasIA.tipoEvento.length > 0 && (
@@ -517,7 +517,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Funcionario que Asigna
+              {t('adjustment.ui.datosGenerales.assigningOfficer')}
             </label>
             <input
               type="text"
@@ -530,7 +530,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Nombre del funcionario"
+              placeholder={t('adjustment.ui.datosGenerales.assigningOfficerPlaceholder')}
             />
           </div>
         </div>
@@ -549,7 +549,7 @@ export default function DatosGeneralesAjuste({
           style={{ color: sectionGreenText }}
         >
           <FaFileAlt className="mr-2" />
-          {tituloAjuste('Información de la póliza')}
+          {tituloAjuste(t('adjustment.ui.datosGenerales.policyInfo'))}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -558,7 +558,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Número de Póliza *
+              {t('adjustment.ui.datosGenerales.policyNumber')}
             </label>
             <input
               type="text"
@@ -571,7 +571,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Número de póliza"
+              placeholder={t('adjustment.ui.datosGenerales.policyNumberPlaceholder')}
               required
             />
           </div>
@@ -581,7 +581,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Aseguradora *
+              {t('adjustment.ui.datosGenerales.insurer')}
             </label>
             <div className="relative">
               <input
@@ -598,7 +598,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-                placeholder="Escribe para buscar aseguradora..."
+                placeholder={t('adjustment.ui.datosGenerales.insurerPlaceholder')}
                 required
               />
               {sugerenciasIA.aseguradora && sugerenciasIA.aseguradora.length > 0 && (
@@ -630,7 +630,9 @@ export default function DatosGeneralesAjuste({
                         className="text-sm"
                         style={{ color: textSecondary }}
                       >
-                        {aseg.funcionarios ? aseg.funcionarios.length : 0} funcionarios
+                        {t('adjustment.ui.datosGenerales.officialsCount', {
+                          count: aseg.funcionarios ? aseg.funcionarios.length : 0
+                        })}
                       </div>
                     </button>
                   ))}
@@ -644,7 +646,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Ramo
+              {t('adjustment.ui.datosGenerales.branch')}
             </label>
             <input
               type="text"
@@ -657,7 +659,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ramo de la póliza"
+              placeholder={t('adjustment.ui.datosGenerales.branchPlaceholder')}
             />
           </div>
           
@@ -666,7 +668,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Actividad
+              {t('adjustment.ui.datosGenerales.activity')}
             </label>
             <input
               type="text"
@@ -679,7 +681,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Actividad económica o comercial"
+              placeholder={t('adjustment.ui.datosGenerales.activityPlaceholder')}
             />
           </div>
           
@@ -688,7 +690,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Vigencia Desde
+              {t('adjustment.ui.datosGenerales.validityFrom')}
             </label>
             <input
               type="date"
@@ -709,7 +711,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Vigencia Hasta
+              {t('adjustment.ui.datosGenerales.validityTo')}
             </label>
             <input
               type="date"
@@ -740,7 +742,7 @@ export default function DatosGeneralesAjuste({
           style={{ color: sectionPurpleText }}
         >
           <FaUser className="mr-2" />
-          {tituloAjuste('Información de las partes')}
+          {tituloAjuste(t('adjustment.ui.datosGenerales.partiesInfo'))}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -749,7 +751,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Asegurado *
+              {t('adjustment.ui.datosGenerales.insured')}
             </label>
             <input
               type="text"
@@ -762,7 +764,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Nombre del asegurado"
+              placeholder={t('adjustment.ui.datosGenerales.insuredPlaceholder')}
               required
             />
           </div>
@@ -772,7 +774,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Tomador
+              {t('adjustment.ui.datosGenerales.policyholder')}
             </label>
             <input
               type="text"
@@ -785,7 +787,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Nombre del tomador"
+              placeholder={t('adjustment.ui.datosGenerales.policyholderPlaceholder')}
             />
           </div>
           
@@ -794,7 +796,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Beneficiario
+              {t('adjustment.ui.datosGenerales.beneficiary')}
             </label>
             <input
               type="text"
@@ -807,7 +809,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Nombre del beneficiario"
+              placeholder={t('adjustment.ui.datosGenerales.beneficiaryPlaceholder')}
             />
           </div>
 
@@ -816,7 +818,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Tipo de documento
+              {t('adjustment.ui.datosGenerales.documentType')}
             </label>
             <input
               type="text"
@@ -829,7 +831,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: CC, CE, NIT"
+              placeholder={t('adjustment.ui.datosGenerales.documentTypePlaceholder')}
             />
           </div>
 
@@ -838,7 +840,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Número de documento
+              {t('adjustment.ui.datosGenerales.documentNumber')}
             </label>
             <input
               type="text"
@@ -851,7 +853,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Documento del asegurado / tomador"
+              placeholder={t('adjustment.ui.datosGenerales.documentNumberPlaceholder')}
             />
           </div>
 
@@ -860,7 +862,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              {subtituloAjuste('Intermediario')}
+              {subtituloAjuste(t('adjustment.ui.datosGenerales.intermediary'))}
             </label>
             <div className="relative">
               <input
@@ -877,7 +879,7 @@ export default function DatosGeneralesAjuste({
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Nombre del intermediario"
+                placeholder={t('adjustment.ui.datosGenerales.intermediaryPlaceholder')}
               />
               {sugerenciasIA.intermediario?.length > 0 && (
                 <div
@@ -924,7 +926,7 @@ export default function DatosGeneralesAjuste({
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
           />
-          📍 Ubicación del Riesgo
+          {t('adjustment.ui.datosGenerales.riskLocation')}
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -933,7 +935,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Dirección del Riesgo *
+              {t('adjustment.ui.datosGenerales.riskAddress')}
             </label>
             <input
               type="text"
@@ -946,7 +948,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: Calle 123 # 45-67, Barrio Centro"
+              placeholder={t('adjustment.ui.datosGenerales.riskAddressPlaceholder')}
               required
             />
           </div>
@@ -956,7 +958,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Ciudad *
+              {t('adjustment.ui.datosGenerales.riskCity')}
             </label>
             <div className="relative">
               <input
@@ -973,7 +975,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-                placeholder="Escribe para buscar ciudad..."
+                placeholder={t('adjustment.ui.datosGenerales.riskCityPlaceholder')}
                 required
               />
               {sugerenciasIA.ciudad && sugerenciasIA.ciudad.length > 0 && (
@@ -1016,7 +1018,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Departamento *
+              {t('adjustment.ui.datosGenerales.department')}
             </label>
             <select
               value={valorDepartamentoSeleccionado}
@@ -1030,7 +1032,7 @@ export default function DatosGeneralesAjuste({
               }}
               required
             >
-              <option value="">Selecciona un departamento</option>
+              <option value="">{t('adjustment.ui.datosGenerales.selectDepartment')}</option>
               {DEPARTAMENTOS_CO.map((dep) => (
                 <option key={dep} value={dep}>{dep}</option>
               ))}
@@ -1042,7 +1044,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              Código Postal
+              {t('adjustment.ui.datosGenerales.postalCode')}
             </label>
             <input
               type="text"
@@ -1055,7 +1057,7 @@ export default function DatosGeneralesAjuste({
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-              placeholder="Ej: 110111"
+              placeholder={t('adjustment.ui.datosGenerales.postalCodePlaceholder')}
             />
           </div>
         </div>
@@ -1073,17 +1075,15 @@ export default function DatosGeneralesAjuste({
             className="text-lg font-semibold mb-1"
             style={{ color: sectionYellowText }}
           >
-            {tituloAjuste('Resumen para tabla del informe')}
+            {tituloAjuste(t('adjustment.ui.datosGenerales.tableSummary'))}
           </h3>
           <p className="text-sm mb-4" style={{ color: textSecondary }}>
-            {subtituloAjuste(
-              'Texto breve que aparece en la tabla «Información detallada del siniestro» del Word. Complételo aquí; no se toma de las secciones de salvamentos, recobro o liquidación más abajo.'
-            )}
+            {subtituloAjuste(t('adjustment.ui.datosGenerales.tableSummaryHint'))}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-                {subtituloAjuste('Recobro')}
+                {subtituloAjuste(t('adjustment.ui.datosGenerales.recovery'))}
               </label>
               <input
                 type="text"
@@ -1095,12 +1095,12 @@ export default function DatosGeneralesAjuste({
                   color: textPrimary,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: No aplica / En gestión"
+                placeholder={t('adjustment.ui.datosGenerales.recoveryPlaceholder')}
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-                {subtituloAjuste('Salvamento')}
+                {subtituloAjuste(t('adjustment.ui.datosGenerales.salvage'))}
               </label>
               <input
                 type="text"
@@ -1112,12 +1112,12 @@ export default function DatosGeneralesAjuste({
                   color: textPrimary,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: No aplica / Bienes recuperados"
+                placeholder={t('adjustment.ui.datosGenerales.salvagePlaceholder')}
               />
             </div>
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-                {subtituloAjuste('Infraseguro')}
+                {subtituloAjuste(t('adjustment.ui.datosGenerales.underinsurance'))}
               </label>
               <input
                 type="text"
@@ -1129,7 +1129,7 @@ export default function DatosGeneralesAjuste({
                   color: textPrimary,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: No aplica / Sí"
+                placeholder={t('adjustment.ui.datosGenerales.underinsurancePlaceholder')}
               />
             </div>
           </div>
@@ -1149,7 +1149,7 @@ export default function DatosGeneralesAjuste({
           style={{ color: sectionYellowText }}
         >
           <FaCalendarAlt className="mr-2" />
-          Fechas Importantes
+          {t('adjustment.ui.datosGenerales.importantDates')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
@@ -1157,7 +1157,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              FECHA DE OCURRENCIA
+              {t('adjustment.ui.datosGenerales.occurrenceDateLabel')}
             </label>
             <input
               type="date"
@@ -1177,7 +1177,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              {tituloAjuste('Fecha de asignación')}
+              {tituloAjuste(t('adjustment.ui.datosGenerales.assignmentDate'))}
             </label>
             <input
               type="date"
@@ -1198,7 +1198,7 @@ export default function DatosGeneralesAjuste({
               className="block text-sm font-medium mb-2"
               style={{ color: textPrimary }}
             >
-              FECHA DE INSPECCIÓN
+              {t('adjustment.ui.datosGenerales.inspectionDateLabel')}
             </label>
             <input
               type="date"
@@ -1219,7 +1219,7 @@ export default function DatosGeneralesAjuste({
                 className="block text-sm font-medium mb-2"
                 style={{ color: textPrimary }}
               >
-                {tituloAjuste('Fecha de actualización')}
+                {tituloAjuste(t('adjustment.ui.datosGenerales.updateDate'))}
               </label>
               <input
                 type="date"
@@ -1241,7 +1241,7 @@ export default function DatosGeneralesAjuste({
                 className="block text-sm font-medium mb-2"
                 style={{ color: textPrimary }}
               >
-                {tituloAjuste('Fecha de informe final')}
+                {tituloAjuste(t('adjustment.ui.datosGenerales.finalReportDate'))}
               </label>
               <input
                 type="date"

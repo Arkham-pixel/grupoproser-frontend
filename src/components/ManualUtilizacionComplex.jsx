@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useState } from 'react';
 import { FaBook, FaChevronDown, FaChevronUp, FaFileWord, FaImage } from 'react-icons/fa';
 import {
@@ -36,8 +39,7 @@ function ZonaImagenManual({ bloque }) {
               'Coloque la captura de pantalla en public/manual-complex/ y actualice el nombre en manualComplexContent.js'}
           </p>
           {bloque.archivo && (
-            <p className="font-mono text-xs text-gray-400 dark:text-gray-500">
-              Archivo: {bloque.archivo}
+            <p className="font-mono text-xs text-gray-400 dark:text-gray-500">{t("complex.ui.manual_utilizacion_complex.archivo")}{bloque.archivo}
             </p>
           )}
         </div>
@@ -137,6 +139,7 @@ function SeccionManual({ seccion, abierta, onToggle }) {
 }
 
 const ManualUtilizacionComplex = ({ embedded = false }) => {
+  useTranslation();
   const [abiertas, setAbiertas] = useState(() => new Set(['intro', 'trazabilidad', 'indicadores-trazabilidad', 'alertas']));
   const [generandoWord, setGenerandoWord] = useState(false);
 
@@ -174,8 +177,7 @@ const ManualUtilizacionComplex = ({ embedded = false }) => {
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className={complexSectionTitle}>{MANUAL_COMPLEX_TITULO}</h2>
-          <p className={`${complexHint} mt-1`}>
-            Guía para ajustadores y supervisores · versión {MANUAL_COMPLEX_VERSION}
+          <p className={`${complexHint} mt-1`}>{t("complex.ui.manual_utilizacion_complex.guia_para_ajustadores_y_supervisores_version")}{MANUAL_COMPLEX_VERSION}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -192,28 +194,20 @@ const ManualUtilizacionComplex = ({ embedded = false }) => {
             type="button"
             onClick={expandirTodas}
             className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-300"
-          >
-            Expandir todo
-          </button>
+          >{t("complex.ui.manual_utilizacion_complex.expandir_todo")}</button>
           <button
             type="button"
             onClick={colapsarTodas}
             className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 dark:border-gray-700 dark:text-gray-300"
-          >
-            Colapsar todo
-          </button>
+          >{t("complex.ui.manual_utilizacion_complex.colapsar_todo")}</button>
         </div>
       </div>
 
       <div className={`${complexCard} mb-6 flex items-start gap-3`}>
         <FaBook className="mt-1 shrink-0 text-xl text-fenix-primario" aria-hidden />
         <div>
-          <p className="font-semibold text-gray-900 dark:text-white">Cómo usar este manual</p>
-          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Consulte las secciones 3 y 4 para entender la trazabilidad y sus indicadores por fase.
-            La sección 8 explica las alertas. Use <strong>Descargar manual Word</strong> para obtener el
-            documento físico con zonas para pegar capturas en la presentación.
-          </p>
+          <p className="font-semibold text-gray-900 dark:text-white">{t("complex.ui.manual_utilizacion_complex.como_usar_este_manual")}</p>
+          <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{t("complex.ui.manual_utilizacion_complex.consulte_las_secciones_3_y_4_para_entender_la_trazabilid")}<strong>{t("complex.ui.manual_utilizacion_complex.descargar_manual_word")}</strong>{t("complex.ui.manual_utilizacion_complex.para_obtener_el_documento_fisico_con_zonas_para_pegar_ca")}</p>
         </div>
       </div>
 

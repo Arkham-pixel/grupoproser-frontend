@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FaFileAlt,
@@ -127,7 +129,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
         }
       }
     } catch (err) {
-      setError(err.message || 'No se pudo cargar el seguimiento');
+      setError(err.message || t('complex.ui.asignar_subtarea_modal.no_cargar_seguimiento'));
     } finally {
       setLoading(false);
     }
@@ -171,7 +173,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!casoId) {
-      setError('El caso no tiene identificador válido.');
+      setError(t('complex.ui.asignar_subtarea_modal.caso_sin_id'));
       return;
     }
     setGuardando(true);
@@ -213,7 +215,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
           form.flujoVisitaEntrega !==
             (editando.flujoVisitaEntrega || 'asignado_decide');
         if ((cambioFlujo || cambioAsignado) && !motivoEdicion.trim()) {
-          throw new Error('Indique el motivo de la reasignación o del cambio de entrega.');
+          throw new Error(t('complex.ui.asignar_subtarea_modal.indique_motivo_reasignacion'));
         }
         await actualizarSubtarea(editando._id, {
           ...payload,
@@ -241,7 +243,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
           cambioAsignado
             ? 'Subtarea reasignada y cambios guardados.'
             : notificarEdicion
-              ? 'Cambios guardados y notificación reenviada.'
+              ? t('complex.ui.asignar_subtarea_modal.cambios_guardados_notif')
               : 'Cambios guardados.'
         );
         setVista('seguimiento');
@@ -261,8 +263,8 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
       }
       setAviso(
         result.notificacion?.success === false
-          ? `Subtarea creada. Correo: ${result.notificacion?.message || result.notificacion?.error || 'no enviado'}`
-          : 'Subtarea asignada y notificación enviada'
+          ? t('complex.ui.asignar_subtarea_modal.subtarea_creada_correo', { detalle: result.notificacion?.message || result.notificacion?.error || t('complex.ui.asignar_subtarea_modal.no_enviado') })
+          : t('complex.ui.asignar_subtarea_modal.subtarea_asignada_ok')
       );
       setForm((prev) => aplicarPlazoEtapa(prev.etapaTrazabilidad, protocolo, FORM_INICIAL));
       onCreada?.(result.subtarea);
@@ -270,7 +272,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
       setVista('seguimiento');
       if (result.subtarea?._id) setDetalleId(result.subtarea._id);
     } catch (err) {
-      setError(err.message || 'No se pudo crear la subtarea');
+      setError(err.message || t('complex.ui.asignar_subtarea_modal.no_crear_subtarea'));
     } finally {
       setGuardando(false);
     }
@@ -283,19 +285,19 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
       await subirArchivoSubtarea(subtareaId, file, { tipoArchivo });
       setAviso(
         tipoArchivo === 'formato'
-          ? 'Formato cargado y guardado en el caso'
-          : 'Documento cargado y guardado en el caso'
+          ? t('complex.ui.asignar_subtarea_modal.formato_cargado')
+          : t('complex.ui.asignar_subtarea_modal.documento_cargado')
       );
       await cargar();
     } catch (err) {
-      setError(err.message || 'Error al subir archivo');
+      setError(err.message || t('complex.ui.asignar_subtarea_modal.error_subir_archivo'));
     }
   };
 
   const confirmarReapertura = async (subtareaId) => {
     const motivo = motivoReapertura.trim();
     if (!motivo) {
-      setError('Escriba el motivo de la reapertura: el asignado recibirá ese mensaje.');
+      setError(t('complex.ui.asignar_subtarea_modal.escriba_motivo_reapertura'));
       return;
     }
     try {
@@ -308,14 +310,14 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
       const notif = res?.notificacionReapertura;
       setAviso(
         notif?.success === false
-          ? `Subtarea reabierta, pero el correo al asignado falló: ${notif.message || notif.error || 'sin detalle'}`
-          : 'Subtarea reabierta. El asignado fue notificado con su motivo y la verá en Mis Subtareas.'
+          ? t('complex.ui.asignar_subtarea_modal.reabierta_correo_fallo', { detalle: notif.message || notif.error || t('complex.ui.asignar_subtarea_modal.sin_detalle') })
+          : t('complex.ui.asignar_subtarea_modal.reabierta_ok')
       );
       setReabriendoId(null);
       setMotivoReapertura('');
       await cargar();
     } catch (err) {
-      setError(err.message || 'No se pudo reabrir la subtarea');
+      setError(err.message || t('complex.ui.asignar_subtarea_modal.no_reabrir_subtarea'));
     } finally {
       setGuardando(false);
     }
@@ -365,18 +367,14 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
             <h2
               id="asignar-subtarea-titulo"
               className="font-heading text-lg font-bold text-gray-900 dark:text-white"
-            >
-              Subtareas y seguimiento
-            </h2>
-            <p className="mt-0.5 font-body text-sm text-gray-500">
-              Caso {nmroAjste || '—'} · etapas de trazabilidad y protocolo de tiempos
-            </p>
+            >{t("complex.ui.asignar_subtarea_modal.subtareas_y_seguimiento")}</h2>
+            <p className="mt-0.5 font-body text-sm text-gray-500">{t("complex.ui.asignar_subtarea_modal.caso")}{nmroAjste || '—'}{t("complex.ui.asignar_subtarea_modal.etapas_de_trazabilidad_y_protocolo_de_tiempos")}</p>
           </div>
           <button
             type="button"
             className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800"
             onClick={cerrar}
-            aria-label="Cerrar"
+            aria-label={t("complex.ui.asignar_subtarea_modal.cerrar")}
           >
             <FaTimes />
           </button>
@@ -391,9 +389,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                 : 'border-transparent text-gray-500 hover:text-gray-800'
             }`}
             onClick={() => setVista('seguimiento')}
-          >
-            Trazabilidad
-          </button>
+          >{t("complex.ui.asignar_subtarea_modal.trazabilidad")}</button>
           {puedeGestionar && (
             <button
               type="button"
@@ -404,8 +400,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
               }`}
               onClick={() => setVista('nueva')}
             >
-              <FaPlus className="text-[10px]" /> Nueva asignación
-            </button>
+              <FaPlus className="text-[10px]" />{t("complex.ui.asignar_subtarea_modal.nueva_asignacion")}</button>
           )}
         </div>
 
@@ -423,8 +418,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
           {enlace && (
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/40">
               <p className="mb-1 flex items-center gap-2 font-body text-xs font-semibold">
-                <FaLink /> Enlace para el externo
-              </p>
+                <FaLink />{t("complex.ui.asignar_subtarea_modal.enlace_para_el_externo")}</p>
               <code className="block break-all font-body text-xs">{enlace}</code>
             </div>
           )}
@@ -432,7 +426,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
           {vista === 'seguimiento' && (
             <>
               {loading ? (
-                <p className={complexHint}>Cargando trazabilidad y protocolo…</p>
+                <p className={complexHint}>{t("complex.ui.asignar_subtarea_modal.cargando_trazabilidad_y_protocolo")}</p>
               ) : (
                 <ul className="space-y-2">
                   {tareasTrazabilidad.map((tarea) => {
@@ -459,7 +453,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                               <span
                                 className={`rounded-full border px-2 py-0.5 font-body text-[11px] font-semibold ${estilo.badge}`}
                               >
-                                {tarea.completa ? 'Completada en caso' : 'Etapa caso pendiente'}
+                                {tarea.completa ? t('complex.ui.asignar_subtarea_modal.completada_en_caso') : t('complex.ui.asignar_subtarea_modal.etapa_caso_pendiente')}
                               </span>
                               {(() => {
                                 const abiertas = (tarea.subtareas || []).filter((s) =>
@@ -470,33 +464,28 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                 );
                                 if (hechas.length > 0 && abiertas.length === 0) {
                                   return (
-                                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-body text-[11px] font-semibold text-emerald-800">
-                                      Subtarea(s) cerrada(s)
-                                    </span>
+                                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-body text-[11px] font-semibold text-emerald-800">{t("complex.ui.asignar_subtarea_modal.subtarea_s_cerrada_s")}</span>
                                   );
                                 }
                                 if (abiertas.length > 0) {
                                   return (
                                     <span className="rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-body text-[11px] font-semibold text-amber-900">
-                                      {abiertas.length} subtarea(s) abierta(s)
-                                    </span>
+                                      {abiertas.length}{t("complex.ui.asignar_subtarea_modal.subtarea_s_abierta_s")}</span>
                                   );
                                 }
                                 return null;
                               })()}
                             </div>
-                            <p className="mt-1 font-body text-xs text-gray-500">
-                              Plazo protocolo:{' '}
+                            <p className="mt-1 font-body text-xs text-gray-500">{t("complex.ui.asignar_subtarea_modal.plazo_protocolo")}{' '}
                               <strong>{tarea.etiquetaPlazo || '—'}</strong>
-                              {' · '}Vence:{' '}
+                              {' · '}{t("complex.ui.asignar_subtarea_modal.vence")}{' '}
                               <strong>
                                 {tarea.fechaLimiteInput
                                   ? formatearFechaSubtarea(tarea.fechaLimite)
-                                  : 'sin fecha base'}
+                                  : t('complex.ui.asignar_subtarea_modal.sin_fecha_base')}
                               </strong>
                               {' · '}
-                              {tarea.subtareas.length} subtarea(s)
-                            </p>
+                              {tarea.subtareas.length}{t("complex.ui.asignar_subtarea_modal.subtarea_s")}</p>
                           </div>
                           {(() => {
                             const asignacionesActivas = (tarea.subtareas || []).filter(
@@ -518,9 +507,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                       setDetalleId(`etapa-${tarea.tipo}`);
                                     }
                                   }}
-                                >
-                                  Ver progreso
-                                </span>
+                                >{t("complex.ui.asignar_subtarea_modal.ver_progreso")}</span>
                               );
                             }
                             if (puedeGestionar && !tarea.completa) {
@@ -539,9 +526,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                       asignarDesdeEtapa(tarea);
                                     }
                                   }}
-                                >
-                                  Asignar
-                                </span>
+                                >{t("complex.ui.asignar_subtarea_modal.asignar")}</span>
                               );
                             }
                             return null;
@@ -551,10 +536,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                         {abierta && (
                           <div className="space-y-2 border-t border-gray-100 px-4 py-3 dark:border-gray-800">
                             {tarea.subtareas.length === 0 ? (
-                              <p className={complexHint}>
-                                Sin subtareas asignadas en esta etapa. Use Asignar para delegar a
-                                otro ajustador.
-                              </p>
+                              <p className={complexHint}>{t("complex.ui.asignar_subtarea_modal.sin_subtareas_asignadas_en_esta_etapa_use_asignar_para_d")}</p>
                             ) : (
                               tarea.subtareas.map((s) => {
                                 const docs = (s.archivos || []).filter(
@@ -598,27 +580,21 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                             type="button"
                                             className={`ml-auto ${complexBtnFormAction}`}
                                             onClick={() => editarSubtarea(s)}
-                                          >
-                                            Editar sub-tarea
-                                          </button>
+                                          >{t("complex.ui.asignar_subtarea_modal.editar_sub_tarea")}</button>
                                         )}
                                     </div>
-                                    <p className="mt-1 font-body text-xs text-gray-500">
-                                      Límite {formatearFechaSubtarea(s.fechaLimite)} · {docs.length}{' '}
-                                      doc. · {formatos.length} formato(s)
-                                      {formatearDuracionSubtarea(s) || s.duracionAsignacionTexto
+                                    <p className="mt-1 font-body text-xs text-gray-500">{t("complex.ui.asignar_subtarea_modal.limite")}{formatearFechaSubtarea(s.fechaLimite)}{t("complex.ui.asignar_subtarea_modal.texto")}{docs.length}{' '}{t("complex.ui.asignar_subtarea_modal.doc")}{formatos.length}{t("complex.ui.asignar_subtarea_modal.formato_s")}{formatearDuracionSubtarea(s) || s.duracionAsignacionTexto
                                         ? ` · Tiempo: ${formatearDuracionSubtarea(s) || s.duracionAsignacionTexto}`
                                         : ''}
                                     </p>
                                     {s.etapaTrazabilidad === 'coordinacionInspeccion' && (
                                       <p className="mt-1 font-body text-xs text-violet-700">
-                                        {etiquetaFaseFlujoVisita(s.flujoVisitaFase)} ·{' '}
+                                        {etiquetaFaseFlujoVisita(s.flujoVisitaFase)}{t("complex.ui.asignar_subtarea_modal.texto")}{' '}
                                         {etiquetaPoliticaEntregaFlujoVisita(s.flujoVisitaEntrega)}
                                       </p>
                                     )}
                                     {s.estado === 'completada' && (
-                                      <p className="mt-1 font-body text-xs text-gray-500">
-                                        Completada {formatearFechaHoraSubtarea(s.fechaCompletada)}
+                                      <p className="mt-1 font-body text-xs text-gray-500">{t("complex.ui.asignar_subtarea_modal.completada")}{formatearFechaHoraSubtarea(s.fechaCompletada)}
                                         {s.duracionAsignacionTexto
                                           ? ` · Ciclo total ${s.duracionAsignacionTexto}`
                                           : ''}
@@ -648,8 +624,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                             ) : (
                                               a.nombre
                                             )}
-                                            <span className="text-gray-500">
-                                              · {a.subidoPor}
+                                            <span className="text-gray-500">{t("complex.ui.asignar_subtarea_modal.texto")}{a.subidoPor}
                                             </span>
                                           </li>
                                         ))}
@@ -659,15 +634,13 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                       <div className="mt-2 space-y-2">
                                         {reabriendoId === s._id ? (
                                           <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/30">
-                                            <label className={complexLabel}>
-                                              Motivo de la reapertura * (se le enviará al asignado)
-                                            </label>
+                                            <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.motivo_de_la_reapertura_se_le_enviara_al_asignado")}</label>
                                             <textarea
                                               className={complexTextarea}
                                               rows={3}
                                               value={motivoReapertura}
                                               onChange={(e) => setMotivoReapertura(e.target.value)}
-                                              placeholder="Ej.: falta adjuntar el acta firmada; favor completar y volver a cerrar."
+                                              placeholder={t("complex.ui.asignar_subtarea_modal.ej_falta_adjuntar_el_acta_firmada_favor_completar_y_volv")}
                                             />
                                             <div className="flex flex-wrap gap-2">
                                               <button
@@ -675,9 +648,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                                 disabled={guardando || !motivoReapertura.trim()}
                                                 className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
                                                 onClick={() => confirmarReapertura(s._id)}
-                                              >
-                                                Reabrir y notificar
-                                              </button>
+                                              >{t("complex.ui.asignar_subtarea_modal.reabrir_y_notificar")}</button>
                                               <button
                                                 type="button"
                                                 disabled={guardando}
@@ -686,17 +657,12 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                                   setReabriendoId(null);
                                                   setMotivoReapertura('');
                                                 }}
-                                              >
-                                                Cancelar
-                                              </button>
+                                              >{t("complex.ui.asignar_subtarea_modal.cancelar")}</button>
                                             </div>
                                           </div>
                                         ) : (
                                           <div className="flex flex-wrap items-center gap-2">
-                                            <p className={complexHint}>
-                                              Completada por el asignado. Si fue un cierre por error,
-                                              puede reabrirla indicando el motivo.
-                                            </p>
+                                            <p className={complexHint}>{t("complex.ui.asignar_subtarea_modal.completada_por_el_asignado_si_fue_un_cierre_por_error_pu")}</p>
                                             <button
                                               type="button"
                                               disabled={guardando}
@@ -706,19 +672,14 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                                 setMotivoReapertura('');
                                                 setError('');
                                               }}
-                                            >
-                                              Reabrir
-                                            </button>
+                                            >{t("complex.ui.asignar_subtarea_modal.reabrir")}</button>
                                           </div>
                                         )}
                                       </div>
                                     )}
                                     {s.estado !== 'completada' && s.estado !== 'cancelada' && (
                                       <div className="mt-2 space-y-2">
-                                        <p className={complexHint}>
-                                          Solo el asignado puede cerrar la subtarea desde{' '}
-                                          Mis Subtareas → Marcar completada.
-                                        </p>
+                                        <p className={complexHint}>{t("complex.ui.asignar_subtarea_modal.solo_el_asignado_puede_cerrar_la_subtarea_desde")}{' '}{t("complex.ui.asignar_subtarea_modal.mis_subtareas_marcar_completada")}</p>
                                         <div className="flex flex-wrap items-end gap-2">
                                           {puedeGestionar && (
                                             <>
@@ -736,17 +697,15 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                                         `${window.location.origin}/complex/subtarea/${result.subtarea.tokenUnaVez}`
                                                       );
                                                     }
-                                                    setAviso('Notificación reenviada.');
+                                                    setAviso(t('complex.ui.asignar_subtarea_modal.notificacion_reenviada'));
                                                     await cargar();
                                                   } catch (err) {
-                                                    setError(err.message || 'No se pudo reenviar la notificación');
+                                                    setError(err.message || t('complex.ui.asignar_subtarea_modal.no_reenviar_notif'));
                                                   } finally {
                                                     setGuardando(false);
                                                   }
                                                 }}
-                                              >
-                                                Reenviar notificación
-                                              </button>
+                                              >{t("complex.ui.asignar_subtarea_modal.reenviar_notificacion")}</button>
                                             </>
                                           )}
                                           <select
@@ -759,11 +718,11 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                                               }))
                                             }
                                           >
-                                            <option value="documento">Documento</option>
-                                            <option value="formato">Formato</option>
+                                            <option value="documento">{t("complex.ui.asignar_subtarea_modal.documento")}</option>
+                                            <option value="formato">{t("complex.ui.asignar_subtarea_modal.formato")}</option>
                                           </select>
                                           <label className="cursor-pointer">
-                                            <span className={complexBtnFormAction}>Subir</span>
+                                            <span className={complexBtnFormAction}>{t("complex.ui.asignar_subtarea_modal.subir")}</span>
                                             <input
                                               type="file"
                                               className="hidden"
@@ -789,8 +748,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
               )}
 
               {subtareas.length > 0 && (
-                <p className={complexHint}>
-                  Total subtareas asignadas en el caso: {subtareas.length}
+                <p className={complexHint}>{t("complex.ui.asignar_subtarea_modal.total_subtareas_asignadas_en_el_caso")}{subtareas.length}
                 </p>
               )}
             </>
@@ -799,7 +757,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
           {(vista === 'nueva' || vista === 'editar') && puedeGestionar && (
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className={complexLabel}>Etapa de trazabilidad *</label>
+                <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.etapa_de_trazabilidad")}</label>
                 <select
                   className={complexSelect}
                   value={form.etapaTrazabilidad}
@@ -810,22 +768,22 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                   {tareasTrazabilidad.map((t) => (
                     <option key={t.tipo} value={t.tipo}>
                       {t.titulo}
-                      {t.completa ? ' (ya completada en el caso)' : ''}
+                      {t.completa ? t('complex.ui.asignar_subtarea_modal.ya_completada_en_caso') : ''}
                     </option>
                   ))}
                 </select>
                 <p className={complexHint}>
                   {vista === 'editar'
-                    ? 'La etapa no se puede cambiar después de asignar para conservar la trazabilidad.'
-                    : 'La fecha límite se calcula con el protocolo de tiempos vigente.'}
+                    ? t('complex.ui.asignar_subtarea_modal.etapa_no_cambiar')
+                    : t('complex.ui.asignar_subtarea_modal.fecha_limite_protocolo')}
                   {form.etapaTrazabilidad === 'coordinacionInspeccion'
-                    ? ' Esta asignación incluye el flujo completo: coordinación → inspección/acta → opcionalmente informe preliminar o cierre para el ajustador.'
+                    ? '' + t('complex.ui.asignar_subtarea_modal.asignacion_flujo_completo') + ''
                     : ''}
                 </p>
               </div>
 
               <div>
-                <label className={complexLabel}>Título *</label>
+                <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.titulo")}</label>
                 <input
                   className={complexInput}
                   value={form.titulo}
@@ -836,18 +794,18 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label className={complexLabel}>Tipo</label>
+                  <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.tipo")}</label>
                   <select
                     className={complexSelect}
                     value={form.tipoAsignado}
                     onChange={(e) => setForm((f) => ({ ...f, tipoAsignado: e.target.value }))}
                   >
-                    <option value="interno">Ajustador interno</option>
-                    <option value="externo">Ajustador externo (enlace)</option>
+                    <option value="interno">{t("complex.ui.asignar_subtarea_modal.ajustador_interno")}</option>
+                    <option value="externo">{t("complex.ui.asignar_subtarea_modal.ajustador_externo_enlace")}</option>
                   </select>
                 </div>
                 <div>
-                  <label className={complexLabel}>Fecha límite (protocolo)</label>
+                  <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.fecha_limite_protocolo")}</label>
                   <input
                     type="date"
                     className={`${complexInput} bg-gray-50 dark:bg-gray-900/40`}
@@ -855,34 +813,33 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                     readOnly={vista !== 'editar'}
                     title={
                       vista === 'editar'
-                        ? 'Puede ajustar la fecha límite.'
-                        : 'Calculada automáticamente según el protocolo'
+                        ? t('complex.ui.asignar_subtarea_modal.puede_ajustar_fecha')
+                        : t('complex.ui.asignar_subtarea_modal.calculada_automaticamente')
                     }
                   />
-                  <p className={complexHint}>
-                    Plazo:{' '}
+                  <p className={complexHint}>{t("complex.ui.asignar_subtarea_modal.plazo")}{' '}
                     <strong>
                       {plazoLabel && !String(plazoLabel).includes('undefined')
                         ? plazoLabel
-                        : 'según protocolo'}
+                        : t('complex.ui.asignar_subtarea_modal.segun_protocolo')}
                     </strong>
                     {form.fechaLimite
                       ? ` · vence ${form.fechaLimite}`
-                      : ' — falta fecha de referencia en el caso (p. ej. asignación).'}
+                      : t('complex.ui.asignar_subtarea_modal.falta_fecha_referencia')}
                   </p>
                 </div>
               </div>
 
               {form.tipoAsignado === 'interno' ? (
                 <div>
-                  <label className={complexLabel}>Ajustador *</label>
+                  <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.ajustador")}</label>
                   <select
                     className={complexSelect}
                     value={form.codiAsignado}
                     onChange={(e) => setForm((f) => ({ ...f, codiAsignado: e.target.value }))}
                     required
                   >
-                    <option value="">Seleccione…</option>
+                    <option value="">{t("complex.ui.asignar_subtarea_modal.seleccione")}</option>
                     {responsables.map((r) => {
                       const value = r.codiRespnsble || r.value;
                       const label = r.nmbrRespnsble || r.label || value;
@@ -897,7 +854,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label className={complexLabel}>Nombre externo</label>
+                    <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.nombre_externo")}</label>
                     <input
                       className={complexInput}
                       value={form.nombreExterno}
@@ -905,7 +862,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                     />
                   </div>
                   <div>
-                    <label className={complexLabel}>Email externo *</label>
+                    <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.email_externo")}</label>
                     <input
                       type="email"
                       className={complexInput}
@@ -919,7 +876,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
 
               {form.etapaTrazabilidad === 'coordinacionInspeccion' && (
                 <div>
-                  <label className={complexLabel}>Después del acta</label>
+                  <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.despues_del_acta")}</label>
                   <select
                     className={complexSelect}
                     value={form.flujoVisitaEntrega}
@@ -927,19 +884,16 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                       setForm((f) => ({ ...f, flujoVisitaEntrega: e.target.value }))
                     }
                   >
-                    <option value="asignado_decide">El asignado decide</option>
-                    <option value="exige_preliminar">Exigir informe preliminar</option>
-                    <option value="solo_acta">Solo acta y entrega al ajustador</option>
+                    <option value="asignado_decide">{t("complex.ui.asignar_subtarea_modal.el_asignado_decide")}</option>
+                    <option value="exige_preliminar">{t("complex.ui.asignar_subtarea_modal.exigir_informe_preliminar")}</option>
+                    <option value="solo_acta">{t("complex.ui.asignar_subtarea_modal.solo_acta_y_entrega_al_ajustador")}</option>
                   </select>
-                  <p className={complexHint}>
-                    Define si el informe preliminar será opcional, obligatorio o no estará
-                    disponible para esta sub-tarea.
-                  </p>
+                  <p className={complexHint}>{t("complex.ui.asignar_subtarea_modal.define_si_el_informe_preliminar_sera_opcional_obligatori")}</p>
                 </div>
               )}
 
               <div>
-                <label className={complexLabel}>Descripción</label>
+                <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.descripcion")}</label>
                 <textarea
                   className={complexTextarea}
                   rows={2}
@@ -948,36 +902,32 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                 />
               </div>
               <div>
-                <label className={complexLabel}>Instrucciones</label>
+                <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.instrucciones")}</label>
                 <textarea
                   className={complexTextarea}
                   rows={3}
                   value={form.instrucciones}
                   onChange={(e) => setForm((f) => ({ ...f, instrucciones: e.target.value }))}
-                  placeholder="Qué debe diligenciar o adjuntar"
+                  placeholder={t("complex.ui.asignar_subtarea_modal.que_debe_diligenciar_o_adjuntar")}
                 />
               </div>
 
               {vista === 'editar' && (
                 <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
-                  <label className={complexLabel}>
-                    Motivo de reasignación o cambio de entrega
-                  </label>
+                  <label className={complexLabel}>{t("complex.ui.asignar_subtarea_modal.motivo_de_reasignacion_o_cambio_de_entrega")}</label>
                   <textarea
                     className={complexTextarea}
                     rows={2}
                     value={motivoEdicion}
                     onChange={(e) => setMotivoEdicion(e.target.value)}
-                    placeholder="Obligatorio al reasignar o cambiar el flujo post-acta."
+                    placeholder={t("complex.ui.asignar_subtarea_modal.obligatorio_al_reasignar_o_cambiar_el_flujo_post_acta")}
                   />
                   <label className="flex items-center gap-2 font-body text-sm text-gray-700">
                     <input
                       type="checkbox"
                       checked={notificarEdicion}
                       onChange={(e) => setNotificarEdicion(e.target.checked)}
-                    />
-                    Notificar al asignado sobre los cambios
-                  </label>
+                    />{t("complex.ui.asignar_subtarea_modal.notificar_al_asignado_sobre_los_cambios")}</label>
                 </div>
               )}
 
@@ -986,9 +936,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                   type="button"
                   className={complexBtnFormAction}
                   onClick={() => setVista('seguimiento')}
-                >
-                  Volver
-                </button>
+                >{t("complex.ui.asignar_subtarea_modal.volver")}</button>
                 <button
                   type="submit"
                   disabled={guardando}
@@ -999,7 +947,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
                       ? 'Guardando…'
                       : 'Asignando…'
                     : vista === 'editar'
-                      ? 'Guardar cambios'
+                      ? t('complex.ui.asignar_subtarea_modal.guardar_cambios')
                       : 'Asignar y notificar'}
                 </button>
               </div>
@@ -1008,9 +956,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
         </div>
 
         <div className="flex shrink-0 justify-end border-t border-gray-100 px-5 py-3 dark:border-gray-800">
-          <button type="button" className={complexBtnFormAction} onClick={cerrar}>
-            Cerrar
-          </button>
+          <button type="button" className={complexBtnFormAction} onClick={cerrar}>{t("complex.ui.asignar_subtarea_modal.cerrar")}</button>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
@@ -34,6 +35,7 @@ export default function ObservacionesPendientes({
   cargandoAdjuntos = {},
   errorAdjuntos = {}
 }) {
+  const { t } = useTranslation();
   const [observaciones, setObservaciones] = useState([]);
   const [nuevaObservacion, setNuevaObservacion] = useState({
     fecha: '',
@@ -95,7 +97,7 @@ export default function ObservacionesPendientes({
   const descargarEvidencia = (evidencia) => {
     const enlace = construirUrlDescarga(evidencia?.url || evidencia?.ruta || '');
     if (!enlace) {
-      alert('No se puede descargar la evidencia. URL no disponible.');
+      alert(t('complex.ui.observaciones_pendientes.no_descargar_evidencia'));
       return;
     }
 
@@ -130,7 +132,7 @@ export default function ObservacionesPendientes({
 
   const handleAgregarObservacion = async () => {
     if (!nuevaObservacion.fecha || !nuevaObservacion.observacion.trim()) {
-      alert('Por favor complete la fecha y la observación.');
+      alert(t('complex.ui.observaciones_pendientes.complete_fecha_observacion'));
       return;
     }
 
@@ -150,7 +152,7 @@ export default function ObservacionesPendientes({
 
         if (!response.ok) {
           const errorResp = await response.json().catch(() => ({}));
-          throw new Error(errorResp.error || `Error subiendo archivo (${response.status})`);
+          throw new Error(errorResp.error || t('complex.ui.observaciones_pendientes.error_subiendo_archivo', { status: response.status }));
         }
 
         const data = await response.json();
@@ -166,7 +168,7 @@ export default function ObservacionesPendientes({
         };
       } catch (error) {
         console.error('Error subiendo evidencia:', error);
-        alert(`Error al subir la evidencia: ${error.message}`);
+        alert(t('complex.ui.observaciones_pendientes.error_subir_evidencia', { mensaje: error.message }));
         return;
       }
     }
@@ -222,7 +224,7 @@ export default function ObservacionesPendientes({
   };
 
   const handleEliminarObservacion = (id) => {
-    if (window.confirm('¿Está seguro de que desea eliminar esta observación?')) {
+    if (window.confirm(t('complex.ui.observaciones_pendientes.confirmar_eliminar'))) {
       // Encontrar la observación a eliminar
       const observacionAEliminar = observaciones.find(o => o.id === id);
       
@@ -264,19 +266,17 @@ export default function ObservacionesPendientes({
   return (
     <div className={complexPageWrap}>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className={`${complexSectionTitle} !mb-0`}>Observaciones, Seguimientos y Pendientes</h2>
-        <button type="button" onClick={handleAgregarObservacion} className={complexBtnSecondary}>
-          + Nuevo
-        </button>
+        <h2 className={`${complexSectionTitle} !mb-0`}>{t("complex.ui.observaciones_pendientes.observaciones_seguimientos_y_pendientes")}</h2>
+        <button type="button" onClick={handleAgregarObservacion} className={complexBtnSecondary}>{t("complex.ui.observaciones_pendientes.nuevo")}</button>
       </div>
 
       <TablaListaShell>
         <thead>
           <tr>
-            <th className={thLista}>Fecha *</th>
-            <th className={thLista}>Observación *</th>
-            <th className={thLista}>Evidencia</th>
-            <th className={thLista}>Acciones</th>
+            <th className={thLista}>{t("complex.ui.observaciones_pendientes.fecha")}</th>
+            <th className={thLista}>{t("complex.ui.observaciones_pendientes.observacion")}</th>
+            <th className={thLista}>{t("complex.ui.observaciones_pendientes.evidencia")}</th>
+            <th className={thLista}>{t("complex.ui.observaciones_pendientes.acciones")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -295,7 +295,7 @@ export default function ObservacionesPendientes({
                 onChange={(e) => handleNuevaObservacionChange('observacion', e.target.value)}
                 className={textareaListaClass}
                 rows={2}
-                placeholder="Escriba la observación..."
+                placeholder={t("complex.ui.observaciones_pendientes.escriba_la_observacion")}
               />
             </td>
             <td className="px-4 py-3">
@@ -321,7 +321,7 @@ export default function ObservacionesPendientes({
               <td className="px-4 py-3">
                 <EnlaceArchivoLista
                   nombre={obs.evidencia?.nombre}
-                  vacio="Sin evidencia"
+                  vacio={t('complex.ui.observaciones_pendientes.sin_evidencia')}
                   onClick={() => obs.evidencia?.nombre && descargarEvidencia(obs.evidencia)}
                 />
               </td>
@@ -334,25 +334,25 @@ export default function ObservacionesPendientes({
           {observaciones.length === 0 && (
             <MensajeTablaVacia
               colSpan={4}
-              mensaje='No hay observaciones registradas. Agregue una nueva usando el botón "+ Nuevo".'
+              mensaje={t('complex.ui.observaciones_pendientes.no_hay_observaciones')}
             />
           )}
         </tbody>
       </TablaListaShell>
 
-      <ResumenListaPanel titulo="Resumen de observaciones" cols={2}>
-        <ResumenItem label="Total observaciones:" value={observaciones.length} />
+      <ResumenListaPanel titulo={t('complex.ui.observaciones_pendientes.resumen_de_observaciones')} cols={2}>
+        <ResumenItem label={t("complex.ui.observaciones_pendientes.total_observaciones")} value={observaciones.length} />
         <ResumenItem
-          label="Última observación:"
+          label={t("complex.ui.observaciones_pendientes.ultima_observacion")}
           value={
             observaciones.length > 0 && observaciones[0].fecha
               ? formatFechaLista(observaciones[0].fecha)
-              : 'No registrada'
+              : t('complex.ui.observaciones_pendientes.no_registrada')
           }
         />
       </ResumenListaPanel>
 
-      <p className={`${complexHint} mt-4`}>* Campos obligatorios</p>
+      <p className={`${complexHint} mt-4`}>{t("complex.ui.observaciones_pendientes.campos_obligatorios")}</p>
     </div>
   );
 }

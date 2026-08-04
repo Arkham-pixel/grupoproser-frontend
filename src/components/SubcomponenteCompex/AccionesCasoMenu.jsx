@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -90,18 +92,14 @@ export default function AccionesCasoMenu({
             className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             onClick={() => elegir(onAjuste)}
           >
-            <FaFileInvoiceDollar className="text-fenix-primario" aria-hidden />
-            Ajuste
-          </button>
+            <FaFileInvoiceDollar className="text-fenix-primario" aria-hidden />{t("complex.ui.acciones_caso_menu.ajuste")}</button>
           <button
             type="button"
             role="menuitem"
             className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             onClick={() => elegir(onGestionar)}
           >
-            <FaFolderOpen className="text-fenix-primario" aria-hidden />
-            Gestionar
-          </button>
+            <FaFolderOpen className="text-fenix-primario" aria-hidden />{t("complex.ui.acciones_caso_menu.gestionar")}</button>
           {puedeAsignarSubtarea && (
             <button
               type="button"
@@ -109,9 +107,7 @@ export default function AccionesCasoMenu({
               className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
               onClick={() => elegir(onAsignarSubtarea)}
             >
-              <FaTasks className="text-fenix-primario" aria-hidden />
-              Subtareas
-            </button>
+              <FaTasks className="text-fenix-primario" aria-hidden />{t("complex.ui.acciones_caso_menu.subtareas")}</button>
           )}
           {puedeEliminar && (
             <>
@@ -122,9 +118,7 @@ export default function AccionesCasoMenu({
                 className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                 onClick={() => elegir(onEliminar)}
               >
-                <FaTrash className="text-[10px]" aria-hidden />
-                Eliminar
-              </button>
+                <FaTrash className="text-[10px]" aria-hidden />{t("complex.ui.acciones_caso_menu.eliminar")}</button>
             </>
           )}
         </div>,
@@ -141,12 +135,10 @@ export default function AccionesCasoMenu({
         aria-haspopup="menu"
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
-        title="Acciones del caso"
+        title={t("complex.ui.acciones_caso_menu.acciones_del_caso")}
       >
         <span className="inline-flex items-center gap-1.5">
-          <FaEllipsisV className="text-[10px] opacity-70" aria-hidden />
-          Acciones
-        </span>
+          <FaEllipsisV className="text-[10px] opacity-70" aria-hidden />{t("complex.ui.acciones_caso_menu.acciones")}</span>
         <FaChevronDown className={`text-[10px] transition ${abierto ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {menu}

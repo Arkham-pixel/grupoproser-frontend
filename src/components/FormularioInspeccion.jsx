@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense, startTransition, useDeferredValue } from "react";
+import { useTranslation } from 'react-i18next';
 import { useLocation, useParams, useNavigate } from "react-router-dom";
 import { obtenerHoraActualColombia } from '../utils/fechaUtils';
 import { useTheme } from '../context/ThemeContext';
@@ -42,6 +43,12 @@ import Select from 'react-select';
 import 'leaflet/dist/leaflet.css'
 const MapaDeCalor = lazy(() => import("./MapaDeCalor"));
 const FormularioAreas = lazy(() => import("./SubcomponenteFRiesgo/FormularioAreas"));
+import {
+  BANCO_RECOMENDACIONES_ES,
+  translateCategoryLabel,
+  translateRecommendationText,
+  displayRecommendationPreview,
+} from '../data/bancoRecomendacionesI18n.js';
 import BotonesHistorial from './BotonesHistorial.jsx';
 import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
@@ -214,6 +221,7 @@ function valorTablaWord(texto) {
 }
 
 export default function FormularioInspeccion() {
+  const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const location = useLocation();
   const { id } = useParams(); // Obtener ID de la URL si estamos en modo edición
@@ -289,7 +297,9 @@ export default function FormularioInspeccion() {
 
   // Texto que se inserta en la carta (Word y previsualización)
   const textoSuscripcion =
-    puedeSuscribir === "NO" ? "NO SE PUEDE SUSCRIBIR" : "SE PUEDE SUSCRIBIR";
+    puedeSuscribir === "NO"
+      ? t('inspection.ui.formulario_inspeccion.cannotUnderwriteLetter')
+      : t('inspection.ui.formulario_inspeccion.canUnderwriteLetter');
 
   const [seccionesActivas, setSeccionesActivas] = useState(() =>
     normalizarSeccionesActivas(datosPrevios.seccionesActivas)
@@ -310,8 +320,18 @@ export default function FormularioInspeccion() {
   }, []);
 
   const filasIndiceInforme = useMemo(
-    () => obtenerFilasIndiceInforme(seccionesActivas),
-    [seccionesActivas]
+    () => obtenerFilasIndiceInforme(seccionesActivas, t),
+    [seccionesActivas, t]
+  );
+
+  const numeracionUi = useMemo(
+    () => construirNumeracionActiva(seccionesActivas, t),
+    [seccionesActivas, t]
+  );
+
+  const tituloSeccionUi = useCallback(
+    (id, fallback = '') => numeracionUi.get(id)?.encabezado || fallback,
+    [numeracionUi]
   );
 
   const seccionesActivasSnapshotRef = useRef(null);
@@ -1197,68 +1217,7 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   // Lista de recomendaciones (puedes ponerlas resumidas aquí o importarlas desde un JSON o txt si prefieres)
   const [bancoRecomendaciones, setBancoRecomendaciones] = useState(() =>{
      const stored = localStorage.getItem("bancoRecomendaciones");
-    return stored ? JSON.parse(stored) : {
-    "INCENDIO": [
-      "DURANTE EL PERÍODO DE VIGENCIA DE LA PÓLIZA DEBE VERIFICARSE EL CORRECTO ACONDICIONAMIENTO DE LAS INSTALACIONES ELÉCTRICAS Y SU RESPECTIVO MANTENIMIENTO COMO MÍNIMO CADA 6 MESES, QUE INCLUYA ENTUBAR TODOS LOS CIRCUITOS DE DISTRIBUCIÓN DE ENERGÍA, ELIMINAR EL USO DE EXTENSIONES COMO MEDIO PERMANENTE DE CONEXIÓN Y CIERRE DE TODAS LAS CAJAS DE PASO, TABLEROS DE DISTRIBUCIÓN DE ENERGÍA, PUNTOS DE CABLEADO EXPUESTO, LUMINARIAS, INTERRUPTORES Y TOMAS ELÉCTRICAS.",
-      "REALIZAR DURANTE LA VIGENCIA DE LA PÓLIZA LA SUSPENSIÓN DEL SUMINISTRO DE ENERGÍA ELÉCTRICA, DURANTE LAS HORAS Y DÍAS NO LABORABLES A LOS CIRCUITOS DE DISTRIBUCIÓN ELÉCTRICA, DE LOS EQUIPOS O ÁREAS NO INDISPENSABLES PARA EL DESARROLLO PROPIO DE LAS ACTIVIDADES DEL ASEGURADO;ENTENDIENDO COMO INDISPENSABLES LOS CIRCUITOS QUE SUMINISTRAN ENERGÍA A EQUIPOS O ÁREAS QUE POR EL FUNCIONAMIENTO DE LA EMPRESA, NO SE PUEDEN QUEDAR SIN ENERGÍA. ESTA SUSPENSIÓN DEBE EVIDENCIARSE POR MEDIO DE UN PROCEDIMIENTO CON RESPONSABLES DEFINIDOS Y REGISTROS SUFICIENTES.",
-      "DURANTE LA VIGENCIA DE LA PÓLIZA, MANTENER INSTALADOS LOS EXTINTORES NECESARIOS Y ADECUADOS PARA PROTEGER TODAS LAS INSTALACIONES.  ESTOS DEBERÁN PERMANECER EN BUEN ESTADO, CON CARGA VIGENTE (MÁXIMO 1 AÑO), SEÑALIZADOS Y UBICADOS EN UN LUGAR VISIBLE Y DE FÁCIL ACCESO. A LOS EFECTOS DE LO ANTERIORMENTE EXPUESTO, SE ENTIENDE POR EXTINTORES SUFICIENTES, QUE POR CADA 200M2 DE ÁREA CONSTRUIDA DE LA EMPRESA, SE DEBE CONTAR POR LO MENOS CON UN EXTINTOR. DE IGUAL MANERA SE ENTIENDE POR EXTINTORES ADECUADOS, QUE LAS ÁREAS EN DONDE SE CONCENTRA MATERIAL SÓLIDO COMBUSTIBLE TALES COMO PAPEL, MADERA, TEXTILES, ETC., DEBEN ESTAR PROTEGIDAS CON EXTINTORES TIPO A DE MÍNIMO 2 1/2 GAL DE CAPACIDAD. LAS ÁREAS EN DONDE SE CONCENTRAN PRODUCTOS INFLAMABLES TALES COMO GASOLINA, DISOLVENTES, ETC.; LO MISMO QUE LAS ÁREAS EN DONDE SE CONCENTRA MAQUINARIA SIN COMPONENTES ELECTRÓNICOS, DEBEN ESTAR PROTEGIDAS CON EXTINTORES TIPO BC DE MÍNIMO 20 LB. DE CAPACIDAD. LAS ÁREAS EN DONDE SE ENCUENTRA TANTO MATERIAL SÓLIDO COMBUSTIBLE, COMO PRODUCTOS INFLAMABLES Y/O MAQUINARIA, DEBEN ESTAR PROTEGIDAS CON EXTINTORES TIPO ABC DE MÍNIMO 20 LB. DE CAPACIDAD. LAS ÁREAS EN DONDE SE ENCUENTRAN EQUIPOS ELECTRÓNICOS Y/O MAQUINARIA CON COMPONENTES ELECTRÓNICOS, DEBEN ESTAR PROTEGIDAS CON EXTINTORES TIPO SOLKAFLAM 123 DE MÍNIMO 10 LB. DE CAPACIDAD.",
-      "MANTENER INSTALADO, DURANTE LA VIGENCIA DE LA PÓLIZA, UN SISTEMA DE DETECTORES AUTOMÁTICOS DE INCENDIO (TÉRMICOS, DE HUMO O DE LLAMA),  UBICADOS EN EL TECHO POR LO MENOS A 10 CM DE DISTANCIA DE LA PARED MÁS CERCANA O EN PAREDES LATERALES A 10 O 30 CM DEL TECHO, LA DISTANCIA VERTICAL DEL TECHO AL SENSOR DEBE SER MÍNIMO DE 50 CM, CON UNA DISPOSICIÓN UNIFORME DE MÁXIMO 9 M DE DISTANCIA ENTRE DETECTORES; ESTOS DISPOSITIVOS DEBEN ESTAR CONECTADOS A UN SISTEMA DE ALARMA SONORO O DE COMUNICACIÓN AUTOMÁTICA A LOS CUERPOS DE EMERGENCIA. EN CASO DE CONTAR CON OTRO TIPO DE DETECTORES APARTE DE LOS MENCIONADOS, SEGUIR LAS RECOMENDACIONES DEL FABRICANTE EN CUANTO A SU INSTALACIÓN..",
-      "LOS SISTEMAS DE ROCIADORES AUTOMÁTICOS (SPRINKLERS) SON LOS MÁS CONFIABLES Y ECONÓMICOS; ES IMPORTANTE RESALTAR QUE ES MÁS FÁCIL REHABILITAR UN DOCUMENTO HÚMEDO QUE UNO INCINERADO. POR SU PARTE, LOS SISTEMAS DE EXTINCIÓN CON ELEMENTOS GASEOSOS TIENEN A SU FAVOR QUE OCASIONAN MENOR DAÑO A LOS ARTÍCULOS ALMACENADOS, SU OPERACIÓN REQUIERE AISLAR AUTOMÁTICAMENTE LAS ÁREAS PROTEGIDAS Y EXISTEN LIMITACIONES PARA LA EXTINCIÓN, POR CUANTO AL ACTUAR POR SOFOCAMIENTO NO ENFRÍAN LOS ELEMENTOS QUE ESTÁN EN COMBUSTIÓN, HACIENDO QUE ÉSTOS PUEDAN SEGUIR AFECTÁNDOSE POR COMBUSTIÓN LENTA O CON EL RIESGO DE REIGNICIÓN; POR LO ANTERIOR, SE REQUIERE DE UNA INTERVENCIÓN CON AGUA PARA EXTINCIÓN FINAL, CON LOS PROBLEMAS DE DAÑOS ASOCIADOS A LA APLICACIÓN DE AGUA CON MANGUERAS.EN LA NFPA 13 , NFPA 15 Y NFPA 16 SE ENCUENTRAN LOS ASPECTOS A TENER EN CUENTA PARA LOS SISTEMAS DE ROCIADORES AUTOMÁTICOS.",
-      "ES CONVENIENTE QUE LOS DETECTORES DE HUMO SE UBIQUEN, COMO MÁXIMO, A 60 CM DEL TECHO, ESTO CON EL ÁNIMO DE REDUCIR UNA POSIBLE PROPAGACIÓN DE FUEGO, CON DETECCIÓN TARDÍA; ESPECIFICACIONES CONTENIDAS EN LA NFPA 72 E4.",
-      "SE SUGIERE REALIZAR PRUEBAS DE PRESIÓN Y CAUDAL A LA RED CONTRA INCENDIOS, VERIFICANDO EL ADECUADO FUNCIONAMIENTO DE LA MISMA; ESTE SUMINISTRO DEBE SER CAPAZ DE PROVEER EL CAUDAL Y LA PRESIÓN RESIDUAL, REQUERIDOS EN UN TIEMPO MÍNIMO, DE ACUERDO A NFPA 14 , NFPA 20 Y NFPA 25.",
-      "LOS EXTINTORES TIENEN UN ALCANCE VERTICAL ÓPTIMO DE 2,5 M, APLICADO POR UNA PERSONA CON EXPERIENCIA, LO QUE INDICA QUE PARA ESTANTERÍA DE 8,5 M LA COBERTURA DE EXTINTORES NO ES SUFICIENTE PARA LAS ALTURAS DE ALMACENAMIENTO MANEJADAS. SE SUGIERE ESTUDIAR LA POSIBILIDAD DE INSTALAR UN SISTEMA DE REACCIÓN MANUAL O AUTOMÁTICO CONTRA INCENDIOS (ÁREAS ADMINISTRATIVAS, DE ALMACENAMIENTO, PRODUCCIÓN, LABORATORIOS Y SERVICIO AL PÚBLICO); ÉSTE SISTEMA DEBERÁ ESTAR CONECTADO A UNA CENTRAL DE MONITOREO.",
-      "LOS MEDIDORES DE NIVEL DE LOS TANQUES DE COMBUSTIBLE, TENDRÁN QUE SER PREFERIBLEMENTE EN UN MATERIAL RESISTENTE AL FUEGO, EVITANDO EL USO DE MANGUERAS DE PLÁSTICO, LAS CUALES SON CONSUMIDAS DE INMEDIATO EN UN INCENDIO, OCASIONANDO EL CORRESPONDIENTE DERRAME DE COMBUSTIBLE",
-      "SE RECOMIENDA QUE EN LAS BODEGAS DONDE EXISTE ALMACENAMIENTO DE AEROSOLES EXISTA UNA JAULA METÁLICA ESPECIAL PARA EL ALMACENAMIENTO DE LOS MISMOS; DE IGUAL MANERA, ES CONVENIENTE QUE EL ESPACIO ENTRE LOS ESLABONES TENGA UNA SEPARACIÓN MÁXIMA DE 51 MM QUE IMPIDA, EN CASO DE INCENDIO, LA SALIDA DE UN AEROSOL DISPARADO POR EL FUEGO. ",
-      "ES CONVENIENTE QUE LOS DUCTOS DE ESCAPE DE HUMOS (CHIMENEAS O CAMPANAS) DE LOS RESTAURANTES CUENTEN CON UN PROGRAMA DE MANTENIMIENTO SEMESTRAL, CON EL ÁNIMO DE EVITAR LA ACUMULACIÓN DE GRASA Y ELEMENTOS EN SU INTERIOR QUE PUEDAN LLEGAR A GENERAR EL INICIO DE UN INCENDIO EN SU INTERIOR."
-    ],
-    "ROTURA DE MAQUINARIA": [
-      "DE ACUERDO A LAS CLÁUSULAS DE MANTENIMIENTO DE MAQUINARIA Y EQUIPO, SEGÚN LAS RECOMENDACIONES DE LOS FABRICANTES, ES NECESARIO ESTABLECER UN PLAN DE MANTENIMIENTO PREVENTIVO; ÉSTE MANTENIMIENTO DEBE SER REALIZADO POR PERSONAL ESPECIALIZADO PARA TODOS LOS EQUIPOS ELECTRÓNICOS, DONDE DEBE INCLUIRSE UNA REVISIÓN GENERAL COMO MÍNIMO CADA SEIS MESES. DE IGUAL MANERA, SE SUGIERE LLEVAR Y MANTENER LOS REGISTROS DE LAS ACTIVIDADES EJECUTADAS.",
-      "EN UN AMBIENTE CON BASTANTE POLVO, EL MANTENIMIENTO QUE SE REALIZA A LOS EQUIPOS REQUIERE DE UNA FRECUENCIA MAYOR, YA QUE SE ENCUENTRAN EXPUESTOS A DAÑOS OCASIONADOS POR ÉSTA CAUSA."
-    ],
-    "ALMACENAMIENTO": [
-      "MANTENER ALMACENADOS LOS PRODUCTOS INFLAMABLES (POR EJEMPLO: ACPM) EN LUGARES VENTILADOS Y SEPARADOS DE FUENTES DE IGNICIÓN (POR EJEMPLO: INSTALACIONES ELÉCTRICAS, LLAMA ABIERTA, ENTRE OTRAS).",
-      "EN TODAS LAS ÁREAS DONDE SE ALMACENEN ELEMENTOS INFLAMABLES, LAS INSTALACIONES Y LOS EQUIPOS DEBEN SER A PRUEBA DE EXPLOSIÓN (EXPLOSION PROOF).",
-      "LOS TANQUES DE ALMACENAMIENTO DE LÍQUIDOS INFLAMABLES Y CORROSIVOS DEBEN ESTAR Y MANTENERSE DEBIDAMENTE MARCADOS; DE IGUAL MANERA, LA CAPACIDAD DE CADA TANQUE DEBERÁ ESTAR INCLUIDA DENTRO DE LA ETIQUETA. PARA ELLO, ES CONVENIENTE ACOGERSE A LA NFPA 30. ",
-      "LA ZONA DE ALMACENAMIENTO DE ELEMENTOS CORROSIVOS, LÍQUIDOS INFLAMABLES Y CUALQUIER MERCANCÍA PELIGROSA DEBE ESTAR DEBIDAMENTE UBICADA, CONSIDERANDO LA COMPATIBILIDAD QUÍMICA DE TODAS LAS MERCANCÍAS.",
-      "LOS PRODUCTOS CORROSIVOS Y LÍQUIDOS INFLAMABLES, ALMACENADOS CON OTROS INSUMOS, AGRAVAN EL FACTOR DE RIESGOS Y POR LO TANTO NO DEBE OCURRIR BAJO NINGUNA CIRCUNSTANCIA; LAS MERCANCÍAS PELIGROSAS DEBERÁN ESTAR ALMACENADAS EN ÁREAS ESPECIALES, AISLADAS DE LOS DEMÁS ELEMENTOS Y, PREFERIBLEMENTE, SEPARADAS MEDIANTE JAULAS METÁLICAS, CON LOS DEBIDOS RÓTULOS DE MARCACIÓN.",
-      "DEBEN ANCLARSE LOS CILINDROS DE GAS QUE NO ESTÁN SIENDO UTILIZADOS, ESTO CON EL ÁNIMO DE PREVENIR LA CAÍDA DE UNO DE ELLOS, CON SUS CORRESPONDIENTES CONSECUENCIAS. ",    
-      "SE DEBEN CONSERVAR Y MANTENER ADECUADAS FORMAS DE ALMACENAMIENTO, DE ACUERDO A LA NFPA 23018: O EN LAS BODEGAS DE ALMACENAMIENTO, LA MERCANCÍA NO DEBE LLEGAR HASTA LA CUBIERTA, DEBIDO A LA DIFICULTAD QUE PRESENTA EL CONTROL DE UN INCENDIO; DEBERÁ EXISTIR, COMO MÍNIMO, UNA DISTANCIA DE 60 CM ENTRE EL MATERIAL ALMACENADO Y EL TECHO. O SE RECOMIENDA MANTENER TODA LA MERCANCÍA LIBRE DE CONTACTO DIRECTO CON EL PISO, MEDIANTE ESTANTERÍA O ESTIBAS, PLÁSTICAS O DE MADERA; EN AMBOS CASOS, A UNA ALTURA SUPERIOR DE 10 CM. O LA MERCANCÍA DEBE PERMANECER SEPARADA, POR LO MENOS, 50 CM DE PAREDES Y FUENTES TÉRMICAS (POR EJEMPLO: LÁMPARAS, INTERRUPTORES, TABLEROS ELÉCTRICOS, ENTRE OTROS). O EN LAS BODEGAS DE MATERIA PRIMA Y PRODUCTO TERMINADO, ES NECESARIO MANEJAR Y MANTENER FORMAS ADECUADAS DE ALMACENAMIENTO, YA QUE LA ALTURA INADECUADA ES UNO DE LOS FACTORES MÁS INFLUYENTES EN EL PROGRESO DE UN INCENDIO, DIFICULTANDO EL CONTROL DEL MISMO. LA INESTABILIDAD DE LOS APILAMIENTOS NO ES DESEABLE, YA QUE FACILITA QUE LOS MATERIALES CAIGAN A LOS PASILLOS; ASÍ MISMO, PROPORCIONAN UN PUENTE PARA QUE EL FUEGO LOS CRUCE Y DIFICULTA LAS OPERACIONES DE LUCHA CONTRA INCENDIOS. SE PUDO APRECIAR QUE EXISTEN PILAS DE PRODUCTOS ALMACENADOS MUY ALTAS HACIENDO QUE EXISTA INESTABILIDAD EN LAS MISMAS Y SE GENERE UNA SITUACIÓN PELIGROSA; POR LO ANTERIOR, SE SUGIERE DISMINUIR LA ALTURA DE ALMACENAMIENTO O INSTALAR ESTANTERÍA METÁLICA QUE PUEDA SERVIR DE SOPORTE PARA ESTOS ELEMENTOS. O EL ÚLTIMO NIVEL DE LOS RACKS, EN ALGUNAS ZONAS, PRESENTA MAYOR DENSIDAD DE ALMACENAMIENTO; EXISTIENDO UNA ALTURA MÁXIMA APROXIMADA DE 8,5 M, EL MEDIO DE TRANSPORTE Y MANEJO DE MERCANCÍA SON MONTACARGAS. SE DEBE CAMBIAR LA ESTRATEGIA DE ALMACENAMIENTO, UBICANDO LA MERCANCÍA DE MAYOR DENSIDAD DE ALMACENAMIENTO EN LOS NIVELES MÁS BAJOS DE LOS RACKS; CON ESTO SE BUSCA AMINORAR EL RIESGO DE RUPTURA DE LA MERCANCÍA EN UNA MANIOBRA, YA QUE EL MONTACARGAS DESPUÉS DE 2,5 M DE ALTURA DE MANIPULACIÓN PRESENTARÁ PUNTOS CIEGOS PARA EL OPERARIO.",
-    ],
-    "SUSTRACCIÓN Y MANEJO": [
-    "SE SUGIERE INSTALAR UN SISTEMA DE DETECCIÓN AUTOMÁTICA CONTRA INTRUSOS EN LAS ZONAS MENCIONADAS Ó IMPLANTAR UN SISTEMA CON PLACAS AUTOADHESIVAS EN LOS EQUIPOS QUE ALERTEN AL PERSONAL DE SEGURIDAD AL CRUZAR POR ARCOS DE DETECCIÓN, DE MANERA SIMILAR AL SISTEMA EMPLEADO EN ALMACENES DE VENTA DE DISCOS, LIBROS O PRENDAS DE VESTIR.",
-    "ES CONVENIENTE MANTENER INSTALADO UN SISTEMA DE ALARMA QUE CUENTE CON SENSORES DE MOVIMIENTO QUE PROTEJAN TODAS LAS INSTALACIONES, SENSORES MAGNÉTICOS DE APERTURA Y DEMÁS SENSORES NECESARIOS PARA PROTEGER LOS DIFERENTES ACCESOS AL PREDIO. EL SISTEMA DEBE ESTAR CONECTADO A UNA SIRENA; EN CASO DE FALLAS EN EL SUMINISTRO DE ENERGÍA, LA ALARMA DEBE CONTAR CON UNA BATERÍA DE RESERVA QUE SOPORTE EL SISTEMA, COMO MÍNIMO 4 HORAS; DE IGUAL MANERA, EL SISTEMA DEBE ESTAR MONITOREADO (CON SERVICIO DE REACCIÓN) VÍA TELEFÓNICA CON UNA FIRMA ESPECIALIZADA INSCRITA EN LA SUPERINTENDENCIA DE VIGILANCIA.",
-    "EL SISTEMA DE ALARMA Y VIGILANCIA DEBE GARANTIZAR LA PROTECCIÓN DE EQUIPOS MÉDICOS ESPECIALIZADOS (LOS CUALES NORMALMENTE TIENEN COSTOS ELEVADOS) DE FÁCIL EXTRACCIÓN.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE INSTALAR O UBICAR UNA CAJA FUERTE EN UN LUGAR NO VISIBLE, EMPOTRADA AL PISO O LA PARED, PARA GUARDAR Y CUSTODIAR LOS DINEROS Y/O TÍTULOS VALORES DERIVADOS DE SU ACTIVIDAD COMERCIAL.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER INSTALADO UN CIRCUITO CERRADO DE TELEVISIÓN (CCTV), ACTIVO, LAS 24 HORAS LOS 365 DÍAS DEL AÑO. EL SISTEMA DEBE CONTAR CON CÁMARAS INTERNAS Y EXTERNAS QUE PROTEJAN LAS INSTALACIONES DEL PREDIO (PERÍMETROS Y ACCESOS). EN CASO DE FALLAS EN EL SUMINISTRO DE ENERGÍA EL CCTV DEBE ESTAR RESPALDADO POR: UNA UPS, BANCO DE BATERÍAS O PLANTA DE EMERGENCIA.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER UN SERVICIO DE VIGILANCIA POR PARTE DE PERSONAL DEDICADO A ESTA LABOR DURANTE LAS 24 HORAS DEL DÍA, TODOS LOS DÍAS DE LA SEMANA; EL PERSONAL DEDICADO A ESTA LABOR NO DEBE CONTAR CON LLAVES DE LAS PUERTAS DE ACCESO AL PREDIO, NI CLAVES DE APERTURA Y CIERRE DEL SISTEMA DE ALARMA.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER UN SERVICIO DE VIGILANCIA POR PARTE DE PERSONAL DE FIRMA ESPECIALIZADA, INSCRITA EN LA SUPERINTENDENCIA DE VIGILANCIA DURANTE LAS 24 HORAS DEL DÍA, TODOS LOS DÍAS DE LA SEMANA; EL PERSONAL DEDICADO A ESTA LABOR NO DEBE CONTAR CON LLAVES DE LAS PUERTAS DE ACCESO AL PREDIO, NI CLAVES DE APERTURA Y CIERRE DEL SISTEMA DE ALARMA.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER INSTALADO Y ACTIVO, UN SISTEMA DE ALARMA QUE PROTEJA LAS INSTALACIONES Y POSIBLES ACCESOS CON SENSORES DE MOVIMIENTO, SENSORES MAGNÉTICOS DE APERTURA, SENSORES DE PÁNICO INALÁMBRICOS Y/O FIJOS. EL SISTEMA DEBE ESTAR MONITOREADO VÍA RADIO, GPRS Y/O CELULAR CON EMPRESA ESPECIALIZADA INSCRITA EN LA SUPERINTENDENCIA DE VIGILANCIA; LA CUAL CUENTE CON SERVICIO DE REACCIÓN. LA ALARMA DEBE CONTAR CON UNA BATERÍA DE RESERVA QUE SOPORTE EL SISTEMA COMO MÍNIMO CUATRO (4) HORAS.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER INSTALADO POR ENCIMA DE LOS MUROS Y/O EN LAS REJAS PERIMETRALES COLINDANTES A LOS PREDIOS ALEDAÑOS, UN SISTEMA DE ALAMBRADO ELÉCTRICO. EL SISTEMA DEBE CONTAR CON UNA BATERÍA DE RESERVA QUE SOPORTE EL SISTEMA COMO MÍNIMO CUATRO (4) HORAS.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER INSTALADO POR ENCIMA DE LOS MUROS Y/O EN LAS REJAS PERIMETRALES COLINDANTES A LOS PREDIOS ALEDAÑOS, UN SISTEMA DE CONCERTINAS. ENTIÉNDASE POR CONCERTINA: ALAMBRE ENROLLADO CON FILAMENTOS CORTO PUNZANTES."
-  ],
-  "RESPONSABILIDAD CIVIL CONTRACTUAL Y EXTRACONTRACTUAL / MEDIO AMBIENTE": [
-    "MUCHOS TIPOS DE EDIFICIOS TIENEN, EN SU INTERIOR, RECINTOS PARA LA RECOLECCIÓN DE BASURAS. ALGUNOS DE ESTOS CUENTAN CON UN SISTEMA DE CONDUCCIÓN DE BASURAS O \"CHUTES\" POR LOS CUALES, SE LANZAN LOS DESECHOS, PARA POSTERIORMENTE SER ALMACENADOS EN RECIPIENTES DE MAYOR TAMAÑO.",
-    "DADO QUE ESTOS ESPACIOS RECIBEN TODO TIPO DE MATERIALES, PUEDEN ENCONTRARSE OBJETOS CON ALTA CARGA COMBUSTIBLE QUE, EN EL MOMENTO DE GENERARSE FUENTES DE IGNICIÓN, PODRÍA PRODUCIRSE UN EVENTO DE INCENDIO. POR ESTO SE RECOMIENDA QUE LOS DEPÓSITOS DE BASURA CUENTEN CON LAS SIGUIENTES CARACTERÍSTICAS ESTIPULADAS EN LA NORMA NFPA 82 – ESTÁNDAR EN INCINERADORES Y DESECHOS Y SISTEMAS DE MANEJO DE LINOS Y EQUIPAMIENTO:",
-    "· EL RECINTO DEBE ESTAR PROVISTO DE UNA PUERTA CON CIERRE AUTOMÁTICO CON RESISTENCIA AL FUEGO NO MENOR A 1 ½ HORA.",
-    "· SE DEBEN REALIZAR LABORES DE MANTENIMIENTO Y LIMPIEZA ADECUADOS ANUALMENTE O SEGÚN COMO LO RECOMIENDE EL CONSTRUCTOR.",
-    "· SI EL RECINTO DE ALMACENAMIENTO ALBERGA MÁS DE 0,75 M3 DE BASURA SIN COMPACTAR EN SU INTERIOR, ÉSTE DEBE ESTAR AISLADO DE OTROS RECINTOS DEL EDIFICIO POR PAREDES Y CUBIERTAS CON RESISTENCIA AL FUEGO NO INFERIOR A 2 HORAS.",
-    "· EL RECINTO DE BASURAS DEBE CONTAR CON UN SISTEMA DE REGADERAS AUTOMÁTICAS PARA LA EXTINCIÓN DE FUEGO, SIGUIENDO LOS LINEAMIENTOS DE LA NFPA 13 – STANDARD PARA INSTALACIÓN DE SISTEMAS DE REGADERAS.",
-    "· POR SER UN ÁREA, EN SU MAYORÍA DEL TIEMPO, DESPOBLADA, SE RECOMIENDA INSTALAR UN SISTEMA DE DETECCIÓN DE INCENDIOS, QUE SE ENCUENTRA MONITOREADO CONSTANTEMENTE POR PERSONAL DE VIGILANCIA."
-  ],
-  "INSTALACIONES ELÉCTRICAS": [
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER TODOS LOS EQUIPOS ELECTRÓNICOS CON CONEXIÓN DE PUESTA A TIERRA Y SISTEMAS DE REGULACIÓN TALES COMO REGULADORES DE VOLTAJE (ESTABILIZADORES) O UPS \"ON LINE\" DE SUFICIENTE CAPACIDAD. ASÍ MISMO SE DEBE GARANTIZAR EL CORRECTO CUMPLIMIENTO DE LAS RECOMENDACIONES DEL FABRICANTE DEL SISTEMA. REALIZAR MANTENIMIENTO PREVENTIVO SEMESTRAL A LOS EQUIPOS DE PROTECCIÓN. EVIDENCIAR LAS ACTIVIDADES DE MANTENIMIENTO POR MEDIO DE UN REGISTRO DOCUMENTADO.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER TODOS LOS EQUIPOS ELECTRÓNICOS QUE TENGAN ENTRADA DE COMUNICACIÓN TELEFÓNICA (CENTRALES TELEFÓNICAS, FAXES, COMPUTADORES, EQUIPO DE CÓMPUTO, ENTRE OTROS), CON SUPRESORES DE PICOS INSTALADOS A LA SALIDA DE LAS TOMACORRIENTES O MULTITOMAS. REALIZAR VERIFICACIÓN COMO MÍNIMO CADA SEIS (6) MESES, SU CORRECTO FUNCIONAMIENTO. EVIDENCIAR LAS ACTIVIDADES DE MANTENIMIENTO POR MEDIO DE UN REGISTRO DOCUMENTADO O BITÁCORA.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER UN CONTRATO DE MANTENIMIENTO PREVENTIVO CON UN TERCERO ESPECIALIZADO PARA TODOS LOS EQUIPOS ELECTRÓNICOS, EL CUAL INCLUYA UNA REVISIÓN GENERAL COMO MÍNIMO CADA SEIS (6) MESES. EVIDENCIAR LAS ACTIVIDADES DE MANTENIMIENTO POR MEDIO DE UN REGISTRO DOCUMENTADO O BITÁCORA POR EQUIPO.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER UN CONTRATO DE MANTENIMIENTO PREVENTIVO CON UN TERCERO ESPECIALIZADO PARA TODOS LOS EQUIPOS ELECTRÓNICOS, EL CUAL INCLUYA UN PROCESO DE MANTENIMIENTO CADA TRES (3) MESES. EVIDENCIAR LAS ACTIVIDADES DE MANTENIMIENTO POR MEDIO DE UN REGISTRO DOCUMENTADO O BITÁCORA POR EQUIPO.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE GARANTIZAR QUE TODOS LOS TABLEROS ELÉCTRICOS DE DISTRIBUCIÓN DE LA SUBESTACIÓN O AQUELLAS LÍNEAS DE ALIMENTACIÓN A EQUIPOS ELECTRÓNICOS ESPECIALIZADOS, DISPONGAN DE DISPOSITIVOS DE PROTECCIÓN CONTRA SOBRETENSIONES TRANSITORIAS, CON UN SISTEMA APROPIADO DE PUESTA A TIERRA. PARA LA INSTALACIÓN DE UN SISTEMA APROPIADO DE PUESTA A TIERRA, TOMAR EN CONSIDERACIÓN EL REGLAMENTO TÉCNICO DE INSTALACIONES ELÉCTRICAS (RETIE).",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE MANTENER UN SISTEMA DE PUESTA A TIERRA DE CAPACIDAD SUFICIENTE PARA PROTEGER LOS EQUIPOS ELECTRÓNICOS EXISTENTES EN LAS INSTALACIONES Y REALIZAR MANTENIMIENTO PREVENTIVO ANUAL AL SISTEMA. EVIDENCIAR LAS ACTIVIDADES DE MANTENIMIENTO POR MEDIO DE UN REGISTRO DOCUMENTADO. PARA LA INSTALACIÓN DE UN SISTEMA APROPIADO DE PUESTA A TIERRA, TOMAR EN CONSIDERACIÓN EL REGLAMENTO TÉCNICO DE INSTALACIONES ELÉCTRICAS (RETIE)."
-  ],
-  "INSTALACIONES FÍSICAS, CONSTRUCCIÓN, ORDEN, ASEO": [
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE REALIZAR MANTENIMIENTO GENERAL A LAS CANALES Y BAJANTES CÓMO MÍNIMO CADA SEIS (6) MESES, QUE INCLUYA LIMPIEZA Y CAMBIO DE ELEMENTOS DEFECTUOSOS (TEJAS, GANCHOS, ENTRE OTROS). EVIDENCIAR LAS ACTIVIDADES DE MANTENIMIENTO POR MEDIO DE UN REGISTRO DOCUMENTADO O BITÁCORA.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE REALIZAR MANTENIMIENTO, POR LO MENOS CADA SEIS (6) MESES, A LA IMPERMEABILIZACIÓN, CANALES Y BAJANTES, EL CUAL INCLUYE SU LIMPIEZA Y LA REVISIÓN DEL MANTO QUE PROTEGE LA CUBIERTA. EVIDENCIAR LAS ACTIVIDADES DE MANTENIMIENTO POR MEDIO DE UN REGISTRO DOCUMENTADO O BITÁCORA.",
-    "DURANTE LA VIGENCIA DE LA PÓLIZA, EL ASEGURADO DEBE REALIZAR MANTENIMIENTO POR LO MENOS CADA TRES (3) MESES, A LOS CANALES Y BAJANTES DE AGUAS LLUVIAS Y CAJAS DE INSPECCIÓN, ENTRE OTROS, EL CUAL INCLUYE SU LIMPIEZA Y LA REVISIÓN DE LOS DESAGÜES DE AGUAS LLUVIAS QUE PROTEGEN EL PREDIO DE INUNDACIONES. RESPALDAR EL DESAGÜE CON UN SISTEMA DE BOMBEO CON MOTOBOMBAS SUMERGIBLES, PARA EVACUAR CUALQUIER FLUIDO EN CASO DE INUNDACIÓN."
-  ],
-    };
+    return stored ? JSON.parse(stored) : structuredClone(BANCO_RECOMENDACIONES_ES);
   });
 
   // Guardar banco de recomendaciones en localStorage cuando cambie (con debounce optimizado)
@@ -1423,10 +1382,10 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
     try {
       setGenerandoManual(true);
 await generarManualInspeccion();
-      alert('✅ Manual generado exitosamente. Revisa la carpeta de descargas.');
+      alert(t('inspection.alerts.manualGenerated'));
     } catch (error) {
       console.error('❌ Error al generar manual:', error);
-      alert('Error al generar el manual. Por favor, intente nuevamente.');
+      alert(t('inspection.alerts.manualError'));
     } finally {
       setGenerandoManual(false);
     }
@@ -2633,11 +2592,11 @@ const filaDoble = (label, value) => new TableRow({
 
   const generarWord = async () => {
     const incluirSeccionWord = (id) => estaSeccionInformeActiva(seccionesActivas, id);
-    const numeracionWord = construirNumeracionActiva(seccionesActivas);
+    const numeracionWord = construirNumeracionActiva(seccionesActivas, t);
     const encWord = (id, fallback = '') => numeracionWord.get(id)?.encabezado || fallback;
     const encWordSub = (parentId, subIdx, fallback = '') =>
       numeracionWord.get(parentId)?.subIndices?.[subIdx]?.encabezado || fallback;
-    const filasIndiceWord = obtenerFilasIndiceWord(seccionesActivas);
+    const filasIndiceWord = obtenerFilasIndiceWord(seccionesActivas, t);
 
     // Función para convertir imagen importada a base64
     const convertirImagenImportadaABase64 = async (imagePath) => {
@@ -2905,24 +2864,24 @@ try {
 
     docContent.push(
       new Paragraph({ children: [], pageBreakBefore: true }),
-      linea("Señores"),
+      linea(t('inspection.ui.formulario_inspeccion.dearGentlemen')),
       linea(aseguradora, true),
-      linea(`Municipio: ${ciudadSiniestroTexto}`),
+      linea(`${t('inspection.ui.formulario_inspeccion.municipality')}: ${ciudadSiniestroTexto}`),
       linea(""),
-      linea("REF: INFORME DE INSPECCIÓN", true),
-      linea(`ASEGURADO: ${nombreCliente}`),
-      linea(`PREDIO INSPECCIONADO: ${direccion}`),
-      linea(`FECHA DE INSPECCIÓN: ${fechaFormateada}`),
+      linea(t('inspection.ui.formulario_inspeccion.referenceInspectionReport').replace(/\s+/g, ' ').trim(), true),
+      linea(`${t('inspection.ui.formulario_inspeccion.insuredLabel')} ${nombreCliente}`),
+      linea(`${t('inspection.ui.formulario_inspeccion.inspectedPropertyLabel')} ${direccion}`),
+      linea(`${t('inspection.ui.formulario_inspeccion.inspectionDateLabel')} ${fechaFormateada}`),
       linea(""),
-      linea("Apreciados Señores:"),
-      linea("Tomando como base la asignación de inspección que nos fuera oficializada, estamos adjuntando el informe único y confidencial de las labores realizadas en el Riesgo en referencia."),
-      linea(`Luego de analizar los diferentes aspectos relacionados con el estado actual del predio, así como las protecciones existentes contra posibles eventos como incendio, hurto, entre otros; se afirma que el riesgo ${textoSuscripcion}. No obstante, se deben cumplir las recomendaciones para el mejoramiento del riesgo y prevención de emergencias.`),
-      linea("Estamos a su disposición para aclarar cualquier inquietud que tengan al respecto y agradecemos la confianza depositada en nuestros servicios profesionales para este caso."),
+      linea(t('inspection.ui.formulario_inspeccion.dearSirs')),
+      linea(t('inspection.ui.formulario_inspeccion.letterIntroduction')),
+      linea(`${t('inspection.ui.formulario_inspeccion.letterAssessmentPrefix')} ${textoSuscripcion}. ${t('inspection.ui.formulario_inspeccion.letterAssessmentSuffix')}`),
+      linea(t('inspection.ui.formulario_inspeccion.letterClosing')),
       linea(""),
-      linea("Cordialmente,"),
+      linea(t('inspection.ui.formulario_inspeccion.closing')),
       linea(""),
       linea("ARNALDO TAPIA GUTIERREZ"),
-      linea("Gerente")
+      linea(t('inspection.ui.formulario_inspeccion.manager'))
 
     );
 docContent.push(
@@ -2930,7 +2889,7 @@ docContent.push(
   new Paragraph({
     children: [
       new TextRun({
-        text: "Tabla de Contenido",
+        text: t('inspection.ui.formulario_inspeccion.tableOfContents'),
         bold: true,
         font: "Arial",
         size: 28,
@@ -3043,9 +3002,9 @@ docContent.push(
     rows: [
       new TableRow({
         children: [
-          celdaEncabezadoInfo("Nombre de la Empresa", 20),
+          celdaEncabezadoInfo(t('inspection.ui.formulario_inspeccion.companyName'), 20),
           celdaValorInfo(nombreEmpresa, 36),
-          celdaEncabezadoInfo("Barrio", 20),
+          celdaEncabezadoInfo(t('inspection.ui.formulario_inspeccion.neighborhood'), 20),
           celdaValorInfo(barrio, 24),
         ],
       }),
@@ -3053,13 +3012,13 @@ docContent.push(
         children: [
           celdaEncabezadoInfo("Dirección", 20),
           celdaValorInfo(direccion, 36),
-          celdaEncabezadoInfo("Departamento", 20),
+          celdaEncabezadoInfo(t('inspection.ui.formulario_inspeccion.department'), 20),
           celdaValorInfo(departamento, 24),
         ],
       }),
       new TableRow({
         children: [
-          celdaEncabezadoInfo("Municipio", 20),
+          celdaEncabezadoInfo(t('inspection.ui.formulario_inspeccion.municipality'), 20),
           celdaValorInfo(ciudadSiniestroTexto || municipio || formData?.ciudad || formData?.ciudad_siniestro || "", 36),
           celdaVaciaInfo(20),
           celdaVaciaInfo(24),
@@ -3067,7 +3026,7 @@ docContent.push(
       }),
       new TableRow({
         children: [
-          celdaEncabezadoInfo("Actividad Económica", 20),
+          celdaEncabezadoInfo(t('inspection.ui.formulario_inspeccion.economicActivity'), 20),
           celdaValorInfo(actividadEconomica, 36),
           celdaVaciaInfo(20),
           celdaVaciaInfo(24),
@@ -3075,7 +3034,7 @@ docContent.push(
       }),
       new TableRow({
         children: [
-          celdaEncabezadoInfo("Cargo", 20),
+          celdaEncabezadoInfo(t('inspection.ui.formulario_inspeccion.position'), 20),
           celdaValorInfo(cargo, 36),
           celdaVaciaInfo(20),
           celdaVaciaInfo(24),
@@ -3085,7 +3044,7 @@ docContent.push(
         children: [
           celdaEncabezadoInfo("Horario Laboral", 20),
           celdaValorInfo(horarioLaboral, 36),
-          celdaEncabezadoInfo("Persona Entrevistada", 20),
+          celdaEncabezadoInfo(t('inspection.ui.formulario_inspeccion.interviewedPerson'), 20),
           celdaValorInfo(personaEntrevistada, 24),
         ],
       }),
@@ -3120,29 +3079,29 @@ docContent.push(
   new Paragraph({ text: "Comentarios adicionales", bold: true, spacing: { after: 100 } }),
   linea(caracteristicasConstruccion || "No se ingresaron comentarios adicionales."),
   new Paragraph({ text: "", spacing: { after: 200 } }),
-  new Paragraph({ text: "Edificación Principal", bold: true, spacing: { after: 200 } }),
+  new Paragraph({ text: t('inspection.ui.formulario_inspeccion.mainBuilding'), bold: true, spacing: { after: 200 } }),
   new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       new TableRow({
         children: [
-          encabezadoTabla("Año de construcción"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.constructionYear')),
           celdaTexto(anoConstruccion || ""),
-          encabezadoTabla("Tipo"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.type')),
           celdaTexto(tipoEdificio === "Otro" && tipoEdificioOtro ? `${tipoEdificio}: ${tipoEdificioOtro}` : (tipoEdificio || "")),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Área de lote"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.lotArea')),
           celdaTexto(areaLoteConstruccion || ""),
-          encabezadoTabla("Área construida"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.builtArea')),
           celdaTexto(areaConstruidaConstruccion || ""),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Número de pisos"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.numberOfFloors')),
           celdaTexto(numeroPisosConstruccion || ""),
           new TableCell({ children: [new Paragraph("")], width: { size: 25, type: WidthType.PERCENTAGE } }),
           new TableCell({ children: [new Paragraph("")], width: { size: 25, type: WidthType.PERCENTAGE } }),
@@ -3156,45 +3115,45 @@ docContent.push(
     rows: [
       new TableRow({
         children: [
-          encabezadoTabla("Cimentación"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.foundation')),
           celdaTexto(cimentacion === "Otro" && cimentacionOtro ? `${cimentacion}: ${cimentacionOtro}` : (cimentacion || "")),
-          encabezadoTabla("Materiales estructura"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.structuralMaterials')),
           celdaTexto(materialesEstructura === "Otro" && materialesEstructuraOtro ? `${materialesEstructura}: ${materialesEstructuraOtro}` : (materialesEstructura || "")),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Regularidad de planta"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.plantRegularity')),
           celdaTexto(limpiarPrefijoNumerico(regularidadPlanta)),
-          encabezadoTabla("Daños previos"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.previousDamage')),
           celdaTexto(limpiarPrefijoNumerico(danosPrevios)),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Reforzamientos estructurales"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.structuralReinforcements')),
           celdaTexto(reforzamientosEstructurales || ""),
-          encabezadoTabla("Sistema estructural"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.structuralSystem')),
           celdaTexto(sistemaEstructural === "Otro" && sistemaEstructuralOtro ? `${sistemaEstructural}: ${sistemaEstructuralOtro}` : (sistemaEstructural || "")),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Estructura cubierta"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.roofStructure')),
           celdaTexto(estructuraCubierta === "Otro" && estructuraCubiertaOtro ? `${estructuraCubierta}: ${estructuraCubiertaOtro}` : (estructuraCubierta || "")),
-          encabezadoTabla("Regular de altura"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.heightRegularity')),
           celdaTexto(limpiarPrefijoNumerico(regularAltura)),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Mantenimiento de la cubierta"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.roofMaintenance')),
           celdaTexto(
             mantenimientoCubierta === "Otro" && mantenimientoCubiertaOtro
               ? `${mantenimientoCubierta}: ${mantenimientoCubiertaOtro}`
               : (mantenimientoCubierta || "")
           ),
-          encabezadoTabla("Daños reparados"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.repairedDamage')),
           celdaTexto(limpiarPrefijoNumerico(danosReparados)),
         ],
       }),
@@ -3228,19 +3187,19 @@ if (incluirSeccionWord('procesos')) {
           rows: [
             new TableRow({
               children: [
-                encabezadoTabla("Tipo de insumo"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.supplyType')),
                 celdaTexto(tipoInsumo === "Otro" && tipoInsumoOtro ? `${tipoInsumo}: ${tipoInsumoOtro}` : (tipoInsumo || "")),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Nivel de riesgo"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.riskLevel')),
                 celdaTexto(nivelRiesgoInsumo || ""),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Descripción de los contenidos"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.contentsDescription')),
                 celdaTexto(descripcionContenidosInsumo || ""),
               ],
             }),
@@ -3252,13 +3211,13 @@ if (incluirSeccionWord('procesos')) {
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Tipo de almacenamiento"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.storageType')),
                 celdaTexto(tipoAlmacenamientoInsumo === "Otro" && tipoAlmacenamientoInsumoOtro ? `${tipoAlmacenamientoInsumo}: ${tipoAlmacenamientoInsumoOtro}` : (tipoAlmacenamientoInsumo || "")),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Estado de almacenamiento"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.storageCondition')),
                 celdaTexto(estadoAlmacenamientoInsumo || ""),
               ],
             }),
@@ -3276,19 +3235,19 @@ if (incluirSeccionWord('procesos')) {
           rows: [
             new TableRow({
               children: [
-                encabezadoTabla("Tipo de materias primas"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.rawMaterialType')),
                 celdaTexto(tipoMateriasPrimas === "Otro" && tipoMateriasPrimasOtro ? `${tipoMateriasPrimas}: ${tipoMateriasPrimasOtro}` : (tipoMateriasPrimas || "")),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Nivel de riesgo"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.riskLevel')),
                 celdaTexto(nivelRiesgoMateriasPrimas || ""),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Descripción de los contenidos"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.contentsDescription')),
                 celdaTexto(descripcionContenidosMateriasPrimas || ""),
               ],
             }),
@@ -3300,13 +3259,13 @@ if (incluirSeccionWord('procesos')) {
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Tipo de almacenamiento"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.storageType')),
                 celdaTexto(tipoAlmacenamientoMateriasPrimas === "Otro" && tipoAlmacenamientoMateriasPrimasOtro ? `${tipoAlmacenamientoMateriasPrimas}: ${tipoAlmacenamientoMateriasPrimasOtro}` : (tipoAlmacenamientoMateriasPrimas || "")),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Estado de almacenamiento"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.storageCondition')),
                 celdaTexto(estadoAlmacenamientoMateriasPrimas || ""),
               ],
             }),
@@ -3318,25 +3277,25 @@ if (incluirSeccionWord('procesos')) {
 
     if (tieneDatosMercancias) {
       docContent.push(
-        new Paragraph({ text: "Producto terminado y/o Mercancías", bold: true, spacing: { after: 100 } }),
+        new Paragraph({ text: t('inspection.ui.formulario_inspeccion.finishedGoods'), bold: true, spacing: { after: 100 } }),
         new Table({
           width: { size: 100, type: WidthType.PERCENTAGE },
           rows: [
             new TableRow({
               children: [
-                encabezadoTabla("Tipo de mercancías"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.merchandiseTypeField')),
                 celdaTexto(tipoMercancias === "Otro" && tipoMercanciasOtro ? `${tipoMercancias}: ${tipoMercanciasOtro}` : (tipoMercancias || "")),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Nivel de riesgo"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.riskLevel')),
                 celdaTexto(nivelRiesgoMercancias || ""),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Descripción de los contenidos"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.contentsDescription')),
                 celdaTexto(descripcionContenidosMercancias || ""),
               ],
             }),
@@ -3348,13 +3307,13 @@ if (incluirSeccionWord('procesos')) {
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Tipo de almacenamiento"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.storageType')),
                 celdaTexto(tipoAlmacenamientoMercancias === "Otro" && tipoAlmacenamientoMercanciasOtro ? `${tipoAlmacenamientoMercancias}: ${tipoAlmacenamientoMercanciasOtro}` : (tipoAlmacenamientoMercancias || "")),
               ],
             }),
             new TableRow({
               children: [
-                encabezadoTabla("Estado de almacenamiento"),
+                encabezadoTabla(t('inspection.ui.formulario_inspeccion.storageCondition')),
                 celdaTexto(estadoAlmacenamientoMercancias || ""),
               ],
             }),
@@ -3401,7 +3360,7 @@ docContent.push(
   new Paragraph({
     children: [
       new TextRun({
-        text: "COORDENADAS DE UBICACIÓN",
+        text: t('inspection.ui.formulario_inspeccion.locationCoordinates'),
         bold: true,
         font: "Arial",
         size: 24,
@@ -3561,25 +3520,25 @@ const response = await fetch(osmStaticUrl);
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Ubicación del predio"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.propertyLocation')),
             celdaTexto(ubicacionPredio === "Otro" && ubicacionPredioOtro ? `${ubicacionPredio}: ${ubicacionPredioOtro}` : (ubicacionPredio || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Vulnerabilidad de los contenidos"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.contentVulnerability')),
             celdaTexto(vulnerabilidadContenidos === "Otro" && vulnerabilidadContenidosOtro ? `${vulnerabilidadContenidos}: ${vulnerabilidadContenidosOtro}` : (vulnerabilidadContenidos || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Acceso a las instalaciones"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.facilityAccess')),
             celdaTexto(accesoInstalaciones === "Otro" && accesoInstalacionesOtro ? `${accesoInstalaciones}: ${accesoInstalacionesOtro}` : (accesoInstalaciones || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Circulación de personas externas"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.externalPeopleCirculation')),
             celdaTexto(circulacionPersonasExternas === "Otro" && circulacionPersonasExternasOtro ? `${circulacionPersonasExternas}: ${circulacionPersonasExternasOtro}` : (circulacionPersonasExternas || "")),
           ],
         }),
@@ -3592,44 +3551,44 @@ const response = await fetch(osmStaticUrl);
       ],
     }),
     new Paragraph({ text: "", spacing: { after: 200 } }),
-    new Paragraph({ text: "Manejo de dinero", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.moneyHandling'), bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Personal de recaudo"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.collectionStaff')),
             celdaTexto(personalRecaudo || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Horarios de recaudo"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.collectionSchedules')),
             celdaTexto(horariosRecaudo || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Lugar de recaudo"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.collectionPlace')),
             celdaTexto(lugarRecaudo || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Transporte de dinero"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.moneyTransport')),
             celdaTexto(transporteDinero || ""),
           ],
         }),
       ],
     }),
     new Paragraph({ text: "", spacing: { after: 200 } }),
-    new Paragraph({ text: "Sistema de Alarma", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.alarmSystem'), bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Tiene alarma"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasAlarm')),
             celdaTexto(tieneAlarma || ""),
           ],
         }),
@@ -3641,13 +3600,13 @@ const response = await fetch(osmStaticUrl);
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Empresa que monitorea"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.monitoringCompany')),
             celdaTexto(empresaMonitorea || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Tipo de comunicación"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.communicationType')),
             celdaTexto(tipoComunicacionAlarma === "Otro" && tipoComunicacionAlarmaOtro ? `${tipoComunicacionAlarma}: ${tipoComunicacionAlarmaOtro}` : (tipoComunicacionAlarma || "")),
           ],
         }),
@@ -3666,104 +3625,104 @@ const response = await fetch(osmStaticUrl);
       ],
     }),
     new Paragraph({ text: "", spacing: { after: 200 } }),
-    new Paragraph({ text: "Circuito Cerrado de Televisión - CCTV", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.cctv'), bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con CCTV"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasCctv')),
             celdaTexto(cuentaConCCTV || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Número de cámaras que posee"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.numberOfCameras')),
             celdaTexto(numeroCamaras || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Controlado por"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.controlledBy')),
             celdaTexto(controladoPor === "Otro" && controladoPorOtro ? `${controladoPor}: ${controladoPorOtro}` : (controladoPor || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Tipo de monitoreo"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.monitoringType')),
             celdaTexto(tipoMonitoreoCCTV === "Otro" && tipoMonitoreoCCTVOtro ? `${tipoMonitoreoCCTV}: ${tipoMonitoreoCCTVOtro}` : (tipoMonitoreoCCTV || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Frecuencia de grabación"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.recordingFrequency')),
             celdaTexto(frecuenciaGrabacion === "Otro" && frecuenciaGrabacionOtro ? `${frecuenciaGrabacion}: ${frecuenciaGrabacionOtro}` : (frecuenciaGrabacion || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Tiempo de respaldo"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.backupTime')),
             celdaTexto(tiempoRespaldo || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Dispositivo de grabación"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.recordingDevice')),
             celdaTexto(dispositivoGrabacion === "Otro" && dispositivoGrabacionOtro ? `${dispositivoGrabacion}: ${dispositivoGrabacionOtro}` : (dispositivoGrabacion || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Ubicación del grabador"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.recorderLocation')),
             celdaTexto(ubicacionGrabador === "Otro" && ubicacionGrabadorOtro ? `${ubicacionGrabador}: ${ubicacionGrabadorOtro}` : (ubicacionGrabador || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Visualización por internet"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.internetViewing')),
             celdaTexto(visualizacionInternet || ""),
           ],
         }),
       ],
     }),
     new Paragraph({ text: "", spacing: { after: 200 } }),
-    new Paragraph({ text: "Vigilancia", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.surveillance'), bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con vigilancia"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasSecurity')),
             celdaTexto(cuentaConVigilancia || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Contratada con"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.contractedWith')),
             celdaTexto(contratadaCon || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Número de vigilantes"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.guardsCount')),
             celdaTexto(numeroVigilantes || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Jornada"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.workShift')),
             celdaTexto(jornadaVigilancia === "Otro" && jornadaVigilanciaOtro ? `${jornadaVigilancia}: ${jornadaVigilanciaOtro}` : (jornadaVigilancia || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Tienen armas"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.haveWeapons')),
             celdaTexto(tienenArmas || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Tienen radio"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.haveRadio')),
             celdaTexto(tienenRadio || ""),
           ],
         }),
@@ -3776,50 +3735,50 @@ const response = await fetch(osmStaticUrl);
 if (incluirSeccionWord('lucroCesante')) {
   docContent.push(
     seccion(encWord('lucroCesante', '9. LUCRO CESANTE')),
-    new Paragraph({ text: "Por incendio", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.byFire'), bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Área requerida para el desarrollo de las actividades"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.areaRequiredActivities')),
             celdaTexto(areaRequeridaLucroCesante === "Otro" && areaRequeridaLucroCesanteOtro ? `${areaRequeridaLucroCesante}: ${areaRequeridaLucroCesanteOtro}` : (areaRequeridaLucroCesante || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Complejidad de la actividad o proceso"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.activityComplexity')),
             celdaTexto(complejidadActividadLucroCesante === "Otro" && complejidadActividadLucroCesanteOtro ? `${complejidadActividadLucroCesante}: ${complejidadActividadLucroCesanteOtro}` : (complejidadActividadLucroCesante || "")),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Plan de continuidad del negocio documentado"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.businessContinuityPlan')),
             celdaTexto(planContinuidadNegocio || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Valor nómina mensual"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.monthlyPayrollValue')),
             celdaTexto(valorNominaMensual || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Valor facturación del año anterior"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.previousYearBilling')),
             celdaTexto(valorFacturacionAnoAnterior || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Valor proyectado facturación para el presente año"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.projectedBillingCurrentYear')),
             celdaTexto(valorProyectadoFacturacion || ""),
           ],
         }),
       ],
     }),
     new Paragraph({ text: "", spacing: { after: 200 } }),
-    new Paragraph({ text: "Análisis y comentarios", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.analysisAndComments'), bold: true, spacing: { after: 100 } }),
     linea(comentariosLucroCesante || "No se ingresaron comentarios."),
     new Paragraph({ text: "", spacing: { after: 200 } }),
   );
@@ -3839,7 +3798,7 @@ if (incluirSeccionWord('pml')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Descripción"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.description')),
             celdaTexto(pmlDescripcion || ""),
           ],
         }),
@@ -3852,7 +3811,7 @@ if (incluirSeccionWord('pml')) {
 if (incluirSeccionWord('procesosCriticos')) {
   docContent.push(
     seccion(encWord('procesosCriticos', '10. PROCESOS CRÍTICOS Y RIESGOS MEDIOAMBIENTALES')),
-    new Paragraph({ text: "Procesos Críticos", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.criticalProcesses'), bold: true, spacing: { after: 100 } }),
     linea(procesosCriticos || "No se ingresaron comentarios."),
     new Paragraph({ text: "", spacing: { after: 200 } }),
     new Paragraph({ text: "Riesgos Medioambientales", bold: true, spacing: { after: 100 } }),
@@ -3869,43 +3828,43 @@ if (incluirSeccionWord('roturaMaquinaria')) {
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Capacidad instalada de la planta de producción"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.installedProductionCapacity')),
             celdaTexto(capacidadInstaladaPlanta || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Índice promedio de capacidad utilizada"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.averageCapacityIndex')),
             celdaTexto(indicePromedioCapacidad || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Número de líneas de producción"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.productionLinesCount')),
             celdaTexto(numeroLineasProduccion || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Maquinaria crítica"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.criticalMachinery')),
             celdaTexto(maquinariaCritica || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Incidencia sobre la producción (%)"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.productionImpactPct')),
             celdaTexto(incidenciaProduccion || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Origen de la maquinaria crítica"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.criticalMachineryOrigin')),
             celdaTexto(origenMaquinariaCritica || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Hay representación nacional de la maquinaria"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.nationalMachineryRepresentation')),
             celdaTexto(representacionNacionalMaquinaria || ""),
           ],
         }),
@@ -3917,13 +3876,13 @@ if (incluirSeccionWord('roturaMaquinaria')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Existen empresas satélite para la producción"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.satelliteProductionCompanies')),
             celdaTexto(empresasSateliteProduccion || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Hay convenios con otras empresas"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasAgreementsWithOtherCompanies')),
             celdaTexto(conveniosOtrasEmpresas || ""),
           ],
         }),
@@ -3942,49 +3901,49 @@ if (incluirSeccionWord('roturaMaquinaria')) {
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Requiere licencia ambiental para su funcionamiento"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.requiresEnvironmentalLicense')),
             celdaTexto(caracteristicasAmbientales.licenciaAmbiental || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Requiere permiso de vertimientos o emisiones contaminantes"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.requiresDischargePermit')),
             celdaTexto(caracteristicasAmbientales.permisoVertimientos || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Consume más de 1.000 m3 de agua al mes"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.consumesOver1000m3Water')),
             celdaTexto(caracteristicasAmbientales.consumoAgua || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con bombillas ahorradoras de energía"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasEnergySavingBulbs')),
             celdaTexto(caracteristicasAmbientales.bombillasAhorradoras || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Hace parte del mercado no regulado de energía"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.unregulatedEnergyMarket')),
             celdaTexto(caracteristicasAmbientales.mercadoNoRegulado || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Genera vertimiento de aguas residuales contaminantes"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.generatesContaminatedWastewater')),
             celdaTexto(caracteristicasAmbientales.vertimientoAguasResiduales || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con planta de tratamiento de aguas residuales"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasWastewaterTreatmentPlant')),
             celdaTexto(caracteristicasAmbientales.plantaTratamiento || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con plan de manejo integral de residuos peligrosos"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasHazardousWastePlan')),
             celdaTexto(caracteristicasAmbientales.planManejoResiduos || ""),
           ],
         }),
@@ -3996,19 +3955,19 @@ if (incluirSeccionWord('roturaMaquinaria')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con sistema de filtración o lavado de gases"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasGasFiltrationSystem')),
             celdaTexto(caracteristicasAmbientales.sistemaFiltracionGases || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Generan niveles de ruido que afecten a los vecinos"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.noiseAffectsNeighbors')),
             celdaTexto(caracteristicasAmbientales.nivelesRuido || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con programa de gestión ambiental certificado"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.certifiedEnvironmentalProgram')),
             celdaTexto(caracteristicasAmbientales.programaGestionAmbiental || ""),
           ],
         }),
@@ -4022,13 +3981,13 @@ if (incluirSeccionWord('roturaMaquinaria')) {
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 300 } }),
     seccion(encWord('proteccionIncendios', '8. PROTECCIÓN Y PREVENCIÓN CONTRA INCENDIOS')),
-    new Paragraph({ text: "Sistema de detección", bold: true, spacing: { after: 100 } }),
+    new Paragraph({ text: t('inspection.ui.formulario_inspeccion.detectionSystem'), bold: true, spacing: { after: 100 } }),
     new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Cuenta con detectores de humo"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.hasSmokeDetectors')),
             celdaTexto(detectoresHumo || ""),
           ],
         }),
@@ -4040,7 +3999,7 @@ if (incluirSeccionWord('roturaMaquinaria')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Instalación"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.installation')),
             celdaTexto(instalacionDeteccion || ""),
           ],
         }),
@@ -4059,13 +4018,13 @@ if (incluirSeccionWord('roturaMaquinaria')) {
       rows: [
         new TableRow({
           children: [
-            encabezadoTabla("Cantidad"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.quantity')),
             celdaTexto(cantidadExtintores || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Tipo"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.type')),
             celdaTexto(tipoExtintores || ""),
           ],
         }),
@@ -4077,13 +4036,13 @@ if (incluirSeccionWord('roturaMaquinaria')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Instalación"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.installation')),
             celdaTexto(instalacionExtintores || ""),
           ],
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Señalización"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.signaling')),
             celdaTexto(senalizacionExtintores || ""),
           ],
         }),
@@ -4100,7 +4059,7 @@ if (incluirSeccionWord('roturaMaquinaria')) {
   docContent.push(
     new Paragraph({ text: "", spacing: { after: 200 } }),
     new Paragraph({
-      text: "Bombeo, estación de bomberos y cortafuegos",
+      text: t('inspection.ui.formulario_inspeccion.pumpingFireStationFirewalls'),
       bold: true,
       spacing: { after: 100 },
     }),
@@ -4121,7 +4080,7 @@ if (incluirSeccionWord('roturaMaquinaria')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Presión"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.pressure')),
             celdaTexto(presionContraincendios || ""),
           ],
         }),
@@ -4133,7 +4092,7 @@ if (incluirSeccionWord('roturaMaquinaria')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Estación de bomberos — nombre"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.fireStationName')),
             celdaTexto(estacionBomberosNombre || ""),
           ],
         }),
@@ -4163,7 +4122,7 @@ if (incluirSeccionWord('roturaMaquinaria')) {
         }),
         new TableRow({
           children: [
-            encabezadoTabla("Almacenamiento de agua para RCI"),
+            encabezadoTabla(t('inspection.ui.formulario_inspeccion.rciWaterStorage')),
             celdaTexto(almacenamientoAguaRci || ""),
           ],
         }),
@@ -4213,7 +4172,7 @@ if (incluirSeccionWord('roturaMaquinaria')) {
       ],
       })
     ),
-    encabezadoTabla("PLANTAS ELÉCTRICAS"),
+    encabezadoTabla(t('inspection.ui.formulario_inspeccion.electricPlants')),
     new TableRow({
       children: [
         celdaTexto("Número"),
@@ -4263,19 +4222,19 @@ if (incluirSeccionWord('roturaMaquinaria')) {
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       new TableRow({
-        children: [encabezadoTabla("Promedio de edad de los equipos"), celdaTexto(promedioEdadEquipos || "")],
+        children: [encabezadoTabla(t('inspection.ui.formulario_inspeccion.averageEquipmentAge')), celdaTexto(promedioEdadEquipos || "")],
       }),
       new TableRow({
-        children: [encabezadoTabla("Tipo de mantenimiento"), celdaTexto(tipoMantenimientoEquipos || "")],
+        children: [encabezadoTabla(t('inspection.ui.formulario_inspeccion.maintenanceType')), celdaTexto(tipoMantenimientoEquipos || "")],
       }),
       new TableRow({
-        children: [encabezadoTabla("Bitácoras de mantenimiento"), celdaTexto(bitacorasMantenimiento || "")],
+        children: [encabezadoTabla(t('inspection.ui.formulario_inspeccion.maintenanceLogs')), celdaTexto(bitacorasMantenimiento || "")],
       }),
       new TableRow({
-        children: [encabezadoTabla("Personal que realiza mantenimiento"), celdaTexto(personalMantenimiento || "")],
+        children: [encabezadoTabla(t('inspection.ui.formulario_inspeccion.maintenanceStaff')), celdaTexto(personalMantenimiento || "")],
       }),
       new TableRow({
-        children: [encabezadoTabla("Periodicidad de los mantenimientos"), celdaTexto(periodicidadMantenimientos || "")],
+        children: [encabezadoTabla(t('inspection.ui.formulario_inspeccion.maintenanceFrequency')), celdaTexto(periodicidadMantenimientos || "")],
       }),
     ],
   })
@@ -4375,7 +4334,7 @@ docContent.push(
         children: [
           new TableCell({
             width: { size: 25, type: WidthType.PERCENTAGE },
-            children: [new Paragraph({ text: "TENSIÓN", bold: true })],
+            children: [new Paragraph({ text: t('inspection.ui.formulario_inspeccion.voltage'), bold: true })],
           }),
           new TableCell({
             width: { size: 75, type: WidthType.PERCENTAGE },
@@ -4422,7 +4381,7 @@ docContent.push(
 
   // PLANTAS ELÉCTRICAS
   new Paragraph({
-    text: "PLANTAS ELÉCTRICAS",
+    text: t('inspection.ui.formulario_inspeccion.electricPlants'),
     bold: true,
     spacing: { before: 200, after: 100 },
   }),
@@ -4518,7 +4477,7 @@ docContent.push(
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Comentarios"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.comments')),
           new TableCell({
             columnSpan: 3,
             children: [
@@ -4551,25 +4510,25 @@ docContent.push(
     rows: [
       new TableRow({
         children: [
-          encabezadoTabla("Año"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.year')),
           celdaTexto(siniestralidadAno || ""),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Valor del siniestro"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.claimValue')),
           celdaTexto(siniestralidadValor || ""),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Descripción"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.description')),
           celdaTexto(siniestralidadDescripcion || siniestralidad || ""),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Mejoras después del siniestro"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.improvementsAfterClaim')),
           celdaTexto(siniestralidadMejoras || ""),
         ],
       }),
@@ -4582,19 +4541,19 @@ if (incluirSeccionWord('almacenamiento')) {
 docContent.push(
   new Paragraph({ children: [], pageBreakBefore: true }),
   seccion(encWord('almacenamiento', '15. ALMACENAMIENTO')),
-  new Paragraph({ text: "Almacén", bold: true, spacing: { after: 100 } }),
+  new Paragraph({ text: t('inspection.ui.formulario_inspeccion.warehouseStore'), bold: true, spacing: { after: 100 } }),
   new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
     rows: [
       new TableRow({
         children: [
-          encabezadoTabla("Altura máxima del almacén"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.maxWarehouseHeight')),
           celdaTexto(almacenAlturaMaxima || ""),
         ],
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Matriz de compatibilidad"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.compatibilityMatrix')),
           celdaTexto(almacenMatrizCompatibilidad || ""),
         ],
       }),
@@ -4619,7 +4578,7 @@ docContent.push(
       }),
       new TableRow({
         children: [
-          encabezadoTabla("Tipo de almacenamiento"),
+          encabezadoTabla(t('inspection.ui.formulario_inspeccion.storageType')),
           celdaTexto(mercPeligrosaTipoAlmacenamiento || ""),
         ],
       }),
@@ -4637,7 +4596,7 @@ docContent.push(
 if (incluirSeccionWord('analisisRiesgos')) {
     docContent.push(
       new Paragraph({ children: [], pageBreakBefore: true }),
-      seccion(encWord('analisisRiesgos', '16. ANÁLISIS Y CLASIFICACIÓN DE RIESGOS')),
+      seccion(encWord('analisisRiesgos', t('inspection.ui.formulario_inspeccion.section16Title'))),
       new Paragraph({ text: encWordSub('analisisRiesgos', 0, 'ANÁLISIS DE RIESGOS'), bold: true, spacing: { after: 100 } }),
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
@@ -4660,7 +4619,7 @@ if (incluirSeccionWord('analisisRiesgos')) {
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
   new Paragraph({
-    text: encWordSub('analisisRiesgos', 1, 'CLASIFICACIÓN DE RIESGOS'),
+    text: encWordSub('analisisRiesgos', 1, t('inspection.ui.formulario_inspeccion.classificationOfRisksWord')),
     bold: true,
     spacing: { after: 300 },
   }),
@@ -4738,7 +4697,7 @@ docContent.push(
 docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }),
   new Paragraph({
-    text: encWordSub('analisisRiesgos', 3, 'MATRIZ DE CALOR DE RIESGOS'),
+    text: encWordSub('analisisRiesgos', 3, t('inspection.ui.formulario_inspeccion.heatMatrixWord')),
     heading: HeadingLevel.HEADING_2,
     spacing: { after: 300 },
   }),
@@ -4814,10 +4773,10 @@ if (recomendacionesItems.length > 0) {
         children: [new TextRun({ text: rec.codigo || "", bold: true })],
         spacing: { after: 120 },
       }),
-      linea(rec.texto || ""),
+      linea(translateRecommendationText(rec.texto || "", i18n.language)),
       new Paragraph({
         children: [
-          new TextRun({ text: "Fecha de seguimiento o control: ", italics: true }),
+          new TextRun({ text: `${t('inspection.ui.formulario_inspeccion.followUpOrControlDate')}: `, italics: true }),
           new TextRun({
             text: formatearFechaSeguimientoIsoParaMostrar(rec.fechaSeguimiento) || "—",
           }),
@@ -4827,14 +4786,14 @@ if (recomendacionesItems.length > 0) {
     );
   }
 } else {
-  docContent.push(linea(recomendaciones || "No se reportaron recomendaciones."));
+  docContent.push(linea(recomendaciones || t('inspection.ui.formulario_inspeccion.noRecommendationsReported')));
 }
 
   
   
 if (imagenesRegistro.length > 0) {
   // Título de la sección
-  docContent.push(seccion(encWord('registroFotografico', '18. REGISTRO FOTOGRÁFICO')));
+  docContent.push(seccion(encWord('registroFotografico', t('inspection.ui.formulario_inspeccion.section18Title'))));
 
   // Aquí se guardarán las filas de la tabla
   const filas = [];
@@ -5489,7 +5448,7 @@ const datos = {
   if (!resultado?.success) {
     console.warn('❌ No se pudo guardar correctamente:', resultado?.message);
   }
-  alert(resultado?.message || 'Error al guardar el formulario');
+  alert(resultado?.message || t('inspection.alerts.saveError'));
 };
 
 const handleExportar = async () => {
@@ -5756,7 +5715,7 @@ alert(resultado.message);
     
   } catch (error) {
     console.error('Error en exportación:', error);
-    alert(`❌ Error en la exportación: ${error.message}`);
+    alert(t('inspection.alerts.exportError', { error: error.message }));
   }
 };
 
@@ -6459,7 +6418,7 @@ setImagenesRegistro([]);
 }
   } catch (error) {
     console.error('❌ Error cargando formulario:', error);
-    alert(`Error cargando formulario: ${error.message}`);
+    alert(t('inspection.alerts.loadError', { error: error.message }));
   } finally {
     setCargando(false);
   }
@@ -6603,7 +6562,10 @@ return (
         style={{ borderBottom: `1px solid ${borderColor}` }}
       >
         <div className="flex items-center gap-2 sm:gap-4">
-          <img src={Logo} alt="Logo PROSER" className="h-12 sm:h-16 object-contain" />
+          <img src={Logo} alt={t('inspection.alt.logo')} className="h-12 sm:h-16 object-contain" />
+          <h1 className="text-lg sm:text-xl font-bold" style={{ color: textPrimary }}>
+            {t('inspection.title')}
+          </h1>
           {modoEdicion && (
             <div 
               className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium"
@@ -6612,7 +6574,7 @@ return (
                 color: theme === 'dark' ? '#93C5FD' : '#1E40AF'
               }}
             >
-              ✏️ Modo Edición
+              {t('inspection.modeEdit')}
             </div>
           )}
         </div>
@@ -6621,7 +6583,7 @@ return (
             className="text-xs sm:text-sm font-semibold mb-1"
             style={{ color: textPrimary }}
           >
-            FECHA:
+            {t('inspection.fields.date')}:
           </p>
           <input
             type="date"
@@ -6657,7 +6619,7 @@ return (
               className="font-medium"
               style={{ color: theme === 'dark' ? '#93C5FD' : '#1E40AF' }}
             >
-              Cargando formulario existente...
+              {t('inspection.loadingExisting')}
             </span>
           </div>
         </div>
@@ -6670,7 +6632,7 @@ return (
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Nombre del Cliente / Empresa
+            {t('inspection.fields.client')}
           </label>
           <input
             type="text"
@@ -6683,7 +6645,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Nombre del Cliente / Empresa"
+            placeholder={t('inspection.placeholders.client')}
             disabled={cargando}
           />
         </div>
@@ -6693,7 +6655,7 @@ return (
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Dirección
+            {t('inspection.fields.address')}
           </label>
           <input
             type="text"
@@ -6706,7 +6668,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Dirección"
+            placeholder={t('inspection.placeholders.address')}
             disabled={cargando}
           />
         </div>
@@ -6722,10 +6684,10 @@ return (
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Municipio
+            {t('inspection.fields.city')}
           </label>
           <Select
-            placeholder="Municipio"
+            placeholder={t('inspection.placeholders.city')}
             options={municipios}
             value={(() => {
               if (!formData.ciudad_siniestro) return null;
@@ -6810,7 +6772,7 @@ return (
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            Aseguradora
+            {t('inspection.fields.insurer')}
           </label>
           <select
             name="aseguradora"
@@ -6825,7 +6787,7 @@ return (
             }}
             disabled={cargando}
           >
-            <option value="">Aseguradora</option>
+            <option value="">{t('inspection.placeholders.insurer')}</option>
     <option value="ALIANZ SEGURO S.A.">ALIANZ SEGURO S.A.</option>
     <option value="ASEGURADORA SOLIDARIA DE COLOMBIA">ASEGURADORA SOLIDARIA DE COLOMBIA</option>
     <option value="AXA COLPATRIA SEGUROS S.A.">AXA COLPATRIA SEGUROS S.A.</option>
@@ -6862,24 +6824,39 @@ return (
           className="block text-xs sm:text-sm font-medium mb-2"
           style={{ color: textPrimary }}
         >
-          Subir Fotografía del Riesgo
+          {t('inspection.fields.riskPhoto')}
         </label>
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImagenChange}
-          className="mb-2 w-full text-xs sm:text-sm"
-          style={{
-            color: textPrimary
-          }}
-        placeholder="Subir Fotografía del Riesgo"
-          disabled={cargando}
-        />
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <input
+            id="inspeccion-foto-riesgo"
+            type="file"
+            accept="image/*"
+            onChange={handleImagenChange}
+            className="sr-only"
+            disabled={cargando}
+          />
+          <label
+            htmlFor="inspeccion-foto-riesgo"
+            className="inline-flex cursor-pointer items-center rounded px-3 py-2 text-xs sm:text-sm font-medium"
+            style={{
+              backgroundColor: theme === 'dark' ? '#2A2A2A' : '#E5E7EB',
+              color: textPrimary,
+              border: `1px solid ${borderColor}`,
+              opacity: cargando ? 0.6 : 1,
+              pointerEvents: cargando ? 'none' : 'auto',
+            }}
+          >
+            {t('inspection.ui.formulario_inspeccion.chooseFile')}
+          </label>
+          <span className="text-xs sm:text-sm" style={{ color: textSecondary }}>
+            {imagen?.name || t('inspection.ui.formulario_inspeccion.noFileSelected')}
+          </span>
+        </div>
         {preview && (
           <div className="mt-2">
           <img
             src={preview}
-            alt="Vista previa"
+            alt={t('inspection.alt.preview')}
             className="max-w-[400px] max-h-[250px] mx-auto rounded object-contain"
             style={{
               border: `1px solid ${borderColor}`
@@ -6889,7 +6866,7 @@ return (
               className="text-sm text-center mt-1"
               style={{ color: textSecondary }}
             >
-              Fachada del riesgo
+              {t('inspection.riskFacade')}
             </p>
           </div>
         )}
@@ -6905,7 +6882,7 @@ return (
         }}
       >
         <p>
-          Ciudad: {
+          {t('inspection.ui.formulario_inspeccion.city')} {
             (() => {
               const ciudad = formData.ciudad_siniestro;
               if (!ciudad) return "_________";
@@ -6925,11 +6902,11 @@ return (
             })()
           }
         </p>
-                <br />
-        <p>Señores</p>
+        <br />
+        <p>{t('inspection.ui.formulario_inspeccion.dearGentlemen')}</p>
         <p><strong>{aseguradora}</strong></p>
         <p>
-          Ciudad: {
+          {t('inspection.ui.formulario_inspeccion.city')} {
             (() => {
               const ciudad = formData.ciudad_siniestro;
               if (!ciudad) return "_________";
@@ -6948,16 +6925,17 @@ return (
               return "_________";
             })()
           }
-        </p>        <br />
-        <p><strong>REF&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: INFORME DE INSPECCIÓN</strong></p>
+        </p>
+        <br />
+        <p><strong>{t('inspection.ui.formulario_inspeccion.referenceInspectionReport')}</strong></p>
         <p>
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;ASEGURADO: {nombreCliente}<br />
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;PREDIO INSPECCIONADO: {direccion}<br />
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;FECHA DE INSPECCIÓN:{" "}
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{t('inspection.ui.formulario_inspeccion.insuredLabel')} {nombreCliente}<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{t('inspection.ui.formulario_inspeccion.inspectedPropertyLabel')} {direccion}<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{t('inspection.ui.formulario_inspeccion.inspectionDateLabel')}{" "}
           {formatearFechaInspeccion(fecha)}
         </p>
         
-        <p className="mt-3">¿El riesgo se puede suscribir?</p>
+        <p className="mt-3">{t('inspection.ui.formulario_inspeccion.underwritingQuestion')}</p>
         <select
           value={puedeSuscribir}
           onChange={(e) => setPuedeSuscribir(e.target.value)}
@@ -6969,27 +6947,28 @@ return (
           }}
           disabled={cargando}
         >
-          <option value="SI">Se puede suscribir</option>
-          <option value="NO">No se puede suscribir</option>
+          <option value="SI">{t('inspection.ui.formulario_inspeccion.canUnderwrite')}</option>
+          <option value="NO">{t('inspection.ui.formulario_inspeccion.cannotUnderwrite')}</option>
         </select>
 
         <br />
-        <p>Apreciados Señores:</p>
+        <p>{t('inspection.ui.formulario_inspeccion.dearSirs')}</p>
         <p>
-          Tomando como base la asignación de inspección que nos fuera oficializada, estamos adjuntando el informe único y confidencial de las labores realizadas en el Riesgo en referencia.
+          {t('inspection.ui.formulario_inspeccion.letterIntroduction')}
         </p>
         <p>
-          Luego de analizar los diferentes aspectos relacionados con el estado actual del predio, así como las protecciones existentes contra posibles eventos como incendio, hurto, entre otros; se afirma que el riesgo <strong>{textoSuscripcion}</strong>. No obstante, se deben cumplir las recomendaciones para el mejoramiento del riesgo y prevención de emergencias.
+          {t('inspection.ui.formulario_inspeccion.letterAssessmentPrefix')}{' '}
+          <strong>{textoSuscripcion}</strong>.{' '}
+          {t('inspection.ui.formulario_inspeccion.letterAssessmentSuffix')}
         </p>
         <p>
-          Estamos a su disposición para aclarar cualquier inquietud que tengan al respecto y agradecemos la confianza depositada en nuestros servicios profesionales para este caso.
+          {t('inspection.ui.formulario_inspeccion.letterClosing')}
         </p>
         <br />
-        <p>Cordialmente,</p>
+        <p>{t('inspection.ui.formulario_inspeccion.closing')}</p>
         <br />
-        <p><strong>ARNALDO TAPIA GUTIERREZ</strong><br />Gerente</p>
+        <p><strong>ARNALDO TAPIA GUTIERREZ</strong><br />{t('inspection.ui.formulario_inspeccion.manager')}</p>
       </div>
-
 
 
 
@@ -7001,10 +6980,10 @@ return (
           className="text-xl font-bold mb-4"
           style={{ color: theme === 'dark' ? '#60A5FA' : '#1E40AF' }}
         >
-          Tabla de Contenido
+          {t('inspection.ui.formulario_inspeccion.tableOfContents')}
         </h2>
         <p className="text-sm mb-3" style={{ color: textSecondary }}>
-          Marque las secciones que desea incluir en el formulario y en el Word. Las secciones obligatorias no se pueden desactivar.
+          {t('inspection.ui.formulario_inspeccion.contentsInstructions')}
         </p>
         <div className="overflow-x-auto mb-6">
           <table 
@@ -7037,7 +7016,7 @@ return (
                     color: textPrimary
                   }}
                 >
-                  REF
+                  {t('inspection.ui.formulario_inspeccion.refColumn')}
                 </th>
                 <th 
                   className="px-3 py-1 font-bold"
@@ -7046,7 +7025,7 @@ return (
                     color: textPrimary
                   }}
                 >
-                  : INFORME DE INSPECCIÓN
+                  : {t('inspection.sections.informe')}
                 </th>
                 <th 
                   className="px-3 py-1 text-right"
@@ -7086,7 +7065,7 @@ return (
                           className="w-4 h-4"
                         />
                       ) : (
-                        <span title="Sección obligatoria" style={{ color: textSecondary }}>●</span>
+                        <span title={t('inspection.ui.formulario_inspeccion.requiredSection')} style={{ color: textSecondary }}>●</span>
                       )
                     ) : null}
                   </td>
@@ -7142,7 +7121,7 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
  >
-   1. INFORMACIÓN GENERAL
+   {tituloSeccionUi('informacionGeneral', t('inspection.ui.formulario_inspeccion.generalInformation'))}
  </h2>
 
   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -7151,11 +7130,11 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Nombre de la Empresa
+        {t('inspection.ui.formulario_inspeccion.companyName')}
       </label>
       <input
         type="text"
-        placeholder="Nombre de la Empresa"
+        placeholder={t('inspection.ui.formulario_inspeccion.companyName')}
         value={nombreEmpresa}
         onChange={handleNombreEmpresaChange}
         className="w-full rounded px-3 py-2"
@@ -7173,11 +7152,11 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Dirección
+        {t('inspection.placeholders.address')}
       </label>
       <input
         type="text"
-        placeholder="Dirección"
+        placeholder={t('inspection.placeholders.address')}
         value={direccion}
         onChange={handleDireccionChange}
         className="w-full rounded px-3 py-2"
@@ -7196,10 +7175,10 @@ return (
           className="block text-sm font-medium"
           style={{ color: textPrimary }}
         >
-          Municipio
+          {t('inspection.ui.formulario_inspeccion.municipality')}
         </label>
        <Select
-            placeholder="Municipio"
+            placeholder={t('inspection.ui.formulario_inspeccion.municipality')}
             options={municipios}
             value={(() => {
               if (!formData.ciudad_siniestro) return null;
@@ -7296,11 +7275,11 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Actividad Económica
+        {t('inspection.ui.formulario_inspeccion.economicActivity')}
       </label>
       <input
         type="text"
-        placeholder="Actividad Económica"
+        placeholder={t('inspection.ui.formulario_inspeccion.economicActivity')}
         value={actividadEconomica}
         onChange={handleActividadEconomicaChange}
         className="w-full rounded px-3 py-2"
@@ -7319,11 +7298,11 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Persona Entrevistada
+        {t('inspection.ui.formulario_inspeccion.interviewedPerson')}
       </label>
       <input
         type="text"
-        placeholder="Persona Entrevistada"
+        placeholder={t('inspection.ui.formulario_inspeccion.interviewedPerson')}
         value={personaEntrevistada}
         onChange={handlePersonaEntrevistadaChange}
         className="w-full rounded px-3 py-2"
@@ -7341,11 +7320,11 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Barrio
+        {t('inspection.ui.formulario_inspeccion.neighborhood')}
       </label>
       <input
         type="text"
-        placeholder="Barrio"
+        placeholder={t('inspection.ui.formulario_inspeccion.neighborhood')}
         value={barrio}
         onChange={handleBarrioChange}
         className="w-full rounded px-3 py-2"
@@ -7363,11 +7342,11 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Departamento
+        {t('inspection.ui.formulario_inspeccion.department')}
       </label>
       <input
         type="text"
-        placeholder="Departamento"
+        placeholder={t('inspection.ui.formulario_inspeccion.department')}
         value={formData.departamento_siniestro}
         onChange={e => setFormData({ ...formData, departamento_siniestro: e.target.value })}
         className="w-full rounded px-3 py-2"
@@ -7385,11 +7364,11 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        Cargo
+        {t('inspection.ui.formulario_inspeccion.position')}
       </label>
       <input
         type="text"
-        placeholder="Cargo"
+        placeholder={t('inspection.ui.formulario_inspeccion.position')}
         value={cargo}
         onChange={handleCargoChange}
         className="w-full rounded px-3 py-2"
@@ -7407,7 +7386,7 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        HORARIO LABORAL
+        {t('inspection.ui.formulario_inspeccion.workSchedule')}
       </label>
       <input
         type="text"
@@ -7429,7 +7408,7 @@ return (
         className="block text-sm font-semibold mb-1"
         style={{ color: textPrimary }}
       >
-        NÚMERO DE COLABOLADORES
+        {t('inspection.ui.formulario_inspeccion.employeeCount')}
       </label>
       <input
         type="text"
@@ -7467,11 +7446,11 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
 >
-  2. DESCRIPCIÓN GENERAL DE LA EMPRESA
+  {tituloSeccionUi('descripcionEmpresa', t('inspection.ui.formulario_inspeccion.companyDescription'))}
 </h2>
-<textarea placeholder="NÚMERO DE COLABOLADORES"
+<textarea
   rows={6}
-  placeholder="Agrega aquí la descripción general de la empresa..."
+  placeholder={t('inspection.ui.formulario_inspeccion.companyDescriptionPlaceholder')}
   value={descripcionEmpresa}
   onChange={(e) => setDescripcionEmpresa(e.target.value)}
   className="w-full rounded px-3 py-2"
@@ -7501,7 +7480,7 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
 >
-  3. INFRAESTRUCTURA
+  {tituloSeccionUi('infraestructura', t('inspection.ui.formulario_inspeccion.infrastructure'))}
 </h2>
 
 {/* Campo de comentarios adicionales */}
@@ -7510,11 +7489,11 @@ return (
     className="block text-sm font-semibold mb-2"
     style={{ color: textPrimary }}
   >
-    Comentarios adicionales sobre las características de la construcción
+    {t('inspection.ui.formulario_inspeccion.constructionComments')}
   </label>
-  <textarea placeholder="Comentarios adicionales sobre las características de la construcción"
+  <textarea
     rows={8}
-    placeholder="Describe aquí cualquier información adicional sobre las características de la construcción (estructura, materiales, techos, pisos, estado general, etc.)..."
+    placeholder={t('inspection.ui.formulario_inspeccion.constructionCommentsPlaceholder')}
     value={caracteristicasConstruccion}
     onChange={(e) => setCaracteristicasConstruccion(e.target.value)}
     className="w-full rounded px-3 py-2"
@@ -7534,7 +7513,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Edificación Principal
+    {t('inspection.ui.formulario_inspeccion.mainBuilding')}
   </h3>
   <div className="overflow-x-auto">
     <table 
@@ -7555,7 +7534,7 @@ return (
               width: '30%'
             }}
           >
-            Año de construcción
+            {t('inspection.ui.formulario_inspeccion.constructionYear')}
           </td>
           <td 
             style={{
@@ -7567,7 +7546,7 @@ return (
               options={opcionesAños}
               value={opcionesAños.find(opcion => opcion.value === anoConstruccion) || null}
               onChange={(selected) => setAnoConstruccion(selected ? selected.value : "")}
-              placeholder="Buscar año..."
+              placeholder={t('inspection.ui.formulario_inspeccion.searchYear')}
               isSearchable
               isClearable
               className="w-full"
@@ -7628,7 +7607,7 @@ return (
               width: '30%'
             }}
           >
-            Tipo
+            {t('inspection.ui.formulario_inspeccion.type')}
           </td>
           <td 
             style={{
@@ -7648,14 +7627,14 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Año de construcción</option>
-              <option value="Edificio">Edificio</option>
-              <option value="Bodega">Bodega</option>
-              <option value="Nave Industrial">Nave Industrial</option>
-              <option value="Casa">Casa</option>
-              <option value="Local Comercial">Local Comercial</option>
-              <option value="Oficina">Oficina</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.type')}</option>
+              <option value="Edificio">{t('inspection.ui.formulario_inspeccion.building')}</option>
+              <option value="Bodega">{t('inspection.ui.formulario_inspeccion.warehouse')}</option>
+              <option value="Nave Industrial">{t('inspection.ui.formulario_inspeccion.industrialBuilding')}</option>
+              <option value="Casa">{t('inspection.ui.formulario_inspeccion.house')}</option>
+              <option value="Local Comercial">{t('inspection.ui.formulario_inspeccion.commercialPremises')}</option>
+              <option value="Oficina">{t('inspection.ui.formulario_inspeccion.office')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoEdificio === "Otro" && (
               <input
@@ -7683,7 +7662,7 @@ return (
               color: textPrimary
             }}
           >
-            Área de lote
+            {t('inspection.ui.formulario_inspeccion.lotArea')}
           </td>
           <td 
             style={{
@@ -7713,7 +7692,7 @@ return (
               color: textPrimary
             }}
           >
-            Área construida
+            {t('inspection.ui.formulario_inspeccion.builtArea')}
           </td>
           <td 
             style={{
@@ -7745,7 +7724,7 @@ return (
               color: textPrimary
             }}
           >
-            Número de pisos
+            {t('inspection.ui.formulario_inspeccion.numberOfFloors')}
           </td>
           <td 
             colSpan="3"
@@ -7766,7 +7745,7 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Número de pisos</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.numberOfFloors')}</option>
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
@@ -7777,7 +7756,7 @@ return (
               <option value="8">8</option>
               <option value="9">9</option>
               <option value="10">10</option>
-              <option value="Más de 10">Más de 10</option>
+              <option value="Más de 10">{t('inspection.ui.formulario_inspeccion.moreThanTen')}</option>
             </select>
           </td>
         </tr>
@@ -7807,7 +7786,7 @@ return (
               width: '30%'
             }}
           >
-            Cimentación
+            {t('inspection.ui.formulario_inspeccion.foundation')}
           </td>
           <td 
             style={{
@@ -7827,13 +7806,13 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Cimentación</option>
-              <option value="Pilotes aislados">Pilotes aislados</option>
-              <option value="Zapatas aisladas">Zapatas aisladas</option>
-              <option value="Zapatas corridas">Zapatas corridas</option>
-              <option value="Losas de cimentación">Losas de cimentación</option>
-              <option value="Muros de contención">Muros de contención</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.foundation')}</option>
+              <option value="Pilotes aislados">{t('inspection.ui.formulario_inspeccion.isolatedPiles')}</option>
+              <option value="Zapatas aisladas">{t('inspection.ui.formulario_inspeccion.isolatedFootings')}</option>
+              <option value="Zapatas corridas">{t('inspection.ui.formulario_inspeccion.stripFootings')}</option>
+              <option value="Losas de cimentación">{t('inspection.ui.formulario_inspeccion.foundationSlabs')}</option>
+              <option value="Muros de contención">{t('inspection.ui.formulario_inspeccion.retainingWalls')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {cimentacion === "Otro" && (
               <input
@@ -7859,7 +7838,7 @@ return (
               color: textPrimary
             }}
           >
-            Materiales estructura
+            {t('inspection.ui.formulario_inspeccion.structuralMaterials')}
           </td>
           <td 
             style={{
@@ -7879,14 +7858,14 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Materiales estructura</option>
-              <option value="Mampostería - Reforzada">Mampostería - Reforzada</option>
-              <option value="Mampostería - No reforzada">Mampostería - No reforzada</option>
-              <option value="Concreto reforzado">Concreto reforzado</option>
-              <option value="Acero estructural">Acero estructural</option>
-              <option value="Madera">Madera</option>
-              <option value="Mixto">Mixto</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.structuralMaterials')}</option>
+              <option value="Mampostería - Reforzada">{t('inspection.ui.formulario_inspeccion.reinforcedMasonry')}</option>
+              <option value="Mampostería - No reforzada">{t('inspection.ui.formulario_inspeccion.unreinforcedMasonry')}</option>
+              <option value="Concreto reforzado">{t('inspection.ui.formulario_inspeccion.reinforcedConcrete')}</option>
+              <option value="Acero estructural">{t('inspection.ui.formulario_inspeccion.structuralSteel')}</option>
+              <option value="Madera">{t('inspection.ui.formulario_inspeccion.wood')}</option>
+              <option value="Mixto">{t('inspection.ui.formulario_inspeccion.mixed')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {materialesEstructura === "Otro" && (
               <input
@@ -7914,7 +7893,7 @@ return (
               color: textPrimary
             }}
           >
-            Regularidad de planta
+            {t('inspection.ui.formulario_inspeccion.plantRegularity')}
           </td>
           <td 
             style={{
@@ -7934,9 +7913,9 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Regularidad de planta</option>
-              <option value="1 = con irregularidad">1 = con irregularidad</option>
-              <option value="2 = sin irregularidad">2 = sin irregularidad</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.plantRegularity')}</option>
+              <option value="1 = con irregularidad">{t('inspection.ui.formulario_inspeccion.withIrregularity')}</option>
+              <option value="2 = sin irregularidad">{t('inspection.ui.formulario_inspeccion.withoutIrregularity')}</option>
             </select>
           </td>
           <td 
@@ -7947,7 +7926,7 @@ return (
               color: textPrimary
             }}
           >
-            Daños previos
+            {t('inspection.ui.formulario_inspeccion.previousDamage')}
           </td>
           <td 
             style={{
@@ -7967,9 +7946,9 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Daños previos</option>
-              <option value="1 = inmueble con daños previos">1 = inmueble con daños previos</option>
-              <option value="2 = inmueble sin daños previos">2 = inmueble sin daños previos</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.previousDamage')}</option>
+              <option value="1 = inmueble con daños previos">{t('inspection.ui.formulario_inspeccion.propertyWithPreviousDamage')}</option>
+              <option value="2 = inmueble sin daños previos">{t('inspection.ui.formulario_inspeccion.propertyWithoutPreviousDamage')}</option>
             </select>
           </td>
         </tr>
@@ -7982,7 +7961,7 @@ return (
               color: textPrimary
             }}
           >
-            Reforzamientos estructurales
+            {t('inspection.ui.formulario_inspeccion.structuralReinforcements')}
           </td>
           <td 
             style={{
@@ -8002,12 +7981,12 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Reforzamientos estructurales</option>
-              <option value="1 = trabes coladas en sitio">1 = trabes coladas en sitio</option>
-              <option value="2 = trabes prefabricadas">2 = trabes prefabricadas</option>
-              <option value="3 = losas macizas">3 = losas macizas</option>
-              <option value="4 = losas aligeradas">4 = losas aligeradas</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.structuralReinforcements')}</option>
+              <option value="1 = trabes coladas en sitio">{t('inspection.ui.formulario_inspeccion.castInPlaceBeams')}</option>
+              <option value="2 = trabes prefabricadas">{t('inspection.ui.formulario_inspeccion.prefabricatedBeams')}</option>
+              <option value="3 = losas macizas">{t('inspection.ui.formulario_inspeccion.solidSlabs')}</option>
+              <option value="4 = losas aligeradas">{t('inspection.ui.formulario_inspeccion.lightweightSlabs')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
           <td 
@@ -8018,7 +7997,7 @@ return (
               color: textPrimary
             }}
           >
-            Sistema estructural
+            {t('inspection.ui.formulario_inspeccion.structuralSystem')}
           </td>
           <td 
             style={{
@@ -8038,13 +8017,13 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Sistema estructural</option>
-              <option value="Estructura portante">Estructura portante</option>
-              <option value="Estructura de acero">Estructura de acero</option>
-              <option value="Estructura de concreto">Estructura de concreto</option>
-              <option value="Estructura mixta">Estructura mixta</option>
-              <option value="Muros de carga">Muros de carga</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.structuralSystem')}</option>
+              <option value="Estructura portante">{t('inspection.ui.formulario_inspeccion.loadBearingStructure')}</option>
+              <option value="Estructura de acero">{t('inspection.ui.formulario_inspeccion.steelStructure')}</option>
+              <option value="Estructura de concreto">{t('inspection.ui.formulario_inspeccion.concreteStructure')}</option>
+              <option value="Estructura mixta">{t('inspection.ui.formulario_inspeccion.mixedStructure')}</option>
+              <option value="Muros de carga">{t('inspection.ui.formulario_inspeccion.loadBearingWalls')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {sistemaEstructural === "Otro" && (
               <input
@@ -8072,7 +8051,7 @@ return (
               color: textPrimary
             }}
           >
-            Estructura cubierta
+            {t('inspection.ui.formulario_inspeccion.roofStructure')}
           </td>
           <td 
             style={{
@@ -8092,12 +8071,12 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Estructura cubierta</option>
-              <option value="Metálica">Metálica</option>
-              <option value="Concreto">Concreto</option>
-              <option value="Madera">Madera</option>
-              <option value="Mixta">Mixta</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.roofStructure')}</option>
+              <option value="Metálica">{t('inspection.ui.formulario_inspeccion.metal')}</option>
+              <option value="Concreto">{t('inspection.ui.formulario_inspeccion.concrete')}</option>
+              <option value="Madera">{t('inspection.ui.formulario_inspeccion.wood')}</option>
+              <option value="Mixta">{t('inspection.ui.formulario_inspeccion.mixed')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {estructuraCubierta === "Otro" && (
               <input
@@ -8123,7 +8102,7 @@ return (
               color: textPrimary
             }}
           >
-            Regular de altura
+            {t('inspection.ui.formulario_inspeccion.heightRegularity')}
           </td>
           <td 
             style={{
@@ -8143,9 +8122,9 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Regular de altura</option>
-              <option value="1 = con irregularidad">1 = con irregularidad</option>
-              <option value="2 = sin irregularidad">2 = sin irregularidad</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.heightRegularity')}</option>
+              <option value="1 = con irregularidad">{t('inspection.ui.formulario_inspeccion.withIrregularity')}</option>
+              <option value="2 = sin irregularidad">{t('inspection.ui.formulario_inspeccion.withoutIrregularity')}</option>
             </select>
           </td>
         </tr>
@@ -8158,7 +8137,7 @@ return (
               color: textPrimary
             }}
           >
-            Mantenimiento de la cubierta
+            {t('inspection.ui.formulario_inspeccion.roofMaintenance')}
           </td>
           <td 
             colSpan="3"
@@ -8179,21 +8158,21 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Mantenimiento de la cubierta</option>
-              <option value="Preventivo">Preventivo</option>
-              <option value="Correctivo">Correctivo</option>
-              <option value="Predictivo">Predictivo</option>
-              <option value="Preventivo y correctivo">Preventivo y correctivo</option>
-              <option value="No realiza mantenimiento">No realiza mantenimiento</option>
-              <option value="No aplica">No aplica</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.roofMaintenance')}</option>
+              <option value="Preventivo">{t('inspection.ui.formulario_inspeccion.preventive')}</option>
+              <option value="Correctivo">{t('inspection.ui.formulario_inspeccion.corrective')}</option>
+              <option value="Predictivo">{t('inspection.ui.formulario_inspeccion.predictive')}</option>
+              <option value="Preventivo y correctivo">{t('inspection.ui.formulario_inspeccion.preventiveCorrective')}</option>
+              <option value="No realiza mantenimiento">{t('inspection.ui.formulario_inspeccion.noMaintenance')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {mantenimientoCubierta === "Otro" && (
               <input
                 type="text"
                 value={mantenimientoCubiertaOtro}
                 onChange={(e) => setMantenimientoCubiertaOtro(e.target.value)}
-                placeholder="Especifique el tipo de mantenimiento"
+                placeholder={t('inspection.ui.formulario_inspeccion.specifyMaintenance')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8215,7 +8194,7 @@ return (
               color: textPrimary
             }}
           >
-            Daños reparados
+            {t('inspection.ui.formulario_inspeccion.repairedDamage')}
           </td>
           <td 
             colSpan="3"
@@ -8236,10 +8215,10 @@ return (
               }}
               disabled={cargando}
             >
-              <option value="">Daños reparados</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.repairedDamage')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -8266,16 +8245,16 @@ return (
     className="text-lg font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    4. PROCESOS
+    {tituloSeccionUi('procesos', t('inspection.ui.formulario_inspeccion.processes'))}
   </h2>
   <label 
     className="block text-sm font-semibold mb-2"
     style={{ color: textPrimary }}
   >
-    Descripción de Procesos
+    {t('inspection.ui.formulario_inspeccion.processDescription')}
   </label>
   <textarea
-    placeholder="Descripción de Procesos"
+    placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
     value={procesos}
     onChange={(e) => setProcesos(e.target.value)}
     rows={5}
@@ -8318,7 +8297,7 @@ return (
               width: '30%'
             }}
           >
-            Tipo de insumo
+            {t('inspection.ui.formulario_inspeccion.supplyType')}
           </td>
           <td 
             style={{
@@ -8336,24 +8315,24 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Tipo de insumo</option>
-              <option value="No combustibles">No combustibles</option>
-              <option value="Combustibles">Combustibles</option>
-              <option value="Inflamables">Inflamables</option>
-              <option value="Explosivos">Explosivos</option>
-              <option value="Tóxicos">Tóxicos</option>
-              <option value="Corrosivos">Corrosivos</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.supplyType')}</option>
+              <option value="No combustibles">{t('inspection.ui.formulario_inspeccion.nonCombustibles')}</option>
+              <option value="Combustibles">{t('inspection.ui.formulario_inspeccion.combustibles')}</option>
+              <option value="Inflamables">{t('inspection.ui.formulario_inspeccion.flammables')}</option>
+              <option value="Explosivos">{t('inspection.ui.formulario_inspeccion.explosives')}</option>
+              <option value="Tóxicos">{t('inspection.ui.formulario_inspeccion.toxics')}</option>
+              <option value="Corrosivos">{t('inspection.ui.formulario_inspeccion.corrosives')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoInsumo === "Otro" && (
               <input
                 type="text"
                 value={tipoInsumoOtro}
                 onChange={(e) => setTipoInsumoOtro(e.target.value)}
-            placeholder="Tipo de insumo"
+            placeholder={t('inspection.ui.formulario_inspeccion.supplyType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8361,7 +8340,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de insumo"
+            placeholder={t('inspection.ui.formulario_inspeccion.supplyType')}
                 disabled={cargando}
               />
             )}
@@ -8376,7 +8355,7 @@ return (
               color: textPrimary
             }}
           >
-            Nivel de riesgo
+            {t('inspection.ui.formulario_inspeccion.riskLevel')}
           </td>
           <td 
             style={{
@@ -8394,14 +8373,14 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Nivel de riesgo</option>
-              <option value="Bajo">Bajo</option>
-              <option value="Medio">Medio</option>
-              <option value="Alto">Alto</option>
-              <option value="Extremo">Extremo</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.riskLevel')}</option>
+              <option value="Bajo">{t('inspection.ui.formulario_inspeccion.low')}</option>
+              <option value="Medio">{t('inspection.ui.formulario_inspeccion.medium')}</option>
+              <option value="Alto">{t('inspection.ui.formulario_inspeccion.high')}</option>
+              <option value="Extremo">{t('inspection.ui.formulario_inspeccion.extreme')}</option>
             </select>
           </td>
         </tr>
@@ -8414,7 +8393,7 @@ return (
               color: textPrimary
             }}
           >
-            Descripción de los contenidos
+            {t('inspection.ui.formulario_inspeccion.contentsDescription')}
           </td>
           <td 
             style={{
@@ -8426,7 +8405,7 @@ return (
               type="text"
               value={descripcionContenidosInsumo}
               onChange={(e) => setDescripcionContenidosInsumo(e.target.value)}
-            placeholder="Descripción de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -8434,7 +8413,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
               disabled={cargando}
             />
           </td>
@@ -8466,24 +8445,24 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
               <option value="">Contenedores</option>
-              <option value="Empaque combustible">Empaque combustible</option>
-              <option value="Empaque no combustible">Empaque no combustible</option>
-              <option value="Contenedores metálicos">Contenedores metálicos</option>
-              <option value="Contenedores plásticos">Contenedores plásticos</option>
-              <option value="Sacos">Sacos</option>
-              <option value="Bidones">Bidones</option>
-              <option value="Otro">Otro</option>
+              <option value="Empaque combustible">{t('inspection.ui.formulario_inspeccion.combustiblePackaging')}</option>
+              <option value="Empaque no combustible">{t('inspection.ui.formulario_inspeccion.nonCombustiblePackaging')}</option>
+              <option value="Contenedores metálicos">{t('inspection.ui.formulario_inspeccion.metalContainers')}</option>
+              <option value="Contenedores plásticos">{t('inspection.ui.formulario_inspeccion.plasticContainers')}</option>
+              <option value="Sacos">{t('inspection.ui.formulario_inspeccion.sacks')}</option>
+              <option value="Bidones">{t('inspection.ui.formulario_inspeccion.drums')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {contenedoresInsumo === "Otro" && (
               <input
                 type="text"
                 value={contenedoresInsumoOtro}
                 onChange={(e) => setContenedoresInsumoOtro(e.target.value)}
-            placeholder="Contenedores"
+            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8491,7 +8470,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Contenedores"
+            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
                 disabled={cargando}
               />
             )}
@@ -8506,7 +8485,7 @@ return (
               color: textPrimary
             }}
           >
-            Tipo de almacenamiento
+            {t('inspection.ui.formulario_inspeccion.storageType')}
           </td>
           <td 
             style={{
@@ -8524,23 +8503,23 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Tipo de almacenamiento</option>
-              <option value="Almacenamiento en silos, tanques o contenedores">Almacenamiento en silos, tanques o contenedores</option>
-              <option value="Almacenamiento en estanterías">Almacenamiento en estanterías</option>
-              <option value="Almacenamiento en pallets">Almacenamiento en pallets</option>
-              <option value="Almacenamiento en bodega cerrada">Almacenamiento en bodega cerrada</option>
-              <option value="Almacenamiento al aire libre">Almacenamiento al aire libre</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.storageType')}</option>
+              <option value="Almacenamiento en silos, tanques o contenedores">{t('inspection.ui.formulario_inspeccion.storageSilos')}</option>
+              <option value="Almacenamiento en estanterías">{t('inspection.ui.formulario_inspeccion.storageShelving')}</option>
+              <option value="Almacenamiento en pallets">{t('inspection.ui.formulario_inspeccion.storagePallets')}</option>
+              <option value="Almacenamiento en bodega cerrada">{t('inspection.ui.formulario_inspeccion.storageWarehouse')}</option>
+              <option value="Almacenamiento al aire libre">{t('inspection.ui.formulario_inspeccion.storageOpenAir')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoAlmacenamientoInsumo === "Otro" && (
               <input
                 type="text"
                 value={tipoAlmacenamientoInsumoOtro}
                 onChange={(e) => setTipoAlmacenamientoInsumoOtro(e.target.value)}
-            placeholder="Tipo de almacenamiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8548,7 +8527,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de almacenamiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
                 disabled={cargando}
               />
             )}
@@ -8563,7 +8542,7 @@ return (
               color: textPrimary
             }}
           >
-            Estado de almacenamiento
+            {t('inspection.ui.formulario_inspeccion.storageCondition')}
           </td>
           <td 
             style={{
@@ -8581,14 +8560,14 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Estado de almacenamiento</option>
-              <option value="Adecuado">Adecuado</option>
-              <option value="Regular">Regular</option>
-              <option value="Deficiente">Deficiente</option>
-              <option value="Crítico">Crítico</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.storageCondition')}</option>
+              <option value="Adecuado">{t('inspection.ui.formulario_inspeccion.adequate')}</option>
+              <option value="Regular">{t('inspection.ui.formulario_inspeccion.regular')}</option>
+              <option value="Deficiente">{t('inspection.ui.formulario_inspeccion.deficient')}</option>
+              <option value="Crítico">{t('inspection.ui.formulario_inspeccion.critical')}</option>
             </select>
           </td>
         </tr>
@@ -8624,7 +8603,7 @@ return (
               width: '30%'
             }}
           >
-            Tipo de materias primas
+            {t('inspection.ui.formulario_inspeccion.rawMaterialType')}
           </td>
           <td 
             style={{
@@ -8642,24 +8621,24 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Tipo de materias primas</option>
-              <option value="No combustibles">No combustibles</option>
-              <option value="Combustibles">Combustibles</option>
-              <option value="Inflamables">Inflamables</option>
-              <option value="Explosivos">Explosivos</option>
-              <option value="Tóxicos">Tóxicos</option>
-              <option value="Corrosivos">Corrosivos</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.rawMaterialType')}</option>
+              <option value="No combustibles">{t('inspection.ui.formulario_inspeccion.nonCombustibles')}</option>
+              <option value="Combustibles">{t('inspection.ui.formulario_inspeccion.combustibles')}</option>
+              <option value="Inflamables">{t('inspection.ui.formulario_inspeccion.flammables')}</option>
+              <option value="Explosivos">{t('inspection.ui.formulario_inspeccion.explosives')}</option>
+              <option value="Tóxicos">{t('inspection.ui.formulario_inspeccion.toxics')}</option>
+              <option value="Corrosivos">{t('inspection.ui.formulario_inspeccion.corrosives')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoMateriasPrimas === "Otro" && (
               <input
                 type="text"
                 value={tipoMateriasPrimasOtro}
                 onChange={(e) => setTipoMateriasPrimasOtro(e.target.value)}
-            placeholder="Tipo de materias primas"
+            placeholder={t('inspection.ui.formulario_inspeccion.rawMaterialType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8667,7 +8646,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de materias primas"
+            placeholder={t('inspection.ui.formulario_inspeccion.rawMaterialType')}
                 disabled={cargando}
               />
             )}
@@ -8682,7 +8661,7 @@ return (
               color: textPrimary
             }}
           >
-            Nivel de riesgo
+            {t('inspection.ui.formulario_inspeccion.riskLevel')}
           </td>
           <td 
             style={{
@@ -8700,14 +8679,14 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Nivel de riesgo</option>
-              <option value="Bajo">Bajo</option>
-              <option value="Medio">Medio</option>
-              <option value="Alto">Alto</option>
-              <option value="Extremo">Extremo</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.riskLevel')}</option>
+              <option value="Bajo">{t('inspection.ui.formulario_inspeccion.low')}</option>
+              <option value="Medio">{t('inspection.ui.formulario_inspeccion.medium')}</option>
+              <option value="Alto">{t('inspection.ui.formulario_inspeccion.high')}</option>
+              <option value="Extremo">{t('inspection.ui.formulario_inspeccion.extreme')}</option>
             </select>
           </td>
         </tr>
@@ -8720,7 +8699,7 @@ return (
               color: textPrimary
             }}
           >
-            Descripción de los contenidos
+            {t('inspection.ui.formulario_inspeccion.contentsDescription')}
           </td>
           <td 
             style={{
@@ -8732,7 +8711,7 @@ return (
               type="text"
               value={descripcionContenidosMateriasPrimas}
               onChange={(e) => setDescripcionContenidosMateriasPrimas(e.target.value)}
-            placeholder="Descripción de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -8740,7 +8719,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
               disabled={cargando}
             />
           </td>
@@ -8772,24 +8751,24 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
               <option value="">Contenedores</option>
-              <option value="Empaque combustible">Empaque combustible</option>
-              <option value="Empaque no combustible">Empaque no combustible</option>
-              <option value="Contenedores metálicos">Contenedores metálicos</option>
-              <option value="Contenedores plásticos">Contenedores plásticos</option>
-              <option value="Sacos">Sacos</option>
-              <option value="Bidones">Bidones</option>
-              <option value="Otro">Otro</option>
+              <option value="Empaque combustible">{t('inspection.ui.formulario_inspeccion.combustiblePackaging')}</option>
+              <option value="Empaque no combustible">{t('inspection.ui.formulario_inspeccion.nonCombustiblePackaging')}</option>
+              <option value="Contenedores metálicos">{t('inspection.ui.formulario_inspeccion.metalContainers')}</option>
+              <option value="Contenedores plásticos">{t('inspection.ui.formulario_inspeccion.plasticContainers')}</option>
+              <option value="Sacos">{t('inspection.ui.formulario_inspeccion.sacks')}</option>
+              <option value="Bidones">{t('inspection.ui.formulario_inspeccion.drums')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {contenedoresMateriasPrimas === "Otro" && (
               <input
                 type="text"
                 value={contenedoresMateriasPrimasOtro}
                 onChange={(e) => setContenedoresMateriasPrimasOtro(e.target.value)}
-            placeholder="Contenedores"
+            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8797,7 +8776,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Contenedores"
+            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
                 disabled={cargando}
               />
             )}
@@ -8812,7 +8791,7 @@ return (
               color: textPrimary
             }}
           >
-            Tipo de almacenamiento
+            {t('inspection.ui.formulario_inspeccion.storageType')}
           </td>
           <td 
             style={{
@@ -8830,23 +8809,23 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Tipo de almacenamiento</option>
-              <option value="Almacenamiento en silos, tanques o contenedores">Almacenamiento en silos, tanques o contenedores</option>
-              <option value="Almacenamiento en estanterías">Almacenamiento en estanterías</option>
-              <option value="Almacenamiento en pallets">Almacenamiento en pallets</option>
-              <option value="Almacenamiento en bodega cerrada">Almacenamiento en bodega cerrada</option>
-              <option value="Almacenamiento al aire libre">Almacenamiento al aire libre</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.storageType')}</option>
+              <option value="Almacenamiento en silos, tanques o contenedores">{t('inspection.ui.formulario_inspeccion.storageSilos')}</option>
+              <option value="Almacenamiento en estanterías">{t('inspection.ui.formulario_inspeccion.storageShelving')}</option>
+              <option value="Almacenamiento en pallets">{t('inspection.ui.formulario_inspeccion.storagePallets')}</option>
+              <option value="Almacenamiento en bodega cerrada">{t('inspection.ui.formulario_inspeccion.storageWarehouse')}</option>
+              <option value="Almacenamiento al aire libre">{t('inspection.ui.formulario_inspeccion.storageOpenAir')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoAlmacenamientoMateriasPrimas === "Otro" && (
               <input
                 type="text"
                 value={tipoAlmacenamientoMateriasPrimasOtro}
                 onChange={(e) => setTipoAlmacenamientoMateriasPrimasOtro(e.target.value)}
-            placeholder="Tipo de almacenamiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8854,7 +8833,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de almacenamiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
                 disabled={cargando}
               />
             )}
@@ -8869,7 +8848,7 @@ return (
               color: textPrimary
             }}
           >
-            Estado de almacenamiento
+            {t('inspection.ui.formulario_inspeccion.storageCondition')}
           </td>
           <td 
             style={{
@@ -8887,14 +8866,14 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Estado de almacenamiento</option>
-              <option value="Adecuado">Adecuado</option>
-              <option value="Regular">Regular</option>
-              <option value="Deficiente">Deficiente</option>
-              <option value="Crítico">Crítico</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.storageCondition')}</option>
+              <option value="Adecuado">{t('inspection.ui.formulario_inspeccion.adequate')}</option>
+              <option value="Regular">{t('inspection.ui.formulario_inspeccion.regular')}</option>
+              <option value="Deficiente">{t('inspection.ui.formulario_inspeccion.deficient')}</option>
+              <option value="Crítico">{t('inspection.ui.formulario_inspeccion.critical')}</option>
             </select>
           </td>
         </tr>
@@ -8909,7 +8888,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Producto terminado y/o Mercancías
+    {t('inspection.ui.formulario_inspeccion.finishedGoods')}
   </h3>
   <div className="overflow-x-auto">
     <table 
@@ -8930,7 +8909,7 @@ return (
               width: '30%'
             }}
           >
-            Tipo de mercancías
+            {t('inspection.ui.formulario_inspeccion.merchandiseType')}
           </td>
           <td 
             style={{
@@ -8948,24 +8927,24 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Tipo de mercancías</option>
-              <option value="No combustibles">No combustibles</option>
-              <option value="Combustibles">Combustibles</option>
-              <option value="Inflamables">Inflamables</option>
-              <option value="Explosivos">Explosivos</option>
-              <option value="Tóxicos">Tóxicos</option>
-              <option value="Corrosivos">Corrosivos</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.merchandiseType')}</option>
+              <option value="No combustibles">{t('inspection.ui.formulario_inspeccion.nonCombustibles')}</option>
+              <option value="Combustibles">{t('inspection.ui.formulario_inspeccion.combustibles')}</option>
+              <option value="Inflamables">{t('inspection.ui.formulario_inspeccion.flammables')}</option>
+              <option value="Explosivos">{t('inspection.ui.formulario_inspeccion.explosives')}</option>
+              <option value="Tóxicos">{t('inspection.ui.formulario_inspeccion.toxics')}</option>
+              <option value="Corrosivos">{t('inspection.ui.formulario_inspeccion.corrosives')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoMercancias === "Otro" && (
               <input
                 type="text"
                 value={tipoMercanciasOtro}
                 onChange={(e) => setTipoMercanciasOtro(e.target.value)}
-            placeholder="Tipo de mercancías"
+            placeholder={t('inspection.ui.formulario_inspeccion.merchandiseType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -8973,7 +8952,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de mercancías"
+            placeholder={t('inspection.ui.formulario_inspeccion.merchandiseType')}
                 disabled={cargando}
               />
             )}
@@ -8988,7 +8967,7 @@ return (
               color: textPrimary
             }}
           >
-            Nivel de riesgo
+            {t('inspection.ui.formulario_inspeccion.riskLevel')}
           </td>
           <td 
             style={{
@@ -9006,14 +8985,14 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Nivel de riesgo</option>
-              <option value="Bajo">Bajo</option>
-              <option value="Medio">Medio</option>
-              <option value="Alto">Alto</option>
-              <option value="Extremo">Extremo</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.riskLevel')}</option>
+              <option value="Bajo">{t('inspection.ui.formulario_inspeccion.low')}</option>
+              <option value="Medio">{t('inspection.ui.formulario_inspeccion.medium')}</option>
+              <option value="Alto">{t('inspection.ui.formulario_inspeccion.high')}</option>
+              <option value="Extremo">{t('inspection.ui.formulario_inspeccion.extreme')}</option>
             </select>
           </td>
         </tr>
@@ -9026,7 +9005,7 @@ return (
               color: textPrimary
             }}
           >
-            Descripción de los contenidos
+            {t('inspection.ui.formulario_inspeccion.contentsDescription')}
           </td>
           <td 
             style={{
@@ -9038,7 +9017,7 @@ return (
               type="text"
               value={descripcionContenidosMercancias}
               onChange={(e) => setDescripcionContenidosMercancias(e.target.value)}
-            placeholder="Descripción de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9046,7 +9025,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentsDescription')}
               disabled={cargando}
             />
           </td>
@@ -9078,24 +9057,24 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
               <option value="">Contenedores</option>
-              <option value="Empaque combustible">Empaque combustible</option>
-              <option value="Empaque no combustible">Empaque no combustible</option>
-              <option value="Contenedores metálicos">Contenedores metálicos</option>
-              <option value="Contenedores plásticos">Contenedores plásticos</option>
-              <option value="Sacos">Sacos</option>
-              <option value="Bidones">Bidones</option>
-              <option value="Otro">Otro</option>
+              <option value="Empaque combustible">{t('inspection.ui.formulario_inspeccion.combustiblePackaging')}</option>
+              <option value="Empaque no combustible">{t('inspection.ui.formulario_inspeccion.nonCombustiblePackaging')}</option>
+              <option value="Contenedores metálicos">{t('inspection.ui.formulario_inspeccion.metalContainers')}</option>
+              <option value="Contenedores plásticos">{t('inspection.ui.formulario_inspeccion.plasticContainers')}</option>
+              <option value="Sacos">{t('inspection.ui.formulario_inspeccion.sacks')}</option>
+              <option value="Bidones">{t('inspection.ui.formulario_inspeccion.drums')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {contenedoresMercancias === "Otro" && (
               <input
                 type="text"
                 value={contenedoresMercanciasOtro}
                 onChange={(e) => setContenedoresMercanciasOtro(e.target.value)}
-            placeholder="Contenedores"
+            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9103,7 +9082,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Contenedores"
+            placeholder={t('inspection.ui.formulario_inspeccion.containers')}
                 disabled={cargando}
               />
             )}
@@ -9118,7 +9097,7 @@ return (
               color: textPrimary
             }}
           >
-            Tipo de almacenamiento
+            {t('inspection.ui.formulario_inspeccion.storageType')}
           </td>
           <td 
             style={{
@@ -9136,23 +9115,23 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Tipo de almacenamiento</option>
-              <option value="Almacenamiento en silos, tanques o contenedores">Almacenamiento en silos, tanques o contenedores</option>
-              <option value="Almacenamiento en estanterías">Almacenamiento en estanterías</option>
-              <option value="Almacenamiento en pallets">Almacenamiento en pallets</option>
-              <option value="Almacenamiento en bodega cerrada">Almacenamiento en bodega cerrada</option>
-              <option value="Almacenamiento al aire libre">Almacenamiento al aire libre</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.storageType')}</option>
+              <option value="Almacenamiento en silos, tanques o contenedores">{t('inspection.ui.formulario_inspeccion.storageSilos')}</option>
+              <option value="Almacenamiento en estanterías">{t('inspection.ui.formulario_inspeccion.storageShelving')}</option>
+              <option value="Almacenamiento en pallets">{t('inspection.ui.formulario_inspeccion.storagePallets')}</option>
+              <option value="Almacenamiento en bodega cerrada">{t('inspection.ui.formulario_inspeccion.storageWarehouse')}</option>
+              <option value="Almacenamiento al aire libre">{t('inspection.ui.formulario_inspeccion.storageOpenAir')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoAlmacenamientoMercancias === "Otro" && (
               <input
                 type="text"
                 value={tipoAlmacenamientoMercanciasOtro}
                 onChange={(e) => setTipoAlmacenamientoMercanciasOtro(e.target.value)}
-            placeholder="Tipo de almacenamiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9160,7 +9139,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de almacenamiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
                 disabled={cargando}
               />
             )}
@@ -9175,7 +9154,7 @@ return (
               color: textPrimary
             }}
           >
-            Estado de almacenamiento
+            {t('inspection.ui.formulario_inspeccion.storageCondition')}
           </td>
           <td 
             style={{
@@ -9193,14 +9172,14 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Descripción de Procesos"
+            placeholder={t('inspection.ui.formulario_inspeccion.processDescription')}
               disabled={cargando}
             >
-              <option value="">Estado de almacenamiento</option>
-              <option value="Adecuado">Adecuado</option>
-              <option value="Regular">Regular</option>
-              <option value="Deficiente">Deficiente</option>
-              <option value="Crítico">Crítico</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.storageCondition')}</option>
+              <option value="Adecuado">{t('inspection.ui.formulario_inspeccion.adequate')}</option>
+              <option value="Regular">{t('inspection.ui.formulario_inspeccion.regular')}</option>
+              <option value="Deficiente">{t('inspection.ui.formulario_inspeccion.deficient')}</option>
+              <option value="Crítico">{t('inspection.ui.formulario_inspeccion.critical')}</option>
             </select>
           </td>
         </tr>
@@ -9229,7 +9208,7 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
 >
-  5. LINDEROS
+  {tituloSeccionUi('linderos', t('inspection.sections.linderos'))}
 </h2>
 
 <div className="grid grid-cols-2 gap-4 text-sm mb-6">
@@ -9238,14 +9217,14 @@ return (
       htmlFor="norte"
       style={{ color: textPrimary }}
     >
-      NORTE:
+      {t('inspection.ui.formulario_inspeccion.north')}
     </label>
     <input
       type="text"
       id="norte"
       value={linderoNorte}
       onChange={(e) => setLinderoNorte(e.target.value)}
-      placeholder="Ej. Vía pública"
+      placeholder={t('inspection.ui.formulario_inspeccion.publicRoadExample')}
       className="px-2 py-1 rounded w-full"
       style={{
         backgroundColor: inputBg,
@@ -9261,14 +9240,14 @@ return (
       htmlFor="sur"
       style={{ color: textPrimary }}
     >
-      SUR:
+      {t('inspection.ui.formulario_inspeccion.south')}
     </label>
     <input
       type="text"
       id="sur"
       value={linderoSur}
       onChange={(e) => setLinderoSur(e.target.value)}
-      placeholder="Ej. Vía pública"
+      placeholder={t('inspection.ui.formulario_inspeccion.publicRoadExample')}
       className="px-2 py-1 rounded w-full"
       style={{
         backgroundColor: inputBg,
@@ -9284,14 +9263,14 @@ return (
       htmlFor="oriente"
       style={{ color: textPrimary }}
     >
-      ORIENTE:
+      {t('inspection.ui.formulario_inspeccion.east')}
     </label>
     <input
       type="text"
       id="oriente"
       value={linderoOriente}
       onChange={(e) => setLinderoOriente(e.target.value)}
-      placeholder="Ej. Lote Baldío"
+      placeholder={t('inspection.ui.formulario_inspeccion.vacantLotExample')}
       className="px-2 py-1 rounded w-full"
       style={{
         backgroundColor: inputBg,
@@ -9307,14 +9286,14 @@ return (
       htmlFor="occidente"
       style={{ color: textPrimary }}
     >
-      OCCIDENTE:
+      {t('inspection.ui.formulario_inspeccion.west')}
     </label>
     <input
       type="text"
       id="occidente"
       value={linderoOccidente}
       onChange={(e) => setLinderoOccidente(e.target.value)}
-      placeholder="Ej. Edificación"
+      placeholder={t('inspection.ui.formulario_inspeccion.buildingExample')}
       className="px-2 py-1 rounded w-full"
       style={{
         backgroundColor: inputBg,
@@ -9337,7 +9316,7 @@ return (
       className="text-sm font-bold mb-3"
       style={{ color: textPrimary }}
     >
-      COORDENADAS DE UBICACIÓN
+      {t('inspection.ui.formulario_inspeccion.locationCoordinates')}
     </h3>
     <div className="grid grid-cols-2 gap-4 text-sm">
       <div>
@@ -9346,13 +9325,13 @@ return (
           htmlFor="latitud-coordenada"
           style={{ color: textPrimary }}
         >
-          LATITUD:
+          {t('inspection.ui.formulario_inspeccion.latitude')}
         </label>
         <input
           type="text"
           id="latitud-coordenada"
           value={coordenadasMapa.latitud}
-          placeholder="Se llena desde el mapa"
+          placeholder={t('inspection.ui.formulario_inspeccion.filledFromMap')}
           readOnly
           className="px-2 py-1 rounded w-full"
           style={{
@@ -9369,13 +9348,13 @@ return (
           htmlFor="longitud-coordenada"
           style={{ color: textPrimary }}
         >
-          LONGITUD:
+          {t('inspection.ui.formulario_inspeccion.longitude')}
         </label>
         <input
           type="text"
           id="longitud-coordenada"
           value={coordenadasMapa.longitud}
-          placeholder="Se llena desde el mapa"
+          placeholder={t('inspection.ui.formulario_inspeccion.filledFromMap')}
           readOnly
           className="px-2 py-1 rounded w-full"
           style={{
@@ -9391,7 +9370,7 @@ return (
 
 {/* Mapa Google Earth */}
 <div className="mt-4">
-  <Suspense fallback={<div style={{ color: textPrimary }}>Cargando mapa...</div>}>
+  <Suspense fallback={<div style={{ color: textPrimary }}>{t('inspection.ui.formulario_inspeccion.loadingMap')}</div>}>
     <MapaGoogleEarth 
       onMapReady={handleGoogleEarthMapReady}
       apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
@@ -9406,11 +9385,11 @@ return (
   {imagenMapa && (
     <div className="mt-3 p-2 rounded" style={{ border: `1px solid ${borderColor}` }}>
       <p className="text-xs mb-2" style={{ color: textSecondary }}>
-        Captura del mapa guardada en historial
+        {t('inspection.ui.formulario_inspeccion.mapCaptureSaved')}
       </p>
       <img
         src={imagenMapa}
-        alt="Mapa guardado"
+        alt={t('inspection.ui.formulario_inspeccion.savedMap')}
         className="w-full max-h-64 object-contain rounded"
         style={{ backgroundColor: theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}
       />
@@ -9436,10 +9415,10 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
 >
-  6. SUSTRACCIÓN - PROTECCIONES FÍSICAS
+  {tituloSeccionUi('sustraccion', t('inspection.ui.formulario_inspeccion.section6Title'))}
 </h2>
 
-{/* Tabla: Protecciones Físicas (campos bajo 6. SUSTRACCIÓN - PROTECCIONES FÍSICAS) */}
+{/* Tabla: Protecciones Fisicas (campos bajo seccion 6) */}
 <div className="mb-6">
   <div className="overflow-x-auto">
     <table 
@@ -9460,7 +9439,7 @@ return (
               width: '40%'
             }}
           >
-            Ubicación del predio
+            {t('inspection.ui.formulario_inspeccion.propertyLocation')}
           </td>
           <td 
             style={{
@@ -9478,23 +9457,22 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Ubicación del predio</option>
-              <option value="Comercial cerrado">Comercial cerrado</option>
-              <option value="Comercial abierto">Comercial abierto</option>
-              <option value="Industrial">Industrial</option>
-              <option value="Residencial">Residencial</option>
-              <option value="Mixto">Mixto</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.propertyLocation')}</option>
+              <option value="Comercial cerrado">{t('inspection.ui.formulario_inspeccion.commercialClosed')}</option>
+              <option value="Comercial abierto">{t('inspection.ui.formulario_inspeccion.commercialOpen')}</option>
+              <option value="Industrial">{t('inspection.ui.formulario_inspeccion.industrial')}</option>
+              <option value="Residencial">{t('inspection.ui.formulario_inspeccion.residential')}</option>
+              <option value="Mixto">{t('inspection.ui.formulario_inspeccion.mixed')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {ubicacionPredio === "Otro" && (
               <input
                 type="text"
                 value={ubicacionPredioOtro}
                 onChange={(e) => setUbicacionPredioOtro(e.target.value)}
-            placeholder="Ubicación del predio"
+            placeholder={t('inspection.ui.formulario_inspeccion.propertyLocation')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9502,7 +9480,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Ubicación del predio"
+            placeholder={t('inspection.ui.formulario_inspeccion.propertyLocation')}
                 disabled={cargando}
               />
             )}
@@ -9517,7 +9495,7 @@ return (
               color: textPrimary
             }}
           >
-            Vulnerabilidad de los contenidos
+            {t('inspection.ui.formulario_inspeccion.contentVulnerability')}
           </td>
           <td 
             style={{
@@ -9535,23 +9513,22 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Vulnerabilidad de los contenidos</option>
-              <option value="De uso exclusivo - No comercializable">De uso exclusivo - No comercializable</option>
-              <option value="Comercializable">Comercializable</option>
-              <option value="Alto valor">Alto valor</option>
-              <option value="Valor medio">Valor medio</option>
-              <option value="Bajo valor">Bajo valor</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.contentVulnerability')}</option>
+              <option value="De uso exclusivo - No comercializable">{t('inspection.ui.formulario_inspeccion.exclusiveUseNonCommercial')}</option>
+              <option value="Comercializable">{t('inspection.ui.formulario_inspeccion.marketable')}</option>
+              <option value="Alto valor">{t('inspection.ui.formulario_inspeccion.highValue')}</option>
+              <option value="Valor medio">{t('inspection.ui.formulario_inspeccion.mediumValue')}</option>
+              <option value="Bajo valor">{t('inspection.ui.formulario_inspeccion.lowValue')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {vulnerabilidadContenidos === "Otro" && (
               <input
                 type="text"
                 value={vulnerabilidadContenidosOtro}
                 onChange={(e) => setVulnerabilidadContenidosOtro(e.target.value)}
-            placeholder="Vulnerabilidad de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentVulnerability')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9559,7 +9536,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Vulnerabilidad de los contenidos"
+            placeholder={t('inspection.ui.formulario_inspeccion.contentVulnerability')}
                 disabled={cargando}
               />
             )}
@@ -9574,7 +9551,7 @@ return (
               color: textPrimary
             }}
           >
-            Acceso a las instalaciones
+            {t('inspection.ui.formulario_inspeccion.facilityAccess')}
           </td>
           <td 
             style={{
@@ -9592,22 +9569,21 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Acceso a las instalaciones</option>
-              <option value="Con cerramiento perimetral y acceso controlado">Con cerramiento perimetral y acceso controlado</option>
-              <option value="Con cerramiento perimetral sin acceso controlado">Con cerramiento perimetral sin acceso controlado</option>
-              <option value="Sin cerramiento perimetral">Sin cerramiento perimetral</option>
-              <option value="Acceso libre">Acceso libre</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.facilityAccess')}</option>
+              <option value="Con cerramiento perimetral y acceso controlado">{t('inspection.ui.formulario_inspeccion.perimeterWithControlledAccess')}</option>
+              <option value="Con cerramiento perimetral sin acceso controlado">{t('inspection.ui.formulario_inspeccion.perimeterWithoutControlledAccess')}</option>
+              <option value="Sin cerramiento perimetral">{t('inspection.ui.formulario_inspeccion.noPerimeterFencing')}</option>
+              <option value="Acceso libre">{t('inspection.ui.formulario_inspeccion.freeAccess')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {accesoInstalaciones === "Otro" && (
               <input
                 type="text"
                 value={accesoInstalacionesOtro}
                 onChange={(e) => setAccesoInstalacionesOtro(e.target.value)}
-            placeholder="Acceso a las instalaciones"
+            placeholder={t('inspection.ui.formulario_inspeccion.facilityAccess')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9615,7 +9591,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Acceso a las instalaciones"
+            placeholder={t('inspection.ui.formulario_inspeccion.facilityAccess')}
                 disabled={cargando}
               />
             )}
@@ -9630,7 +9606,7 @@ return (
               color: textPrimary
             }}
           >
-            Circulación de personas externas
+            {t('inspection.ui.formulario_inspeccion.externalPeopleCirculation')}
           </td>
           <td 
             style={{
@@ -9648,22 +9624,21 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Circulación de personas externas</option>
-              <option value="No se realiza atención al público - no hay afluencia de público">No se realiza atención al público - no hay afluencia de público</option>
-              <option value="Se realiza atención al público controlada">Se realiza atención al público controlada</option>
-              <option value="Alta afluencia de público">Alta afluencia de público</option>
-              <option value="Afluencia moderada de público">Afluencia moderada de público</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.externalPeopleCirculation')}</option>
+              <option value="No se realiza atención al público - no hay afluencia de público">{t('inspection.ui.formulario_inspeccion.noPublicAttention')}</option>
+              <option value="Se realiza atención al público controlada">{t('inspection.ui.formulario_inspeccion.controlledPublicAttention')}</option>
+              <option value="Alta afluencia de público">{t('inspection.ui.formulario_inspeccion.highPublicFlow')}</option>
+              <option value="Afluencia moderada de público">{t('inspection.ui.formulario_inspeccion.moderatePublicFlow')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {circulacionPersonasExternas === "Otro" && (
               <input
                 type="text"
                 value={circulacionPersonasExternasOtro}
                 onChange={(e) => setCirculacionPersonasExternasOtro(e.target.value)}
-            placeholder="Circulación de personas externas"
+            placeholder={t('inspection.ui.formulario_inspeccion.externalPeopleCirculation')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9671,7 +9646,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Circulación de personas externas"
+            placeholder={t('inspection.ui.formulario_inspeccion.externalPeopleCirculation')}
                 disabled={cargando}
               />
             )}
@@ -9704,22 +9679,21 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Protecciones pasivas</option>
-              <option value="Todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas">Todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas</option>
-              <option value="No todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas">No todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas</option>
-              <option value="Sin protecciones pasivas">Sin protecciones pasivas</option>
-              <option value="Protecciones parciales">Protecciones parciales</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.passiveProtections')}</option>
+              <option value="Todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas">{t('inspection.ui.formulario_inspeccion.allDoorsHaveBars')}</option>
+              <option value="No todas las puertas, ventanas y/o patios poseen rejas o persianas metálicas">{t('inspection.ui.formulario_inspeccion.notAllDoorsHaveBars')}</option>
+              <option value="Sin protecciones pasivas">{t('inspection.ui.formulario_inspeccion.noPassiveProtections')}</option>
+              <option value="Protecciones parciales">{t('inspection.ui.formulario_inspeccion.partialProtections')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {proteccionesPasivas === "Otro" && (
               <input
                 type="text"
                 value={proteccionesPasivasOtro}
                 onChange={(e) => setProteccionesPasivasOtro(e.target.value)}
-            placeholder="Protecciones pasivas"
+            placeholder={t('inspection.ui.formulario_inspeccion.passiveProtections')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -9727,7 +9701,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Protecciones pasivas"
+            placeholder={t('inspection.ui.formulario_inspeccion.passiveProtections')}
                 disabled={cargando}
               />
             )}
@@ -9744,7 +9718,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Manejo de dinero
+    {t('inspection.ui.formulario_inspeccion.moneyHandling')}
   </h3>
   <div className="overflow-x-auto">
     <table
@@ -9765,21 +9739,21 @@ return (
               width: '40%'
             }}
           >
-            Personal de recaudo
+            {t('inspection.ui.formulario_inspeccion.collectionStaff')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
             <input
               type="text"
               value={personalRecaudo}
               onChange={(e) => setPersonalRecaudo(e.target.value)}
-            placeholder="Personal de recaudo"
+            placeholder={t('inspection.ui.formulario_inspeccion.collectionStaff')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Personal de recaudo"
+            placeholder={t('inspection.ui.formulario_inspeccion.collectionStaff')}
               disabled={cargando}
             />
           </td>
@@ -9793,21 +9767,21 @@ return (
               color: textPrimary
             }}
           >
-            Horarios de recaudo
+            {t('inspection.ui.formulario_inspeccion.collectionSchedules')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
             <input
               type="text"
               value={horariosRecaudo}
               onChange={(e) => setHorariosRecaudo(e.target.value)}
-            placeholder="Horarios de recaudo"
+            placeholder={t('inspection.ui.formulario_inspeccion.collectionSchedules')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Horarios de recaudo"
+            placeholder={t('inspection.ui.formulario_inspeccion.collectionSchedules')}
               disabled={cargando}
             />
           </td>
@@ -9821,21 +9795,21 @@ return (
               color: textPrimary
             }}
           >
-            Lugar de recaudo
+            {t('inspection.ui.formulario_inspeccion.collectionPlace')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
             <input
               type="text"
               value={lugarRecaudo}
               onChange={(e) => setLugarRecaudo(e.target.value)}
-            placeholder="Lugar de recaudo"
+            placeholder={t('inspection.ui.formulario_inspeccion.collectionPlace')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Lugar de recaudo"
+            placeholder={t('inspection.ui.formulario_inspeccion.collectionPlace')}
               disabled={cargando}
             />
           </td>
@@ -9849,21 +9823,21 @@ return (
               color: textPrimary
             }}
           >
-            Transporte de dinero
+            {t('inspection.ui.formulario_inspeccion.moneyTransport')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
             <input
               type="text"
               value={transporteDinero}
               onChange={(e) => setTransporteDinero(e.target.value)}
-            placeholder="Transporte de dinero"
+            placeholder={t('inspection.ui.formulario_inspeccion.moneyTransport')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Transporte de dinero"
+            placeholder={t('inspection.ui.formulario_inspeccion.moneyTransport')}
               disabled={cargando}
             />
           </td>
@@ -9879,7 +9853,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Sistema de Alarma
+    {t('inspection.ui.formulario_inspeccion.alarmSystem')}
   </h3>
   <div className="overflow-x-auto">
     <table 
@@ -9900,7 +9874,7 @@ return (
               width: '40%'
             }}
           >
-            Tiene alarma
+            {t('inspection.ui.formulario_inspeccion.hasAlarm')}
           </td>
           <td 
             style={{
@@ -9918,13 +9892,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Tiene alarma</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.hasAlarm')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -9955,13 +9928,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Monitoreada</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -9974,7 +9946,7 @@ return (
               color: textPrimary
             }}
           >
-            Empresa que monitorea
+            {t('inspection.ui.formulario_inspeccion.monitoringCompany')}
           </td>
           <td 
             style={{
@@ -9986,7 +9958,7 @@ return (
               type="text"
               value={empresaMonitorea}
               onChange={(e) => setEmpresaMonitorea(e.target.value)}
-            placeholder="Empresa que monitorea"
+            placeholder={t('inspection.ui.formulario_inspeccion.monitoringCompany')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -9994,7 +9966,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Empresa que monitorea"
+            placeholder={t('inspection.ui.formulario_inspeccion.monitoringCompany')}
               disabled={cargando}
             />
           </td>
@@ -10008,7 +9980,7 @@ return (
               color: textPrimary
             }}
           >
-            Tipo de comunicación
+            {t('inspection.ui.formulario_inspeccion.communicationType')}
           </td>
           <td 
             style={{
@@ -10026,23 +9998,22 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Tipo de comunicación</option>
-              <option value="Teléfono">Teléfono</option>
-              <option value="Radio">Radio</option>
-              <option value="Teléfono y radio">Teléfono y radio</option>
-              <option value="Internet">Internet</option>
-              <option value="Cable">Cable</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.communicationType')}</option>
+              <option value="Teléfono">{t('inspection.ui.formulario_inspeccion.phone')}</option>
+              <option value="Radio">{t('inspection.ui.formulario_inspeccion.radioOnly')}</option>
+              <option value="Teléfono y radio">{t('inspection.ui.formulario_inspeccion.phoneAndRadio')}</option>
+              <option value="Internet">{t('inspection.ui.formulario_inspeccion.internet')}</option>
+              <option value="Cable">{t('inspection.ui.formulario_inspeccion.cable')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoComunicacionAlarma === "Otro" && (
               <input
                 type="text"
                 value={tipoComunicacionAlarmaOtro}
                 onChange={(e) => setTipoComunicacionAlarmaOtro(e.target.value)}
-            placeholder="Tipo de comunicación"
+            placeholder={t('inspection.ui.formulario_inspeccion.communicationType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10050,7 +10021,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de comunicación"
+            placeholder={t('inspection.ui.formulario_inspeccion.communicationType')}
                 disabled={cargando}
               />
             )}
@@ -10083,7 +10054,6 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Cobertura</option>
@@ -10092,7 +10062,7 @@ return (
               <option value="50% - 75%">50% - 75%</option>
               <option value="75% - 100%">75% - 100%</option>
               <option value="100%">100%</option>
-              <option value="No aplica">No aplica</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -10123,24 +10093,23 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Sensores que posee</option>
-              <option value="Movimiento">Movimiento</option>
-              <option value="Magnéticos">Magnéticos</option>
-              <option value="Movimiento y magnéticos">Movimiento y magnéticos</option>
-              <option value="Infrarrojos">Infrarrojos</option>
-              <option value="Vibración">Vibración</option>
-              <option value="Térmicos">Térmicos</option>
-              <option value="Otro">Otro</option>
+              <option value="Movimiento">{t('inspection.ui.formulario_inspeccion.motion')}</option>
+              <option value="Magnéticos">{t('inspection.ui.formulario_inspeccion.magnetic')}</option>
+              <option value="Movimiento y magnéticos">{t('inspection.ui.formulario_inspeccion.motionAndMagnetic')}</option>
+              <option value="Infrarrojos">{t('inspection.ui.formulario_inspeccion.infrared')}</option>
+              <option value="Vibración">{t('inspection.ui.formulario_inspeccion.vibration')}</option>
+              <option value="Térmicos">{t('inspection.ui.formulario_inspeccion.thermal')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {sensoresAlarma === "Otro" && (
               <input
                 type="text"
                 value={sensoresAlarmaOtro}
                 onChange={(e) => setSensoresAlarmaOtro(e.target.value)}
-            placeholder="Sensores que posee"
+            placeholder={t('inspection.ui.formulario_inspeccion.sensorsOwned')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10148,7 +10117,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Sensores que posee"
+            placeholder={t('inspection.ui.formulario_inspeccion.sensorsOwned')}
                 disabled={cargando}
               />
             )}
@@ -10165,7 +10134,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Circuito Cerrado de Televisión - CCTV
+    {t('inspection.ui.formulario_inspeccion.cctv')}
   </h3>
   <div className="overflow-x-auto">
     <table 
@@ -10186,7 +10155,7 @@ return (
               width: '40%'
             }}
           >
-            Cuenta con CCTV
+            {t('inspection.ui.formulario_inspeccion.hasCctv')}
           </td>
           <td 
             style={{
@@ -10204,13 +10173,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Cuenta con CCTV</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.hasCctv')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -10223,7 +10191,7 @@ return (
               color: textPrimary
             }}
           >
-            Número de cámaras que posee
+            {t('inspection.ui.formulario_inspeccion.numberOfCameras')}
           </td>
           <td 
             style={{
@@ -10235,7 +10203,7 @@ return (
               type="text"
               value={numeroCamaras}
               onChange={(e) => setNumeroCamaras(e.target.value)}
-            placeholder="Número de cámaras que posee"
+            placeholder={t('inspection.ui.formulario_inspeccion.numberOfCameras')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10243,7 +10211,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Número de cámaras que posee"
+            placeholder={t('inspection.ui.formulario_inspeccion.numberOfCameras')}
               disabled={cargando}
             />
           </td>
@@ -10257,7 +10225,7 @@ return (
               color: textPrimary
             }}
           >
-            Controlado por
+            {t('inspection.ui.formulario_inspeccion.controlledBy')}
           </td>
           <td 
             style={{
@@ -10275,22 +10243,21 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Controlado por</option>
-              <option value="Personal administrativo u operativo de la empresa">Personal administrativo u operativo de la empresa</option>
-              <option value="Empresa de seguridad contratada">Empresa de seguridad contratada</option>
-              <option value="Central de monitoreo externa">Central de monitoreo externa</option>
-              <option value="No monitoreado">No monitoreado</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.controlledBy')}</option>
+              <option value="Personal administrativo u operativo de la empresa">{t('inspection.ui.formulario_inspeccion.adminOrOpsStaff')}</option>
+              <option value="Empresa de seguridad contratada">{t('inspection.ui.formulario_inspeccion.contractedSecurityCompany')}</option>
+              <option value="Central de monitoreo externa">{t('inspection.ui.formulario_inspeccion.externalMonitoringCenter')}</option>
+              <option value="No monitoreado">{t('inspection.ui.formulario_inspeccion.notMonitored')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {controladoPor === "Otro" && (
               <input
                 type="text"
                 value={controladoPorOtro}
                 onChange={(e) => setControladoPorOtro(e.target.value)}
-            placeholder="Controlado por"
+            placeholder={t('inspection.ui.formulario_inspeccion.controlledBy')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10298,7 +10265,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Controlado por"
+            placeholder={t('inspection.ui.formulario_inspeccion.controlledBy')}
                 disabled={cargando}
               />
             )}
@@ -10313,7 +10280,7 @@ return (
               color: textPrimary
             }}
           >
-            Tipo de monitoreo
+            {t('inspection.ui.formulario_inspeccion.monitoringType')}
           </td>
           <td 
             style={{
@@ -10331,23 +10298,22 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Tipo de monitoreo</option>
-              <option value="Continuo">Continuo</option>
-              <option value="Ocasional">Ocasional</option>
-              <option value="Remoto">Remoto</option>
-              <option value="Solo horario laboral">Solo horario laboral</option>
-              <option value="24 horas">24 horas</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.monitoringType')}</option>
+              <option value="Continuo">{t('inspection.ui.formulario_inspeccion.continuous')}</option>
+              <option value="Ocasional">{t('inspection.ui.formulario_inspeccion.occasional')}</option>
+              <option value="Remoto">{t('inspection.ui.formulario_inspeccion.remote')}</option>
+              <option value="Solo horario laboral">{t('inspection.ui.formulario_inspeccion.workHoursOnly')}</option>
+              <option value="24 horas">{t('inspection.ui.formulario_inspeccion.hours24')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {tipoMonitoreoCCTV === "Otro" && (
               <input
                 type="text"
                 value={tipoMonitoreoCCTVOtro}
                 onChange={(e) => setTipoMonitoreoCCTVOtro(e.target.value)}
-            placeholder="Tipo de monitoreo"
+            placeholder={t('inspection.ui.formulario_inspeccion.monitoringType')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10355,7 +10321,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Tipo de monitoreo"
+            placeholder={t('inspection.ui.formulario_inspeccion.monitoringType')}
                 disabled={cargando}
               />
             )}
@@ -10370,7 +10336,7 @@ return (
               color: textPrimary
             }}
           >
-            Frecuencia de grabación
+            {t('inspection.ui.formulario_inspeccion.recordingFrequency')}
           </td>
           <td 
             style={{
@@ -10388,23 +10354,22 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Frecuencia de grabación</option>
-              <option value="24 horas">24 horas</option>
-              <option value="Solo horario laboral">Solo horario laboral</option>
-              <option value="Solo horario nocturno">Solo horario nocturno</option>
-              <option value="Por eventos">Por eventos</option>
-              <option value="No graba">No graba</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.recordingFrequency')}</option>
+              <option value="24 horas">{t('inspection.ui.formulario_inspeccion.hours24')}</option>
+              <option value="Solo horario laboral">{t('inspection.ui.formulario_inspeccion.workHoursOnly')}</option>
+              <option value="Solo horario nocturno">{t('inspection.ui.formulario_inspeccion.nightHoursOnly')}</option>
+              <option value="Por eventos">{t('inspection.ui.formulario_inspeccion.byEvents')}</option>
+              <option value="No graba">{t('inspection.ui.formulario_inspeccion.doesNotRecord')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {frecuenciaGrabacion === "Otro" && (
               <input
                 type="text"
                 value={frecuenciaGrabacionOtro}
                 onChange={(e) => setFrecuenciaGrabacionOtro(e.target.value)}
-            placeholder="Frecuencia de grabación"
+            placeholder={t('inspection.ui.formulario_inspeccion.recordingFrequency')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10412,7 +10377,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Frecuencia de grabación"
+            placeholder={t('inspection.ui.formulario_inspeccion.recordingFrequency')}
                 disabled={cargando}
               />
             )}
@@ -10427,7 +10392,7 @@ return (
               color: textPrimary
             }}
           >
-            Tiempo de respaldo
+            {t('inspection.ui.formulario_inspeccion.backupTime')}
           </td>
           <td 
             style={{
@@ -10439,7 +10404,7 @@ return (
               type="text"
               value={tiempoRespaldo}
               onChange={(e) => setTiempoRespaldo(e.target.value)}
-            placeholder="Tiempo de respaldo"
+            placeholder={t('inspection.ui.formulario_inspeccion.backupTime')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10447,7 +10412,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Tiempo de respaldo"
+            placeholder={t('inspection.ui.formulario_inspeccion.backupTime')}
               disabled={cargando}
             />
           </td>
@@ -10461,7 +10426,7 @@ return (
               color: textPrimary
             }}
           >
-            Dispositivo de grabación
+            {t('inspection.ui.formulario_inspeccion.recordingDevice')}
           </td>
           <td 
             style={{
@@ -10479,22 +10444,21 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Dispositivo de grabación</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.recordingDevice')}</option>
               <option value="DVR">DVR</option>
               <option value="NVR">NVR</option>
               <option value="Cloud">Cloud</option>
-              <option value="Servidor local">Servidor local</option>
-              <option value="Otro">Otro</option>
+              <option value="Servidor local">{t('inspection.ui.formulario_inspeccion.localServer')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {dispositivoGrabacion === "Otro" && (
               <input
                 type="text"
                 value={dispositivoGrabacionOtro}
                 onChange={(e) => setDispositivoGrabacionOtro(e.target.value)}
-            placeholder="Dispositivo de grabación"
+            placeholder={t('inspection.ui.formulario_inspeccion.recordingDevice')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10502,7 +10466,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Dispositivo de grabación"
+            placeholder={t('inspection.ui.formulario_inspeccion.recordingDevice')}
                 disabled={cargando}
               />
             )}
@@ -10517,7 +10481,7 @@ return (
               color: textPrimary
             }}
           >
-            Ubicación del grabador
+            {t('inspection.ui.formulario_inspeccion.recorderLocation')}
           </td>
           <td 
             style={{
@@ -10535,22 +10499,21 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Ubicación del grabador</option>
-              <option value="Oculto">Oculto</option>
-              <option value="Visible">Visible</option>
-              <option value="Sala de control">Sala de control</option>
-              <option value="Oficina administrativa">Oficina administrativa</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.recorderLocation')}</option>
+              <option value="Oculto">{t('inspection.ui.formulario_inspeccion.hidden')}</option>
+              <option value="Visible">{t('inspection.ui.formulario_inspeccion.visible')}</option>
+              <option value="Sala de control">{t('inspection.ui.formulario_inspeccion.controlRoom')}</option>
+              <option value="Oficina administrativa">{t('inspection.ui.formulario_inspeccion.administrativeOffice')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {ubicacionGrabador === "Otro" && (
               <input
                 type="text"
                 value={ubicacionGrabadorOtro}
                 onChange={(e) => setUbicacionGrabadorOtro(e.target.value)}
-            placeholder="Ubicación del grabador"
+            placeholder={t('inspection.ui.formulario_inspeccion.recorderLocation')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10558,7 +10521,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Ubicación del grabador"
+            placeholder={t('inspection.ui.formulario_inspeccion.recorderLocation')}
                 disabled={cargando}
               />
             )}
@@ -10573,7 +10536,7 @@ return (
               color: textPrimary
             }}
           >
-            Visualización por internet
+            {t('inspection.ui.formulario_inspeccion.internetViewing')}
           </td>
           <td 
             style={{
@@ -10591,13 +10554,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Visualización por internet</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.internetViewing')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -10612,7 +10574,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Vigilancia
+    {t('inspection.ui.formulario_inspeccion.surveillance')}
   </h3>
   <div className="overflow-x-auto">
     <table 
@@ -10633,7 +10595,7 @@ return (
               width: '40%'
             }}
           >
-            Cuenta con vigilancia
+            {t('inspection.ui.formulario_inspeccion.hasSecurity')}
           </td>
           <td 
             style={{
@@ -10651,13 +10613,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Cuenta con vigilancia</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.hasSecurity')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -10670,7 +10631,7 @@ return (
               color: textPrimary
             }}
           >
-            Contratada con
+            {t('inspection.ui.formulario_inspeccion.contractedWith')}
           </td>
           <td 
             style={{
@@ -10682,7 +10643,7 @@ return (
               type="text"
               value={contratadaCon}
               onChange={(e) => setContratadaCon(e.target.value)}
-            placeholder="Contratada con"
+            placeholder={t('inspection.ui.formulario_inspeccion.contractedWith')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10690,7 +10651,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Contratada con"
+            placeholder={t('inspection.ui.formulario_inspeccion.contractedWith')}
               disabled={cargando}
             />
           </td>
@@ -10704,7 +10665,7 @@ return (
               color: textPrimary
             }}
           >
-            Número de vigilantes
+            {t('inspection.ui.formulario_inspeccion.guardsCount')}
           </td>
           <td 
             style={{
@@ -10716,7 +10677,7 @@ return (
               type="text"
               value={numeroVigilantes}
               onChange={(e) => setNumeroVigilantes(e.target.value)}
-            placeholder="Número de vigilantes"
+            placeholder={t('inspection.ui.formulario_inspeccion.numberOfGuards')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -10724,7 +10685,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Número de vigilantes"
+            placeholder={t('inspection.ui.formulario_inspeccion.numberOfGuards')}
               disabled={cargando}
             />
           </td>
@@ -10738,7 +10699,7 @@ return (
               color: textPrimary
             }}
           >
-            Jornada
+            {t('inspection.ui.formulario_inspeccion.workShift')}
           </td>
           <td 
             style={{
@@ -10756,23 +10717,22 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Jornada</option>
-              <option value="24 horas">24 horas</option>
-              <option value="Diurna">Diurna</option>
-              <option value="Nocturna">Nocturna</option>
-              <option value="Solo horario laboral">Solo horario laboral</option>
-              <option value="No aplica">No aplica</option>
-              <option value="Otro">Otro</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.workShift')}</option>
+              <option value="24 horas">{t('inspection.ui.formulario_inspeccion.hours24')}</option>
+              <option value="Diurna">{t('inspection.ui.formulario_inspeccion.dayShift')}</option>
+              <option value="Nocturna">{t('inspection.ui.formulario_inspeccion.nightShift')}</option>
+              <option value="Solo horario laboral">{t('inspection.ui.formulario_inspeccion.workHoursOnly')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
+              <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
             </select>
             {jornadaVigilancia === "Otro" && (
               <input
                 type="text"
                 value={jornadaVigilanciaOtro}
                 onChange={(e) => setJornadaVigilanciaOtro(e.target.value)}
-            placeholder="Jornada"
+            placeholder={t('inspection.ui.formulario_inspeccion.workShift')}
                 className="w-full px-2 py-1 rounded mt-2"
                 style={{
                   backgroundColor: inputBg,
@@ -10780,7 +10740,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Jornada"
+            placeholder={t('inspection.ui.formulario_inspeccion.workShift')}
                 disabled={cargando}
               />
             )}
@@ -10795,7 +10755,7 @@ return (
               color: textPrimary
             }}
           >
-            Tienen armas
+            {t('inspection.ui.formulario_inspeccion.haveWeapons')}
           </td>
           <td 
             style={{
@@ -10813,13 +10773,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Tienen armas</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.haveWeapons')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -10832,7 +10791,7 @@ return (
               color: textPrimary
             }}
           >
-            Tienen radio
+            {t('inspection.ui.formulario_inspeccion.haveRadio')}
           </td>
           <td 
             style={{
@@ -10850,13 +10809,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Tienen radio</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.haveRadio')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -10883,7 +10841,7 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
 >
-  7. CARACTERÍSTICAS OPERATIVAS AMBIENTALES
+  {tituloSeccionUi('caracteristicasAmbientales', t('inspection.ui.formulario_inspeccion.section7Title'))}
 </h2>
 <div className="overflow-x-auto">
   <table 
@@ -10904,7 +10862,7 @@ return (
             width: '70%'
           }}
         >
-          Requiere licencia ambiental para su funcionamiento
+          {t('inspection.ui.formulario_inspeccion.requiresEnvironmentalLicense')}
         </td>
         <td 
           style={{
@@ -10928,13 +10886,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Requiere licencia ambiental para su funcionamiento</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.requiresEnvironmentalLicense')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -10947,7 +10904,7 @@ return (
             color: textPrimary
           }}
         >
-          Requiere permiso de vertimientos o emisiones contaminantes
+          {t('inspection.ui.formulario_inspeccion.requiresDischargePermit')}
         </td>
         <td 
           style={{
@@ -10969,13 +10926,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Requiere permiso de vertimientos o emisiones contaminantes</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.requiresDischargePermit')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -10988,7 +10944,7 @@ return (
             color: textPrimary
           }}
         >
-          Consume más de 1.000 m3 de agua al mes
+          {t('inspection.ui.formulario_inspeccion.consumesOver1000m3Water')}
         </td>
         <td 
           style={{
@@ -11010,13 +10966,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Consume más de 1.000 m3 de agua al mes</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.consumesOver1000m3Water')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11029,7 +10984,7 @@ return (
             color: textPrimary
           }}
         >
-          Cuenta con bombillas ahorradoras de energía
+          {t('inspection.ui.formulario_inspeccion.hasEnergySavingBulbs')}
         </td>
         <td 
           style={{
@@ -11051,13 +11006,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Cuenta con bombillas ahorradoras de energía</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.hasEnergySavingBulbs')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11070,7 +11024,7 @@ return (
             color: textPrimary
           }}
         >
-          Hace parte del mercado no regulado de energía
+          {t('inspection.ui.formulario_inspeccion.unregulatedEnergyMarket')}
         </td>
         <td 
           style={{
@@ -11092,13 +11046,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Hace parte del mercado no regulado de energía</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.unregulatedEnergyMarket')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11111,7 +11064,7 @@ return (
             color: textPrimary
           }}
         >
-          Genera vertimiento de aguas residuales contaminantes
+          {t('inspection.ui.formulario_inspeccion.generatesContaminatedWastewater')}
         </td>
         <td 
           style={{
@@ -11133,13 +11086,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Genera vertimiento de aguas residuales contaminantes</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.generatesContaminatedWastewater')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11152,7 +11104,7 @@ return (
             color: textPrimary
           }}
         >
-          Cuenta con planta de tratamiento de aguas residuales
+          {t('inspection.ui.formulario_inspeccion.hasWastewaterTreatmentPlant')}
         </td>
         <td 
           style={{
@@ -11174,13 +11126,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Cuenta con planta de tratamiento de aguas residuales</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.hasWastewaterTreatmentPlant')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11193,7 +11144,7 @@ return (
             color: textPrimary
           }}
         >
-          Cuenta con plan de manejo integral de residuos peligrosos
+          {t('inspection.ui.formulario_inspeccion.hasHazardousWastePlan')}
         </td>
         <td 
           style={{
@@ -11215,13 +11166,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Cuenta con plan de manejo integral de residuos peligrosos</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.hasHazardousWastePlan')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11256,13 +11206,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
             <option value="">Se generan emisiones contaminantes</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11275,7 +11224,7 @@ return (
             color: textPrimary
           }}
         >
-          Cuenta con sistema de filtración o lavado de gases
+          {t('inspection.ui.formulario_inspeccion.hasGasFiltrationSystem')}
         </td>
         <td 
           style={{
@@ -11297,13 +11246,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Cuenta con sistema de filtración o lavado de gases</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.hasGasFiltrationSystem')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11316,7 +11264,7 @@ return (
             color: textPrimary
           }}
         >
-          Generan niveles de ruido que afecten a los vecinos
+          {t('inspection.ui.formulario_inspeccion.noiseAffectsNeighbors')}
         </td>
         <td 
           style={{
@@ -11338,13 +11286,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Generan niveles de ruido que afecten a los vecinos</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.noiseAffectsNeighbors')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11357,7 +11304,7 @@ return (
             color: textPrimary
           }}
         >
-          Cuenta con programa de gestión ambiental certificado
+          {t('inspection.ui.formulario_inspeccion.certifiedEnvironmentalProgram')}
         </td>
         <td 
           style={{
@@ -11379,13 +11326,12 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="LONGITUD:"
             disabled={cargando}
           >
-            <option value="">Cuenta con programa de gestión ambiental certificado</option>
-            <option value="Sí">Sí</option>
-            <option value="No">No</option>
-            <option value="No aplica">No aplica</option>
+            <option value="">{t('inspection.ui.formulario_inspeccion.certifiedEnvironmentalProgram')}</option>
+            <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+            <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+            <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
           </select>
         </td>
       </tr>
@@ -11411,7 +11357,7 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
 >
-  8. PROTECCIÓN Y PREVENCIÓN CONTRA INCENDIOS
+  {tituloSeccionUi('proteccionIncendios', t('inspection.ui.formulario_inspeccion.section8Title'))}
 </h2>
 
 {/* Subsección: Sistema de detección */}
@@ -11420,7 +11366,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Sistema de detección
+    {t('inspection.ui.formulario_inspeccion.detectionSystem')}
   </h3>
   <div className="overflow-x-auto">
     <table 
@@ -11441,7 +11387,7 @@ return (
               width: '50%'
             }}
           >
-            Cuenta con detectores de humo
+            {t('inspection.ui.formulario_inspeccion.hasSmokeDetectors')}
           </td>
           <td 
             style={{
@@ -11459,13 +11405,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">Cuenta con detectores de humo</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.hasSmokeDetectors')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -11490,7 +11435,7 @@ return (
               type="text"
               value={coberturaDeteccion}
               onChange={(e) => setCoberturaDeteccion(e.target.value)}
-            placeholder="Cobertura"
+            placeholder={t('inspection.ui.formulario_inspeccion.coverage')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11498,7 +11443,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Cobertura"
+            placeholder={t('inspection.ui.formulario_inspeccion.coverage')}
               disabled={cargando}
             />
           </td>
@@ -11512,7 +11457,7 @@ return (
               color: textPrimary
             }}
           >
-            Instalación
+            {t('inspection.ui.formulario_inspeccion.installation')}
           </td>
           <td 
             style={{
@@ -11524,7 +11469,7 @@ return (
               type="text"
               value={instalacionDeteccion}
               onChange={(e) => setInstalacionDeteccion(e.target.value)}
-            placeholder="Instalación"
+            placeholder={t('inspection.ui.formulario_inspeccion.installation')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11532,7 +11477,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Instalación"
+            placeholder={t('inspection.ui.formulario_inspeccion.installation')}
               disabled={cargando}
             />
           </td>
@@ -11564,13 +11509,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Monitoreado</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -11606,7 +11550,7 @@ return (
               width: '50%'
             }}
           >
-            Cantidad
+            {t('inspection.ui.formulario_inspeccion.quantity')}
           </td>
           <td 
             style={{
@@ -11618,7 +11562,7 @@ return (
               type="text"
               value={cantidadExtintores}
               onChange={(e) => setCantidadExtintores(e.target.value)}
-            placeholder="Cantidad"
+            placeholder={t('inspection.ui.formulario_inspeccion.quantity')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11626,7 +11570,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Cantidad"
+            placeholder={t('inspection.ui.formulario_inspeccion.quantity')}
               disabled={cargando}
             />
           </td>
@@ -11640,7 +11584,7 @@ return (
               color: textPrimary
             }}
           >
-            Tipo
+            {t('inspection.ui.formulario_inspeccion.type')}
           </td>
           <td 
             style={{
@@ -11652,7 +11596,7 @@ return (
               type="text"
               value={tipoExtintores}
               onChange={(e) => setTipoExtintores(e.target.value)}
-            placeholder="Tipo"
+            placeholder={t('inspection.ui.formulario_inspeccion.type')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11660,7 +11604,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Tipo"
+            placeholder={t('inspection.ui.formulario_inspeccion.type')}
               disabled={cargando}
             />
           </td>
@@ -11692,13 +11636,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Suficientes</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -11711,7 +11654,7 @@ return (
               color: textPrimary
             }}
           >
-            Instalación
+            {t('inspection.ui.formulario_inspeccion.installation')}
           </td>
           <td 
             style={{
@@ -11723,7 +11666,7 @@ return (
               type="text"
               value={instalacionExtintores}
               onChange={(e) => setInstalacionExtintores(e.target.value)}
-            placeholder="Instalación"
+            placeholder={t('inspection.ui.formulario_inspeccion.installation')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11731,7 +11674,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Instalación"
+            placeholder={t('inspection.ui.formulario_inspeccion.installation')}
               disabled={cargando}
             />
           </td>
@@ -11745,7 +11688,7 @@ return (
               color: textPrimary
             }}
           >
-            Señalización
+            {t('inspection.ui.formulario_inspeccion.signaling')}
           </td>
           <td 
             style={{
@@ -11757,7 +11700,7 @@ return (
               type="text"
               value={senalizacionExtintores}
               onChange={(e) => setSenalizacionExtintores(e.target.value)}
-            placeholder="Señalización"
+            placeholder={t('inspection.ui.formulario_inspeccion.signaling')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11765,7 +11708,7 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Señalización"
+            placeholder={t('inspection.ui.formulario_inspeccion.signaling')}
               disabled={cargando}
             />
           </td>
@@ -11797,13 +11740,12 @@ return (
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Carga vigente</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -11818,7 +11760,7 @@ return (
     className="text-lg font-semibold mb-3"
     style={{ color: textPrimary }}
   >
-    Bombeo, estación de bomberos y cortafuegos
+    {t('inspection.ui.formulario_inspeccion.pumpingFireStationFirewalls')}
   </h3>
   <div className="overflow-x-auto">
     <table
@@ -11846,14 +11788,14 @@ return (
               type="text"
               value={bombaPrincipal}
               onChange={(e) => setBombaPrincipal(e.target.value)}
-            placeholder="Bomba principal"
+            placeholder={t('inspection.ui.formulario_inspeccion.mainPump')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Bomba principal"
+            placeholder={t('inspection.ui.formulario_inspeccion.mainPump')}
               disabled={cargando}
             />
           </td>
@@ -11874,14 +11816,14 @@ return (
               type="text"
               value={bombaJockey}
               onChange={(e) => setBombaJockey(e.target.value)}
-            placeholder="Bomba jockey"
+            placeholder={t('inspection.ui.formulario_inspeccion.jockeyPump')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Bomba jockey"
+            placeholder={t('inspection.ui.formulario_inspeccion.jockeyPump')}
               disabled={cargando}
             />
           </td>
@@ -11895,21 +11837,21 @@ return (
               color: textPrimary,
             }}
           >
-            Presión
+            {t('inspection.ui.formulario_inspeccion.pressure')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
               type="text"
               value={presionContraincendios}
               onChange={(e) => setPresionContraincendios(e.target.value)}
-            placeholder="Presión"
+            placeholder={t('inspection.ui.formulario_inspeccion.pressure')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Presión"
+            placeholder={t('inspection.ui.formulario_inspeccion.pressure')}
               disabled={cargando}
             />
           </td>
@@ -11930,7 +11872,7 @@ return (
               type="text"
               value={rociadores}
               onChange={(e) => setRociadores(e.target.value)}
-              placeholder="Rociadores"
+              placeholder={t('inspection.ui.formulario_inspeccion.sprinklers')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -11950,21 +11892,21 @@ return (
               color: textPrimary,
             }}
           >
-            Estación de bomberos — nombre
+            {t('inspection.ui.formulario_inspeccion.fireStationName')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
               type="text"
               value={estacionBomberosNombre}
               onChange={(e) => setEstacionBomberosNombre(e.target.value)}
-            placeholder="Estación de bomberos — nombre"
+            placeholder={t('inspection.ui.formulario_inspeccion.fireStationName')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Estación de bomberos — nombre"
+            placeholder={t('inspection.ui.formulario_inspeccion.fireStationName')}
               disabled={cargando}
             />
           </td>
@@ -11978,7 +11920,7 @@ return (
               color: textPrimary,
             }}
           >
-            Tiempo de respuesta (minutos)
+            {t('inspection.ui.formulario_inspeccion.responseTimeMinutes')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
@@ -11986,14 +11928,14 @@ return (
               inputMode="numeric"
               value={estacionBomberosTiempoMin}
               onChange={(e) => setEstacionBomberosTiempoMin(e.target.value)}
-            placeholder="Tiempo de respuesta (minutos)"
+            placeholder={t('inspection.ui.formulario_inspeccion.responseTimeMinutes')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Tiempo de respuesta (minutos)"
+            placeholder={t('inspection.ui.formulario_inspeccion.responseTimeMinutes')}
               disabled={cargando}
             />
           </td>
@@ -12015,14 +11957,14 @@ return (
               inputMode="numeric"
               value={estacionBomberosDistanciaMetros}
               onChange={(e) => setEstacionBomberosDistanciaMetros(e.target.value)}
-            placeholder="Distancia (metros)"
+            placeholder={t('inspection.ui.formulario_inspeccion.distanceMeters')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Distancia (metros)"
+            placeholder={t('inspection.ui.formulario_inspeccion.distanceMeters')}
               disabled={cargando}
             />
           </td>
@@ -12048,13 +11990,12 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Muros cortafuegos</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -12079,13 +12020,12 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
               <option value="">Puertas cortafuego</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -12099,7 +12039,7 @@ return (
               color: textPrimary,
             }}
           >
-            Almacenamiento de agua para RCI
+            {t('inspection.ui.formulario_inspeccion.rciWaterStorage')}
           </td>
         </tr>
         <tr>
@@ -12108,14 +12048,13 @@ return (
               rows={3}
               value={almacenamientoAguaRci}
               onChange={(e) => setAlmacenamientoAguaRci(e.target.value)}
-              placeholder="Describe tanques, cisternas, volumen, ubicación, etc."
+              placeholder={t('inspection.ui.formulario_inspeccion.tanksDescriptionPlaceholder')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             />
           </td>
@@ -12130,7 +12069,7 @@ return (
               color: textPrimary,
             }}
           >
-            Pruebas
+            {t('inspection.ui.formulario_inspeccion.tests')}
           </td>
         </tr>
         <tr>
@@ -12144,18 +12083,17 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="LONGITUD:"
               disabled={cargando}
             >
-              <option value="">LONGITUD:</option>
-              <option value="Semanal">Semanal</option>
-              <option value="Quincenal">Quincenal</option>
-              <option value="Mensual">Mensual</option>
-              <option value="Bimestral">Bimestral</option>
-              <option value="Trimestral">Trimestral</option>
-              <option value="Semestral">Semestral</option>
-              <option value="Anual">Anual</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.tests')}</option>
+              <option value="Semanal">{t('inspection.ui.formulario_inspeccion.weekly')}</option>
+              <option value="Quincenal">{t('inspection.ui.formulario_inspeccion.biweekly')}</option>
+              <option value="Mensual">{t('inspection.ui.formulario_inspeccion.monthly')}</option>
+              <option value="Bimestral">{t('inspection.ui.formulario_inspeccion.bimonthly')}</option>
+              <option value="Trimestral">{t('inspection.ui.formulario_inspeccion.quarterly')}</option>
+              <option value="Semestral">{t('inspection.ui.formulario_inspeccion.semiannual')}</option>
+              <option value="Anual">{t('inspection.ui.formulario_inspeccion.annual')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -12170,11 +12108,11 @@ return (
     className="block text-sm font-semibold mb-2"
     style={{ color: textPrimary }}
   >
-    Comentarios adicionales sobre protección contra incendios
+    {t('inspection.ui.formulario_inspeccion.fireProtectionComments')}
   </label>
-  <textarea placeholder="Comentarios adicionales sobre protección contra incendios"
+  <textarea placeholder={t('inspection.ui.formulario_inspeccion.additionalFireProtectionComments')}
     rows={6}
-    placeholder="Describe aquí información adicional sobre los sistemas de protección contra incendios, características del proceso que reducen el riesgo, protocolos de seguridad, etc..."
+    placeholder={t('inspection.ui.formulario_inspeccion.fireProtectionCommentsPlaceholder')}
     value={comentariosProteccionIncendios}
     onChange={(e) => setComentariosProteccionIncendios(e.target.value)}
     className="w-full rounded px-3 py-2"
@@ -12206,7 +12144,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    9. LUCRO CESANTE
+    {tituloSeccionUi('lucroCesante', t('inspection.ui.formulario_inspeccion.section9Title'))}
   </h2>
 
   {/* Tabla: Lucro Cesante */}
@@ -12215,7 +12153,7 @@ return (
       className="text-lg font-semibold mb-3"
       style={{ color: textPrimary }}
     >
-      Por incendio
+      {t('inspection.ui.formulario_inspeccion.byFire')}
     </h3>
     <div className="overflow-x-auto">
       <table 
@@ -12236,7 +12174,7 @@ return (
                 width: '40%'
               }}
             >
-              Área requerida para el desarrollo de las actividades
+              {t('inspection.ui.formulario_inspeccion.areaRequiredActivities')}
             </td>
             <td 
               style={{
@@ -12254,23 +12192,23 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Comentarios adicionales sobre protección contra incendios"
+            placeholder={t('inspection.ui.formulario_inspeccion.additionalFireProtectionComments')}
                 disabled={cargando}
               >
-                <option value="">Área requerida para el desarrollo de las actividades</option>
-                <option value="Menos de 500 m2">Menos de 500 m2</option>
-                <option value="De 500 a 1000 m2">De 500 a 1000 m2</option>
-                <option value="De 1000 a 2000 m2">De 1000 a 2000 m2</option>
-                <option value="De 2000 a 5000 m2">De 2000 a 5000 m2</option>
-                <option value="Más de 5000 m2">Más de 5000 m2</option>
-                <option value="Otro">Otro</option>
+                <option value="">{t('inspection.ui.formulario_inspeccion.areaRequiredActivities')}</option>
+                <option value="Menos de 500 m2">{t('inspection.ui.formulario_inspeccion.areaUnder500')}</option>
+                <option value="De 500 a 1000 m2">{t('inspection.ui.formulario_inspeccion.area500to1000')}</option>
+                <option value="De 1000 a 2000 m2">{t('inspection.ui.formulario_inspeccion.area1000to2000')}</option>
+                <option value="De 2000 a 5000 m2">{t('inspection.ui.formulario_inspeccion.area2000to5000')}</option>
+                <option value="Más de 5000 m2">{t('inspection.ui.formulario_inspeccion.moreThan5000m2')}</option>
+                <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
               </select>
               {areaRequeridaLucroCesante === "Otro" && (
                 <input
                   type="text"
                   value={areaRequeridaLucroCesanteOtro}
                   onChange={(e) => setAreaRequeridaLucroCesanteOtro(e.target.value)}
-            placeholder="Área requerida para el desarrollo de las actividades"
+            placeholder={t('inspection.ui.formulario_inspeccion.areaRequiredActivities')}
                   className="w-full px-2 py-1 rounded mt-2"
                   style={{
                     backgroundColor: inputBg,
@@ -12278,7 +12216,7 @@ return (
                     borderColor: borderColor,
                     border: `1px solid ${borderColor}`
                   }}
-            placeholder="Área requerida para el desarrollo de las actividades"
+            placeholder={t('inspection.ui.formulario_inspeccion.areaRequiredActivities')}
                   disabled={cargando}
                 />
               )}
@@ -12293,7 +12231,7 @@ return (
                 color: textPrimary
               }}
             >
-              Complejidad de la actividad o proceso
+              {t('inspection.ui.formulario_inspeccion.activityComplexity')}
             </td>
             <td 
               style={{
@@ -12311,21 +12249,21 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Comentarios adicionales sobre protección contra incendios"
+            placeholder={t('inspection.ui.formulario_inspeccion.additionalFireProtectionComments')}
                 disabled={cargando}
               >
-                <option value="">Complejidad de la actividad o proceso</option>
-                <option value="Complejidad baja (confecciones, reciclaje de plástico, estampación, entre otros)">Complejidad baja (confecciones, reciclaje de plástico, estampación, entre otros)</option>
-                <option value="Complejidad media (ensamblaje, manufactura básica, entre otros)">Complejidad media (ensamblaje, manufactura básica, entre otros)</option>
-                <option value="Complejidad alta (procesos químicos, farmacéuticos, tecnología avanzada, entre otros)">Complejidad alta (procesos químicos, farmacéuticos, tecnología avanzada, entre otros)</option>
-                <option value="Otro">Otro</option>
+                <option value="">{t('inspection.ui.formulario_inspeccion.activityComplexity')}</option>
+                <option value="Complejidad baja (confecciones, reciclaje de plástico, estampación, entre otros)">{t('inspection.ui.formulario_inspeccion.complexityLow')}</option>
+                <option value="Complejidad media (ensamblaje, manufactura básica, entre otros)">{t('inspection.ui.formulario_inspeccion.complexityMedium')}</option>
+                <option value="Complejidad alta (procesos químicos, farmacéuticos, tecnología avanzada, entre otros)">{t('inspection.ui.formulario_inspeccion.complexityHighFull')}</option>
+                <option value="Otro">{t('inspection.ui.formulario_inspeccion.other')}</option>
               </select>
               {complejidadActividadLucroCesante === "Otro" && (
                 <input
                   type="text"
                   value={complejidadActividadLucroCesanteOtro}
                   onChange={(e) => setComplejidadActividadLucroCesanteOtro(e.target.value)}
-            placeholder="Complejidad de la actividad o proceso"
+            placeholder={t('inspection.ui.formulario_inspeccion.activityComplexity')}
                   className="w-full px-2 py-1 rounded mt-2"
                   style={{
                     backgroundColor: inputBg,
@@ -12333,7 +12271,7 @@ return (
                     borderColor: borderColor,
                     border: `1px solid ${borderColor}`
                   }}
-            placeholder="Complejidad de la actividad o proceso"
+            placeholder={t('inspection.ui.formulario_inspeccion.activityComplexity')}
                   disabled={cargando}
                 />
               )}
@@ -12348,7 +12286,7 @@ return (
                 color: textPrimary
               }}
             >
-              Plan de continuidad del negocio documentado
+              {t('inspection.ui.formulario_inspeccion.businessContinuityPlan')}
             </td>
             <td 
               style={{
@@ -12366,13 +12304,13 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Comentarios adicionales sobre protección contra incendios"
+            placeholder={t('inspection.ui.formulario_inspeccion.additionalFireProtectionComments')}
                 disabled={cargando}
               >
-                <option value="">Plan de continuidad del negocio documentado</option>
-                <option value="Sí">Sí</option>
-                <option value="No">No</option>
-                <option value="No aplica">No aplica</option>
+                <option value="">{t('inspection.ui.formulario_inspeccion.businessContinuityPlan')}</option>
+                <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+                <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+                <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
               </select>
             </td>
           </tr>
@@ -12385,7 +12323,7 @@ return (
                 color: textPrimary
               }}
             >
-              Valor nómina mensual
+              {t('inspection.ui.formulario_inspeccion.monthlyPayrollValue')}
             </td>
             <td 
               style={{
@@ -12397,7 +12335,7 @@ return (
                 type="text"
                 value={valorNominaMensual}
                 onChange={(e) => setValorNominaMensual(e.target.value)}
-            placeholder="Valor nómina mensual"
+            placeholder={t('inspection.ui.formulario_inspeccion.monthlyPayrollValue')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12405,7 +12343,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Valor nómina mensual"
+            placeholder={t('inspection.ui.formulario_inspeccion.monthlyPayrollValue')}
                 disabled={cargando}
               />
             </td>
@@ -12419,7 +12357,7 @@ return (
                 color: textPrimary
               }}
             >
-              Valor facturación del año anterior
+              {t('inspection.ui.formulario_inspeccion.previousYearBilling')}
             </td>
             <td 
               style={{
@@ -12431,7 +12369,7 @@ return (
                 type="text"
                 value={valorFacturacionAnoAnterior}
                 onChange={(e) => setValorFacturacionAnoAnterior(e.target.value)}
-            placeholder="Valor facturación del año anterior"
+            placeholder={t('inspection.ui.formulario_inspeccion.previousYearBilling')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12439,7 +12377,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Valor facturación del año anterior"
+            placeholder={t('inspection.ui.formulario_inspeccion.previousYearBilling')}
                 disabled={cargando}
               />
             </td>
@@ -12453,7 +12391,7 @@ return (
                 color: textPrimary
               }}
             >
-              Valor proyectado facturación para el presente año
+              {t('inspection.ui.formulario_inspeccion.projectedBillingCurrentYear')}
             </td>
             <td 
               style={{
@@ -12465,7 +12403,7 @@ return (
                 type="text"
                 value={valorProyectadoFacturacion}
                 onChange={(e) => setValorProyectadoFacturacion(e.target.value)}
-            placeholder="Valor proyectado facturación para el presente año"
+            placeholder={t('inspection.ui.formulario_inspeccion.projectedBillingCurrentYear')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12473,7 +12411,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Valor proyectado facturación para el presente año"
+            placeholder={t('inspection.ui.formulario_inspeccion.projectedBillingCurrentYear')}
                 disabled={cargando}
               />
             </td>
@@ -12489,9 +12427,9 @@ return (
       className="block text-sm font-medium mb-2"
       style={{ color: textPrimary }}
     >
-      Análisis y comentarios
+      {t('inspection.ui.formulario_inspeccion.analysisAndComments')}
     </label>
-    <textarea placeholder="Análisis y comentarios"
+    <textarea placeholder={t('inspection.ui.formulario_inspeccion.analysisAndComments')}
       value={comentariosLucroCesante}
       onChange={(e) => setComentariosLucroCesante(e.target.value)}
       rows={8}
@@ -12502,7 +12440,7 @@ return (
         borderColor: borderColor,
         border: `1px solid ${borderColor}`
       }}
-      placeholder="Ingrese el análisis y comentarios sobre el lucro cesante..."
+      placeholder={t('inspection.ui.formulario_inspeccion.businessInterruptionCommentsPlaceholder')}
       disabled={cargando}
     />
   </div>
@@ -12523,7 +12461,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    9.1 PML (PÉRDIDA MÁXIMA PROBABLE)
+    {t('inspection.ui.formulario_inspeccion.pmlTitle')}
   </h2>
 
   <div className="overflow-x-auto">
@@ -12557,7 +12495,7 @@ return (
               type="text"
               value={pmlPorcentaje}
               onChange={(e) => setPmlPorcentaje(e.target.value)}
-              placeholder="Porcentaje (%)"
+              placeholder={t('inspection.ui.formulario_inspeccion.percentage')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
@@ -12578,7 +12516,7 @@ return (
               color: textPrimary
             }}
           >
-            Descripción
+            {t('inspection.ui.formulario_inspeccion.description')}
           </td>
           <td 
             style={{
@@ -12589,7 +12527,7 @@ return (
             <textarea
               value={pmlDescripcion}
               onChange={(e) => setPmlDescripcion(e.target.value)}
-              placeholder="Descripción"
+              placeholder={t('inspection.ui.formulario_inspeccion.description')}
               rows={4}
               className="w-full px-2 py-1 rounded"
               style={{
@@ -12621,7 +12559,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    10. PROCESOS CRÍTICOS Y RIESGOS MEDIOAMBIENTALES
+    {tituloSeccionUi('procesosCriticos', t('inspection.ui.formulario_inspeccion.section10Title'))}
   </h2>
 
   {/* Procesos Críticos */}
@@ -12630,10 +12568,10 @@ return (
       className="block text-sm font-medium mb-2"
       style={{ color: textPrimary }}
     >
-      Procesos Críticos
+      {t('inspection.ui.formulario_inspeccion.criticalProcesses')}
     </label>
     <textarea
-      placeholder="Procesos Críticos"
+      placeholder={t('inspection.ui.formulario_inspeccion.criticalProcesses')}
       value={procesosCriticos}
       onChange={(e) => setProcesosCriticos(e.target.value)}
       rows={3}
@@ -12657,7 +12595,7 @@ return (
       Riesgos Medioambientales
     </label>
     <textarea
-      placeholder="Riesgos Medioambientales"
+      placeholder={t('inspection.ui.formulario_inspeccion.environmentalRisks')}
       value={riesgosMedioambientales}
       onChange={(e) => setRiesgosMedioambientales(e.target.value)}
       rows={3}
@@ -12688,7 +12626,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    11. POR ROTURA DE MAQUINARIA
+    {tituloSeccionUi('roturaMaquinaria', t('inspection.ui.formulario_inspeccion.section11Title'))}
   </h2>
 
   {/* Tabla: Por rotura de maquinaria */}
@@ -12712,7 +12650,7 @@ return (
                 width: '40%'
               }}
             >
-              Capacidad instalada de la planta de producción
+              {t('inspection.ui.formulario_inspeccion.installedProductionCapacity')}
             </td>
             <td 
               style={{
@@ -12724,7 +12662,7 @@ return (
                 type="text"
                 value={capacidadInstaladaPlanta}
                 onChange={(e) => setCapacidadInstaladaPlanta(e.target.value)}
-            placeholder="Capacidad instalada de la planta de producción"
+            placeholder={t('inspection.ui.formulario_inspeccion.installedProductionCapacity')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12732,7 +12670,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Capacidad instalada de la planta de producción"
+            placeholder={t('inspection.ui.formulario_inspeccion.installedProductionCapacity')}
                 disabled={cargando}
               />
             </td>
@@ -12746,7 +12684,7 @@ return (
                 color: textPrimary
               }}
             >
-              Índice promedio de capacidad utilizada
+              {t('inspection.ui.formulario_inspeccion.averageCapacityIndex')}
             </td>
             <td 
               style={{
@@ -12758,7 +12696,7 @@ return (
                 type="text"
                 value={indicePromedioCapacidad}
                 onChange={(e) => setIndicePromedioCapacidad(e.target.value)}
-            placeholder="Índice promedio de capacidad utilizada"
+            placeholder={t('inspection.ui.formulario_inspeccion.averageCapacityIndex')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12766,7 +12704,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Índice promedio de capacidad utilizada"
+            placeholder={t('inspection.ui.formulario_inspeccion.averageCapacityIndex')}
                 disabled={cargando}
               />
             </td>
@@ -12780,7 +12718,7 @@ return (
                 color: textPrimary
               }}
             >
-              Número de líneas de producción
+              {t('inspection.ui.formulario_inspeccion.productionLinesCount')}
             </td>
             <td 
               style={{
@@ -12792,7 +12730,7 @@ return (
                 type="text"
                 value={numeroLineasProduccion}
                 onChange={(e) => setNumeroLineasProduccion(e.target.value)}
-            placeholder="Número de líneas de producción"
+            placeholder={t('inspection.ui.formulario_inspeccion.numberOfProductionLines')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12800,7 +12738,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Número de líneas de producción"
+            placeholder={t('inspection.ui.formulario_inspeccion.numberOfProductionLines')}
                 disabled={cargando}
               />
             </td>
@@ -12814,7 +12752,7 @@ return (
                 color: textPrimary
               }}
             >
-              Maquinaria crítica
+              {t('inspection.ui.formulario_inspeccion.criticalMachinery')}
             </td>
             <td 
               style={{
@@ -12826,7 +12764,7 @@ return (
                 type="text"
                 value={maquinariaCritica}
                 onChange={(e) => setMaquinariaCritica(e.target.value)}
-            placeholder="Maquinaria crítica"
+            placeholder={t('inspection.ui.formulario_inspeccion.criticalMachinery')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12834,7 +12772,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Maquinaria crítica"
+            placeholder={t('inspection.ui.formulario_inspeccion.criticalMachinery')}
                 disabled={cargando}
               />
             </td>
@@ -12848,7 +12786,7 @@ return (
                 color: textPrimary
               }}
             >
-              Incidencia sobre la producción (%)
+              {t('inspection.ui.formulario_inspeccion.productionImpactPct')}
             </td>
             <td 
               style={{
@@ -12860,7 +12798,7 @@ return (
                 type="text"
                 value={incidenciaProduccion}
                 onChange={(e) => setIncidenciaProduccion(e.target.value)}
-            placeholder="Incidencia sobre la producción (%)"
+            placeholder={t('inspection.ui.formulario_inspeccion.productionImpactPct')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12868,7 +12806,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Incidencia sobre la producción (%)"
+            placeholder={t('inspection.ui.formulario_inspeccion.productionImpactPct')}
                 disabled={cargando}
               />
             </td>
@@ -12882,7 +12820,7 @@ return (
                 color: textPrimary
               }}
             >
-              Origen de la maquinaria crítica
+              {t('inspection.ui.formulario_inspeccion.criticalMachineryOrigin')}
             </td>
             <td 
               style={{
@@ -12894,7 +12832,7 @@ return (
                 type="text"
                 value={origenMaquinariaCritica}
                 onChange={(e) => setOrigenMaquinariaCritica(e.target.value)}
-            placeholder="Origen de la maquinaria crítica"
+            placeholder={t('inspection.ui.formulario_inspeccion.criticalMachineryOrigin')}
                 className="w-full px-2 py-1 rounded"
                 style={{
                   backgroundColor: inputBg,
@@ -12902,7 +12840,7 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Origen de la maquinaria crítica"
+            placeholder={t('inspection.ui.formulario_inspeccion.criticalMachineryOrigin')}
                 disabled={cargando}
               />
             </td>
@@ -12916,7 +12854,7 @@ return (
                 color: textPrimary
               }}
             >
-              Hay representación nacional de la maquinaria
+              {t('inspection.ui.formulario_inspeccion.nationalMachineryRepresentation')}
             </td>
             <td 
               style={{
@@ -12934,13 +12872,13 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Riesgos Medioambientales"
+            placeholder={t('inspection.ui.formulario_inspeccion.environmentalRisks')}
                 disabled={cargando}
               >
-                <option value="">Hay representación nacional de la maquinaria</option>
-                <option value="Sí">Sí</option>
-                <option value="No">No</option>
-                <option value="No aplica">No aplica</option>
+                <option value="">{t('inspection.ui.formulario_inspeccion.nationalMachineryRepresentation')}</option>
+                <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+                <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+                <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
               </select>
             </td>
           </tr>
@@ -12971,13 +12909,13 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Riesgos Medioambientales"
+            placeholder={t('inspection.ui.formulario_inspeccion.environmentalRisks')}
                 disabled={cargando}
               >
                 <option value="">Hay maquinaria en Stand-by</option>
-                <option value="Sí">Sí</option>
-                <option value="No">No</option>
-                <option value="No aplica">No aplica</option>
+                <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+                <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+                <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
               </select>
             </td>
           </tr>
@@ -12990,7 +12928,7 @@ return (
                 color: textPrimary
               }}
             >
-              Existen empresas satélite para la producción
+              {t('inspection.ui.formulario_inspeccion.satelliteProductionCompanies')}
             </td>
             <td 
               style={{
@@ -13008,13 +12946,13 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Riesgos Medioambientales"
+            placeholder={t('inspection.ui.formulario_inspeccion.environmentalRisks')}
                 disabled={cargando}
               >
-                <option value="">Existen empresas satélite para la producción</option>
-                <option value="Sí">Sí</option>
-                <option value="No">No</option>
-                <option value="No aplica">No aplica</option>
+                <option value="">{t('inspection.ui.formulario_inspeccion.satelliteProductionCompanies')}</option>
+                <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+                <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+                <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
               </select>
             </td>
           </tr>
@@ -13027,7 +12965,7 @@ return (
                 color: textPrimary
               }}
             >
-              Hay convenios con otras empresas
+              {t('inspection.ui.formulario_inspeccion.hasAgreementsWithOtherCompanies')}
             </td>
             <td 
               style={{
@@ -13045,13 +12983,13 @@ return (
                   borderColor: borderColor,
                   border: `1px solid ${borderColor}`
                 }}
-            placeholder="Riesgos Medioambientales"
+            placeholder={t('inspection.ui.formulario_inspeccion.environmentalRisks')}
                 disabled={cargando}
               >
-                <option value="">Hay convenios con otras empresas</option>
-                <option value="Sí">Sí</option>
-                <option value="No">No</option>
-                <option value="No aplica">No aplica</option>
+                <option value="">{t('inspection.ui.formulario_inspeccion.hasAgreementsWithOtherCompanies')}</option>
+                <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+                <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+                <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
               </select>
             </td>
           </tr>
@@ -13077,17 +13015,17 @@ return (
   className="text-xl font-bold mb-4"
   style={{ color: textPrimary }}
 >
-  12. MAQUINARIA, EQUIPOS Y MANTENIMIENTO
+  {tituloSeccionUi('maquinaria', t('inspection.ui.formulario_inspeccion.section12Title'))}
 </h2>
 
 <label 
   className="block text-sm font-semibold mb-1"
   style={{ color: textPrimary }}
 >
-  Descripción del Equipamiento
+  {t('inspection.ui.formulario_inspeccion.equipmentDescription')}
 </label>
 <textarea
-  placeholder="Descripción del Equipamiento"
+  placeholder={t('inspection.ui.formulario_inspeccion.equipmentDescription')}
   rows={8}
   value={maquinariaDescripcion}
   onChange={(e) => setMaquinariaDescripcion(e.target.value)}
@@ -13111,85 +13049,85 @@ return (
     <tbody>
       <tr style={{ backgroundColor: theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px', fontWeight: 'bold', color: textPrimary, width: '40%' }}>
-          Promedio de edad de los equipos
+          {t('inspection.ui.formulario_inspeccion.averageEquipmentAge')}
         </td>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
           <input
             type="text"
             value={promedioEdadEquipos}
             onChange={(e) => setPromedioEdadEquipos(e.target.value)}
-            placeholder="Promedio de edad de los equipos"
+            placeholder={t('inspection.ui.formulario_inspeccion.averageEquipmentAge')}
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
-            placeholder="Promedio de edad de los equipos"
+            placeholder={t('inspection.ui.formulario_inspeccion.averageEquipmentAge')}
             disabled={cargando}
           />
         </td>
       </tr>
       <tr>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px', fontWeight: 'bold', color: textPrimary }}>
-          Tipo de mantenimiento
+          {t('inspection.ui.formulario_inspeccion.maintenanceType')}
         </td>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
           <input
             type="text"
             value={tipoMantenimientoEquipos}
             onChange={(e) => setTipoMantenimientoEquipos(e.target.value)}
-            placeholder="Tipo de mantenimiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceType')}
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
-            placeholder="Tipo de mantenimiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceType')}
             disabled={cargando}
           />
         </td>
       </tr>
       <tr style={{ backgroundColor: theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px', fontWeight: 'bold', color: textPrimary }}>
-          Bitácoras de mantenimiento
+          {t('inspection.ui.formulario_inspeccion.maintenanceLogs')}
         </td>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
           <input
             type="text"
             value={bitacorasMantenimiento}
             onChange={(e) => setBitacorasMantenimiento(e.target.value)}
-            placeholder="Bitácoras de mantenimiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceLogs')}
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
-            placeholder="Bitácoras de mantenimiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceLogs')}
             disabled={cargando}
           />
         </td>
       </tr>
       <tr>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px', fontWeight: 'bold', color: textPrimary }}>
-          Personal que realiza mantenimiento
+          {t('inspection.ui.formulario_inspeccion.maintenanceStaff')}
         </td>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
           <input
             type="text"
             value={personalMantenimiento}
             onChange={(e) => setPersonalMantenimiento(e.target.value)}
-            placeholder="Personal que realiza mantenimiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceStaff')}
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
-            placeholder="Personal que realiza mantenimiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceStaff')}
             disabled={cargando}
           />
         </td>
       </tr>
       <tr style={{ backgroundColor: theme === 'dark' ? '#1F1F1F' : '#E5E7EB' }}>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px', fontWeight: 'bold', color: textPrimary }}>
-          Periodicidad de los mantenimientos
+          {t('inspection.ui.formulario_inspeccion.maintenanceFrequency')}
         </td>
         <td style={{ border: `1px solid ${borderColor}`, padding: '8px' }}>
           <input
             type="text"
             value={periodicidadMantenimientos}
             onChange={(e) => setPeriodicidadMantenimientos(e.target.value)}
-            placeholder="Periodicidad de los mantenimientos"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceFrequency')}
             className="w-full rounded px-3 py-2"
             style={{ backgroundColor: inputBg, color: textPrimary, borderColor: borderColor, border: `1px solid ${borderColor}` }}
-            placeholder="Periodicidad de los mantenimientos"
+            placeholder={t('inspection.ui.formulario_inspeccion.maintenanceFrequency')}
             disabled={cargando}
           />
         </td>
@@ -13216,7 +13154,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    13. SERVICIOS INDUSTRIALES
+    {tituloSeccionUi('serviciosIndustriales', t('inspection.ui.formulario_inspeccion.section13Title'))}
   </h2>
 
   {/* Energía */}
@@ -13232,7 +13170,7 @@ return (
       className="text-lg font-bold italic mb-4"
       style={{ color: textPrimary }}
     >
-      Energía
+      {t('inspection.ui.formulario_inspeccion.energy')}
     </h2>
 
     <div className="mb-4">
@@ -13246,7 +13184,7 @@ return (
         type="text"
         value={energiaProveedor}
         onChange={(e) => setEnergiaProveedor(e.target.value)}
-        placeholder="PROVEEDOR"
+        placeholder={t('inspection.ui.formulario_inspeccion.provider')}
         className="w-full rounded px-2 py-1"
         style={{
           backgroundColor: inputBg,
@@ -13263,13 +13201,13 @@ return (
         className="font-semibold block mb-1"
         style={{ color: textPrimary }}
       >
-        TENSIÓN
+        {t('inspection.ui.formulario_inspeccion.voltage')}
       </label>
       <input
         type="text"
         value={energiaTension}
         onChange={(e) => setEnergiaTension(e.target.value)}
-        placeholder="TENSIÓN"
+        placeholder={t('inspection.ui.formulario_inspeccion.voltage')}
         className="w-full rounded px-2 py-1"
         style={{
           backgroundColor: inputBg,
@@ -13301,7 +13239,7 @@ return (
           className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium flex items-center gap-1"
           disabled={cargando}
         >
-          <span>+</span> Agregar Transformador
+          <span>+</span> {t('inspection.ui.formulario_inspeccion.addTransformer')}
         </button>
       </div>
       
@@ -13339,9 +13277,7 @@ return (
                   e.target.style.backgroundColor = theme === 'dark' ? 'rgba(220, 38, 38, 0.2)' : '#EF4444';
                 }}
                 disabled={cargando}
-              >
-                Eliminar
-              </button>
+              >{t('inspection.ui.formulario_inspeccion.delete')}</button>
             )}
           </div>
    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 text-sm">
@@ -13353,7 +13289,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Subestación"
+        placeholder={t('inspection.ui.formulario_inspeccion.substation')}
               value={transformador.subestacion}
               onChange={(e) => {
                 const nuevosTransformadores = [...transformadores];
@@ -13370,7 +13306,7 @@ return (
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Marca"
+          placeholder={t('inspection.ui.formulario_inspeccion.brand')}
               value={transformador.marca}
               onChange={(e) => {
                 const nuevosTransformadores = [...transformadores];
@@ -13387,7 +13323,7 @@ return (
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Tipo"
+          placeholder={t('inspection.ui.formulario_inspeccion.type')}
               value={transformador.tipo}
               onChange={(e) => {
                 const nuevosTransformadores = [...transformadores];
@@ -13404,7 +13340,7 @@ return (
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Capacidad"
+          placeholder={t('inspection.ui.formulario_inspeccion.capacity')}
               value={transformador.capacidad}
               onChange={(e) => {
                 const nuevosTransformadores = [...transformadores];
@@ -13421,7 +13357,7 @@ return (
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Edad"
+          placeholder={t('inspection.ui.formulario_inspeccion.age')}
               value={transformador.edad}
               onChange={(e) => {
                 const nuevosTransformadores = [...transformadores];
@@ -13438,7 +13374,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Relación voltaje"
+        placeholder={t('inspection.ui.formulario_inspeccion.voltageRatio')}
               value={transformador.relacionVoltaje}
               onChange={(e) => {
                 const nuevosTransformadores = [...transformadores];
@@ -13457,7 +13393,7 @@ return (
       className="font-bold text-sm mt-6 mb-2"
       style={{ color: textPrimary }}
     >
-      PLANTAS ELÉCTRICAS
+      {t('inspection.ui.formulario_inspeccion.electricPlants')}
     </h3>
   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 text-sm">
       <input
@@ -13468,7 +13404,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Número"
+        placeholder={t('inspection.ui.formulario_inspeccion.number')}
         value={plantaNumero1}
         onChange={(e) => setPlantaNumero1(e.target.value)}
         disabled={cargando}
@@ -13481,7 +13417,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Marca"
+        placeholder={t('inspection.ui.formulario_inspeccion.brand')}
         value={plantaMarca1}
         onChange={(e) => setPlantaMarca1(e.target.value)}
         disabled={cargando}
@@ -13494,7 +13430,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Tipo"
+        placeholder={t('inspection.ui.formulario_inspeccion.type')}
         value={plantaTipo1}
         onChange={(e) => setPlantaTipo1(e.target.value)}
         disabled={cargando}
@@ -13507,7 +13443,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Capacidad"
+        placeholder={t('inspection.ui.formulario_inspeccion.capacity')}
         value={plantaCapacidad1}
         onChange={(e) => setPlantaCapacidad1(e.target.value)}
         disabled={cargando}
@@ -13520,7 +13456,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Edad"
+        placeholder={t('inspection.ui.formulario_inspeccion.age')}
         value={plantaEdad1}
         onChange={(e) => setPlantaEdad1(e.target.value)}
         disabled={cargando}
@@ -13533,7 +13469,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Transferencia"
+        placeholder={t('inspection.ui.formulario_inspeccion.transfer')}
         value={plantaTransferencia1}
         onChange={(e) => setPlantaTransferencia1(e.target.value)}
         disabled={cargando}
@@ -13546,7 +13482,7 @@ return (
           borderColor: borderColor,
           border: `1px solid ${borderColor}`
         }}
-        placeholder="Voltaje/Cobertura"
+        placeholder={t('inspection.ui.formulario_inspeccion.voltageCoverage')}
         value={plantaCobertura1}
         onChange={(e) => setPlantaCobertura1(e.target.value)}
         disabled={cargando}
@@ -13565,7 +13501,7 @@ return (
         type="text"
         value={energiaPararrayos}
         onChange={(e) => setEnergiaPararrayos(e.target.value)}
-        placeholder="Sí / No"
+        placeholder={t('inspection.ui.formulario_inspeccion.yesNo')}
         className="w-full rounded px-2 py-1"
         style={{
           backgroundColor: inputBg,
@@ -13582,9 +13518,9 @@ return (
       className="block text-sm font-medium mb-1"
       style={{ color: textPrimary }}
     >
-      Comentarios
+      {t('inspection.ui.formulario_inspeccion.comments')}
     </label>
-    <textarea placeholder="Comentarios"
+    <textarea placeholder={t('inspection.ui.formulario_inspeccion.comments')}
       rows={6}
       value={energiaComentarios}
       onChange={(e) => setEnergiaComentarios(e.target.value)}
@@ -13595,7 +13531,7 @@ return (
         borderColor: borderColor,
         border: `1px solid ${borderColor}`
       }}
-      placeholder="Escribe observaciones del sistema eléctrico..."
+      placeholder={t('inspection.ui.formulario_inspeccion.electricalCommentsPlaceholder')}
       disabled={cargando}
     ></textarea>
   </div>
@@ -13611,7 +13547,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    SISTEMA DE AGUA
+    {t('inspection.ui.formulario_inspeccion.waterSystem')}
   </h2>
   <table 
     className="min-w-full text-sm text-left"
@@ -13659,7 +13595,7 @@ return (
             color: textPrimary
           }}
         >
-          EQUIPO DE BOMBEO
+          {t('inspection.ui.formulario_inspeccion.pumpingEquipment')}
         </th>
       </tr>
     </thead>
@@ -13679,7 +13615,7 @@ return (
             type="text"
             value={aguaFuente}
             onChange={(e) => setAguaFuente(e.target.value)}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -13687,7 +13623,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             disabled={cargando}
           />
         </td>
@@ -13701,7 +13637,7 @@ return (
             type="text"
             value={aguaUso}
             onChange={(e) => setAguaUso(e.target.value)}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -13709,7 +13645,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             disabled={cargando}
           />
         </td>
@@ -13723,7 +13659,7 @@ return (
             type="text"
             value={aguaAlmacenamiento}
             onChange={(e) => setAguaAlmacenamiento(e.target.value)}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             className="w-full rounded px-2 py-1"
             style={{
               backgroundColor: inputBg,
@@ -13731,7 +13667,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             disabled={cargando}
           />
         </td>
@@ -13745,7 +13681,7 @@ return (
             type="text"
             value={aguaBombeo}
             onChange={(e) => setAguaBombeo(e.target.value)}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             className="w-full rounded px-3 py-2"
             style={{
               backgroundColor: inputBg,
@@ -13753,7 +13689,7 @@ return (
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
             disabled={cargando}
           />
         </td>
@@ -13776,7 +13712,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    14. SINIESTRALIDAD
+    {tituloSeccionUi('siniestralidad', t('inspection.ui.formulario_inspeccion.section14Title'))}
   </h2>
 
   <div className="overflow-x-auto">
@@ -13798,7 +13734,7 @@ return (
               width: "40%",
             }}
           >
-            Año
+            {t('inspection.ui.formulario_inspeccion.year')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
@@ -13806,14 +13742,14 @@ return (
               value={siniestralidadAno}
               onChange={(e) => setSiniestralidadAno(e.target.value)}
               className="w-full rounded px-3 py-2"
-            placeholder="Año"
+            placeholder={t('inspection.ui.formulario_inspeccion.yearShort')}
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Año"
+            placeholder={t('inspection.ui.formulario_inspeccion.yearShort')}
               disabled={cargando}
             />
           </td>
@@ -13827,7 +13763,7 @@ return (
               color: textPrimary,
             }}
           >
-            Valor del siniestro
+            {t('inspection.ui.formulario_inspeccion.claimValue')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
@@ -13835,14 +13771,14 @@ return (
               value={siniestralidadValor}
               onChange={(e) => setSiniestralidadValor(e.target.value)}
               className="w-full rounded px-3 py-2"
-            placeholder="Valor del siniestro"
+            placeholder={t('inspection.ui.formulario_inspeccion.claimValue')}
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Valor del siniestro"
+            placeholder={t('inspection.ui.formulario_inspeccion.claimValue')}
               disabled={cargando}
             />
           </td>
@@ -13856,7 +13792,7 @@ return (
               color: textPrimary,
             }}
           >
-            Descripción
+            {t('inspection.ui.formulario_inspeccion.description')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <textarea
@@ -13868,14 +13804,14 @@ return (
                 setSiniestralidad(value); // compatibilidad con historial existente
               }}
               className="w-full rounded px-3 py-2"
-              placeholder="Detalle del siniestro, causas y afectación."
+              placeholder={t('inspection.ui.formulario_inspeccion.claimDetailPlaceholder')}
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
               disabled={cargando}
             />
           </td>
@@ -13889,7 +13825,7 @@ return (
               color: textPrimary,
             }}
           >
-            Mejoras después del siniestro
+            {t('inspection.ui.formulario_inspeccion.improvementsAfterClaim')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <textarea
@@ -13897,14 +13833,14 @@ return (
               value={siniestralidadMejoras}
               onChange={(e) => setSiniestralidadMejoras(e.target.value)}
               className="w-full rounded px-3 py-2"
-              placeholder="Medidas implementadas para evitar recurrencia."
+              placeholder={t('inspection.ui.formulario_inspeccion.measuresImplementedPlaceholder')}
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 borderColor: borderColor,
                 border: `1px solid ${borderColor}`
               }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
               disabled={cargando}
             />
           </td>
@@ -13926,11 +13862,11 @@ return (
   }}
 >
   <h2 className="text-xl font-bold mb-4" style={{ color: textPrimary }}>
-    15. ALMACENAMIENTO
+    {tituloSeccionUi('almacenamiento', t('inspection.ui.formulario_inspeccion.section15Title'))}
   </h2>
 
   <h3 className="text-lg font-semibold mb-3" style={{ color: textPrimary }}>
-    Almacén
+    {t('inspection.ui.formulario_inspeccion.warehouseStore')}
   </h3>
   <div className="overflow-x-auto mb-6">
     <table
@@ -13948,21 +13884,21 @@ return (
               width: "50%",
             }}
           >
-            Altura máxima del almacén
+            {t('inspection.ui.formulario_inspeccion.maxWarehouseHeight')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
               type="text"
               value={almacenAlturaMaxima}
               onChange={(e) => setAlmacenAlturaMaxima(e.target.value)}
-            placeholder="Altura máxima del almacén"
+            placeholder={t('inspection.ui.formulario_inspeccion.maxWarehouseHeight')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Altura máxima del almacén"
+            placeholder={t('inspection.ui.formulario_inspeccion.maxWarehouseHeight')}
               disabled={cargando}
             />
           </td>
@@ -13976,7 +13912,7 @@ return (
               color: textPrimary,
             }}
           >
-            Matriz de compatibilidad
+            {t('inspection.ui.formulario_inspeccion.compatibilityMatrix')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <select
@@ -13988,13 +13924,13 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
               disabled={cargando}
             >
-              <option value="">Matriz de compatibilidad</option>
-              <option value="Sí">Sí</option>
-              <option value="No">No</option>
-              <option value="No aplica">No aplica</option>
+              <option value="">{t('inspection.ui.formulario_inspeccion.compatibilityMatrix')}</option>
+              <option value="Sí">{t('inspection.ui.formulario_inspeccion.yes')}</option>
+              <option value="No">{t('inspection.ui.formulario_inspeccion.no')}</option>
+              <option value="No aplica">{t('inspection.ui.formulario_inspeccion.notApplicablePlain')}</option>
             </select>
           </td>
         </tr>
@@ -14007,21 +13943,21 @@ return (
               color: textPrimary,
             }}
           >
-            Altura máxima de la estantería
+            {t('inspection.ui.formulario_inspeccion.maxShelvingHeight')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
               type="text"
               value={almacenAlturaMaximaEstanteria}
               onChange={(e) => setAlmacenAlturaMaximaEstanteria(e.target.value)}
-            placeholder="Altura máxima de la estantería"
+            placeholder={t('inspection.ui.formulario_inspeccion.maxShelvingHeight')}
               className="w-full px-2 py-1 rounded"
               style={{
                 backgroundColor: inputBg,
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Altura máxima de la estantería"
+            placeholder={t('inspection.ui.formulario_inspeccion.maxShelvingHeight')}
               disabled={cargando}
             />
           </td>
@@ -14031,7 +13967,7 @@ return (
   </div>
 
   <h3 className="text-lg font-semibold mb-3" style={{ color: textPrimary }}>
-    Mercancías peligrosas
+    {t('inspection.ui.formulario_inspeccion.dangerousGoods')}
   </h3>
   <div className="overflow-x-auto">
     <table
@@ -14049,7 +13985,7 @@ return (
               width: "50%",
             }}
           >
-            Tipo de mercancía
+            {t('inspection.ui.formulario_inspeccion.merchandiseTypeField')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
@@ -14062,7 +13998,7 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Tipo de mercancía"
+            placeholder={t('inspection.ui.formulario_inspeccion.merchandiseTypeField')}
               disabled={cargando}
             />
           </td>
@@ -14076,7 +14012,7 @@ return (
               color: textPrimary,
             }}
           >
-            Tipo de almacenamiento
+            {t('inspection.ui.formulario_inspeccion.storageType')}
           </td>
           <td style={{ border: `1px solid ${borderColor}`, padding: "8px" }}>
             <input
@@ -14089,7 +14025,7 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Tipo de almacenamiento"
+            placeholder={t('inspection.ui.formulario_inspeccion.storageType')}
               disabled={cargando}
             />
           </td>
@@ -14116,7 +14052,7 @@ return (
                 color: textPrimary,
                 border: `1px solid ${borderColor}`,
               }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
               disabled={cargando}
             />
           </td>
@@ -14142,7 +14078,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    16. ANÁLISIS Y CLASIFICACIÓN DE RIESGOS
+    {t('inspection.ui.formulario_inspeccion.section16Title')}
   </h2>
 
     {/* Tabla de Análisis de Riesgos */}
@@ -14158,7 +14094,7 @@ return (
       className="text-lg font-bold"
       style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
     >
-      📋 ANÁLISIS DE RIESGOS
+      {t('inspection.ui.formulario_inspeccion.riskAnalysisTitle')}
 </h2>
     <button
       onClick={handleAgregarRiesgo}
@@ -14169,9 +14105,7 @@ return (
       }}
       disabled={cargando}
     >
-      <FaPlus />
-      Agregar Riesgo
-    </button>
+      <FaPlus />{t('inspection.ui.formulario_inspeccion.addRisk')}</button>
   </div>
 
   <div className="overflow-x-auto">
@@ -14196,7 +14130,7 @@ return (
               width: '30%'
       }}
     >
-      RIESGO
+      {t('inspection.ui.formulario_inspeccion.riskHeader')}
     </th>
     <th 
             className="px-3 py-2 text-left font-bold"
@@ -14205,7 +14139,7 @@ return (
         color: textPrimary
       }}
     >
-      ANÁLISIS
+      {t('inspection.ui.formulario_inspeccion.analysisHeader')}
     </th>
           <th 
             className="px-3 py-2 text-center font-bold"
@@ -14241,7 +14175,7 @@ return (
                   border: 'none',
                   outline: 'none'
                 }}
-                placeholder="Comentarios"
+                placeholder={t('inspection.ui.formulario_inspeccion.comments')}
                 disabled={cargando}
               />
       </td>
@@ -14258,7 +14192,7 @@ return (
                   outline: 'none',
                   resize: 'vertical'
                 }}
-                placeholder="Escribe el análisis del riesgo..."
+                placeholder={t('inspection.ui.formulario_inspeccion.writeRiskAnalysis')}
   disabled={cargando}
 />
             </td>
@@ -14273,7 +14207,7 @@ return (
                 onClick={() => handleEliminarRiesgo(fila.id)}
                 className="p-1 rounded hover:bg-red-500 hover:text-white transition-colors"
                 style={{ color: '#EF4444' }}
-            placeholder="Comentarios"
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
                 disabled={cargando}
               >
                 <FaTrash size={14} />
@@ -14294,7 +14228,7 @@ return (
         color: textSecondary
       }}
     >
-      <p className="text-sm">Haz clic en "Agregar Riesgo" para comenzar el análisis</p>
+      <p className="text-sm">{t('inspection.ui.formulario_inspeccion.clickAddRiskAnalysis')}</p>
     </div>
   )}
 </div>
@@ -14305,25 +14239,25 @@ return (
   style={{ color: textPrimary }}
 >
 <p className="mb-4">
-  Para la calificación de los riesgos amparados en la póliza, se han ubicado para el informe las diferentes amenazas en una matriz formada por la Probabilidad que se presente en determinado evento, la Severidad o gravedad de los efectos que se producen por la realización de dicho evento, donde el Riesgo es igual a la Probabilidad X Severidad.
+  {t('inspection.ui.formulario_inspeccion.probabilityScaleIntro')}
 </p>
 
-<h2 className="font-bold text-lg mb-2">Probabilidad:</h2>
+<h2 className="font-bold text-lg mb-2">{t('inspection.ui.formulario_inspeccion.probabilityHeading')}</h2>
 <ul className="list-disc pl-6 mb-4">
-  <li><strong>Muy Baja (Improbable):</strong> Virtualmente imposible, solo podrá producirse en condiciones excepcionales. = (1)</li>
-  <li><strong>Baja:</strong> Imaginable pero poco posible, ya ha ocurrido en otra parte. Este evento podría producirse en algún momento. = (2)</li>
-  <li><strong>Moderada (Probable):</strong> Poco habitual. Ha ocurrido o puede ocurrir aquí. Este evento debería ocurrir en algún momento. = (3) </li>
-  <li><strong>Alta (Posible):</strong> Muy posible, con gran probabilidad de ocurrencia, este evento se producirá probablemente en la mayoría de las circunstancias. = (4)</li>
-  <li><strong>Muy Alta (Frecuente):</strong> Muy probable, de alta probabilidad de ocurrencia, se espera que ocurra en la mayoría de las circunstancias. = (5)</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.probVeryLowLabel')}</strong> {t('inspection.ui.formulario_inspeccion.prob1Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.probLowLabel')}</strong> {t('inspection.ui.formulario_inspeccion.prob2Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.probModerateLabel')}</strong> {t('inspection.ui.formulario_inspeccion.prob3Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.probHighLabel')}</strong> {t('inspection.ui.formulario_inspeccion.prob4Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.probVeryHighLabel')}</strong> {t('inspection.ui.formulario_inspeccion.prob5Desc')}</li>
 </ul>
 
-<h2 className="font-bold text-lg mb-2">Severidad:</h2>
+<h2 className="font-bold text-lg mb-2">{t('inspection.ui.formulario_inspeccion.severityHeading')}</h2>
 <ul className="list-disc pl-6 mb-4">
-  <li><strong>Insignificante:</strong> Consecuencias pequeñas, no afecta el desarrollo normal de la empresa.= (1)</li>
-  <li><strong>Menor:</strong> Consecuencias medianas, pueden exigir control leve. = (2)</li>
-  <li><strong>Moderada:</strong> Consecuencias altas, deben tomarse medidas. = (3)</li>
-  <li><strong>Mayor:</strong> Consecuencias importantes, se deben establecer medidas de emergencia. = (4)</li>
-  <li><strong>Catastrófica:</strong> Pérdidas enormes, podría implicar el cierre de la empresa. = (5)</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.severityInsignificantLabel')}</strong> {t('inspection.ui.formulario_inspeccion.severity1Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.severityMinorLabel')}</strong> {t('inspection.ui.formulario_inspeccion.severity2Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.severityModerateLabel')}</strong> {t('inspection.ui.formulario_inspeccion.severity3Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.severityMajorLabel')}</strong> {t('inspection.ui.formulario_inspeccion.severity4Desc')}</li>
+  <li><strong>{t('inspection.ui.formulario_inspeccion.severityCatastrophicLabel')}</strong> {t('inspection.ui.formulario_inspeccion.severity5Desc')}</li>
 </ul>
 
 <div className="mt-8">
@@ -14332,13 +14266,13 @@ return (
       className="text-lg font-bold"
       style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
 >
-      🔥 CLASIFICACIÓN DEL RIESGO
+      {t('inspection.ui.formulario_inspeccion.riskClassificationHeading')}
 </h2>
     <p 
       className="text-xs"
       style={{ color: textSecondary }}
     >
-      Los riesgos se sincronizan automáticamente desde la sección de Análisis
+      {t('inspection.ui.formulario_inspeccion.risksSyncedFromAnalysis')}
     </p>
   </div>
 
@@ -14364,7 +14298,7 @@ return (
               minWidth: '180px'
       }}
     >
-            RIESGO (Sincronizado)
+            {t('inspection.ui.formulario_inspeccion.riskSyncedHeader')}
     </th>
     <th 
             className="px-3 py-2 text-center font-bold"
@@ -14374,7 +14308,7 @@ return (
               width: '100px'
             }}
           >
-            PROBABILIDAD
+            {t('inspection.ui.formulario_inspeccion.probabilityCol')}
         </th>
         <th 
             className="px-3 py-2 text-center font-bold"
@@ -14384,7 +14318,7 @@ return (
               width: '100px'
           }}
         >
-            SEVERIDAD
+            {t('inspection.ui.formulario_inspeccion.severityCol')}
         </th>
         <th 
             className="px-3 py-2 text-center font-bold"
@@ -14404,7 +14338,7 @@ return (
               width: '80px'
           }}
         >
-            ÍNDICE
+            {t('inspection.ui.formulario_inspeccion.indexCol')}
         </th>
         <th 
             className="px-3 py-2 text-center font-bold"
@@ -14414,7 +14348,7 @@ return (
               width: '120px'
           }}
         >
-            CLASIFICACIÓN
+            {t('inspection.ui.formulario_inspeccion.classificationCol')}
         </th>
         <th 
             className="px-3 py-2 text-center font-bold"
@@ -14449,7 +14383,7 @@ return (
                 className="text-sm italic"
                 style={{ color: textSecondary }}
               >
-                {fila.riesgo || 'Escribe el riesgo en Análisis de Riesgos'}
+                {fila.riesgo || t('inspection.ui.formulario_inspeccion.writeRiskInAnalysisTable')}
               </span>
           </td>
             <td style={{ border: `1px solid ${borderColor}`, padding: '4px' }}>
@@ -14532,8 +14466,8 @@ return (
                 onClick={() => handleEliminarRiesgo(fila.id)}
                 className="p-1 rounded hover:bg-red-500 hover:text-white transition-colors"
                 style={{ color: '#EF4444' }}
-                title="Eliminar de ambas tablas"
-            placeholder="Comentarios"
+                title={t('inspection.ui.formulario_inspeccion.deleteFromBothTables')}
+            placeholder={t('inspection.ui.formulario_inspeccion.comments')}
                 disabled={cargando}
               >
                 <FaTrash size={14} />
@@ -14554,7 +14488,7 @@ return (
         color: textSecondary
       }}
     >
-      <p className="text-sm">Haz clic en "Agregar Riesgo" para comenzar la clasificación</p>
+      <p className="text-sm">{t('inspection.ui.formulario_inspeccion.clickAddRiskClassification')}</p>
     </div>
   )}
 
@@ -14567,47 +14501,47 @@ return (
     }}
   >
     <p className="font-bold mb-3 text-sm" style={{ color: textPrimary }}>
-      📊 Fórmula: R = Probabilidad × Severidad
+      {t('inspection.ui.formulario_inspeccion.formulaR')}
     </p>
     
     {/* Explicación de Probabilidad */}
     <div className="mb-3">
       <p className="font-bold mb-1" style={{ color: textPrimary }}>
-        PROBABILIDAD (Frecuencia de ocurrencia):
+        {t('inspection.ui.formulario_inspeccion.probabilityFrequency')}
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-1 ml-2">
-        <span style={{ color: textSecondary }}>1 = Muy improbable (casi nunca)</span>
-        <span style={{ color: textSecondary }}>2 = Improbable (rara vez)</span>
-        <span style={{ color: textSecondary }}>3 = Posible (ocasionalmente)</span>
-        <span style={{ color: textSecondary }}>4 = Probable (frecuentemente)</span>
-        <span style={{ color: textSecondary }}>5 = Muy probable (casi siempre)</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scaleProb1Short')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scaleProb2Short')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scaleProb3Short')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scaleProb4Short')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scaleProb5Short')}</span>
       </div>
     </div>
 
     {/* Explicación de Severidad */}
     <div className="mb-3">
       <p className="font-bold mb-1" style={{ color: textPrimary }}>
-        SEVERIDAD (Impacto del daño):
+        {t('inspection.ui.formulario_inspeccion.severityImpact')}
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-1 ml-2">
-        <span style={{ color: textSecondary }}>1 = Insignificante (sin impacto)</span>
-        <span style={{ color: textSecondary }}>2 = Menor (impacto leve)</span>
-        <span style={{ color: textSecondary }}>3 = Moderada (impacto medio)</span>
-        <span style={{ color: textSecondary }}>4 = Mayor (impacto grave)</span>
-        <span style={{ color: textSecondary }}>5 = Catastrófica (impacto crítico)</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scale1Insignificant')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scale2Minor')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scale3Moderate')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scale4Major')}</span>
+        <span style={{ color: textSecondary }}>{t('inspection.ui.formulario_inspeccion.scaleSev5Short')}</span>
       </div>
     </div>
 
     {/* Clasificación del Riesgo */}
     <div>
       <p className="font-bold mb-1" style={{ color: textPrimary }}>
-        CLASIFICACIÓN DEL RIESGO:
+        {t('inspection.ui.formulario_inspeccion.classificationOfRisk')}
       </p>
       <div className="flex flex-wrap gap-4 ml-2">
-        <span style={{ color: '#10B981' }}>● Bajo (R ≤ 4)</span>
-        <span style={{ color: '#FBBF24' }}>● Medio (5 ≤ R ≤ 8)</span>
-        <span style={{ color: '#F59E0B' }}>● Alto (9 ≤ R ≤ 12)</span>
-        <span style={{ color: '#DC2626' }}>● Extremo (R {'>'} 12)</span>
+        <span style={{ color: '#10B981' }}>{t('inspection.ui.formulario_inspeccion.lowBand')}</span>
+        <span style={{ color: '#FBBF24' }}>{t('inspection.ui.formulario_inspeccion.mediumBand')}</span>
+        <span style={{ color: '#F59E0B' }}>{t('inspection.ui.formulario_inspeccion.highBand')}</span>
+        <span style={{ color: '#DC2626' }}>{t('inspection.ui.formulario_inspeccion.extremeBandPlain')}</span>
       </div>
     </div>
   </div>
@@ -14618,9 +14552,9 @@ return (
       className="text-lg font-bold mb-4"
       style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
     >
-      🗺️ MAPA DE CALOR
+      {t('inspection.ui.formulario_inspeccion.heatMapTitle')}
   </h2>
-  <Suspense fallback={<div style={{ color: textPrimary }}>Cargando mapa...</div>}>
+  <Suspense fallback={<div style={{ color: textPrimary }}>{t('inspection.ui.formulario_inspeccion.loadingMap')}</div>}>
     <MapaDeCalor tablaRiesgos={tablaRiesgos} />
   </Suspense>
   </div>
@@ -14642,7 +14576,7 @@ return (
     className="text-xl font-bold mb-4"
     style={{ color: textPrimary }}
   >
-    17. RECOMENDACIONES
+    {tituloSeccionUi('recomendaciones', t('inspection.ui.formulario_inspeccion.section17Title'))}
   </h2>
 
   {/* Sección para agregar recomendaciones desde el banco */}
@@ -14657,7 +14591,7 @@ return (
       className="text-lg font-semibold mb-3"
       style={{ color: textPrimary }}
     >
-      Banco de Recomendaciones
+      {t('inspection.ui.formulario_inspeccion.recommendationBank')}
     </h3>
 
   {/* Combo 1 - seleccionar categoría */}
@@ -14666,7 +14600,7 @@ return (
     className="block text-sm font-semibold mb-2"
     style={{ color: textPrimary }}
   >
-    Categoría
+    {t('inspection.ui.formulario_inspeccion.category')}
   </label>
   <select
     value={categoriaSeleccionada}
@@ -14680,10 +14614,10 @@ return (
     }}
     disabled={cargando}
   >
-    <option value="">Seleccione una categoría...</option>
+    <option value="">{t('inspection.ui.formulario_inspeccion.selectCategory')}</option>
     {Object.keys(bancoRecomendaciones).map((categoria, index) => (
       <option key={index} value={categoria}>
-        {categoria}
+        {translateCategoryLabel(categoria, i18n.language)}
       </option>
     ))}
   </select>
@@ -14696,7 +14630,7 @@ return (
           className="block text-sm font-semibold mb-2"
           style={{ color: textPrimary }}
         >
-          Recomendación Predefinida
+          {t('inspection.ui.formulario_inspeccion.predefinedRecommendation')}
         </label>
       <select
           value={valorSelectBancoRecomendacion}
@@ -14717,11 +14651,11 @@ return (
         disabled={cargando}
       >
         <option value={SIN_SELECCION_BANCO_RECOMENDACION}>
-            Seleccione una recomendación para agregar...
+            {t('inspection.ui.formulario_inspeccion.selectRecommendationToAdd')}
         </option>
         {bancoRecomendaciones[categoriaSeleccionada].map((rec, index) => (
           <option key={index} value={rec}>
-              {rec.slice(0, 100)}{rec.length > 100 ? '...' : ''}
+              {displayRecommendationPreview(rec, i18n.language)}
           </option>
         ))}
       </select>
@@ -14732,14 +14666,14 @@ return (
     {categoriaSeleccionada && (
       <div className="mb-3">
       <label className="block text-sm font-semibold mb-2">
-          Agregar Nueva Recomendación al Banco
+          {t('inspection.ui.formulario_inspeccion.addNewRecommendationToBank')}
       </label>
         <div className="flex gap-2">
       <input
         type="text"
         value={nuevaRecomendacion}
         onChange={(e) => setNuevaRecomendacion(e.target.value)}
-            placeholder="Escribe una nueva recomendación para agregar al banco..."
+            placeholder={t('inspection.ui.formulario_inspeccion.newRecommendationPlaceholder')}
             className="flex-1 border border-gray-300 rounded px-3 py-2"
         disabled={cargando}
             onKeyPress={(e) => {
@@ -14793,11 +14727,11 @@ return (
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition whitespace-nowrap"
             disabled={cargando || !nuevaRecomendacion.trim() || !categoriaSeleccionada}
         >
-            Agregar al Banco
+            {t('inspection.ui.formulario_inspeccion.addToBank')}
         </button>
         </div>
         <p className="text-xs text-gray-500 mt-1">
-          Esta recomendación se agregará al banco de la categoría seleccionada
+          {t('inspection.ui.formulario_inspeccion.recommendationAddedToBankHint')}
         </p>
       </div>
   )}
@@ -14810,7 +14744,7 @@ return (
         className="block text-sm font-semibold"
         style={{ color: textPrimary }}
       >
-        Recomendaciones del informe
+        {t('inspection.ui.formulario_inspeccion.reportRecommendations')}
       </label>
       <button
         type="button"
@@ -14823,12 +14757,12 @@ return (
         disabled={cargando}
       >
         <FaPlus className="text-xs" aria-hidden />
-        Agregar recomendación
+        {t('inspection.ui.formulario_inspeccion.addRecommendation')}
       </button>
     </div>
     {recomendacionesItems.length === 0 ? (
       <p className="text-sm" style={{ color: textSecondary }}>
-        Usa el banco arriba o &quot;Agregar recomendación&quot; para incluir una o varias recomendaciones. Cada una tendrá un código (por ejemplo 04/2026--R1) y una fecha de seguimiento que puedes cambiar.
+        {t('inspection.ui.formulario_inspeccion.recommendationsHelpHtml')}
       </p>
     ) : (
       <ul className="space-y-4 list-none p-0 m-0">
@@ -14857,20 +14791,20 @@ return (
                   border: `1px solid ${borderColor}`,
                 }}
                 disabled={cargando}
-                title="Quitar esta recomendación"
+                title={t('inspection.ui.formulario_inspeccion.removeRecommendation')}
               >
                 <FaTrash className="text-sm" aria-hidden />
               </button>
             </div>
-            <textarea placeholder="Recomendaciones del informe"
+            <textarea
               rows={5}
-              value={item.texto}
+              value={translateRecommendationText(item.texto, i18n.language)}
               onChange={(e) =>
                 handleActualizarRecomendacionItem(item.id, {
                   texto: e.target.value,
                 })
               }
-              placeholder="Texto de la recomendación..."
+              placeholder={t('inspection.ui.formulario_inspeccion.recommendationTextPlaceholder')}
               className="w-full rounded px-3 py-2 focus:outline-none text-sm"
               style={{
                 backgroundColor: inputBg,
@@ -14883,7 +14817,7 @@ return (
               className="block text-xs font-semibold mt-3 mb-1"
               style={{ color: textPrimary }}
             >
-              Fecha de seguimiento o control
+              {t('inspection.ui.formulario_inspeccion.followUpOrControlDate')}
             </label>
             <input
               type="date"
@@ -14919,15 +14853,15 @@ return (
       className="text-sm font-semibold mb-2 flex items-center gap-2"
       style={{ color: theme === 'dark' ? '#93C5FD' : '#1E40AF' }}
     >
-      <span>🤖</span> Asistente de IA para Recomendaciones
+      <span>🤖</span> {t('inspection.ui.formulario_inspeccion.aiRecommendationsAssistant')}
     </h3>
     <p 
       className="text-xs mb-3"
       style={{ color: theme === 'dark' ? '#BFDBFE' : '#1E3A8A' }}
     >
-      El asistente de IA puede ayudarte a mejorar, estructurar y generar recomendaciones basadas en toda la información del formulario de inspección.
+      {t('inspection.ui.formulario_inspeccion.aiRecommendationsHelp')}
     </p>
-    <Suspense fallback={<div style={{ color: textPrimary }}>Cargando asistente...</div>}>
+    <Suspense fallback={<div style={{ color: textPrimary }}>{t('inspection.ui.formulario_inspeccion.loadingAssistant')}</div>}>
       <ChatbotIA 
         formData={chatbotFormData}
       onInputChange={handleChatbotInputChange}
@@ -14936,11 +14870,11 @@ return (
   </div>
 
     {incluirSeccion('registroFotografico') && (
-    <Suspense fallback={<div style={{ color: textPrimary }}>Cargando registro fotográfico...</div>}>
+    <Suspense fallback={<div style={{ color: textPrimary }}>{t('inspection.ui.formulario_inspeccion.loadingPhotoRecord')}</div>}>
       <RegistroFotografico 
         onChange={handleImagenesRegistroChange}
         imagenesIniciales={imagenesRegistro}
-        tituloSeccion="18. REGISTRO FOTOGRÁFICO"
+        tituloSeccion={t('inspection.ui.formulario_inspeccion.section18Title')}
       />
     </Suspense>
     )}
@@ -14960,7 +14894,7 @@ return (
           borderBottom: `1px solid ${borderColor}`
         }}
       >
-        Acciones del Formulario
+        {t('inspection.ui.formulario_inspeccion.formActions')}
       </h2>
       
       {/* Botón para generar manual - Separado y destacado */}
@@ -14974,9 +14908,9 @@ return (
             border: `2px solid ${theme === 'dark' ? '#FCA5A5' : '#DC2626'}`
           }}
           disabled={generandoManual || cargando}
-          title="Genera un documento Word con las instrucciones completas de uso del formulario"
+          title={t('inspection.ui.formulario_inspeccion.generateManualTitle')}
         >
-          {generandoManual ? '⏳ Generando Manual...' : '📘 Generar Manual de Uso'}
+          {generandoManual ? t('inspection.ui.formulario_inspeccion.generatingManual') : t('inspection.ui.formulario_inspeccion.generateManual')}
         </button>
       </div>
       
@@ -14986,7 +14920,7 @@ return (
           onGuardarEnHistorial={handleGuardarEnHistorial}
           onExportar={handleExportar}
           tipoFormulario={TIPOS_FORMULARIOS.INSPECCION}
-          tituloFormulario="Inspección"
+          tituloFormulario={t('inspection.ui.formulario_inspeccion.inspectionFormTitle')}
           deshabilitado={!nombreCliente || !formData.ciudad_siniestro || !formData.aseguradora}
           guardando={guardando}
           exportando={exportando}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FaCamera,
   FaUpload,
@@ -18,6 +19,7 @@ const idImagen = (img, index = 0) =>
   String(img?.id ?? img?.ruta ?? img?.nombre ?? `idx-${index}`);
 
 export default function InspeccionFotograficaAjuste({ formData, onInputChange, onAgregarImagenBase64, numeroSeccion = 4 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -172,7 +174,7 @@ return imagenesProcesadas;
       
 } catch (error) {
       console.error('❌ Error procesando imágenes:', error);
-      alert('Error al procesar las imágenes. Inténtalo de nuevo.');
+      alert(t('adjustment.ui.fotos.processError'));
     } finally {
       setComprimiendo(false);
     }
@@ -277,13 +279,13 @@ return imagenesProcesadas;
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#C084FC' : '#9333EA' }}
           />
-          {numeroSeccion}. INSPECCIÓN (REGISTRO FOTOGRÁFICO INSPECCIÓN)
+          {numeroSeccion}. {t('adjustment.ui.fotos.sectionTitle')}
         </h2>
         <p 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          Registro fotográfico de la inspección del siniestro. Arrastra cada foto o usa las flechas para cambiar el orden (ese orden sale en el Word).
+          {t('adjustment.ui.fotos.sectionSubtitle')}
         </p>
       </div>
 
@@ -299,7 +301,7 @@ return imagenesProcesadas;
           className="block text-sm font-medium mb-2"
           style={{ color: textPrimary }}
         >
-          Descripción de la Inspección
+          {t('adjustment.ui.fotos.descriptionTitle')}
         </label>
         <textarea
           value={formData.descripcionInspeccion || ''}
@@ -312,7 +314,7 @@ return imagenesProcesadas;
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Escribe la descripción de la inspección aquí. Por ejemplo: 'Se realizo inspeccion visual del area afectada, se tomaron fotos de los daños, se identificaron puntos criticos'"
+          placeholder={t('adjustment.ui.fotos.descriptionPlaceholder')}
         />
         <div 
           className="mt-2 text-sm"
@@ -328,7 +330,7 @@ return imagenesProcesadas;
         onTextoCambiado={(texto) => onInputChange('descripcionInspeccion', texto)}
         contextoFormulario={formData}
         tipoSeccion="descripcionInspeccion"
-        tituloSeccion="Descripción de la Inspección"
+        tituloSeccion={t('adjustment.ui.fotos.descriptionTitle')}
       />
 
       {/* Carga de imágenes */}
@@ -360,8 +362,8 @@ return imagenesProcesadas;
                 style={{ color: theme === 'dark' ? '#C084FC' : '#9333EA' }}
               />
               <div style={{ color: textPrimary }}>
-                <p className="font-medium">Comprimiendo imágenes...</p>
-                <p className="text-sm">Optimizando para subida rápida</p>
+                <p className="font-medium">{t('adjustment.ui.fotos.compressing')}</p>
+                <p className="text-sm">{t('adjustment.ui.fotos.optimizing')}</p>
               </div>
               <div 
                 className="w-full rounded-full h-2"
@@ -386,8 +388,8 @@ return imagenesProcesadas;
                 className="mb-4"
                 style={{ color: textPrimary }}
               >
-                <p className="font-medium">Arrastra y suelta las imágenes aquí</p>
-                <p className="text-sm">o haz clic para seleccionar archivos</p>
+                <p className="font-medium">{t('adjustment.ui.fotos.dragDrop')}</p>
+                <p className="text-sm">{t('adjustment.ui.fotos.orClick')}</p>
                 <p 
                   className="text-xs mt-1"
                   style={{ color: textSecondary }}
@@ -427,7 +429,7 @@ return imagenesProcesadas;
                   }
                 }}
               >
-                {comprimiendo ? 'Procesando...' : 'Seleccionar Imágenes'}
+                {comprimiendo ? t('adjustment.ui.fotos.processing') : t('adjustment.ui.fotos.selectImages')}
               </label>
             </>
           )}
@@ -528,7 +530,7 @@ return imagenesProcesadas;
                         backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.65)' : 'rgba(255,255,255,0.9)',
                         color: textSecondary,
                       }}
-                      title="Arrastra para reordenar"
+                      title={t('adjustment.ui.fotos.dragToReorder')}
                     >
                       <FaGripVertical className="h-3 w-3" />
                       <span>{index + 1}</span>
@@ -548,7 +550,7 @@ return imagenesProcesadas;
                               const errorDiv = document.createElement('div');
                               errorDiv.className = 'image-error-message w-full h-32 rounded-lg flex items-center justify-center';
                               errorDiv.style.backgroundColor = theme === 'dark' ? '#2A2A2A' : '#E5E7EB';
-                              errorDiv.innerHTML = `<span class="text-xs text-center px-2" style="color: ${textSecondary}">Imagen no disponible<br/>en el servidor</span>`;
+                              errorDiv.innerHTML = `<span class="text-xs text-center px-2" style="color: ${textSecondary}">${t('adjustment.ui.fotos.imageUnavailable')}</span>`;
                               container.appendChild(errorDiv);
                             }
                           })}
@@ -581,7 +583,7 @@ return imagenesProcesadas;
                             backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(30,30,30,0.85)',
                             color: '#FFFFFF',
                           }}
-                          title="Mover arriba / anterior"
+                          title={t('adjustment.ui.fotos.moveUp')}
                         >
                           <FaArrowUp className="h-3 w-3" />
                         </button>
@@ -597,7 +599,7 @@ return imagenesProcesadas;
                             backgroundColor: theme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(30,30,30,0.85)',
                             color: '#FFFFFF',
                           }}
-                          title="Mover abajo / siguiente"
+                          title={t('adjustment.ui.fotos.moveDown')}
                         >
                           <FaArrowDown className="h-3 w-3" />
                         </button>
@@ -612,7 +614,7 @@ return imagenesProcesadas;
                             backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.85)' : '#EF4444',
                             color: '#FFFFFF',
                           }}
-                          title="Eliminar foto"
+                          title={t('adjustment.ui.fotos.deletePhoto')}
                         >
                           <FaTrash className="h-3 w-3" />
                         </button>
@@ -648,7 +650,7 @@ return imagenesProcesadas;
                           });
                         }}
                         onMouseDown={(e) => e.stopPropagation()}
-                        placeholder="Descripción de la imagen..."
+                        placeholder={t('adjustment.ui.fotos.imageDescriptionPlaceholder')}
                         className="w-full mt-1 px-2 py-1 text-xs rounded resize-none focus:outline-none"
                         style={{
                           backgroundColor: inputBg,
@@ -719,7 +721,7 @@ return imagenesProcesadas;
                   const errorDiv = document.createElement('div');
                   errorDiv.className = 'image-error-message w-full py-8 rounded-lg flex items-center justify-center';
                   errorDiv.style.backgroundColor = theme === 'dark' ? '#2A2A2A' : '#E5E7EB';
-                  errorDiv.innerHTML = `<span style="color: ${textSecondary}">Imagen no disponible en el servidor</span>`;
+                  errorDiv.innerHTML = `<span style="color: ${textSecondary}">${t('adjustment.ui.fotos.imageUnavailable')}</span>`;
                   container.appendChild(errorDiv);
                 }
               })}
@@ -761,7 +763,7 @@ return imagenesProcesadas;
                   border: `1px solid ${borderColor}`
                 }}
                 rows={3}
-                placeholder="Describe lo que se observa en esta imagen..."
+                placeholder={t('adjustment.ui.fotos.observePlaceholder')}
               />
             </div>
           </div>
@@ -787,15 +789,13 @@ return imagenesProcesadas;
           style={{ color: theme === 'dark' ? '#FDE047' : '#854D0E' }}
         >
           <p className="mb-2">
-            <strong>Recomendaciones para inspección fotográfica de calidad:</strong>
+            <strong>{t('adjustment.ui.fotos.recommendationsTitle')}:</strong>
           </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Incluya descripción detallada de la inspección realizada</li>
-            <li>Tome fotografías desde diferentes ángulos</li>
-            <li>Documente los daños más significativos</li>
-            <li>Incluya imágenes del contexto general</li>
-            <li>Agregue descripciones específicas a cada imagen</li>
-            <li>Mantenga un registro organizado de las evidencias</li>
+            <li>{t('adjustment.ui.fotos.tip1')}</li>
+            <li>{t('adjustment.ui.fotos.tip2')}</li>
+            <li>{t('adjustment.ui.fotos.tip3')}</li>
+            <li>{t('adjustment.ui.fotos.tip4')}</li>
           </ul>
         </div>
       </div>

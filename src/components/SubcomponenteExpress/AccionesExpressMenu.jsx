@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaCalculator,
   FaChevronDown,
@@ -20,6 +21,7 @@ export default function AccionesExpressMenu({
   onEliminar,
   tieneLiquidador = false,
 }) {
+  const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const btnRef = useRef(null);
@@ -86,7 +88,7 @@ export default function AccionesExpressMenu({
             onClick={() => elegir(onGestionar)}
           >
             <FaFolderOpen className="text-fenix-primario" aria-hidden />
-            Gestionar
+            {t('express.menu.manage')}
           </button>
           <button
             type="button"
@@ -95,12 +97,12 @@ export default function AccionesExpressMenu({
             onClick={() => elegir(onLiquidador)}
             title={
               tieneLiquidador
-                ? 'Abrir / actualizar liquidador del caso'
-                : 'Crear liquidador y guardar documentos en el caso'
+                ? t('express.menu.openSettlement')
+                : t('express.menu.createSettlement')
             }
           >
             <FaCalculator className="text-fenix-primario" aria-hidden />
-            Liquidador{tieneLiquidador ? ' ✓' : ''}
+            {t('express.menu.settlement')}{tieneLiquidador ? ' ✓' : ''}
           </button>
           <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
           <button
@@ -110,7 +112,7 @@ export default function AccionesExpressMenu({
             onClick={() => elegir(onEliminar)}
           >
             <FaTrash className="text-[10px]" aria-hidden />
-            Eliminar
+            {t('express.menu.delete')}
           </button>
         </div>,
         document.body
@@ -126,11 +128,11 @@ export default function AccionesExpressMenu({
         aria-haspopup="menu"
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
-        title="Acciones del caso"
+        title={t('express.menu.caseActions')}
       >
         <span className="inline-flex items-center gap-1.5">
           <FaEllipsisV className="text-[10px] opacity-70" aria-hidden />
-          Acciones
+          {t('express.menu.actions')}
         </span>
         <FaChevronDown className={`text-[10px] transition ${abierto ? 'rotate-180' : ''}`} aria-hidden />
       </button>

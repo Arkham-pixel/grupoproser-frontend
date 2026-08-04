@@ -1,17 +1,12 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 import { sanitizeUploadFileName } from "../../utils/sanitizeUploadFileName.js";
 
 export default function AgregarCuenta() {
+  const { t } = useTranslation();
   const rol = localStorage.getItem("rol");
-
-  if (rol !== "admin" && rol !== "soporte") {
-    return (
-      <div className="text-red-600 font-bold">
-        No tienes permisos para agregar cuentas.
-      </div>
-    );
-  }
+  const puedeAgregar = rol === "admin" || rol === "soporte";
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -29,7 +24,6 @@ export default function AgregarCuenta() {
   const [passwordError, setPasswordError] = useState("");
 
   const validatePassword = (password) => {
-    // Mínimo 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/;
     return regex.test(password);
   };
@@ -42,7 +36,7 @@ export default function AgregarCuenta() {
       setFormData({ ...formData, [name]: value });
       if (name === "password") {
         if (!validatePassword(value)) {
-          setPasswordError("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.");
+          setPasswordError(t('account.ui.cuenta.agregar.passwordError'));
         } else {
           setPasswordError("");
         }
@@ -74,7 +68,7 @@ export default function AgregarCuenta() {
         },
       });
 
-      setMensaje("Usuario creado exitosamente");
+      setMensaje(t('account.ui.cuenta.agregar.success'));
       setFormData({
         nombre: "",
         correo: "",
@@ -86,20 +80,28 @@ export default function AgregarCuenta() {
         password: ""
       });
     } catch (err) {
-      setError(err.response?.data?.message || "Error al crear el usuario");
+      setError(err.response?.data?.message || t('account.ui.cuenta.agregar.error'));
     }
   };
 
+  if (!puedeAgregar) {
+    return (
+      <div className="text-red-600 font-bold">
+        {t('account.ui.cuenta.agregar.noPermission')}
+      </div>
+    );
+  }
+
   return (
     <div className="p-3 sm:p-4 lg:p-6">
-      <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold mb-3 sm:mb-4">Agregar Cuenta</h3>
+      <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold mb-3 sm:mb-4">{t('account.ui.cuenta.agregar.title')}</h3>
       <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
 
         {mensaje && <p className="text-green-600 text-xs sm:text-sm">{mensaje}</p>}
         {error && <p className="text-red-600 text-xs sm:text-sm">{error}</p>}
 
         <div>
-          <label htmlFor="nombre" className="block text-xs sm:text-sm font-medium mb-1">Nombre completo</label>
+          <label htmlFor="nombre" className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.fields.nombreCompleto')}</label>
           <input
             id="nombre"
             type="text"
@@ -112,7 +114,7 @@ export default function AgregarCuenta() {
         </div>
 
         <div>
-          <label htmlFor="correo" className="block text-xs sm:text-sm font-medium mb-1">Correo electrónico</label>
+          <label htmlFor="correo" className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.fields.correo')}</label>
           <input
             id="correo"
             type="email"
@@ -125,7 +127,7 @@ export default function AgregarCuenta() {
         </div>
 
         <div>
-          <label htmlFor="celular" className="block text-xs sm:text-sm font-medium mb-1">Celular</label>
+          <label htmlFor="celular" className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.fields.celular')}</label>
           <input
             id="celular"
             type="text"
@@ -139,7 +141,7 @@ export default function AgregarCuenta() {
 
         <div>
           <label htmlFor="cedula" className="block text-xs sm:text-sm font-medium mb-1">
-            Cédula <span className="text-red-500">*</span> (Se usará como login)
+            {t('account.ui.cuenta.agregar.cedulaHintPrefix')} <span className="text-red-500">*</span> {t('account.ui.cuenta.agregar.cedulaHintSuffix')}
           </label>
           <input
             id="cedula"
@@ -149,12 +151,12 @@ export default function AgregarCuenta() {
             onChange={handleChange}
             className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
             required
-            placeholder="La cédula será el login del usuario"
+            placeholder={t('account.ui.cuenta.agregar.cedulaPlaceholder')}
           />
         </div>
 
         <div>
-          <label htmlFor="fechaNacimiento" className="block text-xs sm:text-sm font-medium mb-1">Fecha de nacimiento</label>
+          <label htmlFor="fechaNacimiento" className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.fields.fechaNacimiento')}</label>
           <input
             id="fechaNacimiento"
             type="date"
@@ -167,7 +169,7 @@ export default function AgregarCuenta() {
         </div>
 
         <div>
-          <label htmlFor="rol" className="block text-xs sm:text-sm font-medium mb-1">Rol del usuario</label>
+          <label htmlFor="rol" className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.fields.rolUsuario')}</label>
           <select
             id="rol"
             name="rol"
@@ -175,16 +177,16 @@ export default function AgregarCuenta() {
             onChange={handleChange}
             className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
           >
-            <option value="usuario">Usuario</option>
-            <option value="visualizador">Visualizador</option>
-            <option value="puertos">Puertos</option>
-            <option value="soporte">Soporte</option>
-            <option value="admin">Administrador</option>
+            <option value="usuario">{t('account.ui.cuenta.roles.usuario')}</option>
+            <option value="visualizador">{t('account.ui.cuenta.roles.visualizador')}</option>
+            <option value="puertos">{t('account.ui.cuenta.roles.puertos')}</option>
+            <option value="soporte">{t('account.ui.cuenta.roles.soporte')}</option>
+            <option value="admin">{t('account.ui.cuenta.roles.admin')}</option>
           </select>
         </div>
 
         <div>
-          <label htmlFor="foto" className="block text-xs sm:text-sm font-medium mb-1">Foto de perfil</label>
+          <label htmlFor="foto" className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.fields.foto')}</label>
           <input
             id="foto"
             type="file"
@@ -196,7 +198,7 @@ export default function AgregarCuenta() {
         </div>
 
         <div>
-          <label className="block text-xs sm:text-sm font-medium mb-1">Contraseña</label>
+          <label className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.fields.password')}</label>
           <input
             type="password"
             name="password"
@@ -213,7 +215,7 @@ export default function AgregarCuenta() {
           className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-xs sm:text-sm font-medium transition-colors"
           disabled={!!passwordError}
         >
-          Agregar
+          {t('account.ui.cuenta.agregar.submit')}
         </button>
       </form>
     </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import PuertosCasoGridFotografico from './PuertosCasoGridFotografico';
 
 const FOTOS_CONTENEDOR = [
@@ -13,11 +14,13 @@ export default function PuertosCasoAreaFotograficaMercancia({
   onInformeChange,
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
+
   return (
     <div className="space-y-6">
       <PuertosCasoGridFotografico
-        titulo="Contenido de la mercancía"
-        subtitulo="Fotografías de la mercancía (cajas, big bags, paquetes, etc. · máx. 4 fotos)"
+        titulo={t('ports.ui.casoExportacion.mercancia.contenidoTitle')}
+        subtitulo={t('ports.ui.casoExportacion.mercancia.contenidoSubtitle')}
         imagenes={informe.imagenesContenidoCajas || []}
         onChange={(updater) => onInformeChange('imagenesContenidoCajas', updater)}
         columnas={2}
@@ -28,8 +31,8 @@ export default function PuertosCasoAreaFotograficaMercancia({
       />
 
       <PuertosCasoGridFotografico
-        titulo="Contenedor (es) asignado (s)"
-        subtitulo="1 foto del contenedor asignado"
+        titulo={t('ports.ui.casoExportacion.mercancia.contenedoresTitle')}
+        subtitulo={t('ports.ui.casoExportacion.mercancia.contenedoresSubtitle')}
         imagenes={informe.imagenesContenedoresMercancia || []}
         onChange={(updater) => onInformeChange('imagenesContenedoresMercancia', updater)}
         columnas={1}

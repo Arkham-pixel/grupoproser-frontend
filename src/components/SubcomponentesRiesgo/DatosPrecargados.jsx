@@ -1,7 +1,10 @@
 // src/components/SubcomponentesRiesgo/DatosPrecargados.jsx
-import React , { useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function DatosPrecargados({ formData, setFormData }) {
+  const { t } = useTranslation();
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -10,28 +13,14 @@ export default function DatosPrecargados({ formData, setFormData }) {
     }));
   };
 
-  const DatosPrecargados = ({ datos, setFormData }) => {
   useEffect(() => {
-    if (datos) {
-      setFormData(prev => ({
-        ...prev,
-        aseguradora: datos.aseguradora || '',
-        direccion: datos.direccion || '',
-        ciudad: datos.ciudad || '',
-        asegurado: datos.asegurado || '',
-        fechaInspeccion: datos.fechaInspeccion || '',
-        // Puedes agregar más campos aquí si decides incluirlos en el formulario
-      }));
-    }
-  }, [datos, setFormData]);
-
-  return null; // No renderiza nada visual, solo aplica los datos
-};
+    // No-op placeholder for future prefill hooks
+  }, []);
 
   return (
     <div className="space-y-3 sm:space-y-4">
       <div>
-        <label className="block text-xs sm:text-sm font-medium mb-1">Aseguradora:</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">{t('inspection.fields.insurer')}:</label>
         <input
           type="text"
           name="aseguradora"
@@ -41,7 +30,7 @@ export default function DatosPrecargados({ formData, setFormData }) {
         />
       </div>
       <div>
-        <label className="block text-xs sm:text-sm font-medium mb-1">Dirección:</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">{t('inspection.fields.address')}:</label>
         <input
           type="text"
           name="direccion"
@@ -51,7 +40,7 @@ export default function DatosPrecargados({ formData, setFormData }) {
         />
       </div>
       <div>
-        <label className="block text-xs sm:text-sm font-medium mb-1">Ciudad:</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">{t('inspection.fields.city')}:</label>
         <input
           type="text"
           name="ciudad"
@@ -61,7 +50,7 @@ export default function DatosPrecargados({ formData, setFormData }) {
         />
       </div>
       <div>
-        <label className="block text-xs sm:text-sm font-medium mb-1">Asegurado:</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">{t('inspection.fields.insured')}:</label>
         <input
           type="text"
           name="asegurado"
@@ -71,7 +60,7 @@ export default function DatosPrecargados({ formData, setFormData }) {
         />
       </div>
       <div>
-        <label className="block text-xs sm:text-sm font-medium mb-1">Fecha Inspección:</label>
+        <label className="block text-xs sm:text-sm font-medium mb-1">{t('inspection.fields.inspectionDate')}:</label>
         <input
           type="date"
           name="fechaInspeccion"

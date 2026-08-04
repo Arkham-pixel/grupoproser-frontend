@@ -1,17 +1,22 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaCheckCircle, FaExclamationTriangle, FaInfoCircle, FaTimes } from 'react-icons/fa';
 
 const ModalConfirmacion = ({ 
   isOpen, 
   onClose, 
-  titulo = "Confirmación", 
+  titulo, 
   mensaje = "", 
   tipo = "success", // success, warning, error, info
-  botonTexto = "Aceptar",
+  botonTexto,
   mostrarCancelar = false,
   onConfirmar = null
 }) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
+
+  const tituloMostrado = titulo ?? t('common.confirmModal.defaultTitle');
+  const botonMostrado = botonTexto ?? t('common.confirmModal.accept');
 
   const getIcono = () => {
     switch (tipo) {
@@ -96,7 +101,7 @@ const ModalConfirmacion = ({
             <div className="flex items-center space-x-3">
               {getIcono()}
               <h3 className="text-lg font-semibold text-gray-900">
-                {titulo}
+                {tituloMostrado}
               </h3>
             </div>
             <button
@@ -122,14 +127,14 @@ const ModalConfirmacion = ({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors"
             >
-              Cancelar
+              {t('common.confirmModal.cancel')}
             </button>
           )}
           <button
             onClick={handleConfirmar}
             className={`px-4 py-2 text-sm font-medium text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${getColorBoton()}`}
           >
-            {botonTexto}
+            {botonMostrado}
           </button>
         </div>
       </div>

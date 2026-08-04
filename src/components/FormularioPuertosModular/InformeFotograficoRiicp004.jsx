@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import PuertosDragDropFotos from './PuertosDragDropFotos';
@@ -6,6 +7,7 @@ import { MAX_FOTOS_SECCION_INSPECCION_ASEGURADO } from '../PuertosActas/puertosF
 
 /** Sección 3 — INFORME FOTOGRÁFICO (formato RII-CP-004) */
 export default function InformeFotograficoRiicp004({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -51,45 +53,44 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
       }}
     >
       <h3 className="text-lg font-bold mb-1" style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}>
-        3 — INFORME FOTOGRÁFICO
+        {t('ports.ui.formulario.riicp004.informeFotografico.titulo')}
       </h3>
       <p className="text-xs mb-6" style={{ color: textSecondary }}>
-        Fotos del almacenamiento, por modelo y por VIN. Máximo {MAX_FOTOS_SECCION_INSPECCION_ASEGURADO} fotos
-        por cada bloque. Se guardan en S3 al grabar el informe.
+        {t('ports.ui.formulario.riicp004.informeFotografico.intro', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
       </p>
 
       <div className="mb-8">
         <h4 className="text-sm font-bold mb-2" style={{ color: textPrimary }}>
-          Aspecto del almacenamiento
+          {t('ports.ui.formulario.riicp004.informeFotografico.aspectoAlmacenamiento')}
         </h4>
         <PuertosDragDropFotos
           imagenes={imagenesAlmacenamiento}
           onChange={(nuevas) => onInputChange('imagenesAspectoAlmacenamiento', nuevas)}
           cargando={cargando}
           max={MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}
-          placeholder="Arrastra fotos generales del patio / almacenamiento"
-          notaS3={`Máx. ${MAX_FOTOS_SECCION_INSPECCION_ASEGURADO} · Leyenda: ASPECTO DEL ALMACENAMIENTO`}
+          placeholder={t('ports.ui.formulario.riicp004.informeFotografico.placeholderAlmacenamiento')}
+          notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Almacenamiento', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
         />
       </div>
 
       <div className="mb-8">
         <h4 className="text-sm font-bold mb-2" style={{ color: textPrimary }}>
-          Aspecto modelo
+          {t('ports.ui.formulario.riicp004.informeFotografico.aspectoModelo')}
         </h4>
         <PuertosDragDropFotos
           imagenes={imagenesModelo}
           onChange={(nuevas) => onInputChange('imagenesAspectoModelo', nuevas)}
           cargando={cargando}
           max={MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}
-          placeholder="Arrastra fotos por modelo de vehículo"
-          notaS3={`Máx. ${MAX_FOTOS_SECCION_INSPECCION_ASEGURADO} · Leyenda: ASPECTO MODELO`}
+          placeholder={t('ports.ui.formulario.riicp004.informeFotografico.placeholderModelo')}
+          notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Modelo', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
         />
       </div>
 
       <div>
         <div className="flex justify-between items-center mb-3">
           <h4 className="text-sm font-bold" style={{ color: textPrimary }}>
-            Fotos por VIN (daños)
+            {t('ports.ui.formulario.riicp004.informeFotografico.fotosPorVin')}
           </h4>
           <button
             type="button"
@@ -98,7 +99,7 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
             style={{ backgroundColor: theme === 'dark' ? '#2563EB' : '#3B82F6' }}
             disabled={cargando}
           >
-            <FaPlus /> Agregar VIN
+            <FaPlus /> {t('ports.ui.formulario.riicp004.informeFotografico.agregarVin')}
           </button>
         </div>
 
@@ -123,7 +124,7 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
                 </div>
                 <div>
                   <label className="block text-xs font-medium mb-1" style={{ color: textPrimary }}>
-                    Descripción del daño (leyenda en Word)
+                    {t('ports.ui.formulario.riicp004.informeFotografico.descripcionDano')}
                   </label>
                   <input
                     type="text"
@@ -131,7 +132,7 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
                     onChange={(e) => actualizarRegistro(registro.id, 'danos', e.target.value)}
                     className="w-full rounded px-2 py-1.5 text-sm"
                     style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
-                    placeholder="Presenta golpe en guardabarros delantero"
+                    placeholder={t('ports.ui.formulario.riicp004.informeFotografico.danoPlaceholder')}
                     disabled={cargando}
                   />
                 </div>
@@ -150,8 +151,8 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
               onChange={(fotos) => actualizarFotosRegistro(registro.id, fotos)}
               cargando={cargando}
               max={MAX_FOTOS_SECCION_INSPECCION_ASEGURADO}
-              placeholder="Arrastra fotos de este VIN"
-              notaS3={`Máx. ${MAX_FOTOS_SECCION_INSPECCION_ASEGURADO} fotos por VIN`}
+              placeholder={t('ports.ui.formulario.riicp004.informeFotografico.placeholderVin')}
+              notaS3={t('ports.ui.formulario.riicp004.informeFotografico.notaS3Vin', { max: MAX_FOTOS_SECCION_INSPECCION_ASEGURADO })}
               mostrarContador={false}
             />
           </div>
@@ -159,7 +160,7 @@ export default function InformeFotograficoRiicp004({ formData, onInputChange, ca
 
         {registrosPorVin.length === 0 && (
           <p className="text-xs text-center py-4" style={{ color: textSecondary }}>
-            Opcional: agregue VIN con fotos de daños específicos.
+            {t('ports.ui.formulario.riicp004.informeFotografico.empty')}
           </p>
         )}
       </div>

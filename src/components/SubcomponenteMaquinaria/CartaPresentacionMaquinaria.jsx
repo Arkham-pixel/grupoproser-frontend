@@ -1,5 +1,6 @@
 import React from "react";
 import Select from "react-select";
+import { useTranslation } from "react-i18next";
 import {
   FieldLabel,
   ThemedInput,
@@ -9,7 +10,12 @@ import {
   useMaquinariaTheme,
 } from "./maquinariaUi";
 
-const SALUDOS = ["Estimados señores:", "Cordial saludo.", "Apreciados señores:"];
+/** Persisted Spanish greeting values — display labels come from i18n */
+const SALUDOS = [
+  { value: "Estimados señores:", key: "estimados" },
+  { value: "Cordial saludo.", key: "cordial" },
+  { value: "Apreciados señores:", key: "apreciados" },
+];
 
 export default function CartaPresentacionMaquinaria({
   ciudadFecha,
@@ -27,14 +33,16 @@ export default function CartaPresentacionMaquinaria({
   onCiudadChange,
   cargando = false,
 }) {
-  const t = useMaquinariaTheme();
-  const selectStyles = getSelectStyles(t);
+  const { t } = useTranslation();
+  const mq = useMaquinariaTheme();
+  const selectStyles = getSelectStyles(mq);
+  const srcHeader = t('machinery.ui.sources.formHeader');
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="sm:col-span-2">
-        <FieldLabel hint="Al elegir ciudad se autocompleta lugar, ubicación y departamento en la tabla">
-          Ciudad
+        <FieldLabel hint={t('machinery.ui.letter.cityHint')}>
+          {t('machinery.ui.letter.city')}
         </FieldLabel>
         <Select
           options={opcionesCiudades}
@@ -47,7 +55,7 @@ export default function CartaPresentacionMaquinaria({
               setCiudadFecha("");
             }
           }}
-          placeholder="Seleccione ciudad"
+          placeholder={t('machinery.ui.letter.cityPlaceholder')}
           isClearable
           styles={selectStyles}
           isDisabled={cargando}
@@ -56,73 +64,73 @@ export default function CartaPresentacionMaquinaria({
           <ThemedInput
             value={ciudadFecha}
             onChange={(e) => setCiudadFecha(e.target.value)}
-            placeholder="O escriba la ciudad"
+            placeholder={t('machinery.ui.letter.cityManual')}
             disabled={cargando}
           />
         </div>
       </div>
 
       <div>
-        <FieldLabel>Fecha</FieldLabel>
-        <SyncedValue value={fecha} source="Encabezado del formulario" />
+        <FieldLabel>{t('machinery.ui.letter.date')}</FieldLabel>
+        <SyncedValue value={fecha} source={srcHeader} />
       </div>
 
       <div>
-        <FieldLabel>Aseguradora</FieldLabel>
-        <SyncedValue value={aseguradora} source="Encabezado del formulario" />
+        <FieldLabel>{t('machinery.ui.letter.insurer')}</FieldLabel>
+        <SyncedValue value={aseguradora} source={srcHeader} />
       </div>
 
       <div>
-        <FieldLabel>Asegurado</FieldLabel>
-        <SyncedValue value={nombreAsegurado} source="Encabezado del formulario" />
+        <FieldLabel>{t('machinery.ui.letter.insured')}</FieldLabel>
+        <SyncedValue value={nombreAsegurado} source={srcHeader} />
       </div>
 
       <div>
-        <FieldLabel>Maquinaria</FieldLabel>
-        <SyncedValue value={nombreMaquinaria} source="Encabezado del formulario" />
+        <FieldLabel>{t('machinery.ui.letter.machinery')}</FieldLabel>
+        <SyncedValue value={nombreMaquinaria} source={srcHeader} />
       </div>
 
       <div className="sm:col-span-2">
-        <FieldLabel>Referencia</FieldLabel>
-        <SyncedValue value={referencia} source="§1 Informe de inspección" />
+        <FieldLabel>{t('machinery.ui.letter.reference')}</FieldLabel>
+        <SyncedValue value={referencia} source={t('machinery.ui.sources.section1')} />
       </div>
 
       <div className="sm:col-span-2">
-        <FieldLabel>Saludo</FieldLabel>
+        <FieldLabel>{t('machinery.ui.letter.greeting')}</FieldLabel>
         <div className="flex flex-col sm:flex-row gap-2">
           <select
             value={saludo}
             onChange={(e) => setSaludo(e.target.value)}
             className="px-3 py-2 text-sm rounded-md sm:max-w-xs"
             style={{
-              backgroundColor: t.inputBg,
-              color: t.textPrimary,
-              border: `1px solid ${t.borderColor}`,
+              backgroundColor: mq.inputBg,
+              color: mq.textPrimary,
+              border: `1px solid ${mq.borderColor}`,
             }}
             disabled={cargando}
           >
-            <option value="">Seleccione un saludo</option>
+            <option value="">{t('machinery.ui.letter.greetingPlaceholder')}</option>
             {SALUDOS.map((s) => (
-              <option key={s} value={s}>
-                {s}
+              <option key={s.value} value={s.value}>
+                {t(`machinery.ui.letter.greetings.${s.key}`)}
               </option>
             ))}
           </select>
           <ThemedInput
             value={saludo}
             onChange={(e) => setSaludo(e.target.value)}
-            placeholder="O escriba otro saludo"
+            placeholder={t('machinery.ui.letter.greetingManual')}
             disabled={cargando}
           />
         </div>
       </div>
 
       <div className="sm:col-span-2">
-        <FieldLabel>Texto de presentación</FieldLabel>
+        <FieldLabel>{t('machinery.ui.letter.body')}</FieldLabel>
         <ThemedTextarea
           value={cuerpo}
           onChange={(e) => setCuerpo(e.target.value)}
-          placeholder="Cuerpo de la carta de presentación"
+          placeholder={t('machinery.ui.letter.bodyPlaceholder')}
           rows={4}
           disabled={cargando}
         />

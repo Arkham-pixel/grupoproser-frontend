@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 
 /** Sección 2 — OBSERVACIONES: tabla VIN y observaciones del vehículo */
 export default function ObservacionesRiicp004({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -40,15 +42,15 @@ export default function ObservacionesRiicp004({ formData, onInputChange, cargand
       }}
     >
       <h3 className="text-lg font-bold mb-1" style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}>
-        2 — OBSERVACIONES
+        {t('ports.ui.formulario.riicp004.observaciones.titulo')}
       </h3>
       <p className="text-xs mb-4" style={{ color: textSecondary }}>
-        Registre el VIN y las observaciones de cada vehículo con novedad. El texto general va en la sección anterior.
+        {t('ports.ui.formulario.riicp004.observaciones.ayuda')}
       </p>
 
       <div className="flex justify-between items-center mb-3">
         <span className="text-sm font-medium" style={{ color: textPrimary }}>
-          VIN y observaciones del vehículo
+          {t('ports.ui.formulario.riicp004.observaciones.vinObservaciones')}
         </span>
         <button
           type="button"
@@ -57,7 +59,7 @@ export default function ObservacionesRiicp004({ formData, onInputChange, cargand
           style={{ backgroundColor: theme === 'dark' ? '#16A34A' : '#22C55E' }}
           disabled={cargando}
         >
-          <FaPlus /> Agregar vehículo
+          <FaPlus /> {t('ports.ui.formulario.riicp004.observaciones.agregarVehiculo')}
         </button>
       </div>
 
@@ -69,7 +71,7 @@ export default function ObservacionesRiicp004({ formData, onInputChange, cargand
                 VIN
               </th>
               <th className="px-3 py-2 text-left font-bold text-white" style={{ border: `1px solid ${borderColor}` }}>
-                OBSERVACIONES DEL VEHÍCULO
+                {t('ports.ui.formulario.riicp004.observaciones.headerObservaciones')}
               </th>
               <th style={{ border: `1px solid ${borderColor}`, width: 48 }} />
             </tr>
@@ -103,7 +105,7 @@ export default function ObservacionesRiicp004({ formData, onInputChange, cargand
                     onChange={(e) => actualizarCelda(fila.id, 'averias', e.target.value)}
                     className="w-full px-2 py-1 text-sm"
                     style={{ backgroundColor: 'transparent', color: textPrimary, border: 'none' }}
-                    placeholder="Presenta rayones en guardabarros..."
+                    placeholder={t('ports.ui.formulario.riicp004.observaciones.averiasPlaceholder')}
                     disabled={cargando}
                   />
                 </td>
@@ -125,7 +127,7 @@ export default function ObservacionesRiicp004({ formData, onInputChange, cargand
 
       {tablaAverias.length === 0 && (
         <p className="text-sm text-center py-6 mt-2 rounded border border-dashed" style={{ color: textSecondary, borderColor }}>
-          Sin vehículos con novedad. Use &quot;Agregar vehículo&quot; si aplica.
+          {t('ports.ui.formulario.riicp004.observaciones.empty')}
         </p>
       )}
     </div>

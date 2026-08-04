@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   FaFileAlt, 
   FaDownload, 
@@ -54,20 +55,20 @@ function textoAseguradoHistorialUi(...candidatos) {
   for (const raw of candidatos) {
     if (raw == null || raw === '') continue;
     if (typeof raw === 'string') {
-      const t = raw.trim();
-      if (t && t !== 'N/A' && t !== '[object Object]') return t;
+      const texto = raw.trim();
+      if (texto && texto !== 'N/A' && texto !== '[object Object]') return texto;
       continue;
     }
     if (typeof raw === 'object') {
-      const t = String(raw.nombre || raw.name || raw.razonSocial || raw.asegurado || '').trim();
-      if (t && t !== 'N/A') return t;
+      const texto = String(raw.nombre || raw.name || raw.razonSocial || raw.asegurado || '').trim();
+      if (texto && texto !== 'N/A') return texto;
     }
   }
   return '';
 }
 
 /** Título visible en la lista: para ajustes agrega asegurado si falta. */
-function tituloVisibleHistorial(formulario) {
+function tituloVisibleHistorial(formulario, t) {
   const titulo = String(formulario?.titulo || '').trim();
   const asegurado = textoAseguradoHistorialUi(
     formulario?.asegurado,
@@ -75,12 +76,13 @@ function tituloVisibleHistorial(formulario) {
     formulario?.datos?.tomador
   );
   const esAjuste = String(formulario?.tipo || '').toLowerCase().includes('ajuste');
-  if (!esAjuste || !asegurado) return titulo || 'Sin título';
+  if (!esAjuste || !asegurado) return titulo || t('history.ui.noTitle');
   if (titulo.toLowerCase().includes(asegurado.toLowerCase())) return titulo;
-  return titulo ? `${titulo} - ${asegurado}` : `Informe de Ajuste - ${asegurado}`;
+  return titulo ? `${titulo} - ${asegurado}` : t('history.ui.adjustmentReport', { insured: asegurado });
 }
 
 export default function HistorialFormularios() {
+  const { t } = useTranslation();
   const {
     formularios,
     cargando,
@@ -115,18 +117,18 @@ export default function HistorialFormularios() {
 
   // Tipos de formularios disponibles
   const tiposFormularios = [
-    { id: 'todos', nombre: 'Todos los Formularios', icono: '📋', color: 'bg-gray-500' },
-    { id: TIPOS_FORMULARIOS.COMPLEX, nombre: 'Complex', icono: '🏢', color: 'bg-blue-500' },
-    { id: TIPOS_FORMULARIOS.RIESGOS, nombre: 'Riesgos', icono: '⚠️', color: 'bg-red-500' },
-    { id: TIPOS_FORMULARIOS.POL, nombre: 'POL', icono: '📄', color: 'bg-green-500' },
-    { id: TIPOS_FORMULARIOS.INSPECCION, nombre: 'Inspección', icono: '🔍', color: 'bg-yellow-500' },
-    { id: TIPOS_FORMULARIOS.ACTA_INSPECCION, nombre: 'Acta de Inspección', icono: '📋', color: 'bg-red-600' },
-    { id: TIPOS_FORMULARIOS.INSPECCION_PROPIEDADES, nombre: 'Inspección de Propiedades', icono: '🏠', color: 'bg-teal-500' },
-    { id: TIPOS_FORMULARIOS.MAQUINARIA, nombre: 'Maquinaria', icono: '⚙️', color: 'bg-purple-500' },
-    { id: TIPOS_FORMULARIOS.SINIESTROS, nombre: 'Siniestros', icono: '🚨', color: 'bg-orange-500' },
-    { id: TIPOS_FORMULARIOS.AJUSTE, nombre: 'Ajuste', icono: '📊', color: 'bg-indigo-500' },
-    { id: TIPOS_FORMULARIOS.MATRIZ_RIESGO_INICIAL, nombre: 'Matriz de Riesgo (Inicial)', icono: '🔥', color: 'bg-pink-500' },
-    { id: TIPOS_FORMULARIOS.MATRIZ_RIESGO_FINAL, nombre: 'Matriz de Riesgo (Final)', icono: '🎯', color: 'bg-rose-500' }
+    { id: 'todos', nombre: t('history.ui.types.all'), icono: '📋', color: 'bg-gray-500' },
+    { id: TIPOS_FORMULARIOS.COMPLEX, nombre: t('history.ui.types.complex'), icono: '🏢', color: 'bg-blue-500' },
+    { id: TIPOS_FORMULARIOS.RIESGOS, nombre: t('history.ui.types.riesgos'), icono: '⚠️', color: 'bg-red-500' },
+    { id: TIPOS_FORMULARIOS.POL, nombre: t('history.ui.types.pol'), icono: '📄', color: 'bg-green-500' },
+    { id: TIPOS_FORMULARIOS.INSPECCION, nombre: t('history.ui.types.inspeccion'), icono: '🔍', color: 'bg-yellow-500' },
+    { id: TIPOS_FORMULARIOS.ACTA_INSPECCION, nombre: t('history.ui.types.actaInspeccion'), icono: '📋', color: 'bg-red-600' },
+    { id: TIPOS_FORMULARIOS.INSPECCION_PROPIEDADES, nombre: t('history.ui.types.inspeccionPropiedades'), icono: '🏠', color: 'bg-teal-500' },
+    { id: TIPOS_FORMULARIOS.MAQUINARIA, nombre: t('history.ui.types.maquinaria'), icono: '⚙️', color: 'bg-purple-500' },
+    { id: TIPOS_FORMULARIOS.SINIESTROS, nombre: t('history.ui.types.siniestros'), icono: '🚨', color: 'bg-orange-500' },
+    { id: TIPOS_FORMULARIOS.AJUSTE, nombre: t('history.ui.types.ajuste'), icono: '📊', color: 'bg-indigo-500' },
+    { id: TIPOS_FORMULARIOS.MATRIZ_RIESGO_INICIAL, nombre: t('history.ui.types.matrizInicial'), icono: '🔥', color: 'bg-pink-500' },
+    { id: TIPOS_FORMULARIOS.MATRIZ_RIESGO_FINAL, nombre: t('history.ui.types.matrizFinal'), icono: '🎯', color: 'bg-rose-500' }
   ];
 
   // Cargar lista de usuarios cuando el componente se monta (solo para admin/soporte)
@@ -208,7 +210,7 @@ export default function HistorialFormularios() {
     try {
       // Verificar si el formulario tiene archivo
       if (!formulario.archivo || !formulario.archivo.nombre) {
-        alert('❌ Este formulario no tiene archivo adjunto para exportar');
+        alert(t('history.ui.alerts.noFile'));
         return;
       }
       
@@ -216,7 +218,7 @@ export default function HistorialFormularios() {
       const formularioId = formulario.id || formulario._id;
       
       if (!formularioId) {
-        alert('❌ Error: No se pudo identificar el formulario para exportar');
+        alert(t('history.ui.alerts.noId'));
         return;
       }
       
@@ -229,24 +231,19 @@ export default function HistorialFormularios() {
       await descargarFormulario(formularioId);
       
       // Mostrar mensaje de éxito
-      alert(`✅ Exportación completada: ${formulario.archivo.nombre}\n\nEl archivo ha sido descargado exitosamente.`);
+      alert(t('history.ui.alerts.exportSuccess', { name: formulario.archivo.nombre }));
       
     } catch (error) {
       console.error('Error en exportación:', error);
       
       // Mensaje de error más específico y útil
-      let mensajeError = 'Error al exportar el formulario';
+      let mensajeError = t('history.ui.alerts.exportError');
       
       if (error.message.includes('500')) {
-        mensajeError = '❌ Error del servidor: No se pudo procesar la exportación.\n\nPosibles causas:\n• Problema con el archivo\n• Error en la base de datos';
+        mensajeError = t('history.ui.alerts.serverError');
       } else if (error.necesitaRegeneracion || (error.message.includes('404') && error.message.includes('no encontrado'))) {
         // Si el archivo no existe y necesita regeneración, ofrecer abrir el editor
-        const respuesta = confirm(
-          '❌ Archivo no encontrado en el servidor.\n\n' +
-          'El formulario existe en la base de datos, pero el archivo físico no se encuentra.\n\n' +
-          '¿Deseas abrir el formulario para regenerar el documento?\n\n' +
-          'Esto abrirá el editor del formulario donde podrás regenerar y guardar el archivo.'
-        );
+        const respuesta = confirm(t('history.ui.alerts.fileNotFoundConfirm'));
         
         if (respuesta) {
           // Abrir el formulario en modo edición para regenerar el documento
@@ -254,15 +251,15 @@ export default function HistorialFormularios() {
         }
         return; // No mostrar alert adicional
       } else if (error.message.includes('404')) {
-        mensajeError = '❌ Formulario no encontrado en el servidor.';
+        mensajeError = t('history.ui.alerts.formNotFound');
       } else if (error.message.includes('401')) {
-        mensajeError = '❌ Sesión expirada. Por favor, inicia sesión nuevamente.';
+        mensajeError = t('history.ui.alerts.sessionExpired');
       } else if (error.message.includes('403')) {
-        mensajeError = '❌ No tienes permisos para exportar este formulario.';
+        mensajeError = t('history.ui.alerts.noPermission');
       } else if (error.message.includes('NetworkError')) {
-        mensajeError = '❌ Error de conexión. Verifica tu conexión a internet.';
+        mensajeError = t('history.ui.alerts.networkError');
       } else {
-        mensajeError = `❌ Error al exportar: ${error.message}`;
+        mensajeError = t('history.ui.alerts.exportErrorDetail', { message: error.message });
       }
       
       alert(mensajeError);
@@ -287,69 +284,73 @@ const formularioCompleto = await obtenerFormulario(formulario.id);
       switch (formulario.tipo) {
         case 'complex':
           rutaEdicion = `/editar-caso/${formulario.id}`;
-          mensajeInfo = '🏢 Redirigiendo al editor de Complex...';
+          mensajeInfo = t('history.ui.alerts.redirectComplex');
           break;
         case 'riesgos':
           rutaEdicion = `/riesgos/editar/${formulario.id}`;
-          mensajeInfo = '⚠️ Redirigiendo al editor de Riesgos...';
+          mensajeInfo = t('history.ui.alerts.redirectRiesgos');
           break;
         case 'pol':
           rutaEdicion = `/reporte-pol`;
-          mensajeInfo = '📄 Redirigiendo al formulario POL (modo creación)...';
+          mensajeInfo = t('history.ui.alerts.redirectPol');
           break;
         case 'inspeccion':
           rutaEdicion = `/formularioinspeccion/editar/${formulario.id}`;
-          mensajeInfo = '🔍 Redirigiendo al formulario de Inspección (modo edición)...';
+          mensajeInfo = t('history.ui.alerts.redirectInspeccion');
           break;
         case 'inspeccion-propiedades':
           rutaEdicion = `/propiedades/reporte`;
-          mensajeInfo = '🏠 Redirigiendo al formulario de Inspección de Propiedades (modo edición)...';
+          mensajeInfo = t('history.ui.alerts.redirectPropiedades');
           break;
         case 'acta_inspeccion':
           rutaEdicion = `/acta-inspeccion/editar/${formulario.id}`;
-          mensajeInfo = '📋 Redirigiendo al Acta de Inspección (modo edición)...';
+          mensajeInfo = t('history.ui.alerts.redirectActa');
           break;
         case 'inspeccion-puertos':
           rutaEdicion = `/puertos/formulario/editar/${formulario.id}`;
-          mensajeInfo = '🚢 Redirigiendo al formulario de Inspección de Puertos (modo edición)...';
+          mensajeInfo = t('history.ui.alerts.redirectPuertos');
           break;
         case 'maquinaria':
           rutaEdicion = `/formulario-maquinaria/editar/${formulario.id}`;
-          mensajeInfo = '⚙️ Redirigiendo al formulario de Maquinaria (modo edición)...';
+          mensajeInfo = t('history.ui.alerts.redirectMaquinaria');
           break;
         case 'siniestros':
           rutaEdicion = `/siniestros`;
-          mensajeInfo = '🚨 Redirigiendo a la lista de Siniestros...';
+          mensajeInfo = t('history.ui.alerts.redirectSiniestros');
           break;
         case 'ajuste':
           rutaEdicion = `/ajuste/editar/${formulario.id}`;
-          mensajeInfo = '📊 Redirigiendo al formulario de Ajuste (modo edición)...';
+          mensajeInfo = t('history.ui.alerts.redirectAjuste');
           break;
         default:
           rutaEdicion = `/inicio`;
-          mensajeInfo = '🏠 Redirigiendo al inicio...';
+          mensajeInfo = t('history.ui.alerts.redirectHome');
       }
       
       // Mostrar mensaje informativo antes de redirigir
-      alert(`${mensajeInfo}\n\nFormulario: ${formulario.titulo}\nTipo: ${formulario.tipo.toUpperCase()}`);
+      alert(t('history.ui.alerts.redirectInfo', {
+        info: mensajeInfo,
+        title: formulario.titulo,
+        type: formulario.tipo.toUpperCase(),
+      }));
       
       // Redirección real usando React Router
       navigate(rutaEdicion);
     } catch (error) {
       console.error('❌ Error al obtener formulario para editar:', error);
       
-      let mensajeError = 'Error al obtener formulario para editar';
+      let mensajeError = t('history.ui.alerts.editFetchError');
       
       if (error.message.includes('401')) {
-        mensajeError = '❌ Sesión expirada. Por favor, inicia sesión nuevamente.';
+        mensajeError = t('history.ui.alerts.sessionExpired');
       } else if (error.message.includes('404')) {
-        mensajeError = '❌ Formulario no encontrado en el servidor.';
+        mensajeError = t('history.ui.alerts.formNotFound');
       } else if (error.message.includes('500')) {
-        mensajeError = '❌ Error del servidor. Intenta nuevamente más tarde.';
+        mensajeError = t('history.ui.alerts.serverRetry');
       } else if (error.message.includes('NetworkError')) {
-        mensajeError = '❌ Error de conexión. Verifica tu conexión a internet.';
+        mensajeError = t('history.ui.alerts.networkError');
       } else {
-        mensajeError = `❌ Error: ${error.message}`;
+        mensajeError = t('history.ui.alerts.errorDetail', { message: error.message });
       }
       
       alert(mensajeError);
@@ -362,13 +363,13 @@ const formularioCompleto = await obtenerFormulario(formulario.id);
       const formularioId = formulario.id || formulario._id;
       
       if (!formularioId) {
-        alert('❌ Error: No se pudo identificar el formulario');
+        alert(t('history.ui.alerts.noIdShort'));
         return;
       }
 
       // Solo para formularios de inspeccion-propiedades por ahora
       if (formulario.tipo !== 'inspeccion-propiedades') {
-        alert('❌ Esta función solo está disponible para formularios de Inspección de Propiedades por ahora.');
+        alert(t('history.ui.alerts.onlyPropiedades'));
         return;
       }
 
@@ -920,19 +921,19 @@ if (!formularioCompleto || !formularioCompleto.datos) {
         });
         
         if (response.ok) {
-alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido guardado en el servidor.`);
+          alert(t('history.ui.alerts.regenerateSuccess'));
         } else {
           console.warn('⚠️ El documento se descargó pero no se pudo guardar en el servidor');
-          alert(`✅ Documento regenerado y descargado.\n\n⚠️ Nota: El archivo se descargó pero no se pudo guardar automáticamente en el servidor.`);
+          alert(t('history.ui.alerts.regeneratePartial'));
         }
       } catch (saveError) {
         console.error('Error guardando archivo regenerado:', saveError);
-        alert(`✅ Documento regenerado y descargado.\n\n⚠️ Nota: El archivo se descargó pero no se pudo guardar automáticamente en el servidor.`);
+        alert(t('history.ui.alerts.regeneratePartial'));
       }
 
     } catch (error) {
       console.error('Error regenerando documento:', error);
-      alert(`❌ Error al regenerar el documento: ${error.message}\n\nPor favor, intenta editar el formulario para regenerarlo correctamente.`);
+      alert(t('history.ui.alerts.regenerateError', { message: error.message }));
     } finally {
       const formularioId = formulario.id || formulario._id;
       if (formularioId) {
@@ -943,12 +944,12 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
 
   // Función para eliminar formulario
   const handleEliminarFormulario = async (formulario) => {
-    if (window.confirm(`¿Estás seguro de que quieres eliminar "${formulario.titulo}"?\n\nEsta acción no se puede deshacer.`)) {
+    if (window.confirm(t('history.ui.alerts.deleteConfirm', { title: formulario.titulo }))) {
       try {
         await eliminarFormulario(formulario.id);
-        alert(`🗑️ Formulario eliminado: ${formulario.titulo}`);
+        alert(t('history.ui.alerts.deleted', { title: formulario.titulo }));
       } catch (error) {
-        alert(`❌ Error al eliminar: ${error.message}`);
+        alert(t('history.ui.alerts.deleteError', { message: error.message }));
       }
     }
   };
@@ -980,18 +981,18 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
       setModalDetalles({ visible: false, formulario: null });
       
       // Mostrar mensaje de error más específico
-      let mensajeError = 'Error al obtener detalles del formulario';
+      let mensajeError = t('history.ui.alerts.detailsError');
       
       if (error.message.includes('401')) {
-        mensajeError = 'Sesión expirada. Por favor, inicia sesión nuevamente.';
+        mensajeError = t('history.ui.alerts.detailsSessionExpired');
       } else if (error.message.includes('404')) {
-        mensajeError = 'Formulario no encontrado en el servidor.';
+        mensajeError = t('history.ui.alerts.detailsNotFound');
       } else if (error.message.includes('500')) {
-        mensajeError = 'Error del servidor. Intenta nuevamente más tarde.';
+        mensajeError = t('history.ui.alerts.detailsServerError');
       } else if (error.message.includes('NetworkError')) {
-        mensajeError = 'Error de conexión. Verifica tu conexión a internet.';
+        mensajeError = t('history.ui.alerts.detailsNetworkError');
       } else {
-        mensajeError = `Error: ${error.message}`;
+        mensajeError = t('history.ui.alerts.detailsErrorDetail', { message: error.message });
       }
       
       alert(`❌ ${mensajeError}`);
@@ -1011,7 +1012,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
       
     } catch (error) {
       console.error('❌ Error navegando a la carpeta:', error);
-      alert('❌ Error al abrir la carpeta del formulario');
+      alert(t('history.ui.alerts.folderError'));
     }
   };
 
@@ -1029,11 +1030,11 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
   // Función para obtener el nombre del estado
   const getNombreEstado = (estado) => {
     switch (estado) {
-      case ESTADOS_FORMULARIO.COMPLETADO: return 'Completado';
-      case ESTADOS_FORMULARIO.EN_PROCESO: return 'En Proceso';
-      case ESTADOS_FORMULARIO.PENDIENTE: return 'Pendiente';
-      case ESTADOS_FORMULARIO.BORRADOR: return 'Borrador';
-      default: return 'Desconocido';
+      case ESTADOS_FORMULARIO.COMPLETADO: return t('history.ui.statuses.completed');
+      case ESTADOS_FORMULARIO.EN_PROCESO: return t('history.ui.statuses.inProgress');
+      case ESTADOS_FORMULARIO.PENDIENTE: return t('history.ui.statuses.pending');
+      case ESTADOS_FORMULARIO.BORRADOR: return t('history.ui.statuses.draft');
+      default: return t('history.ui.statuses.unknown');
     }
   };
 
@@ -1054,7 +1055,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando historial de formularios...</p>
+          <p className="mt-4 text-gray-600">{t('history.ui.loading')}</p>
         </div>
       </div>
     );
@@ -1068,10 +1069,10 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
             <div>
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                📚 Historial de Formularios
+                {t('history.ui.title')}
               </h1>
               <p className="mt-2 text-sm sm:text-base text-gray-600">
-                Gestiona y accede a todos los formularios generados en el sistema
+                {t('history.ui.subtitle')}
               </p>
             </div>
             <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
@@ -1081,13 +1082,13 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                 className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-gray-300 text-xs sm:text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 w-full sm:w-auto"
               >
                 <FaSync className={`h-4 w-4 mr-2 ${cargando ? 'animate-spin' : ''}`} />
-                Refrescar
+                {t('history.ui.refresh')}
               </button>
               <Link
                 to="/inicio"
                 className="inline-flex items-center justify-center px-3 sm:px-4 py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
               >
-                ← Volver al Inicio
+                {t('history.ui.backHome')}
               </Link>
             </div>
           </div>
@@ -1102,7 +1103,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
               <FaExclamationCircle className="h-4 sm:h-5 w-4 sm:w-5 text-red-400 mr-2 flex-shrink-0" />
               <div className="flex-1 min-w-0">
                 <h3 className="text-xs sm:text-sm font-medium text-red-800">
-                  Error al cargar el historial
+                  {t('history.ui.errorLoad')}
                 </h3>
                 <p className="mt-1 text-xs sm:text-sm text-red-700">
                   {error}
@@ -1126,7 +1127,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
             {/* Filtro por tipo */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                Filtrar por Tipo
+                {t('history.ui.filterByType')}
               </label>
               <select
                 value={filtroTipo}
@@ -1146,7 +1147,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
               <div>
                 <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                   <FaUser className="inline mr-1" />
-                  Filtrar por Usuario
+                  {t('history.ui.filterByUser')}
                 </label>
                 <select
                   value={filtroUsuario}
@@ -1157,12 +1158,12 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   disabled={cargandoUsuarios}
                   className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
-                  <option value="">Todos los usuarios</option>
+                  <option value="">{t('history.ui.allUsers')}</option>
                   {cargandoUsuarios ? (
-                    <option value="" disabled>Cargando usuarios...</option>
+                    <option value="" disabled>{t('history.ui.loadingUsers')}</option>
                   ) : (
                     listaUsuarios.map((usuario) => {
-                      const nombre = usuario.name || usuario.email || usuario.login || 'Usuario sin nombre';
+                      const nombre = usuario.name || usuario.email || usuario.login || t('history.ui.unnamedUser');
                       const login = usuario.login || '';
                       const displayText = login ? `${nombre} (${login})` : nombre;
                       return (
@@ -1179,13 +1180,13 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
             {/* Búsqueda */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                Buscar Formularios
+                {t('history.ui.searchForms')}
               </label>
               <input
                 type="text"
                 value={busqueda}
                 onChange={handleBusqueda}
-                placeholder="Buscar por título o usuario..."
+                placeholder={t('history.ui.searchPlaceholder')}
                 className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
               />
             </div>
@@ -1193,17 +1194,17 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
             {/* Estadísticas y Configuración de Paginación */}
             <div>
               <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
-                Total de Formularios
+                {t('history.ui.totalForms')}
               </label>
               <div className="text-xl sm:text-2xl font-bold text-blue-600">
                 {formulariosFiltrados.length}
               </div>
               <p className="text-xs sm:text-sm text-gray-500">
-                de {formularios.length} total
+                {t('history.ui.ofTotal', { total: formularios.length })}
               </p>
               <div className="mt-2">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Por página:
+                  {t('history.ui.perPage')}
                 </label>
                 <select
                   value={formulariosPorPagina}
@@ -1227,10 +1228,10 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="px-3 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
             <h3 className="text-base sm:text-lg font-medium text-gray-900">
-              Formularios Encontrados
+              {t('history.ui.formsFound')}
               {cargando && (
                 <span className="ml-2 text-xs sm:text-sm text-gray-500">
-                  (Actualizando...)
+                  {t('history.ui.updating')}
                 </span>
               )}
             </h3>
@@ -1240,14 +1241,14 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
             <div className="text-center py-8 sm:py-12">
               <FaFolder className="mx-auto h-8 sm:h-12 w-8 sm:w-12 text-gray-400" />
               <h3 className="mt-2 text-sm sm:text-base font-medium text-gray-900">
-                No se encontraron formularios
+                {t('history.ui.emptyTitle')}
               </h3>
               <p className="mt-1 text-xs sm:text-sm text-gray-500">
                 {filtroTipo !== 'todos' 
-                  ? `No hay formularios del tipo "${tiposFormularios.find(t => t.id === filtroTipo)?.nombre}"`
+                  ? t('history.ui.emptyByType', { type: tiposFormularios.find(tipo => tipo.id === filtroTipo)?.nombre })
                   : busqueda 
-                    ? `No hay formularios que coincidan con "${busqueda}"`
-                    : 'No hay formularios en el sistema'
+                    ? t('history.ui.emptyBySearch', { query: busqueda })
+                    : t('history.ui.emptyAll')
                 }
               </p>
             </div>
@@ -1264,8 +1265,13 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                         </div>
                         <div className="flex-1 min-w-0">
                           <h4 className="text-base sm:text-lg font-medium text-gray-900 break-words">
-                            {tituloVisibleHistorial(formulario)}
+                            {tituloVisibleHistorial(formulario, t)}
                           </h4>
+                          {formulario.numeroSiniestro && (
+                            <p className="mt-1 text-xs sm:text-sm font-medium text-blue-700">
+                              {t('history.ui.claimNumber', { number: formulario.numeroSiniestro })}
+                            </p>
+                          )}
                           <div className="mt-2 flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 lg:space-x-6 text-xs sm:text-sm text-gray-500">
                             <div className="flex items-center">
                               <FaUser className="h-3 sm:h-4 w-3 sm:w-4 mr-1 flex-shrink-0" />
@@ -1274,7 +1280,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                             <div className="flex items-center">
                               <FaCalendarAlt className="h-3 sm:h-4 w-3 sm:w-4 mr-1 flex-shrink-0 text-green-500" />
                               <span className="text-xs sm:text-sm text-gray-600">
-                                Creado: <span className="font-medium text-gray-800">{formatearFechaUI(formulario.fechaCreacion)}</span>
+                                {t('history.ui.created')} <span className="font-medium text-gray-800">{formatearFechaUI(formulario.fechaCreacion)}</span>
                                 {formulario.fechaCreacion && (() => {
                                   const fechaHora = formatearFechaHoraUI(formulario.fechaCreacion);
                                   const partes = fechaHora.split(', ');
@@ -1291,7 +1297,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                               <div className="flex items-center">
                                 <FaEdit className="h-3 sm:h-4 w-3 sm:w-4 mr-1 flex-shrink-0 text-blue-500" />
                                 <span className="text-xs sm:text-sm text-gray-600">
-                                  Modificado: <span className="font-medium text-gray-800">{formatearFechaUI(formulario.fechaModificacion)}</span>
+                                  {t('history.ui.modified')} <span className="font-medium text-gray-800">{formatearFechaUI(formulario.fechaModificacion)}</span>
                                   {(() => {
                                     const fechaHora = formatearFechaHoraUI(formulario.fechaModificacion);
                                     const partes = fechaHora.split(', ');
@@ -1308,7 +1314,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                                     const diferenciaHoras = (ahora - fechaMod) / (1000 * 60 * 60);
                                     return diferenciaHoras < 24 ? (
                                       <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                        Reciente
+                                        {t('history.ui.recent')}
                                       </span>
                                     ) : null;
                                   })()}
@@ -1317,7 +1323,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                             )}
                             <div className="flex items-center">
                               <FaFileAlt className="h-3 sm:h-4 w-3 sm:w-4 mr-1 flex-shrink-0" />
-                              <span className="truncate">{formulario.archivo?.nombre || 'Sin archivo'}</span>
+                              <span className="truncate">{formulario.archivo?.nombre || t('history.ui.noFile')}</span>
                             </div>
                             {formulario.carpetaCaso && (
                               <div className="flex items-center">
@@ -1338,12 +1344,12 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                         </span>
                         {formulario.estado === 'completado' && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ✓ Listo
+                            {t('history.ui.ready')}
                           </span>
                         )}
                         {formulario.estado === 'en_proceso' && (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                            ⏳ En Proceso
+                            ⏳ {t('history.ui.statuses.inProgress')}
                           </span>
                         )}
                       </div>
@@ -1353,7 +1359,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                         <button
                           onClick={() => handleVerDetalles(formulario)}
                           className="p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
-                          title="Ver detalles"
+                          title={t('history.ui.viewDetails')}
                         >
                           <FaEye className="h-4 sm:h-5 w-4 sm:w-5" />
                         </button>
@@ -1364,7 +1370,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                           className={`p-1.5 sm:p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-md transition-all duration-200 ${
                             exportando[formulario.id] ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
-                          title={exportando[formulario.id] ? 'Exportando...' : 'Exportar y Descargar'}
+                          title={exportando[formulario.id] ? t('common.historyButtons.exporting') : t('history.ui.exportAndDownload')}
                         >
                           {exportando[formulario.id] ? (
                             <div className="animate-spin h-4 sm:h-5 w-4 sm:w-5 border-2 border-green-600 border-t-transparent rounded-full"></div>
@@ -1381,7 +1387,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                             className={`p-1.5 sm:p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-all duration-200 ${
                               (regenerando[formulario.id] || exportando[formulario.id]) ? 'opacity-50 cursor-not-allowed' : ''
                             }`}
-                            title={regenerando[formulario.id] ? 'Regenerando...' : 'Regenerar desde Base de Datos'}
+                            title={regenerando[formulario.id] ? t('history.ui.regenerating') : t('history.ui.regenerateFromDb')}
                           >
                             {regenerando[formulario.id] ? (
                               <div className="animate-spin h-4 sm:h-5 w-4 sm:w-5 border-2 border-purple-600 border-t-transparent rounded-full"></div>
@@ -1394,7 +1400,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                         <button
                           onClick={() => handleEditarFormulario(formulario)}
                           className="p-1.5 sm:p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-all duration-200"
-                          title={`Editar formulario ${formulario.tipo}`}
+                          title={t('history.ui.editForm', { type: formulario.tipo })}
                         >
                           <FaEdit className="h-4 sm:h-5 w-4 sm:w-5" />
                         </button>
@@ -1403,7 +1409,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                           <button
                             onClick={() => handleVerCarpeta(formulario.casoId)}
                             className="p-1.5 sm:p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-all duration-200"
-                            title="Ver formularios de la misma carpeta"
+                            title={t('history.ui.viewFolder')}
                           >
                             <FaFolder className="h-4 sm:h-5 w-4 sm:w-5" />
                           </button>
@@ -1412,7 +1418,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                         <button
                           onClick={() => handleEliminarFormulario(formulario)}
                           className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-all duration-200"
-                          title="Eliminar"
+                          title={t('history.ui.delete')}
                         >
                           <FaTrash className="h-4 sm:h-5 w-4 sm:w-5" />
                         </button>
@@ -1428,14 +1434,14 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
               <div className="bg-gray-50 px-3 sm:px-6 py-3 sm:py-4 border-t border-gray-200">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
                   <div className="text-xs sm:text-sm text-gray-700">
-                    Mostrando {desde}-{hasta} de {formulariosFiltrados.length} formularios
+                    {t('history.ui.showing', { from: desde, to: hasta, total: formulariosFiltrados.length })}
                   </div>
                   <div className="flex flex-wrap items-center gap-1 sm:gap-2 justify-center">
                     <button
                       onClick={() => setPaginaActual(1)}
                       disabled={paginaActual === 1}
                       className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Primera página"
+                      title={t('history.ui.firstPage')}
                     >
                       {'<<'}
                     </button>
@@ -1443,7 +1449,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                       onClick={() => setPaginaActual(p => Math.max(p - 1, 1))}
                       disabled={paginaActual === 1}
                       className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Página anterior"
+                      title={t('history.ui.prevPage')}
                     >
                       {'<'}
                     </button>
@@ -1482,7 +1488,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                       onClick={() => setPaginaActual(p => Math.min(p + 1, totalPaginas))}
                       disabled={paginaActual === totalPaginas}
                       className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Página siguiente"
+                      title={t('history.ui.nextPage')}
                     >
                       {'>'}
                     </button>
@@ -1490,13 +1496,13 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                       onClick={() => setPaginaActual(totalPaginas)}
                       disabled={paginaActual === totalPaginas}
                       className="px-2 sm:px-3 py-1 sm:py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Última página"
+                      title={t('history.ui.lastPage')}
                     >
                       {'>>'}
                     </button>
                   </div>
                   <div className="text-xs sm:text-sm text-gray-600">
-                    Página {paginaActual} de {totalPaginas}
+                    {t('history.ui.pageOf', { current: paginaActual, total: totalPaginas })}
                   </div>
                 </div>
               </div>
@@ -1513,7 +1519,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
             <div className="mt-3">
               <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <h3 className="text-base sm:text-lg font-medium text-gray-900">
-                  📋 Detalles del Formulario
+                  {t('history.ui.modalTitle')}
                 </h3>
                 <button
                   onClick={cerrarModal}
@@ -1528,7 +1534,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                 <div className="flex items-center justify-center py-8 sm:py-12">
                   <div className="text-center">
                     <div className="animate-spin rounded-full h-8 sm:h-12 w-8 sm:w-12 border-b-2 border-blue-500 mx-auto"></div>
-                    <p className="mt-3 sm:mt-4 text-sm text-gray-600">Cargando detalles del formulario...</p>
+                    <p className="mt-3 sm:mt-4 text-sm text-gray-600">{t('history.ui.modalLoading')}</p>
                   </div>
                 </div>
               ) : (
@@ -1536,25 +1542,25 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                 {/* Información básica */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Título</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">{t('history.ui.labelTitle')}</label>
                     <p className="mt-1 text-xs sm:text-sm text-gray-900 break-words">
-                      {tituloVisibleHistorial(modalDetalles.formulario) || 'N/A'}
+                      {tituloVisibleHistorial(modalDetalles.formulario, t) || 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Tipo</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">{t('history.ui.labelType')}</label>
                     <p className="mt-1 text-xs sm:text-sm text-gray-900 uppercase">
                       {modalDetalles.formulario.tipo || 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Usuario</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">{t('history.ui.labelUser')}</label>
                     <p className="mt-1 text-xs sm:text-sm text-gray-900 break-words">
                       {modalDetalles.formulario.usuario || 'N/A'}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-xs sm:text-sm font-medium text-gray-700">Estado</label>
+                    <label className="block text-xs sm:text-sm font-medium text-gray-700">{t('history.ui.labelStatus')}</label>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getColorEstado(modalDetalles.formulario.estado)}`}>
                       {getNombreEstado(modalDetalles.formulario.estado)}
                     </span>
@@ -1566,7 +1572,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 flex items-center">
                       <FaCalendarAlt className="h-3 w-3 mr-1 text-green-500" />
-                      Fecha de Creación
+                      {t('history.ui.labelCreatedAt')}
                     </label>
                     <p className="mt-1 text-xs sm:text-sm text-gray-900">
                       {modalDetalles.formulario.fechaCreacion 
@@ -1594,7 +1600,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 flex items-center">
                       <FaEdit className="h-3 w-3 mr-1 text-blue-500" />
-                      Última Modificación
+                      {t('history.ui.labelLastModified')}
                     </label>
                     <p className="mt-1 text-xs sm:text-sm text-gray-900">
                       {modalDetalles.formulario.fechaModificacion 
@@ -1618,7 +1624,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                                   const diferenciaHoras = (ahora - fechaMod) / (1000 * 60 * 60);
                                   return diferenciaHoras < 24 ? (
                                     <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                      Reciente
+                                      {t('history.ui.recent')}
                                     </span>
                                   ) : null;
                                 })()}
@@ -1636,18 +1642,18 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 flex items-center">
                       <FaFileAlt className="h-3 w-3 mr-1 text-purple-500" />
-                      Archivo
+                      {t('history.ui.labelFile')}
                     </label>
                     <div className="mt-1 p-2 sm:p-3 bg-gray-50 rounded-md">
                       <p className="text-xs sm:text-sm text-gray-900 break-words">
-                        <strong>Nombre:</strong> {modalDetalles.formulario.archivo.nombre || 'N/A'}
+                        <strong>{t('history.ui.labelFileName')}</strong> {modalDetalles.formulario.archivo.nombre || 'N/A'}
                       </p>
                       <p className="text-xs sm:text-sm text-gray-600">
-                        <strong>Tipo:</strong> {modalDetalles.formulario.archivo.tipoMime || 'N/A'}
+                        <strong>{t('history.ui.labelFileType')}</strong> {modalDetalles.formulario.archivo.tipoMime || 'N/A'}
                       </p>
                       {modalDetalles.formulario.archivo.tamaño && (
                         <p className="text-xs sm:text-sm text-gray-600">
-                          <strong>Tamaño:</strong> {(modalDetalles.formulario.archivo.tamaño / 1024 / 1024).toFixed(2)} MB
+                          <strong>{t('history.ui.labelFileSize')}</strong> {(modalDetalles.formulario.archivo.tamaño / 1024 / 1024).toFixed(2)} MB
                         </p>
                       )}
                     </div>
@@ -1659,14 +1665,14 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 flex items-center">
                       <FaInfoCircle className="h-3 w-3 mr-1 text-indigo-500" />
-                      Metadata
+                      {t('history.ui.labelMetadata')}
                     </label>
                     <div className="mt-1 p-2 sm:p-3 bg-gray-50 rounded-md">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs sm:text-sm">
-                        <p><strong>Versión:</strong> {modalDetalles.formulario.metadata.version || 'N/A'}</p>
-                        <p><strong>Creado por:</strong> {modalDetalles.formulario.metadata.creadoPor || 'N/A'}</p>
-                        <p><strong>Modificado por:</strong> {modalDetalles.formulario.metadata.modificadoPor || 'N/A'}</p>
-                        <p><strong>Prioridad:</strong> {modalDetalles.formulario.metadata.prioridad || 'N/A'}</p>
+                        <p><strong>{t('history.ui.labelVersion')}</strong> {modalDetalles.formulario.metadata.version || 'N/A'}</p>
+                        <p><strong>{t('history.ui.labelCreatedBy')}</strong> {modalDetalles.formulario.metadata.creadoPor || 'N/A'}</p>
+                        <p><strong>{t('history.ui.labelModifiedBy')}</strong> {modalDetalles.formulario.metadata.modificadoPor || 'N/A'}</p>
+                        <p><strong>{t('history.ui.labelPriority')}</strong> {modalDetalles.formulario.metadata.prioridad || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
@@ -1677,7 +1683,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-gray-700 flex items-center">
                       <FaDatabase className="h-3 w-3 mr-1 text-orange-500" />
-                      Datos del Formulario
+                      {t('history.ui.labelFormData')}
                     </label>
                     <div className="mt-1 p-2 sm:p-3 bg-gray-50 rounded-md max-h-32 sm:max-h-40 overflow-y-auto">
                       <pre className="text-xs text-gray-700 whitespace-pre-wrap break-words">
@@ -1698,7 +1704,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   onClick={cerrarModal}
                   className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 w-full sm:w-auto"
                 >
-                  Cerrar
+                  {t('common.close')}
                 </button>
                 <button
                   onClick={() => {
@@ -1707,7 +1713,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   }}
                   className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 w-full sm:w-auto"
                 >
-                  📤 Exportar
+                  {t('history.ui.export')}
                 </button>
                 <button
                   onClick={() => {
@@ -1716,7 +1722,7 @@ alert(`✅ Documento regenerado y descargado exitosamente.\n\nEl archivo ha sido
                   }}
                   className="px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
                 >
-                  ✏️ Editar
+                  ✏️ {t('common.edit')}
                 </button>
               </div>
             </div>

@@ -52,6 +52,19 @@ export const TIPO_ENVIO_LABELS = {
   gerencia: 'Envío a gerencia / facturación',
 };
 
+export const TIPO_ENVIO_I18N_KEYS = {
+  control_horas: 'tipo_control_horas',
+  gerencia: 'tipo_gerencia',
+};
+
+export function labelTipoEnvio(tipo, t) {
+  const key = TIPO_ENVIO_I18N_KEYS[tipo];
+  if (typeof t === 'function' && key) {
+    return t(`complex.ui.bandeja_facturacion.${key}`);
+  }
+  return TIPO_ENVIO_LABELS[tipo] || tipo;
+}
+
 /** Resuelve código de estado → nombre legible (mismo criterio que el reporte Complex). */
 export function resolverNombreEstadoDesdeCatalogo(fila, estadosCatalogo = []) {
   const catalogo = Array.isArray(estadosCatalogo) ? estadosCatalogo : [];

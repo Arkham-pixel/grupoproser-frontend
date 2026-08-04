@@ -1,16 +1,20 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaPlus, FaTrash, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 import { inputCls, attrsInput } from './PuertosCasoDatosGenerales';
 import { nuevoPuntoInforme } from './puertosCasoExportacionState';
-import { puertosBtnLink, puertosBtnSm, puertosInnerPanel } from './puertosFenixUi';
+import { puertosBtnSm, puertosInnerPanel } from './puertosFenixUi';
 
 export default function PuertosCasoListaPuntos({
   titulo,
   puntos = [],
   onChange,
-  placeholder = 'Escriba un punto…',
+  placeholder,
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
+  const placeholderText = placeholder ?? t('ports.ui.casoExportacion.listaPuntos.placeholder');
+
   const setPuntos = (updater) => onChange(updater);
 
   const actualizar = (id, texto) => {
@@ -40,13 +44,13 @@ export default function PuertosCasoListaPuntos({
           <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">{titulo}</span>
           {!soloLectura && (
           <button type="button" onClick={() => setPuntos((prev) => [...(prev || []), nuevoPuntoInforme()])} className={puertosBtnSm}>
-            <FaPlus /> Punto
+            <FaPlus /> {t('ports.ui.casoExportacion.listaPuntos.punto')}
           </button>
           )}
         </div>
       )}
       {puntos.length === 0 && (
-        <p className="font-body text-xs italic text-gray-500">Sin puntos. Use «Punto» para numerar el informe.</p>
+        <p className="font-body text-xs italic text-gray-500">{t('ports.ui.casoExportacion.listaPuntos.empty')}</p>
       )}
       <ol className="list-none space-y-2">
         {puntos.map((punto, idx) => (
@@ -58,18 +62,18 @@ export default function PuertosCasoListaPuntos({
                 className: `${inputCls} flex-1`,
                 value: punto.texto || '',
                 onChange: (e) => actualizar(punto.id, e.target.value),
-                placeholder,
+                placeholder: placeholderText,
               })}
             />
             {!soloLectura && (
             <div className="flex shrink-0 flex-col gap-0.5">
-              <button type="button" onClick={() => mover(punto.id, -1)} className="p-1 text-gray-500 hover:text-fenix-primario" title="Subir">
+              <button type="button" onClick={() => mover(punto.id, -1)} className="p-1 text-gray-500 hover:text-fenix-primario" title={t('ports.ui.casoExportacion.listaPuntos.moveUp')}>
                 <FaArrowUp className="text-xs" />
               </button>
-              <button type="button" onClick={() => mover(punto.id, 1)} className="p-1 text-gray-500 hover:text-fenix-primario" title="Bajar">
+              <button type="button" onClick={() => mover(punto.id, 1)} className="p-1 text-gray-500 hover:text-fenix-primario" title={t('ports.ui.casoExportacion.listaPuntos.moveDown')}>
                 <FaArrowDown className="text-xs" />
               </button>
-              <button type="button" onClick={() => eliminar(punto.id)} className="p-1 text-fenix-primario" title="Eliminar">
+              <button type="button" onClick={() => eliminar(punto.id)} className="p-1 text-fenix-primario" title={t('ports.ui.common.delete')}>
                 <FaTrash className="text-xs" />
               </button>
             </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { FaCamera, FaCheckCircle, FaCompress } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { ImageCompression } from '../../utils/imageCompression';
 
 /**
@@ -7,6 +8,7 @@ import { ImageCompression } from '../../utils/imageCompression';
  * campo compartido del registro fotográfico que usa el informe preliminar.
  */
 export default function FotosPreliminarFlotante({ formData, onInputChange }) {
+  const { t } = useTranslation();
   const inputRef = useRef(null);
   const avisoTimeoutRef = useRef(null);
   const [procesando, setProcesando] = useState(false);
@@ -50,7 +52,7 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
       avisoTimeoutRef.current = setTimeout(() => setFotosListas(false), 4500);
     } catch (error) {
       console.error('Error procesando fotos para el informe preliminar:', error);
-      window.alert('No se pudieron procesar las fotos. Inténtelo nuevamente.');
+      window.alert(t('adjustment.ui.fotosPrelim.processError'));
     } finally {
       setProcesando(false);
     }
@@ -65,7 +67,7 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
             className="animate-bounce rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow-xl"
           >
             <FaCheckCircle className="mr-2 inline" />
-            Fotos del informe preliminar listas en su área
+            {t('adjustment.ui.fotosPrelim.ready')}
           </div>
         )}
         <input
@@ -81,8 +83,8 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={procesando}
-          title="Subir fotos para el informe preliminar"
-          aria-label="Subir fotos para el informe preliminar"
+          title={t('adjustment.ui.fotosPrelim.uploadTitle')}
+          aria-label={t('adjustment.ui.fotosPrelim.uploadTitle')}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-700 text-white shadow-xl transition hover:scale-105 hover:bg-violet-800 disabled:cursor-wait disabled:opacity-70"
         >
           {procesando ? <FaCompress className="animate-spin text-xl" /> : <FaCamera className="text-xl" />}

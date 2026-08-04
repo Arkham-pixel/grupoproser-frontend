@@ -1,10 +1,12 @@
 // src/components/Cuenta/EditarCuentas.jsx
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { obtenerPerfil, actualizarPerfil } from "../../services/userService";
 import { useTheme } from '../../context/ThemeContext';
 import Configurar2FA from './Configurar2FA.jsx';
 
 export default function EditarCuentas() {
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -213,7 +215,7 @@ setForm(f => ({
         };
       }
 const response = await actualizarPerfil(dataToSend, token, tipoUsuario);
-setMensaje("¡Perfil actualizado!");
+setMensaje(t('account.ui.cuenta.editar.success'));
       
       // Recargar los datos del perfil después de actualizar
       setTimeout(() => {
@@ -259,32 +261,32 @@ setForm(f => ({
     } catch (err) {
       console.error('❌ Error al actualizar perfil:', err);
       console.error('❌ Error response:', err.response?.data);
-      setError(err.response?.data?.mensaje || err.response?.data?.message || err.message || "Error al actualizar la cuenta");
+      setError(err.response?.data?.mensaje || err.response?.data?.message || err.message || t('account.ui.cuenta.editar.error'));
     }
   };
 
   return (
     <div className="p-3 sm:p-4 lg:p-6">
-      <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold mb-3 sm:mb-4">Editar Cuenta</h3>
+      <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold mb-3 sm:mb-4">{t('account.ui.cuenta.editar.title')}</h3>
       <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
         {tipoUsuario === "secur" ? (
           <>
             {/* SECCIÓN: INFORMACIÓN PERSONAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-blue-300 border-blue-600' : 'text-blue-700 border-blue-300'}`}>
-                📋 Información Personal
+                📋 {t('account.ui.cuenta.sections.personal')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 1. EMPRESA */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Empresa</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.empresa')}</label>
                   <select
                     name="empresa"
                     value={form.empresa}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Seleccione Empresa</option>
+                    <option value="">{t('account.ui.cuenta.selects.empresa')}</option>
                     <option value="Proser Riesgos">Proser Riesgos</option>
                     <option value="Proser Ajustes">Proser Ajustes</option>
                     <option value="Proser Puertos">Proser Puertos</option>
@@ -292,14 +294,14 @@ setForm(f => ({
                 </div>
                 {/* 1.1. SUCURSAL */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Sucursal</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.sucursal')}</label>
                   <select
                     name="sucursal"
                     value={form.sucursal}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Seleccione Sucursal</option>
+                    <option value="">{t('account.ui.cuenta.selects.sucursal')}</option>
                     <option value="Bogotá">Bogotá</option>
                     <option value="Medellín">Medellín</option>
                     <option value="Cali">Cali</option>
@@ -333,51 +335,51 @@ setForm(f => ({
                 </div>
                 {/* 2. NOMBRE */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Nombre</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.nombre')}</label>
             <input
               type="text"
               name="name"
               value={form.name}
               onChange={handleChange}
-              placeholder="Nombre"
+              placeholder={t('account.ui.cuenta.fields.nombre')}
               className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
               required
             />
                 </div>
                 {/* 3. CEDULA */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Cédula</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.cedula')}</label>
                   <input
                     type="text"
                     name="cedula"
                     value={form.cedula}
                     onChange={handleChange}
-                    placeholder="Cédula"
+                    placeholder={t('account.ui.cuenta.fields.cedula')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 4. FECHA NACIMIENTO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Fecha de Nacimiento</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.fechaNacimiento')}</label>
                   <input
                     type="date"
                     name="fechaNacimiento"
                     value={formatearFecha(form.fechaNacimiento)}
                     onChange={handleChange}
-                    placeholder="Fecha de Nacimiento"
+                    placeholder={t('account.ui.cuenta.fields.fechaNacimiento')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 5. TIPO DE SANGRE */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Tipo de Sangre</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.tipoSangre')}</label>
                   <select
                     name="tipoSangre"
                     value={form.tipoSangre}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Seleccione Tipo de Sangre</option>
+                    <option value="">{t('account.ui.cuenta.selects.tipoSangre')}</option>
                     <option value="O+">O+</option>
                     <option value="O-">O-</option>
                     <option value="A+">A+</option>
@@ -390,13 +392,13 @@ setForm(f => ({
                 </div>
                 {/* 6. DIRECCION */}
                 <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Dirección</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.direccion')}</label>
                   <input
                     type="text"
                     name="direccion"
                     value={form.direccion}
                     onChange={handleChange}
-                    placeholder="Dirección"
+                    placeholder={t('account.ui.cuenta.fields.direccion')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
@@ -406,42 +408,42 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN DE CONTACTO */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-yellow-300 border-yellow-600' : 'text-yellow-700 border-yellow-300'}`}>
-                📞 Información de Contacto
+                📞 {t('account.ui.cuenta.sections.contacto')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 7. TELEFONO FIJOS */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Teléfono Fijo</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.telefonoFijo')}</label>
                   <input
                     type="text"
                     name="telefonoFijo"
                     value={form.telefonoFijo}
                     onChange={handleChange}
-                    placeholder="Teléfono Fijo"
+                    placeholder={t('account.ui.cuenta.fields.telefonoFijo')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 8. No. CELULARES */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">No. Celular(es)</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.celularesNo')}</label>
                   <input
                     type="text"
                     name="celulares"
                     value={form.celulares}
                     onChange={handleChange}
-                    placeholder="No. Celular(es)"
+                    placeholder={t('account.ui.cuenta.fields.celularesNo')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 16. CORREOS ELECTRONICOS */}
                 <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Correo(s) Electrónico(s)</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.correosElectronicos')}</label>
                   <input
                     type="text"
                     name="correosElectronicos"
                     value={form.correosElectronicos}
                     onChange={handleChange}
-                    placeholder="Correo(s) Electrónico(s)"
+                    placeholder={t('account.ui.cuenta.fields.correosElectronicos')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
@@ -451,54 +453,54 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN LABORAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-green-300 border-green-600' : 'text-green-700 border-green-300'}`}>
-                💼 Información Laboral
+                💼 {t('account.ui.cuenta.sections.laboral')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 9. FECHA DE INGRESO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Fecha de Ingreso</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.fechaIngreso')}</label>
                   <input
                     type="date"
                     name="fechaIngreso"
                     value={formatearFecha(form.fechaIngreso)}
                     onChange={handleChange}
-                    placeholder="Fecha de Ingreso"
+                    placeholder={t('account.ui.cuenta.fields.fechaIngreso')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 10. CARGOS */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Cargo(s)</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.cargos')}</label>
                   <input
                     type="text"
                     name="cargos"
                     value={form.cargos}
                     onChange={handleChange}
-                    placeholder="Cargo(s)"
+                    placeholder={t('account.ui.cuenta.fields.cargos')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 11. SALARIO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Salario</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.salario')}</label>
                   <input
                     type="number"
                     name="salario"
                     value={form.salario}
                     onChange={handleChange}
-                    placeholder="Salario"
+                    placeholder={t('account.ui.cuenta.fields.salario')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 12. FECHA MODIFICACION SUELDO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Fecha Modificación Sueldo</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.fechaModificacionSueldo')}</label>
                   <input
                     type="date"
                     name="fechaModificacionSueldo"
                     value={formatearFecha(form.fechaModificacionSueldo)}
                     onChange={handleChange}
-                    placeholder="Fecha Modificación Sueldo"
+                    placeholder={t('account.ui.cuenta.fields.fechaModificacionSueldo')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
@@ -508,52 +510,52 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN CONTRACTUAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-purple-300 border-purple-600' : 'text-purple-700 border-purple-300'}`}>
-                📄 Información Contractual
+                📄 {t('account.ui.cuenta.sections.contractual')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 13. TIPO DE CONTRATO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Tipo de Contrato</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.tipoContrato')}</label>
                   <select
                     name="tipoContrato"
                     value={form.tipoContrato}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Seleccione Tipo de Contrato</option>
-                    <option value="Término Indefinido">Término Indefinido</option>
-                    <option value="Término Fijo">Término Fijo</option>
-                    <option value="Término Fijo a Prueba">Término Fijo a Prueba</option>
-                    <option value="Obra o Labor">Obra o Labor</option>
-                    <option value="Contrato de Aprendizaje">Contrato de Aprendizaje</option>
-                    <option value="Contrato Temporal, Ocasional o Accidental">Contrato Temporal, Ocasional o Accidental</option>
-                    <option value="Contrato por Prestación de Servicios">Contrato por Prestación de Servicios</option>
-                    <option value="Contrato de Trabajo a Domicilio">Contrato de Trabajo a Domicilio</option>
-                    <option value="Contrato Intermitente">Contrato Intermitente</option>
-                    <option value="Contrato de Duración Inferior a un Mes">Contrato de Duración Inferior a un Mes</option>
+                    <option value="">{t('account.ui.cuenta.selects.tipoContrato')}</option>
+                    <option value="Término Indefinido">{t('account.ui.cuenta.contractTypes.terminoIndefinido')}</option>
+                    <option value="Término Fijo">{t('account.ui.cuenta.contractTypes.terminoFijo')}</option>
+                    <option value="Término Fijo a Prueba">{t('account.ui.cuenta.contractTypes.terminoFijoPrueba')}</option>
+                    <option value="Obra o Labor">{t('account.ui.cuenta.contractTypes.obraLabor')}</option>
+                    <option value="Contrato de Aprendizaje">{t('account.ui.cuenta.contractTypes.aprendizaje')}</option>
+                    <option value="Contrato Temporal, Ocasional o Accidental">{t('account.ui.cuenta.contractTypes.temporalOcasional')}</option>
+                    <option value="Contrato por Prestación de Servicios">{t('account.ui.cuenta.contractTypes.prestacionServicios')}</option>
+                    <option value="Contrato de Trabajo a Domicilio">{t('account.ui.cuenta.contractTypes.domicilio')}</option>
+                    <option value="Contrato Intermitente">{t('account.ui.cuenta.contractTypes.intermitente')}</option>
+                    <option value="Contrato de Duración Inferior a un Mes">{t('account.ui.cuenta.contractTypes.duracionInferiorMes')}</option>
                   </select>
                 </div>
                 {/* 14. FECHA MODIFICACION CONTRATO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Fecha Modificación Contrato</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.fechaModificacionContrato')}</label>
                   <input
                     type="date"
                     name="fechaModificacionContrato"
                     value={formatearFecha(form.fechaModificacionContrato)}
                     onChange={handleChange}
-                    placeholder="Fecha Modificación Contrato"
+                    placeholder={t('account.ui.cuenta.fields.fechaModificacionContrato')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 15. VENCIMIENTO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Vencimiento</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.vencimiento')}</label>
                   <input
                     type="date"
                     name="vencimiento"
                     value={formatearFecha(form.vencimiento)}
                     onChange={handleChange}
-                    placeholder="Vencimiento"
+                    placeholder={t('account.ui.cuenta.fields.vencimiento')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
@@ -563,61 +565,61 @@ setForm(f => ({
             {/* SECCIÓN: APORTES */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-orange-300 border-orange-600' : 'text-orange-700 border-orange-300'}`}>
-                💳 APORTES
+                💳 {t('account.ui.cuenta.sections.aportes')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">SALUD</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.salud')}</label>
                   <input
                     type="text"
                     name="aportesSalud"
                     value={form.aportesSalud}
                     onChange={handleChange}
-                    placeholder="Salud"
+                    placeholder={t('account.ui.cuenta.aportes.saludLabel')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">PENSION</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.pension')}</label>
                   <input
                     type="text"
                     name="aportesPension"
                     value={form.aportesPension}
                     onChange={handleChange}
-                    placeholder="Pensión"
+                    placeholder={t('account.ui.cuenta.aportes.pensionLabel')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">CESANTIAS</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.cesantias')}</label>
                   <input
                     type="text"
                     name="aportesCesantias"
                     value={form.aportesCesantias}
                     onChange={handleChange}
-                    placeholder="Cesantías"
+                    placeholder={t('account.ui.cuenta.aportes.cesantiasLabel')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">ARL</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.arl')}</label>
             <input
                     type="text"
                     name="aportesARL"
                     value={form.aportesARL}
               onChange={handleChange}
-                    placeholder="ARL"
+                    placeholder={t('account.ui.cuenta.aportes.arl')}
               className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
             />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">C.C.F.</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.ccf')}</label>
             <input
               type="text"
                     name="aportesCCF"
                     value={form.aportesCCF}
               onChange={handleChange}
-                    placeholder="C.C.F."
+                    placeholder={t('account.ui.cuenta.aportes.ccf')}
               className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
             />
                 </div>
@@ -627,35 +629,35 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN ADICIONAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-red-300 border-red-600' : 'text-red-700 border-red-300'}`}>
-                ➕ Información Adicional
+                ➕ {t('account.ui.cuenta.sections.adicional')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 18. EVALUACION PERIODO DE PRUEBA */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Evaluación</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.evaluacion')}</label>
                   <select
                     name="evaluacionPeriodoPrueba"
                     value={form.evaluacionPeriodoPrueba}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Evaluación</option>
-                    <option value="Período de Prueba">Período de Prueba</option>
-                    <option value="Aprobado">Aprobado</option>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="No Aprobado">No Aprobado</option>
+                    <option value="">{t('account.ui.cuenta.evaluation.select')}</option>
+                    <option value="Período de Prueba">{t('account.ui.cuenta.evaluation.periodoPrueba')}</option>
+                    <option value="Aprobado">{t('account.ui.cuenta.evaluation.aprobado')}</option>
+                    <option value="Pendiente">{t('account.ui.cuenta.evaluation.pendiente')}</option>
+                    <option value="No Aprobado">{t('account.ui.cuenta.evaluation.noAprobado')}</option>
                   </select>
                 </div>
                 {/* Campo de rol solo visible para admin/soporte */}
                 {(localStorage.getItem('rol') === 'admin' || localStorage.getItem('rol') === 'soporte') && (
                   <div>
-                    <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Rol</label>
+                    <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.rol')}</label>
                     <input
                       type="text"
                       name="role"
                       value={form.role}
                       onChange={handleChange}
-                      placeholder="Rol"
+                      placeholder={t('account.ui.cuenta.fields.rol')}
                       className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                     />
                   </div>
@@ -663,13 +665,13 @@ setForm(f => ({
               </div>
             </div>
             <div className="mt-4">
-              <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Confirma tu contraseña para guardar cambios</label>
+              <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.passwordConfirm')}</label>
               <input
                 type="password"
                 name="passwordConfirm"
                 value={form.passwordConfirm || ""}
                 onChange={handleChange}
-                placeholder="Confirma tu contraseña para guardar cambios"
+                placeholder={t('account.ui.cuenta.fields.passwordConfirm')}
                 className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 required
               />
@@ -680,19 +682,19 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN PERSONAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-blue-300 border-blue-600' : 'text-blue-700 border-blue-300'}`}>
-                📋 Información Personal
+                📋 {t('account.ui.cuenta.sections.personal')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 1. EMPRESA */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Empresa</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.empresa')}</label>
                   <select
                     name="empresa"
                     value={form.empresa}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Seleccione Empresa</option>
+                    <option value="">{t('account.ui.cuenta.selects.empresa')}</option>
                     <option value="Proser Riesgos">Proser Riesgos</option>
                     <option value="Proser Ajustes">Proser Ajustes</option>
                     <option value="Proser Puertos">Proser Puertos</option>
@@ -700,14 +702,14 @@ setForm(f => ({
                 </div>
                 {/* 1.1. SUCURSAL */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Sucursal</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.sucursal')}</label>
                   <select
                     name="sucursal"
                     value={form.sucursal}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Seleccione Sucursal</option>
+                    <option value="">{t('account.ui.cuenta.selects.sucursal')}</option>
                     <option value="Bogotá">Bogotá</option>
                     <option value="Medellín">Medellín</option>
                     <option value="Cali">Cali</option>
@@ -741,51 +743,51 @@ setForm(f => ({
                 </div>
                 {/* 2. NOMBRE */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Nombre</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.nombre')}</label>
                   <input
                     type="text"
                     name="nombre"
                     value={form.nombre}
                     onChange={handleChange}
-                    placeholder="Nombre"
+                    placeholder={t('account.ui.cuenta.fields.nombre')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                     required
                   />
                 </div>
                 {/* 3. CEDULA */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Cédula</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.cedula')}</label>
                   <input
                     type="text"
                     name="cedula"
                     value={form.cedula}
                     onChange={handleChange}
-                    placeholder="Cédula"
+                    placeholder={t('account.ui.cuenta.fields.cedula')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 4. FECHA NACIMIENTO */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Fecha de Nacimiento</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.fechaNacimiento')}</label>
                   <input
                     type="date"
                     name="fechaNacimiento"
                     value={formatearFecha(form.fechaNacimiento)}
                     onChange={handleChange}
-                    placeholder="Fecha de Nacimiento"
+                    placeholder={t('account.ui.cuenta.fields.fechaNacimiento')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 {/* 5. TIPO DE SANGRE */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Tipo de Sangre</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.tipoSangre')}</label>
                   <select
                     name="tipoSangre"
                     value={form.tipoSangre}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Seleccione Tipo de Sangre</option>
+                    <option value="">{t('account.ui.cuenta.selects.tipoSangre')}</option>
                     <option value="O+">O+</option>
                     <option value="O-">O-</option>
                     <option value="A+">A+</option>
@@ -798,13 +800,13 @@ setForm(f => ({
                 </div>
                 {/* 6. DIRECCION */}
                 <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Dirección</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.direccion')}</label>
                   <input
                     type="text"
                     name="direccion"
                     value={form.direccion}
                     onChange={handleChange}
-                    placeholder="Dirección"
+                    placeholder={t('account.ui.cuenta.fields.direccion')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
@@ -814,7 +816,7 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN DE CONTACTO */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-yellow-300 border-yellow-600' : 'text-yellow-700 border-yellow-300'}`}>
-                📞 Información de Contacto
+                📞 {t('account.ui.cuenta.sections.contacto')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 7. TELEFONO FIJOS */}
@@ -823,7 +825,7 @@ setForm(f => ({
                   name="telefonoFijo"
                   value={form.telefonoFijo}
                   onChange={handleChange}
-                  placeholder="Teléfono Fijo"
+                  placeholder={t('account.ui.cuenta.fields.telefonoFijo')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
                 {/* 8. No. CELULARES */}
@@ -832,7 +834,7 @@ setForm(f => ({
                   name="celulares"
                   value={form.celulares}
                   onChange={handleChange}
-                  placeholder="No. Celular(es)"
+                  placeholder={t('account.ui.cuenta.fields.celularesNo')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
                 {/* 16. CORREOS ELECTRONICOS */}
@@ -841,7 +843,7 @@ setForm(f => ({
                   name="correosElectronicos"
                   value={form.correosElectronicos}
                   onChange={handleChange}
-                  placeholder="Correo(s) Electrónico(s)"
+                  placeholder={t('account.ui.cuenta.fields.correosElectronicos')}
                   className="w-full col-span-1 sm:col-span-2 px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
               </div>
@@ -850,7 +852,7 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN LABORAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-green-300 border-green-600' : 'text-green-700 border-green-300'}`}>
-                💼 Información Laboral
+                💼 {t('account.ui.cuenta.sections.laboral')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 9. FECHA DE INGRESO */}
@@ -859,7 +861,7 @@ setForm(f => ({
                   name="fechaIngreso"
                   value={formatearFecha(form.fechaIngreso)}
                   onChange={handleChange}
-                  placeholder="Fecha de Ingreso"
+                  placeholder={t('account.ui.cuenta.fields.fechaIngreso')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
                 {/* 10. CARGOS */}
@@ -868,7 +870,7 @@ setForm(f => ({
                   name="cargos"
                   value={form.cargos}
                   onChange={handleChange}
-                  placeholder="Cargo(s)"
+                  placeholder={t('account.ui.cuenta.fields.cargos')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
                 {/* 11. SALARIO */}
@@ -877,7 +879,7 @@ setForm(f => ({
                   name="salario"
                   value={form.salario}
                   onChange={handleChange}
-                  placeholder="Salario"
+                  placeholder={t('account.ui.cuenta.fields.salario')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
                 {/* 12. FECHA MODIFICACION SUELDO */}
@@ -886,7 +888,7 @@ setForm(f => ({
                   name="fechaModificacionSueldo"
                   value={formatearFecha(form.fechaModificacionSueldo)}
                   onChange={handleChange}
-                  placeholder="Fecha Modificación Sueldo"
+                  placeholder={t('account.ui.cuenta.fields.fechaModificacionSueldo')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
               </div>
@@ -895,7 +897,7 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN CONTRACTUAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-purple-300 border-purple-600' : 'text-purple-700 border-purple-300'}`}>
-                📄 Información Contractual
+                📄 {t('account.ui.cuenta.sections.contractual')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 13. TIPO DE CONTRATO */}
@@ -905,17 +907,17 @@ setForm(f => ({
                   onChange={handleChange}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 >
-                  <option value="">Seleccione Tipo de Contrato</option>
-                  <option value="Término Indefinido">Término Indefinido</option>
-                  <option value="Término Fijo">Término Fijo</option>
-                  <option value="Término Fijo a Prueba">Término Fijo a Prueba</option>
-                  <option value="Obra o Labor">Obra o Labor</option>
-                  <option value="Contrato de Aprendizaje">Contrato de Aprendizaje</option>
-                  <option value="Contrato Temporal, Ocasional o Accidental">Contrato Temporal, Ocasional o Accidental</option>
-                  <option value="Contrato por Prestación de Servicios">Contrato por Prestación de Servicios</option>
-                  <option value="Contrato de Trabajo a Domicilio">Contrato de Trabajo a Domicilio</option>
-                  <option value="Contrato Intermitente">Contrato Intermitente</option>
-                  <option value="Contrato de Duración Inferior a un Mes">Contrato de Duración Inferior a un Mes</option>
+                  <option value="">{t('account.ui.cuenta.selects.tipoContrato')}</option>
+                  <option value="Término Indefinido">{t('account.ui.cuenta.contractTypes.terminoIndefinido')}</option>
+                  <option value="Término Fijo">{t('account.ui.cuenta.contractTypes.terminoFijo')}</option>
+                  <option value="Término Fijo a Prueba">{t('account.ui.cuenta.contractTypes.terminoFijoPrueba')}</option>
+                  <option value="Obra o Labor">{t('account.ui.cuenta.contractTypes.obraLabor')}</option>
+                  <option value="Contrato de Aprendizaje">{t('account.ui.cuenta.contractTypes.aprendizaje')}</option>
+                  <option value="Contrato Temporal, Ocasional o Accidental">{t('account.ui.cuenta.contractTypes.temporalOcasional')}</option>
+                  <option value="Contrato por Prestación de Servicios">{t('account.ui.cuenta.contractTypes.prestacionServicios')}</option>
+                  <option value="Contrato de Trabajo a Domicilio">{t('account.ui.cuenta.contractTypes.domicilio')}</option>
+                  <option value="Contrato Intermitente">{t('account.ui.cuenta.contractTypes.intermitente')}</option>
+                  <option value="Contrato de Duración Inferior a un Mes">{t('account.ui.cuenta.contractTypes.duracionInferiorMes')}</option>
                 </select>
                 {/* 14. FECHA MODIFICACION CONTRATO */}
                 <input
@@ -923,7 +925,7 @@ setForm(f => ({
                   name="fechaModificacionContrato"
                   value={formatearFecha(form.fechaModificacionContrato)}
                   onChange={handleChange}
-                  placeholder="Fecha Modificación Contrato"
+                  placeholder={t('account.ui.cuenta.fields.fechaModificacionContrato')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
                 {/* 15. VENCIMIENTO */}
@@ -932,7 +934,7 @@ setForm(f => ({
                   name="vencimiento"
                   value={formatearFecha(form.vencimiento)}
                   onChange={handleChange}
-                  placeholder="Vencimiento"
+                  placeholder={t('account.ui.cuenta.fields.vencimiento')}
                   className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 />
               </div>
@@ -941,61 +943,61 @@ setForm(f => ({
             {/* SECCIÓN: APORTES */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-orange-300 border-orange-600' : 'text-orange-700 border-orange-300'}`}>
-                💳 APORTES
+                💳 {t('account.ui.cuenta.sections.aportes')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">SALUD</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.salud')}</label>
                   <input
                     type="text"
                     name="aportesSalud"
                     value={form.aportesSalud}
                     onChange={handleChange}
-                    placeholder="Salud"
+                    placeholder={t('account.ui.cuenta.aportes.saludLabel')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">PENSION</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.pension')}</label>
                   <input
                     type="text"
                     name="aportesPension"
                     value={form.aportesPension}
                     onChange={handleChange}
-                    placeholder="Pensión"
+                    placeholder={t('account.ui.cuenta.aportes.pensionLabel')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">CESANTIAS</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.cesantias')}</label>
                   <input
                     type="text"
                     name="aportesCesantias"
                     value={form.aportesCesantias}
                     onChange={handleChange}
-                    placeholder="Cesantías"
+                    placeholder={t('account.ui.cuenta.aportes.cesantiasLabel')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">ARL</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.arl')}</label>
                   <input
                     type="text"
                     name="aportesARL"
                     value={form.aportesARL}
                     onChange={handleChange}
-                    placeholder="ARL"
+                    placeholder={t('account.ui.cuenta.aportes.arl')}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">C.C.F.</label>
+                  <label className="block text-xs font-semibold mb-1 text-gray-600 dark:text-gray-400">{t('account.ui.cuenta.aportes.ccf')}</label>
                   <input
                     type="text"
                     name="aportesCCF"
                     value={form.aportesCCF}
                     onChange={handleChange}
-                    placeholder="C.C.F."
+                    placeholder={t('account.ui.cuenta.aportes.ccf')}
               className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
             />
                 </div>
@@ -1005,35 +1007,35 @@ setForm(f => ({
             {/* SECCIÓN: INFORMACIÓN ADICIONAL */}
             <div className="space-y-4">
               <h4 className={`text-base sm:text-lg font-bold border-b-2 pb-2 ${isDark ? 'text-red-300 border-red-600' : 'text-red-700 border-red-300'}`}>
-                ➕ Información Adicional
+                ➕ {t('account.ui.cuenta.sections.adicional')}
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {/* 18. EVALUACION PERIODO DE PRUEBA */}
                 <div>
-                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Evaluación</label>
+                  <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.evaluacion')}</label>
                   <select
                     name="evaluacionPeriodoPrueba"
                     value={form.evaluacionPeriodoPrueba}
                     onChange={handleChange}
                     className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                   >
-                    <option value="">Evaluación</option>
-                    <option value="Período de Prueba">Período de Prueba</option>
-                    <option value="Aprobado">Aprobado</option>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="No Aprobado">No Aprobado</option>
+                    <option value="">{t('account.ui.cuenta.evaluation.select')}</option>
+                    <option value="Período de Prueba">{t('account.ui.cuenta.evaluation.periodoPrueba')}</option>
+                    <option value="Aprobado">{t('account.ui.cuenta.evaluation.aprobado')}</option>
+                    <option value="Pendiente">{t('account.ui.cuenta.evaluation.pendiente')}</option>
+                    <option value="No Aprobado">{t('account.ui.cuenta.evaluation.noAprobado')}</option>
                   </select>
                 </div>
               </div>
             </div>
             <div className="mt-4">
-              <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">Confirma tu contraseña para guardar cambios</label>
+              <label className="block text-sm font-semibold mb-1 text-gray-700 dark:text-gray-300">{t('account.ui.cuenta.fields.passwordConfirm')}</label>
               <input
                 type="password"
                 name="passwordConfirm"
                 value={form.passwordConfirm || ""}
                 onChange={handleChange}
-                placeholder="Confirma tu contraseña para guardar cambios"
+                placeholder={t('account.ui.cuenta.fields.passwordConfirm')}
                 className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
                 required
               />
@@ -1044,7 +1046,7 @@ setForm(f => ({
           type="submit"
           className="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded text-xs sm:text-sm font-medium hover:bg-blue-700 transition-colors"
         >
-          Guardar cambios
+          {t('account.ui.cuenta.editar.save')}
         </button>
       </form>
 

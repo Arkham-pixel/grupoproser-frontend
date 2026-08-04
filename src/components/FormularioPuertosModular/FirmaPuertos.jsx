@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash, FaUpload } from 'react-icons/fa';
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
@@ -11,6 +12,7 @@ function urlFirmaParaMostrar(imagenFirma) {
 }
 
 export default function FirmaPuertos({ formData, onInputChange, onMultipleChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
 
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -74,7 +76,7 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
     const { nombreFirmante, cargoFirmante, emailFirmante, celularFirmante, imagenFirma } = formData;
 
     if (!nombreFirmante?.trim() || !imagenFirma) {
-      alert('Complete el nombre y suba la imagen de firma antes de guardar en el banco.');
+      alert(t('ports.ui.formulario.firma.alerts.completeNombreFirma'));
       return;
     }
 
@@ -83,7 +85,7 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
     );
 
     if (firmaExistente) {
-      if (!confirm(`Ya existe una firma para "${nombreFirmante}". ¿Desea reemplazarla?`)) return;
+      if (!confirm(t('ports.ui.formulario.firma.alerts.confirmReemplazar', { nombre: nombreFirmante }))) return;
       const bancoActualizado = bancoFirmas.map((f) =>
         f.id === firmaExistente.id
           ? {
@@ -98,7 +100,7 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
       );
       guardarEnBanco(bancoActualizado);
       setFirmaSeleccionadaId(String(firmaExistente.id));
-      alert('Firma actualizada en el banco.');
+      alert(t('ports.ui.formulario.firma.alerts.firmaActualizada'));
       return;
     }
 
@@ -113,17 +115,17 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
 
     guardarEnBanco([...bancoFirmas, nuevaFirma]);
     setFirmaSeleccionadaId(String(nuevaFirma.id));
-    alert(`Firma de "${nombreFirmante}" guardada en el banco.`);
+    alert(t('ports.ui.formulario.firma.alerts.firmaGuardada', { nombre: nombreFirmante }));
   };
 
   const handleEliminarSeleccionada = () => {
     if (!firmaSeleccionadaId) {
-      alert('Seleccione una firma del listado para eliminar.');
+      alert(t('ports.ui.formulario.firma.alerts.seleccionarParaEliminar'));
       return;
     }
     const firma = bancoFirmas.find((f) => String(f.id) === firmaSeleccionadaId);
     if (!firma) return;
-    if (!confirm(`¿Eliminar del banco la firma de "${firma.nombre}"?`)) return;
+    if (!confirm(t('ports.ui.formulario.firma.alerts.confirmEliminar', { nombre: firma.nombre }))) return;
     guardarEnBanco(bancoFirmas.filter((f) => String(f.id) !== firmaSeleccionadaId));
     setFirmaSeleccionadaId('');
   };
@@ -153,10 +155,9 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
       style={{ backgroundColor: cardBg, border: `2px solid ${borderColor}` }}
     >
       <h3 className="text-xl font-bold mb-4" style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}>
-        ✍️ FIRMA Y DATOS DEL INSPECTOR
+        {t('ports.ui.formulario.firma.titulo')}
       </h3>
 
-      {/* Banco de firmas — lista desplegable */}
       <div
         className="mb-6 p-4 rounded"
         style={{
@@ -165,10 +166,10 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
         }}
       >
         <label className="block text-sm font-bold mb-2" style={{ color: textPrimary }}>
-          💾 Banco de firmas {bancoFirmas.length > 0 && `(${bancoFirmas.length})`}
+          {t('ports.ui.formulario.firma.bancoFirmas')} {bancoFirmas.length > 0 && `(${bancoFirmas.length})`}
         </label>
         <p className="text-xs mb-3" style={{ color: textSecondary }}>
-          Elija una firma guardada o complete los datos abajo y guárdela en el banco.
+          {t('ports.ui.formulario.firma.bancoAyuda')}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -185,8 +186,8 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
           >
             <option value="">
               {bancoFirmas.length === 0
-                ? '— No hay firmas en el banco —'
-                : '— Seleccionar firma del banco —'}
+                ? t('ports.ui.formulario.firma.sinFirmasEnBanco')
+                : t('ports.ui.formulario.firma.seleccionarFirma')}
             </option>
             {bancoFirmas.map((firma) => (
               <option key={firma.id} value={String(firma.id)}>
@@ -202,10 +203,10 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
             className="px-3 py-2 rounded flex items-center justify-center gap-2 text-sm font-medium text-white shrink-0"
             style={{ backgroundColor: '#EF4444' }}
             disabled={cargando || !firmaSeleccionadaId}
-            title="Eliminar firma seleccionada del banco"
+            title={t('ports.ui.formulario.firma.eliminarDelBancoTitle')}
           >
             <FaTrash size={12} />
-            Eliminar del banco
+            {t('ports.ui.formulario.firma.eliminarDelBanco')}
           </button>
         </div>
 
@@ -216,7 +217,7 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
           >
             <img
               src={firmaBancoDisplayUrl}
-              alt="Vista previa firma"
+              alt={t('ports.ui.formulario.firma.vistaPreviaFirma')}
               className="h-12 object-contain"
               onError={createImageErrorHandler(firmaPreview?.firma)}
             />
@@ -224,11 +225,10 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
         )}
       </div>
 
-      {/* Datos del firmante */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
-            Nombre completo *
+            {t('ports.ui.formulario.firma.nombreCompleto')}
           </label>
           <input
             type="text"
@@ -239,13 +239,13 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
             }}
             className="w-full rounded px-3 py-2 text-sm"
             style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
-            placeholder="Ej: Jimmy Grueso"
+            placeholder={t('ports.ui.formulario.firma.nombreCompletoPlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
-            Cargo
+            {t('ports.ui.formulario.firma.cargo')}
           </label>
           <input
             type="text"
@@ -253,13 +253,13 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
             onChange={(e) => onInputChange('cargoFirmante', e.target.value)}
             className="w-full rounded px-3 py-2 text-sm"
             style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
-            placeholder="Ej: Director Operativo"
+            placeholder={t('ports.ui.formulario.firma.cargoPlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
-            E-Mail
+            {t('ports.ui.formulario.firma.email')}
           </label>
           <input
             type="email"
@@ -267,13 +267,13 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
             onChange={(e) => onInputChange('emailFirmante', e.target.value)}
             className="w-full rounded px-3 py-2 text-sm"
             style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
-            placeholder="ejemplo@proserpuertos.com.co"
+            placeholder={t('ports.ui.formulario.firma.emailPlaceholder')}
             disabled={cargando}
           />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1" style={{ color: textPrimary }}>
-            Celular
+            {t('ports.ui.formulario.firma.celular')}
           </label>
           <input
             type="text"
@@ -281,16 +281,15 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
             onChange={(e) => onInputChange('celularFirmante', e.target.value)}
             className="w-full rounded px-3 py-2 text-sm"
             style={{ backgroundColor: inputBg, color: textPrimary, border: `1px solid ${borderColor}` }}
-            placeholder="3168345216"
+            placeholder={t('ports.ui.formulario.firma.celularPlaceholder')}
             disabled={cargando}
           />
         </div>
       </div>
 
-      {/* Imagen de firma */}
       <div className="mb-4">
         <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-          Imagen de la firma *
+          {t('ports.ui.formulario.firma.imagenFirma')}
         </label>
         <input
           ref={fileInputRef}
@@ -307,16 +306,16 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
           disabled={cargando}
         >
           <FaUpload />
-          Subir firma
+          {t('ports.ui.formulario.firma.subirFirma')}
         </button>
         {firmaDisplayUrl && (
           <div className="mt-3 p-3 rounded" style={{ backgroundColor: '#FFFFFF', border: `1px solid ${borderColor}` }}>
             <p className="text-xs mb-2" style={{ color: textSecondary }}>
-              Vista previa:
+              {t('ports.ui.formulario.firma.vistaPrevia')}
             </p>
             <img
               src={firmaDisplayUrl}
-              alt="Firma"
+              alt={t('ports.ui.formulario.firma.firmaAlt')}
               className="max-w-full h-24 object-contain"
               onError={handleErrorFirma}
             />
@@ -332,10 +331,9 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
         disabled={cargando || !formData.nombreFirmante || !formData.imagenFirma}
       >
         <FaPlus />
-        Guardar en banco de firmas
+        {t('ports.ui.formulario.firma.guardarEnBanco')}
       </button>
 
-      {/* Vista previa del bloque en el documento */}
       {(formData.nombreFirmante || formData.imagenFirma) && (
         <div
           className="mt-6 p-4 rounded"
@@ -345,14 +343,14 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
           }}
         >
           <h4 className="text-sm font-bold mb-3" style={{ color: textPrimary }}>
-            Vista previa en el documento
+            {t('ports.ui.formulario.firma.vistaPreviaDocumento')}
           </h4>
           <div className="p-4 rounded bg-white" style={{ border: `1px solid ${borderColor}` }}>
-            <p className="text-sm mb-2 text-gray-900">Atentamente,</p>
+            <p className="text-sm mb-2 text-gray-900">{t('ports.ui.formulario.firma.atentamente')}</p>
             {firmaDisplayUrl && (
               <img
                 src={firmaDisplayUrl}
-                alt="Firma"
+                alt={t('ports.ui.formulario.firma.firmaAlt')}
                 className="h-16 object-contain mb-3"
                 onError={handleErrorFirma}
               />
@@ -362,7 +360,11 @@ export default function FirmaPuertos({ formData, onInputChange, onMultipleChange
             )}
             {formData.cargoFirmante && <p className="text-xs text-gray-600">{formData.cargoFirmante}</p>}
             {formData.emailFirmante && <p className="text-xs text-blue-600 mt-2">{formData.emailFirmante}</p>}
-            {formData.celularFirmante && <p className="text-xs text-blue-600">Cel: {formData.celularFirmante}</p>}
+            {formData.celularFirmante && (
+              <p className="text-xs text-blue-600">
+                {t('ports.ui.formulario.firma.celLabel', { numero: formData.celularFirmante })}
+              </p>
+            )}
           </div>
         </div>
       )}

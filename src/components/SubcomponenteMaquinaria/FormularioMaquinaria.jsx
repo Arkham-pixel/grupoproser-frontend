@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media, VerticalAlign, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
 import EncabezadoMaquinaria from "./EncabezadoMaquinaria";
@@ -172,7 +173,8 @@ export const textoPlanoAHtml = (text) => {
 };
 
 export default function FormularioMaquinaria() {
-  const t = useMaquinariaTheme();
+  const { t } = useTranslation();
+  const mq = useMaquinariaTheme();
   // Estados principales
   const [nombre, setNombre] = useState("");
   const [fecha, setFecha] = useState("");
@@ -616,7 +618,7 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
       }
     } catch (error) {
       console.error('❌ Error cargando datos del formulario:', error);
-      alert('Error al cargar los datos del formulario. Por favor, inténtalo de nuevo.');
+      alert(t('machinery.ui.alerts.loadError'));
     } finally {
       setCargando(false);
     }
@@ -716,7 +718,7 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
       if (resultado.success) limpiarBorradorMaquinaria();
     } catch (error) {
       console.error('Error en exportación:', error);
-      alert(`❌ Error en la exportación: ${error.message}`);
+      alert(t('machinery.ui.alerts.exportError', { message: error.message }));
     }
   };
 
@@ -1441,33 +1443,33 @@ const blob = await Packer.toBlob(doc);
 };
 
   return (
-    <div className="min-h-screen p-2 sm:p-4 lg:p-8" style={{ backgroundColor: t.bgMain }}>
+    <div className="min-h-screen p-2 sm:p-4 lg:p-8" style={{ backgroundColor: mq.bgMain }}>
       <div
         className="max-w-4xl mx-auto shadow-lg rounded-lg p-3 sm:p-4 lg:p-6"
-        style={{ backgroundColor: t.cardBg, border: `1px solid ${t.borderColor}` }}
+        style={{ backgroundColor: mq.cardBg, border: `1px solid ${mq.borderColor}` }}
       >
         {/* Encabezado corporativo */}
         <div
           className="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 mb-6 gap-4"
-          style={{ borderBottom: `1px solid ${t.borderColor}` }}
+          style={{ borderBottom: `1px solid ${mq.borderColor}` }}
         >
           <div className="flex items-center gap-2 sm:gap-4">
-            <img src={Logo} alt="Logo PROSER" className="h-12 sm:h-16 object-contain" />
+            <img src={Logo} alt={t('machinery.ui.common.logoAlt')} className="h-12 sm:h-16 object-contain" />
             {modoEdicion && (
               <span
                 className="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium"
                 style={{
-                  backgroundColor: t.theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
-                  color: t.theme === 'dark' ? '#93C5FD' : '#1E40AF',
+                  backgroundColor: mq.theme === 'dark' ? 'rgba(59, 130, 246, 0.2)' : '#DBEAFE',
+                  color: mq.theme === 'dark' ? '#93C5FD' : '#1E40AF',
                 }}
               >
-                Modo edición
+                {t('machinery.ui.form.editMode')}
               </span>
             )}
           </div>
           <div className="w-full sm:w-auto">
-            <p className="text-xs sm:text-sm font-semibold mb-1" style={{ color: t.textPrimary }}>
-              FECHA DE INSPECCIÓN
+            <p className="text-xs sm:text-sm font-semibold mb-1" style={{ color: mq.textPrimary }}>
+              {t('machinery.ui.form.inspectionDate')}
             </p>
             <ThemedInput
               type="date"
@@ -1480,11 +1482,11 @@ const blob = await Packer.toBlob(doc);
         </div>
 
         <div className="mb-8 text-center">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: t.textPrimary }}>
-            FORMULARIO DE INSPECCIÓN DE MAQUINARIA
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: mq.textPrimary }}>
+            {t('machinery.ui.form.title')}
           </h1>
-          <p className="text-sm" style={{ color: t.textSecondary }}>
-            Informe de inspección de riesgos — equipo y maquinaria
+          <p className="text-sm" style={{ color: mq.textSecondary }}>
+            {t('machinery.ui.form.subtitle')}
           </p>
         </div>
 
@@ -1494,15 +1496,15 @@ const blob = await Packer.toBlob(doc);
               className="animate-spin rounded-full h-8 w-8 border-b-2 mx-auto"
               style={{ borderColor: '#DC2626' }}
             />
-            <p className="mt-2 text-sm" style={{ color: t.textSecondary }}>
-              Cargando formulario...
+            <p className="mt-2 text-sm" style={{ color: mq.textSecondary }}>
+              {t('machinery.ui.form.loadingForm')}
             </p>
           </div>
         )}
 
         <LlenadoGuia />
 
-        <SectionCard title="Foto principal" subtitle="Suba primero la portada — 1 sola imagen por arrastre o clic">
+        <SectionCard title={t('machinery.ui.sections.fotoPrincipal.title')} subtitle={t('machinery.ui.sections.fotoPrincipal.subtitle')}>
           <FotoPrincipalMaquinaria
             imagen={fotoPrincipalImagen}
             onChange={(img) => {
@@ -1530,7 +1532,7 @@ const blob = await Packer.toBlob(doc);
           setAseguradora={setAseguradora}
         />
 
-        <SectionCard title="Datos generales" subtitle="Carta de presentación — ciudad, saludo y texto">
+        <SectionCard title={t('machinery.ui.sections.datosGenerales.title')} subtitle={t('machinery.ui.sections.datosGenerales.subtitle')}>
           <CartaPresentacionMaquinaria
             ciudadFecha={ciudadFecha}
             setCiudadFecha={setCiudadFecha}
@@ -1549,7 +1551,7 @@ const blob = await Packer.toBlob(doc);
           />
         </SectionCard>
 
-        <SectionCard title="1. Informe de inspección maquinaria" subtitle="Referencia e inspector; el resto se completa solo">
+        <SectionCard title={t('machinery.ui.sections.informe.title')} subtitle={t('machinery.ui.sections.informe.subtitle')}>
           <TablaInspeccionMaquinaria
             aseguradora={aseguradora}
             equipo={nombreMaquinaria}
@@ -1569,7 +1571,7 @@ const blob = await Packer.toBlob(doc);
           />
         </SectionCard>
 
-        <SectionCard title="2. Descripción del bien asegurado" subtitle="Datos técnicos — la marca viene del encabezado">
+        <SectionCard title={t('machinery.ui.sections.descripcion.title')} subtitle={t('machinery.ui.sections.descripcion.subtitle')}>
           <DescripcionBienAsegurado
             descripcion={descripcion} setDescripcion={setDescripcion}
             marca={marca}
@@ -1587,7 +1589,7 @@ const blob = await Packer.toBlob(doc);
           />
         </SectionCard>
 
-        <SectionCard title="2.1 Estado general" subtitle="Locomoción y funcionamiento se completan desde §2">
+        <SectionCard title={t('machinery.ui.sections.estado.title')} subtitle={t('machinery.ui.sections.estado.subtitle')}>
           <EstadoGeneralMaquinaria
             electrico={electrico} setElectrico={setElectrico}
             mecanico={mecanico} setMecanico={setMecanico}
@@ -1600,7 +1602,7 @@ const blob = await Packer.toBlob(doc);
           />
         </SectionCard>
 
-        <SectionCard title="3. Tipo de protección">
+        <SectionCard title={t('machinery.ui.sections.proteccion.title')}>
           <TipoProteccionMaquinaria
             tipoProteccion={tipoProteccion}
             setTipoProteccion={setTipoProteccion}
@@ -1608,7 +1610,7 @@ const blob = await Packer.toBlob(doc);
           />
         </SectionCard>
 
-        <SectionCard title="4. Recomendaciones y observaciones">
+        <SectionCard title={t('machinery.ui.sections.recomendaciones.title')}>
           <RecomendacionesObservacionesMaquinaria
             recomendaciones={recomendaciones}
             setRecomendaciones={setRecomendaciones}
@@ -1616,7 +1618,7 @@ const blob = await Packer.toBlob(doc);
           />
         </SectionCard>
 
-        <SectionCard title="Registro fotográfico" subtitle="Hasta 12 fotos · arrastre o clic · la primera sirve de portada si no hay foto principal">
+        <SectionCard title={t('machinery.ui.sections.registro.title')} subtitle={t('machinery.ui.sections.registro.subtitle')}>
           <RegistroFotograficoMaquinaria
             onChange={setImagenesRegistro}
             imagenesIniciales={imagenesRegistro}
@@ -1624,7 +1626,7 @@ const blob = await Packer.toBlob(doc);
           />
         </SectionCard>
 
-        <SectionCard title="Firmas">
+        <SectionCard title={t('machinery.ui.sections.firmas.title')}>
           <FirmaMaquinaria
             clienteNombre={firmaClienteNombre}
             setClienteNombre={setFirmaClienteNombre}
@@ -1646,16 +1648,16 @@ const blob = await Packer.toBlob(doc);
         </SectionCard>
 
         {/* Acciones */}
-        <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${t.borderColor}` }}>
+        <div className="mt-8 pt-6" style={{ borderTop: `1px solid ${mq.borderColor}` }}>
           <div
             className="mb-4 p-3 rounded-lg text-xs sm:text-sm"
-            style={{ backgroundColor: t.accentSoft, color: t.textPrimary }}
+            style={{ backgroundColor: mq.accentSoft, color: mq.textPrimary }}
           >
-            <p className="font-semibold mb-2">Campos obligatorios para guardar:</p>
-            <ul className="space-y-1" style={{ color: t.textSecondary }}>
-              <li>{nombreAsegurado ? '✓' : '○'} Asegurado</li>
-              <li>{nombreMaquinaria ? '✓' : '○'} Tipo de maquinaria</li>
-              <li>{aseguradora ? '✓' : '○'} Aseguradora</li>
+            <p className="font-semibold mb-2">{t('machinery.ui.form.requiredFields')}</p>
+            <ul className="space-y-1" style={{ color: mq.textSecondary }}>
+              <li>{nombreAsegurado ? '✓' : '○'} {t('machinery.ui.form.requiredInsured')}</li>
+              <li>{nombreMaquinaria ? '✓' : '○'} {t('machinery.ui.form.requiredMachinery')}</li>
+              <li>{aseguradora ? '✓' : '○'} {t('machinery.ui.form.requiredInsurer')}</li>
             </ul>
           </div>
 
@@ -1663,14 +1665,14 @@ const blob = await Packer.toBlob(doc);
             <button
               type="button"
               onClick={() => {
-                if (window.confirm('¿Desea limpiar el formulario y empezar de cero?')) {
+                if (window.confirm(t('machinery.ui.form.startOverConfirm'))) {
                   limpiarFormulario();
                 }
               }}
               className="btn-fenix-secondary text-sm py-2 px-4"
               disabled={cargando || guardando || exportando}
             >
-              Empezar de cero
+              {t('machinery.ui.form.startOver')}
             </button>
           </div>
 
@@ -1678,7 +1680,7 @@ const blob = await Packer.toBlob(doc);
             onGuardarEnHistorial={handleGuardarEnHistorial}
             onExportar={handleExportar}
             tipoFormulario={TIPOS_FORMULARIOS.MAQUINARIA}
-            tituloFormulario="Maquinaria"
+            tituloFormulario={t('machinery.ui.form.historyTitle')}
             deshabilitado={!nombreAsegurado || !nombreMaquinaria || !aseguradora}
             guardando={guardando}
             exportando={exportando}

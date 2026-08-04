@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState } from 'react';
 import { FaChevronDown, FaChevronRight, FaFileAlt, FaDownload, FaTrash } from 'react-icons/fa';
 import {
@@ -119,8 +120,9 @@ export function ValorFijo({ children }) {
 }
 
 export function ComplexFormTabs({ tabs, activeId, onChange }) {
+  const { t } = useTranslation();
   return (
-    <nav className={complexFormTabsWrap} aria-label="Secciones del caso">
+    <nav className={complexFormTabsWrap} aria-label={t("complex.ui.facturacion_helpers.secciones_del_caso")}>
       {tabs.map(({ id, label }) => (
         <button
           key={id}
@@ -135,8 +137,10 @@ export function ComplexFormTabs({ tabs, activeId, onChange }) {
   );
 }
 
-export function ComplexFormActions({ onCancel, onEnviarRiesgos, cancelLabel = 'Cancelar' }) {
+export function ComplexFormActions({ onCancel, onEnviarRiesgos, cancelLabel }) {
+  const { t } = useTranslation();
   const [modalCancelarAbierto, setModalCancelarAbierto] = useState(false);
+  const cancelLabelFinal = cancelLabel ?? t('complex.ui.facturacion_helpers.cancelar');
 
   const confirmarCancelar = () => {
     setModalCancelarAbierto(false);
@@ -147,39 +151,35 @@ export function ComplexFormActions({ onCancel, onEnviarRiesgos, cancelLabel = 'C
     <>
       <div className="flex flex-wrap items-center justify-end gap-2">
         <FormActionWithHint
-          hint="¿Desea cancelar el proceso? Elija Sí para salir o No para continuar."
+          hint={t("complex.ui.facturacion_helpers.desea_cancelar_el_proceso_elija_si_para_salir_o_no_para_")}
           hoverClassName={complexBtnFormActionCancelHover}
           onClick={() => setModalCancelarAbierto(true)}
         >
-          {cancelLabel}
+          {cancelLabelFinal}
         </FormActionWithHint>
         {onEnviarRiesgos && (
           <button
             type="button"
             className={`${complexBtnFormAction} hover:bg-gray-50 dark:hover:bg-gray-800`}
             onClick={onEnviarRiesgos}
-          >
-            Enviar a Riesgos
-          </button>
+          >{t("complex.ui.facturacion_helpers.enviar_a_riesgos")}</button>
         )}
         <FormActionWithHint
           type="submit"
-          hint="Caso guardado"
+          hint={t("complex.ui.facturacion_helpers.caso_guardado")}
           hoverClassName={complexBtnFormActionSaveHover}
-        >
-          Guardar
-        </FormActionWithHint>
+        >{t("complex.ui.facturacion_helpers.guardar")}</FormActionWithHint>
       </div>
 
       <ComplexAvisoModal
         open={modalCancelarAbierto}
         onClose={() => setModalCancelarAbierto(false)}
-        titulo="Cancelar proceso"
-        mensaje="¿Desea cancelar el proceso? Si sale ahora, puede perder los cambios que no haya guardado."
+        titulo={t('complex.ui.facturacion_helpers.cancelar_proceso')}
+        mensaje={t('complex.ui.facturacion_helpers.desea_cancelar_proceso_modal')}
         tipo="warning"
         onConfirm={confirmarCancelar}
-        confirmTexto="Sí, cancelar"
-        cancelTexto="No, continuar"
+        confirmTexto={t('complex.ui.facturacion_helpers.si_cancelar')}
+        cancelTexto={t('complex.ui.facturacion_helpers.no_continuar')}
         confirmVariant="danger"
       />
     </>
@@ -212,6 +212,7 @@ export function TextareaFenix({ className = '', ...props }) {
 }
 
 export function DropzoneFenix({ getRootProps, getInputProps, isDragActive, hint, children }) {
+  const { t } = useTranslation();
   const rootProps = getRootProps ? getRootProps() : {};
   return (
     <div>
@@ -223,8 +224,8 @@ export function DropzoneFenix({ getRootProps, getInputProps, isDragActive, hint,
         {children ?? (
           <p className={`font-body text-sm ${isDragActive ? 'font-medium text-fenix-primario' : 'text-gray-600 dark:text-gray-300'}`}>
             {isDragActive
-              ? 'Suelta los archivos aquí...'
-              : 'Arrastra y suelta archivos aquí, o haz clic para seleccionar.'}
+              ? t('complex.ui.facturacion_helpers.suelta_archivos')
+              : t('complex.ui.facturacion_helpers.arrastra_archivos')}
           </p>
         )}
       </div>
@@ -234,13 +235,13 @@ export function DropzoneFenix({ getRootProps, getInputProps, isDragActive, hint,
 }
 
 export function ListaDocumentos({ titulo, documentos, onDescargar, onEliminar, tipoEliminar }) {
+  const { t } = useTranslation();
   if (!documentos?.length) return null;
   return (
     <div>
       <h4 className={`${complexSubsectionTitle} flex items-center gap-2 text-sm`}>
         <FaFileAlt className="text-fenix-primario" />
-        {titulo} ({documentos.length})
-      </h4>
+        {titulo}{t("complex.ui.facturacion_helpers.texto")}{documentos.length}{t("complex.ui.facturacion_helpers.texto_2")}</h4>
       <div className="mt-2 space-y-2">
         {documentos.map((doc, index) => {
           const tieneUrl = doc.url || doc.ruta || doc.data;
@@ -253,7 +254,7 @@ export function ListaDocumentos({ titulo, documentos, onDescargar, onEliminar, t
                     type="button"
                     onClick={(e) => onDescargar(doc, e)}
                     className="text-left font-body text-sm font-semibold text-fenix-primario underline hover:text-red-700"
-                    title="Descargar"
+                    title={t("complex.ui.facturacion_helpers.descargar")}
                   >
                     {nombreArchivo}
                   </button>
@@ -261,8 +262,7 @@ export function ListaDocumentos({ titulo, documentos, onDescargar, onEliminar, t
                   <p className="font-body text-sm font-medium text-gray-800 dark:text-gray-200">{nombreArchivo}</p>
                 )}
                 {doc.fechaSubida && (
-                  <p className="mt-0.5 font-body text-xs text-gray-500 dark:text-gray-400">
-                    Subido: {new Date(doc.fechaSubida).toLocaleDateString('es-CO')}
+                  <p className="mt-0.5 font-body text-xs text-gray-500 dark:text-gray-400">{t("complex.ui.facturacion_helpers.subido")}{new Date(doc.fechaSubida).toLocaleDateString('es-CO')}
                     {doc.usuario && ` · ${doc.usuario}`}
                   </p>
                 )}
@@ -277,11 +277,9 @@ export function ListaDocumentos({ titulo, documentos, onDescargar, onEliminar, t
                       onDescargar(doc, e);
                     }}
                     className={complexBtnSecondary}
-                    title="Descargar"
+                    title={t("complex.ui.facturacion_helpers.descargar")}
                   >
-                    <FaDownload />
-                    Descargar
-                  </button>
+                    <FaDownload />{t("complex.ui.facturacion_helpers.descargar")}</button>
                 )}
                 <button
                   type="button"
@@ -291,11 +289,9 @@ export function ListaDocumentos({ titulo, documentos, onDescargar, onEliminar, t
                     onEliminar(doc, tipoEliminar);
                   }}
                   className={complexBtnDanger}
-                  title="Eliminar"
+                  title={t("complex.ui.facturacion_helpers.eliminar")}
                 >
-                  <FaTrash />
-                  Eliminar
-                </button>
+                  <FaTrash />{t("complex.ui.facturacion_helpers.eliminar")}</button>
               </div>
             </div>
           );

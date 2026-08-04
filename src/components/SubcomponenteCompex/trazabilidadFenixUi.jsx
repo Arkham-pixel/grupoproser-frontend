@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import {
   FaCalendarAlt,
@@ -19,22 +20,44 @@ import {
 } from 'react-icons/fa';
 import { complexBadge, complexInput, complexLabel } from './complexFenixUi';
 
+/** Claves i18n en complex.ui.trazabilidad_fenix_ui (sin título hardcodeado). */
 export const ETAPAS_TRAZABILIDAD = [
-  { tipo: 'recepcionAsignacion', titulo: 'Recepción de asignación', Icon: FaInbox },
-  { tipo: 'carguePlataforma', titulo: 'Cargue y asignación interna', Icon: FaUserCheck },
-  { tipo: 'contactoInicial', titulo: 'Contacto Inicial', Icon: FaPhone },
-  { tipo: 'coordinacionInspeccion', titulo: 'Coordinación de Inspección', Icon: FaCalendarAlt },
-  { tipo: 'inspeccion', titulo: 'Inspección', Icon: FaSearch },
-  { tipo: 'solicitudDocs', titulo: 'Solicitud Docs', Icon: FaFileAlt },
-  { tipo: 'informePreliminar', titulo: 'Informe Preliminar', Icon: FaChartBar },
-  { tipo: 'seguimientoDocsPendientes', titulo: 'Seguimiento docs pendientes', Icon: FaEnvelopeOpenText },
-  { tipo: 'ultimoDocumento', titulo: 'Último Documento', Icon: FaPaperclip },
-  { tipo: 'informeFinal', titulo: 'Informe Final', Icon: FaFileInvoice },
-  { tipo: 'seguimientoAutorizacionCompania', titulo: 'Seguimiento autorización compañía', Icon: FaBuilding },
-  { tipo: 'presentacionCifras', titulo: 'Presentación de Cifras', Icon: FaChartLine },
-  { tipo: 'seguimientoDocumentosPago', titulo: 'Seguimiento docs de pago', Icon: FaMoneyCheckAlt },
-  { tipo: 'envioFiniquito', titulo: 'Envío de Finiquito', Icon: FaFileInvoice },
+  { tipo: 'recepcionAsignacion', tituloKey: 'recepcion_asignacion', Icon: FaInbox },
+  { tipo: 'carguePlataforma', tituloKey: 'cargue_asignacion_interna', Icon: FaUserCheck },
+  { tipo: 'contactoInicial', tituloKey: 'contacto_inicial', Icon: FaPhone },
+  { tipo: 'coordinacionInspeccion', tituloKey: 'coordinacion_inspeccion', Icon: FaCalendarAlt },
+  { tipo: 'inspeccion', tituloKey: 'inspeccion', Icon: FaSearch },
+  { tipo: 'solicitudDocs', tituloKey: 'solicitud_docs', Icon: FaFileAlt },
+  { tipo: 'informePreliminar', tituloKey: 'informe_preliminar', Icon: FaChartBar },
+  { tipo: 'seguimientoDocsPendientes', tituloKey: 'seguimiento_docs_pendientes', Icon: FaEnvelopeOpenText },
+  { tipo: 'ultimoDocumento', tituloKey: 'ultimo_documento', Icon: FaPaperclip },
+  { tipo: 'informeFinal', tituloKey: 'informe_final', Icon: FaFileInvoice },
+  { tipo: 'seguimientoAutorizacionCompania', tituloKey: 'seguimiento_autorizacion_compania', Icon: FaBuilding },
+  { tipo: 'presentacionCifras', tituloKey: 'presentacion_de_cifras', Icon: FaChartLine },
+  { tipo: 'seguimientoDocumentosPago', tituloKey: 'seguimiento_docs_de_pago', Icon: FaMoneyCheckAlt },
+  { tipo: 'envioFiniquito', tituloKey: 'envio_de_finiquito', Icon: FaFileInvoice },
 ];
+
+/** Títulos largos usados en acordeones de Trazabilidad.jsx */
+export const TITULO_ETAPA_LARGO_KEY = {
+  solicitudDocs: 'solicitud_docs',
+  seguimientoDocsPendientes: 'seguimiento_documentos_pendientes',
+  seguimientoAutorizacionCompania: 'seguimiento_autorizacion_compania_largo',
+  seguimientoDocumentosPago: 'seguimiento_documentos_pago_largo',
+};
+
+export function tituloEtapaTrazabilidad(t, tipo, { largo = false } = {}) {
+  const etapa = ETAPAS_TRAZABILIDAD.find((e) => e.tipo === tipo);
+  const key =
+    (largo && TITULO_ETAPA_LARGO_KEY[tipo]) ||
+    etapa?.tituloKey ||
+    tipo;
+  // Prefer etapas_trazabilidad (ES/EN dedicadas); fallback a trazabilidad_fenix_ui
+  const primary = `complex.ui.etapas_trazabilidad.${key}`;
+  const translated = t(primary);
+  if (translated && translated !== primary) return translated;
+  return t(`complex.ui.trazabilidad_fenix_ui.${key}`);
+}
 
 export const trazabilidadInputClass = `${complexInput} text-xs sm:text-sm`;
 
@@ -61,6 +84,7 @@ export function trazabilidadColorClase(diasInfo) {
 }
 
 export function EstadoGeneralTrazabilidad({ tipos, calcularDias }) {
+  const { t } = useTranslation();
   const urgentes = tipos.filter((tipo) => {
     const d = calcularDias(tipo);
     return d && d.esUrgente;
@@ -74,7 +98,7 @@ export function EstadoGeneralTrazabilidad({ tipos, calcularDias }) {
     return (
       <span className={`${complexBadge} gap-1.5 text-fenix-primario`}>
         <FaExclamationTriangle className="text-xs" aria-hidden />
-        {urgentes} etapa{urgentes !== 1 ? 's' : ''} con retraso
+        {t('complex.ui.trazabilidad_fenix_ui.etapas_con_retraso', { count: urgentes })}
       </span>
     );
   }
@@ -82,14 +106,14 @@ export function EstadoGeneralTrazabilidad({ tipos, calcularDias }) {
     return (
       <span className={complexBadge}>
         <FaClock className="mr-1 text-xs" aria-hidden />
-        Caso al día
+        {t('complex.ui.trazabilidad_fenix_ui.caso_al_dia')}
       </span>
     );
   }
   return (
     <span className={`${complexBadge} text-gray-600 dark:text-gray-300`}>
       <FaClock className="mr-1 text-xs" aria-hidden />
-      Necesita atención
+      {t('complex.ui.trazabilidad_fenix_ui.necesita_atencion')}
     </span>
   );
 }

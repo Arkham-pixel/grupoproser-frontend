@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import { Seccion, Campo, inputCls } from './PuertosCasoDatosGenerales';
 import PuertosCasoImagenUnica from './PuertosCasoImagenUnica';
@@ -19,6 +20,7 @@ import {
 } from './puertosFenixUi';
 
 export default function PuertosCasoPagina3({ formData, onInformeChange, onNestedInformeChange, soloLectura = false }) {
+  const { t } = useTranslation();
   const informe = formData.informeExportacion || {};
   const buque = informe.buque || {};
   const lineas = informe.lineasMercancia || [];
@@ -42,79 +44,77 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
 
   return (
     <div className="space-y-5">
-      <Seccion titulo="2. Particularidades del buque — Características del barco" cols={1}>
+      <Seccion titulo={t('ports.ui.casoExportacion.buque.particularidadesTitle')} cols={1}>
         <PuertosCasoImagenUnica
-          titulo="Fotografía de la motonave"
-          descripcion="Como en el informe Word: imagen del buque sobre la tabla de características"
+          titulo={t('ports.ui.casoExportacion.buque.fotoMotonave')}
+          descripcion={t('ports.ui.casoExportacion.buque.fotoMotonaveDesc')}
           imagen={buque.imagenBuque || null}
           onChange={setImagenBuque}
           soloLectura={soloLectura}
         />
       </Seccion>
 
-      <Seccion titulo="Características del barco">
-        <Campo label="Origen">
+      <Seccion titulo={t('ports.ui.casoExportacion.buque.caracteristicasTitle')}>
+        <Campo label={t('ports.ui.casoExportacion.buque.origen')}>
           <input className={inputCls} value={buque.origen || ''} onChange={(e) => setBuque('origen', e.target.value)} placeholder="BARRANQUILLA/COLOMBIA" />
         </Campo>
-        <Campo label="Puerto de embarque">
+        <Campo label={t('ports.ui.casoExportacion.buque.puertoEmbarque')}>
           <input className={inputCls} value={buque.puertoEmbarque || ''} onChange={(e) => setBuque('puertoEmbarque', e.target.value)} />
         </Campo>
-        <Campo label="Puerto de descargue">
+        <Campo label={t('ports.ui.casoExportacion.buque.puertoDescargue')}>
           <input className={inputCls} value={buque.puertoDescargue || ''} onChange={(e) => setBuque('puertoDescargue', e.target.value)} />
         </Campo>
-        <Campo label="Nombre motonave">
+        <Campo label={t('ports.ui.casoExportacion.buque.nombreMotonave')}>
           <input className={inputCls} value={buque.nombre || ''} onChange={(e) => setBuque('nombre', e.target.value)} placeholder="MN ECO TRAMONTANE" />
         </Campo>
-        <Campo label="Bandera">
+        <Campo label={t('ports.ui.casoExportacion.buque.bandera')}>
           <input className={inputCls} value={buque.bandera || ''} onChange={(e) => setBuque('bandera', e.target.value)} />
         </Campo>
-        <Campo label="Tipo de buque">
+        <Campo label={t('ports.ui.casoExportacion.buque.tipoBuque')}>
           <input className={inputCls} value={buque.tipoBuque || ''} onChange={(e) => setBuque('tipoBuque', e.target.value)} placeholder="PORTACONTENEDORES" />
         </Campo>
-        <Campo label="IMO Nro.">
+        <Campo label={t('ports.ui.casoExportacion.buque.imo')}>
           <input className={inputCls} value={buque.imo || ''} onChange={(e) => setBuque('imo', e.target.value)} />
         </Campo>
-        <Campo label="Tonelaje bruto">
+        <Campo label={t('ports.ui.casoExportacion.buque.tonelajeBruto')}>
           <input className={inputCls} value={buque.tonelajeBruto || ''} onChange={(e) => setBuque('tonelajeBruto', e.target.value)} placeholder="16242 t" />
         </Campo>
-        <Campo label="Peso muerto">
+        <Campo label={t('ports.ui.casoExportacion.buque.pesoMuerto')}>
           <input className={inputCls} value={buque.pesoMuerto || ''} onChange={(e) => setBuque('pesoMuerto', e.target.value)} placeholder="13629 t" />
         </Campo>
-        <Campo label="Eslora x manga">
+        <Campo label={t('ports.ui.casoExportacion.buque.esloraManga')}>
           <input className={inputCls} value={buque.esloraManga || ''} onChange={(e) => setBuque('esloraManga', e.target.value)} placeholder="148 x 27 m" />
         </Campo>
-        <Campo label="Año de construcción">
+        <Campo label={t('ports.ui.casoExportacion.buque.anioConstruccion')}>
           <input className={inputCls} value={buque.anioConstruccion || ''} onChange={(e) => setBuque('anioConstruccion', e.target.value)} />
         </Campo>
-        <Campo label="Fecha de arribo">
+        <Campo label={t('ports.ui.casoExportacion.buque.fechaArribo')}>
           <input type="date" className={inputCls} value={buque.fechaArribo || ''} onChange={(e) => setBuque('fechaArribo', e.target.value)} />
         </Campo>
       </Seccion>
 
       <section className={puertosTableWrap}>
         <header className={`${puertosCardHeaderAccent} flex flex-wrap items-center justify-between gap-2`}>
-          <h3 className={puertosSectionTitle}>3. Información general — Descripción de la mercancía</h3>
+          <h3 className={puertosSectionTitle}>{t('ports.ui.casoExportacion.mercancia.sectionTitle')}</h3>
           {!soloLectura && (
           <button type="button" onClick={() => setLineas([...lineas, nuevaLineaMercancia()])} className={puertosBtnSm}>
-            <FaPlus /> Agregar línea
+            <FaPlus /> {t('ports.ui.casoExportacion.mercancia.agregarLinea')}
           </button>
           )}
         </header>
         <div className="overflow-x-auto p-3">
           <p className="mb-2 font-body text-xs text-gray-500">
-            Un mismo caso con varios productos: agregue una línea por producto con su cantidad y
-            repita (o deje vacío) N° contenedores, B/L, tipo de carga y destino. En el informe esas
-            celdas se unen y las cantidades quedan divididas por producto.
+            {t('ports.ui.casoExportacion.mercancia.hint')}
           </p>
           <table className="min-w-full border-collapse text-xs sm:text-sm">
             <thead>
               <tr className={puertosTableThRow}>
-                <th className={`${puertosTableTh} w-20 border border-red-700`}>N° cont.</th>
-                <th className={`${puertosTableTh} min-w-[130px] border border-red-700`}>B/L N°</th>
-                <th className={`${puertosTableTh} min-w-[280px] border border-red-700`}>Producto</th>
-                <th className={`${puertosTableTh} w-24 border border-red-700`}>Cantidad</th>
-                <th className={`${puertosTableTh} min-w-[150px] border border-red-700`}>Tipo carga</th>
-                <th className={`${puertosTableTh} min-w-[180px] border border-red-700`}>Destino</th>
+                <th className={`${puertosTableTh} w-20 border border-red-700`}>{t('ports.ui.casoExportacion.mercancia.colNumCont')}</th>
+                <th className={`${puertosTableTh} min-w-[130px] border border-red-700`}>{t('ports.ui.casoExportacion.mercancia.colBl')}</th>
+                <th className={`${puertosTableTh} min-w-[280px] border border-red-700`}>{t('ports.ui.casoExportacion.mercancia.colProducto')}</th>
+                <th className={`${puertosTableTh} w-24 border border-red-700`}>{t('ports.ui.casoExportacion.mercancia.colCantidad')}</th>
+                <th className={`${puertosTableTh} min-w-[150px] border border-red-700`}>{t('ports.ui.casoExportacion.mercancia.colTipoCarga')}</th>
+                <th className={`${puertosTableTh} min-w-[180px] border border-red-700`}>{t('ports.ui.casoExportacion.mercancia.colDestino')}</th>
                 <th className={`${puertosTableTh} w-10 border border-red-700`}></th>
               </tr>
             </thead>
@@ -122,7 +122,7 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
               {lineas.length === 0 && (
                 <tr>
                   <td colSpan={7} className="border px-3 py-6 text-center font-body text-gray-500">
-                    Sin líneas. Agregue al menos una fila de mercancía.
+                    {t('ports.ui.casoExportacion.mercancia.sinLineas')}
                   </td>
                 </tr>
               )}
@@ -186,9 +186,9 @@ export default function PuertosCasoPagina3({ formData, onInformeChange, onNested
               {lineas.length > 0 && (
                 <tr className="bg-gray-50 font-semibold dark:bg-gray-900/40">
                   <td colSpan={3} className="border px-2 py-2 text-right font-body">
-                    Total
+                    {t('ports.ui.casoExportacion.mercancia.total')}
                   </td>
-                  <td className="border px-2 py-2 font-body">{total > 0 ? `${total} UDS` : '—'}</td>
+                  <td className="border px-2 py-2 font-body">{total > 0 ? `${total} UDS` : t('ports.ui.common.dash')}</td>
                   <td colSpan={3} className="border" />
                 </tr>
               )}

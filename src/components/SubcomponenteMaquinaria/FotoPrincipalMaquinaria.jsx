@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useTranslation } from 'react-i18next';
 import { FaCloudUploadAlt, FaImage, FaTrash } from 'react-icons/fa';
 import { ThemedInput, useMaquinariaTheme } from './maquinariaUi';
 import {
@@ -14,7 +15,8 @@ export default function FotoPrincipalMaquinaria({
   onDescripcionChange,
   disabled = false,
 }) {
-  const t = useMaquinariaTheme();
+  const { t } = useTranslation();
+  const mq = useMaquinariaTheme();
 
   const onDrop = useCallback(
     (acceptedFiles) => {
@@ -50,11 +52,11 @@ export default function FotoPrincipalMaquinaria({
       {displayUrl ? (
         <div
           className="relative overflow-hidden rounded-lg border"
-          style={{ borderColor: t.borderColor, backgroundColor: t.tableHeaderBg }}
+          style={{ borderColor: mq.borderColor, backgroundColor: mq.tableHeaderBg }}
         >
           <img
             src={displayUrl}
-            alt={imagen?.nombre || 'Foto principal'}
+            alt={imagen?.nombre || t('machinery.ui.fotoPrincipal.alt')}
             className="w-full max-h-72 object-contain"
           />
           {!disabled && (
@@ -64,11 +66,11 @@ export default function FotoPrincipalMaquinaria({
               className="absolute right-2 top-2 flex items-center gap-1 rounded-md px-2 py-1 text-xs text-white"
               style={{ backgroundColor: 'rgba(220, 38, 38, 0.9)' }}
             >
-              <FaTrash /> Quitar
+              <FaTrash /> {t('machinery.ui.fotoPrincipal.remove')}
             </button>
           )}
           {imagen?.nombre && (
-            <p className="truncate border-t px-3 py-2 text-xs" style={{ borderColor: t.borderColor, color: t.textSecondary }}>
+            <p className="truncate border-t px-3 py-2 text-xs" style={{ borderColor: mq.borderColor, color: mq.textSecondary }}>
               {imagen.nombre}
             </p>
           )}
@@ -78,38 +80,38 @@ export default function FotoPrincipalMaquinaria({
           {...getRootProps()}
           className="flex min-h-[160px] cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 py-8 transition-colors"
           style={{
-            borderColor: isDragActive ? '#DC2626' : t.borderColor,
-            backgroundColor: isDragActive ? t.accentSoft : t.tableHeaderBg,
+            borderColor: isDragActive ? '#DC2626' : mq.borderColor,
+            backgroundColor: isDragActive ? mq.accentSoft : mq.tableHeaderBg,
             opacity: disabled ? 0.6 : 1,
             pointerEvents: disabled ? 'none' : 'auto',
           }}
         >
           <input {...getInputProps()} />
-          <FaImage className="mb-2 text-2xl" style={{ color: t.textSecondary }} />
-          <FaCloudUploadAlt className="mb-2 text-xl" style={{ color: t.textSecondary }} />
-          <span className="text-sm font-medium" style={{ color: t.textPrimary }}>
-            Arrastra una imagen o haz clic
+          <FaImage className="mb-2 text-2xl" style={{ color: mq.textSecondary }} />
+          <FaCloudUploadAlt className="mb-2 text-xl" style={{ color: mq.textSecondary }} />
+          <span className="text-sm font-medium" style={{ color: mq.textPrimary }}>
+            {t('machinery.ui.fotoPrincipal.drop')}
           </span>
-          <span className="mt-1 text-xs" style={{ color: t.textSecondary }}>
-            Solo 1 foto · JPG, PNG, WEBP
+          <span className="mt-1 text-xs" style={{ color: mq.textSecondary }}>
+            {t('machinery.ui.fotoPrincipal.hint')}
           </span>
         </div>
       )}
 
       <div>
-        <label className="mb-1 block text-xs font-semibold" style={{ color: t.textPrimary }}>
-          Descripción de la foto principal
+        <label className="mb-1 block text-xs font-semibold" style={{ color: mq.textPrimary }}>
+          {t('machinery.ui.fotoPrincipal.description')}
         </label>
         <ThemedInput
           value={descripcion}
           onChange={(e) => handleDescripcion(e.target.value)}
-          placeholder="Descripción de la foto principal"
+          placeholder={t('machinery.ui.fotoPrincipal.descriptionPlaceholder')}
           disabled={disabled}
         />
       </div>
 
-      <p className="text-xs" style={{ color: t.textSecondary }}>
-        Se almacena en S3 al guardar o exportar el informe.
+      <p className="text-xs" style={{ color: mq.textSecondary }}>
+        {t('machinery.ui.fotoPrincipal.s3Hint')}
       </p>
     </div>
   );

@@ -1,9 +1,11 @@
 import React from 'react';
 import { FaSearch } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function CausaAjuste({ formData, onInputChange, numeroSeccion = 5 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -32,13 +34,13 @@ export default function CausaAjuste({ formData, onInputChange, numeroSeccion = 5
             className="mr-3" 
             style={{ color: theme === 'dark' ? '#A78BFA' : '#6366F1' }}
           />
-          {numeroSeccion}. CAUSA
+          {numeroSeccion}. {t('adjustment.ui.sections.causa.title')}
         </h2>
         <p 
           className="mt-2"
           style={{ color: textSecondary }}
         >
-          Determine la causa del siniestro
+          {t('adjustment.ui.sections.causa.subtitle')}
         </p>
       </div>
 
@@ -54,7 +56,7 @@ export default function CausaAjuste({ formData, onInputChange, numeroSeccion = 5
           className="block text-sm font-medium mb-2"
           style={{ color: textPrimary }}
         >
-          Determinación de la Causa
+          {t('adjustment.ui.sections.causa.label')}
         </label>
         <textarea
           value={formData.causa || ''}
@@ -67,13 +69,13 @@ export default function CausaAjuste({ formData, onInputChange, numeroSeccion = 5
             borderColor: borderColor,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Escribe la causa del siniestro aquí. Por ejemplo: 'La causa principal fue una falla electrica en el sistema de cableado, causada por sobrecarga y falta de mantenimiento'"
+          placeholder={t('adjustment.ui.sections.causa.placeholder')}
         />
         <div 
           className="mt-2 text-sm"
           style={{ color: textSecondary }}
         >
-          Mínimo recomendado: 70 palabras para determinar la causa del siniestro
+          {t('adjustment.ui.sections.causa.minWords')}
         </div>
       </div>
 
@@ -83,7 +85,7 @@ export default function CausaAjuste({ formData, onInputChange, numeroSeccion = 5
         onTextoCambiado={(texto) => onInputChange('causa', texto)}
         contextoFormulario={formData}
         tipoSeccion="causa"
-        tituloSeccion="Determinación de la Causa"
+        tituloSeccion={t('adjustment.ui.sections.causa.iaTitle')}
       />
 
       {/* Validación de calidad */}
@@ -98,22 +100,20 @@ export default function CausaAjuste({ formData, onInputChange, numeroSeccion = 5
           className="text-lg font-semibold mb-4 flex items-center"
           style={{ color: sectionYellowText }}
         >
-          📊 Validación de Calidad
+          📊 {t('adjustment.ui.sections.causa.qualityTitle')}
         </h3>
         <div 
           className="text-sm"
           style={{ color: sectionYellowText }}
         >
           <p className="mb-2">
-            <strong>Recomendaciones para determinación de causa de calidad:</strong>
+            <strong>{t('adjustment.ui.sections.causa.qualityIntro')}</strong>
           </p>
           <ul className="list-disc list-inside space-y-1 ml-4">
-            <li>Identifique la causa raíz del incidente</li>
-            <li>Mencione factores contribuyentes</li>
-            <li>Incluya evidencia técnica que sustente la causa</li>
-            <li>Describa el mecanismo del incidente</li>
-            <li>Mencione si fue por falla humana, técnica o natural</li>
-            <li>Sea específico sobre las condiciones que llevaron al incidente</li>
+            <li>{t('adjustment.ui.sections.causa.tip1')}</li>
+            <li>{t('adjustment.ui.sections.causa.tip2')}</li>
+            <li>{t('adjustment.ui.sections.causa.tip3')}</li>
+            <li>{t('adjustment.ui.sections.causa.tip4')}</li>
           </ul>
         </div>
       </div>

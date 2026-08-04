@@ -1,6 +1,7 @@
 // src/components/Layout.jsx
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FaBars,
   FaUserCircle,
@@ -47,6 +48,7 @@ import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
 import { arnaldLogo, arnaldIcon } from '../config/brandAssets.js';
 import LogoutButton from './LogoutButton';
 import Aviso2FAPrompt from './Aviso2FAPrompt';
+import LanguageSelector from './LanguageSelector';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
@@ -73,12 +75,13 @@ function formatNombreCorto(nombre, login) {
   return `${partes[0]} ${inicial}.`;
 }
 
-function formatRol(rol) {
-  return etiquetaRol(rol);
+function formatRol(rol, t) {
+  return etiquetaRol(rol, t);
 }
 
 /** Timer de sesión en pie del sidebar */
 function SessionTimerSidebar({ compact = false }) {
+  const { t } = useTranslation();
   const [elapsed, setElapsed] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [remaining, setRemaining] = useState({ hours: 0, minutes: 0, seconds: 0 });
 
@@ -120,17 +123,19 @@ function SessionTimerSidebar({ compact = false }) {
       <div className="flex items-center gap-2">
         <FaClock className="shrink-0 text-fenix-primario" />
         <span>
-          Sesión: <span className="font-mono font-semibold text-white">{formatTimer(elapsed)}</span>
+          {t('nav.sessionLabel')}{' '}
+          <span className="font-mono font-semibold text-white">{formatTimer(elapsed)}</span>
         </span>
       </div>
       <p className="mt-1 pl-6 text-[11px] text-gray-500">
-        Cierre automático en {formatTimer(remaining)}
+        {t('nav.autoLogoutIn', { time: formatTimer(remaining) })}
       </p>
     </div>
   );
 }
 
 export default function Layout() {
+  const { t } = useTranslation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [expandedSection, setExpandedSection] = useState(() => {
     const rol = obtenerRolAlmacenado();
@@ -148,6 +153,7 @@ export default function Layout() {
   const { theme, toggleTheme } = useTheme();
 
   const esMatrizRiesgo = location.pathname.includes('/matriz-riesgo-avanzada');
+  const contenidoExpandido = esMatrizRiesgo;
 
   const usuarioActual = {
     login: localStorage.getItem('login'),
@@ -203,70 +209,72 @@ export default function Layout() {
   }, [accesoRestringido, esAdminOSoporte, location.pathname]);
 
   const routeTitles = {
-    '/inicio': 'Inicio',
-    '/formularioinspeccion': 'Formulario de Inspección',
-    '/formulario-inspeccion-propiedades': 'Formulario Inspección Propiedades',
-    '/complex/agregar': 'Agregar Caso Complex',
-    '/complex/editar': 'Editar Caso Complex',
-    '/complex/excel': 'Reporte Complex',
-    '/complex/mis-casos': 'Mis Casos Complex',
-    '/complex/mis-subtareas': 'Mis Subtareas Complex',
-    '/complex/bandeja-facturacion': 'Bandeja de Facturación',
-    '/complex/reporte-mejorado': 'Reporte Complex',
-    '/complex/dashboard': 'Dashboard Complex',
-    '/complex/indicadores-alertas': 'Indicadores y alertas COMPLEX',
-    '/complex/indicadores-historicos': 'Indicadores y alertas COMPLEX',
-    '/complex/indicadores-protocolo': 'Indicadores y alertas COMPLEX',
-    '/complex/mis-alertas': 'Indicadores y alertas COMPLEX',
-    '/complex/protocolo-tiempos': 'Protocolo de tiempos COMPLEX',
-    '/complex/alertas': 'Alertas Complex',
-    '/complex/gestion-estados': 'Gestión de Estados COMPLEX',
-    '/editar-caso': 'Editar Caso',
-    '/riesgos/agregar': 'Agregar Caso de Riesgo',
-    '/riesgos/dashboard': 'Dashboard de Riesgos',
-    '/riesgos/exportar': 'Exportar Riesgos',
-    '/riesgos/editar': 'Editar Caso de Riesgo',
-    '/cuenta': 'Cuenta',
-    '/micuenta': 'Mi Cuenta',
-    '/formulario-maquinaria': 'Formulario Maquinaria',
-    '/reporte-pol': 'Reporte Póliza',
-    '/ajuste': 'Formulario de Ajuste',
-    '/matriz-riesgo-avanzada': 'Arnald Risk Intelligence',
-    '/matrices-riesgo': 'Matrices de Riesgo',
-    '/express/carga': 'Carga Express',
-    '/express/liquidador': 'Liquidador Express',
-    '/express/reporte': 'Reporte Express',
-    '/express/protocolo': 'Protocolo Express',
-    '/express/dashboard': 'Protocolo Express',
-    '/express/alertas': 'Protocolo Express',
-    '/express/tablero': 'Tablero operativo Express',
-    '/admin/catalogos-express': 'Catálogos Express',
-    '/equidad-fdm/carga': 'Agregar caso Equidad FDM',
-    '/equidad-fdm/liquidador': 'Liquidador Equidad FDM',
-    '/equidad-fdm/reporte': 'Reporte Equidad FDM',
-    '/equidad-fdm/dashboard': 'Dashboard Equidad FDM',
-    '/propiedades/carga': 'Nuevo caso Propiedades',
-    '/propiedades/dashboard': 'Dashboard Propiedades',
-    '/propiedades/reporte': 'Reporte Propiedades',
-    '/propiedades/inspeccion': 'Inspección de Propiedades',
-    '/puertos/actas': 'Puertos — Actas',
-    '/puertos/actas/nueva': 'Puertos — Nueva Acta',
-    '/puertos/actas/caso/nueva': 'Puertos — Informe Exportación',
-    '/puertos/formulario': 'Inspección de Instalaciones',
-    '/puertos/inspeccion-asegurado': 'Inspección de Asegurado',
-    '/puertos/actas/inspeccion-asegurado/nueva': 'Inspección de Asegurado',
-    '/puertos/actas/catalogos': 'Puertos — Catálogos',
-    '/historial': 'Historial de Formularios',
-    '/siniestros': 'Siniestros',
-    '/admin/usuarios': 'Administración de Usuarios',
-    '/admin/estadisticas-tiempo-uso': 'Estadísticas de Tiempo de Uso',
-    '/admin/session-settings': 'Configuración de Sesión',
-    '/admin/clientes-funcionarios': 'Gestión Clientes y Funcionarios',
-    '/admin/intermediarios': 'Gestión de Intermediarios',
-    '/admin/responsables': 'Gestión de Responsables',
-    '/admin/documentos': 'Gestión de Documentos',
-    '/editar-perfil-usuario': 'Editar Perfil de Usuario',
-    '/informacion-completa': 'Información Completa de Empleados',
+    '/inicio': t('nav.pageTitles.home'),
+    '/ayuda': t('nav.pageTitles.help'),
+    '/formularioinspeccion': t('nav.pageTitles.inspectionForm'),
+    '/formulario-inspeccion-propiedades': t('nav.pageTitles.propertiesInspectionForm'),
+    '/complex/agregar': t('nav.pageTitles.complexAdd'),
+    '/complex/editar': t('nav.pageTitles.complexEdit'),
+    '/complex/excel': t('nav.pageTitles.complexReport'),
+    '/complex/mis-casos': t('nav.pageTitles.complexMyCases'),
+    '/complex/mis-subtareas': t('nav.pageTitles.complexMyTasks'),
+    '/complex/bandeja-facturacion': t('nav.pageTitles.complexBillingTray'),
+    '/complex/reporte-mejorado': t('nav.pageTitles.complexReport'),
+    '/complex/dashboard': t('nav.pageTitles.complexDashboard'),
+    '/complex/indicadores-alertas': t('nav.pageTitles.complexIndicators'),
+    '/complex/indicadores-historicos': t('nav.pageTitles.complexIndicators'),
+    '/complex/indicadores-protocolo': t('nav.pageTitles.complexIndicators'),
+    '/complex/mis-alertas': t('nav.pageTitles.complexIndicators'),
+    '/complex/protocolo-tiempos': t('nav.pageTitles.complexTimeProtocol'),
+    '/complex/alertas': t('nav.pageTitles.complexAlerts'),
+    '/complex/gestion-estados': t('nav.pageTitles.complexStates'),
+    '/editar-caso': t('nav.pageTitles.editCase'),
+    '/riesgos/agregar': t('risks.ui.layout.page_title_agregar'),
+    '/riesgos/dashboard': t('risks.ui.layout.page_title_dashboard'),
+    '/riesgos/exportar': t('risks.ui.layout.page_title_exportar'),
+    '/riesgos/editar': t('risks.ui.layout.page_title_editar'),
+    '/cuenta': t('nav.pageTitles.account'),
+    '/micuenta': t('nav.pageTitles.myAccount'),
+    '/formulario-maquinaria': t('nav.pageTitles.machineryForm'),
+    '/reporte-pol': t('nav.pageTitles.polReport'),
+    '/ajuste': t('nav.pageTitles.adjustment'),
+    '/matriz-riesgo-avanzada': t('nav.pageTitles.arnaldRiskIntelligence'),
+    '/matrices-riesgo': t('nav.pageTitles.riskMatrices'),
+    '/express/carga': t('nav.pageTitles.expressLoad'),
+    '/express/liquidador': t('nav.pageTitles.expressSettlement'),
+    '/express/reporte': t('nav.pageTitles.expressReport'),
+    '/express/protocolo': t('nav.pageTitles.expressProtocol'),
+    '/express/dashboard': t('nav.pageTitles.expressProtocol'),
+    '/express/alertas': t('nav.pageTitles.expressProtocol'),
+    '/express/tablero': t('nav.pageTitles.expressBoard'),
+    '/admin/catalogos-express': t('nav.pageTitles.expressCatalogs'),
+    '/equidad-fdm/carga': t('nav.pageTitles.fdmAdd'),
+    '/equidad-fdm/liquidador': t('nav.pageTitles.fdmSettlement'),
+    '/equidad-fdm/reporte': t('nav.pageTitles.fdmReport'),
+    '/equidad-fdm/dashboard': t('nav.pageTitles.fdmDashboard'),
+    '/propiedades/carga': t('nav.pageTitles.propertiesNew'),
+    '/propiedades/dashboard': t('nav.pageTitles.propertiesDashboard'),
+    '/propiedades/reporte': t('nav.pageTitles.propertiesReport'),
+    '/propiedades/inspeccion': t('nav.pageTitles.propertiesInspection'),
+    '/sg-sst': t('nav.pageTitles.sgSst'),
+    '/puertos/actas': t('nav.pageTitles.portsActas'),
+    '/puertos/actas/nueva': t('nav.pageTitles.portsNewActa'),
+    '/puertos/actas/caso/nueva': t('nav.pageTitles.portsExportCase'),
+    '/puertos/formulario': t('nav.pageTitles.portsInstallations'),
+    '/puertos/inspeccion-asegurado': t('nav.pageTitles.portsInsured'),
+    '/puertos/actas/inspeccion-asegurado/nueva': t('nav.pageTitles.portsInsured'),
+    '/puertos/actas/catalogos': t('nav.pageTitles.portsCatalogs'),
+    '/historial': t('nav.pageTitles.formsHistory'),
+    '/siniestros': t('nav.pageTitles.claims'),
+    '/admin/usuarios': t('nav.pageTitles.adminUsers'),
+    '/admin/estadisticas-tiempo-uso': t('nav.pageTitles.adminTimeUsage'),
+    '/admin/session-settings': t('nav.pageTitles.adminSession'),
+    '/admin/clientes-funcionarios': t('nav.pageTitles.adminClients'),
+    '/admin/intermediarios': t('nav.pageTitles.adminIntermediaries'),
+    '/admin/responsables': t('nav.pageTitles.adminResponsibles'),
+    '/admin/documentos': t('nav.pageTitles.adminDocuments'),
+    '/editar-perfil-usuario': t('nav.pageTitles.editUserProfile'),
+    '/informacion-completa': t('nav.pageTitles.fullEmployeeInfo'),
   };
 
   useEffect(() => {
@@ -281,7 +289,7 @@ export default function Layout() {
       }
     }
     document.title = pageTitle ? `Arnald DataFlow - ${pageTitle}` : 'Arnald DataFlow';
-  }, [location.pathname]);
+  }, [location.pathname, t]);
 
   useEffect(() => {
     const path = location.pathname;
@@ -332,106 +340,109 @@ export default function Layout() {
   };
 
   const menuItems = {
-    principal: accesoRestringido ? [] : [{ path: '/inicio', icon: FaHome, label: 'Inicio' }],
+    principal: accesoRestringido ? [] : [{ path: '/inicio', icon: FaHome, label: t('nav.home') }],
     matrices: esPuertos
       ? []
       : [
-          { path: '/matrices-riesgo', icon: FaList, label: 'Ver RI' },
-          { path: '/matriz-riesgo-avanzada', icon: FaChartBar, label: 'Arnald Risk Intelligence' },
+          { path: '/matrices-riesgo', icon: FaList, label: t('nav.viewRI') },
+          { path: '/matriz-riesgo-avanzada', icon: FaChartBar, label: t('nav.arnaldRiskIntelligence') },
         ],
     complex: !accesoRestringido
       ? [
-          { path: '/complex/agregar', icon: FaPlus, label: 'Agregar Casos' },
-          { path: '/complex/dashboard', icon: FaChartLine, label: 'Dashboard' },
-          { path: '/complex/indicadores-alertas', icon: FaChartBar, label: 'Indicadores y alertas' },
-          { path: '/complex/excel', icon: FaTable, label: 'Reporte Completo' },
-          { path: '/complex/mis-casos', icon: FaList, label: 'Mis Casos Asignados' },
-          { path: '/complex/mis-subtareas', icon: FaTasks, label: 'Mis Subtareas' },
+          { path: '/complex/agregar', icon: FaPlus, label: t('nav.addCases') },
+          { path: '/complex/dashboard', icon: FaChartLine, label: t('nav.dashboard') },
+          { path: '/complex/indicadores-alertas', icon: FaChartBar, label: t('nav.indicators') },
+          { path: '/complex/excel', icon: FaTable, label: t('nav.completeReport') },
+          { path: '/complex/mis-casos', icon: FaList, label: t('nav.assignedCases') },
+          { path: '/complex/mis-subtareas', icon: FaTasks, label: t('nav.myTasks') },
           ...(puedeBandejaFacturacion
-            ? [{ path: '/complex/bandeja-facturacion', icon: FaInbox, label: 'Bandeja Facturación' }]
+            ? [{ path: '/complex/bandeja-facturacion', icon: FaInbox, label: t('nav.billingTray') }]
             : []),
         ]
       : [],
     riesgos: !accesoRestringido
       ? [
-          { path: '/riesgos/agregar', icon: FaPlus, label: 'Agregar Casos' },
-          { path: '/riesgos/dashboard', icon: FaChartLine, label: 'Dashboard' },
-          { path: '/riesgos/exportar', icon: FaDownload, label: 'Exportar Excel' },
+          { path: '/riesgos/agregar', icon: FaPlus, label: t('nav.addCases') },
+          { path: '/riesgos/dashboard', icon: FaChartLine, label: t('nav.dashboard') },
+          { path: '/riesgos/exportar', icon: FaDownload, label: t('nav.exportExcel') },
         ]
       : [],
     formularios: !accesoRestringido
       ? [
-          { path: '/complex/agregar', icon: FaFileAlt, label: 'Formulario Complex' },
-          { path: '/formularioinspeccion', icon: FaClipboardList, label: 'Formulario de Riesgo' },
-          { path: '/ajuste', icon: FaFileAlt, label: 'Ajuste / Acta de inspección' },
-          { path: '/reporte-pol', icon: FaFileInvoice, label: 'Formulario POL' },
-          { path: '/formulario-maquinaria', icon: FaTools, label: 'Formulario de Maquinaria' },
-          { path: '/express/carga', icon: FaBolt, label: 'Formulario Express' },
-          { path: '/equidad-fdm/carga', icon: FaHandHoldingHeart, label: 'Formulario Equidad FDM' },
-          { path: '/propiedades/carga', icon: FaBuilding, label: 'Formulario de Propiedades' },
-          { path: '/puertos/formulario', icon: FaShip, label: 'Formulario Puertos — Instalaciones' },
+          { path: '/complex/agregar', icon: FaFileAlt, label: t('nav.complexForm') },
+          { path: '/formularioinspeccion', icon: FaClipboardList, label: t('nav.riskForm') },
+          { path: '/ajuste', icon: FaFileAlt, label: t('nav.adjustmentForm') },
+          { path: '/reporte-pol', icon: FaFileInvoice, label: t('nav.polForm') },
+          { path: '/formulario-maquinaria', icon: FaTools, label: t('nav.machineryForm') },
+          { path: '/express/carga', icon: FaBolt, label: t('nav.expressForm') },
+          { path: '/equidad-fdm/carga', icon: FaHandHoldingHeart, label: t('nav.equidadFdmForm') },
+          { path: '/propiedades/carga', icon: FaBuilding, label: t('nav.propertiesForm') },
+          { path: '/puertos/formulario', icon: FaShip, label: t('nav.portsInstallationsForm') },
           {
             path: '/puertos/actas/inspeccion-asegurado/nueva',
             icon: FaFileAlt,
-            label: 'Formulario Puertos — Asegurado',
+            label: t('nav.portsInsuredForm'),
           },
-          { path: '/puertos/actas/nueva', icon: FaClipboardList, label: 'Formulario Acta Puertos' },
-          { path: '/puertos/actas/caso/nueva', icon: FaFileInvoice, label: 'Formulario Informe Exportación' },
-          { path: '/historial', icon: FaList, label: 'Historial de Formularios' },
+          { path: '/puertos/actas/nueva', icon: FaClipboardList, label: t('nav.portsActaForm') },
+          { path: '/puertos/actas/caso/nueva', icon: FaFileInvoice, label: t('nav.portsExportForm') },
+          { path: '/historial', icon: FaList, label: t('nav.formsHistory') },
         ]
       : [],
     propiedades: !accesoRestringido
       ? [
-          { path: '/propiedades/carga', icon: FaPlus, label: 'Nuevo caso' },
-          { path: '/propiedades/dashboard', icon: FaChartLine, label: 'Dashboard' },
-          { path: '/propiedades/reporte', icon: FaTable, label: 'Reporte' },
+          { path: '/propiedades/carga', icon: FaPlus, label: t('nav.newCase') },
+          { path: '/propiedades/dashboard', icon: FaChartLine, label: t('nav.dashboard') },
+          { path: '/propiedades/reporte', icon: FaTable, label: t('nav.report') },
         ]
+      : [],
+    sgSst: !accesoRestringido
+      ? [{ path: '/sg-sst', icon: FaShieldAlt, label: t('nav.sgSstSelfAssessment') }]
       : [],
     express: !accesoRestringido
       ? [
-          { path: '/express/carga', icon: FaBolt, label: 'Carga Express' },
-          { path: '/express/liquidador', icon: FaCalculator, label: 'Liquidador Express' },
-          { path: '/express/protocolo', icon: FaChartLine, label: 'Protocolo Express' },
-          { path: '/express/tablero', icon: FaClipboardList, label: 'Tablero operativo' },
-          { path: '/express/reporte', icon: FaTable, label: 'Reporte Express' },
+          { path: '/express/carga', icon: FaBolt, label: t('nav.expressLoad') },
+          { path: '/express/liquidador', icon: FaCalculator, label: t('nav.expressSettlement') },
+          { path: '/express/protocolo', icon: FaChartLine, label: t('nav.expressProtocol') },
+          { path: '/express/tablero', icon: FaClipboardList, label: t('nav.expressBoard') },
+          { path: '/express/reporte', icon: FaTable, label: t('nav.expressReport') },
         ]
       : [],
     equidadFdm: !accesoRestringido
       ? [
-          { path: '/equidad-fdm/carga', icon: FaPlus, label: 'Agregar caso' },
-          { path: '/equidad-fdm/liquidador', icon: FaCalculator, label: 'Liquidador FDM' },
-          { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: 'Dashboard FDM' },
-          { path: '/equidad-fdm/reporte', icon: FaTable, label: 'Reporte FDM' },
+          { path: '/equidad-fdm/carga', icon: FaPlus, label: t('nav.fdmAddCase') },
+          { path: '/equidad-fdm/liquidador', icon: FaCalculator, label: t('nav.fdmSettlement') },
+          { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: t('nav.fdmDashboard') },
+          { path: '/equidad-fdm/reporte', icon: FaTable, label: t('nav.fdmReport') },
         ]
       : [],
     puertos: !esVisualizador
       ? [
-          { path: '/puertos/actas', icon: FaClipboardList, label: 'Actas y Descargues' },
+          { path: '/puertos/actas', icon: FaClipboardList, label: t('nav.portsActas') },
           ...(esPuertos
             ? [
-                { path: '/puertos/actas/catalogos', icon: FaList, label: 'Catálogos' },
+                { path: '/puertos/actas/catalogos', icon: FaList, label: t('nav.catalogs') },
               ]
             : [
-                { path: '/puertos/actas/nueva', icon: FaPlus, label: 'Nueva Acta' },
-                { path: '/puertos/formulario', icon: FaShip, label: 'Inspección Instalaciones' },
-                { path: '/puertos/actas/catalogos', icon: FaList, label: 'Catálogos Puertos' },
+                { path: '/puertos/actas/nueva', icon: FaPlus, label: t('nav.portsNewActa') },
+                { path: '/puertos/formulario', icon: FaShip, label: t('nav.portsInstallations') },
+                { path: '/puertos/actas/catalogos', icon: FaList, label: t('nav.portsCatalogs') },
               ]),
-          { path: '/puertos/actas/inspeccion-asegurado/nueva', icon: FaFileAlt, label: 'Inspección Asegurado' },
+          { path: '/puertos/actas/inspeccion-asegurado/nueva', icon: FaFileAlt, label: t('nav.portsInsured') },
         ]
       : [],
     cuenta: !esVisualizador
       ? esPuertos
-        ? [{ path: '/cuenta', icon: FaUserCircle, label: 'Mi Cuenta' }]
+        ? [{ path: '/cuenta', icon: FaUserCircle, label: t('nav.myAccount') }]
         : [
-          { path: '/cuenta', icon: FaUserCircle, label: 'Mi Cuenta' },
+          { path: '/cuenta', icon: FaUserCircle, label: t('nav.myAccount') },
           ...(usuarioAutorizadoGestionDocumentos(
             localStorage.getItem('cedula'),
             localStorage.getItem('login')
           ) && !esAdminOSoporte
-            ? [{ path: '/admin/documentos', icon: FaFolderOpen, label: 'Gestión de Documentos' }]
+            ? [{ path: '/admin/documentos', icon: FaFolderOpen, label: t('nav.documentManagement') }]
             : []),
           ...(puedeCatalogosExpress && !esAdminOSoporte
-            ? [{ path: '/admin/catalogos-express', icon: FaList, label: 'Catálogos Express' }]
+            ? [{ path: '/admin/catalogos-express', icon: FaList, label: t('nav.expressCatalogs') }]
             : []),
           ...(() => {
             const login = localStorage.getItem('login');
@@ -440,61 +451,62 @@ export default function Layout() {
             const ok =
               (login && AUT.includes(login)) || (cedula && AUT.includes(cedula));
             return ok
-              ? [{ path: '/informacion-completa', icon: FaChartBar, label: 'Información Completa' }]
+              ? [{ path: '/informacion-completa', icon: FaChartBar, label: t('nav.fullEmployeeInfo') }]
               : [];
           })(),
         ]
       : [],
     admin: esAdminOSoporte
       ? [
-          { path: '/admin/usuarios', icon: FaUsers, label: 'Gestión de Usuarios' },
-          { path: '/admin/estadisticas-tiempo-uso', icon: FaChartLine, label: 'Tiempo de Uso' },
+          { path: '/admin/usuarios', icon: FaUsers, label: t('nav.userManagement') },
+          { path: '/admin/estadisticas-tiempo-uso', icon: FaChartLine, label: t('nav.timeUsage') },
           {
             path: '/cuenta',
             icon: FaPlus,
-            label: 'Agregar Usuario',
+            label: t('nav.addUser'),
             onClick: () => localStorage.setItem('cuentaTab', 'agregar'),
           },
-          { path: '/editar-perfil-usuario', icon: FaEdit, label: 'Editar Usuarios' },
+          { path: '/editar-perfil-usuario', icon: FaEdit, label: t('nav.editUsers') },
           {
             path: '/cuenta',
             icon: FaTrash,
-            label: 'Eliminar Usuario',
+            label: t('nav.deleteUser'),
             onClick: () => localStorage.setItem('cuentaTab', 'eliminar'),
           },
-          { path: '/admin/clientes-funcionarios', icon: FaBuilding, label: 'Clientes/Funcionarios' },
-          { path: '/admin/intermediarios', icon: FaHandshake, label: 'Intermediarios' },
-          { path: '/admin/responsables', icon: FaUserTie, label: 'Responsables' },
-          { path: '/admin/documentos', icon: FaFolderOpen, label: 'Gestión de Documentos' },
-          { path: '/admin/catalogos-express', icon: FaList, label: 'Catálogos Express' },
-          { path: '/complex/gestion-estados', icon: FaCog, label: 'Estados COMPLEX' },
-          { path: '/complex/alertas', icon: FaExclamationTriangle, label: 'Sistema de Alertas' },
-          { path: '/complex/protocolo-tiempos', icon: FaCog, label: 'Protocolo de tiempos' },
+          { path: '/admin/clientes-funcionarios', icon: FaBuilding, label: t('nav.clientsOfficials') },
+          { path: '/admin/intermediarios', icon: FaHandshake, label: t('nav.intermediaries') },
+          { path: '/admin/responsables', icon: FaUserTie, label: t('nav.responsibles') },
+          { path: '/admin/documentos', icon: FaFolderOpen, label: t('nav.documentManagement') },
+          { path: '/admin/catalogos-express', icon: FaList, label: t('nav.expressCatalogs') },
+          { path: '/complex/gestion-estados', icon: FaCog, label: t('nav.complexStates') },
+          { path: '/complex/alertas', icon: FaExclamationTriangle, label: t('nav.alertSystem') },
+          { path: '/complex/protocolo-tiempos', icon: FaCog, label: t('nav.timeProtocol') },
         ]
       : [],
   };
 
   const sections = [
-    { key: 'principal', title: 'PRINCIPAL', icon: FaHome, items: menuItems.principal },
+    { key: 'principal', title: t('nav.sections.principal'), icon: FaHome, items: menuItems.principal },
     ...(esPuertos
-      ? [{ key: 'puertos', title: 'PUERTOS', icon: FaShip, items: menuItems.puertos }]
+      ? [{ key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos }]
       : !esVisualizador
         ? [
-            { key: 'complex', title: 'COMPLEX', icon: FaFileAlt, items: menuItems.complex },
-            { key: 'riesgos', title: 'RIESGOS', icon: FaChartBar, items: menuItems.riesgos },
-            { key: 'express', title: 'EXPRESS', icon: FaBolt, items: menuItems.express },
-            { key: 'equidadFdm', title: 'EQUIDAD FDM', icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
-            { key: 'propiedades', title: 'PROPIEDADES', icon: FaBuilding, items: menuItems.propiedades },
-            { key: 'puertos', title: 'PUERTOS', icon: FaShip, items: menuItems.puertos },
-            { key: 'formularios', title: 'FORMULARIOS', icon: FaFileInvoice, items: menuItems.formularios },
+            { key: 'complex', title: t('nav.sections.complex'), icon: FaFileAlt, items: menuItems.complex },
+            { key: 'riesgos', title: t('nav.sections.riesgos'), icon: FaChartBar, items: menuItems.riesgos },
+            { key: 'express', title: t('nav.sections.express'), icon: FaBolt, items: menuItems.express },
+            { key: 'equidadFdm', title: t('nav.sections.equidadFdm'), icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
+            { key: 'propiedades', title: t('nav.sections.propiedades'), icon: FaBuilding, items: menuItems.propiedades },
+            { key: 'sgSst', title: t('nav.sections.sgSst'), icon: FaShieldAlt, items: menuItems.sgSst },
+            { key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos },
+            { key: 'formularios', title: t('nav.sections.formularios'), icon: FaFileInvoice, items: menuItems.formularios },
           ]
         : []),
-    ...(!esPuertos ? [{ key: 'matrices', title: 'RISK INTELLIGENCE', icon: FaChartBar, items: menuItems.matrices }] : []),
+    ...(!esPuertos ? [{ key: 'matrices', title: t('nav.sections.matrices'), icon: FaChartBar, items: menuItems.matrices }] : []),
     ...(esAdminOSoporte
-      ? [{ key: 'admin', title: 'ADMINISTRACIÓN', icon: FaShieldAlt, items: menuItems.admin }]
+      ? [{ key: 'admin', title: t('nav.sections.admin'), icon: FaShieldAlt, items: menuItems.admin }]
       : []),
     ...(!esVisualizador
-      ? [{ key: 'cuenta', title: 'CUENTA', icon: FaUserCircle, items: menuItems.cuenta }]
+      ? [{ key: 'cuenta', title: t('nav.sections.cuenta'), icon: FaUserCircle, items: menuItems.cuenta }]
       : []),
   ].filter((s) => s.items?.length > 0);
 
@@ -648,7 +660,7 @@ export default function Layout() {
 
   return (
     <div
-      className={`flex ${esMatrizRiesgo ? 'h-screen min-h-0 overflow-hidden' : 'min-h-screen'} ${mainBg}`}
+      className={`flex ${contenidoExpandido ? 'h-screen min-h-0 overflow-hidden' : 'min-h-screen'} ${mainBg}`}
     >
       {/* Sidebar oscuro */}
       <aside
@@ -663,7 +675,7 @@ export default function Layout() {
               type="button"
               onClick={() => setSidebarCollapsed(false)}
               className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-1.5 shadow-sm transition hover:bg-gray-100"
-              title="Expandir menú — ARNALD Data Flow"
+              title={t('nav.expandMenu')}
             >
               <img
                 src={arnaldIcon}
@@ -681,13 +693,13 @@ export default function Layout() {
                 />
               </div>
               <div className="mt-4 flex items-center justify-between gap-2">
-                <span className="text-sm font-medium text-gray-400">Panel de Control</span>
+                <span className="text-sm font-medium text-gray-400">{t('layout.controlPanel')}</span>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={toggleTheme}
                     className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
-                    title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}
+                    title={theme === 'dark' ? t('layout.lightMode') : t('layout.darkMode')}
                   >
                     {theme === 'dark' ? <FaSun className="text-sm" /> : <FaMoon className="text-sm" />}
                   </button>
@@ -698,7 +710,7 @@ export default function Layout() {
                       setExpandedSection(null);
                     }}
                     className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
-                    title="Colapsar menú"
+                    title={t('layout.collapseMenu')}
                   >
                     <FaChevronLeft className="text-xs" />
                   </button>
@@ -733,7 +745,7 @@ export default function Layout() {
               type="button"
               onClick={() => setSidebarCollapsed(false)}
               className="flex w-full justify-center rounded-lg p-2 text-gray-400 hover:bg-gray-800 hover:text-white"
-              title="Expandir"
+              title={t('nav.expand')}
             >
               <FaChevronRight className="text-sm" />
             </button>
@@ -742,7 +754,7 @@ export default function Layout() {
       </aside>
 
       {/* Área principal */}
-      <div className={`flex min-w-0 flex-1 flex-col ${esMatrizRiesgo ? 'min-h-0' : ''}`}>
+      <div className={`flex min-w-0 flex-1 flex-col ${contenidoExpandido ? 'min-h-0' : ''}`}>
         {/* Top bar — estilo dashboard */}
         <header
           className={`sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b px-4 shadow-sm sm:px-6 ${topBarBg}`}
@@ -751,21 +763,19 @@ export default function Layout() {
             type="button"
             className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            aria-label="Menú lateral"
+            aria-label={t('nav.sideMenu')}
           >
             <FaBars className="text-lg" />
           </button>
 
           <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
+            <LanguageSelector compact />
             <button
               type="button"
               className="rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
-              title="Buscar"
-              onClick={() => {
-                if (location.pathname === '/inicio') {
-                  document.getElementById('buscar-tarea-inicio')?.focus();
-                }
-              }}
+              title={t('layout.searchTasks')}
+              aria-label={t('layout.searchTasks')}
+              onClick={() => navigate('/inicio', { state: { focusBuscadorTareas: true } })}
             >
               <FaSearch className="text-lg" />
             </button>
@@ -776,7 +786,7 @@ export default function Layout() {
                   type="button"
                   onClick={() => navigate('/complex/mis-subtareas')}
                   className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
-                  title="Mis subtareas Complex"
+                  title={t('nav.myComplexTasks')}
                 >
                   <FaTasks className="text-lg" />
                   {contadorSubtareas > 0 && (
@@ -791,11 +801,11 @@ export default function Layout() {
                     navigate(
                       esAdminOSoporte
                         ? '/complex/alertas'
-                        : '/complex/indicadores-alertas?tab=alertas'
+                        : '/complex/mis-alertas'
                     )
                   }
                   className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
-                  title={esAdminOSoporte ? 'Sistema de alertas' : 'Mis alertas'}
+                  title={esAdminOSoporte ? t('nav.alertSystem') : t('nav.myAlerts')}
                 >
                   <FaBell className="text-lg" />
                   {contadorAlertas > 0 && (
@@ -810,7 +820,9 @@ export default function Layout() {
             <button
               type="button"
               className="hidden rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 sm:block"
-              title="Ayuda"
+              title={t('layout.openHelp')}
+              aria-label={t('layout.openHelp')}
+              onClick={() => navigate('/ayuda')}
             >
               <FaQuestionCircle className="text-lg" />
             </button>
@@ -839,7 +851,7 @@ export default function Layout() {
                   <p className="text-sm font-semibold text-gray-800">
                     {formatNombreCorto(usuarioActual.nombre, usuarioActual.login)}
                   </p>
-                  <p className="text-xs text-gray-500">{formatRol(usuarioActual.rol)}</p>
+                  <p className="text-xs text-gray-500">{formatRol(usuarioActual.rol, t)}</p>
                 </div>
                 <FaChevronDown
                   className={`hidden text-xs text-gray-400 transition sm:block ${
@@ -853,7 +865,7 @@ export default function Layout() {
                   <button
                     type="button"
                     className="fixed inset-0 z-40"
-                    aria-label="Cerrar menú"
+                    aria-label={t('nav.closeMenu')}
                     onClick={() => setUserMenuOpen(false)}
                   />
                   <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-100 bg-white py-1 shadow-lg">
@@ -862,14 +874,14 @@ export default function Layout() {
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      Mi cuenta
+                      {t('common.myAccount')}
                     </Link>
                     <Link
                       to="/cuenta"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      Configuración
+                      {t('common.settings')}
                     </Link>
                     {puedeCatalogosExpress && !esAdminOSoporte && (
                       <Link
@@ -877,7 +889,7 @@ export default function Layout() {
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         onClick={() => setUserMenuOpen(false)}
                       >
-                        Catálogos Express
+                        {t('nav.expressCatalogs')}
                       </Link>
                     )}
                   </div>
@@ -889,7 +901,7 @@ export default function Layout() {
 
         <main
           className={`flex-1 min-h-0 ${
-            esMatrizRiesgo ? 'overflow-hidden p-0' : 'overflow-auto'
+            contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-auto'
           }`}
         >
           <Aviso2FAPrompt />

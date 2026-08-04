@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   FaCheckCircle,
@@ -86,7 +88,7 @@ export default function SubtareasComplexPanel({
       const data = await obtenerResumenSubtareasCaso(casoId);
       setResumen(data);
     } catch (err) {
-      setError(err.message || 'No se pudieron cargar las subtareas');
+      setError(err.message || t('complex.ui.subtareas_complex_panel.no_cargar_subtareas'));
     } finally {
       setLoading(false);
     }
@@ -131,14 +133,14 @@ export default function SubtareasComplexPanel({
       }
       setAviso(
         result.notificacion?.success === false
-          ? `Subtarea creada. Aviso: ${result.notificacion?.message || result.notificacion?.error || 'no se pudo enviar el correo'}`
-          : 'Subtarea creada y notificación enviada'
+          ? t('complex.ui.subtareas_complex_panel.subtarea_creada_aviso', { detalle: result.notificacion?.message || result.notificacion?.error || t('complex.ui.subtareas_complex_panel.no_enviar_correo') })
+          : t('complex.ui.subtareas_complex_panel.subtarea_creada_ok')
       );
       setForm(FORM_INICIAL);
       setMostrarForm(false);
       await cargar();
     } catch (err) {
-      setError(err.message || 'Error al crear subtarea');
+      setError(err.message || t('complex.ui.subtareas_complex_panel.error_crear'));
     } finally {
       setGuardando(false);
     }
@@ -172,8 +174,8 @@ export default function SubtareasComplexPanel({
       }
       setAviso(
         result.notificacion?.success === false
-          ? `Reenviado con advertencia: ${result.notificacion?.error || result.notificacion?.message || ''}`
-          : 'Notificación reenviada'
+          ? t('complex.ui.subtareas_complex_panel.reenviado_advertencia', { detalle: result.notificacion?.error || result.notificacion?.message || '' })
+          : t('complex.ui.subtareas_complex_panel.notificacion_reenviada')
       );
       await cargar();
     } catch (err) {
@@ -194,9 +196,7 @@ export default function SubtareasComplexPanel({
   if (!casoId) {
     return (
       <div className="rounded-xl border border-amber-200 bg-amber-50/80 p-5 dark:border-amber-900/40 dark:bg-amber-950/20">
-        <p className="font-body text-sm text-amber-900 dark:text-amber-200">
-          Guarde el caso primero para poder crear y gestionar subtareas.
-        </p>
+        <p className="font-body text-sm text-amber-900 dark:text-amber-200">{t("complex.ui.subtareas_complex_panel.guarde_el_caso_primero_para_poder_crear_y_gestionar_subt")}</p>
       </div>
     );
   }
@@ -205,11 +205,9 @@ export default function SubtareasComplexPanel({
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
-            Subtareas del caso
-          </h2>
+          <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{t("complex.ui.subtareas_complex_panel.subtareas_del_caso")}</h2>
           <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">
-            {nmroAjste ? `Caso ${nmroAjste}` : 'Coordinación con ajustadores internos o externos'}
+            {nmroAjste ? t('complex.ui.subtareas_complex_panel.caso_n', { n: nmroAjste }) : t('complex.ui.subtareas_complex_panel.coordinacion_ajustadores')}
           </p>
         </div>
         {puedeGestionar && (
@@ -218,8 +216,7 @@ export default function SubtareasComplexPanel({
             className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
             onClick={() => setMostrarForm((v) => !v)}
           >
-            <FaPlus className="mr-1.5" /> Nueva subtarea
-          </button>
+            <FaPlus className="mr-1.5" />{t("complex.ui.subtareas_complex_panel.nueva_subtarea")}</button>
         )}
       </div>
 
@@ -256,8 +253,7 @@ export default function SubtareasComplexPanel({
       {enlaceGenerado && (
         <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-900/40">
           <p className="mb-1 flex items-center gap-2 font-body text-xs font-semibold text-gray-700 dark:text-gray-200">
-            <FaLink /> Enlace para externo (cópielo si necesita)
-          </p>
+            <FaLink />{t("complex.ui.subtareas_complex_panel.enlace_para_externo_copielo_si_necesita")}</p>
           <code className="block break-all font-body text-xs text-gray-800 dark:text-gray-200">
             {enlaceGenerado}
           </code>
@@ -275,29 +271,29 @@ export default function SubtareasComplexPanel({
           className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-[#1A1A1A]"
         >
           <div>
-            <label className={complexLabel}>Título *</label>
+            <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.titulo")}</label>
             <input
               className={complexInput}
               value={form.titulo}
               onChange={(e) => setForm((f) => ({ ...f, titulo: e.target.value }))}
               required
-              placeholder="Ej. Inspección en sitio, fotos, inventario"
+              placeholder={t("complex.ui.subtareas_complex_panel.ej_inspeccion_en_sitio_fotos_inventario")}
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className={complexLabel}>Tipo de asignado</label>
+              <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.tipo_de_asignado")}</label>
               <select
                 className={complexSelect}
                 value={form.tipoAsignado}
                 onChange={(e) => setForm((f) => ({ ...f, tipoAsignado: e.target.value }))}
               >
-                <option value="interno">Ajustador interno (usuario)</option>
-                <option value="externo">Ajustador externo (enlace)</option>
+                <option value="interno">{t("complex.ui.subtareas_complex_panel.ajustador_interno_usuario")}</option>
+                <option value="externo">{t("complex.ui.subtareas_complex_panel.ajustador_externo_enlace")}</option>
               </select>
             </div>
             <div>
-              <label className={complexLabel}>Fecha límite</label>
+              <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.fecha_limite")}</label>
               <input
                 type="date"
                 className={complexInput}
@@ -309,14 +305,14 @@ export default function SubtareasComplexPanel({
 
           {form.tipoAsignado === 'interno' ? (
             <div>
-              <label className={complexLabel}>Ajustador *</label>
+              <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.ajustador")}</label>
               <select
                 className={complexSelect}
                 value={form.codiAsignado}
                 onChange={(e) => setForm((f) => ({ ...f, codiAsignado: e.target.value }))}
                 required
               >
-                <option value="">Seleccione...</option>
+                <option value="">{t("complex.ui.subtareas_complex_panel.seleccione")}</option>
                 {responsables.map((r) => {
                   const value = r.value || r.codiRespnsble;
                   const label = r.label || r.nmbrRespnsble || value;
@@ -331,7 +327,7 @@ export default function SubtareasComplexPanel({
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className={complexLabel}>Nombre externo</label>
+                <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.nombre_externo")}</label>
                 <input
                   className={complexInput}
                   value={form.nombreExterno}
@@ -339,7 +335,7 @@ export default function SubtareasComplexPanel({
                 />
               </div>
               <div>
-                <label className={complexLabel}>Email externo *</label>
+                <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.email_externo")}</label>
                 <input
                   type="email"
                   className={complexInput}
@@ -352,7 +348,7 @@ export default function SubtareasComplexPanel({
           )}
 
           <div>
-            <label className={complexLabel}>Descripción</label>
+            <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.descripcion")}</label>
             <textarea
               className={complexTextarea}
               value={form.descripcion}
@@ -361,13 +357,13 @@ export default function SubtareasComplexPanel({
             />
           </div>
           <div>
-            <label className={complexLabel}>Instrucciones / qué diligenciar</label>
+            <label className={complexLabel}>{t("complex.ui.subtareas_complex_panel.instrucciones_que_diligenciar")}</label>
             <textarea
               className={complexTextarea}
               value={form.instrucciones}
               onChange={(e) => setForm((f) => ({ ...f, instrucciones: e.target.value }))}
               rows={3}
-              placeholder="Detalle lo que debe cargar o reportar el asignado"
+              placeholder={t("complex.ui.subtareas_complex_panel.detalle_lo_que_debe_cargar_o_reportar_el_asignado")}
             />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -382,19 +378,17 @@ export default function SubtareasComplexPanel({
               type="button"
               className={complexBtnFormAction}
               onClick={() => setMostrarForm(false)}
-            >
-              Cancelar
-            </button>
+            >{t("complex.ui.subtareas_complex_panel.cancelar")}</button>
           </div>
         </form>
       )}
 
       {loading ? (
-        <p className={complexHint}>Cargando subtareas…</p>
+        <p className={complexHint}>{t("complex.ui.subtareas_complex_panel.cargando_subtareas")}</p>
       ) : subtareas.length === 0 ? (
         <div className="rounded-xl border border-dashed border-gray-300 p-8 text-center dark:border-gray-600">
           <FaUserClock className="mx-auto mb-2 text-2xl text-gray-400" />
-          <p className="font-body text-sm text-gray-500">Aún no hay subtareas en este caso.</p>
+          <p className="font-body text-sm text-gray-500">{t("complex.ui.subtareas_complex_panel.aun_no_hay_subtareas_en_este_caso")}</p>
         </div>
       ) : (
         <ul className="space-y-3">
@@ -403,7 +397,7 @@ export default function SubtareasComplexPanel({
             const abierta = detalleId === s._id;
             const asignadoLabel =
               s.tipoAsignado === 'externo'
-                ? `${s.nombreExterno || 'Externo'} (${s.emailExterno || 'sin email'})`
+                ? `${s.nombreExterno || t('complex.ui.subtareas_complex_utils.externo')} (${s.emailExterno || t('complex.ui.subtareas_complex_utils.sin_email')})`
                 : s.nombreAsignado || s.codiAsignado || 'Interno';
 
             return (
@@ -432,9 +426,8 @@ export default function SubtareasComplexPanel({
                       </span>
                     </div>
                     <p className="mt-1 font-body text-xs text-gray-500">
-                      {asignadoLabel} · Límite: {formatearFechaSubtarea(s.fechaLimite)} ·{' '}
-                      {(s.archivos || []).length} archivo(s)
-                      {subtareaEsSoloFecha(s) ? ' · Solo fechas' : ''}
+                      {asignadoLabel}{t("complex.ui.subtareas_complex_panel.limite")}{formatearFechaSubtarea(s.fechaLimite)}{t("complex.ui.subtareas_complex_panel.texto")}{' '}
+                      {(s.archivos || []).length}{t("complex.ui.subtareas_complex_panel.archivo_s")}{subtareaEsSoloFecha(s) ? ' · Solo fechas' : ''}
                       {camposProtocoloDeEtapa(s.etapaTrazabilidad)
                         .map((c) => {
                           const valor =
@@ -450,7 +443,7 @@ export default function SubtareasComplexPanel({
                       {!s.fechaProtocolo &&
                       !Object.keys(s.fechasProtocolo || {}).length &&
                       subtareaTieneFechaProtocolo(s.etapaTrazabilidad)
-                        ? ' · Sin fecha de protocolo'
+                        ? t('complex.ui.subtareas_complex_utils.sin_fecha_protocolo')
                         : ''}
                     </p>
                   </button>
@@ -459,7 +452,7 @@ export default function SubtareasComplexPanel({
                       <button
                         type="button"
                         className={complexBtnFormAction}
-                        title="Marcar completada"
+                        title={t("complex.ui.subtareas_complex_panel.marcar_completada")}
                         onClick={() => cambiarEstado(s._id, 'completada')}
                       >
                         <FaCheckCircle />
@@ -470,7 +463,7 @@ export default function SubtareasComplexPanel({
                         <button
                           type="button"
                           className={complexBtnFormAction}
-                          title="Reenviar notificación"
+                          title={t("complex.ui.subtareas_complex_panel.reenviar_notificacion")}
                           onClick={() => onReenviar(s._id)}
                         >
                           <FaRedo />
@@ -478,7 +471,7 @@ export default function SubtareasComplexPanel({
                         <button
                           type="button"
                           className={complexBtnFormAction}
-                          title="Cancelar"
+                          title={t("complex.ui.subtareas_complex_panel.cancelar")}
                           onClick={() => onCancelar(s._id)}
                         >
                           <FaTimes />
@@ -492,26 +485,24 @@ export default function SubtareasComplexPanel({
                   <div className="mt-4 space-y-3 border-t border-gray-100 pt-3 dark:border-gray-800">
                     {s.descripcion && (
                       <p className="font-body text-sm text-gray-700 dark:text-gray-300">
-                        <strong>Descripción:</strong> {s.descripcion}
+                        <strong>{t("complex.ui.subtareas_complex_panel.descripcion_2")}</strong> {s.descripcion}
                       </p>
                     )}
                     {s.instrucciones && (
                       <p className="font-body text-sm text-gray-700 dark:text-gray-300">
-                        <strong>Instrucciones:</strong> {s.instrucciones}
+                        <strong>{t("complex.ui.subtareas_complex_panel.instrucciones")}</strong> {s.instrucciones}
                       </p>
                     )}
                     {s.observacionesAsignado && (
                       <p className="font-body text-sm text-gray-700 dark:text-gray-300">
-                        <strong>Observaciones del asignado:</strong> {s.observacionesAsignado}
+                        <strong>{t("complex.ui.subtareas_complex_panel.observaciones_del_asignado")}</strong> {s.observacionesAsignado}
                       </p>
                     )}
 
                     <div>
-                      <p className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Archivos
-                      </p>
+                      <p className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-gray-500">{t("complex.ui.subtareas_complex_panel.archivos")}</p>
                       {(s.archivos || []).length === 0 ? (
-                        <p className={complexHint}>Sin archivos aún.</p>
+                        <p className={complexHint}>{t("complex.ui.subtareas_complex_panel.sin_archivos_aun")}</p>
                       ) : (
                         <ul className="space-y-1.5">
                           {s.archivos.map((a, idx) => (
@@ -532,8 +523,7 @@ export default function SubtareasComplexPanel({
                               ) : (
                                 <span>{a.nombre || 'Archivo'}</span>
                               )}
-                              <span className="text-xs text-gray-500">
-                                · {a.subidoPor || '—'} ({a.subidoPorTipo || '—'}) ·{' '}
+                              <span className="text-xs text-gray-500">{t("complex.ui.subtareas_complex_panel.texto")}{a.subidoPor || '—'}{t("complex.ui.subtareas_complex_panel.texto_2")}{a.subidoPorTipo || '—'}{t("complex.ui.subtareas_complex_panel.texto_3")}{' '}
                                 {formatearFechaSubtarea(a.fechaSubida)}
                               </span>
                             </li>
@@ -542,7 +532,7 @@ export default function SubtareasComplexPanel({
                       )}
                       {s.estado !== 'cancelada' && s.estado !== 'completada' && (
                         <label className="mt-3 inline-flex cursor-pointer items-center gap-2 font-body text-xs font-semibold text-gray-700 dark:text-gray-200">
-                          <span className={complexBtnFormAction}>Subir archivo</span>
+                          <span className={complexBtnFormAction}>{t("complex.ui.subtareas_complex_panel.subir_archivo")}</span>
                           <input
                             type="file"
                             className="hidden"
@@ -554,13 +544,11 @@ export default function SubtareasComplexPanel({
 
                     {(s.historialEstados || []).length > 0 && (
                       <div>
-                        <p className="mb-1 font-body text-xs font-semibold uppercase tracking-wide text-gray-500">
-                          Historial
-                        </p>
+                        <p className="mb-1 font-body text-xs font-semibold uppercase tracking-wide text-gray-500">{t("complex.ui.subtareas_complex_panel.historial")}</p>
                         <ul className="space-y-1">
                           {s.historialEstados.map((h, i) => (
                             <li key={`${h.estado}-${i}`} className="font-body text-xs text-gray-500">
-                              {formatearFechaSubtarea(h.fecha)} · {ESTADO_LABELS[h.estado] || h.estado} ·{' '}
+                              {formatearFechaSubtarea(h.fecha)}{t("complex.ui.subtareas_complex_panel.texto")}{ESTADO_LABELS[h.estado] || h.estado}{t("complex.ui.subtareas_complex_panel.texto")}{' '}
                               {h.por}
                               {h.nota ? ` — ${h.nota}` : ''}
                             </li>

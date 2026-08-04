@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React from 'react';
 import { FaCalendarAlt, FaCheck, FaCloudUploadAlt, FaFileAlt, FaTimes, FaTrash } from 'react-icons/fa';
 import {
@@ -50,7 +51,9 @@ export function TablaListaShell({ children }) {
   );
 }
 
-export function MiniDropzoneArchivo({ nombreArchivo, onClick, vacio = 'Arrastra un archivo o haz clic para seleccionar' }) {
+export function MiniDropzoneArchivo({ nombreArchivo, onClick, vacio }) {
+  const { t } = useTranslation();
+  const textoVacio = vacio ?? t('complex.ui.seguimiento_observaciones_fenix_ui.arrastra_archivo');
   return (
     <div
       role="button"
@@ -72,7 +75,7 @@ export function MiniDropzoneArchivo({ nombreArchivo, onClick, vacio = 'Arrastra 
       ) : (
         <span className="flex flex-col items-center gap-1 font-body text-xs text-gray-500 dark:text-gray-400">
           <FaCloudUploadAlt className="text-base" aria-hidden />
-          {vacio}
+          {textoVacio}
         </span>
       )}
     </div>
@@ -80,15 +83,16 @@ export function MiniDropzoneArchivo({ nombreArchivo, onClick, vacio = 'Arrastra 
 }
 
 export function AccionesFilaNueva({ onGuardar, onCancelar }) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-center gap-1">
-      <button type="button" className={complexBtnSecondary} onClick={onGuardar} title="Guardar">
+      <button type="button" className={complexBtnSecondary} onClick={onGuardar} title={t("complex.ui.seguimiento_observaciones_fenix_ui.guardar")}>
         <FaCheck aria-hidden />
-        <span className="sr-only">Guardar</span>
+        <span className="sr-only">{t("complex.ui.seguimiento_observaciones_fenix_ui.guardar")}</span>
       </button>
-      <button type="button" className={complexBtnDanger} onClick={onCancelar} title="Cancelar fila">
+      <button type="button" className={complexBtnDanger} onClick={onCancelar} title={t("complex.ui.seguimiento_observaciones_fenix_ui.cancelar_fila")}>
         <FaTimes aria-hidden />
-        <span className="sr-only">Cancelar</span>
+        <span className="sr-only">{t("complex.ui.seguimiento_observaciones_fenix_ui.cancelar")}</span>
       </button>
     </div>
   );
@@ -103,9 +107,11 @@ export function CeldaFechaLista({ fecha }) {
   );
 }
 
-export function EnlaceArchivoLista({ nombre, onClick, vacio = 'Sin archivo' }) {
+export function EnlaceArchivoLista({ nombre, onClick, vacio }) {
+  const { t } = useTranslation();
+  const textoVacio = vacio ?? t('complex.ui.seguimiento_observaciones_fenix_ui.sin_archivo');
   if (!nombre) {
-    return <span className="font-body text-sm text-gray-500 dark:text-gray-400">{vacio}</span>;
+    return <span className="font-body text-sm text-gray-500 dark:text-gray-400">{textoVacio}</span>;
   }
   return (
     <button
@@ -119,11 +125,13 @@ export function EnlaceArchivoLista({ nombre, onClick, vacio = 'Sin archivo' }) {
   );
 }
 
-export function BotonEliminarFila({ onClick, title = 'Eliminar' }) {
+export function BotonEliminarFila({ onClick, title }) {
+  const { t } = useTranslation();
+  const titulo = title ?? t('complex.ui.seguimiento_observaciones_fenix_ui.eliminar');
   return (
-    <button type="button" className={complexBtnDanger} onClick={onClick} title={title}>
+    <button type="button" className={complexBtnDanger} onClick={onClick} title={titulo}>
       <FaTrash className="text-xs" aria-hidden />
-      <span className="sr-only">{title}</span>
+      <span className="sr-only">{titulo}</span>
     </button>
   );
 }

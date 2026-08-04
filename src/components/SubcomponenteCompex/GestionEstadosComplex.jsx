@@ -1,8 +1,12 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useState, useEffect } from 'react';
 import { getEstados, crearEstado, eliminarEstado } from '../../services/estadosService';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function GestionEstadosComplex() {
+  useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -45,7 +49,7 @@ export default function GestionEstadosComplex() {
       setEstados(estadosOrdenados);
     } catch (err) {
       console.error('Error al cargar estados:', err);
-      setError(err.message || 'Error al cargar los estados');
+      setError(err.message || t('complex.ui.gestion_estados_complex.error_cargar'));
     } finally {
       setLoading(false);
     }
@@ -61,14 +65,14 @@ export default function GestionEstadosComplex() {
   const handleCrearEstado = async () => {
     // Validar campos
     if (!nuevoEstado.codiEstdo || !nuevoEstado.descEstdo.trim()) {
-      alert('Por favor complete todos los campos requeridos.');
+      alert(t('complex.ui.gestion_estados_complex.complete_campos'));
       return;
     }
 
     // Validar que el código sea un número
     const codigoNum = Number(nuevoEstado.codiEstdo);
     if (isNaN(codigoNum) || codigoNum <= 0) {
-      alert('El código de estado debe ser un número positivo.');
+      alert(t('complex.ui.gestion_estados_complex.codigo_positivo'));
       return;
     }
 
@@ -78,7 +82,7 @@ export default function GestionEstadosComplex() {
       return cod === codigoNum;
     });
     if (existe) {
-      alert(`Ya existe un estado con el código ${codigoNum}. Por favor use otro código.`);
+      alert(t('complex.ui.gestion_estados_complex.codigo_existe', { codigo: codigoNum }));
       return;
     }
 
@@ -94,17 +98,17 @@ export default function GestionEstadosComplex() {
       setNuevoEstado({ codiEstdo: '', descEstdo: '' });
       setMostrarFormulario(false);
       
-      alert('✅ Estado creado exitosamente');
+      alert(t('complex.ui.gestion_estados_complex.estado_creado'));
     } catch (err) {
       console.error('Error al crear estado:', err);
-      alert(`❌ Error al crear estado: ${err.message || 'Error desconocido'}`);
+      alert(t('complex.ui.gestion_estados_complex.error_crear', { mensaje: err.message || t('complex.ui.gestion_estados_complex.error_desconocido') }));
     } finally {
       setGuardando(false);
     }
   };
 
   const handleEliminarEstado = async (id, codiEstdo, descEstdo) => {
-    if (!window.confirm(`¿Está seguro de que desea eliminar el estado "${descEstdo}" (Código: ${codiEstdo})?`)) {
+    if (!window.confirm(t('complex.ui.gestion_estados_complex.confirmar_eliminar', { desc: descEstdo, codigo: codiEstdo }))) {
       return;
     }
 
@@ -116,10 +120,10 @@ export default function GestionEstadosComplex() {
       // Recargar la lista de estados
       await cargarEstados();
       
-      alert('✅ Estado eliminado exitosamente');
+      alert(t('complex.ui.gestion_estados_complex.estado_eliminado'));
     } catch (err) {
       console.error('Error al eliminar estado:', err);
-      alert(`❌ Error al eliminar estado: ${err.message || 'Error desconocido'}`);
+      alert(t('complex.ui.gestion_estados_complex.error_eliminar', { mensaje: err.message || t('complex.ui.gestion_estados_complex.error_desconocido') }));
     } finally {
       setEliminando(null);
     }
@@ -132,9 +136,7 @@ export default function GestionEstadosComplex() {
         <h1 
           className="text-3xl font-bold"
           style={{ color: textPrimary }}
-        >
-          📋 Gestión de Estados COMPLEX
-        </h1>
+        >{t("complex.ui.gestion_estados_complex.gestion_de_estados_complex")}</h1>
         <button
           type="button"
           onClick={() => setMostrarFormulario(!mostrarFormulario)}
@@ -150,7 +152,7 @@ export default function GestionEstadosComplex() {
             e.currentTarget.style.backgroundColor = mostrarFormulario ? '#EF4444' : '#10B981';
           }}
         >
-          {mostrarFormulario ? '✕ Cancelar' : '+ Agregar Estado'}
+          {mostrarFormulario ? t('complex.ui.gestion_estados_complex.cancelar') : t('complex.ui.gestion_estados_complex.agregar_estado')}
         </button>
       </div>
 
@@ -163,8 +165,7 @@ export default function GestionEstadosComplex() {
             border: `1px solid ${theme === 'dark' ? '#991B1B' : '#FECACA'}`,
             color: theme === 'dark' ? '#FCA5A5' : '#991B1B'
           }}
-        >
-          ⚠️ {error}
+        >{t("complex.ui.gestion_estados_complex.texto")}{error}
         </div>
       )}
 
@@ -180,17 +181,13 @@ export default function GestionEstadosComplex() {
           <h2 
             className="text-xl font-semibold mb-4"
             style={{ color: textPrimary }}
-          >
-            ➕ Agregar Nuevo Estado
-          </h2>
+          >{t("complex.ui.gestion_estados_complex.agregar_nuevo_estado")}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label 
                 className="block text-sm font-medium mb-2"
                 style={{ color: textPrimary }}
-              >
-                Código de Estado *
-              </label>
+              >{t("complex.ui.gestion_estados_complex.codigo_de_estado")}</label>
               <input
                 type="number"
                 value={nuevoEstado.codiEstdo}
@@ -201,7 +198,7 @@ export default function GestionEstadosComplex() {
                   color: textPrimary,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: 1, 2, 3..."
+                placeholder={t("complex.ui.gestion_estados_complex.ej_1_2_3")}
                 min="1"
                 step="1"
               />
@@ -210,9 +207,7 @@ export default function GestionEstadosComplex() {
               <label 
                 className="block text-sm font-medium mb-2"
                 style={{ color: textPrimary }}
-              >
-                Descripción del Estado *
-              </label>
+              >{t("complex.ui.gestion_estados_complex.descripcion_del_estado")}</label>
               <input
                 type="text"
                 value={nuevoEstado.descEstdo}
@@ -223,7 +218,7 @@ export default function GestionEstadosComplex() {
                   color: textPrimary,
                   border: `1px solid ${borderColor}`
                 }}
-                placeholder="Ej: En Proceso, Finalizado..."
+                placeholder={t("complex.ui.gestion_estados_complex.ej_en_proceso_finalizado")}
                 maxLength="200"
               />
             </div>
@@ -242,9 +237,7 @@ export default function GestionEstadosComplex() {
                 border: `1px solid ${borderColor}`
               }}
               disabled={guardando}
-            >
-              Cancelar
-            </button>
+            >{t("complex.ui.gestion_estados_complex.cancelar")}</button>
             <button
               type="button"
               onClick={handleCrearEstado}
@@ -265,7 +258,7 @@ export default function GestionEstadosComplex() {
                 }
               }}
             >
-              {guardando ? 'Guardando...' : 'Guardar Estado'}
+              {guardando ? t('complex.ui.gestion_estados_complex.guardando') : t('complex.ui.gestion_estados_complex.guardar_estado')}
             </button>
           </div>
         </div>
@@ -282,11 +275,11 @@ export default function GestionEstadosComplex() {
         {loading ? (
           <div className="p-8 text-center" style={{ color: textSecondary }}>
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: textSecondary }}></div>
-            <p className="mt-4">Cargando estados...</p>
+            <p className="mt-4">{t("complex.ui.gestion_estados_complex.cargando_estados")}</p>
           </div>
         ) : estados.length === 0 ? (
           <div className="p-8 text-center" style={{ color: textSecondary }}>
-            <p>No hay estados registrados. Agregue uno nuevo usando el botón "+ Agregar Estado".</p>
+            <p>{t("complex.ui.gestion_estados_complex.no_hay_estados_registrados_agregue_uno_nuevo_usando_el_b")}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -296,21 +289,15 @@ export default function GestionEstadosComplex() {
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
                     style={{ color: textSecondary }}
-                  >
-                    Código
-                  </th>
+                  >{t("complex.ui.gestion_estados_complex.codigo")}</th>
                   <th 
                     className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider"
                     style={{ color: textSecondary }}
-                  >
-                    Descripción
-                  </th>
+                  >{t("complex.ui.gestion_estados_complex.descripcion")}</th>
                   <th 
                     className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider"
                     style={{ color: textSecondary }}
-                  >
-                    Acciones
-                  </th>
+                  >{t("complex.ui.gestion_estados_complex.acciones")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: borderColor }}>
@@ -361,9 +348,9 @@ export default function GestionEstadosComplex() {
                             e.currentTarget.style.backgroundColor = '#EF4444';
                           }
                         }}
-                        title="Eliminar estado"
+                        title={t("complex.ui.gestion_estados_complex.eliminar_estado")}
                       >
-                        {eliminando === estado._id ? 'Eliminando...' : '🗑️ Eliminar'}
+                        {eliminando === estado._id ? 'Eliminando...' : t('complex.ui.gestion_estados_complex.eliminar')}
                       </button>
                     </td>
                   </tr>
@@ -386,14 +373,12 @@ export default function GestionEstadosComplex() {
           className="text-sm"
           style={{ color: textSecondary }}
         >
-          <strong style={{ color: textPrimary }}>Total de estados:</strong> {estados.length}
+          <strong style={{ color: textPrimary }}>{t("complex.ui.gestion_estados_complex.total_de_estados")}</strong> {estados.length}
         </p>
         <p 
           className="text-xs mt-2"
           style={{ color: textSecondary }}
-        >
-          * Los estados se utilizan para clasificar los casos COMPLEX en diferentes etapas del proceso.
-        </p>
+        >{t("complex.ui.gestion_estados_complex.los_estados_se_utilizan_para_clasificar_los_casos_comple")}</p>
       </div>
     </div>
   );

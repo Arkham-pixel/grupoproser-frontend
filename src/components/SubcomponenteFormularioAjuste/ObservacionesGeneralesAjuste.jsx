@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
-import { tituloAjuste, subtituloAjuste } from './formatoTitulosAjuste';
 
 const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const [modoAvanzado, setModoAvanzado] = useState(false);
   
@@ -16,7 +17,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
   const sectionGreenText = theme === 'dark' ? '#86EFAC' : '#065F46';
   const sectionGreenBorder = theme === 'dark' ? 'rgba(34, 197, 94, 0.3)' : '#86EFAC';
 
-  // Funciones para los botones de IA
+  // Funciones para los botones de IA (contenido persistido permanece en español)
   const mejorarConIA = () => {
     const campos = ['solicitudDocumentos', 'declinacion', 'observacionesGenerales', 'proximosPasos'];
     const camposConContenido = campos.filter(campo => formData[campo] && formData[campo].trim());
@@ -28,7 +29,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
         onInputChange(campo, textoMejorado);
       });
     } else {
-      alert('⚠️ Primero escribe algo en al menos uno de los campos para mejorarlo con IA');
+      alert(t('adjustment.ui.ia.errorGeneric'));
     }
   };
 
@@ -157,7 +158,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
       // Aplicar el análisis al primer campo con contenido
       onInputChange(camposConContenido[0], analisisCompleto);
     } else {
-      alert('⚠️ Primero escribe algo en al menos uno de los campos para analizarlo');
+      alert(t('adjustment.ui.ia.errorGeneric'));
     }
   };
 
@@ -173,12 +174,10 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
           className="text-2xl font-bold mb-2"
           style={{ color: textPrimary }}
         >
-          📝 {tituloAjuste('Observaciones generales')}
+          📝 {t('adjustment.ui.sections.observacionesGenerales.title')}
         </h2>
         <p className="text-sm" style={{ color: textSecondary }}>
-          {subtituloAjuste(
-            'Solicitud de documentos adicionales, posibles declinaciones y observaciones generales'
-          )}
+          {t('adjustment.ui.sections.observacionesGenerales.subtitle')}
         </p>
       </div>
 
@@ -197,7 +196,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
           style={{ color: sectionGreenText }}
         >
           <span className="mr-2">🤖</span>
-          {subtituloAjuste('IA inteligente avanzada - observaciones generales')}
+          {t('adjustment.ui.sections.analisisCobertura.iaAssistant')}
         </h4>
         
         {/* Botones principales - Versión reducida */}
@@ -215,10 +214,10 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = theme === 'dark' ? 'rgba(37, 99, 235, 0.2)' : '#3B82F6';
             }}
-            title="Mejorar texto existente con IA"
+            title={t('adjustment.ui.ia.improveAdvanced')}
           >
             <span>✨</span>
-            <span>Mejorar IA</span>
+            <span>{t('adjustment.ui.sections.analisisCobertura.improveIa')}</span>
           </button>
           
           <button 
@@ -234,10 +233,10 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = theme === 'dark' ? 'rgba(34, 197, 94, 0.2)' : '#16A34A';
             }}
-            title="Generar plantillas profesionales"
+            title={t('adjustment.ui.ia.generateProfessional')}
           >
             <span>📄</span>
-            <span>Plantillas IA</span>
+            <span>{t('adjustment.ui.sections.analisisCobertura.templatesIa')}</span>
           </button>
           
           <button 
@@ -253,10 +252,10 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
             onMouseLeave={(e) => {
               e.target.style.backgroundColor = theme === 'dark' ? 'rgba(249, 115, 22, 0.2)' : '#EA580C';
             }}
-            title="Análisis avanzado del contenido"
+            title={t('adjustment.ui.ia.advancedAnalysis')}
           >
             <span>🔍</span>
-            <span>Analizar</span>
+            <span>{t('adjustment.ui.sections.analisisCobertura.analyze')}</span>
           </button>
         </div>
         
@@ -284,13 +283,13 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
               }
             }}
           >
-            {modoAvanzado ? 'Modo Avanzado ON' : 'Modo Básico'}
+            {modoAvanzado ? t('adjustment.ui.ia.advancedMode') : t('adjustment.ui.ia.basicMode')}
           </button>
           <span 
             className="text-xs"
             style={{ color: textSecondary }}
           >
-            {modoAvanzado ? 'Funciones IA completas activadas' : 'Funciones básicas'}
+            {modoAvanzado ? t('adjustment.ui.ia.tip3') : t('adjustment.ui.ia.tip1')}
           </span>
         </div>
         
@@ -307,15 +306,15 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
               className="font-medium mb-2 text-sm"
               style={{ color: textPrimary }}
             >
-              💡 Cómo usar la IA para Observaciones Generales:
+              💡 {t('adjustment.ui.sections.analisisCobertura.iaAssistant')}
             </h5>
             <ul 
               className="text-xs space-y-1"
               style={{ color: textSecondary }}
             >
-              <li>• <strong>Mejorar IA:</strong> Mejora todos los campos con contenido</li>
-              <li>• <strong>Plantillas IA:</strong> Crea plantillas específicas por campo</li>
-              <li>• <strong>Analizar:</strong> Métricas y análisis completo de observaciones</li>
+              <li>• <strong>{t('adjustment.ui.sections.analisisCobertura.improveIa')}:</strong> {t('adjustment.ui.ia.tip1')}</li>
+              <li>• <strong>{t('adjustment.ui.sections.analisisCobertura.templatesIa')}:</strong> {t('adjustment.ui.ia.tip2')}</li>
+              <li>• <strong>{t('adjustment.ui.sections.analisisCobertura.analyze')}:</strong> {t('adjustment.ui.ia.tip3')}</li>
             </ul>
           </div>
         )}
@@ -329,7 +328,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            📋 {subtituloAjuste('Solicitud de documentos')}
+            📋 {t('adjustment.ui.sections.observacionesGenerales.documents')}
           </label>
           <textarea
             id="solicitudDocumentos"
@@ -342,7 +341,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Listar documentos adicionales requeridos para completar el análisis (facturas, reportes técnicos, fotografías adicionales, etc.)..."
+            placeholder={t('adjustment.ui.sections.observacionesGenerales.documentsPlaceholder')}
             value={formData.solicitudDocumentos || ''}
             onChange={(e) => onInputChange('solicitudDocumentos', e.target.value)}
           />
@@ -355,7 +354,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            ❌ {subtituloAjuste('Declinación')}
+            ❌ {t('adjustment.ui.sections.observacionesGenerales.decline')}
           </label>
           <textarea
             id="declinacion"
@@ -368,7 +367,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Si aplica, describir razones para declinar cobertura o limitar responsabilidad..."
+            placeholder={t('adjustment.ui.sections.observacionesGenerales.declinePlaceholder')}
             value={formData.declinacion || ''}
             onChange={(e) => onInputChange('declinacion', e.target.value)}
           />
@@ -381,7 +380,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            💭 {subtituloAjuste('Observaciones generales')}
+            💭 {t('adjustment.ui.sections.observacionesGenerales.observations')}
           </label>
           <textarea
             id="observacionesGenerales"
@@ -394,7 +393,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Observaciones adicionales, recomendaciones, notas importantes para el seguimiento del caso..."
+            placeholder={t('adjustment.ui.sections.observacionesGenerales.observationsPlaceholder')}
             value={formData.observacionesGenerales || ''}
             onChange={(e) => onInputChange('observacionesGenerales', e.target.value)}
           />
@@ -407,7 +406,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
             className="block text-sm font-medium mb-2"
             style={{ color: textPrimary }}
           >
-            🚀 {subtituloAjuste('Próximos pasos')}
+            🚀 {t('adjustment.ui.sections.observacionesGenerales.nextSteps')}
           </label>
           <textarea
             id="proximosPasos"
@@ -420,7 +419,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
               borderColor: borderColor,
               border: `1px solid ${borderColor}`
             }}
-            placeholder="Describir acciones a seguir, cronograma, responsabilidades asignadas..."
+            placeholder={t('adjustment.ui.sections.observacionesGenerales.nextStepsPlaceholder')}
             value={formData.proximosPasos || ''}
             onChange={(e) => onInputChange('proximosPasos', e.target.value)}
           />
@@ -451,7 +450,7 @@ const ObservacionesGeneralesAjuste = ({ formData, onInputChange }) => {
               className="text-sm"
               style={{ color: sectionGreenText }}
             >
-              💡 <strong>Asistente IA disponible:</strong> Usa los botones de IA para obtener ayuda en la redacción de observaciones, identificación de documentos requeridos y análisis de posibles declinaciones.
+              💡 <strong>{t('adjustment.ui.sections.analisisCobertura.iaAssistant')}:</strong> {t('adjustment.ui.ia.tip3')}
             </p>
           </div>
         </div>

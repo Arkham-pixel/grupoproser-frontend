@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useMemo } from 'react';
 import Select from 'react-select';
 import { useTheme } from '../../context/ThemeContext';
@@ -98,9 +99,11 @@ export default function DatosGenerales({
   onFuncionarioChange,
   camposFijos = false,
 }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const selectStyles = useMemo(() => getComplexSelectStyles(isDark), [isDark]);
+  const sinAsignar = t('complex.ui.datos_generales.sin_asignar');
 
   const labelResponsable =
     responsables?.find(
@@ -110,7 +113,7 @@ export default function DatosGenerales({
     )?.label ||
     formData.nombreResponsable ||
     formData.codiRespnsble ||
-    'Sin asignar';
+    sinAsignar;
 
   const labelCliente =
     aseguradoraOptions?.find(
@@ -120,7 +123,7 @@ export default function DatosGenerales({
     )?.label ||
     formData.nombreAseguradora ||
     formData.codiAsgrdra ||
-    'Sin asignar';
+    sinAsignar;
 
   const ciudadNoEnLista =
     formData.ciudadSiniestro &&
@@ -158,10 +161,10 @@ export default function DatosGenerales({
 
   return (
     <div className={complexPageWrap}>
-      <h2 className={complexSectionTitle}>Datos Generales del Caso</h2>
+      <h2 className={complexSectionTitle}>{t("complex.ui.datos_generales.datos_generales_del_caso")}</h2>
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
-        <Campo label="Responsable *">
+        <Campo label={t("complex.ui.datos_generales.responsable")}>
           {camposFijos ? (
             <ValorFijo>{labelResponsable}</ValorFijo>
           ) : (
@@ -176,7 +179,7 @@ export default function DatosGenerales({
                 required
                 disabled={!hayResponsables}
               >
-                <option value="">Seleccionar...</option>
+                <option value="">{t("complex.ui.datos_generales.seleccionar")}</option>
                 {(responsables || []).map((responsable) => (
                   <option key={responsable.value} value={responsable.value}>
                     {responsable.label}
@@ -184,13 +187,13 @@ export default function DatosGenerales({
                 ))}
               </SelectFenix>
               {!hayResponsables && (
-                <p className={complexAlertError}>No hay responsables disponibles.</p>
+                <p className={complexAlertError}>{t("complex.ui.datos_generales.no_hay_responsables_disponibles")}</p>
               )}
             </>
           )}
         </Campo>
 
-        <Campo label="Cliente *">
+        <Campo label={t("complex.ui.datos_generales.cliente")}>
           {camposFijos ? (
             <ValorFijo>{labelCliente}</ValorFijo>
           ) : (
@@ -200,7 +203,7 @@ export default function DatosGenerales({
               onChange={handleAseguradoraChange}
               required
             >
-              <option value="">Seleccione un Cliente</option>
+              <option value="">{t("complex.ui.datos_generales.seleccione_un_cliente")}</option>
               {aseguradorasOrdenadas.map((aseg) => (
                 <option key={aseg.value || aseg} value={aseg.value || aseg}>
                   {aseg.label || aseg}
@@ -213,9 +216,7 @@ export default function DatosGenerales({
         {formData.codiAsgrdra && (
           <Campo
             label={
-              <>
-                Funcionario Aseguradora
-                {cargandoFuncionarios && (
+              <>{t("complex.ui.datos_generales.funcionario_aseguradora")}{cargandoFuncionarios && (
                   <span className="ml-2 inline-block align-middle">
                     <svg
                       className="h-4 w-4 animate-spin text-gray-400"
@@ -255,10 +256,10 @@ export default function DatosGenerales({
             >
               <option value="">
                 {cargandoFuncionarios
-                  ? 'Cargando funcionarios...'
+                  ? t('complex.ui.datos_generales.cargando_funcionarios')
                   : funcionarios.length === 0
-                    ? 'No hay funcionarios disponibles'
-                    : 'Seleccione un funcionario'}
+                    ? t('complex.ui.datos_generales.no_hay_funcionarios_disponibles_para_este_cliente')
+                    : t('complex.ui.datos_generales.seleccione_un_funcionario')}
               </option>
               {(funcionarios || []).map((func) => (
                 <option key={func.value} value={func.value}>
@@ -267,12 +268,12 @@ export default function DatosGenerales({
               ))}
             </SelectFenix>
             {!cargandoFuncionarios && funcionarios.length === 0 && formData.codiAsgrdra && (
-              <p className={complexHint}>No hay funcionarios disponibles para este cliente.</p>
+              <p className={complexHint}>{t("complex.ui.datos_generales.no_hay_funcionarios_disponibles_para_este_cliente")}</p>
             )}
           </Campo>
         )}
 
-        <Campo label="Número de Siniestro *">
+        <Campo label={t("complex.ui.datos_generales.numero_de_siniestro")}>
           <InputFenix
             type="text"
             name="nmroSinstro"
@@ -282,7 +283,7 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label="Código Workflow">
+        <Campo label={t("complex.ui.datos_generales.codigo_workflow")}>
           <InputFenix
             type="text"
             name="codWorkflow"
@@ -291,37 +292,34 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label="Intermediario" className="md:col-span-2">
+        <Campo label={t("complex.ui.datos_generales.intermediario")} className="md:col-span-2">
           <SelectFenix
             name="nombIntermediario"
             value={formData.nombIntermediario || ''}
             onChange={handleChange}
           >
-            <option value="">Selecciona un intermediario</option>
+            <option value="">{t("complex.ui.datos_generales.selecciona_un_intermediario")}</option>
             {intermediariosSelect.map((nombre, index) => (
               <option key={index} value={nombre}>
                 {nombre}
               </option>
             ))}
           </SelectFenix>
-          <p className={complexHint}>
-            Para agregar un nuevo intermediario, ve a{' '}
+          <p className={complexHint}>{t("complex.ui.datos_generales.para_agregar_un_nuevo_intermediario_ve_a")}{' '}
             <a
               href="/admin/intermediarios"
               className={complexLink}
               target="_blank"
               rel="noopener noreferrer"
-            >
-              Administración → Intermediarios
-            </a>
+            >{t("complex.ui.datos_generales.administracion_intermediarios")}</a>
           </p>
         </Campo>
 
-        <Campo label="Número de Póliza">
+        <Campo label={t("complex.ui.datos_generales.numero_de_poliza")}>
           <InputFenix type="text" name="nmroPolza" value={formData.nmroPolza || ''} onChange={handleChange} />
         </Campo>
 
-        <Campo label="Asegurado o Beneficiario *">
+        <Campo label={t("complex.ui.datos_generales.asegurado_o_beneficiario")}>
           <InputFenix
             type="text"
             name="asgrBenfcro"
@@ -331,26 +329,26 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label="Tipo de Documento">
+        <Campo label={t("complex.ui.datos_generales.tipo_de_documento")}>
           <SelectFenix
             name="tipoDucumento"
             value={tipoDocumentoSelect}
             onChange={handleChange}
             required
           >
-            <option value="">Selecciona un tipo</option>
-            <option value="CC">Cédula de Ciudadanía (CC)</option>
-            <option value="CE">Cédula de Extranjería (CE)</option>
-            <option value="NIT">NIT</option>
-            <option value="PASAPORTE">Pasaporte</option>
-            <option value="PEP">Permiso Especial de Permanencia (PEP)</option>
-            <option value="RC">Registro Civil (RC)</option>
-            <option value="TI">Tarjeta de Identidad (TI)</option>
-            <option value="OTRO">Otro</option>
+            <option value="">{t("complex.ui.datos_generales.selecciona_un_tipo")}</option>
+            <option value="CC">{t("complex.ui.datos_generales.cedula_de_ciudadania_cc")}</option>
+            <option value="CE">{t("complex.ui.datos_generales.cedula_de_extranjeria_ce")}</option>
+            <option value="NIT">{t("complex.ui.datos_generales.nit")}</option>
+            <option value="PASAPORTE">{t("complex.ui.datos_generales.pasaporte")}</option>
+            <option value="PEP">{t("complex.ui.datos_generales.permiso_especial_de_permanencia_pep")}</option>
+            <option value="RC">{t("complex.ui.datos_generales.registro_civil_rc")}</option>
+            <option value="TI">{t("complex.ui.datos_generales.tarjeta_de_identidad_ti")}</option>
+            <option value="OTRO">{t("complex.ui.datos_generales.otro")}</option>
           </SelectFenix>
         </Campo>
 
-        <Campo label="Número de Documento">
+        <Campo label={t("complex.ui.datos_generales.numero_de_documento")}>
           <InputFenix
             type="text"
             name="numDocumento"
@@ -360,16 +358,16 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label="Fecha y hora de asignación">
+        <Campo label={t("complex.ui.datos_generales.fecha_y_hora_de_asignacion")}>
           <InputFechaHoraProtocolo
             name="fchaAsgncion"
             value={formData.fchaAsgncion || ''}
             onChange={handleChange}
-            hint="Incluya la hora de recepción para medir plazos del protocolo (ej. contacto en 12 h). Puede escribir fecha y hora a mano."
+            hint={t("complex.ui.datos_generales.incluya_la_hora_de_recepcion_para_medir_plazos_del_proto")}
           />
         </Campo>
 
-        <Campo label="Fecha del Siniestro">
+        <Campo label={t("complex.ui.datos_generales.fecha_del_siniestro")}>
           <InputFenix
             type="date"
             name="fchaSinstro"
@@ -378,12 +376,12 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label="Ciudad del Siniestro" className="md:col-span-2">
+        <Campo label={t("complex.ui.datos_generales.ciudad_del_siniestro")} className="md:col-span-2">
           <Select
             options={municipios}
             value={resolverCiudadSelect(formData, municipios)}
             onChange={handleCiudadChange}
-            placeholder="Selecciona una ciudad..."
+            placeholder={t("complex.ui.datos_generales.selecciona_una_ciudad")}
             isSearchable
             isLoading={cargandoMunicipios && municipios.length === 0}
             isDisabled={cargandoMunicipios && municipios.length === 0}
@@ -391,21 +389,18 @@ export default function DatosGenerales({
             styles={selectStyles}
           />
           {cargandoMunicipios && municipios.length === 0 && (
-            <p className={complexHint}>Cargando ciudades...</p>
+            <p className={complexHint}>{t("complex.ui.datos_generales.cargando_ciudades")}</p>
           )}
           {ciudadNoEnLista && (
-            <p className={complexAlertWarn}>
-              Ciudad guardada: &quot;{formData.ciudadSiniestro}&quot; — verifica que coincida con las
-              opciones disponibles
-            </p>
+            <p className={complexAlertWarn}>{t("complex.ui.datos_generales.ciudad_guardada")}{formData.ciudadSiniestro}{t("complex.ui.datos_generales.verifica_que_coincida_con_las_opciones_disponibles")}</p>
           )}
         </Campo>
 
-        <Campo label="Tipo de Póliza">
+        <Campo label={t("complex.ui.datos_generales.tipo_de_poliza")}>
           <InputFenix type="text" name="tipoPoliza" value={formData.tipoPoliza || ''} onChange={handleChange} />
         </Campo>
 
-        <Campo label="Causa del Siniestro">
+        <Campo label={t("complex.ui.datos_generales.causa_del_siniestro")}>
           <InputFenix
             type="text"
             name="causa_siniestro"
@@ -414,9 +409,9 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label="Estado *">
+        <Campo label={t("complex.ui.datos_generales.estado")}>
           <SelectFenix name="estado" value={valorEstadoSelect} onChange={handleChange} required>
-            <option value="">Selecciona un estado</option>
+            <option value="">{t("complex.ui.datos_generales.selecciona_un_estado")}</option>
             {(estados || [])
               .filter((e) => e.value !== undefined && e.value !== null)
               .map((estado) => (
@@ -426,27 +421,27 @@ export default function DatosGenerales({
               ))}
           </SelectFenix>
           {(!estados || estados.length === 0) && (
-            <p className={complexAlertError}>No hay estados disponibles.</p>
+            <p className={complexAlertError}>{t("complex.ui.datos_generales.no_hay_estados_disponibles")}</p>
           )}
         </Campo>
 
-        <Campo label="Descripción del Estado" className="md:col-span-2">
+        <Campo label={t("complex.ui.datos_generales.descripcion_del_estado")} className="md:col-span-2">
           <TextareaFenix
             name="descripcionEstado"
             value={formData.descripcionEstado || ''}
             onChange={handleChange}
             rows={3}
-            placeholder="Describe el estado del caso..."
+            placeholder={t("complex.ui.datos_generales.describe_el_estado_del_caso")}
           />
         </Campo>
 
-        <Campo label="Descripción del Siniestro" className="md:col-span-2">
+        <Campo label={t("complex.ui.datos_generales.descripcion_del_siniestro")} className="md:col-span-2">
           <TextareaFenix
             name="descSinstro"
             value={formData.descSinstro || ''}
             onChange={handleChange}
             rows={4}
-            placeholder="Describe brevemente el siniestro"
+            placeholder={t("complex.ui.datos_generales.describe_brevemente_el_siniestro")}
           />
         </Campo>
       </div>

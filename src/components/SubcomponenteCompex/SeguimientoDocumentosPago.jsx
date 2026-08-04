@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useRef, useState } from 'react';
 import { FaCalendarAlt, FaCloudUploadAlt, FaFileAlt, FaMoneyCheckAlt, FaTrash } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
@@ -114,7 +116,7 @@ export default function SeguimientoDocumentosPago({
   const descargarDocumento = (documento) => {
     const enlace = resolverUrl(documento?.ruta || documento?.url || '');
     if (!enlace) {
-      alert('No se puede descargar el archivo. URL no disponible.');
+      alert(t('complex.ui.seguimiento_documentos_pago.no_descargar_url'));
       return;
     }
     const link = document.createElement('a');
@@ -134,11 +136,11 @@ export default function SeguimientoDocumentosPago({
       return;
     }
     if (!nuevo.fecha) {
-      alert('Indique la fecha del correo de seguimiento.');
+      alert(t('complex.ui.seguimiento_documentos_pago.indique_fecha_correo'));
       return;
     }
     if (!nuevo.documento) {
-      alert('Adjunte la evidencia del correo enviado (captura, PDF o .eml).');
+      alert(t('complex.ui.seguimiento_documentos_pago.adjunte_evidencia'));
       return;
     }
 
@@ -155,12 +157,12 @@ export default function SeguimientoDocumentosPago({
       });
       if (!response.ok) {
         const errorResp = await response.json().catch(() => ({}));
-        throw new Error(errorResp.error || errorResp.message || `Error subiendo archivo (${response.status})`);
+        throw new Error(errorResp.error || errorResp.message || t('complex.ui.seguimiento_documentos_pago.error_subiendo_archivo', { status: response.status }));
       }
       const data = await response.json();
       const rutaAlmacenamiento = data.url || data.ruta || '';
       if (!rutaAlmacenamiento) {
-        throw new Error('El servidor no devolvió la ruta del archivo (S3/local).');
+        throw new Error(t('complex.ui.seguimiento_documentos_pago.servidor_sin_ruta'));
       }
       documentoSubido = {
         nombre: data.filename || nuevo.documento.name,
@@ -170,7 +172,7 @@ export default function SeguimientoDocumentosPago({
         tipoMime: nuevo.documento.type,
       };
     } catch (error) {
-      alert(`Error al subir la evidencia: ${error.message}`);
+      alert(t('complex.ui.seguimiento_documentos_pago.error_subir_evidencia', { mensaje: error.message }));
       setSubiendo(false);
       return;
     }
@@ -178,7 +180,7 @@ export default function SeguimientoDocumentosPago({
     const fechaIngresada = nuevo.fecha;
     const observacionTexto =
       nuevo.observacion?.trim() ||
-      `${etiquetaTipoCorreo(nuevo.tipoCorreo)} — ${etiquetaDestinatario(nuevo.destinatario)}`;
+      `${t('complex.ui.seguimiento_documentos_pago.tipo_destinatario', { tipo: etiquetaTipoCorreo(nuevo.tipoCorreo), destinatario: etiquetaDestinatario(nuevo.destinatario) })}`;
     const ahora = new Date();
     const fechaSubidaISO = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}T${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`;
 
@@ -224,7 +226,7 @@ export default function SeguimientoDocumentosPago({
   };
 
   const handleEliminar = (id) => {
-    if (!window.confirm('¿Eliminar este registro de seguimiento de documentos de pago?')) return;
+    if (!window.confirm(t('complex.ui.seguimiento_documentos_pago.confirmar_eliminar'))) return;
     if (!updateHistorialDocs) return;
     const eliminado = registros.find((r) => r.id === id);
     updateHistorialDocs((prev) =>
@@ -251,25 +253,19 @@ export default function SeguimientoDocumentosPago({
     <div className="mt-4 space-y-5">
       <ProtocoloSeguimientoPanel cfg={CFG} estado={estadoProtocolo} />
 
-      <p className={complexHint}>
-        Registre la evidencia de cada correo al asegurado, intermediario o reclamante sobre documentos
-        de pago (finiquito, certificación bancaria, RUT, SARLAFT, etc.). Pulse{' '}
-        <strong>Guardar caso</strong> para persistir en MongoDB.
-      </p>
+      <p className={complexHint}>{t("complex.ui.seguimiento_documentos_pago.registre_la_evidencia_de_cada_correo_al_asegurado_interm")}{' '}
+        <strong>{t("complex.ui.seguimiento_documentos_pago.guardar_caso")}</strong>{t("complex.ui.seguimiento_documentos_pago.para_persistir_en_mongodb")}</p>
 
       {registroLocal && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-          Registro agregado en memoria. Pulse <strong>Guardar caso</strong> para persistir en MongoDB.
-        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">{t("complex.ui.seguimiento_documentos_pago.registro_agregado_en_memoria_pulse")}<strong>{t("complex.ui.seguimiento_documentos_pago.guardar_caso")}</strong>{t("complex.ui.seguimiento_documentos_pago.para_persistir_en_mongodb")}</div>
       )}
 
       <div className={`${complexCard} space-y-4 p-4 sm:p-5`}>
-        <h4 className={complexSubsectionTitle}>Nuevo correo — documentos de pago</h4>
+        <h4 className={complexSubsectionTitle}>{t("complex.ui.seguimiento_documentos_pago.nuevo_correo_documentos_de_pago")}</h4>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Fecha del correo <span className="text-fenix-primario">*</span>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pago.fecha_del_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_documentos_pago.texto")}</span>
             </label>
             <input
               type="date"
@@ -280,8 +276,7 @@ export default function SeguimientoDocumentosPago({
             />
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Destinatario <span className="text-fenix-primario">*</span>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pago.destinatario")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_documentos_pago.texto")}</span>
             </label>
             <select
               value={nuevo.destinatario}
@@ -297,8 +292,7 @@ export default function SeguimientoDocumentosPago({
             </select>
           </div>
           <div>
-            <label className={`${trazabilidadLabelClass} mb-2`}>
-              Tipo de correo <span className="text-fenix-primario">*</span>
+            <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pago.tipo_de_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_documentos_pago.texto")}</span>
             </label>
             <select
               value={nuevo.tipoCorreo}
@@ -316,20 +310,19 @@ export default function SeguimientoDocumentosPago({
         </div>
 
         <div>
-          <label className={`${trazabilidadLabelClass} mb-2`}>Notas del seguimiento</label>
+          <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pago.notas_del_seguimiento")}</label>
           <textarea
             value={nuevo.observacion}
             onChange={(e) => setNuevo((p) => ({ ...p, observacion: e.target.value }))}
             className={`${trazabilidadInputClass} min-h-[6rem] resize-y`}
             rows={4}
-            placeholder="Documentos solicitados para pago, estado de entrega, compromisos..."
+            placeholder={t("complex.ui.seguimiento_documentos_pago.documentos_solicitados_para_pago_estado_de_entrega_compr")}
             disabled={subiendo}
           />
         </div>
 
         <div>
-          <label className={`${trazabilidadLabelClass} mb-2`}>
-            Evidencia del correo <span className="text-fenix-primario">*</span>
+          <label className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.seguimiento_documentos_pago.evidencia_del_correo")}<span className="text-fenix-primario">{t("complex.ui.seguimiento_documentos_pago.texto")}</span>
           </label>
           <input
             ref={inputFileRef}
@@ -366,9 +359,7 @@ export default function SeguimientoDocumentosPago({
               </span>
             ) : (
               <span className="flex flex-col items-center gap-2 font-body text-sm text-gray-500 dark:text-gray-400">
-                <FaCloudUploadAlt className="text-2xl" aria-hidden />
-                Arrastra aquí o haz clic para adjuntar captura, PDF o correo (.eml)
-              </span>
+                <FaCloudUploadAlt className="text-2xl" aria-hidden />{t("complex.ui.seguimiento_documentos_pago.arrastra_aqui_o_haz_clic_para_adjuntar_captura_pdf_o_cor")}</span>
             )}
           </div>
         </div>
@@ -380,30 +371,24 @@ export default function SeguimientoDocumentosPago({
             onClick={handleAgregar}
             disabled={subiendo}
           >
-            {subiendo ? 'Subiendo a S3…' : 'Agregar seguimiento'}
+            {subiendo ? t('complex.ui.seguimiento.subiendo_s3') : t('complex.ui.seguimiento_documentos_pago.agregar_seguimiento')}
           </button>
           <button
             type="button"
             className={complexBtnSecondary}
             onClick={resetFormulario}
             disabled={subiendo}
-          >
-            Limpiar
-          </button>
+          >{t("complex.ui.seguimiento_documentos_pago.limpiar")}</button>
         </div>
       </div>
 
       <div className="space-y-3">
-        <h4 className={complexSubsectionTitle}>
-          Historial de correos — documentos de pago ({registros.length})
-        </h4>
+        <h4 className={complexSubsectionTitle}>{t("complex.ui.seguimiento_documentos_pago.historial_de_correos_documentos_de_pago")}{registros.length}{t("complex.ui.seguimiento_documentos_pago.texto_2")}</h4>
 
         {registros.length === 0 ? (
           <div className={`${complexCard} p-6 text-center`}>
             <FaMoneyCheckAlt className="mx-auto mb-2 text-2xl text-gray-300 dark:text-gray-600" aria-hidden />
-            <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-              Sin seguimientos de documentos de pago registrados.
-            </p>
+            <p className="font-body text-sm text-gray-500 dark:text-gray-400">{t("complex.ui.seguimiento_documentos_pago.sin_seguimientos_de_documentos_de_pago_registrados")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -445,10 +430,10 @@ export default function SeguimientoDocumentosPago({
                   type="button"
                   className={`${complexBtnDanger} shrink-0`}
                   onClick={() => handleEliminar(reg.id)}
-                  title="Eliminar registro"
+                  title={t("complex.ui.seguimiento_documentos_pago.eliminar_registro")}
                 >
                   <FaTrash aria-hidden />
-                  <span className="sr-only">Eliminar</span>
+                  <span className="sr-only">{t("complex.ui.seguimiento_documentos_pago.eliminar")}</span>
                 </button>
               </div>
             ))}
@@ -457,21 +442,21 @@ export default function SeguimientoDocumentosPago({
       </div>
 
       <ResumenListaPanel titulo="Resumen — documentos de pago">
-        <ResumenItem label="Total correos registrados:" value={registros.length} />
+        <ResumenItem label={t("complex.ui.seguimiento_documentos_pago.total_correos_registrados")} value={registros.length} />
         <ResumenItem
-          label="Intervalo protocolo:"
-          value={`${estadoProtocolo?.intervaloDias ?? 15} días calendario`}
+          label={t("complex.ui.seguimiento_documentos_pago.intervalo_protocolo")}
+          value={`${t('complex.ui.seguimiento_documentos_pago.dias_calendario', { n: estadoProtocolo?.intervaloDias ?? 15 })}`}
         />
         <ResumenItem
-          label="Último seguimiento:"
+          label={t("complex.ui.seguimiento_documentos_pago.ultimo_seguimiento")}
           value={ultimaFecha ? formatFechaLista(ultimaFecha) : 'No registrado'}
         />
         <ResumenItem
-          label="Envío de finiquito:"
+          label={t("complex.ui.seguimiento_documentos_pago.envio_de_finiquito")}
           value={
             formData?.fchaEnvioFiniquito
               ? formatFechaLista(String(formData.fchaEnvioFiniquito).slice(0, 10))
-              : 'Pendiente'
+              : t('complex.ui.seguimiento_documentos_pago.pendiente')
           }
         />
       </ResumenListaPanel>

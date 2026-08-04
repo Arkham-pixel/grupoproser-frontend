@@ -1,17 +1,19 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { generarManualPuertos } from './generarManualPuertos';
 
 export default function BotonGenerarManual() {
+  const { t } = useTranslation();
   // Verificar si el usuario es administrador
   const esAdmin = localStorage.getItem('rol') === 'admin';
   
   const handleGenerarManual = async () => {
     try {
       await generarManualPuertos();
-      alert('✅ Manual generado exitosamente');
+      alert(t('ports.ui.formulario.botonManual.alerts.exito'));
     } catch (error) {
       console.error('Error al generar manual:', error);
-      alert('Error al generar el manual: ' + error.message);
+      alert(t('ports.ui.formulario.botonManual.alerts.error', { error: error.message }));
     }
   };
 
@@ -25,9 +27,7 @@ export default function BotonGenerarManual() {
       onClick={handleGenerarManual}
       className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
     >
-      📘 Generar Manual de Uso
+      {t('ports.ui.formulario.botonManual.boton')}
     </button>
   );
 }
-
-

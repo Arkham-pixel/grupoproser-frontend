@@ -562,17 +562,35 @@ function promediosSecuenciaDesdeAcumulador(acumulador, prefijo = 'promedio') {
   return resultado;
 }
 
-export function formatearTiempoPromedio(diasPromedio) {
+export function formatearTiempoPromedio(diasPromedio, t, unidad) {
   if (diasPromedio == null || Number.isNaN(diasPromedio)) return '—';
+
+  const tr = typeof t === 'function' ? t : null;
+  const base = 'complex.ui.indicadores_protocolo_complex';
+  const esHabiles = unidad === 'dias_habiles';
 
   if (diasPromedio < 1) {
     const horas = Math.round(diasPromedio * 24);
-    if (horas <= 0) return '< 1 hora';
-    return horas === 1 ? '~1 hora' : `~${horas} horas`;
+    if (horas <= 0) {
+      return tr ? tr(`${base}.tiempo_menos_1_hora`) : '< 1 hour';
+    }
+    if (horas === 1) {
+      return tr ? tr(`${base}.tiempo_1_hora`) : '~1 hour';
+    }
+    return tr ? tr(`${base}.tiempo_n_horas`, { n: horas }) : `~${horas} hours`;
   }
 
   const dias = Math.round(diasPromedio);
-  return dias === 1 ? '~1 día' : `~${dias} días`;
+  if (esHabiles) {
+    if (dias === 1) {
+      return tr ? tr(`${base}.tiempo_1_dia_habil`) : '~1 business day';
+    }
+    return tr ? tr(`${base}.tiempo_n_dias_habiles`, { n: dias }) : `~${dias} business days`;
+  }
+  if (dias === 1) {
+    return tr ? tr(`${base}.tiempo_1_dia`) : '~1 day';
+  }
+  return tr ? tr(`${base}.tiempo_n_dias`, { n: dias }) : `~${dias} days`;
 }
 
 function crearAcumuladorIndicadores() {

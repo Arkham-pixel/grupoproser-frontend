@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { FaTrash } from 'react-icons/fa';
 import PuertosCasoGridFotografico from './PuertosCasoGridFotografico';
 import { Campo, inputCls, attrsInput } from './PuertosCasoDatosGenerales';
@@ -6,8 +7,6 @@ import { tituloRegistroContenedor } from './puertosCasoExportacionState';
 import {
   puertosBlockHeader,
   puertosBtnSm,
-  puertosCard,
-  puertosCardBody,
   puertosInnerPanel,
   puertosSectionSubtitle,
 } from './puertosFenixUi';
@@ -27,6 +26,8 @@ export default function PuertosCasoRegistroFotograficoContenedor({
   onEliminar,
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
+
   const actualizar = (campo, valor) => {
     onChange({ ...registro, [campo]: valor });
   };
@@ -40,24 +41,24 @@ export default function PuertosCasoRegistroFotograficoContenedor({
   };
 
   const tituloVista =
-    registro.titulo || tituloRegistroContenedor(registro.numeroContenedor) || `Contenedor ${indice + 1}`;
+    registro.titulo || tituloRegistroContenedor(registro.numeroContenedor) || t('ports.ui.casoExportacion.photos.contenedorDefault', { n: indice + 1 });
 
   return (
     <div className={puertosInnerPanel}>
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h4 className={puertosBlockHeader}>{tituloVista}</h4>
-          <p className={puertosSectionSubtitle}>Registro fotográfico · contenedor {indice + 1}</p>
+          <p className={puertosSectionSubtitle}>{t('ports.ui.casoExportacion.photos.registroSubtitle', { n: indice + 1 })}</p>
         </div>
         {!soloLectura && (
         <button type="button" onClick={onEliminar} className={puertosBtnSm}>
-          <FaTrash /> Quitar bloque
+          <FaTrash /> {t('ports.ui.casoExportacion.photos.removeBlock')}
         </button>
         )}
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Campo label="N° contenedor">
+        <Campo label={t('ports.ui.casoExportacion.supervision.numContenedor')}>
           <input
             {...attrsInput(soloLectura, {
               className: inputCls,
@@ -67,13 +68,13 @@ export default function PuertosCasoRegistroFotograficoContenedor({
             })}
           />
         </Campo>
-        <Campo label="Título en el informe (editable)">
+        <Campo label={t('ports.ui.casoExportacion.photos.tituloInforme')}>
           <input
             {...attrsInput(soloLectura, {
               className: inputCls,
               value: registro.titulo || '',
               onChange: (e) => actualizar('titulo', e.target.value),
-              placeholder: 'N° Contenedor … con sellos de seguridad',
+              placeholder: t('ports.ui.casoExportacion.photos.tituloInformePlaceholder'),
             })}
           />
         </Campo>
@@ -81,7 +82,7 @@ export default function PuertosCasoRegistroFotograficoContenedor({
 
       <PuertosCasoGridFotografico
         titulo=""
-        subtitulo="Fotos del contenedor y sellos (cuadrícula 3 columnas)"
+        subtitulo={t('ports.ui.casoExportacion.photos.contenedorGridSubtitle')}
         imagenes={registro.imagenes || []}
         onChange={(updater) => {
           const next = typeof updater === 'function' ? updater(registro.imagenes || []) : updater;

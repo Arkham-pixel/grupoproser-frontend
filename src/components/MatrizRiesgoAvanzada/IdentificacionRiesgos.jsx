@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   parsearArchivoRiesgosExcel,
   mapearFilasExcelAFilasFormulario,
@@ -13,6 +14,7 @@ import './IdentificacionRiesgos.css';
 import './matrizFenixTheme.css';
 
 const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
+  const { t } = useTranslation();
   // Asegurar que datos no sea undefined
   const datosSeguros = datos || {};
   const [riesgos, setRiesgos] = useState(datosSeguros.riesgos || []);
@@ -62,30 +64,46 @@ const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) =>
 
   // Datos de referencia para la función BUSCARV (equivalente a la hoja "Datos" en Excel)
   const datosProcesos = [
-    { nombre: 'Seleccione', tipo: 'Seleccione' },
-    { nombre: 'Gerencia', tipo: 'Estratégico' },
-    { nombre: 'Sistemas integrados de gestión', tipo: 'Estratégico' },
-    { nombre: 'Deshuese Bovino, Ovino, Caprino', tipo: 'Misionales' },
-    { nombre: 'Beneficio Bovino, Ovino, Caprino', tipo: 'Misionales' },
-    { nombre: 'Beneficio y deshuese porcino', tipo: 'Misionales' },
-    { nombre: 'Curtiembre', tipo: 'Misionales' },
-    { nombre: 'Juguetes caninos', tipo: 'Misionales' },
-    { nombre: 'Embutidos', tipo: 'Misionales' },
-    { nombre: 'Gestión comercial', tipo: 'Misionales' },
-    { nombre: 'Gestión logística y despacho', tipo: 'Misionales' },
-    { nombre: 'Comercio exterior', tipo: 'Apoyo' },
-    { nombre: 'Gestión contable y financiera', tipo: 'Apoyo' },
-    { nombre: 'Gestión de compras y almacén', tipo: 'Apoyo' },
-    { nombre: 'Seguridad', tipo: 'Apoyo' },
-    { nombre: 'Gestión laboral', tipo: 'Apoyo' },
-    { nombre: 'Mantenimientos e instalaciones y equipo', tipo: 'Apoyo' },
-    { nombre: 'SST', tipo: 'Apoyo' },
-    { nombre: 'TI', tipo: 'Apoyo' },
-    { nombre: 'Cumplimiento', tipo: 'Apoyo' },
-    { nombre: 'Planeación estratégica', tipo: 'Estratégico' },
-    { nombre: 'Producción', tipo: 'Misionales' },
-    { nombre: 'Todos los procesos', tipo: 'Estratégico' }
+    { nombre: 'Seleccione', nombreKey: 'riskMatrix.identUi.proc.select', tipo: 'Seleccione', tipoKey: 'riskMatrix.identUi.selectType' },
+    { nombre: 'Gerencia', nombreKey: 'riskMatrix.identUi.proc.gerencia', tipo: 'Estratégico', tipoKey: 'riskMatrix.identUi.typeStrategic' },
+    { nombre: 'Sistemas integrados de gestión', nombreKey: 'riskMatrix.identUi.proc.sistemasIntegrados', tipo: 'Estratégico', tipoKey: 'riskMatrix.identUi.typeStrategic' },
+    { nombre: 'Deshuese Bovino, Ovino, Caprino', nombreKey: 'riskMatrix.identUi.proc.deshuese', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Beneficio Bovino, Ovino, Caprino', nombreKey: 'riskMatrix.identUi.proc.beneficio', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Beneficio y deshuese porcino', nombreKey: 'riskMatrix.identUi.proc.beneficioPorcino', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Curtiembre', nombreKey: 'riskMatrix.identUi.proc.curtiembre', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Juguetes caninos', nombreKey: 'riskMatrix.identUi.proc.juguetes', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Embutidos', nombreKey: 'riskMatrix.identUi.proc.embutidos', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Gestión comercial', nombreKey: 'riskMatrix.identUi.proc.comercial', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Gestión logística y despacho', nombreKey: 'riskMatrix.identUi.proc.logistica', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Comercio exterior', nombreKey: 'riskMatrix.identUi.proc.comercioExterior', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'Gestión contable y financiera', nombreKey: 'riskMatrix.identUi.proc.contable', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'Gestión de compras y almacén', nombreKey: 'riskMatrix.identUi.proc.compras', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'Seguridad', nombreKey: 'riskMatrix.identUi.proc.seguridad', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'Gestión laboral', nombreKey: 'riskMatrix.identUi.proc.laboral', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'Mantenimientos e instalaciones y equipo', nombreKey: 'riskMatrix.identUi.proc.mantenimientos', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'SST', nombreKey: 'riskMatrix.identUi.proc.sst', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'TI', nombreKey: 'riskMatrix.identUi.proc.ti', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'Cumplimiento', nombreKey: 'riskMatrix.identUi.proc.cumplimiento', tipo: 'Apoyo', tipoKey: 'riskMatrix.identUi.typeSupport' },
+    { nombre: 'Planeación estratégica', nombreKey: 'riskMatrix.identUi.proc.planeacion', tipo: 'Estratégico', tipoKey: 'riskMatrix.identUi.typeStrategic' },
+    { nombre: 'Producción', nombreKey: 'riskMatrix.identUi.proc.produccion', tipo: 'Misionales', tipoKey: 'riskMatrix.identUi.typeMission' },
+    { nombre: 'Todos los procesos', nombreKey: 'riskMatrix.identUi.proc.todos', tipo: 'Estratégico', tipoKey: 'riskMatrix.identUi.typeStrategic' }
   ];
+
+  const labelTipoProceso = (tipo) => {
+    const map = {
+      Seleccione: 'riskMatrix.identUi.selectType',
+      Estratégico: 'riskMatrix.identUi.typeStrategic',
+      Misionales: 'riskMatrix.identUi.typeMission',
+      Apoyo: 'riskMatrix.identUi.typeSupport',
+    };
+    return map[tipo] ? t(map[tipo]) : tipo;
+  };
+
+  const labelNombreProceso = (nombre) => {
+    if (!nombre) return '';
+    const proceso = datosProcesos.find((p) => p.nombre === nombre);
+    return proceso?.nombreKey ? t(proceso.nombreKey) : nombre;
+  };
 
   const tiposProceso = [
     'Seleccione',
@@ -305,7 +323,7 @@ const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) =>
     });
 
     if (filasCompletas.length === 0) {
-      alert('⚠️ No hay filas completas para procesar.\n\nPor favor, llena al menos:\n• Al menos un Proceso (con su tipo)\n• Riesgo Identificado');
+      alert(t('riskMatrix.identUi.alertNoCompleteRows'));
       return;
     }
 
@@ -348,12 +366,12 @@ const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) =>
     });
     setFilasFormulario(filasRestantes);
 
-    alert(`✅ Formulario Procesado!\n\n📊 Riesgos agregados: ${nuevosRiesgos.length}\n📋 Total de riesgos: ${todosLosRiesgos.length}\n\nLos riesgos han sido agregados a la tabla de abajo.`);
+    alert(t('riskMatrix.identUi.alertFormProcessed', { added: nuevosRiesgos.length, total: todosLosRiesgos.length }));
   };
 
   const finalizarIdentificacion = () => {
     if (riesgos.length === 0) {
-      alert('No hay riesgos identificados para finalizar. Por favor, agrega al menos un riesgo primero.');
+      alert(t('riskMatrix.identUi.alertNoRisksFinalize'));
       return;
     }
 
@@ -367,7 +385,7 @@ const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) =>
 
 onDatosChange(datosFinalizados);
     
-    alert(`✅ Identificación Finalizada!\n\n📊 Resumen:\n• Total de Riesgos: ${riesgos.length}\n• Procesos Únicos: ${new Set(riesgos.map(r => r.nombreProceso)).size}\n• Tipos de Proceso: ${new Set(riesgos.map(r => r.tipoProceso)).size}\n\nLos riesgos están listos para ser valorados en la siguiente pestaña.`);
+    alert(t('riskMatrix.identUi.alertFinalized', { total: riesgos.length, processes: new Set(riesgos.map(r => r.nombreProceso)).size, types: new Set(riesgos.map(r => r.tipoProceso)).size }));
   };
 
   const agregarRiesgo = () => {
@@ -379,7 +397,7 @@ onDatosChange(datosFinalizados);
     });
     
     if (filasCompletas.length === 0) {
-      alert('Por favor completa al menos una fila con todos los campos obligatorios:\n• Al menos un Proceso (con su tipo)\n• Riesgo Identificado');
+      alert(t('riskMatrix.identUi.alertRequiredFields'));
       return;
     }
     
@@ -457,7 +475,7 @@ setRiesgos(todosLosRiesgos);
             ? fila.procesos
             : fila.nombreProceso
               ? [{ nombre: fila.nombreProceso, tipo: fila.tipoProceso || buscarTipoProceso(fila.nombreProceso) || 'Misionales' }]
-              : [{ nombre: 'Sin proceso', tipo: 'Misionales' }];
+              : [{ nombre: t('riskMatrix.identUi.noProcess'), tipo: 'Misionales' }];
 
         const columnasAdicionalesData = {};
         columnasAdicionales.forEach((col) => {
@@ -490,7 +508,7 @@ setRiesgos(todosLosRiesgos);
     try {
       generarPlantillaRiesgosExcel();
     } catch (error) {
-      alert('No se pudo generar la plantilla: ' + error.message);
+      alert(t('riskMatrix.identUi.templateError', { error: error.message }));
     }
   };
 
@@ -501,7 +519,7 @@ setRiesgos(todosLosRiesgos);
 
     const ext = archivo.name.split('.').pop()?.toLowerCase();
     if (!['xlsx', 'xls', 'xlsm'].includes(ext || '')) {
-      setMensajeImport({ tipo: 'error', texto: 'Use un archivo Excel (.xlsx, .xls).' });
+      setMensajeImport({ tipo: 'error', texto: t('riskMatrix.identUi.useExcel') });
       return;
     }
 
@@ -517,7 +535,7 @@ setRiesgos(todosLosRiesgos);
 
       if (!filas.length) {
         throw new Error(
-          'No se importó ningún riesgo. Revise que exista la columna RIESGO IDENTIFICADO con datos.'
+          t('riskMatrix.identUi.importNone')
         );
       }
 
@@ -545,16 +563,22 @@ setRiesgos(todosLosRiesgos);
       }
 
       const omitidasTxt =
-        omitidas.length > 0 ? ` (${omitidas.length} fila(s) omitidas sin riesgo).` : '';
+        omitidas.length > 0
+          ? t('riskMatrix.identUi.importSkipped', { count: omitidas.length })
+          : '';
       setMensajeImport({
         tipo: 'ok',
-        texto: `Se importaron ${filas.length} riesgo(s) desde «${parsed.nombreHoja}».${omitidasTxt}`,
+        texto: t('riskMatrix.identUi.importFromSheet', {
+          count: filas.length,
+          sheet: parsed.nombreHoja,
+          skipped: omitidasTxt,
+        }),
       });
     } catch (error) {
       console.error('Error importando Excel:', error);
       setMensajeImport({
         tipo: 'error',
-        texto: error.message || 'Error al leer el archivo Excel.',
+        texto: error.message || t('riskMatrix.identUi.excelReadError'),
       });
     } finally {
       setImportandoExcel(false);
@@ -567,30 +591,28 @@ setRiesgos(todosLosRiesgos);
       <>
       <MatrizSeccionTitulo
         icon={FaSearch}
-        title="Importar desde Excel"
-        description="Cargue riesgos desde plantilla o agregue filas manualmente en el formulario."
+        title={t('riskMatrix.identUi.importTitle')}
+        description={t('riskMatrix.identUi.importDescription')}
       />
 
       <div className="importar-excel-panel">
         <div className="importar-excel-info">
-          <h4>Importar riesgos desde Excel</h4>
-          <p>
-            Cargue un archivo con columnas como <strong>NOMBRE DEL PROCESO</strong>,{' '}
-            <strong>TIPO DE PROCESO</strong>, <strong>RIESGO IDENTIFICADO</strong> y categorías
-            (marque con X). Puede descargar la plantilla de ejemplo.
-          </p>
+          <h4>{t('riskMatrix.identUi.importHeading')}</h4>
+            <p>
+              {t('riskMatrix.identUi.importBody')}
+            </p>
         </div>
         <div className="importar-excel-controles">
           <label className="importar-excel-modo">
-            <span>Destino:</span>
+            <span>{t('riskMatrix.identUi.destination')}</span>
             <select
               value={modoImportacion}
               onChange={(e) => setModoImportacion(e.target.value)}
               disabled={importandoExcel}
             >
-              <option value="agregar_tabla">Agregar directo a la tabla de riesgos</option>
-              <option value="agregar_formulario">Agregar al formulario (revisar antes)</option>
-              <option value="reemplazar_formulario">Reemplazar filas del formulario</option>
+              <option value="agregar_tabla">{t('riskMatrix.identUi.modeAddTable')}</option>
+              <option value="agregar_formulario">{t('riskMatrix.identUi.modeAddForm')}</option>
+              <option value="reemplazar_formulario">{t('riskMatrix.identUi.modeReplaceForm')}</option>
             </select>
           </label>
           <div className="importar-excel-botones">
@@ -600,7 +622,7 @@ setRiesgos(todosLosRiesgos);
               onClick={handleDescargarPlantillaExcel}
               disabled={importandoExcel}
             >
-              📄 Descargar plantilla
+              {t('riskMatrix.identUi.downloadTemplate')}
             </button>
             <input
               ref={inputExcelRef}
@@ -616,7 +638,7 @@ setRiesgos(todosLosRiesgos);
               onClick={() => inputExcelRef.current?.click()}
               disabled={importandoExcel}
             >
-              {importandoExcel ? 'Leyendo archivo…' : '📂 Seleccionar Excel'}
+              {importandoExcel ? t('riskMatrix.identUi.readingFile') : t('riskMatrix.identUi.selectExcel')}
             </button>
           </div>
         </div>
@@ -632,37 +654,37 @@ setRiesgos(todosLosRiesgos);
       <div className="identificacion-content">
         {!modoReporte && (
         <div className="formulario-excel">
-          <MatrizSeccionTitulo icon={FaPlus} title="Agregar nuevos riesgos" />
+          <MatrizSeccionTitulo icon={FaPlus} title={t('riskMatrix.identUi.addNewRisks')} />
           
           <div className="tabla-formulario-container">
             <table className="tabla-formulario" style={{ width: '1560px', minWidth: '1560px' }}>
               <thead>
                 <tr>
-                  <th className="col-numero" style={{ width: '60px', minWidth: '60px' }}>No.</th>
-                  <th className="col-proceso" style={{ width: '250px', minWidth: '250px' }}>NOMBRE DEL PROCESO</th>
-                  <th className="col-tipo" style={{ width: '200px', minWidth: '200px' }}>TIPO DE PROCESO</th>
-                  <th className="col-riesgo" style={{ width: '350px', minWidth: '350px' }}>RIESGO IDENTIFICADO</th>
-                  <th className="col-categorias-header" colSpan="8" style={{ width: '600px', minWidth: '600px' }}>CATEGORÍA DEL RIESGO (marque X)</th>
+                  <th className="col-numero" style={{ width: '60px', minWidth: '60px' }}>{t('riskMatrix.identUi.colNo')}</th>
+                  <th className="col-proceso" style={{ width: '250px', minWidth: '250px' }}>{t('riskMatrix.identUi.colProcessName')}</th>
+                  <th className="col-tipo" style={{ width: '200px', minWidth: '200px' }}>{t('riskMatrix.identUi.colProcessType')}</th>
+                  <th className="col-riesgo" style={{ width: '350px', minWidth: '350px' }}>{t('riskMatrix.identUi.colRiskIdentified')}</th>
+                  <th className="col-categorias-header" colSpan="8" style={{ width: '600px', minWidth: '600px' }}>{t('riskMatrix.identUi.colCategoryHeader')}</th>
                   {columnasAdicionales.map(columna => (
                     <th key={columna.id} className="col-adicional">
                       {columna.nombre.toUpperCase()}
                     </th>
                   ))}
-                  <th className="col-acciones" style={{ width: '100px', minWidth: '100px' }}>Acciones</th>
+                  <th className="col-acciones" style={{ width: '100px', minWidth: '100px' }}>{t('riskMatrix.identUi.colActions')}</th>
                 </tr>
                 <tr>
                   <th className="col-numero"></th>
                   <th className="col-proceso"></th>
                   <th className="col-tipo"></th>
                   <th className="col-riesgo"></th>
-                  <th className="col-categorias">Estratégico</th>
-                  <th className="col-categorias">Cumplimiento</th>
-                  <th className="col-categorias">Reputacional</th>
-                  <th className="col-categorias">Operativo</th>
-                  <th className="col-categorias">Financiero</th>
-                  <th className="col-categorias">Tecnológico</th>
-                  <th className="col-categorias">Corrupción</th>
-                  <th className="col-categorias">DDHH</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catStrategic')}</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catCompliance')}</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catReputational')}</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catOperational')}</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catFinancial')}</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catTechnological')}</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catCorruption')}</th>
+                  <th className="col-categorias">{t('riskMatrix.identUi.catHumanRights')}</th>
                   {columnasAdicionales.map(columna => (
                     <th key={columna.id} className="col-adicional"></th>
                   ))}
@@ -698,9 +720,9 @@ setRiesgos(todosLosRiesgos);
                                       }}
                                     >
                                       <span>
-                                        <strong>{proceso.nombre}</strong> 
+                                        <strong>{labelNombreProceso(proceso.nombre)}</strong> 
                                         <span style={{ color: '#666', marginLeft: '6px', fontSize: '0.8rem' }}>
-                                          ({proceso.tipo})
+                                          ({labelTipoProceso(proceso.tipo)})
                                         </span>
                                       </span>
                                       <button
@@ -715,7 +737,7 @@ setRiesgos(todosLosRiesgos);
                                           cursor: 'pointer',
                                           fontSize: '0.75rem'
                                         }}
-                                        title="Eliminar proceso"
+                                        title={t('riskMatrix.identUi.deleteProcess')}
                                       >
                                         ×
                                       </button>
@@ -730,7 +752,7 @@ setRiesgos(todosLosRiesgos);
                                   fontSize: '0.85rem',
                                   fontStyle: 'italic'
                                 }}>
-                                  Sin procesos
+                                  {t('riskMatrix.identUi.noProcesses')}
                                 </div>
                               )}
                               <button
@@ -748,7 +770,7 @@ setRiesgos(todosLosRiesgos);
                                   fontWeight: '600'
                                 }}
                               >
-                                + Agregar Proceso
+                                {t('riskMatrix.identUi.addProcess')}
                               </button>
                             </div>
                           );
@@ -769,13 +791,13 @@ setRiesgos(todosLosRiesgos);
                           position: 'relative',
                           fontSize: '0.85rem'
                         }}
-                        title={fila.procesos && fila.procesos.length > 0 ? `✅ ${fila.procesos.length} proceso(s) agregado(s)` : 'Agrega procesos para ver sus tipos'}
+                        title={fila.procesos && fila.procesos.length > 0 ? t('riskMatrix.identUi.processesAddedTitle', { count: fila.procesos.length }) : t('riskMatrix.identUi.addProcessesForTypes')}
                       >
                         {fila.procesos && fila.procesos.length > 0 
                           ? `${fila.procesos.length} proceso(s)` 
-                          : 'Agrega procesos'}
+                          : t('riskMatrix.identUi.addProcesses')}
                         {fila.procesos && fila.procesos.length > 0 && (
-                          <span className="auto-fill-indicator" title="Procesos agregados">
+                          <span className="auto-fill-indicator" title={t('riskMatrix.identUi.processesAddedHint')}>
                             ✅
                           </span>
                         )}
@@ -785,7 +807,7 @@ setRiesgos(todosLosRiesgos);
                       <textarea
                         value={fila.riesgoIdentificado}
                         onChange={(e) => handleInputChange(fila.id, 'riesgoIdentificado', e.target.value)}
-                        placeholder="Describe el riesgo..."
+                        placeholder={t('riskMatrix.identUi.describeRisk')}
                         className="textarea-excel"
                         rows="2"
                       />
@@ -896,7 +918,7 @@ setRiesgos(todosLosRiesgos);
                           <button 
                             onClick={() => eliminarFila(fila.id)}
                             className="btn-eliminar-fila"
-                            title="Eliminar fila"
+                            title={t('riskMatrix.identUi.deleteRow')}
                           >
                             🗑️
                           </button>
@@ -905,7 +927,7 @@ setRiesgos(todosLosRiesgos);
                           <button 
                             onClick={agregarRiesgo}
                             className="btn-agregar-excel"
-                            title="Agregar todos los riesgos"
+                            title={t('riskMatrix.identUi.addAllRisks')}
                           >
                             ✓
                           </button>
@@ -922,17 +944,17 @@ setRiesgos(todosLosRiesgos);
             <button 
               onClick={agregarFila}
               className="btn-agregar-fila"
-              title="Agregar nueva fila"
+              title={t('riskMatrix.identUi.addRowTitle')}
             >
-              ➕ Agregar Fila
+              {t('riskMatrix.identUi.addRow')}
             </button>
             
             <button 
               onClick={procesarFormulario}
               className="btn-procesar-formulario"
-              title="Procesar todas las filas completas"
+              title={t('riskMatrix.identUi.processFormTitle')}
             >
-              ⚡ Procesar Formulario
+              {t('riskMatrix.identUi.processForm')}
             </button>
           </div>
         </div>
@@ -942,14 +964,14 @@ setRiesgos(todosLosRiesgos);
         <div className="tabla-riesgos">
           <MatrizSeccionTitulo
             icon={FaClipboardList}
-            title={`Riesgos identificados (${riesgos.length})`}
+            title={t('riskMatrix.identUi.identifiedRisks', { count: riesgos.length })}
           />
 
           {riesgos.length === 0 ? (
             <div className="sin-riesgos">
               <div className="sin-riesgos-icono">📝</div>
-              <h5>No hay riesgos identificados</h5>
-              <p>Comienza agregando el primer riesgo usando el formulario de arriba.</p>
+              <h5>{t('riskMatrix.identUi.emptyIdentifiedTitle')}</h5>
+              <p>{t('riskMatrix.identUi.emptyIdentifiedBody')}</p>
             </div>
           ) : (
             <div className="tabla-container">
@@ -957,17 +979,17 @@ setRiesgos(todosLosRiesgos);
                 <thead>
                   {/* Fila 4 - Headers principales */}
                   <tr>
-                    <th className="col-numero">No.</th>
-                    <th className="col-proceso">NOMBRE DEL PROCESO</th>
-                    <th className="col-tipo">TIPO DE PROCESO</th>
-                    <th className="col-riesgo">RIESGO IDENTIFICADO</th>
-                    <th className="col-categorias-header" colSpan="8">CATEGORÍA DEL RIESGO (marque X)</th>
+                    <th className="col-numero">{t('riskMatrix.identUi.colNo')}</th>
+                    <th className="col-proceso">{t('riskMatrix.identUi.colProcessName')}</th>
+                    <th className="col-tipo">{t('riskMatrix.identUi.colProcessType')}</th>
+                    <th className="col-riesgo">{t('riskMatrix.identUi.colRiskIdentified')}</th>
+                    <th className="col-categorias-header" colSpan="8">{t('riskMatrix.identUi.colCategoryHeader')}</th>
                     {columnasAdicionales.map(columna => (
                       <th key={columna.id} className="col-adicional">
                         {columna.nombre.toUpperCase()}
                       </th>
                     ))}
-                    <th className="col-acciones">Acciones</th>
+                    <th className="col-acciones">{t('riskMatrix.identUi.colActions')}</th>
                   </tr>
                   {/* Fila 5 - Subheaders de categorías */}
                   <tr>
@@ -975,14 +997,14 @@ setRiesgos(todosLosRiesgos);
                     <th className="col-proceso"></th>
                     <th className="col-tipo"></th>
                     <th className="col-riesgo"></th>
-                    <th className="col-categorias">Estratégico</th>
-                    <th className="col-categorias">Cumplimiento</th>
-                    <th className="col-categorias">Reputacional</th>
-                    <th className="col-categorias">Operativo</th>
-                    <th className="col-categorias">Financiero</th>
-                    <th className="col-categorias">Tecnológico</th>
-                    <th className="col-categorias">Corrupción</th>
-                    <th className="col-categorias">DDHH</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catStrategic')}</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catCompliance')}</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catReputational')}</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catOperational')}</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catFinancial')}</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catTechnological')}</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catCorruption')}</th>
+                    <th className="col-categorias">{t('riskMatrix.identUi.catHumanRights')}</th>
                     {columnasAdicionales.map(columna => (
                       <th key={columna.id} className="col-adicional"></th>
                     ))}
@@ -993,8 +1015,8 @@ setRiesgos(todosLosRiesgos);
                   {riesgos.map(riesgo => (
                     <tr key={riesgo.id}>
                       <td className="col-numero">{riesgo.numero}</td>
-                      <td className="col-proceso">{riesgo.nombreProceso}</td>
-                      <td className="col-tipo">{riesgo.tipoProceso}</td>
+                      <td className="col-proceso">{labelNombreProceso(riesgo.nombreProceso)}</td>
+                      <td className="col-tipo">{labelTipoProceso(riesgo.tipoProceso)}</td>
                       <td className="col-riesgo">{riesgo.riesgoIdentificado}</td>
                       <td className="col-categorias text-center">
                         {riesgo.categorias.estrategico ? 'X' : ''}
@@ -1029,7 +1051,7 @@ setRiesgos(todosLosRiesgos);
                         <button 
                           onClick={() => eliminarRiesgo(riesgo.id)}
                           className="btn-eliminar-tabla"
-                          title="Eliminar riesgo"
+                          title={t('riskMatrix.identUi.deleteRisk')}
                         >
                           🗑️
                         </button>
@@ -1047,11 +1069,10 @@ setRiesgos(todosLosRiesgos);
         {riesgos.length > 0 && (
           <div className={`${matrizCard} finalizar-identificacion-section flex flex-col items-center text-center`}>
             <button type="button" className={matrizBtnPrimary} onClick={finalizarIdentificacion}>
-              Finalizar identificación de riesgos
+              {t('riskMatrix.identUi.finalizeBtn')}
             </button>
             <p className="finalizar-descripcion mt-3 max-w-md font-body text-sm text-gray-500 dark:text-gray-400">
-              Al finalizar, los riesgos identificados estarán disponibles para valoración en la siguiente
-              sección.
+              {t('riskMatrix.identUi.finalizeDesc')}
             </p>
           </div>
         )}
@@ -1062,7 +1083,7 @@ setRiesgos(todosLosRiesgos);
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="modal-header">
-              <h3>📊 Agregar Columna Adicional</h3>
+              <h3>📊 {t('riskMatrix.identUi.columnTitle')}</h3>
               <button 
                 onClick={() => setMostrarModalColumnas(false)}
                 className="btn-cerrar-modal"
@@ -1081,7 +1102,7 @@ setRiesgos(todosLosRiesgos);
                   id="nombreColumna"
                   value={nuevaColumna.nombre}
                   onChange={(e) => handleInputChangeColumna('nombre', e.target.value)}
-                  placeholder="Ej: Responsable, Fecha Límite, Prioridad"
+                  placeholder={t('riskMatrix.identUi.columnNamePlaceholder')}
                   className="campo-input"
                 />
               </div>
@@ -1096,9 +1117,9 @@ setRiesgos(todosLosRiesgos);
                   onChange={(e) => handleInputChangeColumna('tipo', e.target.value)}
                   className="campo-input"
                 >
-                  <option value="texto">Texto</option>
-                  <option value="numero">Número</option>
-                  <option value="fecha">Fecha</option>
+                  <option value="texto">{t('riskMatrix.identUi.typeText')}</option>
+                  <option value="numero">{t('riskMatrix.identUi.typeNumber')}</option>
+                  <option value="fecha">{t('riskMatrix.identUi.typeDate')}</option>
                 </select>
               </div>
 
@@ -1110,7 +1131,7 @@ setRiesgos(todosLosRiesgos);
                     onChange={(e) => handleInputChangeColumna('requerido', e.target.checked)}
                     className="checkbox-input"
                   />
-                  <span className="checkbox-text">Campo requerido</span>
+                  <span className="checkbox-text">{t('riskMatrix.identUi.requiredField')}</span>
                 </label>
               </div>
             </div>
@@ -1120,14 +1141,14 @@ setRiesgos(todosLosRiesgos);
                 onClick={() => setMostrarModalColumnas(false)}
                 className="btn-cancelar"
               >
-                Cancelar
+                {t('common.cancel')}
               </button>
               <button 
                 onClick={agregarColumna}
                 className="btn-confirmar"
                 disabled={!nuevaColumna.nombre}
               >
-                Agregar Columna
+                {t('riskMatrix.identUi.addColumn')}
               </button>
             </div>
           </div>
@@ -1151,6 +1172,21 @@ setRiesgos(todosLosRiesgos);
 
 // Componente Modal para gestionar procesos
 const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso, onAgregar, onCerrar }) => {
+  const { t } = useTranslation();
+  const labelTipoProceso = (tipo) => {
+    const map = {
+      Seleccione: 'riskMatrix.identUi.selectType',
+      Estratégico: 'riskMatrix.identUi.typeStrategic',
+      Misionales: 'riskMatrix.identUi.typeMission',
+      Apoyo: 'riskMatrix.identUi.typeSupport',
+    };
+    return map[tipo] ? t(map[tipo]) : tipo;
+  };
+  const labelNombreProceso = (nombre) => {
+    if (!nombre) return '';
+    const proceso = datosProcesos.find((p) => p.nombre === nombre);
+    return proceso?.nombreKey ? t(proceso.nombreKey) : nombre;
+  };
   const [modo, setModo] = useState('seleccionar'); // 'seleccionar' o 'nuevo'
   const [procesoSeleccionado, setProcesoSeleccionado] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState('');
@@ -1204,7 +1240,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
         boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h3 style={{ margin: 0 }}>📋 Gestionar Procesos</h3>
+          <h3 style={{ margin: 0 }}>📋 {t('riskMatrix.identUi.manageProcesses')}</h3>
           <button
             onClick={onCerrar}
             style={{
@@ -1222,7 +1258,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
         {/* Procesos existentes */}
         {procesosExistentes.length > 0 && (
           <div style={{ marginBottom: '20px' }}>
-            <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>Procesos agregados:</h4>
+            <h4 style={{ marginBottom: '10px', fontSize: '14px', color: '#666' }}>{t('riskMatrix.identUi.processesAddedLabel')}</h4>
             {procesosExistentes.map((proceso, idx) => (
               <div
                 key={idx}
@@ -1234,7 +1270,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
                   fontSize: '0.9rem'
                 }}
               >
-                <strong>{proceso.nombre}</strong> <span style={{ color: '#666' }}>({proceso.tipo})</span>
+                <strong>{labelNombreProceso(proceso.nombre)}</strong> <span style={{ color: '#666' }}>({labelTipoProceso(proceso.tipo)})</span>
               </div>
             ))}
           </div>
@@ -1255,7 +1291,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
                 fontWeight: modo === 'seleccionar' ? '600' : '400'
               }}
             >
-              Seleccionar de lista
+              {t('riskMatrix.identUi.tabSelectList')}
             </button>
             <button
               onClick={() => setModo('nuevo')}
@@ -1269,7 +1305,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
                 fontWeight: modo === 'nuevo' ? '600' : '400'
               }}
             >
-              Agregar nuevo proceso
+              {t('riskMatrix.identUi.tabAddNew')}
             </button>
           </div>
         </div>
@@ -1278,7 +1314,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
         {modo === 'seleccionar' ? (
           <div>
             <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
-              Seleccionar proceso:
+              {t('riskMatrix.identUi.tabSelectList')}:
             </label>
             <select
               value={procesoSeleccionado}
@@ -1292,16 +1328,16 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
                 fontSize: '0.95rem'
               }}
             >
-              <option value="">Seleccione un proceso...</option>
+              <option value="">{t('riskMatrix.identUi.selectProcess')}</option>
               {procesosDisponibles.map((proceso, idx) => (
                 <option key={idx} value={proceso.nombre}>
-                  {proceso.nombre} ({proceso.tipo})
+                  {proceso.nombreKey ? t(proceso.nombreKey) : proceso.nombre} ({proceso.tipoKey ? t(proceso.tipoKey) : proceso.tipo})
                 </option>
               ))}
             </select>
             {procesosDisponibles.length === 0 && (
               <p style={{ color: '#999', fontSize: '0.9rem', fontStyle: 'italic' }}>
-                Todos los procesos de la lista ya han sido agregados
+                {t('riskMatrix.identUi.emptyProcessList')}
               </p>
             )}
             <button
@@ -1319,19 +1355,19 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
                 fontSize: '0.95rem'
               }}
             >
-              Agregar Proceso
+              {t('riskMatrix.identUi.addProcessBtn')}
             </button>
           </div>
         ) : (
           <div>
             <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
-              Nombre del proceso:
+              {t('riskMatrix.identUi.processNameLabel')}:
             </label>
             <input
               type="text"
               value={nuevoNombre}
               onChange={(e) => setNuevoNombre(e.target.value)}
-              placeholder="Ej: Gestión de calidad"
+              placeholder={t('riskMatrix.identUi.processNamePlaceholder')}
               style={{
                 width: '100%',
                 padding: '10px',
@@ -1342,7 +1378,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
               }}
             />
             <label style={{ display: 'block', marginBottom: '10px', fontWeight: '600' }}>
-              Tipo de proceso:
+              {t('riskMatrix.identUi.processTypeLabel')}:
             </label>
             <select
               value={nuevoTipo}
@@ -1357,7 +1393,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
               }}
             >
               {tiposProceso.map((tipo, idx) => (
-                <option key={idx} value={tipo}>{tipo}</option>
+                <option key={idx} value={tipo}>{labelTipoProceso(tipo)}</option>
               ))}
             </select>
             <button
@@ -1375,7 +1411,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
                 fontSize: '0.95rem'
               }}
             >
-              Agregar Nuevo Proceso
+              {t('riskMatrix.identUi.addNewProcessBtn')}
             </button>
           </div>
         )}
@@ -1393,7 +1429,7 @@ const ModalProcesos = ({ filaId, procesosExistentes, datosProcesos, tiposProceso
               fontWeight: '600'
             }}
           >
-            Cerrar
+            {t('riskMatrix.identUi.close')}
           </button>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
 export function useMaquinariaTheme() {
@@ -16,34 +17,34 @@ export function useMaquinariaTheme() {
   };
 }
 
-export function inputStyle(t, extra = {}) {
+export function inputStyle(mq, extra = {}) {
   return {
-    backgroundColor: t.inputBg,
-    color: t.textPrimary,
-    border: `1px solid ${t.borderColor}`,
+    backgroundColor: mq.inputBg,
+    color: mq.textPrimary,
+    border: `1px solid ${mq.borderColor}`,
     borderRadius: '6px',
     ...extra,
   };
 }
 
 export function SectionCard({ title, subtitle, children }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <section
       className="mb-6 rounded-lg overflow-hidden border"
-      style={{ borderColor: t.borderColor, backgroundColor: t.cardBg }}
+      style={{ borderColor: mq.borderColor, backgroundColor: mq.cardBg }}
     >
       <div
         className="px-4 py-3 border-b"
         style={{
-          backgroundColor: t.accentSoft,
-          borderColor: t.borderColor,
-          color: t.textPrimary,
+          backgroundColor: mq.accentSoft,
+          borderColor: mq.borderColor,
+          color: mq.textPrimary,
         }}
       >
         <h2 className="text-sm sm:text-base font-semibold font-heading">{title}</h2>
         {subtitle && (
-          <p className="text-xs mt-1 font-normal" style={{ color: t.textSecondary }}>
+          <p className="text-xs mt-1 font-normal" style={{ color: mq.textSecondary }}>
             {subtitle}
           </p>
         )}
@@ -54,14 +55,14 @@ export function SectionCard({ title, subtitle, children }) {
 }
 
 export function FieldLabel({ children, hint }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <div className="mb-1">
-      <label className="block text-xs sm:text-sm font-semibold" style={{ color: t.textPrimary }}>
+      <label className="block text-xs sm:text-sm font-semibold" style={{ color: mq.textPrimary }}>
         {children}
       </label>
       {hint && (
-        <p className="text-xs mt-0.5" style={{ color: t.textSecondary }}>
+        <p className="text-xs mt-0.5" style={{ color: mq.textSecondary }}>
           {hint}
         </p>
       )}
@@ -70,12 +71,12 @@ export function FieldLabel({ children, hint }) {
 }
 
 export function ThemedInput({ className = '', style = {}, ...props }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <input
       className={`w-full px-3 py-2 text-sm focus:outline-none focus:ring-2 ${className}`}
       style={{
-        ...inputStyle(t),
+        ...inputStyle(mq),
         '--tw-ring-color': '#DC2626',
         ...style,
       }}
@@ -85,13 +86,13 @@ export function ThemedInput({ className = '', style = {}, ...props }) {
 }
 
 export function ThemedTextarea({ className = '', rows = 3, style = {}, ...props }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <textarea
       rows={rows}
       className={`w-full px-3 py-2 text-sm focus:outline-none focus:ring-2 resize-y ${className}`}
       style={{
-        ...inputStyle(t),
+        ...inputStyle(mq),
         '--tw-ring-color': '#DC2626',
         ...style,
       }}
@@ -101,29 +102,29 @@ export function ThemedTextarea({ className = '', rows = 3, style = {}, ...props 
 }
 
 export function FormTable({ children }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
-    <div className="overflow-x-auto rounded-lg border" style={{ borderColor: t.borderColor }}>
+    <div className="overflow-x-auto rounded-lg border" style={{ borderColor: mq.borderColor }}>
       <table className="w-full text-xs sm:text-sm">{children}</table>
     </div>
   );
 }
 
 export function FormTableHead({ children }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
-    <thead style={{ backgroundColor: t.tableHeaderBg }}>
+    <thead style={{ backgroundColor: mq.tableHeaderBg }}>
       <tr>{children}</tr>
     </thead>
   );
 }
 
 export function FormTableTh({ children, className = '' }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <th
       className={`text-left px-3 py-2 font-semibold border-b w-1/3 sm:w-2/5 ${className}`}
-      style={{ color: t.textPrimary, borderColor: t.borderColor }}
+      style={{ color: mq.textPrimary, borderColor: mq.borderColor }}
     >
       {children}
     </th>
@@ -131,11 +132,11 @@ export function FormTableTh({ children, className = '' }) {
 }
 
 export function FormTableTd({ children, className = '' }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <td
       className={`px-3 py-2 border-b align-top ${className}`}
-      style={{ borderColor: t.borderColor }}
+      style={{ borderColor: mq.borderColor }}
     >
       {children}
     </td>
@@ -143,12 +144,12 @@ export function FormTableTd({ children, className = '' }) {
 }
 
 export function FormTableRow({ label, children }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <tr>
       <th
         className="text-left px-3 py-2 font-semibold border-b align-top w-1/3 sm:w-2/5"
-        style={{ color: t.textPrimary, borderColor: t.borderColor, backgroundColor: t.tableHeaderBg }}
+        style={{ color: mq.textPrimary, borderColor: mq.borderColor, backgroundColor: mq.tableHeaderBg }}
       >
         {label}
       </th>
@@ -157,29 +158,29 @@ export function FormTableRow({ label, children }) {
   );
 }
 
-export function getSelectStyles(t) {
+export function getSelectStyles(mq) {
   return {
     control: (styles, state) => ({
       ...styles,
-      backgroundColor: t.inputBg,
-      borderColor: state.isFocused ? '#DC2626' : t.borderColor,
+      backgroundColor: mq.inputBg,
+      borderColor: state.isFocused ? '#DC2626' : mq.borderColor,
       minHeight: 40,
       boxShadow: 'none',
       '&:hover': { borderColor: '#DC2626' },
     }),
-    singleValue: (styles) => ({ ...styles, color: t.textPrimary }),
-    input: (styles) => ({ ...styles, color: t.textPrimary }),
-    placeholder: (styles) => ({ ...styles, color: t.textSecondary }),
+    singleValue: (styles) => ({ ...styles, color: mq.textPrimary }),
+    input: (styles) => ({ ...styles, color: mq.textPrimary }),
+    placeholder: (styles) => ({ ...styles, color: mq.textSecondary }),
     menu: (styles) => ({
       ...styles,
-      backgroundColor: t.cardBg,
-      border: `1px solid ${t.borderColor}`,
+      backgroundColor: mq.cardBg,
+      border: `1px solid ${mq.borderColor}`,
       zIndex: 20,
     }),
     option: (styles, state) => ({
       ...styles,
-      backgroundColor: state.isFocused ? t.accentSoft : t.cardBg,
-      color: t.textPrimary,
+      backgroundColor: state.isFocused ? mq.accentSoft : mq.cardBg,
+      color: mq.textPrimary,
     }),
   };
 }
@@ -193,14 +194,14 @@ export function TableFieldTextarea({ rows = 2, ...props }) {
 }
 
 export function TableFieldSelect({ className = '', children, ...props }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
   return (
     <select
       className={`w-full px-2 py-1.5 text-sm rounded-md ${className}`}
       style={{
-        backgroundColor: t.inputBg,
-        color: t.textPrimary,
-        border: `1px solid ${t.borderColor}`,
+        backgroundColor: mq.inputBg,
+        color: mq.textPrimary,
+        border: `1px solid ${mq.borderColor}`,
       }}
       {...props}
     >
@@ -210,22 +211,23 @@ export function TableFieldSelect({ className = '', children, ...props }) {
 }
 
 export function SyncedValue({ value, source }) {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
+  const { t } = useTranslation();
   return (
     <div>
       <div
         className="px-3 py-2 rounded-md text-sm min-h-[38px]"
         style={{
-          backgroundColor: t.tableHeaderBg,
-          color: value ? t.textPrimary : t.textSecondary,
-          border: `1px dashed ${t.borderColor}`,
+          backgroundColor: mq.tableHeaderBg,
+          color: value ? mq.textPrimary : mq.textSecondary,
+          border: `1px dashed ${mq.borderColor}`,
         }}
       >
-        {value || 'Se completa automáticamente'}
+        {value || t('machinery.ui.common.autoFilled')}
       </div>
       {source && (
-        <p className="text-[11px] mt-1" style={{ color: t.textSecondary }}>
-          Origen: {source}
+        <p className="text-[11px] mt-1" style={{ color: mq.textSecondary }}>
+          {t('machinery.ui.common.origin', { source })}
         </p>
       )}
     </div>
@@ -233,25 +235,26 @@ export function SyncedValue({ value, source }) {
 }
 
 export function LlenadoGuia() {
-  const t = useMaquinariaTheme();
+  const mq = useMaquinariaTheme();
+  const { t } = useTranslation();
   const items = [
-    { donde: 'Foto principal (arriba)', que: '1 imagen de portada por arrastre o clic' },
-    { donde: 'Encabezado + fecha', que: 'Aseguradora, asegurado, equipo, marca y fecha' },
-    { donde: 'Descripción §2', que: 'Datos técnicos del bien' },
-    { donde: 'Tabla §1', que: 'Referencia, inspector (lista) y cargo' },
-    { donde: 'Estado general §2.1', que: 'Se completa con locomoción, función y estado operativo de §2' },
-    { donde: 'Registro fotográfico (final)', que: 'Hasta 12 fotos de soporte' },
+    { donde: t('machinery.ui.guide.items.foto.where'), que: t('machinery.ui.guide.items.foto.what') },
+    { donde: t('machinery.ui.guide.items.encabezado.where'), que: t('machinery.ui.guide.items.encabezado.what') },
+    { donde: t('machinery.ui.guide.items.descripcion.where'), que: t('machinery.ui.guide.items.descripcion.what') },
+    { donde: t('machinery.ui.guide.items.tabla.where'), que: t('machinery.ui.guide.items.tabla.what') },
+    { donde: t('machinery.ui.guide.items.estado.where'), que: t('machinery.ui.guide.items.estado.what') },
+    { donde: t('machinery.ui.guide.items.registro.where'), que: t('machinery.ui.guide.items.registro.what') },
   ];
   return (
     <div
       className="mb-6 rounded-lg border p-4 text-sm"
-      style={{ borderColor: t.borderColor, backgroundColor: t.accentSoft, color: t.textPrimary }}
+      style={{ borderColor: mq.borderColor, backgroundColor: mq.accentSoft, color: mq.textPrimary }}
     >
-      <p className="font-semibold mb-2">Guía de llenado — escriba una sola vez</p>
-      <ul className="space-y-1 text-xs sm:text-sm" style={{ color: t.textSecondary }}>
+      <p className="font-semibold mb-2">{t('machinery.ui.guide.title')}</p>
+      <ul className="space-y-1 text-xs sm:text-sm" style={{ color: mq.textSecondary }}>
         {items.map((item) => (
           <li key={item.donde}>
-            <span style={{ color: t.textPrimary }}>{item.donde}:</span> {item.que}
+            <span style={{ color: mq.textPrimary }}>{item.donde}:</span> {item.que}
           </li>
         ))}
       </ul>

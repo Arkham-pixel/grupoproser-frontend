@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaRobot, FaPaperPlane, FaTimes, FaLightbulb, FaChevronUp, FaChevronDown } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api.js';
 import { BASE_URL } from '../../config/apiConfig.js';
 
 export default function ChatbotIA({ formData, onInputChange }) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -212,7 +214,7 @@ onInputChange(accion.campo, accion.valor);
         const errorMessage = {
           id: Date.now() + 1,
           tipo: 'ia',
-          contenido: '⏳ Verificando configuración de ChatGPT... Por favor espera.',
+          contenido: t('adjustment.ui.chatbot.checkingConfig'),
           timestamp: new Date()
         };
         setMessages(prev => [...prev, errorMessage]);
@@ -222,7 +224,7 @@ onInputChange(accion.campo, accion.valor);
       const errorMessage = {
         id: Date.now() + 1,
         tipo: 'ia',
-        contenido: '❌ Error al procesar tu mensaje. Por favor, intenta de nuevo.',
+        contenido: t('adjustment.ui.chatbot.error'),
         timestamp: new Date()
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -252,7 +254,7 @@ onInputChange(accion.campo, accion.valor);
       const mensajeBienvenida = {
         id: Date.now(),
         tipo: 'ia',
-        contenido: `¡Hola! 👋 Soy tu asistente IA para llenar el formulario de ajustes.\n\n**Puedo ayudarte a:**\n• Llenar campos automáticamente con lenguaje natural\n• Responder preguntas sobre el formulario\n• Sugerir información basada en el contexto\n\n**Ejemplos de uso:**\n• "El siniestro fue un incendio el 15 de enero en Bogotá"\n• "Llena el campo de antecedentes con: [tu texto]"\n• "Es un robo, ocurrió ayer a las 10pm, la aseguradora es Seguros Bolívar"\n• "¿Qué información falta en el formulario?"\n\n¡Escribe tu mensaje y te ayudo! 😊`,
+        contenido: t('adjustment.ui.chatbot.welcome'),
         icono: '🤖',
         timestamp: new Date()
       };
@@ -276,12 +278,12 @@ onInputChange(accion.campo, accion.valor);
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white p-4 rounded-full shadow-lg transition-all duration-300 z-[9999] group animate-pulse border-2 border-white"
-          title="Asistente IA - Haz clic para abrir"
+          title={t('adjustment.ui.chatbot.title')}
           style={{ zIndex: 9999 }}
         >
           <FaRobot className="h-6 w-6" />
           <div className="absolute right-full mr-3 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">
-            🤖 Asistente IA
+            🤖 {t('adjustment.ui.chatbot.title')}
           </div>
         </button>
       )}
@@ -294,12 +296,12 @@ onInputChange(accion.campo, accion.valor);
             <div className="flex items-center space-x-2">
               <FaRobot className="h-5 w-5" />
               <div>
-                <h3 className="font-semibold">Asistente IA</h3>
+                <h3 className="font-semibold">{t('adjustment.ui.chatbot.title')}</h3>
                 {chatgptConfigurado === true && (
-                  <span className="text-xs text-green-200">Powered by ChatGPT</span>
+                  <span className="text-xs text-green-200">{t('adjustment.ui.chatbot.poweredBy')}</span>
                 )}
                 {chatgptConfigurado === false && (
-                  <span className="text-xs text-yellow-200">Modo básico</span>
+                  <span className="text-xs text-yellow-200">{t('adjustment.ui.ia.basicMode')}</span>
                 )}
               </div>
             </div>
@@ -307,14 +309,14 @@ onInputChange(accion.campo, accion.valor);
               <button
                 onClick={() => setIsMinimized(!isMinimized)}
                 className="text-white hover:text-gray-200 transition-colors"
-                title={isMinimized ? "Expandir" : "Minimizar"}
+                title={isMinimized ? t('adjustment.ui.chatbot.expand') : t('adjustment.ui.chatbot.minimize')}
               >
                 {isMinimized ? <FaChevronUp className="h-4 w-4" /> : <FaChevronDown className="h-4 w-4" />}
               </button>
               <button
                 onClick={() => setIsOpen(false)}
                 className="text-white hover:text-gray-200 transition-colors"
-                title="Cerrar"
+                title={t('adjustment.ui.chatbot.close')}
               >
                 <FaTimes className="h-5 w-5" />
               </button>
@@ -336,40 +338,34 @@ onInputChange(accion.campo, accion.valor);
                   <div className="text-center text-gray-500 py-8">
                     <FaLightbulb className="h-12 w-12 mx-auto mb-3 text-blue-400" />
                     <p className="text-sm font-medium mb-2">
-                      ¡Hola! Soy tu asistente IA 🤖
+                      {t('adjustment.ui.chatbot.welcome')}
                     </p>
                     {chatgptConfigurado === true && (
                       <p className="text-xs text-green-600 mb-2 font-semibold">
-                        ✨ Powered by ChatGPT
+                        ✨ {t('adjustment.ui.chatbot.poweredBy')}
                       </p>
                     )}
                     {chatgptConfigurado === false && (
                       <p className="text-xs text-red-600 mb-2 font-semibold">
-                        ⚠️ ChatGPT no configurado
+                        ⚠️ {t('adjustment.ui.chatbot.error')}
                       </p>
                     )}
                     <p className="text-xs text-gray-400 mb-4">
                       {chatgptConfigurado === true 
-                        ? "Pregúntame cualquier cosa sobre el formulario. Usaré ChatGPT para ayudarte."
-                        : "Para usar el asistente, configura ChatGPT en el servidor backend."
+                        ? t('adjustment.ui.chatbot.welcome')
+                        : t('adjustment.ui.chatbot.checkingConfig')
                       }
                     </p>
                     {chatgptConfigurado === true && (
                       <div className="space-y-2 text-xs">
                         <div className="bg-white p-2 rounded border">
-                          <p className="font-medium text-blue-600">📋 "¿Cómo lleno el campo reporte?"</p>
+                          <p className="font-medium text-blue-600">📋 "{t('adjustment.ui.chatbot.example1')}"</p>
                         </div>
                         <div className="bg-white p-2 rounded border">
-                          <p className="font-medium text-green-600">📖 "Explica la sección de antecedentes"</p>
+                          <p className="font-medium text-green-600">📖 "{t('adjustment.ui.chatbot.example2')}"</p>
                         </div>
                         <div className="bg-white p-2 rounded border">
-                          <p className="font-medium text-purple-600">💰 "¿Qué significa reserva sugerida?"</p>
-                        </div>
-                        <div className="bg-white p-2 rounded border">
-                          <p className="font-medium text-orange-600">🏙️ "El siniestro fue un incendio el 15 de enero en Bogotá"</p>
-                        </div>
-                        <div className="bg-white p-2 rounded border">
-                          <p className="font-medium text-blue-600">✍️ "Llena el campo de antecedentes con: [tu texto]"</p>
+                          <p className="font-medium text-purple-600">💰 "{t('adjustment.ui.chatbot.example3')}"</p>
                         </div>
                       </div>
                     )}
@@ -448,14 +444,14 @@ onInputChange(accion.campo, accion.valor);
                     value={inputMessage}
                     onChange={(e) => setInputMessage(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Escribe tu pregunta..."
+                    placeholder={t('adjustment.ui.chatbot.placeholder')}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   />
                   <button
                     onClick={enviarMensaje}
                     disabled={!inputMessage.trim()}
                     className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-400 text-white p-2 rounded-md transition-all duration-200 disabled:cursor-not-allowed"
-                    title="Enviar mensaje"
+                    title={t('adjustment.ui.chatbot.send')}
                   >
                     <FaPaperPlane className="h-4 w-4" />
                   </button>
@@ -466,9 +462,9 @@ onInputChange(accion.campo, accion.valor);
                   <button
                     onClick={limpiarChat}
                     className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
-                    title="Limpiar chat"
+                    title={t('adjustment.ui.chatbot.clearChat')}
                   >
-                    🗑️ Limpiar chat
+                    🗑️ {t('adjustment.ui.chatbot.clearChat')}
                   </button>
                   <span className="text-xs text-gray-400">
                     {messages.length} mensaje{messages.length !== 1 ? 's' : ''}

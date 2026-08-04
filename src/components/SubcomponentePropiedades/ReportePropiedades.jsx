@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import { FaCog, FaFileExcel } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -126,6 +127,7 @@ const celdaValor = (item, clave) => {
 };
 
 const ReportePropiedades = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [casos, setCasos] = useState([]);
   const [filtrados, setFiltrados] = useState([]);
@@ -164,11 +166,11 @@ const ReportePropiedades = () => {
       setFiltrados(data);
     } catch (err) {
       console.error('Error cargando reporte Propiedades:', err);
-      setError(err.message || 'Error al cargar los casos');
+      setError(err.message || t('properties.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     recargar();
@@ -194,14 +196,14 @@ const ReportePropiedades = () => {
     if (!registro?._id) {
       setAviso({
         open: true,
-        titulo: 'No se puede eliminar',
-        mensaje: 'Este registro no tiene identificador válido.',
+        titulo: t('properties.report.cannotDelete'),
+        mensaje: t('properties.report.invalidRecord'),
         tipo: 'error',
       });
       return;
     }
     setConfirmEliminar({ open: true, registro });
-  }, []);
+  }, [t]);
 
   const confirmarEliminar = useCallback(async () => {
     const registro = confirmEliminar.registro;
@@ -215,8 +217,8 @@ const ReportePropiedades = () => {
       setConfirmEliminar({ open: false, registro: null });
       setAviso({
         open: true,
-        titulo: 'Eliminado',
-        mensaje: `El caso ${registro.consecutivo || registro.nombreCliente || ''} fue eliminado.`,
+        titulo: t('properties.report.deleted'),
+        mensaje: t('properties.report.caseDeleted', { caseNumber: registro.consecutivo || registro.nombreCliente || '' }),
         tipo: 'success',
       });
     } catch (err) {
@@ -224,14 +226,14 @@ const ReportePropiedades = () => {
       setConfirmEliminar({ open: false, registro: null });
       setAviso({
         open: true,
-        titulo: 'Error al eliminar',
-        mensaje: err.message || 'No se pudo eliminar el registro.',
+        titulo: t('properties.report.deleteError'),
+        mensaje: err.message || t('properties.report.deleteErrorMessage'),
         tipo: 'error',
       });
     } finally {
       setEliminando(false);
     }
-  }, [confirmEliminar.registro]);
+  }, [confirmEliminar.registro, t]);
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const clases = useMemo(() => buildOpcionesFiltro(casos, 'claseInmueble'), [casos]);
@@ -334,8 +336,8 @@ const ReportePropiedades = () => {
     if (filtrados.length === 0) {
       setAviso({
         open: true,
-        titulo: 'Sin datos',
-        mensaje: 'No hay datos para exportar con los filtros actuales.',
+        titulo: t('properties.report.noData'),
+        mensaje: t('properties.report.noDataExport'),
         tipo: 'warning',
       });
       return;
@@ -371,8 +373,8 @@ const ReportePropiedades = () => {
       console.error('Error exportando Excel Propiedades:', err);
       setAviso({
         open: true,
-        titulo: 'Error al exportar',
-        mensaje: 'No se pudo generar el Excel.',
+        titulo: t('properties.report.exportError'),
+        mensaje: t('properties.report.exportErrorMessage'),
         tipo: 'error',
       });
     }
@@ -418,42 +420,42 @@ const ReportePropiedades = () => {
     <div className={`${expressScope} ${reportRoot}`}>
       <div className={pageWrapWide}>
         <PropiedadesPageHeader
-          title="Reporte Propiedades"
-          subtitle="Gestione los casos y abra el formulario de inspección desde aquí. Los datos básicos del caso alimentan la inspección."
+          title={t('properties.report.title')}
+          subtitle={t('properties.report.subtitle')}
           activePath="/propiedades/reporte"
           actions={
             <>
               <button type="button" className={expressBtnSecondary} onClick={abrirPersonalizarColumnas}>
                 <FaCog className="mr-2" />
-                Columnas
+                {t('properties.report.columns')}
               </button>
               <button type="button" className={expressBtnSuccess} onClick={exportarExcel}>
                 <FaFileExcel className="mr-2" />
-                Excel
+                {t('properties.report.excel')}
               </button>
               <button
                 type="button"
                 className={expressBtnPrimary}
                 onClick={() => navigate('/propiedades/carga')}
               >
-                Nuevo caso
+                {t('properties.page.newCase')}
               </button>
             </>
           }
         />
 
-        <ExpressFilterSection title="Filtros" onClear={limpiarFiltros} showClear={filtrosActivos}>
+        <ExpressFilterSection title={t('properties.report.filters')} onClear={limpiarFiltros} showClear={filtrosActivos}>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
-            <Campo label="Buscar">
+            <Campo label={t('common.search')}>
               <InputFenix
                 value={busqueda}
                 onChange={(e) => setBusqueda(e.target.value)}
-                placeholder="Cliente, dirección, póliza..."
+                placeholder={t('properties.report.searchPlaceholder')}
               />
             </Campo>
-            <Campo label="Ciudad">
+            <Campo label={t('properties.fields.city')}>
               <SelectFenix value={filtroCiudad} onChange={(e) => setFiltroCiudad(e.target.value)}>
-                <option value="">Todas</option>
+                <option value="">{t('properties.report.all')}</option>
                 {ciudades.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -461,9 +463,9 @@ const ReportePropiedades = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Clase">
+            <Campo label={t('properties.report.class')}>
               <SelectFenix value={filtroClase} onChange={(e) => setFiltroClase(e.target.value)}>
-                <option value="">Todas</option>
+                <option value="">{t('properties.report.all')}</option>
                 {clases.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -471,12 +473,12 @@ const ReportePropiedades = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Responsable">
+            <Campo label={t('properties.report.responsible')}>
               <SelectFenix
                 value={filtroResponsable}
                 onChange={(e) => setFiltroResponsable(e.target.value)}
               >
-                <option value="">Todos</option>
+                <option value="">{t('properties.report.all')}</option>
                 {responsables.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -484,24 +486,24 @@ const ReportePropiedades = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Inspección">
+            <Campo label={t('properties.report.inspection')}>
               <SelectFenix
                 value={filtroInspeccion}
                 onChange={(e) => setFiltroInspeccion(e.target.value)}
               >
-                <option value="">Todas</option>
-                <option value="con">Con inspección</option>
-                <option value="sin">Sin inspección</option>
+                <option value="">{t('properties.report.all')}</option>
+                <option value="con">{t('properties.report.withInspection')}</option>
+                <option value="sin">{t('properties.report.withoutInspection')}</option>
               </SelectFenix>
             </Campo>
-            <Campo label="Desde">
+            <Campo label={t('properties.report.from')}>
               <InputFenix
                 type="date"
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
               />
             </Campo>
-            <Campo label="Hasta">
+            <Campo label={t('properties.report.to')}>
               <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </Campo>
           </div>
@@ -515,10 +517,10 @@ const ReportePropiedades = () => {
 
         <div className={expressTableWrap}>
           {loading ? (
-            <p className="p-6 text-center font-body text-sm text-gray-500">Cargando casos...</p>
+            <p className="p-6 text-center font-body text-sm text-gray-500">{t('properties.report.loadingCases')}</p>
           ) : filtrados.length === 0 ? (
             <p className="p-6 text-center font-body text-sm text-gray-500">
-              No hay casos con los filtros actuales.
+              {t('properties.report.noCases')}
             </p>
           ) : (
             <div className="overflow-x-auto">
@@ -534,7 +536,7 @@ const ReportePropiedades = () => {
                       </th>
                     ))}
                     <th className="whitespace-nowrap px-3 py-2 text-right font-body text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-                      Acciones
+                      {t('properties.report.actions')}
                     </th>
                   </tr>
                 </thead>
@@ -568,7 +570,7 @@ const ReportePropiedades = () => {
           {!loading && filtrados.length > 0 && (
             <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
               <p className="font-body text-xs text-gray-500">
-                Mostrando {indiceDesde}–{indiceHasta} de {filtrados.length}
+                {t('properties.report.showing', { from: indiceDesde, to: indiceHasta, total: filtrados.length })}
               </p>
               <div className="flex items-center gap-2">
                 <button
@@ -577,7 +579,7 @@ const ReportePropiedades = () => {
                   disabled={paginaActual <= 1}
                   onClick={() => setPaginaActual((p) => Math.max(1, p - 1))}
                 >
-                  Anterior
+                  {t('properties.report.previous')}
                 </button>
                 <span className="font-body text-xs text-gray-600 dark:text-gray-300">
                   {paginaActual} / {totalPaginas}
@@ -588,7 +590,7 @@ const ReportePropiedades = () => {
                   disabled={paginaActual >= totalPaginas}
                   onClick={() => setPaginaActual((p) => Math.min(totalPaginas, p + 1))}
                 >
-                  Siguiente
+                  {t('properties.report.next')}
                 </button>
               </div>
             </div>
@@ -602,7 +604,7 @@ const ReportePropiedades = () => {
           setModalAbierto(false);
           setRegistroEditar(null);
         }}
-        title="Gestionar caso Propiedades"
+        title={t('properties.report.manageCase')}
         wide
       >
         <FormularioCasoPropiedades
@@ -623,11 +625,11 @@ const ReportePropiedades = () => {
       <ExpressModal
         open={modalColumnasOpen}
         onClose={() => setModalColumnasOpen(false)}
-        title="Personalizar columnas"
+        title={t('properties.report.customizeColumns')}
       >
         <div className="p-4 sm:p-6">
           <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-300">
-            Arrastra para reordenar. Marca las columnas que quieres ver.
+            {t('properties.report.columnsHelp')}
           </p>
           <ul className="mb-4 max-h-80 space-y-1 overflow-y-auto">
             {columnasOrdenadas.map((col, index) => (
@@ -660,10 +662,10 @@ const ReportePropiedades = () => {
               className={expressBtnSecondary}
               onClick={() => setModalColumnasOpen(false)}
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button type="button" className={expressBtnPrimary} onClick={guardarColumnasPersonalizadas}>
-              Guardar
+              {t('common.save')}
             </button>
           </div>
         </div>
@@ -672,12 +674,12 @@ const ReportePropiedades = () => {
       <ExpressAvisoModal
         open={confirmEliminar.open}
         onClose={() => !eliminando && setConfirmEliminar({ open: false, registro: null })}
-        titulo="Eliminar caso"
-        mensaje={`¿Eliminar el caso ${confirmEliminar.registro?.consecutivo || confirmEliminar.registro?.nombreCliente || ''}?`}
+        titulo={t('properties.report.deleteCase')}
+        mensaje={t('properties.report.deleteConfirm', { caseNumber: confirmEliminar.registro?.consecutivo || confirmEliminar.registro?.nombreCliente || '' })}
         tipo="warning"
         onConfirm={confirmarEliminar}
-        confirmTexto="Eliminar"
-        cancelTexto="Cancelar"
+        confirmTexto={t('properties.report.delete')}
+        cancelTexto={t('common.cancel')}
         confirmando={eliminando}
       />
 

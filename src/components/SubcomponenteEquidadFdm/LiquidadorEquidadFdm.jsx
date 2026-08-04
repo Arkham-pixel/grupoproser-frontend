@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FaFileExcel,
   FaFilePdf,
@@ -53,12 +54,13 @@ function FilaTotal({ label, valor, destacado = false }) {
 }
 
 function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
+  const { t } = useTranslation();
   return (
     <section className={expressFormSection}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h3 className={`${expressSectionTitle} mb-0`}>{titulo}</h3>
         <button type="button" onClick={onAdd} className={expressBtnGhost}>
-          <FaPlus /> Agregar ítem
+          <FaPlus /> {t('equidadFdm.settlement.addItem')}
         </button>
       </div>
       <div className={expressTableWrap}>
@@ -66,9 +68,9 @@ function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
           <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
             <thead className={expressTableHead}>
               <tr>
-                <th className="px-3 py-2 w-12">N°</th>
-                <th className="px-3 py-2">Ítem</th>
-                <th className="px-3 py-2 min-w-[140px]">Valor</th>
+                <th className="px-3 py-2 w-12">{t('equidadFdm.settlement.colNumber')}</th>
+                <th className="px-3 py-2">{t('equidadFdm.settlement.colItem')}</th>
+                <th className="px-3 py-2 min-w-[140px]">{t('equidadFdm.settlement.colValue')}</th>
                 <th className="px-3 py-2 w-12" />
               </tr>
             </thead>
@@ -76,7 +78,7 @@ function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
               {!items.length ? (
                 <tr>
                   <td colSpan={4} className="px-3 py-6 text-center text-sm text-gray-500">
-                    Sin ítems. Agregue filas o importe un Excel del modelo de liquidación.
+                    {t('equidadFdm.settlement.noItems')}
                   </td>
                 </tr>
               ) : (
@@ -87,14 +89,14 @@ function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
                       <InputFenix
                         value={item.item}
                         onChange={(e) => onChange(item.id, 'item', e.target.value)}
-                        placeholder="Descripción del bien"
+                        placeholder={t('equidadFdm.settlement.itemDescriptionPlaceholder')}
                       />
                     </td>
                     <td className="px-2 py-2">
                       <InputFenix
                         value={item.valor}
                         onChange={(e) => onChange(item.id, 'valor', e.target.value)}
-                        placeholder="$ 0"
+                        placeholder={t('equidadFdm.settlement.zeroAmountPlaceholder')}
                       />
                     </td>
                     <td className="px-2 py-2 text-center">
@@ -102,7 +104,7 @@ function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
                         type="button"
                         onClick={() => onRemove(item.id)}
                         className="rounded p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                        aria-label="Eliminar"
+                        aria-label={t('equidadFdm.settlement.delete')}
                       >
                         <FaTrash />
                       </button>
@@ -125,6 +127,7 @@ export default function LiquidadorEquidadFdm({
   guardandoCaso = false,
   tieneLiquidadorGuardado = false,
 }) {
+  const { t } = useTranslation();
   const fileRef = useRef(null);
   const [liquidador, setLiquidador] = useState(() => mapCasoFdmALiquidador(casoFdm || {}));
   const [importando, setImportando] = useState(false);
@@ -202,13 +205,14 @@ export default function LiquidadorEquidadFdm({
       const parseado = await parsearLiquidadorFdmExcel(file);
       setLiquidador(parseado);
       setMensajeImport(
-        `Excel importado: ${parseado.encabezado?.asegurado || 'sin nombre'} · ${
-          (parseado.contenidos?.length || 0) + (parseado.edificios?.length || 0)
-        } ítem(s).`
+        t('equidadFdm.settlement.importSuccess', {
+          name: parseado.encabezado?.asegurado || t('equidadFdm.settlement.unnamed'),
+          count: (parseado.contenidos?.length || 0) + (parseado.edificios?.length || 0),
+        })
       );
     } catch (err) {
       console.error(err);
-      setError(err.message || 'No se pudo leer el Excel del liquidador.');
+      setError(err.message || t('equidadFdm.settlement.importError'));
     } finally {
       setImportando(false);
     }
@@ -222,7 +226,7 @@ export default function LiquidadorEquidadFdm({
       setMostrarPreview(false);
     } catch (err) {
       console.error(err);
-      setError('No se pudo generar el Word de constancia.');
+      setError(t('equidadFdm.settlement.wordError'));
     } finally {
       setDescargando(false);
     }
@@ -236,7 +240,7 @@ export default function LiquidadorEquidadFdm({
       setMostrarPreview(false);
     } catch (err) {
       console.error(err);
-      setError('No se pudo generar el PDF del liquidador.');
+      setError(t('equidadFdm.settlement.pdfError'));
     } finally {
       setDescargando(false);
     }
@@ -249,7 +253,7 @@ export default function LiquidadorEquidadFdm({
       await descargarLiquidadorFdmExcel(liquidador, totales);
     } catch (err) {
       console.error(err);
-      setError('No se pudo generar el Excel del modelo de liquidación.');
+      setError(t('equidadFdm.settlement.excelError'));
     } finally {
       setDescargando(false);
     }
@@ -257,6 +261,10 @@ export default function LiquidadorEquidadFdm({
 
   const enc = liquidador.encabezado || {};
   const ded = liquidador.deducible || {};
+  const qtySmmlv = String(totales.cantidadSMMLV).replace('.', ',');
+  const deductibleBasis = totales.usaSMMLV
+    ? t('equidadFdm.settlement.basisSmmlv')
+    : t('equidadFdm.settlement.basisPercent');
 
   return (
     <div className="space-y-5">
@@ -276,7 +284,9 @@ export default function LiquidadorEquidadFdm({
             disabled={importando || guardandoCaso}
           >
             <FaFileUpload />
-            {importando ? 'Importando…' : 'Subir Excel liquidador'}
+            {importando
+              ? t('equidadFdm.settlement.importing')
+              : t('equidadFdm.settlement.uploadExcel')}
           </button>
           {onGuardarEnCaso && (
             <button
@@ -286,10 +296,10 @@ export default function LiquidadorEquidadFdm({
               disabled={guardandoCaso || importando}
             >
               {guardandoCaso
-                ? 'Guardando…'
+                ? t('equidadFdm.actions.saving')
                 : tieneLiquidadorGuardado
-                  ? 'Actualizar en caso'
-                  : 'Guardar en caso'}
+                  ? t('equidadFdm.settlement.updateCase')
+                  : t('equidadFdm.settlement.saveCase')}
             </button>
           )}
         </div>
@@ -301,7 +311,9 @@ export default function LiquidadorEquidadFdm({
             disabled={descargando || importando || guardandoCaso}
           >
             <FaFileExcel />
-            {descargando ? 'Generando…' : 'Descargar Excel'}
+            {descargando
+              ? t('equidadFdm.settlement.generating')
+              : t('equidadFdm.settlement.downloadExcel')}
           </button>
           <button
             type="button"
@@ -310,7 +322,9 @@ export default function LiquidadorEquidadFdm({
             disabled={descargando || importando || guardandoCaso}
           >
             <FaFilePdf />
-            {descargando ? 'Generando…' : 'Descargar PDF liquidador'}
+            {descargando
+              ? t('equidadFdm.settlement.generating')
+              : t('equidadFdm.settlement.downloadPdf')}
           </button>
           <button
             type="button"
@@ -319,14 +333,14 @@ export default function LiquidadorEquidadFdm({
             disabled={descargando}
           >
             <FaFileWord />
-            Generar constancia Word
+            {t('equidadFdm.settlement.generateWord')}
           </button>
         </div>
       </div>
 
       {tieneLiquidadorGuardado && (
         <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-body text-xs text-sky-900 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-100">
-          Este caso ya tiene liquidador guardado. Al actualizar se sincronizan el valor indemnizado y los totales del caso.
+          {t('equidadFdm.settlement.existingSettlementNotice')}
         </p>
       )}
       {mensajeImport && (
@@ -341,56 +355,56 @@ export default function LiquidadorEquidadFdm({
       )}
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>Datos del asegurado / póliza</h3>
+        <h3 className={expressSectionTitle}>{t('equidadFdm.settlement.insuredPolicySection')}</h3>
         <div className={grid2}>
-          <Campo label="Tomador">
+          <Campo label={t('equidadFdm.settlement.policyholder')}>
             <InputFenix value={enc.tomador} onChange={(e) => actualizar('encabezado.tomador', e.target.value)} />
           </Campo>
-          <Campo label="Asegurado / beneficiario">
+          <Campo label={t('equidadFdm.settlement.insuredBeneficiary')}>
             <InputFenix value={enc.asegurado} onChange={(e) => actualizar('encabezado.asegurado', e.target.value)} />
           </Campo>
-          <Campo label="Cédula">
+          <Campo label={t('equidadFdm.fields.id')}>
             <InputFenix value={enc.cedula} onChange={(e) => actualizar('encabezado.cedula', e.target.value)} />
           </Campo>
-          <Campo label="Póliza">
+          <Campo label={t('equidadFdm.settlement.policy')}>
             <InputFenix value={enc.poliza} onChange={(e) => actualizar('encabezado.poliza', e.target.value)} />
           </Campo>
-          <Campo label="Orden">
+          <Campo label={t('equidadFdm.fields.order')}>
             <InputFenix value={enc.orden} onChange={(e) => actualizar('encabezado.orden', e.target.value)} />
           </Campo>
-          <Campo label="Siniestro">
+          <Campo label={t('equidadFdm.fields.claim')}>
             <InputFenix value={enc.siniestro} onChange={(e) => actualizar('encabezado.siniestro', e.target.value)} />
           </Campo>
-          <Campo label="Caso">
+          <Campo label={t('equidadFdm.fields.case')}>
             <InputFenix value={enc.caso} onChange={(e) => actualizar('encabezado.caso', e.target.value)} />
           </Campo>
-          <Campo label="Evento / cobertura">
+          <Campo label={t('equidadFdm.settlement.eventCoverage')}>
             <InputFenix value={enc.evento} onChange={(e) => actualizar('encabezado.evento', e.target.value)} />
           </Campo>
-          <Campo label="Fecha siniestro">
+          <Campo label={t('equidadFdm.settlement.claimDate')}>
             <InputFenix
               type="date"
               value={enc.fechaSiniestro}
               onChange={(e) => actualizar('encabezado.fechaSiniestro', e.target.value)}
             />
           </Campo>
-          <Campo label="Dirección afectada">
+          <Campo label={t('equidadFdm.fields.affectedAddress')}>
             <InputFenix value={enc.direccion} onChange={(e) => actualizar('encabezado.direccion', e.target.value)} />
           </Campo>
-          <Campo label="Ramo">
+          <Campo label={t('equidadFdm.settlement.lineOfBusiness')}>
             <InputFenix value={enc.ramo} onChange={(e) => actualizar('encabezado.ramo', e.target.value)} />
           </Campo>
-          <Campo label="Agencia">
+          <Campo label={t('equidadFdm.settlement.agency')}>
             <InputFenix value={enc.agencia} onChange={(e) => actualizar('encabezado.agencia', e.target.value)} />
           </Campo>
-          <Campo label="Ciudad firma (constancia)">
+          <Campo label={t('equidadFdm.settlement.signatureCity')}>
             <InputFenix
               value={enc.ciudadFirma}
               onChange={(e) => actualizar('encabezado.ciudadFirma', e.target.value)}
-              placeholder="Ej: Lorica"
+              placeholder={t('equidadFdm.settlement.signatureCityPlaceholder')}
             />
           </Campo>
-          <Campo label="Fecha impreso / firma">
+          <Campo label={t('equidadFdm.settlement.printSignDate')}>
             <InputFenix
               type="date"
               value={enc.fechaImpreso}
@@ -401,7 +415,7 @@ export default function LiquidadorEquidadFdm({
       </section>
 
       <TablaItems
-        titulo="Contenidos"
+        titulo={t('equidadFdm.settlement.contents')}
         items={liquidador.contenidos || []}
         onAdd={() => agregarItem('contenidos')}
         onChange={(id, campo, valor) => actualizarItem('contenidos', id, campo, valor)}
@@ -409,7 +423,7 @@ export default function LiquidadorEquidadFdm({
       />
 
       <TablaItems
-        titulo="Edificios"
+        titulo={t('equidadFdm.settlement.buildings')}
         items={liquidador.edificios || []}
         onAdd={() => agregarItem('edificios')}
         onChange={(id, campo, valor) => actualizarItem('edificios', id, campo, valor)}
@@ -417,9 +431,9 @@ export default function LiquidadorEquidadFdm({
       />
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>Deducible y subsidio</h3>
+        <h3 className={expressSectionTitle}>{t('equidadFdm.settlement.deductibleSubsidySection')}</h3>
         <div className={grid3}>
-          <Campo label="Año SMMLV">
+          <Campo label={t('equidadFdm.settlement.smmlvYear')}>
             <SelectFenix value={ded.anioSMMLV ?? 2026} onChange={(e) => actualizarAnioSmmlv(e.target.value)}>
               {Object.keys(SMMLV_POR_ANIO).map((anio) => (
                 <option key={anio} value={anio}>
@@ -428,13 +442,13 @@ export default function LiquidadorEquidadFdm({
               ))}
             </SelectFenix>
           </Campo>
-          <Campo label="Valor SMMLV">
+          <Campo label={t('equidadFdm.settlement.smmlvValue')}>
             <InputFenix
               value={ded.valorSMMLV ?? ''}
               onChange={(e) => actualizar('deducible.valorSMMLV', e.target.value)}
             />
           </Campo>
-          <Campo label="Cantidad SMMLV (ej. 0.75)">
+          <Campo label={t('equidadFdm.settlement.smmlvQuantity')}>
             <InputFenix
               type="number"
               min="0"
@@ -448,7 +462,7 @@ export default function LiquidadorEquidadFdm({
               }
             />
           </Campo>
-          <Campo label="Porcentaje deducible (%)">
+          <Campo label={t('equidadFdm.settlement.deductiblePercent')}>
             <InputFenix
               type="number"
               min="0"
@@ -463,7 +477,7 @@ export default function LiquidadorEquidadFdm({
               }
             />
           </Campo>
-          <Campo label="Subsidio (COP)">
+          <Campo label={t('equidadFdm.fields.subsidy')}>
             <InputFenix
               value={liquidador.subsidio ?? 0}
               onChange={(e) => actualizar('subsidio', e.target.value)}
@@ -472,22 +486,22 @@ export default function LiquidadorEquidadFdm({
         </div>
 
         <div className="mt-4 space-y-2">
-          <FilaTotal label="Subtotal contenidos" valor={totales.subtotalContenidos} />
-          <FilaTotal label="Subtotal edificios" valor={totales.subtotalEdificios} />
-          <FilaTotal label="PÉRDIDA ESTABLECIDA" valor={totales.totalPerdida} />
-          <FilaTotal label="(-) DEDUCIBLE 10%" valor={totales.deduciblePorcentajeExcel} />
+          <FilaTotal label={t('equidadFdm.settlement.subtotalContents')} valor={totales.subtotalContenidos} />
+          <FilaTotal label={t('equidadFdm.settlement.subtotalBuildings')} valor={totales.subtotalEdificios} />
+          <FilaTotal label={t('equidadFdm.settlement.establishedLoss')} valor={totales.totalPerdida} />
+          <FilaTotal label={t('equidadFdm.settlement.deductiblePercentLine')} valor={totales.deduciblePorcentajeExcel} />
           <FilaTotal
-            label={`(-) DEDUCIBLE ${String(totales.cantidadSMMLV).replace('.', ',')} SMMLV`}
+            label={t('equidadFdm.settlement.deductibleSmmlvLine', { qty: qtySmmlv })}
             valor={totales.deducibleSMMLV}
           />
           <FilaTotal
-            label={`DEDUCIBLE APLICADO (${totales.usaSMMLV ? '0,75 SMMLV' : '10%'})`}
+            label={t('equidadFdm.settlement.deductibleAppliedLine', { basis: deductibleBasis })}
             valor={totales.deducibleAplicado}
           />
-          <FilaTotal label="(+) SUBSIDIO" valor={totales.subsidio} />
-          <FilaTotal label="(=) INDEMNIZACIÓN" valor={totales.totalIndemnizar} destacado />
+          <FilaTotal label={t('equidadFdm.settlement.subsidyLine')} valor={totales.subsidio} />
+          <FilaTotal label={t('equidadFdm.settlement.indemnityLine')} valor={totales.totalIndemnizar} destacado />
           <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
-            Igual que Excel: MAX(0,75×SMMLV, 10% pérdida) → pérdida − deducible + subsidio
+            {t('equidadFdm.settlement.formulaHint')}
           </p>
           <p className="font-body text-xs italic text-gray-600 dark:text-gray-300">
             {preview.indemnizacionLetras}
@@ -504,7 +518,7 @@ export default function LiquidadorEquidadFdm({
           <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-[#1A1A1A]">
             <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
               <h2 className="text-center font-heading text-lg font-bold">
-                Constancia de Indemnización y Paz y Salvo
+                {t('equidadFdm.settlement.certificateTitle')}
               </h2>
               <p className="text-center font-body text-sm text-gray-600">
                 {preview.asegurado} · ${preview.indemnizacion}
@@ -512,16 +526,25 @@ export default function LiquidadorEquidadFdm({
             </div>
             <div className="space-y-3 px-5 py-5 font-body text-sm text-gray-800 dark:text-gray-200">
               <p>
-                <strong>Póliza:</strong> {preview.poliza} · <strong>Orden:</strong> {preview.orden}
+                <strong>{t('equidadFdm.settlement.policy')}:</strong> {preview.poliza} ·{' '}
+                <strong>{t('equidadFdm.fields.order')}:</strong> {preview.orden}
               </p>
               <p className="text-justify leading-relaxed">
-                Evento <strong>{preview.evento}</strong> en {preview.direccion}, hechos el{' '}
-                {preview.fechaSiniestroLarga}.
+                {t('equidadFdm.settlement.certificateEvent', {
+                  event: preview.evento,
+                  address: preview.direccion,
+                  date: preview.fechaSiniestroLarga,
+                })}
               </p>
               <p className="text-justify leading-relaxed">
-                Indemnización: <strong>${preview.indemnizacion}</strong> ({preview.indemnizacionLetras})
-                — pérdida ${preview.totalPerdida} menos deducible {preview.tasaTxt} (${preview.deducible})
-                + subsidio ${preview.subsidio}.
+                {t('equidadFdm.settlement.certificateIndemnity', {
+                  indemnity: preview.indemnizacion,
+                  letters: preview.indemnizacionLetras,
+                  loss: preview.totalPerdida,
+                  rate: preview.tasaTxt,
+                  deductible: preview.deducible,
+                  subsidy: preview.subsidio,
+                })}
               </p>
               <div className="flex flex-wrap justify-end gap-2 pt-4">
                 <button
@@ -530,7 +553,7 @@ export default function LiquidadorEquidadFdm({
                   onClick={() => setMostrarPreview(false)}
                   disabled={descargando}
                 >
-                  Cerrar
+                  {t('equidadFdm.settlement.close')}
                 </button>
                 <button
                   type="button"
@@ -539,7 +562,9 @@ export default function LiquidadorEquidadFdm({
                   disabled={descargando}
                 >
                   <FaFileWord />
-                  {descargando ? 'Generando…' : 'Descargar Word'}
+                  {descargando
+                    ? t('equidadFdm.settlement.generating')
+                    : t('equidadFdm.settlement.downloadWord')}
                 </button>
               </div>
             </div>

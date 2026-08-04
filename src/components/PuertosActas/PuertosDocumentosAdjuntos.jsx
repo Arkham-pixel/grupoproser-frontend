@@ -1,10 +1,13 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 export default function PuertosDocumentosAdjuntos({
   tipos = { facturaComercial: false, listaEmpaque: false, docTransporte: false },
   onChangeTipos,
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
+
   const toggleTipo = (key) => {
     if (soloLectura) return;
     onChangeTipos?.({ ...tipos, [key]: !tipos[key] });
@@ -13,7 +16,9 @@ export default function PuertosDocumentosAdjuntos({
   return (
     <section className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
       <header className="px-5 py-3 bg-slate-100 dark:bg-slate-700/80 border-b border-slate-200 dark:border-slate-600">
-        <h3 className="font-semibold text-slate-800 dark:text-slate-100">Documentos adjuntos</h3>
+        <h3 className="font-semibold text-slate-800 dark:text-slate-100">
+          {t('ports.ui.actas.documents.title')}
+        </h3>
       </header>
 
       <div className="p-5">
@@ -26,7 +31,7 @@ export default function PuertosDocumentosAdjuntos({
               disabled={soloLectura}
               className="rounded border-slate-300"
             />
-            Factura Comercial
+            {t('ports.ui.actas.documents.facturaComercial')}
           </label>
           <label className="inline-flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-slate-300">
             <input
@@ -36,7 +41,7 @@ export default function PuertosDocumentosAdjuntos({
               disabled={soloLectura}
               className="rounded border-slate-300"
             />
-            Lista de Empaque
+            {t('ports.ui.actas.documents.listaEmpaque')}
           </label>
           <label className="inline-flex items-center gap-2 cursor-pointer text-sm text-slate-700 dark:text-slate-300">
             <input
@@ -46,7 +51,7 @@ export default function PuertosDocumentosAdjuntos({
               disabled={soloLectura}
               className="rounded border-slate-300"
             />
-            Doc. de Transporte
+            {t('ports.ui.actas.documents.docTransporte')}
           </label>
         </div>
       </div>

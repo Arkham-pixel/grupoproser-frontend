@@ -1,3 +1,6 @@
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaEnvelope, FaSync } from 'react-icons/fa';
@@ -66,6 +69,7 @@ function TarjetaAlerta({ alerta }) {
 }
 
 export default function AlertasComplex() {
+  useTranslation();
   const navigate = useNavigate();
   const [alertas, setAlertas] = useState(null);
   const [resumen, setResumen] = useState(null);
@@ -86,7 +90,7 @@ export default function AlertasComplex() {
       setResumen(resumenData);
       setAlertas(alertasData);
     } catch (e) {
-      setError(e.message || 'Error de conexión');
+      setError(e.message || t('complex.ui.alertas_complex.error_conexion'));
     } finally {
       setLoading(false);
     }
@@ -110,21 +114,21 @@ export default function AlertasComplex() {
       const data = await enviarAlertasAjustador(codigoResponsable);
       setModal({
         tipo: data.success ? 'success' : 'error',
-        titulo: data.success ? 'Correo enviado' : 'Error',
+        titulo: data.success ? t('complex.ui.alertas_complex.correo_enviado') : 'Error',
         mensaje: data.success
           ? `Alertas enviadas a ${codigoResponsable}`
-          : data.message || 'No se pudo enviar el correo',
+          : data.message || t('complex.ui.alertas_complex.no_enviar_correo'),
       });
     } catch {
-      setModal({ tipo: 'error', titulo: 'Error', mensaje: 'Error de conexión al enviar alertas' });
+      setModal({ tipo: 'error', titulo: 'Error', mensaje: t('complex.ui.alertas_complex.error_conexion_enviar') });
     }
   };
 
   const confirmarEnviarTodos = () => {
     setModal({
       tipo: 'confirmacion',
-      titulo: 'Enviar alertas a todos',
-      mensaje: '¿Enviar correos de alerta a todos los ajustadores con casos pendientes?',
+      titulo: t('complex.ui.alertas_complex.enviar_alertas_todos'),
+      mensaje: t('complex.ui.alertas_complex.confirmar_enviar_todos'),
       onConfirm: async () => {
         setModal(null);
         setLoading(true);
@@ -132,14 +136,14 @@ export default function AlertasComplex() {
           const data = await enviarAlertasTodos();
           setModal({
             tipo: data.success ? 'success' : 'error',
-            titulo: data.success ? 'Envío completado' : 'Error',
+            titulo: data.success ? t('complex.ui.alertas_complex.envio_completado') : 'Error',
             mensaje: data.success
-              ? `Alertas enviadas a ${data.data?.totalEnviados ?? 0} ajustador(es)`
+              ? t('complex.ui.alertas_complex.alertas_enviadas', { n: data.data?.totalEnviados ?? 0 })
               : data.message,
           });
           if (data.success) cargar();
         } catch {
-          setModal({ tipo: 'error', titulo: 'Error', mensaje: 'Error de conexión' });
+          setModal({ tipo: 'error', titulo: 'Error', mensaje: t('complex.ui.alertas_complex.error_conexion') });
         } finally {
           setLoading(false);
         }
@@ -199,8 +203,8 @@ export default function AlertasComplex() {
       <div className={`${complexScope} ${complexDashboardWrap}`}>
         <ComplexPageHeader
           badge="Complex · Soporte"
-          title="Sistema de alertas"
-          subtitle="Monitoreo global según el protocolo de tiempos. Los ajustadores ven sus alertas en Mis alertas."
+          title={t("complex.ui.alertas_complex.sistema_de_alertas")}
+          subtitle={t("complex.ui.alertas_complex.monitoreo_global_segun_el_protocolo_de_tiempos_los_ajust")}
           activePath="/complex/alertas"
           actions={
             <>
@@ -210,18 +214,14 @@ export default function AlertasComplex() {
                 disabled={loading}
                 className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
-                <FaEnvelope />
-                Enviar a todos
-              </button>
+                <FaEnvelope />{t("complex.ui.alertas_complex.enviar_a_todos")}</button>
               <button
                 type="button"
                 onClick={cargar}
                 disabled={loading}
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium dark:border-gray-700"
               >
-                <FaSync className={loading ? 'animate-spin' : ''} />
-                Actualizar
-              </button>
+                <FaSync className={loading ? 'animate-spin' : ''} />{t("complex.ui.alertas_complex.actualizar")}</button>
             </>
           }
         />
@@ -229,9 +229,7 @@ export default function AlertasComplex() {
         {error && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
             {error}
-            <button type="button" onClick={cargar} className="ml-3 underline">
-              Reintentar
-            </button>
+            <button type="button" onClick={cargar} className="ml-3 underline">{t("complex.ui.alertas_complex.reintentar")}</button>
           </div>
         )}
 
@@ -240,7 +238,7 @@ export default function AlertasComplex() {
             {[
               { label: 'Ajustadores', value: resumen.totalAjustadores },
               { label: 'Con alertas', value: resumen.ajustadoresConAlertas },
-              { label: 'Casos críticos', value: resumen.casosCriticos },
+              { label: t('complex.ui.alertas_complex.casos_criticos'), value: resumen.casosCriticos },
               { label: 'Total alertas', value: resumen.totalAlertas },
             ].map((m) => (
               <div
@@ -254,15 +252,15 @@ export default function AlertasComplex() {
           </div>
         )}
 
-        <ComplexFilterSection title="Filtros">
+        <ComplexFilterSection title={t("complex.ui.alertas_complex.filtros")}>
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block text-sm">
-              <span className="mb-1 block text-gray-600">Prioridad</span>
+              <span className="mb-1 block text-gray-600">{t("complex.ui.alertas_complex.prioridad")}</span>
               <SelectFenix
                 value={filtroPrioridad}
                 onChange={(e) => setFiltroPrioridad(e.target.value)}
               >
-                <option value="TODAS">Todas</option>
+                <option value="TODAS">{t("complex.ui.alertas_complex.todas")}</option>
                 {prioridadesUnicas.map((p) => (
                   <option key={p} value={p}>
                     {p}
@@ -271,9 +269,9 @@ export default function AlertasComplex() {
               </SelectFenix>
             </label>
             <label className="block text-sm">
-              <span className="mb-1 block text-gray-600">Tipo</span>
+              <span className="mb-1 block text-gray-600">{t("complex.ui.alertas_complex.tipo")}</span>
               <SelectFenix value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
-                <option value="TODOS">Todos</option>
+                <option value="TODOS">{t("complex.ui.alertas_complex.todos")}</option>
                 {tiposUnicos.map((t) => (
                   <option key={t} value={t}>
                     {t.replace(/_/g, ' ')}
@@ -289,19 +287,17 @@ export default function AlertasComplex() {
                   setFiltroTipo('TODOS');
                 }}
                 className="w-full rounded-lg border border-gray-200 px-4 py-2 text-sm dark:border-gray-700"
-              >
-                Limpiar filtros
-              </button>
+              >{t("complex.ui.alertas_complex.limpiar_filtros")}</button>
             </div>
           </div>
         </ComplexFilterSection>
 
         <section className="mt-6">
-          <h2 className={complexSectionTitle}>Alertas ({alertasFiltradas.length})</h2>
+          <h2 className={complexSectionTitle}>{t("complex.ui.alertas_complex.alertas")}{alertasFiltradas.length}{t("complex.ui.alertas_complex.texto")}</h2>
 
           {alertasFiltradas.length === 0 ? (
             <div className="rounded-xl border border-gray-100 bg-white p-10 text-center dark:border-gray-800 dark:bg-[#1A1A1A]">
-              <p className="font-medium">No hay alertas con los filtros actuales</p>
+              <p className="font-medium">{t("complex.ui.alertas_complex.no_hay_alertas_con_los_filtros_actuales")}</p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -313,16 +309,15 @@ export default function AlertasComplex() {
                   <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-semibold">Caso {caso.numeroAjuste}</h3>
-                        <span className="text-xs text-gray-500">
-                          Siniestro {caso.numeroSiniestro || '—'}
+                        <h3 className="font-semibold">{t("complex.ui.alertas_complex.caso")}{caso.numeroAjuste}</h3>
+                        <span className="text-xs text-gray-500">{t("complex.ui.alertas_complex.siniestro")}{caso.numeroSiniestro || '—'}
                         </span>
                         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs dark:bg-gray-800">
                           {caso.ajustador}
                         </span>
                       </div>
                       <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        {caso.asegurado || 'Sin asegurado'} · {caso.estado || '—'}
+                        {caso.asegurado || t('complex.ui.alertas_complex.sin_asegurado')}{t("complex.ui.alertas_complex.texto_2")}{caso.estado || '—'}
                       </p>
                       <div className="mt-3 space-y-2">
                         {caso.alertas.map((alerta, i) => (
@@ -335,16 +330,12 @@ export default function AlertasComplex() {
                         type="button"
                         onClick={() => enviarEmail(caso.ajustador)}
                         className="rounded-lg border border-gray-200 px-3 py-2 text-sm dark:border-gray-700"
-                      >
-                        Enviar correo
-                      </button>
+                      >{t("complex.ui.alertas_complex.enviar_correo")}</button>
                       <button
                         type="button"
                         onClick={() => abrirCaso(caso)}
                         className="rounded-lg bg-fenix-primario px-3 py-2 text-sm font-semibold text-white hover:opacity-90"
-                      >
-                        Abrir caso
-                      </button>
+                      >{t("complex.ui.alertas_complex.abrir_caso")}</button>
                     </div>
                   </div>
                 </article>
@@ -355,7 +346,7 @@ export default function AlertasComplex() {
 
         {resumen?.topAjustadores?.length > 0 && (
           <section className="mt-8">
-            <h2 className={complexSectionTitle}>Ajustadores con más alertas</h2>
+            <h2 className={complexSectionTitle}>{t("complex.ui.alertas_complex.ajustadores_con_mas_alertas")}</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {resumen.topAjustadores.map((aj, index) => (
                 <div
@@ -363,24 +354,21 @@ export default function AlertasComplex() {
                   className="rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-[#1A1A1A]"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">
-                      #{index + 1} {aj.codigo}
+                    <span className="font-medium">{t("complex.ui.alertas_complex.texto_3")}{index + 1} {aj.codigo}
                     </span>
                     <button
                       type="button"
                       onClick={() => enviarEmail(aj.codigo)}
                       className="text-sm text-fenix-primario underline"
-                    >
-                      Enviar
-                    </button>
+                    >{t("complex.ui.alertas_complex.enviar")}</button>
                   </div>
                   <dl className="mt-2 space-y-1 text-sm text-gray-600 dark:text-gray-400">
                     <div className="flex justify-between">
-                      <dt>Casos con alertas</dt>
+                      <dt>{t("complex.ui.alertas_complex.casos_con_alertas")}</dt>
                       <dd className="font-medium">{aj.casosConAlertas}</dd>
                     </div>
                     <div className="flex justify-between">
-                      <dt>Críticos</dt>
+                      <dt>{t("complex.ui.alertas_complex.criticos")}</dt>
                       <dd className="font-medium text-red-600">{aj.casosCriticos}</dd>
                     </div>
                   </dl>
@@ -390,13 +378,8 @@ export default function AlertasComplex() {
           </section>
         )}
 
-        <p className="mt-6 text-xs text-gray-500">
-          Plazos configurables en{' '}
-          <Link to="/complex/protocolo-tiempos" className="text-fenix-primario underline">
-            Protocolo de tiempos
-          </Link>
-          . Solo casos desde octubre 2025.
-        </p>
+        <p className="mt-6 text-xs text-gray-500">{t("complex.ui.alertas_complex.plazos_configurables_en")}{' '}
+          <Link to="/complex/protocolo-tiempos" className="text-fenix-primario underline">{t("complex.ui.alertas_complex.protocolo_de_tiempos")}</Link>{t("complex.ui.alertas_complex.solo_casos_desde_octubre_2025")}</p>
       </div>
 
       {modal && (

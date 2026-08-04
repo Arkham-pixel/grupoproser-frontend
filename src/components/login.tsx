@@ -1,13 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig.js';
 import { useTheme } from '../context/ThemeContext';
 // @ts-ignore
 import arnaldLogo from '../config/brandAssets.js';
 import { FaUser, FaLock, FaKey, FaShieldAlt, FaMoon, FaSun } from 'react-icons/fa';
+import LanguageSelector from './LanguageSelector';
+// @ts-ignore
+import i18n from '../i18n.js';
+import { normalizeLocale } from '../context/LanguageContext';
+
+async function applyUserLocale(locale?: string) {
+  if (!locale) return;
+  const normalized = normalizeLocale(locale);
+  localStorage.setItem('appLocale', normalized);
+  await i18n.changeLanguage(normalized);
+  document.documentElement.lang = normalized;
+}
 
 export default function Login() {
+  const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
   const [login, setLogin] = useState('');
   const [pswd, setPswd] = useState('');
@@ -33,21 +47,23 @@ export default function Login() {
   
   useEffect(() => {
     // Establecer título de la página
-    document.title = 'Arnald DataFlow - Login';
+    document.title = `Arnald DataFlow - ${t('auth.pageTitle')}`;
     
     const interval = setInterval(() => {
       setLogoScale(prev => prev === 1 ? 1.05 : 1);
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [t]);
 
-  const handleLogin = async (e) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
     try {
       const requestData = { correo: login, password: pswd };
-const res = await axios.post(`${BASE_URL}/api/secur-auth/login`, requestData);
+const res = await axios.post(`${BASE_URL}/api/secur-auth/login`, requestData, {
+  headers: { 'Accept-Language': localStorage.getItem('appLocale') || 'es' }
+});
 if (res.data.token && res.data.usuario) {
          // Login exitoso - guardar datos y redirigir
          const currentTime = Date.now();
@@ -56,6 +72,7 @@ if (res.data.token && res.data.usuario) {
          localStorage.setItem('rol', res.data.usuario.role);
          localStorage.setItem('login', res.data.usuario.login);
          localStorage.setItem('nombre', res.data.usuario.name);
+         await applyUserLocale(res.data.usuario.locale);
          localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
          if (res.data.twoFASetupRecommended || res.data.twoFASetupPending) {
            sessionStorage.setItem('aviso2fa_mostrar', '1');
@@ -69,14 +86,14 @@ setStep(2);
          setInfoCorreo(res.data.email || '');
          setTwoFACode('');
 } else {
-         setError('Respuesta inesperada del servidor');
+         setError(t('auth.unexpectedResponse'));
        }
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Error completo:', err);
       console.error('❌ Error response:', err.response);
       console.error('❌ Error data:', err.response?.data);
       console.error('❌ Error status:', err.response?.status);
-      const errorMessage = err.response?.data?.message || err.response?.data?.mensaje || 'Error al iniciar sesión';
+      const errorMessage = err.response?.data?.message || err.response?.data?.mensaje || t('auth.invalidCredentials');
       console.error('❌ Mensaje de error:', errorMessage);
       setError(errorMessage);
     } finally {
@@ -84,7 +101,7 @@ setStep(2);
     }
   };
 
-  const handle2FA = async (e) => {
+  const handle2FA = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
@@ -93,7 +110,7 @@ const res = await axios.post(`${BASE_URL}/api/secur-auth/login/2fa`, {
         correo: login,
         code: twoFACode,
         tempToken
-      });
+      }, { headers: { 'Accept-Language': localStorage.getItem('appLocale') || 'es' } });
       
 if (res.data.token && res.data.usuario && res.data.usuario.role) {
         const currentTime = Date.now();
@@ -102,17 +119,18 @@ if (res.data.token && res.data.usuario && res.data.usuario.role) {
         localStorage.setItem('rol', res.data.usuario.role);
         localStorage.setItem('login', res.data.usuario.login);
         localStorage.setItem('nombre', res.data.usuario.name);
+        await applyUserLocale(res.data.usuario.locale);
         localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
         localStorage.setItem('sessionStart', currentTime.toString());
         
 navigate('/inicio');
       } else {
-        setError('Respuesta del servidor incompleta. Falta token o información del usuario.');
+        setError(t('auth.incompleteResponse'));
         console.error('❌ Respuesta incompleta:', res.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('❌ Error en 2FA:', err.response?.data);
-      setError(err.response?.data?.message || 'Código incorrecto o expirado');
+      setError(err.response?.data?.message || t('auth.invalidCredentials'));
     } finally {
       setIsLoading(false);
     }
@@ -127,6 +145,36 @@ navigate('/inicio');
           : '#FFFFFF'
       }}
     >
+      {/* Controles superiores: idioma y tema, sin solaparse */}
+      <div className="fixed top-3 right-3 z-50 flex items-center gap-2 sm:top-6 sm:right-6 sm:gap-3">
+        <div
+          className="rounded-full bg-white/90 px-2 py-1 shadow-md backdrop-blur-md"
+          style={{ border: `1px solid ${borderColor}` }}
+        >
+          <LanguageSelector compact />
+        </div>
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2.5 sm:p-3 rounded-full backdrop-blur-lg transition-all transform hover:scale-110 active:scale-95 shadow-xl"
+          style={{
+            background: theme === 'dark'
+              ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)'
+              : 'linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(153, 27, 27, 0.9) 100%)',
+            border: theme === 'dark'
+              ? '2px solid rgba(239, 68, 68, 0.5)'
+              : '2px solid rgba(220, 38, 38, 0.3)',
+          }}
+          title={theme === 'dark' ? t('auth.switchToLightMode') : t('auth.switchToDarkMode')}
+        >
+          {theme === 'dark' ? (
+            <FaSun className="text-lg sm:text-xl text-yellow-300" />
+          ) : (
+            <FaMoon className="text-lg sm:text-xl text-white" />
+          )}
+        </button>
+      </div>
+
       {/* Círculos decorativos de fondo con animación */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div 
@@ -175,30 +223,6 @@ navigate('/inicio');
         }
       `}</style>
 
-      {/* Botón de cambio de tema flotante */}
-      <button
-        onClick={toggleTheme}
-        className="fixed top-3 right-3 sm:top-6 sm:right-6 z-50 p-2.5 sm:p-4 rounded-full backdrop-blur-lg transition-all transform hover:scale-110 active:scale-95 shadow-2xl"
-        style={{
-          background: theme === 'dark' 
-            ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.9) 100%)'
-            : 'linear-gradient(135deg, rgba(220, 38, 38, 0.9) 0%, rgba(153, 27, 27, 0.9) 100%)',
-          border: theme === 'dark' 
-            ? '2px solid rgba(239, 68, 68, 0.5)'
-            : '2px solid rgba(220, 38, 38, 0.3)',
-          boxShadow: theme === 'dark'
-            ? '0 8px 32px rgba(239, 68, 68, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1)'
-            : '0 8px 32px rgba(220, 38, 38, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.2)'
-        }}
-        title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-      >
-        {theme === 'dark' ? (
-          <FaSun className="text-lg sm:text-2xl text-yellow-300 animate-pulse" />
-        ) : (
-          <FaMoon className="text-lg sm:text-2xl text-white" />
-        )}
-      </button>
-
       <div 
         className="w-full max-w-sm sm:max-w-md p-5 sm:p-6 md:p-8 rounded-2xl backdrop-blur-xl relative z-10 border-2 mx-auto"
         style={{
@@ -224,7 +248,7 @@ navigate('/inicio');
           }}
         >
           <FaShieldAlt className="text-white text-xs" />
-          <span className="text-white text-xs font-bold tracking-wider">ACCESO SEGURO</span>
+          <span className="text-white text-xs font-bold tracking-wider">{t('auth.secureAccess')}</span>
         </div>
 
         <div className="text-center mb-6 sm:mb-8">
@@ -256,7 +280,7 @@ navigate('/inicio');
               letterSpacing: '0.1em',
             }}
           >
-            El corazón digital de Grupo Proser
+            {t('auth.tagline')}
           </p>
         </div>
         {step === 1 ? (
@@ -267,7 +291,7 @@ navigate('/inicio');
                 style={{ color: textPrimary }}
               >
                 <FaUser className="text-red-600 text-sm" />
-                Cédula
+                {t('auth.idNumber')}
               </label>
               <div className="relative group">
                 <div 
@@ -278,7 +302,9 @@ navigate('/inicio');
                 </div>
                 <input
                   type="text"
-                  placeholder="Ingresa tu cédula"
+                  name="username"
+                  autoComplete="username"
+                  placeholder={t('auth.idNumberPlaceholder')}
                   value={login}
                   onChange={e => setLogin(e.target.value)}
                   className="w-full pl-10 pr-3 py-2.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
@@ -301,7 +327,7 @@ navigate('/inicio');
                 style={{ color: textPrimary }}
               >
                 <FaLock className="text-red-600 text-sm" />
-                Contraseña
+                {t('auth.password')}
               </label>
               <div className="relative group">
                 <div 
@@ -312,7 +338,9 @@ navigate('/inicio');
                 </div>
                 <input
                   type="password"
-                  placeholder="Ingresa tu contraseña"
+                  name="password"
+                  autoComplete="current-password"
+                  placeholder={t('auth.passwordPlaceholder')}
                   value={pswd}
                   onChange={e => setPswd(e.target.value)}
                   className="w-full pl-10 pr-3 py-2.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
@@ -344,12 +372,12 @@ navigate('/inicio');
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm">Iniciando...</span>
+                  <span className="text-sm">{t('auth.signingIn')}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2">
                   <FaShieldAlt className="text-lg" />
-                  <span className="text-sm">Iniciar Sesión</span>
+                  <span className="text-sm">{t('auth.login')}</span>
                 </div>
               )}
             </button>
@@ -372,13 +400,24 @@ navigate('/inicio');
                     </div>
                   </div>
                   <div className="flex-1">
-                    <p className="font-semibold mb-0.5">Error de autenticación</p>
+                    <p className="font-semibold mb-0.5">{t('auth.authenticationError')}</p>
                     <p className="text-xs opacity-90">{error}</p>
                   </div>
                 </div>
               </div>
             )}
             
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => navigate('/reset-password')}
+                className="text-xs font-medium underline-offset-2 hover:underline"
+                style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
+              >
+                {t('auth.forgotPassword')}
+              </button>
+            </div>
+
             <style>{`
               @keyframes shake {
                 0%, 100% { transform: translateX(0); }
@@ -413,14 +452,14 @@ navigate('/inicio');
                     className="font-semibold mb-1 text-xs sm:text-sm"
                     style={{ color: theme === 'dark' ? '#FCA5A5' : '#991B1B' }}
                   >
-                    Verificación en dos pasos activada
+                    {t('auth.twoFactorEnabled')}
                   </p>
                   {twoFAMethod === 'totp' ? (
                     <p 
                       className="text-[10px] sm:text-xs"
                       style={{ color: theme === 'dark' ? '#FCA5A5' : '#991B1B', opacity: 0.9 }}
                     >
-                      Abre tu app de autenticación (Google Authenticator o Microsoft Authenticator) e ingresa el código de 6 dígitos.
+                      {t('auth.authenticatorInstructions')}
                     </p>
                   ) : (
                     <>
@@ -428,7 +467,7 @@ navigate('/inicio');
                         className="text-[10px] sm:text-xs"
                         style={{ color: theme === 'dark' ? '#FCA5A5' : '#991B1B', opacity: 0.9 }}
                       >
-                        Se ha enviado un código de verificación a:
+                        {t('auth.codeSentTo')}
                       </p>
                       <p 
                         className="font-bold text-sm sm:text-base mt-2 font-mono break-all"
@@ -448,7 +487,7 @@ navigate('/inicio');
                 style={{ color: textPrimary }}
               >
                 <FaKey className="text-red-600 text-xs sm:text-sm" />
-                Código de Verificación
+                {t('auth.twoFactorCode')}
               </label>
               <div className="relative group">
                 <div 
@@ -482,7 +521,7 @@ navigate('/inicio');
                 className="text-[10px] sm:text-xs mt-2 text-center"
                 style={{ color: textSecondary }}
               >
-                Ingresa el código de 6 dígitos
+                {t('auth.enterSixDigitCode')}
               </p>
             </div>
 
@@ -500,12 +539,12 @@ navigate('/inicio');
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2 sm:gap-3">
                   <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 sm:border-3 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs sm:text-base">Verificando...</span>
+                  <span className="text-xs sm:text-base">{t('auth.verifying')}</span>
                 </div>
               ) : (
                 <div className="flex items-center justify-center gap-2 sm:gap-3">
                   <FaKey className="text-lg sm:text-xl" />
-                  <span className="text-xs sm:text-base md:text-lg">Verificar Código</span>
+                  <span className="text-xs sm:text-base md:text-lg">{t('auth.verifyCode')}</span>
                 </div>
               )}
             </button>
@@ -528,7 +567,7 @@ navigate('/inicio');
                     </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold mb-0.5 text-xs sm:text-sm">Error de verificación</p>
+                    <p className="font-semibold mb-0.5 text-xs sm:text-sm">{t('auth.verificationError')}</p>
                     <p className="text-[10px] sm:text-xs opacity-90 break-words">{error}</p>
                   </div>
                 </div>
@@ -549,48 +588,21 @@ navigate('/inicio');
                 backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(220, 38, 38, 0.05)'
               }}
             >
-              ← Volver al inicio de sesión
+              ← {t('auth.backToLogin')}
             </button>
           </form>
         )}
-        {/* Divisor decorativo */}
-        <div className="mt-6 mb-4 flex items-center gap-4">
-          <div className="flex-1 h-px" style={{ backgroundColor: borderColor }} />
-          <FaShieldAlt style={{ color: textSecondary, fontSize: '0.875rem' }} />
-          <div className="flex-1 h-px" style={{ backgroundColor: borderColor }} />
-        </div>
-
-        <div className="text-center">
-          <button
-            type="button"
-            onClick={() => navigate('/reset-password')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all hover:scale-105 active:scale-95 text-xs w-full justify-center"
-            style={{ 
-              color: theme === 'dark' ? '#FCA5A5' : '#DC2626',
-              backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(220, 38, 38, 0.05)',
-              border: `1px solid ${theme === 'dark' ? 'rgba(239, 68, 68, 0.3)' : 'rgba(220, 38, 38, 0.2)'}`
-            }}
+        {/* Footer */}
+        <div className="mt-8 pt-5 text-center space-y-2" style={{ borderTop: `1px solid ${borderColor}` }}>
+          <p
+            className="inline-flex items-center gap-1.5 text-[11px] font-medium"
+            style={{ color: textSecondary }}
           >
-            <FaLock className="text-xs" />
-            ¿Olvidaste tu contraseña?
-          </button>
-        </div>
-        
-        {/* Footer con versión mejorado */}
-        <div className="mt-6 pt-4 text-center relative" style={{ borderTop: `2px solid ${borderColor}` }}>
-          <div 
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium mb-2"
-            style={{
-              backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(220, 38, 38, 0.05)',
-              color: textSecondary,
-              border: `1px solid ${borderColor}`
-            }}
-          >
-            <span>🔒</span>
-            <span>Conexión Segura SSL</span>
-          </div>
+            <FaShieldAlt className="text-[10px]" />
+            {t('auth.secureConnection')}
+          </p>
           <p className="font-body text-xs font-medium text-gray-500 dark:text-gray-400">
-            © 2025 · El corazón digital de Grupo Proser
+            © 2025 · {t('auth.tagline')}
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FaChevronDown,
   FaClipboardList,
@@ -17,6 +18,7 @@ export default function AccionesPropiedadesMenu({
   onEliminar,
   tieneInspeccion = false,
 }) {
+  const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const btnRef = useRef(null);
@@ -83,7 +85,7 @@ export default function AccionesPropiedadesMenu({
             onClick={() => elegir(onGestionar)}
           >
             <FaFolderOpen className="text-fenix-primario" aria-hidden />
-            Gestionar caso
+            {t('properties.menu.manageCase')}
           </button>
           <button
             type="button"
@@ -92,7 +94,9 @@ export default function AccionesPropiedadesMenu({
             onClick={() => elegir(onInspeccion)}
           >
             <FaClipboardList className="text-fenix-primario" aria-hidden />
-            {tieneInspeccion ? 'Abrir inspección ✓' : 'Formulario inspección'}
+            {tieneInspeccion
+              ? t('properties.menu.openInspection')
+              : t('properties.menu.inspectionForm')}
           </button>
           <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
           <button
@@ -102,7 +106,7 @@ export default function AccionesPropiedadesMenu({
             onClick={() => elegir(onEliminar)}
           >
             <FaTrash className="text-[10px]" aria-hidden />
-            Eliminar
+            {t('properties.menu.delete')}
           </button>
         </div>,
         document.body
@@ -121,7 +125,7 @@ export default function AccionesPropiedadesMenu({
       >
         <span className="inline-flex items-center gap-1.5">
           <FaEllipsisV className="text-[10px]" aria-hidden />
-          Acciones
+          {t('properties.menu.actions')}
         </span>
         <FaChevronDown className={`text-[10px] transition ${abierto ? 'rotate-180' : ''}`} aria-hidden />
       </button>

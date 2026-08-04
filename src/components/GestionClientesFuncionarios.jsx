@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../config/apiConfig';
 import { FaPlus, FaEdit, FaTrash, FaBuilding, FaUser, FaSave, FaTimes } from 'react-icons/fa';
 
 export default function GestionClientesFuncionarios() {
+  const { t } = useTranslation();
   const [clientes, setClientes] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +75,7 @@ export default function GestionClientesFuncionarios() {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!resClientes.ok) throw new Error('Error al cargar clientes');
+      if (!resClientes.ok) throw new Error(t('admin.ui.clientes.loadClientsError'));
       const dataClientes = await resClientes.json();
       setClientes(Array.isArray(dataClientes) ? dataClientes : []);
 
@@ -83,7 +85,7 @@ export default function GestionClientesFuncionarios() {
           'Authorization': `Bearer ${token}`
         }
       });
-      if (!resFuncionarios.ok) throw new Error('Error al cargar funcionarios');
+      if (!resFuncionarios.ok) throw new Error(t('admin.ui.clientes.loadOfficersError'));
       const dataFuncionarios = await resFuncionarios.json();
       // Manejar ambos formatos: {success: true, data: [...]} o [...]
       if (dataFuncionarios.success && Array.isArray(dataFuncionarios.data)) {
@@ -172,21 +174,21 @@ export default function GestionClientesFuncionarios() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al guardar cliente');
+        throw new Error(data.error || data.message || t('admin.ui.clientes.saveClientError'));
       }
 
-      alert(clienteEditando ? 'Cliente actualizado exitosamente' : 'Cliente creado exitosamente');
+      alert(clienteEditando ? t('admin.ui.clientes.clientUpdated') : t('admin.ui.clientes.clientCreated'));
       setMostrarFormCliente(false);
       cargarDatos();
     } catch (err) {
       console.error('Error guardando cliente:', err);
       setError(err.message);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.clientes.errorPrefix', { message: err.message }));
     }
   };
 
   const eliminarCliente = async (id) => {
-    if (!window.confirm('¿Está seguro de eliminar este cliente? Esta acción no se puede deshacer.')) {
+    if (!window.confirm(t('admin.ui.clientes.confirmDeleteClient'))) {
       return;
     }
 
@@ -202,14 +204,14 @@ export default function GestionClientesFuncionarios() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al eliminar cliente');
+        throw new Error(data.error || data.message || t('admin.ui.clientes.deleteClientError'));
       }
 
-      alert('Cliente eliminado exitosamente');
+      alert(t('admin.ui.clientes.clientDeleted'));
       cargarDatos();
     } catch (err) {
       console.error('Error eliminando cliente:', err);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.clientes.errorPrefix', { message: err.message }));
     }
   };
 
@@ -250,7 +252,7 @@ export default function GestionClientesFuncionarios() {
     setError(null);
     
     if (!formFuncionario.codiAsgrdra || !formFuncionario.nmbrContcto) {
-      alert('El código de aseguradora y el nombre son requeridos');
+      alert(t('admin.ui.clientes.requiredCodeName'));
       return;
     }
 
@@ -284,22 +286,22 @@ export default function GestionClientesFuncionarios() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al guardar funcionario');
+        throw new Error(data.error || data.message || t('admin.ui.clientes.saveOfficerError'));
       }
 
-      alert(funcionarioEditando ? 'Funcionario actualizado exitosamente' : 'Funcionario creado exitosamente');
+      alert(funcionarioEditando ? t('admin.ui.clientes.officerUpdated') : t('admin.ui.clientes.officerCreated'));
       setMostrarFormFuncionario(false);
       setFuncionarioEditando(null);
       cargarDatos();
     } catch (err) {
       console.error('Error guardando funcionario:', err);
       setError(err.message);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.clientes.errorPrefix', { message: err.message }));
     }
   };
 
   const eliminarFuncionario = async (id) => {
-    if (!window.confirm('¿Está seguro de eliminar este funcionario? Esta acción no se puede deshacer.')) {
+    if (!window.confirm(t('admin.ui.clientes.confirmDeleteOfficer'))) {
       return;
     }
 
@@ -315,14 +317,14 @@ export default function GestionClientesFuncionarios() {
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.error || data.message || 'Error al eliminar funcionario');
+        throw new Error(data.error || data.message || t('admin.ui.clientes.deleteOfficerError'));
       }
 
-      alert('Funcionario eliminado exitosamente');
+      alert(t('admin.ui.clientes.officerDeleted'));
       cargarDatos();
     } catch (err) {
       console.error('Error eliminando funcionario:', err);
-      alert(`Error: ${err.message}`);
+      alert(t('admin.ui.clientes.errorPrefix', { message: err.message }));
     }
   };
 
@@ -330,8 +332,8 @@ export default function GestionClientesFuncionarios() {
     return (
       <div className="container mx-auto p-4">
         <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <h2 className="text-lg font-medium text-red-800 mb-2">Acceso Denegado</h2>
-          <p className="text-red-700">No tienes permisos para acceder a esta función. Se requieren permisos de administrador o soporte.</p>
+          <h2 className="text-lg font-medium text-red-800 mb-2">{t('admin.ui.clientes.accessDeniedTitle')}</h2>
+          <p className="text-red-700">{t('admin.ui.clientes.accessDeniedMessage')}</p>
         </div>
       </div>
     );
@@ -340,7 +342,7 @@ export default function GestionClientesFuncionarios() {
   if (loading) {
     return (
       <div className="container mx-auto p-4">
-        <div className="text-center">Cargando...</div>
+        <div className="text-center">{t('admin.ui.clientes.loading')}</div>
       </div>
     );
   }
@@ -348,19 +350,19 @@ export default function GestionClientesFuncionarios() {
   return (
     <div className="container mx-auto p-4 max-w-7xl">
       <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Clientes y Funcionarios</h1>
+        <h1 className="text-3xl font-bold text-gray-900">{t('admin.ui.clientes.title')}</h1>
         <div className="flex gap-2">
           <button
             onClick={() => abrirFormCliente()}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
-            <FaPlus /> Nuevo Cliente
+            <FaPlus /> {t('admin.ui.clientes.newClient')}
           </button>
           <button
             onClick={() => abrirFormFuncionario()}
             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
           >
-            <FaPlus /> Nuevo Funcionario
+            <FaPlus /> {t('admin.ui.clientes.newOfficer')}
           </button>
         </div>
       </div>
@@ -385,23 +387,23 @@ export default function GestionClientesFuncionarios() {
                     <span className="text-sm text-gray-500">({cliente.codiAsgrdra})</span>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm text-gray-600">
-                    {cliente.correo && <p><strong>Email:</strong> {cliente.correo}</p>}
-                    {cliente.teleCellar && <p><strong>Teléfono:</strong> {cliente.teleCellar}</p>}
-                    {cliente.direCliente && <p><strong>Dirección:</strong> {cliente.direCliente}</p>}
+                    {cliente.correo && <p><strong>{t('admin.ui.clientes.email')}:</strong> {cliente.correo}</p>}
+                    {cliente.teleCellar && <p><strong>{t('admin.ui.clientes.phone')}:</strong> {cliente.teleCellar}</p>}
+                    {cliente.direCliente && <p><strong>{t('admin.ui.clientes.address')}:</strong> {cliente.direCliente}</p>}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => abrirFormCliente(cliente)}
                     className="text-blue-600 hover:text-blue-800 p-2"
-                    title="Editar cliente"
+                    title={t('admin.ui.clientes.editClient')}
                   >
                     <FaEdit />
                   </button>
                   <button
                     onClick={() => eliminarCliente(cliente._id)}
                     className="text-red-600 hover:text-red-800 p-2"
-                    title="Eliminar cliente"
+                    title={t('admin.ui.clientes.deleteClient')}
                   >
                     <FaTrash />
                   </button>
@@ -413,7 +415,7 @@ export default function GestionClientesFuncionarios() {
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
                     <FaUser className="text-green-600" />
-                    Funcionarios ({funcionariosCliente.length})
+                    {t('admin.ui.clientes.officers', { count: funcionariosCliente.length })}
                   </h3>
                   <button
                     onClick={() => {
@@ -422,7 +424,7 @@ export default function GestionClientesFuncionarios() {
                     }}
                     className="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded flex items-center gap-1"
                   >
-                    <FaPlus /> Agregar Funcionario
+                    <FaPlus /> {t('admin.ui.clientes.addOfficer')}
                   </button>
                 </div>
                 
@@ -446,14 +448,14 @@ export default function GestionClientesFuncionarios() {
                           <button
                             onClick={() => abrirFormFuncionario(funcionario)}
                             className="text-blue-600 hover:text-blue-800 p-1"
-                            title="Editar funcionario"
+                            title={t('admin.ui.clientes.editOfficer')}
                           >
                             <FaEdit />
                           </button>
                           <button
                             onClick={() => eliminarFuncionario(funcionario._id)}
                             className="text-red-600 hover:text-red-800 p-1"
-                            title="Eliminar funcionario"
+                            title={t('admin.ui.clientes.deleteOfficer')}
                           >
                             <FaTrash />
                           </button>
@@ -462,7 +464,7 @@ export default function GestionClientesFuncionarios() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-sm italic">No hay funcionarios asignados a este cliente</p>
+                  <p className="text-gray-500 text-sm italic">{t('admin.ui.clientes.noOfficers')}</p>
                 )}
               </div>
             </div>
@@ -476,7 +478,7 @@ export default function GestionClientesFuncionarios() {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
               <h2 className="text-xl font-bold">
-                {clienteEditando ? 'Editar Cliente' : 'Nuevo Cliente'}
+                {clienteEditando ? t('admin.ui.clientes.editClientTitle') : t('admin.ui.clientes.newClientTitle')}
               </h2>
               <button
                 onClick={() => setMostrarFormCliente(false)}
@@ -488,7 +490,7 @@ export default function GestionClientesFuncionarios() {
             <form onSubmit={guardarCliente} className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Código Aseguradora *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.codeInsurer')}</label>
                   <input
                     type="text"
                     value={formCliente.codiAsgrdra}
@@ -499,7 +501,7 @@ export default function GestionClientesFuncionarios() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Razón Social *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.businessName')}</label>
                   <input
                     type="text"
                     value={formCliente.rzonSocial}
@@ -509,7 +511,7 @@ export default function GestionClientesFuncionarios() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.email')}</label>
                   <input
                     type="email"
                     value={formCliente.correo}
@@ -518,7 +520,7 @@ export default function GestionClientesFuncionarios() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Fijo</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.landline')}</label>
                   <input
                     type="text"
                     value={formCliente.teleFijo}
@@ -527,7 +529,7 @@ export default function GestionClientesFuncionarios() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Celular</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.mobile')}</label>
                   <input
                     type="text"
                     value={formCliente.teleCellar}
@@ -536,7 +538,7 @@ export default function GestionClientesFuncionarios() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.address')}</label>
                   <input
                     type="text"
                     value={formCliente.direCliente}
@@ -551,13 +553,13 @@ export default function GestionClientesFuncionarios() {
                   onClick={() => setMostrarFormCliente(false)}
                   className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                 >
-                  Cancelar
+                  {t('admin.ui.clientes.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2"
                 >
-                  <FaSave /> Guardar
+                  <FaSave /> {t('admin.ui.clientes.save')}
                 </button>
               </div>
             </form>
@@ -571,7 +573,7 @@ export default function GestionClientesFuncionarios() {
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
             <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
               <h2 className="text-xl font-bold">
-                {funcionarioEditando ? 'Editar Funcionario' : 'Nuevo Funcionario'}
+                {funcionarioEditando ? t('admin.ui.clientes.editOfficerTitle') : t('admin.ui.clientes.newOfficerTitle')}
               </h2>
               <button
                 onClick={() => {
@@ -586,30 +588,30 @@ export default function GestionClientesFuncionarios() {
             <form onSubmit={guardarFuncionario} className="p-4 space-y-4 max-h-[min(85vh,720px)] overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  ID Funcionario {!funcionarioEditando && <span className="text-gray-500 text-xs">(Opcional - se genera automáticamente si no se especifica)</span>}
+                  {t('admin.ui.clientes.officerId')} {!funcionarioEditando && <span className="text-gray-500 text-xs">{t('admin.ui.clientes.officerIdOptional')}</span>}
                 </label>
                 <input
                   type="number"
                   value={formFuncionario.id || ''}
                   onChange={(e) => setFormFuncionario({...formFuncionario, id: e.target.value ? parseInt(e.target.value) : ''})}
                   className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder={funcionarioEditando ? "ID del funcionario (no editable)" : "Dejar vacío para auto-generar"}
+                  placeholder={funcionarioEditando ? t('admin.ui.clientes.officerIdPlaceholderEdit') : t('admin.ui.clientes.officerIdPlaceholderNew')}
                   disabled={!!funcionarioEditando}
                   min="1"
                 />
                 {!funcionarioEditando && (
                   <p className="text-xs text-gray-500 mt-1">
-                    💡 Ingresa el ID manualmente para que coincida con la base de datos de Complex
+                    {t('admin.ui.clientes.officerIdHintNew')}
                   </p>
                 )}
                 {funcionarioEditando && formFuncionario.id && (
                   <p className="text-xs text-gray-500 mt-1">
-                    ℹ️ El ID no se puede modificar después de crear el funcionario
+                    {t('admin.ui.clientes.officerIdHintEdit')}
                   </p>
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cliente (Aseguradora) *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.clientInsurer')}</label>
                 <select
                   value={formFuncionario.codiAsgrdra}
                   onChange={(e) => setFormFuncionario({...formFuncionario, codiAsgrdra: e.target.value})}
@@ -617,7 +619,7 @@ export default function GestionClientesFuncionarios() {
                   required
                   disabled={!!funcionarioEditando}
                 >
-                  <option value="">Seleccione un cliente</option>
+                  <option value="">{t('admin.ui.clientes.selectClient')}</option>
                   {clientes
                     .sort((a, b) => {
                       const nameA = (a.rzonSocial || '').toString().toUpperCase();
@@ -632,7 +634,7 @@ export default function GestionClientesFuncionarios() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Funcionario *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.officerName')}</label>
                 <input
                   type="text"
                   value={formFuncionario.nmbrContcto}
@@ -642,17 +644,17 @@ export default function GestionClientesFuncionarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cargo</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.position')}</label>
                 <input
                   type="text"
                   value={formFuncionario.cargo}
                   onChange={(e) => setFormFuncionario({ ...formFuncionario, cargo: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Ej: Analista de Siniestros"
+                  placeholder={t('admin.ui.clientes.positionPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.email')}</label>
                 <input
                   type="email"
                   value={formFuncionario.email}
@@ -661,7 +663,7 @@ export default function GestionClientesFuncionarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono Celular</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.mobile')}</label>
                 <input
                   type="text"
                   value={formFuncionario.teleCellar}
@@ -670,33 +672,33 @@ export default function GestionClientesFuncionarios() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.address')}</label>
                 <input
                   type="text"
                   value={formFuncionario.direccion}
                   onChange={(e) => setFormFuncionario({ ...formFuncionario, direccion: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Dirección para el reporte"
+                  placeholder={t('admin.ui.clientes.addressPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad Destino</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.cityDestination')}</label>
                 <input
                   type="text"
                   value={formFuncionario.ciudadDestino}
                   onChange={(e) => setFormFuncionario({ ...formFuncionario, ciudadDestino: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="Ciudad de destino del reporte"
+                  placeholder={t('admin.ui.clientes.cityDestinationPlaceholder')}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">País Destino</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t('admin.ui.clientes.countryDestination')}</label>
                 <input
                   type="text"
                   value={formFuncionario.paisDestino}
                   onChange={(e) => setFormFuncionario({ ...formFuncionario, paisDestino: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2"
-                  placeholder="País de destino del reporte"
+                  placeholder={t('admin.ui.clientes.countryDestinationPlaceholder')}
                 />
               </div>
               <div className="flex justify-end gap-2 pt-4 border-t">
@@ -708,13 +710,13 @@ export default function GestionClientesFuncionarios() {
                   }}
                   className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
                 >
-                  Cancelar
+                  {t('admin.ui.clientes.cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-2"
                 >
-                  <FaSave /> Guardar
+                  <FaSave /> {t('admin.ui.clientes.save')}
                 </button>
               </div>
             </form>
@@ -724,4 +726,3 @@ export default function GestionClientesFuncionarios() {
     </div>
   );
 }
-

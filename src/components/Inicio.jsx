@@ -1,6 +1,7 @@
 // src/components/Inicio.jsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import {
   FaRocket,
@@ -21,17 +22,17 @@ import { BASE_URL } from '../config/apiConfig.js';
 const API = `${BASE_URL}/api`;
 const MAX_TAREA_CHARS = 20;
 
-function primerNombre(nombre) {
-  return String(nombre || 'Usuario').trim().split(/\s+/)[0] || 'Usuario';
+function primerNombre(nombre, fallback) {
+  return String(nombre || fallback).trim().split(/\s+/)[0] || fallback;
 }
 
-function diasDesde(fecha) {
+function diasDesde(fecha, t) {
   const hoy = new Date();
   const fechaCom = new Date(fecha);
   const diff = Math.floor((hoy - fechaCom) / (1000 * 60 * 60 * 24));
-  if (diff === 0) return 'Hoy';
-  if (diff === 1) return 'Hace 1 día';
-  return `Hace ${diff} días`;
+  if (diff === 0) return t('home.ui.today');
+  if (diff === 1) return t('home.ui.oneDayAgo');
+  return t('home.ui.daysAgo', { count: diff });
 }
 
 const PRIORIDAD_STYLES = {
@@ -40,10 +41,10 @@ const PRIORIDAD_STYLES = {
   BAJA: 'bg-emerald-100 text-emerald-800',
 };
 
-const accesosDirectos = [
-  { path: '/formularioinspeccion', icon: FaClipboardList, label: 'Formulario Inspección', key: 'inspeccion', accent: true },
-  { path: '/formulario-maquinaria', icon: FaWrench, label: 'Formulario Maquinarias', key: 'maquinaria', accent: false },
-  { path: '/ajuste', icon: FaChartBar, label: 'Formulario Ajuste', key: 'ajuste', accent: true },
+const accesosDirectosBase = [
+  { path: '/formularioinspeccion', icon: FaClipboardList, labelKey: 'home.ui.linkInspeccion', key: 'inspeccion', accent: true },
+  { path: '/formulario-maquinaria', icon: FaWrench, labelKey: 'home.ui.linkMaquinaria', key: 'maquinaria', accent: false },
+  { path: '/ajuste', icon: FaChartBar, labelKey: 'home.ui.linkAjuste', key: 'ajuste', accent: true },
 ];
 
 const inputClass =
@@ -59,7 +60,9 @@ const sectionTitle =
   'mb-5 flex items-center gap-2 border-l-4 border-fenix-primario pl-3 font-heading text-lg font-bold text-gray-900 sm:text-xl';
 
 export default function Inicio() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [tareas, setTareas] = useState([]);
   const [nuevaTarea, setNuevaTarea] = useState('');
@@ -78,7 +81,17 @@ export default function Inicio() {
   const [editandoComId, setEditandoComId] = useState(null);
   const [editComunicado, setEditComunicado] = useState({ titulo: '', mensaje: '' });
   const [busquedaComunicado, setBusquedaComunicado] = useState('');
-  const [usuarioActual, setUsuarioActual] = useState({ nombre: 'Usuario', rol: 'usuario', login: '', email: '' });
+  const [usuarioActual, setUsuarioActual] = useState({ nombre: '', rol: 'usuario', login: '', email: '' });
+
+  useEffect(() => {
+    if (!location.state?.focusBuscadorTareas) return;
+
+    const timeoutId = window.setTimeout(() => {
+      document.getElementById('buscar-tarea-inicio')?.focus();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [location.key, location.state]);
 
   const obtenerContadorUso = (key) => {
     const login = localStorage.getItem('login');
@@ -96,7 +109,7 @@ export default function Inicio() {
     localStorage.setItem(`acceso_directo_${login}`, JSON.stringify(uso));
   };
 
-  const accesosOrdenados = [...accesosDirectos].sort(
+  const accesosOrdenados = [...accesosDirectosBase].sort(
     (a, b) => obtenerContadorUso(b.key) - obtenerContadorUso(a.key)
   );
 
@@ -105,12 +118,18 @@ export default function Inicio() {
     navigate(acceso.path);
   };
 
+  const labelPrioridad = (prioridad) => {
+    if (prioridad === 'ALTA') return t('home.ui.priorityHigh');
+    if (prioridad === 'BAJA') return t('home.ui.priorityLow');
+    return t('home.ui.priorityMedium');
+  };
+
   useEffect(() => {
     const login = localStorage.getItem('login');
     if (!login) return;
 
     setUsuarioActual({
-      nombre: localStorage.getItem('nombre') || 'Usuario',
+      nombre: localStorage.getItem('nombre') || t('home.ui.defaultUser'),
       rol: localStorage.getItem('rol') || 'usuario',
       login,
       email: localStorage.getItem('email') || '',
@@ -137,17 +156,17 @@ export default function Inicio() {
     };
     fetchTareas();
     fetchComunicados();
-  }, []);
+  }, [t]);
 
   const agregarTarea = async () => {
     if (!nuevaTarea.trim() || !nuevaFecha) {
-      alert('Debes ingresar la tarea y la fecha');
+      alert(t('home.ui.alerts.needTaskAndDate'));
       return;
     }
     const hoy = new Date();
     const fechaHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
     if (new Date(nuevaFecha) < fechaHoy) {
-      alert('La fecha no puede ser pasada');
+      alert(t('home.ui.alerts.dateNotPast'));
       return;
     }
     try {
@@ -169,19 +188,19 @@ export default function Inicio() {
       setNuevaFecha('');
       setNuevaPrioridad('MEDIA');
       setNuevoEmail('');
-      alert('Tarea agregada');
+      alert(t('home.ui.alerts.taskAdded'));
     } catch {
-      alert('Error al agregar tarea');
+      alert(t('home.ui.alerts.taskAddError'));
     }
   };
 
   const guardarEdicion = async (id) => {
     if (!editTexto.trim() || !editFecha) {
-      alert('Debes ingresar la tarea y la fecha');
+      alert(t('home.ui.alerts.needTaskAndDate'));
       return;
     }
     if (new Date(editFecha) < new Date(new Date().toISOString().slice(0, 10))) {
-      alert('La fecha no puede ser pasada');
+      alert(t('home.ui.alerts.dateNotPast'));
       return;
     }
     try {
@@ -197,15 +216,15 @@ export default function Inicio() {
         },
         { headers }
       );
-      setTareas(tareas.map((t) => (t._id === id ? res.data.data : t)));
+      setTareas(tareas.map((tarea) => (tarea._id === id ? res.data.data : tarea)));
       setEditandoId(null);
       setEditTexto('');
       setEditFecha('');
       setEditPrioridad('MEDIA');
       setEditEmail('');
-      alert('Tarea editada');
+      alert(t('home.ui.alerts.taskEdited'));
     } catch {
-      alert('Error al editar tarea');
+      alert(t('home.ui.alerts.taskEditError'));
     }
   };
 
@@ -214,9 +233,9 @@ export default function Inicio() {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       const res = await axios.patch(`${API}/tareas/${id}/cumplida`, {}, { headers });
-      setTareas(tareas.map((t) => (t._id === id ? res.data.data : t)));
+      setTareas(tareas.map((tarea) => (tarea._id === id ? res.data.data : tarea)));
     } catch {
-      alert('Error al actualizar tarea');
+      alert(t('home.ui.alerts.taskUpdateError'));
     }
   };
 
@@ -225,10 +244,10 @@ export default function Inicio() {
       const token = localStorage.getItem('token');
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       await axios.delete(`${API}/tareas/${id}`, { headers });
-      setTareas(tareas.filter((t) => t._id !== id));
-      alert('Tarea eliminada');
+      setTareas(tareas.filter((tarea) => tarea._id !== id));
+      alert(t('home.ui.alerts.taskDeleted'));
     } catch {
-      alert('Error al eliminar tarea');
+      alert(t('home.ui.alerts.taskDeleteError'));
     }
   };
 
@@ -237,7 +256,7 @@ export default function Inicio() {
 
   const agregarComunicado = async () => {
     if (!nuevoComunicado.titulo.trim() || !nuevoComunicado.mensaje.trim() || nuevoComunicado.duracion <= 0) {
-      alert('Debes ingresar título, mensaje y duración válida');
+      alert(t('home.ui.alerts.needAnnouncementFields'));
       return;
     }
     try {
@@ -259,9 +278,9 @@ export default function Inicio() {
       );
       setComunicados([...comunicados, res.data]);
       setNuevoComunicado({ titulo: '', mensaje: '', duracion: 1 });
-      alert('Comunicado agregado');
+      alert(t('home.ui.alerts.announcementAdded'));
     } catch {
-      alert('Error al agregar comunicado');
+      alert(t('home.ui.alerts.announcementAddError'));
     }
   };
 
@@ -271,9 +290,9 @@ export default function Inicio() {
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
       await axios.delete(`${API}/comunicados/${id}`, { headers });
       setComunicados(comunicados.filter((c) => c._id !== id));
-      alert('Comunicado eliminado');
+      alert(t('home.ui.alerts.announcementDeleted'));
     } catch {
-      alert('Error al eliminar comunicado');
+      alert(t('home.ui.alerts.announcementDeleteError'));
     }
   };
 
@@ -284,7 +303,7 @@ export default function Inicio() {
 
   const guardarEdicionCom = async (id) => {
     if (!editComunicado.titulo.trim() || !editComunicado.mensaje.trim()) {
-      alert('Debes ingresar título y mensaje');
+      alert(t('home.ui.alerts.needTitleMessage'));
       return;
     }
     try {
@@ -294,14 +313,14 @@ export default function Inicio() {
       setComunicados(comunicados.map((c) => (c._id === id ? res.data : c)));
       setEditandoComId(null);
       setEditComunicado({ titulo: '', mensaje: '' });
-      alert('Comunicado editado');
+      alert(t('home.ui.alerts.announcementEdited'));
     } catch {
-      alert('Error al editar comunicado');
+      alert(t('home.ui.alerts.announcementEditError'));
     }
   };
 
-  const tareasFiltradas = tareas.filter((t) =>
-    t.texto?.toLowerCase().includes(busquedaTarea.toLowerCase())
+  const tareasFiltradas = tareas.filter((tarea) =>
+    tarea.texto?.toLowerCase().includes(busquedaTarea.toLowerCase())
   );
   const comunicadosFiltrados = comunicados.filter(
     (c) =>
@@ -309,7 +328,8 @@ export default function Inicio() {
       c.mensaje?.toLowerCase().includes(busquedaComunicado.toLowerCase())
   );
 
-  const tareasPendientes = tareas.filter((t) => !t.cumplida).length;
+  const tareasPendientes = tareas.filter((tarea) => !tarea.cumplida).length;
+  const defaultUser = t('home.ui.defaultUser');
 
   return (
     <div className="min-h-full bg-[#F5F5F7] p-4 sm:p-6 lg:p-8">
@@ -317,16 +337,20 @@ export default function Inicio() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
-              Hola, {primerNombre(usuarioActual.nombre)}
+              {t('home.ui.greeting', { name: primerNombre(usuarioActual.nombre, defaultUser) })}
             </h1>
-            <p className="mt-1 text-sm text-gray-500 sm:text-base">Bienvenido a ARNALD Data Flow</p>
+            <p className="mt-1 text-sm text-gray-500 sm:text-base">{t('home.ui.welcome')}</p>
           </div>
           <div className="flex flex-wrap gap-2 text-xs text-gray-500">
             <span className="rounded-full border border-gray-200 bg-white px-3 py-1.5 shadow-sm">
-              {tareasPendientes} tarea{tareasPendientes !== 1 ? 's' : ''} pendiente{tareasPendientes !== 1 ? 's' : ''}
+              {tareasPendientes === 1
+                ? t('home.ui.pendingTasks', { count: tareasPendientes })
+                : t('home.ui.pendingTasks_plural', { count: tareasPendientes })}
             </span>
             <span className="rounded-full border border-gray-200 bg-white px-3 py-1.5 shadow-sm">
-              {comunicados.length} comunicado{comunicados.length !== 1 ? 's' : ''}
+              {comunicados.length === 1
+                ? t('home.ui.announcementsCount', { count: comunicados.length })
+                : t('home.ui.announcementsCount_plural', { count: comunicados.length })}
             </span>
           </div>
         </header>
@@ -335,7 +359,7 @@ export default function Inicio() {
         <section className={`${cardDashboard} p-5 sm:p-6`}>
           <h2 className={sectionTitle}>
             <FaRocket className="text-fenix-primario" />
-            Accesos Directos
+            {t('home.ui.quickLinks')}
           </h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {accesosOrdenados.map((acceso) => {
@@ -352,7 +376,7 @@ export default function Inicio() {
                       acceso.accent ? 'text-fenix-primario' : 'text-gray-400 group-hover:text-gray-600'
                     }`}
                   />
-                  <span className="text-center text-sm font-semibold text-gray-800">{acceso.label}</span>
+                  <span className="text-center text-sm font-semibold text-gray-800">{t(acceso.labelKey)}</span>
                 </button>
               );
             })}
@@ -365,7 +389,7 @@ export default function Inicio() {
           <section className={`${cardDashboard} p-5 sm:p-6 lg:col-span-3`}>
             <h2 className={sectionTitle}>
               <FaHome className="text-fenix-primario" />
-              Mis Tareas
+              {t('home.ui.myTasks')}
             </h2>
 
             <div className="mb-4 space-y-3">
@@ -373,7 +397,7 @@ export default function Inicio() {
                 <div className="min-w-0 flex-1">
                   <input
                     type="text"
-                    placeholder="Nueva tarea"
+                    placeholder={t('home.ui.newTask')}
                     maxLength={MAX_TAREA_CHARS}
                     className={inputClass}
                     value={nuevaTarea}
@@ -394,18 +418,18 @@ export default function Inicio() {
                   value={nuevaPrioridad}
                   onChange={(e) => setNuevaPrioridad(e.target.value)}
                 >
-                  <option value="BAJA">Baja</option>
-                  <option value="MEDIA">Media</option>
-                  <option value="ALTA">Alta</option>
+                  <option value="BAJA">{t('home.ui.priorityLow')}</option>
+                  <option value="MEDIA">{t('home.ui.priorityMedium')}</option>
+                  <option value="ALTA">{t('home.ui.priorityHigh')}</option>
                 </select>
                 <button type="button" className={btnPrimary} onClick={agregarTarea}>
-                  Agregar
+                  {t('home.ui.add')}
                 </button>
               </div>
 
               <input
                 type="email"
-                placeholder="Email para alertas (opcional)"
+                placeholder={t('home.ui.emailAlertsOptional')}
                 className={inputClass}
                 value={nuevoEmail}
                 onChange={(e) => setNuevoEmail(e.target.value)}
@@ -413,7 +437,7 @@ export default function Inicio() {
 
               {usuarioActual.email && (
                 <p className="rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs text-red-700">
-                  Las alertas se enviarán a: {usuarioActual.email}
+                  {t('home.ui.alertsSentTo', { email: usuarioActual.email })}
                 </p>
               )}
 
@@ -421,7 +445,7 @@ export default function Inicio() {
                 <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Buscar tarea..."
+                  placeholder={t('home.ui.searchTask')}
                   id="buscar-tarea-inicio"
                   className={`${inputClass} pl-9`}
                   value={busquedaTarea}
@@ -434,11 +458,11 @@ export default function Inicio() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-red-50/60 text-left text-xs font-semibold uppercase tracking-wide text-gray-700">
-                    <th className="px-3 py-3 sm:px-4">Tarea</th>
-                    <th className="hidden px-3 py-3 sm:table-cell sm:px-4">Fecha</th>
-                    <th className="hidden px-3 py-3 md:table-cell sm:px-4 text-center">Prioridad</th>
-                    <th className="px-3 py-3 text-center sm:px-4">Estado</th>
-                    <th className="px-3 py-3 text-center sm:px-4">Acciones</th>
+                    <th className="px-3 py-3 sm:px-4">{t('home.ui.colTask')}</th>
+                    <th className="hidden px-3 py-3 sm:table-cell sm:px-4">{t('home.ui.colDate')}</th>
+                    <th className="hidden px-3 py-3 md:table-cell sm:px-4 text-center">{t('home.ui.colPriority')}</th>
+                    <th className="px-3 py-3 text-center sm:px-4">{t('home.ui.colStatus')}</th>
+                    <th className="px-3 py-3 text-center sm:px-4">{t('common.actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -446,17 +470,17 @@ export default function Inicio() {
                     <tr>
                       <td colSpan={5} className="px-4 py-12 text-center text-gray-500">
                         <FaStickyNote className="mx-auto mb-2 text-3xl text-gray-300" />
-                        <p>No hay tareas registradas</p>
+                        <p>{t('home.ui.emptyTasks')}</p>
                       </td>
                     </tr>
                   ) : (
-                    tareasFiltradas.map((t, idx) => (
+                    tareasFiltradas.map((tarea, idx) => (
                       <tr
-                        key={t._id}
+                        key={tarea._id}
                         className={`border-t border-gray-100 ${idx % 2 === 1 ? 'bg-gray-50/50' : 'bg-white'}`}
                       >
                         <td className="px-3 py-3 sm:px-4">
-                          {editandoId === t._id ? (
+                          {editandoId === tarea._id ? (
                             <div className="space-y-2">
                               <input
                                 className={inputClass}
@@ -468,20 +492,20 @@ export default function Inicio() {
                                 className={inputClass}
                                 value={editEmail}
                                 onChange={(e) => setEditEmail(e.target.value)}
-                                placeholder="Email alertas"
+                                placeholder={t('home.ui.emailAlerts')}
                               />
                             </div>
                           ) : (
                             <div>
-                              <span className={t.cumplida ? 'text-gray-400 line-through' : 'text-gray-800'}>
-                                {t.texto}
+                              <span className={tarea.cumplida ? 'text-gray-400 line-through' : 'text-gray-800'}>
+                                {tarea.texto}
                               </span>
-                              <span className="mt-1 block text-xs text-gray-500 sm:hidden">{t.fecha}</span>
+                              <span className="mt-1 block text-xs text-gray-500 sm:hidden">{tarea.fecha}</span>
                             </div>
                           )}
                         </td>
                         <td className="hidden px-3 py-3 text-gray-600 sm:table-cell sm:px-4">
-                          {editandoId === t._id ? (
+                          {editandoId === tarea._id ? (
                             <input
                               type="date"
                               className={inputClass}
@@ -489,47 +513,47 @@ export default function Inicio() {
                               onChange={(e) => setEditFecha(e.target.value)}
                             />
                           ) : (
-                            t.fecha
+                            tarea.fecha
                           )}
                         </td>
                         <td className="hidden px-3 py-3 md:table-cell sm:px-4 text-center">
-                          {editandoId === t._id ? (
+                          {editandoId === tarea._id ? (
                             <select
                               className={inputClass}
                               value={editPrioridad}
                               onChange={(e) => setEditPrioridad(e.target.value)}
                             >
-                              <option value="BAJA">Baja</option>
-                              <option value="MEDIA">Media</option>
-                              <option value="ALTA">Alta</option>
+                              <option value="BAJA">{t('home.ui.priorityLow')}</option>
+                              <option value="MEDIA">{t('home.ui.priorityMedium')}</option>
+                              <option value="ALTA">{t('home.ui.priorityHigh')}</option>
                             </select>
                           ) : (
                             <span
                               className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                PRIORIDAD_STYLES[t.prioridad] || PRIORIDAD_STYLES.MEDIA
+                                PRIORIDAD_STYLES[tarea.prioridad] || PRIORIDAD_STYLES.MEDIA
                               }`}
                             >
-                              {t.prioridad === 'ALTA' ? 'Alta' : t.prioridad === 'BAJA' ? 'Baja' : 'Media'}
+                              {labelPrioridad(tarea.prioridad)}
                             </span>
                           )}
                         </td>
                         <td className="px-3 py-3 text-center sm:px-4">
                           <input
                             type="checkbox"
-                            checked={t.cumplida}
-                            onChange={() => toggleCumplida(t._id)}
+                            checked={tarea.cumplida}
+                            onChange={() => toggleCumplida(tarea._id)}
                             className="h-4 w-4 accent-fenix-primario"
                           />
                         </td>
                         <td className="px-3 py-3 sm:px-4">
                           <div className="flex justify-center gap-1">
-                            {editandoId === t._id ? (
+                            {editandoId === tarea._id ? (
                               <>
                                 <button
                                   type="button"
                                   className="rounded p-1.5 text-emerald-600 hover:bg-emerald-50"
-                                  onClick={() => guardarEdicion(t._id)}
-                                  title="Guardar"
+                                  onClick={() => guardarEdicion(tarea._id)}
+                                  title={t('common.save')}
                                 >
                                   <FaCheck />
                                 </button>
@@ -537,7 +561,7 @@ export default function Inicio() {
                                   type="button"
                                   className="rounded p-1.5 text-gray-500 hover:bg-gray-100"
                                   onClick={() => setEditandoId(null)}
-                                  title="Cancelar"
+                                  title={t('common.cancel')}
                                 >
                                   <FaTimes />
                                 </button>
@@ -548,21 +572,21 @@ export default function Inicio() {
                                   type="button"
                                   className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-fenix-primario"
                                   onClick={() => {
-                                    setEditandoId(t._id);
-                                    setEditTexto(t.texto);
-                                    setEditFecha(t.fecha);
-                                    setEditPrioridad(t.prioridad || 'MEDIA');
-                                    setEditEmail(t.emailResponsable || '');
+                                    setEditandoId(tarea._id);
+                                    setEditTexto(tarea.texto);
+                                    setEditFecha(tarea.fecha);
+                                    setEditPrioridad(tarea.prioridad || 'MEDIA');
+                                    setEditEmail(tarea.emailResponsable || '');
                                   }}
-                                  title="Editar"
+                                  title={t('common.edit')}
                                 >
                                   <FaEdit />
                                 </button>
                                 <button
                                   type="button"
                                   className="rounded p-1.5 text-red-500 hover:bg-red-50"
-                                  onClick={() => eliminarTarea(t._id)}
-                                  title="Eliminar"
+                                  onClick={() => eliminarTarea(tarea._id)}
+                                  title={t('home.ui.delete')}
                                 >
                                   <FaTrash />
                                 </button>
@@ -582,14 +606,14 @@ export default function Inicio() {
           <section className={`${cardDashboard} p-5 sm:p-6 lg:col-span-2`}>
             <h2 className={sectionTitle}>
               <FaBullhorn className="text-gray-400" />
-              Comunicados
+              {t('home.ui.announcements')}
             </h2>
 
             <div className="relative mb-4">
               <FaSearch className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar comunicado..."
+                placeholder={t('home.ui.searchAnnouncement')}
                 className={`${inputClass} pl-9`}
                 value={busquedaComunicado}
                 onChange={(e) => setBusquedaComunicado(e.target.value)}
@@ -598,18 +622,18 @@ export default function Inicio() {
 
             {puedeGestionarComunicados && (
               <div className="mb-5 rounded-xl border border-red-100 bg-red-50 p-4">
-                <h3 className="mb-3 text-sm font-semibold text-gray-800">Nuevo Comunicado</h3>
+                <h3 className="mb-3 text-sm font-semibold text-gray-800">{t('home.ui.newAnnouncement')}</h3>
                 <div className="space-y-3">
                   <input
                     type="text"
-                    placeholder="Título del comunicado"
+                    placeholder={t('home.ui.announcementTitle')}
                     className={inputClass}
                     value={nuevoComunicado.titulo}
                     onChange={(e) => setNuevoComunicado({ ...nuevoComunicado, titulo: e.target.value })}
                   />
                   <input
                     type="text"
-                    placeholder="Mensaje del comunicado"
+                    placeholder={t('home.ui.announcementMessage')}
                     className={inputClass}
                     value={nuevoComunicado.mensaje}
                     onChange={(e) => setNuevoComunicado({ ...nuevoComunicado, mensaje: e.target.value })}
@@ -618,7 +642,7 @@ export default function Inicio() {
                     <input
                       type="number"
                       min={1}
-                      placeholder="Duración (días)"
+                      placeholder={t('home.ui.durationDays')}
                       className={`${inputClass} sm:w-32`}
                       value={nuevoComunicado.duracion}
                       onChange={(e) =>
@@ -626,7 +650,7 @@ export default function Inicio() {
                       }
                     />
                     <button type="button" className={btnPrimary} onClick={agregarComunicado}>
-                      Agregar
+                      {t('home.ui.add')}
                     </button>
                   </div>
                 </div>
@@ -637,7 +661,7 @@ export default function Inicio() {
               {comunicadosFiltrados.length === 0 ? (
                 <div className="py-10 text-center text-gray-500">
                   <FaBullhorn className="mx-auto mb-2 text-3xl text-gray-300" />
-                  <p className="text-sm">No hay comunicados</p>
+                  <p className="text-sm">{t('home.ui.emptyAnnouncements')}</p>
                 </div>
               ) : (
                 comunicadosFiltrados.map((c, idx) => (
@@ -663,14 +687,14 @@ export default function Inicio() {
                         />
                         <div className="flex gap-2">
                           <button type="button" className={btnPrimary} onClick={() => guardarEdicionCom(c._id)}>
-                            Guardar
+                            {t('common.save')}
                           </button>
                           <button
                             type="button"
                             className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
                             onClick={() => setEditandoComId(null)}
                           >
-                            Cancelar
+                            {t('common.cancel')}
                           </button>
                         </div>
                       </div>
@@ -684,6 +708,7 @@ export default function Inicio() {
                                 type="button"
                                 className="rounded p-1 text-gray-500 hover:text-fenix-primario"
                                 onClick={() => iniciarEdicionCom(c)}
+                                title={t('common.edit')}
                               >
                                 <FaEdit />
                               </button>
@@ -691,6 +716,7 @@ export default function Inicio() {
                                 type="button"
                                 className="rounded p-1 text-red-500 hover:bg-red-50"
                                 onClick={() => eliminarComunicado(c._id)}
+                                title={t('home.ui.delete')}
                               >
                                 <FaTrash />
                               </button>
@@ -699,8 +725,8 @@ export default function Inicio() {
                         </div>
                         <p className="text-sm text-gray-600">{c.mensaje}</p>
                         <p className="mt-2 text-xs text-gray-400">
-                          {c.fecha} · {diasDesde(c.fecha)}
-                          {c.fechaFin ? ` · Vigente hasta: ${c.fechaFin}` : ''}
+                          {c.fecha} · {diasDesde(c.fecha, t)}
+                          {c.fechaFin ? ` · ${t('home.ui.validUntil', { date: c.fechaFin })}` : ''}
                         </p>
                       </div>
                     )}

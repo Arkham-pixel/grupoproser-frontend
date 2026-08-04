@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { FaPlus, FaTrash, FaCalculator, FaFilePdf } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { descargarLiquidadorAjustePdf } from './generarLiquidadorAjustePdf';
 
 export default function LiquidadorAjuste({ formData, onInputChange }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   // Colores según el tema
@@ -311,20 +313,20 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
             style={{ color: textPrimary }}
           >
             <FaCalculator className="mr-3" style={{ color: theme === 'dark' ? '#86EFAC' : '#16A34A' }} />
-            LIQUIDADOR
+            {t('adjustment.ui.liquidador.title')}
           </h3>
           <p 
             className="mt-2 text-sm"
             style={{ color: textSecondary }}
           >
-            Tabla de liquidación de pérdida con cálculos automáticos
+            {t('adjustment.ui.liquidador.subtitle')}
           </p>
         </div>
         <button
           type="button"
           onClick={descargarPdf}
           disabled={!liquidador.items?.length}
-          title={!liquidador.items?.length ? 'Agrega al menos un ítem para generar el PDF' : 'Descargar solo el cuadro del liquidador'}
+          title={!liquidador.items?.length ? t('adjustment.ui.liquidador.needItem') : t('adjustment.ui.liquidador.downloadHint')}
           className="px-4 py-2 rounded-lg transition-colors flex items-center justify-center font-medium disabled:cursor-not-allowed disabled:opacity-50"
           style={{
             backgroundColor: theme === 'dark' ? 'rgba(220, 38, 38, 0.25)' : '#DC2626',
@@ -332,7 +334,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
           }}
         >
           <FaFilePdf className="mr-2" />
-          Descargar PDF
+          {t('adjustment.ui.liquidador.downloadPdf')}
         </button>
       </div>
 
@@ -342,13 +344,13 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
           className="block text-sm font-medium mb-2"
           style={{ color: textPrimary }}
         >
-          Límite Asegurado (aplicado a todos los items)
+          {t('adjustment.ui.liquidador.insuredLimit')}
         </label>
         <input
           type="text"
           value={liquidador.limiteAsegurado || ''}
           onChange={(e) => actualizarLimiteAsegurado(e.target.value)}
-          placeholder="Ej: $ 7.548.808.800"
+          placeholder={t('adjustment.ui.liquidador.insuredLimitPlaceholder')}
           className="w-full px-3 py-2 rounded-md focus:outline-none"
           style={{
             backgroundColor: inputBg,
@@ -459,7 +461,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   border: `1px solid ${borderColor}`
                 }}
               >
-                BIEN AFECTADO
+                {t('adjustment.ui.liquidador.affectedAsset')}
               </th>
               <th 
                 className="p-3 text-left text-sm font-semibold"
@@ -468,7 +470,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   border: `1px solid ${borderColor}`
                 }}
               >
-                LÍMITE ASEGURADO
+                {t('adjustment.ui.liquidador.limit')}
               </th>
               <th 
                 className="p-3 text-left text-sm font-semibold"
@@ -477,7 +479,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   border: `1px solid ${borderColor}`
                 }}
               >
-                VALOR RECLAMADO
+                {t('adjustment.ui.liquidador.claimed')}
               </th>
               <th 
                 className="p-3 text-left text-sm font-semibold"
@@ -486,7 +488,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   border: `1px solid ${borderColor}`
                 }}
               >
-                VALOR AJUSTADO
+                {t('adjustment.ui.liquidador.adjusted')}
               </th>
               <th 
                 className="p-3 text-left text-sm font-semibold"
@@ -495,7 +497,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   border: `1px solid ${borderColor}`
                 }}
               >
-                OBSERVACIÓN
+                {t('adjustment.ui.liquidador.observation')}
               </th>
               <th 
                 className="p-3 text-center text-sm font-semibold"
@@ -504,7 +506,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                   border: `1px solid ${borderColor}`
                 }}
               >
-                ACCIÓN
+                {t('adjustment.ui.liquidador.action')}
               </th>
             </tr>
           </thead>
@@ -527,7 +529,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                     <textarea
                       value={item.bienAfectado || ''}
                       onChange={(e) => actualizarItem(item.id, 'bienAfectado', e.target.value)}
-                      placeholder="Descripción del bien afectado"
+                      placeholder={t('adjustment.ui.liquidador.assetPlaceholder')}
                       rows={2}
                       className="w-full px-2 py-1 text-sm rounded focus:outline-none"
                       style={{
@@ -545,7 +547,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                       type="text"
                       value={item.limiteAsegurado || ''}
                       onChange={(e) => actualizarItem(item.id, 'limiteAsegurado', e.target.value)}
-                      placeholder="$ 0"
+                      placeholder={t('adjustment.ui.liquidador.zeroPlaceholder')}
                       className="w-full px-2 py-1 text-sm rounded focus:outline-none"
                       style={{
                         backgroundColor: inputBg,
@@ -562,7 +564,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                       type="text"
                       value={item.valorReclamado || ''}
                       onChange={(e) => actualizarItem(item.id, 'valorReclamado', e.target.value)}
-                      placeholder="$ 0"
+                      placeholder={t('adjustment.ui.liquidador.zeroPlaceholder')}
                       className="w-full px-2 py-1 text-sm rounded focus:outline-none"
                       style={{
                         backgroundColor: inputBg,
@@ -579,7 +581,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                       type="text"
                       value={item.valorAjustado || ''}
                       onChange={(e) => actualizarItem(item.id, 'valorAjustado', e.target.value)}
-                      placeholder="$ 0"
+                      placeholder={t('adjustment.ui.liquidador.zeroPlaceholder')}
                       className="w-full px-2 py-1 text-sm rounded focus:outline-none"
                       style={{
                         backgroundColor: inputBg,
@@ -595,7 +597,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                     <textarea
                       value={item.observacion || ''}
                       onChange={(e) => actualizarItem(item.id, 'observacion', e.target.value)}
-                      placeholder="Observaciones"
+                      placeholder={t('adjustment.ui.liquidador.observationPlaceholder')}
                       rows={2}
                       className="w-full px-2 py-1 text-sm rounded focus:outline-none"
                       style={{
@@ -638,7 +640,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                     border: `1px solid ${borderColor}`
                   }}
                 >
-                  No hay items agregados. Haz clic en "Agregar Item" para comenzar.
+                  {t('adjustment.ui.liquidador.addItem')}
                 </td>
               </tr>
             )}
@@ -668,7 +670,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                       ...liquidador,
                       lucro: e.target.value
                     })}
-                    placeholder="$ 0"
+                    placeholder={t('adjustment.ui.liquidador.zeroPlaceholder')}
                     className="w-full px-2 py-1 text-sm rounded focus:outline-none font-bold"
                     style={{
                       backgroundColor: inputBg,
@@ -776,7 +778,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
                       ...liquidador,
                       gastos: e.target.value
                     })}
-                    placeholder="$ 0"
+                    placeholder={t('adjustment.ui.liquidador.zeroPlaceholder')}
                     className="w-full px-2 py-1 text-sm rounded focus:outline-none font-bold"
                     style={{
                       backgroundColor: inputBg,
@@ -831,7 +833,7 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
           }}
         >
           <FaPlus className="mr-2" />
-          Agregar Item
+          {t('adjustment.ui.liquidador.addItem')}
         </button>
       </div>
 

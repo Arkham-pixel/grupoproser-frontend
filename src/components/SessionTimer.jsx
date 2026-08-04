@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Duración máxima de sesión: 7 horas 50 minutos
 const MAX_SESSION_DURATION = 7 * 60 * 60 * 1000 + 50 * 60 * 1000; // 7 horas 50 minutos
@@ -20,6 +21,7 @@ const useIsMobile = () => {
 };
 
 const SessionTimer = () => {
+  const { t, i18n } = useTranslation();
   const [timeElapsed, setTimeElapsed] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [timeRemaining, setTimeRemaining] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [tokenInfo, setTokenInfo] = useState({ minutesRemaining: 0, expiryTime: null });
@@ -115,6 +117,8 @@ const SessionTimer = () => {
 
   if (!isVisible) return null;
 
+  const locale = i18n.language?.startsWith('en') ? 'en-US' : 'es-CO';
+
   return (
     <>
       {/* Contador de sesión - Desktop: esquina inferior izquierda | Mobile: Header compacto */}
@@ -150,7 +154,7 @@ const SessionTimer = () => {
             style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
           >
             <span className="session-info-icon" style={{ fontSize: '12px' }}>⏱️</span>
-            <span>Sesión: {formatTime(timeElapsed)}</span>
+            <span>{t('session.ui.sessionLabel', { time: formatTime(timeElapsed) })}</span>
           </div>
           
           {/* Línea de tiempo restante de sesión */}
@@ -164,7 +168,7 @@ const SessionTimer = () => {
               opacity: 0.9
             }}
           >
-            <span>Restante: {formatTime(timeRemaining)}</span>
+            <span>{t('session.ui.remainingLabel', { time: formatTime(timeRemaining) })}</span>
           </div>
 
           {/* Separador */}
@@ -188,7 +192,7 @@ const SessionTimer = () => {
             }}
           >
             <span className="session-info-icon" style={{ fontSize: '12px' }}>🔑</span>
-            <span>Token: {tokenInfo.minutesRemaining}m</span>
+            <span>{t('session.ui.tokenLabel', { minutes: tokenInfo.minutesRemaining })}</span>
           </div>
           
           {tokenInfo.expiryTime && (
@@ -200,9 +204,11 @@ const SessionTimer = () => {
                 fontStyle: 'italic'
               }}
             >
-              Expira: {tokenInfo.expiryTime.toLocaleTimeString('es-CO', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+              {t('session.ui.expiresLabel', {
+                time: tokenInfo.expiryTime.toLocaleTimeString(locale, {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                }),
               })}
             </div>
           )}
@@ -299,7 +305,7 @@ const SessionTimer = () => {
             }
           `}</style>
           <span style={{ fontSize: '16px' }}>🔄</span>
-          <span>Token renovado exitosamente</span>
+          <span>{t('session.ui.tokenRenewed')}</span>
         </div>
       )}
     </>
@@ -307,4 +313,3 @@ const SessionTimer = () => {
 };
 
 export default SessionTimer;
-

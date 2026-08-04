@@ -389,7 +389,27 @@ export function obtenerCamposArea(areaId, plantilla) {
   return cfg?.campos || CAMPOS_AREA.estandar;
 }
 
-export function tituloArea(areaId, plantilla, alcobaNum = null) {
+export function tituloArea(areaId, plantilla, alcobaNum = null, t) {
+  if (typeof t === 'function') {
+    if (areaId === 'alcoba' && alcobaNum) {
+      const key = 'inspection.ui.formulario_propiedades.areas.alcobaNum';
+      const translated = t(key, { n: alcobaNum });
+      if (translated && translated !== key) return translated;
+    }
+    if (areaId === 'banoAlcoba' && alcobaNum) {
+      const key = 'inspection.ui.formulario_propiedades.areas.banoAlcobaNum';
+      const translated = t(key, { n: alcobaNum });
+      if (translated && translated !== key) return translated;
+    }
+    if (areaId === 'closetAlcoba' && alcobaNum) {
+      const key = 'inspection.ui.formulario_propiedades.areas.closetAlcobaNum';
+      const translated = t(key, { n: alcobaNum });
+      if (translated && translated !== key) return translated;
+    }
+    const key = `inspection.ui.formulario_propiedades.areas.${areaId}`;
+    const translated = t(key);
+    if (translated && translated !== key) return translated;
+  }
   if (areaId === 'alcoba' && alcobaNum) return `Alcoba ${alcobaNum}`;
   if (areaId === 'banoAlcoba' && alcobaNum) return `Baño — Alcoba ${alcobaNum}`;
   if (areaId === 'closetAlcoba' && alcobaNum) return `Closet — Alcoba ${alcobaNum}`;

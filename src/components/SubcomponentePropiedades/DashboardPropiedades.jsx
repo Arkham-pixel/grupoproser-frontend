@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ResponsiveContainer,
   BarChart,
@@ -43,6 +44,7 @@ const truncarEtiqueta = (valor, max = 28) => {
 };
 
 const DashboardPropiedades = () => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -67,7 +69,7 @@ const DashboardPropiedades = () => {
       } catch (err) {
         console.error('Error cargando dashboard Propiedades:', err);
         if (!cancelado) {
-          setError(err.message || 'No fue posible cargar los casos.');
+          setError(err.message || t('properties.dashboard.loadError'));
           setCasos([]);
         }
       } finally {
@@ -78,7 +80,7 @@ const DashboardPropiedades = () => {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [t]);
 
   const limpiarFiltros = () => {
     setFiltroCiudad('');
@@ -157,8 +159,8 @@ const DashboardPropiedades = () => {
     <div className={`${expressScope} ${root} p-4 sm:p-6`}>
       <div className={`${expressPageWrap} space-y-6`}>
         <PropiedadesPageHeader
-          title="Dashboard Propiedades"
-          subtitle="Resumen de casos del módulo. La inspección se diligencia desde el reporte."
+          title={t('properties.dashboard.title')}
+          subtitle={t('properties.dashboard.subtitle')}
           activePath="/propiedades/dashboard"
         />
 
@@ -169,16 +171,16 @@ const DashboardPropiedades = () => {
         )}
 
         <ExpressFilterSection
-          title="Filtros"
+          title={t('properties.dashboard.filters')}
           onClear={limpiarFiltros}
           showClear={Boolean(
             filtroCiudad || filtroClase || filtroResponsable || fechaDesde || fechaHasta
           )}
         >
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <Campo label="Ciudad">
+            <Campo label={t('properties.fields.city')}>
               <SelectFenix value={filtroCiudad} onChange={(e) => setFiltroCiudad(e.target.value)}>
-                <option value="">Todas</option>
+                <option value="">{t('properties.dashboard.all')}</option>
                 {opcionesCiudad.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -186,9 +188,9 @@ const DashboardPropiedades = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Clase de inmueble">
+            <Campo label={t('properties.fields.propertyClass')}>
               <SelectFenix value={filtroClase} onChange={(e) => setFiltroClase(e.target.value)}>
-                <option value="">Todas</option>
+                <option value="">{t('properties.dashboard.all')}</option>
                 {opcionesClase.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -196,12 +198,12 @@ const DashboardPropiedades = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Responsable">
+            <Campo label={t('properties.fields.responsibleAdjuster')}>
               <SelectFenix
                 value={filtroResponsable}
                 onChange={(e) => setFiltroResponsable(e.target.value)}
               >
-                <option value="">Todos</option>
+                <option value="">{t('properties.dashboard.all')}</option>
                 {opcionesResponsable.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
@@ -209,14 +211,14 @@ const DashboardPropiedades = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Desde">
+            <Campo label={t('properties.dashboard.from')}>
               <InputFenix
                 type="date"
                 value={fechaDesde}
                 onChange={(e) => setFechaDesde(e.target.value)}
               />
             </Campo>
-            <Campo label="Hasta">
+            <Campo label={t('properties.dashboard.to')}>
               <InputFenix
                 type="date"
                 value={fechaHasta}
@@ -227,16 +229,16 @@ const DashboardPropiedades = () => {
         </ExpressFilterSection>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <ExpressMetricCard label="Total casos" value={String(total)} />
-          <ExpressMetricCard label="Con inspección" value={String(conInspeccion)} />
-          <ExpressMetricCard label="Sin inspección" value={String(sinInspeccion)} />
-          <ExpressMetricCard label="% inspeccionados" value={`${pctInspeccion}%`} />
+          <ExpressMetricCard label={t('properties.dashboard.totalCases')} value={String(total)} />
+          <ExpressMetricCard label={t('properties.dashboard.withInspection')} value={String(conInspeccion)} />
+          <ExpressMetricCard label={t('properties.dashboard.withoutInspection')} value={String(sinInspeccion)} />
+          <ExpressMetricCard label={t('properties.dashboard.inspectedPercent')} value={`${pctInspeccion}%`} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <div className={expressChartCard}>
             <h3 className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-              Por clase de inmueble
+              {t('properties.dashboard.byPropertyClass')}
             </h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -261,7 +263,7 @@ const DashboardPropiedades = () => {
 
           <div className={expressChartCard}>
             <h3 className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-              Por ciudad (top 10)
+              {t('properties.dashboard.byCity')}
             </h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -288,7 +290,7 @@ const DashboardPropiedades = () => {
 
           <div className={`${expressChartCard} lg:col-span-2`}>
             <h3 className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-              Estado de inspección
+              {t('properties.dashboard.inspectionStatus')}
             </h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">

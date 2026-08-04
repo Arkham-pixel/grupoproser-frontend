@@ -1,3 +1,5 @@
+import i18n from '../../i18n';
+const t = i18n.t.bind(i18n);
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaCopy, FaEnvelope, FaSave } from 'react-icons/fa';
 import {
@@ -329,48 +331,42 @@ export default function PlantillaCorreoContactoInicial({ formData, onPlantillaCh
         className="flex w-full items-center justify-between gap-2 text-left"
       >
         <span className={`${complexSubsectionTitle} flex items-center gap-2`}>
-          <FaEnvelope className="text-fenix-primario" />
-          Plantilla de correo — contacto inicial
-        </span>
+          <FaEnvelope className="text-fenix-primario" />{t("complex.ui.plantilla_correo_contacto_inicial.plantilla_de_correo_contacto_inicial")}</span>
         <span className="text-xs text-gray-500">{abierto ? 'Ocultar' : 'Mostrar'}</span>
       </button>
 
       {abierto && (
         <div className="mt-4 space-y-4">
-          <p className={complexHint}>
-            Texto del correo de contacto inicial según la plantilla acordada y listas de documentos del
-            protocolo «Solicitud básica de datos — COMPLEX». Seleccione el tipo de siniestro, fechas de
-            inspección y documentos a solicitar. Al copiar, se conservan las negrillas para pegar en
-            Outlook.
-          </p>
+          <p className={complexHint}>{t("complex.ui.plantilla_correo_contacto_inicial.texto_del_correo_de_contacto_inicial_segun_la_plantilla_")}</p>
 
           {formData?.plantillaContactoInicial && (
             <p className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400">
               <FaSave />
               {tienePlantillaGuardada
-                ? `Plantilla en el caso (última versión guardada en servidor: ${new Date(formData.plantillaContactoInicial.actualizadoEn).toLocaleString('es-CO')})`
-                : 'Plantilla asociada al caso — pulse Guardar caso para persistir en el servidor'}
+                ? t('complex.ui.plantilla_correo_contacto_inicial.plantilla_en_caso', {
+                    fecha: new Date(formData.plantillaContactoInicial.actualizadoEn).toLocaleString(),
+                  })
+                : t('complex.ui.plantilla_correo_contacto_inicial.plantilla_asociada')}
             </p>
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className={trazabilidadLabelClass}>Destinatario del saludo</label>
+              <label className={trazabilidadLabelClass}>{t("complex.ui.plantilla_correo_contacto_inicial.destinatario_del_saludo")}</label>
               <select
                 value={tipoDestinatario}
                 onChange={(e) => setTipoDestinatario(e.target.value)}
                 className={trazabilidadInputClass}
               >
-                <option value="intermediario">Intermediario</option>
-                <option value="asegurado">Asegurado / beneficiario</option>
-                <option value="reclamante">Reclamante</option>
+                <option value="intermediario">{t("complex.ui.plantilla_correo_contacto_inicial.intermediario")}</option>
+                <option value="asegurado">{t("complex.ui.plantilla_correo_contacto_inicial.asegurado_beneficiario")}</option>
+                <option value="reclamante">{t("complex.ui.plantilla_correo_contacto_inicial.reclamante")}</option>
               </select>
-              <p className="mt-1 text-xs text-gray-500">
-                Nombre en plantilla: <strong>{nombreDestinatario || '—'}</strong>
+              <p className="mt-1 text-xs text-gray-500">{t("complex.ui.plantilla_correo_contacto_inicial.nombre_en_plantilla")}<strong>{nombreDestinatario || '—'}</strong>
               </p>
             </div>
             <div>
-              <label className={trazabilidadLabelClass}>Tipo de siniestro (solicitud básica)</label>
+              <label className={trazabilidadLabelClass}>{t("complex.ui.plantilla_correo_contacto_inicial.tipo_de_siniestro_solicitud_basica")}</label>
               <select
                 value={ramoManual}
                 onChange={(e) => {
@@ -390,11 +386,11 @@ export default function PlantillaCorreoContactoInicial({ formData, onPlantillaCh
           </div>
 
           <div>
-            <p className={`${trazabilidadLabelClass} mb-2`}>Tres fechas propuestas de inspección</p>
+            <p className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.plantilla_correo_contacto_inicial.tres_fechas_propuestas_de_inspeccion")}</p>
             <div className="grid gap-3 md:grid-cols-3">
               {opcionesInspeccion.map((op, index) => (
                 <div key={index} className="space-y-2 rounded-lg border border-gray-100 p-3 dark:border-gray-800">
-                  <p className="text-xs font-semibold text-gray-600">Opción {index + 1}</p>
+                  <p className="text-xs font-semibold text-gray-600">{t("complex.ui.plantilla_correo_contacto_inicial.opcion")}{index + 1}</p>
                   <input
                     type="date"
                     value={op.fecha}
@@ -414,22 +410,18 @@ export default function PlantillaCorreoContactoInicial({ formData, onPlantillaCh
 
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <p className={`${trazabilidadLabelClass} mb-2`}>
-                Documentos del protocolo ({docsRamo.etiquetaRamo})
-              </p>
+              <p className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.plantilla_correo_contacto_inicial.documentos_del_protocolo")}{docsRamo.etiquetaRamo}{t("complex.ui.plantilla_correo_contacto_inicial.texto")}</p>
               <div className="space-y-2">{renderChecklist(docsRamo.especificos)}</div>
             </div>
             <div>
-              <p className={`${trazabilidadLabelClass} mb-2`}>
-                Documentos opcionales (administrativos)
-              </p>
+              <p className={`${trazabilidadLabelClass} mb-2`}>{t("complex.ui.plantilla_correo_contacto_inicial.documentos_opcionales_administrativos")}</p>
               <div className="space-y-2">{renderChecklist(docsRamo.comunes)}</div>
             </div>
           </div>
 
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className={trazabilidadLabelClass}>Asunto del correo</p>
+              <p className={trazabilidadLabelClass}>{t("complex.ui.plantilla_correo_contacto_inicial.asunto_del_correo")}</p>
               <button
                 type="button"
                 onClick={copiarAsunto}
@@ -444,14 +436,12 @@ export default function PlantillaCorreoContactoInicial({ formData, onPlantillaCh
               value={asunto}
               className={`${trazabilidadInputClass} text-sm font-medium`}
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Incluye siniestro, póliza, asegurado y aseguradora del caso.
-            </p>
+            <p className="mt-1 text-xs text-gray-500">{t("complex.ui.plantilla_correo_contacto_inicial.incluye_siniestro_poliza_asegurado_y_aseguradora_del_cas")}</p>
           </div>
 
           <div>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className={trazabilidadLabelClass}>Cuerpo del correo</p>
+              <p className={trazabilidadLabelClass}>{t("complex.ui.plantilla_correo_contacto_inicial.cuerpo_del_correo")}</p>
               <button type="button" onClick={copiar} className={`${complexBtnPrimary} inline-flex items-center gap-2 text-sm`}>
                 <FaCopy />
                 {copiado ? 'Cuerpo copiado' : 'Copiar cuerpo'}

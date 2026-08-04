@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import i18n from '../../../i18n';
 import {
   calcularTotalesControlHoras,
   crearFilaVacia,
@@ -6,6 +7,8 @@ import {
   normalizarControlHorasParaGuardar,
 } from './controlHorasUtils';
 import { resolverTarifaHora } from './tarifasHoraAseguradoras';
+
+const tr = (key, opts) => i18n.t(`complex.ui.importar_control_horas.${key}`, opts);
 
 const normalizar = (texto) =>
   String(texto ?? '')
@@ -420,11 +423,11 @@ export async function importarControlHorasDesdeArchivo(
   archivo,
   { formData = {}, nombreAseguradora = '' } = {}
 ) {
-  if (!archivo) throw new Error('No se seleccionó ningún archivo.');
+  if (!archivo) throw new Error(tr('no_archivo'));
 
   const ext = (archivo.name || '').split('.').pop()?.toLowerCase();
   if (!['xlsx', 'xlsm', 'xls'].includes(ext)) {
-    throw new Error('Seleccione un archivo Excel (.xlsx o .xls).');
+    throw new Error(tr('seleccione_excel'));
   }
 
   const buffer = await archivo.arrayBuffer();
@@ -432,14 +435,12 @@ export async function importarControlHorasDesdeArchivo(
   await workbook.xlsx.load(buffer);
 
   const sheet = buscarHojaControl(workbook);
-  if (!sheet) throw new Error('El archivo no contiene hojas válidas.');
+  if (!sheet) throw new Error(tr('sin_hojas'));
 
   const ultima = ultimaFilaHoja(sheet);
   const encabezado = buscarFilaEncabezados(sheet, ultima);
   if (!encabezado) {
-    throw new Error(
-      'No se encontró la tabla de actividades. Debe incluir fila con FECHA, DESCRIPCIÓN ACTIVIDAD y columnas de HORAS.'
-    );
+    throw new Error(tr('sin_tabla_actividades'));
   }
 
   const mapa = detectarMapaColumnas(encabezado.textos);
@@ -487,9 +488,7 @@ export async function importarControlHorasDesdeArchivo(
   }
 
   if (!filas.length) {
-    throw new Error(
-      'No se encontraron filas de actividades con horas en el Excel. Verifique que la tabla tenga datos debajo de los encabezados (FECHA, DESCRIPCIÓN, columnas de HORAS).'
-    );
+    throw new Error(tr('sin_filas_horas'));
   }
 
   const companiaExcel = extraerCampoCabeceraExcel(sheet, encabezado.fila, 'COMPANIA');
@@ -538,9 +537,7 @@ export async function importarControlHorasDesdeArchivo(
     }
   } else {
     valorHora = '';
-    advertencias.push(
-      'No se detectó el valor hora en el Excel. Se importaron las horas trabajadas; ingrese el valor hora manualmente en «Editar control de horas» (Previsora y otras compañías sin tarifa fija suelen requerirlo).'
-    );
+    advertencias.push(tr('sin_valor_hora'));
   }
 
   const borrador = {
@@ -556,11 +553,14 @@ export async function importarControlHorasDesdeArchivo(
   });
   const normalizado = normalizarControlHorasParaGuardar(borrador);
 
-  let mensaje = `Se importaron ${filas.length} actividad(es) con ${totales.total_horas.toFixed(2)} horas.`;
+  let mensaje = tr('importadas', {
+    n: filas.length,
+    horas: totales.total_horas.toFixed(2),
+  });
   if (advertencias.length) {
-    mensaje += ' Revise el valor hora antes de guardar el caso.';
+    mensaje += ` ${tr('revise_valor_hora')}`;
   } else {
-    mensaje += ' Revise los datos y guarde el caso.';
+    mensaje += ` ${tr('revise_y_guarde')}`;
   }
 
   return {

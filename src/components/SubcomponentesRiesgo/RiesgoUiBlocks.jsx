@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FaChartLine, FaDownload, FaPlus } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import {
   riesgoBadge,
   riesgoBtnGhost,
@@ -22,16 +23,17 @@ import {
   riesgoSelect,
 } from './riesgoFenixUi.js';
 
-const NAV_RIESGO = [
-  { path: '/riesgos/agregar', icon: FaPlus, label: 'Agregar casos' },
-  { path: '/riesgos/dashboard', icon: FaChartLine, label: 'Dashboard' },
-  { path: '/riesgos/exportar', icon: FaDownload, label: 'Exportar Excel' },
-];
-
 export function RiesgoNavTabs({ activePath }) {
+  const { t } = useTranslation();
+  const navRiesgo = [
+    { path: '/riesgos/agregar', icon: FaPlus, label: t('risks.addCases') },
+    { path: '/riesgos/dashboard', icon: FaChartLine, label: t('risks.dashboard') },
+    { path: '/riesgos/exportar', icon: FaDownload, label: t('risks.exportExcel') },
+  ];
+
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Navegación Riesgos">
-      {NAV_RIESGO.map(({ path, icon: Icon, label }) => {
+    <nav className="flex flex-wrap gap-2" aria-label={t('risks.ui.riesgo_ui_blocks.nav_aria')}>
+      {navRiesgo.map(({ path, icon: Icon, label }) => {
         const activo = activePath === path;
         return (
           <Link
@@ -49,17 +51,19 @@ export function RiesgoNavTabs({ activePath }) {
 }
 
 export function RiesgoPageHeader({
-  badge = 'Riesgos',
+  badge,
   title,
   subtitle,
   actions,
   activePath,
   showNav = true,
 }) {
+  const { t } = useTranslation();
+  const badgeLabel = badge ?? t('risks.ui.riesgo_ui_blocks.badge');
   return (
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="space-y-3">
-        {badge && <span className={riesgoBadge}>{badge}</span>}
+        {badgeLabel && <span className={riesgoBadge}>{badgeLabel}</span>}
         <div>
           <h1 className={riesgoPageTitle}>{title}</h1>
           {subtitle && <p className={riesgoPageSubtitle}>{subtitle}</p>}
@@ -73,10 +77,11 @@ export function RiesgoPageHeader({
 
 /** Navegación del módulo dentro del panel de filtros (junto a filtros/búsqueda) */
 export function RiesgoNavPanel({ activePath }) {
+  const { t } = useTranslation();
   return (
     <div className="mb-5 border-b border-gray-100 pb-5 dark:border-gray-800">
       <p className="mb-3 font-body text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-        Módulo Riesgos
+        {t('risks.module')}
       </p>
       <RiesgoNavTabs activePath={activePath} />
     </div>
@@ -100,19 +105,20 @@ export function RiesgoMetricCard({ label, value, hint, accent = 'default' }) {
   );
 }
 
-export function RiesgoFilterSection({ title = 'Filtros', subtitle, children, onClear, showClear }) {
+export function RiesgoFilterSection({ title, subtitle, children, onClear, showClear }) {
+  const { t } = useTranslation();
   return (
     <section className={riesgoCard}>
       <div
         className={`${riesgoCardHeader} flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`}
       >
         <div>
-          <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{title}</h2>
+          <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{title || t('risks.filters')}</h2>
           {subtitle && <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>}
         </div>
         {showClear && onClear && (
           <button type="button" onClick={onClear} className={riesgoBtnGhost}>
-            Limpiar filtros
+            {t('risks.clearFilters')}
           </button>
         )}
       </div>
@@ -143,12 +149,13 @@ export function SelectFenix({ children, className = '', ...props }) {
 }
 
 export function RiesgoChartCard({ title, empty, children }) {
+  const { t } = useTranslation();
   return (
     <div className={riesgoChartCard}>
       <h3 className="mb-4 font-heading text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
       {empty ? (
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          No hay datos disponibles para mostrar.
+          {t('risks.noData')}
         </p>
       ) : (
         children
@@ -158,8 +165,9 @@ export function RiesgoChartCard({ title, empty, children }) {
 }
 
 export function RiesgoFormTabs({ tabs, activeId, onChange }) {
+  const { t } = useTranslation();
   return (
-    <nav className="flex flex-wrap justify-center gap-1 border-b border-gray-200 dark:border-gray-800" aria-label="Secciones del caso">
+    <nav className="flex flex-wrap justify-center gap-1 border-b border-gray-200 dark:border-gray-800" aria-label={t('risks.ui.riesgo_ui_blocks.secciones_aria')}>
       {tabs.map(({ id, label }) => (
         <button
           key={id}

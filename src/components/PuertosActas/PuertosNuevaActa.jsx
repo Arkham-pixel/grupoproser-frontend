@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import PuertosFotosActa from './PuertosFotosActa';
 import PuertosDocumentosAdjuntos from './PuertosDocumentosAdjuntos';
 import PuertosFacturacionActa from './PuertosFacturacionActa';
@@ -18,6 +19,11 @@ import {
   formularioAActaApi,
   validarFormularioActa,
 } from './puertosActaMapper.js';
+import {
+  filtrarSucursalesPorAseguradora,
+  sucursalAutomatica,
+  sucursalPerteneceAAseguradora,
+} from '../../utils/filtrarSucursalesAseguradora.js';
 import { FaSave, FaFilePdf, FaEraser, FaSync, FaArrowLeft } from 'react-icons/fa';
 
 function Seccion({ titulo, children, cols = 4 }) {
@@ -27,11 +33,11 @@ function Seccion({ titulo, children, cols = 4 }) {
       : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
 
   return (
-    <section className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-sm overflow-hidden">
-      <header className="px-5 py-3 bg-slate-100 dark:bg-slate-700/80 border-b border-slate-200 dark:border-slate-600">
+    <section className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-sm overflow-visible">
+      <header className="px-5 py-3 bg-slate-100 dark:bg-slate-700/80 border-b border-slate-200 dark:border-slate-600 rounded-t-xl">
         <h3 className="font-semibold text-slate-800 dark:text-slate-100">{titulo}</h3>
       </header>
-      <div className={`p-5 grid ${gridCls} gap-4`}>{children}</div>
+      <div className={`p-5 grid ${gridCls} gap-4 relative z-0`}>{children}</div>
     </section>
   );
 }
@@ -65,7 +71,7 @@ const TIPOS_CATALOGO_FORM = [
   'estado_acta',
 ];
 
-function BotonesAccion({ onGrabar, onPdf, onLimpiar, guardando, generandoPdf, soloLectura }) {
+function BotonesAccion({ onGrabar, onPdf, onLimpiar, guardando, generandoPdf, soloLectura, t }) {
   return (
     <div className="flex flex-wrap gap-2">
       {!soloLectura && (
@@ -75,7 +81,7 @@ function BotonesAccion({ onGrabar, onPdf, onLimpiar, guardando, generandoPdf, so
           disabled={guardando || generandoPdf}
           className="inline-flex items-center gap-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-700 disabled:opacity-60"
         >
-          <FaSave /> {guardando ? 'Guardando…' : 'Grabar'}
+          <FaSave /> {guardando ? t('ports.ui.common.saving') : t('ports.ui.common.save')}
         </button>
       )}
       <button
@@ -84,7 +90,7 @@ function BotonesAccion({ onGrabar, onPdf, onLimpiar, guardando, generandoPdf, so
         disabled={guardando || generandoPdf}
         className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
       >
-        <FaFilePdf /> {generandoPdf ? 'Generando PDF…' : 'PDF'}
+        <FaFilePdf /> {generandoPdf ? t('ports.ui.common.generatingPdf') : t('ports.ui.common.pdf')}
       </button>
       {!soloLectura && (
         <button
@@ -93,7 +99,7 @@ function BotonesAccion({ onGrabar, onPdf, onLimpiar, guardando, generandoPdf, so
           disabled={guardando || generandoPdf}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 disabled:opacity-60"
         >
-          <FaEraser /> Limpiar
+          <FaEraser /> {t('ports.ui.common.clear')}
         </button>
       )}
     </div>
@@ -104,8 +110,11 @@ export default function PuertosNuevaActa() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { t } = useTranslation();
   const esEdicion = Boolean(id);
   const soloLectura = searchParams.get('modo') === 'ver';
+  const tf = (key) => t(`ports.ui.actas.fields.${key}`);
+  const tp = (key) => t(`ports.ui.actas.placeholders.${key}`);
 
   const [fotos, setFotos] = useState([]);
   const [form, setForm] = useState(estadoInicialActaFormulario);
@@ -121,6 +130,59 @@ export default function PuertosNuevaActa() {
   const setCampo = (campo, valor) => {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   };
+
+  const sucursalesFiltradas = useMemo(
+    () => filtrarSucursalesPorAseguradora(form.aseguradora, catalogos.sucursal || []),
+    [form.aseguradora, catalogos.sucursal]
+  );
+
+  /** Al cambiar aseguradora: limpiar sucursal inválida o marcar la única candidata. */
+  const handleAseguradoraChange = (nuevaAseguradora) => {
+    setForm((prev) => {
+      const next = { ...prev, aseguradora: nuevaAseguradora };
+      if (!nuevaAseguradora) {
+        next.sucursal = '';
+        return next;
+      }
+      const auto = sucursalAutomatica(nuevaAseguradora, catalogos.sucursal || []);
+      if (auto) {
+        next.sucursal = auto;
+        return next;
+      }
+      if (
+        prev.sucursal &&
+        !sucursalPerteneceAAseguradora(nuevaAseguradora, prev.sucursal, catalogos.sucursal || [])
+      ) {
+        next.sucursal = '';
+      }
+      return next;
+    });
+  };
+
+  // Si el catálogo de sucursales llega después y hay aseguradora sin sucursal (o inválida), completar.
+  useEffect(() => {
+    if (!form.aseguradora || !(catalogos.sucursal || []).length) return;
+    const auto = sucursalAutomatica(form.aseguradora, catalogos.sucursal);
+    if (auto && form.sucursal !== auto) {
+      // Solo autocompletar si está vacío o no pertenece a la aseguradora
+      if (
+        !form.sucursal ||
+        !sucursalPerteneceAAseguradora(form.aseguradora, form.sucursal, catalogos.sucursal)
+      ) {
+        setCampo('sucursal', auto);
+      }
+    } else if (
+      form.sucursal &&
+      !sucursalPerteneceAAseguradora(form.aseguradora, form.sucursal, catalogos.sucursal) &&
+      filtrarSucursalesPorAseguradora(form.aseguradora, catalogos.sucursal).length > 0
+    ) {
+      setCampo('sucursal', '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo reaccionar a catálogo/aseguradora
+  }, [form.aseguradora, catalogos.sucursal]);
+
+  const mensajeValidacion = (campoKey) =>
+    t('ports.ui.actas.validation.required', { field: tf(campoKey) });
 
   const cargarCatalogos = useCallback(async () => {
     setCargandoCatalogos(true);
@@ -164,7 +226,7 @@ export default function PuertosNuevaActa() {
           }))
         );
       } catch (err) {
-        if (!cancelado) setError(err.message || 'No se pudo cargar el acta');
+        if (!cancelado) setError(err.message || t('ports.ui.actas.loadError'));
       } finally {
         if (!cancelado) setCargandoActa(false);
       }
@@ -172,7 +234,7 @@ export default function PuertosNuevaActa() {
     return () => {
       cancelado = true;
     };
-  }, [esEdicion, id]);
+  }, [esEdicion, id, t]);
 
   const recargarTipo = async (tipo) => {
     try {
@@ -184,9 +246,9 @@ export default function PuertosNuevaActa() {
   };
 
   const handlePdf = async () => {
-    const errorValidacion = validarFormularioActa(form);
-    if (errorValidacion) {
-      setError(errorValidacion);
+    const campoFaltante = validarFormularioActa(form);
+    if (campoFaltante) {
+      setError(mensajeValidacion(campoFaltante));
       return;
     }
     setGenerandoPdf(true);
@@ -194,16 +256,16 @@ export default function PuertosNuevaActa() {
     try {
       await generarPdfActaPuertos(form, fotos, { documentosAdjuntos: form.documentosAdjuntos });
     } catch (err) {
-      setError(err.message || 'No se pudo generar el PDF');
+      setError(err.message || t('ports.ui.actas.pdfError'));
     } finally {
       setGenerandoPdf(false);
     }
   };
 
   const handleGrabar = async () => {
-    const errorValidacion = validarFormularioActa(form);
-    if (errorValidacion) {
-      setError(errorValidacion);
+    const campoFaltante = validarFormularioActa(form);
+    if (campoFaltante) {
+      setError(mensajeValidacion(campoFaltante));
       return;
     }
     setGuardando(true);
@@ -216,12 +278,14 @@ export default function PuertosNuevaActa() {
         : await crearPuertosActa(payload);
 
       setForm(actaApiAFormulario(resultado));
-      setMensaje(`Acta guardada correctamente: ${resultado.nroActa || resultado._id}`);
+      setMensaje(
+        t('ports.ui.actas.saveSuccess', { id: resultado.nroActa || resultado._id })
+      );
       if (!esEdicion && resultado._id) {
         navigate(`/puertos/actas/editar/${resultado._id}`, { replace: true });
       }
     } catch (err) {
-      setError(err.message || 'Error al guardar el acta');
+      setError(err.message || t('ports.ui.actas.saveError'));
     } finally {
       setGuardando(false);
     }
@@ -237,10 +301,16 @@ export default function PuertosNuevaActa() {
   if (cargandoActa) {
     return (
       <div className="py-16 text-center text-slate-500">
-        Cargando acta…
+        {t('ports.ui.actas.loadingActa')}
       </div>
     );
   }
+
+  const titulo = soloLectura
+    ? t('ports.ui.actas.titleView')
+    : esEdicion
+      ? t('ports.ui.actas.titleEdit')
+      : t('ports.ui.actas.titleNew');
 
   return (
     <div className="space-y-5">
@@ -251,12 +321,10 @@ export default function PuertosNuevaActa() {
             onClick={() => navigate('/puertos/actas')}
             className="mb-2 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-sky-600"
           >
-            <FaArrowLeft /> Volver al listado
+            <FaArrowLeft /> {t('ports.ui.common.backToList')}
           </button>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">
-            {soloLectura ? 'Ver Acta' : esEdicion ? 'Editar Acta' : 'Módulo de Actas — Nueva Acta'}
-          </h2>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Puertos · Arnald DataFlow</p>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{titulo}</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('ports.ui.actas.subtitle')}</p>
         </div>
         <BotonesAccion
           onGrabar={handleGrabar}
@@ -265,6 +333,7 @@ export default function PuertosNuevaActa() {
           guardando={guardando}
           generandoPdf={generandoPdf}
           soloLectura={soloLectura}
+          t={t}
         />
       </div>
 
@@ -282,20 +351,20 @@ export default function PuertosNuevaActa() {
 
       {errorCatalogos && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100 flex flex-wrap items-center justify-between gap-2">
-          <span>No se pudieron cargar los catálogos: {errorCatalogos}</span>
+          <span>{t('ports.ui.actas.catalogError', { error: errorCatalogos })}</span>
           <button
             type="button"
             onClick={cargarCatalogos}
             className="inline-flex items-center gap-1 rounded-lg border border-amber-400 px-3 py-1 text-xs font-semibold"
           >
-            <FaSync /> Reintentar
+            <FaSync /> {t('ports.ui.common.retry')}
           </button>
         </div>
       )}
 
-      <Seccion titulo="Información básica">
+      <Seccion titulo={t('ports.ui.actas.sections.basic')}>
         <SelectorCatalogoPuertos
-          label="Regional"
+          label={tf('regional')}
           obligatorio
           tipo="regional"
           items={catalogos.regional}
@@ -304,15 +373,15 @@ export default function PuertosNuevaActa() {
           onRefresh={() => recargarTipo('regional')}
           cargando={cargandoCatalogos}
         />
-        <Campo label="Nro. de Acta" obligatorio>
+        <Campo label={tf('nroActa')} obligatorio>
           <input
             className={inputCls}
-            placeholder="BV635260"
+            placeholder={tp('nroActa')}
             value={form.nroActa}
             onChange={(e) => setCampo('nroActa', e.target.value)}
           />
         </Campo>
-        <Campo label="Fecha de Acta" obligatorio>
+        <Campo label={tf('fechaActa')} obligatorio>
           <input
             type="datetime-local"
             className={inputCls}
@@ -320,7 +389,7 @@ export default function PuertosNuevaActa() {
             onChange={(e) => setCampo('fechaActa', e.target.value)}
           />
         </Campo>
-        <Campo label="Fecha Llegada" obligatorio>
+        <Campo label={tf('fechaLlegada')} obligatorio>
           <input
             type="date"
             className={inputCls}
@@ -328,16 +397,16 @@ export default function PuertosNuevaActa() {
             onChange={(e) => setCampo('fechaLlegada', e.target.value)}
           />
         </Campo>
-        <Campo label="Ciudad">
+        <Campo label={tf('ciudad')}>
           <input
             className={inputCls}
-            placeholder="CIUDAD"
+            placeholder={tp('ciudad')}
             value={form.ciudad}
             onChange={(e) => setCampo('ciudad', e.target.value)}
           />
         </Campo>
         <SelectorCatalogoPuertos
-          label="Tipo de Inspección"
+          label={tf('tipoInspeccion')}
           obligatorio
           tipo="tipo_inspeccion"
           items={catalogos.tipo_inspeccion}
@@ -347,7 +416,7 @@ export default function PuertosNuevaActa() {
           cargando={cargandoCatalogos}
         />
         <SelectorCatalogoPuertos
-          label="Inspector"
+          label={tf('inspector')}
           obligatorio
           tipo="inspector"
           items={catalogos.inspector}
@@ -357,7 +426,7 @@ export default function PuertosNuevaActa() {
           cargando={cargandoCatalogos}
         />
         <SelectorCatalogoPuertos
-          label="Estado"
+          label={tf('estado')}
           obligatorio
           tipo="estado_acta"
           items={catalogos.estado_acta}
@@ -368,29 +437,47 @@ export default function PuertosNuevaActa() {
         />
       </Seccion>
 
-      <Seccion titulo="Datos del asegurado">
+      <Seccion titulo={t('ports.ui.actas.sections.insured')}>
         <SelectorCatalogoPuertos
-          label="Aseguradora"
+          label={tf('aseguradora')}
           obligatorio
           tipo="aseguradora"
           items={catalogos.aseguradora}
           value={form.aseguradora}
-          onChange={(v) => setCampo('aseguradora', v)}
+          onChange={handleAseguradoraChange}
           onRefresh={() => recargarTipo('aseguradora')}
           cargando={cargandoCatalogos}
         />
+        <div className="space-y-1">
+          <SelectorCatalogoPuertos
+            label={tf('sucursal')}
+            obligatorio
+            tipo="sucursal"
+            items={form.aseguradora ? sucursalesFiltradas : []}
+            value={form.sucursal}
+            onChange={(v) => setCampo('sucursal', v)}
+            onRefresh={() => recargarTipo('sucursal')}
+            cargando={cargandoCatalogos}
+            disabled={!form.aseguradora}
+            placeholder={
+              form.aseguradora
+                ? undefined
+                : t('ports.ui.actas.placeholders.selectAseguradoraFirst')
+            }
+          />
+          {form.aseguradora && sucursalesFiltradas.length === 0 && (
+            <p className="text-xs text-amber-700 dark:text-amber-300">
+              {t('ports.ui.actas.hints.noBranchesForInsurer')}
+            </p>
+          )}
+          {form.aseguradora && sucursalesFiltradas.length > 1 && !form.sucursal && (
+            <p className="text-xs text-slate-500">
+              {t('ports.ui.actas.hints.pickBranch', { count: sucursalesFiltradas.length })}
+            </p>
+          )}
+        </div>
         <SelectorCatalogoPuertos
-          label="Sucursal"
-          obligatorio
-          tipo="sucursal"
-          items={catalogos.sucursal}
-          value={form.sucursal}
-          onChange={(v) => setCampo('sucursal', v)}
-          onRefresh={() => recargarTipo('sucursal')}
-          cargando={cargandoCatalogos}
-        />
-        <SelectorCatalogoPuertos
-          label="Asegurado"
+          label={tf('asegurado')}
           obligatorio
           tipo="asegurado"
           items={catalogos.asegurado}
@@ -400,7 +487,7 @@ export default function PuertosNuevaActa() {
           cargando={cargandoCatalogos}
         />
         <SelectorCatalogoPuertos
-          label="Tipo de mercancía"
+          label={tf('mercancia')}
           obligatorio
           tipo="tipo_mercancia"
           items={catalogos.tipo_mercancia}
@@ -410,7 +497,7 @@ export default function PuertosNuevaActa() {
           cargando={cargandoCatalogos}
         />
         <SelectorCatalogoPuertos
-          label="Empaque"
+          label={tf('empaque')}
           obligatorio
           tipo="empaque"
           items={catalogos.empaque}
@@ -419,7 +506,7 @@ export default function PuertosNuevaActa() {
           onRefresh={() => recargarTipo('empaque')}
           cargando={cargandoCatalogos}
         />
-        <Campo label="Nro. de Piezas">
+        <Campo label={tf('nroPiezas')}>
           <input
             type="number"
             className={inputCls}
@@ -429,7 +516,7 @@ export default function PuertosNuevaActa() {
             onChange={(e) => setCampo('nroPiezas', e.target.value)}
           />
         </Campo>
-        <Campo label="Fecha Construcción" obligatorio>
+        <Campo label={tf('fechaConstruccion')} obligatorio>
           <input
             type="date"
             className={inputCls}
@@ -437,35 +524,35 @@ export default function PuertosNuevaActa() {
             onChange={(e) => setCampo('fechaConstruccion', e.target.value)}
           />
         </Campo>
-        <Campo label="Pedido">
+        <Campo label={tf('pedido')}>
           <input
             className={inputCls}
-            placeholder="NRO. PEDIDO"
+            placeholder={tp('pedido')}
             value={form.pedido}
             onChange={(e) => setCampo('pedido', e.target.value)}
           />
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Transporte exterior">
-        <Campo label="País de Origen">
+      <Seccion titulo={t('ports.ui.actas.sections.exteriorTransport')}>
+        <Campo label={tf('paisOrigen')}>
           <input
             className={inputCls}
-            placeholder="PAÍS DE ORIGEN"
+            placeholder={tp('paisOrigen')}
             value={form.paisOrigen}
             onChange={(e) => setCampo('paisOrigen', e.target.value)}
           />
         </Campo>
-        <Campo label="País Destino Final">
+        <Campo label={tf('paisDestino')}>
           <input
             className={inputCls}
-            placeholder="PAÍS DESTINO FINAL"
+            placeholder={tp('paisDestino')}
             value={form.paisDestino}
             onChange={(e) => setCampo('paisDestino', e.target.value)}
           />
         </Campo>
         <SelectorCatalogoPuertos
-          label="Tipo de Transporte"
+          label={tf('tipoTransporte')}
           tipo="tipo_transporte"
           items={catalogos.tipo_transporte}
           value={form.tipoTransporte}
@@ -473,203 +560,203 @@ export default function PuertosNuevaActa() {
           onRefresh={() => recargarTipo('tipo_transporte')}
           cargando={cargandoCatalogos}
         />
-        <Campo label="Motonave">
+        <Campo label={tf('motonave')}>
           <input
             className={inputCls}
-            placeholder="MOTONAVE"
+            placeholder={tp('motonave')}
             value={form.motonave}
             onChange={(e) => setCampo('motonave', e.target.value)}
           />
         </Campo>
-        <Campo label="Puerto de Origen">
+        <Campo label={tf('puertoOrigen')}>
           <input
             className={inputCls}
-            placeholder="PUERTO DE ORIGEN"
+            placeholder={tp('puertoOrigen')}
             value={form.puertoOrigen}
             onChange={(e) => setCampo('puertoOrigen', e.target.value)}
           />
         </Campo>
-        <Campo label="Puerto de Arribo">
+        <Campo label={tf('puertoArribo')}>
           <input
             className={inputCls}
-            placeholder="PUERTO DE ARRIBO"
+            placeholder={tp('puertoArribo')}
             value={form.puertoArribo}
             onChange={(e) => setCampo('puertoArribo', e.target.value)}
           />
         </Campo>
-        <Campo label="Registro">
+        <Campo label={tf('registro')}>
           <input
             className={inputCls}
-            placeholder="REGISTRO"
+            placeholder={tp('registro')}
             value={form.registro}
             onChange={(e) => setCampo('registro', e.target.value)}
           />
         </Campo>
-        <Campo label="Doc. Transporte">
+        <Campo label={tf('docTransporte')}>
           <input
             className={inputCls}
-            placeholder="DOC. TRANSPORTE / BL"
+            placeholder={tp('docTransporte')}
             value={form.docTransporte}
             onChange={(e) => setCampo('docTransporte', e.target.value)}
           />
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Transporte interior">
-        <Campo label="Transportadora">
+      <Seccion titulo={t('ports.ui.actas.sections.interiorTransport')}>
+        <Campo label={tf('transportadora')}>
           <input
             className={inputCls}
-            placeholder="TRANSPORTADORA"
+            placeholder={tp('transportadora')}
             value={form.transportadora}
             onChange={(e) => setCampo('transportadora', e.target.value)}
           />
         </Campo>
-        <Campo label="Remesa / Remisión">
+        <Campo label={tf('remesa')}>
           <input
             className={inputCls}
-            placeholder="REMESA / REMISIÓN"
+            placeholder={tp('remesa')}
             value={form.remesa}
             onChange={(e) => setCampo('remesa', e.target.value)}
           />
         </Campo>
-        <Campo label="Conductor">
+        <Campo label={tf('conductor')}>
           <input
             className={inputCls}
-            placeholder="CONDUCTOR"
+            placeholder={tp('conductor')}
             value={form.conductor}
             onChange={(e) => setCampo('conductor', e.target.value)}
           />
         </Campo>
-        <Campo label="Cédula">
+        <Campo label={tf('cedula')}>
           <input
             className={inputCls}
-            placeholder="CÉDULA"
+            placeholder={tp('cedula')}
             value={form.cedula}
             onChange={(e) => setCampo('cedula', e.target.value)}
           />
         </Campo>
-        <Campo label="Placa">
+        <Campo label={tf('placa')}>
           <input
             className={inputCls}
-            placeholder="XXX111"
+            placeholder={tp('placa')}
             value={form.placa}
             onChange={(e) => setCampo('placa', e.target.value)}
           />
         </Campo>
-        <Campo label="Modelo">
+        <Campo label={tf('modelo')}>
           <input
             className={inputCls}
-            placeholder="MODELO"
+            placeholder={tp('modelo')}
             value={form.modelo}
             onChange={(e) => setCampo('modelo', e.target.value)}
           />
         </Campo>
-        <Campo label="Marca">
+        <Campo label={tf('marca')}>
           <input
             className={inputCls}
-            placeholder="MARCA"
+            placeholder={tp('marca')}
             value={form.marca}
             onChange={(e) => setCampo('marca', e.target.value)}
           />
         </Campo>
-        <Campo label="Celular">
+        <Campo label={tf('celular')}>
           <input
             type="tel"
             className={inputCls}
-            placeholder="CELULAR"
+            placeholder={tp('celular')}
             value={form.celular}
             onChange={(e) => setCampo('celular', e.target.value)}
           />
         </Campo>
-        <Campo label="Origen Despacho">
+        <Campo label={tf('origenDespacho')}>
           <input
             className={inputCls}
-            placeholder="ORIGEN DESPACHO"
+            placeholder={tp('origenDespacho')}
             value={form.origenDespacho}
             onChange={(e) => setCampo('origenDespacho', e.target.value)}
           />
         </Campo>
-        <Campo label="Destino Despacho">
+        <Campo label={tf('destinoDespacho')}>
           <input
             className={inputCls}
-            placeholder="DESTINO DESPACHO"
+            placeholder={tp('destinoDespacho')}
             value={form.destinoDespacho}
             onChange={(e) => setCampo('destinoDespacho', e.target.value)}
           />
         </Campo>
-        <Campo label="Carta de Porte" className="lg:col-span-2">
+        <Campo label={tf('cartaPorte')} className="lg:col-span-2">
           <input
             className={inputCls}
-            placeholder="CARTA DE PORTE"
+            placeholder={tp('cartaPorte')}
             value={form.cartaPorte}
             onChange={(e) => setCampo('cartaPorte', e.target.value)}
           />
         </Campo>
       </Seccion>
 
-      <Seccion titulo="Detalle de inspección" cols={3}>
-        <Campo label="Lugar de Reconocimiento" obligatorio>
+      <Seccion titulo={t('ports.ui.actas.sections.inspectionDetail')} cols={3}>
+        <Campo label={tf('lugarReconocimiento')} obligatorio>
           <input
             className={inputCls}
-            placeholder="LUGAR DE RECONOCIMIENTO"
+            placeholder={tp('lugarReconocimiento')}
             value={form.lugarReconocimiento}
             onChange={(e) => setCampo('lugarReconocimiento', e.target.value)}
           />
         </Campo>
-        <Campo label="Contacto" obligatorio>
+        <Campo label={tf('contacto')} obligatorio>
           <input
             className={inputCls}
-            placeholder="CONTACTO"
+            placeholder={tp('contacto')}
             value={form.contacto}
             onChange={(e) => setCampo('contacto', e.target.value)}
           />
         </Campo>
-        <Campo label="Peso Tara (kg)">
+        <Campo label={tf('pesoTara')}>
           <input
             type="number"
             className={inputCls}
-            placeholder="Peso Tara"
+            placeholder={tp('pesoTara')}
             min="0"
             step="0.01"
             value={form.pesoTara}
             onChange={(e) => setCampo('pesoTara', e.target.value)}
           />
         </Campo>
-        <Campo label="Peso Neto (kg)">
+        <Campo label={tf('pesoNeto')}>
           <input
             type="number"
             className={inputCls}
-            placeholder="Peso Neto"
+            placeholder={tp('pesoNeto')}
             min="0"
             step="0.01"
             value={form.pesoNeto}
             onChange={(e) => setCampo('pesoNeto', e.target.value)}
           />
         </Campo>
-        <Campo label="Peso Bruto (kg)">
+        <Campo label={tf('pesoBruto')}>
           <input
             type="number"
             className={inputCls}
-            placeholder="Peso Bruto"
+            placeholder={tp('pesoBruto')}
             min="0"
             step="0.01"
             value={form.pesoBruto}
             onChange={(e) => setCampo('pesoBruto', e.target.value)}
           />
         </Campo>
-        <Campo label="Avería SI / NO" obligatorio>
+        <Campo label={tf('averiaSiNo')} obligatorio>
           <select
             className={inputCls}
             value={form.averiaSiNo}
             onChange={(e) => setCampo('averiaSiNo', e.target.value)}
           >
-            <option value="">Seleccionar</option>
-            <option value="si">Sí</option>
-            <option value="no">No</option>
+            <option value="">{t('ports.ui.common.select')}</option>
+            <option value="si">{t('ports.ui.common.yes')}</option>
+            <option value="no">{t('ports.ui.common.no')}</option>
           </select>
         </Campo>
         <SelectorCatalogoPuertos
-          label="Tipo de Avería"
+          label={tf('tipoAveria')}
           tipo="tipo_averia"
           items={catalogos.tipo_averia}
           value={form.tipoAveria}
@@ -701,6 +788,7 @@ export default function PuertosNuevaActa() {
           guardando={guardando}
           generandoPdf={generandoPdf}
           soloLectura={soloLectura}
+          t={t}
         />
       </div>
     </div>

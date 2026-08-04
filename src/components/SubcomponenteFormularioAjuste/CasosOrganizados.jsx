@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import historialService from '../../services/historialService';
 import { formatearFechaHoraUI } from '../../utils/fechaUtils';
 
 const CasosOrganizados = () => {
+  const { t } = useTranslation();
   const [casos, setCasos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
@@ -20,7 +22,7 @@ const CasosOrganizados = () => {
       setCasos(response.casos || []);
     } catch (error) {
       console.error('Error cargando casos:', error);
-      setError('Error al cargar los casos organizados');
+      setError(t('adjustment.ui.casos.loadError'));
     } finally {
       setCargando(false);
     }
@@ -33,7 +35,7 @@ const CasosOrganizados = () => {
       setCasoSeleccionado(casoId);
     } catch (error) {
       console.error('Error cargando formularios del caso:', error);
-      setError('Error al cargar los formularios del caso');
+      setError(t('adjustment.ui.casos.loadError'));
     }
   };
 
@@ -66,7 +68,7 @@ const CasosOrganizados = () => {
             </svg>
           </div>
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">Error</h3>
+            <h3 className="text-sm font-medium text-red-800">{t('adjustment.ui.common.error')}</h3>
             <div className="mt-2 text-sm text-red-700">
               <p>{error}</p>
             </div>
@@ -84,11 +86,8 @@ const CasosOrganizados = () => {
           <span className="bg-blue-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-lg font-bold mr-4">
             📁
           </span>
-          Casos Organizados por Carpeta
+          {t('adjustment.ui.casos.title')}
         </h2>
-        <p className="text-gray-600 mt-2">
-          Visualiza todos los casos organizados por carpeta con sus formularios correspondientes
-        </p>
       </div>
 
       {/* Lista de casos */}
@@ -108,7 +107,7 @@ const CasosOrganizados = () => {
                 </div>
                 <div className="text-right">
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
-                    {caso.totalFormularios} formularios
+                    {caso.totalFormularios}
                   </span>
                 </div>
               </div>
@@ -118,7 +117,7 @@ const CasosOrganizados = () => {
             <div className="px-6 py-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Tipos de formularios:</span>
+                  <span className="text-sm font-medium text-gray-500">{t('adjustment.ui.casos.types')}:</span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {caso.tipos.map((tipo, idx) => (
                       <span
@@ -131,7 +130,7 @@ const CasosOrganizados = () => {
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Usuarios:</span>
+                  <span className="text-sm font-medium text-gray-500">{t('adjustment.ui.casos.users')}:</span>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {caso.usuarios.map((usuario, idx) => (
                       <span
@@ -144,10 +143,10 @@ const CasosOrganizados = () => {
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-500">Fechas:</span>
+                  <span className="text-sm font-medium text-gray-500">{t('adjustment.ui.casos.dates')}:</span>
                   <div className="text-sm text-gray-900 mt-1">
-                    <div>📅 Creado: {formatearFechaHoraUI(caso.fechaCreacion)}</div>
-                    <div>🔄 Modificado: {formatearFechaHoraUI(caso.fechaModificacion)}</div>
+                    <div>📅 {t('adjustment.ui.casos.created')}: {formatearFechaHoraUI(caso.fechaCreacion)}</div>
+                    <div>🔄 {t('adjustment.ui.casos.modified')}: {formatearFechaHoraUI(caso.fechaModificacion)}</div>
                   </div>
                 </div>
               </div>
@@ -159,12 +158,12 @@ const CasosOrganizados = () => {
                   className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
                 >
                   <span>👁️</span>
-                  <span>Ver Formularios</span>
+                  <span>{t('adjustment.ui.casos.viewForms')}</span>
                 </button>
                 
                 {casoSeleccionado === caso._id.casoId && (
                   <span className="text-sm text-blue-600 font-medium">
-                    ✓ Formularios cargados
+                    ✓ {t('adjustment.ui.casos.viewForms')}
                   </span>
                 )}
               </div>
@@ -174,7 +173,7 @@ const CasosOrganizados = () => {
             {casoSeleccionado === caso._id.casoId && formulariosCaso.length > 0 && (
               <div className="border-t border-gray-200 bg-gray-50 px-6 py-4">
                 <h4 className="text-lg font-semibold text-gray-900 mb-3">
-                  📋 Formularios del Caso
+                  📋 {t('adjustment.ui.casos.viewForms')}
                 </h4>
                 <div className="space-y-3">
                   {formulariosCaso.map((formulario, idx) => (
@@ -189,7 +188,7 @@ const CasosOrganizados = () => {
                                                        <div>
                                  <h5 className="font-medium text-gray-900">{formulario.titulo}</h5>
                                  <p className="text-sm text-gray-600">
-                                   Por: {formulario.nombreUsuario || formulario.usuario || 'Usuario'} | {formatearFechaHoraUI(formulario.fechaCreacion)}
+                                   {formulario.nombreUsuario || formulario.usuario || 'Usuario'} | {formatearFechaHoraUI(formulario.fechaCreacion)}
                                  </p>
                                </div>
                       </div>
@@ -215,10 +214,7 @@ const CasosOrganizados = () => {
       {casos.length === 0 && (
         <div className="text-center py-12">
           <div className="text-gray-400 text-6xl mb-4">📁</div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No hay casos registrados</h3>
-          <p className="text-gray-500">
-            Los casos aparecerán aquí una vez que se creen formularios de ajuste.
-          </p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('adjustment.ui.casos.empty')}</h3>
         </div>
       )}
     </div>

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FaList, FaPlus, FaShip, FaFileAlt, FaCog } from 'react-icons/fa';
 import {
   puertosBadge,
@@ -11,16 +12,30 @@ import {
   puertosTabIdle,
 } from './puertosFenixUi';
 
-const tabs = [
-  { to: '/puertos/actas', label: 'Listado', icon: FaList, end: true },
-  { to: '/puertos/actas/nueva', label: 'Nueva Acta', icon: FaPlus, end: false },
-  { to: '/puertos/actas/caso/nueva', label: 'Informe Exportación', icon: FaFileAlt, end: false },
-  { to: '/puertos/actas/inspeccion-asegurado/nueva', label: 'Inspección Asegurado', icon: FaShip, end: false },
-  { to: '/puertos/actas/catalogos', label: 'Catálogos', icon: FaCog, end: false },
-];
-
 export default function PuertosActasMain() {
   const location = useLocation();
+  const { t } = useTranslation();
+
+  const tabs = useMemo(
+    () => [
+      { to: '/puertos/actas', labelKey: 'ports.ui.main.tabs.listado', icon: FaList, end: true },
+      { to: '/puertos/actas/nueva', labelKey: 'ports.ui.main.tabs.nuevaActa', icon: FaPlus, end: false },
+      {
+        to: '/puertos/actas/caso/nueva',
+        labelKey: 'ports.ui.main.tabs.informeExportacion',
+        icon: FaFileAlt,
+        end: false,
+      },
+      {
+        to: '/puertos/actas/inspeccion-asegurado/nueva',
+        labelKey: 'ports.ui.main.tabs.inspeccionAsegurado',
+        icon: FaShip,
+        end: false,
+      },
+      { to: '/puertos/actas/catalogos', labelKey: 'ports.ui.main.tabs.catalogos', icon: FaCog, end: false },
+    ],
+    []
+  );
 
   return (
     <div className={puertosFormRoot}>
@@ -31,15 +46,15 @@ export default function PuertosActasMain() {
               <FaShip />
             </span>
             <div>
-              <h1 className={puertosPageTitle}>Puertos</h1>
-              <p className={puertosPageSubtitle}>Actas y Descargues · ARNALD DataFlow</p>
+              <h1 className={puertosPageTitle}>{t('ports.ui.main.title')}</h1>
+              <p className={puertosPageSubtitle}>{t('ports.ui.main.subtitle')}</p>
             </div>
           </div>
-          <span className={puertosBadge}>Módulo operativo</span>
+          <span className={puertosBadge}>{t('ports.ui.common.operativo')}</span>
         </header>
 
         <nav className="mb-6 flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-800">
-          {tabs.map(({ to, label, icon: Icon, end }) => {
+          {tabs.map(({ to, labelKey, icon: Icon, end }) => {
             const active = end
               ? location.pathname === to
               : to.includes('/catalogos')
@@ -52,7 +67,7 @@ export default function PuertosActasMain() {
             return (
               <NavLink key={to} to={to} end={end} className={active ? puertosTabActive : puertosTabIdle}>
                 <Icon />
-                {label}
+                {t(labelKey)}
               </NavLink>
             );
           })}

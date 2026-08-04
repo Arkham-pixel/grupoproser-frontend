@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ResponsiveContainer,
   BarChart,
@@ -49,6 +50,7 @@ const truncarEtiqueta = (valor, max = 28) => {
 };
 
 const DashboardEquidadFdm = () => {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -73,7 +75,7 @@ const DashboardEquidadFdm = () => {
       } catch (err) {
         console.error('Error cargando casos FDM (dashboard):', err);
         if (!cancelado) {
-          setError(err.message || 'No fue posible cargar los casos Equidad FDM.');
+          setError(err.message || t('equidadFdm.dashboard.loadError'));
           setCasos([]);
         }
       } finally {
@@ -84,7 +86,7 @@ const DashboardEquidadFdm = () => {
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [t]);
 
   const filtrosAplicados = Boolean(
     filtroMunicipio || filtroAjustador || filtroEstado || fechaDesde || fechaHasta
@@ -215,16 +217,16 @@ const DashboardEquidadFdm = () => {
     <div className={`${fdmDashboardRoot} ${expressScope} p-4 sm:p-6`}>
       <div className={`${expressPageWrap} min-w-0`}>
         <FdmPageHeader
-          title="Dashboard Equidad FDM"
-          subtitle="Indicadores de los casos de Fundación de la Mujer: estados, municipios, ajustadores y valores liquidados."
+          title={t('equidadFdm.dashboard.title')}
+          subtitle={t('equidadFdm.dashboard.subtitle')}
           activePath="/equidad-fdm/dashboard"
         />
 
-        <ExpressFilterSection title="Filtros" showClear={filtrosAplicados} onClear={limpiarFiltros}>
+        <ExpressFilterSection title={t('equidadFdm.dashboard.filters')} showClear={filtrosAplicados} onClear={limpiarFiltros}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Campo label="Municipio">
+            <Campo label={t('equidadFdm.fields.municipality')}>
               <SelectFenix value={filtroMunicipio} onChange={(e) => setFiltroMunicipio(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('equidadFdm.dashboard.all')}</option>
                 {municipiosUnicos.map((m) => (
                   <option key={m.value} value={m.value}>
                     {m.label}
@@ -232,9 +234,9 @@ const DashboardEquidadFdm = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Ajustador">
+            <Campo label={t('equidadFdm.fields.adjuster')}>
               <SelectFenix value={filtroAjustador} onChange={(e) => setFiltroAjustador(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('equidadFdm.dashboard.all')}</option>
                 {ajustadoresUnicos.map((a) => (
                   <option key={a.value} value={a.value}>
                     {a.label}
@@ -242,9 +244,9 @@ const DashboardEquidadFdm = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Estado">
+            <Campo label={t('equidadFdm.fields.status')}>
               <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t('equidadFdm.dashboard.all')}</option>
                 {estadosUnicos.map((es) => (
                   <option key={es.value} value={es.value}>
                     {es.label}
@@ -252,36 +254,36 @@ const DashboardEquidadFdm = () => {
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Fecha desde">
+            <Campo label={t('equidadFdm.dashboard.from')}>
               <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
             </Campo>
-            <Campo label="Fecha hasta">
+            <Campo label={t('equidadFdm.dashboard.to')}>
               <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
             </Campo>
           </div>
         </ExpressFilterSection>
 
         <section className="grid w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <ExpressMetricCard label="Casos FDM" value={totalCasos} hint="Total con filtros aplicados" />
+          <ExpressMetricCard label={t('equidadFdm.dashboard.cases')} value={totalCasos} hint={t('equidadFdm.dashboard.filteredTotal')} />
           <ExpressMetricCard
-            label="Total pérdida"
+            label={t('equidadFdm.dashboard.totalLoss')}
             value={formatCurrency(totalPerdida)}
-            hint="Suma de pérdidas reportadas"
+            hint={t('equidadFdm.dashboard.reportedLosses')}
           />
           <ExpressMetricCard
-            label="Total liquidado"
+            label={t('equidadFdm.dashboard.totalSettled')}
             value={formatCurrency(totalLiquidado)}
-            hint={`Indemnizado: ${formatCurrency(totalIndemnizado)}`}
+            hint={t('equidadFdm.dashboard.indemnified', { value: formatCurrency(totalIndemnizado) })}
           />
           <ExpressMetricCard
-            label="% casos liquidados"
+            label={t('equidadFdm.dashboard.settledCasesPercent')}
             value={`${porcentajeLiquidados}%`}
-            hint={`${casosLiquidados} de ${totalCasos} casos`}
+            hint={t('equidadFdm.dashboard.ofCases', { settled: casosLiquidados, total: totalCasos })}
           />
         </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
-          <ChartCard title="Casos por estado" empty={casosPorEstado.length === 0}>
+          <ChartCard title={t('equidadFdm.dashboard.byStatus')} empty={casosPorEstado.length === 0}>
             <ResponsiveContainer width="100%" height={320}>
               <PieChart>
                 <Pie
@@ -302,7 +304,7 @@ const DashboardEquidadFdm = () => {
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="Casos por municipio" empty={casosPorMunicipio.length === 0}>
+          <ChartCard title={t('equidadFdm.dashboard.byMunicipality')} empty={casosPorMunicipio.length === 0}>
             <ResponsiveContainer width="100%" height={Math.max(320, casosPorMunicipio.length * 34)}>
               <BarChart
                 data={casosPorMunicipio}
@@ -319,7 +321,7 @@ const DashboardEquidadFdm = () => {
                   tickFormatter={(v) => truncarEtiqueta(v, 28)}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]}>
                   {casosPorMunicipio.map((entry, index) => (
                     <Cell key={entry.municipio} fill={getFenixChartColor(index, isDark)} />
                   ))}
@@ -330,7 +332,7 @@ const DashboardEquidadFdm = () => {
         </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 gap-4">
-          <ChartCard title="Tendencia mensual" empty={tendenciaMensual.length === 0}>
+          <ChartCard title={t('equidadFdm.dashboard.monthlyTrend')} empty={tendenciaMensual.length === 0}>
             <ResponsiveContainer width="100%" height={340}>
               <LineChart data={tendenciaMensual} margin={{ top: 8, right: 24, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -350,7 +352,7 @@ const DashboardEquidadFdm = () => {
                 />
                 <Tooltip
                   formatter={(value, name) => {
-                    if (name === 'Casos') return [value, 'Casos'];
+                    if (name === 'Casos') return [value, t('equidadFdm.dashboard.cases')];
                     return [formatCurrency(value), name];
                   }}
                   contentStyle={tooltipStyle}
@@ -360,7 +362,7 @@ const DashboardEquidadFdm = () => {
                   yAxisId="left"
                   type="monotone"
                   dataKey="casos"
-                  name="Casos"
+                  name={t('equidadFdm.dashboard.cases')}
                   stroke={lineColors.casos}
                   strokeWidth={2.5}
                   dot={{ fill: lineColors.casos, r: 3 }}
@@ -370,7 +372,7 @@ const DashboardEquidadFdm = () => {
                   yAxisId="right"
                   type="monotone"
                   dataKey="liquidado"
-                  name="Liquidado"
+                  name={t('equidadFdm.dashboard.settled')}
                   stroke={lineColors.indemnizacion}
                   strokeWidth={2}
                   dot={{ fill: lineColors.indemnizacion, r: 3 }}
@@ -379,7 +381,7 @@ const DashboardEquidadFdm = () => {
                   yAxisId="right"
                   type="monotone"
                   dataKey="perdida"
-                  name="Pérdida"
+                  name={t('equidadFdm.dashboard.loss')}
                   stroke={lineColors.reserva}
                   strokeWidth={2}
                   dot={{ fill: lineColors.reserva, r: 3 }}
@@ -390,7 +392,7 @@ const DashboardEquidadFdm = () => {
         </section>
 
         <section className="grid w-full min-w-0 grid-cols-1 gap-4">
-          <ChartCard title="Casos por ajustador" empty={casosPorAjustador.length === 0}>
+          <ChartCard title={t('equidadFdm.dashboard.byAdjuster')} empty={casosPorAjustador.length === 0}>
             <ResponsiveContainer width="100%" height={Math.max(320, casosPorAjustador.length * 36)}>
               <BarChart
                 data={casosPorAjustador}
@@ -407,7 +409,7 @@ const DashboardEquidadFdm = () => {
                   tickFormatter={(v) => truncarEtiqueta(v, 28)}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]}>
                   {casosPorAjustador.map((entry, index) => (
                     <Cell key={entry.ajustador} fill={getFenixChartColor(index, isDark)} />
                   ))}
@@ -422,12 +424,13 @@ const DashboardEquidadFdm = () => {
 };
 
 function ChartCard({ title, empty, children }) {
+  const { t } = useTranslation();
   return (
     <div className={`${expressChartCard} min-w-0`}>
       <h3 className="mb-4 font-heading text-lg font-bold text-gray-900 dark:text-white">{title}</h3>
       {empty ? (
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          No hay datos disponibles para mostrar.
+          {t('equidadFdm.dashboard.noData')}
         </p>
       ) : (
         children

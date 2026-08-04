@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { FaCloudUploadAlt, FaTrash, FaImage, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 import {
@@ -30,6 +31,8 @@ export default function PuertosCasoGridFotografico({
   datalistId = 'puertos-descripciones-foto',
   soloLectura = false,
 }) {
+  const { t } = useTranslation();
+
   const setImagenes = (updater) => {
     onChange(updater);
   };
@@ -106,10 +109,10 @@ export default function PuertosCasoGridFotografico({
             <input {...getInputProps()} />
             <FaCloudUploadAlt className="mb-2 text-3xl text-gray-400" />
             <span className="font-body text-sm font-medium text-gray-700 dark:text-gray-300">
-              Arrastra imágenes aquí o haz clic para seleccionar
+              {t('ports.ui.casoExportacion.photos.dragDrop')}
             </span>
             <span className="mt-1 font-body text-xs text-gray-500">
-              {imagenes.length} / {max} · cuadrícula de {columnas} columnas · S3 al grabar
+              {t('ports.ui.casoExportacion.photos.countHint', { current: imagenes.length, max, columns: columnas })}
             </span>
           </div>
         )}
@@ -119,7 +122,11 @@ export default function PuertosCasoGridFotografico({
             {filas.map((fila, filaIdx) => (
               <div key={`fila-${filaIdx}`}>
                 <p className="mb-2 font-body text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                  Fila {filaIdx + 1} · fotos {filaIdx * columnas + 1}–{filaIdx * columnas + fila.length}
+                  {t('ports.ui.casoExportacion.photos.rowLabel', {
+                    row: filaIdx + 1,
+                    from: filaIdx * columnas + 1,
+                    to: filaIdx * columnas + fila.length,
+                  })}
                 </p>
                 <div className={`${puertosPhotoGridFrame} grid ${gridClass}`}>
                   {fila.map((img, colIdx) => {
@@ -134,7 +141,7 @@ export default function PuertosCasoGridFotografico({
                           {displayUrl ? (
                             <img
                               src={displayUrl}
-                              alt={img.descripcion || img.nombre || `Foto ${orden}`}
+                              alt={img.descripcion || img.nombre || t('ports.ui.casoExportacion.photos.photoAlt', { n: orden })}
                               className="h-full w-full object-cover"
                             />
                           ) : (
@@ -148,7 +155,7 @@ export default function PuertosCasoGridFotografico({
                               type="button"
                               onClick={() => moverImagen(img.id, -1)}
                               className="rounded bg-gray-900/85 p-1 text-xs text-white hover:bg-gray-800"
-                              title="Subir orden"
+                              title={t('ports.ui.casoExportacion.photos.moveUpOrder')}
                             >
                               <FaArrowUp />
                             </button>
@@ -156,7 +163,7 @@ export default function PuertosCasoGridFotografico({
                               type="button"
                               onClick={() => moverImagen(img.id, 1)}
                               className="rounded bg-gray-900/85 p-1 text-xs text-white hover:bg-gray-800"
-                              title="Bajar orden"
+                              title={t('ports.ui.casoExportacion.photos.moveDownOrder')}
                             >
                               <FaArrowDown />
                             </button>
@@ -164,7 +171,7 @@ export default function PuertosCasoGridFotografico({
                               type="button"
                               onClick={() => eliminarImagen(img.id)}
                               className="rounded bg-fenix-primario p-1 text-xs text-white hover:bg-red-700"
-                              title="Eliminar"
+                              title={t('ports.ui.common.delete')}
                             >
                               <FaTrash />
                             </button>
@@ -174,14 +181,14 @@ export default function PuertosCasoGridFotografico({
                         <div className={puertosPhotoCaption}>
                           {soloLectura ? (
                             <p className="px-2 py-1 text-center font-body text-xs text-gray-600 dark:text-gray-300">
-                              {img.descripcion || img.nombre || `Foto ${orden}`}
+                              {img.descripcion || img.nombre || t('ports.ui.casoExportacion.photos.photoAlt', { n: orden })}
                             </p>
                           ) : (
                           <input
                             type="text"
                             list={datalistId}
                             className={puertosPhotoCaptionInput}
-                            placeholder={`Descripción foto ${orden}`}
+                            placeholder={t('ports.ui.casoExportacion.photos.descriptionPlaceholder', { n: orden })}
                             value={img.descripcion || ''}
                             onChange={(e) => actualizarDescripcion(img.id, e.target.value)}
                           />

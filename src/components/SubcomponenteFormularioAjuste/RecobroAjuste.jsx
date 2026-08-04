@@ -1,9 +1,11 @@
 import React from 'react';
 import { FaHandHoldingUsd } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';
 import { useTheme } from '../../context/ThemeContext';
 
 export default function RecobroAjuste({ formData, onInputChange, numeroSeccion = '10' }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -16,16 +18,16 @@ export default function RecobroAjuste({ formData, onInputChange, numeroSeccion =
       <div className="pb-4" style={{ borderBottom: `1px solid ${borderColor}` }}>
         <h2 className="text-2xl font-bold flex items-center" style={{ color: textPrimary }}>
           <FaHandHoldingUsd className="mr-3" style={{ color: theme === 'dark' ? '#86EFAC' : '#16A34A' }} />
-          {numeroSeccion}. RECOBRO
+          {numeroSeccion}. {t('adjustment.ui.sections.recobro.title')}
         </h2>
         <p className="mt-2" style={{ color: textSecondary }}>
-          Acciones de recobro, subrogación y recuperación frente a terceros responsables
+          {t('adjustment.ui.sections.recobro.subtitle')}
         </p>
       </div>
 
       <div className="p-4 rounded-lg" style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}>
         <label className="block text-sm font-medium mb-2" style={{ color: textPrimary }}>
-          Recobro
+          {t('adjustment.ui.sections.recobro.label')}
         </label>
         <textarea
           value={formData.recobro || ''}
@@ -37,7 +39,7 @@ export default function RecobroAjuste({ formData, onInputChange, numeroSeccion =
             color: textPrimary,
             border: `1px solid ${borderColor}`
           }}
-          placeholder="Describa posibilidades de recobro, terceros responsables y gestiones a seguir..."
+          placeholder={t('adjustment.ui.sections.recobro.placeholder')}
         />
       </div>
 
@@ -46,7 +48,7 @@ export default function RecobroAjuste({ formData, onInputChange, numeroSeccion =
         onTextoCambiado={(texto) => onInputChange('recobro', texto)}
         contextoFormulario={formData}
         tipoSeccion="recobro"
-        tituloSeccion="Recobro"
+        tituloSeccion={t('adjustment.ui.sections.recobro.iaTitle')}
       />
     </div>
   );

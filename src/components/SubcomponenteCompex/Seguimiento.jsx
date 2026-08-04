@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BASE_URL, getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
@@ -34,6 +35,7 @@ export default function Seguimiento({
   cargandoAdjuntos = {},
   errorAdjuntos = {}
 }) {
+  const { t } = useTranslation();
   const [seguimientos, setSeguimientos] = useState([]);
   const [nuevoSeguimiento, setNuevoSeguimiento] = useState({
     fecha: '',
@@ -180,7 +182,7 @@ export default function Seguimiento({
   const descargarDocumento = (documento) => {
     const enlace = construirUrlDescarga(documento?.url || documento?.ruta || '');
     if (!enlace) {
-      alert('No se puede descargar el documento. URL no disponible.');
+      alert(t('complex.ui.seguimiento.no_descargar_url'));
       return;
     }
 
@@ -215,7 +217,7 @@ export default function Seguimiento({
 
   const handleAgregarSeguimiento = async () => {
     if (!nuevoSeguimiento.fecha || !nuevoSeguimiento.observacion.trim()) {
-      alert('Por favor complete la fecha y la observación del seguimiento.');
+      alert(t('complex.ui.seguimiento.complete_fecha_observacion'));
       return;
     }
 
@@ -235,7 +237,7 @@ export default function Seguimiento({
 
         if (!response.ok) {
           const errorResp = await response.json().catch(() => ({}));
-          throw new Error(errorResp.error || `Error subiendo archivo (${response.status})`);
+          throw new Error(errorResp.error || t('complex.ui.seguimiento.error_subiendo_archivo', { status: response.status }));
         }
 
         const data = await response.json();
@@ -251,7 +253,7 @@ export default function Seguimiento({
         };
       } catch (error) {
         console.error('Error subiendo documento:', error);
-        alert(`Error al subir el documento: ${error.message}`);
+        alert(t('complex.ui.seguimiento.error_subir_documento', { mensaje: error.message }));
         return;
       }
     }
@@ -311,7 +313,7 @@ export default function Seguimiento({
   };
 
   const handleEliminarSeguimiento = (id) => {
-    if (window.confirm('¿Está seguro de que desea eliminar este seguimiento?')) {
+    if (window.confirm(t('complex.ui.seguimiento.confirmar_eliminar'))) {
       // Encontrar el seguimiento a eliminar
       const seguimientoAEliminar = seguimientos.find(s => s.id === id);
       
@@ -353,19 +355,17 @@ export default function Seguimiento({
   return (
     <div className={complexPageWrap}>
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className={`${complexSectionTitle} !mb-0`}>Seguimiento del Caso</h2>
-        <button type="button" onClick={handleAgregarSeguimiento} className={complexBtnSecondary}>
-          + Nuevo
-        </button>
+        <h2 className={`${complexSectionTitle} !mb-0`}>{t("complex.ui.seguimiento.seguimiento_del_caso")}</h2>
+        <button type="button" onClick={handleAgregarSeguimiento} className={complexBtnSecondary}>{t("complex.ui.seguimiento.nuevo")}</button>
       </div>
 
       <TablaListaShell>
         <thead>
           <tr>
-            <th className={thLista}>Fecha *</th>
-            <th className={thLista}>Observación *</th>
-            <th className={thLista}>Documento adjunto</th>
-            <th className={thLista}>Acciones</th>
+            <th className={thLista}>{t("complex.ui.seguimiento.fecha")}</th>
+            <th className={thLista}>{t("complex.ui.seguimiento.observacion")}</th>
+            <th className={thLista}>{t("complex.ui.seguimiento.documento_adjunto")}</th>
+            <th className={thLista}>{t("complex.ui.seguimiento.acciones")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -384,7 +384,7 @@ export default function Seguimiento({
                 onChange={(e) => handleNuevoSeguimientoChange('observacion', e.target.value)}
                 className={textareaListaClass}
                 rows={2}
-                placeholder="Escriba la observación..."
+                placeholder={t("complex.ui.seguimiento.escriba_la_observacion")}
               />
             </td>
             <td className="px-4 py-3">
@@ -410,7 +410,7 @@ export default function Seguimiento({
               <td className="px-4 py-3">
                 <EnlaceArchivoLista
                   nombre={seg.documento?.nombre}
-                  vacio="Sin documento"
+                  vacio={t('complex.ui.seguimiento.sin_documento')}
                   onClick={() => seg.documento?.nombre && descargarDocumento(seg.documento)}
                 />
               </td>
@@ -423,26 +423,26 @@ export default function Seguimiento({
           {seguimientos.length === 0 && (
             <MensajeTablaVacia
               colSpan={4}
-              mensaje='No hay seguimientos registrados. Agregue uno nuevo usando el botón "+ Nuevo".'
+              mensaje={t('complex.ui.seguimiento.no_hay_seguimientos')}
             />
           )}
         </tbody>
       </TablaListaShell>
 
-      <ResumenListaPanel titulo="Resumen de seguimiento">
-        <ResumenItem label="Total seguimientos:" value={seguimientos.length} />
+      <ResumenListaPanel titulo={t('complex.ui.seguimiento.resumen_de_seguimiento')}>
+        <ResumenItem label={t("complex.ui.seguimiento.total_seguimientos")} value={seguimientos.length} />
         <ResumenItem
-          label="Último seguimiento:"
+          label={t("complex.ui.seguimiento.ultimo_seguimiento")}
           value={
             seguimientos.length > 0 && seguimientos[0].fecha
               ? formatFechaLista(seguimientos[0].fecha)
-              : 'No registrado'
+              : t('complex.ui.seguimiento.no_registrado')
           }
         />
-        <ResumenItem label="Días transcurridos:" value={diasTranscurridosCalculados} />
+        <ResumenItem label={t("complex.ui.seguimiento.dias_transcurridos")} value={diasTranscurridosCalculados} />
       </ResumenListaPanel>
 
-      <p className={`${complexHint} mt-4`}>* Campos obligatorios</p>
+      <p className={`${complexHint} mt-4`}>{t("complex.ui.seguimiento.campos_obligatorios")}</p>
     </div>
   );
 }

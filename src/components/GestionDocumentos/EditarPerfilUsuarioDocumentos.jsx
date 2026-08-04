@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import api from '../../services/api';
 import { obtenerPerfil, actualizarPerfil } from '../../services/userService';
@@ -7,6 +8,7 @@ import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { FaTimes, FaUpload, FaFile, FaTrash, FaDownload, FaEye, FaCalendar, FaUser, FaSpinner, FaCheckCircle } from 'react-icons/fa';
 
 export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [form, setForm] = useState({});
@@ -251,7 +253,7 @@ const token = localStorage.getItem('token');
       });
     } catch (err) {
       console.error('Error cargando datos del usuario:', err);
-      setError('Error al cargar los datos del usuario');
+      setError(t('admin.ui.documentos.editarPerfil.errors.loadFailed'));
     } finally {
       setCargando(false);
     }
@@ -286,7 +288,7 @@ setDocumentos(response.data.documentos || []);
       if (esExterno) {
         const payloadExterno = mapFormToPerfilExternoPayload(form);
         await api.put(`/api/documentos/perfiles-externos/${usuarioId}`, payloadExterno);
-        setMensaje({ tipo: 'exito', texto: '✅ Perfil externo actualizado exitosamente' });
+        setMensaje({ tipo: 'exito', texto: `✅ ${t('admin.ui.documentos.editarPerfil.externalUpdateSuccess')}` });
         setTimeout(() => {
           cargarDatosUsuario(true);
           setMensaje({ tipo: '', texto: '' });
@@ -358,14 +360,14 @@ setDocumentos(response.data.documentos || []);
       }
       
       await actualizarPerfil(dataToSend, token, tipoUsuario, usuarioId);
-      setMensaje({ tipo: 'exito', texto: '✅ Perfil actualizado exitosamente' });
+      setMensaje({ tipo: 'exito', texto: `✅ ${t('admin.ui.documentos.editarPerfil.updateSuccess')}` });
       // Recargar datos después de guardar
       setTimeout(() => {
         cargarDatosUsuario(true);
         setMensaje({ tipo: '', texto: '' });
       }, 2000);
     } catch (err) {
-      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || 'Error al actualizar el perfil';
+      const errorMsg = err.response?.data?.mensaje || err.response?.data?.message || t('admin.ui.documentos.editarPerfil.updateFailed');
       setError(errorMsg);
       setMensaje({ tipo: 'error', texto: `❌ ${errorMsg}` });
       setTimeout(() => {
@@ -390,7 +392,7 @@ setDocumentos(response.data.documentos || []);
   const handleSubmitDocumento = async (e) => {
     e.preventDefault();
     if (!archivo) {
-      setMensaje({ tipo: 'error', texto: 'Por favor selecciona un archivo' });
+      setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.subir.selectFileFirst') });
       return;
     }
 
@@ -406,7 +408,7 @@ setDocumentos(response.data.documentos || []);
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      setMensaje({ tipo: 'exito', texto: 'Documento subido exitosamente' });
+      setMensaje({ tipo: 'exito', texto: `✅ ${t('admin.ui.documentos.subir.uploadSuccess')}` });
       setArchivo(null);
       setNombreDoc('');
       setDescripcionDoc('');
@@ -415,23 +417,24 @@ setDocumentos(response.data.documentos || []);
       cargarDocumentos();
       setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
     } catch (error) {
-      setMensaje({ tipo: 'error', texto: error.response?.data?.message || 'Error al subir el documento' });
+      setMensaje({ tipo: 'error', texto: error.response?.data?.message || t('admin.ui.documentos.subir.uploadFailed') });
     } finally {
       setSubiendo(false);
     }
   };
 
   const handleEliminarDocumento = async (documentoId) => {
-    if (!window.confirm('¿Estás seguro de que deseas eliminar este documento?')) {
+    const doc = documentos.find((d) => d._id === documentoId);
+    if (!window.confirm(t('admin.ui.documentos.lista.confirmDelete', { name: doc?.nombre || '' }))) {
       return;
     }
     try {
       await api.delete(`/api/documentos/${documentoId}`);
-      setMensaje({ tipo: 'exito', texto: 'Documento eliminado exitosamente' });
+      setMensaje({ tipo: 'exito', texto: `✅ ${t('admin.ui.documentos.lista.deleteSuccess')}` });
       cargarDocumentos();
       setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
     } catch (error) {
-      setMensaje({ tipo: 'error', texto: 'Error al eliminar el documento' });
+      setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.lista.deleteFailed') });
     }
   };
 
@@ -471,7 +474,7 @@ setDocumentos(response.data.documentos || []);
       } catch {
         // Si también falla el fallback, mostramos mensaje estándar.
       }
-      setMensaje({ tipo: 'error', texto: 'Error al descargar el documento (no disponible en este entorno)' });
+      setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.lista.downloadFailed') });
     }
   };
 
@@ -485,17 +488,17 @@ setDocumentos(response.data.documentos || []);
         ? candidatos[candidatos.length - 1]
         : (candidatos[0] || null);
       if (!url) {
-        setMensaje({ tipo: 'error', texto: 'No se pudo resolver la ruta del documento' });
+        setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.lista.previewFailed') });
         return;
       }
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (error) {
-      setMensaje({ tipo: 'error', texto: 'Error al abrir la vista previa' });
+      setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.lista.previewFailed') });
     }
   };
 
   const formatearFechaMostrar = (fecha) => {
-    if (!fecha) return 'N/A';
+    if (!fecha) return t('admin.ui.documentos.perfiles.notAvailable');
     try {
       // Si es un string en formato YYYY-MM-DD, parsearlo como fecha local
       let date;
@@ -520,7 +523,7 @@ setDocumentos(response.data.documentos || []);
         minute: '2-digit'
       });
     } catch {
-      return 'N/A';
+      return t('admin.ui.documentos.perfiles.notAvailable');
     }
   };
 
@@ -533,7 +536,7 @@ setDocumentos(response.data.documentos || []);
   if (cargando) {
     return (
       <div className="p-6 text-center" style={{ color: textSecondary }}>
-        Cargando datos del usuario...
+        {t('admin.ui.documentos.editarPerfil.loading')}
       </div>
     );
   }
@@ -542,7 +545,7 @@ setDocumentos(response.data.documentos || []);
     <div className="p-3 sm:p-4 lg:p-6 max-h-screen overflow-y-auto">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold" style={{ color: textPrimary }}>
-          Editar Perfil y Documentos - {usuario.name || usuario.nombre || 'Usuario'}
+          {t('admin.ui.documentos.perfiles.editTitle')} - {usuario.name || usuario.nombre || t('admin.ui.documentos.verUsuario.defaultUser')}
         </h3>
         <button
           onClick={onCerrar}
@@ -603,28 +606,28 @@ setDocumentos(response.data.documentos || []);
             style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
           >
             <h4 className="text-lg font-bold mb-4" style={{ color: textPrimary }}>
-              Datos del Empleado
+              {t('admin.ui.documentos.editarPerfil.employeeData')}
             </h4>
             <form onSubmit={handleSubmitPerfil} className="space-y-4">
               {/* Información Personal */}
               <div className="space-y-3">
                 <h5 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-blue-300 border-blue-600' : 'text-blue-700 border-blue-300'}`}>
-                  📋 Información Personal
+                  📋 {t('admin.ui.documentos.editarPerfil.sections.personal')}
                 </h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Empresa</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.company')}</label>
                     <select name="empresa" value={form.empresa || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}>
-                      <option value="">Seleccione</option>
+                      <option value="">{t('admin.ui.documentos.editarPerfil.select')}</option>
                       <option value="Proser Riesgos">Proser Riesgos</option>
                       <option value="Proser Ajustes">Proser Ajustes</option>
                       <option value="Proser Puertos">Proser Puertos</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Sucursal</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.branch')}</label>
                     <select name="sucursal" value={form.sucursal || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}>
-                      <option value="">Seleccione</option>
+                      <option value="">{t('admin.ui.documentos.editarPerfil.select')}</option>
                       <option value="Barranquilla">Barranquilla</option>
                       <option value="Bogotá">Bogotá</option>
                       <option value="Medellín">Medellín</option>
@@ -644,21 +647,21 @@ setDocumentos(response.data.documentos || []);
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Nombre</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.name')}</label>
                     <input type="text" name={esExterno ? 'nombre' : (tipoUsuario === 'secur' ? 'name' : 'nombre')} value={form.name || form.nombre || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} required />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Cédula</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.idNumber')}</label>
                     <input type="text" name="cedula" value={form.cedula || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Fecha Nacimiento</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.fechaNacimientoShort')}</label>
                     <input type="date" name="fechaNacimiento" value={form.fechaNacimiento || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Tipo Sangre</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.tipoSangreShort')}</label>
                     <select name="tipoSangre" value={form.tipoSangre || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}>
-                      <option value="">Seleccione</option>
+                      <option value="">{t('admin.ui.documentos.editarPerfil.select')}</option>
                       <option value="O+">O+</option>
                       <option value="O-">O-</option>
                       <option value="A+">A+</option>
@@ -670,7 +673,7 @@ setDocumentos(response.data.documentos || []);
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Dirección</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.address')}</label>
                     <input type="text" name="direccion" value={form.direccion || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                 </div>
@@ -679,19 +682,19 @@ setDocumentos(response.data.documentos || []);
               {/* Información de Contacto */}
               <div className="space-y-3">
                 <h5 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-yellow-300 border-yellow-600' : 'text-yellow-700 border-yellow-300'}`}>
-                  📞 Información de Contacto
+                  📞 {t('admin.ui.documentos.editarPerfil.sections.contacto')}
                 </h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Teléfono Fijo</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.landline')}</label>
                     <input type="text" name="telefonoFijo" value={form.telefonoFijo || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Celular(es)</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.celulares')}</label>
                     <input type="text" name="celulares" value={form.celulares || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Correo(s)</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.correos')}</label>
                     <input type="text" name="correosElectronicos" value={form.correosElectronicos || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                 </div>
@@ -700,23 +703,23 @@ setDocumentos(response.data.documentos || []);
               {/* Información Laboral */}
               <div className="space-y-3">
                 <h5 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-green-300 border-green-600' : 'text-green-700 border-green-300'}`}>
-                  💼 Información Laboral
+                  💼 {t('admin.ui.documentos.editarPerfil.sections.laboral')}
                 </h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Fecha Ingreso</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.fechaIngresoShort')}</label>
                     <input type="date" name="fechaIngreso" value={form.fechaIngreso || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Cargo(s)</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.position')}</label>
                     <input type="text" name="cargos" value={form.cargos || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Salario</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.perfiles.fields.salary')}</label>
                     <input type="number" name="salario" value={form.salario || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Fecha Mod. Sueldo</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.fechaModSueldo')}</label>
                     <input type="date" name="fechaModificacionSueldo" value={form.fechaModificacionSueldo || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                 </div>
@@ -725,30 +728,30 @@ setDocumentos(response.data.documentos || []);
               {/* Información Contractual */}
               <div className="space-y-3">
                 <h5 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-purple-300 border-purple-600' : 'text-purple-700 border-purple-300'}`}>
-                  📄 Información Contractual
+                  📄 {t('admin.ui.documentos.editarPerfil.sections.contractual')}
                 </h5>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Tipo Contrato</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.tipoContratoShort')}</label>
                     <select name="tipoContrato" value={form.tipoContrato || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}>
-                      <option value="">Seleccione</option>
-                      <option value="Término Indefinido">Término Indefinido</option>
-                      <option value="Término Fijo">Término Fijo</option>
-                      <option value="Obra o Labor">Obra o Labor</option>
-                      <option value="Prestación de Servicios">Prestación de Servicios</option>
-                      <option value="Aprendizaje">Aprendizaje</option>
-                      <option value="Temporal / Ocasional">Temporal / Ocasional</option>
-                      <option value="Teletrabajo">Teletrabajo</option>
-                      <option value="Trabajo Remoto">Trabajo Remoto</option>
-                      <option value="Medio Tiempo">Medio Tiempo</option>
+                      <option value="">{t('admin.ui.documentos.editarPerfil.select')}</option>
+                      <option value="Término Indefinido">{t('admin.ui.documentos.editarPerfil.contractTypes.terminoIndefinido')}</option>
+                      <option value="Término Fijo">{t('admin.ui.documentos.editarPerfil.contractTypes.terminoFijo')}</option>
+                      <option value="Obra o Labor">{t('admin.ui.documentos.editarPerfil.contractTypes.obraLabor')}</option>
+                      <option value="Prestación de Servicios">{t('admin.ui.documentos.editarPerfil.contractTypes.prestacionServicios')}</option>
+                      <option value="Aprendizaje">{t('admin.ui.documentos.editarPerfil.contractTypes.aprendizaje')}</option>
+                      <option value="Temporal / Ocasional">{t('admin.ui.documentos.editarPerfil.contractTypes.temporalOcasional')}</option>
+                      <option value="Teletrabajo">{t('admin.ui.documentos.editarPerfil.contractTypes.teletrabajo')}</option>
+                      <option value="Trabajo Remoto">{t('admin.ui.documentos.editarPerfil.contractTypes.trabajoRemoto')}</option>
+                      <option value="Medio Tiempo">{t('admin.ui.documentos.editarPerfil.contractTypes.medioTiempo')}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Fecha Mod. Contrato</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.fechaModContrato')}</label>
                     <input type="date" name="fechaModificacionContrato" value={form.fechaModificacionContrato || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Vencimiento</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.vencimiento')}</label>
                     <input type="date" name="vencimiento" value={form.vencimiento || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                 </div>
@@ -757,27 +760,27 @@ setDocumentos(response.data.documentos || []);
               {/* Aportes */}
               <div className="space-y-3">
                 <h5 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-orange-300 border-orange-600' : 'text-orange-700 border-orange-300'}`}>
-                  💳 Aportes
+                  💳 {t('admin.ui.documentos.editarPerfil.sections.aportes')}
                 </h5>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Salud</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.aportes.salud')}</label>
                     <input type="text" name="aportesSalud" value={form.aportesSalud || ''} onChange={handleChange} className="w-full px-2 py-1 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Pensión</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.aportes.pension')}</label>
                     <input type="text" name="aportesPension" value={form.aportesPension || ''} onChange={handleChange} className="w-full px-2 py-1 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Cesantías</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.aportes.cesantias')}</label>
                     <input type="text" name="aportesCesantias" value={form.aportesCesantias || ''} onChange={handleChange} className="w-full px-2 py-1 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>ARL</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.aportes.arl')}</label>
                     <input type="text" name="aportesARL" value={form.aportesARL || ''} onChange={handleChange} className="w-full px-2 py-1 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>C.C.F.</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.aportes.ccf')}</label>
                     <input type="text" name="aportesCCF" value={form.aportesCCF || ''} onChange={handleChange} className="w-full px-2 py-1 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
                   </div>
                 </div>
@@ -786,20 +789,20 @@ setDocumentos(response.data.documentos || []);
               {/* Información Adicional */}
               <div className="space-y-3">
                 <h5 className={`text-sm font-bold border-b pb-2 ${isDark ? 'text-red-300 border-red-600' : 'text-red-700 border-red-300'}`}>
-                  ➕ Información Adicional
+                  ➕ {t('admin.ui.documentos.editarPerfil.sections.adicional')}
                 </h5>
                 <div>
-                  <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Evaluación</label>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.evaluacion')}</label>
                   <select name="evaluacionPeriodoPrueba" value={form.evaluacionPeriodoPrueba || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }}>
-                    <option value="">Seleccione</option>
-                    <option value="Aprobado">Aprobado</option>
-                    <option value="Pendiente">Pendiente</option>
-                    <option value="No Aprobado">No Aprobado</option>
+                    <option value="">{t('admin.ui.documentos.editarPerfil.select')}</option>
+                    <option value="Aprobado">{t('admin.ui.documentos.editarPerfil.evaluation.aprobado')}</option>
+                    <option value="Pendiente">{t('admin.ui.documentos.editarPerfil.evaluation.pendiente')}</option>
+                    <option value="No Aprobado">{t('admin.ui.documentos.editarPerfil.evaluation.noAprobado')}</option>
                   </select>
                 </div>
                 {!esExterno && (
                   <div>
-                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Confirma tu contraseña para guardar cambios</label>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.editarPerfil.fields.passwordConfirm')}</label>
                     <input type="password" name="passwordConfirm" value={form.passwordConfirm || ''} onChange={handleChange} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} required />
                   </div>
                 )}
@@ -821,12 +824,12 @@ setDocumentos(response.data.documentos || []);
                 {guardando ? (
                   <>
                     <FaSpinner className="animate-spin" />
-                    Guardando...
+                    {t('admin.ui.documentos.editarPerfil.saving')}
                   </>
                 ) : (
                   <>
                     <FaCheckCircle />
-                    Guardar cambios
+                    {t('admin.ui.documentos.editarPerfil.saveChanges')}
                   </>
                 )}
               </button>
@@ -842,11 +845,11 @@ setDocumentos(response.data.documentos || []);
             style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
           >
             <h4 className="text-lg font-bold mb-4" style={{ color: textPrimary }}>
-              Subir Nuevo Documento
+              {t('admin.ui.documentos.editarPerfil.uploadNewDocument')}
             </h4>
             <form onSubmit={handleSubmitDocumento} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Archivo</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.subir.file')}</label>
                 <input
                   id="file-input-doc"
                   type="file"
@@ -861,16 +864,16 @@ setDocumentos(response.data.documentos || []);
                 )}
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Nombre</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.subir.documentName')}</label>
                 <input type="text" value={nombreDoc} onChange={(e) => setNombreDoc(e.target.value)} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Descripción</label>
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.subir.description')}</label>
                 <textarea value={descripcionDoc} onChange={(e) => setDescripcionDoc(e.target.value)} rows="2" className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>Etiquetas</label>
-                <input type="text" value={etiquetasDoc} onChange={(e) => setEtiquetasDoc(e.target.value)} placeholder="Separadas por comas" className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
+                <label className="block text-xs font-semibold mb-1" style={{ color: textPrimary }}>{t('admin.ui.documentos.subir.tags')}</label>
+                <input type="text" value={etiquetasDoc} onChange={(e) => setEtiquetasDoc(e.target.value)} placeholder={t('admin.ui.documentos.editarPerfil.tagsCommaHint')} className="w-full px-3 py-2 rounded border text-xs" style={{ backgroundColor: inputBg, color: textPrimary, borderColor }} />
               </div>
               <button
                 type="submit"
@@ -882,7 +885,7 @@ setDocumentos(response.data.documentos || []);
                 }}
               >
                 <FaUpload />
-                {subiendo ? 'Subiendo...' : 'Subir Documento'}
+                {subiendo ? t('admin.ui.documentos.subir.uploading') : t('admin.ui.documentos.editarPerfil.uploadDocument')}
               </button>
             </form>
           </div>
@@ -893,11 +896,11 @@ setDocumentos(response.data.documentos || []);
             style={{ backgroundColor: cardBg, border: `1px solid ${borderColor}` }}
           >
             <h4 className="text-lg font-bold mb-4" style={{ color: textPrimary }}>
-              Historial de Documentos ({documentos.length})
+              {t('admin.ui.documentos.editarPerfil.documentHistory', { count: documentos.length })}
             </h4>
             {documentos.length === 0 ? (
               <p className="text-sm text-center py-4" style={{ color: textSecondary }}>
-                No hay documentos subidos
+                {t('admin.ui.documentos.editarPerfil.noDocumentsUploaded')}
               </p>
             ) : (
               <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -933,7 +936,7 @@ setDocumentos(response.data.documentos || []);
                           onClick={() => handleVistaPrevia(doc)}
                           className="p-1.5 rounded"
                           style={{ backgroundColor: buttonPrimary, color: theme === 'dark' ? '#93C5FD' : '#FFFFFF' }}
-                          title="Vista previa"
+                          title={t('admin.ui.documentos.editarPerfil.preview')}
                         >
                           <FaEye className="text-xs" />
                         </button>
@@ -941,7 +944,7 @@ setDocumentos(response.data.documentos || []);
                           onClick={() => handleDescargar(doc)}
                           className="p-1.5 rounded"
                           style={{ backgroundColor: buttonPrimary, color: theme === 'dark' ? '#93C5FD' : '#FFFFFF' }}
-                          title="Descargar"
+                          title={t('admin.ui.documentos.editarPerfil.download')}
                         >
                           <FaDownload className="text-xs" />
                         </button>
@@ -949,7 +952,7 @@ setDocumentos(response.data.documentos || []);
                           onClick={() => handleEliminarDocumento(doc._id)}
                           className="p-1.5 rounded"
                           style={{ backgroundColor: buttonDanger, color: theme === 'dark' ? '#FCA5A5' : '#FFFFFF' }}
-                          title="Eliminar"
+                          title={t('admin.ui.documentos.editarPerfil.delete')}
                         >
                           <FaTrash className="text-xs" />
                         </button>

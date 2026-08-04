@@ -1,4 +1,5 @@
-﻿// src/components/DashboardComplex.jsx
+import { useTranslation } from 'react-i18next';
+// src/components/DashboardComplex.jsx
 import React, { useEffect, useState } from 'react';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
 import { obtenerCasosComplex } from '../services/complexService';
@@ -56,7 +57,33 @@ import {
   METRIC_TOP_ESTADOS,
 } from './SubcomponenteCompex/dashboardComplexChartUtils.js';
 
+/** Traduce nombres de estado del catálogo (API/mapeo) al idioma activo. */
+const ESTADO_CATALOGO_I18N = {
+  FACTURADO: 'estado_facturado',
+  'PENDIENTE DOCUMENTOS': 'estado_pendiente_documentos',
+  'PENDIENTE ACEPTACION CLIENTE': 'estado_pendiente_aceptacion_cliente',
+  'PENDIENTE ACEPTACIÓN CLIENTE': 'estado_pendiente_aceptacion_cliente',
+  'PENDIENTE ACEPTACION CIFRAS': 'estado_pendiente_aceptacion_cifras',
+  'PENDIENTE ACEPTACIÓN CIFRAS': 'estado_pendiente_aceptacion_cifras',
+  'EN PROCESO': 'estado_en_proceso',
+  CERRADO: 'estado_cerrado',
+  CANCELADO: 'estado_cancelado',
+  SUSPENDIDO: 'estado_suspendido',
+  REVISION: 'estado_revision',
+  REVISIÓN: 'estado_revision',
+  FINALIZADO: 'estado_finalizado',
+};
+
+function traducirNombreEstadoCatalogo(nombre, t) {
+  if (!nombre) return nombre;
+  const key = ESTADO_CATALOGO_I18N[String(nombre).trim().toUpperCase()];
+  return key ? t(`complex.ui.dashboard_complex.${key}`) : nombre;
+}
+
 const DashboardComplex = () => {
+  const { t, i18n } = useTranslation();
+  const dateLang = String(i18n.language || 'es').toLowerCase().startsWith('en') ? 'en' : 'es';
+  const datePlaceholder = t('complex.ui.dashboard_complex.placeholder_fecha');
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
@@ -214,15 +241,12 @@ setSiniestros(casosFinales);
       <div className={complexDashboardRoot}>
         <div className={`${complexScope} ${complexDashboardWrap}`}>
           <ComplexPageHeader
-            title="Dashboard Complex"
-            subtitle="No hay datos de siniestros disponibles para mostrar."
+            title={t("complex.ui.dashboard_complex.dashboard_complex")}
+            subtitle={t("complex.ui.dashboard_complex.no_hay_datos_de_siniestros_disponibles_para_mostrar")}
             activePath="/complex/dashboard"
           />
           <div className="rounded-xl border border-gray-100 bg-white p-6 text-center shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
-            <p className="font-body text-sm text-gray-600 dark:text-gray-400">
-              Verifica que existan casos en la base de datos o revisa la consola del navegador (F12) si
-              hubo un error de carga.
-            </p>
+            <p className="font-body text-sm text-gray-600 dark:text-gray-400">{t("complex.ui.dashboard_complex.verifica_que_existan_casos_en_la_base_de_datos_o_revisa_")}</p>
           </div>
         </div>
       </div>
@@ -230,10 +254,10 @@ setSiniestros(casosFinales);
   }
 
   // FunciÃ³n para obtener nombre del responsable (igual que el reporte)
-  // FunciÃ³n helper para obtener nombre de estado desde la API (no usar mapeo estÃ¡tico)
+  // Función helper para obtener nombre de estado desde la API (no usar mapeo estático)
   const obtenerNombreEstadoAPI = (codigoEstado) => {
     if (!codigoEstado || codigoEstado === 'null' || codigoEstado === 'undefined' || codigoEstado === '') {
-      return 'Sin estado';
+      return t('complex.ui.dashboard_complex.sin_estado');
     }
     
     const codigoStr = String(codigoEstado).trim();
@@ -242,12 +266,14 @@ setSiniestros(casosFinales);
     if (estados && estados.length > 0) {
       const estadoEncontrado = estados.find(e => String(e.codiEstdo).trim() === codigoStr);
       if (estadoEncontrado && estadoEncontrado.descEstdo) {
-        return estadoEncontrado.descEstdo;
+        return traducirNombreEstadoCatalogo(estadoEncontrado.descEstdo, t);
       }
     }
     
-    // Fallback al mapeo estÃ¡tico si no se encuentra en la API
-    return mapeoEstados[codigoStr] || `Estado ${codigoStr}`;
+    // Fallback al mapeo estático si no se encuentra en la API
+    const fallback = mapeoEstados[codigoStr];
+    if (fallback) return traducirNombreEstadoCatalogo(fallback, t);
+    return t('complex.ui.dashboard_complex.estado_n', { codigo: codigoStr });
   };
 
   const getNombreResponsable = (caso) => {
@@ -450,7 +476,10 @@ setSiniestros(casosFinales);
   const tarjetasEstados = estados
     .map(estado => {
       const codigo = String(estado.codiEstdo).trim();
-      const nombre = estado.descEstdo || `Estado ${codigo}`;
+      const nombre = traducirNombreEstadoCatalogo(
+        estado.descEstdo || t('complex.ui.dashboard_complex.estado_n', { codigo }),
+        t
+      );
       const cantidad = casosPorEstadoCodigo[codigo] || 0;
 
       return {
@@ -506,7 +535,7 @@ setSiniestros(casosFinales);
   const siniestrosPorCiudad = Object.entries(
     siniestrosFiltrados.reduce((acc, s) => {
       // Priorizar descripcionCiudad o nombreCiudad si estÃ¡n disponibles
-      const ciudad = s.descripcionCiudad || s.nombreCiudad || s.ciudadSiniestro || 'No especificada';
+      const ciudad = s.descripcionCiudad || s.nombreCiudad || s.ciudadSiniestro || t('complex.ui.dashboard_complex.no_especificada');
       acc[ciudad] = (acc[ciudad] || 0) + 1;
       return acc;
     }, {})
@@ -525,9 +554,9 @@ setSiniestros(casosFinales);
         if (estados.length > 0) {
           const estadoEncontrado = estados.find(e => String(e.codiEstdo) === String(s.codiEstdo));
           if (estadoEncontrado && estadoEncontrado.descEstdo) {
-            nombreEstado = estadoEncontrado.descEstdo;
+            nombreEstado = traducirNombreEstadoCatalogo(estadoEncontrado.descEstdo, t);
           } else {
-            nombreEstado = nombreEstado || `Estado ${s.codiEstdo}`;
+            nombreEstado = nombreEstado || t('complex.ui.dashboard_complex.estado_n', { codigo: s.codiEstdo });
           }
         }
       }
@@ -541,7 +570,7 @@ setSiniestros(casosFinales);
   // GrÃ¡fico de barras â†’ Siniestros por aseguradora
   const siniestrosPorAseguradora = Object.entries(
     siniestrosFiltrados.reduce((acc, s) => {
-      const nombreAseguradora = getNombreAseguradora(s.codiAsgrdra) || 'Sin especificar';
+      const nombreAseguradora = getNombreAseguradora(s.codiAsgrdra) || t('complex.ui.dashboard_complex.sin_especificar');
       acc[nombreAseguradora] = (acc[nombreAseguradora] || 0) + 1;
       return acc;
     }, {})
@@ -564,9 +593,10 @@ setSiniestros(casosFinales);
 // PASO 2: Crear lista de responsables con sus conteos (usando los nombres encontrados)
   const siniestrosPorResponsable = Object.entries(conteoPorNombreResponsable)
     .map(([nombre, cantidad]) => ({
-      responsable: nombre,
+      responsable:
+        nombre === 'Sin asignar' ? t('complex.ui.dashboard_complex.sin_asignar') : nombre,
       cantidad,
-      codigo: null // No necesitamos el cÃ³digo para el grÃ¡fico
+      codigo: null // No necesitamos el código para el gráfico
     }))
     .sort((a, b) => b.cantidad - a.cantidad);
 
@@ -749,7 +779,8 @@ setSiniestros(casosFinales);
   // Convertir a array y calcular porcentajes
   const cumplimientoPorResponsableArray = Object.entries(cumplimientoPorResponsable)
     .map(([nombre, datos]) => ({
-      nombre,
+      nombre:
+        nombre === 'Sin asignar' ? t('complex.ui.dashboard_complex.sin_asignar') : nombre,
       totalCasos: datos.totalCasos,
       casosCumplidos: datos.casosCumplidos,
       casosRetrasados: datos.casosRetrasados,
@@ -765,11 +796,11 @@ setSiniestros(casosFinales);
 
   // Datos para grÃ¡ficas de retrasos por etapa
   const retrasosPorEtapaData = [
-    { etapa: 'Contacto Inicial', retrasados: casosRetrasadosPorEtapa.contactoInicial, limite: '12 horas' },
-    { etapa: 'Inspección', retrasados: casosRetrasadosPorEtapa.inspeccion, limite: '1 día hábil' },
-    { etapa: 'Solicitud Docs', retrasados: casosRetrasadosPorEtapa.solicitudDocs, limite: '24 horas' },
-    { etapa: 'Informe Preliminar', retrasados: casosRetrasadosPorEtapa.informePreliminar, limite: '24 horas' },
-    { etapa: 'Informe Final', retrasados: casosRetrasadosPorEtapa.informeFinal, limite: '3 días' }
+    { etapa: t('complex.ui.dashboard_complex.etapa_contacto_inicial'), retrasados: casosRetrasadosPorEtapa.contactoInicial, limite: t('complex.ui.dashboard_complex.limite_12_horas') },
+    { etapa: t('complex.ui.dashboard_complex.etapa_inspeccion'), retrasados: casosRetrasadosPorEtapa.inspeccion, limite: t('complex.ui.dashboard_complex.limite_1_dia_habil') },
+    { etapa: t('complex.ui.dashboard_complex.etapa_solicitud_docs'), retrasados: casosRetrasadosPorEtapa.solicitudDocs, limite: t('complex.ui.dashboard_complex.limite_24_horas') },
+    { etapa: t('complex.ui.dashboard_complex.etapa_informe_preliminar'), retrasados: casosRetrasadosPorEtapa.informePreliminar, limite: t('complex.ui.dashboard_complex.limite_24_horas') },
+    { etapa: t('complex.ui.dashboard_complex.etapa_informe_final'), retrasados: casosRetrasadosPorEtapa.informeFinal, limite: t('complex.ui.dashboard_complex.limite_3_dias') }
   ];
 
   // Top responsables con mejor/menor cumplimiento
@@ -784,7 +815,7 @@ setSiniestros(casosFinales);
   const estadosUnicos = estados
     .map(e => ({
       value: String(e.codiEstdo),
-      label: e.descEstdo || String(e.codiEstdo)
+      label: traducirNombreEstadoCatalogo(e.descEstdo || String(e.codiEstdo), t)
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -809,7 +840,7 @@ setSiniestros(casosFinales);
   const responsablesUnicos = Array.from(responsablesUnicosSet)
     .map(nombre => ({ 
       value: nombre, 
-      label: nombre 
+      label: nombre === 'Sin asignar' ? t('complex.ui.dashboard_complex.sin_asignar') : nombre 
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 
@@ -865,26 +896,40 @@ setSiniestros(casosFinales);
     <div className={complexDashboardRoot}>
       <div className={`${complexScope} ${complexDashboardWrap}`}>
         <ComplexPageHeader
-          title="Dashboard Complex"
-          subtitle="Análisis de siniestros, distribución y cumplimiento de trazabilidad."
+          title={t("complex.ui.dashboard_complex.dashboard_complex")}
+          subtitle={t("complex.ui.dashboard_complex.analisis_de_siniestros_distribucion_y_cumplimiento_de_tr")}
           activePath="/complex/dashboard"
         />
 
         <ComplexFilterSection
-          title="Filtros de búsqueda"
+          title={t("complex.ui.dashboard_complex.filtros_de_busqueda")}
           showClear={filtrosAplicados}
           onClear={limpiarFiltros}
         >
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Campo label="Fecha desde">
-              <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+            <Campo label={t("complex.ui.dashboard_complex.fecha_desde")}>
+              <InputFenix
+                type="date"
+                lang={dateLang}
+                title={datePlaceholder}
+                placeholder={datePlaceholder}
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+              />
             </Campo>
-            <Campo label="Fecha hasta">
-              <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+            <Campo label={t("complex.ui.dashboard_complex.fecha_hasta")}>
+              <InputFenix
+                type="date"
+                lang={dateLang}
+                title={datePlaceholder}
+                placeholder={datePlaceholder}
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+              />
             </Campo>
-            <Campo label="Estado">
+            <Campo label={t("complex.ui.dashboard_complex.estado")}>
               <SelectFenix value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t("complex.ui.dashboard_complex.todos")}</option>
                 {estadosUnicos.map((e, index) => (
                   <option key={`estado-${e.value}-${index}`} value={e.value}>
                     {e.label}
@@ -892,9 +937,9 @@ setSiniestros(casosFinales);
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Aseguradora">
+            <Campo label={t("complex.ui.dashboard_complex.aseguradora")}>
               <SelectFenix value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)}>
-                <option value="">Todas</option>
+                <option value="">{t("complex.ui.dashboard_complex.todas")}</option>
                 {aseguradorasUnicas.map((a, index) => (
                   <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
                     {a.label}
@@ -902,9 +947,9 @@ setSiniestros(casosFinales);
                 ))}
               </SelectFenix>
             </Campo>
-            <Campo label="Responsable">
+            <Campo label={t("complex.ui.dashboard_complex.responsable")}>
               <SelectFenix value={responsableFiltro} onChange={(e) => setResponsableFiltro(e.target.value)}>
-                <option value="">Todos</option>
+                <option value="">{t("complex.ui.dashboard_complex.todos")}</option>
                 {responsablesUnicos.map((r, index) => (
                   <option key={`responsable-${r.value}-${index}`} value={r.value}>
                     {r.label}
@@ -915,46 +960,39 @@ setSiniestros(casosFinales);
           </div>
           {filtrosAplicados && (
             <div className={complexFilterPanel}>
-              <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-200">Filtros activos</p>
+              <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-200">{t("complex.ui.dashboard_complex.filtros_activos")}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {fechaDesde && (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">
-                    Desde: {fechaDesde}
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">{t("complex.ui.dashboard_complex.desde")}{fechaDesde}
                   </span>
                 )}
                 {fechaHasta && (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">
-                    Hasta: {fechaHasta}
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">{t("complex.ui.dashboard_complex.hasta")}{fechaHasta}
                   </span>
                 )}
                 {estadoFiltro && (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">
-                    Estado: {estadosUnicos.find((e) => e.value === estadoFiltro)?.label || estadoFiltro}
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">{t("complex.ui.dashboard_complex.estado_2")}{estadosUnicos.find((e) => e.value === estadoFiltro)?.label || estadoFiltro}
                   </span>
                 )}
                 {aseguradoraFiltro && (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">
-                    Aseguradora: {aseguradorasUnicas.find((a) => a.value === aseguradoraFiltro)?.label || aseguradoraFiltro}
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">{t("complex.ui.dashboard_complex.aseguradora_2")}{aseguradorasUnicas.find((a) => a.value === aseguradoraFiltro)?.label || aseguradoraFiltro}
                   </span>
                 )}
                 {responsableFiltro && (
-                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">
-                    Responsable: {responsableFiltro}
+                  <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 ring-1 ring-gray-200 dark:bg-gray-900/40 dark:text-gray-200 dark:ring-gray-700">{t("complex.ui.dashboard_complex.responsable_2")}{responsableFiltro}
                   </span>
                 )}
               </div>
-              <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
-                Mostrando {totalSiniestros} de {siniestros.length} siniestros
-              </p>
+              <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">{t("complex.ui.dashboard_complex.mostrando")}{totalSiniestros}{t("complex.ui.dashboard_complex.de")}{siniestros.length}{t("complex.ui.dashboard_complex.siniestros")}</p>
             </div>
           )}
         </ComplexFilterSection>
 
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           <ComplexMetricCard
-            label="Total siniestros"
+            label={t("complex.ui.dashboard_complex.total_siniestros")}
             value={totalSiniestros}
-            hint="Con filtros aplicados"
+            hint={t("complex.ui.dashboard_complex.con_filtros_aplicados")}
           />
           {tarjetasEstadosVisibles.map((estado) => (
             <ComplexMetricCard key={estado.codigo} label={estado.nombre} value={estado.cantidad} />
@@ -962,7 +1000,7 @@ setSiniestros(casosFinales);
         </section>
 
         <section className="grid grid-cols-1 gap-4">
-          <ComplexChartCard title="Evolución temporal de siniestros" empty={evolucionTemporal.length === 0}>
+          <ComplexChartCard title={t("complex.ui.dashboard_complex.evolucion_temporal_de_siniestros")} empty={evolucionTemporal.length === 0}>
             <ComplexChartPlot height={CHART_HEIGHT_TALL}>
               <AreaChart data={evolucionTemporal} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -972,7 +1010,7 @@ setSiniestros(casosFinales);
                 <Area
                   type="monotone"
                   dataKey="cantidad"
-                  name="Casos"
+                  name={t('complex.ui.dashboard_complex.casos')}
                   stroke={lineColors.casos}
                   fill={lineColors.casos}
                   fillOpacity={0.2}
@@ -985,11 +1023,14 @@ setSiniestros(casosFinales);
 
         <section className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <ComplexChartCard
-            title="Siniestros por estado"
+            title={t("complex.ui.dashboard_complex.siniestros_por_estado")}
             empty={estadoChartData.length === 0}
             subtitle={
               siniestrosPorEstado.length > CHART_TOP_ESTADOS
-                ? `Top ${CHART_TOP_ESTADOS} de ${siniestrosPorEstado.length} estados`
+                ? t('complex.ui.dashboard_complex.top_n_de_m', {
+                    n: CHART_TOP_ESTADOS,
+                    m: siniestrosPorEstado.length,
+                  })
                 : undefined
             }
           >
@@ -1005,7 +1046,7 @@ setSiniestros(casosFinales);
                   tickFormatter={(v) => truncarEtiqueta(v, 28)}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="cantidad" name={t('complex.ui.dashboard_complex.casos')} radius={[0, 4, 4, 0]}>
                   {estadoChartData.map((entry, index) => (
                     <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
                   ))}
@@ -1014,7 +1055,7 @@ setSiniestros(casosFinales);
             </ComplexChartPlot>
           </ComplexChartCard>
 
-          <ComplexChartCard title="Distribución por ciudad" empty={siniestrosPorCiudad.length === 0} subtitle="Top 10">
+          <ComplexChartCard title={t("complex.ui.dashboard_complex.distribucion_por_ciudad")} empty={siniestrosPorCiudad.length === 0} subtitle={t("complex.ui.dashboard_complex.top_10")}>
             <ComplexChartPlot height={alturaGraficoBarrasVerticales(siniestrosPorCiudad.length)}>
               <BarChart data={siniestrosPorCiudad} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
@@ -1025,7 +1066,7 @@ setSiniestros(casosFinales);
                   width={150}
                   tick={{ fill: tickColor, fontSize: 10 }}
                   tickFormatter={(value) => {
-                    if (!value) return 'Sin ciudad';
+                    if (!value) return t('complex.ui.dashboard_complex.sin_ciudad');
                     let nombre = value.includes(', COLOMBIA') ? value.replace(', COLOMBIA', '') : value;
                     const partesUnicas = [...new Set(nombre.split(', '))];
                     nombre = partesUnicas.join(', ');
@@ -1033,7 +1074,7 @@ setSiniestros(casosFinales);
                   }}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="cantidad" name={t('complex.ui.dashboard_complex.casos')} radius={[0, 4, 4, 0]}>
                   {siniestrosPorCiudad.map((entry, index) => (
                     <Cell key={entry.ciudad} fill={getFenixChartColor(index, isDark)} />
                   ))}
@@ -1045,11 +1086,14 @@ setSiniestros(casosFinales);
 
         <section className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <ComplexChartCard
-            title="Siniestros por aseguradora"
+            title={t("complex.ui.dashboard_complex.siniestros_por_aseguradora")}
             empty={aseguradoraChartData.length === 0}
             subtitle={
               siniestrosPorAseguradora.length > CHART_TOP_ASEGURADORAS
-                ? `Top ${CHART_TOP_ASEGURADORAS} de ${siniestrosPorAseguradora.length}`
+                ? t('complex.ui.dashboard_complex.top_n_de_total', {
+                    n: CHART_TOP_ASEGURADORAS,
+                    m: siniestrosPorAseguradora.length,
+                  })
                 : undefined
             }
           >
@@ -1065,7 +1109,7 @@ setSiniestros(casosFinales);
                   tickFormatter={(v) => truncarEtiqueta(v, 30)}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="cantidad" name={t('complex.ui.dashboard_complex.casos')} radius={[0, 4, 4, 0]}>
                   {aseguradoraChartData.map((entry, index) => (
                     <Cell key={entry.aseguradora} fill={getFenixChartColor(index, isDark)} />
                   ))}
@@ -1075,11 +1119,14 @@ setSiniestros(casosFinales);
           </ComplexChartCard>
 
           <ComplexChartCard
-            title="Siniestros por responsable"
+            title={t("complex.ui.dashboard_complex.siniestros_por_responsable")}
             empty={responsableChartData.length === 0}
             subtitle={
               siniestrosPorResponsable.length > CHART_TOP_RESPONSABLES
-                ? `Top ${CHART_TOP_RESPONSABLES} de ${siniestrosPorResponsable.length}`
+                ? t('complex.ui.dashboard_complex.top_n_de_total', {
+                    n: CHART_TOP_RESPONSABLES,
+                    m: siniestrosPorResponsable.length,
+                  })
                 : undefined
             }
           >
@@ -1095,7 +1142,7 @@ setSiniestros(casosFinales);
                   tickFormatter={(v) => truncarEtiqueta(v, 28)}
                 />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name="Casos" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="cantidad" name={t('complex.ui.dashboard_complex.casos')} radius={[0, 4, 4, 0]}>
                   {responsableChartData.map((entry, index) => (
                     <Cell key={entry.responsable} fill={getFenixChartColor(index, isDark)} />
                   ))}
@@ -1105,7 +1152,7 @@ setSiniestros(casosFinales);
           </ComplexChartCard>
         </section>
 
-        <h2 className={complexSectionTitle}>Métricas de trazabilidad</h2>
+        <h2 className={complexSectionTitle}>{t("complex.ui.dashboard_complex.metricas_de_trazabilidad")}</h2>
 
         <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
           {retrasosPorEtapaData.map((item) => (
@@ -1113,14 +1160,14 @@ setSiniestros(casosFinales);
               key={item.etapa}
               label={item.etapa}
               value={item.retrasados}
-              hint={`Límite: ${item.limite}`}
+              hint={t('complex.ui.dashboard_complex.limite', { limite: item.limite })}
             />
           ))}
         </section>
 
         <section className="grid grid-cols-1 gap-4">
           <ComplexChartCard
-            title="Casos retrasados por etapa"
+            title={t("complex.ui.dashboard_complex.casos_retrasados_por_etapa")}
             empty={retrasosPorEtapaData.every((d) => !d.retrasados)}
           >
             <ComplexChartPlot height={CHART_HEIGHT_STANDARD}>
@@ -1136,7 +1183,7 @@ setSiniestros(casosFinales);
                 />
                 <YAxis allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} width={36} />
                 <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="retrasados" name="Retrasados" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="retrasados" name={t('complex.ui.dashboard_complex.retrasados')} radius={[4, 4, 0, 0]}>
                   {retrasosPorEtapaData.map((entry, index) => (
                     <Cell key={entry.etapa} fill={getFenixChartColor(index, isDark)} />
                   ))}
@@ -1147,7 +1194,7 @@ setSiniestros(casosFinales);
         </section>
 
         <ComplexChartCard
-          title="Cumplimiento de trazabilidad por responsable"
+          title={t("complex.ui.dashboard_complex.cumplimiento_de_trazabilidad_por_responsable")}
           empty={topResponsablesCumplimiento.length === 0}
         >
           <div className={complexTableWrap}>
@@ -1155,12 +1202,12 @@ setSiniestros(casosFinales);
               <table className={complexTableSimple}>
                 <thead className={complexTableHead}>
                   <tr>
-                    <th className="px-4 py-3 text-left">Responsable</th>
-                    <th className="px-4 py-3 text-center">Total</th>
-                    <th className="px-4 py-3 text-center">Cumplidos</th>
-                    <th className="px-4 py-3 text-center">Retrasados</th>
-                    <th className="px-4 py-3 text-center">% Cumpl.</th>
-                    <th className="px-4 py-3 text-center">Prom. días retraso</th>
+                    <th className="px-4 py-3 text-left">{t("complex.ui.dashboard_complex.responsable")}</th>
+                    <th className="px-4 py-3 text-center">{t("complex.ui.dashboard_complex.total")}</th>
+                    <th className="px-4 py-3 text-center">{t("complex.ui.dashboard_complex.cumplidos")}</th>
+                    <th className="px-4 py-3 text-center">{t("complex.ui.dashboard_complex.retrasados")}</th>
+                    <th className="px-4 py-3 text-center">{t("complex.ui.dashboard_complex.cumpl")}</th>
+                    <th className="px-4 py-3 text-center">{t("complex.ui.dashboard_complex.prom_dias_retraso")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -1170,9 +1217,9 @@ setSiniestros(casosFinales);
                       <td className="px-4 py-2 text-center">{resp.totalCasos}</td>
                       <td className="px-4 py-2 text-center">{resp.casosCumplidos}</td>
                       <td className="px-4 py-2 text-center">{resp.casosRetrasados}</td>
-                      <td className="px-4 py-2 text-center font-semibold">{resp.porcentajeCumplimiento}%</td>
+                      <td className="px-4 py-2 text-center font-semibold">{resp.porcentajeCumplimiento}{t("complex.ui.dashboard_complex.texto")}</td>
                       <td className="px-4 py-2 text-center text-gray-500 dark:text-gray-400">
-                        {resp.promedioDiasRetraso === '0' ? '—' : `${resp.promedioDiasRetraso} días`}
+                        {resp.promedioDiasRetraso === '0' ? '—' : `${resp.promedioDiasRetraso} ${t('complex.ui.dashboard_complex.dias')}`}
                       </td>
                     </tr>
                   ))}
@@ -1183,13 +1230,8 @@ setSiniestros(casosFinales);
 
           {cumplimientoChartData.length > 0 ? (
             <div className="mt-6 border-t border-gray-100 pt-6 dark:border-gray-800">
-              <p className="mb-1 font-body text-sm font-semibold text-gray-700 dark:text-gray-200">
-                % cumplimiento por responsable
-              </p>
-              <p className="mb-4 font-body text-xs text-gray-500 dark:text-gray-400">
-                Mismos responsables que la tabla con cumplimiento mayor a 0% ({cumplimientoChartData.length}{' '}
-                filas). Escala hasta {dominioCumplimiento[1]}%.
-              </p>
+              <p className="mb-1 font-body text-sm font-semibold text-gray-700 dark:text-gray-200">{t("complex.ui.dashboard_complex.cumplimiento_por_responsable")}</p>
+              <p className="mb-4 font-body text-xs text-gray-500 dark:text-gray-400">{t("complex.ui.dashboard_complex.mismos_responsables_que_la_tabla_con_cumplimiento_mayor_")}{cumplimientoChartData.length}{' '}{t("complex.ui.dashboard_complex.filas_escala_hasta")}{dominioCumplimiento[1]}{t("complex.ui.dashboard_complex.texto_2")}</p>
               <ComplexChartPlot
                 height={alturaGraficoBarrasVerticales(
                   cumplimientoChartData.length,
@@ -1218,11 +1260,14 @@ setSiniestros(casosFinales);
                   />
                   <Tooltip
                     contentStyle={tooltipStyle}
-                    formatter={(value) => [`${Number(value).toFixed(1)}%`, 'Cumplimiento']}
+                    formatter={(value) => [
+                      `${Number(value).toFixed(1)}%`,
+                      t('complex.ui.dashboard_complex.cumplimiento'),
+                    ]}
                   />
                   <Bar
                     dataKey="porcentajeNum"
-                    name="Cumplimiento"
+                    name={t('complex.ui.dashboard_complex.cumplimiento')}
                     radius={[0, 4, 4, 0]}
                     barSize={22}
                     fill={getFenixNeutralBarColor(0, isDark)}
@@ -1239,9 +1284,7 @@ setSiniestros(casosFinales);
               </ComplexChartPlot>
             </div>
           ) : (
-            <p className="mt-6 border-t border-gray-100 pt-6 font-body text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">
-              No hay porcentajes de cumplimiento mayores a 0% para graficar. Consulta la tabla superior.
-            </p>
+            <p className="mt-6 border-t border-gray-100 pt-6 font-body text-sm text-gray-500 dark:border-gray-800 dark:text-gray-400">{t("complex.ui.dashboard_complex.no_hay_porcentajes_de_cumplimiento_mayores_a_0_para_graf")}</p>
           )}
         </ComplexChartCard>
       </div>

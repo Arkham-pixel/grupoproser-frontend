@@ -1,8 +1,10 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 
 /** Sección 5 — CONCLUSIONES */
 export default function ConclusionesRiicp004({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
@@ -18,7 +20,7 @@ export default function ConclusionesRiicp004({ formData, onInputChange, cargando
       }}
     >
       <h3 className="text-lg font-bold mb-3" style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}>
-        5 — CONCLUSIONES
+        {t('ports.ui.formulario.riicp004.conclusiones.titulo')}
       </h3>
       <textarea
         value={formData.conclusiones || ''}
@@ -30,11 +32,11 @@ export default function ConclusionesRiicp004({ formData, onInputChange, cargando
           color: textPrimary,
           border: `1px solid ${borderColor}`,
         }}
-        placeholder="Conclusiones del informe de inspección..."
+        placeholder={t('ports.ui.formulario.riicp004.conclusiones.placeholder')}
         disabled={cargando}
       />
       <p className="text-xs mt-1" style={{ color: textSecondary }}>
-        Aparece como sección 5 en el documento Word.
+        {t('ports.ui.formulario.riicp004.conclusiones.ayuda')}
       </p>
     </div>
   );

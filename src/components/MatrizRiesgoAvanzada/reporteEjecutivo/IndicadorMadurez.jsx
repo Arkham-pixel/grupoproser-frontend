@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CartesianGrid,
   Line,
@@ -17,6 +18,7 @@ import { FaArrowUp, FaShieldAlt } from 'react-icons/fa';
 import './reporteEjecutivo.css';
 
 export default function IndicadorMadurez({ analitica }) {
+  const { t } = useTranslation();
   const { madurez, evolucion } = analitica;
 
   const datosRadar = madurez.factores.map((f) => ({
@@ -30,11 +32,9 @@ export default function IndicadorMadurez({ analitica }) {
     <div className="re-madurez">
       <header className="re-seccion-header">
         <div>
-          <p className="re-seccion-kicker">Matriz de Riesgos Avanzada</p>
-          <h2 className="re-seccion-titulo">Indicador de madurez en gestión de riesgos</h2>
-          <p className="re-seccion-desc">
-            Escala de 1 a 5 según controles, seguimiento, reducción del riesgo y avance del plan.
-          </p>
+          <p className="re-seccion-kicker">{t('riskMatrix.exec.kicker')}</p>
+          <h2 className="re-seccion-titulo">{t('riskMatrix.exec.maturityTitle')}</h2>
+          <p className="re-seccion-desc">{t('riskMatrix.exec.maturityDesc')}</p>
         </div>
       </header>
 
@@ -42,9 +42,12 @@ export default function IndicadorMadurez({ analitica }) {
         <div className="re-madurez-nivel-actual">
           <FaShieldAlt />
           <div>
-            <span>Nivel actual</span>
+            <span>{t('riskMatrix.exec.currentLevel')}</span>
             <strong>
-              NIVEL {madurez.nivelActual} — {madurez.nivelDetalle.nombre}
+              {t('riskMatrix.exec.levelLabel', {
+                n: madurez.nivelActual,
+                name: madurez.nivelDetalle.nombre,
+              })}
             </strong>
             <p>{madurez.resumen}</p>
           </div>
@@ -68,7 +71,7 @@ export default function IndicadorMadurez({ analitica }) {
 
       <div className="re-madurez-grid">
         <section className="re-widget-card">
-          <h3>Evaluación por factores</h3>
+          <h3>{t('riskMatrix.exec.factorsEval')}</h3>
           <div className="re-factores-lista">
             {madurez.factores.map((factor) => (
               <div key={factor.id} className="re-factor-item">
@@ -88,12 +91,12 @@ export default function IndicadorMadurez({ analitica }) {
             ))}
           </div>
           <p className="re-nota-widget">
-            Puntaje promedio de madurez: <strong>{madurez.promedioMadurez} / 5</strong>
+            {t('riskMatrix.exec.maturityAvg')} <strong>{madurez.promedioMadurez} / 5</strong>
           </p>
         </section>
 
         <section className="re-widget-card re-widget-card--chart">
-          <h3>Radar de madurez</h3>
+          <h3>{t('riskMatrix.exec.maturityRadar')}</h3>
           <ResponsiveContainer width="100%" height={260}>
             <RadarChart data={datosRadar}>
               <PolarGrid />
@@ -106,7 +109,7 @@ export default function IndicadorMadurez({ analitica }) {
         </section>
 
         <section className="re-widget-card re-widget-card--chart">
-          <h3>Comparativo con períodos anteriores</h3>
+          <h3>{t('riskMatrix.exec.periodCompare')}</h3>
           {evolucion.length > 1 ? (
             <>
               <ResponsiveContainer width="100%" height={220}>
@@ -118,7 +121,7 @@ export default function IndicadorMadurez({ analitica }) {
                   <Line
                     type="monotone"
                     dataKey="madurez"
-                    name="Madurez"
+                    name={t('riskMatrix.exec.maturity')}
                     stroke="#dc2626"
                     strokeWidth={2}
                     dot={{ r: 4 }}
@@ -126,19 +129,17 @@ export default function IndicadorMadurez({ analitica }) {
                 </LineChart>
               </ResponsiveContainer>
               <p className="re-nota-widget">
-                Evolución de madurez en {evolucion.length} períodos registrados.
+                {t('riskMatrix.exec.evolutionNote', { count: evolucion.length })}
               </p>
             </>
           ) : (
-            <p className="re-tabla-vacia">
-              El histórico se mostrará cuando existan matrices anteriores de la misma empresa.
-            </p>
+            <p className="re-tabla-vacia">{t('riskMatrix.exec.noHistory')}</p>
           )}
         </section>
       </div>
 
       <section className="re-madurez-acciones">
-        <h3>¿Cómo avanzar al siguiente nivel?</h3>
+        <h3>{t('riskMatrix.exec.howToAdvance')}</h3>
         <div className="re-acciones-grid">
           {madurez.acciones.map((accion) => (
             <article key={accion.titulo} className="re-accion-card">
@@ -151,9 +152,12 @@ export default function IndicadorMadurez({ analitica }) {
           <div className="re-proximo-nivel">
             <FaArrowUp />
             <div>
-              <span>Próximo nivel objetivo</span>
+              <span>{t('riskMatrix.exec.nextLevelTarget')}</span>
               <strong>
-                NIVEL {madurez.proximoNivel.nivel} — {madurez.proximoNivel.nombre}
+                {t('riskMatrix.exec.levelLabel', {
+                  n: madurez.proximoNivel.nivel,
+                  name: madurez.proximoNivel.nombre,
+                })}
               </strong>
               <p>{madurez.proximoNivel.descripcion}</p>
             </div>
@@ -161,10 +165,7 @@ export default function IndicadorMadurez({ analitica }) {
         ) : null}
       </section>
 
-      <p className="re-disclaimer">
-        Este indicador se calcula con base en la metodología ARNALD DATA FLOW y buenas prácticas
-        internacionales (ISO 31000).
-      </p>
+      <p className="re-disclaimer">{t('riskMatrix.exec.maturityDisclaimer')}</p>
     </div>
   );
 }

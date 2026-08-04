@@ -2,6 +2,7 @@ export const ESTADOS_RECOMENDACION = [
   {
     id: 'abierta',
     label: 'No iniciada',
+    labelKey: 'riskMatrix.recStatus.open',
     avance: 0,
     color: '#dc3545',
     descripcion: 'Pendiente de iniciar',
@@ -9,6 +10,7 @@ export const ESTADOS_RECOMENDACION = [
   {
     id: 'en_proceso',
     label: 'En proceso',
+    labelKey: 'riskMatrix.recStatus.inProgress',
     avance: 25,
     color: '#fd7e14',
     descripcion: 'Trabajo iniciado',
@@ -16,6 +18,7 @@ export const ESTADOS_RECOMENDACION = [
   {
     id: 'avanzada',
     label: 'Avanzada',
+    labelKey: 'riskMatrix.recStatus.advanced',
     avance: 75,
     color: '#eab308',
     descripcion: 'Implementación avanzada',
@@ -23,6 +26,7 @@ export const ESTADOS_RECOMENDACION = [
   {
     id: 'cerrada',
     label: 'Completada',
+    labelKey: 'riskMatrix.recStatus.closed',
     avance: 100,
     color: '#28a745',
     descripcion: 'Cerrada / implementada',

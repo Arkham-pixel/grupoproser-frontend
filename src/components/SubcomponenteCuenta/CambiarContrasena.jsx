@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useTranslation } from "react-i18next";
 
 export default function CambiarContrasena() {
+  const { t } = useTranslation();
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [verifyPassword, setVerifyPassword] = useState("");
@@ -19,15 +21,15 @@ export default function CambiarContrasena() {
     setPasswordError("");
     setSuccessMsg("");
     if (!oldPassword || !newPassword || !verifyPassword) {
-      setPasswordError("Todos los campos son obligatorios.");
+      setPasswordError(t('account.ui.cuenta.cambiarContrasena.errors.required'));
       return;
     }
     if (!validatePassword(newPassword)) {
-      setPasswordError("La nueva contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.");
+      setPasswordError(t('account.ui.cuenta.cambiarContrasena.errors.weak'));
       return;
     }
     if (newPassword !== verifyPassword) {
-      setPasswordError("La nueva contraseña y la verificación no coinciden.");
+      setPasswordError(t('account.ui.cuenta.cambiarContrasena.errors.mismatch'));
       return;
     }
     setLoading(true);
@@ -38,7 +40,7 @@ export default function CambiarContrasena() {
         { oldPassword, newPassword },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      setSuccessMsg("Contraseña cambiada correctamente");
+      setSuccessMsg(t('account.ui.cuenta.cambiarContrasena.success'));
       if (res.data.user && res.data.user.login) {
         localStorage.setItem('login', res.data.user.login);
       }
@@ -46,7 +48,7 @@ export default function CambiarContrasena() {
       setNewPassword("");
       setVerifyPassword("");
     } catch (err) {
-      setPasswordError(err.response?.data?.message || err.response?.data?.mensaje || "Error al cambiar la contraseña");
+      setPasswordError(err.response?.data?.message || err.response?.data?.mensaje || t('account.ui.cuenta.cambiarContrasena.errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -54,10 +56,10 @@ export default function CambiarContrasena() {
 
   return (
     <div className="max-w-md mx-auto mt-4 sm:mt-6 lg:mt-8 p-3 sm:p-4 lg:p-6 bg-white rounded shadow">
-      <h2 className="text-base sm:text-lg lg:text-xl font-bold mb-3 sm:mb-4">Cambiar contraseña</h2>
+      <h2 className="text-base sm:text-lg lg:text-xl font-bold mb-3 sm:mb-4">{t('account.ui.cuenta.cambiarContrasena.title')}</h2>
       <form onSubmit={handleChangePassword} className="space-y-3 sm:space-y-4">
         <div>
-          <label className="block text-xs sm:text-sm font-medium mb-1">Contraseña antigua</label>
+          <label className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.cambiarContrasena.oldPassword')}</label>
           <input
             type="password"
             value={oldPassword}
@@ -67,7 +69,7 @@ export default function CambiarContrasena() {
           />
         </div>
         <div>
-          <label className="block text-xs sm:text-sm font-medium mb-1">Nueva contraseña</label>
+          <label className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.cambiarContrasena.newPassword')}</label>
           <input
             type="password"
             value={newPassword}
@@ -77,7 +79,7 @@ export default function CambiarContrasena() {
           />
         </div>
         <div>
-          <label className="block text-xs sm:text-sm font-medium mb-1">Verifica tu nueva contraseña</label>
+          <label className="block text-xs sm:text-sm font-medium mb-1">{t('account.ui.cuenta.cambiarContrasena.verifyPassword')}</label>
           <input
             type="password"
             value={verifyPassword}
@@ -93,9 +95,9 @@ export default function CambiarContrasena() {
           className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded hover:bg-blue-700 text-xs sm:text-sm font-medium transition-colors"
           disabled={loading}
         >
-          {loading ? "Cambiando..." : "Cambiar contraseña"}
+          {loading ? t('account.ui.cuenta.cambiarContrasena.submitting') : t('account.ui.cuenta.cambiarContrasena.submit')}
         </button>
       </form>
     </div>
   );
-} 
+}

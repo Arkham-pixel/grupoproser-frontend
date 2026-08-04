@@ -1,9 +1,11 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import MapaDeCalor from '../MapaDeCalor';
 
 export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargando }) {
+  const { t } = useTranslation();
   const { theme } = useTheme();
   
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -17,6 +19,18 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
   
   // Tabla de Clasificación de Riesgos (Mapa de Calor)
   const tablaRiesgos = formData.tablaRiesgos || [];
+
+  const labelClasificacion = (valor) => {
+    const key = {
+      Bajo: 'bajo',
+      Medio: 'medio',
+      Alto: 'alto',
+      Extremo: 'extremo',
+    }[valor];
+    return key
+      ? t(`ports.ui.formulario.analisisRiesgos.clasificacion.${key}`)
+      : valor;
+  };
 
   // Funciones para tabla libre de análisis
   const handleAgregarFilaAnalisis = () => {
@@ -64,7 +78,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
     }
   };
 
-  // Funciones para tabla de clasificación con fórmula
+  // Funciones para tabla de clasificación con fórmula — valores persistidos en español
   const calcularClasificacion = (r) => {
     if (r <= 4) return "Bajo";
     if (r <= 8) return "Medio";
@@ -115,7 +129,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
               className="text-lg font-bold"
               style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
             >
-              📋 ANÁLISIS DE RIESGOS
+              {t('ports.ui.formulario.analisisRiesgos.titulo')}
             </h2>
             <button
               onClick={handleAgregarFilaAnalisis}
@@ -127,7 +141,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
               disabled={cargando}
             >
               <FaPlus />
-              Agregar Riesgo
+              {t('ports.ui.formulario.analisisRiesgos.agregarRiesgo')}
             </button>
           </div>
 
@@ -153,7 +167,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                       width: '30%'
                     }}
                   >
-                    RIESGO
+                    {t('ports.ui.formulario.analisisRiesgos.colRiesgo')}
                   </th>
                   <th 
                     className="px-3 py-2 text-left font-bold"
@@ -162,7 +176,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                       color: textPrimary
                     }}
                   >
-                    ANÁLISIS
+                    {t('ports.ui.formulario.analisisRiesgos.colAnalisis')}
                   </th>
                   <th 
                     className="px-3 py-2 text-center font-bold"
@@ -198,7 +212,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                           border: 'none',
                           outline: 'none'
                         }}
-                        placeholder="Ej: Incendio/Explosión"
+                        placeholder={t('ports.ui.formulario.analisisRiesgos.riesgoPlaceholder')}
                       />
                     </td>
                     <td style={{ border: `1px solid ${borderColor}`, padding: '4px' }}>
@@ -214,7 +228,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                           outline: 'none',
                           resize: 'vertical'
                         }}
-                        placeholder="Escribe el análisis del riesgo..."
+                        placeholder={t('ports.ui.formulario.analisisRiesgos.analisisPlaceholder')}
                       />
                     </td>
                     <td 
@@ -247,7 +261,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                 color: textSecondary
               }}
             >
-              <p className="text-sm">Haz clic en "Agregar Riesgo" para comenzar el análisis</p>
+              <p className="text-sm">{t('ports.ui.formulario.analisisRiesgos.emptyAnalisis')}</p>
             </div>
           )}
         </div>
@@ -259,13 +273,13 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
               className="text-lg font-bold"
               style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
             >
-              🔥 CLASIFICACIÓN DEL RIESGO
+              {t('ports.ui.formulario.analisisRiesgos.tituloClasificacion')}
             </h2>
             <p 
               className="text-xs"
               style={{ color: textSecondary }}
             >
-              Los riesgos se sincronizan automáticamente desde la sección de Análisis
+              {t('ports.ui.formulario.analisisRiesgos.syncAyuda')}
             </p>
           </div>
 
@@ -291,7 +305,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                       minWidth: '180px'
                     }}
                   >
-                    RIESGO (Sincronizado)
+                    {t('ports.ui.formulario.analisisRiesgos.colRiesgoSync')}
                   </th>
                   <th 
                     className="px-3 py-2 text-center font-bold"
@@ -301,7 +315,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                       width: '100px'
                     }}
                   >
-                    PROBABILIDAD
+                    {t('ports.ui.formulario.analisisRiesgos.colProbabilidad')}
                   </th>
                   <th 
                     className="px-3 py-2 text-center font-bold"
@@ -311,7 +325,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                       width: '100px'
                     }}
                   >
-                    SEVERIDAD
+                    {t('ports.ui.formulario.analisisRiesgos.colSeveridad')}
                   </th>
                   <th 
                     className="px-3 py-2 text-center font-bold"
@@ -331,7 +345,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                       width: '80px'
                     }}
                   >
-                    ÍNDICE
+                    {t('ports.ui.formulario.analisisRiesgos.colIndice')}
                   </th>
                   <th 
                     className="px-3 py-2 text-center font-bold"
@@ -341,7 +355,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                       width: '120px'
                     }}
                   >
-                    CLASIFICACIÓN
+                    {t('ports.ui.formulario.analisisRiesgos.colClasificacion')}
                   </th>
                   <th 
                     className="px-3 py-2 text-center font-bold"
@@ -376,7 +390,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                         className="text-sm italic"
                         style={{ color: textSecondary }}
                       >
-                        {fila.riesgo || 'Escribe el riesgo en Análisis de Riesgos'}
+                        {fila.riesgo || t('ports.ui.formulario.analisisRiesgos.riesgoSyncPlaceholder')}
                       </span>
                     </td>
                     <td style={{ border: `1px solid ${borderColor}`, padding: '4px' }}>
@@ -444,7 +458,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                                '#10B981'
                       }}
                     >
-                      {fila.clasificacion || 'Bajo'}
+                      {labelClasificacion(fila.clasificacion || 'Bajo')}
                     </td>
                     <td 
                       style={{ 
@@ -457,7 +471,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                         onClick={() => handleEliminarFilaAnalisis(fila.id)}
                         className="p-1 rounded hover:bg-red-500 hover:text-white transition-colors"
                         style={{ color: '#EF4444' }}
-                        title="Eliminar de ambas tablas"
+                        title={t('ports.ui.formulario.analisisRiesgos.eliminarAmbas')}
                       >
                         <FaTrash size={14} />
                       </button>
@@ -477,7 +491,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
                 color: textSecondary
               }}
             >
-              <p className="text-sm">Haz clic en "Agregar Riesgo" para comenzar la clasificación</p>
+              <p className="text-sm">{t('ports.ui.formulario.analisisRiesgos.emptyClasificacion')}</p>
             </div>
           )}
 
@@ -490,47 +504,47 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
             }}
           >
             <p className="font-bold mb-3 text-sm" style={{ color: textPrimary }}>
-              📊 Fórmula: R = Probabilidad × Severidad
+              {t('ports.ui.formulario.analisisRiesgos.leyenda.formula')}
             </p>
             
             {/* Explicación de Probabilidad */}
             <div className="mb-3">
               <p className="font-bold mb-1" style={{ color: textPrimary }}>
-                PROBABILIDAD (Frecuencia de ocurrencia):
+                {t('ports.ui.formulario.analisisRiesgos.leyenda.probabilidadTitulo')}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-1 ml-2">
-                <span style={{ color: textSecondary }}>1 = Muy improbable (casi nunca)</span>
-                <span style={{ color: textSecondary }}>2 = Improbable (rara vez)</span>
-                <span style={{ color: textSecondary }}>3 = Posible (ocasionalmente)</span>
-                <span style={{ color: textSecondary }}>4 = Probable (frecuentemente)</span>
-                <span style={{ color: textSecondary }}>5 = Muy probable (casi siempre)</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.p1')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.p2')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.p3')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.p4')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.p5')}</span>
               </div>
             </div>
 
             {/* Explicación de Severidad */}
             <div className="mb-3">
               <p className="font-bold mb-1" style={{ color: textPrimary }}>
-                SEVERIDAD (Impacto del daño):
+                {t('ports.ui.formulario.analisisRiesgos.leyenda.severidadTitulo')}
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-1 ml-2">
-                <span style={{ color: textSecondary }}>1 = Insignificante (sin impacto)</span>
-                <span style={{ color: textSecondary }}>2 = Menor (impacto leve)</span>
-                <span style={{ color: textSecondary }}>3 = Moderada (impacto medio)</span>
-                <span style={{ color: textSecondary }}>4 = Mayor (impacto grave)</span>
-                <span style={{ color: textSecondary }}>5 = Catastrófica (impacto crítico)</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.s1')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.s2')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.s3')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.s4')}</span>
+                <span style={{ color: textSecondary }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.s5')}</span>
               </div>
             </div>
 
             {/* Clasificación del Riesgo */}
             <div>
               <p className="font-bold mb-1" style={{ color: textPrimary }}>
-                CLASIFICACIÓN DEL RIESGO:
+                {t('ports.ui.formulario.analisisRiesgos.leyenda.clasificacionTitulo')}
               </p>
               <div className="flex flex-wrap gap-4 ml-2">
-                <span style={{ color: '#10B981' }}>● Bajo (R ≤ 4)</span>
-                <span style={{ color: '#FBBF24' }}>● Medio (5 ≤ R ≤ 8)</span>
-                <span style={{ color: '#F59E0B' }}>● Alto (9 ≤ R ≤ 12)</span>
-                <span style={{ color: '#DC2626' }}>● Extremo (R {'>'} 12)</span>
+                <span style={{ color: '#10B981' }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.cBajo')}</span>
+                <span style={{ color: '#FBBF24' }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.cMedio')}</span>
+                <span style={{ color: '#F59E0B' }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.cAlto')}</span>
+                <span style={{ color: '#DC2626' }}>{t('ports.ui.formulario.analisisRiesgos.leyenda.cExtremo')}</span>
               </div>
             </div>
           </div>
@@ -542,7 +556,7 @@ export default function AnalisisRiesgosPuertos({ formData, onInputChange, cargan
             className="text-lg font-bold mb-4"
             style={{ color: theme === 'dark' ? '#FCA5A5' : '#DC2626' }}
           >
-            🗺️ MAPA DE CALOR
+            {t('ports.ui.formulario.analisisRiesgos.mapaCalor')}
           </h2>
           <MapaDeCalor tablaRiesgos={tablaRiesgos} />
         </div>

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { FaCalculator, FaPlus } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { sanitizeUploadFileName } from '../../utils/sanitizeUploadFileName.js';
 import { normalizeStoredFileReference } from '../../utils/storedFilePath.js';
@@ -13,6 +14,7 @@ import {
 import { ordenarLista, resolverCodigoResponsable, resolverCodigoAseguradora, resolverCodigoEstado, formatDate } from './expressHelpers.js';
 import { calcularLiquidacion, liquidadorConNombreAjustador, aplicaFormatoSalvamento, formatearMontoConPeso } from './liquidadorExpressHelpers.js';
 import { descargarLiquidadorExpressPdf } from './generarLiquidadorExpressPdf.js';
+import DocumentLanguageSelector from '../DocumentLanguageSelector.jsx';
 import {
   descargarChecklistExpressPdf,
   descargarSalvamentoExpressPdf,
@@ -114,6 +116,7 @@ const esZurichColombia = (label) => {
 };
 
 const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = false }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [formData, setFormData] = useState(() => ({ ...DEFAULT_FORM }));
   const [existingAnexos, setExistingAnexos] = useState([]);
@@ -130,13 +133,15 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const [success, setSuccess] = useState(null);
   const [avisoModal, setAvisoModal] = useState({
     open: false,
-    titulo: 'Atención',
+    titulo: t('express.notice.title'),
     mensaje: '',
     tipo: 'warning',
   });
+  const tUi = (key, options) => t(`express.ui.claimForm.${key}`, options);
   const [modalIntermediarioOpen, setModalIntermediarioOpen] = useState(false);
   const [nuevoIntermediario, setNuevoIntermediario] = useState('');
   const [guardandoIntermediario, setGuardandoIntermediario] = useState(false);
+  const [documentLocale, setDocumentLocale] = useState('es');
 
   const toDateInputValue = useCallback((value) => formatDate(value), []);
   const toDateTimeInputValue = useCallback((value) => formatearFechaHoraParaInput(value), []);
@@ -279,11 +284,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   }, [hydrateFromInitial, initialData]);
 
   const isEditing = Boolean(formData._id);
-  const formSubmitLabel = loading ? 'Guardando…' : isEditing ? 'Actualizar' : 'Guardar';
-  const headerTitle = isEditing ? 'Editar proceso Express' : 'Carga de procesos Express';
-  const headerSubtitle = isEditing
-    ? 'Actualiza la información del siniestro y sus documentos soporte.'
-    : 'Centralice la información del siniestro y cargue documentos en un solo paso.';
+  const formSubmitLabel = loading ? t('express.form.saving') : isEditing ? t('express.form.update') : t('common.save');
+  const headerTitle = isEditing ? t('express.form.editTitle') : t('express.form.loadTitle');
+  const headerSubtitle = isEditing ? tUi('subtitleEdit') : tUi('subtitleNew');
 
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [savedDataToRestore, setSavedDataToRestore] = useState(null);
@@ -642,9 +645,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const salvamentoAplicaSeleccionado = formData.salvamentoAplica === 'aplica';
   const salvamentoNoAplica = formData.salvamentoAplica === 'no_aplica';
 
-  const mostrarAviso = useCallback((mensaje, titulo = 'Atención', tipo = 'warning') => {
+  const mostrarAviso = useCallback((mensaje, titulo = t('express.notice.title'), tipo = 'warning') => {
     setAvisoModal({ open: true, titulo, mensaje, tipo });
-  }, []);
+  }, [t]);
 
   const prepararLiquidadorExport = useCallback(() => {
     const liquidadorRaw = initialData?.liquidador;
@@ -668,67 +671,67 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     };
   }, [initialData, formData.responsable, mappedResponsables]);
 
-  const handleDescargarPdfLiquidador = useCallback(() => {
+  const handleDescargarPdfLiquidador = useCallback(async () => {
     const prep = prepararLiquidadorExport();
     if (!prep) {
       mostrarAviso(
-        'No hay liquidador guardado en este caso. Ábralo con el botón Liquidador y guárdelo primero.',
-        'Liquidador',
+        tUi('alerts.settlementMissingMessage'),
+        tUi('alerts.settlementMissingTitle'),
         'warning'
       );
       return;
     }
     try {
-      descargarLiquidadorExpressPdf(prep.liquidador, prep.totales);
+      await descargarLiquidadorExpressPdf(prep.liquidador, prep.totales, { locale: documentLocale });
     } catch (err) {
       console.error('Error al generar PDF del liquidador:', err);
-      mostrarAviso('No se pudo generar el PDF del liquidador.', 'Liquidador', 'error');
+      mostrarAviso(tUi('alerts.settlementPdfError'), tUi('alerts.settlementMissingTitle'), 'error');
     }
-  }, [prepararLiquidadorExport, mostrarAviso]);
+  }, [prepararLiquidadorExport, mostrarAviso, documentLocale, tUi]);
 
   const handleDescargarPdfChecklist = useCallback(async () => {
     const prep = prepararLiquidadorExport();
     if (!prep) {
       mostrarAviso(
-        'No hay liquidador guardado en este caso. Ábralo con el botón Liquidador y guárdelo primero.',
-        'Check-list',
+        tUi('alerts.settlementMissingMessage'),
+        tUi('alerts.checklistMissingTitle'),
         'warning'
       );
       return;
     }
     try {
-      await descargarChecklistExpressPdf(prep.liquidador, prep.totales);
+      await descargarChecklistExpressPdf(prep.liquidador, prep.totales, { locale: documentLocale });
     } catch (err) {
       console.error('Error al generar PDF del check-list:', err);
-      mostrarAviso('No se pudo generar el PDF del check-list.', 'Check-list', 'error');
+      mostrarAviso(tUi('alerts.checklistPdfError'), tUi('alerts.checklistMissingTitle'), 'error');
     }
-  }, [prepararLiquidadorExport, mostrarAviso]);
+  }, [prepararLiquidadorExport, mostrarAviso, documentLocale, tUi]);
 
   const handleDescargarPdfSalvamento = useCallback(async () => {
     const prep = prepararLiquidadorExport();
     if (!prep) {
       mostrarAviso(
-        'No hay liquidador guardado en este caso. Ábralo con el botón Liquidador y guárdelo primero.',
-        'Salvamento',
+        tUi('alerts.settlementMissingMessage'),
+        tUi('alerts.salvageMissingTitle'),
         'warning'
       );
       return;
     }
     if (!aplicaFormatoSalvamento(prep.liquidador, initialData || formData)) {
       mostrarAviso(
-        'Salvamento no aplica en este caso: no se genera el formato SALVAMENTO.',
-        'Salvamento',
+        tUi('alerts.salvageNotApplicable'),
+        tUi('alerts.salvageMissingTitle'),
         'warning'
       );
       return;
     }
     try {
-      await descargarSalvamentoExpressPdf(prep.liquidador);
+      await descargarSalvamentoExpressPdf(prep.liquidador, { locale: documentLocale });
     } catch (err) {
       console.error('Error al generar PDF de salvamento:', err);
-      mostrarAviso('No se pudo generar el PDF de salvamento.', 'Salvamento', 'error');
+      mostrarAviso(tUi('alerts.salvagePdfError'), tUi('alerts.salvageMissingTitle'), 'error');
     }
-  }, [prepararLiquidadorExport, initialData, formData, mostrarAviso]);
+  }, [prepararLiquidadorExport, initialData, formData, mostrarAviso, documentLocale, tUi]);
 
   const cerrarAviso = useCallback(() => {
     setAvisoModal((prev) => ({ ...prev, open: false }));
@@ -748,7 +751,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   const guardarNuevoIntermediario = useCallback(async () => {
     const nombre = nuevoIntermediario.trim();
     if (!nombre) {
-      mostrarAviso('Escriba el nombre del intermediario.', 'Intermediario', 'warning');
+      mostrarAviso(tUi('alerts.brokerNameRequired'), tUi('alerts.brokerTitle'), 'warning');
       return;
     }
     setGuardandoIntermediario(true);
@@ -764,7 +767,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || data.message || 'No se pudo agregar el intermediario');
+        throw new Error(data.error || data.message || tUi('messages.brokerAddErrorFallback'));
       }
 
       const creado = data?.data || {};
@@ -793,16 +796,16 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       setModalIntermediarioOpen(false);
       setNuevoIntermediario('');
       mostrarAviso(
-        `Intermediario «${nombreCreado}» agregado al banco de intermediarios.`,
-        'Listo',
+        tUi('alerts.brokerAdded', { name: nombreCreado }),
+        tUi('alerts.ready'),
         'success'
       );
     } catch (err) {
-      mostrarAviso(err?.message || 'No se pudo agregar el intermediario.', 'Error', 'error');
+      mostrarAviso(err?.message || tUi('alerts.brokerAddError'), tUi('alerts.errorTitle'), 'error');
     } finally {
       setGuardandoIntermediario(false);
     }
-  }, [nuevoIntermediario, mostrarAviso]);
+  }, [nuevoIntermediario, mostrarAviso, tUi]);
 
   const removeAnexo = (nombre) => {
     setFormData((prev) => ({
@@ -836,8 +839,8 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       (formData.salvamentoAplica !== 'aplica' && formData.salvamentoAplica !== 'no_aplica')
     ) {
       mostrarAviso(
-        'Debe indicar si el salvamento Aplica o No aplica antes de guardar.',
-        'Salvamento incompleto',
+        tUi('alerts.salvageIncompleteMessage'),
+        tUi('alerts.salvageIncompleteTitle'),
         'warning'
       );
       return;
@@ -922,10 +925,10 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
       setSuccess(
         editing
-          ? 'Información actualizada correctamente.'
+          ? tUi('messages.updated')
           : documento?.consecutivo
-            ? `Información guardada. Consecutivo asignado: ${documento.consecutivo}`
-            : 'Información guardada correctamente.'
+            ? tUi('messages.createdWithConsecutive', { consecutivo: documento.consecutivo })
+            : tUi('messages.created')
       );
 
       if (editing) {
@@ -937,7 +940,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       }
     } catch (err) {
       console.error('Error al guardar Express:', err);
-      setError(err.message || 'Error inesperado al guardar.');
+      setError(err.message || tUi('messages.saveErrorFallback'));
     } finally {
       setLoading(false);
     }
@@ -982,7 +985,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
               />
               {embed && typeof onClose === 'function' && (
                 <button type="button" className={expressBtnGhost} onClick={onClose} disabled={loading}>
-                  Cancelar
+                  {t('common.cancel')}
                 </button>
               )}
               <button
@@ -1003,9 +1006,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
         <section className={expressCard}>
           <div className={expressCardHeader}>
-            <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">Ficha del siniestro</h2>
+            <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">{tUi('cardTitle')}</h2>
             <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">
-              Los campos con asterisco son obligatorios.
+              {tUi('cardHint')}
             </p>
           </div>
 
@@ -1013,19 +1016,19 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
             <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
               <div className="contents">
                 {bloque(
-                  'Datos administrativos',
+                  tUi('sections.admin'),
                   <div className={grid2}>
                 {isEditing && formData.consecutivo && (
-                  <Campo label="Consecutivo" className="sm:col-span-2">
+                  <Campo label={tUi('consecutive')} className="sm:col-span-2">
                     <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-body text-sm font-semibold text-gray-800 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-200">
                       {formData.consecutivo}
                       <span className="ml-2 font-normal text-gray-500 dark:text-gray-400">
-                        (asignado por la plataforma)
+                        {tUi('assignedByPlatform')}
                       </span>
                     </p>
                   </Campo>
                 )}
-                <Campo label="Responsable" required>
+                <Campo label={tUi('responsible')} required>
                   <SelectFenix
                     id="responsable"
                     name="responsable"
@@ -1033,7 +1036,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                     required
                   >
-                    <option value="">Seleccionar…</option>
+                    <option value="">{t('common.select')}</option>
                     {mappedResponsables.map((resp, index) => (
                       <option key={resp.key ?? `${resp.value}-${index}`} value={resp.value}>
                         {resp.label}
@@ -1041,16 +1044,16 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     ))}
                   </SelectFenix>
                 </Campo>
-                <Campo label="Código Workflow">
+                <Campo label={tUi('workflowCode')}>
                   <InputFenix
                     id="codigoWorkflow"
                     name="codigoWorkflow"
                     value={formData.codigoWorkflow}
                     onChange={handleChange}
-                    placeholder="Ej: WF-12345"
+                    placeholder={tUi('workflowCodePlaceholder')}
                   />
                 </Campo>
-                <Campo label="Número de siniestro" required>
+                <Campo label={tUi('claimNumber')} required>
                   <InputFenix
                     id="numeroSiniestro"
                     name="numeroSiniestro"
@@ -1059,7 +1062,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     required
                   />
                 </Campo>
-                <Campo label="Amparo" required>
+                <Campo label={tUi('coverage')} required>
                   <SelectFenix
                     id="amparo"
                     name="amparo"
@@ -1067,7 +1070,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                     required
                   >
-                    <option value="">Seleccionar…</option>
+                    <option value="">{t('common.select')}</option>
                     {opcionesAmparo.map((item) => (
                       <option key={item.value} value={item.value}>
                         {item.label}
@@ -1075,14 +1078,14 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     ))}
                   </SelectFenix>
                 </Campo>
-                <Campo label="Valor indemnización">
+                <Campo label={tUi('indemnityValue')}>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                     <InputMonedaExpress
                       id="valorIndemnizacion"
                       name="valorIndemnizacion"
                       value={formData.valorIndemnizacion}
                       onChange={handleChange}
-                      placeholder="Ej: $ 1.250.000,50"
+                      placeholder={tUi('indemnityValuePlaceholder')}
                       className="flex-1"
                     />
                     <button
@@ -1091,28 +1094,28 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                       onClick={() => {
                         if (!formData._id) {
                           mostrarAviso(
-                            'Guarde el caso primero para poder almacenar el liquidador en documentos.',
-                            'Caso sin guardar',
+                            tUi('alerts.caseNotSavedMessage'),
+                            tUi('alerts.caseNotSavedTitle'),
                             'warning'
                           );
                           return;
                         }
                         navigate(`/express/liquidador?casoId=${formData._id}`);
                       }}
-                      title="Abrir liquidador y guardar documentos en el caso"
+                      title={tUi('openSettlementTitle')}
                     >
                       <FaCalculator />
-                      Liquidador
+                      {tUi('settlementButton')}
                     </button>
                   </div>
                 </Campo>
-                <Campo label="Reserva">
+                <Campo label={tUi('reserve')}>
                   <InputMonedaExpress
                     id="reserva"
                     name="reserva"
                     value={formData.reserva}
                     onChange={handleChange}
-                    placeholder="Ej: $ 3.999.999 o $ 3.999.999,50"
+                    placeholder={tUi('reservePlaceholder')}
                   />
                 </Campo>
                   </div>,
@@ -1120,24 +1123,31 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                 )}
 
                 {bloque(
-                  'Observaciones y anexos',
+                  tUi('sections.observations'),
                   <>
-                    <Campo label="Observaciones y seguimiento">
+                    <Campo label={tUi('observations')}>
                       <TextareaFenix
                         id="observacionesSeguimiento"
                         name="observacionesSeguimiento"
                         value={formData.observacionesSeguimiento}
                         onChange={handleChange}
                         rows={5}
-                        placeholder="Describa las gestiones realizadas o pendientes…"
+                        placeholder={tUi('observationsPlaceholder')}
                       />
                     </Campo>
-                    <Campo label="Anexo informe">
+                    <Campo label={tUi('attachment')}>
                       <DropzoneFenix
                         getRootProps={getRootProps}
                         getInputProps={getInputProps}
                         isDragActive={isDragActive}
                       />
+                      <div className="mb-3">
+                        <DocumentLanguageSelector
+                          value={documentLocale}
+                          onChange={setDocumentLocale}
+                          id="express-document-language"
+                        />
+                      </div>
                       <ExpressListaAnexos
                         listaExistentes={existingAnexos}
                         listaNuevos={formData.anexos}
@@ -1155,11 +1165,11 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
                 <div className="contents">
                 {bloque(
-                  'Salvamento',
+                  tUi('sections.salvage'),
                   <>
-                    <Campo label="¿Salvamento aplica en este caso?" required>
+                    <Campo label={tUi('salvageApplies')} required>
                       <fieldset className="space-y-2 border-0 p-0">
-                        <legend className="sr-only">Salvamento aplica o no aplica</legend>
+                        <legend className="sr-only">{tUi('salvageLegend')}</legend>
                         <div className="flex flex-wrap gap-4">
                           <label className={expressRadioOption}>
                             <input
@@ -1171,7 +1181,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                               className="accent-fenix-primario"
                             />
                             <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
-                              Aplica
+                              {tUi('applies')}
                             </span>
                           </label>
                           <label className={expressRadioOption}>
@@ -1184,30 +1194,30 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                               className="accent-fenix-primario"
                             />
                             <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
-                              No aplica
+                              {tUi('doesNotApply')}
                             </span>
                           </label>
                         </div>
                       </fieldset>
                       {!formData.salvamentoAplica && (
                         <p className="mt-2 font-body text-xs text-amber-700 dark:text-amber-400">
-                          Debe seleccionar Aplica o No aplica antes de guardar.
+                          {tUi('salvageRequiredHint')}
                         </p>
                       )}
                     </Campo>
 
                     {salvamentoAplicaSeleccionado && (
                       <>
-                        <Campo label="Valor del salvamento">
+                        <Campo label={tUi('salvageValue')}>
                           <InputMonedaExpress
                             id="valorSalvamento"
                             name="valorSalvamento"
                             value={formData.valorSalvamento}
                             onChange={handleChange}
-                            placeholder="Ej: $ 1.250.000 o $ 1.250.000,50"
+                            placeholder={tUi('salvageValuePlaceholder')}
                           />
                         </Campo>
-                        <Campo label="Documentos de salvamento">
+                        <Campo label={tUi('salvageDocs')}>
                           <DropzoneFenix
                             getRootProps={getSalvamentoRootProps}
                             getInputProps={getSalvamentoInputProps}
@@ -1226,8 +1236,8 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
                     {salvamentoNoAplica && (
                       <p className="rounded-lg border border-gray-200 bg-gray-50/80 px-3 py-2 font-body text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-400">
-                        Registrado como <strong>No aplica</strong>. No se requiere valor ni documentos de
-                        salvamento.
+                        {tUi('salvageNotAppliedPrefix')} <strong>{tUi('doesNotApply')}</strong>
+                        {tUi('salvageNotAppliedSuffix')}
                       </p>
                     )}
                   </>,
@@ -1238,9 +1248,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
               <div className="contents">
                 {bloque(
-                  'Información del siniestro',
+                  tUi('sections.claimInfo'),
                   <div className={grid2}>
-                <Campo label="Aseguradora" required>
+                <Campo label={tUi('insurer')} required>
                   <SelectFenix
                     id="aseguradora"
                     name="aseguradora"
@@ -1249,7 +1259,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     required
                   >
                     {mappedAseguradoras.length === 0 ? (
-                      <option value="">Cargando Zürich…</option>
+                      <option value="">{tUi('loadingInsurer')}</option>
                     ) : (
                       mappedAseguradoras.map((aseg, index) => (
                         <option key={aseg.key ?? `${aseg.value}-${index}`} value={aseg.value}>
@@ -1266,16 +1276,16 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onClick={abrirModalIntermediario}
                   >
                     <FaPlus className="mr-1.5 inline" />
-                    Agregar intermediario
+                    {tUi('addBroker')}
                   </button>
-                  <Campo label="Intermediario">
+                  <Campo label={tUi('broker')}>
                     <SelectFenix
                       id="intermediario"
                       name="intermediario"
                       value={formData.intermediario}
                       onChange={handleChange}
                     >
-                      <option value="">Seleccionar…</option>
+                      <option value="">{t('common.select')}</option>
                       {opcionesIntermediario.map((item) => (
                         <option key={item.value} value={item.value}>
                           {item.label}
@@ -1284,7 +1294,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     </SelectFenix>
                   </Campo>
                 </div>
-                <Campo label="Ciudad siniestro" required>
+                <Campo label={tUi('city')} required>
                   <SelectFenix
                     id="ciudadSiniestro"
                     name="ciudadSiniestro"
@@ -1292,7 +1302,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                     required
                   >
-                    <option value="">Seleccionar…</option>
+                    <option value="">{t('common.select')}</option>
                     {mappedCiudades.map((ciudad, index) => (
                       <option key={ciudad.key ?? `${ciudad.value}-${index}`} value={ciudad.value}>
                         {ciudad.label}
@@ -1300,7 +1310,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     ))}
                   </SelectFenix>
                 </Campo>
-                <Campo label="Asegurado o beneficiario" required>
+                <Campo label={tUi('insuredBeneficiary')} required>
                   <InputFenix
                     id="aseguradoBeneficiario"
                     name="aseguradoBeneficiario"
@@ -1309,7 +1319,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     required
                   />
                 </Campo>
-                <Campo label="Cédula / NIT">
+                <Campo label={tUi('idNumber')}>
                   <InputFenix
                     id="nit"
                     name="nit"
@@ -1317,14 +1327,14 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Analista">
+                <Campo label={tUi('analyst')}>
                   <SelectFenix
                     id="analista"
                     name="analista"
                     value={formData.analista}
                     onChange={handleChange}
                   >
-                    <option value="">Seleccionar…</option>
+                    <option value="">{t('common.select')}</option>
                     {opcionesAnalista.map((item) => (
                       <option key={item.value} value={item.value}>
                         {item.label}
@@ -1337,14 +1347,13 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                 )}
 
                 {bloque(
-                  'Hitos y fechas del proceso',
+                  tUi('sections.milestones'),
                   <>
                     <p className="mb-3 font-body text-xs text-gray-500 dark:text-gray-400 sm:col-span-2">
-                      Fechas oficiales Express. La fecha de recordatorio reinicia el ciclo de alerta
-                      cada 30 días mientras no se reciban documentos.
+                      {tUi('milestonesHint')}
                     </p>
                     <div className={gridHitos}>
-                <Campo label="Fecha de siniestro">
+                <Campo label={tUi('dates.claimDate')}>
                   <InputFenix
                     id="fechaSiniestro"
                     name="fechaSiniestro"
@@ -1353,7 +1362,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de aviso de siniestro a la compañía">
+                <Campo label={tUi('dates.noticeToCompany')}>
                   <InputFechaHoraExpress
                     id="avisoSiniestroCompania"
                     name="avisoSiniestroCompania"
@@ -1361,7 +1370,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de aviso de siniestro al ajustador" required>
+                <Campo label={tUi('dates.noticeToAdjuster')} required>
                   <InputFechaHoraExpress
                     id="avisoSiniestro"
                     name="avisoSiniestro"
@@ -1370,7 +1379,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     required
                   />
                 </Campo>
-                <Campo label="Fecha de solicitud inicial de documentos">
+                <Campo label={tUi('dates.initialDocRequest')}>
                   <InputFechaHoraExpress
                     id="fechaSolicitudDocumentos"
                     name="fechaSolicitudDocumentos"
@@ -1378,7 +1387,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha del último documento">
+                <Campo label={tUi('dates.lastDocument')}>
                   <InputFechaHoraExpress
                     id="fechaUltimoDocumento"
                     name="fechaUltimoDocumento"
@@ -1386,7 +1395,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de acuse de recibo">
+                <Campo label={tUi('dates.acknowledgment')}>
                   <InputFechaHoraExpress
                     id="fechaAcuseReciboDocumentos"
                     name="fechaAcuseReciboDocumentos"
@@ -1394,7 +1403,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de definición del caso o autorización de la compañía">
+                <Campo label={tUi('dates.caseDefinition')}>
                   <InputFechaHoraExpress
                     id="fechaDefinicionCaso"
                     name="fechaDefinicionCaso"
@@ -1402,7 +1411,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de solicitud de documentos adicionales">
+                <Campo label={tUi('dates.additionalDocsRequest')}>
                   <InputFechaHoraExpress
                     id="fechaSolicitudDocumentosAdicionales"
                     name="fechaSolicitudDocumentosAdicionales"
@@ -1410,7 +1419,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de solicitud de documentos pendientes">
+                <Campo label={tUi('dates.pendingDocsRequest')}>
                   <InputFechaHoraExpress
                     id="fechaSolicitudDocumentosPendientes"
                     name="fechaSolicitudDocumentosPendientes"
@@ -1418,7 +1427,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de respuesta del analista">
+                <Campo label={tUi('dates.analystResponse')}>
                   <InputFechaHoraExpress
                     id="fechaRespuestaAnalista"
                     name="fechaRespuestaAnalista"
@@ -1426,7 +1435,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de presentación de cifras">
+                <Campo label={tUi('dates.figuresPresentation')}>
                   <InputFechaHoraExpress
                     id="fechaPresentacionCifras"
                     name="fechaPresentacionCifras"
@@ -1434,7 +1443,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de reconsideración">
+                <Campo label={tUi('dates.reconsideration')}>
                   <InputFechaHoraExpress
                     id="fechaReconsideracion"
                     name="fechaReconsideracion"
@@ -1442,7 +1451,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de finiquitos firmados">
+                <Campo label={tUi('dates.signedSettlements')}>
                   <InputFenix
                     id="fechaFiniquitosFirmado"
                     name="fechaFiniquitosFirmado"
@@ -1451,7 +1460,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de cargue de documentos de pago">
+                <Campo label={tUi('dates.paymentDocs')}>
                   <InputFechaHoraExpress
                     id="fechaDocumentosPago"
                     name="fechaDocumentosPago"
@@ -1459,7 +1468,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Fecha de recordatorio">
+                <Campo label={tUi('dates.reminder')}>
                   <InputFechaHoraExpress
                     id="fechaRecordatorio"
                     name="fechaRecordatorio"
@@ -1467,7 +1476,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label="Correo de notificación" className="sm:col-span-2">
+                <Campo label={tUi('dates.notificationEmail')} className="sm:col-span-2">
                   <InputFenix
                     id="correoNotificacion"
                     name="correoNotificacion"
@@ -1483,10 +1492,10 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
                 <div className="contents">
                 {bloque(
-                  'Estado del proceso',
+                  tUi('sections.status'),
                   <>
                     <fieldset className="space-y-2 border-0 p-0">
-                      <legend className="sr-only">Etapa actual</legend>
+                      <legend className="sr-only">{tUi('statusLegend')}</legend>
                       <div className="grid gap-2 sm:grid-cols-2">
                         {estadosExpress.map((estado, index) => (
                           <label key={`${estado.value}-${index}`} className={expressRadioOption}>
@@ -1507,7 +1516,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                       </div>
                       {estadosExpress.length === 0 && (
                         <p className="font-body text-sm italic text-gray-500">
-                          No hay estados configurados para Express.
+                          {tUi('noStatusesConfigured')}
                         </p>
                       )}
                     </fieldset>
@@ -1520,8 +1529,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
             <footer className="mt-6 flex flex-col gap-3 border-t border-gray-100 pt-5 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
               <p className="font-body text-sm text-gray-500">
-                <span className="text-fenix-primario">*</span> Campos obligatorios (incluye Aplica / No
-                aplica en salvamento)
+                <span className="text-fenix-primario">*</span> {tUi('requiredFieldsFooter')}
               </p>
               <div className="flex flex-wrap justify-end gap-2">
                 <button
@@ -1533,7 +1541,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                   }}
                   disabled={loading}
                 >
-                  {initialData ? 'Restablecer' : 'Limpiar'}
+                  {initialData ? tUi('reset') : tUi('clear')}
                 </button>
                 <button type="submit" className={expressBtnPrimary} disabled={loading}>
                   {formSubmitLabel}
@@ -1550,14 +1558,14 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       <ExpressModal
         open={modalIntermediarioOpen}
         onClose={cerrarModalIntermediario}
-        title="Agregar intermediario"
+        title={tUi('addBrokerModalTitle')}
       >
         <div className="space-y-4 p-4 sm:p-6">
-          <Campo label="Nombre del intermediario" required>
+          <Campo label={tUi('brokerName')} required>
             <InputFenix
               value={nuevoIntermediario}
               onChange={(e) => setNuevoIntermediario(e.target.value)}
-              placeholder="Ej. Corredor XYZ…"
+              placeholder={tUi('brokerNamePlaceholder')}
               disabled={guardandoIntermediario}
               autoFocus
               onKeyDown={(e) => {
@@ -1575,7 +1583,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
               onClick={cerrarModalIntermediario}
               disabled={guardandoIntermediario}
             >
-              Cancelar
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -1583,7 +1591,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
               onClick={guardarNuevoIntermediario}
               disabled={guardandoIntermediario || !nuevoIntermediario.trim()}
             >
-              {guardandoIntermediario ? 'Guardando…' : 'Agregar'}
+              {guardandoIntermediario ? t('express.form.saving') : tUi('add')}
             </button>
           </div>
         </div>
