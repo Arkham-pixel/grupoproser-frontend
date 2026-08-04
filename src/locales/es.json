@@ -791,7 +791,8 @@
         "insuredBeneficiary": "Asegurado o beneficiario",
         "idNumber": "Cédula / NIT",
         "analyst": "Analista",
-        "milestonesHint": "Fechas oficiales Express. La fecha de recordatorio reinicia el ciclo de alerta cada 30 días mientras no se reciban documentos.",
+        "milestonesHint": "Fechas oficiales Express. El protocolo ANS inicia con el aviso al ajustador (no exige aviso a la compañía). La fecha de recordatorio reinicia el ciclo de alerta cada 30 días mientras no se reciban documentos.",
+        "noticeToCompanyOptionalHint": "Opcional. Si no la registra y sí el aviso al ajustador, no genera alerta ni afecta los tiempos del protocolo.",
         "dates": {
           "claimDate": "Fecha de siniestro",
           "noticeToCompany": "Fecha de aviso de siniestro a la compañía",

@@ -151,9 +151,10 @@ export function fechaReferenciaProtocoloExpress(caso) {
   );
 }
 
-/** YYYY-MM-DD del aviso (mismo criterio que el reporte Express). */
+/** YYYY-MM-DD del aviso (ajustador; si falta, compañía — mismo criterio de arranque ANS). */
 export function fechaAvisoExpressISO(caso) {
-  const date = crearFechaLocal(caso?.avisoSiniestro);
+  const date =
+    crearFechaLocal(caso?.avisoSiniestro) || crearFechaLocal(caso?.avisoSiniestroCompania);
   if (!date) return '';
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -228,6 +229,14 @@ function resolverDesdeTramo(caso, tramo) {
       return parsearFechaHoraComplex(caso[tramo.fallbackDesde]);
     }
   }
+  if (tramo?.desde === 'fechaDocumentosPago') {
+    const omitida =
+      !caso?.fechaDocumentosPago &&
+      Boolean(caso?.fechaFiniquitosFirmado || caso?.fechaCargueFiniquito || caso?.fechaCierre);
+    if (omitida && tramo.fallbackDesde) {
+      return parsearFechaHoraComplex(caso[tramo.fallbackDesde]);
+    }
+  }
   const principal = parsearFechaHoraComplex(caso[tramo.desde]);
   if (principal) return principal;
   if (tramo.fallbackDesde) return parsearFechaHoraComplex(caso[tramo.fallbackDesde]);
@@ -242,6 +251,14 @@ export function calcularDiasSecuenciaExpress(caso, tramo) {
       .replace(/\s+/g, '_');
     if (flag === 'no_aplica' || flag === 'noaplica') return null;
     if (flag !== 'aplica' && !caso?.fechaReconsideracion) return null;
+  }
+  if (tramo?.muestra === 'documentosPago') {
+    if (
+      !caso?.fechaDocumentosPago &&
+      (caso?.fechaFiniquitosFirmado || caso?.fechaCargueFiniquito || caso?.fechaCierre)
+    ) {
+      return null;
+    }
   }
   const desde = resolverDesdeTramo(caso, tramo);
   const hasta = resolverHastaTramo(caso, tramo);

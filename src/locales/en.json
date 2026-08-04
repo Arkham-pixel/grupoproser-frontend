@@ -791,7 +791,8 @@
         "insuredBeneficiary": "Insured or beneficiary",
         "idNumber": "ID / Tax ID",
         "analyst": "Analyst",
-        "milestonesHint": "Official Express dates. The reminder date restarts the alert cycle every 30 days while documents are not received.",
+        "milestonesHint": "Official Express dates. The ANS protocol starts with notice to the adjuster (notice to the insurer is not required). The reminder date restarts the alert cycle every 30 days while documents are not received.",
+        "noticeToCompanyOptionalHint": "Optional. If you leave it blank and register notice to the adjuster, it will not trigger alerts or affect protocol timings.",
         "dates": {
           "claimDate": "Claim date",
           "noticeToCompany": "Notice of claim to the insurer date",

@@ -44,6 +44,12 @@ function resolverFechaReferencia(caso, etapa) {
     }
     return null;
   }
+  if (etapa?.referencia === 'fechaDocumentosPago' && documentosPagoExpressOmitida(caso)) {
+    if (etapa.referenciaAlternativa) {
+      return parsearFechaHoraComplex(caso[etapa.referenciaAlternativa]);
+    }
+    return null;
+  }
   const principal = parsearFechaHoraComplex(caso[etapa.referencia]);
   if (principal) return principal;
   if (etapa.referenciaAlternativa) {
@@ -72,6 +78,7 @@ export function evaluarCumplimientoEtapaExpress(caso, etapa) {
   if (!etapa?.limite || etapa.alertaVencimiento === false) return null;
   if (etapa.dependenciaExterna) return null;
   if (etapa.id === 'reconsideracion' && reconsideracionExpressOmitida(caso)) return null;
+  if (etapa.id === 'documentosPago' && documentosPagoExpressOmitida(caso)) return null;
 
   const fechaReferencia = resolverFechaReferencia(caso, etapa);
   const fechaCierre = resolverFechaCierreEtapa(caso, etapa);
@@ -103,6 +110,13 @@ function reconsideracionExpressOmitida(caso) {
       caso?.fechaFiniquitosFirmado ||
       caso?.fechaCargueFiniquito ||
       caso?.fechaCierre
+  );
+}
+
+function documentosPagoExpressOmitida(caso) {
+  if (caso?.fechaDocumentosPago) return false;
+  return Boolean(
+    caso?.fechaFiniquitosFirmado || caso?.fechaCargueFiniquito || caso?.fechaCierre
   );
 }
 

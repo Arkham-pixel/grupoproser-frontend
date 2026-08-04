@@ -3,7 +3,7 @@
  * Etapas alineadas a las fechas oficiales Express (correo julio 2026).
  */
 
-export const PROTOCOLO_EXPRESS_VERSION = '2026-08-04-reconsideracion-opcional';
+export const PROTOCOLO_EXPRESS_VERSION = '2026-08-04-secuencia-avance';
 export const PROTOCOLO_EXPRESS_FECHA_ACTIVACION = '2026-07-24';
 export const PROTOCOLO_EXPRESS_DOCUMENTO =
   'ANS Express — Acuerdos de Nivel de Servicio (fechas oficiales julio 2026)';
@@ -123,8 +123,11 @@ export const RESUMEN_PLAZOS_PROTOCOLO_EXPRESS = [
 export const NOTAS_PROTOCOLO_EXPRESS = [
   'Los plazos se miden en días hábiles Colombia (excluye fines de semana y festivos).',
   'Solo se evalúan etapas con fecha de inicio y fecha de cierre registradas (fechas oficiales Express).',
+  'Secuencia: si ya hay una fecha más avanzada del protocolo, las etapas anteriores vacías no generan alerta ni empeoran el caso.',
+  'El ANS inicia con el aviso al ajustador. El aviso a la compañía es opcional: si falta y hay aviso al ajustador, no alerta ni afecta tiempos.',
   'La definición del caso también se cumple con solicitud de documentación adicional.',
   'La reconsideración es opcional: si marca No aplica (o deja vacío y ya hay fechas posteriores), no cuenta en ANS ni genera alerta.',
+  'Documentos de pago: si falta la fecha pero ya hay finiquito o cierre, se omite en ANS.',
   'El recordatorio de documentos pendientes es un ciclo de 30 días calendario aparte del ANS.',
 ];
 

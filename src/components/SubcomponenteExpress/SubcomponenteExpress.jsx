@@ -1383,6 +1383,9 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     value={formData.avisoSiniestroCompania}
                     onChange={handleChange}
                   />
+                  <p className="mt-1.5 font-body text-xs text-gray-500 dark:text-gray-400">
+                    {tUi('noticeToCompanyOptionalHint')}
+                  </p>
                 </Campo>
                 <Campo label={tUi('dates.noticeToAdjuster')} required>
                   <InputFechaHoraExpress
