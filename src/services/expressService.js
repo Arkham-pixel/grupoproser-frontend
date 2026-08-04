@@ -100,6 +100,8 @@ const normalizeExpressItem = (item = {}) => {
   const fechaCorreccionesPresentadas = toISODate(item.fechaCorreccionesPresentadas);
   const fechaPresentacionCifras = toISODate(item.fechaPresentacionCifras ?? item.fchaPresntCifras ?? item.fchaPresentacionCifras);
   const fechaReconsideracion = toISODate(item.fechaReconsideracion);
+  const reconsideracionAplica =
+    item.reconsideracionAplica ?? item.reconsideracion_aplica ?? '';
   const fechaDocumentosPago = toISODate(item.fechaDocumentosPago);
   const fechaFiniquitosFirmado = toISODate(item.fechaFiniquitosFirmado ?? item.fchaFiniquitoIndem ?? item.fchaFiniquitosFirmado);
   const fechaRecordatorio = toISODate(item.fechaRecordatorio);
@@ -150,6 +152,7 @@ const normalizeExpressItem = (item = {}) => {
     fechaCorreccionesPresentadas,
     fechaPresentacionCifras,
     fechaReconsideracion,
+    reconsideracionAplica: reconsideracionAplica ? String(reconsideracionAplica) : '',
     fechaDocumentosPago,
     fechaFiniquitosFirmado,
     fechaRecordatorio,
@@ -391,6 +394,7 @@ const buildCamposBaseCaso = (casoBase = {}, valorIndemnizacion) => ({
   fechaCorreccionesPresentadas: toFormDate(casoBase.fechaCorreccionesPresentadas),
   fechaPresentacionCifras: toFormDate(casoBase.fechaPresentacionCifras),
   fechaReconsideracion: toFormDate(casoBase.fechaReconsideracion),
+  reconsideracionAplica: casoBase.reconsideracionAplica || '',
   fechaDocumentosPago: toFormDate(casoBase.fechaDocumentosPago),
   fechaFiniquitosFirmado: toFormDate(casoBase.fechaFiniquitosFirmado),
   fechaRecordatorio: toFormDate(casoBase.fechaRecordatorio),

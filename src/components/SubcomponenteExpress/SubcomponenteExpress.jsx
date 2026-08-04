@@ -89,6 +89,7 @@ const DEFAULT_FORM = {
   fechaCorreccionesPresentadas: '',
   fechaPresentacionCifras: '',
   fechaReconsideracion: '',
+  reconsideracionAplica: '',
   fechaDocumentosPago: '',
   fechaFiniquitosFirmado: '',
   fechaRecordatorio: '',
@@ -233,6 +234,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
         fechaCorreccionesPresentadas: toDateTimeInputValue(data.fechaCorreccionesPresentadas),
         fechaPresentacionCifras: toDateTimeInputValue(data.fechaPresentacionCifras),
         fechaReconsideracion: toDateTimeInputValue(data.fechaReconsideracion),
+        reconsideracionAplica: data.reconsideracionAplica ? String(data.reconsideracionAplica) : '',
         fechaDocumentosPago: toDateTimeInputValue(data.fechaDocumentosPago),
         fechaFiniquitosFirmado: toDateInputValue(data.fechaFiniquitosFirmado),
         fechaRecordatorio: toDateTimeInputValue(data.fechaRecordatorio),
@@ -644,6 +646,18 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
 
   const salvamentoAplicaSeleccionado = formData.salvamentoAplica === 'aplica';
   const salvamentoNoAplica = formData.salvamentoAplica === 'no_aplica';
+
+  const handleReconsideracionAplicaChange = (event) => {
+    const valor = event.target.value;
+    setFormData((prev) => ({
+      ...prev,
+      reconsideracionAplica: valor,
+      ...(valor === 'no_aplica' ? { fechaReconsideracion: '' } : {}),
+    }));
+  };
+
+  const reconsideracionAplicaSeleccionado = formData.reconsideracionAplica === 'aplica';
+  const reconsideracionNoAplica = formData.reconsideracionAplica === 'no_aplica';
 
   const mostrarAviso = useCallback((mensaje, titulo = t('express.notice.title'), tipo = 'warning') => {
     setAvisoModal({ open: true, titulo, mensaje, tipo });
@@ -1443,14 +1457,54 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
                     onChange={handleChange}
                   />
                 </Campo>
-                <Campo label={tUi('dates.reconsideration')}>
-                  <InputFechaHoraExpress
-                    id="fechaReconsideracion"
-                    name="fechaReconsideracion"
-                    value={formData.fechaReconsideracion}
-                    onChange={handleChange}
-                  />
+                <Campo label={tUi('reconsiderationApplies')}>
+                  <fieldset className="space-y-2 border-0 p-0">
+                    <legend className="sr-only">{tUi('reconsiderationLegend')}</legend>
+                    <div className="flex flex-wrap gap-4">
+                      <label className={expressRadioOption}>
+                        <input
+                          type="radio"
+                          name="reconsideracionAplicaRadio"
+                          value="aplica"
+                          checked={reconsideracionAplicaSeleccionado}
+                          onChange={handleReconsideracionAplicaChange}
+                          className="accent-fenix-primario"
+                        />
+                        <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          {tUi('applies')}
+                        </span>
+                      </label>
+                      <label className={expressRadioOption}>
+                        <input
+                          type="radio"
+                          name="reconsideracionAplicaRadio"
+                          value="no_aplica"
+                          checked={reconsideracionNoAplica}
+                          onChange={handleReconsideracionAplicaChange}
+                          className="accent-fenix-primario"
+                        />
+                        <span className="font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
+                          {tUi('doesNotApply')}
+                        </span>
+                      </label>
+                    </div>
+                  </fieldset>
+                  {reconsideracionNoAplica && (
+                    <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
+                      {tUi('reconsiderationNotAppliedHint')}
+                    </p>
+                  )}
                 </Campo>
+                {!reconsideracionNoAplica && (
+                  <Campo label={tUi('dates.reconsideration')}>
+                    <InputFechaHoraExpress
+                      id="fechaReconsideracion"
+                      name="fechaReconsideracion"
+                      value={formData.fechaReconsideracion}
+                      onChange={handleChange}
+                    />
+                  </Campo>
+                )}
                 <Campo label={tUi('dates.signedSettlements')}>
                   <InputFenix
                     id="fechaFiniquitosFirmado"

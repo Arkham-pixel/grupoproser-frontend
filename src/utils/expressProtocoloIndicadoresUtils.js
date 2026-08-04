@@ -215,6 +215,19 @@ function resolverHastaTramo(caso, tramo) {
 }
 
 function resolverDesdeTramo(caso, tramo) {
+  if (tramo?.desde === 'fechaReconsideracion') {
+    const flag = String(caso?.reconsideracionAplica ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_');
+    const omitida =
+      flag === 'no_aplica' ||
+      flag === 'noaplica' ||
+      (flag !== 'aplica' && !caso?.fechaReconsideracion);
+    if (omitida && tramo.fallbackDesde) {
+      return parsearFechaHoraComplex(caso[tramo.fallbackDesde]);
+    }
+  }
   const principal = parsearFechaHoraComplex(caso[tramo.desde]);
   if (principal) return principal;
   if (tramo.fallbackDesde) return parsearFechaHoraComplex(caso[tramo.fallbackDesde]);
@@ -222,6 +235,14 @@ function resolverDesdeTramo(caso, tramo) {
 }
 
 export function calcularDiasSecuenciaExpress(caso, tramo) {
+  if (tramo?.muestra === 'reconsideracion') {
+    const flag = String(caso?.reconsideracionAplica ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_');
+    if (flag === 'no_aplica' || flag === 'noaplica') return null;
+    if (flag !== 'aplica' && !caso?.fechaReconsideracion) return null;
+  }
   const desde = resolverDesdeTramo(caso, tramo);
   const hasta = resolverHastaTramo(caso, tramo);
   if (!desde || !hasta) return null;

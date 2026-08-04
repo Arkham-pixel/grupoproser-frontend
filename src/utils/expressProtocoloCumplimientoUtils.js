@@ -38,6 +38,12 @@ function obtenerEtapa(protocolo, etapaId) {
 }
 
 function resolverFechaReferencia(caso, etapa) {
+  if (etapa?.referencia === 'fechaReconsideracion' && reconsideracionExpressOmitida(caso)) {
+    if (etapa.referenciaAlternativa) {
+      return parsearFechaHoraComplex(caso[etapa.referenciaAlternativa]);
+    }
+    return null;
+  }
   const principal = parsearFechaHoraComplex(caso[etapa.referencia]);
   if (principal) return principal;
   if (etapa.referenciaAlternativa) {
@@ -65,6 +71,7 @@ function esFechaPlausible(fecha) {
 export function evaluarCumplimientoEtapaExpress(caso, etapa) {
   if (!etapa?.limite || etapa.alertaVencimiento === false) return null;
   if (etapa.dependenciaExterna) return null;
+  if (etapa.id === 'reconsideracion' && reconsideracionExpressOmitida(caso)) return null;
 
   const fechaReferencia = resolverFechaReferencia(caso, etapa);
   const fechaCierre = resolverFechaCierreEtapa(caso, etapa);
@@ -81,6 +88,22 @@ export function evaluarCumplimientoEtapaExpress(caso, etapa) {
     limite: limiteEfectivo.valor,
     unidad: limiteEfectivo.unidad,
   };
+}
+
+function reconsideracionExpressOmitida(caso) {
+  const flag = String(caso?.reconsideracionAplica ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+  if (flag === 'no_aplica' || flag === 'noaplica') return true;
+  if (flag === 'aplica') return false;
+  if (caso?.fechaReconsideracion) return false;
+  return Boolean(
+    caso?.fechaDocumentosPago ||
+      caso?.fechaFiniquitosFirmado ||
+      caso?.fechaCargueFiniquito ||
+      caso?.fechaCierre
+  );
 }
 
 export function crearAcumuladorCumplimientoExpress() {

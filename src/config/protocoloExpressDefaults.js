@@ -3,7 +3,7 @@
  * Etapas alineadas a las fechas oficiales Express (correo julio 2026).
  */
 
-export const PROTOCOLO_EXPRESS_VERSION = '2026-07-28-ans-oficiales';
+export const PROTOCOLO_EXPRESS_VERSION = '2026-08-04-reconsideracion-opcional';
 export const PROTOCOLO_EXPRESS_FECHA_ACTIVACION = '2026-07-24';
 export const PROTOCOLO_EXPRESS_DOCUMENTO =
   'ANS Express — Acuerdos de Nivel de Servicio (fechas oficiales julio 2026)';
@@ -80,12 +80,23 @@ export const ETAPAS_PROTOCOLO_EXPRESS_DEFAULT = [
     alertaVencimiento: true,
   },
   {
+    id: 'reconsideracion',
+    fase: 5.5,
+    nombre: 'Reconsideración',
+    campoFecha: 'fechaReconsideracion',
+    campoDoc: null,
+    referencia: 'fechaPresentacionCifras',
+    limite: { valor: 1, unidad: 'dias_habiles' },
+    alertaVencimiento: true,
+  },
+  {
     id: 'documentosPago',
     fase: 6,
     nombre: 'Cargue de documentos de pago',
     campoFecha: 'fechaDocumentosPago',
     campoDoc: null,
-    referencia: 'fechaPresentacionCifras',
+    referencia: 'fechaReconsideracion',
+    referenciaAlternativa: 'fechaPresentacionCifras',
     limite: { valor: 1, unidad: 'dias_habiles' },
     alertaVencimiento: true,
   },
@@ -113,6 +124,7 @@ export const NOTAS_PROTOCOLO_EXPRESS = [
   'Los plazos se miden en días hábiles Colombia (excluye fines de semana y festivos).',
   'Solo se evalúan etapas con fecha de inicio y fecha de cierre registradas (fechas oficiales Express).',
   'La definición del caso también se cumple con solicitud de documentación adicional.',
+  'La reconsideración es opcional: si marca No aplica (o deja vacío y ya hay fechas posteriores), no cuenta en ANS ni genera alerta.',
   'El recordatorio de documentos pendientes es un ciclo de 30 días calendario aparte del ANS.',
 ];
 
@@ -123,6 +135,7 @@ export const INDICADORES_CUMPLIMIENTO_EXPRESS = [
   { muestra: 'definicionCaso', etapaId: 'definicionCaso' },
   { muestra: 'docsPendientes', etapaId: 'docsPendientes' },
   { muestra: 'presentacionCifras', etapaId: 'presentacionCifras' },
+  { muestra: 'reconsideracion', etapaId: 'reconsideracion' },
   { muestra: 'documentosPago', etapaId: 'documentosPago' },
   { muestra: 'finiquitosFirmados', etapaId: 'finiquitosFirmados' },
 ];
@@ -162,9 +175,16 @@ export const SECUENCIA_INDICADORES_TIEMPO_EXPRESS = [
     unidad: 'dias_habiles',
   },
   {
-    muestra: 'documentosPago',
+    muestra: 'reconsideracion',
     desde: 'fechaPresentacionCifras',
+    hasta: 'fechaReconsideracion',
+    unidad: 'dias_habiles',
+  },
+  {
+    muestra: 'documentosPago',
+    desde: 'fechaReconsideracion',
     hasta: 'fechaDocumentosPago',
+    fallbackDesde: 'fechaPresentacionCifras',
     unidad: 'dias_habiles',
   },
   {
@@ -228,14 +248,24 @@ export const INDICADORES_PROTOCOLO_EXPRESS_DEF = [
     plazoObjetivo: '1 día hábil desde la definición',
   },
   {
+    clave: 'promedioReconsideracion',
+    muestra: 'reconsideracion',
+    label: 'Cifras → Reconsideración',
+    desdeLegible: 'presentación de cifras',
+    hastaLegible: 'reconsideración',
+    plazoLegible: '1 día hábil',
+    etapaId: 'reconsideracion',
+    plazoObjetivo: '1 día hábil desde la presentación de cifras (solo si aplica)',
+  },
+  {
     clave: 'promedioDocumentosPago',
     muestra: 'documentosPago',
-    label: 'Cifras → Cargue documentos de pago',
-    desdeLegible: 'presentación de cifras',
+    label: 'Cifras/Reconsideración → Docs pago',
+    desdeLegible: 'reconsideración o presentación de cifras',
     hastaLegible: 'cargue de documentos de pago',
     plazoLegible: '1 día hábil',
     etapaId: 'documentosPago',
-    plazoObjetivo: '1 día hábil desde la presentación de cifras',
+    plazoObjetivo: '1 día hábil desde reconsideración o cifras',
   },
   {
     clave: 'promedioFiniquitosFirmados',
