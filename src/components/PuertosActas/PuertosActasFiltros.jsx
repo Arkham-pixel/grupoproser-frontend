@@ -4,8 +4,14 @@ import {
   FILTROS_PUERTOS_VACIOS,
   OPCIONES_TIPO,
 } from './puertosActasTrazabilidad';
-import { CODIGOS_ESTADO_FILTRO } from './puertosEstadoLabels.js';
-import { puertosBtnLink, puertosBtnSecondary, puertosCard, puertosCardBody, puertosInput, puertosLabel } from './puertosFenixUi';
+import {
+  puertosBtnLink,
+  puertosBtnSecondary,
+  puertosCard,
+  puertosCardBody,
+  puertosInput,
+  puertosLabel,
+} from './puertosFenixUi';
 
 export default function PuertosActasFiltros({
   filtros,
@@ -14,6 +20,8 @@ export default function PuertosActasFiltros({
   onLimpiar,
   cargando = false,
   total = 0,
+  ocultarTipo = false,
+  tituloExtra = '',
 }) {
   const set = (campo, valor) => onChange({ ...filtros, [campo]: valor });
 
@@ -23,7 +31,7 @@ export default function PuertosActasFiltros({
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="font-heading text-base font-bold text-gray-900 dark:text-white">
-              Filtros de búsqueda
+              Filtros de búsqueda{tituloExtra ? ` — ${tituloExtra}` : ''}
             </h3>
             <p className="font-body text-xs text-gray-500 dark:text-gray-400">
               {total} registro(s) coincidente(s)
@@ -46,35 +54,22 @@ export default function PuertosActasFiltros({
             />
           </label>
 
-          <label className="block">
-            <span className={puertosLabel}>Tipo</span>
-            <select
-              className={puertosInput}
-              value={filtros.tipo}
-              onChange={(e) => set('tipo', e.target.value)}
-            >
-              {OPCIONES_TIPO.map((o) => (
-                <option key={o.value || 'todos'} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className={puertosLabel}>Estado</span>
-            <select
-              className={puertosInput}
-              value={filtros.estado}
-              onChange={(e) => set('estado', e.target.value)}
-            >
-              {CODIGOS_ESTADO_FILTRO.map((o) => (
-                <option key={o.value || 'todos'} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          {!ocultarTipo && (
+            <label className="block">
+              <span className={puertosLabel}>Tipo</span>
+              <select
+                className={puertosInput}
+                value={filtros.tipo}
+                onChange={(e) => set('tipo', e.target.value)}
+              >
+                {OPCIONES_TIPO.map((o) => (
+                  <option key={o.value || 'todos'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
 
           <label className="block">
             <span className={puertosLabel}>Regional / Ciudad</span>

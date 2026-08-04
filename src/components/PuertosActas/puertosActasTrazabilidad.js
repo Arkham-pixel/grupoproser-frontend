@@ -1,5 +1,5 @@
-import * as XLSX from 'xlsx';
-import { CODIGOS_ESTADO_FILTRO, resolverEtiquetaEstadoPuertos } from './puertosEstadoLabels.js';
+﻿import * as XLSX from 'xlsx';
+import { CODIGOS_ESTADO_FILTRO } from './puertosEstadoLabels.js';
 
 export const FILTROS_PUERTOS_VACIOS = {
   q: '',
@@ -59,7 +59,6 @@ export function filasTrazabilidadExcel(registros = []) {
     'Fecha inspección': r.fecha || '',
     'Fecha asignación': r.fechaAsignacion || '',
     'Fecha informe': r.fechaInforme || '',
-    Estado: resolverEtiquetaEstadoPuertos(r),
     'Avance (secciones)': r.avance || '',
     'Creado por': r.creadoPor || '',
     'Última edición por': r.actualizadoPor || '',
@@ -87,14 +86,8 @@ export function exportarTrazabilidadPuertosExcel(registros = []) {
     },
     { Métrica: 'Actas', Valor: registros.filter((r) => r.tipoRegistro === 'acta').length },
     {
-      Métrica: 'Terminados',
-      Valor: registros.filter((r) => ['terminado', 'completo'].includes(r.estadoCodigo)).length,
-    },
-    {
-      Métrica: 'En curso',
-      Valor: registros.filter((r) =>
-        ['en_curso', 'en_progreso', 'iniciado'].includes(r.estadoCodigo)
-      ).length,
+      Métrica: 'Inspección asegurado',
+      Valor: registros.filter((r) => r.tipoRegistro === 'inspeccion_asegurado').length,
     },
     { Métrica: 'Fecha exportación', Valor: new Date().toLocaleString('es-CO') },
   ];
