@@ -621,7 +621,7 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
   );
 
   // —— Datos del asegurado ——
-  // Orden: Aseguradora|Sucursal → Asegurado|Piezas → Empaque|Mercancía → Pedido|Fecha
+  // Orden: Aseguradora|Sucursal → Asegurado|Pedido → Empaque|Mercancía → Piezas|Fecha
   y = tituloSeccion(doc, y, 'Datos del Asegurado / Insured Data');
   y = filaCeldas(
     doc,
@@ -639,9 +639,9 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
     pageRef,
     [
       { label: 'Asegurado / Insured', value: form.asegurado },
-      { label: 'N. de Piezas / No. of Packages', value: form.nroPiezas },
+      { label: 'Pedido N° / Order N°', value: form.pedido },
     ],
-    [0.7, 0.3]
+    [0.5, 0.5]
   );
   y = filaCeldas(
     doc,
@@ -658,7 +658,7 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
     y,
     pageRef,
     [
-      { label: 'Pedido No. / Order No.', value: form.pedido },
+      { label: 'N. de Piezas / No. of Packages', value: form.nroPiezas },
       {
         label: 'Fecha de Construcción / Construction Date',
         value: formatearFechaCorta(form.fechaConstruccion),

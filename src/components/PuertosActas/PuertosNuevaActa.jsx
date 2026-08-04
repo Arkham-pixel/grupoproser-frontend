@@ -24,6 +24,10 @@ import {
   sucursalAutomatica,
   sucursalPerteneceAAseguradora,
 } from '../../utils/filtrarSucursalesAseguradora.js';
+import {
+  elegirHtmlMasCompleto,
+  leerHtmlEditoresActaPuertos,
+} from './puertosActaEditoresHtml.js';
 import { FaSave, FaFilePdf, FaEraser, FaSync, FaArrowLeft } from 'react-icons/fa';
 
 function Seccion({ titulo, children, cols = 4 }) {
@@ -249,11 +253,22 @@ export default function PuertosNuevaActa() {
   };
 
   const obtenerFormConTextos = () => {
-    const textos = observacionesRef.current?.flush?.() || {};
+    const desdeDom = leerHtmlEditoresActaPuertos();
+    const desdeFlush = observacionesRef.current?.flush?.() || {};
+    const observaciones = elegirHtmlMasCompleto(
+      desdeDom.observaciones,
+      desdeFlush.observaciones,
+      form.observaciones
+    );
+    const recomendaciones = elegirHtmlMasCompleto(
+      desdeDom.recomendaciones,
+      desdeFlush.recomendaciones,
+      form.recomendaciones
+    );
     return {
       ...form,
-      observaciones: textos.observaciones ?? form.observaciones,
-      recomendaciones: textos.recomendaciones ?? form.recomendaciones,
+      observaciones,
+      recomendaciones,
     };
   };
 
@@ -289,14 +304,22 @@ export default function PuertosNuevaActa() {
     setMensaje('');
     try {
       const payload = formularioAActaApi(formActual, { fotos });
+      // Garantiza que el HTML no se pierda aunque el mapper falle en algún caso
+      payload.observaciones = formActual.observaciones || '';
+      payload.recomendaciones = formActual.recomendaciones || '';
+
       const resultado = esEdicion
         ? await actualizarPuertosActa(id, payload)
         : await crearPuertosActa(payload);
 
-      setForm(actaApiAFormulario(resultado));
-      setEditorSyncKey(
-        `saved-${resultado._id || id}-${resultado.updatedAt || Date.now()}`
-      );
+      const mapped = actaApiAFormulario(resultado);
+      // Si la API no devolviera textos, conserva lo que acabamos de grabar
+      setForm({
+        ...mapped,
+        observaciones: mapped.observaciones || formActual.observaciones || '',
+        recomendaciones:
+          mapped.recomendaciones || formActual.recomendaciones || '',
+      });
       setMensaje(
         t('ports.ui.actas.saveSuccess', { id: resultado.nroActa || resultado._id })
       );

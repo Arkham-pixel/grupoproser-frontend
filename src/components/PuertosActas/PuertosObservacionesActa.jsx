@@ -1,7 +1,22 @@
-import React, { forwardRef, memo, useCallback, useImperativeHandle, useRef } from 'react';
+import React, {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { flushSync } from 'react-dom';
 import PuertosRichTextEditor from './PuertosRichTextEditor';
+import {
+  elegirHtmlMasCompleto,
+  leerHtmlEditoresActaPuertos,
+} from './puertosActaEditoresHtml.js';
 
+/**
+ * Observaciones / Recomendaciones del acta.
+ * Mantiene copia local del HTML para que Grabar/PDF nunca lean un estado vacío.
+ */
 const PuertosObservacionesActa = forwardRef(function PuertosObservacionesActa(
   {
     observaciones = '',
@@ -15,27 +30,73 @@ const PuertosObservacionesActa = forwardRef(function PuertosObservacionesActa(
   const { t } = useTranslation();
   const obsRef = useRef(null);
   const recRef = useRef(null);
+  const obsHtmlRef = useRef(observaciones || '');
+  const recHtmlRef = useRef(recomendaciones || '');
+  const syncKeySeen = useRef(syncKey);
+
+  useEffect(() => {
+    if (syncKeySeen.current === syncKey) return;
+    syncKeySeen.current = syncKey;
+    obsHtmlRef.current = observaciones || '';
+    recHtmlRef.current = recomendaciones || '';
+  }, [syncKey, observaciones, recomendaciones]);
 
   const onObservaciones = useCallback(
-    (html) => onChange?.('observaciones', html),
-    [onChange]
-  );
-  const onRecomendaciones = useCallback(
-    (html) => onChange?.('recomendaciones', html),
+    (html) => {
+      obsHtmlRef.current = html ?? '';
+      onChange?.('observaciones', obsHtmlRef.current);
+    },
     [onChange]
   );
 
-  useImperativeHandle(
-    ref,
-    () => ({
-      flush: () => {
-        const observacionesHtml = obsRef.current?.flush?.() ?? observaciones;
-        const recomendacionesHtml = recRef.current?.flush?.() ?? recomendaciones;
-        return { observaciones: observacionesHtml, recomendaciones: recomendacionesHtml };
-      },
-    }),
-    [observaciones, recomendaciones]
+  const onRecomendaciones = useCallback(
+    (html) => {
+      recHtmlRef.current = html ?? '';
+      onChange?.('recomendaciones', recHtmlRef.current);
+    },
+    [onChange]
   );
+
+  useImperativeHandle(ref, () => ({
+    flush: () => {
+      const desdeDom = leerHtmlEditoresActaPuertos();
+      let fromObs = '';
+      let fromRec = '';
+      try {
+        fromObs = obsRef.current?.getHtml?.() ?? '';
+      } catch {
+        /* ignore */
+      }
+      try {
+        fromRec = recRef.current?.getHtml?.() ?? '';
+      } catch {
+        /* ignore */
+      }
+
+      const obs = elegirHtmlMasCompleto(
+        desdeDom.observaciones,
+        fromObs,
+        obsHtmlRef.current,
+        observaciones
+      );
+      const rec = elegirHtmlMasCompleto(
+        desdeDom.recomendaciones,
+        fromRec,
+        recHtmlRef.current,
+        recomendaciones
+      );
+
+      obsHtmlRef.current = obs;
+      recHtmlRef.current = rec;
+
+      flushSync(() => {
+        onChange?.('observaciones', obs);
+        onChange?.('recomendaciones', rec);
+      });
+
+      return { observaciones: obs, recomendaciones: rec };
+    },
+  }));
 
   return (
     <section className="rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-sm">
@@ -61,6 +122,7 @@ const PuertosObservacionesActa = forwardRef(function PuertosObservacionesActa(
             </p>
             <PuertosRichTextEditor
               ref={obsRef}
+              editorId="observaciones"
               value={observaciones}
               onChange={onObservaciones}
               readOnly={soloLectura}
@@ -75,6 +137,7 @@ const PuertosObservacionesActa = forwardRef(function PuertosObservacionesActa(
             </p>
             <PuertosRichTextEditor
               ref={recRef}
+              editorId="recomendaciones"
               value={recomendaciones}
               onChange={onRecomendaciones}
               readOnly={soloLectura}
@@ -96,4 +159,4 @@ const PuertosObservacionesActa = forwardRef(function PuertosObservacionesActa(
   );
 });
 
-export default memo(PuertosObservacionesActa);
+export default PuertosObservacionesActa;

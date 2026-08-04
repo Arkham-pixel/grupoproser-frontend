@@ -1,6 +1,5 @@
 import React, {
   forwardRef,
-  memo,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -74,6 +73,8 @@ const PuertosRichTextEditor = forwardRef(function PuertosRichTextEditor(
     minHeight = 140,
     /** Cambia al cargar otra acta / limpiar: permite reemplazar el HTML de forma segura */
     syncKey = 'default',
+    /** Identificador DOM para lectura al grabar: observaciones | recomendaciones */
+    editorId = 'observaciones',
   },
   ref
 ) {
@@ -110,14 +111,23 @@ const PuertosRichTextEditor = forwardRef(function PuertosRichTextEditor(
     setMostrarPlaceholder(!textoPlanoDeHtml(next));
   }, []);
 
-  // Carga inicial / cambio de acta (syncKey)
+  // Sembrar HTML al montar / al cambiar de acta
   useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+
     if (syncKeyRef.current !== syncKey) {
       syncKeyRef.current = syncKey;
       aplicarHtmlExterno(value);
       return;
     }
-    // Solo aplicar value externo si el usuario no ha editado
+
+    // Primera pintura: si el DOM está vacío y hay value, aplicar
+    if (!dirtyRef.current && !textoPlanoDeHtml(el.innerHTML) && textoPlanoDeHtml(value)) {
+      aplicarHtmlExterno(value);
+      return;
+    }
+
     if (dirtyRef.current) return;
     if ((value || '') === lastHtml.current) return;
     aplicarHtmlExterno(value);
@@ -158,9 +168,14 @@ const PuertosRichTextEditor = forwardRef(function PuertosRichTextEditor(
   useImperativeHandle(
     ref,
     () => ({
-      /** Fuerza el HTML actual al padre (para Grabar / PDF). */
       flush: () => emitir(true),
-      getHtml: () => leerHtml(),
+      getHtml: () => {
+        if (editorRef.current) {
+          lastHtml.current = editorRef.current.innerHTML || '';
+          return lastHtml.current;
+        }
+        return lastHtml.current || '';
+      },
     }),
     [emitir]
   );
@@ -464,6 +479,7 @@ const PuertosRichTextEditor = forwardRef(function PuertosRichTextEditor(
         ) : null}
         <div
           ref={editorRef}
+          data-puertos-editor={editorId}
           className="px-3 py-2 text-sm text-slate-800 dark:text-slate-100 outline-none"
           style={{ minHeight }}
           contentEditable={!readOnly}
@@ -472,7 +488,6 @@ const PuertosRichTextEditor = forwardRef(function PuertosRichTextEditor(
             dirtyRef.current = true;
             lastHtml.current = editorRef.current?.innerHTML || '';
             actualizarPlaceholder();
-            // Sincroniza al padre en cada cambio para que Grabar/PDF no pierdan texto
             onChangeRef.current?.(lastHtml.current);
           }}
           onBlur={() => {
@@ -488,4 +503,4 @@ const PuertosRichTextEditor = forwardRef(function PuertosRichTextEditor(
   );
 });
 
-export default memo(PuertosRichTextEditor);
+export default PuertosRichTextEditor;
