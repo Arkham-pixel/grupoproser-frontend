@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import Logo from '../../img/Logo.png';
 import { generarWordPuertos } from './generarWordPuertos';
-import { generarWordRiicp004 } from './generarWordRiicp004';
+import { generarWordRiicp004, META_FORMATO_RIICP004 } from './generarWordRiicp004';
+import { generarPdfRiicp004 } from './generarPdfRiicp004';
 import { generarManualPuertos } from './generarManualPuertos';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService';
@@ -72,6 +73,7 @@ export default function PuertosInspeccionMain({ tipoInicial, modoActas } = {}) {
   const [cargando, setCargando] = useState(false);
   const [modoEdicion, setModoEdicion] = useState(false);
   const [generandoWord, setGenerandoWord] = useState(false);
+  const [generandoPdf, setGenerandoPdf] = useState(false);
   const [generandoManual, setGenerandoManual] = useState(false);
   const [tipoInforme, setTipoInforme] = useState(resolverTipoInforme);
   const esFlujoActas = esModoActas || tipoInforme === 'riicp004';
@@ -245,8 +247,8 @@ return fechaFormateada;
 
     // Inspección de asegurado
     plantillaInforme: 'riicp004',
-    codigoInforme: '',
-    versionInforme: '1',
+    codigoInforme: 'CP-006',
+    versionInforme: '2',
     asegurado: '',
     patioOperacion: '',
     numeroPoliza: '',
@@ -517,6 +519,17 @@ await generarManualPuertos();
     }
   };
 
+  const obtenerDataInformeRiicp = async () => {
+    if (esFlujoActas) {
+      const resultado = await persistirEnActas(formData, { silencioso: true });
+      return {
+        ...formData,
+        ...casoToFormDataInspeccionAsegurado(resultado),
+      };
+    }
+    return formData;
+  };
+
   const handleGenerarWord = async (incluirMapaCalor = true) => {
     try {
       setGenerandoWord(true);
@@ -532,18 +545,10 @@ await generarManualPuertos();
             : t('ports.ui.inspeccion.reportDaily'),
         }));
       } else {
-        if (esFlujoActas) {
-          const resultado = await persistirEnActas(formData, { silencioso: true });
-          const dataWord = {
-            ...formData,
-            ...casoToFormDataInspeccionAsegurado(resultado),
-          };
-          await generarWordRiicp004(dataWord, { locale: documentLocale });
-        } else {
-          await generarWordRiicp004(formData, { locale: documentLocale });
-        }
+        const dataInforme = await obtenerDataInformeRiicp();
+        await generarWordRiicp004(dataInforme, { locale: documentLocale });
         alert(t('ports.ui.inspeccion.alerts.informeRiicpGenerado', {
-          codigo: formData.codigoInforme?.trim() || t('ports.ui.inspeccion.alerts.informeRiicpFallback'),
+          codigo: META_FORMATO_RIICP004.codigo,
         }));
       }
     } catch (error) {
@@ -553,6 +558,25 @@ await generarManualPuertos();
       }));
     } finally {
       setGenerandoWord(false);
+    }
+  };
+
+  const handleGenerarPdf = async () => {
+    if (tipoInforme !== 'riicp004') return;
+    try {
+      setGenerandoPdf(true);
+      const dataInforme = await obtenerDataInformeRiicp();
+      await generarPdfRiicp004(dataInforme, { locale: documentLocale });
+      alert(t('ports.ui.inspeccion.alerts.informeRiicpPdfGenerado', {
+        codigo: META_FORMATO_RIICP004.codigo,
+      }));
+    } catch (error) {
+      console.error('❌ Error al generar PDF:', error);
+      alert(t('ports.ui.inspeccion.alerts.generarDocumentoError', {
+        error: error.message || t('ports.ui.inspeccion.alerts.intenteNuevamente'),
+      }));
+    } finally {
+      setGenerandoPdf(false);
     }
   };
 
@@ -636,6 +660,7 @@ navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
             ...casoToFormDataInspeccionAsegurado(resultado),
           };
           await generarWordRiicp004(dataWord, { locale: documentLocale });
+          await generarPdfRiicp004(dataWord, { locale: documentLocale });
         }
         return;
       }
@@ -654,6 +679,7 @@ navigate(`/puertos/formulario/${nuevoId}`, { replace: true });
       
       if (tipoInforme === 'riicp004') {
         await generarWordRiicp004(formDataActualizado, { locale: documentLocale });
+        await generarPdfRiicp004(formDataActualizado, { locale: documentLocale });
       } else {
         await generarWordPuertos(formDataActualizado, true, { locale: documentLocale });
       }
@@ -1136,12 +1162,29 @@ return img;
                 backgroundColor: theme === 'dark' ? '#059669' : '#10B981',
                 color: '#FFFFFF'
               }}
-              disabled={generandoWord || cargando}
+              disabled={generandoWord || generandoPdf || cargando}
             >
               {generandoWord
                 ? `⏳ ${t('ports.ui.inspeccion.exporting')}`
                 : `📄 ${t('ports.ui.inspeccion.exportWord')}`}
             </button>
+
+            {tipoInforme === 'riicp004' && (
+              <button
+                type="button"
+                onClick={handleGenerarPdf}
+                className="px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#DC2626' : '#EF4444',
+                  color: '#FFFFFF',
+                }}
+                disabled={generandoWord || generandoPdf || cargando}
+              >
+                {generandoPdf
+                  ? `⏳ ${t('ports.ui.inspeccion.exportingPdf')}`
+                  : `📕 ${t('ports.ui.inspeccion.exportPdf')}`}
+              </button>
+            )}
 
             <button
               onClick={handleExportarYGuardar}
@@ -1150,9 +1193,9 @@ return img;
                 backgroundColor: theme === 'dark' ? '#7C3AED' : '#8B5CF6',
                 color: '#FFFFFF'
               }}
-              disabled={generandoWord || cargando || exportando}
+              disabled={generandoWord || generandoPdf || cargando || exportando}
             >
-              {(generandoWord || exportando) ? t('ports.ui.inspeccion.processing') : t('ports.ui.inspeccion.exportAndSave')}
+              {(generandoWord || generandoPdf || exportando) ? t('ports.ui.inspeccion.processing') : t('ports.ui.inspeccion.exportAndSave')}
             </button>
           </div>
         </div>

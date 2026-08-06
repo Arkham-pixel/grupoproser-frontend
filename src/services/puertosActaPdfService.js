@@ -318,7 +318,8 @@ function htmlABloques(html) {
     }
 
     if (tag === 'br') {
-      if (runs.length) flushParrafo();
+      // No cortar párrafo: permite que el PDF reflow a todo el ancho
+      pushTexto(' ', estilo);
       return;
     }
     if (tag === 'hr') {
@@ -482,57 +483,79 @@ function aplicarFuenteRun(doc, run, fontSize = 8.5) {
   doc.setFontSize(fontSize);
 }
 
-/**
- * Particiona runs en líneas que caben en maxWidth (respeta negrita/cursiva).
- */
-function layoutRunsEnLineas(doc, runs, maxWidth, fontSize = 8.5) {
-  const lineas = [];
-  let linea = [];
-  let anchoLinea = 0;
-
-  const medir = (run, textoRun) => {
-    aplicarFuenteRun(doc, run, fontSize);
-    return doc.getTextWidth(textoRun);
-  };
-
-  const empujarLinea = () => {
-    if (linea.length) lineas.push(linea);
-    linea = [];
-    anchoLinea = 0;
-  };
-
-  for (const run of runs) {
-    const palabras = String(run.text || '').split(/(\s+)/);
-    for (const palabra of palabras) {
-      if (!palabra) continue;
-      const w = medir(run, palabra);
-      if (anchoLinea > 0 && anchoLinea + w > maxWidth) {
-        empujarLinea();
-        if (/^\s+$/.test(palabra)) continue;
-      }
-      if (w > maxWidth && linea.length === 0) {
-        let resto = palabra;
-        while (resto) {
-          let cortar = resto.length;
-          while (cortar > 1 && medir(run, resto.slice(0, cortar)) > maxWidth) cortar -= 1;
-          linea.push({ ...run, text: resto.slice(0, cortar) });
-          empujarLinea();
-          resto = resto.slice(cortar);
-        }
-        continue;
-      }
-      linea.push({ ...run, text: palabra });
-      anchoLinea += w;
-    }
-  }
-  empujarLinea();
-  return lineas.length ? lineas : [[{ text: ' ' }]];
+/** Fuente estándar: métricas fiables a todo el ancho del cuadro de observaciones. */
+function aplicarFuenteRunAmplio(doc, run, fontSize = 8.5) {
+  if (run?.bold) doc.setFont('helvetica', 'bold');
+  else if (run?.italic) doc.setFont('helvetica', 'italic');
+  else doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fontSize);
 }
 
-function dibujarLineaRuns(doc, linea, x, y, fontSize = 8.5) {
+/**
+ * Particiona runs en líneas a todo el ancho del bloque.
+ * Mide y dibuja con Helvetica para evitar el “texto agrupado” de Roboto Condensed.
+ */
+function layoutRunsEnLineas(doc, runs, maxWidth, fontSize = 8.5, { amplio = false } = {}) {
+  const aplicar = amplio ? aplicarFuenteRunAmplio : aplicarFuenteRun;
+  const chars = [];
+  for (const run of runs || []) {
+    const t = String(run.text || '').replace(/\u00a0/g, ' ');
+    for (let i = 0; i < t.length; i += 1) {
+      chars.push({
+        ch: t[i],
+        bold: Boolean(run.bold),
+        italic: Boolean(run.italic),
+      });
+    }
+  }
+  if (!chars.length) return [[{ text: ' ' }]];
+
+  const plano = chars.map((c) => c.ch).join('');
+  aplicar(doc, { bold: false }, fontSize);
+  const lineasStr = doc.splitTextToSize(plano, Math.max(10, maxWidth));
+
+  const result = [];
+  let idx = 0;
+  const total = chars.length;
+
+  for (const rawLinea of lineasStr) {
+    const lineaStr = String(rawLinea || '');
+    if (!lineaStr) {
+      result.push([{ text: ' ' }]);
+      continue;
+    }
+
+    while (idx < total && /\s/.test(chars[idx].ch) && plano.slice(idx, idx + lineaStr.length) !== lineaStr) {
+      idx += 1;
+    }
+
+    let start = plano.indexOf(lineaStr, idx);
+    if (start < 0) start = idx;
+    const end = Math.min(total, start + lineaStr.length);
+    idx = end;
+    while (idx < total && chars[idx].ch === ' ') idx += 1;
+
+    const slice = chars.slice(start, end);
+    const runsLinea = [];
+    for (const c of slice) {
+      const last = runsLinea[runsLinea.length - 1];
+      if (last && last.bold === c.bold && last.italic === c.italic) {
+        last.text += c.ch;
+      } else {
+        runsLinea.push({ text: c.ch, bold: c.bold, italic: c.italic });
+      }
+    }
+    result.push(runsLinea.length ? runsLinea : [{ text: ' ' }]);
+  }
+
+  return result.length ? result : [[{ text: ' ' }]];
+}
+
+function dibujarLineaRuns(doc, linea, x, y, fontSize = 8.5, { amplio = false } = {}) {
+  const aplicar = amplio ? aplicarFuenteRunAmplio : aplicarFuenteRun;
   let cx = x;
   for (const run of linea) {
-    aplicarFuenteRun(doc, run, fontSize);
+    aplicar(doc, run, fontSize);
     doc.setTextColor(...C.text);
     doc.text(run.text, cx, y);
     cx += doc.getTextWidth(run.text);
@@ -765,13 +788,156 @@ function dibujarTablaEnBloque(doc, yTexto, pageRef, tabla, maxW, fontSize, yInic
   return y + 2.5;
 }
 
+/** Une fragmentos de párrafo (div/br del editor) para que el texto fluya a todo el ancho. */
+function coalescerBloquesObservaciones(bloques) {
+  const out = [];
+  for (const b of bloques || []) {
+    if (!b) continue;
+    if (b.type === 'table') {
+      out.push(b);
+      continue;
+    }
+    const runs = (b.runs || [])
+      .map((r) => ({
+        text: String(r.text || '').replace(/\u00a0/g, ' '),
+        bold: Boolean(r.bold),
+        italic: Boolean(r.italic),
+      }))
+      .filter((r) => r.text.length);
+    if (!runs.length) continue;
+
+    const last = out[out.length - 1];
+    if (last && last.type === 'paragraph') {
+      const prevTxt = last.runs.map((r) => r.text).join('');
+      const nextTxt = runs.map((r) => r.text).join('');
+      if (prevTxt && nextTxt && !/\s$/.test(prevTxt) && !/^\s/.test(nextTxt)) {
+        last.runs.push({ text: ' ' });
+      }
+      last.runs.push(...runs);
+    } else {
+      out.push({ type: 'paragraph', runs });
+    }
+  }
+  return out;
+}
+
+/**
+ * Dibuja un párrafo usando TODO el ancho del cuadro del PDF.
+ * Helvetica + splitTextToSize = líneas que llegan al borde derecho.
+ */
+function dibujarParrafoCuadroCompleto(
+  doc,
+  runs,
+  yTexto,
+  pageRef,
+  fontSize,
+  yInicioRef
+) {
+  const anchoUtil = PDF_CONTENT_W - 4;
+  const x0 = PDF_MARGINS.left + 2;
+
+  const plano = (runs || [])
+    .map((r) => String(r.text || '').replace(/\u00a0/g, ' '))
+    .join('')
+    .replace(/[ \t\n\r]+/g, ' ')
+    .trim();
+  if (!plano) return yTexto;
+
+  // Mapa de estilos por índice en el texto plano (aprox. para negritas)
+  const estiloPorIdx = new Array(plano.length).fill(null);
+  {
+    let cursor = 0;
+    for (const run of runs || []) {
+      const t = String(run.text || '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/[ \t\n\r]+/g, ' ');
+      for (let i = 0; i < t.length && cursor < plano.length; i += 1) {
+        // Saltar desfase por trim inicial
+        if (cursor === 0 && t[i] === ' ') continue;
+        if (plano[cursor] === t[i] || (/\s/.test(plano[cursor]) && /\s/.test(t[i]))) {
+          estiloPorIdx[cursor] = { bold: Boolean(run.bold), italic: Boolean(run.italic) };
+          cursor += 1;
+        } else if (/\s/.test(t[i])) {
+          /* espacio colapsado */
+        } else {
+          // resync: buscar siguiente
+          const next = plano.indexOf(t[i], cursor);
+          if (next >= 0) {
+            cursor = next;
+            estiloPorIdx[cursor] = { bold: Boolean(run.bold), italic: Boolean(run.italic) };
+            cursor += 1;
+          }
+        }
+      }
+    }
+  }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(fontSize);
+  doc.setTextColor(...C.text);
+  const lineasStr = doc.splitTextToSize(plano, anchoUtil);
+
+  let y = yTexto;
+  let idx = 0;
+
+  for (const rawLinea of lineasStr) {
+    const lineaStr = String(rawLinea || '');
+    if (y + LINE_H > PDF_PAGE.h - PDF_MARGINS.bottom) {
+      doc.rect(PDF_MARGINS.left, yInicioRef.y0, PDF_CONTENT_W, y - yInicioRef.y0 + 1);
+      doc.addPage();
+      pageRef.page += 1;
+      pintarPiePagina(doc, pageRef);
+      yInicioRef.y0 = PDF_MARGINS.top;
+      y = PDF_MARGINS.top + 4;
+    }
+
+    let start = plano.indexOf(lineaStr, idx);
+    if (start < 0) start = idx;
+    const end = start + lineaStr.length;
+    idx = end;
+    while (idx < plano.length && plano[idx] === ' ') idx += 1;
+
+    // Agrupar caracteres de la línea por estilo
+    const runsLinea = [];
+    for (let i = 0; i < lineaStr.length; i += 1) {
+      const est = estiloPorIdx[start + i] || { bold: false, italic: false };
+      const last = runsLinea[runsLinea.length - 1];
+      if (last && last.bold === est.bold && last.italic === est.italic) {
+        last.text += lineaStr[i];
+      } else {
+        runsLinea.push({ text: lineaStr[i], bold: est.bold, italic: est.italic });
+      }
+    }
+
+    let cx = x0;
+    if (!runsLinea.length) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(fontSize);
+      doc.text(lineaStr, x0, y);
+    } else {
+      for (const run of runsLinea) {
+        if (run.bold) doc.setFont('helvetica', 'bold');
+        else if (run.italic) doc.setFont('helvetica', 'italic');
+        else doc.setFont('helvetica', 'normal');
+        doc.setFontSize(fontSize);
+        doc.setTextColor(...C.text);
+        doc.text(run.text, cx, y);
+        cx += doc.getTextWidth(run.text);
+      }
+    }
+    y += LINE_H;
+  }
+
+  return y;
+}
+
 function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
   y = asegurarEspacio(doc, y, 16, pageRef);
   y = tituloSeccion(doc, y, titulo);
 
   if (subtitulo) {
     y = asegurarEspacio(doc, y, 8, pageRef);
-    doc.setFont(familiaPdf('normal'), 'normal');
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
     doc.setTextColor(...C.muted);
     const sub = doc.splitTextToSize(subtitulo, PDF_CONTENT_W - 2);
@@ -779,10 +945,9 @@ function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
     y += sub.length * 3 + 2;
   }
 
-  const maxW = PDF_CONTENT_W - 4;
   const fontSize = 9;
-  const gapParrafo = LINE_H * 0.55;
-  const bloques = htmlABloques(cuerpo);
+  const gapParrafo = LINE_H * 0.7;
+  const bloques = coalescerBloquesObservaciones(htmlABloques(cuerpo));
 
   y = asegurarEspacio(doc, y, 20, pageRef);
 
@@ -791,16 +956,6 @@ function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
   doc.setDrawColor(...C.border);
   doc.setLineWidth(0.25);
 
-  const nuevaPaginaCuadro = () => {
-    doc.rect(PDF_MARGINS.left, yInicioRef.y0, PDF_CONTENT_W, yTexto - yInicioRef.y0 + 1);
-    doc.addPage();
-    pageRef.page += 1;
-    pintarPiePagina(doc, pageRef);
-    y = PDF_MARGINS.top;
-    yInicioRef.y0 = y;
-    yTexto = y + 4;
-  };
-
   bloques.forEach((bloque, idx) => {
     if (bloque.type === 'table') {
       yTexto = dibujarTablaEnBloque(
@@ -808,26 +963,22 @@ function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
         yTexto,
         pageRef,
         bloque,
-        maxW,
+        PDF_CONTENT_W - 4,
         fontSize,
         yInicioRef
       );
     } else {
-      const lineas = layoutRunsEnLineas(doc, bloque.runs || [{ text: ' ' }], maxW, fontSize);
-      for (const linea of lineas) {
-        if (yTexto + LINE_H > PDF_PAGE.h - PDF_MARGINS.bottom) {
-          nuevaPaginaCuadro();
-        }
-        dibujarLineaRuns(doc, linea, PDF_MARGINS.left + 2, yTexto, fontSize);
-        yTexto += LINE_H;
-      }
+      yTexto = dibujarParrafoCuadroCompleto(
+        doc,
+        bloque.runs || [{ text: ' ' }],
+        yTexto,
+        pageRef,
+        fontSize,
+        yInicioRef
+      );
     }
     if (idx < bloques.length - 1) {
-      if (yTexto + gapParrafo > PDF_PAGE.h - PDF_MARGINS.bottom) {
-        nuevaPaginaCuadro();
-      } else {
-        yTexto += gapParrafo;
-      }
+      yTexto += gapParrafo;
     }
   });
 

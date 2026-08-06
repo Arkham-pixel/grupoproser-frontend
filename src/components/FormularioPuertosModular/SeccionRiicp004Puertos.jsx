@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
+import { META_FORMATO_RIICP004 } from './generarWordRiicp004';
 
 export default function SeccionRiicp004Puertos({ formData, onInputChange, cargando }) {
   const { t } = useTranslation();
@@ -19,10 +20,9 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
     border: `1px solid ${borderColor}`,
   };
 
-  const codigo = formData.codigoInforme?.trim();
-  const tituloSeccion = codigo
-    ? t('ports.ui.formulario.riicp004.seccion.tituloConCodigo', { codigo })
-    : t('ports.ui.formulario.riicp004.seccion.tituloSinCodigo');
+  const tituloSeccion = t('ports.ui.formulario.riicp004.seccion.tituloConCodigo', {
+    codigo: META_FORMATO_RIICP004.codigo,
+  });
 
   return (
     <div
@@ -48,11 +48,11 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
           </label>
           <input
             type="text"
-            value={formData.codigoInforme || ''}
-            onChange={(e) => onInputChange('codigoInforme', e.target.value)}
+            value={META_FORMATO_RIICP004.codigo}
+            readOnly
             className={inputClass}
-            style={inputStyle}
-            placeholder={t('ports.ui.formulario.riicp004.seccion.codigoInformePlaceholder')}
+            style={{ ...inputStyle, opacity: 0.85, cursor: 'default' }}
+            title="Valor fijo del formato"
             disabled={cargando}
           />
         </div>
@@ -103,11 +103,12 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
             {t('ports.ui.formulario.riicp004.seccion.fechaPoliza')}
           </label>
           <input
-            type="date"
-            value={formData.fechaPoliza || ''}
-            onChange={(e) => onInputChange('fechaPoliza', e.target.value)}
+            type="text"
+            value={META_FORMATO_RIICP004.fecha}
+            readOnly
             className={inputClass}
-            style={inputStyle}
+            style={{ ...inputStyle, opacity: 0.85, cursor: 'default' }}
+            title="Valor fijo del formato (mes/año)"
             disabled={cargando}
           />
         </div>
@@ -117,10 +118,11 @@ export default function SeccionRiicp004Puertos({ formData, onInputChange, cargan
           </label>
           <input
             type="text"
-            value={formData.versionInforme || '1'}
-            onChange={(e) => onInputChange('versionInforme', e.target.value)}
+            value={META_FORMATO_RIICP004.version}
+            readOnly
             className={inputClass}
-            style={inputStyle}
+            style={{ ...inputStyle, opacity: 0.85, cursor: 'default' }}
+            title="Valor fijo del formato"
             disabled={cargando}
           />
         </div>

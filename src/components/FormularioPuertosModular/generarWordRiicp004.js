@@ -11,14 +11,25 @@ import {
   ImageRun,
   Header,
   VerticalAlign,
+  HeightRule,
+  LineRuleType,
 } from 'docx';
 import { saveAs } from 'file-saver';
 import Logo from '../../img/Logo.png';
 import { getImageUrlCandidates } from '../../utils/imageUtils';
 
 const ROJO = 'C00000';
+const FUENTE = 'Times New Roman';
 
-const MESES_ABR = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sept', 'Oct', 'Nov', 'Dic'];
+/** Metadatos fijos del formato (encabezado): no se editan en el formulario. */
+export const META_FORMATO_RIICP004 = {
+  codigo: 'CP-006',
+  version: '2',
+  fecha: 'Enero/2026',
+};
+
+/** Interlineado tabla VIN/OBSERVACIONES: 0,60 cm ≈ 340 twips */
+const INTERLINEADO_TABLA_TWIPS = Math.round((0.6 / 2.54) * 1440);
 
 const linea = (texto, { bold = false, italics = false, color = '000000', align = AlignmentType.JUSTIFIED, after = 100 } = {}) =>
   new Paragraph({
@@ -27,7 +38,7 @@ const linea = (texto, { bold = false, italics = false, color = '000000', align =
         text: (texto || '').replace(/\s+/g, ' '),
         bold,
         italics,
-        font: 'Calibri',
+        font: FUENTE,
         size: 24,
         color,
       }),
@@ -38,30 +49,51 @@ const linea = (texto, { bold = false, italics = false, color = '000000', align =
 
 const seccionRoja = (titulo) =>
   new Paragraph({
-    children: [new TextRun({ text: titulo, bold: true, font: 'Calibri', size: 26, color: ROJO })],
+    children: [new TextRun({ text: titulo, bold: true, font: FUENTE, size: 26, color: ROJO })],
     spacing: { before: 300, after: 200 },
   });
 
-const encabezadoTablaRojo = (texto) =>
+const encabezadoTablaRojo = (texto, widthPct) =>
   new TableCell({
+    width: { size: widthPct, type: WidthType.PERCENTAGE },
     verticalAlign: VerticalAlign.CENTER,
     shading: { fill: ROJO },
     children: [
       new Paragraph({
         alignment: AlignmentType.CENTER,
-        children: [new TextRun({ text: texto, bold: true, size: 22, font: 'Calibri', color: 'FFFFFF' })],
+        spacing: {
+          before: 60,
+          after: 60,
+          line: INTERLINEADO_TABLA_TWIPS,
+          lineRule: LineRuleType.EXACT,
+        },
+        children: [new TextRun({ text: texto, bold: true, size: 22, font: FUENTE, color: 'FFFFFF' })],
       }),
     ],
   });
 
-const celdaTexto = (texto) =>
+const celdaTexto = (texto, widthPct) =>
   new TableCell({
+    width: { size: widthPct, type: WidthType.PERCENTAGE },
     verticalAlign: VerticalAlign.CENTER,
     children: [
       new Paragraph({
-        children: [new TextRun({ text: String(texto || ''), size: 22, font: 'Calibri' })],
+        alignment: AlignmentType.LEFT,
+        spacing: {
+          before: 60,
+          after: 60,
+          line: INTERLINEADO_TABLA_TWIPS,
+          lineRule: LineRuleType.EXACT,
+        },
+        children: [new TextRun({ text: String(texto || ''), size: 22, font: FUENTE })],
       }),
     ],
+  });
+
+const filaTablaAveria = (cells) =>
+  new TableRow({
+    height: { value: INTERLINEADO_TABLA_TWIPS + 80, rule: HeightRule.AT_LEAST },
+    children: cells,
   });
 
 const bufferDesdeBase64 = (dataUrl) => {
@@ -101,16 +133,6 @@ const formatearFechaLarga = (fechaStr) => {
   try {
     const fecha = new Date(fechaStr.includes('T') ? fechaStr : `${fechaStr}T00:00:00`);
     return fecha.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
-  } catch {
-    return fechaStr;
-  }
-};
-
-const formatearFechaPoliza = (fechaStr) => {
-  if (!fechaStr) return '';
-  try {
-    const fecha = new Date(fechaStr.includes('T') ? fechaStr : `${fechaStr}T00:00:00`);
-    return `${fecha.getDate()}/${MESES_ABR[fecha.getMonth()]}/${fecha.getFullYear()}`;
   } catch {
     return fechaStr;
   }
@@ -158,7 +180,7 @@ const filaLeyendaGrupo = (texto, columnas = 2) =>
                 text: (texto || '').replace(/\s+/g, ' '),
                 bold: true,
                 size: 20,
-                font: 'Calibri',
+                font: FUENTE,
                 color: '000000',
               }),
             ],
@@ -247,9 +269,9 @@ const gridFotosGrupoVin = async (imagenes, leyenda, columnas = 2) => {
   return filas;
 };
 
-const crearEncabezadoDocumento = (logoBuffer, { asegurado, patio, ciudad, numeroPoliza, codigo, version, fechaPoliza }) => {
+const crearEncabezadoDocumento = (logoBuffer, { asegurado, patio, ciudad, numeroPoliza }) => {
   const tituloCentral = [
-    linea('INFORME DE INSPECCIÓN', { bold: true, align: AlignmentType.CENTER, after: 60 }),
+    linea('Informe de inspección vehicular', { bold: true, align: AlignmentType.CENTER, after: 60 }),
     linea(`ASEGURADO ${asegurado} PATIO ${patio} ${ciudad}`.replace(/\s+/g, ' ').trim(), {
       bold: true,
       align: AlignmentType.CENTER,
@@ -261,9 +283,9 @@ const crearEncabezadoDocumento = (logoBuffer, { asegurado, patio, ciudad, numero
   }
 
   const metaDerecha = [
-    linea(codigo ? `CODIGO: ${codigo}` : 'CODIGO:', { align: AlignmentType.LEFT, after: 40 }),
-    linea(`Versión: ${version}`, { align: AlignmentType.LEFT, after: 40 }),
-    linea(fechaPoliza ? `Fecha: ${fechaPoliza}` : 'Fecha:', { align: AlignmentType.LEFT, after: 0 }),
+    linea(`CODIGO: ${META_FORMATO_RIICP004.codigo}`, { align: AlignmentType.LEFT, after: 40 }),
+    linea(`Versión: ${META_FORMATO_RIICP004.version}`, { align: AlignmentType.LEFT, after: 40 }),
+    linea(`Fecha: ${META_FORMATO_RIICP004.fecha}`, { align: AlignmentType.LEFT, after: 0 }),
   ];
 
   return new Table({
@@ -318,32 +340,52 @@ export const generarWordRiicp004 = async (formData, options = {}) => {
   const fechaReporte = formatearFechaLarga(formData.fecha);
   const asegurado = (formData.asegurado || formData.nombreCliente || 'ASEGURADO').toUpperCase();
   const patio = (formData.patioOperacion || formData.puertoDescargue || '').toUpperCase();
-  const codigo = formData.codigoInforme?.trim() || '';
-  const version = formData.versionInforme || '1';
   const numeroPoliza = formData.numeroPoliza || '';
-  const fechaPoliza = formatearFechaPoliza(formData.fechaPoliza);
 
   const headerTable = crearEncabezadoDocumento(logoBuffer, {
     asegurado,
     patio,
     ciudad,
     numeroPoliza,
-    codigo,
-    version,
-    fechaPoliza,
   });
 
   // ——— Carta ———
   docContent.push(new Paragraph({ spacing: { before: 720, after: 0 }, children: [] }));
-  docContent.push(linea(`${ciudadTexto}, ${fechaReporte}`));
+  // Espacio debajo de "Buenaventura, fecha…" antes del destinatario
+  docContent.push(
+    linea(`${ciudadTexto}, ${fechaReporte}`, {
+      align: AlignmentType.LEFT,
+      after: 280,
+    })
+  );
 
-  if (formData.nombreContacto) docContent.push(linea(formData.nombreContacto.toUpperCase(), { bold: true }));
-  if (formData.cargoContacto) docContent.push(linea(formData.cargoContacto, { bold: true }));
-  if (formData.gerenciaContacto) docContent.push(linea(formData.gerenciaContacto));
-  if (formData.empresaCliente) docContent.push(linea(formData.empresaCliente.toUpperCase()));
-  if (formData.ciudadContacto) docContent.push(linea(formData.ciudadContacto));
+  if (formData.nombreContacto) {
+    docContent.push(
+      linea(formData.nombreContacto.toUpperCase(), { bold: true, align: AlignmentType.LEFT, after: 40 })
+    );
+  }
+  if (formData.cargoContacto) {
+    docContent.push(
+      linea(formData.cargoContacto, { bold: true, align: AlignmentType.LEFT, after: 40 })
+    );
+  }
+  if (formData.gerenciaContacto) {
+    docContent.push(linea(formData.gerenciaContacto, { align: AlignmentType.LEFT, after: 40 }));
+  }
+  if (formData.empresaCliente) {
+    docContent.push(
+      linea(formData.empresaCliente.toUpperCase(), { align: AlignmentType.LEFT, after: 40 })
+    );
+  }
+  if (formData.ciudadContacto) {
+    docContent.push(
+      linea(formData.ciudadContacto, { align: AlignmentType.LEFT, after: 200 })
+    );
+  }
 
-  docContent.push(new Paragraph({ spacing: { after: 150 } }), linea(L('Cordial Saludo.', 'Greetings.')));
+  docContent.push(
+    linea(L('Cordial Saludo.', 'Greetings.'), { align: AlignmentType.LEFT, after: 400 })
+  );
 
   const motonave = formData.nombreMotonave || 'LA MOTONAVE';
   const totalVeh = formData.numeroVehiculos || formData.cantidadVehiculos || 'N';
@@ -359,7 +401,8 @@ export const generarWordRiicp004 = async (formData, options = {}) => {
         (arribo ? ` el ${arribo}` : '') +
         (bls ? `, amparados con los BLs. ${bls}` : '') +
         (origen ? `, de ${origen}` : '') +
-        (fechasDesc ? `, descargue realizado los días ${fechasDesc}.` : '.')
+        (fechasDesc ? `, descargue realizado los días ${fechasDesc}.` : '.'),
+      { align: AlignmentType.JUSTIFIED, after: 200 }
     )
   );
 
@@ -388,19 +431,26 @@ export const generarWordRiicp004 = async (formData, options = {}) => {
 
   const tablaAverias = formData.tablaAverias || [];
   if (tablaAverias.length > 0) {
+    const colVin = 35;
+    const colObs = 65;
     docContent.push(
+      new Paragraph({ spacing: { before: 120, after: 80 }, children: [] }),
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
         rows: [
-          new TableRow({ children: [encabezadoTablaRojo('VIN'), encabezadoTablaRojo(L('OBSERVACIONES', 'OBSERVATIONS'))] }),
-          ...tablaAverias.map(
-            (fila) =>
-              new TableRow({
-                children: [celdaTexto(fila.vin), celdaTexto(fila.averias || fila.dano)],
-              })
+          filaTablaAveria([
+            encabezadoTablaRojo('VIN', colVin),
+            encabezadoTablaRojo(L('OBSERVACIONES', 'OBSERVATIONS'), colObs),
+          ]),
+          ...tablaAverias.map((fila) =>
+            filaTablaAveria([
+              celdaTexto(fila.vin, colVin),
+              celdaTexto(fila.averias || fila.dano, colObs),
+            ])
           ),
         ],
-      })
+      }),
+      new Paragraph({ spacing: { after: 120 }, children: [] })
     );
   }
 
