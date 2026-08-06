@@ -57,7 +57,7 @@ function normalizarTextoPdf(valor) {
 function estiloDesdeAtributos(el, estiloPadre) {
   const next = { ...estiloPadre };
   const tag = String(el.tagName || '').toLowerCase();
-  if (tag === 'b' || tag === 'strong') next.bold = true;
+  if (tag === 'b' || tag === 'strong' || tag === 'th') next.bold = true;
   if (tag === 'i' || tag === 'em') next.italic = true;
   const style = String(el.getAttribute?.('style') || '');
   if (/font-weight\s*:\s*(bold|[6-9]00)/i.test(style)) next.bold = true;
@@ -76,13 +76,154 @@ function textoPlanoNodo(node) {
     .join('');
 }
 
+/** Extrae runs con estilo desde un nodo (celda / fragmento). */
+function nodoARuns(node, estiloBase = { bold: false, italic: false }) {
+  const runs = [];
+  const push = (texto, estilo) => {
+    if (texto == null || texto === '') return;
+    const t = String(texto).replace(/\u00a0/g, ' ');
+    if (!t) return;
+    runs.push({
+      text: t.replace(/\n+/g, ' '),
+      bold: Boolean(estilo.bold),
+      italic: Boolean(estilo.italic),
+    });
+  };
+  const walk = (n, estilo) => {
+    if (!n) return;
+    if (n.nodeType === 3) {
+      push(n.nodeValue || '', estilo);
+      return;
+    }
+    if (n.nodeType !== 1) return;
+    const tag = String(n.tagName || '').toLowerCase();
+    if (tag === 'br') {
+      push(' ', estilo);
+      return;
+    }
+    const next = estiloDesdeAtributos(n, estilo);
+    Array.from(n.childNodes).forEach((c) => walk(c, next));
+  };
+  walk(node, estiloBase);
+  const limpios = runs.filter((r) => r.text.length);
+  return limpios.length ? limpios : [{ text: ' ' }];
+}
+
+function parseWidthRatio(raw, fallback = 0.45) {
+  const s = String(raw || '').trim();
+  if (!s) return fallback;
+  if (s.endsWith('%')) {
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? Math.min(1, Math.max(0.15, n / 100)) : fallback;
+  }
+  const n = parseFloat(s);
+  // px sin contexto → asumir proporción razonable respecto al ancho útil (~500px típico)
+  if (Number.isFinite(n) && n > 0) return Math.min(1, Math.max(0.15, n / 520));
+  return fallback;
+}
+
+function extraerAnchosTabla(tableEl, cols) {
+  const styleW =
+    (tableEl.getAttribute('style') || '').match(/width\s*:\s*([^;]+)/i)?.[1] ||
+    tableEl.getAttribute('width') ||
+    '';
+  // Sin ancho explícito → compacto; no asumir 100%
+  const widthRatio = parseWidthRatio(styleW, 0.45);
+
+  const ratios = new Array(cols).fill(0);
+  const colEls = tableEl.querySelectorAll(':scope > colgroup > col');
+  if (colEls.length) {
+    Array.from(colEls).slice(0, cols).forEach((col, i) => {
+      const raw = col.style?.width || col.getAttribute('width') || '';
+      if (raw.endsWith('%')) {
+        const n = parseFloat(raw);
+        if (Number.isFinite(n) && n > 0) ratios[i] = n;
+      } else {
+        const n = parseFloat(raw);
+        if (Number.isFinite(n) && n > 0) ratios[i] = n;
+      }
+    });
+  }
+
+  if (ratios.every((r) => r <= 0)) {
+    const firstRow = tableEl.querySelector('tr');
+    if (firstRow) {
+      Array.from(firstRow.children)
+        .filter((c) => /^(td|th)$/i.test(c.tagName || ''))
+        .slice(0, cols)
+        .forEach((cell, i) => {
+          const raw =
+            (cell.getAttribute('style') || '').match(/width\s*:\s*([^;]+)/i)?.[1] ||
+            cell.getAttribute('width') ||
+            '';
+          if (raw.endsWith('%')) {
+            const n = parseFloat(raw);
+            if (Number.isFinite(n) && n > 0) ratios[i] = n;
+          }
+        });
+    }
+  }
+
+  if (ratios.every((r) => r <= 0)) {
+    return { widthRatio, colRatios: new Array(cols).fill(1 / cols) };
+  }
+
+  // Rellenar huecos
+  const missing = ratios.map((r) => (r > 0 ? 0 : 1));
+  const assigned = ratios.reduce((a, b) => a + (b > 0 ? b : 0), 0);
+  const missCount = missing.reduce((a, b) => a + b, 0);
+  const remain = Math.max(0, 100 - assigned);
+  const filled = ratios.map((r, i) =>
+    r > 0 ? r : missCount ? remain / missCount : 1
+  );
+  const sum = filled.reduce((a, b) => a + b, 0) || 1;
+  return {
+    widthRatio,
+    colRatios: filled.map((r) => r / sum),
+  };
+}
+
+function extraerAlignCelda(cell) {
+  const style = String(cell.getAttribute?.('style') || '');
+  const m = style.match(/text-align\s*:\s*(left|center|right|justify)/i);
+  if (m) return m[1].toLowerCase();
+  const align = String(cell.getAttribute?.('align') || '').toLowerCase();
+  if (align === 'left' || align === 'center' || align === 'right') return align;
+  // Por defecto centrado (cuadros compactos de actas)
+  return 'center';
+}
+
+function extraerTablaDeElemento(tableEl) {
+  const rows = [];
+  const trList = tableEl.querySelectorAll('tr');
+  trList.forEach((tr) => {
+    const celdas = [];
+    Array.from(tr.children).forEach((cell) => {
+      const tag = String(cell.tagName || '').toLowerCase();
+      if (tag !== 'td' && tag !== 'th') return;
+      const base = { bold: tag === 'th', italic: false };
+      const runs = nodoARuns(cell, base);
+      celdas.push({
+        runs,
+        isHeader: tag === 'th',
+        align: extraerAlignCelda(cell),
+      });
+    });
+    if (celdas.length) rows.push(celdas);
+  });
+  if (!rows.length) return null;
+  const cols = Math.max(...rows.map((r) => r.length), 1);
+  const { widthRatio, colRatios } = extraerAnchosTabla(tableEl, cols);
+  return { type: 'table', rows, widthRatio, colRatios };
+}
+
 /**
- * Convierte HTML del editor rico tal cual (negritas, viñetas, párrafos).
- * No duplica "-" si el <li> ya trae bala escrita por el usuario.
+ * HTML del editor → bloques de párrafo o tabla (para PDF fiel al cuadro).
+ * @returns {Array<{type:'paragraph', runs}|{type:'table', rows}>}
  */
-function htmlAParrafosRuns(html) {
+function htmlABloques(html) {
   const raw = String(html ?? '');
-  if (!raw.trim()) return [[{ text: ' ' }]];
+  if (!raw.trim()) return [{ type: 'paragraph', runs: [{ text: ' ' }] }];
 
   if (!/<[a-z][\s\S]*>/i.test(raw)) {
     return raw
@@ -90,35 +231,33 @@ function htmlAParrafosRuns(html) {
       .split(/\n/)
       .map((linea) => {
         const t = decodificarEntidadesHtml(linea).replace(/\u00a0/g, ' ');
-        // Conservar espacios; solo descartar líneas totalmente vacías
         if (!t.trim()) return null;
-        return [{ text: t.replace(/[ \t]+$/g, '') }];
+        return { type: 'paragraph', runs: [{ text: t.replace(/[ \t]+$/g, '') }] };
       })
       .filter(Boolean);
   }
 
   if (typeof document === 'undefined') {
-    return htmlAParrafosRunsRegex(raw);
+    return htmlAParrafosRunsRegex(raw).map((runs) => ({ type: 'paragraph', runs }));
   }
 
   const root = document.createElement('div');
   root.innerHTML = raw;
-
-  const parrafos = [];
+  const bloques = [];
   let runs = [];
 
-  const flush = () => {
+  const flushParrafo = () => {
     const limpios = runs
       .map((r) => ({
         ...r,
         text: String(r.text || '').replace(/\u00a0/g, ' '),
       }))
       .filter((r) => r.text.length);
-    // Evitar párrafos que solo son "-" / "•" (li vacíos del editor)
     const soloBala =
-      limpios.length &&
-      limpios.every((r) => /^\s*[-*•–—]+\s*$/.test(r.text));
-    if (limpios.length && !soloBala) parrafos.push(limpios);
+      limpios.length && limpios.every((r) => /^\s*[-*•–—]+\s*$/.test(r.text));
+    if (limpios.length && !soloBala) {
+      bloques.push({ type: 'paragraph', runs: limpios });
+    }
     runs = [];
   };
 
@@ -135,11 +274,10 @@ function htmlAParrafosRuns(html) {
           italic: Boolean(estilo.italic),
         });
       }
-      if (idx < partes.length - 1) flush();
+      if (idx < partes.length - 1) flushParrafo();
     });
   };
 
-  /** Quita una bala inicial del primer texto del nodo (evita "- - Primer…"). */
   const stripBalaInicialEnArbol = (node) => {
     if (!node) return false;
     if (node.nodeType === 3) {
@@ -149,7 +287,6 @@ function htmlAParrafosRuns(html) {
         node.nodeValue = limpio;
         return true;
       }
-      // Solo espacios: seguir buscando
       return !original.trim();
     }
     if (node.nodeType !== 1) return false;
@@ -172,49 +309,86 @@ function htmlAParrafosRuns(html) {
 
     const el = node;
     const tag = String(el.tagName || '').toLowerCase();
+
+    if (tag === 'table') {
+      flushParrafo();
+      const tabla = extraerTablaDeElemento(el);
+      if (tabla) bloques.push(tabla);
+      return;
+    }
+
     if (tag === 'br') {
-      if (runs.length) flush();
+      if (runs.length) flushParrafo();
       return;
     }
     if (tag === 'hr') {
-      flush();
+      flushParrafo();
       return;
     }
-    // Listas contenedoras: no aportan texto propio
     if (tag === 'ul' || tag === 'ol') {
-      flush();
+      flushParrafo();
       Array.from(el.childNodes).forEach((child) => walk(child, estilo));
-      flush();
+      flushParrafo();
       return;
     }
 
     const nextEstilo = estiloDesdeAtributos(el, estilo);
 
     if (tag === 'li') {
-      flush();
+      flushParrafo();
       const plano = textoPlanoNodo(el).replace(/\u00a0/g, ' ').trim();
-      if (!plano) return; // li vacío / solo <br> → no pintar "-" suelto
-      // Clonar para no mutar el DOM del editor
+      if (!plano) return;
       const clone = el.cloneNode(true);
       stripBalaInicialEnArbol(clone);
       const plano2 = textoPlanoNodo(clone).replace(/\u00a0/g, ' ').trim();
       if (!plano2) return;
       pushTexto('- ', nextEstilo);
       Array.from(clone.childNodes).forEach((child) => walk(child, nextEstilo));
-      flush();
+      flushParrafo();
       return;
     }
 
-    const esBloque = /^(p|div|h[1-6]|tr|blockquote)$/i.test(tag);
-    if (esBloque) flush();
+    // Celdas/filas huérfanas (sin <table>): no generar un párrafo por celda
+    // (eso dejaba huecos enormes en el PDF). Se unen en una sola línea.
+    if (tag === 'tr') {
+      flushParrafo();
+      const celdas = Array.from(el.children).filter((c) =>
+        /^(td|th)$/i.test(c.tagName || '')
+      );
+      celdas.forEach((cell, i) => {
+        if (i > 0) pushTexto('  |  ', nextEstilo);
+        const base = {
+          bold: String(cell.tagName || '').toLowerCase() === 'th' || nextEstilo.bold,
+          italic: nextEstilo.italic,
+        };
+        Array.from(cell.childNodes).forEach((child) => walk(child, base));
+      });
+      flushParrafo();
+      return;
+    }
+    if (tag === 'td' || tag === 'th' || tag === 'thead' || tag === 'tbody') {
+      Array.from(el.childNodes).forEach((child) => walk(child, nextEstilo));
+      return;
+    }
+
+    const esBloque = /^(p|div|h[1-6]|blockquote)$/i.test(tag);
+    // Dentro de una celda, <p> no debe abrir párrafos nuevos del bloque externo
+    if (esBloque) flushParrafo();
     Array.from(el.childNodes).forEach((child) => walk(child, nextEstilo));
-    if (esBloque) flush();
+    if (esBloque) flushParrafo();
   };
 
   Array.from(root.childNodes).forEach((child) => walk(child, { bold: false, italic: false }));
-  flush();
+  flushParrafo();
 
-  return parrafos.length ? parrafos : [[{ text: ' ' }]];
+  return bloques.length ? bloques : [{ type: 'paragraph', runs: [{ text: ' ' }] }];
+}
+
+/** Compat: solo párrafos (sin tablas). */
+function htmlAParrafosRuns(html) {
+  return htmlABloques(html)
+    .filter((b) => b.type === 'paragraph')
+    .map((b) => b.runs);
 }
 
 /** Fallback sin DOM (p.ej. tests). */
@@ -473,6 +647,124 @@ function filaValorCompleto(doc, y, pageRef, label, value) {
   return filaCeldas(doc, y, pageRef, [{ label, value }], [1]);
 }
 
+function medirAnchoRuns(doc, runs, fontSize) {
+  let w = 0;
+  for (const run of runs || []) {
+    aplicarFuenteRun(doc, run, fontSize);
+    w += doc.getTextWidth(String(run.text || ''));
+  }
+  return w;
+}
+
+function normalizarCeldasFila(row) {
+  if (!Array.isArray(row)) return [];
+  return row.map((cell) => {
+    if (cell && Array.isArray(cell.runs)) return cell;
+    if (Array.isArray(cell)) return { runs: cell, isHeader: false, align: 'left' };
+    return { runs: [{ text: ' ' }], isHeader: false, align: 'left' };
+  });
+}
+
+/** Dibuja una tabla HTML del editor dentro del cuadro de observaciones (fiel al editor). */
+function dibujarTablaEnBloque(doc, yTexto, pageRef, tabla, maxW, fontSize, yInicioRef) {
+  const rowsRaw = tabla.rows || [];
+  if (!rowsRaw.length) return yTexto;
+
+  const rows = rowsRaw.map(normalizarCeldasFila);
+  const cols = Math.max(...rows.map((r) => r.length), 1);
+  const fs = Math.max(8, fontSize - 0.5);
+  const padX = 1.6;
+  const padY = 1.1;
+  const lineH = LINE_H * 0.88;
+
+  // Anchos naturales por contenido (cuadro pequeño, al texto)
+  const natural = new Array(cols).fill(0);
+  rows.forEach((row) => {
+    for (let c = 0; c < cols; c += 1) {
+      const cell = row[c] || { runs: [{ text: ' ' }] };
+      const w = medirAnchoRuns(doc, cell.runs, fs) + padX * 2 + 0.8;
+      if (w > natural[c]) natural[c] = w;
+    }
+  });
+  for (let c = 0; c < cols; c += 1) natural[c] = Math.max(natural[c], 10);
+
+  const naturalSum = natural.reduce((a, b) => a + b, 0) || 1;
+  // Siempre compacto: solo un poco más que el texto (máx. ~42% del bloque)
+  const tableW = Math.min(maxW * 0.42, naturalSum * 1.08);
+
+  const ratios =
+    Array.isArray(tabla.colRatios) && tabla.colRatios.length === cols
+      ? tabla.colRatios
+      : null;
+
+  let colWidths;
+  if (ratios && !ratios.every((r) => Math.abs(r - ratios[0]) < 0.02)) {
+    colWidths = ratios.map((r) => tableW * r);
+  } else {
+    colWidths = natural.map((w) => (w / naturalSum) * tableW);
+  }
+
+  let y = yTexto + 1;
+
+  const asegurar = (alto) => {
+    if (y + alto > PDF_PAGE.h - PDF_MARGINS.bottom) {
+      doc.rect(PDF_MARGINS.left, yInicioRef.y0, PDF_CONTENT_W, y - yInicioRef.y0 + 1);
+      doc.addPage();
+      pageRef.page += 1;
+      pintarPiePagina(doc, pageRef);
+      yInicioRef.y0 = PDF_MARGINS.top;
+      y = PDF_MARGINS.top + 4;
+    }
+  };
+
+  rows.forEach((row) => {
+    const celdasLayout = [];
+    for (let c = 0; c < cols; c += 1) {
+      const cell = row[c] || { runs: [{ text: ' ' }], isHeader: false, align: 'center' };
+      const lineas = layoutRunsEnLineas(
+        doc,
+        cell.runs?.length ? cell.runs : [{ text: ' ' }],
+        Math.max(6, colWidths[c] - padX * 2),
+        fs
+      );
+      celdasLayout.push({ ...cell, align: cell.align || 'center', lineas });
+    }
+    const rowH = Math.max(
+      4.8,
+      ...celdasLayout.map((c) => c.lineas.length * lineH + padY * 2)
+    );
+    asegurar(rowH + 0.3);
+
+    let x = PDF_MARGINS.left + 2;
+    celdasLayout.forEach((cell, c) => {
+      const colW = colWidths[c];
+      doc.setDrawColor(...C.border);
+      doc.setLineWidth(0.35);
+      doc.setFillColor(...C.white);
+      doc.rect(x, y, colW, rowH, 'FD');
+
+      let ty = y + padY + fs * 0.32 + 1.1;
+      cell.lineas.forEach((linea) => {
+        // Por defecto centrado (como el ejemplo del usuario)
+        let lw = 0;
+        for (const run of linea) {
+          aplicarFuenteRun(doc, run, fs);
+          lw += doc.getTextWidth(String(run.text || ''));
+        }
+        let tx = x + (colW - lw) / 2;
+        if (cell.align === 'left') tx = x + padX;
+        else if (cell.align === 'right') tx = x + colW - padX - lw;
+        dibujarLineaRuns(doc, linea, tx, ty, fs);
+        ty += lineH;
+      });
+      x += colW;
+    });
+    y += rowH;
+  });
+
+  return y + 2.5;
+}
+
 function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
   y = asegurarEspacio(doc, y, 16, pageRef);
   y = tituloSeccion(doc, y, titulo);
@@ -489,41 +781,48 @@ function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
 
   const maxW = PDF_CONTENT_W - 4;
   const fontSize = 9;
-  const gapParrafo = LINE_H * 0.75;
-  const parrafosRuns = htmlAParrafosRuns(cuerpo);
+  const gapParrafo = LINE_H * 0.55;
+  const bloques = htmlABloques(cuerpo);
 
-  // Precalcular líneas por párrafo (con espacio entre ellos, como el ejemplo corregido)
-  const bloquesLineas = parrafosRuns.map((runs) => layoutRunsEnLineas(doc, runs, maxW, fontSize));
-  const totalLineas = bloquesLineas.reduce((n, ls) => n + ls.length, 0);
-  const altoEstimado =
-    totalLineas * LINE_H + Math.max(0, bloquesLineas.length - 1) * gapParrafo + 8;
-
-  y = asegurarEspacio(doc, y, Math.min(Math.max(14, altoEstimado), 48), pageRef);
+  y = asegurarEspacio(doc, y, 20, pageRef);
 
   let yTexto = y + 4;
-  let yInicio = y;
+  const yInicioRef = { y0: y };
   doc.setDrawColor(...C.border);
   doc.setLineWidth(0.25);
 
   const nuevaPaginaCuadro = () => {
-    doc.rect(PDF_MARGINS.left, yInicio, PDF_CONTENT_W, yTexto - yInicio + 1);
+    doc.rect(PDF_MARGINS.left, yInicioRef.y0, PDF_CONTENT_W, yTexto - yInicioRef.y0 + 1);
     doc.addPage();
     pageRef.page += 1;
     pintarPiePagina(doc, pageRef);
     y = PDF_MARGINS.top;
-    yInicio = y;
+    yInicioRef.y0 = y;
     yTexto = y + 4;
   };
 
-  bloquesLineas.forEach((lineas, idxParrafo) => {
-    for (const linea of lineas) {
-      if (yTexto + LINE_H > PDF_PAGE.h - PDF_MARGINS.bottom) {
-        nuevaPaginaCuadro();
+  bloques.forEach((bloque, idx) => {
+    if (bloque.type === 'table') {
+      yTexto = dibujarTablaEnBloque(
+        doc,
+        yTexto,
+        pageRef,
+        bloque,
+        maxW,
+        fontSize,
+        yInicioRef
+      );
+    } else {
+      const lineas = layoutRunsEnLineas(doc, bloque.runs || [{ text: ' ' }], maxW, fontSize);
+      for (const linea of lineas) {
+        if (yTexto + LINE_H > PDF_PAGE.h - PDF_MARGINS.bottom) {
+          nuevaPaginaCuadro();
+        }
+        dibujarLineaRuns(doc, linea, PDF_MARGINS.left + 2, yTexto, fontSize);
+        yTexto += LINE_H;
       }
-      dibujarLineaRuns(doc, linea, PDF_MARGINS.left + 2, yTexto, fontSize);
-      yTexto += LINE_H;
     }
-    if (idxParrafo < bloquesLineas.length - 1) {
+    if (idx < bloques.length - 1) {
       if (yTexto + gapParrafo > PDF_PAGE.h - PDF_MARGINS.bottom) {
         nuevaPaginaCuadro();
       } else {
@@ -532,9 +831,9 @@ function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
     }
   });
 
-  const altoFinal = Math.max(12, yTexto - yInicio + 2);
-  doc.rect(PDF_MARGINS.left, yInicio, PDF_CONTENT_W, altoFinal);
-  return yInicio + altoFinal + 2;
+  const altoFinal = Math.max(12, yTexto - yInicioRef.y0 + 2);
+  doc.rect(PDF_MARGINS.left, yInicioRef.y0, PDF_CONTENT_W, altoFinal);
+  return yInicioRef.y0 + altoFinal + 2;
 }
 
 async function pintarEncabezado(doc, form, logoDataUrl) {

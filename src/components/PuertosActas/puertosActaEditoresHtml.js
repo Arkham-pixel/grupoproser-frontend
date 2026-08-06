@@ -16,16 +16,21 @@ export function textoPlanoHtml(html) {
     .trim();
 }
 
-/** Elige el candidato con más texto visible (evita que un '' pise contenido válido). */
+/** Elige el candidato con más texto visible (evita que un '' pise contenido válido).
+ * Prefiere HTML que conserve cuadros/tablas cuando el texto es similar.
+ */
 export function elegirHtmlMasCompleto(...candidatos) {
   let mejor = '';
-  let mejorLen = -1;
+  let mejorScore = -1;
   for (const c of candidatos) {
     if (typeof c !== 'string') continue;
     const len = textoPlanoHtml(c).length;
-    if (len > mejorLen) {
+    const tieneTabla = /<table[\s>]/i.test(c) ? 500 : 0;
+    const tieneEstilo = /<(b|strong|i|em|ul|ol|li)\b/i.test(c) ? 50 : 0;
+    const score = len + tieneTabla + tieneEstilo;
+    if (score > mejorScore) {
       mejor = c;
-      mejorLen = len;
+      mejorScore = score;
     }
   }
   return mejor;
