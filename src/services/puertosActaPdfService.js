@@ -46,7 +46,7 @@ function normalizarTextoPdf(valor) {
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/li>/gi, '\n')
-    .replace(/<li[^>]*>/gi, '- ')
+    .replace(/<li[^>]*>/gi, '')
     .replace(/<[^>]+>/g, ' ')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
@@ -340,10 +340,10 @@ function htmlABloques(html) {
       const plano = textoPlanoNodo(el).replace(/\u00a0/g, ' ').trim();
       if (!plano) return;
       const clone = el.cloneNode(true);
+      // Quitar bala/guion que el editor o el HTML puedan traer; no añadir otro en el PDF
       stripBalaInicialEnArbol(clone);
       const plano2 = textoPlanoNodo(clone).replace(/\u00a0/g, ' ').trim();
       if (!plano2) return;
-      pushTexto('- ', nextEstilo);
       Array.from(clone.childNodes).forEach((child) => walk(child, nextEstilo));
       flushParrafo();
       return;
@@ -401,7 +401,7 @@ function htmlAParrafosRunsRegex(raw) {
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/h[1-6]>/gi, '\n')
     .replace(/<\/li>/gi, '\n')
-    // Una sola bala; si el li ya traía "-", no duplicar
+    // Sin bala en PDF: el texto del li va como párrafo normal
     .replace(/<li[^>]*>\s*[-*•–—]+\s*/gi, '\n«LI»')
     .replace(/<li[^>]*>/gi, '\n«LI»')
     .replace(/<hr\s*\/?>/gi, '\n')
@@ -451,7 +451,7 @@ function htmlAParrafosRunsRegex(raw) {
     const lower = tok.toLowerCase();
     if (tok === '«LI»') {
       flushParrafo();
-      pushTexto('- ');
+      // no prefijo "- "
     } else if (lower === '<strong>' || lower === '<b>' || /^<strong\s/i.test(tok) || /^<b\s/i.test(tok)) {
       bold += 1;
     } else if (lower === '</strong>' || lower === '</b>') {
@@ -804,6 +804,16 @@ function coalescerBloquesObservaciones(bloques) {
         italic: Boolean(r.italic),
       }))
       .filter((r) => r.text.length);
+    if (!runs.length) continue;
+
+    // Quitar guion/bala residual al inicio del párrafo (no debe ir al PDF)
+    if (runs[0]) {
+      runs[0] = {
+        ...runs[0],
+        text: runs[0].text.replace(/^\s*[-*•–—]+\s+/, ''),
+      };
+      if (!runs[0].text) runs.shift();
+    }
     if (!runs.length) continue;
 
     const last = out[out.length - 1];

@@ -16,6 +16,7 @@ export const OPCIONES_TIPO = [
   { value: 'caso_exportacion', label: 'Caso exportación' },
   { value: 'caso_granel', label: 'Inspección Granel' },
   { value: 'inspeccion_asegurado', label: 'Inspección asegurado' },
+  { value: 'inspeccion_motorysa', label: 'Inspección Motorysa' },
   { value: 'acta', label: 'Acta' },
 ];
 
@@ -26,6 +27,7 @@ const TIPO_LABEL = {
   caso_exportacion: 'Caso exportación',
   caso_granel: 'Inspección Granel',
   inspeccion_asegurado: 'Inspección asegurado',
+  inspeccion_motorysa: 'Inspección Motorysa',
 };
 
 export function contarFiltrosActivos(filtros = {}) {
@@ -94,6 +96,10 @@ export function exportarTrazabilidadPuertosExcel(registros = []) {
     {
       Métrica: 'Inspección asegurado',
       Valor: registros.filter((r) => r.tipoRegistro === 'inspeccion_asegurado').length,
+    },
+    {
+      Métrica: 'Inspección Motorysa',
+      Valor: registros.filter((r) => r.tipoRegistro === 'inspeccion_motorysa').length,
     },
     { Métrica: 'Fecha exportación', Valor: new Date().toLocaleString('es-CO') },
   ];

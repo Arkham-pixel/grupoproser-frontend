@@ -34,6 +34,14 @@ export const ASEGURADOS = {
     asegurado: 'METROKIA',
     nombreCliente: 'METROKIA',
   },
+  MOTORYSA: {
+    asegurado: 'MOTORYSA',
+    nombreCliente: 'MOTORYSA',
+  },
+  AUTOCOM: {
+    asegurado: 'AUTOCOM',
+    nombreCliente: 'AUTOCOM',
+  },
   TOYOTA: {
     asegurado: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S',
     nombreCliente: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S',

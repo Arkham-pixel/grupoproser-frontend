@@ -64,6 +64,7 @@ import ReportePropiedades from './components/SubcomponentePropiedades/ReportePro
 import InspeccionDesdeCasoPropiedades from './components/SubcomponentePropiedades/InspeccionDesdeCasoPropiedades';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
+import PuertosInspeccionMotorysaMain from './components/FormularioPuertosModular/PuertosInspeccionMotorysaMain';
 import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
 import PuertosActasListado from './components/PuertosActas/PuertosActasListado';
 import PuertosNuevaActa from './components/PuertosActas/PuertosNuevaActa';
@@ -541,11 +542,15 @@ export default function App() {
               path="inspeccion-asegurado/editar/:id"
               element={<PuertosInspeccionMain tipoInicial="riicp004" modoActas />}
             />
+            <Route path="inspeccion-motorysa/nueva" element={<PuertosInspeccionMotorysaMain />} />
+            <Route path="inspeccion-motorysa/editar/:id" element={<PuertosInspeccionMotorysaMain />} />
             <Route path="catalogos" element={<PuertosCatalogos />} />
           </Route>
 
           <Route path="puertos/inspeccion-asegurado" element={<Navigate to="/puertos/actas/inspeccion-asegurado/nueva" replace />} />
           <Route path="puertos/inspeccion-asegurado/editar/:id" element={<Navigate to="/puertos/actas/inspeccion-asegurado/editar/:id" replace />} />
+          <Route path="puertos/inspeccion-motorysa" element={<Navigate to="/puertos/actas/inspeccion-motorysa/nueva" replace />} />
+          <Route path="puertos/inspeccion-motorysa/editar/:id" element={<Navigate to="/puertos/actas/inspeccion-motorysa/editar/:id" replace />} />
 
           <Route path="historial" element={<HistorialFormularios />} />
           <Route path="siniestros" element={<SiniestrosList />} />

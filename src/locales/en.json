@@ -6183,6 +6183,7 @@
           "informeExportacion": "Export Report",
           "inspeccionGranel": "Bulk Inspection",
           "inspeccionAsegurado": "Insured Inspection",
+          "inspeccionMotorysa": "Motorysa Inspection",
           "catalogos": "Catalogs"
         }
       },
@@ -6191,6 +6192,7 @@
         "caso_exportacion": "Export case",
         "caso_granel": "Bulk Inspection",
         "inspeccion_asegurado": "Insured inspection",
+        "inspeccion_motorysa": "Motorysa inspection",
         "registro": "Record",
         "todos": "All types"
       },
@@ -6212,6 +6214,7 @@
         "informeExportacion": "Export Report",
         "inspeccionGranel": "Bulk Inspection",
         "inspeccionAsegurado": "Insured Inspection",
+        "inspeccionMotorysa": "Motorysa Inspection",
         "errorBackend": "{{error}}. Check that the backend is running.",
         "loadError": "Error loading records",
         "showFilters": "Filter",
@@ -6461,6 +6464,8 @@
       "inspeccion": {
         "title": "PORTS INSPECTION FORM",
         "subtitleRiicp": "Insured inspection at yards (vehicles)",
+        "titleMotorysa": "Motorysa inspection report",
+        "subtitleMotorysa": "Vehicle yard inspection (Motorysa format)",
         "subtitleDiario": "Modular system for port risk inspection",
         "editMode": "Edit mode",
         "date": "DATE:",
@@ -6486,12 +6491,15 @@
           "manualError": "Error generating the manual. Please try again.",
           "guardadoActas": "✅ Report saved to Reports and Discharges{{consecutivo}}",
           "noEsAsegurado": "This record is not an insured inspection report.",
+          "noEsMotorysa": "This record is not a Motorysa inspection report.",
           "fotosRecortadas": "This report had more than {{max}} photos in a section. Only the first {{max}} are shown. Save to apply the limit on the server.",
           "cargarInformeError": "Error loading the report: {{error}}",
           "guardarError": "Error saving: {{error}}",
           "documentoGenerado": "✅ {{tipo}} document generated successfully",
           "informeRiicpGenerado": "✅ Report {{codigo}} (Word) generated successfully",
           "informeRiicpPdfGenerado": "✅ Report {{codigo}} (PDF) generated successfully",
+          "informeMotorysaGenerado": "✅ Motorysa report {{codigo}} (Word) generated successfully",
+          "informeMotorysaPdfGenerado": "✅ Motorysa report {{codigo}} (PDF) generated successfully",
           "informeRiicpFallback": "insured inspection",
           "generarDocumentoError": "Error generating the document: {{error}}",
           "intenteNuevamente": "please try again",
@@ -6672,7 +6680,8 @@
           "recomendacionesInforme": "📝 Report Recommendations ({{count}})",
           "sinRecomendaciones": "No recommendations added",
           "sinRecomendacionesAyuda": "Write a recommendation and click \"Add to Report\"",
-          "tituloRiicp": "4 — RECOMMENDATIONS"
+          "tituloRiicp": "4 — RECOMMENDATIONS",
+          "tituloMotorysa": "4 — RECOMMENDATIONS"
         },
         "seccionInicial": {
           "tituloCarta": "📋 COVER LETTER INFORMATION",
@@ -6681,6 +6690,9 @@
           "codigoReferencia": "Reference Code (Auto-generated)",
           "codigoReferenciaPlaceholder": "CPD-2025-XXX (Generated on save)",
           "codigoReferenciaAyuda": "The code will be generated automatically when the form is saved",
+          "codigoReferenciaLibre": "Report number / Reference code",
+          "codigoReferenciaLibrePlaceholder": "E.g.: BT2026001/2026",
+          "codigoReferenciaLibreAyuda": "Free text.",
           "seleccionCliente": "📧 Client Selection",
           "clienteEmpresa": "Client / Company",
           "seleccionarCliente": "Select a client...",
@@ -6712,6 +6724,7 @@
           "puertoDescargue": "Discharge Port",
           "puertoDescarguePlaceholder": "E.g.: Bahía Port",
           "ocultar": "Hide",
+          "mostrarVistaPrevia": "Preview",
           "vistaPrevia": {
             "fallbackCiudad": "City",
             "emailLabel": "Email:",
@@ -6736,6 +6749,8 @@
           "seleccionarCiudad": "Select a city...",
           "opcionesCliente": {
             "metrokiaBolivar": "METROKIA → Seguros Bolívar",
+            "motorysaBolivar": "MOTORYSA → Seguros Bolívar",
+            "autocomBolivar": "AUTOCOM → Seguros Bolívar",
             "bolivarSoloContacto": "SEGUROS BOLÍVAR S.A (contact only)"
           }
         },
@@ -6941,6 +6956,64 @@
             "titulo": "5 — CONCLUSIONS",
             "placeholder": "Inspection report conclusions...",
             "ayuda": "Appears as section 5 in the Word document."
+          }
+        },
+        "motorysa": {
+          "seccion": {
+            "tituloConCodigo": "📄 Report {{codigo}} — Motorysa Inspection",
+            "descripcion": "Vehicle yard inspection report format (shipment / location / photos).",
+            "bloqueMeta": "Report details",
+            "codigoInforme": "Report code",
+            "codigoInformePlaceholder": "E.g.: CP-007",
+            "version": "Version",
+            "versionPlaceholder": "E.g.: 1",
+            "fechaFormato": "Format date",
+            "fechaFormatoPlaceholder": "E.g.: January/2026",
+            "asegurado": "Insured",
+            "aseguradoPlaceholder": "E.g.: MOTORYSA",
+            "despachoTitulo": "1 — Shipment data",
+            "cantidadVehiculos": "Number of vehicles",
+            "cantidadVehiculosPlaceholder": "E.g.: 78",
+            "marcaDespacho": "Brand (shipment)",
+            "marcaDespachoPlaceholder": "E.g.: JETOUR",
+            "fechasDescargue": "Discharge dates",
+            "fechasDescarguePlaceholder": "E.g.: June 3 and 4, 2026",
+            "billOfLading": "Bill of Lading (BLs)",
+            "billOfLadingPlaceholder": "E.g.: ZIMUSNH7833291, ZIMISNH000028554 and ZIMISNH000028555",
+            "billOfLadingAyuda": "In Word: «amparados con los BLs. …»",
+            "origen": "Origin",
+            "origenPlaceholder": "E.g.: Shanghai - China",
+            "localizacionTitulo": "2 — Location",
+            "textoLocalizacion": "Location text",
+            "textoLocalizacionPlaceholder": "E.g.: Vehicles are stored in Buenaventura at Patio Colfecar outside Sociedad Portuaria Buenaventura.",
+            "marcaVehiculo": "BRAND",
+            "marcaVehiculoPlaceholder": "E.g.: JETOUR",
+            "modeloVehiculo": "Models",
+            "modeloVehiculoPlaceholder": "T1 PHEV\nT2 PHEV",
+            "modeloVehiculoAyuda": "One model per line → Modelo: T1 PHEV / Modelo: T2 PHEV",
+            "patioOperacion": "Yard",
+            "patioOperacionPlaceholder": "E.g.: Colfecar",
+            "fechasInspeccion": "Inspection date",
+            "fechasInspeccionPlaceholder": "E.g.: February 25, 2026",
+            "inspectores": "Inspector",
+            "inspectoresPlaceholder": "E.g.: Brayan Aguirre",
+            "textoEstadoVehiculos": "Observed condition / findings",
+            "textoEstadoVehiculosPlaceholder": "E.g.: Vehicles were observed externally in good condition, except for VIN: …"
+          },
+          "informeFotografico": {
+            "titulo": "3 — PHOTOGRAPHIC REPORT",
+            "intro": "Storage and model photos. Max {{max}} photos per block. Saved to S3 on save.",
+            "aspectoAlmacenamiento": "Storage aspect",
+            "placeholderAlmacenamiento": "Drag general yard / storage photos",
+            "notaS3Almacenamiento": "Max {{max}} · Caption: STORAGE ASPECT",
+            "aspectoModelo": "Model aspect",
+            "placeholderModelo": "Drag photos by vehicle model",
+            "notaS3Modelo": "Max {{max}} · Caption: MODEL ASPECT"
+          },
+          "conclusiones": {
+            "titulo": "5 — CONCLUSIONS",
+            "placeholder": "E.g.: Based on observations we conclude the discharge operation was good.",
+            "ayuda": "Appears as section 5 in the Word/PDF document."
           }
         }
       },

@@ -38,6 +38,12 @@ export default function PuertosActasMain() {
         icon: FaShip,
         end: false,
       },
+      {
+        to: '/puertos/actas/inspeccion-motorysa/nueva',
+        labelKey: 'ports.ui.main.tabs.inspeccionMotorysa',
+        icon: FaShip,
+        end: false,
+      },
       { to: '/puertos/actas/catalogos', labelKey: 'ports.ui.main.tabs.catalogos', icon: FaCog, end: false },
     ],
     []
@@ -65,8 +71,12 @@ export default function PuertosActasMain() {
               ? location.pathname === to
               : to.includes('/catalogos')
                 ? location.pathname.startsWith('/puertos/actas/catalogos')
+                : to.includes('/inspeccion-motorysa')
+                ? location.pathname.startsWith('/puertos/actas/inspeccion-motorysa')
                 : to.includes('/inspeccion-asegurado')
                 ? location.pathname.startsWith('/puertos/actas/inspeccion-asegurado')
+                : to.includes('/granel/')
+                ? location.pathname.startsWith('/puertos/actas/granel')
                 : to.includes('/caso/')
                   ? location.pathname.startsWith('/puertos/actas/caso')
                   : location.pathname.startsWith(to);

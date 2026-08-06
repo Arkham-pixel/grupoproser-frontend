@@ -6183,6 +6183,7 @@
           "informeExportacion": "Informe Exportación",
           "inspeccionGranel": "Inspección Granel",
           "inspeccionAsegurado": "Inspección Asegurado",
+          "inspeccionMotorysa": "Inspección Motorysa",
           "catalogos": "Catálogos"
         }
       },
@@ -6191,6 +6192,7 @@
         "caso_exportacion": "Caso exportación",
         "caso_granel": "Inspección Granel",
         "inspeccion_asegurado": "Inspección asegurado",
+        "inspeccion_motorysa": "Inspección Motorysa",
         "registro": "Registro",
         "todos": "Todos los tipos"
       },
@@ -6212,6 +6214,7 @@
         "informeExportacion": "Informe Exportación",
         "inspeccionGranel": "Inspección Granel",
         "inspeccionAsegurado": "Inspección Asegurado",
+        "inspeccionMotorysa": "Inspección Motorysa",
         "errorBackend": "{{error}}. Verifique que el backend esté en ejecución.",
         "loadError": "Error al cargar registros",
         "showFilters": "Filtrar",
@@ -6461,6 +6464,8 @@
       "inspeccion": {
         "title": "FORMULARIO DE INSPECCIÓN DE PUERTOS",
         "subtitleRiicp": "Inspección de asegurado en patios (vehículos)",
+        "titleMotorysa": "Informe de inspección Motorysa",
+        "subtitleMotorysa": "Inspección vehicular en patio (formato Motorysa)",
         "subtitleDiario": "Sistema modular para inspección de riesgos en puertos",
         "editMode": "Modo Edición",
         "date": "FECHA:",
@@ -6486,12 +6491,15 @@
           "manualError": "Error al generar el manual. Por favor, intente nuevamente.",
           "guardadoActas": "✅ Informe guardado en Actas y Descargues{{consecutivo}}",
           "noEsAsegurado": "Este registro no es un informe de inspección asegurado.",
+          "noEsMotorysa": "Este registro no es un informe de inspección Motorysa.",
           "fotosRecortadas": "Este informe tenía más de {{max}} fotos en alguna sección. Se muestran solo las primeras {{max}}. Guarde para aplicar el límite en el servidor.",
           "cargarInformeError": "Error al cargar el informe: {{error}}",
           "guardarError": "Error al guardar: {{error}}",
           "documentoGenerado": "✅ Documento {{tipo}} generado exitosamente",
           "informeRiicpGenerado": "✅ Informe {{codigo}} (Word) generado exitosamente",
           "informeRiicpPdfGenerado": "✅ Informe {{codigo}} (PDF) generado exitosamente",
+          "informeMotorysaGenerado": "✅ Informe Motorysa {{codigo}} (Word) generado exitosamente",
+          "informeMotorysaPdfGenerado": "✅ Informe Motorysa {{codigo}} (PDF) generado exitosamente",
           "informeRiicpFallback": "de inspección de asegurado",
           "generarDocumentoError": "Error al generar el documento: {{error}}",
           "intenteNuevamente": "intente nuevamente",
@@ -6672,7 +6680,8 @@
           "recomendacionesInforme": "📝 Recomendaciones del Informe ({{count}})",
           "sinRecomendaciones": "No hay recomendaciones agregadas",
           "sinRecomendacionesAyuda": "Escribe una recomendación y haz clic en \"Agregar al Informe\"",
-          "tituloRiicp": "4 — RECOMENDACIONES"
+          "tituloRiicp": "4 — RECOMENDACIONES",
+          "tituloMotorysa": "4 — RECOMENDACIONES"
         },
         "seccionInicial": {
           "tituloCarta": "📋 INFORMACIÓN DE LA CARTA DE PRESENTACIÓN",
@@ -6681,6 +6690,9 @@
           "codigoReferencia": "Código de Referencia (Generado Automáticamente)",
           "codigoReferenciaPlaceholder": "CPD-2025-XXX (Se generará al guardar)",
           "codigoReferenciaAyuda": "El código se generará automáticamente al guardar el formulario",
+          "codigoReferenciaLibre": "Número de acta / Código de referencia",
+          "codigoReferenciaLibrePlaceholder": "Ej: BT2026001/2026",
+          "codigoReferenciaLibreAyuda": "Escritura libre.",
           "seleccionCliente": "📧 Selección de Cliente",
           "clienteEmpresa": "Cliente / Empresa",
           "seleccionarCliente": "Selecciona un cliente...",
@@ -6712,6 +6724,7 @@
           "puertoDescargue": "Puerto de Descargue",
           "puertoDescarguePlaceholder": "Ej: Puerto Bahía",
           "ocultar": "Ocultar",
+          "mostrarVistaPrevia": "Vista previa",
           "vistaPrevia": {
             "fallbackCiudad": "Ciudad",
             "emailLabel": "Email:",
@@ -6736,6 +6749,8 @@
           "seleccionarCiudad": "Selecciona una ciudad...",
           "opcionesCliente": {
             "metrokiaBolivar": "METROKIA → Seguros Bolívar",
+            "motorysaBolivar": "MOTORYSA → Seguros Bolívar",
+            "autocomBolivar": "AUTOCOM → Seguros Bolívar",
             "bolivarSoloContacto": "SEGUROS BOLÍVAR S.A (solo contacto)"
           }
         },
@@ -6941,6 +6956,64 @@
             "titulo": "5 — CONCLUSIONES",
             "placeholder": "Conclusiones del informe de inspección...",
             "ayuda": "Aparece como sección 5 en el documento Word."
+          }
+        },
+        "motorysa": {
+          "seccion": {
+            "tituloConCodigo": "📄 Informe {{codigo}} — Inspección Motorysa",
+            "descripcion": "Formato de informe de inspección vehicular en patio (despacho / localización / fotos).",
+            "bloqueMeta": "Datos del informe",
+            "codigoInforme": "Código del informe",
+            "codigoInformePlaceholder": "Ej: CP-007",
+            "version": "Versión",
+            "versionPlaceholder": "Ej: 1",
+            "fechaFormato": "Fecha formato",
+            "fechaFormatoPlaceholder": "Ej: Enero/2026",
+            "asegurado": "Asegurado",
+            "aseguradoPlaceholder": "Ej: MOTORYSA",
+            "despachoTitulo": "1 — Datos del despacho",
+            "cantidadVehiculos": "Cantidad de vehículos",
+            "cantidadVehiculosPlaceholder": "Ej: 78",
+            "marcaDespacho": "Marca (despacho)",
+            "marcaDespachoPlaceholder": "Ej: JETOUR",
+            "fechasDescargue": "Fechas de descargue",
+            "fechasDescarguePlaceholder": "Ej: 3 y 4 de junio 2026",
+            "billOfLading": "Bill of Lading (BLs)",
+            "billOfLadingPlaceholder": "Ej: ZIMUSNH7833291, ZIMISNH000028554 y ZIMISNH000028555",
+            "billOfLadingAyuda": "En el Word: «amparados con los BLs. …»",
+            "origen": "Origen / procedencia",
+            "origenPlaceholder": "Ej: Shanghai - China",
+            "localizacionTitulo": "2 — Localización",
+            "textoLocalizacion": "Texto de localización",
+            "textoLocalizacionPlaceholder": "Ej: Los vehículos están almacenados en Buenaventura en Patio Colfecar zona exterior de Sociedad Portuaria Buenaventura.",
+            "marcaVehiculo": "MARCA",
+            "marcaVehiculoPlaceholder": "Ej: JETOUR",
+            "modeloVehiculo": "Modelos",
+            "modeloVehiculoPlaceholder": "T1 PHEV\nT2 PHEV",
+            "modeloVehiculoAyuda": "Un modelo por línea → Modelo: T1 PHEV / Modelo: T2 PHEV",
+            "patioOperacion": "Patio",
+            "patioOperacionPlaceholder": "Ej: Colfecar",
+            "fechasInspeccion": "Fecha de inspección",
+            "fechasInspeccionPlaceholder": "Ej: 25 de febrero de 2026",
+            "inspectores": "Inspector",
+            "inspectoresPlaceholder": "Ej: Brayan Aguirre",
+            "textoEstadoVehiculos": "Estado observado / novedades",
+            "textoEstadoVehiculosPlaceholder": "Ej: Los vehículos se observaron externamente en buen estado, excepto por el vehículo con VIN: …"
+          },
+          "informeFotografico": {
+            "titulo": "3 — INFORME FOTOGRÁFICO",
+            "intro": "Fotos del almacenamiento y del modelo. Máximo {{max}} fotos por bloque. Se guardan en S3 al grabar.",
+            "aspectoAlmacenamiento": "Aspecto almacenamiento",
+            "placeholderAlmacenamiento": "Arrastra fotos generales del patio / almacenamiento",
+            "notaS3Almacenamiento": "Máx. {{max}} · Leyenda: ASPECTO ALMACENAMIENTO",
+            "aspectoModelo": "Aspecto modelo",
+            "placeholderModelo": "Arrastra fotos por modelo de vehículo",
+            "notaS3Modelo": "Máx. {{max}} · Leyenda: ASPECTO MODELO"
+          },
+          "conclusiones": {
+            "titulo": "5 — CONCLUSIONES",
+            "placeholder": "Ej: De acuerdo a lo observado podemos concluir que la operación de descargue fue buena.",
+            "ayuda": "Aparece como sección 5 en el documento Word/PDF."
           }
         }
       },

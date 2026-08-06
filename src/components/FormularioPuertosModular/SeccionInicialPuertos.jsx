@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import Select from 'react-select';
@@ -7,7 +7,20 @@ import ciudadesData from '../../data/colombia.json';
 import MapaGoogleEarth from '../MapaGoogleEarth';
 import { CONTACTOS_BOLIVAR, EMPRESA_BOLIVAR, ASEGURADOS } from './plantillasPuertos';
 
-export default function SeccionInicialPuertos({ formData, onInputChange, onMultipleChange, cargando, forzarCapturaMapa, ocultarGeolocalizacion = false }) {
+export default function SeccionInicialPuertos({
+  formData,
+  onInputChange,
+  onMultipleChange,
+  cargando,
+  forzarCapturaMapa,
+  ocultarGeolocalizacion = false,
+  /** Si se pasa, solo muestra esos clientes en el selector (ej. Motorysa). */
+  clientesPermitidos = null,
+  /** Autocompleta este cliente al montar si aún no hay selección. */
+  clientePorDefecto = null,
+  /** Código de referencia / número de acta editable (ellos llevan el control). */
+  codigoReferenciaLibre = false,
+}) {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
   const [mostrarVistaPrevia, setMostrarVistaPrevia] = useState(false);
@@ -98,6 +111,16 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
       empresaCliente: EMPRESA_BOLIVAR,
       clienteSeleccionado: 'METROKIA_BOLIVAR',
     },
+    MOTORYSA_BOLIVAR: {
+      ...ASEGURADOS.MOTORYSA,
+      empresaCliente: EMPRESA_BOLIVAR,
+      clienteSeleccionado: 'MOTORYSA_BOLIVAR',
+    },
+    AUTOCOM_BOLIVAR: {
+      ...ASEGURADOS.AUTOCOM,
+      empresaCliente: EMPRESA_BOLIVAR,
+      clienteSeleccionado: 'AUTOCOM_BOLIVAR',
+    },
     TOYOTA: {
       nombreContacto: 'Sr. Jhorgin Arce',
       cargoContacto: 'Analística Logística',
@@ -125,6 +148,8 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
 
   const esClienteBolivar =
     formData.clienteSeleccionado === 'METROKIA_BOLIVAR' ||
+    formData.clienteSeleccionado === 'MOTORYSA_BOLIVAR' ||
+    formData.clienteSeleccionado === 'AUTOCOM_BOLIVAR' ||
     formData.clienteSeleccionado === 'BOLIVAR';
 
   const handleContactoBolivarChange = (selectedOption) => {
@@ -146,11 +171,17 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
     }
   };
 
-  const opcionesClientes = [
+  const opcionesClientesTodas = [
     { value: 'METROKIA_BOLIVAR', label: t('ports.ui.formulario.seccionInicial.opcionesCliente.metrokiaBolivar') },
+    { value: 'MOTORYSA_BOLIVAR', label: t('ports.ui.formulario.seccionInicial.opcionesCliente.motorysaBolivar') },
+    { value: 'AUTOCOM_BOLIVAR', label: t('ports.ui.formulario.seccionInicial.opcionesCliente.autocomBolivar') },
     { value: 'TOYOTA', label: 'AUTOMOTORES TOYOTA COLOMBIA S.A.S' },
     { value: 'BOLIVAR', label: t('ports.ui.formulario.seccionInicial.opcionesCliente.bolivarSoloContacto') },
   ];
+
+  const opcionesClientes = Array.isArray(clientesPermitidos) && clientesPermitidos.length > 0
+    ? opcionesClientesTodas.filter((opt) => clientesPermitidos.includes(opt.value))
+    : opcionesClientesTodas;
 
   // Función para manejar el cambio de cliente
   const handleClienteChange = (selectedOption) => {
@@ -167,10 +198,22 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
         nombreCliente: datosCliente.nombreCliente || datosCliente.empresaCliente,
         asegurado: datosCliente.asegurado || formData.asegurado || '',
         contactoBolivarId:
-          selectedOption.value === 'METROKIA_BOLIVAR' || selectedOption.value === 'BOLIVAR' ? '' : '',
+          selectedOption.value === 'METROKIA_BOLIVAR' ||
+          selectedOption.value === 'MOTORYSA_BOLIVAR' ||
+          selectedOption.value === 'AUTOCOM_BOLIVAR' ||
+          selectedOption.value === 'BOLIVAR'
+            ? ''
+            : '',
       });
     }
   };
+
+  useEffect(() => {
+    if (!clientePorDefecto || formData.clienteSeleccionado) return;
+    if (!clientesPredefinidos[clientePorDefecto]) return;
+    handleClienteChange({ value: clientePorDefecto });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientePorDefecto, formData.clienteSeleccionado]);
 
   return (
     <>
@@ -272,34 +315,57 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
           </div>
         </div>
 
-        {/* Código de Referencia - GENERADO AUTOMÁTICAMENTE */}
+        {/* Código de Referencia / Número de acta */}
         <div className="mb-4">
           <label 
             className="block text-xs sm:text-sm font-medium mb-1"
             style={{ color: textPrimary }}
           >
-            {t('ports.ui.formulario.seccionInicial.codigoReferencia')}
+            {codigoReferenciaLibre
+              ? t('ports.ui.formulario.seccionInicial.codigoReferenciaLibre')
+              : t('ports.ui.formulario.seccionInicial.codigoReferencia')}
           </label>
-          <input
-            type="text"
-            value={formData.codigoReferencia || t('ports.ui.formulario.seccionInicial.codigoReferenciaPlaceholder')}
-            className="w-full rounded px-2 sm:px-3 py-2 text-sm"
-            style={{
-              backgroundColor: theme === 'dark' ? '#0F0F0F' : '#F3F4F6',
-              color: textSecondary,
-              borderColor: borderColor,
-              border: `1px solid ${borderColor}`,
-              cursor: 'not-allowed'
-            }}
-            disabled={true}
-            readOnly
-          />
-          <p 
-            className="text-xs mt-1"
-            style={{ color: textSecondary }}
-          >
-            {t('ports.ui.formulario.seccionInicial.codigoReferenciaAyuda')}
-          </p>
+          {codigoReferenciaLibre ? (
+            <>
+              <input
+                type="text"
+                value={formData.codigoReferencia || ''}
+                onChange={(e) => onInputChange('codigoReferencia', e.target.value)}
+                className="w-full rounded px-2 sm:px-3 py-2 text-sm"
+                style={{
+                  backgroundColor: inputBg,
+                  color: textPrimary,
+                  borderColor,
+                  border: `1px solid ${borderColor}`,
+                }}
+                placeholder={t('ports.ui.formulario.seccionInicial.codigoReferenciaLibrePlaceholder')}
+                disabled={cargando}
+              />
+              <p className="text-xs mt-1" style={{ color: textSecondary }}>
+                {t('ports.ui.formulario.seccionInicial.codigoReferenciaLibreAyuda')}
+              </p>
+            </>
+          ) : (
+            <>
+              <input
+                type="text"
+                value={formData.codigoReferencia || t('ports.ui.formulario.seccionInicial.codigoReferenciaPlaceholder')}
+                className="w-full rounded px-2 sm:px-3 py-2 text-sm"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#0F0F0F' : '#F3F4F6',
+                  color: textSecondary,
+                  borderColor,
+                  border: `1px solid ${borderColor}`,
+                  cursor: 'not-allowed'
+                }}
+                disabled
+                readOnly
+              />
+              <p className="text-xs mt-1" style={{ color: textSecondary }}>
+                {t('ports.ui.formulario.seccionInicial.codigoReferenciaAyuda')}
+              </p>
+            </>
+          )}
         </div>
 
         {/* SELECCIÓN DE CLIENTE */}
@@ -655,7 +721,7 @@ export default function SeccionInicialPuertos({ formData, onInputChange, onMulti
           }}
         >
           <FaEye />
-          <span className="font-medium">{mostrarVistaPrevia ? t('ports.ui.formulario.seccionInicial.ocultar') : t('ports.ui.formulario.seccionInicial.vistaPrevia')}</span>
+          <span className="font-medium">{mostrarVistaPrevia ? t('ports.ui.formulario.seccionInicial.ocultar') : t('ports.ui.formulario.seccionInicial.mostrarVistaPrevia')}</span>
         </button>
       )}
 

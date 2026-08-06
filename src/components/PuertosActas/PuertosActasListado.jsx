@@ -41,7 +41,7 @@ import {
   puertosTableTd,
   puertosTableWrap,
 } from './puertosFenixUi';
-import { esRegistroInspeccionAsegurado } from './puertosTipoRegistro.js';
+import { esRegistroInspeccionAsegurado, esRegistroInspeccionMotorysa } from './puertosTipoRegistro.js';
 
 const FORMATOS = [
   {
@@ -72,6 +72,13 @@ const FORMATOS = [
     nuevaLabelKey: 'ports.ui.listado.inspeccionAsegurado',
     icon: FaShip,
   },
+  {
+    id: 'inspeccion_motorysa',
+    labelKey: 'ports.ui.listado.inspeccionMotorysa',
+    nuevaTo: '/puertos/actas/inspeccion-motorysa/nueva',
+    nuevaLabelKey: 'ports.ui.listado.inspeccionMotorysa',
+    icon: FaShip,
+  },
 ];
 
 const FORMATOS_VALIDOS = new Set(FORMATOS.map((f) => f.id));
@@ -88,6 +95,9 @@ function contarFiltrosFormato(filtros = {}) {
 }
 
 function rutaEditar(registro) {
+  if (esRegistroInspeccionMotorysa(registro)) {
+    return `/puertos/actas/inspeccion-motorysa/editar/${registro.id}`;
+  }
   if (esRegistroInspeccionAsegurado(registro)) {
     return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}`;
   }
@@ -101,6 +111,9 @@ function rutaEditar(registro) {
 }
 
 function rutaVer(registro) {
+  if (esRegistroInspeccionMotorysa(registro)) {
+    return `/puertos/actas/inspeccion-motorysa/editar/${registro.id}`;
+  }
   if (esRegistroInspeccionAsegurado(registro)) {
     return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}`;
   }
@@ -114,6 +127,9 @@ function rutaVer(registro) {
 }
 
 function rutaFotos(registro) {
+  if (esRegistroInspeccionMotorysa(registro)) {
+    return `/puertos/actas/inspeccion-motorysa/editar/${registro.id}?fotos=1`;
+  }
   if (esRegistroInspeccionAsegurado(registro)) {
     return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}?fotos=1`;
   }
@@ -141,12 +157,14 @@ export default function PuertosActasListado() {
     caso_exportacion: filtrosVaciosFormato('caso_exportacion'),
     caso_granel: filtrosVaciosFormato('caso_granel'),
     inspeccion_asegurado: filtrosVaciosFormato('inspeccion_asegurado'),
+    inspeccion_motorysa: filtrosVaciosFormato('inspeccion_motorysa'),
   }));
   const [aplicadosPorFormato, setAplicadosPorFormato] = useState(() => ({
     acta: filtrosVaciosFormato('acta'),
     caso_exportacion: filtrosVaciosFormato('caso_exportacion'),
     caso_granel: filtrosVaciosFormato('caso_granel'),
     inspeccion_asegurado: filtrosVaciosFormato('inspeccion_asegurado'),
+    inspeccion_motorysa: filtrosVaciosFormato('inspeccion_motorysa'),
   }));
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [registros, setRegistros] = useState([]);
@@ -165,6 +183,9 @@ export default function PuertosActasListado() {
   const IconoFormato = formatoMeta.icon;
 
   const etiquetaTipo = (registro) => {
+    if (esRegistroInspeccionMotorysa(registro)) {
+      return t('ports.ui.tipos.inspeccion_motorysa');
+    }
     if (esRegistroInspeccionAsegurado(registro)) {
       return t('ports.ui.tipos.inspeccion_asegurado');
     }

@@ -12,6 +12,7 @@ const TIPO_LABEL_KEYS = {
   caso_exportacion: 'ports.ui.tipos.caso_exportacion',
   caso_granel: 'ports.ui.tipos.caso_granel',
   inspeccion_asegurado: 'ports.ui.tipos.inspeccion_asegurado',
+  inspeccion_motorysa: 'ports.ui.tipos.inspeccion_motorysa',
   acta: 'ports.ui.tipos.acta',
 };
 
