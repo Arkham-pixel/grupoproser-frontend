@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FaList, FaPlus, FaShip, FaFileAlt, FaCog } from 'react-icons/fa';
+import { FaList, FaPlus, FaShip, FaFileAlt, FaCog, FaBoxes } from 'react-icons/fa';
 import {
   puertosBadge,
   puertosFormRoot,
@@ -24,6 +24,12 @@ export default function PuertosActasMain() {
         to: '/puertos/actas/caso/nueva',
         labelKey: 'ports.ui.main.tabs.informeExportacion',
         icon: FaFileAlt,
+        end: false,
+      },
+      {
+        to: '/puertos/actas/granel/nueva',
+        labelKey: 'ports.ui.main.tabs.inspeccionGranel',
+        icon: FaBoxes,
         end: false,
       },
       {

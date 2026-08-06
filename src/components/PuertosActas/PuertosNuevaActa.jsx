@@ -422,6 +422,8 @@ export default function PuertosNuevaActa() {
             placeholder={tp('nroActa')}
             value={form.nroActa}
             onChange={(e) => setCampo('nroActa', e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
           />
         </Campo>
         <Campo label={tf('fechaActa')} obligatorio>

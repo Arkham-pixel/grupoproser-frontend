@@ -159,6 +159,57 @@ export async function procesarInformeExportacionImagenes(informe = {}, casoId = 
   return informeProcesado;
 }
 
+const CAMPOS_IMAGENES_GRANEL = [
+  'imagenesMercancia',
+  'imagenesCondicionCarga',
+  'imagenesNovedadesAverias',
+  'imagenesEquiposOperacion',
+  'imagenesCondicionesMeteo',
+];
+
+/** Sube imágenes pendientes del informe granel y serializa referencias persistidas. */
+export async function procesarInformeGranelImagenes(informe = {}, casoId = null) {
+  const buque = { ...(informe.buque || {}) };
+  let imagenBuque = buque.imagenBuque || null;
+
+  if (imagenBuque) {
+    const [procesada] = await subirImagenesPuertosCaso([imagenBuque], casoId);
+    imagenBuque = procesada || null;
+  }
+
+  const informeProcesado = {
+    ...informe,
+    buque: { ...buque, imagenBuque },
+  };
+
+  for (const campo of CAMPOS_IMAGENES_GRANEL) {
+    informeProcesado[campo] = await subirImagenesPuertosCaso(informe[campo] || [], casoId);
+  }
+
+  if (Array.isArray(informe.registrosFotograficosBodegas)) {
+    informeProcesado.registrosFotograficosBodegas = await Promise.all(
+      informe.registrosFotograficosBodegas.map(async (registro) => ({
+        id: registro.id,
+        titulo: registro.titulo || '',
+        imagenes: await subirImagenesPuertosCaso(registro.imagenes || [], casoId),
+      }))
+    );
+  }
+
+  if (Array.isArray(informe.resumenEmails)) {
+    informeProcesado.resumenEmails = await Promise.all(
+      informe.resumenEmails.map(async (email) => ({
+        id: email.id,
+        fecha: email.fecha || '',
+        evento: email.evento || '',
+        imagenes: await subirImagenesPuertosCaso(email.imagenes || [], casoId),
+      }))
+    );
+  }
+
+  return informeProcesado;
+}
+
 const CAMPOS_IMAGENES_INSPECCION_PUERTOS = [
   'imagenesAspectoAlmacenamiento',
   'imagenesAspectoModelo',

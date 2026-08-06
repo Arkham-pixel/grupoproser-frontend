@@ -1,7 +1,14 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { FaPlus, FaTrash } from 'react-icons/fa';
 import SelectBuscable from '../SelectBuscable';
 import { Seccion, Campo, inputCls, attrsInput, attrsTextarea } from './PuertosCasoDatosGenerales';
+import {
+  formatearFechasInspeccionMayus,
+  normalizarFechasInspeccion,
+  primeraFechaInspeccion,
+} from './puertosCasoGranelState';
+import { puertosBtnSm } from './puertosFenixUi';
 
 export default function PuertosCasoPagina2({
   formData,
@@ -9,6 +16,7 @@ export default function PuertosCasoPagina2({
   onInformeChange,
   responsables = [],
   soloLectura = false,
+  multiFechasInspeccion = false,
 }) {
   const { t } = useTranslation();
 
@@ -23,11 +31,45 @@ export default function PuertosCasoPagina2({
     [responsables]
   );
 
+  const fechasInspeccion = normalizarFechasInspeccion(
+    formData.fechasInspeccion,
+    formData.fchaInspccion
+  );
+  const previewFechas = formatearFechasInspeccionMayus(fechasInspeccion);
+
+  const setFechasInspeccion = (nuevas) => {
+    const norm = normalizarFechasInspeccion(nuevas);
+    onChange('fechasInspeccion', norm);
+    onChange('fchaInspccion', primeraFechaInspeccion(norm));
+  };
+
+  const agregarFecha = () => {
+    const hoy = new Date().toISOString().split('T')[0];
+    setFechasInspeccion([...fechasInspeccion, hoy]);
+  };
+
+  const actualizarFecha = (idx, valor) => {
+    const copia = [...fechasInspeccion];
+    copia[idx] = valor;
+    setFechasInspeccion(copia);
+  };
+
+  const quitarFecha = (idx) => {
+    setFechasInspeccion(fechasInspeccion.filter((_, i) => i !== idx));
+  };
+
   return (
     <div className="space-y-5">
       <Seccion titulo={t('ports.ui.casoExportacion.datosGenerales.sectionTitle')}>
         <Campo label={t('ports.ui.casoExportacion.datosGenerales.exportador')} obligatorio>
-          <input {...attrsInput(soloLectura, { className: inputCls, name: 'asgrBenfcro', value: formData.asgrBenfcro || '', onChange: handle })} />
+          <input
+            {...attrsInput(soloLectura, {
+              className: inputCls,
+              name: 'asgrBenfcro',
+              value: formData.asgrBenfcro || '',
+              onChange: handle,
+            })}
+          />
         </Campo>
         <Campo label={t('ports.ui.casoExportacion.datosGenerales.actividad')}>
           <input
@@ -48,7 +90,13 @@ export default function PuertosCasoPagina2({
           />
         </Campo>
         <Campo label={t('ports.ui.casoExportacion.datosGenerales.fechaAsignacion')}>
-          <input type="date" className={inputCls} name="fchaAsgncion" value={formData.fchaAsgncion || ''} onChange={handle} />
+          <input
+            type="date"
+            className={inputCls}
+            name="fchaAsgncion"
+            value={formData.fchaAsgncion || ''}
+            onChange={handle}
+          />
         </Campo>
         <Campo label={t('ports.ui.casoExportacion.datosGenerales.ciudadRiesgo')}>
           <input
@@ -60,7 +108,12 @@ export default function PuertosCasoPagina2({
           />
         </Campo>
         <Campo label={t('ports.ui.casoExportacion.datosGenerales.laborRealizada')}>
-          <input className={inputCls} name="laborRealizada" value={formData.laborRealizada || ''} onChange={handle} />
+          <input
+            className={inputCls}
+            name="laborRealizada"
+            value={formData.laborRealizada || ''}
+            onChange={handle}
+          />
         </Campo>
         <Campo label={t('ports.ui.casoExportacion.datosGenerales.lugar')} className="sm:col-span-2">
           <input
@@ -71,9 +124,62 @@ export default function PuertosCasoPagina2({
             placeholder="SPRB PATIO 14 ENMALLADO DE EXPORTACIÓN – BODEGA 9"
           />
         </Campo>
-        <Campo label={t('ports.ui.casoExportacion.datosGenerales.fechaInspeccion')}>
-          <input type="date" className={inputCls} name="fchaInspccion" value={formData.fchaInspccion || ''} onChange={handle} />
-        </Campo>
+
+        {multiFechasInspeccion ? (
+          <Campo
+            label={t('ports.ui.casoGranel.datosGenerales.fechasInspeccion')}
+            className="sm:col-span-2"
+          >
+            <div className="space-y-2">
+              <p className="font-body text-xs text-gray-500">
+                {t('ports.ui.casoGranel.datosGenerales.fechasInspeccionHint')}
+              </p>
+              {fechasInspeccion.map((fecha, idx) => (
+                <div key={`fi-${idx}`} className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    className={`${inputCls} max-w-[220px]`}
+                    value={fecha || ''}
+                    onChange={(e) => actualizarFecha(idx, e.target.value)}
+                    readOnly={soloLectura}
+                  />
+                  {!soloLectura && (
+                    <button
+                      type="button"
+                      onClick={() => quitarFecha(idx)}
+                      className="p-2 text-fenix-primario"
+                      title={t('ports.ui.common.delete')}
+                    >
+                      <FaTrash />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!soloLectura && (
+                <button type="button" onClick={agregarFecha} className={puertosBtnSm}>
+                  <FaPlus /> {t('ports.ui.casoGranel.datosGenerales.agregarFecha')}
+                </button>
+              )}
+              {previewFechas ? (
+                <p className="font-body text-xs text-gray-600 dark:text-gray-300">
+                  {t('ports.ui.casoGranel.datosGenerales.fechasInspeccionPreview')}:{' '}
+                  <strong>{previewFechas}</strong>
+                </p>
+              ) : null}
+            </div>
+          </Campo>
+        ) : (
+          <Campo label={t('ports.ui.casoExportacion.datosGenerales.fechaInspeccion')}>
+            <input
+              type="date"
+              className={inputCls}
+              name="fchaInspccion"
+              value={formData.fchaInspccion || ''}
+              onChange={handle}
+            />
+          </Campo>
+        )}
+
         <Campo label={t('ports.ui.casoExportacion.datosGenerales.inspector')} obligatorio>
           <SelectBuscable
             options={opcionesInspector}

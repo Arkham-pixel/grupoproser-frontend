@@ -35,6 +35,8 @@ const FOTOS_INICIAL = [
   'Contenedor (es) asignado (s)',
   'Vehículo (s) asignado (s)',
   'Carga almacenada en Bodega 9',
+  'Las 9 cajas adicionales que trajo el vehículo SSZ 304',
+  'Carga almacenada en patio 14 a esperas de selectividad',
 ];
 
 const FOTOS_VEHICULO = [
@@ -208,15 +210,17 @@ export default function PuertosCasoPagina4({ formData, onInformeChange, soloLect
                         })()}
                       </label>
                     )}
-                    <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-4 lg:grid-cols-9">
+                    <div className="grid grid-cols-2 items-end gap-2 sm:grid-cols-4 lg:grid-cols-8">
                     <Campo label={t('ports.ui.casoExportacion.supervision.bultos')}>
                       <CeldaInput soloLectura={soloLectura} value={cont.bultos} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'bultos', v)} />
                     </Campo>
-                    <Campo label={t('ports.ui.casoExportacion.supervision.cantidad')}>
-                      <CeldaInput soloLectura={soloLectura} value={cont.cantidad} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'cantidad', v)} />
-                    </Campo>
-                    <Campo label={t('ports.ui.casoExportacion.supervision.tipo')}>
-                      <CeldaInput soloLectura={soloLectura} value={cont.tipoContenedor} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'tipoContenedor', v)} />
+                    <Campo label={t('ports.ui.casoExportacion.supervision.cantidadInforme')}>
+                      <CeldaInput
+                        soloLectura={soloLectura}
+                        value={cont.tipoContenedor}
+                        onChange={(v) => actualizarContenedor(fila.id, cont.id, 'tipoContenedor', v)}
+                        placeholder={t('ports.ui.casoExportacion.supervision.cantidadInformePlaceholder')}
+                      />
                     </Campo>
                     <Campo label={t('ports.ui.casoExportacion.supervision.numContenedor')} className="sm:col-span-2">
                       <CeldaInput soloLectura={soloLectura} value={cont.numeroContenedor} onChange={(v) => actualizarContenedor(fila.id, cont.id, 'numeroContenedor', v)} />

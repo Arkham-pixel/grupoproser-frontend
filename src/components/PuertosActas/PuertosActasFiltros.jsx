@@ -10,6 +10,7 @@ import { puertosBtnLink, puertosBtnSecondary, puertosCard, puertosCardBody, puer
 const TIPO_LABEL_KEYS = {
   '': 'ports.ui.tipos.todos',
   caso_exportacion: 'ports.ui.tipos.caso_exportacion',
+  caso_granel: 'ports.ui.tipos.caso_granel',
   inspeccion_asegurado: 'ports.ui.tipos.inspeccion_asegurado',
   acta: 'ports.ui.tipos.acta',
 };

@@ -14,10 +14,12 @@ import {
   FaFileAlt,
   FaShip,
   FaTrash,
+  FaBoxes,
 } from 'react-icons/fa';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { eliminarRegistroPuertos, listarRegistrosPuertos } from '../../services/puertosService.js';
 import { generarPdfInformeExportacionDesdeId } from '../../services/puertosCasoExportacionPdfService.js';
+import { generarPdfInformeGranelDesdeId } from '../../services/puertosCasoGranelPdfService.js';
 import { generarWordInformeExportacionDesdeId } from '../../services/puertosCasoExportacionWordService.js';
 import { generarPdfActaPuertosDesdeId } from '../../services/puertosActaPdfService.js';
 import PuertosActasFiltros from './PuertosActasFiltros.jsx';
@@ -57,6 +59,13 @@ const FORMATOS = [
     icon: FaFileAlt,
   },
   {
+    id: 'caso_granel',
+    labelKey: 'ports.ui.listado.inspeccionGranel',
+    nuevaTo: '/puertos/actas/granel/nueva',
+    nuevaLabelKey: 'ports.ui.listado.inspeccionGranel',
+    icon: FaBoxes,
+  },
+  {
     id: 'inspeccion_asegurado',
     labelKey: 'ports.ui.listado.inspeccionAsegurado',
     nuevaTo: '/puertos/actas/inspeccion-asegurado/nueva',
@@ -82,6 +91,9 @@ function rutaEditar(registro) {
   if (esRegistroInspeccionAsegurado(registro)) {
     return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}`;
   }
+  if (registro.tipoRegistro === 'caso_granel') {
+    return `/puertos/actas/granel/editar/${registro.id}`;
+  }
   if (registro.tipoRegistro === 'caso_exportacion') {
     return `/puertos/actas/caso/editar/${registro.id}`;
   }
@@ -92,6 +104,9 @@ function rutaVer(registro) {
   if (esRegistroInspeccionAsegurado(registro)) {
     return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}`;
   }
+  if (registro.tipoRegistro === 'caso_granel') {
+    return `/puertos/actas/granel/ver/${registro.id}`;
+  }
   if (registro.tipoRegistro === 'caso_exportacion') {
     return `/puertos/actas/caso/ver/${registro.id}`;
   }
@@ -101,6 +116,9 @@ function rutaVer(registro) {
 function rutaFotos(registro) {
   if (esRegistroInspeccionAsegurado(registro)) {
     return `/puertos/actas/inspeccion-asegurado/editar/${registro.id}?fotos=1`;
+  }
+  if (registro.tipoRegistro === 'caso_granel') {
+    return `/puertos/actas/granel/editar/${registro.id}?fotos=1`;
   }
   if (registro.tipoRegistro === 'caso_exportacion') {
     return `/puertos/actas/caso/editar/${registro.id}?fotos=1`;
@@ -121,11 +139,13 @@ export default function PuertosActasListado() {
   const [filtrosPorFormato, setFiltrosPorFormato] = useState(() => ({
     acta: filtrosVaciosFormato('acta'),
     caso_exportacion: filtrosVaciosFormato('caso_exportacion'),
+    caso_granel: filtrosVaciosFormato('caso_granel'),
     inspeccion_asegurado: filtrosVaciosFormato('inspeccion_asegurado'),
   }));
   const [aplicadosPorFormato, setAplicadosPorFormato] = useState(() => ({
     acta: filtrosVaciosFormato('acta'),
     caso_exportacion: filtrosVaciosFormato('caso_exportacion'),
+    caso_granel: filtrosVaciosFormato('caso_granel'),
     inspeccion_asegurado: filtrosVaciosFormato('inspeccion_asegurado'),
   }));
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
@@ -149,7 +169,7 @@ export default function PuertosActasListado() {
       return t('ports.ui.tipos.inspeccion_asegurado');
     }
     const key = registro?.tipoRegistro;
-    if (key === 'acta' || key === 'caso_exportacion') {
+    if (key === 'acta' || key === 'caso_exportacion' || key === 'caso_granel') {
       return t(`ports.ui.tipos.${key}`);
     }
     return key || t('ports.ui.tipos.registro');
@@ -253,6 +273,10 @@ export default function PuertosActasListado() {
     try {
       if (fila.tipoRegistro === 'caso_exportacion') {
         await generarPdfInformeExportacionDesdeId(fila.id, { aseguradoraOptions, responsables });
+        return;
+      }
+      if (fila.tipoRegistro === 'caso_granel') {
+        await generarPdfInformeGranelDesdeId(fila.id, { aseguradoraOptions, responsables });
         return;
       }
       if (fila.tipoRegistro === 'acta') {
@@ -403,7 +427,7 @@ export default function PuertosActasListado() {
       'insurer',
       'beneficiary',
     ];
-    if (formato === 'caso_exportacion') base.push('progress');
+    if (formato === 'caso_exportacion' || formato === 'caso_granel') base.push('progress');
     return base;
   }, [formato]);
 
@@ -584,11 +608,11 @@ export default function PuertosActasListado() {
                     <td className={puertosTableTd}>
                       {fila.mercancia || fila.beneficiario || dash}
                     </td>
-                    {formato === 'caso_exportacion' && (
+                    {formato === 'caso_exportacion' || formato === 'caso_granel' ? (
                       <td className={`${puertosTableTd} whitespace-nowrap text-center`}>
                         {fila.avance || dash}
                       </td>
-                    )}
+                    ) : null}
                   </tr>
                 ))}
             </tbody>

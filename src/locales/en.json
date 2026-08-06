@@ -525,6 +525,7 @@
         "intermediario": "Broker",
         "ciudadSiniestro": "Claim city",
         "aseguradoBeneficiario": "Insured/beneficiary",
+        "correoNotificacion": "Notification email",
         "observacionesSeguimiento": "Follow-up notes",
         "createdAt": "Created on",
         "updatedAt": "Updated on"
@@ -6180,6 +6181,7 @@
           "listado": "List",
           "nuevaActa": "New Report",
           "informeExportacion": "Export Report",
+          "inspeccionGranel": "Bulk Inspection",
           "inspeccionAsegurado": "Insured Inspection",
           "catalogos": "Catalogs"
         }
@@ -6187,6 +6189,7 @@
       "tipos": {
         "acta": "Report",
         "caso_exportacion": "Export case",
+        "caso_granel": "Bulk Inspection",
         "inspeccion_asegurado": "Insured inspection",
         "registro": "Record",
         "todos": "All types"
@@ -6207,6 +6210,7 @@
         "filtersActive": " · {{count}} active filter(s)",
         "nuevaActa": "New Report",
         "informeExportacion": "Export Report",
+        "inspeccionGranel": "Bulk Inspection",
         "inspeccionAsegurado": "Insured Inspection",
         "errorBackend": "{{error}}. Check that the backend is running.",
         "loadError": "Error loading records",
@@ -6320,7 +6324,7 @@
           "tipoAveria": "Damage type"
         },
         "placeholders": {
-          "nroActa": "BV635260",
+          "nroActa": "E.g. MC9130443 or BV635260",
           "ciudad": "CITY",
           "asegurado": "INSURED",
           "pedido": "ORDER NO.",
@@ -7110,6 +7114,8 @@
           "bultos": "Packages",
           "bultosTotal": "Packages (vehicle total)",
           "cantidad": "Quantity",
+          "cantidadInforme": "Quantity",
+          "cantidadInformePlaceholder": "1 x 40'",
           "comentariosLabel": "Supervision report comments",
           "comentariosPlaceholder": "Boxes were unloaded and placed in the assigned containers...",
           "comentariosTitle": "Comments",
@@ -7164,6 +7170,141 @@
           "observacionesSeguimiento": "Follow-up observations",
           "seguimientoGeneral": "General follow-up"
         }
+      },
+      "casoGranel": {
+        "alerts": {
+          "clienteRequired": "Enter the client / insured name.",
+          "loadError": "Could not load bulk case: {{error}}",
+          "pdfError": "Could not generate PDF: {{error}}",
+          "saveError": "Error saving: {{error}}",
+          "saved": "Bulk case saved: {{id}}",
+          "selectClient": "Select the client (insurer) on the cover page."
+        },
+        "collapseAll": "Collapse all",
+        "datosGenerales": {
+          "agregarFecha": "Add date",
+          "fechasInspeccion": "Inspection dates",
+          "fechasInspeccionHint": "You can record several inspection days (as in the Word: 02, 03, 04 and 05 APRIL 2026).",
+          "fechasInspeccionPreview": "In the report"
+        },
+        "conclusiones": {
+          "parrafoPlaceholder": "Bulk cargo was inspected and controlled according to trade customs...",
+          "parrafoPrincipal": "Main paragraph",
+          "puntoPlaceholder": "E.g.: Holds inspected with no findings...",
+          "puntosTitulo": "Conclusion points",
+          "sectionTitle": "5. Conclusions and comments"
+        },
+        "expandAll": "Expand all",
+        "loadingCaso": "Loading bulk case…",
+        "mercancia": {
+          "agregarLinea": "Add line",
+          "colBl": "B/L No.",
+          "colCantidad": "Quantity (t)",
+          "colDestino": "Destination",
+          "colProducto": "Product",
+          "colTipoCarga": "Cargo type",
+          "fotosSubtitle": "Photos of bulk cargo / holds",
+          "fotosTitle": "Cargo photo record",
+          "hint": "Bulk cargo: no container count.",
+          "sectionTitle": "Cargo description",
+          "sinLineas": "Add cargo lines (B/L, product, tons, destination).",
+          "total": "Total"
+        },
+        "photos": {
+          "agregarRegistro": "Add hold / operation",
+          "bodegaDefault": "Hold / operation {{n}}",
+          "fotosTitle": "Photos",
+          "registroN": "Record {{n}}",
+          "registroSubtitle": "Photos by hold or bulk operation",
+          "registroTitle": "Photographic record by hold",
+          "removeBlock": "Remove block",
+          "sinRegistros": "Add photo blocks per hold or operation.",
+          "tituloInforme": "Title in report",
+          "tituloPlaceholder": "E.g.: Hold 1 — Corn unloading"
+        },
+        "readOnlyBanner": "<strong>Read-only</strong> mode. Use Edit to modify the case.",
+        "sections": {
+          "buqueMercancia": {
+            "subtitle": "Vessel particulars and bulk cargo",
+            "title": "Vessel and cargo"
+          },
+          "conclusiones": {
+            "subtitle": "Conclusions and photographic record by hold",
+            "title": "Conclusions"
+          },
+          "datosIntro": {
+            "subtitle": "Client, operation, introduction and purpose",
+            "title": "General data and introduction"
+          },
+          "portada": {
+            "subtitle": "Report identification and client",
+            "title": "Cover"
+          },
+          "supervision": {
+            "subtitle": "Announced/shortage tracking, movement, e-mails and findings",
+            "title": "Bulk supervision"
+          }
+        },
+        "subtitle": "Port inspection and control — bulk cargo vessel",
+        "supervision": {
+          "agregarEmail": "Add e-mail",
+          "agregarFecha": "Add date",
+          "agregarFila": "Add row",
+          "colAnunciada": "Announced",
+          "colBl": "B/L",
+          "colBuenEstado": "Good condition",
+          "colCantidad": "Quantity",
+          "colCantPeso": "Weight",
+          "colDestino": "Destination",
+          "colEvento": "Event / summary",
+          "colFaltante": "Shortage",
+          "colFecha": "Date",
+          "colProducto": "Product",
+          "colSobrante": "Overage",
+          "colTipoCarga": "Cargo type",
+          "colUnidadPeso": "Unit",
+          "comentariosLabel": "Supervision comments",
+          "comentariosMovimientoLabel": "Movement comments",
+          "comentariosMovimientoTitle": "Comments — movement",
+          "comentariosTitle": "Supervision comments",
+          "condicionLabel": "Cargo condition description",
+          "condicionHint": "Arrival / condition text + photos (stowage plan, initial state, unloading start).",
+          "condicionPlaceholder": "During the arrival inspection the cargo was observed in good condition...",
+          "condicionTitle": "Cargo condition",
+          "emailEventoPlaceholder": "Email / report text (as in the Word)...",
+          "emailN": "E-mail {{n}}",
+          "emailsTitle": "E-mail summary",
+          "fotosEmail": "Email images",
+          "fotosEmailSubtitle": "Screenshots, progress tables or other attachments from the email.",
+          "equipoPlaceholder": "E.g.: Mobile crane / hopper",
+          "equiposIntro": "Equipment intro text",
+          "equiposPuntos": "Equipment used",
+          "equiposTitle": "Operating equipment",
+          "fotosCondicion": "Photos — condition / arrival",
+          "fotosCondicionSubtitle": "Caption under each photo (as in the Word).",
+          "fotosEquipos": "Photos — equipment",
+          "fotosMeteo": "Photos — weather",
+          "fotosNovedades": "Photos — findings / damage",
+          "fotosNovedadesSubtitle": "E.g.: letter of protest, spilled wheat port/starboard, warehouse storage.",
+          "meteoLabel": "Weather conditions",
+          "meteoTitle": "Weather conditions",
+          "movimientoTitle": "Cargo movement",
+          "novedadPuntoPlaceholder": "E.g.: Letter of protest for insects in hold No. 2...",
+          "novedadesHint": "Word findings: text or bullets + captioned photos (protest, spilled wheat, warehouse).",
+          "novedadesLabel": "Findings summary paragraph",
+          "novedadesPlaceholder": "General summary of findings during the operation...",
+          "novedadesPuntos": "Finding / damage points",
+          "novedadesTitle": "Findings and damage",
+          "seguimientoHint": "In Date type the days as in the Word (e.g. 02,03,04 y 05/04/2026).",
+          "fechaPlaceholder": "02,03,04 y 05/04/2026",
+          "seguimientoTitle": "Bulk cargo tracking",
+          "sinEmails": "Add e-mail summary entries.",
+          "sinMovimiento": "Add cargo movement rows.",
+          "sinSeguimiento": "Add bulk tracking rows.",
+          "usarFechasInspeccion": "Use inspection dates"
+        },
+        "titleEdit": "Bulk Inspection — Supervision report",
+        "titleView": "View — Bulk Inspection"
       }
     }
   },

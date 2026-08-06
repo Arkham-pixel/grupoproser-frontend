@@ -39,7 +39,6 @@ import {
   captionImagenPdf,
   prepararFotosSeccion3Mercancia,
   textoPunto,
-  agruparFotosSupervisionInicial,
 } from './puertosCasoExportacionPdfHelpers';
 
 const CONTACTO_BOLIVAR = {
@@ -986,27 +985,23 @@ function seccionSupervisionTabla(informe) {
 async function seccionSupervisionBloques(informe, extrasMercancia = null) {
   const children = [];
 
-  const fotosInicial = agruparFotosSupervisionInicial(informe.imagenesRegistroInicialSupervision);
-  const contenedoresExtra = [
-    ...(extrasMercancia?.contenedores || []),
-    ...fotosInicial.contenedores,
-  ];
-  const vehiculosExtra = [
-    ...(extrasMercancia?.vehiculos || []),
-    ...fotosInicial.vehiculos,
-  ];
+  // Registro fotográfico inicial: lado a lado con descripción completa.
+  const fotosInicialRaw = (informe.imagenesRegistroInicialSupervision || []).filter(
+    (img) => img?.ruta || img?.preview || img?.file || img?.src || img?.base64
+  );
+  if (fotosInicialRaw.length) {
+    children.push(...(await grillaFotos(fotosInicialRaw, 2, 52)));
+  }
 
+  const contenedoresExtra = [...(extrasMercancia?.contenedores || [])];
+  const vehiculosExtra = [...(extrasMercancia?.vehiculos || [])];
   if (contenedoresExtra.length) {
     children.push(barraTituloContenedor('Contenedor (es) asignado (s)'));
-    children.push(...(await grillaFotos(contenedoresExtra, 4, 36)));
+    children.push(...(await grillaFotos(contenedoresExtra, 2, 40, { sinCaption: true })));
   }
   if (vehiculosExtra.length) {
     children.push(barraTituloContenedor('Vehículo (s) asignado (s)'));
-    children.push(...(await grillaFotos(vehiculosExtra, 3, 40)));
-  }
-  if (fotosInicial.bodega.length) {
-    children.push(barraTituloContenedor('Carga almacenada en Bodega 9'));
-    children.push(...(await grillaFotos(fotosInicial.bodega, 3, 40)));
+    children.push(...(await grillaFotos(vehiculosExtra, 2, 40, { sinCaption: true })));
   }
 
   const registrosSupervision = informe.registrosFotograficosSupervision || [];
@@ -1018,7 +1013,7 @@ async function seccionSupervisionBloques(informe, extrasMercancia = null) {
         ? `N° Contenedor ${reg.numeroContenedor} con sellos de seguridad`
         : 'Contenedor');
     children.push(barraTituloContenedor(tituloReg));
-    children.push(...(await grillaFotos(reg.imagenes, 3, 48)));
+    children.push(...(await grillaFotos(reg.imagenes, 2, 48)));
   }
 
   const bloques = [
@@ -1026,28 +1021,28 @@ async function seccionSupervisionBloques(informe, extrasMercancia = null) {
       titulo: 'Condición de la carga',
       texto: informe.condicionCargaTexto,
       imgs: informe.imagenesCondicionCarga,
-      cols: 3,
-      alto: 38,
+      cols: 2,
+      alto: 42,
     },
     {
       titulo: 'Durante la inspección de arribo se observó',
       texto: informe.inspeccionArriboIntro,
       puntos: informe.inspeccionArriboPuntos,
       imgs: informe.imagenesInspeccionArribo,
-      cols: 3,
+      cols: 2,
     },
     {
       titulo: 'Equipos usados en la operación de cargue/descargue',
       texto: informe.equiposOperacionIntro,
       puntos: informe.equiposOperacionPuntos,
       imgs: informe.imagenesEquiposOperacion,
-      cols: 3,
+      cols: 2,
     },
     {
       titulo: 'Condiciones meteorológicas durante el descargue',
       texto: informe.condicionesMeteoTexto,
       imgs: informe.imagenesCondicionesMeteo,
-      cols: 3,
+      cols: 2,
     },
   ];
 

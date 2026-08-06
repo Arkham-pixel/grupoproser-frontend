@@ -23,13 +23,16 @@ function toDateInput(valor) {
   return `${y}-${m}-${day}`;
 }
 
-export function generarNroActaSugerido() {
+/** Sugerencia opcional (ya no se prellena el formulario). Prefijo libre: MC, BV, etc. */
+export function generarNroActaSugerido(prefijo = '') {
   const now = new Date();
   const y = now.getFullYear();
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   const seq = String(Math.floor(Math.random() * 900) + 100);
-  return `BV${y}${m}${d}${seq}`;
+  const base = `${y}${m}${d}${seq}`;
+  const p = String(prefijo || '').trim().toUpperCase();
+  return p ? `${p}${base}` : base;
 }
 
 export function estadoInicialActaFormulario() {
@@ -39,7 +42,8 @@ export function estadoInicialActaFormulario() {
   return {
     _id: '',
     regional: '',
-    nroActa: generarNroActaSugerido(),
+    // Libre: el usuario escribe MC, BV u otro consecutivo real del acta.
+    nroActa: '',
     fechaActa: `${fecha}T${hora}`,
     fechaLlegada: fecha,
     ciudad: '',

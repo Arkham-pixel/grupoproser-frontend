@@ -69,6 +69,7 @@ import PuertosActasListado from './components/PuertosActas/PuertosActasListado';
 import PuertosNuevaActa from './components/PuertosActas/PuertosNuevaActa';
 import PuertosCatalogos from './components/PuertosActas/PuertosCatalogos';
 import PuertosCasoExportacionMain from './components/PuertosActas/PuertosCasoExportacionMain';
+import PuertosCasoGranelMain from './components/PuertosActas/PuertosCasoGranelMain';
 import ActaInspeccion from './components/ActaInspeccion';
 import GestionDocumentos from './components/GestionDocumentos/GestionDocumentos';
 
@@ -529,6 +530,9 @@ export default function App() {
             <Route path="caso/nueva" element={<PuertosCasoExportacionMain />} />
             <Route path="caso/ver/:id" element={<PuertosCasoExportacionMain />} />
             <Route path="caso/editar/:id" element={<PuertosCasoExportacionMain />} />
+            <Route path="granel/nueva" element={<PuertosCasoGranelMain />} />
+            <Route path="granel/ver/:id" element={<PuertosCasoGranelMain />} />
+            <Route path="granel/editar/:id" element={<PuertosCasoGranelMain />} />
             <Route
               path="inspeccion-asegurado/nueva"
               element={<PuertosInspeccionMain tipoInicial="riicp004" modoActas />}

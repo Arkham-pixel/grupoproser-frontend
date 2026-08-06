@@ -525,6 +525,7 @@
         "intermediario": "Intermediario",
         "ciudadSiniestro": "Ciudad siniestro",
         "aseguradoBeneficiario": "Asegurado/beneficiario",
+        "correoNotificacion": "Correo de notificación",
         "observacionesSeguimiento": "Observaciones seguimiento",
         "createdAt": "Creado el",
         "updatedAt": "Actualizado el"
@@ -6180,6 +6181,7 @@
           "listado": "Listado",
           "nuevaActa": "Nueva Acta",
           "informeExportacion": "Informe Exportación",
+          "inspeccionGranel": "Inspección Granel",
           "inspeccionAsegurado": "Inspección Asegurado",
           "catalogos": "Catálogos"
         }
@@ -6187,6 +6189,7 @@
       "tipos": {
         "acta": "Acta",
         "caso_exportacion": "Caso exportación",
+        "caso_granel": "Inspección Granel",
         "inspeccion_asegurado": "Inspección asegurado",
         "registro": "Registro",
         "todos": "Todos los tipos"
@@ -6207,6 +6210,7 @@
         "filtersActive": " · {{count}} filtro(s) activo(s)",
         "nuevaActa": "Nueva Acta",
         "informeExportacion": "Informe Exportación",
+        "inspeccionGranel": "Inspección Granel",
         "inspeccionAsegurado": "Inspección Asegurado",
         "errorBackend": "{{error}}. Verifique que el backend esté en ejecución.",
         "loadError": "Error al cargar registros",
@@ -6320,7 +6324,7 @@
           "tipoAveria": "Tipo de Avería"
         },
         "placeholders": {
-          "nroActa": "BV635260",
+          "nroActa": "Ej: MC9130443 o BV635260",
           "ciudad": "CIUDAD",
           "asegurado": "ASEGURADO",
           "pedido": "NRO. PEDIDO",
@@ -7110,6 +7114,8 @@
           "bultos": "Bultos",
           "bultosTotal": "Bultos (total vehículo)",
           "cantidad": "Cantidad",
+          "cantidadInforme": "Cantidad",
+          "cantidadInformePlaceholder": "1 x 40'",
           "comentariosLabel": "Comentarios del reporte de supervisión",
           "comentariosPlaceholder": "Las cajas fueron descargadas y ubicadas en los contenedores asignados...",
           "comentariosTitle": "Comentarios",
@@ -7164,6 +7170,141 @@
           "observacionesSeguimiento": "Observaciones de seguimiento",
           "seguimientoGeneral": "Seguimiento general"
         }
+      },
+      "casoGranel": {
+        "alerts": {
+          "clienteRequired": "Indique el nombre o razón social del cliente / asegurado.",
+          "loadError": "No se pudo cargar el caso granel: {{error}}",
+          "pdfError": "No se pudo generar el PDF: {{error}}",
+          "saveError": "Error al guardar: {{error}}",
+          "saved": "Caso granel guardado: {{id}}",
+          "selectClient": "Seleccione el cliente (aseguradora) en la portada."
+        },
+        "collapseAll": "Colapsar todas",
+        "datosGenerales": {
+          "agregarFecha": "Agregar fecha",
+          "fechasInspeccion": "Fechas de inspección",
+          "fechasInspeccionHint": "Puede registrar varios días de inspección (como en el Word: 02, 03, 04 y 05 ABRIL 2026).",
+          "fechasInspeccionPreview": "En el informe"
+        },
+        "conclusiones": {
+          "parrafoPlaceholder": "La mercancía a granel fue inspeccionada y controlada de acuerdo con las costumbres del comercio...",
+          "parrafoPrincipal": "Párrafo principal",
+          "puntoPlaceholder": "Ej: Bodegas inspeccionadas sin novedad...",
+          "puntosTitulo": "Puntos de conclusión",
+          "sectionTitle": "5. Conclusiones y comentarios"
+        },
+        "expandAll": "Expandir todas",
+        "loadingCaso": "Cargando caso granel…",
+        "mercancia": {
+          "agregarLinea": "Agregar línea",
+          "colBl": "B/L N°",
+          "colCantidad": "Cantidad (t)",
+          "colDestino": "Destino",
+          "colProducto": "Producto",
+          "colTipoCarga": "Tipo de carga",
+          "fotosSubtitle": "Fotos de la mercancía a granel / bodegas",
+          "fotosTitle": "Registro fotográfico de mercancía",
+          "hint": "Mercancía a granel: sin número de contenedores.",
+          "sectionTitle": "Descripción de la mercancía",
+          "sinLineas": "Agregue líneas de mercancía (B/L, producto, toneladas, destino).",
+          "total": "Total"
+        },
+        "photos": {
+          "agregarRegistro": "Agregar bodega / operación",
+          "bodegaDefault": "Bodega / operación {{n}}",
+          "fotosTitle": "Fotografías",
+          "registroN": "Registro {{n}}",
+          "registroSubtitle": "Fotos por bodega u operación de granel",
+          "registroTitle": "Registro fotográfico por bodega",
+          "removeBlock": "Quitar bloque",
+          "sinRegistros": "Agregue bloques fotográficos por bodega u operación.",
+          "tituloInforme": "Título en el informe",
+          "tituloPlaceholder": "Ej: Bodega 1 — Descargue maíz"
+        },
+        "readOnlyBanner": "Modo <strong>solo lectura</strong>. Use Editar para modificar el caso.",
+        "sections": {
+          "buqueMercancia": {
+            "subtitle": "Características del buque y mercancía a granel",
+            "title": "Buque y mercancía"
+          },
+          "conclusiones": {
+            "subtitle": "Conclusiones y registro fotográfico por bodega",
+            "title": "Conclusiones"
+          },
+          "datosIntro": {
+            "subtitle": "Cliente, operación, introducción y propósito",
+            "title": "Datos generales e introducción"
+          },
+          "portada": {
+            "subtitle": "Identificación del informe y cliente",
+            "title": "Portada"
+          },
+          "supervision": {
+            "subtitle": "Seguimiento anunciada/faltante, movimiento, e-mails y novedades",
+            "title": "Supervisión granel"
+          }
+        },
+        "subtitle": "Inspección y control portuario — motonave con carga a granel",
+        "supervision": {
+          "agregarEmail": "Agregar e-mail",
+          "agregarFecha": "Agregar fecha",
+          "agregarFila": "Agregar fila",
+          "colAnunciada": "Anunciada",
+          "colBl": "B/L",
+          "colBuenEstado": "Buen estado",
+          "colCantidad": "Cantidad",
+          "colCantPeso": "Peso",
+          "colDestino": "Destino",
+          "colEvento": "Evento / resumen",
+          "colFaltante": "Faltante",
+          "colFecha": "Fecha",
+          "colProducto": "Producto",
+          "colSobrante": "Sobrante",
+          "colTipoCarga": "Tipo de carga",
+          "colUnidadPeso": "Unidad",
+          "comentariosLabel": "Comentarios de supervisión",
+          "comentariosMovimientoLabel": "Comentarios del movimiento",
+          "comentariosMovimientoTitle": "Comentarios — movimiento",
+          "comentariosTitle": "Comentarios de supervisión",
+          "condicionLabel": "Descripción de la condición de carga",
+          "condicionHint": "Texto de arribo / condición + fotos (plano de estiba, estado inicial, inicio de descargue).",
+          "condicionPlaceholder": "Durante la inspección de arribo se observó la carga en buen estado...",
+          "condicionTitle": "Condición de la carga",
+          "emailEventoPlaceholder": "Texto del correo / reporte (como en el Word)...",
+          "emailN": "E-mail {{n}}",
+          "emailsTitle": "Resumen de e-mails",
+          "fotosEmail": "Imágenes del correo",
+          "fotosEmailSubtitle": "Capturas, tablas de avance u otros adjuntos pegados en el correo.",
+          "equipoPlaceholder": "Ej: Grúa móvil / tolva",
+          "equiposIntro": "Texto introductorio de equipos",
+          "equiposPuntos": "Equipos utilizados",
+          "equiposTitle": "Equipos de operación",
+          "fotosCondicion": "Fotos — condición / arribo",
+          "fotosCondicionSubtitle": "Leyenda bajo cada foto (como en el Word).",
+          "fotosEquipos": "Fotos — equipos",
+          "fotosMeteo": "Fotos — condiciones meteo",
+          "fotosNovedades": "Fotos — novedades / averías",
+          "fotosNovedadesSubtitle": "Ej.: carta de protesta, trigo regado babor/estribor, almacenamiento en bodega.",
+          "meteoLabel": "Condiciones meteorológicas",
+          "meteoTitle": "Condiciones meteorológicas",
+          "movimientoTitle": "Movimiento de mercancía",
+          "novedadPuntoPlaceholder": "Ej: Carta de protesta por insectos en bodega N° 2...",
+          "novedadesHint": "Hallazgos del Word: texto o viñetas + fotos con leyenda (protesta, trigo regado, bodega).",
+          "novedadesLabel": "Párrafo / resumen de novedades",
+          "novedadesPlaceholder": "Resumen general de novedades observadas durante la operación...",
+          "novedadesPuntos": "Puntos de novedad / avería",
+          "novedadesTitle": "Novedades y averías",
+          "seguimientoHint": "En Fecha escriba los días como en el Word (ej. 02,03,04 y 05/04/2026).",
+          "fechaPlaceholder": "02,03,04 y 05/04/2026",
+          "seguimientoTitle": "Seguimiento de mercancía a granel",
+          "sinEmails": "Agregue entradas del resumen de e-mails.",
+          "sinMovimiento": "Agregue filas de movimiento de mercancía.",
+          "sinSeguimiento": "Agregue filas de seguimiento granel.",
+          "usarFechasInspeccion": "Usar fechas de inspección"
+        },
+        "titleEdit": "Inspección Granel — Reporte de supervisión",
+        "titleView": "Consulta — Inspección Granel"
       }
     }
   },

@@ -14,6 +14,7 @@ export const FILTROS_PUERTOS_VACIOS = {
 export const OPCIONES_TIPO = [
   { value: '', label: 'Todos los tipos' },
   { value: 'caso_exportacion', label: 'Caso exportación' },
+  { value: 'caso_granel', label: 'Inspección Granel' },
   { value: 'inspeccion_asegurado', label: 'Inspección asegurado' },
   { value: 'acta', label: 'Acta' },
 ];
@@ -23,6 +24,7 @@ export const OPCIONES_ESTADO = CODIGOS_ESTADO_FILTRO;
 const TIPO_LABEL = {
   acta: 'Acta',
   caso_exportacion: 'Caso exportación',
+  caso_granel: 'Inspección Granel',
   inspeccion_asegurado: 'Inspección asegurado',
 };
 
@@ -83,6 +85,10 @@ export function exportarTrazabilidadPuertosExcel(registros = []) {
     {
       Métrica: 'Casos exportación',
       Valor: registros.filter((r) => r.tipoRegistro === 'caso_exportacion').length,
+    },
+    {
+      Métrica: 'Inspección Granel',
+      Valor: registros.filter((r) => r.tipoRegistro === 'caso_granel').length,
     },
     { Métrica: 'Actas', Valor: registros.filter((r) => r.tipoRegistro === 'acta').length },
     {

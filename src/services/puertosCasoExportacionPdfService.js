@@ -23,8 +23,8 @@ import {
   construirMercanciaConsolidada,
   captionImagenPdf,
   prepararFotosSeccion3Mercancia,
+  normalizarTextoPdf,
   textoPunto,
-  agruparFotosSupervisionInicial,
 } from './puertosCasoExportacionPdfHelpers';
 
 const CONTACTO_BOLIVAR = {
@@ -36,7 +36,7 @@ const CONTACTO_BOLIVAR = {
   email: 'Carlos.barrios@segurosbolivar.com',
 };
 
-class PdfLayout {
+export class PdfLayout {
   constructor(doc, logoDataUrl = null) {
     this.doc = doc;
     this.logoDataUrl = logoDataUrl;
@@ -111,6 +111,8 @@ class PdfLayout {
     doc.setTextColor(...PDF_COLORS.greenBrand);
     doc.text('REPORTE DE SUPERVISIÓN', greenW / 2, barH / 2 + 2.5, { align: 'center' });
     doc.setTextColor(...PDF_COLORS.text);
+    // Volver a cuerpo: el encabezado deja size 22 y rompe splitTextToSize / párrafos.
+    this.aplicarFuente('normal', PDF_FONT.body);
 
     this.y = barH + PDF_HEADER.espacioContenido;
   }
@@ -380,7 +382,7 @@ class PdfLayout {
     this.asegurarEspacio(12);
     const { doc } = this;
     this.aplicarFuente('bold', PDF_FONT.title);
-    doc.text(String(texto).toUpperCase(), this.x, this.y);
+    doc.text(String(texto).toUpperCase(), this.x, this.y, { align: 'left' });
     this.y += sinLinea ? 6 : 3;
     if (!sinLinea) {
       doc.setDrawColor(...PDF_COLORS.green);
@@ -399,15 +401,23 @@ class PdfLayout {
   }
 
   parrafo(texto, opciones = {}) {
-    const { fontSize = PDF_FONT.body, bold = false, align = 'justify' } = opciones;
-    if (!texto?.trim()) return;
+    // Nunca usar justify: con fuentes custom jsPDF estira las palabras (huecos enormes).
+    const { fontSize = PDF_FONT.body, bold = false, align = 'left' } = opciones;
+    const limpio = normalizarTextoPdf(texto);
+    if (!limpio) return;
     const { doc } = this;
     this.aplicarFuente(bold ? 'bold' : 'normal', fontSize);
-    const lineas = doc.splitTextToSize(texto.trim(), PDF_CONTENT_W);
-    const alto = lineas.length * (fontSize * 0.42) + 2;
+    const lineH = fontSize * 0.42;
+    const lineas = doc.splitTextToSize(limpio, PDF_CONTENT_W);
+    const alto = lineas.length * lineH + 2;
     this.asegurarEspacio(alto);
-    const xPos = align === 'center' ? PDF_PAGE.w / 2 : this.x;
-    doc.text(lineas, xPos, this.y, { align, maxWidth: PDF_CONTENT_W });
+    // Reaplicar fuente por si asegurarEspacio redibujó el encabezado (deja size 22).
+    this.aplicarFuente(bold ? 'bold' : 'normal', fontSize);
+    if (align === 'center') {
+      doc.text(lineas, PDF_PAGE.w / 2, this.y, { align: 'center', lineHeightFactor: 1.15 });
+    } else {
+      doc.text(lineas, this.x, this.y, { align: 'left', lineHeightFactor: 1.15 });
+    }
     this.y += alto;
   }
 
@@ -548,18 +558,60 @@ class PdfLayout {
   }
 
   listaViñetas(puntos) {
-    const items = (puntos || []).map(textoPunto).filter(Boolean);
+    const items = (puntos || [])
+      .map(textoPunto)
+      .map(normalizarTextoPdf)
+      .filter(Boolean);
     if (!items.length) return;
     const { doc } = this;
-    items.forEach((texto) => {
-      const lineas = doc.splitTextToSize(texto, PDF_CONTENT_W - 8);
-      const alto = lineas.length * 4 + 2;
+    const fontSize = PDF_FONT.body;
+    const lineH = fontSize * 0.42;
+    items.forEach((textoItem) => {
+      this.aplicarFuente('normal', fontSize);
+      const lineas = doc.splitTextToSize(textoItem, PDF_CONTENT_W - 10);
+      const alto = lineas.length * lineH + 2;
       this.asegurarEspacio(alto);
-      this.aplicarFuente('normal', PDF_FONT.body);
-      doc.text('✓', this.x, this.y);
-      doc.text(lineas, this.x + 5, this.y);
+      this.aplicarFuente('normal', fontSize);
+      doc.text('-', this.x, this.y, { align: 'left' });
+      doc.text(lineas, this.x + 6, this.y, { align: 'left', lineHeightFactor: 1.15 });
       this.y += alto;
     });
+  }
+
+  /**
+   * Asegura espacio para un bloque (p.ej. título + primera fila de fotos)
+   * y evita títulos huérfanos al final de página.
+   */
+  asegurarBloque(altoMinimo) {
+    if (this.y + altoMinimo > this.maxY) {
+      this.nuevaPagina();
+    }
+  }
+
+  /** Cuadro con borde para bloques tipo e-mail del Word. */
+  comenzarCuadro() {
+    this._cuadroInicioY = this.y;
+    this._cuadroPagina = this.page;
+  }
+
+  cerrarCuadro(padding = 3) {
+    if (this._cuadroInicioY == null) return;
+    const { doc } = this;
+    // Si el contenido saltó de página, no dibujar un rect inválido: solo cerrar estado.
+    if (this._cuadroPagina !== this.page) {
+      this._cuadroInicioY = null;
+      this._cuadroPagina = null;
+      this.y += padding;
+      return;
+    }
+    const y0 = this._cuadroInicioY - 2;
+    const h = Math.max(8, this.y - y0 + padding);
+    doc.setDrawColor(...PDF_COLORS.border);
+    doc.setLineWidth(0.35);
+    doc.rect(this.x, y0, PDF_CONTENT_W, h);
+    this.y = y0 + h + 4;
+    this._cuadroInicioY = null;
+    this._cuadroPagina = null;
   }
 
   tituloCentrado(texto) {
@@ -597,7 +649,17 @@ class PdfLayout {
   }
 
   async grillaFotos(imagenes, columnas = 3, anchoCelda = null, altoCelda = 42, opciones = {}) {
-    const lista = (imagenes || []).filter(Boolean);
+    const lista = (imagenes || []).filter((img) => {
+      if (!img) return false;
+      return Boolean(
+        img.ruta ||
+          img.preview ||
+          img.file ||
+          img.base64 ||
+          (typeof img.src === 'string' && img.src) ||
+          (typeof img.url === 'string' && img.url)
+      );
+    });
     if (!lista.length) return;
 
     const {
@@ -614,7 +676,7 @@ class PdfLayout {
     for (let i = 0; i < lista.length; i += cols) {
       const slice = lista.slice(i, i + cols);
       let maxCaptionH = 0;
-      const captions = slice.map((img, idx) => {
+      const captions = slice.map((img) => {
         if (leyendaFila || leyendasPorCelda) return [];
         if (sinCaption) return [];
         const cap = captionImagenPdf(img);
@@ -623,25 +685,30 @@ class PdfLayout {
         return lines;
       });
       const bloqueH = altoCelda + maxCaptionH + leyendaH + 4;
-      this.asegurarEspacio(bloqueH);
+      // Si no cabe la fila, saltar página ANTES de dibujar (evita solapes)
+      if (this.y + bloqueH > this.maxY) {
+        this.nuevaPagina();
+      }
 
       const filaY = this.y;
+      this.aplicarFuente('normal', PDF_FONT.caption);
       for (let c = 0; c < slice.length; c++) {
         const img = slice[c];
         const cx = this.x + c * (cellW + gap);
         const data = await imagenInformeABase64(img);
         this.doc.setDrawColor(...PDF_COLORS.border);
+        this.doc.setLineWidth(0.25);
         this.doc.rect(cx, filaY, cellW, altoCelda);
         if (data) {
           try {
             const fmt = detectarFormatoImagen(data);
             this.doc.addImage(data, fmt, cx + 0.5, filaY + 0.5, cellW - 1, altoCelda - 1);
           } catch {
-            this.doc.setFontSize(7);
+            this.aplicarFuente('normal', 7);
             this.doc.text('Imagen no disponible', cx + 2, filaY + altoCelda / 2);
           }
         } else {
-          this.doc.setFontSize(7);
+          this.aplicarFuente('normal', 7);
           this.doc.setTextColor(...PDF_COLORS.muted);
           this.doc.text('Sin imagen', cx + cellW / 2, filaY + altoCelda / 2, { align: 'center' });
           this.doc.setTextColor(...PDF_COLORS.text);
@@ -711,7 +778,7 @@ class PdfLayout {
   }
 }
 
-async function paginaPortada(layout, formData) {
+export async function paginaPortada(layout, formData) {
   const { doc } = layout;
   const barH = PDF_HEADER.barH;
 
@@ -753,7 +820,7 @@ async function paginaPortada(layout, formData) {
   layout.usarEncabezado = true;
 }
 
-function paginaDatosEIntroduccion(layout, formData, responsables, informe) {
+export function paginaDatosEIntroduccion(layout, formData, responsables, informe) {
   layout.nuevaPagina();
 
   layout.parrafoCentrado(
@@ -769,7 +836,10 @@ function paginaDatosEIntroduccion(layout, formData, responsables, informe) {
     ['Ciudad del Riesgo:', formData.ciudadRiesgo],
     ['Labor Realizada:', formData.laborRealizada],
     ['Lugar:', formData.lugar],
-    ['Fecha Inspección:', formatearFechaMayus(formData.fchaInspccion)],
+    [
+      'Fecha Inspección:',
+      formData.fechaInspeccionDisplay || formatearFechaMayus(formData.fchaInspccion),
+    ],
     ['Inspector:', obtenerInspector(formData, responsables)],
     ['Consecutivo:', formData.consecutivo],
   ]);
@@ -783,7 +853,7 @@ function paginaDatosEIntroduccion(layout, formData, responsables, informe) {
   }
 }
 
-async function seccionBuque(layout, informe) {
+export async function seccionBuque(layout, informe) {
   layout.nuevaPagina();
   const buque = informe.buque || {};
 
@@ -1078,29 +1148,26 @@ function seccionSupervisionTabla(layout, informe) {
 }
 
 async function seccionSupervisionBloques(layout, informe, extrasMercancia = null) {
-  const fotosInicial = agruparFotosSupervisionInicial(informe.imagenesRegistroInicialSupervision);
-  const contenedoresExtra = [
-    ...(extrasMercancia?.contenedores || []),
-    ...fotosInicial.contenedores,
-  ];
-  const vehiculosExtra = [
-    ...(extrasMercancia?.vehiculos || []),
-    ...fotosInicial.vehiculos,
-  ];
+  // Registro fotográfico inicial / almacenamiento (exportación):
+  // lado a lado con la descripción completa (sin forzar barra «Bodega 9»).
+  const fotosInicialRaw = (informe.imagenesRegistroInicialSupervision || []).filter(
+    (img) => img?.ruta || img?.preview || img?.file || img?.src || img?.base64
+  );
+  if (fotosInicialRaw.length) {
+    await layout.grillaFotos(fotosInicialRaw, 2, null, 52);
+    layout.espacio(3);
+  }
 
+  const contenedoresExtra = [...(extrasMercancia?.contenedores || [])];
+  const vehiculosExtra = [...(extrasMercancia?.vehiculos || [])];
   if (contenedoresExtra.length) {
     layout.barraTituloContenedor('Contenedor (es) asignado (s)');
-    await layout.grillaFotos(contenedoresExtra, 4, null, 36);
+    await layout.grillaFotos(contenedoresExtra, 2, null, 40, { sinCaption: true });
     layout.espacio(3);
   }
   if (vehiculosExtra.length) {
     layout.barraTituloContenedor('Vehículo (s) asignado (s)');
-    await layout.grillaFotos(vehiculosExtra, 3, null, 40);
-    layout.espacio(3);
-  }
-  if (fotosInicial.bodega.length) {
-    layout.barraTituloContenedor('Carga almacenada en Bodega 9');
-    await layout.grillaFotos(fotosInicial.bodega, 3, null, 40);
+    await layout.grillaFotos(vehiculosExtra, 2, null, 40, { sinCaption: true });
     layout.espacio(3);
   }
 
@@ -1113,7 +1180,7 @@ async function seccionSupervisionBloques(layout, informe, extrasMercancia = null
         ? `N° Contenedor ${reg.numeroContenedor} con sellos de seguridad`
         : 'Contenedor');
     layout.barraTituloContenedor(tituloReg);
-    await layout.grillaFotos(reg.imagenes, 3, null, 48);
+    await layout.grillaFotos(reg.imagenes, 2, null, 48);
     layout.espacio(3);
   }
 
@@ -1122,36 +1189,34 @@ async function seccionSupervisionBloques(layout, informe, extrasMercancia = null
       titulo: 'Condición de la carga',
       texto: informe.condicionCargaTexto,
       imgs: informe.imagenesCondicionCarga,
-      cols: 3,
-      alto: 38,
+      cols: 2,
+      alto: 42,
     },
     {
       titulo: 'Durante la inspección de arribo se observó',
       texto: informe.inspeccionArriboIntro,
       puntos: informe.inspeccionArriboPuntos,
       imgs: informe.imagenesInspeccionArribo,
-      cols: 3,
+      cols: 2,
     },
     {
       titulo: 'Equipos usados en la operación de cargue/descargue',
       texto: informe.equiposOperacionIntro,
       puntos: informe.equiposOperacionPuntos,
       imgs: informe.imagenesEquiposOperacion,
-      cols: 3,
+      cols: 2,
     },
     {
       titulo: 'Condiciones meteorológicas durante el descargue',
       texto: informe.condicionesMeteoTexto,
       imgs: informe.imagenesCondicionesMeteo,
-      cols: 3,
+      cols: 2,
     },
   ];
 
   for (const bloque of bloques) {
     const tieneContenido =
-      bloque.texto ||
-      bloque.puntos?.length ||
-      bloque.imgs?.length;
+      bloque.texto || bloque.puntos?.length || bloque.imgs?.length;
     if (!tieneContenido) continue;
 
     layout.tituloSeccion(bloque.titulo, true);
@@ -1192,7 +1257,7 @@ async function seccionConclusiones(layout, informe) {
   }
 }
 
-function seccionContacto(layout) {
+export function seccionContacto(layout) {
   layout.asegurarEspacio(40);
   layout.parrafo(CONTACTO_BOLIVAR.intro, { fontSize: PDF_FONT.body });
   layout.espacio(4);

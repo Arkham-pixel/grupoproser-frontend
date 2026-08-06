@@ -93,8 +93,34 @@ export function textoPunto(punto) {
   return typeof punto === 'string' ? punto : punto.texto || '';
 }
 
+/** Limpia HTML/NBSP y colapsa espacios — evita huecos enormes en el PDF. */
+export function normalizarTextoPdf(texto) {
+  if (texto == null) return '';
+  return String(texto)
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&#160;/g, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\u2007/g, ' ')
+    .replace(/\u202f/g, ' ')
+    .replace(/[ \t\f\v]+/g, ' ')
+    .replace(/\n[ \t]+/g, '\n')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 export async function imagenInformeABase64(imagen) {
   if (!imagen) return null;
+
+  // File local (aún no subido): leer directo, más fiable que blob:
+  if (imagen.file instanceof File || imagen.file instanceof Blob) {
+    const fromFile = await blobABase64(imagen.file);
+    if (fromFile) return fromFile;
+  }
+
   const candidatos = getImageUrlCandidates(imagen);
   const display = getPuertosImagenDisplayUrl(imagen);
   const urls = [...new Set([display, ...candidatos].filter(Boolean))];
@@ -102,6 +128,10 @@ export async function imagenInformeABase64(imagen) {
   for (const url of urls) {
     const data = await urlABase64(url);
     if (data) return data;
+  }
+
+  if (typeof imagen.src === 'string' && imagen.src.startsWith('data:')) {
+    return imagen.src;
   }
   return null;
 }
@@ -169,10 +199,23 @@ function normalizarNumeroContenedor(numero) {
   return String(numero || '').replace(/\s+/g, '').toUpperCase();
 }
 
-/** Cantidad estilo Word: «1 x 40'» (evita duplicar cuando el tipo ya incluye la cantidad). */
+/**
+ * Columna «Cantidad» del Word: solo el formato de contenedor («1 x 40'»).
+ * No anteponer totales de bultos u otros números sueltos → evita «2300 x 1 x 40'».
+ */
 function textoCantidadContenedor(c = {}) {
-  const cantidad = String(c.cantidad || '').trim();
   const tipo = String(c.tipoContenedor || '').trim().replace(/\s+/g, ' ');
+  const cantidad = String(c.cantidad || '').trim().replace(/\s+/g, ' ');
+  const esFormatoNx = (s) => /^\d+\s*x\s*.+/i.test(s);
+
+  // Preferir el tipo si ya trae «N x …» (valor de referencia del informe).
+  if (esFormatoNx(tipo)) return tipo;
+  // Si solo «cantidad» trae el formato completo, usarlo.
+  if (esFormatoNx(cantidad)) return cantidad;
+  // Número suelto en cantidad = no es esta columna (suele ser total de bultos).
+  if (cantidad && /^\d+([.,]\d+)?$/.test(cantidad)) {
+    return tipo || '';
+  }
   if (cantidad && tipo) {
     const tipoLower = tipo.toLowerCase();
     if (tipoLower.startsWith(`${cantidad.toLowerCase()} x`)) return tipo;

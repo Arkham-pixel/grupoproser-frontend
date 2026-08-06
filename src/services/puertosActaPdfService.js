@@ -46,7 +46,7 @@ function normalizarTextoPdf(valor) {
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/li>/gi, '\n')
-    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<li[^>]*>/gi, '- ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/[ \t]+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
@@ -54,14 +54,171 @@ function normalizarTextoPdf(valor) {
     .trim();
 }
 
+function estiloDesdeAtributos(el, estiloPadre) {
+  const next = { ...estiloPadre };
+  const tag = String(el.tagName || '').toLowerCase();
+  if (tag === 'b' || tag === 'strong') next.bold = true;
+  if (tag === 'i' || tag === 'em') next.italic = true;
+  const style = String(el.getAttribute?.('style') || '');
+  if (/font-weight\s*:\s*(bold|[6-9]00)/i.test(style)) next.bold = true;
+  if (/font-style\s*:\s*italic/i.test(style)) next.italic = true;
+  return next;
+}
+
+function textoPlanoNodo(node) {
+  if (!node) return '';
+  if (node.nodeType === 3) return String(node.nodeValue || '');
+  if (node.nodeType !== 1) return '';
+  const tag = String(node.tagName || '').toLowerCase();
+  if (tag === 'br') return '\n';
+  return Array.from(node.childNodes)
+    .map((c) => textoPlanoNodo(c))
+    .join('');
+}
+
 /**
- * Convierte HTML (o texto plano) en párrafos de runs con estilo.
- * @returns {{ text: string, bold?: boolean, italic?: boolean }[][]}
+ * Convierte HTML del editor rico tal cual (negritas, viñetas, párrafos).
+ * No duplica "-" si el <li> ya trae bala escrita por el usuario.
  */
 function htmlAParrafosRuns(html) {
   const raw = String(html ?? '');
   if (!raw.trim()) return [[{ text: ' ' }]];
 
+  if (!/<[a-z][\s\S]*>/i.test(raw)) {
+    return raw
+      .replace(/\r\n/g, '\n')
+      .split(/\n/)
+      .map((linea) => {
+        const t = decodificarEntidadesHtml(linea).replace(/\u00a0/g, ' ');
+        // Conservar espacios; solo descartar líneas totalmente vacías
+        if (!t.trim()) return null;
+        return [{ text: t.replace(/[ \t]+$/g, '') }];
+      })
+      .filter(Boolean);
+  }
+
+  if (typeof document === 'undefined') {
+    return htmlAParrafosRunsRegex(raw);
+  }
+
+  const root = document.createElement('div');
+  root.innerHTML = raw;
+
+  const parrafos = [];
+  let runs = [];
+
+  const flush = () => {
+    const limpios = runs
+      .map((r) => ({
+        ...r,
+        text: String(r.text || '').replace(/\u00a0/g, ' '),
+      }))
+      .filter((r) => r.text.length);
+    // Evitar párrafos que solo son "-" / "•" (li vacíos del editor)
+    const soloBala =
+      limpios.length &&
+      limpios.every((r) => /^\s*[-*•–—]+\s*$/.test(r.text));
+    if (limpios.length && !soloBala) parrafos.push(limpios);
+    runs = [];
+  };
+
+  const pushTexto = (texto, estilo) => {
+    if (texto == null || texto === '') return;
+    const t = String(texto).replace(/\u00a0/g, ' ');
+    if (!t) return;
+    const partes = t.split('\n');
+    partes.forEach((parte, idx) => {
+      if (parte) {
+        runs.push({
+          text: parte,
+          bold: Boolean(estilo.bold),
+          italic: Boolean(estilo.italic),
+        });
+      }
+      if (idx < partes.length - 1) flush();
+    });
+  };
+
+  /** Quita una bala inicial del primer texto del nodo (evita "- - Primer…"). */
+  const stripBalaInicialEnArbol = (node) => {
+    if (!node) return false;
+    if (node.nodeType === 3) {
+      const original = String(node.nodeValue || '');
+      const limpio = original.replace(/^\s*[-*•–—]+\s+/, '');
+      if (limpio !== original) {
+        node.nodeValue = limpio;
+        return true;
+      }
+      // Solo espacios: seguir buscando
+      return !original.trim();
+    }
+    if (node.nodeType !== 1) return false;
+    const tag = String(node.tagName || '').toLowerCase();
+    if (tag === 'br') return true;
+    for (const child of Array.from(node.childNodes)) {
+      const seguir = stripBalaInicialEnArbol(child);
+      if (!seguir) return false;
+    }
+    return true;
+  };
+
+  const walk = (node, estilo) => {
+    if (!node) return;
+    if (node.nodeType === 3) {
+      pushTexto(node.nodeValue || '', estilo);
+      return;
+    }
+    if (node.nodeType !== 1) return;
+
+    const el = node;
+    const tag = String(el.tagName || '').toLowerCase();
+    if (tag === 'br') {
+      if (runs.length) flush();
+      return;
+    }
+    if (tag === 'hr') {
+      flush();
+      return;
+    }
+    // Listas contenedoras: no aportan texto propio
+    if (tag === 'ul' || tag === 'ol') {
+      flush();
+      Array.from(el.childNodes).forEach((child) => walk(child, estilo));
+      flush();
+      return;
+    }
+
+    const nextEstilo = estiloDesdeAtributos(el, estilo);
+
+    if (tag === 'li') {
+      flush();
+      const plano = textoPlanoNodo(el).replace(/\u00a0/g, ' ').trim();
+      if (!plano) return; // li vacío / solo <br> → no pintar "-" suelto
+      // Clonar para no mutar el DOM del editor
+      const clone = el.cloneNode(true);
+      stripBalaInicialEnArbol(clone);
+      const plano2 = textoPlanoNodo(clone).replace(/\u00a0/g, ' ').trim();
+      if (!plano2) return;
+      pushTexto('- ', nextEstilo);
+      Array.from(clone.childNodes).forEach((child) => walk(child, nextEstilo));
+      flush();
+      return;
+    }
+
+    const esBloque = /^(p|div|h[1-6]|tr|blockquote)$/i.test(tag);
+    if (esBloque) flush();
+    Array.from(el.childNodes).forEach((child) => walk(child, nextEstilo));
+    if (esBloque) flush();
+  };
+
+  Array.from(root.childNodes).forEach((child) => walk(child, { bold: false, italic: false }));
+  flush();
+
+  return parrafos.length ? parrafos : [[{ text: ' ' }]];
+}
+
+/** Fallback sin DOM (p.ej. tests). */
+function htmlAParrafosRunsRegex(raw) {
   const conSaltos = raw
     .replace(/\r\n/g, '\n')
     .replace(/<br\s*\/?>/gi, '\n')
@@ -69,12 +226,20 @@ function htmlAParrafosRuns(html) {
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/h[1-6]>/gi, '\n')
     .replace(/<\/li>/gi, '\n')
-    .replace(/<li[^>]*>/gi, '• ')
+    // Una sola bala; si el li ya traía "-", no duplicar
+    .replace(/<li[^>]*>\s*[-*•–—]+\s*/gi, '\n«LI»')
+    .replace(/<li[^>]*>/gi, '\n«LI»')
     .replace(/<hr\s*\/?>/gi, '\n')
     .replace(/<\/?(ul|ol|p|div|h[1-6])[^>]*>/gi, '');
 
+  let html = conSaltos;
+  html = html.replace(
+    /<span\b[^>]*style="[^"]*font-weight\s*:\s*(?:bold|[6-9]00)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi,
+    '<b>$1</b>'
+  );
+
   const tokenRe =
-    /<\/?(?:strong|b|em|i|u|span)(?:\s[^>]*)?>|[^<]+|<\/?[^>]+>/gi;
+    /«LI»|<\/?(?:strong|b|em|i|u|span)(?:\s[^>]*)?>|[^<«]+|<\/?[^>]+>/gi;
   const parrafos = [];
   let runs = [];
   let bold = 0;
@@ -84,7 +249,9 @@ function htmlAParrafosRuns(html) {
     const limpios = runs
       .map((r) => ({ ...r, text: decodificarEntidadesHtml(r.text) }))
       .filter((r) => r.text.length);
-    parrafos.push(limpios.length ? limpios : [{ text: ' ' }]);
+    const soloBala =
+      limpios.length && limpios.every((r) => /^\s*[-*•–—]+\s*$/.test(r.text));
+    if (limpios.length && !soloBala) parrafos.push(limpios);
     runs = [];
   };
 
@@ -104,10 +271,13 @@ function htmlAParrafosRuns(html) {
   };
 
   let m;
-  while ((m = tokenRe.exec(conSaltos)) !== null) {
+  while ((m = tokenRe.exec(html)) !== null) {
     const tok = m[0];
     const lower = tok.toLowerCase();
-    if (lower === '<strong>' || lower === '<b>' || /^<strong\s/i.test(tok) || /^<b\s/i.test(tok)) {
+    if (tok === '«LI»') {
+      flushParrafo();
+      pushTexto('- ');
+    } else if (lower === '<strong>' || lower === '<b>' || /^<strong\s/i.test(tok) || /^<b\s/i.test(tok)) {
       bold += 1;
     } else if (lower === '</strong>' || lower === '</b>') {
       bold = Math.max(0, bold - 1);
@@ -116,12 +286,12 @@ function htmlAParrafosRuns(html) {
     } else if (lower === '</em>' || lower === '</i>') {
       italic = Math.max(0, italic - 1);
     } else if (tok.startsWith('<')) {
-      // ignora otras etiquetas
+      /* ignore */
     } else {
       pushTexto(tok);
     }
   }
-  if (runs.length) flushParrafo();
+  flushParrafo();
   return parrafos.length ? parrafos : [[{ text: ' ' }]];
 }
 
@@ -318,38 +488,49 @@ function escribirBloque(doc, y, pageRef, titulo, subtitulo, cuerpo) {
   }
 
   const maxW = PDF_CONTENT_W - 4;
-  const fontSize = 8.5;
+  const fontSize = 9;
+  const gapParrafo = LINE_H * 0.75;
   const parrafosRuns = htmlAParrafosRuns(cuerpo);
-  const lineasTodas = [];
-  for (const runs of parrafosRuns) {
-    lineasTodas.push(...layoutRunsEnLineas(doc, runs, maxW, fontSize));
-  }
 
-  y = asegurarEspacio(
-    doc,
-    y,
-    Math.min(Math.max(12, lineasTodas.length * LINE_H + 4), 40),
-    pageRef
-  );
+  // Precalcular líneas por párrafo (con espacio entre ellos, como el ejemplo corregido)
+  const bloquesLineas = parrafosRuns.map((runs) => layoutRunsEnLineas(doc, runs, maxW, fontSize));
+  const totalLineas = bloquesLineas.reduce((n, ls) => n + ls.length, 0);
+  const altoEstimado =
+    totalLineas * LINE_H + Math.max(0, bloquesLineas.length - 1) * gapParrafo + 8;
+
+  y = asegurarEspacio(doc, y, Math.min(Math.max(14, altoEstimado), 48), pageRef);
 
   let yTexto = y + 4;
   let yInicio = y;
   doc.setDrawColor(...C.border);
   doc.setLineWidth(0.25);
 
-  for (const linea of lineasTodas) {
-    if (yTexto + LINE_H > PDF_PAGE.h - PDF_MARGINS.bottom) {
-      doc.rect(PDF_MARGINS.left, yInicio, PDF_CONTENT_W, yTexto - yInicio + 1);
-      doc.addPage();
-      pageRef.page += 1;
-      pintarPiePagina(doc, pageRef);
-      y = PDF_MARGINS.top;
-      yInicio = y;
-      yTexto = y + 4;
+  const nuevaPaginaCuadro = () => {
+    doc.rect(PDF_MARGINS.left, yInicio, PDF_CONTENT_W, yTexto - yInicio + 1);
+    doc.addPage();
+    pageRef.page += 1;
+    pintarPiePagina(doc, pageRef);
+    y = PDF_MARGINS.top;
+    yInicio = y;
+    yTexto = y + 4;
+  };
+
+  bloquesLineas.forEach((lineas, idxParrafo) => {
+    for (const linea of lineas) {
+      if (yTexto + LINE_H > PDF_PAGE.h - PDF_MARGINS.bottom) {
+        nuevaPaginaCuadro();
+      }
+      dibujarLineaRuns(doc, linea, PDF_MARGINS.left + 2, yTexto, fontSize);
+      yTexto += LINE_H;
     }
-    dibujarLineaRuns(doc, linea, PDF_MARGINS.left + 2, yTexto, fontSize);
-    yTexto += LINE_H;
-  }
+    if (idxParrafo < bloquesLineas.length - 1) {
+      if (yTexto + gapParrafo > PDF_PAGE.h - PDF_MARGINS.bottom) {
+        nuevaPaginaCuadro();
+      } else {
+        yTexto += gapParrafo;
+      }
+    }
+  });
 
   const altoFinal = Math.max(12, yTexto - yInicio + 2);
   doc.rect(PDF_MARGINS.left, yInicio, PDF_CONTENT_W, altoFinal);
