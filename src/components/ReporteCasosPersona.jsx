@@ -317,51 +317,6 @@ export default function ReporteCasosPersona() {
     }
   }, [location.pathname, location.state, navigate]);
 
-  // Cargar casos y datos auxiliares al montar el componente
-  useEffect(() => {
-    cargarCasos();
-    
-    // Cargar mapeo de funcionarios (importante para mostrar nombres en lugar de códigos)
-    cargarMapeoFuncionarios()
-      .then(() => {
-})
-      .catch(error => {
-        console.error('Error cargando mapeo de funcionarios:', error);
-      });
-    
-    // Cargar responsables
-    obtenerResponsables()
-      .then(data => {
-        const responsablesData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
-        setResponsables(responsablesData);
-      })
-      .catch(error => {
-        console.error('Error cargando responsables:', error);
-        setResponsables([]);
-      });
-
-    // Cargar aseguradoras
-    obtenerAseguradoras()
-      .then(data => {
-        const aseguradorasData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
-        setAseguradoras(aseguradorasData);
-      })
-      .catch(error => {
-        console.error('Error cargando aseguradoras:', error);
-        setAseguradoras([]);
-      });
-
-    // Cargar estados
-    getEstados()
-      .then(data => {
-        setEstados(Array.isArray(data) ? data : []);
-      })
-      .catch(error => {
-        console.error('Error cargando estados:', error);
-        setEstados([]);
-      });
-  }, [cargarCasos]);
-
   const cargarCasos = useCallback(async () => {
     setLoading(true);
     try {
@@ -444,6 +399,51 @@ setCasos(casosFinales);
       setLoading(false);
     }
   }, [t]);
+
+  // Cargar casos y datos auxiliares al montar el componente
+  useEffect(() => {
+    cargarCasos();
+    
+    // Cargar mapeo de funcionarios (importante para mostrar nombres en lugar de códigos)
+    cargarMapeoFuncionarios()
+      .then(() => {
+})
+      .catch(error => {
+        console.error('Error cargando mapeo de funcionarios:', error);
+      });
+    
+    // Cargar responsables
+    obtenerResponsables()
+      .then(data => {
+        const responsablesData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+        setResponsables(responsablesData);
+      })
+      .catch(error => {
+        console.error('Error cargando responsables:', error);
+        setResponsables([]);
+      });
+
+    // Cargar aseguradoras
+    obtenerAseguradoras()
+      .then(data => {
+        const aseguradorasData = data.success && data.data ? data.data : (Array.isArray(data) ? data : []);
+        setAseguradoras(aseguradorasData);
+      })
+      .catch(error => {
+        console.error('Error cargando aseguradoras:', error);
+        setAseguradoras([]);
+      });
+
+    // Cargar estados
+    getEstados()
+      .then(data => {
+        setEstados(Array.isArray(data) ? data : []);
+      })
+      .catch(error => {
+        console.error('Error cargando estados:', error);
+        setEstados([]);
+      });
+  }, [cargarCasos]);
 
 
   // Función para cambiar el orden de la tabla
