@@ -243,7 +243,6 @@ export function construirInformeIndicadoresComplex({
   obtenerNombreResponsable,
 }) {
   const casos = combinarCasosComplex(siniestros, complex);
-  const periodoHistorico = { fechaDesde: fechaDesdeHistorico, fechaHasta: fechaHastaHistorico };
   const periodoProtocolo = { fechaDesde: fechaDesdeProtocolo, fechaHasta: fechaHastaProtocolo };
 
   const casosHistoricos = filtrarCasosPorPeriodo(casos, fechaDesdeHistorico, fechaHastaHistorico);

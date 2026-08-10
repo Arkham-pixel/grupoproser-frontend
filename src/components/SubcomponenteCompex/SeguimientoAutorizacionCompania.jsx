@@ -46,7 +46,6 @@ function parsearFechaDoc(doc) {
 export default function SeguimientoAutorizacionCompania({
   historialDocs = [],
   updateHistorialDocs,
-  handleChange,
   formData,
   construirUrlArchivo,
 }) {

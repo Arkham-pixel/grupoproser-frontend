@@ -88,7 +88,7 @@ export default function PuertosInspeccionMain({ tipoInicial, modoActas } = {}) {
   const [documentLocale, setDocumentLocale] = useState('es');
   
   // Hook para historial - Tipo específico para PUERTOS
-  const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION_PUERTOS);
+  const { guardando, exportando } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION_PUERTOS);
 
   // Estado central del formulario - TODO EL ESTADO EN UN SOLO LUGAR
   const [formData, setFormData] = useState({
@@ -273,6 +273,8 @@ return fechaFormateada;
     if (tipo === 'riicp004') {
       setFormData((prev) => ({ ...prev, plantillaInforme: 'riicp004' }));
     }
+  // resolverTipoInforme is derived exclusively from these dependencies.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, tipoInicial]);
 
   // Función para actualizar cualquier campo del formulario
@@ -768,7 +770,7 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
           // Procesar imágenes si existen - convertir rutas del servidor a URLs completas
           let imagenesRegistro = [];
           if (formulario.datos.imagenesRegistro && Array.isArray(formulario.datos.imagenesRegistro)) {
-imagenesRegistro = formulario.datos.imagenesRegistro.map((img, index) => {
+imagenesRegistro = formulario.datos.imagenesRegistro.map((img) => {
 // Si la imagen tiene ruta del servidor, convertirla a URL completa
               if (img.ruta) {
                 const imagenProcesada = {
@@ -782,7 +784,6 @@ return imagenProcesada;
 return img;
             });
             
-} else {
 }
           
           // Validar y corregir la fecha al cargar desde servidor
@@ -847,6 +848,8 @@ return img;
       setCargando(true);
       cargarDatosFormulario(id);
     }
+  // Loading helpers intentionally remain stable for this route-driven effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, esModoActas, location.pathname]);
 
   // Cargar datos desde localStorage al iniciar (solo si NO hay ID)

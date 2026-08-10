@@ -168,7 +168,7 @@ export function ComplexNavTabs({ activePath }) {
             to={path}
             className={activo ? complexNavTabActive : complexNavTabIdle}
           >
-            <Icon className="text-sm" />
+            {React.createElement(Icon, { className: 'text-sm' })}
             {translate(labelKey)}
           </Link>
         );

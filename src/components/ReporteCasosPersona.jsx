@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
@@ -8,7 +8,7 @@ import { obtenerResponsables, obtenerAseguradoras } from '../services/riesgoServ
 import { getEstados } from '../services/estadosService';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
-import { convertirFechaParaExcelDate, formatearFechaUI } from '../utils/fechaUtils';
+import { formatearFechaUI } from '../utils/fechaUtils';
 import { cargarMapeoFuncionarios, obtenerNombreFuncionarioDesdeCaso } from '../utils/funcionarioMapper';
 import { buildPrefillAjusteDesdeCasoComplex } from '../utils/prefillAjusteDesdeCasoComplex';
 import AccionesCasoMenu from './SubcomponenteCompex/AccionesCasoMenu.jsx';
@@ -19,7 +19,6 @@ import {
   complexTableTdDivider,
   complexTableThDivider,
 } from './SubcomponenteCompex/complexFenixUi.js';
-import { useTheme } from '../context/ThemeContext';
 
 const UI_RCP = 'complex.ui.reporte_casos_mejorado';
 
@@ -316,7 +315,7 @@ export default function ReporteCasosPersona() {
     } else if (!location.state?.filtros) {
       filtrosAplicadosRef.current = false;
     }
-  }, [location.state, navigate]);
+  }, [location.pathname, location.state, navigate]);
 
   // Cargar casos y datos auxiliares al montar el componente
   useEffect(() => {
@@ -361,9 +360,9 @@ export default function ReporteCasosPersona() {
         console.error('Error cargando estados:', error);
         setEstados([]);
       });
-  }, []);
+  }, [cargarCasos]);
 
-  const cargarCasos = async () => {
+  const cargarCasos = useCallback(async () => {
     setLoading(true);
     try {
       // Cargar casos de ambas fuentes
@@ -444,7 +443,7 @@ setCasos(casosFinales);
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
 
 
   // Función para cambiar el orden de la tabla
@@ -504,10 +503,6 @@ if (!loginActual && !nombreActual) {
 return coincide;
     });
     
-if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
-      // Debug: mostrar los primeros casos para ver qué códigos tienen
-}
-    
     const casosOrdenados = casosFiltradosPorUsuario.sort((a, b) => {
       const fechaA = new Date(a.fchaAsgncion || a.fecha_asignacion_form || 0);
       const fechaB = new Date(b.fchaAsgncion || b.fecha_asignacion_form || 0);
@@ -515,7 +510,7 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
     });
     
     setCasosPorUsuario(casosOrdenados);
-  }, [casos, usuarioActual.login]);
+  }, [casos, usuarioActual.login, usuarioActual.nombre]);
 
   // Aplicar filtros adicionales automáticamente cuando cambian los filtros o casosPorUsuario
   useEffect(() => {
@@ -624,29 +619,8 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
       return ok;
     });
     
-// Debug: contar casos por estado después del filtro
-    if (estadoFiltro && estadoFiltro.trim() !== '') {
-      const casosPorEstadoFiltrado = {};
-      resultados.forEach(caso => {
-        const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || t(`${UI_RCP}.sin_estado`)).trim();
-        casosPorEstadoFiltrado[estado] = (casosPorEstadoFiltrado[estado] || 0) + 1;
-      });
-// Buscar el nombre del estado correspondiente al código
-      const estadoEncontrado = estados.find(e => 
-        String(e.codiEstdo || e.codiEstado || e.codigo || '').trim() === String(estadoFiltro).trim()
-      );
-      if (estadoEncontrado) {
-        const nombreEstado = String(estadoEncontrado.descEstdo || estadoEncontrado.descEstado || estadoEncontrado.descripcion || '').trim();
-// Contar casos que tienen el nombre del estado
-        const casosConNombreEstado = casosPorUsuario.filter(caso => {
-          const estadoCaso = String(caso.codiEstdo || caso.codi_estado || caso.estado || '').trim().toUpperCase();
-          return estadoCaso === nombreEstado.toUpperCase() || estadoCaso.includes(nombreEstado.toUpperCase());
-        });
-}
-    }
-    
     setCasosFiltrados(resultados);
-  }, [terminoBusqueda, fechaDesde, fechaHasta, campoFechaFiltro, estadoFiltro, aseguradoraFiltro, casosPorUsuario, camposVisibles]);
+  }, [terminoBusqueda, fechaDesde, fechaHasta, campoFechaFiltro, estadoFiltro, aseguradoraFiltro, casosPorUsuario, camposVisibles, estados]);
 
   // Ordenar casos filtrados
   const casosOrdenados = [...casosFiltrados].sort((a, b) => {
@@ -1192,8 +1166,6 @@ if (casosFiltradosPorUsuario.length === 0 && casos.length > 0) {
     'w-full border border-gray-200 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-[#1A1A1A] text-gray-800 dark:text-gray-200 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:border-red-500 focus:ring-1 focus:ring-red-500 focus:outline-none font-body text-sm';
   const btnPrimary =
     'inline-flex items-center justify-center gap-2 bg-fenix-primario text-white rounded-lg px-4 py-2 hover:bg-red-700 transition-colors font-body font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
-  const btnSecondary =
-    'inline-flex items-center justify-center gap-2 border-2 border-fenix-primario text-fenix-primario rounded-lg px-4 py-2 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors font-body font-semibold disabled:opacity-60 disabled:cursor-not-allowed';
   const btnNeutral =
     'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-body font-semibold text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-900/30 transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
   const badge =

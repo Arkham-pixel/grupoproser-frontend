@@ -3,14 +3,6 @@ export class IAService {
   
   // Mejorar argumentos y corregir ortografía con análisis profundo
   static mejorarArgumento(textoOriginal, contextoFormulario) {
-    const mejoras = {
-      textoMejorado: '',
-      correccionesOrtograficas: [],
-      sugerencias: [],
-      nivelCalidad: 0,
-      analisisProfundo: {}
-    };
-
     // Análisis del texto original
     const palabras = textoOriginal.split(' ');
     const longitud = palabras.length;
@@ -97,7 +89,8 @@ export class IAService {
   }
 
   // Mejorar estructura semántica del texto
-  static mejorarEstructuraSemantica(texto, contextoFormulario) {
+  static mejorarEstructuraSemantica(texto, _contextoFormulario) {
+    void _contextoFormulario;
     let textoMejorado = texto;
     
     // Mejorar conectores y fluidez
@@ -173,7 +166,8 @@ export class IAService {
   }
 
   // Mejorar profesionalismo del lenguaje
-  static mejorarProfesionalismo(texto, contextoFormulario) {
+  static mejorarProfesionalismo(texto, _contextoFormulario) {
+    void _contextoFormulario;
     let textoMejorado = texto;
     
     // Reemplazar lenguaje coloquial por profesional
@@ -241,7 +235,8 @@ export class IAService {
   }
 
   // Generar sugerencias contextuales avanzadas
-  static generarSugerenciasContextuales(texto, contextoFormulario) {
+  static generarSugerenciasContextuales(texto, _contextoFormulario) {
+    void _contextoFormulario;
     const sugerencias = [];
     const palabras = texto.split(' ');
     
@@ -273,7 +268,8 @@ export class IAService {
   }
 
   // Análisis profundo del texto
-  static analisisProfundoTexto(texto, contextoFormulario) {
+  static analisisProfundoTexto(texto, _contextoFormulario) {
+    void _contextoFormulario;
     const analisis = {
       nivelTecnico: 0,
       profesionalismo: 0,
@@ -583,7 +579,8 @@ export class IAService {
   }
 
   // Obtener contexto para correcciones
-  static obtenerContextoCorreccion(incorrecto, correcto, contextoFormulario) {
+  static obtenerContextoCorreccion(incorrecto, correcto, _contextoFormulario) {
+    void _contextoFormulario;
     const contextos = {
       'tubo': 'En contexto de seguros, "tuvo" es la forma correcta del verbo tener en pasado',
       'falla electrica': 'En terminología técnica, "falla eléctrica" debe llevar tilde',

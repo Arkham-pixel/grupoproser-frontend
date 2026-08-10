@@ -11,7 +11,6 @@ import { navegarInspeccionDesdeCasoRiesgo } from '../../utils/navegarInspeccionD
 import { useTheme } from '../../context/ThemeContext';
 import {
   getRiesgoSelectStyles,
-  riesgoBtnGhost,
   riesgoBtnPrimary,
   riesgoBtnSecondary,
   riesgoBtnSuccess,
@@ -33,7 +32,6 @@ import {
   RiesgoPageHeader,
   SelectFenix,
 } from '../SubcomponentesRiesgo/RiesgoUiBlocks.jsx';
-import { convertirFechaParaExcelDate } from '../../utils/fechaUtils';
 import { BASE_URL } from '../../config/apiConfig.js';
 import Select from 'react-select';
 import {
@@ -72,7 +70,6 @@ const getCiudadNombre = (codigo, ciudades) => {
     const codigoNormalizado = codigoStr.toUpperCase().trim();
     ciudad = ciudades.find(c => {
       const descMunicipio = c.descMunicipio ? String(c.descMunicipio).toUpperCase().trim() : '';
-      const descPoblado = c.descPoblado ? String(c.descPoblado).toUpperCase().trim() : '';
       const label = c.label ? String(c.label).toUpperCase().trim() : '';
       const descDepto = c.descDepto ? String(c.descDepto).toUpperCase().trim() : '';
       
@@ -338,7 +335,6 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
-  const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const tableHeaderBg = theme === 'dark' ? '#1F1F1F' : '#F9FAFB';
   const tableRowBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const tableRowHover = theme === 'dark' ? '#2A2A2A' : '#F9FAFB';
@@ -380,9 +376,6 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
     try {
 // Cargar datos principales primero
       const data = await obtenerCasosRiesgo();
-if (Array.isArray(data) && data.length > 0) {
-}
-      
       // Ordenar del más nuevo al más viejo por fecha de asignación
       const casosOrdenados = Array.isArray(data) ? data.sort((a, b) => {
         const fechaA = new Date(a.fchaAsgncion || a.fecha_asignacion_form || 0);
@@ -1620,7 +1613,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                       onEliminar={() => handleDelete(caso._id || caso.id_riesgo)}
                     />
                   </td>
-                  {camposVisibles.map(({ clave, label }) => (
+                  {camposVisibles.map(({ clave }) => (
                     <td 
                       key={clave} 
                       className="p-2 whitespace-nowrap"

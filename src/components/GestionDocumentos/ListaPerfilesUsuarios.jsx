@@ -43,7 +43,8 @@ export default function ListaPerfilesUsuarios() {
 
   useEffect(() => {
     cargarUsuarios();
-  }, [mostrarEliminados, mostrarOcultosPlataforma]);
+    // La carga se actualiza al cambiar los filtros de visibilidad.
+  }, [mostrarEliminados, mostrarOcultosPlataforma]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cargarUsuarios = async () => {
     try {

@@ -774,7 +774,7 @@ const InformeIndicadores2025Complex = ({ embedded = false }) => {
                     labelFormatter={(_, p) => p?.[0]?.payload?.nombreCompleto || ''}
                   />
                   <Bar dataKey="porcentaje" radius={[0, 4, 4, 0]} maxBarSize={22}>
-                    {graf.protocoloCumplimientoAjustador.map((item, index) => (
+                    {graf.protocoloCumplimientoAjustador.map((item) => (
                       <Cell key={item.nombreCompleto} fill={colorBarraCumplimiento(item.porcentaje)} />
                     ))}
                   </Bar>

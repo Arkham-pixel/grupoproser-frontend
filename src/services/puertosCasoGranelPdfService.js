@@ -141,7 +141,7 @@ function dividirTextoEnPuntos(texto) {
   if (!limpio) return [];
   const porLinea = limpio
     .split(/\n+/)
-    .map((l) => l.replace(/^[•●▪\-\*]+\s*/, '').trim())
+    .map((l) => l.replace(/^[-*•●▪]+\s*/, '').trim())
     .filter(Boolean);
   if (porLinea.length > 1) return porLinea;
   // A veces pegan varios párrafos separados solo por "• "

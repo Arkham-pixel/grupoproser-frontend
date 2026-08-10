@@ -420,7 +420,7 @@ function aplicarEncabezadosLocalizados(workbook, locale = 'es') {
     if (!titulo) return;
     sheet.headerFooter = {
       ...(sheet.headerFooter || {}),
-      oddHeader: `&C&\"Arial,Bold\"${titulo}`,
+      oddHeader: `&C&"Arial,Bold"${titulo}`,
     };
   });
 }

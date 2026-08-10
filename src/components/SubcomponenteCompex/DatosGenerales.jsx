@@ -142,7 +142,7 @@ export default function DatosGenerales({
 
   const valorEstadoSelect = useMemo(
     () => resolverEstadoSelect(formData, estados),
-    [formData.codiEstdo, formData.codi_estado, formData.codi_estdo, formData.estado, estados]
+    [formData, estados]
   );
 
   const tipoDocumentoSelect = useMemo(

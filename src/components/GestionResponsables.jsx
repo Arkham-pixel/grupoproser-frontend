@@ -35,14 +35,7 @@ export default function GestionResponsables() {
     return resolveUploadsUrl(fotoUrlRelativa);
   };
 
-  // Cargar datos
-  useEffect(() => {
-    if (esAdminOSoporte) {
-      cargarDatos();
-    }
-  }, [esAdminOSoporte]);
-
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -70,7 +63,14 @@ export default function GestionResponsables() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  // Cargar datos
+  useEffect(() => {
+    if (esAdminOSoporte) {
+      cargarDatos();
+    }
+  }, [esAdminOSoporte, cargarDatos]);
 
   // Funciones para responsable
   const abrirFormResponsable = (responsable = null) => {

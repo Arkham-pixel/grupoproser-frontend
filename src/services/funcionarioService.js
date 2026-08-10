@@ -246,20 +246,20 @@ return JSON.parse(funcionariosLocal);
       this.limpiarFirmasLocalStorage();
     }
 
+    // Crear una versión sin firmas para localStorage
+    const funcionariosSinFirmas = funcionarios.map(f => ({
+      _id: f._id,
+      nombre: f.nombre,
+      cargo: f.cargo,
+      telefono: f.telefono,
+      email: f.email,
+      activo: f.activo,
+      fechaCreacion: f.fechaCreacion,
+      fechaActualizacion: f.fechaActualizacion
+      // Excluir firma para ahorrar espacio
+    }));
+
     try {
-      // Crear una versión sin firmas para localStorage
-      const funcionariosSinFirmas = funcionarios.map(f => ({
-        _id: f._id,
-        nombre: f.nombre,
-        cargo: f.cargo,
-        telefono: f.telefono,
-        email: f.email,
-        activo: f.activo,
-        fechaCreacion: f.fechaCreacion,
-        fechaActualizacion: f.fechaActualizacion
-        // Excluir firma para ahorrar espacio
-      }));
-      
       localStorage.setItem('proser_funcionarios', JSON.stringify(funcionariosSinFirmas));
 } catch (error) {
       if (error.name === 'QuotaExceededError') {
@@ -268,7 +268,7 @@ return JSON.parse(funcionariosLocal);
         try {
           const datosRecientes = funcionariosSinFirmas.slice(-3); // Solo los últimos 3
           localStorage.setItem('proser_funcionarios', JSON.stringify(datosRecientes));
-} catch (retryError) {
+} catch {
           console.error('❌ Error persistente en localStorage, saltando backup local');
           // No hacer nada más, los datos están seguros en la BD
         }

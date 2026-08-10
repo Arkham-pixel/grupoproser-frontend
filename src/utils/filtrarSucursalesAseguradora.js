@@ -28,14 +28,14 @@ function norm(value) {
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .toUpperCase()
-    .replace(/[^A-Z0-9/.\-\s]/g, ' ')
+    .replace(/[^A-Z0-9/.\s-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function tokensMarca(nombreAseguradora) {
   return norm(nombreAseguradora)
-    .split(/[\s./\-]+/)
+    .split(/[\s./-]+/)
     .map((t) => t.trim())
     .filter((t) => t.length >= 2 && !STOP_WORDS.has(t) && !/^\d+$/.test(t));
 }

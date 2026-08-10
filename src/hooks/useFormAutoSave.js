@@ -101,6 +101,8 @@ export function useFormAutoSave({
     if (!autoSave.isAutoSaveEnabled) {
       autoSave.enableAutoSave();
     }
+    // La instancia autoSave no es estable; solo se observan las referencias usadas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoguardadoActivo, tieneRecordId, autoSave.isAutoSaveEnabled, autoSave.enableAutoSave]);
 
   const ejecutarGuardadoServidor = useCallback(async () => {
@@ -221,6 +223,8 @@ export function useFormAutoSave({
       setShowRestoreDialog(false);
       autoSave.enableAutoSave();
     },
+    // La instancia autoSave no es estable; solo se observa enableAutoSave.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [savedDataToRestore, autoSave.enableAutoSave]
   );
 
@@ -230,6 +234,8 @@ export function useFormAutoSave({
     setPendingServerSync(false);
     setShowRestoreDialog(false);
     setSavedDataToRestore(null);
+    // La instancia autoSave no es estable; solo se observa clearSavedData.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSave.clearSavedData, formKey]);
 
   const handleCancelRestore = useCallback(() => {

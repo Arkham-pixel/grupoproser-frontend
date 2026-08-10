@@ -31,7 +31,7 @@ async function cargarBitmapFirma(src) {
       // imageOrientation: from-image corrige torceduras de EXIF en JPG de celular
       return await createImageBitmap(blob, { imageOrientation: 'from-image' });
     }
-  } catch (_) {
+  } catch {
     /* fallback abajo */
   }
   return cargarImagenDesdeSrc(src);

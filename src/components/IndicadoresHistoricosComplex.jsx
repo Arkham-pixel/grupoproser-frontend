@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Tooltip, XAxis, YAxis } from 'recharts';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
 import { obtenerCasosComplex } from '../services/complexService';
@@ -121,7 +121,7 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
     cargar();
   }, []);
 
-  const getNombreResponsable = (caso) => {
+  const getNombreResponsable = useCallback((caso) => {
     if (
       caso.nombreResponsable &&
       caso.nombreResponsable !== 'Sin asignar' &&
@@ -148,7 +148,7 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
     );
 
     return responsable?.nmbrRespnsble || responsable?.nombre || String(codigo);
-  };
+  }, [responsables, t]);
 
   const casosFiltrados = useMemo(() => {
     let filtrados = filtrarCasosPorPeriodo(casos, fechaDesde, fechaHasta);
@@ -160,7 +160,7 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
     }
 
     return filtrados;
-  }, [casos, fechaDesde, fechaHasta, responsableFiltro, responsables]);
+  }, [casos, fechaDesde, fechaHasta, responsableFiltro, getNombreResponsable]);
 
   const indicadoresGlobales = useMemo(
     () => calcularIndicadoresGlobales(casosFiltrados),
@@ -172,7 +172,7 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
       calcularIndicadoresPorResponsable(casosFiltrados, getNombreResponsable, {
         catalogoResponsables: responsables,
       }),
-    [casosFiltrados, responsables]
+    [casosFiltrados, responsables, getNombreResponsable]
   );
 
   const responsablesUnicos = useMemo(() => {
@@ -189,7 +189,7 @@ const IndicadoresHistoricosComplex = ({ embedded = false }) => {
         return a.localeCompare(b);
       })
       .map((nombre) => ({ value: nombre, label: nombre }));
-  }, [casos, responsables, t]);
+  }, [casos, getNombreResponsable, t]);
 
   const chartEsperaDocumentos = useMemo(
     () =>

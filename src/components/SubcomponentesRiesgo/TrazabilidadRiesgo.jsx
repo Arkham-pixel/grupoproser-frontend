@@ -19,12 +19,12 @@ const ArchivoDropZone = ({
   const { theme } = useTheme();
   const inputRef = useRef(null);
   const [isDragActive, setIsDragActive] = useState(false);
-  const onFilesSelected = onSelectFiles || (() => {});
 
   const handleFiles = useCallback((files) => {
     const lista = Array.from(files || []);
     if (!lista.length) return;
-    onFilesSelected(tipo, campo, lista);
+    const selectFiles = onSelectFiles || (() => {});
+    selectFiles(tipo, campo, lista);
   }, [onSelectFiles, tipo, campo]);
 
   const onChange = (event) => {
@@ -367,7 +367,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
     });
   };
 
-  const DocumentosSubidos = ({ tipo, titulo }) => {
+  const DocumentosSubidos = ({ tipo }) => {
     const { t: tDocs } = useTranslation();
     const documentos = obtenerDocumentosPorTipo(tipo);
     if (documentos.length === 0) return null;
@@ -421,9 +421,8 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
     );
   };
 
-  const BandejaDesplegable = memo(({ titulo, bandeja, children, icono, tipoDocumento, isOpen, onToggle }) => {
-    const { t } = useTranslation();
-    const diasInfo = useMemo(() => calcularDiasTranscurridos(tipoDocumento), [tipoDocumento, formData]);
+  const BandejaDesplegable = memo(({ titulo, children, icono, tipoDocumento, isOpen, onToggle }) => {
+    const diasInfo = useMemo(() => calcularDiasTranscurridos(tipoDocumento), [tipoDocumento]);
     
     return (
       <div 
@@ -473,7 +472,7 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
         {isOpen && (
           <div className="px-3 sm:px-4 lg:px-6 pb-4 sm:pb-6 border-t" style={{ borderColor: borderColor }}>
             {children}
-            <DocumentosSubidos tipo={tipoDocumento} titulo={titulo} />
+            <DocumentosSubidos tipo={tipoDocumento} />
           </div>
         )}
       </div>
@@ -721,7 +720,6 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
       {/* Contacto Inicial */}
       <BandejaDesplegable 
         titulo={t(`${NS}.etapa_contacto`)} 
-        bandeja="contactoInicial" 
         icono="📞" 
         tipoDocumento="contactoInicial"
         isOpen={bandejasAbiertas.contactoInicial}
@@ -806,7 +804,6 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
       {/* Inspección */}
       <BandejaDesplegable 
         titulo={t(`${NS}.etapa_inspeccion`)} 
-        bandeja="inspeccion" 
         icono="🔍" 
         tipoDocumento="inspeccion"
         isOpen={bandejasAbiertas.inspeccion}
@@ -891,7 +888,6 @@ const TrazabilidadRiesgo = memo(function TrazabilidadRiesgo({
       {/* Informe Final */}
       <BandejaDesplegable 
         titulo={t(`${NS}.etapa_informe`)} 
-        bandeja="informeFinal" 
         icono="📋" 
         tipoDocumento="informeFinal"
         isOpen={bandejasAbiertas.informeFinal}

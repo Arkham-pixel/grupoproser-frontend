@@ -1,6 +1,6 @@
 // src/components/Layout.jsx
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FaBars,
@@ -166,7 +166,6 @@ export default function Layout() {
   const esAdmin =
     rolNorm === 'admin' || rolNorm === 'administrador';
   const esAdminOSoporte = esAdmin || rolNorm === 'soporte';
-  const esSoloSoporte = rolNorm === 'soporte';
   const esVisualizador = esRolVisualizador(rolNorm);
   const esPuertos = esRolPuertos(rolNorm);
   const accesoRestringido = esVisualizador || esPuertos || rolNorm === 'externo';
@@ -208,7 +207,7 @@ export default function Layout() {
     };
   }, [accesoRestringido, esAdminOSoporte, location.pathname]);
 
-  const routeTitles = {
+  const routeTitles = useMemo(() => ({
     '/inicio': t('nav.pageTitles.home'),
     '/ayuda': t('nav.pageTitles.help'),
     '/formularioinspeccion': t('nav.pageTitles.inspectionForm'),
@@ -275,7 +274,7 @@ export default function Layout() {
     '/admin/documentos': t('nav.pageTitles.adminDocuments'),
     '/editar-perfil-usuario': t('nav.pageTitles.editUserProfile'),
     '/informacion-completa': t('nav.pageTitles.fullEmployeeInfo'),
-  };
+  }), [t]);
 
   useEffect(() => {
     const pathname = location.pathname;
@@ -289,7 +288,7 @@ export default function Layout() {
       }
     }
     document.title = pageTitle ? `Arnald DataFlow - ${pageTitle}` : 'Arnald DataFlow';
-  }, [location.pathname, t]);
+  }, [location.pathname, routeTitles]);
 
   useEffect(() => {
     const path = location.pathname;

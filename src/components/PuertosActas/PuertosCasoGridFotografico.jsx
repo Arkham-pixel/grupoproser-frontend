@@ -33,9 +33,9 @@ export default function PuertosCasoGridFotografico({
 }) {
   const { t } = useTranslation();
 
-  const setImagenes = (updater) => {
+  const setImagenes = useCallback((updater) => {
     onChange(updater);
-  };
+  }, [onChange]);
 
   const onDrop = useCallback(
     (acceptedFiles) => {
@@ -46,7 +46,7 @@ export default function PuertosCasoGridFotografico({
         setImagenes((prev) => [...(prev || []), ...nuevas]);
       }
     },
-    [imagenes.length, max, onChange]
+    [imagenes.length, max, setImagenes]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

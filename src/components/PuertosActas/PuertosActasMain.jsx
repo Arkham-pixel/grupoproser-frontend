@@ -66,7 +66,7 @@ export default function PuertosActasMain() {
         </header>
 
         <nav className="mb-6 flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-800">
-          {tabs.map(({ to, labelKey, icon: Icon, end }) => {
+          {tabs.map(({ to, labelKey, icon, end }) => {
             const active = end
               ? location.pathname === to
               : to.includes('/catalogos')
@@ -82,7 +82,7 @@ export default function PuertosActasMain() {
                   : location.pathname.startsWith(to);
             return (
               <NavLink key={to} to={to} end={end} className={active ? puertosTabActive : puertosTabIdle}>
-                <Icon />
+                {React.createElement(icon)}
                 {t(labelKey)}
               </NavLink>
             );

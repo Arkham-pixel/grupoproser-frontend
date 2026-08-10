@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { FaBook, FaLightbulb, FaCheck, FaCopy } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import IAInteligente from './IAInteligente';

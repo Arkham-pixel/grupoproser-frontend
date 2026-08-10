@@ -3,6 +3,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 
 const ThemeContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components -- El hook es la API pública del contexto.
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {

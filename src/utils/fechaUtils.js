@@ -51,7 +51,7 @@ export const crearFechaLocal = (fecha) => {
         
         // Retornar la fecha parseada directamente (mantiene la hora original)
         return fechaParsed;
-      } catch (e) {
+      } catch {
         return null;
       }
     } else {
@@ -100,7 +100,7 @@ export const crearFechaLocal = (fecha) => {
       return null;
     }
     return fechaLocal;
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -112,7 +112,9 @@ export const crearFechaLocal = (fecha) => {
  * @param {object} options - Opciones de formateo
  * @returns {string} - Fecha formateada
  */
-export const formatearFechaUI = (fecha, locale = 'es-ES', options = {}) => {
+export const formatearFechaUI = (fecha, _locale = 'es-ES', _options = {}) => {
+  void _locale;
+  void _options;
   const fechaLocal = crearFechaLocal(fecha);
   if (!fechaLocal) return '';
   
@@ -165,7 +167,7 @@ export const formatearFechaParaExcel = (fecha) => {
     }
     
     return `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${año}`;
-  } catch (e) {
+  } catch {
     return '';
   }
 };

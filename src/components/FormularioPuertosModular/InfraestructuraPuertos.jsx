@@ -293,8 +293,7 @@ export default function InfraestructuraPuertos({ formData, onInputChange, cargan
           <MapaGoogleEarth
             coordenadasIniciales={formData.coordenadasRiesgo}
             direccionInicial={formData.direccionRiesgo}
-            onMapReady={(map) => {
-}}
+            onMapReady={() => {}}
             onMapaChange={(datos) => {
               if (datos.coordenadas) {
                 onInputChange('coordenadasRiesgo', datos.coordenadas);

@@ -49,8 +49,8 @@ class SessionManager {
           }
         });
         // Si la verificación es exitosa, la sesión se mantiene activa
-      } catch (error) {
-// Si falla, puede que la sesión haya expirado
+      } catch {
+        // Si falla, puede que la sesión haya expirado
         clearInterval(this.heartbeatInterval);
       }
     }, 2 * 60 * 1000); // Cada 2 minutos
@@ -107,8 +107,9 @@ this.verificarSesionActiva();
         formData.append('token', token);
         
         navigator.sendBeacon(url, formData);
-} catch (error) {
-}
+      } catch {
+        // Ignorar errores al cerrar la página.
+      }
     } else if (token) {
       // Fallback: intentar con fetch (puede no completarse si se cierra muy rápido)
       try {
@@ -122,7 +123,7 @@ this.verificarSesionActiva();
           body: JSON.stringify({ token }),
           keepalive: true // Mantener la petición activa incluso después de cerrar
         }).catch(() => {}); // Ignorar errores ya que la página se está cerrando
-} catch (error) {
+      } catch {
         // Ignorar errores
       }
     }
@@ -142,9 +143,9 @@ this.verificarSesionActiva();
           'Authorization': `Bearer ${token}`
         }
       });
-    } catch (error) {
+    } catch {
       // Si falla, la sesión puede haber expirado
-this.logout();
+      this.logout();
     }
   }
 
@@ -274,8 +275,8 @@ this.logout();
               'Authorization': `Bearer ${token}`
             }
           });
-        } catch (error) {
-// Continuar con el logout aunque falle el registro
+        } catch {
+          // Continuar con el logout aunque falle el registro
         }
       }
     } catch (error) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { FaPlus, FaTrash, FaCalculator, FaFilePdf } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
@@ -9,7 +9,6 @@ export default function LiquidadorAjuste({ formData, onInputChange }) {
   const { theme } = useTheme();
   
   // Colores según el tema
-  const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';

@@ -51,7 +51,7 @@ function FormActionWithHint({ hint, hoverClassName = '', className = '', childre
   );
 }
 
-export function SeccionAcordeon({ abierto, onToggle, icon: Icon, titulo, subtitulo, children }) {
+export function SeccionAcordeon({ abierto, onToggle, icon, titulo, subtitulo, children }) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition hover:border-fenix-primario/25 dark:border-gray-800 dark:bg-[#1A1A1A]">
       <button
@@ -62,7 +62,7 @@ export function SeccionAcordeon({ abierto, onToggle, icon: Icon, titulo, subtitu
         }`}
       >
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-red-50 text-fenix-primario dark:bg-red-950/30">
-          <Icon className="text-lg" />
+          {React.createElement(icon, { className: 'text-lg' })}
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{titulo}</h3>
@@ -84,6 +84,7 @@ export function SeccionAcordeon({ abierto, onToggle, icon: Icon, titulo, subtitu
 }
 
 /** Estilos react-select alineados a paleta fría Fénix */
+// eslint-disable-next-line react-refresh/only-export-components
 export function getComplexSelectStyles(isDark = false) {
   const bg = isDark ? '#1A1A1A' : '#FFFFFF';
   const bgHover = isDark ? '#252525' : '#F9FAFB';
@@ -301,7 +302,7 @@ export function ListaDocumentos({ titulo, documentos, onDescargar, onEliminar, t
   );
 }
 
-export function BotonEnviar({ disabled, enviando, children, onClick }) {
+export function BotonEnviar({ disabled, children, onClick }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled} className={complexBtnPrimary}>
       {children}
@@ -309,4 +310,5 @@ export function BotonEnviar({ disabled, enviando, children, onClick }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export { complexAccordionWrap };

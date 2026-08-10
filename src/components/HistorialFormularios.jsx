@@ -40,12 +40,7 @@ import { appendUploadFile } from '../utils/sanitizeUploadFileName.js';
 import { construirElementosFirmasActaWord } from '../utils/firmasActaWord.js';
 import {
   estilosDocumentoPropiedades,
-  pBody,
-  pHeading,
-  pTitulo,
-  pSpacer,
   tr,
-  crearTablaDatos,
   crearTablaInspeccionItems,
   insertarFotosSeccionWord,
 } from '../utils/propiedadesWordUtils.js';
@@ -87,12 +82,9 @@ export default function HistorialFormularios() {
     formularios,
     cargando,
     error,
-    filtros,
-    estadisticas,
     aplicarFiltros,
     cargarHistorial,
     buscarFormularios,
-    guardarFormulario,
     eliminarFormulario,
     descargarFormulario,
     obtenerFormulario,
@@ -186,7 +178,7 @@ export default function HistorialFormularios() {
   // Solo aplicar filtro local cuando NO hay búsqueda activa
   const formulariosFiltrados = busqueda.trim() 
     ? formularios // Si hay búsqueda, usar directamente los resultados del servidor
-    : formularios.filter(formulario => {
+    : formularios.filter(() => {
         // Si no hay búsqueda, aplicar filtro local solo si es necesario
         // (por ahora, mostrar todos cuando no hay búsqueda)
         return true;
@@ -276,7 +268,7 @@ export default function HistorialFormularios() {
   // Función para editar formulario
   const handleEditarFormulario = async (formulario) => {
     try {
-const formularioCompleto = await obtenerFormulario(formulario.id);
+      await obtenerFormulario(formulario.id);
 // Redirección según el tipo de formulario
       let rutaEdicion = '';
       let mensajeInfo = '';

@@ -25,6 +25,7 @@ const MARGEN_INFERIOR_PIE = 24;
 function nombreArchivoSeguro(valor) {
   return String(valor || 'documento')
     .trim()
+    // eslint-disable-next-line no-control-regex -- Se eliminan caracteres de control inválidos en nombres de archivo.
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
     .replace(/\s+/g, '_')
     .replace(/[^a-zA-Z0-9_-]/g, '_');

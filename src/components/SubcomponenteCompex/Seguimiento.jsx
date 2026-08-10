@@ -29,11 +29,8 @@ import {
 export default function Seguimiento({ 
   formData, 
   handleChange,
-  onSelectFiles,
   historialDocs = [],
   updateHistorialDocs,
-  cargandoAdjuntos = {},
-  errorAdjuntos = {}
 }) {
   const { t } = useTranslation();
   const [seguimientos, setSeguimientos] = useState([]);

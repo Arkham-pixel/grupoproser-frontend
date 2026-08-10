@@ -745,7 +745,6 @@ setSiniestros(casosFinales);
     const etapas = ['contactoInicial', 'inspeccion', 'solicitudDocs', 'informePreliminar', 'informeFinal'];
     let tieneAlMenosUnaEtapa = false;
     let todasCumplidas = true;
-    let totalRetraso = 0;
     let etapasEvaluadas = 0;
 
     etapas.forEach(etapa => {
@@ -757,7 +756,6 @@ setSiniestros(casosFinales);
           todasCumplidas = false;
           responsable.casosRetrasados++;
           responsable.retrasosPorEtapa[etapa]++;
-          totalRetraso += retraso.diasRetraso;
           responsable.totalDiasRetraso += retraso.diasRetraso;
         } else {
           // Solo contar como cumplido si no tiene retraso

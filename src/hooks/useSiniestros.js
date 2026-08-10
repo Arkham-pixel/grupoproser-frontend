@@ -1,10 +1,6 @@
 import { useState, useEffect } from "react";
 import {
   getSiniestros,
-  getSiniestroById,
-  createSiniestro,
-  updateSiniestro,
-  deleteSiniestro,
 } from "../services/siniestrosApi";
 
 export function useSiniestros(params = {}) {

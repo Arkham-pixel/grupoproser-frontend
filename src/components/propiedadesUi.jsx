@@ -16,6 +16,7 @@ import {
 } from './SubcomponenteMaquinaria/maquinariaUi.jsx';
 import { complexBtnPrimary, complexBtnSecondary, complexBtnDanger, complexBtnGhost } from './SubcomponenteCompex/complexFenixUi.js';
 
+/* eslint-disable react-refresh/only-export-components -- Este módulo es la API pública de bloques UI compartidos. */
 export {
   useMaquinariaTheme,
   useMaquinariaTheme as usePropiedadesTheme,
@@ -35,6 +36,7 @@ export {
   complexBtnDanger,
   complexBtnGhost,
 };
+/* eslint-enable react-refresh/only-export-components */
 
 export function ThemedSelect({ className = '', style = {}, ...props }) {
   const t = useMaquinariaTheme();

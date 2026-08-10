@@ -59,7 +59,7 @@ function enlazarTodasLasTablas(root) {
 }
 
 /** Permite desplazar tablas anchas arrastrando con el mouse (como Excel). */
-export function useTablasArrastrables(contenedorRef, deps = []) {
+export function useTablasArrastrables(contenedorRef) {
   useEffect(() => {
     const root = contenedorRef.current;
     if (!root) return undefined;
@@ -89,5 +89,5 @@ export function useTablasArrastrables(contenedorRef, deps = []) {
       clearTimeout(t2);
       limpiar.forEach((fn) => fn());
     };
-  }, deps);
+  }, [contenedorRef]);
 }

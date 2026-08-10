@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media, VerticalAlign, BorderStyle } from "docx";
 import { saveAs } from "file-saver";
@@ -15,7 +15,6 @@ import FotoPrincipalMaquinaria from "./FotoPrincipalMaquinaria";
 import FirmaMaquinaria from "./FirmaMaquinaria";
 import Logo from '../../img/Logo.png';
 import { fetchImageAsArrayBuffer } from '../../utils/imageUtils';
-import { normalizarImagenCargada } from './maquinariaImagenUtils.js'; // Ajusta la ruta según tu estructura
 import BotonesHistorial from '../BotonesHistorial.jsx';
 import { BASE_URL } from '../../config/apiConfig.js';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario.js';
@@ -112,21 +111,7 @@ const DATOS_MAESTROS = {
   ]
 };
 
-const toArrayBuffer = (file) => {
-  return new Promise((resolve, reject) => {
-    if (!(file instanceof Blob)) {
-      return reject(new Error("El archivo no es un Blob válido."));
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => resolve(event.target.result);
-    reader.onerror = (error) => reject(error);
-    reader.readAsArrayBuffer(file);
-  });
-};
-
-
-export const convertirHtmlADocx = (html) => {
+const convertirHtmlADocx = (html) => {
   if (!html?.trim()) return [];
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
@@ -161,7 +146,7 @@ export const convertirHtmlADocx = (html) => {
   return docxParagraphs;
 };
 
-export const textoPlanoAHtml = (text) => {
+const textoPlanoAHtml = (text) => {
   if (!text?.trim()) return "";
   if (/<[a-z][\s\S]*>/i.test(text)) return text;
   return text
@@ -227,20 +212,21 @@ export default function FormularioMaquinaria() {
   // Estados para modo edición
   const [modoEdicion, setModoEdicion] = useState(false);
   const [cargando, setCargando] = useState(false);
-  const [camposLlenadosAuto, setCamposLlenadosAuto] = useState({
+  const [, setCamposLlenadosAuto] = useState({
     aseguradora: false,
     ciudad: false,
     asegurado: false
   });
 
   // Hook para manejar el historial
-  const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.MAQUINARIA);
+  const { guardando, exportando, guardarEnHistorial } = useHistorialFormulario(TIPOS_FORMULARIOS.MAQUINARIA);
 
   // Hooks de React Router
   const { id } = useParams();
-  const navigate = useNavigate();
   const location = useLocation();
   const borradorInicializadoRef = useRef(false);
+  const estadoMaquinariaRef = useRef({});
+  const cargarDatosFormularioRef = useRef(null);
   const esRutaFormularioMaquinaria = (pathname) =>
     pathname === '/formulario-maquinaria'
     || pathname.startsWith('/formulario-maquinaria/')
@@ -306,7 +292,7 @@ export default function FormularioMaquinaria() {
     }
   };
 
-  const getEstadoActual = () => ({
+  estadoMaquinariaRef.current = {
     nombre,
     fecha,
     nombreAsegurado,
@@ -353,7 +339,8 @@ export default function FormularioMaquinaria() {
     firmaCliente,
     inspectorFuncionarioId,
     inspectorFirmaImagen,
-  });
+  };
+  const getEstadoActual = useCallback(() => estadoMaquinariaRef.current, []);
 
   const getSettersMaquinaria = () => ({
     setNombre,
@@ -516,6 +503,7 @@ export default function FormularioMaquinaria() {
     descripcionFotoPrincipal, lugar, ubicacion, departamento, modelo, linea, motorDiesel,
     sistemaLocomocion, color, estadoOperativo, cabina, funcion, equipoContraincendio,
     equipoRadio, radiodeOperacion, mecanico, hidraulico, pintura, chasis, mantenimiento, funcionamiento,
+    getEstadoActual,
   ]);
 
   // Guardar borrador antes de refrescar la página
@@ -532,7 +520,11 @@ export default function FormularioMaquinaria() {
 
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, referencia, saludo, cuerpo, aseguradora, marca, descripcion, recomendaciones, imagenesRegistro, inspectorSeleccionado, cargoSeleccionado]);
+  }, [
+    nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, referencia, saludo, cuerpo,
+    aseguradora, marca, descripcion, recomendaciones, imagenesRegistro, inspectorSeleccionado,
+    cargoSeleccionado, getEstadoActual
+  ]);
 
   // Limpiar borrador al salir del formulario
   useEffect(() => {
@@ -623,13 +615,14 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
       setCargando(false);
     }
   };
+  cargarDatosFormularioRef.current = cargarDatosFormulario;
 
   // useEffect para detectar modo edición
   useEffect(() => {
     if (id) {
       setModoEdicion(true);
       setCargando(true);
-      cargarDatosFormulario(id);
+      cargarDatosFormularioRef.current?.(id);
     }
   }, [id]);
 
@@ -652,18 +645,6 @@ const response = await fetch(`${baseURL}/api/historial-formularios/${formularioI
     alert(resultado.message);
     if (resultado.success) limpiarBorradorMaquinaria();
   };
-
-  const estadoMaquinariaRef = useRef({});
-  useEffect(() => {
-    estadoMaquinariaRef.current = getEstadoActual();
-  }, [
-    nombre, fecha, nombreAsegurado, nombreMaquinaria, ciudadFecha, aseguradora, marca, modelo,
-    tipoProteccion, recomendaciones, inspectorSeleccionado, cargoSeleccionado, imagenesRegistro,
-    fotoPrincipalImagen, descripcionFotoPrincipal, referencia, saludo, cuerpo,
-    descripcion, lugar, ubicacion, departamento, linea, motorDiesel, sistemaLocomocion, color,
-    estadoOperativo, cabina, funcion, equipoContraincendio, equipoRadio, radiodeOperacion,
-    electrico, mecanico, hidraulico, pintura, chasis, mantenimiento, funcionamiento,
-  ]);
 
   useServerAutoSaveUpdate({
     recordId: id && id !== 'nuevo' ? id : null,
@@ -756,8 +737,6 @@ const generarWord = async ({
   inspectorFirmaImagen,
   fecha,
 }) => {
-    let isMounted = true;
-
     const bordesTablaSinLineas = {
       top: { style: BorderStyle.NONE, size: 0 },
       bottom: { style: BorderStyle.NONE, size: 0 },
@@ -1439,7 +1418,6 @@ const blob = await Packer.toBlob(doc);
   // 2. Descargar localmente
   saveAs(blob, `Inspeccion_Maquinaria_${nombre || "maquinaria"}.docx`);
 
-  return () => { isMounted = false; };
 };
 
   return (

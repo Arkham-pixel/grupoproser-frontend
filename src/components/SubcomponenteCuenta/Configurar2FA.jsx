@@ -54,6 +54,8 @@ export default function Configurar2FA({ isDark }) {
       }
     };
     cargarEstado();
+    // La carga inicial debe ejecutarse una vez al montar el componente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const iniciarActivacion = async () => {

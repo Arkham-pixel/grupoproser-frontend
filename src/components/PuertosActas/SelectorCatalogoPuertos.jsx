@@ -10,7 +10,6 @@ const selectBtnCls =
 export default function SelectorCatalogoPuertos({
   label,
   obligatorio = false,
-  tipo: _tipo,
   items = [],
   value = '',
   onChange,

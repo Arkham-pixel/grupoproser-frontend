@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -37,11 +37,7 @@ const ListaMatricesRiesgo = () => {
   const [filtros, setFiltros] = useState({ estado: '', empresa: '' });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    cargarMatrices();
-  }, [filtros]);
-
-  const cargarMatrices = async () => {
+  const cargarMatrices = useCallback(async () => {
     try {
       setCargando(true);
       setError('');
@@ -54,7 +50,11 @@ const ListaMatricesRiesgo = () => {
     } finally {
       setCargando(false);
     }
-  };
+  }, [filtros, t]);
+
+  useEffect(() => {
+    cargarMatrices();
+  }, [cargarMatrices]);
 
   const handleEliminar = async (id, e) => {
     e.stopPropagation();

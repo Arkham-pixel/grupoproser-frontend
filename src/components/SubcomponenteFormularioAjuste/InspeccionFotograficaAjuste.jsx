@@ -12,13 +12,13 @@ import {
 import IAInteligente from './IAInteligente';
 import { ImageCompression } from '../../utils/imageCompression';
 import { useTheme } from '../../context/ThemeContext';
-import { getImageUrl, getImageUrlCandidates, createImageErrorHandler } from '../../utils/imageUtils';
+import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { isStoredFileReference } from '../../utils/storedFilePath';
 
 const idImagen = (img, index = 0) =>
   String(img?.id ?? img?.ruta ?? img?.nombre ?? `idx-${index}`);
 
-export default function InspeccionFotograficaAjuste({ formData, onInputChange, onAgregarImagenBase64, numeroSeccion = 4 }) {
+export default function InspeccionFotograficaAjuste({ formData, onInputChange, numeroSeccion = 4 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   
@@ -543,7 +543,7 @@ return imagenesProcesadas;
                           className="w-full h-32 object-cover rounded-lg cursor-pointer"
                           draggable={false}
                           onClick={() => setImagenSeleccionada(imagen)}
-                          onError={createImageErrorHandler(imagen, (img, imagenData) => {
+                          onError={createImageErrorHandler(imagen, (img) => {
                             // Callback personalizado cuando todas las URLs fallan
                             const container = img.closest('.relative');
                             if (container && !container.querySelector('.image-error-message')) {
@@ -714,7 +714,7 @@ return imagenesProcesadas;
               src={getImageUrl(imagenSeleccionada)}
               alt={imagenSeleccionada.nombre}
               className="w-full rounded-lg"
-              onError={createImageErrorHandler(imagenSeleccionada, (img, imagenData) => {
+              onError={createImageErrorHandler(imagenSeleccionada, (img) => {
                 // Callback personalizado cuando todas las URLs fallan
                 const container = img.parentElement;
                 if (container && !container.querySelector('.image-error-message')) {

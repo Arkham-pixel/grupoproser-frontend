@@ -24,7 +24,7 @@ export async function descargarReporteInteractivoHtml(
       </div>
     </div>`;
 
-  const script = `<script>${REPORTE_INTERACTIVO_JS}<\/script>`;
+  const script = `<script>${REPORTE_INTERACTIVO_JS}</script>`;
 
   html = html.replace('</body>', `${script}</body>`);
   html = html.replace(/<body([^>]*)>/, `<body$1>${banner}`);

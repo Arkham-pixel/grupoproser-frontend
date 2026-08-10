@@ -19,10 +19,10 @@ function limpiarListaImagenesParaGuardado(lista) {
 
 function sanitizarInformeInspeccionMotorysa(formData) {
   const {
-    archivoFirma,
-    imagen,
-    preview,
-    file,
+    archivoFirma: _archivoFirma,
+    imagen: _imagen,
+    preview: _preview,
+    file: _file,
     ...informe
   } = formData || {};
 

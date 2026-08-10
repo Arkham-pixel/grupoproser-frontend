@@ -82,7 +82,7 @@ const SessionTimer = () => {
               needsRenewal: tokenMinutesRemaining <= 50 // Marca si necesita renovación
             });
           }
-        } catch (e) {
+        } catch {
           // Error al decodificar token
         }
       }

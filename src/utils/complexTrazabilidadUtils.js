@@ -465,6 +465,8 @@ export function fechaEnPeriodo(fecha, fechaDesde, fechaHasta, fechaMinima = null
  * Criterio de negocio COMPLEX: estado FACTURADO (código 17).
  */
 export function casoCerradoEnPeriodo(caso, _fechaDesde, _fechaHasta) {
+  void _fechaDesde;
+  void _fechaHasta;
   return esCasoFacturado(caso);
 }
 

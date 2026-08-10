@@ -18,7 +18,6 @@ export default function DatosGeneralesAjuste({
   const { theme } = useTheme();
   
   // Colores según el tema
-  const bgMain = theme === 'dark' ? '#1A1A1A' : '#F5F5F7';
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
@@ -42,13 +41,6 @@ export default function DatosGeneralesAjuste({
     intermediario: [],
     tipoEvento: []
   });
-  const [dropdownsAbiertos, setDropdownsAbiertos] = useState({});
-  const [filtros, setFiltros] = useState({
-    ciudad: '',
-    aseguradora: '',
-    intermediario: ''
-  });
-
   const fechaAsignacionValor = resolverFechaAsignacionDesdeCaso(formData);
   const fechaAsignacionDesdeComplex = Boolean(
     formData.metadata?.fechaAsignacion || formData.metadata?.complexId
@@ -107,18 +99,9 @@ export default function DatosGeneralesAjuste({
   const aplicarSugerencia = (campo, valor) => {
     onInputChange(campo, valor);
     setSugerenciasIA(prev => ({ ...prev, [campo]: [] }));
-    setDropdownsAbiertos(prev => ({ ...prev, [campo]: false }));
-  };
-
-  const toggleDropdown = (campo) => {
-    setDropdownsAbiertos(prev => ({
-      ...prev,
-      [campo]: !prev[campo]
-    }));
   };
 
   const cerrarDropdowns = () => {
-    setDropdownsAbiertos({});
     setSugerenciasIA({
       ciudad: [],
       aseguradora: [],

@@ -324,7 +324,7 @@ export default function AsignarSubtareaModal({ open, caso, responsables = [], on
   };
 
   const asignarDesdeEtapa = (tarea) => {
-    setForm((prev) =>
+    setForm(() =>
       aplicarPlazoEtapa(tarea.tipo, protocolo, {
         ...FORM_INICIAL,
         titulo: tarea.titulo,

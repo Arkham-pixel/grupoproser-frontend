@@ -58,7 +58,7 @@ const TestFoto = () => {
     try {
       new URL(urlCompleta);
       results.push({ test: 'URL Válida', status: '✅ PASÓ', details: 'URL construida es válida' });
-    } catch (error) {
+    } catch {
       results.push({ test: 'URL Válida', status: '❌ FALLÓ', details: 'URL construida no es válida' });
     }
 

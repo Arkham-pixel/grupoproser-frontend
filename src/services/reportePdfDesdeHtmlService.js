@@ -16,6 +16,7 @@ export async function exportarReportePdfDesdeHtml(
   tipoReporte = 'inicial',
   matrizId = null
 ) {
+  void _nombreArchivo;
   try {
     guardarDatosReporteMatriz({ datosMatriz, tipoReporte, matrizId });
     abrirVentanaReporte(true);

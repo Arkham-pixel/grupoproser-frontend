@@ -401,10 +401,10 @@ export function nombreAjustadorParaDocumento(ajustadorChecklist = '') {
 
 /**
  * Nombre del ajustador para checklist: usuario que diligencia/imprime.
- * `obtenerNombreResponsable` / `codigoResponsable` se conservan por compatibilidad de firma
+ * Los argumentos adicionales se aceptan por compatibilidad de llamadas existentes,
  * pero no se usan (antes resolvían al asignado del caso).
  */
-export function resolverNombreAjustadorChecklist(ajustador, _obtenerNombreResponsable, _codigoResponsable = '') {
+export function resolverNombreAjustadorChecklist(ajustador) {
   return nombreAjustadorParaDocumento(ajustador || '');
 }
 

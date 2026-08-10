@@ -28,7 +28,10 @@ function formatearMoneda(valor) {
 function nombreArchivoSeguro(valor) {
   return String(valor || 'sin-numero')
     .trim()
-    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
+    .replace(/[<>:"/\\|?*]/g, '-')
+    .split('')
+    .map((caracter) => (caracter.charCodeAt(0) <= 31 ? '-' : caracter))
+    .join('')
     .replace(/\s+/g, '-');
 }
 

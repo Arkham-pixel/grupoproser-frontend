@@ -133,40 +133,6 @@ const InformacionMatriz = ({ datos, onDatosChange, seccionActiva, modoReporte = 
     onDatosChangeRef.current?.(informacionGeneral);
   }, [informacionGeneral]);
 
-  // Funciones para manejar recomendaciones
-  const agregarRecomendacion = () => {
-    const nuevaRecomendacion = {
-      id: Date.now(), // ID único basado en timestamp
-      recomendacion: '',
-      fechaInicial: '',
-      fechaImplementacion1: '',
-      comentariosImplementacion1: '',
-      fechaImplementacion2: '',
-      comentariosImplementacion2: ''
-    };
-
-    setInformacionGeneral(prev => ({
-      ...prev,
-      recomendaciones: [...prev.recomendaciones, nuevaRecomendacion]
-    }));
-  };
-
-  const eliminarRecomendacion = (id) => {
-    setInformacionGeneral(prev => ({
-      ...prev,
-      recomendaciones: prev.recomendaciones.filter(rec => rec.id !== id)
-    }));
-  };
-
-  const actualizarRecomendacion = (id, campo, valor) => {
-    setInformacionGeneral(prev => ({
-      ...prev,
-      recomendaciones: prev.recomendaciones.map(rec => 
-        rec.id === id ? { ...rec, [campo]: valor } : rec
-      )
-    }));
-  };
-
   return (
     <div className="informacion-matriz space-y-4">
       {/* Hero — estilo mockup Fenix */}

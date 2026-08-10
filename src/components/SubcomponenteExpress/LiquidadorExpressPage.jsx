@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
@@ -38,7 +38,10 @@ import {
 
 export default function LiquidadorExpressPage() {
   const { t } = useTranslation();
-  const tPage = (key, options) => t(`express.ui.settlementPage.${key}`, options);
+  const tPage = useCallback(
+    (key, options) => t(`express.ui.settlementPage.${key}`, options),
+    [t]
+  );
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
@@ -89,7 +92,7 @@ export default function LiquidadorExpressPage() {
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, location.state]);
+  }, [casoIdFromQuery, location.state, tPage]);
 
   const subtitulo = useMemo(() => {
     if (casoExpress?.numeroSiniestro) {

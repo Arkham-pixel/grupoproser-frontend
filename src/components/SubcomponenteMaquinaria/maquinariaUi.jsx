@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Este módulo agrupa componentes y utilidades de UI compartidas. */
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';

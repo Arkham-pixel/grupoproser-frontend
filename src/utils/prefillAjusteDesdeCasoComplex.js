@@ -122,9 +122,7 @@ export function buildPrefillAjusteDesdeCasoComplex(caso) {
     descripcionRiesgo: toTrim(caso.descRiesgo) || toTrim(caso.descripcionRiesgo) || undefined,
     identificacionActa: numDoc || undefined,
     tipoRiesgoActa: toTrim(caso.tipoPoliza) || toTrim(caso.amprAfctdo) || undefined,
-    codigoReporte: toTrim(caso.codWorkflow) || numeroCaso || undefined,
     ramo: toTrim(caso.tipoPoliza) || toTrim(caso.ramo),
-    funcionarioAsigna: toTrim(caso.funcAsgrdraNombre) || toTrim(caso.funcAsgrdra) || undefined,
     nombIntermediario: intermediario || undefined
   };
 

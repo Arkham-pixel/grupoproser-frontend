@@ -169,7 +169,6 @@ async function pintarEncabezado(doc, layout, formData, logoUrl) {
   const y0 = PDF_MARGINS.top;
   const colLogo = CONTENT_W * 0.28;
   const colTitulo = CONTENT_W * 0.44;
-  const colMeta = CONTENT_W * 0.28;
   const alto = 22;
 
   doc.setDrawColor(180);

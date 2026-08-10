@@ -72,14 +72,11 @@ export default function PuertosInspeccionMotorysaMain() {
   const [documentLocale, setDocumentLocale] = useState('es');
 
   const [formData, setFormData] = useState({
-    clienteSeleccionado: '',
     contactoBolivarId: '',
-    nombreCliente: '',
     codigoReferencia: '',
     nombreContacto: '',
     cargoContacto: '',
     gerenciaContacto: '',
-    empresaCliente: '',
     emailContacto: '',
     ciudadContacto: '',
     fechasInspeccion: '',

@@ -479,14 +479,14 @@ export default function PuertosActasListado() {
 
       {/* Menú de formatos */}
       <nav className="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-800">
-        {FORMATOS.map(({ id, labelKey, icon: Icon }) => (
+        {FORMATOS.map(({ id, labelKey, icon }) => (
           <button
             key={id}
             type="button"
             onClick={() => cambiarFormato(id)}
             className={formato === id ? puertosTabActive : puertosTabIdle}
           >
-            <Icon />
+            {React.createElement(icon)}
             {t(labelKey)}
           </button>
         ))}
@@ -591,7 +591,7 @@ export default function PuertosActasListado() {
                     <td className="whitespace-nowrap px-2 py-2">
                       <div className="flex items-center gap-1">
                         {accionesFila(fila).map(
-                          ({ icon: Icon, title, onClick, danger, disabled }) => (
+                          ({ icon, title, onClick, danger, disabled }) => (
                             <button
                               key={title}
                               type="button"
@@ -604,7 +604,9 @@ export default function PuertosActasListado() {
                               }`}
                               title={title}
                             >
-                              <Icon className={disabled ? 'animate-pulse' : ''} />
+                              {React.createElement(icon, {
+                                className: disabled ? 'animate-pulse' : '',
+                              })}
                             </button>
                           )
                         )}

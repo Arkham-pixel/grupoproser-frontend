@@ -1109,7 +1109,7 @@ function seccionContacto() {
  */
 export async function generarWordInformeExportacion(
   formData,
-  { aseguradoraOptions = [], responsables = [] } = {}
+  { responsables = [] } = {}
 ) {
   const informe = formData.informeExportacion || {};
 

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../context/ThemeContext';
 import ListaPerfilesUsuarios from './ListaPerfilesUsuarios';
-import api from '../../services/api';
 import { obtenerPerfil } from '../../services/userService';
 import { IDENTIFICADORES_GESTION_DOCUMENTOS } from '../../config/gestionDocumentosPermitidos';
 import { FaLock, FaExclamationTriangle } from 'react-icons/fa';

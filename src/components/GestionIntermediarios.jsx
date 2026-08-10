@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../config/apiConfig';
 import { FaPlus, FaEdit, FaTrash, FaHandshake, FaSave, FaTimes } from 'react-icons/fa';
@@ -31,14 +31,7 @@ export default function GestionIntermediarios() {
   };
   const esAdminOSoporte = usuarioActual.rol === 'admin' || usuarioActual.rol === 'soporte';
 
-  // Cargar datos
-  useEffect(() => {
-    if (esAdminOSoporte) {
-      cargarDatos();
-    }
-  }, [esAdminOSoporte]);
-
-  const cargarDatos = async () => {
+  const cargarDatos = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -66,7 +59,14 @@ export default function GestionIntermediarios() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  // Cargar datos
+  useEffect(() => {
+    if (esAdminOSoporte) {
+      cargarDatos();
+    }
+  }, [esAdminOSoporte, cargarDatos]);
 
   // Funciones para intermediario
   const abrirForm = (intermediario = null) => {

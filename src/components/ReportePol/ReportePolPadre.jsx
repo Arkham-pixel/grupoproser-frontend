@@ -27,7 +27,7 @@ import {
   VerticalAlign
 } from "docx";
 import { saveAs } from "file-saver";
-import historialService, { TIPOS_FORMULARIOS, ESTADOS_FORMULARIO } from "../../services/historialService";
+import { TIPOS_FORMULARIOS, ESTADOS_FORMULARIO } from "../../services/historialService";
 import BotonesHistorial from '../BotonesHistorial.jsx';
 import { useHistorialFormulario } from '../../hooks/useHistorialFormulario.js';
 
@@ -105,7 +105,7 @@ export default function ReportePolPadre() {
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       setActaNumero(`BV${year}${month}${day}${random}`);
     }
-  }, []);
+  }, [actaNumero, hora]);
 
   // Función para convertir base64 a ArrayBuffer
   function base64ToArrayBuffer(base64) {

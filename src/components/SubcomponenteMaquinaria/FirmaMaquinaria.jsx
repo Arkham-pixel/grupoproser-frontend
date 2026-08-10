@@ -185,7 +185,7 @@ export default function FirmaMaquinaria({
     cargarFuncionarios();
   }, [cargarFuncionarios]);
 
-  const aplicarFuncionario = async (funcionarioId) => {
+  const aplicarFuncionario = useCallback(async (funcionarioId) => {
     const id = String(funcionarioId || '').trim();
     if (!id) {
       setInspectorFuncionarioId('');
@@ -200,7 +200,7 @@ export default function FirmaMaquinaria({
     }
     setInspectorFuncionarioId(id);
     setInspectorFirmaImagen(f.firma || '');
-  };
+  }, [funcionarios, setInspectorFirmaImagen, setInspectorFuncionarioId]);
 
   useEffect(() => {
     if (!inspectorNombre?.trim() || inspectorFuncionarioId || !funcionarios.length) return;
@@ -208,7 +208,7 @@ export default function FirmaMaquinaria({
       (f) => String(f.nombre || '').trim().toLowerCase() === inspectorNombre.trim().toLowerCase()
     );
     if (match) void aplicarFuncionario(idFunc(match));
-  }, [inspectorNombre, funcionarios, inspectorFuncionarioId]);
+  }, [inspectorNombre, funcionarios, inspectorFuncionarioId, aplicarFuncionario]);
 
   const handleUploadCliente = (e) => {
     const file = e.target.files?.[0];

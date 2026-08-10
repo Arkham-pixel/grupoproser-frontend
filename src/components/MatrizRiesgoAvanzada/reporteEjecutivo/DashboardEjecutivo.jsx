@@ -35,7 +35,7 @@ function KpiCard({ titulo, valor, subtitulo, icono: Icono, color = '#C53030', on
   const contenido = (
     <>
       <div className="re-kpi-icono" style={{ color }}>
-        <Icono />
+        {React.createElement(Icono)}
       </div>
       <div className="re-kpi-body">
         <p className="re-kpi-titulo">{titulo}</p>

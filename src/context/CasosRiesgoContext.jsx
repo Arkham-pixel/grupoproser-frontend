@@ -13,6 +13,7 @@ const api = axios.create({
 
 const CasosRiesgoContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components -- El hook debe compartirse con consumidores del proveedor.
 export const useCasosRiesgo = () => useContext(CasosRiesgoContext); 
 
 export const CasosRiesgoProvider = ({ children }) => {

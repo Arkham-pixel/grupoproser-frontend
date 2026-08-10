@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, lazy, Suspense, startTransition, useDeferredValue } from "react";
 import { useTranslation } from 'react-i18next';
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import { obtenerHoraActualColombia } from '../utils/fechaUtils';
 import { useTheme } from '../context/ThemeContext';
 import { AUTO_SAVE_ENABLED, HISTORIAL_AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
@@ -36,7 +36,6 @@ const MapaGoogleEarth = lazy(() => import('./MapaGoogleEarth'));
 const MapaUbicacionAjuste = lazy(() => import('./SubcomponenteFormularioAjuste/MapaUbicacionAjuste'));
 const RegistroFotografico = lazy(() => import('./RegistroFotografico'));
 import { PageBreak } from "docx";
-import { toPng } from 'html-to-image';
 import Logo from '../img/Logo.png';
 import ciudadesData from '../data/colombia.json';
 import Select from 'react-select';
@@ -225,7 +224,8 @@ export default function FormularioInspeccion() {
   const { theme } = useTheme();
   const location = useLocation();
   const { id } = useParams(); // Obtener ID de la URL si estamos en modo edición
-  const navigate = useNavigate();
+  const { desdeRiesgo, prefillDesdeCaso } = location.state || {};
+  const cargarDatosFormularioRef = useRef(null);
   const datosPrevios = location.state || {};
   
   // Generar lista de años dinámicamente (desde 1900 hasta el año actual) - Memoizado
@@ -382,7 +382,7 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   const [areaLote, setAreaLote] = useState("");
   const [areaConstruida, setAreaConstruida] = useState("");
   const [numeroEdificios, setNumeroEdificios] = useState("");
-  const [numeroPisos, setNumeroPisos] = useState("");
+  const [, setNumeroPisos] = useState("");
   const [sotanos, setSotanos] = useState("");
   const [tenencia, setTenencia] = useState(""); // Propio o arrendado
   const [descripcionInfraestructura, setDescripcionInfraestructura] = useState("");
@@ -459,7 +459,7 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   const [sistemaEstructuralOtro, setSistemaEstructuralOtro] = useState("");
   const [estructuraCubiertaOtro, setEstructuraCubiertaOtro] = useState("");
   // Sustracción - Protecciones Físicas - Agrupado para reducir re-renders
-  const [sustraccion, setSustraccion] = useState({
+  const [, setSustraccion] = useState({
     // Protecciones Físicas
     ubicacionPredio: "",
     vulnerabilidadContenidos: "",
@@ -751,10 +751,6 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
     transporteDinero,
   ]);
 
-  // Helper para actualizar sustracción
-  const updateSustraccion = useCallback((field, value) => {
-    setSustraccion(prev => ({ ...prev, [field]: value }));
-  }, []);
   // Lucro Cesante - Agrupado para reducir re-renders
   const [lucroCesante, setLucroCesante] = useState({
     areaRequeridaLucroCesante: "",
@@ -780,7 +776,7 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   const [valorProyectadoFacturacion, setValorProyectadoFacturacion] = useState(datosPrevios.valorProyectadoFacturacion || datosPrevios.lucroCesante?.valorProyectadoFacturacion || "");
   const [comentariosLucroCesante, setComentariosLucroCesante] = useState(datosPrevios.comentariosLucroCesante || datosPrevios.lucroCesante?.comentariosLucroCesante || "");
 
-  const [pml, setPml] = useState({
+  const [, setPml] = useState({
     porcentaje: datosPrevios.pml?.porcentaje || datosPrevios.pmlPorcentaje || datosPrevios.lucroCesante?.pmlPorcentaje || "",
     descripcion: datosPrevios.pml?.descripcion || datosPrevios.pmlDescripcion || datosPrevios.lucroCesante?.pmlDescripcion || "",
   });
@@ -829,11 +825,6 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
     areaRequeridaLucroCesanteOtro,
     complejidadActividadLucroCesanteOtro,
   ]);
-  
-  // Helper para actualizar lucro cesante
-  const updateLucroCesante = useCallback((field, value) => {
-    setLucroCesante(prev => ({ ...prev, [field]: value }));
-  }, []);
   
   // Variables de estado separadas para campos de roturaMaquinaria que se usan directamente
   const [capacidadInstaladaPlanta, setCapacidadInstaladaPlanta] = useState(datosPrevios.capacidadInstaladaPlanta || datosPrevios.roturaMaquinaria?.capacidadInstaladaPlanta || "");
@@ -893,14 +884,6 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
     conveniosOtrasEmpresas: ""
   });
   
-  // Helper para actualizar rotura de maquinaria
-  const updateRoturaMaquinaria = useCallback((field, value) => {
-    setRoturaMaquinaria(prev => ({ ...prev, [field]: value }));
-  }, []);
-  // Mapa
-  const mapaRef = useRef(null);
-  const [mapaListo, setMapaListo] = useState(false);
-
   //Servicios Industriales
   const [energiaProveedor, setEnergiaProveedor] = useState("");
   const [energiaTension, setEnergiaTension] = useState("");
@@ -1204,16 +1187,6 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   );
 
 
-  // Mensajes predeterminados
-  const mensajesRecomendados = [
-    "Se recomienda actualizar el plan de emergencias.",
-    "Instalar un sistema de alarma contra incendios.",
-    "Realizar mantenimiento preventivo a los equipos.",
-    "Capacitar al personal en evacuación y manejo de extintores.",
-    "Actualizar señalización de rutas de evacuación.",
-    "Implementar un programa de inspección mensual.",
-  ];
-
   // Lista de recomendaciones (puedes ponerlas resumidas aquí o importarlas desde un JSON o txt si prefieres)
   const [bancoRecomendaciones, setBancoRecomendaciones] = useState(() =>{
      const stored = localStorage.getItem("bancoRecomendaciones");
@@ -1256,7 +1229,7 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   }, [categoriaSeleccionada]);
 
   // Hook para manejar el historial
-  const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION);
+  const { guardando, exportando, guardarEnHistorial } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION);
 
   useEffect(() => {
     historialSeccionesListoRef.current = !id || id === 'nuevo';
@@ -1605,7 +1578,7 @@ await generarManualInspeccion();
   useEffect(() => {
     if (!AUTO_SAVE_ENABLED) return;
     // No sobrescribir con borrador local si venimos con prefill de un caso de riesgo
-    if (location.state?.desdeRiesgo || location.state?.prefillDesdeCaso) return;
+    if (desdeRiesgo || prefillDesdeCaso) return;
     if (!id || id === 'nuevo') {
       const datosGuardados = localStorage.getItem('formularioInspeccion');
       if (datosGuardados) {
@@ -2027,12 +2000,10 @@ await generarManualInspeccion();
         }
       }
     }
-  }, [id]);
+  }, [id, desdeRiesgo, prefillDesdeCaso]);
 
   // Memoizar todos los datos del formulario para evitar re-renders innecesarios
   const datosFormularioCompletos = useMemo(() => {
-    const startTime = performance.now();
-    
     const datos = {
     formData,
     barrio,
@@ -2173,7 +2144,7 @@ await generarManualInspeccion();
     // Cálculo completado
     
     return datos;
-  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, actividadEconomica, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, mantenimientoCubierta, mantenimientoCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, construirSustraccionParaHistorial, lucroCesante, construirPmlParaHistorial, seccionesActivas, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems]);
+  }, [formData, barrio, departamento, horarioLaboral, cargo, puedeSuscribir, colaboladores, nombreEmpresa, direccion, municipio, personaEntrevistada, actividadEconomica, nombreCliente, aseguradora, fecha, imagenesRegistro, descripcionEmpresa, infraestructura, analisisRiesgos, tablaRiesgos, areas, datosEquipos, caracteristicasConstruccion, anoConstruccion, tipoEdificio, tipoEdificioOtro, areaLoteConstruccion, areaConstruidaConstruccion, numeroPisosConstruccion, cimentacion, cimentacionOtro, materialesEstructura, materialesEstructuraOtro, regularidadPlanta, danosPrevios, reforzamientosEstructurales, sistemaEstructural, sistemaEstructuralOtro, estructuraCubierta, estructuraCubiertaOtro, mantenimientoCubierta, mantenimientoCubiertaOtro, regularAltura, danosReparados, tipoInsumo, nivelRiesgoInsumo, descripcionContenidosInsumo, contenedoresInsumo, tipoAlmacenamientoInsumo, estadoAlmacenamientoInsumo, tipoMateriasPrimas, nivelRiesgoMateriasPrimas, descripcionContenidosMateriasPrimas, contenedoresMateriasPrimas, tipoAlmacenamientoMateriasPrimas, estadoAlmacenamientoMateriasPrimas, tipoMercancias, nivelRiesgoMercancias, descripcionContenidosMercancias, contenedoresMercancias, tipoAlmacenamientoMercancias, estadoAlmacenamientoMercancias, tipoInsumoOtro, contenedoresInsumoOtro, tipoAlmacenamientoInsumoOtro, tipoMateriasPrimasOtro, contenedoresMateriasPrimasOtro, tipoAlmacenamientoMateriasPrimasOtro, tipoMercanciasOtro, contenedoresMercanciasOtro, tipoAlmacenamientoMercanciasOtro, caracteristicasAmbientales, detectoresHumo, coberturaDeteccion, instalacionDeteccion, monitoreadoDeteccion, cantidadExtintores, tipoExtintores, suficientesExtintores, instalacionExtintores, senalizacionExtintores, cargaVigenteExtintores, comentariosProteccionIncendios, bombaPrincipal, bombaJockey, presionContraincendios, estacionBomberosNombre, estacionBomberosTiempoMin, estacionBomberosDistanciaMetros, murosCortafuegos, puertasCortafuego, almacenamientoAguaRci, pruebasProteccionIncendios, extintor, rci, rociadores, deteccion, alarmas, brigadas, bomberos, construirSustraccionParaHistorial, lucroCesante, construirPmlParaHistorial, seccionesActivas, procesosCriticos, riesgosMedioambientales, roturaMaquinaria, almacenAlturaMaxima, almacenMatrizCompatibilidad, almacenAlturaMaximaEstanteria, mercPeligrosaTipo, mercPeligrosaTipoAlmacenamiento, mercPeligrosaProtecciones, maquinariaDescripcion, promedioEdadEquipos, tipoMantenimientoEquipos, bitacorasMantenimiento, personalMantenimiento, periodicidadMantenimientos, siniestralidad, siniestralidadAno, siniestralidadValor, siniestralidadDescripcion, siniestralidadMejoras, recomendacionesItems, recomendaciones]);
 
   // ⚠️ OPTIMIZACIÓN CRÍTICA: Usar useDeferredValue para diferir el cálculo pesado
   // Esto permite que la UI responda inmediatamente mientras el cálculo se hace en segundo plano
@@ -2183,7 +2154,6 @@ await generarManualInspeccion();
   // Solo se guarda si estamos en la ruta del formulario de inspección
   const timeoutGuardadoRef = useRef(null);
   const ultimoGuardadoRef = useRef(null);
-  const datosFormularioCompletosCountRef = useRef(0);
   
   // ⚠️ OPTIMIZACIÓN CRÍTICA: Este useEffect se ejecuta en CADA cambio de cualquier estado
   // porque datosFormularioCompletos tiene 80+ dependencias. Esto causa lag.
@@ -2393,102 +2363,6 @@ localStorage.removeItem('formularioInspeccion');
   
     setTablaRiesgos(nuevaTabla);
   };
-
-  const celdaMatrizRiesgo = (R, porcentaje, textoRiesgo) =>
-    new TableCell({
-      shading: {
-        fill: getCellColor(R),
-      },
-      borders: {
-        top: { color: "000000", size: 2 },
-        bottom: { color: "000000", size: 2 },
-        left: { color: "000000", size: 2 },
-        right: { color: "000000", size: 2 },
-      },
-      children: [
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `${R}`,
-              bold: true,
-              color: "FFFFFF", // texto blanco para contraste
-            }),
-            new TextRun({
-              text: ` (${porcentaje}%)`,
-              color: "FFFFFF",
-              break: 1,
-            }),
-            new TextRun({
-              text: textoRiesgo || "",
-              color: "FFFFFF",
-              break: 1,
-            }),
-          ],
-          alignment: AlignmentType.CENTER,
-        }),
-      ],
-      verticalAlign: "center",
-    });
-
-
-
-
-    
-  
-// 🔁 Declaración previa de helpers
-const celdaTexto = (text, bold = false, colspan = 1) =>
-  new TableCell({
-    columnSpan: colspan,
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text: text || "", bold })],
-        alignment: AlignmentType.CENTER,
-      }),
-    ],
-    width: { size: 100 / colspan, type: WidthType.PERCENTAGE },
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-    },
-  });
-
-// Fila con etiqueta y dato extendido
-const filaDoble = (label, value) => new TableRow({
-  children: [
-    celdaTexto(label, true),
-    new TableCell({
-      columnSpan: 7,
-      children: [
-        new Paragraph({
-          children: [new TextRun({ text: value || "" })],
-          alignment: AlignmentType.LEFT,
-        }),
-      ],
-    }),
-  ],
-});
-
-
-
-  const encabezadoTabla = (texto) =>
-  new TableCell({
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text: texto, bold: true })],
-        alignment: AlignmentType.CENTER,
-      }),
-    ],
-    shading: { fill: "D9D9D9" },
-    verticalAlign: "center",
-    borders: {
-      top: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-      bottom: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-      left: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-      right: { style: BorderStyle.SINGLE, size: 1, color: "000000" },
-    },
-  });
 
   const handleImagenChange = (e) => {
     const file = e.target.files[0];
@@ -2716,19 +2590,6 @@ const seccion = (titulo) =>
           }),
         ],
       });
-
-
-      const celdaTextoCentrada = (texto, bold = false) =>
-  new TableCell({
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text: valorTablaWord(texto), bold })],
-        alignment: AlignmentType.CENTER,
-      }),
-    ],
-    verticalAlign: "center",
-  });
-
 // Página de presentación
 docContent.push(
   new Paragraph({ children: [], pageBreakBefore: true }),
@@ -2950,22 +2811,6 @@ docContent.push(
     ],
   })
     );
-    
-
-    const riesgos = [
-      "Incendio/Explosión",
-      "Amit",
-      "Anegación",
-      "Daños por agua",
-      "Terremoto",
-      "Sustracción",
-      "Rotura de maquinaria",
-      "Responsabilidad civil"
-    ];
-    
-
-
-
 const celdaEncabezadoInfo = (texto, width = 20) =>
   new TableCell({
     width: { size: width, type: WidthType.PERCENTAGE },
@@ -4143,76 +3988,6 @@ if (incluirSeccionWord('roturaMaquinaria')) {
     );
   }
   }  // proteccionIncendios
-
-
-
-  const rows = [
-    filaDoble("PROVEEDOR", energiaProveedor),
-    filaDoble("TENSIÓN", energiaTension),
-    encabezadoTabla("TRANSFORMADORES"),
-    new TableRow({
-      children: [
-        celdaTexto("N° Subestación"),
-        celdaTexto("Marca"),
-        celdaTexto("Tipo"),
-        celdaTexto("Capacidad"),
-        celdaTexto("Edad"),
-        celdaTexto("Relación de voltaje"),
-      ],
-    }),
-    ...transformadores.map(transformador => 
-    new TableRow({
-      children: [
-          celdaTexto(transformador.subestacion || ""),
-          celdaTexto(transformador.marca || ""),
-          celdaTexto(transformador.tipo || ""),
-          celdaTexto(transformador.capacidad || ""),
-          celdaTexto(transformador.edad || ""),
-          celdaTexto(transformador.relacionVoltaje || ""),
-      ],
-      })
-    ),
-    encabezadoTabla(t('inspection.ui.formulario_inspeccion.electricPlants')),
-    new TableRow({
-      children: [
-        celdaTexto("Número"),
-        celdaTexto("Marca"),
-        celdaTexto("Tipo"),
-        celdaTexto("Capacidad"),
-        celdaTexto("Edad"),
-        celdaTexto("Transferencia"),
-        celdaTexto("Voltaje"),
-        celdaTexto("Cobertura"),
-      ],
-    }),
-    new TableRow({
-      children: [
-        celdaTexto(plantaNumero1),
-        celdaTexto(plantaMarca1),
-        celdaTexto(plantaTipo1),
-        celdaTexto(plantaCapacidad1),
-        celdaTexto(plantaEdad1),
-        celdaTexto(plantaTransferencia1),
-        celdaTexto(plantaVoltaje1),
-        celdaTexto(plantaCobertura1),
-      ],
-    }),
-    new TableRow({
-      children: [
-        celdaTexto(plantaNumero2),
-        celdaTexto(plantaMarca2),
-        celdaTexto(plantaTipo2),
-        celdaTexto(plantaCapacidad2),
-        celdaTexto(plantaEdad2),
-        celdaTexto(plantaTransferencia2),
-        celdaTexto(plantaVoltaje2),
-        celdaTexto(plantaCobertura2),
-      ],
-    }),
-    filaDoble("PARARRAYOS", energiaPararrayos),
-    filaDoble("COMENTARIOS", energiaComentarios),
-  ];
-
   if (incluirSeccionWord('maquinaria')) {
   docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }), 
@@ -5730,66 +5505,12 @@ const handleInputChange = useCallback((field, value) => {
   });
 }, []);
 
-// Helper para crear handlers de onChange optimizados con startTransition
-const createOptimizedHandler = useCallback((setter) => {
-  return (e) => {
-    const value = e?.target?.value ?? e;
-    startTransition(() => {
-      setter(value);
-    });
-  };
-}, []);
-
-// Hook personalizado para debounce de inputs
-const useDebouncedState = (initialValue, delay = 300) => {
-  const [value, setValue] = useState(initialValue);
-  const [debouncedValue, setDebouncedValue] = useState(initialValue);
-  const timeoutRef = useRef(null);
-
-  useEffect(() => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    timeoutRef.current = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [value, delay]);
-
-  return [value, debouncedValue, setValue];
-};
-
-const handleMapaChange = (mapaData) => {
-setImagenMapa(mapaData.imagen);
-  
-  // Actualizar coordenadas en formData
-  if (mapaData.coordenadas) {
-    setFormData(prev => ({
-      ...prev,
-      coordenadasRiesgo: `${mapaData.coordenadas.lat}, ${mapaData.coordenadas.lng}`
-    }));
-  }
-  
-  // Actualizar dirección si está disponible
-  if (mapaData.direccion) {
-    setFormData(prev => ({
-      ...prev,
-      direccionRiesgo: mapaData.direccion
-    }));
-  }
-};
-
 // Efecto para detectar modo edición y cargar datos
 useEffect(() => {
   if (id) {
     setModoEdicion(true);
     setCargando(true);
-    cargarDatosFormulario(id);
+    cargarDatosFormularioRef.current?.(id);
   }
 }, [id]);
 
@@ -6330,7 +6051,7 @@ const cargarDatosFormulario = async (formularioId) => {
 
       if (Array.isArray(imagenesRegistroHistorial) && imagenesRegistroHistorial.length > 0) {
         const imagenesProcesadas = await Promise.all(
-          imagenesRegistroHistorial.map(async (img, index) => {
+          imagenesRegistroHistorial.map(async (img) => {
             // Si tiene ruta (archivo en servidor), cargar desde servidor
             if (img && typeof img === 'object' && img.ruta) {
               try {
@@ -6543,6 +6264,8 @@ const handleChatbotInputChange = useCallback((field, value) => {
 const handleImagenesRegistroChange = useCallback((imagenes) => {
   setImagenesRegistro(imagenes);
 }, []);
+
+cargarDatosFormularioRef.current = cargarDatosFormulario;
 
 return (
   <div 

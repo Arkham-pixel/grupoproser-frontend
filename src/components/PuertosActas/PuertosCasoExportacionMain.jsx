@@ -200,7 +200,7 @@ export default function PuertosCasoExportacionMain() {
         navigate('/puertos/actas');
       })
       .finally(() => setCargando(false));
-  }, [id, esEdicion, navigate]);
+  }, [id, esEdicion, navigate, t]);
 
   useEffect(() => {
     if (searchParams.get('fotos') === '1') {

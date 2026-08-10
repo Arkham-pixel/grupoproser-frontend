@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
-import { useLocation, useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useLocation, useParams } from "react-router-dom";
 import { obtenerHoraActualColombia } from '../utils/fechaUtils';
 import { useTheme } from '../context/ThemeContext';
 import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
@@ -32,7 +32,6 @@ import MapaGoogleEarth from './MapaGoogleEarth'
 import MapaUbicacionAjuste from './SubcomponenteFormularioAjuste/MapaUbicacionAjuste'
 import RegistroFotografico from './RegistroFotografico';
 import { PageBreak } from "docx";
-import { toPng } from 'html-to-image';
 import Logo from '../img/Logo.png';
 import { TableOfContents } from "docx";
 import ciudadesData from '../data/colombia.json';
@@ -42,7 +41,7 @@ import MapaDeCalor from "./MapaDeCalor";
 import FormularioAreas from "./SubcomponenteFRiesgo/FormularioAreas";
 import BotonesHistorial from './BotonesHistorial.jsx';
 import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
-import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
+import { TIPOS_FORMULARIOS } from '../services/historialService.js';
 import { BASE_URL } from '../config/apiConfig.js';
 import ChatbotIA from './SubcomponenteFormularioAjuste/ChatbotIA';
 
@@ -51,7 +50,6 @@ export default function FormularioPuertos() {
   const { theme } = useTheme();
   const location = useLocation();
   const { id } = useParams(); // Obtener ID de la URL si estamos en modo edición
-  const navigate = useNavigate();
   const datosPrevios = location.state || {};
   
   // Colores según el tema
@@ -154,10 +152,6 @@ const [nombreCliente, setNombreCliente] = useState(datosPrevios.nombreCliente ||
   const [linderoSur, setLinderoSur] = useState("");
   const [linderoOriente, setLinderoOriente] = useState("");
   const [linderoOccidente, setLinderoOccidente] = useState("");
-  // Mapa
-  const mapaRef = useRef(null);
-  const [mapaListo, setMapaListo] = useState(false);
-
   //Servicios Industriales
   const [energiaProveedor, setEnergiaProveedor] = useState("");
   const [energiaTension, setEnergiaTension] = useState("");
@@ -271,16 +265,6 @@ const [recomendaciones, setRecomendaciones] = useState("");
   ]);
 
 
-  // Mensajes predeterminados
-  const mensajesRecomendados = [
-    "Se recomienda actualizar el plan de emergencias.",
-    "Instalar un sistema de alarma contra incendios.",
-    "Realizar mantenimiento preventivo a los equipos.",
-    "Capacitar al personal en evacuación y manejo de extintores.",
-    "Actualizar señalización de rutas de evacuación.",
-    "Implementar un programa de inspección mensual.",
-  ];
-
   // Lista de recomendaciones (puedes ponerlas resumidas aquí o importarlas desde un JSON o txt si prefieres)
   const [bancoRecomendaciones, setBancoRecomendaciones] = useState(() =>{
      const stored = localStorage.getItem("bancoRecomendaciones");
@@ -373,7 +357,7 @@ const [recomendaciones, setRecomendaciones] = useState("");
   const [categoriaSeleccionada, setCategoriaSeleccionada] = useState("");
 
   // Hook para manejar el historial
-  const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION);
+  const { guardando, exportando, guardarEnHistorial } = useHistorialFormulario(TIPOS_FORMULARIOS.INSPECCION);
 
   const handleAgregarRecomendacion = (recomendacion) => {
     if (recomendacion && !recomendaciones.includes(recomendacion)) {
@@ -559,18 +543,11 @@ localStorage.removeItem('formularioInspeccion');
   }, [location.pathname]);
 
   const getCellColor = (r) => {
-    if (r >= 13) {
-      return "FF0000"; // rojo
-    } else if (r >= 9) {
-      return "00B0F0"; // azul
-    } else if (r >= 5) {
-      return "FFFF00"; // amarillo
-    } else {
-     return "92D050"; // verde  
-     }
+    if (r >= 13) return "FF0000";
+    if (r >= 9) return "00B0F0";
+    if (r >= 5) return "FFFF00";
+    return "92D050";
   };
-
-
 
   // Ajuste de rangos para que coincida con la guía proporcionada:
   // R: 1-4  => Bajo
@@ -600,47 +577,6 @@ localStorage.removeItem('formularioInspeccion');
     setTablaRiesgos(nuevaTabla);
   };
 
-  const celdaMatrizRiesgo = (R, porcentaje, textoRiesgo) =>
-    new TableCell({
-      shading: {
-        fill: getCellColor(R),
-      },
-      borders: {
-        top: { color: "000000", size: 2 },
-        bottom: { color: "000000", size: 2 },
-        left: { color: "000000", size: 2 },
-        right: { color: "000000", size: 2 },
-      },
-      children: [
-        new Paragraph({
-          children: [
-            new TextRun({
-              text: `${R}`,
-              bold: true,
-              color: "FFFFFF", // texto blanco para contraste
-            }),
-            new TextRun({
-              text: ` (${porcentaje}%)`,
-              color: "FFFFFF",
-              break: 1,
-            }),
-            new TextRun({
-              text: textoRiesgo || "",
-              color: "FFFFFF",
-              break: 1,
-            }),
-          ],
-          alignment: AlignmentType.CENTER,
-        }),
-      ],
-      verticalAlign: "center",
-    });
-
-
-
-
-    
-  
 // 🔁 Declaración previa de helpers
 const celdaTexto = (text, bold = false, colspan = 1) =>
   new TableCell({
@@ -669,20 +605,6 @@ const filaDoble = (label, value) => new TableRow({
     }),
   ],
 });
-
-
-
-  const encabezadoTabla = (texto) =>
-  new TableCell({
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text: texto, bold: true })],
-        alignment: AlignmentType.CENTER,
-      }),
-    ],
-    shading: { fill: "D9D9D9" },
-    verticalAlign: "center",
-  });
 
 
 
@@ -818,17 +740,6 @@ const seccion = (titulo) =>
         ],
       });
 
-
-      const celdaTextoCentrada = (texto, bold = false) =>
-  new TableCell({
-    children: [
-      new Paragraph({
-        children: [new TextRun({ text: texto || "", bold })],
-        alignment: AlignmentType.CENTER,
-      }),
-    ],
-    verticalAlign: "center",
-  });
 
 // Página de presentación
 docContent.push(
@@ -1033,17 +944,6 @@ docContent.push(
     );
     
 
-    const riesgos = [
-      "Incendio/Explosión",
-      "Amit",
-      "Anegación",
-      "Daños por agua",
-      "Terremoto",
-      "Sustracción",
-      "Rotura de maquinaria",
-      "Responsabilidad civil"
-    ];
-    
     docContent.push(
       new Paragraph({ children: [], pageBreakBefore: true }),
       seccion("ANÁLISIS DE RIESGOS"),
@@ -1501,73 +1401,6 @@ const response = await fetch(osmStaticUrl);
       linea("Dirección: " + (formData.direccionRiesgo || "No especificada"))
     );
   }
-
-  const rows = [
-    filaDoble("PROVEEDOR", energiaProveedor),
-    filaDoble("TENSIÓN", energiaTension),
-    encabezadoTabla("TRANSFORMADORES"),
-    new TableRow({
-      children: [
-        celdaTexto("N° Subestación"),
-        celdaTexto("Marca"),
-        celdaTexto("Tipo"),
-        celdaTexto("Capacidad"),
-        celdaTexto("Edad"),
-        celdaTexto("Relación de voltaje"),
-      ],
-    }),
-    ...transformadores.map(transformador => 
-    new TableRow({
-      children: [
-          celdaTexto(transformador.subestacion || ""),
-          celdaTexto(transformador.marca || ""),
-          celdaTexto(transformador.tipo || ""),
-          celdaTexto(transformador.capacidad || ""),
-          celdaTexto(transformador.edad || ""),
-          celdaTexto(transformador.relacionVoltaje || ""),
-      ],
-      })
-    ),
-    encabezadoTabla("PLANTAS ELÉCTRICAS"),
-    new TableRow({
-      children: [
-        celdaTexto("Número"),
-        celdaTexto("Marca"),
-        celdaTexto("Tipo"),
-        celdaTexto("Capacidad"),
-        celdaTexto("Edad"),
-        celdaTexto("Transferencia"),
-        celdaTexto("Voltaje"),
-        celdaTexto("Cobertura"),
-      ],
-    }),
-    new TableRow({
-      children: [
-        celdaTexto(plantaNumero1),
-        celdaTexto(plantaMarca1),
-        celdaTexto(plantaTipo1),
-        celdaTexto(plantaCapacidad1),
-        celdaTexto(plantaEdad1),
-        celdaTexto(plantaTransferencia1),
-        celdaTexto(plantaVoltaje1),
-        celdaTexto(plantaCobertura1),
-      ],
-    }),
-    new TableRow({
-      children: [
-        celdaTexto(plantaNumero2),
-        celdaTexto(plantaMarca2),
-        celdaTexto(plantaTipo2),
-        celdaTexto(plantaCapacidad2),
-        celdaTexto(plantaEdad2),
-        celdaTexto(plantaTransferencia2),
-        celdaTexto(plantaVoltaje2),
-        celdaTexto(plantaCobertura2),
-      ],
-    }),
-    filaDoble("PARARRAYOS", energiaPararrayos),
-    filaDoble("COMENTARIOS", energiaComentarios),
-  ];
 
   docContent.push(
   new Paragraph({ text: "", spacing: { after: 300 } }), 
@@ -2325,7 +2158,6 @@ const handleGuardarEnHistorial = async () => {
       comentariosSeguridadFisica: comentariosSeguridadFisica,
       plantasElectricas: plantasElectricas,
       energiaComentarios: energiaComentarios,
-      transformadores: transformadores,
       plantaNumero1: plantaNumero1,
       plantaMarca1: plantaMarca1,
       plantaTipo1: plantaTipo1,
@@ -2514,26 +2346,6 @@ const handleInputChange = (field, value) => {
     ...prev,
     [field]: value
   }));
-};
-
-const handleMapaChange = (mapaData) => {
-setImagenMapa(mapaData.imagen);
-  
-  // Actualizar coordenadas en formData
-  if (mapaData.coordenadas) {
-    setFormData(prev => ({
-      ...prev,
-      coordenadasRiesgo: `${mapaData.coordenadas.lat}, ${mapaData.coordenadas.lng}`
-    }));
-  }
-  
-  // Actualizar dirección si está disponible
-  if (mapaData.direccion) {
-    setFormData(prev => ({
-      ...prev,
-      direccionRiesgo: mapaData.direccion
-    }));
-  }
 };
 
 // Efecto para detectar modo edición y cargar datos
@@ -2777,7 +2589,7 @@ const cargarDatosFormulario = async (formularioId) => {
 const baseURL = BASE_URL;
 
         const imagenesProcesadas = await Promise.all(
-          formulario.datos.imagenesRegistro.map(async (img, index) => {
+          formulario.datos.imagenesRegistro.map(async (img) => {
             // Si tiene ruta (archivo en servidor), cargar desde servidor
             if (img && typeof img === 'object' && img.ruta) {
               try {
@@ -4482,7 +4294,7 @@ return (
   <MapaGoogleEarth 
     coordenadasIniciales={formData.coordenadasRiesgo}
     direccionInicial={formData.direccionRiesgo}
-    onMapReady={(map) => {
+    onMapReady={() => {
 }}
     apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.REACT_APP_GOOGLE_MAPS_API_KEY || ''}
     onMapaChange={(datos) => {

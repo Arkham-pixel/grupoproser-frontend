@@ -101,10 +101,6 @@ const compressedFiles = await Promise.all(
       })
     );
     
-    const totalSizeOriginal = files.reduce((sum, file) => sum + file.size, 0);
-    const totalSizeCompressed = compressedFiles.reduce((sum, file) => sum + file.size, 0);
-    const compressionRatio = ((totalSizeOriginal - totalSizeCompressed) / totalSizeOriginal * 100).toFixed(1);
-    
 return compressedFiles;
   }
   

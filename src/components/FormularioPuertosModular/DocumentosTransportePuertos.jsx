@@ -4,7 +4,9 @@ import { useTheme } from '../../context/ThemeContext';
 import { FaPlus, FaTrash } from 'react-icons/fa';
 import PuertosDragDropFotos from './PuertosDragDropFotos';
 
-export default function DocumentosTransportePuertos({ formData, onInputChange, onMultipleChange, cargando }) {
+const MOSTRAR_INSPECCION_PATIO = false;
+
+export default function DocumentosTransportePuertos({ formData, onInputChange, cargando }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   
@@ -686,7 +688,7 @@ export default function DocumentosTransportePuertos({ formData, onInputChange, o
         </div>
 
         {/* TERCERA SECCIÓN - INSPECCIÓN EN PATIO DE ALMACENAMIENTO - OCULTA */}
-        {false && (
+        {MOSTRAR_INSPECCION_PATIO && (
         <div className="mt-8">
           <h4 
             className="text-lg font-bold mb-4"

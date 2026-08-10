@@ -20,7 +20,7 @@ L.Icon.Default.mergeOptions({
 });
 
 // Componente para manejar eventos del mapa
-function MapEvents({ onMapClick, onMarkerDragEnd }) {
+function MapEvents({ onMapClick }) {
   useMapEvents({
     click: (e) => {
       onMapClick(e.latlng);
@@ -42,8 +42,12 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
   const [buscando, setBuscando] = useState(false); // Estado para indicar cuando está buscando
   const [modoEdicion, setModoEdicion] = useState(false); // Nuevo estado para modo de edición manual
   const [imagenMapa, setImagenMapa] = useState(null); // Nueva variable para la imagen del mapa
-  const mapRef = useRef(null);
   const mapContainerRef = useRef(null);
+  const onInputChangeRef = useRef(onInputChange);
+  const tRef = useRef(t);
+  const generarImagenMapaRef = useRef(null);
+  onInputChangeRef.current = onInputChange;
+  tRef.current = t;
   const coordenadasFormateadas = coordenadas
     ? {
         latitud: coordenadas.lat.toFixed(6),
@@ -78,13 +82,13 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
         setCargando(false);
         
         // Actualizar coordenadas en el formulario
-        onInputChange('coordenadasRiesgo', `${coords[0]}, ${coords[1]}`);
+        onInputChangeRef.current('coordenadasRiesgo', `${coords[0]}, ${coords[1]}`);
       },
       (err) => {
         console.error("Error al obtener ubicación:", err);
         // Mantener ubicación por defecto: Centro de Colombia
         setCargando(false);
-        setError(t('adjustment.ui.mapa.geolocationError'));
+        setError(tRef.current('adjustment.ui.mapa.geolocationError'));
       },
       {
         timeout: 10000, // 10 segundos de timeout
@@ -111,7 +115,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
     if (mapaListo && coordenadas && posicion) {
       // Pequeño delay para asegurar que el mapa esté completamente renderizado
       const timer = setTimeout(() => {
-        generarImagenMapa();
+        generarImagenMapaRef.current?.();
       }, 1000);
       
       return () => clearTimeout(timer);
@@ -135,7 +139,7 @@ export default function MapaUbicacionAjuste({ formData, onInputChange, onMapaCha
         response = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(direccionCompleta + ', Colombia')}&limit=1`
         );
-      } catch (cspError) {
+      } catch {
 // Si falla por CSP, usar proxy local
         response = await fetch(
           `http://localhost:3000/api/geocode?q=${encodeURIComponent(direccionCompleta + ', Colombia')}`
@@ -193,7 +197,7 @@ setError(null);
         response = await fetch(
           `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(busquedaLibre + ', Colombia')}&limit=1`
         );
-      } catch (cspError) {
+      } catch {
 // Si falla por CSP, usar proxy local
         response = await fetch(
           `http://localhost:3000/api/geocode?q=${encodeURIComponent(busquedaLibre + ', Colombia')}`
@@ -285,22 +289,6 @@ setError(null);
     }
   };
 
-  // Función para obtener dirección desde coordenadas (geocodificación inversa)
-  const obtenerDireccionDesdeCoordenadas = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
-      );
-      
-      const data = await response.json();
-      
-      if (data && data.display_name) {
-        setDireccionCompleta(data.display_name);
-}
-    } catch (error) {
-}
-  };
-
   // Función para capturar el mapa como imagen
   const capturarMapaComoImagen = async () => {
     if (!mapaListo || !mapContainerRef.current) {
@@ -366,6 +354,7 @@ onMapaChange(mapaData);
       await capturarMapaComoImagen();
     }
   };
+  generarImagenMapaRef.current = generarImagenMapa;
 
   // Obtener ubicación actual del usuario
   const obtenerUbicacionActual = () => {
@@ -629,7 +618,7 @@ setCargando(false);
                 style={{ height: '100%', width: '100%' }}
                 key={posicion.join(',')} // Forzar re-render cuando cambie la posición
               >
-                <MapEvents onMapClick={handleMapClick} onMarkerDragEnd={handleMarkerDragEnd} />
+                <MapEvents onMapClick={handleMapClick} />
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

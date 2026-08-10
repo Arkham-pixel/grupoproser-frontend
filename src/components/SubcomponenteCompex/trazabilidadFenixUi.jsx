@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import React from 'react';
+/* eslint-disable react-refresh/only-export-components -- Este módulo comparte constantes y componentes de trazabilidad. */
 import {
   FaCalendarAlt,
   FaChartBar,
@@ -66,7 +67,7 @@ export const trazabilidadLabelClass = `${complexLabel} text-xs sm:text-sm`;
 export function TrazabilidadIconoEtapa({ Icon }) {
   return (
     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-      <Icon className="text-sm" aria-hidden />
+      {React.createElement(Icon, { className: 'text-sm', 'aria-hidden': true })}
     </span>
   );
 }

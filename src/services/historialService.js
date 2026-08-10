@@ -763,7 +763,7 @@ if (!response.ok) {
         const errorText = await response.text();
             errorData = { error: errorText };
           }
-        } catch (e) {
+        } catch {
           errorData = { error: 'Error desconocido al leer la respuesta' };
         }
         
@@ -858,7 +858,7 @@ if (!response.ok) {
         const errorText = await response.text();
             errorData = { error: errorText };
           }
-        } catch (e) {
+        } catch {
           errorData = { error: 'Error desconocido al leer la respuesta' };
         }
         
@@ -1021,7 +1021,7 @@ return true;
               window.URL.revokeObjectURL(downloadUrl);
               document.body.removeChild(a);
 return true;
-            } catch (fallbackError) {
+            } catch {
               // Continuar con el siguiente candidato
             }
           }

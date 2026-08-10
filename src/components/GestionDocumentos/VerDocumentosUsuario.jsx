@@ -28,7 +28,8 @@ export default function VerDocumentosUsuario({ usuario, onCerrar }) {
 
   useEffect(() => {
     cargarDocumentos();
-  }, [usuarioId]);
+    // El documento cambia únicamente cuando cambia el usuario consultado.
+  }, [usuarioId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cargarDocumentos = async () => {
     try {

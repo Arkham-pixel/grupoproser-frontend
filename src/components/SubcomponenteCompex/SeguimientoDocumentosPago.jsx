@@ -51,7 +51,6 @@ function parsearFechaDoc(doc) {
 export default function SeguimientoDocumentosPago({
   historialDocs = [],
   updateHistorialDocs,
-  handleChange,
   formData,
   construirUrlArchivo,
 }) {

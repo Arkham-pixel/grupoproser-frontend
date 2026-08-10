@@ -1,10 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaEraser, FaSearch } from 'react-icons/fa';
-import {
-  FILTROS_PUERTOS_VACIOS,
-  OPCIONES_TIPO,
-} from './puertosActasTrazabilidad';
+import { OPCIONES_TIPO } from './puertosActasTrazabilidad';
 import { puertosBtnLink, puertosBtnSecondary, puertosCard, puertosCardBody, puertosInput, puertosLabel } from './puertosFenixUi';
 
 const TIPO_LABEL_KEYS = {
@@ -126,5 +123,3 @@ export default function PuertosActasFiltros({
     </section>
   );
 }
-
-export { FILTROS_PUERTOS_VACIOS };

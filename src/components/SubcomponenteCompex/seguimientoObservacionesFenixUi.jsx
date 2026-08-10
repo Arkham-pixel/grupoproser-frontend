@@ -6,7 +6,6 @@ import {
   complexBtnSecondary,
   complexCard,
   complexDropzoneBase,
-  complexHint,
   complexSubsectionTitle,
   complexTableHead,
   complexTableWrap,
@@ -19,6 +18,7 @@ export const textareaListaClass = `${trazabilidadInputClass} min-h-[4rem] resize
 
 export const thLista = `${complexTableHead} px-4 py-3 text-left`;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function formatFechaLista(fechaStr) {
   if (!fechaStr) return '—';
   const s = String(fechaStr);

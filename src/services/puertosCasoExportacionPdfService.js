@@ -1273,7 +1273,7 @@ export function seccionContacto(layout) {
  */
 export async function generarPdfInformeExportacion(
   formData,
-  { aseguradoraOptions = [], responsables = [] } = {}
+  { responsables = [] } = {}
 ) {
   const informe = formData.informeExportacion || {};
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });

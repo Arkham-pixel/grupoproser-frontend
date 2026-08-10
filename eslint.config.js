@@ -4,7 +4,15 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist'] },
+  {
+    ignores: [
+      'dist',
+      'src/components/copia/FormularioInspeccion.jsx',
+      'test-formulario-complex.js',
+      'app_fixed.js',
+      'scripts/restore-secciones-inspeccion.cjs',
+    ],
+  },
   {
     files: ['**/*.{js,jsx}'],
     languageOptions: {

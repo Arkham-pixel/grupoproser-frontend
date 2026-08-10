@@ -138,7 +138,7 @@ export default function MisSubtareasComplex() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const abrirSubtarea = useCallback(
     async (id, desdeLista = null) => {
@@ -479,7 +479,6 @@ export default function MisSubtareasComplex() {
     const tieneFormato = subtareaTieneFormato(s);
     const requiereDocumento = subtareaRequiereDocumento(s);
     const tieneDocumento = subtareaTieneDocumento(s);
-    const soloFecha = subtareaEsSoloFecha(s);
 
     return (
       <div className="mx-auto w-full max-w-3xl space-y-5 p-4 sm:p-6">

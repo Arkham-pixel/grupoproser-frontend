@@ -32,13 +32,6 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
     });
   };
 
-  const handleClasificacionChange = (selectedOption) => {
-    setFormData(prev => ({
-      ...prev,
-      clasificacion: selectedOption
-    }));
-  };
-
   const handleSolicitaChange = (selectedOption) => {
     setFormData(prev => ({
       ...prev,
@@ -105,7 +98,7 @@ const ActivacionRiesgo = ({ formData, setFormData, estados = [], aseguradoras = 
                     const nameB = (b.rzonSocial || '').toString().toUpperCase();
                     return nameA.localeCompare(nameB);
                   })
-                  .map((aseg, idx) => (
+                  .map((aseg) => (
                     <option key={aseg.codiAsgrdra} value={aseg.codiAsgrdra}>{aseg.rzonSocial}</option>
                   ))}
               </select>

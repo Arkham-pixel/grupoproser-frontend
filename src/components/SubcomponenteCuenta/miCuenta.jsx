@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { obtenerPerfil, actualizarFoto } from "../../services/userService";
-import { BASE_URL, isDevelopmentEnv, resolveUploadsUrl } from '../../config/apiConfig';
+import { resolveUploadsUrl } from '../../config/apiConfig';
 import { useTheme } from '../../context/ThemeContext';
 import RecortarFotoPerfilModal from './RecortarFotoPerfilModal.jsx';
 import Configurar2FA from './Configurar2FA.jsx';
@@ -34,15 +34,6 @@ const USUARIOS_AUTORIZADOS = [
   // Agregar aquí los otros 2 usuarios autorizados
   // Ejemplo: '1234567890', '0987654321'
 ];
-
-// Función para verificar si el usuario actual está autorizado
-const esUsuarioAutorizado = () => {
-  const login = localStorage.getItem('login');
-  const cedula = localStorage.getItem('cedula');
-  // Verificar por login o cédula
-  return login && USUARIOS_AUTORIZADOS.includes(login) || 
-         cedula && USUARIOS_AUTORIZADOS.includes(cedula);
-};
 
 // Función helper para formatear fechas evitando problemas de zona horaria
 const formatearFechaParaMostrar = (fecha, locale = 'es-ES') => {
@@ -110,7 +101,7 @@ export default function MiCuenta() {
   const [estado, setEstado] = useState("Conectado");
   const [fotoPreview, setFotoPreview] = useState("");
   const [fotoError, setFotoError] = useState(false);
-  const [fotoLoaded, setFotoLoaded] = useState(false);
+  const [, setFotoLoaded] = useState(false);
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState("");
   const [subiendoFoto, setSubiendoFoto] = useState(false);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig.js';
@@ -29,12 +29,7 @@ const AdminUsuarios = () => {
   const loginActual = localStorage.getItem('login');
   const puedeGestionarVacaciones = USUARIOS_PERMITIDOS_VACACIONES.includes(loginActual);
 
-  // Cargar usuarios al montar el componente
-  useEffect(() => {
-    cargarUsuarios();
-  }, []);
-
-  const cargarUsuarios = async () => {
+  const cargarUsuarios = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(`${BASE_URL}/api/secur-auth/usuarios`);
@@ -45,7 +40,12 @@ const AdminUsuarios = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  // Cargar usuarios al montar el componente
+  useEffect(() => {
+    cargarUsuarios();
+  }, [cargarUsuarios]);
 
   const handleChangePassword = async (e) => {
     e.preventDefault();

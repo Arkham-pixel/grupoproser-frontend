@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import SelectBuscable from '../SelectBuscable';

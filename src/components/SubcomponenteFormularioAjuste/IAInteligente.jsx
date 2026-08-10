@@ -19,10 +19,7 @@ export default function IAInteligente({
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const textSecondary = theme === 'dark' ? '#B0B0B0' : '#6B6B6B';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
-  const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
-  const sectionPurpleBg = theme === 'dark' ? 'rgba(168, 85, 247, 0.15)' : '#F3E8FF';
   const sectionPurpleText = theme === 'dark' ? '#C084FC' : '#6B21A8';
-  const sectionPurpleBorder = theme === 'dark' ? 'rgba(168, 85, 247, 0.3)' : '#C084FC';
   const [mostrandoIA, setMostrandoIA] = useState(false);
   const [resultadoIA, setResultadoIA] = useState(null);
   const [procesando, setProcesando] = useState(false);

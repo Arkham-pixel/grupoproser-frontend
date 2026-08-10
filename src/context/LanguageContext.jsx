@@ -6,6 +6,7 @@ const LanguageContext = createContext(null);
 const VALID_LOCALES = new Set(['es', 'en']);
 
 /** Normaliza códigos tipo en-US / es-CO a es|en. */
+// eslint-disable-next-line react-refresh/only-export-components -- La normalización se reutiliza fuera del proveedor.
 export function normalizeLocale(lang) {
   const raw = String(lang || '').toLowerCase().trim();
   if (raw.startsWith('en')) return 'en';
@@ -84,6 +85,7 @@ export function LanguageProvider({ children }) {
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- El hook es la API pública del contexto.
 export function useLanguage() {
   const value = useContext(LanguageContext);
   if (!value) throw new Error('useLanguage debe usarse dentro de LanguageProvider');

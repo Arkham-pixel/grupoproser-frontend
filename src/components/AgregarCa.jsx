@@ -1,5 +1,5 @@
 // src/components/AgregarCaso.jsx
-import React, { useState,useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { crearCasoComplex } from '../services/complexService';
 
 
@@ -86,6 +86,13 @@ const handleChange = (e) => {
   }));
 };
 
+const handleFileChange = (e, name) => {
+  setFormData((prev) => ({
+    ...prev,
+    [name]: e.target.files[0],
+  }));
+};
+
 
 
 
@@ -132,48 +139,6 @@ const handleSubmit = async (e) => {
 
 
 
-
-
-
-  
-  const valorServicios = parseFloat(formData.valorServicios) || 0;
-  const valorGastos = parseFloat(formData.valorGastos) || 0;
-  const totalBase = valorServicios + valorGastos;
-  const iva = totalBase * 0.19;
-  const reteiva = totalBase * 0.15;
-  const retefuente = totalBase * 0.025;
-  const reteica = totalBase * 0.00966;
-  const totalFactura = totalBase + iva;
-
-
-  
-  const datosCompletos = {
-    aseguradora: formData.aseguradora,
-    intermediario: formData.intermediario,
-    codigoWorkflow: formData.codigoWorkflow,
-    numeroPoliza: formData.numeroPoliza,
-    responsable: formData.responsable,
-    asegurado: formData.asegurado,
-    tipoDocumento: formData.tipoDocumento,
-    numeroDocumento: formData.numeroDocumento,
-    numeroSiniestro: formData.numeroSiniestro,
-    fechaAsignacion: formData.fechaAsignacion,
-    fechaSiniestro: formData.fechaSiniestro,
-    ciudadSiniestro: formData.ciudadSiniestro,
-    descripcionSiniestro: formData.descripcionSiniestro,
-    estadoSiniestro: formData.estadoSiniestro,
-    valorReserva: formData.valorReserva || 0,
-    valorReclamo: parseFloat(formData.valorReclamo),
-    montoIndemnizar: parseFloat(formData.montoIndemnizar),
-      
-    ...formData,
-    iva,
-    reteiva,
-    retefuente,
-    reteica,
-    totalBase,
-    totalFactura,
-  };
 
 
 

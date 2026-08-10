@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig.js';
@@ -15,10 +15,6 @@ const EstadisticasTiempoUso = () => {
   const [tiemposReales, setTiemposReales] = useState({});
   const dateLocale = i18n.language?.startsWith('en') ? 'en-US' : 'es-CO';
 
-  useEffect(() => {
-    cargarEstadisticas();
-  }, []);
-  
   // Efecto separado para actualización en tiempo real
   useEffect(() => {
     if (estadisticas.length === 0) return;
@@ -32,7 +28,7 @@ const EstadisticasTiempoUso = () => {
   }, [estadisticas]);
 
 
-  const cargarEstadisticas = async () => {
+  const cargarEstadisticas = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -69,7 +65,11 @@ const EstadisticasTiempoUso = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    cargarEstadisticas();
+  }, [cargarEstadisticas]);
   
   // Función para actualizar tiempos reales de sesiones activas
   const actualizarTiemposReales = () => {

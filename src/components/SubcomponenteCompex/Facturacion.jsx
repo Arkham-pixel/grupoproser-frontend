@@ -1,5 +1,3 @@
-import i18n from '../../i18n';
-const t = i18n.t.bind(i18n);
 import { useTranslation } from 'react-i18next';
 import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
@@ -110,7 +108,7 @@ export default function Facturacion({
       document.body.removeChild(link);
       return false;
     },
-    [construirUrlDescarga]
+    [construirUrlDescarga, t]
   );
 
   const eliminarDocumento = useCallback(
@@ -139,7 +137,7 @@ export default function Facturacion({
         });
       }
     },
-    [updateHistorialDocs]
+    [updateHistorialDocs, t]
   );
 
   const obtenerDocumentosPorTipo = useCallback(
@@ -235,6 +233,7 @@ export default function Facturacion({
       formData.funcAsgrdra,
       formData.funcAsgrdraNombre,
       formData.funcionarioAseguradora,
+      t,
     ]
   );
 

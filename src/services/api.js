@@ -53,10 +53,12 @@ const checkAndCloseSessionIfExpired = async () => {
           headers: {
             'Authorization': `Bearer ${token}`
           }
-        }).catch(err => {
-});
-      } catch (err) {
-}
+        }).catch(() => {
+          // Ignorar errores de logout al expirar la sesión.
+        });
+      } catch {
+        // Ignorar errores de logout al expirar la sesión.
+      }
     }
     
     // Limpiar toda la sesión (incluye subtareaExternaReturn)
@@ -195,7 +197,6 @@ const refreshToken = async (force = false) => {
               const newPayload = JSON.parse(atob(newToken.split('.')[1]));
               const oldExpiry = new Date(oldPayload.exp * 1000).toLocaleString('es-CO');
               const newExpiry = new Date(newPayload.exp * 1000).toLocaleString('es-CO');
-              const minutesBeforeExpiry = Math.floor((oldPayload.exp - Math.floor(Date.now() / 1000)) / 60);
 // Emitir evento personalizado para notificar al componente visual
               window.dispatchEvent(new CustomEvent('tokenRenewed', {
                 detail: {
@@ -204,7 +205,7 @@ const refreshToken = async (force = false) => {
                   timestamp: Date.now()
                 }
               }));
-            } catch (e) {
+            } catch {
 // Emitir evento incluso si falla el parseo
               window.dispatchEvent(new CustomEvent('tokenRenewed', {
                 detail: {

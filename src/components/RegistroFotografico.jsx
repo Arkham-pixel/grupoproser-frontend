@@ -369,7 +369,7 @@ setImagenes(imagenesProcesadas);
               src={imagenAmpliada.url}
               alt={imagenAmpliada.descripcion || 'Vista ampliada'}
               className="max-w-full max-h-[90vh] object-contain rounded"
-              onError={createImageErrorHandler(imagenAmpliada, (img, imagenData) => {
+              onError={createImageErrorHandler(imagenAmpliada, (img) => {
                 // Callback cuando todas las URLs fallan en el modal
                 const container = img.parentElement;
                 if (container && !container.querySelector('.image-error-message')) {
@@ -508,7 +508,7 @@ setImagenes(imagenesProcesadas);
                           border: `1px solid ${borderColor}`
                         }}
                         onClick={() => setImagenAmpliada({ url: imageUrl, descripcion: img.descripcion })}
-                        onError={createImageErrorHandler(img, (imgElement, imagenData) => {
+                        onError={createImageErrorHandler(img, (imgElement) => {
                           // Callback cuando todas las URLs fallan
                           const container = imgElement.closest('.relative') || imgElement.parentElement;
                           if (container && !container.querySelector('.image-error-message')) {

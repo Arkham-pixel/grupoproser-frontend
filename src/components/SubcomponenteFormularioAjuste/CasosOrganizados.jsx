@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import historialService from '../../services/historialService';
 import { formatearFechaHoraUI } from '../../utils/fechaUtils';
@@ -11,11 +11,7 @@ const CasosOrganizados = () => {
   const [casoSeleccionado, setCasoSeleccionado] = useState(null);
   const [formulariosCaso, setFormulariosCaso] = useState([]);
 
-  useEffect(() => {
-    cargarCasosOrganizados();
-  }, []);
-
-  const cargarCasosOrganizados = async () => {
+  const cargarCasosOrganizados = useCallback(async () => {
     try {
       setCargando(true);
       const response = await historialService.obtenerCasosOrganizados();
@@ -26,7 +22,11 @@ const CasosOrganizados = () => {
     } finally {
       setCargando(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    cargarCasosOrganizados();
+  }, [cargarCasosOrganizados]);
 
   const cargarFormulariosCaso = async (casoId) => {
     try {

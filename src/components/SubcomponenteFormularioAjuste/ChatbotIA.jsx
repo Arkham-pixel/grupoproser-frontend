@@ -57,7 +57,7 @@ const camposLlenados = [];
         response.data.acciones.forEach(accion => {
           if (accion.campo && accion.valor !== undefined) {
             // Validar que el campo existe en formData
-            if (formData && formData.hasOwnProperty(accion.campo)) {
+            if (formData && Object.prototype.hasOwnProperty.call(formData, accion.campo)) {
               // Validar formato según tipo
               let esValido = true;
               
@@ -260,7 +260,7 @@ onInputChange(accion.campo, accion.valor);
       };
       setMessages([mensajeBienvenida]);
     }
-  }, [isOpen, chatgptConfigurado]);
+  }, [isOpen, chatgptConfigurado, messages.length, t]);
 
   const limpiarChat = () => {
     setMessages([]);

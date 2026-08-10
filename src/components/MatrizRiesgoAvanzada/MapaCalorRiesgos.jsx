@@ -47,20 +47,6 @@ function nombreRiesgoDesdeValoracion(riesgo, valoraciones) {
   );
 }
 
-function agruparRiesgosPorCelda(riesgos, minEnCelda = 3) {
-  const porCelda = new Map();
-  for (const r of riesgos || []) {
-    const key = `${r.probabilidad}-${r.impacto}`;
-    if (!porCelda.has(key)) {
-      porCelda.set(key, { probabilidad: r.probabilidad, impacto: r.impacto, lista: [] });
-    }
-    porCelda.get(key).lista.push(r);
-  }
-  return [...porCelda.values()]
-    .filter((g) => g.lista.length >= minEnCelda)
-    .sort((a, b) => b.lista.length - a.lista.length);
-}
-
 /**
  * Mapa 5x5. Si varios riesgos caen en la misma celda, el color de la celda muestra la magnitud;
  * solo se muestra un contador compacto; la lista completa se abre en un modal al hacer clic.
@@ -411,13 +397,6 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
     return { nivel: 'Crítico', color: coloresRiesgo.critico };
   };
 
-  // Función para calcular la suma de impactos por categoría
-  const calcularSumaImpacto = (impactos) => {
-    if (!impactos) return 1;
-    const { economico = 1, operativo = 1, reputacional = 1, legal = 1 } = impactos;
-    return Number(economico) + Number(operativo) + Number(reputacional) + Number(legal);
-  };
-
   // Función para calcular el máximo impacto
   const calcularMaxImpacto = (impactos) => {
     if (!impactos) return 1;
@@ -503,12 +482,6 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
     return Math.min(5, Math.max(1, Math.round(maxCat)));
   };
 
-  // Función para obtener el color de una celda del mapa de calor
-  const obtenerColorCelda = (probabilidad, impacto) => {
-    const nivel = calcularNivelRiesgo(probabilidad, impacto);
-    return nivel.color;
-  };
-
   const actualizarRiesgosSiCambian = (setter, siguiente) => {
     setter((prev) => (riesgosIguales(prev, siguiente) ? prev : siguiente));
   };
@@ -547,7 +520,15 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
     } else {
       actualizarRiesgosSiCambian(setRiesgosInherentes, VALORACIONES_VACIAS);
     }
-  }, [valoraciones, probabilidades, impactosCategoria, impactoPlano, mapaCalorGuardado?.riesgosInherentes]);
+  // Los cálculos usan los valores actuales; añadir sus funciones recreadas provocaría ejecuciones redundantes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    valoraciones,
+    probabilidades,
+    impactosCategoria,
+    impactoPlano,
+    mapaCalorGuardado?.riesgosInherentes,
+  ]);
 
   // Calcular riesgos residuales desde los datos de valoración
   useEffect(() => {
@@ -576,6 +557,8 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
     } else {
       actualizarRiesgosSiCambian(setRiesgosResiduales, VALORACIONES_VACIAS);
     }
+  // Los cálculos usan los valores actuales; añadir sus funciones recreadas provocaría ejecuciones redundantes.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     valoraciones,
     probResidual,
@@ -614,7 +597,7 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
 
 
   // Componente para la tabla de riesgos
-  const TablaRiesgos = ({ titulo, riesgos, tipo }) => {
+  const TablaRiesgos = ({ titulo, riesgos }) => {
     return (
       <div className="tabla-riesgos-container">
         <h3 className="tabla-titulo">{titulo}</h3>
@@ -626,7 +609,7 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
             <div className="col-calificacion">{t('riskMatrix.mapaUi.colScore')}</div>
           </div>
           <div className="tabla-body">
-            {riesgos.map((riesgo, index) => (
+            {riesgos.map((riesgo) => (
               <div key={riesgo.id} className="tabla-fila">
                 <div className="col-riesgo">{riesgo.id}</div>
                 <div className="col-probabilidad">{riesgo.probabilidad}</div>
@@ -718,7 +701,7 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
                     </tr>
                   </thead>
                   <tbody>
-                    {riesgosInherentes.map((riesgo, index) => (
+                    {riesgosInherentes.map((riesgo) => (
                       <tr key={riesgo.id}>
                         <td className="col-riesgo">{riesgo.id}</td>
                         <td className="col-probabilidad">{riesgo.probabilidad}</td>
@@ -749,7 +732,7 @@ if (onDatosChange && (riesgosInherentes.length > 0 || riesgosResiduales.length >
                     </tr>
                   </thead>
                   <tbody>
-                    {riesgosResiduales.map((riesgo, index) => (
+                    {riesgosResiduales.map((riesgo) => (
                       <tr key={riesgo.id}>
                         <td className="col-riesgo">{riesgo.id}</td>
                         <td className="col-probabilidad">{riesgo.probabilidad}</td>

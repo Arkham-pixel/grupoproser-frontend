@@ -312,7 +312,7 @@ export default function SeccionFirmasActa({
   permitirRegistrarAjustadores = false,
   sinContenedor = false,
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const ui = usePropiedadesTheme();
   const tituloClienteFinal = tituloCliente || t('acta.ui.defaultClientTitle');
   const tituloAjustadorFinal = tituloAjustador || t('acta.ui.defaultAdjusterTitle');
@@ -330,7 +330,7 @@ export default function SeccionFirmasActa({
       /* ignore */
     }
     return CARGO_KEYS.map((k) => t(`acta.ui.cargos.${k}`));
-  }, [t, i18n.language]);
+  }, [t]);
 
   const idFunc = (f) =>
     f?._id != null ? String(f._id) : f?.id != null ? String(f.id) : '';

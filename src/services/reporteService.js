@@ -1048,8 +1048,10 @@ return `
 
   // Generar leyenda de riesgos para el mapa de calor (obsoleta: leyenda por mapa)
   static generarLeyendaRiesgos(valoraciones, riesgosInherentes = [], riesgosResiduales = [], tipoReporte = 'inicial') {
+    // La leyenda se genera ahora por mapa; se conserva este método como API compatible.
     return '';
 
+    // eslint-disable-next-line no-unreachable
 return `
             <div class="leyenda-riesgos">
               <h3>📋 Leyenda de Riesgos</h3>
@@ -1384,7 +1386,7 @@ const categoriasRiesgo = [
                     ${categoriasRiesgo.map(cat => `
                       <th class="col-categorias-report">${cat.etiqueta}</th>
                     `).join('')}
-                    ${columnasAdicionales.map(columna => `
+                    ${columnasAdicionales.map(() => `
                       <th class="col-adicional-report"></th>
                     `).join('')}
                   </tr>
@@ -1435,14 +1437,6 @@ const escalaProbabilidad = [
       { valor: 3, etiqueta: 'Media', color: '#ffc107' },
       { valor: 4, etiqueta: 'Alta', color: '#fd7e14' },
       { valor: 5, etiqueta: 'Muy Alta', color: '#dc3545' }
-    ];
-
-    const escalaImpacto = [
-      { valor: 1, etiqueta: 'Muy Bajo', color: '#28a745' },
-      { valor: 2, etiqueta: 'Bajo', color: '#6c757d' },
-      { valor: 3, etiqueta: 'Medio', color: '#ffc107' },
-      { valor: 4, etiqueta: 'Alto', color: '#fd7e14' },
-      { valor: 5, etiqueta: 'Muy Alto', color: '#dc3545' }
     ];
 
     const calcularNivelRiesgo = (prob, imp) => {
@@ -1643,7 +1637,8 @@ const escalaProbabilidad = [
   }
 
   // Generar sección de mapa de calor
-  static generarSeccionMapaCalor(mapaCalor, valoracion, datosMatriz = {}, tipoReporte = 'inicial') {
+  static generarSeccionMapaCalor(mapaCalor, valoracion, _DATOS_MATRIZ = {}, tipoReporte = 'inicial') {
+    void _DATOS_MATRIZ;
 // Obtener datos de valoración (igual que la plataforma)
     const valoraciones = valoracion?.valoraciones || [];
     const probabilidades = valoracion?.probabilidad || {};
@@ -1908,7 +1903,8 @@ return '';
   }
 
   // Generar matriz visual 5x5 (HTML/PDF; alineado con MapaCalorMatriz en la app)
-  static generarMatrizVisual(riesgos, tipo = '') {
+  static generarMatrizVisual(riesgos, _TIPO = '') {
+    void _TIPO;
 if (!Array.isArray(riesgos)) {
       console.error('🎯 Error: riesgos no es un array:', riesgos);
       return '<div class="error">Error: Datos de riesgos no válidos</div>';
@@ -1997,7 +1993,7 @@ if (!Array.isArray(valoraciones)) {
     let medios = 0;
     let bajos = 0;
 
-    valoraciones.forEach((valoracion, index) => {
+    valoraciones.forEach((valoracion) => {
 const probabilidad = Number(valoracion.probabilidad) || 0;
       const impacto = Number(valoracion.impacto) || 0;
       const clasificacion =
@@ -2095,23 +2091,6 @@ return {
     return Number(economico) + Number(operativo) + Number(reputacional) + Number(legal);
   }
   
-  // Función auxiliar para calcular máximo impacto (igual que la plataforma)
-  static calcularMaxImpacto(impactos) {
-    if (!impactos) return 1;
-    const { economico = 1, operativo = 1, reputacional = 1, legal = 1 } = impactos;
-    return Math.max(Number(economico), Number(operativo), Number(reputacional), Number(legal));
-  }
-  
-  // Función auxiliar para convertir valor a bucket 1-5
-  static bucket1a5(valor) {
-    const num = Number(valor) || 0;
-    if (num <= 1.5) return 1;
-    if (num <= 2.5) return 2;
-    if (num <= 3.5) return 3;
-    if (num <= 4.5) return 4;
-    return 5;
-  }
-
   static agregarCanvasAlPdf(pdf, canvas, pdfWidth, pdfHeight, estadoPagina) {
     const imgData = canvas.toDataURL('image/jpeg', 0.9);
     const imgHeight = (canvas.height * pdfWidth) / canvas.width;

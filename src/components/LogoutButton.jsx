@@ -25,7 +25,7 @@ export default function LogoutButton({ variant = 'default', label }) {
               'Authorization': `Bearer ${token}`
             }
           });
-        } catch (error) {
+        } catch {
 // Continuar con el logout aunque falle el registro
         }
       }

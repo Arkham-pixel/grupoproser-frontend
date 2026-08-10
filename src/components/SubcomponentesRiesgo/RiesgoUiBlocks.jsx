@@ -41,7 +41,7 @@ export function RiesgoNavTabs({ activePath }) {
             to={path}
             className={activo ? riesgoNavTabActive : riesgoNavTabIdle}
           >
-            <Icon className="text-sm" />
+            {React.createElement(Icon, { className: 'text-sm' })}
             {label}
           </Link>
         );
@@ -49,7 +49,6 @@ export function RiesgoNavTabs({ activePath }) {
     </nav>
   );
 }
-
 export function RiesgoPageHeader({
   badge,
   title,
@@ -74,7 +73,6 @@ export function RiesgoPageHeader({
     </header>
   );
 }
-
 /** Navegación del módulo dentro del panel de filtros (junto a filtros/búsqueda) */
 export function RiesgoNavPanel({ activePath }) {
   const { t } = useTranslation();
@@ -186,4 +184,5 @@ export function RiesgoFormTabs({ tabs, activeId, onChange }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- API compartida de estilos del módulo Riesgos.
 export { riesgoBtnPrimary, riesgoBtnSecondary, riesgoBtnGhost, riesgoBtnSuccess, riesgoBtnInfo };

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useParams, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../context/ThemeContext';
 import { FaFileAlt, FaUser, FaMapMarkerAlt, FaCalendarAlt, FaIdCard, FaExclamationTriangle, FaFileSignature, FaPlus, FaTrash } from 'react-icons/fa';
@@ -20,17 +20,14 @@ import {
 } from "docx";
 import { saveAs } from "file-saver";
 import Logo from '../img/Logo.png';
-import colombia from '../data/colombia.json';
 import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
-import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
+import { TIPOS_FORMULARIOS } from '../services/historialService.js';
 import BotonesHistorial from './BotonesHistorial.jsx';
 
 export default function ActaInspeccion() {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const location = useLocation();
-  const { id } = useParams();
-  const navigate = useNavigate();
   const datosPrevios = location.state || {};
 
   // Colores según el tema
@@ -61,15 +58,7 @@ export default function ActaInspeccion() {
   ]);
 
   const [cargando, setCargando] = useState(false);
-  const { guardando, exportando, guardarEnHistorial, exportarYGuardar } = useHistorialFormulario(TIPOS_FORMULARIOS.ACTA_INSPECCION);
-
-  // Generar lista de ciudades
-  const ciudades = colombia.flatMap(dep =>
-    dep.ciudades.map(ciudad => ({
-      label: `${ciudad} - ${dep.departamento}`,
-      value: ciudad
-    }))
-  );
+  const { guardando, guardarEnHistorial } = useHistorialFormulario(TIPOS_FORMULARIOS.ACTA_INSPECCION);
 
   // Agregar nueva fila de firma
   const agregarFirma = () => {
@@ -246,7 +235,7 @@ export default function ActaInspeccion() {
                   encabezadoTabla("FIRMA")
                 ]
               }),
-              ...firmas.map((firma, index) => {
+              ...firmas.map((firma) => {
                 const children = [
                   celdaTexto(firma.nombre || ""),
                   celdaTexto(firma.cargo || ""),

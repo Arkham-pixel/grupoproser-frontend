@@ -173,7 +173,7 @@ function extraerAnchosTabla(tableEl, cols) {
   const assigned = ratios.reduce((a, b) => a + (b > 0 ? b : 0), 0);
   const missCount = missing.reduce((a, b) => a + b, 0);
   const remain = Math.max(0, 100 - assigned);
-  const filled = ratios.map((r, i) =>
+  const filled = ratios.map((r) =>
     r > 0 ? r : missCount ? remain / missCount : 1
   );
   const sum = filled.reduce((a, b) => a + b, 0) || 1;
@@ -383,13 +383,6 @@ function htmlABloques(html) {
   flushParrafo();
 
   return bloques.length ? bloques : [{ type: 'paragraph', runs: [{ text: ' ' }] }];
-}
-
-/** Compat: solo párrafos (sin tablas). */
-function htmlAParrafosRuns(html) {
-  return htmlABloques(html)
-    .filter((b) => b.type === 'paragraph')
-    .map((b) => b.runs);
 }
 
 /** Fallback sin DOM (p.ej. tests). */
@@ -1464,7 +1457,7 @@ export async function generarPdfActaPuertos(form, fotos = [], extras = {}) {
     [0.34, 0.33, 0.33]
   );
 
-  y = pintarFirmas(doc, y + 2, pageRef, form);
+  await pintarFirmas(doc, y + 2, pageRef, form);
 
   await pintarFotos(doc, pageRef, form, fotos);
 

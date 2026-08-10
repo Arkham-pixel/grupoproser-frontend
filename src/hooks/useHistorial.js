@@ -85,6 +85,8 @@ const datos = await historialService.obtenerHistorial(filtrosAplicados);
   // Cargar historial al montar el componente
   useEffect(() => {
     cargarHistorial();
+    // La carga inicial no debe repetirse al cambiar filtros.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Aplicar filtros
@@ -212,6 +214,8 @@ const datos = await historialService.obtenerHistorial(filtrosAplicados);
   // Refrescar historial
   const refrescarHistorial = useCallback(() => {
     cargarHistorial();
+    // Mantiene la referencia de refresco estable mientras cambia la carga interna.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cargando]);
 
   // Obtener estadísticas
@@ -228,7 +232,7 @@ const datos = await historialService.obtenerHistorial(filtrosAplicados);
 
   useEffect(() => {
     cargarEstadisticas();
-  }, [cargando]);
+  }, [cargando, cargarEstadisticas]);
 
   return {
     // Estado

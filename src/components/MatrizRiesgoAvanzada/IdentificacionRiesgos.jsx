@@ -8,7 +8,6 @@ import {
 import { FaClipboardList, FaFileExcel, FaPlus, FaSearch } from 'react-icons/fa';
 import MatrizSeccionTitulo from './MatrizSeccionTitulo';
 import { MatrizResumenIdentificacion } from './MatrizUiBlocks';
-import { CATEGORIAS_RIESGO } from './matrizContenidoShared';
 import { matrizBtnPrimary, matrizCard } from './matrizFenixUi';
 import './IdentificacionRiesgos.css';
 import './matrizFenixTheme.css';
@@ -130,8 +129,6 @@ const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) =>
     
     return proceso ? proceso.tipo : '';
   };
-
-  const categoriasRiesgo = CATEGORIAS_RIESGO.map(({ valor, etiqueta }) => ({ valor, etiqueta }));
 
   const handleInputChange = (filaId, campo, valor) => {
     setFilasFormulario(prev => prev.map(fila => {
@@ -287,12 +284,6 @@ const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) =>
     }
   };
 
-  const eliminarColumna = (id) => {
-    const nuevasColumnas = columnasAdicionales.filter(col => col.id !== id);
-    setColumnasAdicionales(nuevasColumnas);
-    onDatosChange({ ...datosSeguros, columnasAdicionales: nuevasColumnas });
-  };
-
   const handleInputChangeColumna = (campo, valor) => {
     setNuevaColumna(prev => ({ ...prev, [campo]: valor }));
   };
@@ -330,7 +321,7 @@ const IdentificacionRiesgos = ({ datos, onDatosChange, modoReporte = false }) =>
     // Crear riesgos desde las filas completas
     // Si una fila tiene múltiples procesos, crear un riesgo por cada proceso
     const nuevosRiesgos = [];
-    filasCompletas.forEach((fila, index) => {
+    filasCompletas.forEach((fila) => {
       const procesos = fila.procesos && fila.procesos.length > 0 
         ? fila.procesos 
         : (fila.nombreProceso ? [{ nombre: fila.nombreProceso, tipo: fila.tipoProceso }] : []);
@@ -404,7 +395,7 @@ onDatosChange(datosFinalizados);
     // Agregar valores para columnas adicionales
     // Si una fila tiene múltiples procesos, crear un riesgo por cada proceso
     const nuevosRiesgos = [];
-    filasCompletas.forEach((fila, index) => {
+    filasCompletas.forEach((fila) => {
       const procesos = fila.procesos && fila.procesos.length > 0 
         ? fila.procesos 
         : (fila.nombreProceso ? [{ nombre: fila.nombreProceso, tipo: fila.tipoProceso }] : []);
@@ -462,10 +453,6 @@ setRiesgos(todosLosRiesgos);
     onDatosChange({ ...datosSeguros, riesgos: riesgosRenumerados });
   };
 
-  const getCategoriasSeleccionadas = (categorias) => {
-    return categoriasRiesgo.filter(cat => categorias[cat.valor]);
-  };
-
   const convertirFilasFormularioARiesgos = useCallback(
     (filasEntrada, baseRiesgos = riesgos) => {
       const nuevosRiesgos = [];
@@ -495,6 +482,8 @@ setRiesgos(todosLosRiesgos);
       });
       return nuevosRiesgos;
     },
+    // Depende de datos de la fila; incluir helpers recreados invalidaría la memoización.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [riesgos, columnasAdicionales]
   );
 

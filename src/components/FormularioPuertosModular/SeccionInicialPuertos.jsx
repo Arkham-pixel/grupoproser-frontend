@@ -49,20 +49,6 @@ export default function SeccionInicialPuertos({
     }
   };
 
-  const handleImagenChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        onMultipleChange({
-          imagen: file,
-          preview: reader.result
-        });
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const formatearFechaInspeccion = (fechaStr) => {
     if (!fechaStr) {
       // Generar fecha actual sin problemas de zona horaria
@@ -99,7 +85,7 @@ export default function SeccionInicialPuertos({
         return t('ports.ui.formulario.seccionInicial.vistaPrevia.fechaArriboFormato', { dia, mes });
       }
       return fechaStr;
-    } catch (error) {
+    } catch {
       return fechaStr;
     }
   };
@@ -850,7 +836,7 @@ export default function SeccionInicialPuertos({
             coordenadasIniciales={formData.coordenadasRiesgo}
             direccionInicial={formData.direccionRiesgo}
             forzarCaptura={forzarCapturaMapa}
-            onMapReady={(mapInstance) => {
+            onMapReady={() => {
 }}
             onMapaChange={(datosMapaObj) => {
 // Actualizar todos los datos del mapa

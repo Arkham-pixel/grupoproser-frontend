@@ -159,8 +159,6 @@ export function aprenderParametrosAreasPersonalizadas(areasPersonalizadas, areas
   const normalizadas = normalizarAreasPersonalizadas(areasPersonalizadas);
   if (!normalizadas.length) return normalizadas;
 
-  let historial = cargarHistorialAreasGlobal();
-
   const actualizadas = normalizadas.map((area) => {
     const items = areasData?.[area.id];
     const nombres = extraerParametrosDeItems(items);
@@ -171,7 +169,7 @@ export function aprenderParametrosAreasPersonalizadas(areasPersonalizadas, areas
       ...nombres,
     ]);
 
-    historial = fusionarParametrosEnHistorial(area.titulo, nombres);
+    fusionarParametrosEnHistorial(area.titulo, nombres);
 
     return { ...area, parametrosSugeridos };
   });

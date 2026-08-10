@@ -86,10 +86,7 @@ export default function PlantillaCorreoContactoInicial({ formData, onPlantillaCh
   }, [
     casoId,
     ramoDetectado,
-    formData?.plantillaContactoInicial?.tipoDestinatario,
-    formData?.plantillaContactoInicial?.ramoManual,
-    formData?.plantillaContactoInicial?.opcionesInspeccion,
-    formData?.plantillaContactoInicial?.documentosSeleccionados,
+    formData?.plantillaContactoInicial,
   ]);
 
   useEffect(() => {
@@ -108,7 +105,7 @@ export default function PlantillaCorreoContactoInicial({ formData, onPlantillaCh
       aplicarEstado(normalizarPlantillaContactoInicial(null, ramoDetectado));
     }
     omitirPersistenciaRef.current = true;
-  }, [firmaEditableGuardada, ramoDetectado]);
+  }, [firmaEditableGuardada, ramoDetectado, formData?.plantillaContactoInicial]);
 
   useEffect(() => {
     if (formData?.plantillaContactoInicial?.ramoManual) return;
@@ -249,7 +246,14 @@ export default function PlantillaCorreoContactoInicial({ formData, onPlantillaCh
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [tipoDestinatario, ramoManual, opcionesKey, documentosKey]);
+  }, [
+    tipoDestinatario,
+    ramoManual,
+    opcionesInspeccion,
+    seleccionados,
+    opcionesKey,
+    documentosKey,
+  ]);
 
   const toggleDoc = (id) => {
     setSeleccionados((prev) => {

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 const BotonesHistorial = ({ 
   onGuardarEnHistorial, 
   onExportar, 
-  tipoFormulario, 
   tituloFormulario,
   deshabilitado = false,
   guardando = false,

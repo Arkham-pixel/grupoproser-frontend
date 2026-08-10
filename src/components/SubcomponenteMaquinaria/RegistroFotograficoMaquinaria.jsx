@@ -34,10 +34,10 @@ export default function RegistroFotograficoMaquinaria({
     }
   }, [imagenesIniciales]);
 
-  const actualizar = (nuevas) => {
+  const actualizar = useCallback((nuevas) => {
     setFotos(nuevas);
     onChange(nuevas);
-  };
+  }, [onChange]);
 
   const onDrop = useCallback(
     (acceptedFiles) => {
@@ -50,7 +50,7 @@ export default function RegistroFotograficoMaquinaria({
       ];
       actualizar(nuevas);
     },
-    [fotos, max, onChange]
+    [fotos, max, actualizar]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

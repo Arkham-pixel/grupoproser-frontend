@@ -2,7 +2,6 @@ import { useTranslation } from 'react-i18next';
 import React, { useState, useRef, useCallback, useMemo, memo, useEffect } from 'react';
 import { FaFileAlt, FaTimes } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { formatearFechaUI } from '../../utils/fechaUtils';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { isStoredFileReference } from '../../utils/storedFilePath.js';
 import historialService from '../../services/historialService.js';
@@ -81,13 +80,12 @@ const ArchivoDropZone = ({
   const { t } = useTranslation();
   const inputRef = useRef(null);
   const [isDragActive, setIsDragActive] = useState(false);
-  const onFilesSelected = onSelectFiles || (() => {});
 
   const handleFiles = useCallback((files) => {
     const lista = Array.from(files || []);
     if (!lista.length) return;
-    onFilesSelected(tipo, campo, lista);
-  }, [onFilesSelected, tipo, campo]);
+    onSelectFiles?.(tipo, campo, lista);
+  }, [onSelectFiles, tipo, campo]);
 
   const onChange = (event) => {
     handleFiles(event.target.files);
@@ -230,7 +228,6 @@ const Trazabilidad = memo(function Trazabilidad({
 
   // Handler que actualiza el padre solo cuando pierde el foco
   const handleBlur = useCallback((e) => {
-    const { name, value } = e.target;
     // Actualizar formData del padre solo cuando pierde el foco
     handleChange(e);
   }, [handleChange]);
@@ -299,13 +296,6 @@ const Trazabilidad = memo(function Trazabilidad({
     if (cfg.esperaExternaId) return true;
     const item = resolverEtapaProtocoloPorTipo(tipo, protocolo);
     return Boolean(item?.dependenciaExterna);
-  };
-
-  // Etapas cuyo plazo del protocolo está en días hábiles (excluyen sábados,
-  // domingos y festivos de Colombia al medir transcurrido y retraso).
-  const esLimiteEnDiasHabiles = (tipo) => {
-    const item = resolverEtapaProtocoloPorTipo(tipo, protocolo);
-    return item?.limite?.unidad === 'dias_habiles';
   };
 
   // Mapeo de tipos a campos de fecha en formData
@@ -784,7 +774,7 @@ const Trazabilidad = memo(function Trazabilidad({
       }
     });
     return false;
-  }, [navigate]);
+  }, [navigate, t]);
 
   // Función para descargar documentos (mejorada)
   const descargarDocumento = useCallback((documento, event) => {
@@ -856,7 +846,7 @@ const Trazabilidad = memo(function Trazabilidad({
     }
     
     return false; // Retornar false para prevenir cualquier acción adicional
-  }, [construirUrlDescarga]);
+  }, [construirUrlDescarga, t]);
 
   // Función para obtener documentos por tipo
   const obtenerDocumentosPorTipo = (tipo) => {
@@ -1151,7 +1141,7 @@ const Trazabilidad = memo(function Trazabilidad({
       <div className={`${complexCard} space-y-4`}>
         <h3 className={complexSubsectionTitle}>{t("complex.ui.trazabilidad.resumen_de_trazabilidad")}</h3>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {ETAPAS_TRAZABILIDAD.map(({ tipo, tituloKey, Icon }) => {
+          {ETAPAS_TRAZABILIDAD.map(({ tipo, Icon }) => {
             const diasInfo = calcularDiasTranscurridos(tipo);
             const documentos = obtenerDocumentosPorTipo(tipo);
             const titulo = tituloEtapaTrazabilidad(t, tipo);

@@ -114,7 +114,9 @@ export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
   useEffect(() => {
     cargarDatosUsuario();
     cargarDocumentos();
-  }, [usuarioId]);
+    // Las funciones de carga usan el usuario actual de esta vista.
+    // Solo se deben ejecutar de nuevo cuando cambia su identificador.
+  }, [usuarioId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const formatearFecha = (fecha) => {
     if (!fecha) return '';
@@ -148,7 +150,7 @@ export default function EditarPerfilUsuarioDocumentos({ usuario, onCerrar }) {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       return `${year}-${month}-${day}`;
-    } catch (e) {
+    } catch {
       return '';
     }
   };
@@ -433,7 +435,7 @@ setDocumentos(response.data.documentos || []);
       setMensaje({ tipo: 'exito', texto: `✅ ${t('admin.ui.documentos.lista.deleteSuccess')}` });
       cargarDocumentos();
       setTimeout(() => setMensaje({ tipo: '', texto: '' }), 3000);
-    } catch (error) {
+    } catch {
       setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.lista.deleteFailed') });
     }
   };
@@ -451,7 +453,7 @@ setDocumentos(response.data.documentos || []);
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-    } catch (error) {
+    } catch {
       // En DEV, si el documento fue subido en PROD, evitar fetch (CORS) y descargar por enlace directo.
       try {
         const ruta = documento?.archivo?.ruta || '';
@@ -492,7 +494,7 @@ setDocumentos(response.data.documentos || []);
         return;
       }
       window.open(url, '_blank', 'noopener,noreferrer');
-    } catch (error) {
+    } catch {
       setMensaje({ tipo: 'error', texto: t('admin.ui.documentos.lista.previewFailed') });
     }
   };

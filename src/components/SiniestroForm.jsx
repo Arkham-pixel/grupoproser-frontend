@@ -50,7 +50,7 @@ export default function SiniestroForm({ open, onClose, siniestro, onSave }) {
       const updated = await updateSiniestro(form._id, form);
       onSave(updated);
       onClose();
-    } catch (err) {
+    } catch {
       setError(t("siniestros.ui.saveError"));
     }
     setLoading(false);

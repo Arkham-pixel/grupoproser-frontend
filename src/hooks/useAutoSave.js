@@ -166,8 +166,7 @@ if (savedInfo && savedInfo.data) {
         } else {
           console.warn('⚠️ [useAutoSave] onRestore no está definido');
         }
-      } else {
-}
+      }
       
       // Solo reactivar si ya existía en BD; en borradores nuevos (-nuevo) el usuario debe activarlo
       const wasEnabled = autoSaveService.isEnabled(formKey);

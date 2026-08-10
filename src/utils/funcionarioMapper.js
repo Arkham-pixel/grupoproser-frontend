@@ -105,10 +105,6 @@ export async function cargarMapeoFuncionarios() {
       });
 
       funcionariosCargados = true;
-// Log de algunos funcionarios para debugging
-      if (funcionariosMap.size > 0) {
-        const primerosFuncionarios = Array.from(funcionariosMap.entries()).slice(0, 5);
-}
       
       return funcionariosMap;
     } catch (error) {
@@ -182,12 +178,7 @@ export function obtenerNombreFuncionario(codigo, nombreAlternativo = null, codig
   // Si es código numérico y no se encontró, intentar buscar de forma asíncrona
   // pero por ahora retornar el código (se actualizará cuando se cargue el mapeo)
   if (/^\d+$/.test(codigoStr)) {
-    // Intentar buscar de forma asíncrona si el mapeo está cargando
-    if (cargaEnProgreso) {
-      cargaEnProgreso.then(() => {
-        const nombreActualizado = funcionariosMap.get(codigoStr);
-}).catch(() => {});
-    } else if (funcionariosCargados) {
+    if (funcionariosCargados) {
       // Si el mapeo está cargado pero no encontramos el código, loguear para debugging
       console.warn(`⚠️ [FuncionarioMapper] Código ${codigoStr} no encontrado en mapeo (${funcionariosMap.size} funcionarios cargados)`);
     }

@@ -202,7 +202,7 @@ export default function ActaInspeccionAjuste({ formData, onInputChange }) {
       if (arr.length === 0) {
         setErrorListaFuncionarios(t('adjustment.ui.acta.noOfficials'));
       }
-    } catch (e) {
+    } catch {
       const raw = FuncionarioService.cargarDesdeLocalStorage();
       const norm = FuncionarioService.normalizarListaFuncionarios(raw);
       setFuncionarios(Array.isArray(norm) ? norm : []);

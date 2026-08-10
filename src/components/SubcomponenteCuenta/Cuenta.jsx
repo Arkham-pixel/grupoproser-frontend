@@ -13,12 +13,6 @@ function EliminarCuenta() {
 }
 // Eliminar cualquier referencia visual o lógica a activar/desactivar 2FA o "seguridad de la cuenta"
 
-// Simulación de usuario actual (puedes reemplazarlo con props, context o Firebase)
-const user = {
-  nombre: "Daniel",
-  rol: "admin", // Cambia a "admin" o "soporte" para ver las pestañas adicionales
-};
-
 export default function Cuenta() {
   const { t } = useTranslation();
   // Verificar si hay una pestaña guardada en localStorage (desde el menú de administración)

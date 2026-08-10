@@ -203,7 +203,7 @@ function semaforoPorCampo(riesgos, campo) {
     .sort((a, b) => b.totalRiesgos - a.totalRiesgos);
 }
 
-function generarHallazgos({ riesgos, kpis, porProceso, porCategoria, recomendaciones }) {
+function generarHallazgos({ kpis, porProceso, porCategoria, recomendaciones }) {
   const hallazgos = [];
   const topProcesos = porProceso.slice(0, 2);
   const concentracionProcesos = topProcesos.reduce((sum, p) => sum + p.porcentaje, 0);

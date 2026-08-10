@@ -214,7 +214,7 @@ setForm(f => ({
           passwordConfirm: form.passwordConfirm,
         };
       }
-const response = await actualizarPerfil(dataToSend, token, tipoUsuario);
+await actualizarPerfil(dataToSend, token, tipoUsuario);
 setMensaje(t('account.ui.cuenta.editar.success'));
       
       // Recargar los datos del perfil después de actualizar

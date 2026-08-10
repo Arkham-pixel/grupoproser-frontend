@@ -150,8 +150,6 @@ const parseHorasDesdeCelda = (cell) => {
   return parseHorasTexto(valorCelda(cell));
 };
 
-const parseHoras = (valor) => parseHorasTexto(valor);
-
 const parseFecha = (valor) => {
   if (valor == null || valor === '') return '';
   if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
@@ -163,7 +161,7 @@ const parseFecha = (valor) => {
     return fechaParaInput(d);
   }
   const s = String(valor).trim();
-  const dmY = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  const dmY = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
   if (dmY) {
     const d = dmY[1].padStart(2, '0');
     const m = dmY[2].padStart(2, '0');
@@ -260,7 +258,7 @@ const filaTieneDatos = (row, mapa) => {
   const func = textoCelda(row.getCell(mapa.funcionario));
   const horas = sumarHorasFila(row, mapa);
   const fechaTxt = textoCelda(row.getCell(mapa.fecha));
-  const pareceFecha = /^\d{1,2}[\/\-]\d{1,2}/.test(fechaTxt);
+  const pareceFecha = /^\d{1,2}[/-]\d{1,2}/.test(fechaTxt);
   return Boolean(desc || func || horas > 0 || pareceFecha);
 };
 
@@ -456,7 +454,6 @@ export async function importarControlHorasDesdeArchivo(
   if (!mapa.total) mapa.total = base + 8;
 
   const filas = [];
-  let filaFin = encabezado.fila + 1;
   let totalHorasTabla = null;
   const responsable = formData.nombreResponsable || formData.responsable || '';
 
@@ -464,7 +461,6 @@ export async function importarControlHorasDesdeArchivo(
     const row = sheet.getRow(r);
 
     if (esFilaFinTabla(row)) {
-      filaFin = r;
       if (mapa.total) {
         const th = parseHorasDesdeCelda(row.getCell(mapa.total));
         if (th > 0) totalHorasTabla = th;

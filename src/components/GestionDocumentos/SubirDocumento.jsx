@@ -57,7 +57,7 @@ export default function SubirDocumento({ onDocumentoSubido }) {
       formData.append('descripcion', descripcion);
       formData.append('etiquetas', etiquetas);
 
-      const response = await api.post('/api/documentos/subir', formData, {
+      await api.post('/api/documentos/subir', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

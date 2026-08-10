@@ -12,6 +12,7 @@ const EMU_POR_MM = 914400 / 25.4;
 function nombreArchivoSeguro(valor) {
   return String(valor || 'liquidador')
     .trim()
+    // eslint-disable-next-line no-control-regex -- Se eliminan caracteres de control inválidos en nombres de archivo.
     .replace(/[<>:"/\\|?*\x00-\x1F]/g, '-')
     .replace(/\s+/g, '_')
     .replace(/[^a-zA-Z0-9_-]/g, '_');

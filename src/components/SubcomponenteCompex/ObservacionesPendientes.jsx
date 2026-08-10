@@ -26,14 +26,9 @@ import {
   thLista,
 } from './seguimientoObservacionesFenixUi';
 
-export default function ObservacionesPendientes({ 
-  formData, 
-  handleChange,
-  onSelectFiles,
+export default function ObservacionesPendientes({
   historialDocs = [],
   updateHistorialDocs,
-  cargandoAdjuntos = {},
-  errorAdjuntos = {}
 }) {
   const { t } = useTranslation();
   const [observaciones, setObservaciones] = useState([]);

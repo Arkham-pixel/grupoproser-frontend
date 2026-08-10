@@ -27,7 +27,6 @@ import {
   expressCardBody,
   expressCardHeader,
   expressFormSection,
-  expressHint,
   expressPageWrap,
   expressRadioOption,
   expressScope,
@@ -138,7 +137,7 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     mensaje: '',
     tipo: 'warning',
   });
-  const tUi = (key, options) => t(`express.ui.claimForm.${key}`, options);
+  const tUi = useCallback((key, options) => t(`express.ui.claimForm.${key}`, options), [t]);
   const [modalIntermediarioOpen, setModalIntermediarioOpen] = useState(false);
   const [nuevoIntermediario, setNuevoIntermediario] = useState('');
   const [guardandoIntermediario, setGuardandoIntermediario] = useState(false);
@@ -307,7 +306,13 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
     const casoId = data._id;
     if (!casoId) return;
 
-    const { anexos, salvamentoAnexos, _id, consecutivo, ...payload } = data;
+    const {
+      anexos: IGNORED_ANEXOS,
+      salvamentoAnexos: IGNORED_SALVAMENTO_ANEXOS,
+      _id,
+      consecutivo: IGNORED_CONSECUTIVO,
+      ...payload
+    } = data;
     const formDataToSend = new FormData();
     formDataToSend.append('salvamentoAplica', data.salvamentoAplica || '');
 

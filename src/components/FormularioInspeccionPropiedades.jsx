@@ -91,7 +91,6 @@ import {
   idsAreasDesdePlantilla,
   obtenerCamposArea,
   tituloArea,
-  clavePlantillaAreas,
 } from './inspeccion/propiedadesAreasConfig.js';
 import {
   combinarAreasInspeccion,
@@ -238,6 +237,8 @@ export default function FormularioInspeccionPropiedades({
   const [guardando, setGuardando] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [error, setError] = useState(null);
+  const guardarAutomaticoRef = useRef(null);
+  const cargarFormularioExistenteRef = useRef(null);
   
   // Estado para modal de confirmación
   const [modalConfirmacion, setModalConfirmacion] = useState({
@@ -336,14 +337,9 @@ export default function FormularioInspeccionPropiedades({
     [seccionesActivas, areasEfectivas, t]
   );
 
-  const algunaAreaActiva = useMemo(
-    () => idsAreasDesdePlantilla(areasEfectivas).some((id) => incluirSeccion(id)),
-    [areasEfectivas, incluirSeccion]
-  );
-
   useEffect(() => {
     setSeccionesActivas((prev) => normalizarSeccionesActivas(prev, areasEfectivas));
-  }, [clavePlantillaAreas(formData.claseInmueble, formData.tipoInmueble), formData.areasPersonalizadas?.length]);
+  }, [areasEfectivas]);
 
   // Estado para items dinámicos de cada área
   const [areasData, setAreasData] = useState({
@@ -375,8 +371,6 @@ export default function FormularioInspeccionPropiedades({
     if (area === 'alcoba') return 'alcobas';
     return null;
   };
-
-  const esAreaAnidada = (area) => area === 'alcoba' || area === 'banoAlcoba' || area === 'closetAlcoba';
 
   const esFotosAnidadas = (area) => esAreaFotosAnidada(area);
 
@@ -456,6 +450,11 @@ export default function FormularioInspeccionPropiedades({
     }
     return result;
   };
+  const normalizarAreasDataRef = useRef(normalizarAreasData);
+  const normalizarFotosAreasRef = useRef(normalizarFotosAreas);
+  const procesarFotosDesdeLocalStorageRef = useRef(null);
+  normalizarAreasDataRef.current = normalizarAreasData;
+  normalizarFotosAreasRef.current = normalizarFotosAreas;
 
   // Ref para debounce de guardado automático
   const autoSaveTimeoutRef = useRef(null);
@@ -478,7 +477,7 @@ export default function FormularioInspeccionPropiedades({
                 setFormData(prev => ({ ...prev, ...formMigrado }));
               }
               if (datosParseados.areasData) {
-                const areasNorm = normalizarAreasData({ ...areasData, ...datosParseados.areasData });
+                const areasNorm = normalizarAreasDataRef.current(datosParseados.areasData);
                 const { areas, form } = migrarDatosBanoAlcoba(areasNorm, datosParseados.formData || {});
                 setAreasData(areas);
                 if (form.alcobasConBano && Object.keys(form.alcobasConBano).length > 0) {
@@ -490,8 +489,8 @@ export default function FormularioInspeccionPropiedades({
               }
               if (datosParseados.fotosAreas) {
                 // Procesar fotos desde localStorage (convertir base64 a objetos utilizables)
-                const fotosProcesadas = await procesarFotosDesdeLocalStorage(datosParseados.fotosAreas);
-                setFotosAreas(normalizarFotosAreas(fotosProcesadas));
+                const fotosProcesadas = await procesarFotosDesdeLocalStorageRef.current(datosParseados.fotosAreas);
+                setFotosAreas(normalizarFotosAreasRef.current(fotosProcesadas));
               }
 }
           } catch (error) {
@@ -1004,6 +1003,8 @@ localStorage.removeItem('formularioPropiedades');
     }
   };
 
+  guardarAutomaticoRef.current = guardarAutomatico;
+
   useEffect(() => {
     if (!formData.areasPersonalizadas?.length) return undefined;
     const timer = setTimeout(() => sincronizarAprendizajeAreas(), 2000);
@@ -1017,8 +1018,8 @@ localStorage.removeItem('formularioPropiedades');
 
   useEffect(() => {
     if (!formularioId || formularioId === 'nuevo') return;
-    guardarAutomatico();
-  }, [seccionesActivas]);
+    guardarAutomaticoRef.current?.();
+  }, [seccionesActivas, formularioId]);
 
   // Función para mostrar modal de confirmación
   const mostrarModalConfirmacion = (titulo, mensaje, tipo = 'success', botonTexto = tp('accept'), mostrarCancelar = false, onConfirmar = null) => {
@@ -1037,7 +1038,7 @@ localStorage.removeItem('formularioPropiedades');
     setModalConfirmacion(prev => ({ ...prev, isOpen: false }));
   };
 
-  const agregarAreaPersonalizada = useCallback((titulo, parametrosFrecuentes = []) => {
+  const agregarAreaPersonalizada = (titulo, parametrosFrecuentes = []) => {
     const tituloNorm = String(titulo || nuevaAreaTitulo).trim();
     if (!tituloNorm) return;
 
@@ -1067,24 +1068,22 @@ localStorage.removeItem('formularioPropiedades');
     setNuevaAreaTitulo('');
     setHistorialAreasGlobal(registrarAreaEnHistorialGlobal(tituloNorm, params));
     programarGuardadoAutomatico();
-  }, [nuevaAreaTitulo, areasEfectivas, historialAreasGlobal]);
+  };
 
-  const eliminarAreaPersonalizada = useCallback((areaId) => {
+  const eliminarAreaPersonalizada = (areaId) => {
     setFormData((prev) => ({
       ...prev,
       areasPersonalizadas: (prev.areasPersonalizadas || []).filter((a) => a.id !== areaId),
     }));
     setSeccionesActivas((prev) => ({ ...prev, [areaId]: false }));
     programarGuardadoAutomatico();
-  }, []);
+  };
 
   // Cargar formulario existente si hay ID y sincronizar formularioId con URL / módulo Propiedades
   useEffect(() => {
     if (idFromRoute) {
-      if (formularioId !== idFromRoute) {
-        setFormularioId(idFromRoute);
-      }
-      cargarFormularioExistente(idFromRoute);
+      setFormularioId((actual) => (actual === idFromRoute ? actual : idFromRoute));
+      cargarFormularioExistenteRef.current?.(idFromRoute);
     } else if (casoPrefill && typeof casoPrefill === 'object') {
       // Nueva inspección desde caso: precargar solo datos básicos (sin pisar si ya hay historial)
       setFormData((prev) => ({
@@ -1092,7 +1091,7 @@ localStorage.removeItem('formularioPropiedades');
         ...casoPrefill,
       }));
     }
-  }, [idFromRoute, casoPropiedadesId]);
+  }, [idFromRoute, casoPrefill]);
 
   const cargarFormularioExistente = async (historialId) => {
     try {
@@ -1133,10 +1132,6 @@ localStorage.removeItem('formularioPropiedades');
             const fotosProcesadas = {};
             for (const [area, fotos] of Object.entries(datos.fotosAreas)) {
               if (!fotos) continue; // Saltar si no hay fotos
-              
-if (Array.isArray(fotos) && fotos.length > 0) {
-}
-              
               if (esFotosAnidadas(area)) {
                 fotosProcesadas[area] = fotosProcesadas[area] || {};
                 for (const [alcobaNum, fotosAlcoba] of Object.entries(fotos)) {
@@ -1151,8 +1146,7 @@ fotosProcesadas[area] = await procesarFotosDesdeServidor(fotos);
             }
             }
 setFotosAreas(normalizarFotosAreas(fotosProcesadas));
-          } else {
-}
+          }
         } else {
           // Estructura antigua: datos directos (compatibilidad hacia atrás)
           // Extraer formData de los datos directos
@@ -1201,10 +1195,9 @@ fotosProcesadas[area] = await procesarFotosDesdeServidor(fotos);
             }
             }
 setFotosAreas(normalizarFotosAreas(fotosProcesadas));
-          } else {
-}
         }
       }
+    }
     } catch (error) {
       console.error('Error cargando formulario:', error);
       setError(tp('errorLoadingForm', { message: error.message }));
@@ -1212,6 +1205,8 @@ setFotosAreas(normalizarFotosAreas(fotosProcesadas));
       setCargando(false);
     }
   };
+
+  cargarFormularioExistenteRef.current = cargarFormularioExistente;
 
   // Función para procesar fotos desde servidor
   const procesarFotosDesdeServidor = async (fotos) => {
@@ -1279,7 +1274,6 @@ return {
             let ultimoStatus = null;
 
             for (const imagenUrl of candidatos) {
-              // eslint-disable-next-line no-await-in-loop
               const response = await fetch(imagenUrl);
               ultimoStatus = response?.status;
               if (!response.ok) continue;
@@ -1518,6 +1512,8 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
     
     return fotosProcesadas;
   };
+
+  procesarFotosDesdeLocalStorageRef.current = procesarFotosDesdeLocalStorage;
 
   // Función para generar documento Word completo
   const generarDocumentoWord = async () => {
@@ -1877,7 +1873,7 @@ const resultado = await historialService.guardarFormulario(datosFormulario);
         appendUploadFile(formDataFile, 'archivo', blob, nombreArchivo);
         
         try {
-          const response = await fetch(`${BASE_URL}/api/historial-formularios/${formularioId}/archivo`, {
+          await fetch(`${BASE_URL}/api/historial-formularios/${formularioId}/archivo`, {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('token')}`

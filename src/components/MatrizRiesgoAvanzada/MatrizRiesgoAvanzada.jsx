@@ -200,7 +200,7 @@ const MatrizRiesgoAvanzada = () => {
     };
 
     cargarMatrizExistente();
-  }, [id, navigate, location.pathname, location.state?.nuevaMatriz]);
+  }, [id, navigate, location.pathname, location.state?.nuevaMatriz, t]);
 
   const handleDatosChange = useCallback((seccion, datos) => {
     setDatosMatriz((prev) => {
@@ -258,7 +258,6 @@ const MatrizRiesgoAvanzada = () => {
         ),
       };
 
-      let resultado;
       const idEnUrl = id || null;
       const idParaGuardar = idEnUrl || matrizId;
 
@@ -278,7 +277,7 @@ const MatrizRiesgoAvanzada = () => {
 
       if (idParaGuardar) {
         try {
-          resultado = await MatrizRiesgoService.actualizarMatrizRiesgo(
+          await MatrizRiesgoService.actualizarMatrizRiesgo(
             idParaGuardar,
             datosCompletos,
             titulo,
@@ -291,14 +290,14 @@ const MatrizRiesgoAvanzada = () => {
             updateError.message?.includes('404');
           if (esNoEncontrada) {
             setMatrizId(null);
-            resultado = await crearNueva();
+            await crearNueva();
             setMensajeGuardado(t('riskMatrix.savedAsNew'));
           } else {
             throw updateError;
           }
         }
       } else {
-        resultado = await crearNueva();
+        await crearNueva();
         setMensajeGuardado(t('riskMatrix.saved'));
       }
 
@@ -344,8 +343,6 @@ const MatrizRiesgoAvanzada = () => {
     }
   };
 
-  const handleGenerarReporte = handleVerInformeGeneral;
-
   const handleExportarReporteHTML = async () => {
     try {
       setExportandoPdf(true);
@@ -372,8 +369,6 @@ const MatrizRiesgoAvanzada = () => {
       setExportandoPdf(false);
     }
   };
-
-  const handleExportarReportePDF = handleExportarReporteHTML;
 
   const secciones = [
     {

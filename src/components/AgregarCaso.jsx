@@ -1,22 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { crearCasoComplex, updateCasoComplex } from '../services/complexService';
 import ciudadesData from '../data/colombia.json';
 import Select from 'react-select';
 import { aseguradorasConFuncionarios } from '../data/aseguradorasFuncionarios';
 import { useDropzone } from 'react-dropzone';
-import { useParams, useNavigate } from 'react-router-dom'; // 👈 Importar
+import { useParams } from 'react-router-dom'; // 👈 Importar
 import { getCasoComplex } from '../services/complexService'; // 👈 Importar
-import axios from 'axios';
-
-const API_URL = 'http://localhost:4000/api/complex';
-
-const crearCaso = async (formData) => {
-  try {
-    const response = await axios.post(API_URL, formData);
-} catch (error) {
-    console.error('Error al crear el caso:', error);
-  }
-};
 
 
 
@@ -95,6 +84,8 @@ const municipios = ciudadesData.flatMap(dep =>
 
   
   });
+
+  const initialFormData = useRef(formData).current;
 
 
 
@@ -193,14 +184,6 @@ const [seguimientos, setSeguimientos] = useState([]);
   setFormData({ ...formData, [name]: value === '' ? null : Number(value) });
 };
 
-const onDrop = (acceptedFiles) => {
-  const fileNames = acceptedFiles.map(file => file.name);
-  setFormData({ ...formData, adjuntos_contacto_inicial: fileNames.join(',') });
-};
-
-
-
-
 const handleAddSeguimiento = () => {
   setSeguimientos(prev => [
     {
@@ -218,15 +201,6 @@ const handleSeguimientoChange = (index, field, value) => {
   updated[index][field] = value;
   setSeguimientos(updated);
 };
-
-
-const handleSeguimientoAdjuntoDrop = (index, acceptedFiles) => {
-  const fileNames = acceptedFiles.map(file => file.name).join(',');
-  const updated = [...seguimientos];
-  updated[index].adjunto = fileNames;
-  setSeguimientos(updated);
-};
-
 
 
 const handleEliminarSeguimiento = (index) => {
@@ -356,11 +330,6 @@ const {
 });
 
 
-
-
-
-
-const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
 
 
 

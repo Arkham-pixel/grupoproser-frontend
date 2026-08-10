@@ -512,7 +512,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
           });
       }
     }
-  }, [initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel]);
+  }, [initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, estados, resolverEstadoParaSelect]);
 
   // Cargar datos frescos del caso desde la API.
   // - Si hay ID en URL (enlace directo), usar ese.
@@ -715,7 +715,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
     };
 
     cargarCasoPorId();
-  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, forceReloadCaso]);
+  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, forceReloadCaso, estados, resolverEstadoParaSelect, t]);
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID ni initialData)
   // IMPORTANTE: No cargar si tiene nmroAjste (es un caso ya guardado)
@@ -738,9 +738,6 @@ localStorage.removeItem('formularioComplex');
           localStorage.removeItem('formularioComplex');
         }
       }
-    } else if (!id && !initialData) {
-      // Si es un caso nuevo, limpiar cualquier dato residual del localStorage
-localStorage.removeItem('formularioComplex');
     }
   }, [id, initialData]);
 
@@ -811,14 +808,14 @@ localStorage.removeItem('formularioComplex');
   }, [location.pathname]);
 
   // Función para actualizar historialDocs dentro de formData
-  const updateHistorialDocs = (updater) => {
+  const updateHistorialDocs = useCallback((updater) => {
     setFormData(prev => ({
       ...prev,
       historialDocs: typeof updater === 'function'
         ? normalizarHistorialDocs(updater(prev.historialDocs))
         : normalizarHistorialDocs(updater)
     }));
-  };
+  }, [normalizarHistorialDocs]);
 
   const fechasHitoEditadasRef = useRef(new Set());
 
@@ -888,7 +885,6 @@ localStorage.removeItem('formularioComplex');
   };
 
   // Estado para intermediarios (ahora desde la API)
-  const [intermediarios, setIntermediarios] = useState([]);
   const [intermediariosOptions, setIntermediariosOptions] = useState([]); // Array de nombres para el dropdown
 
   const [cargandoAdjuntos, setCargandoAdjuntos] = useState({});
@@ -1088,7 +1084,7 @@ localStorage.removeItem('formularioComplex');
         }
       }
     }
-  }, [updateHistorialDocs, formData, initialData, construirUrlArchivo]);
+  }, [updateHistorialDocs, formData, initialData, construirUrlArchivo, t]);
 
   // Función para enviar notificación de gerencia al gerente seleccionado
   const handleEnviarGerencia = useCallback(async (gerenteSeleccionado) => {
@@ -1111,12 +1107,8 @@ localStorage.removeItem('formularioComplex');
             }
           }
           // Asegurar que la ruta empiece con /uploads
-          if (rutaRelativa && !rutaRelativa.startsWith('/uploads') && !rutaRelativa.startsWith('uploads')) {
-            if (rutaRelativa.startsWith('/')) {
-              rutaRelativa = rutaRelativa;
-            } else {
-              rutaRelativa = `/uploads/${rutaRelativa}`;
-            }
+          if (rutaRelativa && !rutaRelativa.startsWith('/uploads') && !rutaRelativa.startsWith('uploads') && !rutaRelativa.startsWith('/')) {
+            rutaRelativa = `/uploads/${rutaRelativa}`;
           }
           
           return {
@@ -1307,12 +1299,8 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
             }
           }
           // Asegurar que la ruta empiece con /uploads
-          if (rutaRelativa && !rutaRelativa.startsWith('/uploads') && !rutaRelativa.startsWith('uploads')) {
-            if (rutaRelativa.startsWith('/')) {
-              rutaRelativa = rutaRelativa;
-            } else {
-              rutaRelativa = `/uploads/${rutaRelativa}`;
-            }
+          if (rutaRelativa && !rutaRelativa.startsWith('/uploads') && !rutaRelativa.startsWith('uploads') && !rutaRelativa.startsWith('/')) {
+            rutaRelativa = `/uploads/${rutaRelativa}`;
           }
           
           return {
@@ -1433,27 +1421,27 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
     }
   }, [formData, initialData, persistirControlHorasEnServidor, t, construirUrlArchivo]);
 
-  const createDropzone = (tipoDocumento, campoFormData) =>
+  const useDropzoneForDocument = (tipoDocumento, campoFormData) =>
     useDropzone({
       multiple: true,
       onDrop: (files) => handleDocumentDrop(tipoDocumento, campoFormData, files)
     });
 
   // Dropzone para Adjunto Factura
-  const dropzonePropsFactura = createDropzone('factura', 'adjunto_factura');
+  const dropzonePropsFactura = useDropzoneForDocument('factura', 'adjunto_factura');
 
   // Dropzone para Adjunto Honorarios
-  const dropzonePropsHonorarios = createDropzone('honorarios', 'adjunto_honorarios');
+  const dropzonePropsHonorarios = useDropzoneForDocument('honorarios', 'adjunto_honorarios');
 
   // Dropzone para Control de Horas
-  const dropzonePropsControlHoras = createDropzone('controlHoras', 'adjunto_control_horas');
+  const dropzonePropsControlHoras = useDropzoneForDocument('controlHoras', 'adjunto_control_horas');
 
   // Dropzone para Adjunto Evidencia (Gerencia)
-  const dropzonePropsEvidencia = createDropzone('evidencia', 'adjunto_evidencia');
-  const dropzonePropsSeguimientoEvidencia = createDropzone('seguimientoEvidencia', 'adjunto_seguimiento_envio_control_horas');
+  const dropzonePropsEvidencia = useDropzoneForDocument('evidencia', 'adjunto_evidencia');
+  const dropzonePropsSeguimientoEvidencia = useDropzoneForDocument('seguimientoEvidencia', 'adjunto_seguimiento_envio_control_horas');
 
   // Dropzone para Adjunto Observaciones del Cliente
-  const dropzonePropsObservaciones = createDropzone('observacionesCliente', 'adjunto_observaciones_cliente');
+  const dropzonePropsObservaciones = useDropzoneForDocument('observacionesCliente', 'adjunto_observaciones_cliente');
 
   // Ejemplo de props para selects
   const [ciudades, setCiudades] = useState([]);
@@ -1639,8 +1627,6 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
     disableAutoSave,
     clearSavedData,
     saveNow,
-    restoreFromStorage,
-    hasSavedData,
     markSyncing,
     markSynced,
     markSyncError,
@@ -1771,7 +1757,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
     return () => {
       abortController.abort();
     };
-  }, [formData.codiAsgrdra, aseguradoraOptionsRaw, initialData]);
+  }, [formData.codiAsgrdra, formData.funcAsgrdra, formData.funcAsgrdraNombre, aseguradoraOptionsRaw, initialData, ordenarPorLabel]);
 
   // Cuando camposFijos es true, complementar información del funcionario si falta
   // NOTA: Este useEffect solo se ejecuta como complemento, la carga principal se hace en el useEffect de modo edición
@@ -1889,7 +1875,7 @@ setFormData(prev => ({
     return () => {
       abortController.abort();
     };
-  }, [camposFijos, formData.codiAsgrdra, formData.funcAsgrdra, formData.funcAsgrdraNombre, funcionarios.length, ordenarPorLabel]);
+  }, [camposFijos, formData.codiAsgrdra, formData.funcAsgrdra, formData.funcAsgrdraNombre, funcionarios, ordenarPorLabel]);
 
   // Sincronizar correo del analista de compañía desde el catálogo de contactos
   useEffect(() => {
@@ -2015,7 +2001,14 @@ return prev;
         setAseguradoraOptionsRaw([]);
         setAseguradoraOptions([]);
       });
-  }, []);
+  }, [
+    ordenarPorLabel,
+    formData.codiRespnsble,
+    formData.nombreResponsable,
+    initialData?.codiRespnsble,
+    initialData?.nombreResponsable,
+    initialData?.responsable,
+  ]);
 
   // Normalizar codiAsgrdra a código cuando haya datos de clientes
   useEffect(() => {
@@ -2316,7 +2309,7 @@ return;
     return () => {
       abortController.abort();
     };
-  }, [initialData, aseguradoraOptionsRaw, ordenarPorLabel]);
+  }, [initialData, aseguradoraOptionsRaw, formData.codiAsgrdra, formData.funcAsgrdra, formData.funcAsgrdraNombre, formData.funcionarioAseguradora, ordenarPorLabel]);
 
   useEffect(() => {
     let cancelado = false;
@@ -2328,7 +2321,7 @@ return;
           const opciones = Array.isArray(parsed) ? parsed : [];
           setCiudades(ordenarPorLabel(opciones));
         }
-      } catch (error) {
+      } catch {
         console.warn('⚠️ Cache de ciudades inválido, se ignorará.');
       }
     } else {
@@ -2367,7 +2360,14 @@ return;
     return () => {
       cancelado = true;
     };
-  }, []);
+  }, [
+    ordenarPorLabel,
+    formData.codiRespnsble,
+    formData.nombreResponsable,
+    initialData?.codiRespnsble,
+    initialData?.nombreResponsable,
+    initialData?.responsable,
+  ]);
 
   // Sincronizar ciudad cuando las ciudades estén cargadas (modo edición)
   useEffect(() => {
@@ -2437,7 +2437,14 @@ setFormData(prev => ({
         console.error('Error cargando responsables:', err);
         setResponsables([]);
       });
-  }, []);
+  }, [
+    ordenarPorLabel,
+    formData.codiRespnsble,
+    formData.nombreResponsable,
+    initialData?.codiRespnsble,
+    initialData?.nombreResponsable,
+    initialData?.responsable,
+  ]);
 
   useEffect(() => {
     if (!responsables.length) {
@@ -2500,7 +2507,7 @@ setFormData(prev => ({
         console.error('Error cargando estados:', err);
         setEstados([]);
       });
-  }, []);
+  }, [ordenarPorLabel]);
 
   // Cargar intermediarios desde la nueva API
   useEffect(() => {
@@ -2528,9 +2535,6 @@ setFormData(prev => ({
         // Filtrar solo los activos
         const intermediariosActivos = intermediariosList.filter(i => i.estado === 1);
         
-        // Guardar los objetos completos para referencia
-        setIntermediarios(intermediariosActivos);
-        
         // Crear array de nombres para el dropdown
         const nombresIntermediarios = intermediariosActivos
           .map(i => i.nombre)
@@ -2539,13 +2543,12 @@ setFormData(prev => ({
       })
       .catch(error => {
         console.error("Error al cargar intermediarios:", error);
-        setIntermediarios([]);
         setIntermediariosOptions([]);
       });
-  }, []);
+  }, [ordenarStrings]);
 
   // Función para mapear los campos del frontend a los del backend
-  function mapFormDataToBackend(formData) {
+  const mapFormDataToBackend = useCallback((formData) => {
     const pick = (...keys) => {
       for (const key of keys) {
         const value = formData[key];
@@ -2712,7 +2715,7 @@ setFormData(prev => ({
     });
 
     return payload;
-  }
+  }, [extraerCodiEstdoParaGuardar]);
 
   // Handlers para autoguardado
   const handleRestoreData = useCallback(() => {
@@ -2728,7 +2731,7 @@ setFormData(prev => ({
       
 alert(t('complex.ui.formulario_caso_complex.datos_restaurados'));
     }
-  }, [savedDataToRestore, enableAutoSave, formData]);
+  }, [savedDataToRestore, enableAutoSave, formData, t]);
 
   const handleDiscardSavedData = useCallback(() => {
 clearSavedData();
@@ -2795,8 +2798,7 @@ setShowRestoreDialog(false);
       const textarea = document.querySelector(`textarea[name="${campo}"]`);
       if (textarea && textarea.value !== undefined) {
         formDataConTextareas[campo] = textarea.value;
-} else {
-}
+      }
     });
     
 if (!onSave) {
@@ -2863,8 +2865,6 @@ clearSavedData();
 
   const prepararPayloadParaComplex = (payload, datosIniciales) => {
      const resultado = { ...payload };
-     const nombreResponsable = resultado.nombreResponsable || datosIniciales?.nombreResponsable || '';
-     
      // Asegurar que el funcionario se mantenga correctamente
      const funcAsgrdraNombre = resultado.funcAsgrdraNombre || datosIniciales?.funcAsgrdraNombre || '';
      const funcionarioAseguradora = resultado.funcionarioAseguradora || datosIniciales?.funcionarioAseguradora || '';
@@ -3107,6 +3107,8 @@ clearSavedData();
     markSyncing,
     markSynced,
     markSyncError,
+    mapFormDataToBackend,
+    t,
   ]);
 
   const omitirServidorTrasCargaRef = useRef(true);

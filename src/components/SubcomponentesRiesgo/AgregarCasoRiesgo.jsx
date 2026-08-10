@@ -17,7 +17,6 @@ import {
   riesgoBtnSecondary,
   riesgoBtnSuccess,
   riesgoFormRoot,
-  riesgoFormShell,
   riesgoPageWrapWide,
   riesgoScope,
 } from './riesgoFenixUi.js';
@@ -270,7 +269,7 @@ const AgregarCasoRiesgo = ({ casoInicial, onClose }) => {
     setShowRestoreDialog(false);
     enableAutoSave();
     alert(t('risks.ui.agregar_caso_riesgo.datos_restaurados'));
-  }, [savedDataToRestore, enableAutoSave, formData]);
+  }, [savedDataToRestore, enableAutoSave, formData, t]);
 
   const handleDiscardSavedData = useCallback(() => {
     clearSavedData();
@@ -489,6 +488,8 @@ axios.get('/api/ciudades/ciudades')
     }
 
     cargarFuncionariosAseguradora(formData.aseguradora, true);
+  // Recargar solo cuando cambia la aseguradora; incluir el cargador recrearía la petición en cada render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.aseguradora]);
 
   // Log para mostrar el estado final de los datos cargados
@@ -634,6 +635,8 @@ axios.get('/api/ciudades/ciudades')
       // Si hay una aseguradora seleccionada, cargar sus funcionarios
       cargarFuncionariosAseguradora(formData.aseguradora, true);
     }
+  // La carga se sincroniza con aseguradora y el catálogo disponible.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData.aseguradora, aseguradoras.length]);
 
   // Actualizar quienSolicita cuando se carguen los funcionarios y haya un funcSolicita
@@ -667,6 +670,8 @@ axios.get('/api/ciudades/ciudades')
         }
       }
     }
+  // Evita que la sincronización de etiqueta reactive el efecto por sí misma.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [funcionarios, formData.funcSolicita, casoInicial, editando]);
 
   // Si recibimos casoInicial, llenamos el formulario automáticamente
@@ -796,6 +801,8 @@ axios.get('/api/ciudades/ciudades')
         cargarFuncionariosAseguradora(aseguradoraValue, true);
       }
     }
+  // La hidratación depende de catálogos y del caso, no del listado temporal de funcionarios.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [casoInicial, aseguradoras, responsables, estados, ciudades, clasificaciones]);
 
   const guardarCaso = async () => {
@@ -864,8 +871,7 @@ const nuevoCaso = construirPayloadRiesgo(formData);
         } else {
           throw new Error(t('risks.ui.agregar_caso_riesgo.sin_id_guardado'));
         }
-      } else {
-}
+      }
 
       // 2. Verificar si ya existe un registro en el historial para este caso
 let historialExistente = null;
@@ -1032,20 +1038,13 @@ let historialExistente = null;
     }
   };
 
-  // Función para saber si hay coincidencia en algún campo
-  const hayCoincidencia = (valor) => {
-    if (!busqueda.trim()) return false;
-    if (!valor) return false;
-    return valor.toString().toLowerCase().includes(busqueda.toLowerCase());
-  };
-
   // Ejemplo usando fetch (puedes usar axios si prefieres)
   useEffect(() => {
     if (busqueda.trim() === "") return; // No buscar si está vacío
 
     fetch(`/api/casos?busqueda=${encodeURIComponent(busqueda)}`)
       .then(res => res.json())
-      .then(data => {
+      .then(() => {
         // Aquí actualizas tu lista de casos con los resultados del backend
         // setCasos(data);
       });

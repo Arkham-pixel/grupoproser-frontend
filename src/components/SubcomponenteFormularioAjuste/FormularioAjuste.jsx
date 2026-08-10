@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media, VerticalAlign, BorderStyle } from "docx";
-import { saveAs } from "file-saver";
 import { formatearFechaParaWord, obtenerFechaActualISO, obtenerFechaHoraActualISO } from '../../utils/fechaUtils';
 import { useTheme } from '../../context/ThemeContext';
 import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig';
@@ -394,6 +393,9 @@ const [formData, setFormData] = useState({
   );
   // Evita autoguardado en localStorage con el borrador vacío mientras llega el caso desde el historial
   const permitirAutoguardadoLocalRef = useRef(!id || id === 'nuevo');
+  const cargarFormularioExistenteRef = useRef(null);
+  const aplicarAutofillComplexRef = useRef(null);
+  const ejecutarAutofillDesdeComplexRef = useRef(null);
   const [versiones, setVersiones] = useState({
     inicial: null,
     preeliminar: null,
@@ -609,8 +611,7 @@ return await historialService.obtenerFormulario(id);
 // Usar formularioId en lugar de id para mayor confiabilidad
     const idParaCargar = formularioId || id;
 if (idParaCargar && idParaCargar !== 'nuevo') {
-cargarFormularioExistente();
-    } else {
+      cargarFormularioExistenteRef.current?.();
 }
   }, [id, formularioId]);
 
@@ -840,6 +841,7 @@ return {
       permitirAutoguardadoLocalRef.current = true;
     }
   };
+  cargarFormularioExistenteRef.current = cargarFormularioExistente;
 
   // Función para manejar cambios en los campos del formulario
   const handleInputChange = (field, value) => {
@@ -1114,6 +1116,7 @@ setFormData(prev => {
       return siguiente;
     });
   };
+  aplicarAutofillComplexRef.current = aplicarAutofillComplex;
 
   const txCampo = (valor) => String(valor ?? '').trim();
 
@@ -1216,6 +1219,7 @@ setFormData(prev => {
       });
     }
   };
+  ejecutarAutofillDesdeComplexRef.current = ejecutarAutofillDesdeComplex;
 
   useEffect(() => {
     const desdeState = location.state || {};
@@ -1296,14 +1300,17 @@ setFormData(prev => {
     }
 
     if (identificador) {
-      ejecutarAutofillDesdeComplex(
+      ejecutarAutofillDesdeComplexRef.current?.(
         identificador,
         false,
         Object.keys(prefillCombinado).length > 0 ? prefillCombinado : null,
         { rellenarDatosGenerales: true }
       );
     } else if (Object.keys(prefillCombinado).length > 0) {
-      aplicarAutofillComplex(prefillCombinado, { overwrite: false, soloInfoClienteDesdeComplex: false });
+      aplicarAutofillComplexRef.current?.(prefillCombinado, {
+        overwrite: false,
+        soloInfoClienteDesdeComplex: false
+      });
     }
   }, [id, location.state, location.search]);
 
@@ -1359,16 +1366,6 @@ setFormData(prev => {
     });
 };
 
-  // Función para convertir archivo a base64
-  const convertirArchivoABase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   // Función para convertir imagen importada a base64
   const convertirImagenImportadaABase64 = async (imagePath) => {
     try {
@@ -1384,43 +1381,6 @@ setFormData(prev => {
       console.error('Error al convertir imagen importada:', error);
       return null;
     }
-  };
-
-  // Función helper para extraer base64 limpio de cualquier formato
-  const extraerBase64Limpio = (imagen) => {
-    if (!imagen) return null;
-    
-    // Si ya tiene base64 directo (sin prefijo data:)
-    if (imagen.base64 && !imagen.base64.includes('data:')) {
-      return imagen.base64;
-    }
-    
-    // Si tiene base64 con prefijo data:image/...
-    if (imagen.base64 && imagen.base64.includes('base64,')) {
-      return imagen.base64.split('base64,')[1];
-    }
-    
-    // Si tiene url con prefijo data:image/...
-    if (imagen.url && imagen.url.includes('base64,')) {
-      return imagen.url.split('base64,')[1];
-    }
-    
-    // Si tiene preview con prefijo data:image/...
-    if (imagen.preview && imagen.preview.includes('base64,')) {
-      return imagen.preview.split('base64,')[1];
-    }
-    
-    // Si tiene url sin prefijo y no es HTTP (probablemente base64)
-    if (imagen.url && !imagen.url.includes('data:') && !imagen.url.includes('http') && !imagen.url.includes('/')) {
-      return imagen.url;
-    }
-    
-    // Si tiene base64 sin prefijo
-    if (imagen.base64) {
-      return imagen.base64;
-    }
-    
-    return null;
   };
 
   // Función para generar el documento Word
@@ -1573,24 +1533,6 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
         const gastos = parsearNumeroLiquidador(liquidador.gastos || 0);
         const totalIndemnizar = totalAjustado - Math.max(deduciblePorcentaje, deducibleSMMLV) + gastos;
         return { totalReclamado, totalAjustado, totalIndemnizar };
-      };
-
-      // Función helper para crear párrafos con formato consistente
-      const crearParrafo = (texto, opciones = {}) => {
-        return new Paragraph({
-          children: [
-            new TextRun({
-              text: texto,
-              font: 'Arial',
-              size: opciones.size || 24, // 24 = 12pt en docx
-              bold: opciones.bold || false,
-              color: opciones.color || '000000', // Negro por defecto
-              italics: opciones.italics || false
-            })
-          ],
-          alignment: AlignmentType.JUSTIFIED,
-          spacing: { after: opciones.spacingAfter || 200 }
-        });
       };
 
       // Función helper para crear títulos con formato consistente
@@ -2155,7 +2097,6 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
             tieneContenido(fd.liquidacionPerdida?.avanceTecnologico);
 
           if (tieneLiquidacion) {
-            const numSeccionLiq = numeroSeccion;
             secciones.push(
               crearTextoNormal(`${numeroSeccion}. LIQUIDACIÓN DE LA PÉRDIDA`, { 
                 heading: HeadingLevel.HEADING_2, 
@@ -2695,7 +2636,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               ? localStorage.getItem('proser_firma_isharly')
               : null;
           if (guardada && String(guardada).startsWith('data:image')) return guardada;
-        } catch (_) {
+        } catch {
           /* ignore */
         }
         try {
@@ -2789,7 +2730,7 @@ const stripMapaBase64ParaDocx = (dataUrl) => {
               });
               width = sized.width;
               height = sized.height;
-            } catch (_) {
+            } catch {
               /* usar defaults */
             }
             return { data, type: tipo, width, height };
@@ -4017,16 +3958,6 @@ const nombreDocx = `PAGINA_1_${fd.numeroPoliza || 'Sin_Poliza'}_${obtenerFechaAc
         throw new Error('TIPOS_FORMULARIOS.AJUSTE no está definido');
       }
 
-      // Log de depuración para imágenes
-if (formData.imagenesInspeccion && formData.imagenesInspeccion.length > 0) {
-        formData.imagenesInspeccion.forEach((img, index) => {
-});
-      }
-if (formData.anexos && formData.anexos.length > 0) {
-        formData.anexos.forEach((anexo, index) => {
-});
-      }
-
       // Procesar imágenes antes de guardar
       let datosParaGuardar = { ...formDataRef.current };
       // Siempre persistir la versión de pestaña activa (React); formData puede quedar desincronizado tras «Siguiente»
@@ -4659,8 +4590,19 @@ mostrarModalConfirmacion(
               } catch (errorArchivo) {
                 console.warn('⚠️ No se pudo subir archivo Word al historial (no bloqueante):', errorArchivo?.message || errorArchivo);
               }
-              try { await sincronizarSecuenciaPorNumeroAjuste(String(idExistente)); } catch (_) {}
-              try { await sincronizarDocumentoEnTrazabilidadComplex(String(idExistente), archivoSubidoContinuidad); } catch (_) {}
+              try {
+                await sincronizarSecuenciaPorNumeroAjuste(String(idExistente));
+              } catch {
+                /* La sincronización secundaria no debe bloquear la actualización. */
+              }
+              try {
+                await sincronizarDocumentoEnTrazabilidadComplex(
+                  String(idExistente),
+                  archivoSubidoContinuidad
+                );
+              } catch {
+                /* La trazabilidad secundaria no debe bloquear la actualización. */
+              }
               mostrarModalConfirmacion(
                 t('adjustment.ui.alerts.formUpdated'),
                 t('adjustment.ui.alerts.formUpdatedContinuity'),

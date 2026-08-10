@@ -84,10 +84,6 @@ export function tipoHistorialDesdeEstadoAjuste(estado) {
 export function buildCamposProtocoloDesdeAjuste({
   tipoHistorial,
   nombreArchivo,
-  fechaPreferida,
-  fechaFallback,
-  fechaExistenteCaso = '',
-  soloSiVacioFecha = true,
 }) {
   const cfg = MAPEO_TIPO_HISTORIAL_A_COMPLEX[tipoHistorial];
   if (!cfg || !nombreArchivo) return {};

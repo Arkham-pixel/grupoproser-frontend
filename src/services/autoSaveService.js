@@ -176,7 +176,7 @@ class AutoSaveService {
               const formKey = metadata.formKey;
 this.clear(formKey);
             }
-          } catch (error) {
+          } catch {
             // Si hay error al parsear, eliminar la entrada
             localStorage.removeItem(key);
           }

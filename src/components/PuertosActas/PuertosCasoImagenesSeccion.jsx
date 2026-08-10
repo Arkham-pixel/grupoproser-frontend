@@ -14,13 +14,13 @@ export default function PuertosCasoImagenesSeccion({
 }) {
   const { t } = useTranslation();
 
-  const setImagenes = (updater) => {
+  const setImagenes = useCallback((updater) => {
     if (typeof updater === 'function') {
       onChange(updater(imagenes));
     } else {
       onChange(updater);
     }
-  };
+  }, [imagenes, onChange]);
 
   const onDrop = useCallback(
     (acceptedFiles) => {
@@ -42,7 +42,7 @@ export default function PuertosCasoImagenesSeccion({
         reader.readAsDataURL(file);
       });
     },
-    [imagenes.length]
+    [imagenes.length, max, setImagenes]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

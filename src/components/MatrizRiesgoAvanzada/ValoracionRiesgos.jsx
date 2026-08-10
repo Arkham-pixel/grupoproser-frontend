@@ -168,14 +168,6 @@ const ValoracionRiesgos = ({
     { valor: 5, etiqueta: t('riskMatrix.probability.veryHigh'), color: '#dc3545' }
   ];
 
-  const escalaImpacto = [
-    { valor: 1, etiqueta: t('riskMatrix.impact.veryLow'), color: '#28a745' },
-    { valor: 2, etiqueta: t('riskMatrix.impact.low'), color: '#6c757d' },
-    { valor: 3, etiqueta: t('riskMatrix.impact.medium'), color: '#ffc107' },
-    { valor: 4, etiqueta: t('riskMatrix.impact.high'), color: '#fd7e14' },
-    { valor: 5, etiqueta: t('riskMatrix.impact.veryHigh'), color: '#dc3545' }
-  ];
-
   const calcularNivelRiesgo = (prob, imp) => {
     const multiplicacion = prob * imp;
     if (multiplicacion <= 4) return { nivel: 'Bajo', color: '#28a745' };
@@ -480,6 +472,8 @@ const ValoracionRiesgos = ({
     if (Array.isArray(datosSeguros.excluidosValoracion)) {
       setExcluidosValoracion(new Set(datosSeguros.excluidosValoracion));
     }
+  // La hidratación se ejecuta únicamente al montar para no sobrescribir cambios del usuario.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 2) Incorporar riesgos desde Identificación: lista confirmada + borrador del formulario (misma matriz).
@@ -726,26 +720,6 @@ const ValoracionRiesgos = ({
     recalcularProbResidual(riesgoId, parseInt(valor), cont);
   };
 
-  const handleImpactoChange = (riesgoId, valor) => {
-    const nuevoImpacto = { ...impacto, [riesgoId]: parseInt(valor) };
-    setImpacto(nuevoImpacto);
-    const nuevasValoraciones = valoraciones.map(val => 
-      val.id === riesgoId 
-        ? { 
-            ...val, 
-            impacto: parseInt(valor),
-            nivelRiesgo: calcularNivelRiesgo(val.probabilidad, parseInt(valor))
-          }
-        : val
-    );
-    setValoraciones(nuevasValoraciones);
-    emitChangeDebounced({ 
-      ...datos, 
-      impacto: nuevoImpacto, 
-      valoraciones: nuevasValoraciones 
-    });
-  };
-
   const handleImpactoCategoriaChange = (riesgoId, campo, valor) => {
     aplicarImpactosRiesgo(riesgoId, { [campo]: parseInt(valor, 10) });
   };
@@ -837,12 +811,6 @@ const ValoracionRiesgos = ({
     }
   };
 
-  const handleTratamientoChange = (riesgoId, valor) => {
-    const nuevo = { ...tratamiento, [riesgoId]: valor };
-    setTratamiento(nuevo);
-    emitChangeDebounced({ ...datos, tratamiento: nuevo });
-  };
-
   const handleProcesoChange = (riesgoId, valor) => {
     const nuevasValoraciones = valoraciones.map(val => 
       val.id === riesgoId 
@@ -884,10 +852,6 @@ const ValoracionRiesgos = ({
 
   const getProbabilidadInfo = (valor) => {
     return escalaProbabilidad.find(p => p.valor === valor) || escalaProbabilidad[0];
-  };
-
-  const getImpactoInfo = (valor) => {
-    return escalaImpacto.find(i => i.valor === valor) || escalaImpacto[0];
   };
 
   const handleProcesarRiesgos = () => {
@@ -1200,7 +1164,6 @@ const ValoracionRiesgos = ({
             </thead>
             <tbody>
               {valoraciones.map(valoracion => {
-                const nivelRes = calcularNivelRiesgo(valoracion.probResidual || valoracion.probabilidad, (valoracion.impactoResidual || valoracion.sumImpacto));
                 return (
                 <tr
                   key={valoracion.id}

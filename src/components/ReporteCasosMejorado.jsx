@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
@@ -8,7 +8,7 @@ import { getEstados } from '../services/estadosService';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
-import { convertirFechaParaExcelDate, formatearFechaUI } from '../utils/fechaUtils';
+import { formatearFechaUI } from '../utils/fechaUtils';
 import { FaFileExcel, FaSlidersH, FaTable } from 'react-icons/fa';
 import { cargarMapeoFuncionarios, obtenerNombreFuncionarioDesdeCaso } from '../utils/funcionarioMapper';
 import {
@@ -307,6 +307,7 @@ export default function ReporteCasosMejorado() {
   const [casoSubtareaModal, setCasoSubtareaModal] = useState(null);
   const casosPorPagina = 15;
   const filtrosAplicadosRef = useRef(false);
+  const aplicarFiltrosRef = useRef(null);
 
   // Restaurar filtros desde el estado de navegación cuando se reciben
   useEffect(() => {
@@ -329,9 +330,45 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
       // Resetear la referencia cuando no hay filtros en el estado
       filtrosAplicadosRef.current = false;
     }
-  }, [location.state, navigate]);
+  }, [location.pathname, location.state, navigate]);
 
   // Cargar casos y datos auxiliares al montar el componente
+  const cargarCasos = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Cargar casos de ambas fuentes
+      const [siniestrosData, complexData] = await Promise.allSettled([
+        getSiniestrosEnriquecidos(),
+        obtenerCasosComplex()
+      ]);
+
+      const siniestros = siniestrosData.status === 'fulfilled'
+        ? (Array.isArray(siniestrosData.value) ? siniestrosData.value : [])
+        : [];
+
+      const complex = complexData.status === 'fulfilled'
+        ? (Array.isArray(complexData.value) ? complexData.value : [])
+        : [];
+
+      // Combinar fuentes y eliminar duplicados por _id o número de ajuste
+      const casosFinales = combinarCasosComplex(siniestros, complex).map(sincronizarCamelSnake);
+
+      // Ordenar por fecha de asignación (más recientes primero)
+      casosFinales.sort((a, b) => {
+        const fechaA = new Date(a.fchaAsgncion || a.fecha_asignacion_form || 0);
+        const fechaB = new Date(b.fchaAsgncion || b.fecha_asignacion_form || 0);
+        return fechaB - fechaA;
+      });
+
+      setCasos(casosFinales);
+    } catch (error) {
+      console.error('Error cargando casos:', error);
+      setCasos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     cargarCasos();
     
@@ -385,117 +422,7 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
         console.error('Error cargando ciudades:', error);
         setCiudades([]);
       });
-  }, []);
-
-  // Efecto para analizar casos de Zurich cuando se cargan casos y aseguradoras
-  useEffect(() => {
-    if (casos.length > 0 && aseguradoras.length > 0) {
-      // Buscar el código de Zurich en la lista de aseguradoras
-      const zurichAseguradora = aseguradoras.find(a => {
-        const nombre = String(a.rzonSocial || '').toLowerCase();
-        return nombre.includes('zurich');
-      });
-      
-      if (zurichAseguradora) {
-        const codigoZurich = String(zurichAseguradora.codiAsgrdra || zurichAseguradora.cod1Asgrdra || '').trim();
-// Contar casos de Zurich
-        const casosZurich = casos.filter(caso => {
-          const codigo = String(caso.codiAsgrdra || caso.cod1Asgrdra || '').trim();
-          return codigo === codigoZurich;
-        });
-// Contar casos de Zurich por año
-        const zurichPorAno = {};
-        casosZurich.forEach(caso => {
-          const fecha = caso.fchaAsgncion || caso.fecha_asignacion_form || caso.createdAt;
-          if (fecha) {
-            try {
-              const fechaObj = new Date(fecha);
-              if (!isNaN(fechaObj.getTime())) {
-                const año = fechaObj.getFullYear();
-                zurichPorAno[año] = (zurichPorAno[año] || 0) + 1;
-              }
-            } catch (e) {
-              // Ignorar fechas inválidas
-            }
-          }
-        });
-// Contar casos de Zurich en 2025
-        const zurich2025 = casosZurich.filter(caso => {
-          const fecha = caso.fchaAsgncion || caso.fecha_asignacion_form || caso.createdAt;
-          if (fecha) {
-            try {
-              const fechaObj = new Date(fecha);
-              if (!isNaN(fechaObj.getTime())) {
-                return fechaObj.getFullYear() === 2025;
-              }
-            } catch (e) {
-              // Ignorar fechas inválidas
-            }
-          }
-          return false;
-        });
-} else {
-}
-    }
-  }, [casos, aseguradoras]);
-
-  const cargarCasos = async () => {
-    setLoading(true);
-    try {
-      // Cargar casos de ambas fuentes
-      const [siniestrosData, complexData] = await Promise.allSettled([
-        getSiniestrosEnriquecidos(),
-        obtenerCasosComplex()
-      ]);
-
-      const siniestros = siniestrosData.status === 'fulfilled' 
-        ? (Array.isArray(siniestrosData.value) ? siniestrosData.value : [])
-        : [];
-      
-      const complex = complexData.status === 'fulfilled'
-        ? (Array.isArray(complexData.value) ? complexData.value : [])
-        : [];
-
-      // Combinar fuentes y eliminar duplicados por _id o número de ajuste
-      const casosFinales = combinarCasosComplex(siniestros, complex).map(sincronizarCamelSnake);
-      
-      // Ordenar por fecha de asignación (más recientes primero)
-      casosFinales.sort((a, b) => {
-        const fechaA = new Date(a.fchaAsgncion || a.fecha_asignacion_form || 0);
-        const fechaB = new Date(b.fchaAsgncion || b.fecha_asignacion_form || 0);
-        return fechaB - fechaA;
-      });
-
-// Contar casos por estado para debugging
-      const casosPorEstado = {};
-      casosFinales.forEach(caso => {
-        const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
-        casosPorEstado[estado] = (casosPorEstado[estado] || 0) + 1;
-      });
-// Contar casos por aseguradora para debugging
-      const casosPorAseguradora = {};
-      casosFinales.forEach(caso => {
-        const codigoAseguradora = String(caso.codiAsgrdra || caso.cod1Asgrdra || t(`${UI_RCM}.sin_codigo`)).trim();
-        casosPorAseguradora[codigoAseguradora] = (casosPorAseguradora[codigoAseguradora] || 0) + 1;
-      });
-// Contar casos por año para debugging
-      const casosPorAno = {};
-      casosFinales.forEach(caso => {
-        const fecha = caso.fchaAsgncion || caso.fecha_asignacion_form || caso.createdAt;
-        if (fecha) {
-          const fechaObj = new Date(fecha);
-          const año = fechaObj.getFullYear();
-          casosPorAno[año] = (casosPorAno[año] || 0) + 1;
-        }
-      });
-setCasos(casosFinales);
-    } catch (error) {
-      console.error('Error cargando casos:', error);
-      setCasos([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [cargarCasos]);
 
   // Función para cambiar el orden de la tabla
   const cambiarOrden = (campo) => {
@@ -506,155 +433,13 @@ setCasos(casosFinales);
   };
 
   // Función para aplicar filtros
-  const aplicarFiltros = () => {
+  aplicarFiltrosRef.current = () => {
     if (casos.length === 0) {
       setCasosFiltrados([]);
       return;
     }
     
-    // Debug: mostrar filtros activos
-// Análisis previo de casos de Zurich si hay filtro de aseguradora
-    if (aseguradoraFiltro && aseguradoras.length > 0) {
-      const aseguradoraEncontrada = aseguradoras.find(a => {
-        const cod1 = String(a.codiAsgrdra || '').trim();
-        const cod2 = String(a.cod1Asgrdra || '').trim();
-        return cod1 === String(aseguradoraFiltro).trim() || cod2 === String(aseguradoraFiltro).trim();
-      });
-      
-      if (aseguradoraEncontrada) {
-        const codigosZurich = [
-          String(aseguradoraEncontrada.codiAsgrdra || '').trim(),
-          String(aseguradoraEncontrada.cod1Asgrdra || '').trim()
-        ].filter(c => c !== '');
-        
-// Analizar TODOS los códigos únicos de aseguradora en los casos
-        const todosCodigosUnicos = new Set();
-        casos.forEach(caso => {
-          const cod1 = String(caso.codiAsgrdra || '').trim();
-          const cod2 = String(caso.cod1Asgrdra || '').trim();
-          if (cod1) todosCodigosUnicos.add(cod1);
-          if (cod2) todosCodigosUnicos.add(cod2);
-        });
-        
-// Buscar casos que tengan el nombre de Zurich en cualquier campo
-        const casosConNombreZurich = casos.filter(caso => {
-          const nombreZurich = aseguradoraEncontrada.rzonSocial.toLowerCase();
-          const camposTexto = Object.values(caso).filter(v => 
-            v !== null && v !== undefined && typeof v === 'string'
-          );
-          
-          return camposTexto.some(texto => {
-            const textoLower = texto.toLowerCase();
-            return textoLower.includes('zurich') || 
-                   textoLower.includes('zúrich') ||
-                   textoLower.includes(nombreZurich);
-          });
-        });
-        
-// Contar casos de Zurich antes de filtrar - buscar por AMBOS códigos
-        const casosZurich = casos.filter(caso => {
-          const codigosCaso = [
-            String(caso.codiAsgrdra || '').trim(),
-            String(caso.cod1Asgrdra || '').trim()
-          ].filter(c => c !== '');
-          
-          // Verificar si alguno de los códigos del caso coincide con alguno de los códigos de Zurich
-          const coincide = codigosCaso.some(codCaso => codigosZurich.includes(codCaso));
-          
-          // También verificar comparación numérica si son números
-          if (!coincide) {
-            for (const codCaso of codigosCaso) {
-              for (const codZurich of codigosZurich) {
-                const numCaso = Number(codCaso);
-                const numZurich = Number(codZurich);
-                if (!isNaN(numCaso) && !isNaN(numZurich) && numCaso === numZurich) {
-                  return true;
-                }
-              }
-            }
-          }
-          
-          return coincide;
-        });
-        
-// Analizar códigos únicos encontrados en los casos
-        const codigosUnicosEncontrados = new Set();
-        casosZurich.forEach(caso => {
-          const cod1 = String(caso.codiAsgrdra || '').trim();
-          const cod2 = String(caso.cod1Asgrdra || '').trim();
-          if (cod1) codigosUnicosEncontrados.add(cod1);
-          if (cod2) codigosUnicosEncontrados.add(cod2);
-        });
-// Analizar fechas de casos de Zurich
-        if (fechaDesde || fechaHasta) {
-          const casosZurichConFecha = casosZurich.filter(c => c[campoFechaFiltro]);
-          const casosZurichSinFecha = casosZurich.filter(c => !c[campoFechaFiltro]);
-          
-// Contar casos en el rango de fechas
-          const casosZurichEnRango = casosZurichConFecha.filter(caso => {
-            try {
-              const f = new Date(caso[campoFechaFiltro]);
-              if (isNaN(f.getTime())) return false;
-              
-              const fechaCaso = new Date(f.getFullYear(), f.getMonth(), f.getDate());
-              
-              if (fechaDesde) {
-                const fechaDesdeNormalizada = new Date(fechaDesde);
-                fechaDesdeNormalizada.setHours(0, 0, 0, 0);
-                if (fechaCaso < fechaDesdeNormalizada) return false;
-              }
-              
-              if (fechaHasta) {
-                const fechaHastaNormalizada = new Date(fechaHasta);
-                fechaHastaNormalizada.setHours(23, 59, 59, 999);
-                if (fechaCaso > fechaHastaNormalizada) return false;
-              }
-              
-              return true;
-            } catch (e) {
-              return false;
-            }
-          });
-          
-// Mostrar algunos ejemplos de casos fuera del rango
-          const casosFueraRango = casosZurichConFecha.filter(caso => {
-            try {
-              const f = new Date(caso[campoFechaFiltro]);
-              if (isNaN(f.getTime())) return true;
-              
-              const fechaCaso = new Date(f.getFullYear(), f.getMonth(), f.getDate());
-              
-              if (fechaDesde) {
-                const fechaDesdeNormalizada = new Date(fechaDesde);
-                fechaDesdeNormalizada.setHours(0, 0, 0, 0);
-                if (fechaCaso < fechaDesdeNormalizada) return true;
-              }
-              
-              if (fechaHasta) {
-                const fechaHastaNormalizada = new Date(fechaHasta);
-                fechaHastaNormalizada.setHours(23, 59, 59, 999);
-                if (fechaCaso > fechaHastaNormalizada) return true;
-              }
-              
-              return false;
-            } catch (e) {
-              return true;
-            }
-          });
-}
-      }
-    }
-    
-    // Contador para debugging
-    let contadorInicial = 0;
-    let contadorDespuesTexto = 0;
-    let contadorDespuesFecha = 0;
-    let contadorDespuesEstado = 0;
-    let contadorDespuesResponsable = 0;
-    let contadorDespuesAseguradora = 0;
-    
     const resultados = casos.filter(caso => {
-      contadorInicial++;
       let ok = true;
       const razonesExclusion = [];
       
@@ -689,8 +474,6 @@ setCasos(casosFinales);
           razonesExclusion.push('búsqueda texto');
         }
       }
-      if (ok) contadorDespuesTexto++;
-      
       // Filtro por fechas - buscar en el campo seleccionado y en campos alternativos
       if (fechaDesde || fechaHasta) {
         let fechaCaso = null;
@@ -703,7 +486,7 @@ setCasos(casosFinales);
             if (!isNaN(fechaTemp.getTime())) {
               fechaCaso = new Date(fechaTemp.getFullYear(), fechaTemp.getMonth(), fechaTemp.getDate());
             }
-          } catch (e) {
+          } catch {
             // Ignorar errores
           }
         }
@@ -726,7 +509,7 @@ setCasos(casosFinales);
                   fechaCaso = new Date(fechaTemp.getFullYear(), fechaTemp.getMonth(), fechaTemp.getDate());
                   break; // Usar la primera fecha válida encontrada
                 }
-              } catch (e) {
+              } catch {
                 // Continuar buscando
               }
             }
@@ -758,8 +541,6 @@ setCasos(casosFinales);
           razonesExclusion.push(`sin fecha en ningún campo`);
         }
       }
-      if (ok) contadorDespuesFecha++;
-      
       // Filtro por estado - buscar en todos los campos posibles y por nombre
       if (estadoFiltro && estadoFiltro.trim() !== '') {
         const estadoFiltroStr = String(estadoFiltro).trim();
@@ -823,8 +604,6 @@ setCasos(casosFinales);
           razonesExclusion.push('estado no coincide');
         }
       }
-      if (ok) contadorDespuesEstado++;
-      
       // Filtro por responsable
       if (responsableFiltro && responsableFiltro.trim() !== '') {
         if (
@@ -837,8 +616,6 @@ setCasos(casosFinales);
           razonesExclusion.push('responsable no coincide');
         }
       }
-      if (ok) contadorDespuesResponsable++;
-      
       // Filtro por aseguradora - buscar en todos los campos posibles (código Y nombre)
       if (aseguradoraFiltro && aseguradoraFiltro.trim() !== '') {
         const aseguradoraFiltroStr = String(aseguradoraFiltro).trim();
@@ -957,189 +734,15 @@ setCasos(casosFinales);
           razonesExclusion.push(`aseguradora no coincide`);
         }
       }
-      if (ok) contadorDespuesAseguradora++;
-      
-      // Log detallado para los primeros casos que se excluyen (solo si hay filtros activos)
-      if (!ok && (aseguradoraFiltro || fechaDesde || fechaHasta) && contadorInicial <= 10) {
-}
-      
       return ok;
     });
-    
-    // Log de contadores
-// Análisis directo: casos de Zurich con fechas en 2025
-    if (aseguradoraFiltro && aseguradoras.length > 0) {
-      const aseguradoraEncontrada = aseguradoras.find(a => {
-        const cod1 = String(a.codiAsgrdra || '').trim();
-        const cod2 = String(a.cod1Asgrdra || '').trim();
-        const filtroStr = String(aseguradoraFiltro).trim();
-        return cod1 === filtroStr || cod2 === filtroStr;
-      });
-      
-      if (aseguradoraEncontrada) {
-        const codigosAseg = [
-          String(aseguradoraEncontrada.codiAsgrdra || '').trim(),
-          String(aseguradoraEncontrada.cod1Asgrdra || '').trim()
-        ].filter(c => c !== '');
-        
-        // Buscar TODOS los casos de esta aseguradora manualmente
-        const todosCasosAseguradora = casos.filter(caso => {
-          const codigosCaso = [
-            String(caso.codiAsgrdra || '').trim(),
-            String(caso.cod1Asgrdra || '').trim()
-          ].filter(c => c !== '');
-          
-          // Comparar directamente
-          const coincideDirecto = codigosCaso.some(codCaso => codigosAseg.includes(codCaso));
-          
-          // Comparar numéricamente
-          if (!coincideDirecto) {
-            for (const codCaso of codigosCaso) {
-              for (const codAseg of codigosAseg) {
-                const numCaso = Number(codCaso);
-                const numAseg = Number(codAseg);
-                if (!isNaN(numCaso) && !isNaN(numAseg) && numCaso === numAseg) {
-                  return true;
-                }
-              }
-            }
-          }
-          
-          return coincideDirecto;
-        });
-        
-// Filtrar por fechas en 2025
-        if (fechaDesde || fechaHasta) {
-          const casosConFecha2025 = todosCasosAseguradora.filter(caso => {
-            // Buscar fecha en cualquier campo
-            const camposFecha = [campoFechaFiltro, 'fchaAsgncion', 'fecha_asignacion_form', 'createdAt'];
-            
-            for (const campo of camposFecha) {
-              const valorFecha = caso[campo];
-              if (valorFecha) {
-                try {
-                  const f = new Date(valorFecha);
-                  if (!isNaN(f.getTime())) {
-                    const fechaCaso = new Date(f.getFullYear(), f.getMonth(), f.getDate());
-                    const año = fechaCaso.getFullYear();
-                    
-                    // Verificar rango
-                    if (fechaDesde) {
-                      const fechaDesdeNormalizada = new Date(fechaDesde);
-                      fechaDesdeNormalizada.setHours(0, 0, 0, 0);
-                      if (fechaCaso < fechaDesdeNormalizada) return false;
-                    }
-                    
-                    if (fechaHasta) {
-                      const fechaHastaNormalizada = new Date(fechaHasta);
-                      fechaHastaNormalizada.setHours(23, 59, 59, 999);
-                      if (fechaCaso > fechaHastaNormalizada) return false;
-                    }
-                    
-                    return true; // Tiene fecha válida en el rango
-                  }
-                } catch (e) {
-                  // Continuar buscando
-                }
-              }
-            }
-            
-            return false; // No tiene fecha válida
-          });
-          
-}
-      }
-    }
-    
-    if (aseguradoraFiltro && aseguradoraFiltro.trim() !== '') {
-      const nombreAseg = getNombreAseguradora(aseguradoraFiltro);
-      const aseguradoraEncontrada = aseguradoras.find(a => {
-        const cod1 = String(a.codiAsgrdra || '').trim();
-        const cod2 = String(a.cod1Asgrdra || '').trim();
-        const filtroStr = String(aseguradoraFiltro).trim();
-        return cod1 === filtroStr || cod2 === filtroStr;
-      });
-      if (!aseguradoraEncontrada) {
-        console.warn('⚠️ Aseguradora NO encontrada en lista con código:', aseguradoraFiltro);
-      }
-      
-      if (aseguradoraEncontrada) {
-        const codigosAseg = [
-          String(aseguradoraEncontrada.codiAsgrdra || '').trim(),
-          String(aseguradoraEncontrada.cod1Asgrdra || '').trim()
-        ].filter(c => c !== '');
-        
-        const casosAseguradoraSinFiltros = casos.filter(caso => {
-          const codigosCaso = [
-            String(caso.codiAsgrdra || '').trim(),
-            String(caso.cod1Asgrdra || '').trim()
-          ].filter(c => c !== '');
-          
-          return codigosCaso.some(codCaso => codigosAseg.includes(codCaso));
-        });
-        
-// Contar casos de la aseguradora que pasan el filtro de fechas
-        if (fechaDesde || fechaHasta) {
-          const casosAseguradoraConFechas = casosAseguradoraSinFiltros.filter(caso => {
-            const f = caso[campoFechaFiltro] ? new Date(caso[campoFechaFiltro]) : null;
-            if (!f) return false;
-            
-            const fechaCaso = new Date(f.getFullYear(), f.getMonth(), f.getDate());
-            
-            if (fechaDesde) {
-              const fechaDesdeNormalizada = new Date(fechaDesde);
-              fechaDesdeNormalizada.setHours(0, 0, 0, 0);
-              if (fechaCaso < fechaDesdeNormalizada) return false;
-            }
-            
-            if (fechaHasta) {
-              const fechaHastaNormalizada = new Date(fechaHasta);
-              fechaHastaNormalizada.setHours(23, 59, 59, 999);
-              if (fechaCaso > fechaHastaNormalizada) return false;
-            }
-            
-            return true;
-          });
-          
-// Contar casos sin fecha en el campo seleccionado
-          const casosSinFecha = casosAseguradoraSinFiltros.filter(caso => !caso[campoFechaFiltro]);
-}
-      }
-      
-      const casosPorAseguradora = {};
-      resultados.forEach(caso => {
-        const codigo = String(caso.codiAsgrdra || caso.cod1Asgrdra || t(`${UI_RCM}.sin_codigo`)).trim();
-        casosPorAseguradora[codigo] = (casosPorAseguradora[codigo] || 0) + 1;
-      });
-}
-    
-    // Debug: contar casos por estado después del filtro
-    if (estadoFiltro && estadoFiltro.trim() !== '') {
-      const casosPorEstadoFiltrado = {};
-      resultados.forEach(caso => {
-        const estado = String(caso.codiEstdo || caso.codi_estado || caso.estado || 'Sin estado').trim();
-        casosPorEstadoFiltrado[estado] = (casosPorEstadoFiltrado[estado] || 0) + 1;
-      });
-// Buscar el nombre del estado correspondiente al código
-      const estadoEncontrado = estados.find(e => 
-        String(e.codiEstdo || e.codiEstado || e.codigo || '').trim() === String(estadoFiltro).trim()
-      );
-      if (estadoEncontrado) {
-        const nombreEstado = String(estadoEncontrado.descEstdo || estadoEncontrado.descEstado || estadoEncontrado.descripcion || '').trim();
-// Contar casos que tienen el nombre del estado
-        const casosConNombreEstado = casos.filter(caso => {
-          const estadoCaso = String(caso.codiEstdo || caso.codi_estado || caso.estado || '').trim().toUpperCase();
-          return estadoCaso === nombreEstado.toUpperCase() || estadoCaso.includes(nombreEstado.toUpperCase());
-        });
-}
-    }
     
     setCasosFiltrados(resultados);
   };
 
   // Aplicar filtros automáticamente
   useEffect(() => {
-    aplicarFiltros();
+    aplicarFiltrosRef.current();
   }, [terminoBusqueda, fechaDesde, fechaHasta, campoFechaFiltro, estadoFiltro, responsableFiltro, aseguradoraFiltro, casos, camposVisibles]);
 
   // Ordenar casos filtrados

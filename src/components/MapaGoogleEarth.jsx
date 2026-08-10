@@ -438,7 +438,7 @@ setMap(mapInstance)
       capturarMapa()
     }, delay)
     return () => clearTimeout(timer)
-  }, [forzarCaptura, mapaListo, capturarMapa, apiKey, posicion.lat, posicion.lng])
+}, [forzarCaptura, mapaListo, capturarMapa, apiKey, posicion])
   
   // Callback para Autocomplete
   const onAutocompleteLoad = useCallback((autocompleteInstance) => {

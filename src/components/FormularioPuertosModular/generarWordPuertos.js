@@ -282,7 +282,7 @@ const docContent = [];
       const mes = String(fecha.getMonth() + 1).padStart(2, '0');
       const año = fecha.getFullYear();
       fechaFormateada = `${dia}/${mes}/${año}`;
-    } catch (error) {
+    } catch {
       // Si hay error, usar fecha actual
       const hoy = new Date();
       const dia = String(hoy.getDate()).padStart(2, '0');
@@ -591,9 +591,8 @@ const docContent = [];
       const fechaArribo = new Date(formData.fechaArriboMotonave + 'T00:00:00');
       const dia = fechaArribo.getDate();
       const mes = fechaArribo.toLocaleDateString("es-CO", { month: "long" });
-      const año = fechaArribo.getFullYear();
       fechaArriboTexto = `${dia} de ${mes}`;
-    } catch (error) {
+    } catch {
       fechaArriboTexto = formData.fechaArriboMotonave;
     }
   }
@@ -1082,8 +1081,6 @@ const docContent = [];
             const r = p * s;
             const indice = Math.round((r / 25) * 100);
             const clasificacion = r <= 4 ? "Bajo" : r <= 8 ? "Medio" : r <= 12 ? "Alto" : "Extremo";
-            const colorFondo = r <= 4 ? "90EE90" : r <= 8 ? "FFFF00" : r <= 12 ? "FFA500" : "FF0000";
-
             return new TableRow({
               children: [
                 celdaTexto(riesgo.riesgo || ""),
@@ -1268,7 +1265,7 @@ const docContent = [];
       seccion(L("RECOMENDACIONES", "RECOMMENDATIONS"))
     );
 
-    recomendaciones.forEach((rec, index) => {
+    recomendaciones.forEach((rec) => {
       docContent.push(
         new Paragraph({
           children: [

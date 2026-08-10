@@ -34,7 +34,8 @@ export default function ListaDocumentos() {
   useEffect(() => {
     cargarDocumentos();
     cargarEtiquetas();
-  }, [pagina, busqueda, etiquetaFiltro]);
+    // Los filtros determinan cuándo se actualiza el listado.
+  }, [pagina, busqueda, etiquetaFiltro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cargarDocumentos = async () => {
     try {

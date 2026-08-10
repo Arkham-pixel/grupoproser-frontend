@@ -27,7 +27,7 @@ export function FdmNavTabs({ activePath }) {
                 : 'border border-gray-200 bg-white text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
             }`}
           >
-            <Icon className="text-sm" />
+            {React.createElement(Icon, { className: 'text-sm' })}
             {t(`equidadFdm.nav.${key}`)}
           </Link>
         );

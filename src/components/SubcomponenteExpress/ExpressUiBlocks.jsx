@@ -44,7 +44,6 @@ import {
   expressCardHeader,
   expressDropzoneActive,
   expressDropzoneBase,
-  expressHint,
   expressInput,
   expressLabel,
   expressMetricCard,
@@ -78,7 +77,7 @@ export function ExpressNavTabs({ activePath }) {
                 : 'border border-gray-200 bg-white text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
             }`}
           >
-            <Icon className="text-sm" />
+            {React.createElement(Icon, { className: 'text-sm' })}
             {t(`express.nav.${key}`)}
           </Link>
         );
@@ -332,7 +331,7 @@ export function SeccionAcordeon({ abierto, onToggle, icon: Icon, titulo, subtitu
         }`}
       >
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-red-50 text-fenix-primario dark:bg-red-950/30">
-          <Icon className="text-lg" />
+          {React.createElement(Icon, { className: 'text-lg' })}
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{titulo}</h3>
@@ -625,4 +624,6 @@ export function ExpressListaAnexos({
   );
 }
 
+// Se reexportan por compatibilidad con los consumidores existentes de este módulo.
+// eslint-disable-next-line react-refresh/only-export-components
 export { expressBtnPrimary, expressBtnSecondary, expressBtnGhost };

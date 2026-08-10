@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, Tooltip, XAxis, YAxis } from 'recharts';
 import { getSiniestrosEnriquecidos } from '../services/siniestrosApi';
 import { obtenerCasosComplex } from '../services/complexService';
@@ -425,7 +425,7 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
     cargar();
   }, []);
 
-  const getNombreResponsable = (caso) => {
+  const getNombreResponsable = useCallback((caso) => {
     if (
       caso.nombreResponsable &&
       caso.nombreResponsable !== 'Sin asignar' &&
@@ -448,9 +448,9 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
     );
 
     return responsable?.nmbrRespnsble || responsable?.nombre || String(codigo);
-  };
+  }, [responsables, t]);
 
-  const getNombreCompania = (codigo) => {
+  const getNombreCompania = useCallback((codigo) => {
     if (!codigo) return t('complex.ui.indicadores_protocolo_complex.sin_compania');
     const aseg = aseguradoras.find((a) => {
       const cod1 = a.cod1Asgrdra ? String(a.cod1Asgrdra).trim() : '';
@@ -459,7 +459,7 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
       return cod1 === buscado || codi === buscado;
     });
     return aseg?.rzonSocial || String(codigo);
-  };
+  }, [aseguradoras, t]);
 
   const periodoFiltro = useMemo(
     () => ({ fechaDesde, fechaHasta }),
@@ -485,7 +485,7 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
     }
     return (caso, catalogo) =>
       resolverGrupoAjustador(caso, catalogo, getNombreResponsable);
-  }, [vista, responsables, aseguradoras]);
+  }, [vista, getNombreCompania, getNombreResponsable]);
 
   const filasDesglose = useMemo(
     () =>
@@ -543,7 +543,7 @@ const IndicadoresProtocoloComplex = ({ embedded = false }) => {
         return acc;
       }, {}),
     }),
-    [indicadoresGlobales, cumplimientoGlobales, t]
+    [indicadoresGlobales, cumplimientoGlobales, ETAPAS_DESGLOSE, t]
   );
 
   const etiquetaGrupo =
