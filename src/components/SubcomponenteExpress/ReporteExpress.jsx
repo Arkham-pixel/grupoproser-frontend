@@ -83,6 +83,7 @@ const buildExportRow = (siniestro, { getNombreResponsable, getNombreAseguradora,
     siniestro.ciudadSiniestro ||
     '',
   'Asegurado/Beneficiario': siniestro.aseguradoBeneficiario ?? '',
+  'Correo de notificación': siniestro.correoNotificacion ?? '',
   'Estado del Proceso': getNombreEstado(siniestro.estadoProceso) || siniestro.estadoProceso || '',
   'Observaciones Seguimiento': siniestro.observacionesSeguimiento ?? '',
   'Creado el': formatDateForExcel(siniestro.createdAt),
@@ -119,6 +120,7 @@ const COLUMNAS_CLAVES_EXPRESS = [
   'intermediario',
   'ciudadSiniestro',
   'aseguradoBeneficiario',
+  'correoNotificacion',
   'observacionesSeguimiento',
   'createdAt',
   'updatedAt',
@@ -677,6 +679,8 @@ const ReporteExpress = () => {
         return obtenerNombreCiudad(item.ciudadSiniestro) || item.ciudadSiniestro || '—';
       case 'aseguradoBeneficiario':
         return item.aseguradoBeneficiario || '—';
+      case 'correoNotificacion':
+        return item.correoNotificacion || '—';
       case 'observacionesSeguimiento':
         return item.observacionesSeguimiento || '—';
       case 'createdAt':

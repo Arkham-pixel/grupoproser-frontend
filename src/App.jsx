@@ -36,6 +36,8 @@ import HistorialFormularios from './components/HistorialFormularios';
 import FormularioAjuste from './components/SubcomponenteFormularioAjuste/FormularioAjuste';
 import AlertasComplex from './components/AlertasComplex';
 import IndicadoresAlertasComplex from './components/IndicadoresAlertasComplex';
+import MisAlertasComplex from './components/MisAlertasComplex';
+import HelpCenterPage from './components/HelpCenter/HelpCenterPage';
 import MatrizRiesgoAvanzada from './components/MatrizRiesgoAvanzada';
 import VistaReporteMatriz from './components/MatrizRiesgoAvanzada/VistaReporteMatriz';
 import ListaMatricesRiesgo from './components/ListaMatricesRiesgo';
@@ -73,6 +75,7 @@ import PuertosCasoExportacionMain from './components/PuertosActas/PuertosCasoExp
 import PuertosCasoGranelMain from './components/PuertosActas/PuertosCasoGranelMain';
 import ActaInspeccion from './components/ActaInspeccion';
 import GestionDocumentos from './components/GestionDocumentos/GestionDocumentos';
+import SgSstEvaluacion from './components/SubcomponenteSGSST/SgSstEvaluacion';
 
 import { updateSiniestro } from './services/siniestrosApi';
 import { updateCasoComplex } from './services/complexService';
@@ -81,7 +84,6 @@ import { CasosRiesgoProvider } from './context/CasosRiesgoContext'
 import RequireAuth from './components/RequireAuth'
 import RequireRutaPermitida from './components/RequireRutaPermitida'
 import { esRolVisualizador, esRolPuertos, esRolExterno, rutaInicioPorRol } from './config/roles'
-import sessionManager from './services/sessionManager'
 import PaginaError from './components/PaginaError'
 import DetectorConexion from './components/DetectorConexion'
 import { limpiarSesionLocal } from './utils/limpiarSesionLocal.js'
@@ -304,16 +306,16 @@ navigate(location.pathname, { replace: true, state: {} });
     }
 
     // PRESERVAR descripcionEstado y observacionesPendientes
-    if (resultado.descripcionEstado !== undefined && resultado.descripcionEstado !== null) {
-      resultado.descripcionEstado = resultado.descripcionEstado;
-    } else if (datosIniciales?.descripcionEstado !== undefined && datosIniciales?.descripcionEstado !== null) {
+    if (resultado.descripcionEstado === undefined || resultado.descripcionEstado === null) {
+      if (datosIniciales?.descripcionEstado !== undefined && datosIniciales?.descripcionEstado !== null) {
       resultado.descripcionEstado = datosIniciales.descripcionEstado;
+      }
     }
     
-    if (resultado.observacionesPendientes !== undefined && resultado.observacionesPendientes !== null) {
-      resultado.observacionesPendientes = resultado.observacionesPendientes;
-    } else if (datosIniciales?.observacionesPendientes !== undefined && datosIniciales?.observacionesPendientes !== null) {
+    if (resultado.observacionesPendientes === undefined || resultado.observacionesPendientes === null) {
+      if (datosIniciales?.observacionesPendientes !== undefined && datosIniciales?.observacionesPendientes !== null) {
       resultado.observacionesPendientes = datosIniciales.observacionesPendientes;
+      }
     }
 
     // Preservar control de horas si el payload no trae filas válidas pero el caso ya las tenía
@@ -461,6 +463,7 @@ export default function App() {
           }
         >
           <Route path="inicio" element={<InicioOrRedirectPorRol />} />
+          <Route path="ayuda" element={<HelpCenterPage />} />
           <Route
             path="complex/formulario"
             element={<FormularioCasoComplex onSave={guardarCasoComplex} />}
@@ -491,6 +494,7 @@ export default function App() {
           <Route path="ajuste" element={<FormularioAjuste />} />
           <Route path="ajuste/editar/:id" element={<FormularioAjuste />} />
           <Route path="complex/alertas" element={<AlertasComplex />} />
+          <Route path="complex/mis-alertas" element={<MisAlertasComplex />} />
           <Route path="complex/indicadores-alertas" element={<IndicadoresAlertasComplex />} />
           <Route path="complex/protocolo-tiempos" element={<ProtocoloTiemposComplex />} />
           <Route path="complex/mis-subtareas" element={<MisSubtareasComplex />} />
@@ -552,6 +556,7 @@ export default function App() {
           <Route path="puertos/inspeccion-motorysa" element={<Navigate to="/puertos/actas/inspeccion-motorysa/nueva" replace />} />
           <Route path="puertos/inspeccion-motorysa/editar/:id" element={<Navigate to="/puertos/actas/inspeccion-motorysa/editar/:id" replace />} />
 
+          <Route path="sg-sst" element={<SgSstEvaluacion />} />
           <Route path="historial" element={<HistorialFormularios />} />
           <Route path="siniestros" element={<SiniestrosList />} />
           <Route path="admin/usuarios" element={<AdminUsuarios />} />

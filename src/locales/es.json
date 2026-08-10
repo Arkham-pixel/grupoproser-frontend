@@ -5454,7 +5454,161 @@
       "messages": {
         "saved": "Evaluación guardada.",
         "fileUploaded": "Archivo subido: {{name}}",
-        "packageDownloaded": "Paquete ZIP descargado (resumen + evidencias)."
+        "packageDownloaded": "Paquete ZIP descargado (resumen + evidencias).",
+        "packageDownloadedDetailed": "Paquete descargado: PDF con gráficos, CSV, resumen y evidencias."
+      },
+      "evaluation": {
+        "resolution": "SG-SST · Resolución 0312",
+        "listSubtitle": "Casos por empresa (NIT), evidencias y paquete para ARL.",
+        "statistics": {
+          "cases": "Casos",
+          "openEvaluations": "evaluaciones abiertas",
+          "chapterOne": "Capítulo 1",
+          "chapterOneHint": "≤10 · riesgo I–III",
+          "chaptersTwoThree": "Cap. 2 / 3",
+          "chaptersTwoThreeHint": "mediana y completa",
+          "uploadedEvidence": "evidencias cargadas"
+        },
+        "emptyState": {
+          "title": "Aún no hay casos",
+          "description": "Crea el primero con la portada de la empresa y el perfil 0312.",
+          "create": "Crear caso"
+        },
+        "unnamed": "Sin nombre",
+        "caseInfo": "NIT {{nit}} · {{employees}} empleados · Riesgo {{risk}}",
+        "fileCount_one": "{{count}} archivo",
+        "fileCount_other": "{{count}} archivos",
+        "coverTitle": "Portada — Autoevaluación Res. 0312",
+        "coverDescription": "Mismos datos de portada del formato SURA. Con empleados + riesgo el sistema adapta qué ítems debes evaluar (cualquier tamaño de empresa).",
+        "directEmployees": "Trabajadores directos",
+        "indirectEmployees": "Trabajadores indirectos",
+        "city": "Ciudad",
+        "department": "Departamento",
+        "economicSector": "Sector económico",
+        "performedBy": "Realizado por",
+        "position": "Cargo",
+        "continue": "Continuar a estándares mínimos",
+        "levels": {
+          "acceptable": "Aceptable",
+          "acceptableUpper": "ACEPTABLE",
+          "moderatelyAcceptable": "Moderadamente aceptable",
+          "critical": "Crítico",
+          "moderatelyAcceptableUpper": "MODERADAMENTE ACEPTABLE",
+          "criticalUpper": "CRÍTICO"
+        },
+        "caseHeader": {
+          "evaluateItems": "Evaluar {{count}} ítems ({{notApplicable}} N/A auto)",
+          "officialRating": "Calificación oficial 0312 · {{count}} archivos",
+          "package": "Paquete"
+        },
+        "summary": {
+          "title": "Resumen de la evaluación",
+          "totalStandards": "Total de estándares",
+          "article27Form": "Formulario Art. 27",
+          "required": "Exigibles",
+          "forThisCompany": "Para esta empresa",
+          "notApplicable": "No aplica",
+          "bySizeRisk": "Por tamaño / riesgo",
+          "answered": "Respondidos",
+          "requiredCompleted": "Exigibles diligenciados",
+          "pending": "Pendientes",
+          "requiredUnanswered": "Exigibles sin responder",
+          "resolutionNotice": "De acuerdo con la Resolución 0312 de 2019, el número de estándares exigibles depende del tamaño de la empresa y su nivel de riesgo. Los estándares clasificados como «No aplica» no representan incumplimientos y no afectan la calificación oficial.",
+          "officialRating": "Calificación oficial (Res. 0312)",
+          "officialCalculation": "Cálculo idéntico al Excel oficial. No aplica = puntaje del ítem.",
+          "completionProgress": "Progreso de diligenciamiento",
+          "completedStandards": "{{done}} de {{total}} estándares completados",
+          "progressAria": "Avance de diligenciamiento del formulario",
+          "completionDetail": "{{done}} / {{total}} estándares diligenciados · No representa el % de cumplimiento",
+          "pendingTitle": "La evaluación aún tiene estándares pendientes por diligenciar.",
+          "pendingDescription": "El puntaje mostrado corresponde al cálculo oficial de la Resolución 0312 de 2019 para esta empresa, considerando únicamente los estándares que le son exigibles."
+        },
+        "filters": {
+          "completeFormat": "Formato completo",
+          "onlyEvaluate": "Solo a evaluar ({{count}})",
+          "completion": "Diligenciamiento {{done}}/{{total}} · Oficial {{pct}}%"
+        },
+        "navigation": {
+          "previous": "Anterior",
+          "next": "Siguiente",
+          "itemCount": "{{count}} ítems"
+        },
+        "instructions": {
+          "title": "Instrucciones de diligenciamiento",
+          "flow": "Flujo del formato: Portada → Instrucciones → Estándares mínimos → Tabla de valores → Gráficos (cumplimiento oficial y diligenciamiento) → Criterios ARL."
+        },
+        "table": {
+          "title": "Tabla de valores y calificación",
+          "officialCompliance": "Cumplimiento oficial:",
+          "completion": "Diligenciamiento:",
+          "notApplicableNotice": "Los ítems «No aplica» (auto) aportan su valor al puntaje oficial y no son incumplimientos. Los pendientes exigibles valen 0 hasta que responda.",
+          "code": "Código",
+          "item": "Ítem",
+          "value": "Valor",
+          "status": "Estado",
+          "points": "Puntos",
+          "autoNotApplicable": "(auto N/A)",
+          "pending": "Pendiente",
+          "actionByLevel": "Acción según nivel oficial (Res. 0312)",
+          "criticalAction": "Crítico (<60%): plan de mejora inmediato y reporte a ARL en máximo 3 meses.",
+          "moderateAction": "Moderadamente aceptable (60–85%): plan de mejora y reporte a ARL en máximo 6 meses.",
+          "acceptableAction": "Aceptable (>85%): mantener evidencias y mejorar en el plan anual de trabajo.",
+          "pendingNotice": "Aún hay {{count}} estándares exigibles pendientes por diligenciar. El puntaje oficial ya considera los No aplica automáticos conforme a la 0312."
+        },
+        "detail": {
+          "minimumStandards": "Resolución 0312 de 2019 — Estándares mínimos",
+          "instruction": "Marca cumplimiento arriba. Abre el ítem para evidencias, plan y documentos.",
+          "autoNotApplicable": "Auto N/A",
+          "compliant": "Cumple",
+          "close": "Cerrar",
+          "details": "Detalle",
+          "criteria": "Criterio",
+          "verificationMethod": "Modo de verificación",
+          "autoNotApplicableNotice": "No aplica automático según tamaño/riesgo. Suma {{value}} al total.",
+          "responsible": "Responsable",
+          "dueDate": "Fecha (plazo)",
+          "resources": "Recursos",
+          "foundations": "Fundamentos",
+          "documents": "Documentos (valor agregado)",
+          "attach": "Adjuntar"
+        },
+        "charts": {
+          "obtained": "Obtenido",
+          "remaining": "Restante",
+          "officialCompliance": "Cumplimiento oficial SG-SST",
+          "officialResult": "Resultado calculado conforme a la Resolución 0312 de 2019.",
+          "companyEvaluated": "Empresa evaluada",
+          "applicableStandards": "Estándares aplicables",
+          "formProgress": "Progreso del formulario",
+          "completionProgress": "Avance del diligenciamiento",
+          "silhouetteDescription": "Solo estándares exigibles para esta empresa. La silueta se llena de pies a cabeza según respuestas registradas — no usa el porcentaje oficial.",
+          "interpretTitle": "¿Cómo interpretar estos indicadores?",
+          "officialCycle": "Cumplimiento oficial por ciclo PHVA",
+          "standardPerformance": "Desempeño oficial por estándar",
+          "standardPerformanceDescription": "% obtenido sobre el peso de cada estándar (cálculo 0312)",
+          "indicators": {
+            "applicable": "Aplicables",
+            "requiredForCompany": "Exigibles a la empresa",
+            "compliantOrNonCompliant": "Cumple o No cumple",
+            "notCompleted": "Sin diligenciar"
+          },
+          "interpretOfficial": "El Cumplimiento Oficial corresponde a la calificación establecida por la Resolución 0312 de 2019 y considera automáticamente los estándares que no aplican para la empresa según su tamaño y nivel de riesgo.",
+          "interpretProgress": "El Avance del Diligenciamiento muestra únicamente el progreso en el registro de los estándares que sí deben ser evaluados.",
+          "interpretConclusion": "Por esta razón ambos indicadores pueden tener porcentajes diferentes y ambos son correctos."
+        },
+        "criteria": {
+          "title": "Criterios de evaluación",
+          "description": "Los umbrales Crítico / Moderado / Aceptable interpretan el cumplimiento oficial de la Resolución 0312 de 2019 (misma lectura del Excel ARL). No miden el avance de diligenciamiento del formulario.",
+          "levels": "Niveles ARL según % oficial",
+          "interpretTitle": "¿Cómo interpretar estos criterios?",
+          "officialCompliance": "Cumplimiento oficial",
+          "automaticNotApplicable": "Incluye No aplica automáticos · {{obtained}}/{{possible}}",
+          "completionOnlyRequired": "Solo exigibles · no es el % de cumplimiento ARL",
+          "pendingDescription": "La evaluación aún tiene {{pending}} estándares exigibles pendientes por diligenciar. El nivel «{{level}}» corresponde al cálculo oficial 0312 (incluye los {{notApplicable}} No aplica por tamaño y riesgo) y no significa que el formulario esté completo.",
+          "activeLevel": " ← tu nivel oficial",
+          "interpretDescription": "Crítico, Moderadamente aceptable y Aceptable se aplican al porcentaje oficial de la Resolución 0312. Ese porcentaje ya reconoce automáticamente los estándares No aplica según el tamaño de la empresa y su clase de riesgo.",
+          "interpretCompletion": "El avance de diligenciamiento ({{done}}/{{total}}) es otra lectura: solo indica cuánto del formulario exigible ya registró. Por eso puede ver, por ejemplo, Aceptable en lo oficial y aún pendientes por responder — ambas cifras son correctas."
+        }
       },
       "errors": {
         "loadCasesError": "Error al cargar casos",

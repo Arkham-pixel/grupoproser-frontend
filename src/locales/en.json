@@ -5454,7 +5454,161 @@
       "messages": {
         "saved": "Evaluation saved.",
         "fileUploaded": "File uploaded: {{name}}",
-        "packageDownloaded": "ZIP package downloaded (summary + evidence)."
+        "packageDownloaded": "ZIP package downloaded (summary + evidence).",
+        "packageDownloadedDetailed": "Package downloaded: PDF with charts, CSV, summary, and evidence."
+      },
+      "evaluation": {
+        "resolution": "SG-SST · Resolution 0312",
+        "listSubtitle": "Cases by company (Tax ID), evidence, and package for ARL.",
+        "statistics": {
+          "cases": "Cases",
+          "openEvaluations": "open evaluations",
+          "chapterOne": "Chapter 1",
+          "chapterOneHint": "≤10 · risk I–III",
+          "chaptersTwoThree": "Ch. 2 / 3",
+          "chaptersTwoThreeHint": "medium and complete",
+          "uploadedEvidence": "uploaded evidence"
+        },
+        "emptyState": {
+          "title": "There are no cases yet",
+          "description": "Create the first one with the company cover page and the 0312 profile.",
+          "create": "Create case"
+        },
+        "unnamed": "Unnamed",
+        "caseInfo": "Tax ID {{nit}} · {{employees}} employees · Risk {{risk}}",
+        "fileCount_one": "{{count}} file",
+        "fileCount_other": "{{count}} files",
+        "coverTitle": "Cover page — Resolution 0312 self-assessment",
+        "coverDescription": "Same cover-page data as the SURA form. With employees + risk, the system adapts which items you must assess (any company size).",
+        "directEmployees": "Direct employees",
+        "indirectEmployees": "Indirect employees",
+        "city": "City",
+        "department": "Department",
+        "economicSector": "Economic sector",
+        "performedBy": "Performed by",
+        "position": "Position",
+        "continue": "Continue to minimum standards",
+        "levels": {
+          "acceptable": "Acceptable",
+          "acceptableUpper": "ACCEPTABLE",
+          "moderatelyAcceptable": "Moderately acceptable",
+          "critical": "Critical",
+          "moderatelyAcceptableUpper": "MODERATELY ACCEPTABLE",
+          "criticalUpper": "CRITICAL"
+        },
+        "caseHeader": {
+          "evaluateItems": "Assess {{count}} items ({{notApplicable}} automatic N/A)",
+          "officialRating": "Official rating 0312 · {{count}} files",
+          "package": "Package"
+        },
+        "summary": {
+          "title": "Assessment summary",
+          "totalStandards": "Total standards",
+          "article27Form": "Article 27 form",
+          "required": "Required",
+          "forThisCompany": "For this company",
+          "notApplicable": "Not applicable",
+          "bySizeRisk": "By size / risk",
+          "answered": "Answered",
+          "requiredCompleted": "Required completed",
+          "pending": "Pending",
+          "requiredUnanswered": "Required unanswered",
+          "resolutionNotice": "According to Resolution 0312 of 2019, the number of required standards depends on the company's size and risk level. Standards classified as “Not applicable” do not represent non-compliance and do not affect the official rating.",
+          "officialRating": "Official rating (Res. 0312)",
+          "officialCalculation": "Calculation identical to the official spreadsheet. Not applicable = item score.",
+          "completionProgress": "Completion progress",
+          "completedStandards": "{{done}} of {{total}} standards completed",
+          "progressAria": "Form completion progress",
+          "completionDetail": "{{done}} / {{total}} standards completed · Does not represent the compliance %",
+          "pendingTitle": "The assessment still has standards pending completion.",
+          "pendingDescription": "The displayed score corresponds to the official calculation of Resolution 0312 of 2019 for this company, considering only the standards required of it."
+        },
+        "filters": {
+          "completeFormat": "Complete form",
+          "onlyEvaluate": "Assess only ({{count}})",
+          "completion": "Completion {{done}}/{{total}} · Official {{pct}}%"
+        },
+        "navigation": {
+          "previous": "Previous",
+          "next": "Next",
+          "itemCount": "{{count}} items"
+        },
+        "instructions": {
+          "title": "Completion instructions",
+          "flow": "Form flow: Cover page → Instructions → Minimum standards → Values table → Charts (official compliance and completion) → ARL criteria."
+        },
+        "table": {
+          "title": "Values and rating table",
+          "officialCompliance": "Official compliance:",
+          "completion": "Completion:",
+          "notApplicableNotice": "“Not applicable” items (automatic) contribute their value to the official score and are not non-compliances. Pending required items are worth 0 until answered.",
+          "code": "Code",
+          "item": "Item",
+          "value": "Value",
+          "status": "Status",
+          "points": "Points",
+          "autoNotApplicable": "(automatic N/A)",
+          "pending": "Pending",
+          "actionByLevel": "Action by official level (Res. 0312)",
+          "criticalAction": "Critical (<60%): immediate improvement plan and report to ARL within 3 months.",
+          "moderateAction": "Moderately acceptable (60–85%): improvement plan and report to ARL within 6 months.",
+          "acceptableAction": "Acceptable (>85%): keep evidence and improve in the annual work plan.",
+          "pendingNotice": "There are still {{count}} required standards pending completion. The official score already considers automatic Not applicable standards in accordance with 0312."
+        },
+        "detail": {
+          "minimumStandards": "Resolution 0312 of 2019 — Minimum standards",
+          "instruction": "Mark compliance above. Open the item for evidence, plan, and documents.",
+          "autoNotApplicable": "Automatic N/A",
+          "compliant": "Compliant",
+          "close": "Close",
+          "details": "Details",
+          "criteria": "Criteria",
+          "verificationMethod": "Verification method",
+          "autoNotApplicableNotice": "Automatically not applicable according to size/risk. Adds {{value}} to the total.",
+          "responsible": "Responsible",
+          "dueDate": "Due date",
+          "resources": "Resources",
+          "foundations": "Foundations",
+          "documents": "Documents (added value)",
+          "attach": "Attach"
+        },
+        "charts": {
+          "obtained": "Obtained",
+          "remaining": "Remaining",
+          "officialCompliance": "Official SG-SST compliance",
+          "officialResult": "Result calculated in accordance with Resolution 0312 of 2019.",
+          "companyEvaluated": "Company assessed",
+          "applicableStandards": "Applicable standards",
+          "formProgress": "Form progress",
+          "completionProgress": "Completion progress",
+          "silhouetteDescription": "Only standards required of this company. The silhouette fills from feet to head according to recorded responses — it does not use the official percentage.",
+          "interpretTitle": "How should these indicators be interpreted?",
+          "officialCycle": "Official compliance by PHVA cycle",
+          "standardPerformance": "Official performance by standard",
+          "standardPerformanceDescription": "% obtained over each standard's weight (0312 calculation)",
+          "indicators": {
+            "applicable": "Applicable",
+            "requiredForCompany": "Required for the company",
+            "compliantOrNonCompliant": "Compliant or non-compliant",
+            "notCompleted": "Not completed"
+          },
+          "interpretOfficial": "Official Compliance corresponds to the rating established by Resolution 0312 of 2019 and automatically considers standards that do not apply to the company according to its size and risk level.",
+          "interpretProgress": "Completion Progress shows only progress in recording the standards that must be assessed.",
+          "interpretConclusion": "For this reason, both indicators may have different percentages and both are correct."
+        },
+        "criteria": {
+          "title": "Assessment criteria",
+          "description": "Critical / Moderate / Acceptable thresholds interpret official compliance with Resolution 0312 of 2019 (the same reading as the ARL spreadsheet). They do not measure form completion progress.",
+          "levels": "ARL levels by official %",
+          "interpretTitle": "How should these criteria be interpreted?",
+          "officialCompliance": "Official compliance",
+          "automaticNotApplicable": "Includes automatic Not applicable · {{obtained}}/{{possible}}",
+          "completionOnlyRequired": "Required only · it is not the ARL compliance %",
+          "pendingDescription": "The assessment still has {{pending}} required standards pending completion. The “{{level}}” level corresponds to the official 0312 calculation (including {{notApplicable}} Not applicable by size and risk) and does not mean the form is complete.",
+          "activeLevel": " ← your official level",
+          "interpretDescription": "Critical, Moderately acceptable, and Acceptable apply to the official percentage of Resolution 0312. That percentage already automatically recognizes Not applicable standards according to the company's size and risk class.",
+          "interpretCompletion": "Completion progress ({{done}}/{{total}}) is another reading: it only indicates how much of the required form has been recorded. Therefore, you may see, for example, Acceptable officially while there are still items pending response — both figures are correct."
+        }
       },
       "errors": {
         "loadCasesError": "Error loading cases",
