@@ -22,7 +22,6 @@ import {
   riesgoReportRoot,
   riesgoScope,
   riesgoTableWrap,
-  riesgoToolbarRow,
 } from '../SubcomponentesRiesgo/riesgoFenixUi.js';
 import {
   Campo,
@@ -32,6 +31,7 @@ import {
   RiesgoPageHeader,
   SelectFenix,
 } from '../SubcomponentesRiesgo/RiesgoUiBlocks.jsx';
+import { FilterSheet, ResponsiveDataList } from '../responsive';
 import { BASE_URL } from '../../config/apiConfig.js';
 import Select from 'react-select';
 import {
@@ -348,6 +348,7 @@ const ReporteRiesgo = ({ ciudades: ciudadesProp, estados: estadosProp }) => {
   const [ciudadFiltro, setCiudadFiltro] = useState([]);
 
   const [paginaActual, setPaginaActual] = useState(1);
+  const [filtrosSheetOpen, setFiltrosSheetOpen] = useState(false);
   const elementosPorPagina = 10;
   const [modalAbierto, setModalAbierto] = useState(false);
   const [casoParaEditar, setCasoParaEditar] = useState(null);
@@ -1291,14 +1292,16 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
     XLSX.writeFile(workbook, 'reporte_riesgo.xlsx');
   };
 
-  const filtrosAplicados = Boolean(
-    fechaDesde ||
-      fechaHasta ||
-      estadoFiltro.length > 0 ||
-      responsableFiltro.length > 0 ||
-      aseguradoraFiltro.length > 0 ||
-      ciudadFiltro.length > 0
-  );
+  const filtrosAplicadosCount =
+    Number(Boolean(fechaDesde)) +
+    Number(Boolean(fechaHasta)) +
+    estadoFiltro.length +
+    responsableFiltro.length +
+    aseguradoraFiltro.length +
+    ciudadFiltro.length +
+    Number(Boolean(campoBusqueda && terminoBusqueda));
+
+  const filtrosAplicados = filtrosAplicadosCount > 0;
 
   const limpiarFiltros = () => {
     setFechaDesde('');
@@ -1331,76 +1334,109 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
         >
           <RiesgoNavPanel activePath="/riesgos/exportar" />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Campo label={t('risks.dateFrom')}>
-              <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
-            </Campo>
-            <Campo label={t('risks.dateTo')}>
-              <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
-            </Campo>
-          </div>
-        
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Campo label={t('risks.status')}>
-              <Select
-                isMulti
-                options={estadosUnicos}
-                value={estadoFiltro}
-                onChange={(selected) => setEstadoFiltro(selected || [])}
-                placeholder={t('risks.ui.reporte_riesgo.all_statuses')}
-                isClearable
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                styles={selectStyles}
-              />
-            </Campo>
-            <Campo label={t('risks.responsible')}>
-              <Select
-                isMulti
-                options={responsablesUnicos}
-                value={responsableFiltro}
-                onChange={(selected) => setResponsableFiltro(selected || [])}
-                placeholder={t('risks.ui.reporte_riesgo.all_responsibles')}
-                isClearable
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                styles={selectStyles}
-              />
-            </Campo>
-            <Campo label={t('risks.insurer')}>
-              <Select
-                isMulti
-                options={aseguradorasUnicas}
-                value={aseguradoraFiltro}
-                onChange={(selected) => setAseguradoraFiltro(selected || [])}
-                placeholder={t('risks.ui.reporte_riesgo.all_insurers')}
-                isClearable
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                styles={selectStyles}
-              />
-            </Campo>
-            <Campo label={t('risks.city')}>
-              <Select
-                isMulti
-                options={ciudadesUnicas}
-                value={ciudadFiltro}
-                onChange={(selected) => setCiudadFiltro(selected || [])}
-                placeholder={t('risks.ui.reporte_riesgo.all_cities')}
-                isClearable
-                menuPortalTarget={document.body}
-                menuPosition="fixed"
-                styles={selectStyles}
-              />
-            </Campo>
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button type="button" className={riesgoBtnPrimary} onClick={obtenerCasos}>
+              {t('risks.search')}
+            </button>
+            <button type="button" className={riesgoBtnSecondary} onClick={abrirModalColumnas}>
+              {t('risks.configureColumns')}
+            </button>
+            <button type="button" className={riesgoBtnSuccess} onClick={exportarExcel}>
+              {t('risks.exportExcel')}
+            </button>
+            <span className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
+              {t('risks.ui.reporte_riesgo.columnas_count', {
+                shown: camposVisibles.length,
+                total: todasLasColumnas.length,
+              })}
+            </span>
           </div>
 
-          <div className={riesgoFilterDivider}>
-            <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
-              {t('risks.ui.reporte_riesgo.busqueda_acciones')}
-            </p>
-            <div className={riesgoToolbarRow}>
-              <div className="grid min-w-0 flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:max-w-2xl">
+          <FilterSheet
+            open={filtrosSheetOpen}
+            onOpenChange={setFiltrosSheetOpen}
+            title={t('risks.filterTitle')}
+            triggerLabel={t('risks.filterTitle')}
+            activeCount={filtrosAplicadosCount}
+            footer={
+              <button
+                type="button"
+                className={`${riesgoBtnPrimary} min-h-[44px] w-full`}
+                onClick={() => setFiltrosSheetOpen(false)}
+              >
+                {t('common.apply', { defaultValue: 'Aplicar' })}
+              </button>
+            }
+          >
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Campo label={t('risks.dateFrom')}>
+                <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
+              </Campo>
+              <Campo label={t('risks.dateTo')}>
+                <InputFenix type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} />
+              </Campo>
+            </div>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Campo label={t('risks.status')}>
+                <Select
+                  isMulti
+                  options={estadosUnicos}
+                  value={estadoFiltro}
+                  onChange={(selected) => setEstadoFiltro(selected || [])}
+                  placeholder={t('risks.ui.reporte_riesgo.all_statuses')}
+                  isClearable
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={selectStyles}
+                />
+              </Campo>
+              <Campo label={t('risks.responsible')}>
+                <Select
+                  isMulti
+                  options={responsablesUnicos}
+                  value={responsableFiltro}
+                  onChange={(selected) => setResponsableFiltro(selected || [])}
+                  placeholder={t('risks.ui.reporte_riesgo.all_responsibles')}
+                  isClearable
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={selectStyles}
+                />
+              </Campo>
+              <Campo label={t('risks.insurer')}>
+                <Select
+                  isMulti
+                  options={aseguradorasUnicas}
+                  value={aseguradoraFiltro}
+                  onChange={(selected) => setAseguradoraFiltro(selected || [])}
+                  placeholder={t('risks.ui.reporte_riesgo.all_insurers')}
+                  isClearable
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={selectStyles}
+                />
+              </Campo>
+              <Campo label={t('risks.city')}>
+                <Select
+                  isMulti
+                  options={ciudadesUnicas}
+                  value={ciudadFiltro}
+                  onChange={(selected) => setCiudadFiltro(selected || [])}
+                  placeholder={t('risks.ui.reporte_riesgo.all_cities')}
+                  isClearable
+                  menuPortalTarget={document.body}
+                  menuPosition="fixed"
+                  styles={selectStyles}
+                />
+              </Campo>
+            </div>
+
+            <div className={`${riesgoFilterDivider} mt-4`}>
+              <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-200">
+                {t('risks.ui.reporte_riesgo.busqueda_acciones')}
+              </p>
+              <div className="grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
                 <Campo label={t('risks.searchBy')}>
                   <SelectFenix value={campoBusqueda} onChange={(e) => setCampoBusqueda(e.target.value)}>
                     <option value="" disabled>
@@ -1428,25 +1464,8 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
                   />
                 </Campo>
               </div>
-              <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
-                <button type="button" className={riesgoBtnPrimary} onClick={obtenerCasos}>
-                  {t('risks.search')}
-                </button>
-                <button type="button" className={riesgoBtnSecondary} onClick={abrirModalColumnas}>
-                  {t('risks.configureColumns')}
-                </button>
-                <button type="button" className={riesgoBtnSuccess} onClick={exportarExcel}>
-                  {t('risks.exportExcel')}
-                </button>
-                <span className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-400">
-                  {t('risks.ui.reporte_riesgo.columnas_count', {
-                    shown: camposVisibles.length,
-                    total: todasLasColumnas.length,
-                  })}
-                </span>
-              </div>
             </div>
-          </div>
+          </FilterSheet>
 
           {(filtrosAplicados || hayBusqueda) && (
             <div className={`${riesgoFilterActiveBox} mt-4`}>
@@ -1545,6 +1564,10 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
           </div>
         )}
 
+        <ResponsiveDataList
+          items={casosPaginados}
+          emptyLabel={t('risks.ui.reporte_riesgo.sin_registros')}
+          table={
         <div className={`${riesgoTableWrap} w-full overflow-x-auto`}>
         <table className="w-full text-sm" style={{ borderColor: borderColor }}>
           <thead className="sticky top-0 z-10" style={{ backgroundColor: tableHeaderBg }}>
@@ -1593,7 +1616,7 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
               ) : 
               casosPaginados.map((caso, index) => (
                 <tr 
-                  key={index} 
+                  key={caso._id || caso.id_riesgo || index} 
                   className="border-b"
                   style={{
                     backgroundColor: index % 2 === 0 ? tableRowBg : (theme === 'dark' ? '#1F1F1F' : '#F9F9F9'),
@@ -1687,6 +1710,46 @@ const worksheet = XLSX.utils.json_to_sheet(casosOrdenados.map(caso => {
           </tbody>
         </table>
       </div>
+          }
+          renderCard={(caso) => (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-heading font-semibold text-gray-900 dark:text-white">
+                    {caso.nmroAjste || caso.numeroCaso || caso._id || '—'}
+                  </p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    {getEstadoNombre(caso.codiEstdo, estadosProp || estadosLocales)} ·{' '}
+                    {getAseguradoraNombre(caso.codiAsgrdra, aseguradoras)}
+                  </p>
+                </div>
+                <AccionesRiesgoMenu
+                  onInforme={() => handleInforme(caso)}
+                  onEditar={() => handleEdit(caso._id || caso.id_riesgo)}
+                  onEliminar={() => handleDelete(caso._id || caso.id_riesgo)}
+                />
+              </div>
+              <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    {t('risks.responsible')}
+                  </dt>
+                  <dd className="mt-0.5 truncate text-sm text-gray-800 dark:text-gray-200">
+                    {getResponsableNombre(caso.codiIspector || caso.codiRespnsble, responsables)}
+                  </dd>
+                </div>
+                <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                    {t('risks.dateFrom')}
+                  </dt>
+                  <dd className="mt-0.5 truncate text-sm text-gray-800 dark:text-gray-200">
+                    {caso.fchaAsgncion ? new Date(caso.fchaAsgncion).toLocaleDateString() : '—'}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+          )}
+        />
 
 
       {/* Modal de edición */}

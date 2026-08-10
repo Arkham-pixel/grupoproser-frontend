@@ -40,6 +40,7 @@ import {
   complexTableThDivider,
   complexTableWrap,
 } from './SubcomponenteCompex/complexFenixUi.js';
+import { FilterSheet, ResponsiveDataList } from './responsive';
 
 const UI_RCM = 'complex.ui.reporte_casos_mejorado';
 
@@ -305,6 +306,7 @@ export default function ReporteCasosMejorado() {
   const [casosFiltrados, setCasosFiltrados] = useState([]);
   const [paginaActual, setPaginaActual] = useState(1);
   const [casoSubtareaModal, setCasoSubtareaModal] = useState(null);
+  const [filtrosSheetOpen, setFiltrosSheetOpen] = useState(false);
   const casosPorPagina = 15;
   const filtrosAplicadosRef = useRef(false);
   const aplicarFiltrosRef = useRef(null);
@@ -877,6 +879,67 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
     return String(valor);
   };
 
+  const renderCampoCaso = (caso, clave) => {
+    if (clave === 'codiAsgrdra') return getNombreAseguradora(caso.codiAsgrdra);
+    if (clave === 'codiEstdo') return getNombreEstado(caso.codiEstdo);
+    if (clave === 'codiRespnsble') return getNombreResponsable(caso);
+    if (clave === 'nombIntermediario') return getNombreIntermediario(caso);
+    if (clave === 'funcAsgrdra') return getNombreFuncionario(caso);
+    if (clave.includes('fcha') || clave === 'createdAt' || clave === 'updatedAt') {
+      return formatearFechaUI(caso[clave]) || '';
+    }
+    if (
+      clave === 'liquidacionPerdida' ||
+      clave === 'indemnizacion' ||
+      clave === 'salvamentos' ||
+      clave === 'panoramaRiesgos'
+    ) {
+      const valor = caso[clave];
+      if (typeof valor === 'object' && valor !== null) {
+        return Object.values(valor).filter((v) => v).join(', ') || '';
+      }
+      return valor || '';
+    }
+    if (clave === 'ciudadSiniestro') {
+      const ciudadCompleta =
+        caso.descripcionCiudad || caso.nombreCiudad || convertirValorParaRenderizado(caso[clave]);
+      return extraerSoloCiudad(ciudadCompleta);
+    }
+    return convertirValorParaRenderizado(caso[clave]);
+  };
+
+  const filtrosActivosCount = [
+    fechaDesde,
+    fechaHasta,
+    estadoFiltro,
+    responsableFiltro,
+    aseguradoraFiltro,
+    terminoBusqueda,
+  ].filter(Boolean).length;
+
+  const limpiarFiltros = () => {
+    setFechaDesde('');
+    setFechaHasta('');
+    setCampoFechaFiltro('fchaAsgncion');
+    setEstadoFiltro('');
+    setResponsableFiltro('');
+    setAseguradoraFiltro('');
+    setTerminoBusqueda('');
+  };
+
+  const camposCardClaves = [
+    'nmroAjste',
+    'nmroSinstro',
+    'codiEstdo',
+    'codiAsgrdra',
+    'codiRespnsble',
+    'fchaAsgncion',
+    'asgrBenfcro',
+  ];
+  const camposCard = camposCardClaves.map((clave) => ({
+    clave,
+    label: t(`${UI_RCM}.campos.${clave}`, { defaultValue: clave }),
+  }));
 
   const normalizarClaveCaso = (valor) => String(valor || '').trim().toUpperCase().replace(/\s+/g, '');
 
@@ -1675,111 +1738,120 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
                 {t(`${UI_RCM}.filtra_por`)}
               </p>
             </div>
-            <button
-              type="button"
-              className={complexBtnGhost}
-              onClick={() => {
-                setFechaDesde('');
-                setFechaHasta('');
-                setCampoFechaFiltro('fchaAsgncion');
-                setEstadoFiltro('');
-                setResponsableFiltro('');
-                setAseguradoraFiltro('');
-                setTerminoBusqueda('');
-              }}
-            >
-              {t(`${UI_RCM}.limpiar_filtros`)}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={complexBtnSecondary} onClick={abrirPersonalizarColumnas}>
+                <FaSlidersH />
+                {t(`${UI_RCM}.columnas`)}
+              </button>
+              <button type="button" className={complexBtnSecondary} onClick={exportarExcel}>
+                <FaFileExcel />
+                {t(`${UI_RCM}.exportar_excel`)}
+              </button>
+              <button
+                type="button"
+                className={complexBtnGhost}
+                onClick={() => {
+                  setCamposVisiblesClaves(todosLosCampos.map((c) => c.clave));
+                  setModalColumnasOpen(false);
+                }}
+              >
+                {t(`${UI_RCM}.mostrar_todas`)}
+              </button>
+            </div>
           </div>
-        
-        {/* Selector de campo de fecha */}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className={complexLabel}>{t(`${UI_RCM}.campo_de_fecha`)}</label>
-              <select value={campoFechaFiltro} onChange={(e) => setCampoFechaFiltro(e.target.value)} className={complexSelect}>
-                {camposFechaConLabel.map((campo) => (
-                  <option key={campo.clave} value={campo.clave}>
-                    {campo.label}
-                  </option>
-                ))}
-              </select>
+
+          <FilterSheet
+            open={filtrosSheetOpen}
+            onOpenChange={setFiltrosSheetOpen}
+            title={t(`${UI_RCM}.filtros`)}
+            triggerLabel={t(`${UI_RCM}.filtros`)}
+            activeCount={filtrosActivosCount}
+            footer={
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={`${complexBtnGhost} min-h-[44px] flex-1`} onClick={limpiarFiltros}>
+                  {t(`${UI_RCM}.limpiar_filtros`)}
+                </button>
+                <button
+                  type="button"
+                  className={`${complexBtnPrimary} min-h-[44px] flex-1`}
+                  onClick={() => setFiltrosSheetOpen(false)}
+                >
+                  {t(`${UI_RCM}.guardar`, { defaultValue: 'Aplicar' })}
+                </button>
+              </div>
+            }
+          >
+            <div className="mb-3 hidden md:flex md:justify-end">
+              <button type="button" className={complexBtnGhost} onClick={limpiarFiltros}>
+                {t(`${UI_RCM}.limpiar_filtros`)}
+              </button>
             </div>
-            <div>
-              <label className={complexLabel}>{t(`${UI_RCM}.fecha_desde`)}</label>
-              <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className={complexInput} />
-            </div>
-            <div>
-              <label className={complexLabel}>{t(`${UI_RCM}.fecha_hasta`)}</label>
-              <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className={complexInput} />
-            </div>
-            <div>
-              <label className={complexLabel}>{t(`${UI_RCM}.estado`)}</label>
-              <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={complexSelect}>
-                <option value="">{t(`${UI_RCM}.todos`)}</option>
-                {estadosUnicos.map((e, index) => (
-                  <option key={`estado-${e.value}-${index}`} value={e.value}>
-                    {e.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={complexLabel}>{t(`${UI_RCM}.aseguradora`)}</label>
-              <select value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)} className={complexSelect}>
-                <option value="">{t(`${UI_RCM}.todas`)}</option>
-                {aseguradorasUnicas.map((a, index) => (
-                  <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={complexLabel}>{t(`${UI_RCM}.responsable`)}</label>
-              <select value={responsableFiltro} onChange={(e) => setResponsableFiltro(e.target.value)} className={complexSelect}>
-                <option value="">{t(`${UI_RCM}.todos`)}</option>
-                {responsablesUnicos.map((r, index) => (
-                  <option key={`responsable-${r.value}-${index}`} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="lg:col-span-3">
-              <label className={complexLabel}>{t(`${UI_RCM}.buscar`)}</label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label className={complexLabel}>{t(`${UI_RCM}.campo_de_fecha`)}</label>
+                <select value={campoFechaFiltro} onChange={(e) => setCampoFechaFiltro(e.target.value)} className={complexSelect}>
+                  {camposFechaConLabel.map((campo) => (
+                    <option key={campo.clave} value={campo.clave}>
+                      {campo.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={complexLabel}>{t(`${UI_RCM}.fecha_desde`)}</label>
+                <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className={complexInput} />
+              </div>
+              <div>
+                <label className={complexLabel}>{t(`${UI_RCM}.fecha_hasta`)}</label>
+                <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className={complexInput} />
+              </div>
+              <div>
+                <label className={complexLabel}>{t(`${UI_RCM}.estado`)}</label>
+                <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={complexSelect}>
+                  <option value="">{t(`${UI_RCM}.todos`)}</option>
+                  {estadosUnicos.map((e, index) => (
+                    <option key={`estado-${e.value}-${index}`} value={e.value}>
+                      {e.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={complexLabel}>{t(`${UI_RCM}.aseguradora`)}</label>
+                <select value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)} className={complexSelect}>
+                  <option value="">{t(`${UI_RCM}.todas`)}</option>
+                  {aseguradorasUnicas.map((a, index) => (
+                    <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={complexLabel}>{t(`${UI_RCM}.responsable`)}</label>
+                <select value={responsableFiltro} onChange={(e) => setResponsableFiltro(e.target.value)} className={complexSelect}>
+                  <option value="">{t(`${UI_RCM}.todos`)}</option>
+                  {responsablesUnicos.map((r, index) => (
+                    <option key={`responsable-${r.value}-${index}`} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="lg:col-span-3">
+                <label className={complexLabel}>{t(`${UI_RCM}.buscar`)}</label>
                 <input
                   type="text"
                   value={terminoBusqueda}
                   onChange={(e) => setTerminoBusqueda(e.target.value)}
                   placeholder={t(`${UI_RCM}.placeholder_buscar`)}
-                  className={`${complexInput} min-w-0 flex-1`}
+                  className={complexInput}
                 />
-                <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-                  <button type="button" className={complexBtnSecondary} onClick={abrirPersonalizarColumnas}>
-                    <FaSlidersH />
-                    {t(`${UI_RCM}.columnas`)}
-                  </button>
-                  <button type="button" className={complexBtnSecondary} onClick={exportarExcel}>
-                    <FaFileExcel />
-                    {t(`${UI_RCM}.exportar_excel`)}
-                  </button>
-                  <button
-                    type="button"
-                    className={complexBtnGhost}
-                    onClick={() => {
-                      setCamposVisiblesClaves(todosLosCampos.map((c) => c.clave));
-                      setModalColumnasOpen(false);
-                    }}
-                  >
-                    {t(`${UI_RCM}.mostrar_todas`)}
-                  </button>
-                </div>
               </div>
             </div>
-          </div>
+          </FilterSheet>
 
-          {(fechaDesde || fechaHasta || estadoFiltro || responsableFiltro || aseguradoraFiltro || terminoBusqueda) && (
+          {filtrosActivosCount > 0 && (
             <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-800 dark:bg-gray-900/30">
               <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-200">{t(`${UI_RCM}.filtros_activos`)}</p>
               <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
@@ -1846,107 +1918,113 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
         </div>
       )}
 
-        <div className={complexTableWrap}>
-          <div className="overflow-x-auto">
-            <table className={`${complexTableGrid} divide-y divide-gray-200 dark:divide-gray-800`}>
-              <thead className={complexTableHead}>
-                <tr>
-                  <th
-                    scope="col"
-                    className={`${complexTableThDivider} sticky left-0 z-10 bg-gray-50 dark:bg-gray-900/50`}
-                  >
-                    {t(`${UI_RCM}.acciones`)}
-                  </th>
-                  {camposVisibles.map(({ clave, label }) => (
-                    <th
-                      key={clave}
-                      scope="col"
-                      onClick={() => cambiarOrden(clave)}
-                      className={`${complexTableThDivider} cursor-pointer whitespace-nowrap transition hover:text-fenix-primario`}
-                    >
-                      {label} {orden.campo === clave ? (orden.asc ? '↑' : '↓') : ''}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
-                {casosPaginados.length === 0 ? (
-                  <tr>
-                    <td colSpan={camposVisibles.length + 1} className="px-4 py-8 text-center font-body text-sm text-gray-500">
-                      {t(`${UI_RCM}.no_hay_registros`)}
-                    </td>
-                  </tr>
-                ) : (
-                  casosPaginados.map((caso, index) => (
-                    <tr
-                      key={`${caso._id || 'sin-id'}-${caso.nmroAjste || caso.numero_ajuste || index}`}
-                      className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
-                    >
-                      <td
-                        className={`${complexTableTdDivider} sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white dark:bg-[#1A1A1A]`}
+        <ResponsiveDataList
+          items={casosPaginados}
+          emptyLabel={t(`${UI_RCM}.no_hay_registros`)}
+          table={
+            <div className={complexTableWrap}>
+              <div className="overflow-x-auto">
+                <table className={`${complexTableGrid} divide-y divide-gray-200 dark:divide-gray-800`}>
+                  <thead className={complexTableHead}>
+                    <tr>
+                      <th
+                        scope="col"
+                        className={`${complexTableThDivider} sticky left-0 z-10 bg-gray-50 dark:bg-gray-900/50`}
                       >
-                        <AccionesCasoMenu
-                          onAjuste={() => handleCrearAjuste(caso)}
-                          onCatastrofico={() => handleCrearCatastrofico(caso)}
-                          onGestionar={() => handleGestionar(caso)}
-                          onEliminar={() => handleDelete(caso)}
-                          onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
-                          puedeEliminar={esAdminOSoporte}
-                          puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
-                        />
-                      </td>
-                  {camposVisibles.map(({ clave }) => (
-                        <td
+                        {t(`${UI_RCM}.acciones`)}
+                      </th>
+                      {camposVisibles.map(({ clave, label }) => (
+                        <th
                           key={clave}
-                          className={`${complexTableTdDivider} whitespace-nowrap font-body text-sm text-gray-800 dark:text-gray-200`}
+                          scope="col"
+                          onClick={() => cambiarOrden(clave)}
+                          className={`${complexTableThDivider} cursor-pointer whitespace-nowrap transition hover:text-fenix-primario`}
                         >
-                      {(() => {
-                        if (clave === 'codiAsgrdra') {
-                          return getNombreAseguradora(caso.codiAsgrdra);
-                        }
-                        if (clave === 'codiEstdo') {
-                          return getNombreEstado(caso.codiEstdo);
-                        }
-                        if (clave === 'codiRespnsble') {
-                          return getNombreResponsable(caso);
-                        }
-                        if (clave === 'nombIntermediario') {
-                          return getNombreIntermediario(caso);
-                        }
-                        if (clave === 'funcAsgrdra') {
-                          return getNombreFuncionario(caso);
-                        }
-                        if (clave.includes('fcha') || clave === 'createdAt' || clave === 'updatedAt') {
-                          return formatearFechaUI(caso[clave]) || '';
-                        }
-                        if (clave === 'liquidacionPerdida' || clave === 'indemnizacion' || clave === 'salvamentos' || clave === 'panoramaRiesgos') {
-                          const valor = caso[clave];
-                          if (typeof valor === 'object' && valor !== null) {
-                            return Object.values(valor).filter(v => v).join(', ') || '';
-                          }
-                          return valor || '';
-                        }
-                        // Priorizar descripciones cuando estén disponibles
-                        if (clave === 'ciudadSiniestro') {
-                          // Extraer solo la ciudad (sin departamento ni país)
-                          const ciudadCompleta = caso.descripcionCiudad || caso.nombreCiudad || convertirValorParaRenderizado(caso[clave]);
-                          return extraerSoloCiudad(ciudadCompleta);
-                        } else if (clave === 'codiEstdo') {
-                          return getNombreEstado(caso[clave]);
-                        } else if (clave === 'funcAsgrdra') {
-                          return getNombreFuncionario(caso);
-                        }
-                        return convertirValorParaRenderizado(caso[clave]);
-                      })()}
-                    </td>
-                  ))}
+                          {label} {orden.campo === clave ? (orden.asc ? '↑' : '↓') : ''}
+                        </th>
+                      ))}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
+                    {casosPaginados.length === 0 ? (
+                      <tr>
+                        <td colSpan={camposVisibles.length + 1} className="px-4 py-8 text-center font-body text-sm text-gray-500">
+                          {t(`${UI_RCM}.no_hay_registros`)}
+                        </td>
+                      </tr>
+                    ) : (
+                      casosPaginados.map((caso, index) => (
+                        <tr
+                          key={`${caso._id || 'sin-id'}-${caso.nmroAjste || caso.numero_ajuste || index}`}
+                          className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
+                        >
+                          <td
+                            className={`${complexTableTdDivider} sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white dark:bg-[#1A1A1A]`}
+                          >
+                            <AccionesCasoMenu
+                              onAjuste={() => handleCrearAjuste(caso)}
+                              onCatastrofico={() => handleCrearCatastrofico(caso)}
+                              onGestionar={() => handleGestionar(caso)}
+                              onEliminar={() => handleDelete(caso)}
+                              onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
+                              puedeEliminar={esAdminOSoporte}
+                              puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
+                            />
+                          </td>
+                          {camposVisibles.map(({ clave }) => (
+                            <td
+                              key={clave}
+                              className={`${complexTableTdDivider} whitespace-nowrap font-body text-sm text-gray-800 dark:text-gray-200`}
+                            >
+                              {renderCampoCaso(caso, clave)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          }
+          renderCard={(caso) => (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-heading text-base font-semibold text-gray-900 dark:text-white">
+                    {renderCampoCaso(caso, 'nmroAjste') || '—'}
+                  </p>
+                  <p className="mt-0.5 font-body text-xs text-gray-500 dark:text-gray-400">
+                    {renderCampoCaso(caso, 'nmroSinstro') || '—'}
+                  </p>
+                </div>
+                <AccionesCasoMenu
+                  onAjuste={() => handleCrearAjuste(caso)}
+                  onCatastrofico={() => handleCrearCatastrofico(caso)}
+                  onGestionar={() => handleGestionar(caso)}
+                  onEliminar={() => handleDelete(caso)}
+                  onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
+                  puedeEliminar={esAdminOSoporte}
+                  puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
+                />
+              </div>
+              <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {camposCard
+                  .filter((c) => c.clave !== 'nmroAjste' && c.clave !== 'nmroSinstro')
+                  .map(({ clave, label }) => (
+                    <div key={clave} className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        {label}
+                      </dt>
+                      <dd className="mt-0.5 truncate font-body text-sm text-gray-800 dark:text-gray-200">
+                        {renderCampoCaso(caso, clave) || '—'}
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
+            </div>
+          )}
+        />
 
       {/* Controles de paginación */}
       {casosOrdenados.length > 0 && (

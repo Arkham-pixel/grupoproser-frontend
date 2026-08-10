@@ -332,9 +332,9 @@ export default function Inicio() {
   const defaultUser = t('home.ui.defaultUser');
 
   return (
-    <div className="min-h-full bg-[#F5F5F7] p-4 sm:p-6 lg:p-8">
-      <div className="mx-auto max-w-7xl space-y-6 lg:space-y-8">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="min-h-full bg-[#F5F5F7] p-3 sm:p-6 lg:p-8">
+      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6 lg:space-y-8">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
           <div>
             <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
               {t('home.ui.greeting', { name: primerNombre(usuarioActual.nombre, defaultUser) })}
@@ -356,12 +356,12 @@ export default function Inicio() {
         </header>
 
         {/* Accesos directos */}
-        <section className={`${cardDashboard} p-5 sm:p-6`}>
+        <section className={`${cardDashboard} p-4 sm:p-6`}>
           <h2 className={sectionTitle}>
             <FaRocket className="text-fenix-primario" />
             {t('home.ui.quickLinks')}
           </h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3">
             {accesosOrdenados.map((acceso) => {
               const Icon = acceso.icon;
               return (
@@ -369,14 +369,14 @@ export default function Inicio() {
                   key={acceso.key}
                   type="button"
                   onClick={() => handleAccesoDirecto(acceso)}
-                  className="group flex flex-col items-center justify-center rounded-xl border border-gray-100 bg-gray-50/80 p-6 transition hover:border-fenix-primario/40 hover:bg-white hover:shadow-md"
+                  className="group flex min-h-[52px] items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/80 px-4 py-3.5 text-left transition hover:border-fenix-primario/40 hover:bg-white hover:shadow-md active:scale-[0.99] sm:min-h-[120px] sm:flex-col sm:justify-center sm:px-6 sm:py-6 sm:text-center"
                 >
                   <Icon
-                    className={`mb-3 text-3xl transition group-hover:scale-110 ${
+                    className={`shrink-0 text-2xl transition group-hover:scale-110 sm:mb-3 sm:text-3xl ${
                       acceso.accent ? 'text-fenix-primario' : 'text-gray-400 group-hover:text-gray-600'
                     }`}
                   />
-                  <span className="text-center text-sm font-semibold text-gray-800">{t(acceso.labelKey)}</span>
+                  <span className="text-sm font-semibold text-gray-800">{t(acceso.labelKey)}</span>
                 </button>
               );
             })}

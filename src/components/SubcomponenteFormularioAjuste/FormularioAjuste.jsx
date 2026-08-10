@@ -26,6 +26,7 @@ import ChatbotIA from "./ChatbotIA";
 import MapaGoogleEarth from '../MapaGoogleEarth';
 import ModalConfirmacion from '../ModalConfirmacion';
 import DocumentLanguageSelector from '../DocumentLanguageSelector.jsx';
+import { StickyFormActions } from '../responsive';
 import { getIntlLocale } from '../../utils/locale.js';
 
 import Logo from '../../img/Logo.png';
@@ -6762,52 +6763,60 @@ mostrarModalConfirmacion(
               id="ajuste-document-language"
             />
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        </div>
+
+        <StickyFormActions reserveClassName="pb-28" className="mb-8">
+          <div className="grid w-full grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
             <button
+              type="button"
               onClick={generarDocumento}
               disabled={cargando}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
+              className="flex min-h-[44px] items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
               <span className="mr-2">📄</span>
               {cargando ? t('adjustment.ui.common.generating') : t('adjustment.ui.form.generateWord')}
             </button>
 
             <button
+              type="button"
               onClick={handleGuardarFormulario}
               disabled={cargando}
-              className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
+              className="flex min-h-[44px] items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
               <span className="mr-2">💾</span>
               {cargando ? t('adjustment.ui.common.saving') : t('adjustment.ui.common.save')}
             </button>
 
             <button
+              type="button"
               onClick={() => {
 }}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
+              className="flex min-h-[44px] items-center justify-center rounded-lg bg-yellow-600 px-4 py-2 text-white transition-colors hover:bg-yellow-700"
             >
               <span className="mr-2">🧪</span>
               {t('adjustment.ui.form.testSave')}
             </button>
 
             <button
+              type="button"
               onClick={() => navigate('/historial')}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center"
+              className="flex min-h-[44px] items-center justify-center rounded-lg bg-purple-600 px-4 py-2 text-white transition-colors hover:bg-purple-700"
             >
               <span className="mr-2">📚</span>
               {t('adjustment.ui.common.history')}
             </button>
 
             <button
+              type="button"
               onClick={abrirMenuSiguienteFormulario}
               disabled={cargando}
-              className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center disabled:cursor-not-allowed"
+              className="flex min-h-[44px] items-center justify-center rounded-lg bg-gray-600 px-4 py-2 text-white transition-colors hover:bg-gray-700 disabled:cursor-not-allowed disabled:bg-gray-400"
             >
               <span className="mr-2">➡️</span>
               {t('adjustment.ui.form.nextStep')}
             </button>
           </div>
-        </div>
+        </StickyFormActions>
       </div>
 
       {/* Modal de confirmación */}

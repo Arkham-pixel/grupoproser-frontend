@@ -32,6 +32,7 @@ import {
   complexTextarea,
 } from './complexFenixUi.js';
 import FlujoVisitaCoordinacionPanel from './FlujoVisitaCoordinacionPanel.jsx';
+import { ResponsiveDataList } from '../responsive';
 import {
   ESTADO_LABELS,
   SEMAFORO_STYLES,
@@ -886,23 +887,122 @@ export default function MisSubtareasComplex() {
         (() => {
           const lista =
             bandeja === 'completadas' ? data.completadas || [] : data.subtareas || [];
-          if (lista.length === 0) {
-            return (
-              <div className={complexCard}>
-                <p className="text-sm text-gray-500">
-                  {bandeja === 'completadas'
-                    ? t('complex.ui.mis_subtareas_complex.sin_completadas')
-                    : t('complex.ui.mis_subtareas_complex.sin_pendientes')}
+          const emptyLabel =
+            bandeja === 'completadas'
+              ? t('complex.ui.mis_subtareas_complex.sin_completadas')
+              : t('complex.ui.mis_subtareas_complex.sin_pendientes');
+
+          const renderSubtareaMeta = (s) => (
+            <>
+              <p className="mt-1 text-sm text-gray-500">
+                {t('complex.ui.mis_subtareas_complex.caso')}
+                {s.nmroAjste || '—'}
+                {t('complex.ui.mis_subtareas_complex.asigno_2')}{' '}
+                {s.creadoPorNombre || s.creadoPorLogin || '—'}
+                {t('complex.ui.mis_subtareas_complex.limite_2')}{' '}
+                {formatearFechaSubtarea(s.fechaLimite, dateLocale)}
+                {(s.archivos || []).length > 0
+                  ? t('complex.ui.mis_subtareas_complex.archivos_count', {
+                      count: s.archivos.length,
+                    })
+                  : ''}
+                {bandeja === 'completadas' &&
+                (formatearDuracionSubtarea(s) || s.duracionAsignacionTexto)
+                  ? t('complex.ui.mis_subtareas_complex.tiempo_prefix', {
+                      tiempo: formatearDuracionSubtarea(s) || s.duracionAsignacionTexto,
+                    })
+                  : bandeja === 'pendientes' &&
+                      (formatearDuracionSubtarea(s) || s.duracionAsignacionTexto)
+                    ? t('complex.ui.mis_subtareas_complex.en_curso_prefix', {
+                        tiempo: formatearDuracionSubtarea(s) || s.duracionAsignacionTexto,
+                      })
+                    : ''}
+              </p>
+              {bandeja === 'completadas' && s.fechaCompletada && (
+                <p className="mt-0.5 text-xs text-gray-400">
+                  {t('complex.ui.mis_subtareas_complex.cerrada')}
+                  {formatearFechaHoraSubtarea(s.fechaCompletada, dateLocale)}
                 </p>
-              </div>
-            );
-          }
+              )}
+              {bandeja === 'pendientes' && s.motivoReapertura && (
+                <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                  <strong>{t('complex.ui.mis_subtareas_complex.reabierta')}</strong> {s.motivoReapertura}
+                </p>
+              )}
+            </>
+          );
+
+          const accionSubtarea = (s) => (
+            <button
+              type="button"
+              className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover} min-h-[44px]`}
+              onClick={() => abrirSubtarea(s._id, s)}
+            >
+              {bandeja === 'completadas'
+                ? t('complex.ui.mis_subtareas_complex.ver_registro')
+                : t('complex.ui.mis_subtareas_complex.ir_a_subtarea')}
+            </button>
+          );
+
           return (
-            <ul className="space-y-3">
-              {lista.map((s) => {
+            <ResponsiveDataList
+              items={lista}
+              emptyLabel={emptyLabel}
+              table={
+                <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-[#1A1A1A]">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-900/50">
+                      <tr>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                          {t('complex.ui.mis_subtareas_complex.mis_subtareas_complex')}
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                          {t('complex.ui.mis_subtareas_complex.caso')}
+                        </th>
+                        <th className="px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                          {t('complex.ui.mis_subtareas_complex.limite_2')}
+                        </th>
+                        <th className="px-3 py-2.5 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                          {t('common.actions')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {lista.map((s) => {
+                        const estilo = SEMAFORO_STYLES[s.semaforo] || SEMAFORO_STYLES.amarillo;
+                        return (
+                          <tr key={s._id} className="hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
+                            <td className="px-3 py-3">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`h-2.5 w-2.5 rounded-full ${estilo.dot}`} />
+                                <span className="font-heading font-semibold text-gray-900 dark:text-white">
+                                  {s.titulo}
+                                </span>
+                                <span
+                                  className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${estilo.badge}`}
+                                >
+                                  {labelEstado(t, s.estado)}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
+                              {s.nmroAjste || '—'}
+                            </td>
+                            <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-600 dark:text-gray-300">
+                              {formatearFechaSubtarea(s.fechaLimite, dateLocale)}
+                            </td>
+                            <td className="px-3 py-3 text-right">{accionSubtarea(s)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              }
+              renderCard={(s) => {
                 const estilo = SEMAFORO_STYLES[s.semaforo] || SEMAFORO_STYLES.amarillo;
                 return (
-                  <li key={s._id} className={complexCard}>
+                  <div className={complexCard}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -916,50 +1016,14 @@ export default function MisSubtareasComplex() {
                             {labelEstado(t, s.estado)}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-500">{t("complex.ui.mis_subtareas_complex.caso")}{s.nmroAjste || '—'}{t("complex.ui.mis_subtareas_complex.asigno_2")}{' '}
-                          {s.creadoPorNombre || s.creadoPorLogin || '—'}{t("complex.ui.mis_subtareas_complex.limite_2")}{' '}
-                          {formatearFechaSubtarea(s.fechaLimite, dateLocale)}
-                          {(s.archivos || []).length > 0
-                            ? t('complex.ui.mis_subtareas_complex.archivos_count', {
-                                count: s.archivos.length,
-                              })
-                            : ''}
-                          {bandeja === 'completadas' &&
-                          (formatearDuracionSubtarea(s) || s.duracionAsignacionTexto)
-                            ? t('complex.ui.mis_subtareas_complex.tiempo_prefix', {
-                                tiempo: formatearDuracionSubtarea(s) || s.duracionAsignacionTexto,
-                              })
-                            : bandeja === 'pendientes' &&
-                                (formatearDuracionSubtarea(s) || s.duracionAsignacionTexto)
-                              ? t('complex.ui.mis_subtareas_complex.en_curso_prefix', {
-                                  tiempo: formatearDuracionSubtarea(s) || s.duracionAsignacionTexto,
-                                })
-                              : ''}
-                        </p>
-                        {bandeja === 'completadas' && s.fechaCompletada && (
-                          <p className="mt-0.5 text-xs text-gray-400">{t("complex.ui.mis_subtareas_complex.cerrada")}{formatearFechaHoraSubtarea(s.fechaCompletada, dateLocale)}
-                          </p>
-                        )}
-                        {bandeja === 'pendientes' && s.motivoReapertura && (
-                          <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                            <strong>{t("complex.ui.mis_subtareas_complex.reabierta")}</strong> {s.motivoReapertura}
-                          </p>
-                        )}
+                        {renderSubtareaMeta(s)}
                       </div>
-                      <button
-                        type="button"
-                        className={`${complexBtnFormAction} ${complexBtnFormActionSaveHover}`}
-                        onClick={() => abrirSubtarea(s._id, s)}
-                      >
-                        {bandeja === 'completadas'
-                          ? t('complex.ui.mis_subtareas_complex.ver_registro')
-                          : t('complex.ui.mis_subtareas_complex.ir_a_subtarea')}
-                      </button>
+                      {accionSubtarea(s)}
                     </div>
-                  </li>
+                  </div>
                 );
-              })}
-            </ul>
+              }}
+            />
           );
         })()
       )}

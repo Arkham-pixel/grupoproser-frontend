@@ -49,6 +49,7 @@ import {
   displayRecommendationPreview,
 } from '../data/bancoRecomendacionesI18n.js';
 import BotonesHistorial from './BotonesHistorial.jsx';
+import { StickyFormActions } from './responsive';
 import { useHistorialFormulario } from '../hooks/useHistorialFormulario.js';
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
 import { BASE_URL } from '../config/apiConfig.js';
@@ -14623,8 +14624,9 @@ return (
       {/* Botón para generar manual - Separado y destacado */}
       <div className="mb-6 flex justify-center">
         <button
+          type="button"
           onClick={handleGenerarManual}
-          className="px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
+          className="min-h-[44px] px-6 py-3 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90"
           style={{
             backgroundColor: theme === 'dark' ? '#DC2626' : '#EF4444',
             color: '#FFFFFF',
@@ -14636,9 +14638,10 @@ return (
           {generandoManual ? t('inspection.ui.formulario_inspeccion.generatingManual') : t('inspection.ui.formulario_inspeccion.generateManual')}
         </button>
       </div>
-      
-      {/* Botones de historial */}
-      <div className="mb-6">
+    </div>
+
+    <StickyFormActions reserveClassName="pb-28" className="mb-6">
+      <div className="w-full">
         <BotonesHistorial
           onGuardarEnHistorial={handleGuardarEnHistorial}
           onExportar={handleExportar}
@@ -14649,7 +14652,7 @@ return (
           exportando={exportando}
         />
       </div>
-    </div>
+    </StickyFormActions>
     </div>
     </div>
   </div>

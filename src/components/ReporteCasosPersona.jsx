@@ -19,6 +19,7 @@ import {
   complexTableTdDivider,
   complexTableThDivider,
 } from './SubcomponenteCompex/complexFenixUi.js';
+import { FilterSheet, ResponsiveDataList } from './responsive';
 
 const UI_RCP = 'complex.ui.reporte_casos_mejorado';
 
@@ -272,6 +273,7 @@ export default function ReporteCasosPersona() {
   const [casosPorUsuario, setCasosPorUsuario] = useState([]);
   const [paginaActual, setPaginaActual] = useState(1);
   const [casoSubtareaModal, setCasoSubtareaModal] = useState(null);
+  const [filtrosSheetOpen, setFiltrosSheetOpen] = useState(false);
   const casosPorPagina = 10;
   const filtrosAplicadosRef = useRef(false);
 
@@ -765,6 +767,55 @@ return coincide;
     return String(valor);
   };
 
+  const renderCampoCaso = (caso, clave) => {
+    if (clave === 'codiAsgrdra') return getNombreAseguradora(caso.codiAsgrdra);
+    if (clave === 'ciudadSiniestro') {
+      return caso.descripcionCiudad || caso.nombreCiudad || convertirValorParaRenderizado(caso[clave]);
+    }
+    if (clave === 'codiEstdo') return getNombreEstado(caso.codiEstdo);
+    if (clave === 'codiRespnsble') return getNombreResponsable(caso);
+    if (clave === 'nombIntermediario') return getNombreIntermediario(caso);
+    if (clave === 'funcAsgrdra') return getNombreFuncionario(caso);
+    if (clave.includes('fcha') || clave === 'createdAt' || clave === 'updatedAt') {
+      return formatearFechaUI(caso[clave]) || '';
+    }
+    if (
+      clave === 'liquidacionPerdida' ||
+      clave === 'indemnizacion' ||
+      clave === 'salvamentos' ||
+      clave === 'panoramaRiesgos'
+    ) {
+      const valor = caso[clave];
+      if (typeof valor === 'object' && valor !== null) {
+        return Object.values(valor).filter((v) => v).join(', ') || '';
+      }
+      return valor || '';
+    }
+    return convertirValorParaRenderizado(caso[clave]);
+  };
+
+  const filtrosActivosCount = [
+    fechaDesde,
+    fechaHasta,
+    estadoFiltro,
+    aseguradoraFiltro,
+    terminoBusqueda,
+  ].filter(Boolean).length;
+
+  const limpiarFiltros = () => {
+    setFechaDesde('');
+    setFechaHasta('');
+    setCampoFechaFiltro('fchaAsgncion');
+    setEstadoFiltro('');
+    setAseguradoraFiltro('');
+    setTerminoBusqueda('');
+  };
+
+  const camposCardClaves = ['nmroAjste', 'nmroSinstro', 'codiEstdo', 'codiAsgrdra', 'fchaAsgncion', 'asgrBenfcro'];
+  const camposCard = camposCardClaves
+    .map((clave) => todosLosCamposConLabel.find((c) => c.clave === clave) || { clave, label: clave })
+    .filter(Boolean);
+
 
   const normalizarClaveCaso = (valor) => String(valor || '').trim().toUpperCase().replace(/\s+/g, '');
 
@@ -1253,105 +1304,113 @@ return coincide;
 
       {/* Filtros Avanzados */}
         <section className={card}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className={`${title} text-lg`}>{t(`${UI_RCP}.filtros`)}</h2>
               <p className={hint}>{t(`${UI_RCP}.filtra_por`)}</p>
             </div>
-            <button
-              type="button"
-              className={btnNeutral}
-              onClick={() => {
-                setFechaDesde('');
-                setFechaHasta('');
-                setCampoFechaFiltro('fchaAsgncion');
-                setEstadoFiltro('');
-                setAseguradoraFiltro('');
-                setTerminoBusqueda('');
-              }}
-            >
-              {t(`${UI_RCP}.limpiar_filtros`)}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={btnNeutral} onClick={exportarExcel}>
+                Exportar Excel
+              </button>
+              <button type="button" className={btnNeutral} onClick={abrirPersonalizarColumnas}>
+                Columnas
+              </button>
+              <button
+                type="button"
+                className={btnNeutral}
+                onClick={() => {
+                  setCamposVisibles(todosLosCamposConLabel);
+                  setColumnasOrdenadas(todosLosCamposConLabel);
+                  setModalColumnasOpen(false);
+                }}
+              >
+                Mostrar todas
+              </button>
+            </div>
           </div>
-        
-          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <label className={label}>{t(`${UI_RCP}.campo_de_fecha`)}</label>
-              <select value={campoFechaFiltro} onChange={(e) => setCampoFechaFiltro(e.target.value)} className={input}>
-                {camposFechaConLabel.map((campo) => (
-                  <option key={campo.clave} value={campo.clave}>
-                    {campo.label}
-                  </option>
-                ))}
-              </select>
-            </div>
 
-            <div>
-              <label className={label}>{t(`${UI_RCP}.fecha_desde`)}</label>
-              <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className={input} />
+          <FilterSheet
+            open={filtrosSheetOpen}
+            onOpenChange={setFiltrosSheetOpen}
+            title={t(`${UI_RCP}.filtros`)}
+            triggerLabel={t(`${UI_RCP}.filtros`)}
+            activeCount={filtrosActivosCount}
+            footer={
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className={`${btnNeutral} min-h-[44px] flex-1`} onClick={limpiarFiltros}>
+                  {t(`${UI_RCP}.limpiar_filtros`)}
+                </button>
+                <button
+                  type="button"
+                  className={`${btnPrimary} min-h-[44px] flex-1`}
+                  onClick={() => setFiltrosSheetOpen(false)}
+                >
+                  Aplicar
+                </button>
+              </div>
+            }
+          >
+            <div className="mb-3 hidden md:flex md:justify-end">
+              <button type="button" className={btnNeutral} onClick={limpiarFiltros}>
+                {t(`${UI_RCP}.limpiar_filtros`)}
+              </button>
             </div>
-            <div>
-              <label className={label}>{t(`${UI_RCP}.fecha_hasta`)}</label>
-              <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className={input} />
-            </div>
-        
-            <div>
-              <label className={label}>{t(`${UI_RCP}.estado`)}</label>
-              <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={input}>
-                <option value="">Todos</option>
-                {estadosUnicos.map((e, index) => (
-                  <option key={`estado-${e.value}-${index}`} value={e.value}>
-                    {e.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={label}>Aseguradora</label>
-              <select value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)} className={input}>
-                <option value="">Todas</option>
-                {aseguradorasUnicas.map((a, index) => (
-                  <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-        
-            <div className="lg:col-span-3">
-              <label className={label}>Buscar</label>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label className={label}>{t(`${UI_RCP}.campo_de_fecha`)}</label>
+                <select value={campoFechaFiltro} onChange={(e) => setCampoFechaFiltro(e.target.value)} className={input}>
+                  {camposFechaConLabel.map((campo) => (
+                    <option key={campo.clave} value={campo.clave}>
+                      {campo.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={label}>{t(`${UI_RCP}.fecha_desde`)}</label>
+                <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className={input} />
+              </div>
+              <div>
+                <label className={label}>{t(`${UI_RCP}.fecha_hasta`)}</label>
+                <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className={input} />
+              </div>
+              <div>
+                <label className={label}>{t(`${UI_RCP}.estado`)}</label>
+                <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value)} className={input}>
+                  <option value="">Todos</option>
+                  {estadosUnicos.map((e, index) => (
+                    <option key={`estado-${e.value}-${index}`} value={e.value}>
+                      {e.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={label}>Aseguradora</label>
+                <select value={aseguradoraFiltro} onChange={(e) => setAseguradoraFiltro(e.target.value)} className={input}>
+                  <option value="">Todas</option>
+                  {aseguradorasUnicas.map((a, index) => (
+                    <option key={`aseguradora-${a.value}-${index}`} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="lg:col-span-3">
+                <label className={label}>Buscar</label>
                 <input
                   type="text"
                   value={terminoBusqueda}
                   onChange={(e) => setTerminoBusqueda(e.target.value)}
                   placeholder={t(`${UI_RCP}.placeholder_buscar`)}
-                  className={`${input} min-w-0 flex-1`}
+                  className={input}
                 />
-                <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
-                  <button type="button" className={btnNeutral} onClick={exportarExcel}>
-                    Exportar Excel
-                  </button>
-                  <button type="button" className={btnNeutral} onClick={abrirPersonalizarColumnas}>
-                    Columnas
-                  </button>
-                  <button
-                    type="button"
-                    className={btnNeutral}
-                    onClick={() => {
-                      setCamposVisibles(todosLosCamposConLabel);
-                      setColumnasOrdenadas(todosLosCamposConLabel);
-                      setModalColumnasOpen(false);
-                    }}
-                  >
-                    Mostrar todas
-                  </button>
-                </div>
               </div>
             </div>
-          </div>
-        
-          {(fechaDesde || fechaHasta || estadoFiltro || aseguradoraFiltro || terminoBusqueda) && (
+          </FilterSheet>
+
+          {filtrosActivosCount > 0 && (
             <div className="mt-5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 dark:border-gray-800 dark:bg-gray-900/30">
               <p className="font-body text-xs font-semibold text-gray-700 dark:text-gray-200">
                 Filtros activos
@@ -1432,189 +1491,204 @@ return coincide;
         </div>
       )}
 
-        <section className={`${card} w-full min-w-0 p-0 overflow-hidden`}>
-          <div className="w-full min-w-0 overflow-x-auto">
-            <table className={`${complexTableGrid} divide-y divide-gray-200 dark:divide-gray-800`}>
-              <thead className="bg-gray-50 font-heading text-xs font-semibold uppercase tracking-wide text-gray-700 dark:bg-gray-800 dark:text-gray-200">
-            <tr>
-                  <th scope="col" className={complexTableThDivider}>
-                    Acciones
-                  </th>
-                  {camposVisibles.map(({ clave, label: colLabel }) => (
-                    <th
-                      key={clave}
-                      scope="col"
-                      className={`${complexTableThDivider} cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700/60`}
-                      onClick={() => cambiarOrden(clave)}
-                      title="Ordenar"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        {colLabel}
-                        {orden.campo === clave && (
-                          <span className="text-[11px] text-gray-500 dark:text-gray-300">
-                            {orden.asc ? '↑' : '↓'}
-                          </span>
-                        )}
-                      </span>
-                    </th>
-                  ))}
-            </tr>
-          </thead>
-              <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
-            {casosOrdenados.length === 0 ? (
-              <tr>
-                    <td colSpan={camposVisibles.length + 1} className="px-4 py-10 text-center font-body text-sm text-gray-500 dark:text-gray-400">
-                      No hay registros para mostrar.
-                </td>
-              </tr>
-            ) : (
-              casosPaginados.map((caso, index) => (
-                <tr 
-                  key={caso._id || index} 
-                      className="transition even:bg-gray-50/50 dark:even:bg-gray-900/30 hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                >
-                      <td className={`${complexTableTdDivider} align-top overflow-visible`}>
-                        <AccionesCasoMenu
-                          onAjuste={() => handleCrearAjuste(caso)}
-                          onCatastrofico={() => handleCrearCatastrofico(caso)}
-                          onGestionar={() => handleGestionar(caso)}
-                          onEliminar={() => handleDelete(caso)}
-                          onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
-                          puedeEliminar={esAdminOSoporte}
-                          puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
-                        />
-                  </td>
-                  {camposVisibles.map(({ clave }) => (
-                        <td
+        <ResponsiveDataList
+          items={casosPaginados}
+          emptyLabel="No hay registros para mostrar."
+          table={
+            <section className={`${card} w-full min-w-0 overflow-hidden p-0`}>
+              <div className="w-full min-w-0 overflow-x-auto">
+                <table className={`${complexTableGrid} divide-y divide-gray-200 dark:divide-gray-800`}>
+                  <thead className="bg-gray-50 font-heading text-xs font-semibold uppercase tracking-wide text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                    <tr>
+                      <th scope="col" className={complexTableThDivider}>
+                        Acciones
+                      </th>
+                      {camposVisibles.map(({ clave, label: colLabel }) => (
+                        <th
                           key={clave}
-                          className={`${complexTableTdDivider} whitespace-nowrap font-body text-sm text-gray-800 dark:text-gray-200`}
+                          scope="col"
+                          className={`${complexTableThDivider} cursor-pointer select-none whitespace-nowrap hover:bg-gray-100 dark:hover:bg-gray-700/60`}
+                          onClick={() => cambiarOrden(clave)}
+                          title="Ordenar"
                         >
-                      {(() => {
-                        if (clave === 'codiAsgrdra') {
-                          return getNombreAseguradora(caso.codiAsgrdra);
-                        }
-                        if (clave === 'ciudadSiniestro') {
-                          return caso.descripcionCiudad || caso.nombreCiudad || convertirValorParaRenderizado(caso[clave]);
-                        }
-                        if (clave === 'codiEstdo') {
-                          return getNombreEstado(caso.codiEstdo);
-                        }
-                        if (clave === 'codiRespnsble') {
-                          return getNombreResponsable(caso);
-                        }
-                        if (clave === 'nombIntermediario') {
-                          return getNombreIntermediario(caso);
-                        }
-                        if (clave === 'funcAsgrdra') {
-                          return getNombreFuncionario(caso);
-                        }
-                        if (clave.includes('fcha') || clave === 'createdAt' || clave === 'updatedAt') {
-                          return formatearFechaUI(caso[clave]) || '';
-                        }
-                        if (clave === 'liquidacionPerdida' || clave === 'indemnizacion' || clave === 'salvamentos' || clave === 'panoramaRiesgos') {
-                          const valor = caso[clave];
-                          if (typeof valor === 'object' && valor !== null) {
-                            return Object.values(valor).filter(v => v).join(', ') || '';
-                          }
-                          return valor || '';
-                        }
-                        // Priorizar descripciones cuando estén disponibles
-                        if (clave === 'ciudadSiniestro') {
-                          return caso.descripcionCiudad || caso.nombreCiudad || convertirValorParaRenderizado(caso[clave]);
-                        } else if (clave === 'codiEstdo') {
-                          return getNombreEstado(caso.codiEstdo);
-                        } else if (clave === 'funcAsgrdra') {
-                          return getNombreFuncionario(caso);
-                        }
-                        return convertirValorParaRenderizado(caso[clave]);
-                      })()}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Controles de paginación */}
-      {casosOrdenados.length > 0 && (
-            <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800 sm:flex-row">
-          {/* Información de paginación */}
-                <div className="font-body text-sm text-gray-500 dark:text-gray-400">
-            Mostrando <strong>{indiceInicio + 1}</strong> a <strong>{Math.min(indiceFin, casosOrdenados.length)}</strong> de <strong>{casosOrdenados.length}</strong> casos
-            {totalPaginas > 1 && (
-              <span> (Página <strong>{paginaActual}</strong> de <strong>{totalPaginas}</strong>)</span>
-            )}
-          </div>
-
-          {/* Controles de navegación */}
-          {totalPaginas > 1 && (
-                  <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => irAPagina(1)}
-                disabled={paginaActual === 1}
-                        className={btnNeutral}
-                title={t(`${UI_RCP}.primera_pagina`)}
-              >
-                ««
-              </button>
-              <button
-                onClick={() => irAPagina(paginaActual - 1)}
-                disabled={paginaActual === 1}
-                        className={btnNeutral}
-                title={t(`${UI_RCP}.pagina_anterior`)}
-              >
-                « Anterior
-              </button>
-
-              {/* Números de página */}
-              <div className="flex gap-1">
-                {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
-                  let paginaNum;
-                  if (totalPaginas <= 5) {
-                    paginaNum = i + 1;
-                  } else if (paginaActual <= 3) {
-                    paginaNum = i + 1;
-                  } else if (paginaActual >= totalPaginas - 2) {
-                    paginaNum = totalPaginas - 4 + i;
-                  } else {
-                    paginaNum = paginaActual - 2 + i;
-                  }
-
-                  return (
-                    <button
-                      key={paginaNum}
-                      onClick={() => irAPagina(paginaNum)}
-                              className={paginaActual === paginaNum ? btnPrimary : btnNeutral}
-                    >
-                      {paginaNum}
-                    </button>
-                  );
-                })}
+                          <span className="inline-flex items-center gap-2">
+                            {colLabel}
+                            {orden.campo === clave && (
+                              <span className="text-[11px] text-gray-500 dark:text-gray-300">
+                                {orden.asc ? '↑' : '↓'}
+                              </span>
+                            )}
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
+                    {casosOrdenados.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={camposVisibles.length + 1}
+                          className="px-4 py-10 text-center font-body text-sm text-gray-500 dark:text-gray-400"
+                        >
+                          No hay registros para mostrar.
+                        </td>
+                      </tr>
+                    ) : (
+                      casosPaginados.map((caso, index) => (
+                        <tr
+                          key={caso._id || index}
+                          className="transition even:bg-gray-50/50 hover:bg-gray-50 dark:even:bg-gray-900/30 dark:hover:bg-gray-800/50"
+                        >
+                          <td className={`${complexTableTdDivider} align-top overflow-visible`}>
+                            <AccionesCasoMenu
+                              onAjuste={() => handleCrearAjuste(caso)}
+                              onCatastrofico={() => handleCrearCatastrofico(caso)}
+                              onGestionar={() => handleGestionar(caso)}
+                              onEliminar={() => handleDelete(caso)}
+                              onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
+                              puedeEliminar={esAdminOSoporte}
+                              puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
+                            />
+                          </td>
+                          {camposVisibles.map(({ clave }) => (
+                            <td
+                              key={clave}
+                              className={`${complexTableTdDivider} whitespace-nowrap font-body text-sm text-gray-800 dark:text-gray-200`}
+                            >
+                              {renderCampoCaso(caso, clave)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
-
-              <button
-                onClick={() => irAPagina(paginaActual + 1)}
-                disabled={paginaActual === totalPaginas}
-                        className={btnNeutral}
-                title={t(`${UI_RCP}.pagina_siguiente`)}
-              >
-                Siguiente »
-              </button>
-              <button
-                onClick={() => irAPagina(totalPaginas)}
-                disabled={paginaActual === totalPaginas}
-                        className={btnNeutral}
-                title={t(`${UI_RCP}.ultima_pagina`)}
-              >
-                »»
-              </button>
+            </section>
+          }
+          renderCard={(caso) => (
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-heading text-base font-semibold text-gray-900 dark:text-white">
+                    {renderCampoCaso(caso, 'nmroAjste') || '—'}
+                  </p>
+                  <p className="mt-0.5 font-body text-xs text-gray-500 dark:text-gray-400">
+                    {renderCampoCaso(caso, 'nmroSinstro') || '—'}
+                  </p>
+                </div>
+                <AccionesCasoMenu
+                  onAjuste={() => handleCrearAjuste(caso)}
+                  onCatastrofico={() => handleCrearCatastrofico(caso)}
+                  onGestionar={() => handleGestionar(caso)}
+                  onEliminar={() => handleDelete(caso)}
+                  onAsignarSubtarea={() => setCasoSubtareaModal(caso)}
+                  puedeEliminar={esAdminOSoporte}
+                  puedeAsignarSubtarea={puedeGestionarSubtareasFrontend(caso.codiRespnsble)}
+                />
+              </div>
+              <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {camposCard
+                  .filter((c) => c.clave !== 'nmroAjste' && c.clave !== 'nmroSinstro')
+                  .map(({ clave, label: campoLabel }) => (
+                    <div key={clave} className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        {campoLabel}
+                      </dt>
+                      <dd className="mt-0.5 truncate font-body text-sm text-gray-800 dark:text-gray-200">
+                        {renderCampoCaso(caso, clave) || '—'}
+                      </dd>
+                    </div>
+                  ))}
+              </dl>
             </div>
           )}
-        </div>
-      )}
-        </section>
+        />
+
+        {/* Controles de paginación */}
+        {casosOrdenados.length > 0 && (
+          <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-[#1A1A1A] sm:flex-row">
+            <div className="font-body text-sm text-gray-500 dark:text-gray-400">
+              Mostrando <strong>{indiceInicio + 1}</strong> a{' '}
+              <strong>{Math.min(indiceFin, casosOrdenados.length)}</strong> de{' '}
+              <strong>{casosOrdenados.length}</strong> casos
+              {totalPaginas > 1 && (
+                <span>
+                  {' '}
+                  (Página <strong>{paginaActual}</strong> de <strong>{totalPaginas}</strong>)
+                </span>
+              )}
+            </div>
+
+            {totalPaginas > 1 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => irAPagina(1)}
+                  disabled={paginaActual === 1}
+                  className={btnNeutral}
+                  title={t(`${UI_RCP}.primera_pagina`)}
+                >
+                  ««
+                </button>
+                <button
+                  type="button"
+                  onClick={() => irAPagina(paginaActual - 1)}
+                  disabled={paginaActual === 1}
+                  className={btnNeutral}
+                  title={t(`${UI_RCP}.pagina_anterior`)}
+                >
+                  « Anterior
+                </button>
+
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+                    let paginaNum;
+                    if (totalPaginas <= 5) {
+                      paginaNum = i + 1;
+                    } else if (paginaActual <= 3) {
+                      paginaNum = i + 1;
+                    } else if (paginaActual >= totalPaginas - 2) {
+                      paginaNum = totalPaginas - 4 + i;
+                    } else {
+                      paginaNum = paginaActual - 2 + i;
+                    }
+
+                    return (
+                      <button
+                        key={paginaNum}
+                        type="button"
+                        onClick={() => irAPagina(paginaNum)}
+                        className={paginaActual === paginaNum ? btnPrimary : btnNeutral}
+                      >
+                        {paginaNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => irAPagina(paginaActual + 1)}
+                  disabled={paginaActual === totalPaginas}
+                  className={btnNeutral}
+                  title={t(`${UI_RCP}.pagina_siguiente`)}
+                >
+                  Siguiente »
+                </button>
+                <button
+                  type="button"
+                  onClick={() => irAPagina(totalPaginas)}
+                  disabled={paginaActual === totalPaginas}
+                  className={btnNeutral}
+                  title={t(`${UI_RCP}.ultima_pagina`)}
+                >
+                  »»
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <AsignarSubtareaModal

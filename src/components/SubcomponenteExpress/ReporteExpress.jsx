@@ -44,6 +44,7 @@ import {
   InputFenix,
   SelectFenix,
 } from './ExpressUiBlocks.jsx';
+import { FilterSheet, ResponsiveDataList } from '../responsive';
 
 const formatDateForExcel = (value) => convertirFechaParaExcelDate(value);
 const expressReportRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
@@ -204,6 +205,7 @@ const ReporteExpress = () => {
   const [fechaFin, setFechaFin] = useState(filtrosIniciales.fechaFin);
   const [catalogoAmparos, setCatalogoAmparos] = useState([]);
   const [paginaActual, setPaginaActual] = useState(filtrosIniciales.paginaActual);
+  const [filtrosSheetOpen, setFiltrosSheetOpen] = useState(false);
   const [confirmEliminar, setConfirmEliminar] = useState({ open: false, registro: null });
   const [eliminando, setEliminando] = useState(false);
   const [avisoEliminar, setAvisoEliminar] = useState({
@@ -390,15 +392,17 @@ const ReporteExpress = () => {
     ]
   );
 
-  const filtrosActivos = Boolean(
-    busqueda ||
-      filtroResponsable ||
-      filtroEstado ||
-      filtroAseguradora ||
-      filtroAmparo ||
-      fechaInicio ||
-      fechaFin
-  );
+  const filtrosActivosCount = [
+    busqueda,
+    filtroResponsable,
+    filtroEstado,
+    filtroAseguradora,
+    filtroAmparo,
+    fechaInicio,
+    fechaFin,
+  ].filter(Boolean).length;
+
+  const filtrosActivos = filtrosActivosCount > 0;
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -725,62 +729,79 @@ const ReporteExpress = () => {
         />
 
         <ExpressFilterSection title={t('express.report.filters')} showClear={filtrosActivos} onClear={limpiarFiltros}>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Campo label={t('common.search')}>
-              <InputFenix
-                type="text"
-                value={busqueda}
-                onChange={(e) => setBusqueda(e.target.value)}
-                placeholder={t('express.report.searchPlaceholder')}
-              />
-            </Campo>
-            <Campo label={t('express.report.responsible')}>
-              <SelectFenix value={filtroResponsable} onChange={(e) => setFiltroResponsable(e.target.value)}>
-                <option value="">{t('express.report.all')}</option>
-                {responsables.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </SelectFenix>
-            </Campo>
-            <Campo label={t('express.report.status')}>
-              <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-                <option value="">{t('express.report.all')}</option>
-                {estados.map((e) => (
-                  <option key={e.value} value={e.value}>
-                    {e.label}
-                  </option>
-                ))}
-              </SelectFenix>
-            </Campo>
-            <Campo label={t('express.report.insurer')}>
-              <SelectFenix value={filtroAseguradora} onChange={(e) => setFiltroAseguradora(e.target.value)}>
-                <option value="">{t('express.report.all')}</option>
-                {aseguradoras.map((a) => (
-                  <option key={a.value} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </SelectFenix>
-            </Campo>
-            <Campo label={t('express.report.coverage')}>
-              <SelectFenix value={filtroAmparo} onChange={(e) => setFiltroAmparo(e.target.value)}>
-                <option value="">{t('express.report.all')}</option>
-                {amparos.map((a) => (
-                  <option key={a.value} value={a.value}>
-                    {a.label}
-                  </option>
-                ))}
-              </SelectFenix>
-            </Campo>
-            <Campo label={t('express.report.noticeFrom')}>
-              <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
-            </Campo>
-            <Campo label={t('express.report.noticeTo')}>
-              <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
-            </Campo>
-          </div>
+          <FilterSheet
+            open={filtrosSheetOpen}
+            onOpenChange={setFiltrosSheetOpen}
+            title={t('express.report.filters')}
+            triggerLabel={t('express.report.filters')}
+            activeCount={filtrosActivosCount}
+            footer={
+              <button
+                type="button"
+                className={`${expressBtnPrimary} min-h-[44px] w-full`}
+                onClick={() => setFiltrosSheetOpen(false)}
+              >
+                {t('common.apply', { defaultValue: 'Aplicar' })}
+              </button>
+            }
+          >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <Campo label={t('common.search')}>
+                <InputFenix
+                  type="text"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  placeholder={t('express.report.searchPlaceholder')}
+                />
+              </Campo>
+              <Campo label={t('express.report.responsible')}>
+                <SelectFenix value={filtroResponsable} onChange={(e) => setFiltroResponsable(e.target.value)}>
+                  <option value="">{t('express.report.all')}</option>
+                  {responsables.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </SelectFenix>
+              </Campo>
+              <Campo label={t('express.report.status')}>
+                <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+                  <option value="">{t('express.report.all')}</option>
+                  {estados.map((e) => (
+                    <option key={e.value} value={e.value}>
+                      {e.label}
+                    </option>
+                  ))}
+                </SelectFenix>
+              </Campo>
+              <Campo label={t('express.report.insurer')}>
+                <SelectFenix value={filtroAseguradora} onChange={(e) => setFiltroAseguradora(e.target.value)}>
+                  <option value="">{t('express.report.all')}</option>
+                  {aseguradoras.map((a) => (
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </SelectFenix>
+              </Campo>
+              <Campo label={t('express.report.coverage')}>
+                <SelectFenix value={filtroAmparo} onChange={(e) => setFiltroAmparo(e.target.value)}>
+                  <option value="">{t('express.report.all')}</option>
+                  {amparos.map((a) => (
+                    <option key={a.value} value={a.value}>
+                      {a.label}
+                    </option>
+                  ))}
+                </SelectFenix>
+              </Campo>
+              <Campo label={t('express.report.noticeFrom')}>
+                <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+              </Campo>
+              <Campo label={t('express.report.noticeTo')}>
+                <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
+              </Campo>
+            </div>
+          </FilterSheet>
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading
               ? t('common.loading')
@@ -791,7 +812,15 @@ const ReporteExpress = () => {
         </ExpressFilterSection>
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
-          <div className="overflow-x-auto">
+          <ResponsiveDataList
+            items={loading || error ? [] : filtradosPagina}
+            emptyLabel={
+              loading
+                ? t('express.report.loadingClaims')
+                : error || t('express.report.noClaims')
+            }
+            table={
+            <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
@@ -865,6 +894,40 @@ const ReporteExpress = () => {
               </tbody>
             </table>
           </div>
+            }
+            renderCard={(item) => (
+              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-heading font-semibold text-gray-900 dark:text-white">
+                      {obtenerValorCelda(item, 'numeroSiniestro')}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {obtenerValorCelda(item, 'consecutivo')} · {obtenerValorCelda(item, 'estadoProceso')}
+                    </p>
+                  </div>
+                  <AccionesExpressMenu
+                    onGestionar={() => abrirModalEdicion(item)}
+                    onLiquidador={() => navigate(`/express/liquidador?casoId=${item._id}`)}
+                    onEliminar={() => solicitarEliminar(item)}
+                    tieneLiquidador={Boolean(item.liquidador)}
+                  />
+                </div>
+                <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {['aseguradora', 'responsable', 'avisoSiniestro', 'fechaSiniestro'].map((clave) => (
+                    <div key={clave} className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                      <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                        {columnasVisibles.find((c) => c.clave === clave)?.label || clave}
+                      </dt>
+                      <dd className="mt-0.5 truncate text-sm text-gray-800 dark:text-gray-200">
+                        {obtenerValorCelda(item, clave)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
+          />
 
           {!loading && !error && filtrados.length > 0 && totalPaginas > 1 && (
             <div className="flex flex-col items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800 sm:flex-row">

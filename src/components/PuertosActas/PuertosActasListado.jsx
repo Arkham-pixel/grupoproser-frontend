@@ -8,7 +8,6 @@ import {
   FaFileWord,
   FaCamera,
   FaPlus,
-  FaFilter,
   FaSync,
   FaFileExcel,
   FaFileAlt,
@@ -28,6 +27,7 @@ import {
   FILTROS_PUERTOS_VACIOS,
   filtrosParaApi,
 } from './puertosActasTrazabilidad.js';
+import { FilterSheet, ResponsiveDataList } from '../responsive';
 import {
   puertosBtnPrimary,
   puertosBtnSecondary,
@@ -498,20 +498,46 @@ export default function PuertosActasListado() {
         </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setMostrarFiltros((v) => !v)}
-          className={puertosBtnSecondary}
+      <div className="flex flex-wrap items-start gap-2">
+        <FilterSheet
+          open={mostrarFiltros}
+          onOpenChange={setMostrarFiltros}
+          title={t('ports.ui.listado.showFilters')}
+          triggerLabel={t('ports.ui.listado.showFilters')}
+          activeCount={filtrosActivos}
+          className="min-w-0 flex-1 basis-full md:basis-auto"
+          footer={
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={`${puertosBtnSecondary} min-h-[44px] flex-1`} onClick={limpiarFiltros}>
+                {t('ports.ui.common.clear', { defaultValue: 'Limpiar' })}
+              </button>
+              <button
+                type="button"
+                className={`${puertosBtnPrimary} min-h-[44px] flex-1`}
+                onClick={() => {
+                  aplicarFiltros();
+                  setMostrarFiltros(false);
+                }}
+              >
+                {t('ports.ui.common.search', { defaultValue: 'Buscar' })}
+              </button>
+            </div>
+          }
         >
-          <FaFilter />{' '}
-          {mostrarFiltros ? t('ports.ui.listado.hideFilters') : t('ports.ui.listado.showFilters')}
-          {filtrosActivos > 0 && (
-            <span className="rounded-full bg-fenix-primario px-2 py-0.5 text-xs text-white">
-              {filtrosActivos}
-            </span>
-          )}
-        </button>
+          <PuertosActasFiltros
+            filtros={filtros}
+            onChange={setFiltrosActuales}
+            onBuscar={() => {
+              aplicarFiltros();
+              setMostrarFiltros(false);
+            }}
+            onLimpiar={limpiarFiltros}
+            cargando={cargando}
+            total={registros.length}
+            ocultarTipo
+            tituloExtra={t(formatoMeta.labelKey)}
+          />
+        </FilterSheet>
         <button
           type="button"
           onClick={() => cargar(formato, filtrosAplicados)}
@@ -531,117 +557,178 @@ export default function PuertosActasListado() {
         </button>
       </div>
 
-      {mostrarFiltros && (
-        <PuertosActasFiltros
-          filtros={filtros}
-          onChange={setFiltrosActuales}
-          onBuscar={aplicarFiltros}
-          onLimpiar={limpiarFiltros}
-          cargando={cargando}
-          total={registros.length}
-          ocultarTipo
-          tituloExtra={t(formatoMeta.labelKey)}
-        />
-      )}
-
-      <div className={puertosTableWrap}>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead className={puertosTableHead}>
-              <tr>
-                {columnas.map((col) => (
-                  <th
-                    key={col}
-                    className={`px-3 py-2.5 font-semibold ${
-                      col === 'actions' ? 'whitespace-nowrap' : ''
-                    }`}
-                  >
-                    {t(`ports.ui.listado.columns.${col}`)}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {!cargando && registros.length === 0 && (
-                <tr>
-                  <td
-                    colSpan={columnas.length}
-                    className="px-4 py-10 text-center font-body text-gray-500"
-                  >
-                    {t('ports.ui.listado.empty')}
-                  </td>
-                </tr>
-              )}
-              {cargando && (
-                <tr>
-                  <td
-                    colSpan={columnas.length}
-                    className="px-4 py-10 text-center font-body text-gray-500"
-                  >
-                    {t('ports.ui.listado.loading')}
-                  </td>
-                </tr>
-              )}
-              {!cargando &&
-                registros.map((fila, i) => (
-                  <tr
-                    key={`${fila.tipoRegistro}-${fila.id}`}
-                    className={i % 2 === 0 ? puertosTableRowEven : puertosTableRowOdd}
-                  >
-                    <td className="whitespace-nowrap px-2 py-2">
-                      <div className="flex items-center gap-1">
-                        {accionesFila(fila).map(
-                          ({ icon, title, onClick, danger, disabled }) => (
-                            <button
-                              key={title}
-                              type="button"
-                              onClick={onClick}
-                              disabled={disabled}
-                              className={`rounded-lg p-2 transition disabled:cursor-wait disabled:opacity-50 ${
-                                danger
-                                  ? 'text-fenix-primario hover:bg-red-50 dark:hover:bg-red-950/30'
-                                  : 'text-gray-600 hover:bg-gray-100 hover:text-fenix-primario dark:text-gray-300 dark:hover:bg-gray-800'
-                              }`}
-                              title={title}
-                            >
-                              {React.createElement(icon, {
-                                className: disabled ? 'animate-pulse' : '',
-                              })}
-                            </button>
-                          )
-                        )}
-                      </div>
-                    </td>
-                    <td className={`${puertosTableTd} font-medium`}>
-                      {fila.nroReferencia || dash}
-                    </td>
-                    <td className={puertosTableTd}>{fila.tipoInspeccion || dash}</td>
-                    <td className={`${puertosTableTd} notranslate`} translate="no">
-                      {fila.regional || dash}
-                    </td>
-                    <td className={`${puertosTableTd} whitespace-nowrap`}>
-                      {fila.fecha || dash}
-                    </td>
-                    <td className={`${puertosTableTd} notranslate`} translate="no">
-                      {etiquetaCliente(fila)}
-                    </td>
-                    <td className={`${puertosTableTd} notranslate`} translate="no">
-                      {etiquetaAseguradora(fila)}
-                    </td>
-                    <td className={puertosTableTd}>
-                      {fila.mercancia || fila.beneficiario || dash}
-                    </td>
-                    {formato === 'caso_exportacion' || formato === 'caso_granel' ? (
-                      <td className={`${puertosTableTd} whitespace-nowrap text-center`}>
-                        {fila.avance || dash}
-                      </td>
-                    ) : null}
+      <ResponsiveDataList
+        items={cargando ? [] : registros}
+        emptyLabel={cargando ? t('ports.ui.listado.loading') : t('ports.ui.listado.empty')}
+        table={
+          <div className={puertosTableWrap}>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className={puertosTableHead}>
+                  <tr>
+                    {columnas.map((col) => (
+                      <th
+                        key={col}
+                        className={`px-3 py-2.5 font-semibold ${
+                          col === 'actions' ? 'whitespace-nowrap' : ''
+                        }`}
+                      >
+                        {t(`ports.ui.listado.columns.${col}`)}
+                      </th>
+                    ))}
                   </tr>
+                </thead>
+                <tbody>
+                  {!cargando && registros.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={columnas.length}
+                        className="px-4 py-10 text-center font-body text-gray-500"
+                      >
+                        {t('ports.ui.listado.empty')}
+                      </td>
+                    </tr>
+                  )}
+                  {cargando && (
+                    <tr>
+                      <td
+                        colSpan={columnas.length}
+                        className="px-4 py-10 text-center font-body text-gray-500"
+                      >
+                        {t('ports.ui.listado.loading')}
+                      </td>
+                    </tr>
+                  )}
+                  {!cargando &&
+                    registros.map((fila, i) => (
+                      <tr
+                        key={`${fila.tipoRegistro}-${fila.id}`}
+                        className={i % 2 === 0 ? puertosTableRowEven : puertosTableRowOdd}
+                      >
+                        <td className="whitespace-nowrap px-2 py-2">
+                          <div className="flex items-center gap-1">
+                            {accionesFila(fila).map(
+                              ({ icon, title, onClick, danger, disabled }) => (
+                                <button
+                                  key={title}
+                                  type="button"
+                                  onClick={onClick}
+                                  disabled={disabled}
+                                  className={`rounded-lg p-2 transition disabled:cursor-wait disabled:opacity-50 ${
+                                    danger
+                                      ? 'text-fenix-primario hover:bg-red-50 dark:hover:bg-red-950/30'
+                                      : 'text-gray-600 hover:bg-gray-100 hover:text-fenix-primario dark:text-gray-300 dark:hover:bg-gray-800'
+                                  }`}
+                                  title={title}
+                                >
+                                  {React.createElement(icon, {
+                                    className: disabled ? 'animate-pulse' : '',
+                                  })}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </td>
+                        <td className={`${puertosTableTd} font-medium`}>
+                          {fila.nroReferencia || dash}
+                        </td>
+                        <td className={puertosTableTd}>{fila.tipoInspeccion || dash}</td>
+                        <td className={`${puertosTableTd} notranslate`} translate="no">
+                          {fila.regional || dash}
+                        </td>
+                        <td className={`${puertosTableTd} whitespace-nowrap`}>
+                          {fila.fecha || dash}
+                        </td>
+                        <td className={`${puertosTableTd} notranslate`} translate="no">
+                          {etiquetaCliente(fila)}
+                        </td>
+                        <td className={`${puertosTableTd} notranslate`} translate="no">
+                          {etiquetaAseguradora(fila)}
+                        </td>
+                        <td className={puertosTableTd}>
+                          {fila.mercancia || fila.beneficiario || dash}
+                        </td>
+                        {formato === 'caso_exportacion' || formato === 'caso_granel' ? (
+                          <td className={`${puertosTableTd} whitespace-nowrap text-center`}>
+                            {fila.avance || dash}
+                          </td>
+                        ) : null}
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        }
+        renderCard={(fila) => (
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]">
+            <div className="mb-3 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-heading font-semibold text-gray-900 dark:text-white">
+                  {fila.nroReferencia || dash}
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">
+                  {fila.tipoInspeccion || dash} · {fila.fecha || dash}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-1">
+                {accionesFila(fila).map(({ icon, title, onClick, danger, disabled }) => (
+                  <button
+                    key={title}
+                    type="button"
+                    onClick={onClick}
+                    disabled={disabled}
+                    className={`min-h-[44px] min-w-[44px] rounded-lg p-2 transition disabled:cursor-wait disabled:opacity-50 ${
+                      danger
+                        ? 'text-fenix-primario hover:bg-red-50 dark:hover:bg-red-950/30'
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-fenix-primario dark:text-gray-300 dark:hover:bg-gray-800'
+                    }`}
+                    title={title}
+                  >
+                    {React.createElement(icon, {
+                      className: disabled ? 'animate-pulse' : '',
+                    })}
+                  </button>
                 ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+              </div>
+            </div>
+            <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  {t('ports.ui.listado.columns.client')}
+                </dt>
+                <dd className="mt-0.5 truncate text-sm text-gray-800 dark:text-gray-200">
+                  {etiquetaCliente(fila)}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  {t('ports.ui.listado.columns.insurer')}
+                </dt>
+                <dd className="mt-0.5 truncate text-sm text-gray-800 dark:text-gray-200">
+                  {etiquetaAseguradora(fila)}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  {t('ports.ui.listado.columns.regional')}
+                </dt>
+                <dd className="mt-0.5 truncate text-sm text-gray-800 dark:text-gray-200">
+                  {fila.regional || dash}
+                </dd>
+              </div>
+              <div className="rounded-lg bg-gray-50 px-3 py-2 dark:bg-gray-900/40">
+                <dt className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                  {t('ports.ui.listado.columns.beneficiary')}
+                </dt>
+                <dd className="mt-0.5 truncate text-sm text-gray-800 dark:text-gray-200">
+                  {fila.mercancia || fila.beneficiario || dash}
+                </dd>
+              </div>
+            </dl>
+          </div>
+        )}
+      />
     </div>
   );
 }

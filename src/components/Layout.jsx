@@ -57,6 +57,7 @@ import {
   obtenerMisAlertas,
   obtenerResumenAlertas,
 } from '../services/alertasComplexService.js';
+import { useIsMobileShell } from '../hooks/useMediaQuery';
 
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 
@@ -136,7 +137,9 @@ function SessionTimerSidebar({ compact = false }) {
 
 export default function Layout() {
   const { t } = useTranslation();
+  const isMobileShell = useIsMobileShell();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [expandedSection, setExpandedSection] = useState(() => {
     const rol = obtenerRolAlmacenado();
     if (esRolVisualizador(rol)) return 'matrices';
@@ -151,6 +154,9 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+
+  // En shell móvil el menú siempre se muestra expandido (drawer); sin flyouts.
+  const menuCollapsed = isMobileShell ? false : sidebarCollapsed;
 
   const esMatrizRiesgo = location.pathname.includes('/matriz-riesgo-avanzada');
   const contenidoExpandido = esMatrizRiesgo;
@@ -311,6 +317,34 @@ export default function Layout() {
     else if (path.startsWith('/cuenta') || path.startsWith('/micuenta') || path.startsWith('/informacion-completa'))
       setExpandedSection('cuenta');
   }, [location.pathname]);
+
+  // Cerrar drawer al navegar o al pasar a desktop.
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (!isMobileShell) setMobileNavOpen(false);
+  }, [isMobileShell]);
+
+  useEffect(() => {
+    if (!isMobileShell || !mobileNavOpen) return undefined;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isMobileShell, mobileNavOpen]);
+
+  const closeMobileNav = () => setMobileNavOpen(false);
+
+  const handleNavToggle = () => {
+    if (isMobileShell) {
+      setMobileNavOpen((o) => !o);
+    } else {
+      setSidebarCollapsed((c) => !c);
+    }
+  };
 
   useEffect(() => {
     const obtenerFotoUsuario = async () => {
@@ -525,7 +559,12 @@ export default function Layout() {
     const inactiveClasses =
       'text-gray-300 hover:bg-gray-800 hover:text-white';
 
-    if (sidebarCollapsed) {
+    const onItemClick = (item) => {
+      item.onClick?.();
+      closeMobileNav();
+    };
+
+    if (menuCollapsed) {
       return (
         <div className="relative mb-1 flex justify-center">
           <button
@@ -545,10 +584,10 @@ export default function Layout() {
                   key={idx}
                   to={item.path}
                   onClick={() => {
-                    item.onClick?.();
+                    onItemClick(item);
                     setExpandedSection(null);
                   }}
-                  className={`flex items-center gap-3 px-4 py-2 text-sm transition-colors ${
+                  className={`flex min-h-[44px] items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
                     isActive(item.path)
                       ? 'bg-red-600/20 text-red-300'
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
@@ -569,7 +608,8 @@ export default function Layout() {
         {singleItem ? (
           <Link
             to={items[0].path}
-            className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
+            onClick={() => onItemClick(items[0])}
+            className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
               isActive(items[0].path) ? activeClasses : inactiveClasses
             }`}
           >
@@ -581,7 +621,7 @@ export default function Layout() {
             <button
               type="button"
               onClick={() => toggleSection(key)}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
+              className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
                 active && !expanded ? activeClasses : inactiveClasses
               } ${active && expanded ? 'text-red-400' : ''}`}
             >
@@ -601,8 +641,8 @@ export default function Layout() {
                   <Link
                     key={idx}
                     to={item.path}
-                    onClick={() => item.onClick?.()}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                    onClick={() => onItemClick(item)}
+                    className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                       isActive(item.path)
                         ? 'bg-gradient-to-r from-red-600/90 to-red-700/90 text-white'
                         : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
@@ -661,15 +701,29 @@ export default function Layout() {
     <div
       className={`flex ${contenidoExpandido ? 'h-screen min-h-0 overflow-hidden' : 'min-h-screen'} ${mainBg}`}
     >
-      {/* Sidebar oscuro */}
+      {/* Backdrop drawer móvil */}
+      {isMobileShell && mobileNavOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-[45] bg-black/50 lg:hidden"
+          aria-label={t('nav.closeMenu')}
+          onClick={closeMobileNav}
+        />
+      )}
+
+      {/* Sidebar: drawer off-canvas < lg; fijo en flujo lg+ */}
       <aside
-        className={`flex shrink-0 flex-col border-r border-gray-800 bg-[#141414] text-white transition-all duration-300 ${
-          sidebarCollapsed ? 'w-[72px]' : 'w-64 lg:w-72'
+        className={`flex flex-col border-r border-gray-800 bg-[#141414] text-white transition-transform duration-300 lg:transition-[width] ${
+          isMobileShell
+            ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] ${
+                mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
+              }`
+            : `relative shrink-0 ${menuCollapsed ? 'w-[72px]' : 'w-64 lg:w-72'}`
         }`}
       >
         {/* Logo */}
-        <div className={`border-b border-gray-800 px-3 py-4 ${sidebarCollapsed ? 'flex justify-center' : ''}`}>
-          {sidebarCollapsed ? (
+        <div className={`border-b border-gray-800 px-3 py-4 ${menuCollapsed ? 'flex justify-center' : ''}`}>
+          {menuCollapsed ? (
             <button
               type="button"
               onClick={() => setSidebarCollapsed(false)}
@@ -697,22 +751,34 @@ export default function Layout() {
                   <button
                     type="button"
                     onClick={toggleTheme}
-                    className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-800 hover:text-white"
                     title={theme === 'dark' ? t('layout.lightMode') : t('layout.darkMode')}
                   >
                     {theme === 'dark' ? <FaSun className="text-sm" /> : <FaMoon className="text-sm" />}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSidebarCollapsed(true);
-                      setExpandedSection(null);
-                    }}
-                    className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-800 hover:text-white"
-                    title={t('layout.collapseMenu')}
-                  >
-                    <FaChevronLeft className="text-xs" />
-                  </button>
+                  {isMobileShell ? (
+                    <button
+                      type="button"
+                      onClick={closeMobileNav}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-800 hover:text-white"
+                      title={t('nav.closeMenu')}
+                      aria-label={t('nav.closeMenu')}
+                    >
+                      <FaChevronLeft className="text-xs" />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSidebarCollapsed(true);
+                        setExpandedSection(null);
+                      }}
+                      className="flex h-11 w-11 items-center justify-center rounded-lg text-gray-400 transition hover:bg-gray-800 hover:text-white"
+                      title={t('layout.collapseMenu')}
+                    >
+                      <FaChevronLeft className="text-xs" />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -728,7 +794,7 @@ export default function Layout() {
 
         {/* Pie: versión, sesión y logout */}
         <div className="border-t border-gray-800 p-3 space-y-3">
-          {!sidebarCollapsed && (
+          {!menuCollapsed && (
             <div className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/80 px-3 py-2 text-[11px] text-gray-500">
               <FaShieldAlt className="shrink-0 text-fenix-primario" />
               <span className="leading-tight">
@@ -737,9 +803,9 @@ export default function Layout() {
               </span>
             </div>
           )}
-          <SessionTimerSidebar compact={sidebarCollapsed} />
-          {!sidebarCollapsed && <LogoutButton variant="sidebar" />}
-          {sidebarCollapsed && (
+          <SessionTimerSidebar compact={menuCollapsed} />
+          {!menuCollapsed && <LogoutButton variant="sidebar" />}
+          {menuCollapsed && (
             <button
               type="button"
               onClick={() => setSidebarCollapsed(false)}
@@ -756,22 +822,35 @@ export default function Layout() {
       <div className={`flex min-w-0 flex-1 flex-col ${contenidoExpandido ? 'min-h-0' : ''}`}>
         {/* Top bar — estilo dashboard */}
         <header
-          className={`sticky top-0 z-40 flex h-14 items-center justify-between gap-3 border-b px-4 shadow-sm sm:px-6 ${topBarBg}`}
+          className={`sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b px-3 shadow-sm sm:gap-3 sm:px-6 ${topBarBg}`}
         >
-          <button
-            type="button"
-            className="rounded-lg p-2 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            aria-label={t('nav.sideMenu')}
-          >
-            <FaBars className="text-lg" />
-          </button>
-
-          <div className="flex flex-1 items-center justify-end gap-1 sm:gap-2">
-            <LanguageSelector compact />
+          <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
-              className="rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
+              onClick={handleNavToggle}
+              aria-label={t('nav.sideMenu')}
+              aria-expanded={isMobileShell ? mobileNavOpen : !sidebarCollapsed}
+            >
+              <FaBars className="text-lg" />
+            </button>
+            <h1 className="truncate text-sm font-semibold text-gray-800 dark:text-gray-100 lg:hidden">
+              {routeTitles[location.pathname] ||
+                Object.entries(routeTitles).find(
+                  ([route]) =>
+                    location.pathname.startsWith(route) && route !== '/inicio'
+                )?.[1] ||
+                'ARNALD'}
+            </h1>
+          </div>
+
+          <div className="flex flex-1 items-center justify-end gap-0.5 sm:gap-2">
+            <div className="hidden md:block">
+              <LanguageSelector compact />
+            </div>
+            <button
+              type="button"
+              className="hidden h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 sm:flex"
               title={t('layout.searchTasks')}
               aria-label={t('layout.searchTasks')}
               onClick={() => navigate('/inicio', { state: { focusBuscadorTareas: true } })}
@@ -784,7 +863,7 @@ export default function Layout() {
                 <button
                   type="button"
                   onClick={() => navigate('/complex/mis-subtareas')}
-                  className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
+                  className="relative flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
                   title={t('nav.myComplexTasks')}
                 >
                   <FaTasks className="text-lg" />
@@ -803,7 +882,7 @@ export default function Layout() {
                         : '/complex/mis-alertas'
                     )
                   }
-                  className="relative rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario"
+                  className="relative flex h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-fenix-primario dark:hover:bg-gray-800"
                   title={esAdminOSoporte ? t('nav.alertSystem') : t('nav.myAlerts')}
                 >
                   <FaBell className="text-lg" />
@@ -818,7 +897,7 @@ export default function Layout() {
 
             <button
               type="button"
-              className="hidden rounded-lg p-2.5 text-gray-500 transition hover:bg-gray-100 sm:block"
+              className="hidden h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 md:flex"
               title={t('layout.openHelp')}
               aria-label={t('layout.openHelp')}
               onClick={() => navigate('/ayuda')}
@@ -826,11 +905,11 @@ export default function Layout() {
               <FaQuestionCircle className="text-lg" />
             </button>
 
-            <div className="relative ml-1 border-l border-gray-200 pl-2 sm:ml-2 sm:pl-3">
+            <div className="relative ml-1 border-l border-gray-200 pl-2 dark:border-gray-700 sm:ml-2 sm:pl-3">
               <button
                 type="button"
                 onClick={() => setUserMenuOpen((o) => !o)}
-                className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition hover:bg-gray-50 sm:gap-3 sm:pr-3"
+                className="flex min-h-[44px] items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition hover:bg-gray-50 dark:hover:bg-gray-800 sm:gap-3 sm:pr-3"
               >
                 {fotoUsuario ? (
                   <img
@@ -847,7 +926,7 @@ export default function Layout() {
                   </div>
                 )}
                 <div className="hidden text-left sm:block">
-                  <p className="text-sm font-semibold text-gray-800">
+                  <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                     {formatNombreCorto(usuarioActual.nombre, usuarioActual.login)}
                   </p>
                   <p className="text-xs text-gray-500">{formatRol(usuarioActual.rol, t)}</p>
@@ -867,17 +946,37 @@ export default function Layout() {
                     aria-label={t('nav.closeMenu')}
                     onClick={() => setUserMenuOpen(false)}
                   />
-                  <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-gray-100 bg-white py-1 shadow-lg">
+                  <div className="absolute right-0 z-50 mt-2 w-52 rounded-lg border border-gray-100 bg-white py-1 shadow-lg dark:border-gray-700 dark:bg-gray-900">
+                    <div className="border-b border-gray-100 px-2 py-1 md:hidden dark:border-gray-800">
+                      <LanguageSelector compact />
+                    </div>
+                    <button
+                      type="button"
+                      className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800 sm:hidden"
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        navigate('/inicio', { state: { focusBuscadorTareas: true } });
+                      }}
+                    >
+                      {t('layout.searchTasks')}
+                    </button>
+                    <Link
+                      to="/ayuda"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800 md:hidden"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      {t('layout.openHelp')}
+                    </Link>
                     <Link
                       to="/micuenta"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
                       onClick={() => setUserMenuOpen(false)}
                     >
                       {t('common.myAccount')}
                     </Link>
                     <Link
                       to="/cuenta"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
                       onClick={() => setUserMenuOpen(false)}
                     >
                       {t('common.settings')}
@@ -885,7 +984,7 @@ export default function Layout() {
                     {puedeCatalogosExpress && !esAdminOSoporte && (
                       <Link
                         to="/admin/catalogos-express"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
                         onClick={() => setUserMenuOpen(false)}
                       >
                         {t('nav.expressCatalogs')}

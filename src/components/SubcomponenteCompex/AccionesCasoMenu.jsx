@@ -91,7 +91,7 @@ export default function AccionesCasoMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+            className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2.5 text-left font-body text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             onClick={() => elegir(onAjuste)}
           >
             <FaFileInvoiceDollar className="text-fenix-primario" aria-hidden />{t("complex.ui.acciones_caso_menu.ajuste")}</button>
@@ -99,7 +99,7 @@ export default function AccionesCasoMenu({
             <button
               type="button"
               role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2.5 text-left font-body text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
               onClick={() => elegir(onCatastrofico)}
             >
               <FaExclamationTriangle className="text-amber-500" aria-hidden />
@@ -109,7 +109,7 @@ export default function AccionesCasoMenu({
           <button
             type="button"
             role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+            className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2.5 text-left font-body text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
             onClick={() => elegir(onGestionar)}
           >
             <FaFolderOpen className="text-fenix-primario" aria-hidden />{t("complex.ui.acciones_caso_menu.gestionar")}</button>
@@ -117,7 +117,7 @@ export default function AccionesCasoMenu({
             <button
               type="button"
               role="menuitem"
-              className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+              className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2.5 text-left font-body text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
               onClick={() => elegir(onAsignarSubtarea)}
             >
               <FaTasks className="text-fenix-primario" aria-hidden />{t("complex.ui.acciones_caso_menu.subtareas")}</button>
@@ -128,7 +128,7 @@ export default function AccionesCasoMenu({
               <button
                 type="button"
                 role="menuitem"
-                className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                className="flex min-h-[44px] w-full items-center gap-2 px-3 py-2.5 text-left font-body text-sm font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                 onClick={() => elegir(onEliminar)}
               >
                 <FaTrash className="text-[10px]" aria-hidden />{t("complex.ui.acciones_caso_menu.eliminar")}</button>
@@ -144,15 +144,17 @@ export default function AccionesCasoMenu({
       <button
         ref={btnRef}
         type="button"
-        className={`${complexTableBtnNeutral} min-w-[7.5rem] justify-between gap-2`}
+        className={`${complexTableBtnNeutral} min-h-[44px] min-w-[44px] justify-between gap-2 sm:min-w-[7.5rem]`}
         aria-haspopup="menu"
         aria-expanded={abierto}
         onClick={() => setAbierto((v) => !v)}
         title={t("complex.ui.acciones_caso_menu.acciones_del_caso")}
       >
         <span className="inline-flex items-center gap-1.5">
-          <FaEllipsisV className="text-[10px] opacity-70" aria-hidden />{t("complex.ui.acciones_caso_menu.acciones")}</span>
-        <FaChevronDown className={`text-[10px] transition ${abierto ? 'rotate-180' : ''}`} aria-hidden />
+          <FaEllipsisV className="text-[10px] opacity-70" aria-hidden />
+          <span className="hidden sm:inline">{t("complex.ui.acciones_caso_menu.acciones")}</span>
+        </span>
+        <FaChevronDown className={`hidden text-[10px] transition sm:inline ${abierto ? 'rotate-180' : ''}`} aria-hidden />
       </button>
       {menu}
     </div>
