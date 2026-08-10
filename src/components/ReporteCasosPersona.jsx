@@ -837,6 +837,60 @@ return coincide;
 
   const handleCrearAjuste = (caso) => navegarAjusteDesdeReporte(caso);
 
+  const navegarCatastroficoDesdeReporte = async (caso) => {
+    const numeroSiniestro = caso?.nmroSinstro || '';
+    const numeroCaso = caso?.nmroAjste || caso?.numero_ajuste || '';
+    const complexId = caso?._id || '';
+    const numeroCasoNormalizado = normalizarClaveCaso(numeroCaso);
+
+    const stateRetorno = {
+      complexId,
+      numeroSiniestro,
+      numeroCaso,
+      nmroSinstro: numeroSiniestro,
+      nmroAjste: numeroCaso,
+      origen: 'reporte-complex',
+      returnPath: '/complex/mis-casos',
+      prefillDesdeCaso: buildPrefillAjusteDesdeCasoComplex(caso),
+    };
+
+    try {
+      const historial = await historialService.obtenerHistorial({
+        tipo: TIPOS_FORMULARIOS.CATASTROFICO,
+        limite: 1000,
+      });
+      const mismoCaso = (Array.isArray(historial) ? historial : [])
+        .filter((f) => {
+          const posiblesClaves = [
+            f?.numeroCaso,
+            f?.datos?.numeroCaso,
+            f?.datos?.numeroAjuste,
+            f?.datos?.nmroAjste,
+            f?.datos?.metadata?.numeroAjuste,
+          ]
+            .map(normalizarClaveCaso)
+            .filter(Boolean);
+          return posiblesClaves.includes(numeroCasoNormalizado);
+        })
+        .sort((a, b) => {
+          const fa = new Date(a?.fechaModificacion || a?.updatedAt || a?.fechaCreacion || 0).getTime();
+          const fb = new Date(b?.fechaModificacion || b?.updatedAt || b?.fechaCreacion || 0).getTime();
+          return fb - fa;
+        });
+      const idExistente = mismoCaso[0]?._id || mismoCaso[0]?.id;
+      if (idExistente) {
+        navigate(`/catastrofico/editar/${idExistente}`, { state: stateRetorno });
+        return;
+      }
+    } catch (error) {
+      console.warn('⚠️ No se pudo validar continuidad de catastrófico:', error?.message || error);
+    }
+
+    navigate('/catastrofico', { state: stateRetorno });
+  };
+
+  const handleCrearCatastrofico = (caso) => navegarCatastroficoDesdeReporte(caso);
+
   const handleGestionar = (caso) => {
     const id = caso?._id;
     if (!id) {
@@ -1422,6 +1476,7 @@ return coincide;
                       <td className={`${complexTableTdDivider} align-top overflow-visible`}>
                         <AccionesCasoMenu
                           onAjuste={() => handleCrearAjuste(caso)}
+                          onCatastrofico={() => handleCrearCatastrofico(caso)}
                           onGestionar={() => handleGestionar(caso)}
                           onEliminar={() => handleDelete(caso)}
                           onAsignarSubtarea={() => setCasoSubtareaModal(caso)}

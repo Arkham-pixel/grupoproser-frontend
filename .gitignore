@@ -37,3 +37,13 @@ Thumbs.db
 # Misc
 .cache/
 *.tsbuildinfo
+
+# Local QA and analysis artifacts
+build_output.txt
+lint-report.json
+tmp_placeholder_matches.json
+scripts/_*.json
+scripts/hardcoded-es-report.txt
+scripts/i18n-tmp/
+scripts/qa-sgsst-*.json
+scripts/qa-sgsst-*.pdf

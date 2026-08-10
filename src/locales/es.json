@@ -3398,6 +3398,7 @@
     "ui": {
       "acciones_caso_menu": {
         "ajuste": "Ajuste",
+        "catastrofico": "Catastrófico",
         "gestionar": "Gestionar",
         "subtareas": "Subtareas",
         "eliminar": "Eliminar",

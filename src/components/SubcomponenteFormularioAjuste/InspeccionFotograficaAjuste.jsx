@@ -144,6 +144,7 @@ return imagenesProcesadas;
 
   const handleFileUpload = async (event) => {
     const files = Array.from(event.target.files);
+    event.target.value = '';
     if (files.length === 0) return;
     
     setComprimiendo(true);
@@ -406,31 +407,56 @@ return imagenesProcesadas;
                 id="file-upload"
                 disabled={comprimiendo}
               />
-              <label
-                htmlFor="file-upload"
-                className="px-4 py-2 rounded-lg cursor-pointer transition-colors"
-                style={{
-                  backgroundColor: comprimiendo 
-                    ? (theme === 'dark' ? '#3A3A3A' : '#9CA3AF')
-                    : (theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA'),
-                  color: comprimiendo 
-                    ? (theme === 'dark' ? '#B0B0B0' : '#FFFFFF')
-                    : (theme === 'dark' ? '#C084FC' : '#FFFFFF'),
-                  cursor: comprimiendo ? 'not-allowed' : 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  if (!comprimiendo) {
-                    e.target.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.3)' : '#7C3AED';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!comprimiendo) {
-                    e.target.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA';
-                  }
-                }}
-              >
-                {comprimiendo ? t('adjustment.ui.fotos.processing') : t('adjustment.ui.fotos.selectImages')}
-              </label>
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handleFileUpload}
+                className="hidden"
+                id="file-upload-camera"
+                disabled={comprimiendo}
+              />
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <label
+                  htmlFor="file-upload-camera"
+                  className="px-4 py-2 rounded-lg cursor-pointer transition-colors inline-flex items-center gap-2"
+                  style={{
+                    backgroundColor: comprimiendo
+                      ? (theme === 'dark' ? '#3A3A3A' : '#9CA3AF')
+                      : (theme === 'dark' ? 'rgba(37, 99, 235, 0.25)' : '#2563EB'),
+                    color: '#FFFFFF',
+                    cursor: comprimiendo ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <FaCamera />
+                  {comprimiendo ? t('adjustment.ui.fotos.processing') : 'Tomar foto'}
+                </label>
+                <label
+                  htmlFor="file-upload"
+                  className="px-4 py-2 rounded-lg cursor-pointer transition-colors"
+                  style={{
+                    backgroundColor: comprimiendo 
+                      ? (theme === 'dark' ? '#3A3A3A' : '#9CA3AF')
+                      : (theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA'),
+                    color: comprimiendo 
+                      ? (theme === 'dark' ? '#B0B0B0' : '#FFFFFF')
+                      : (theme === 'dark' ? '#C084FC' : '#FFFFFF'),
+                    cursor: comprimiendo ? 'not-allowed' : 'pointer'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!comprimiendo) {
+                      e.target.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.3)' : '#7C3AED';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!comprimiendo) {
+                      e.target.style.backgroundColor = theme === 'dark' ? 'rgba(168, 85, 247, 0.2)' : '#9333EA';
+                    }
+                  }}
+                >
+                  {comprimiendo ? t('adjustment.ui.fotos.processing') : t('adjustment.ui.fotos.selectImages')}
+                </label>
+              </div>
             </>
           )}
         </div>

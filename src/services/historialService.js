@@ -16,6 +16,7 @@ export const TIPOS_FORMULARIOS = {
   MAQUINARIA: 'maquinaria',
   SINIESTROS: 'siniestros',
   AJUSTE: 'ajuste',
+  CATASTROFICO: 'catastrofico',
   MATRIZ_RIESGO_INICIAL: 'matriz_riesgo_inicial',
   MATRIZ_RIESGO_FINAL: 'matriz_riesgo_final'
 };

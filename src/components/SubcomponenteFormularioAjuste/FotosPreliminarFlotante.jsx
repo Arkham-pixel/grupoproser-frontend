@@ -1,18 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { FaCamera, FaCheckCircle, FaCompress } from 'react-icons/fa';
+import { FaCamera, FaCheckCircle, FaCompress, FaImages } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { ImageCompression } from '../../utils/imageCompression';
 
 /**
  * Carga fotos desde el acta sin alterar su maquetación. Las guarda en el
- * campo compartido del registro fotográfico que usa el informe preliminar.
+ * campo compartido del registro fotográfico que usa el informe preliminar /
+ * informe único catastrófico. En móvil permite cámara o galería.
  */
 export default function FotosPreliminarFlotante({ formData, onInputChange }) {
   const { t } = useTranslation();
-  const inputRef = useRef(null);
+  const inputGaleriaRef = useRef(null);
+  const inputCamaraRef = useRef(null);
   const avisoTimeoutRef = useRef(null);
   const [procesando, setProcesando] = useState(false);
   const [fotosListas, setFotosListas] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
 
   useEffect(
     () => () => {
@@ -24,6 +27,7 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
   const cargarFotos = async (event) => {
     const files = Array.from(event.target.files || []);
     event.target.value = '';
+    setMenuAbierto(false);
     if (!files.length) return;
 
     setProcesando(true);
@@ -70,8 +74,39 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
             {t('adjustment.ui.fotosPrelim.ready')}
           </div>
         )}
+
+        {menuAbierto && !procesando && (
+          <div className="flex flex-col gap-2 rounded-2xl border border-violet-200 bg-white p-2 shadow-xl dark:border-violet-800 dark:bg-slate-900">
+            <button
+              type="button"
+              onClick={() => inputCamaraRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-violet-800 hover:bg-violet-50 dark:text-violet-200 dark:hover:bg-violet-950/40"
+            >
+              <FaCamera /> Tomar foto
+            </button>
+            <button
+              type="button"
+              onClick={() => inputGaleriaRef.current?.click()}
+              className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold text-violet-800 hover:bg-violet-50 dark:text-violet-200 dark:hover:bg-violet-950/40"
+            >
+              <FaImages /> Galería / archivos
+            </button>
+          </div>
+        )}
+
+        {/* Cámara trasera del teléfono (una foto por toma; se puede repetir) */}
         <input
-          ref={inputRef}
+          ref={inputCamaraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={cargarFotos}
+          disabled={procesando}
+        />
+        {/* Galería / múltiples archivos */}
+        <input
+          ref={inputGaleriaRef}
           type="file"
           accept="image/*"
           multiple
@@ -79,12 +114,14 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
           onChange={cargarFotos}
           disabled={procesando}
         />
+
         <button
           type="button"
-          onClick={() => inputRef.current?.click()}
+          onClick={() => (procesando ? null : setMenuAbierto((v) => !v))}
           disabled={procesando}
           title={t('adjustment.ui.fotosPrelim.uploadTitle')}
           aria-label={t('adjustment.ui.fotosPrelim.uploadTitle')}
+          aria-expanded={menuAbierto}
           className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-700 text-white shadow-xl transition hover:scale-105 hover:bg-violet-800 disabled:cursor-wait disabled:opacity-70"
         >
           {procesando ? <FaCompress className="animate-spin text-xl" /> : <FaCamera className="text-xl" />}

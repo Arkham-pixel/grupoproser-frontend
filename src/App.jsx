@@ -34,6 +34,7 @@ import EditarPerfilUsuario from './components/EditarPerfilUsuario';
 import SessionSettings from './components/SessionSettings';
 import HistorialFormularios from './components/HistorialFormularios';
 import FormularioAjuste from './components/SubcomponenteFormularioAjuste/FormularioAjuste';
+import FormularioCatastrofico from './components/SubcomponenteFormularioCatastrofico/FormularioCatastrofico';
 import AlertasComplex from './components/AlertasComplex';
 import IndicadoresAlertasComplex from './components/IndicadoresAlertasComplex';
 import MisAlertasComplex from './components/MisAlertasComplex';
@@ -493,6 +494,8 @@ export default function App() {
           <Route path="reporte-pol" element={<ReportePolPadre />} />
           <Route path="ajuste" element={<FormularioAjuste />} />
           <Route path="ajuste/editar/:id" element={<FormularioAjuste />} />
+          <Route path="catastrofico" element={<FormularioCatastrofico />} />
+          <Route path="catastrofico/editar/:id" element={<FormularioCatastrofico />} />
           <Route path="complex/alertas" element={<AlertasComplex />} />
           <Route path="complex/mis-alertas" element={<MisAlertasComplex />} />
           <Route path="complex/indicadores-alertas" element={<IndicadoresAlertasComplex />} />
