@@ -874,6 +874,9 @@ export function buildContratoTransaccionTextReplacements(liquidador = {}) {
   const reclamante = nombreReclamanteContratoTransaccion(liquidador);
   const nit = (enc.nit || '').trim();
   const oficina = oficinaAfectadaContratoTransaccion(liquidador);
+  const tomador = nombreTomadorContratoTransaccion(liquidador);
+  const tomadorSinPunto = tomador.replace(/\.\s*$/, '');
+  const tomadorTxt = tomadorSinPunto || '________';
   const docTxt = nit || '________________';
   const oficinaTxt = oficina && oficina !== '—' ? oficina : '________';
 
@@ -884,6 +887,9 @@ export function buildContratoTransaccionTextReplacements(liquidador = {}) {
     // Documento (partido: «XXX de » + «Xxx»)
     ['XXX de Xxx', docTxt],
     ['XXX de XXX', docTxt],
+    // ACUERDO / PRIMERO-OBJETO: «que ampara a …» viene sin resaltado amarillo en la plantilla
+    ['TORRE 26 CENTRO EMPRESARIAL P.H.', tomador || tomadorTxt],
+    ['TORRE 26 CENTRO EMPRESARIAL P.H', tomadorTxt],
     // Oficina afectada
     ['oficina XXX', `oficina ${oficinaTxt}`],
     ['oficina xx', `oficina ${oficinaTxt}`],
@@ -928,10 +934,10 @@ export function buildReciboPreview(liquidador, totales) {
     poliza: h.poliza || '—',
     fecha: fechaSiniestro,
     valor: formatearMonto(monto),
-    valorLetras: letras,
+    valorLetras: `${letras} PESOS MONEDA CORRIENTE`,
     detalle,
     anio: String(new Date().getFullYear()),
-    parrafoPrincipal: `Declaramos que hemos recibido de Zúrich Colombia Seguros S.A. la suma de ${letras} MCE ($${formatearMonto(monto)}), ${detalle}.`,
+    parrafoPrincipal: `Declaramos que hemos recibido de Zúrich Colombia Seguros S.A. la suma de ${letras} PESOS MONEDA CORRIENTE ($${formatearMonto(monto)}), ${detalle}.`,
   };
 }
 

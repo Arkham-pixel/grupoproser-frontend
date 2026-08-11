@@ -1,11 +1,18 @@
 import useOnlineStatus from '../hooks/useOnlineStatus';
+import { OFFLINE_FIRST_ENABLED } from '../config/autoSaveConfig.js';
 
 /**
- * Permite seguir trabajando sin conexión. Muestra aviso no bloqueante;
- * el autoguardado local conserva los datos y sincroniza al reconectar.
+ * Permite seguir trabajando sin conexión.
+ * Con Offline First activo, el banner lo gestiona OfflineBanner (evitar duplicar UX).
  */
 export default function DetectorConexion({ children }) {
   const isOnline = useOnlineStatus();
+
+  if (OFFLINE_FIRST_ENABLED) {
+    return (
+      <div style={{ paddingTop: isOnline ? 0 : '44px' }}>{children}</div>
+    );
+  }
 
   return (
     <>

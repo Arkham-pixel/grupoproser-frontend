@@ -1,10 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useTranslation } from 'react-i18next';
 import { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, HeadingLevel, ImageRun, Header, WidthType, Media, VerticalAlign, BorderStyle } from "docx";
 import { formatearFechaParaWord, obtenerFechaActualISO, obtenerFechaHoraActualISO } from '../../utils/fechaUtils';
 import { useTheme } from '../../context/ThemeContext';
-import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig';
+import { AUTO_SAVE_ENABLED, OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig';
+import useOfflineAutosave from '../../hooks/useOfflineAutosave.js';
+import ConflictDialog from '../offline/ConflictDialog.jsx';
+import PrepareOfflineButton from '../offline/PrepareOfflineButton.jsx';
+import { saveFormLocally, discardPendingForForm } from '../../services/offlineDatabase.js';
 
 import DatosGeneralesAjuste from "./DatosGeneralesAjuste";
 import AntecedentesAjuste from "./AntecedentesAjuste";
@@ -132,6 +136,16 @@ export default function FormularioAjuste() {
   
   // Estado para mantener el ID del formulario
   const [formularioId, setFormularioId] = useState(id);
+  const [recoveryDraft, setRecoveryDraft] = useState(null);
+  const [serverLoadedAt, setServerLoadedAt] = useState(null);
+  const [offlineReady, setOfflineReady] = useState(!id || id === 'nuevo');
+  const serverSnapshotRef = useRef(null);
+  const formularioIdRef = useRef(formularioId);
+  const caseIdRef = useRef('');
+
+  useEffect(() => {
+    formularioIdRef.current = formularioId;
+  }, [formularioId]);
   
   // Log para verificar el ID al cargar el componente
 // Actualizar formularioId cuando id cambie
@@ -333,6 +347,37 @@ const [formData, setFormData] = useState({
   useEffect(() => {
     formDataRef.current = formData;
   }, [formData]);
+
+  useEffect(() => {
+    caseIdRef.current = String(
+      formData?.metadata?.complexId ||
+        formData?.casoId ||
+        formData?.numeroCaso ||
+        location.state?.complexId ||
+        ''
+    );
+  }, [formData, location.state]);
+
+  const getCaseIdOffline = useCallback(() => caseIdRef.current, []);
+  const getHistorialIdOffline = useCallback(
+    () => (formularioIdRef.current && formularioIdRef.current !== 'nuevo' ? formularioIdRef.current : null),
+    []
+  );
+  const onRecoverDraftAjuste = useCallback((draft) => {
+    if (!draft?.data) return;
+    if (draft.syncStatus === 'pending' || draft.syncStatus === 'error') {
+      setRecoveryDraft(draft);
+    }
+  }, []);
+
+  useOfflineAutosave({
+    formType: 'ajuste',
+    formData,
+    enabled: OFFLINE_FIRST_ENABLED && offlineReady,
+    getCaseId: getCaseIdOffline,
+    getHistorialId: getHistorialIdOffline,
+    onRecoverDraft: onRecoverDraftAjuste,
+  });
 
   // Nuevo estado para la información del mapa
   const [mapaInfo, setMapaInfo] = useState({
@@ -779,6 +824,9 @@ return {
 
         setFormData(formDataValue);
         setEstadoActual(estadoCargado);
+        serverSnapshotRef.current = formDataValue;
+        setServerLoadedAt(formulario.fechaModificacion || new Date().toISOString());
+        setOfflineReady(true);
 
         // Sincronizar vista previa del mapa con lo guardado en historial (data URL o ruta subida)
         const imMapa = formDataValue.imagenMapa;
@@ -838,6 +886,7 @@ return {
       console.error('❌ Error cargando formulario:', error);
       setError(t('adjustment.ui.alerts.loadExistingError', { message: error.message }));
     } finally {
+      setOfflineReady(true);
       setCargando(false);
       permitirAutoguardadoLocalRef.current = true;
     }
@@ -5068,6 +5117,38 @@ mostrarModalConfirmacion(
       className="min-h-screen"
       style={{ backgroundColor: bgMain }}
     >
+      {recoveryDraft ? (
+        <ConflictDialog
+          mode="recovery"
+          title="Cambios en este dispositivo"
+          message="Encontramos cambios guardados en este dispositivo. ¿Continuar con la versión local o usar la del servidor?"
+          localUpdatedAt={recoveryDraft.updatedAt}
+          serverUpdatedAt={serverLoadedAt}
+          onKeepLocal={() => {
+            setFormData((prev) => ({ ...prev, ...(recoveryDraft.data || {}) }));
+            setRecoveryDraft(null);
+          }}
+          onUseServer={() => {
+            if (serverSnapshotRef.current) {
+              setFormData((prev) => ({ ...prev, ...serverSnapshotRef.current }));
+            }
+            if (recoveryDraft.id) {
+              discardPendingForForm(recoveryDraft.id).catch(() => {});
+              saveFormLocally({
+                id: recoveryDraft.id,
+                caseId: recoveryDraft.caseId,
+                formType: 'ajuste',
+                data: serverSnapshotRef.current || recoveryDraft.data,
+                historialId: recoveryDraft.historialId || formularioId,
+                syncStatus: 'synced',
+                version: recoveryDraft.dataVersion || 1,
+              }).catch(() => {});
+            }
+            setRecoveryDraft(null);
+          }}
+          onClose={() => setRecoveryDraft(null)}
+        />
+      ) : null}
       {/* Header con logo y navegación */}
       <div 
         className="shadow-sm"
@@ -5093,6 +5174,15 @@ mostrarModalConfirmacion(
                 >
                   {t('adjustment.ui.form.systemSubtitle')}
                 </p>
+                <div className="mt-2">
+                  <PrepareOfflineButton
+                    caseId={caseIdRef.current}
+                    caseNumber={formData.numeroCaso}
+                    formType="ajuste"
+                    historialId={formularioId && formularioId !== 'nuevo' ? formularioId : null}
+                    caseMeta={{ asegurado: formData.asegurado }}
+                  />
+                </div>
               </div>
             </div>
             

@@ -1068,6 +1068,7 @@ setFechaDesde(filtrosDesdeNavegacion.fechaDesde || '');
 
   const handleCrearCatastrofico = (caso) => navegarCatastroficoDesdeReporte(caso);
 
+
   /** Editar el caso en el formulario Complex (mismo comportamiento que el antiguo botón «Editar»). */
   const handleGestionar = (caso) => {
     const id = caso?._id;

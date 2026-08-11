@@ -1,35 +1,53 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import {
-  FaArrowLeft,
-  FaFileWord,
-  FaSave,
-  FaStepForward,
-} from 'react-icons/fa';
-import { useTheme } from '../../context/ThemeContext';
-import ActaInspeccionAjuste from '../SubcomponenteFormularioAjuste/ActaInspeccionAjuste.jsx';
-import FotosPreliminarFlotante from '../SubcomponenteFormularioAjuste/FotosPreliminarFlotante.jsx';
-import InspeccionFotograficaAjuste from '../SubcomponenteFormularioAjuste/InspeccionFotograficaAjuste.jsx';
-import FirmaAjuste from '../SubcomponenteFormularioAjuste/FirmaAjuste.jsx';
+import ChecklistEvaluacionSismicaNSR10, {
+  crearEvaluacionSismicaNSR10Inicial,
+} from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
+import { fusionarPortadaConFormData } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import InformeUnicoCatastrofico from './InformeUnicoCatastrofico.jsx';
-import PresupuestoDaniosCatastrofico from './PresupuestoDaniosCatastrofico.jsx';
 import {
   crearItemsPresupuestoDesdeCatalogo,
   AIU_PORCENTAJE_DEFAULT,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from './catalogoPresupuestoCatastrofico.js';
 import { descargarBlob, generarWordCatastrofico } from './generarWordCatastrofico.js';
+import { sincronizarPresupuestoNsr10AlInforme, formDataConPresupuestoNsr10 } from './syncPresupuestoNsr10AlInforme.js';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService.js';
 import { buildPrefillAjusteDesdeCasoComplex } from '../../utils/prefillAjusteDesdeCasoComplex.js';
+import ActaInspeccionAjuste from '../SubcomponenteFormularioAjuste/ActaInspeccionAjuste.jsx';
+import FotosPreliminarFlotante from '../SubcomponenteFormularioAjuste/FotosPreliminarFlotante.jsx';
+import InspeccionFotograficaAjuste from '../SubcomponenteFormularioAjuste/InspeccionFotograficaAjuste.jsx';
+import FirmaAjuste from '../SubcomponenteFormularioAjuste/FirmaAjuste.jsx';
+import { useTheme } from '../../context/ThemeContext';
+import {
+  FaArrowLeft,
+  FaFileWord,
+  FaSave,
+  FaStepForward,
+} from 'react-icons/fa';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import useOfflineAutosave from '../../hooks/useOfflineAutosave.js';
+import ConflictDialog from '../offline/ConflictDialog.jsx';
+import PrepareOfflineButton from '../offline/PrepareOfflineButton.jsx';
+import { OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig.js';
+import {
+  saveFormLocally,
+  discardPendingForForm,
+  findLocalFormByHistorialId,
+  queueSync,
+  newClientId,
+} from '../../services/offlineDatabase.js';
+import { checkConnectivity } from '../../services/connectivityService.js';
+import { offlineLog } from '../../offline/offlineLog.js';
 
 const ESTADOS = {
+  EVALUACION: 'evaluacionSismica',
   ACTA: 'actaInspeccion',
   INFORME: 'informeUnico',
 };
 
 function crearFormDataInicial(prefill = {}) {
   return {
-    estadoActual: ESTADOS.ACTA,
+    estadoActual: ESTADOS.EVALUACION,
     ciudad: '',
     destinatario: '',
     cargo: '',
@@ -100,6 +118,16 @@ function crearFormDataInicial(prefill = {}) {
     },
     metadata: {},
     ...prefill,
+    evaluacionSismicaNSR10: (() => {
+      const merged = { ...prefill };
+      const base = crearEvaluacionSismicaNSR10Inicial(merged);
+      const guardada = prefill.evaluacionSismicaNSR10 || {};
+      return {
+        ...base,
+        ...guardada,
+        portada: fusionarPortadaConFormData(guardada.portada || base.portada, merged),
+      };
+    })(),
   };
 }
 
@@ -112,13 +140,56 @@ export default function FormularioCatastrofico() {
   const [formData, setFormData] = useState(() =>
     crearFormDataInicial(location.state?.prefillDesdeCaso || {})
   );
-  const [estadoActual, setEstadoActual] = useState(ESTADOS.ACTA);
+  const [estadoActual, setEstadoActual] = useState(ESTADOS.EVALUACION);
   const [guardando, setGuardando] = useState(false);
   const [generando, setGenerando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [historialId, setHistorialId] = useState(id && id !== 'nuevo' ? id : null);
-  /** Herencia de unitarios por sitio solo en formularios nuevos; no pisa edición existente. */
-  const [herenciaAutomatica, setHerenciaAutomatica] = useState(() => !id || id === 'nuevo');
+  const [recoveryDraft, setRecoveryDraft] = useState(null);
+  const [serverLoadedAt, setServerLoadedAt] = useState(null);
+  const [offlineReady, setOfflineReady] = useState(!id || id === 'nuevo');
+  const serverSnapshotRef = useRef(null);
+  const historialIdRef = useRef(historialId);
+  const caseIdRef = useRef('');
+
+  useEffect(() => {
+    historialIdRef.current = historialId;
+  }, [historialId]);
+
+  useEffect(() => {
+    caseIdRef.current = String(
+      formData?.metadata?.complexId ||
+        formData?.casoId ||
+        formData?.numeroCaso ||
+        location.state?.complexId ||
+        ''
+    );
+  }, [formData, location.state]);
+
+  const getCaseId = useCallback(() => caseIdRef.current, []);
+  const getHistorialId = useCallback(() => historialIdRef.current, []);
+
+  const onRecoverDraft = useCallback((draft) => {
+    if (!draft?.data) return;
+    const pending = draft.syncStatus === 'pending' || draft.syncStatus === 'error';
+    if (pending) {
+      setRecoveryDraft(draft);
+      return;
+    }
+    // Si hay copia local más reciente que la última carga de servidor
+    if (serverLoadedAt && draft.updatedAt && new Date(draft.updatedAt) > new Date(serverLoadedAt)) {
+      setRecoveryDraft(draft);
+    }
+  }, [serverLoadedAt]);
+
+  const { flush: flushOffline } = useOfflineAutosave({
+    formType: 'catastrofico',
+    formData,
+    enabled: OFFLINE_FIRST_ENABLED && offlineReady,
+    getCaseId,
+    getHistorialId,
+    onRecoverDraft,
+  });
 
   const pageBg = theme === 'dark' ? '#0f172a' : '#f8fafc';
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
@@ -150,40 +221,82 @@ export default function FormularioCatastrofico() {
 
   useEffect(() => {
     let cancelled = false;
+
+    const aplicarDatosCargados = (datos, meta = {}) => {
+      setFormData((prev) => ({
+        ...crearFormDataInicial(),
+        ...prev,
+        ...datos,
+        evaluacionSismicaNSR10: (() => {
+          const merged = { ...prev, ...datos };
+          const base = crearEvaluacionSismicaNSR10Inicial(merged);
+          const guardada = datos.evaluacionSismicaNSR10 || {};
+          return {
+            ...base,
+            ...guardada,
+            portada: fusionarPortadaConFormData(guardada.portada || base.portada, merged),
+          };
+        })(),
+        presupuestoCatastrofico: {
+          aiuPorcentaje: AIU_PORCENTAJE_DEFAULT,
+          intro:
+            'Con base en la inspección técnica realizada en el inmueble afectado, y en atención a las condiciones observadas durante la visita de campo, se elaboró el presente presupuesto de obra, el cual contempla las actividades necesarias para la atención, corrección y restitución de los daños identificados.',
+          ...(datos.presupuestoCatastrofico || {}),
+          items:
+            datos.presupuestoCatastrofico?.items?.length
+              ? datos.presupuestoCatastrofico.items
+              : crearItemsPresupuestoDesdeCatalogo(),
+        },
+      }));
+      const estadoRaw = datos.estadoActual || meta.estadoActual;
+      const estado =
+        estadoRaw === ESTADOS.INFORME
+          ? ESTADOS.INFORME
+          : estadoRaw === ESTADOS.ACTA
+            ? ESTADOS.ACTA
+            : ESTADOS.EVALUACION;
+      setEstadoActual(estado);
+      setHistorialId(meta._id || meta.id || id);
+      serverSnapshotRef.current = datos;
+      setServerLoadedAt(meta.fechaModificacion || meta.updatedAt || new Date().toISOString());
+    };
+
     const cargar = async () => {
       if (!id || id === 'nuevo') {
-        setHerenciaAutomatica(true);
         return;
       }
       try {
         const formulario = await historialService.obtenerFormulario(id);
         if (cancelled || !formulario) return;
         const datos = formulario.datos || formulario;
-        setFormData((prev) => ({
-          ...crearFormDataInicial(),
-          ...prev,
-          ...datos,
-          presupuestoCatastrofico: {
-            aiuPorcentaje: AIU_PORCENTAJE_DEFAULT,
-            intro:
-              'Con base en la inspección técnica realizada en el inmueble afectado, y en atención a las condiciones observadas durante la visita de campo, se elaboró el presente presupuesto de obra, el cual contempla las actividades necesarias para la atención, corrección y restitución de los daños identificados.',
-            ...(datos.presupuestoCatastrofico || {}),
-            items:
-              datos.presupuestoCatastrofico?.items?.length
-                ? datos.presupuestoCatastrofico.items
-                : crearItemsPresupuestoDesdeCatalogo(),
-          },
-        }));
-        const estado =
-          datos.estadoActual === ESTADOS.INFORME || formulario.estadoActual === ESTADOS.INFORME
-            ? ESTADOS.INFORME
-            : ESTADOS.ACTA;
-        setEstadoActual(estado);
-        setHistorialId(formulario._id || formulario.id || id);
-        setHerenciaAutomatica(false);
+        aplicarDatosCargados(datos, formulario);
+        setOfflineReady(true);
       } catch (error) {
         console.error('Error cargando catastrófico:', error);
-        setMensaje('No se pudo cargar el formulario guardado.');
+        if (OFFLINE_FIRST_ENABLED) {
+          try {
+            const local = await findLocalFormByHistorialId(String(id));
+            if (!cancelled && local?.data) {
+              offlineLog('SESSION_RECOVERY', { source: 'indexeddb', historialId: id });
+              aplicarDatosCargados(local.data, {
+                _id: local.historialId || id,
+                fechaModificacion: local.updatedAt,
+                estadoActual: local.data.estadoActual,
+              });
+              setMensaje(
+                'Sin conexión: mostrando la copia guardada en este dispositivo. Se sincronizará al recuperar red.'
+              );
+              setOfflineReady(true);
+              return;
+            }
+          } catch {
+            // ignore
+          }
+        }
+        if (!cancelled) {
+          setMensaje('No se pudo cargar el formulario guardado.');
+          setOfflineReady(true);
+        }
       }
     };
     cargar();
@@ -246,28 +359,40 @@ export default function FormularioCatastrofico() {
     });
   };
 
-  const tituloVista = useMemo(
-    () =>
-      estadoActual === ESTADOS.ACTA
-        ? 'Catastrófico · Acta de inspección'
-        : 'Catastrófico · Informe único',
-    [estadoActual]
-  );
+  const tituloVista = useMemo(() => {
+    if (estadoActual === ESTADOS.EVALUACION) return 'Catastrófico · Evaluación sísmica NSR-10';
+    if (estadoActual === ESTADOS.ACTA) return 'Catastrófico · Acta de inspección';
+    return 'Catastrófico · Informe único';
+  }, [estadoActual]);
+
+  const siguientePaso = (desde) => {
+    if (desde === ESTADOS.EVALUACION) return ESTADOS.ACTA;
+    if (desde === ESTADOS.ACTA) return ESTADOS.INFORME;
+    return ESTADOS.INFORME;
+  };
 
   const guardar = async ({ avanzar = false } = {}) => {
     setGuardando(true);
     setMensaje('');
     try {
-      const siguienteEstado = avanzar ? ESTADOS.INFORME : estadoActual;
+      const siguienteEstado = avanzar ? siguientePaso(estadoActual) : estadoActual;
+      const syncNsr = sincronizarPresupuestoNsr10AlInforme(formData, { forzar: true });
+      const datosBase = syncNsr
+        ? {
+            ...formData,
+            presupuestoCatastrofico: syncNsr.presupuestoCatastrofico,
+            indemnizacionSugerida: syncNsr.indemnizacionSugerida,
+          }
+        : formData;
       const datos = {
-        ...formData,
+        ...datosBase,
         estadoActual: siguienteEstado,
         metadata: {
-          ...(formData.metadata || {}),
-          complexId: location.state?.complexId || formData.metadata?.complexId,
+          ...(datosBase.metadata || {}),
+          complexId: location.state?.complexId || datosBase.metadata?.complexId,
           numeroAjuste:
-            formData.metadata?.numeroAjuste ||
-            formData.numeroCaso ||
+            datosBase.metadata?.numeroAjuste ||
+            datosBase.numeroCaso ||
             location.state?.nmroAjste ||
             location.state?.numeroCaso,
         },
@@ -281,6 +406,66 @@ export default function FormularioCatastrofico() {
         'SIN-CASO';
       const complexId =
         location.state?.complexId || datos.metadata?.complexId || '';
+
+      const finalizarLocalOk = async () => {
+        if (OFFLINE_FIRST_ENABLED) {
+          const saved = await flushOffline(datos, { force: true });
+          if (!saved) {
+            const id = newClientId();
+            await saveFormLocally({
+              id,
+              caseId: String(complexId || numeroCaso),
+              formType: 'catastrofico',
+              data: datos,
+              historialId,
+              syncStatus: 'pending',
+            });
+            await queueSync({
+              entityType: 'form',
+              entityId: id,
+              operation: historialId ? 'UPDATE' : 'CREATE',
+              payload: {
+                localFormId: id,
+                historialId,
+                formType: 'catastrofico',
+                caseId: String(complexId || numeroCaso),
+                data: datos,
+                expectedVersion: 1,
+                clientId: id,
+              },
+            });
+          }
+        }
+        if (avanzar) setEstadoActual(siguienteEstado);
+        setFormData((prev) => ({ ...prev, ...datosBase, estadoActual: siguienteEstado }));
+        const msgAvance =
+          siguienteEstado === ESTADOS.ACTA
+            ? 'Evaluación guardada en este dispositivo. Continuando al acta (se subirá al recuperar red).'
+            : siguienteEstado === ESTADOS.INFORME
+              ? 'Acta guardada en este dispositivo. Continuando al informe (se subirá al recuperar red).'
+              : 'Guardado en este dispositivo. Se sincronizará al recuperar la conexión.';
+        setMensaje(avanzar ? msgAvance : 'Guardado en este dispositivo. Se sincronizará al recuperar la conexión.');
+        return { offline: true, local: true };
+      };
+
+      const esFalloRedOServidor = (error) => {
+        const msg = String(error?.message || error || '');
+        return (
+          error?.name === 'TypeError' ||
+          error?.status >= 500 ||
+          /failed to fetch|network|MongoServerSelection|interno del servidor|ECONNREFUSED|timeout|offline/i.test(
+            msg
+          )
+        );
+      };
+
+      // Sin red real: no intentar API; IndexedDB + cola
+      if (OFFLINE_FIRST_ENABLED) {
+        const online = await checkConnectivity({ force: true });
+        if (!online) {
+          return finalizarLocalOk();
+        }
+      }
 
       const payload = {
         tipo: TIPOS_FORMULARIOS.CATASTROFICO,
@@ -298,23 +483,36 @@ export default function FormularioCatastrofico() {
       };
 
       let resultado;
-      if (historialId) {
-        resultado = await historialService.actualizarFormulario(historialId, payload);
-      } else {
-        resultado = await historialService.guardarFormulario(payload);
-        const nuevoId = resultado?._id || resultado?.id || resultado?.data?._id;
-        if (nuevoId) {
-          setHistorialId(String(nuevoId));
-          navigate(`/catastrofico/editar/${nuevoId}`, {
-            replace: true,
-            state: location.state,
-          });
+      try {
+        if (historialId) {
+          resultado = await historialService.actualizarFormulario(historialId, payload);
+        } else {
+          resultado = await historialService.guardarFormulario(payload);
+          const nuevoId = resultado?._id || resultado?.id || resultado?.data?._id;
+          if (nuevoId) {
+            setHistorialId(String(nuevoId));
+            navigate(`/catastrofico/editar/${nuevoId}`, {
+              replace: true,
+              state: location.state,
+            });
+          }
         }
+      } catch (apiError) {
+        if (OFFLINE_FIRST_ENABLED && esFalloRedOServidor(apiError)) {
+          return finalizarLocalOk();
+        }
+        throw apiError;
       }
 
-      if (avanzar) setEstadoActual(ESTADOS.INFORME);
-      setFormData((prev) => ({ ...prev, estadoActual: siguienteEstado }));
-      setMensaje(avanzar ? 'Acta guardada. Continuando al informe único.' : 'Guardado correctamente.');
+      if (avanzar) setEstadoActual(siguienteEstado);
+      setFormData((prev) => ({ ...prev, ...datosBase, estadoActual: siguienteEstado }));
+      const msgAvance =
+        siguienteEstado === ESTADOS.ACTA
+          ? 'Evaluación y presupuesto NSR-10 guardados. Continuando al acta.'
+          : siguienteEstado === ESTADOS.INFORME
+            ? 'Acta guardada. Continuando al informe único (con el conteo de plata NSR-10).'
+            : 'Guardado correctamente.';
+      setMensaje(avanzar ? msgAvance : 'Guardado correctamente.');
       return resultado;
     } catch (error) {
       console.error(error);
@@ -329,9 +527,11 @@ export default function FormularioCatastrofico() {
     setGenerando(true);
     setMensaje('');
     try {
+      const datosWord = formDataConPresupuestoNsr10(formData);
+      setFormData((prev) => ({ ...prev, ...datosWord }));
       await guardar();
-      const { blob, fileName } = await generarWordCatastrofico(formData, {
-        modo: estadoActual,
+      const { blob, fileName } = await generarWordCatastrofico(datosWord, {
+        modo: estadoActual === ESTADOS.ACTA ? ESTADOS.ACTA : ESTADOS.INFORME,
       });
       descargarBlob(blob, fileName);
       setMensaje(`Documento generado: ${fileName}`);
@@ -347,6 +547,69 @@ export default function FormularioCatastrofico() {
     const path = location.state?.returnPath || '/complex/mis-casos';
     navigate(path);
   };
+
+  const botonesAccion = (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        disabled={guardando}
+        onClick={() => guardar()}
+        className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
+      >
+        <FaSave /> {guardando ? 'Guardando…' : 'Guardar'}
+      </button>
+      {estadoActual !== ESTADOS.EVALUACION && (
+        <button
+          type="button"
+          disabled={generando}
+          onClick={generarWord}
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+        >
+          <FaFileWord /> {generando ? 'Generando…' : 'Generar Word'}
+        </button>
+      )}
+      {estadoActual === ESTADOS.EVALUACION && (
+        <button
+          type="button"
+          disabled={guardando}
+          onClick={() => guardar({ avanzar: true })}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          <FaStepForward /> Ir al acta
+        </button>
+      )}
+      {estadoActual === ESTADOS.ACTA && (
+        <button
+          type="button"
+          disabled={guardando}
+          onClick={() => guardar({ avanzar: true })}
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+        >
+          <FaStepForward /> Ir a informe único
+        </button>
+      )}
+      {estadoActual === ESTADOS.ACTA && (
+        <button
+          type="button"
+          onClick={() => setEstadoActual(ESTADOS.EVALUACION)}
+          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+          style={{ borderColor, color: textPrimary }}
+        >
+          Volver a evaluación
+        </button>
+      )}
+      {estadoActual === ESTADOS.INFORME && (
+        <button
+          type="button"
+          onClick={() => setEstadoActual(ESTADOS.ACTA)}
+          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
+          style={{ borderColor, color: textPrimary }}
+        >
+          Volver al acta
+        </button>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: pageBg }}>
@@ -367,48 +630,59 @@ export default function FormularioCatastrofico() {
               {tituloVista}
             </h1>
             <p className="text-sm text-slate-500">
-              Flujo único: acta de inspección → informe catastrófico (sin versiones intermedia).
+              Flujo: evaluación NSR-10 → acta de inspección → informe único.
             </p>
+            <div className="mt-2">
+              <PrepareOfflineButton
+                caseId={caseIdRef.current}
+                caseNumber={formData.numeroCaso}
+                formType="catastrofico"
+                historialId={historialId}
+                caseMeta={{ asegurado: formData.asegurado }}
+              />
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={guardando}
-              onClick={() => guardar()}
-              className="inline-flex items-center gap-2 rounded-lg bg-slate-800 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-60"
-            >
-              <FaSave /> {guardando ? 'Guardando…' : 'Guardar'}
-            </button>
-            <button
-              type="button"
-              disabled={generando}
-              onClick={generarWord}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
-            >
-              <FaFileWord /> {generando ? 'Generando…' : 'Generar Word'}
-            </button>
-            {estadoActual === ESTADOS.ACTA && (
-              <button
-                type="button"
-                disabled={guardando}
-                onClick={() => guardar({ avanzar: true })}
-                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-              >
-                <FaStepForward /> Ir a informe único
-              </button>
-            )}
-            {estadoActual === ESTADOS.INFORME && (
-              <button
-                type="button"
-                onClick={() => setEstadoActual(ESTADOS.ACTA)}
-                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold"
-                style={{ borderColor, color: textPrimary }}
-              >
-                Volver al acta
-              </button>
-            )}
-          </div>
+          {botonesAccion}
         </header>
+
+        {recoveryDraft ? (
+          <ConflictDialog
+            mode="recovery"
+            title="Cambios en este dispositivo"
+            message="Encontramos cambios guardados en este dispositivo. ¿Continuar con la versión local o usar la del servidor?"
+            localUpdatedAt={recoveryDraft.updatedAt}
+            serverUpdatedAt={serverLoadedAt}
+            onKeepLocal={() => {
+              setFormData((prev) => ({
+                ...prev,
+                ...(recoveryDraft.data || {}),
+              }));
+              setRecoveryDraft(null);
+            }}
+            onUseServer={() => {
+              if (serverSnapshotRef.current) {
+                setFormData((prev) => ({
+                  ...prev,
+                  ...serverSnapshotRef.current,
+                }));
+              }
+              if (recoveryDraft.id) {
+                discardPendingForForm(recoveryDraft.id).catch(() => {});
+                saveFormLocally({
+                  id: recoveryDraft.id,
+                  caseId: recoveryDraft.caseId,
+                  formType: 'catastrofico',
+                  data: serverSnapshotRef.current || recoveryDraft.data,
+                  historialId: recoveryDraft.historialId || historialId,
+                  syncStatus: 'synced',
+                  version: recoveryDraft.dataVersion || 1,
+                }).catch(() => {});
+              }
+              setRecoveryDraft(null);
+            }}
+            onClose={() => setRecoveryDraft(null)}
+          />
+        ) : null}
 
         {mensaje ? (
           <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
@@ -416,7 +690,18 @@ export default function FormularioCatastrofico() {
           </div>
         ) : null}
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              estadoActual === ESTADOS.EVALUACION
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100'
+            }`}
+            onClick={() => setEstadoActual(ESTADOS.EVALUACION)}
+          >
+            1. Evaluación NSR-10
+          </button>
           <button
             type="button"
             className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -426,7 +711,7 @@ export default function FormularioCatastrofico() {
             }`}
             onClick={() => setEstadoActual(ESTADOS.ACTA)}
           >
-            1. Acta
+            2. Acta
           </button>
           <button
             type="button"
@@ -437,12 +722,17 @@ export default function FormularioCatastrofico() {
             }`}
             onClick={() => setEstadoActual(ESTADOS.INFORME)}
           >
-            2. Informe único
+            3. Informe único
           </button>
         </div>
 
         <div className="rounded-xl border p-4 md:p-6" style={{ backgroundColor: cardBg, borderColor }}>
-          {estadoActual === ESTADOS.ACTA ? (
+          {estadoActual === ESTADOS.EVALUACION ? (
+            <ChecklistEvaluacionSismicaNSR10
+              formData={formData}
+              onInputChange={handleInputChange}
+            />
+          ) : estadoActual === ESTADOS.ACTA ? (
             <>
               <ActaInspeccionAjuste formData={formData} onInputChange={handleInputChange} />
               <FotosPreliminarFlotante formData={formData} onInputChange={handleInputChange} />
@@ -459,16 +749,22 @@ export default function FormularioCatastrofico() {
                 onInputChange={handleInputChange}
                 numeroSeccion={4}
               />
-              <PresupuestoDaniosCatastrofico
+              <ChecklistEvaluacionSismicaNSR10
                 formData={formData}
                 onInputChange={handleInputChange}
-                historialId={historialId}
-                herenciaAutomatica={herenciaAutomatica}
+                modoLiquidador
               />
               <FirmaAjuste formData={formData} onInputChange={handleInputChange} />
             </div>
           )}
         </div>
+
+        <footer
+          className="flex flex-wrap items-center justify-end gap-3 rounded-xl border p-4"
+          style={{ backgroundColor: cardBg, borderColor }}
+        >
+          {botonesAccion}
+        </footer>
       </div>
     </div>
   );

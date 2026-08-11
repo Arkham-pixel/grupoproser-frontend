@@ -22,6 +22,7 @@ import {
   AIU_PORCENTAJE_DEFAULT,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from './catalogoPresupuestoCatastrofico.js';
+import { obtenerTotalDaniosParaInforme, resolverPresupuestoParaWord } from './syncPresupuestoNsr10AlInforme.js';
 import {
   resolverCronologiaCatastrofico,
   cargarImagenCronologiaComoDataUrl,
@@ -1087,24 +1088,102 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
       )
     );
 
-    const presupuesto = fd.presupuestoCatastrofico || {};
+    // Siempre prioriza la hoja Presupuesto NSR-10 (no el catálogo viejo)
+    const presupuesto = resolverPresupuestoParaWord(fd);
     const items = Array.isArray(presupuesto.items) ? presupuesto.items : [];
-    const resumen = calcularResumenPresupuesto(
-      items,
-      presupuesto.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT
-    );
+    const esNsr10 = presupuesto.fuente === 'nsr10';
+    const resumen = esNsr10
+      ? {
+          costoDirecto: Number(presupuesto.totalesNsr10?.subtotal) || 0,
+          aiu: Number(presupuesto.totalesNsr10?.aiu) || 0,
+          imprevistos: Number(presupuesto.totalesNsr10?.imprevistos) || 0,
+          impuestos: Number(presupuesto.totalesNsr10?.impuestos) || 0,
+          total: Number(presupuesto.totalesNsr10?.total) || 0,
+        }
+      : {
+          ...calcularResumenPresupuesto(
+            items,
+            presupuesto.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT
+          ),
+          imprevistos: 0,
+          impuestos: 0,
+        };
     const liquidacion = fd.liquidacionCatastrofico || {};
     const diagrama = calcularDiagramaLiquidacion({
       valorAsegurado: liquidacion.valorAsegurado,
-      totalDanios: resumen.total,
+      totalDanios: obtenerTotalDaniosParaInforme(presupuesto),
       hospedajePorcentaje: liquidacion.hospedajePorcentaje ?? HOSPEDAJE_PORCENTAJE_DEFAULT,
       hospedajeManual: liquidacion.hospedajeManual,
       deducible: liquidacion.deducible,
     });
 
-    children.push(heading('PRESUPUESTO DAÑOS'));
-    children.push(p(txt(presupuesto.intro)));
+    children.push(
+      heading(esNsr10 ? 'PRESUPUESTO DE INTERVENCIÓN / REPARACIÓN POST-SISMO (NSR-10)' : 'PRESUPUESTO DAÑOS')
+    );
+    children.push(
+      p(
+        txt(
+          presupuesto.intro ||
+            (esNsr10
+              ? 'Presupuesto de intervención / reparación post-sismo (plantilla evaluación NSR-10).'
+              : '')
+        )
+      )
+    );
     children.push(p('BASE PRESUPUESTAL', { bold: true, before: 160 }));
+    const filasTotales = [
+      new TableRow({
+        children: [
+          cell(esNsr10 ? 'SUBTOTAL' : 'COSTO DIRECTO', { bold: true, width: 3200 }),
+          cell('', { width: 1600 }),
+          cell('', { width: 1200 }),
+          cell(fmtMoney(resumen.costoDirecto), { bold: true, width: 1600 }),
+          cell('', { width: 2400 }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          cell('AIU', { bold: true, width: 3200 }),
+          cell('', { width: 1600 }),
+          cell('', { width: 1200 }),
+          cell(fmtMoney(resumen.aiu), { bold: true, width: 1600 }),
+          cell('', { width: 2400 }),
+        ],
+      }),
+    ];
+    if (esNsr10) {
+      filasTotales.push(
+        new TableRow({
+          children: [
+            cell('IMPREVISTOS', { bold: true, width: 3200 }),
+            cell('', { width: 1600 }),
+            cell('', { width: 1200 }),
+            cell(fmtMoney(resumen.imprevistos), { bold: true, width: 1600 }),
+            cell('', { width: 2400 }),
+          ],
+        }),
+        new TableRow({
+          children: [
+            cell('IMPUESTOS', { bold: true, width: 3200 }),
+            cell('', { width: 1600 }),
+            cell('', { width: 1200 }),
+            cell(fmtMoney(resumen.impuestos), { bold: true, width: 1600 }),
+            cell('', { width: 2400 }),
+          ],
+        })
+      );
+    }
+    filasTotales.push(
+      new TableRow({
+        children: [
+          cell('TOTAL ESTIMADO', { bold: true, width: 3200 }),
+          cell('', { width: 1600 }),
+          cell('', { width: 1200 }),
+          cell(fmtMoney(resumen.total), { bold: true, width: 1600 }),
+          cell('', { width: 2400 }),
+        ],
+      })
+    );
     children.push(
       new Table({
         width: { size: 10000, type: WidthType.DXA },
@@ -1130,33 +1209,7 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
                 ],
               })
           ),
-          new TableRow({
-            children: [
-              cell('COSTO DIRECTO', { bold: true, width: 3200 }),
-              cell('', { width: 1600 }),
-              cell('', { width: 1200 }),
-              cell(fmtMoney(resumen.costoDirecto), { bold: true, width: 1600 }),
-              cell('', { width: 2400 }),
-            ],
-          }),
-          new TableRow({
-            children: [
-              cell('AIU', { bold: true, width: 3200 }),
-              cell('', { width: 1600 }),
-              cell('', { width: 1200 }),
-              cell(fmtMoney(resumen.aiu), { bold: true, width: 1600 }),
-              cell('', { width: 2400 }),
-            ],
-          }),
-          new TableRow({
-            children: [
-              cell('TOTAL', { bold: true, width: 3200 }),
-              cell('', { width: 1600 }),
-              cell('', { width: 1200 }),
-              cell(fmtMoney(resumen.total), { bold: true, width: 1600 }),
-              cell('', { width: 2400 }),
-            ],
-          }),
+          ...filasTotales,
         ],
       })
     );

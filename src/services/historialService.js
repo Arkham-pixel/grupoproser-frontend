@@ -17,6 +17,7 @@ export const TIPOS_FORMULARIOS = {
   SINIESTROS: 'siniestros',
   AJUSTE: 'ajuste',
   CATASTROFICO: 'catastrofico',
+  EVALUACION_SISMICA_NSR10: 'evaluacion_sismica_nsr10',
   MATRIZ_RIESGO_INICIAL: 'matriz_riesgo_inicial',
   MATRIZ_RIESGO_FINAL: 'matriz_riesgo_final'
 };
@@ -839,12 +840,19 @@ if (tamanoFinal > 15 * 1024 * 1024) {
       }
       
       const url = `${this.baseURL}/api/historial-formularios/${id}`;
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      };
+      if (datos?.operationId) {
+        headers['X-Operation-Id'] = String(datos.operationId);
+      }
+      if (datos?.expectedVersion != null) {
+        headers['If-Match'] = String(datos.expectedVersion);
+      }
 const response = await fetch(url, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers,
         body: JSON.stringify(datos)
       });
 
@@ -866,6 +874,17 @@ if (!response.ok) {
         console.error('❌ Error response:', errorData);
         
         // Mostrar mensaje más específico según el tipo de error
+        if (response.status === 409 || errorData?.conflict) {
+          const err = new Error(errorData.message || errorData.error || 'CONFLICT');
+          err.status = 409;
+          err.code = 'CONFLICT';
+          err.conflict = true;
+          err.serverVersion = errorData.serverVersion;
+          err.serverData = errorData.serverData || errorData.formulario?.datos;
+          err.formulario = errorData.formulario;
+          err.updatedAt = errorData.updatedAt || errorData.formulario?.fechaModificacion;
+          throw err;
+        }
         if (response.status === 413) {
           const mensaje = errorData.error || 'El formulario es demasiado grande';
           const tamanoMB = errorData.tamanoMB ? ` (${errorData.tamanoMB} MB)` : '';

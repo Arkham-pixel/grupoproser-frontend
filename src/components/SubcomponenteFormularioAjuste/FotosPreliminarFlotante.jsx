@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FaCamera, FaCheckCircle, FaCompress, FaImages } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { ImageCompression } from '../../utils/imageCompression';
+import { queueOfflinePhoto } from '../../services/photoService.js';
+import { OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig.js';
+import { checkConnectivity } from '../../services/connectivityService.js';
 
 /**
  * Carga fotos desde el acta sin alterar su maquetación. Las guarda en el
@@ -47,6 +50,22 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
         tamaño: file.size,
         tipoMime: file.type,
       }));
+
+      if (OFFLINE_FIRST_ENABLED) {
+        const online = await checkConnectivity().catch(() => navigator.onLine);
+        if (!online) {
+          Promise.all(
+            comprimidas.map((file) =>
+              queueOfflinePhoto({
+                file,
+                caseId: formData?.casoId || formData?.numeroCaso || formData?.metadata?.complexId,
+                formId: formData?._id || formData?.id || '',
+              })
+            )
+          ).catch(() => {});
+        }
+      }
+
       onInputChange('imagenesInspeccion', [
         ...(formData.imagenesInspeccion || []),
         ...nuevas,

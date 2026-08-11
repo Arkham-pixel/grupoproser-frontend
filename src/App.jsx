@@ -87,6 +87,9 @@ import RequireRutaPermitida from './components/RequireRutaPermitida'
 import { esRolVisualizador, esRolPuertos, esRolExterno, rutaInicioPorRol } from './config/roles'
 import PaginaError from './components/PaginaError'
 import DetectorConexion from './components/DetectorConexion'
+import OfflineBanner from './components/offline/OfflineBanner.jsx'
+import SyncIndicator from './components/offline/SyncIndicator.jsx'
+import OfflineBootstrap from './components/offline/OfflineBootstrap.jsx'
 import { limpiarSesionLocal } from './utils/limpiarSesionLocal.js'
 
 // Comprueba si tenemos un token en localStorage
@@ -427,7 +430,10 @@ await guardarCasoComplex(payload);
 export default function App() {
   return (
     <CasosRiesgoProvider>
+      <OfflineBootstrap>
       <DetectorConexion>
+      <OfflineBanner />
+      <SyncIndicator />
       <Routes>
         {/* Ruta raíz: si estás, vas a /inicio, si no, a /login */}
         <Route path="/" element={<RootRedirect />} />
@@ -581,6 +587,7 @@ export default function App() {
         <Route path="*" element={<PaginaError />} />
       </Routes>
       </DetectorConexion>
+      </OfflineBootstrap>
     </CasosRiesgoProvider>
   )
 }

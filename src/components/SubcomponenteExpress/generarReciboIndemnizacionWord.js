@@ -41,7 +41,7 @@ export async function generarReciboIndemnizacionBlob(liquidador, totales) {
     [
       run('Declaramos que hemos recibido de Zúrich Colombia Seguros S.A. la suma de '),
       run(recibo.valorLetras, { bold: true }),
-      run(' MCE '),
+      run(' '),
       run(`($${recibo.valor})`, { bold: true }),
       run(', '),
       run(detalle, esGenerico ? { highlight: 'yellow' } : {}),

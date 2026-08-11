@@ -14,6 +14,9 @@ import { ImageCompression } from '../../utils/imageCompression';
 import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { isStoredFileReference } from '../../utils/storedFilePath';
+import { queueOfflinePhoto } from '../../services/photoService.js';
+import { OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig.js';
+import { checkConnectivity } from '../../services/connectivityService.js';
 
 const idImagen = (img, index = 0) =>
   String(img?.id ?? img?.ruta ?? img?.nombre ?? `idx-${index}`);
@@ -167,6 +170,22 @@ return imagenesProcesadas;
         tamaño: file.size,
         tipoMime: file.type
       }));
+
+      // Offline First: encolar blobs para upload (no bloquea UI)
+      if (OFFLINE_FIRST_ENABLED) {
+        const online = await checkConnectivity().catch(() => navigator.onLine);
+        if (!online) {
+          Promise.all(
+            imagenesComprimidas.map((file) =>
+              queueOfflinePhoto({
+                file,
+                caseId: formData?.casoId || formData?.numeroCaso || formData?.metadata?.complexId,
+                formId: formData?._id || formData?.id || '',
+              })
+            )
+          ).catch(() => {});
+        }
+      }
       
       const todasLasImagenes = [...imagenes, ...nuevasImagenes];
       isInternalUpdateRef.current = true;

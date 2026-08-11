@@ -942,6 +942,7 @@ return coincide;
 
   const handleCrearCatastrofico = (caso) => navegarCatastroficoDesdeReporte(caso);
 
+
   const handleGestionar = (caso) => {
     const id = caso?._id;
     if (!id) {

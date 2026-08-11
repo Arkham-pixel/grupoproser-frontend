@@ -12,6 +12,7 @@ import {
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from './catalogoPresupuestoCatastrofico.js';
 import { buscarTarifarioUbicacionCatastrofico } from './tarifarioUbicacionCatastrofico.js';
+import { obtenerTotalDaniosParaInforme } from './syncPresupuestoNsr10AlInforme.js';
 
 const toNum = (v) => {
   if (v === '' || v === null || v === undefined) return 0;
@@ -215,21 +216,38 @@ export default function PresupuestoDaniosCatastrofico({
     actualizarPresupuesto({ items });
   };
 
-  const resumen = useMemo(
-    () => calcularResumenPresupuesto(presupuesto.items, presupuesto.aiuPorcentaje),
-    [presupuesto.items, presupuesto.aiuPorcentaje]
+  const esNsr10 = presupuesto.fuente === 'nsr10';
+  const totalesNsr = presupuesto.totalesNsr10 || null;
+
+  const resumen = useMemo(() => {
+    if (esNsr10 && totalesNsr) {
+      return {
+        costoDirecto: Number(totalesNsr.subtotal) || 0,
+        aiu: Number(totalesNsr.aiu) || 0,
+        imprevistos: Number(totalesNsr.imprevistos) || 0,
+        impuestos: Number(totalesNsr.impuestos) || 0,
+        total: Number(totalesNsr.total) || 0,
+      };
+    }
+    const base = calcularResumenPresupuesto(presupuesto.items, presupuesto.aiuPorcentaje);
+    return { ...base, imprevistos: 0, impuestos: 0 };
+  }, [esNsr10, totalesNsr, presupuesto.items, presupuesto.aiuPorcentaje]);
+
+  const totalDaniosInforme = useMemo(
+    () => obtenerTotalDaniosParaInforme(presupuesto),
+    [presupuesto]
   );
 
   const diagrama = useMemo(
     () =>
       calcularDiagramaLiquidacion({
         valorAsegurado: toNum(liquidacion.valorAsegurado),
-        totalDanios: resumen.total,
+        totalDanios: totalDaniosInforme,
         hospedajePorcentaje: liquidacion.hospedajePorcentaje,
         hospedajeManual: liquidacion.hospedajeManual,
         deducible: liquidacion.deducible,
       }),
-    [liquidacion, resumen.total]
+    [liquidacion, totalDaniosInforme]
   );
 
   useEffect(() => {
@@ -272,13 +290,24 @@ export default function PresupuestoDaniosCatastrofico({
         </h2>
       </div>
 
-      <div
-        className="flex items-start gap-2 rounded-xl border px-3 py-2 text-sm"
-        style={{ borderColor, backgroundColor: bannerBg, color: textSecondary }}
-      >
-        <FaMapMarkerAlt className="mt-0.5 shrink-0 text-blue-600" />
-        <span>{textoOrigen}</span>
-      </div>
+      {esNsr10 ? (
+        <div
+          className="rounded-xl border px-3 py-2 text-sm"
+          style={{ borderColor, backgroundColor: bannerBg, color: textSecondary }}
+        >
+          Este conteo de plata viene de la hoja <strong>Presupuesto</strong> de la evaluación
+          NSR-10. Ajústalo allá (paso 1) si cambian cantidades o unitarios; aquí se refleja en el
+          informe único y en el Word.
+        </div>
+      ) : (
+        <div
+          className="flex items-start gap-2 rounded-xl border px-3 py-2 text-sm"
+          style={{ borderColor, backgroundColor: bannerBg, color: textSecondary }}
+        >
+          <FaMapMarkerAlt className="mt-0.5 shrink-0 text-blue-600" />
+          <span>{textoOrigen}</span>
+        </div>
+      )}
 
       <textarea
         className={inputClass}
@@ -406,12 +435,12 @@ export default function PresupuestoDaniosCatastrofico({
       </div>
 
       <div
-        className="grid gap-2 rounded-xl border p-4 sm:grid-cols-3"
+        className={`grid gap-2 rounded-xl border p-4 ${esNsr10 ? 'sm:grid-cols-2 lg:grid-cols-5' : 'sm:grid-cols-3'}`}
         style={{ borderColor, backgroundColor: totalBg }}
       >
         <div>
           <div className="text-xs uppercase tracking-wide" style={{ color: textSecondary }}>
-            Costo directo
+            {esNsr10 ? 'Subtotal' : 'Costo directo'}
           </div>
           <div className="text-lg font-bold" style={{ color: textPrimary }}>
             ${fmt(resumen.costoDirecto)}
@@ -425,9 +454,29 @@ export default function PresupuestoDaniosCatastrofico({
             ${fmt(resumen.aiu)}
           </div>
         </div>
+        {esNsr10 ? (
+          <>
+            <div>
+              <div className="text-xs uppercase tracking-wide" style={{ color: textSecondary }}>
+                Imprevistos
+              </div>
+              <div className="text-lg font-bold" style={{ color: textPrimary }}>
+                ${fmt(resumen.imprevistos)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide" style={{ color: textSecondary }}>
+                Impuestos
+              </div>
+              <div className="text-lg font-bold" style={{ color: textPrimary }}>
+                ${fmt(resumen.impuestos)}
+              </div>
+            </div>
+          </>
+        ) : null}
         <div>
           <div className="text-xs uppercase tracking-wide" style={{ color: textSecondary }}>
-            Total daños
+            Total estimado
           </div>
           <div className="text-lg font-bold" style={{ color: textPrimary }}>
             ${fmt(resumen.total)}
