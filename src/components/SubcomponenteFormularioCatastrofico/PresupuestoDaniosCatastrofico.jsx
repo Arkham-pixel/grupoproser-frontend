@@ -319,78 +319,148 @@ export default function PresupuestoDaniosCatastrofico({
       />
 
       <div className="overflow-x-auto rounded-xl border" style={{ borderColor }}>
-        <table className="min-w-full text-sm">
-          <thead style={{ backgroundColor: headerBg }}>
-            <tr>
-              <th className="px-2 py-2 text-left">Actividad</th>
-              <th className="px-2 py-2 text-left">V. unitario</th>
-              <th className="px-2 py-2 text-left">Cantidad</th>
-              <th className="px-2 py-2 text-left">Valor final</th>
-              <th className="px-2 py-2 text-left">Observación técnica</th>
-              <th className="px-2 py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {(presupuesto.items || []).map((item, index) => (
-              <tr key={item.id || index} className="border-t" style={{ borderColor }}>
-                <td className="px-2 py-2 align-top min-w-[220px]">
-                  <input
-                    className={inputClass}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={item.actividad || ''}
-                    onChange={(e) => actualizarItem(index, 'actividad', e.target.value)}
-                  />
-                </td>
-                <td className="px-2 py-2 align-top min-w-[120px]">
-                  <input
-                    type="number"
-                    className={inputClass}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={item.valorUnitario ?? 0}
-                    onChange={(e) => actualizarItem(index, 'valorUnitario', e.target.value)}
-                  />
-                </td>
-                <td className="px-2 py-2 align-top min-w-[100px]">
-                  <input
-                    type="number"
-                    step="0.01"
-                    className={inputClass}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={item.cantidad ?? 0}
-                    onChange={(e) => actualizarItem(index, 'cantidad', e.target.value)}
-                  />
-                </td>
-                <td
-                  className="px-2 py-2 align-top font-semibold whitespace-nowrap"
-                  style={{ color: textPrimary }}
-                >
-                  ${fmt(calcularValorFinalItem(item))}
-                </td>
-                <td className="px-2 py-2 align-top min-w-[240px]">
-                  <textarea
-                    className={inputClass}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    rows={2}
-                    value={item.observacion || ''}
-                    onChange={(e) => actualizarItem(index, 'observacion', e.target.value)}
-                  />
-                </td>
-                <td className="px-2 py-2 align-top">
-                  <button
-                    type="button"
-                    className="rounded-lg p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    onClick={() => eliminarItem(index)}
-                    title="Eliminar ítem"
-                  >
-                    <FaTrash />
-                  </button>
-                </td>
+        {esNsr10 ? (
+          <table className="min-w-[1100px] w-full text-xs">
+            <thead style={{ backgroundColor: headerBg }}>
+              <tr>
+                <th className="px-2 py-2 text-left">Capítulo</th>
+                <th className="px-2 py-2 text-left">Código eval.</th>
+                <th className="px-2 py-2 text-left">Componente</th>
+                <th className="px-2 py-2 text-left">Actividad / reparación</th>
+                <th className="px-2 py-2 text-left">Unidad</th>
+                <th className="px-2 py-2 text-left">Cantidad</th>
+                <th className="px-2 py-2 text-left">Vlr. unitario</th>
+                <th className="px-2 py-2 text-left">Vlr. total</th>
+                <th className="px-2 py-2 text-left">Prioridad</th>
+                <th className="px-2 py-2 text-left">¿Cubierto?</th>
+                <th className="px-2 py-2 text-left">Observación</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(presupuesto.items || []).map((item, index) => (
+                <tr key={item.id || index} className="border-t" style={{ borderColor }}>
+                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
+                    {item.capitulo || '—'}
+                  </td>
+                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
+                    {item.codigoEvaluacion || '—'}
+                  </td>
+                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
+                    {item.componente || '—'}
+                  </td>
+                  <td className="px-2 py-2 align-top min-w-[160px]" style={{ color: textPrimary }}>
+                    {item.actividad || '—'}
+                  </td>
+                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
+                    {item.unidad || 'und'}
+                  </td>
+                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
+                    {item.cantidad ?? 0}
+                  </td>
+                  <td className="px-2 py-2 align-top whitespace-nowrap" style={{ color: textPrimary }}>
+                    ${fmt(item.valorUnitario)}
+                  </td>
+                  <td
+                    className="px-2 py-2 align-top font-semibold whitespace-nowrap"
+                    style={{ color: textPrimary }}
+                  >
+                    ${fmt(calcularValorFinalItem(item))}
+                  </td>
+                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
+                    {item.prioridad || '—'}
+                  </td>
+                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
+                    {item.cubierto || '—'}
+                  </td>
+                  <td className="px-2 py-2 align-top min-w-[180px]" style={{ color: textSecondary }}>
+                    {item.observacion || '—'}
+                  </td>
+                </tr>
+              ))}
+              {!(presupuesto.items || []).length ? (
+                <tr>
+                  <td colSpan={11} className="px-3 py-4 text-center" style={{ color: textSecondary }}>
+                    Sin ítems en el liquidador NSR-10. Complétalos en la evaluación (paso 1).
+                  </td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        ) : (
+          <table className="min-w-full text-sm">
+            <thead style={{ backgroundColor: headerBg }}>
+              <tr>
+                <th className="px-2 py-2 text-left">Actividad</th>
+                <th className="px-2 py-2 text-left">V. unitario</th>
+                <th className="px-2 py-2 text-left">Cantidad</th>
+                <th className="px-2 py-2 text-left">Valor final</th>
+                <th className="px-2 py-2 text-left">Observación técnica</th>
+                <th className="px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {(presupuesto.items || []).map((item, index) => (
+                <tr key={item.id || index} className="border-t" style={{ borderColor }}>
+                  <td className="px-2 py-2 align-top min-w-[220px]">
+                    <input
+                      className={inputClass}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={item.actividad || ''}
+                      onChange={(e) => actualizarItem(index, 'actividad', e.target.value)}
+                    />
+                  </td>
+                  <td className="px-2 py-2 align-top min-w-[120px]">
+                    <input
+                      type="number"
+                      className={inputClass}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={item.valorUnitario ?? 0}
+                      onChange={(e) => actualizarItem(index, 'valorUnitario', e.target.value)}
+                    />
+                  </td>
+                  <td className="px-2 py-2 align-top min-w-[100px]">
+                    <input
+                      type="number"
+                      step="0.01"
+                      className={inputClass}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={item.cantidad ?? 0}
+                      onChange={(e) => actualizarItem(index, 'cantidad', e.target.value)}
+                    />
+                  </td>
+                  <td
+                    className="px-2 py-2 align-top font-semibold whitespace-nowrap"
+                    style={{ color: textPrimary }}
+                  >
+                    ${fmt(calcularValorFinalItem(item))}
+                  </td>
+                  <td className="px-2 py-2 align-top min-w-[240px]">
+                    <textarea
+                      className={inputClass}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      rows={2}
+                      value={item.observacion || ''}
+                      onChange={(e) => actualizarItem(index, 'observacion', e.target.value)}
+                    />
+                  </td>
+                  <td className="px-2 py-2 align-top">
+                    <button
+                      type="button"
+                      className="rounded-lg p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30"
+                      onClick={() => eliminarItem(index)}
+                      title="Eliminar ítem"
+                    >
+                      <FaTrash />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
+      {!esNsr10 ? (
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -433,6 +503,7 @@ export default function PresupuestoDaniosCatastrofico({
           />
         </label>
       </div>
+      ) : null}
 
       <div
         className={`grid gap-2 rounded-xl border p-4 ${esNsr10 ? 'sm:grid-cols-2 lg:grid-cols-5' : 'sm:grid-cols-3'}`}

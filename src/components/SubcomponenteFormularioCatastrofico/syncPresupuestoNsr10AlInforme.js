@@ -13,7 +13,10 @@ export function mapearItemsNsr10APresupuestoInforme(filas = []) {
     .filter((row) => {
       const cant = Number(row?.cantidad);
       const vu = Number(row?.valorUnitario);
-      const tieneActividad = String(row?.actividad || '').trim();
+      const tieneActividad =
+        String(row?.actividad || '').trim() ||
+        String(row?.componente || '').trim() ||
+        String(row?.capitulo || '').trim();
       return (
         tieneActividad ||
         (Number.isFinite(cant) && cant !== 0) ||
@@ -22,9 +25,11 @@ export function mapearItemsNsr10APresupuestoInforme(filas = []) {
     })
     .map((row, index) => ({
       id: `nsr10-${row.codigoEvaluacion || index}`,
-      actividad: [row.capitulo, row.actividad || row.componente]
-        .filter(Boolean)
-        .join(' · '),
+      // Campos del liquidador NSR-10 (misma grilla de la plataforma)
+      capitulo: row.capitulo || '',
+      codigoEvaluacion: row.codigoEvaluacion || '',
+      componente: row.componente || '',
+      actividad: String(row.actividad || '').trim() || String(row.componente || '').trim(),
       unidad: row.unidad || 'und',
       valorUnitario:
         row.valorUnitario === '' || row.valorUnitario == null
@@ -32,14 +37,10 @@ export function mapearItemsNsr10APresupuestoInforme(filas = []) {
           : Number(row.valorUnitario),
       cantidad:
         row.cantidad === '' || row.cantidad == null ? 0 : Number(row.cantidad),
-      observacion: [row.observacion, row.codigoEvaluacion, row.fuente]
-        .filter(Boolean)
-        .join(' | '),
-      capitulo: row.capitulo || '',
-      codigoEvaluacion: row.codigoEvaluacion || '',
-      componente: row.componente || '',
       prioridad: row.prioridad || '',
       cubierto: row.cubierto || '',
+      observacion: row.observacion || '',
+      fuente: row.fuente || '',
     }));
 }
 

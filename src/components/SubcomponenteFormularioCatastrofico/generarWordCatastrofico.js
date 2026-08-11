@@ -22,7 +22,7 @@ import {
   AIU_PORCENTAJE_DEFAULT,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from './catalogoPresupuestoCatastrofico.js';
-import { obtenerTotalDaniosParaInforme, resolverPresupuestoParaWord } from './syncPresupuestoNsr10AlInforme.js';
+import { obtenerTotalDaniosParaInforme, resolverPresupuestoParaWord, tienePresupuestoNsr10, sincronizarPresupuestoNsr10AlInforme } from './syncPresupuestoNsr10AlInforme.js';
 import {
   resolverCronologiaCatastrofico,
   cargarImagenCronologiaComoDataUrl,
@@ -1088,10 +1088,25 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
       )
     );
 
-    // Siempre prioriza la hoja Presupuesto NSR-10 (no el catálogo viejo)
-    const presupuesto = resolverPresupuestoParaWord(fd);
-    const items = Array.isArray(presupuesto.items) ? presupuesto.items : [];
-    const esNsr10 = presupuesto.fuente === 'nsr10';
+    // Fuente de verdad: hoja Presupuesto NSR-10 (re-mapeo fresco en cada Word)
+    let presupuesto = resolverPresupuestoParaWord(fd);
+    if (tienePresupuestoNsr10(fd)) {
+      const sync = sincronizarPresupuestoNsr10AlInforme(fd, { forzar: true });
+      if (sync?.presupuestoCatastrofico) {
+        presupuesto = sync.presupuestoCatastrofico;
+      }
+    }
+    let items = Array.isArray(presupuesto.items) ? presupuesto.items : [];
+    const esNsr10 =
+      presupuesto.fuente === 'nsr10' ||
+      tienePresupuestoNsr10(fd) ||
+      items.some(
+        (it) =>
+          it?.codigoEvaluacion ||
+          it?.capitulo ||
+          it?.componente ||
+          String(it?.id || '').startsWith('nsr10-')
+      );
     const resumen = esNsr10
       ? {
           costoDirecto: Number(presupuesto.totalesNsr10?.subtotal) || 0,
@@ -1118,7 +1133,11 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
     });
 
     children.push(
-      heading(esNsr10 ? 'PRESUPUESTO DE INTERVENCIÓN / REPARACIÓN POST-SISMO (NSR-10)' : 'PRESUPUESTO DAÑOS')
+      heading(
+        esNsr10
+          ? 'PRESUPUESTO DE INTERVENCIÓN / REPARACIÓN POST-SISMO (NSR-10)'
+          : 'PRESUPUESTO DAÑOS'
+      )
     );
     children.push(
       p(
@@ -1130,86 +1149,133 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
         )
       )
     );
-    children.push(p('BASE PRESUPUESTAL', { bold: true, before: 160 }));
-    const filasTotales = [
+
+    // Mismo cuadro del liquidador NSR-10 de la plataforma (11 columnas; no el resumen BASE PRESUPUESTAL de 5).
+    children.push(p('LIQUIDADOR NSR-10 · MISMO CUADRO DE LA PLATAFORMA', { bold: true, before: 160 }));
+    children.push(
+      p(
+        'Capítulo, código eval., componente, actividad, unidad, cantidad, vlr. unitario/total, prioridad, cubierto y observación.',
+        { before: 40, after: 80 }
+      )
+    );
+
+    const W = {
+      cap: 1050,
+      cod: 700,
+      comp: 950,
+      act: 1300,
+      uni: 550,
+      cant: 700,
+      vu: 900,
+      vt: 900,
+      pri: 700,
+      cub: 700,
+      obs: 1350,
+    };
+    const W_TOTAL = Object.values(W).reduce((a, b) => a + b, 0);
+    const cellNsr = (text, width, opts = {}) =>
+      cell(text, {
+        width,
+        size: 14,
+        bold: !!opts.bold,
+        shading: opts.shading || undefined,
+      });
+    const cellSpan = (text, spanWidth, opts = {}) =>
+      new TableCell({
+        borders,
+        columnSpan: opts.span || 7,
+        width: { size: spanWidth, type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        shading: { fill: opts.shading || 'F3F4F6' },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: String(text ?? ''),
+                bold: true,
+                size: 14,
+                font: 'Calibri',
+              }),
+            ],
+          }),
+        ],
+      });
+    const filaResumenNsr = (etiqueta, valor) =>
       new TableRow({
         children: [
-          cell(esNsr10 ? 'SUBTOTAL' : 'COSTO DIRECTO', { bold: true, width: 3200 }),
-          cell('', { width: 1600 }),
-          cell('', { width: 1200 }),
-          cell(fmtMoney(resumen.costoDirecto), { bold: true, width: 1600 }),
-          cell('', { width: 2400 }),
+          cellSpan(etiqueta, W.cap + W.cod + W.comp + W.act + W.uni + W.cant + W.vu, {
+            span: 7,
+          }),
+          cellNsr(fmtMoney(valor), W.vt, { bold: true, shading: 'F3F4F6' }),
+          cellNsr('', W.pri, { shading: 'F3F4F6' }),
+          cellNsr('', W.cub, { shading: 'F3F4F6' }),
+          cellNsr('', W.obs, { shading: 'F3F4F6' }),
         ],
-      }),
-      new TableRow({
-        children: [
-          cell('AIU', { bold: true, width: 3200 }),
-          cell('', { width: 1600 }),
-          cell('', { width: 1200 }),
-          cell(fmtMoney(resumen.aiu), { bold: true, width: 1600 }),
-          cell('', { width: 2400 }),
-        ],
-      }),
+      });
+
+    const aiuPctLabel = Math.round(Number(presupuesto.aiuPorcentaje ?? 0.05) * 100);
+    const imprPctLabel = Math.round(Number(presupuesto.imprevistosPorcentaje ?? 0.1) * 100);
+    const impPctLabel = Math.round(Number(presupuesto.impuestosPorcentaje ?? 0) * 100);
+
+    const filasResumen = [
+      filaResumenNsr('SUBTOTAL', resumen.costoDirecto),
+      filaResumenNsr(`AIU (${aiuPctLabel}%)`, resumen.aiu),
     ];
     if (esNsr10) {
-      filasTotales.push(
-        new TableRow({
-          children: [
-            cell('IMPREVISTOS', { bold: true, width: 3200 }),
-            cell('', { width: 1600 }),
-            cell('', { width: 1200 }),
-            cell(fmtMoney(resumen.imprevistos), { bold: true, width: 1600 }),
-            cell('', { width: 2400 }),
-          ],
-        }),
-        new TableRow({
-          children: [
-            cell('IMPUESTOS', { bold: true, width: 3200 }),
-            cell('', { width: 1600 }),
-            cell('', { width: 1200 }),
-            cell(fmtMoney(resumen.impuestos), { bold: true, width: 1600 }),
-            cell('', { width: 2400 }),
-          ],
-        })
+      filasResumen.push(
+        filaResumenNsr(`IMPREVISTOS (${imprPctLabel}%)`, resumen.imprevistos),
+        filaResumenNsr(`IMPUESTOS (${impPctLabel}%)`, resumen.impuestos)
       );
     }
-    filasTotales.push(
-      new TableRow({
-        children: [
-          cell('TOTAL ESTIMADO', { bold: true, width: 3200 }),
-          cell('', { width: 1600 }),
-          cell('', { width: 1200 }),
-          cell(fmtMoney(resumen.total), { bold: true, width: 1600 }),
-          cell('', { width: 2400 }),
-        ],
-      })
-    );
+    filasResumen.push(filaResumenNsr('TOTAL ESTIMADO', resumen.total));
+
     children.push(
       new Table({
-        width: { size: 10000, type: WidthType.DXA },
+        width: { size: W_TOTAL, type: WidthType.DXA },
         rows: [
           new TableRow({
             children: [
-              cell('ACTIVIDAD', { bold: true, width: 3200 }),
-              cell('VALOR UNITARIO', { bold: true, width: 1600 }),
-              cell('CANTIDAD', { bold: true, width: 1200 }),
-              cell('VALOR FINAL', { bold: true, width: 1600 }),
-              cell('OBSERVACIÓN TÉCNICA', { bold: true, width: 2400 }),
+              cellNsr('CAPÍTULO', W.cap, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('CÓDIGO EVAL.', W.cod, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('COMPONENTE', W.comp, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('ACTIVIDAD / REPARACIÓN', W.act, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('UND', W.uni, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('CANT.', W.cant, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('VLR. UNITARIO', W.vu, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('VLR. TOTAL', W.vt, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('PRIORIDAD', W.pri, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('¿CUBIERTO?', W.cub, { bold: true, shading: 'E5E7EB' }),
+              cellNsr('OBSERVACIÓN', W.obs, { bold: true, shading: 'E5E7EB' }),
             ],
           }),
-          ...items.map(
-            (item) =>
-              new TableRow({
-                children: [
-                  cell(item.actividad, { width: 3200 }),
-                  cell(fmtMoney(item.valorUnitario), { width: 1600 }),
-                  cell(String(item.cantidad ?? 0), { width: 1200 }),
-                  cell(fmtMoney(calcularValorFinalItem(item)), { width: 1600 }),
-                  cell(item.observacion || '', { width: 2400 }),
-                ],
-              })
-          ),
-          ...filasTotales,
+          ...(items.length
+            ? items.map(
+                (item) =>
+                  new TableRow({
+                    children: [
+                      cellNsr(item.capitulo || '', W.cap),
+                      cellNsr(item.codigoEvaluacion || '', W.cod),
+                      cellNsr(item.componente || '', W.comp),
+                      cellNsr(item.actividad || '', W.act),
+                      cellNsr(item.unidad || 'und', W.uni),
+                      cellNsr(String(item.cantidad ?? 0), W.cant),
+                      cellNsr(fmtMoney(item.valorUnitario), W.vu),
+                      cellNsr(fmtMoney(calcularValorFinalItem(item)), W.vt),
+                      cellNsr(item.prioridad || '', W.pri),
+                      cellNsr(item.cubierto || '', W.cub),
+                      cellNsr(item.observacion || '', W.obs),
+                    ],
+                  })
+              )
+            : [
+                new TableRow({
+                  children: [
+                    cellSpan('Sin ítems de presupuesto', W_TOTAL, { span: 11 }),
+                  ],
+                }),
+              ]),
+          ...filasResumen,
         ],
       })
     );

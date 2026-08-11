@@ -11,7 +11,6 @@ import {
 import { descargarBlob, generarWordCatastrofico } from './generarWordCatastrofico.js';
 import { sincronizarPresupuestoNsr10AlInforme, formDataConPresupuestoNsr10 } from './syncPresupuestoNsr10AlInforme.js';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService.js';
-import { buildPrefillAjusteDesdeCasoComplex } from '../../utils/prefillAjusteDesdeCasoComplex.js';
 import ActaInspeccionAjuste from '../SubcomponenteFormularioAjuste/ActaInspeccionAjuste.jsx';
 import FotosPreliminarFlotante from '../SubcomponenteFormularioAjuste/FotosPreliminarFlotante.jsx';
 import InspeccionFotograficaAjuste from '../SubcomponenteFormularioAjuste/InspeccionFotograficaAjuste.jsx';
@@ -195,6 +194,19 @@ export default function FormularioCatastrofico() {
   const cardBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
+
+  useEffect(() => {
+    if (estadoActual !== ESTADOS.INFORME) return;
+    const sync = sincronizarPresupuestoNsr10AlInforme(formData, { forzar: true });
+    if (!sync?.presupuestoCatastrofico) return;
+    setFormData((prev) => ({
+      ...prev,
+      presupuestoCatastrofico: sync.presupuestoCatastrofico,
+      indemnizacionSugerida: sync.indemnizacionSugerida,
+    }));
+    // Solo al entrar al informe / cambiar de pestaña
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estadoActual]);
 
   useEffect(() => {
     const prefill = location.state?.prefillDesdeCaso;
@@ -527,9 +539,16 @@ export default function FormularioCatastrofico() {
     setGenerando(true);
     setMensaje('');
     try {
+      // Re-sincroniza NSR-10 → presupuesto antes de armar el Word
       const datosWord = formDataConPresupuestoNsr10(formData);
-      setFormData((prev) => ({ ...prev, ...datosWord }));
+      setFormData((prev) => ({
+        ...prev,
+        ...datosWord,
+        presupuestoCatastrofico:
+          datosWord.presupuestoCatastrofico || prev.presupuestoCatastrofico,
+      }));
       await guardar();
+      // Usa el snapshot sincronizado (no el estado React aún no flusheado)
       const { blob, fileName } = await generarWordCatastrofico(datosWord, {
         modo: estadoActual === ESTADOS.ACTA ? ESTADOS.ACTA : ESTADOS.INFORME,
       });
@@ -768,9 +787,4 @@ export default function FormularioCatastrofico() {
       </div>
     </div>
   );
-}
-
-/** Helper exportado por si se quiere prefill desde fuera sin duplicar lógica de ajuste. */
-export function buildPrefillCatastroficoDesdeCasoComplex(caso) {
-  return buildPrefillAjusteDesdeCasoComplex(caso);
 }
