@@ -1,6 +1,6 @@
 /**
  * Desprendible Manual CAT Zurich (inspección / exposición).
- * Incluye severidad por nivel (Aplica / No aplica + observación) y evidencia.
+ * Incluye severidad por nivel (Aplica / No aplica), observaciones y fotos.
  * Embebe fotos reales del caso (orden + descripción).
  */
 import {
@@ -20,22 +20,37 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import logoZurichUrl from '../../assets/zurich-logo.png';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
+import { nombreUsuarioPlataforma } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
   DISCLAIMER_CAT_ZURICH,
-  EVIDENCIA_CAT_KEYS,
   SEVERIDAD_CAT_ZURICH,
-  derivarSeveridadCatDesdeNiveles,
   formatDate,
-  labelSeveridadCat,
-  normalizeEvidenciaCat,
-  normalizeEvidenciaItem,
   normalizeSeveridadCatNiveles,
 } from './zurichHelpers.js';
 
 const thin = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
 const borders = { top: thin, bottom: thin, left: thin, right: thin };
+const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
+const noBorders = { top: none, bottom: none, left: none, right: none };
 const W = 10080; // ~7" usable
+const FOTO_COL = 5040;
+
+async function loadLogoBytes(url) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buf = await res.arrayBuffer();
+    const u8 = new Uint8Array(buf);
+    const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
+    const isJpg = u8.length > 3 && u8[0] === 0xff && u8[1] === 0xd8;
+    if (!isPng && !isJpg) return null;
+    return { bytes: u8, type: isPng ? 'png' : 'jpg' };
+  } catch {
+    return null;
+  }
+}
 
 async function fetchImageBytes(url) {
   try {
@@ -109,6 +124,68 @@ const labelAplica = (aplica) => {
   return 'SIN MARCAR';
 };
 
+function celdaFotoVacia() {
+  return new TableCell({
+    borders: noBorders,
+    width: { size: FOTO_COL, type: WidthType.DXA },
+    children: [new Paragraph({ children: [] })],
+  });
+}
+
+function celdaFoto({ titulo, descripcion, img, fallo }) {
+  const children = [];
+  if (img) {
+    children.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 40 },
+        children: [
+          new ImageRun({
+            data: img.bytes,
+            transformation: { width: 280, height: 190 },
+            type: img.type,
+          }),
+        ],
+      })
+    );
+  } else if (fallo) {
+    children.push(
+      p(`${titulo} (foto no embebida)`, {
+        size: 14,
+        italics: true,
+        align: AlignmentType.CENTER,
+        before: 40,
+        after: 20,
+      })
+    );
+  }
+  children.push(
+    p(titulo, {
+      align: AlignmentType.CENTER,
+      size: 14,
+      bold: true,
+      before: 20,
+      after: descripcion ? 10 : 60,
+    })
+  );
+  if (descripcion) {
+    children.push(
+      p(descripcion, {
+        align: AlignmentType.CENTER,
+        size: 13,
+        before: 0,
+        after: 60,
+      })
+    );
+  }
+  return new TableCell({
+    borders: noBorders,
+    width: { size: FOTO_COL, type: WidthType.DXA },
+    verticalAlign: VerticalAlign.TOP,
+    children,
+  });
+}
+
 async function construirParrafosFotos(caso = {}) {
   const archivos = Array.isArray(caso.archivos) ? caso.archivos : [];
   const fotosOrdenadas = [...archivos]
@@ -134,7 +211,7 @@ async function construirParrafosFotos(caso = {}) {
     return [p('Sin fotos adjuntas en la inspección.', { italics: true, size: 18 })];
   }
 
-  const parrafos = [];
+  const preparadas = [];
   let incluidas = 0;
   for (let i = 0; i < fotosOrdenadas.length; i += 1) {
     const a = fotosOrdenadas[i];
@@ -142,53 +219,13 @@ async function construirParrafosFotos(caso = {}) {
     const descripcion = String(a.descripcion || '').trim();
     const url = urlDescargaArchivoZurich(a.ruta);
     const img = url ? await fetchImageBytes(url) : null;
-
-    if (img) {
-      incluidas += 1;
-      parrafos.push(
-        new Paragraph({
-          alignment: AlignmentType.CENTER,
-          spacing: { before: 160, after: 40 },
-          children: [
-            new ImageRun({
-              data: img.bytes,
-              transformation: { width: 480, height: 320 },
-              type: img.type,
-            }),
-          ],
-        })
-      );
-      parrafos.push(
-        p(titulo, {
-          align: AlignmentType.CENTER,
-          size: 16,
-          bold: true,
-          before: 40,
-          after: descripcion ? 20 : 80,
-        })
-      );
-      if (descripcion) {
-        parrafos.push(
-          p(descripcion, {
-            align: AlignmentType.CENTER,
-            size: 16,
-            before: 0,
-            after: 120,
-          })
-        );
-      }
-    } else {
-      parrafos.push(
-        p(
-          `${titulo}${descripcion ? ` — ${descripcion}` : ''} (foto no embebida: no se pudo descargar)`,
-          { size: 16, italics: true, before: 80, after: 80 }
-        )
-      );
-    }
+    if (img) incluidas += 1;
+    preparadas.push({ titulo, descripcion, img, fallo: !img });
   }
 
-  if (!incluidas && parrafos.length) {
-    parrafos.unshift(
+  const out = [];
+  if (!incluidas) {
+    out.push(
       p('No se pudieron embeber las imágenes. Verifique acceso a los archivos subidos.', {
         italics: true,
         size: 16,
@@ -198,7 +235,28 @@ async function construirParrafosFotos(caso = {}) {
     );
   }
 
-  return parrafos;
+  const filas = [];
+  for (let i = 0; i < preparadas.length; i += 2) {
+    const izq = preparadas[i];
+    const der = preparadas[i + 1];
+    filas.push(
+      new TableRow({
+        children: [
+          celdaFoto(izq),
+          der ? celdaFoto(der) : celdaFotoVacia(),
+        ],
+      })
+    );
+  }
+
+  out.push(
+    new Table({
+      width: { size: W, type: WidthType.DXA },
+      columnWidths: [FOTO_COL, FOTO_COL],
+      rows: filas,
+    })
+  );
+  return out;
 }
 
 /**
@@ -206,9 +264,16 @@ async function construirParrafosFotos(caso = {}) {
  */
 export async function generarDesprendibleCatZurich(caso = {}) {
   const niveles = normalizeSeveridadCatNiveles(caso.severidadCatNiveles, caso.severidadCat);
-  const evidencia = normalizeEvidenciaCat(caso.evidenciaCat);
-  const severidadDerivada =
-    caso.severidadCat ?? derivarSeveridadCatDesdeNiveles(niveles);
+
+  const perito =
+    nombreUsuarioPlataforma() ||
+    String(caso.ajustador || '').trim() ||
+    '—';
+  const direccion =
+    caso.addressNumber ||
+    caso.direccion ||
+    caso.direccionInspeccionSugerida ||
+    '—';
 
   const headerInfo = new Table({
     width: { size: W, type: WidthType.DXA },
@@ -216,114 +281,26 @@ export async function generarDesprendibleCatZurich(caso = {}) {
     rows: [
       new TableRow({
         children: [
-          cell('Consecutivo', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.consecutivo || '—', { width: 2520 }),
-          cell('Insured Name', { bold: true, width: 2520, fill: 'D9E2F3' }),
+          cell('Asegurado', { bold: true, width: 2520, fill: 'D9E2F3' }),
           cell(caso.asegurado || '—', { width: 2520 }),
-        ],
-      }),
-      new TableRow({
-        children: [
           cell('Risk ID', { bold: true, width: 2520, fill: 'D9E2F3' }),
           cell(caso.riskId || caso.identificacion || '—', { width: 2520 }),
-          cell('Distancia epicentro (km)', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(
-            caso.distanciaEpicentroKm === 0 || caso.distanciaEpicentroKm
-              ? String(caso.distanciaEpicentroKm)
-              : '—',
-            { width: 2520 }
-          ),
         ],
       }),
       new TableRow({
         children: [
-          cell('Tipo negocio homologado', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.tipoNegocioHomologado || '—', { width: 2520 }),
-          cell('CAT ubicación referencia', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.catUbicacionReferencia || '—', { width: 2520 }),
+          cell('Dirección', { bold: true, width: 2520, fill: 'D9E2F3' }),
+          cell(direccion, { width: 2520 }),
+          cell('Ciudad', { bold: true, width: 2520, fill: 'D9E2F3' }),
+          cell(caso.catUbicacionReferencia || caso.ciudad || '—', { width: 2520 }),
         ],
       }),
       new TableRow({
         children: [
-          cell('Address Number', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.addressNumber || '—', { width: 2520 }),
-          cell('Grupo inspección', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.grupoInspeccion || '—', { width: 2520 }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          cell('Dirección inspección sugerida', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          new TableCell({
-            borders,
-            columnSpan: 3,
-            width: { size: 7560, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 40 },
-                children: [
-                  new TextRun({
-                    text: caso.direccionInspeccionSugerida || '—',
-                    font: 'Arial',
-                    size: 15,
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          cell('Link Google Maps', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          new TableCell({
-            borders,
-            columnSpan: 3,
-            width: { size: 7560, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.CENTER,
-            children: [
-              new Paragraph({
-                spacing: { before: 40, after: 40 },
-                children: [
-                  new TextRun({
-                    text: caso.linkGoogleMaps || '—',
-                    font: 'Arial',
-                    size: 14,
-                  }),
-                ],
-              }),
-            ],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          cell('Afectación', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.afectacion || '—', { width: 2520 }),
-          cell('Grado afectación', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.gradoAfectacion || '—', { width: 2520 }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          cell('Lucro cesante', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.lucroCesante || '—', { width: 2520 }),
-          cell('Fecha inspección', { bold: true, width: 2520, fill: 'D9E2F3' }),
+          cell('Fecha visita', { bold: true, width: 2520, fill: 'D9E2F3' }),
           cell(formatDate(caso.fechaInspeccion), { width: 2520 }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          cell('Severidad CAT', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(
-            severidadDerivada
-              ? `${severidadDerivada} — ${labelSeveridadCat(severidadDerivada)}`
-              : '—',
-            { width: 2520 }
-          ),
-          cell('Estado', { bold: true, width: 2520, fill: 'D9E2F3' }),
-          cell(caso.estado || '—', { width: 2520 }),
+          cell('Perito', { bold: true, width: 2520, fill: 'D9E2F3' }),
+          cell(perito, { width: 2520 }),
         ],
       }),
     ],
@@ -363,56 +340,44 @@ export async function generarDesprendibleCatZurich(caso = {}) {
     rows: severidadRows,
   });
 
-  const evidenciaRows = [
-    new TableRow({
-      children: [
-        headCell('Evidencia', 2160),
-        headCell('Mínimo requerido', 3600),
-        headCell('Cuándo aplica', 2160),
-        headCell('Aplica', 2160),
-      ],
-    }),
-    ...EVIDENCIA_CAT_KEYS.map((fila) => {
-      const item = normalizeEvidenciaItem(evidencia[fila.key]);
-      const aplicaFill =
-        item.aplica === 'SI' ? 'C6EFCE' : item.aplica === 'NO' ? 'FFC7CE' : 'FFFFFF';
-      return new TableRow({
-        children: [
-          cell(fila.evidencia, { bold: true, width: 2160 }),
-          cell(fila.minimo, { width: 3600, fontSize: 16 }),
-          cell(fila.cuando, { width: 2160, fontSize: 16 }),
-          cell(labelAplica(item.aplica), {
-            bold: true,
-            width: 2160,
-            align: AlignmentType.CENTER,
-            fill: aplicaFill,
-          }),
-        ],
-      });
-    }),
-  ];
-
-  const evidenciaTable = new Table({
-    width: { size: W, type: WidthType.DXA },
-    columnWidths: [2160, 3600, 2160, 2160],
-    rows: evidenciaRows,
-  });
-
   const fotoParrafos = await construirParrafosFotos(caso);
+  const logoZurich = await loadLogoBytes(logoZurichUrl);
 
   const doc = new Document({
     sections: [
       {
         properties: {
           page: {
-            margin: { top: 720, bottom: 720, left: 720, right: 720 },
+            margin: { top: 900, bottom: 720, left: 720, right: 720 },
           },
         },
         headers: {
           default: new Header({
             children: [
-              p('ZURICH', { bold: true, size: 18, color: '002060', before: 0, after: 0 }),
-              p('Grupo Proser — ARNALD', { size: 16, color: '666666', before: 0, after: 0 }),
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                spacing: { before: 0, after: 60 },
+                border: {
+                  bottom: { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' },
+                },
+                children: logoZurich
+                  ? [
+                      new ImageRun({
+                        data: logoZurich.bytes,
+                        transformation: { width: 110, height: 44 },
+                        type: logoZurich.type,
+                      }),
+                    ]
+                  : [
+                      new TextRun({
+                        text: 'ZURICH',
+                        bold: true,
+                        font: 'Arial',
+                        size: 20,
+                        color: '002060',
+                      }),
+                    ],
+              }),
             ],
           }),
         },
@@ -420,13 +385,13 @@ export async function generarDesprendibleCatZurich(caso = {}) {
           p('Manual para Inspecciones', { bold: true, size: 28, before: 0, after: 40 }),
           p('Inspecciones visuales y reporte de exposición por Evento CAT', {
             bold: true,
-            size: 22,
+            size: 20,
             before: 0,
-            after: 120,
+            after: 40,
           }),
           p('DESPRENDIBLE DE INSPECCIÓN CAT (diligenciado)', {
             bold: true,
-            size: 20,
+            size: 18,
             color: '002060',
             before: 0,
             after: 160,
@@ -469,15 +434,7 @@ export async function generarDesprendibleCatZurich(caso = {}) {
           ),
           severidadTable,
 
-          p('2. Registro fotográfico y documental', {
-            bold: true,
-            size: 22,
-            before: 280,
-            after: 120,
-          }),
-          evidenciaTable,
-
-          p('3. Observaciones generales de inspección', {
+          p('2. Observaciones generales de inspección', {
             bold: true,
             size: 22,
             before: 280,
@@ -489,7 +446,7 @@ export async function generarDesprendibleCatZurich(caso = {}) {
             after: 120,
           }),
 
-          p('4. Fotos de la inspección', {
+          p('3. Fotos de la inspección', {
             bold: true,
             size: 22,
             before: 200,

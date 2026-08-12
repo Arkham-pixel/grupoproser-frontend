@@ -9,6 +9,7 @@ import {
   FaSave,
   FaTrash,
 } from 'react-icons/fa';
+import logoZurich from '../../assets/zurich-logo.png';
 import {
   actualizarArchivoZurich,
   actualizarCasoZurich,
@@ -21,16 +22,17 @@ import {
 import {
   expressAlertError,
   expressAlertSuccess,
+  expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
-  EVIDENCIA_CAT_KEYS,
   EVIDENCIA_CAT_VACIA,
   SEVERIDAD_CAT_ZURICH,
   normalizeEvidenciaCat,
   normalizeSeveridadCatNiveles,
   derivarSeveridadCatDesdeNiveles,
+  formatDateIso,
 } from './zurichHelpers.js';
 import { descargarDesprendibleCatZurich } from './generarDesprendibleCatZurich.js';
 
@@ -38,8 +40,6 @@ const SEVERIDAD_MANUAL_CAT = SEVERIDAD_CAT_ZURICH.map((s) => ({
   nivel: s.valor,
   descripcion: s.descripcion,
 }));
-
-const EVIDENCIA_MANUAL_CAT = EVIDENCIA_CAT_KEYS;
 
 const OBJETIVO_MANUAL =
   'Objetivo: entregar al ajustador información clave, sencilla y resumida para clasificar la severidad, completar la base de Excel y registrar evidencia fotográfica/documental. Este documento no autoriza a confirmar cobertura, negar cobertura, prometer pagos o actuar como vocero de Zurich.';
@@ -82,9 +82,8 @@ const ordenarFotos = (lista) =>
 
 /**
  * Manual CAT Zurich:
- * 1) Cada nivel de daño: APLICA / NO APLICA + observación
- * 2) Checklist evidencia (cuándo aplica del manual)
- * 3) Fotos con descripción y reordenamiento (como inspección fotográfica)
+ * 1) Cada nivel de daño: APLICA / NO APLICA
+ * 2) Fotos con descripción y reordenamiento (como inspección fotográfica)
  */
 export default function InspeccionCatZurich({ casoZurich = null, onCasoChange }) {
   const { t } = useTranslation();
@@ -130,13 +129,6 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     setSeveridadNiveles((prev) => ({
       ...prev,
       [key]: { ...(prev[key] || { aplica: null, observacion: '' }), aplica },
-    }));
-  };
-
-  const setEvidenciaAplica = (clave, aplica) => {
-    setEvidenciaCat((prev) => ({
-      ...prev,
-      [clave]: { ...(prev[clave] || { aplica: null, observacion: '' }), aplica },
     }));
   };
 
@@ -296,6 +288,8 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     const evidencia = normalizeEvidenciaCat(evidenciaCat);
     const severidadCat = derivarSeveridadCatDesdeNiveles(niveles);
     const accesoPredio = evidencia.noAcceso?.aplica === 'SI' ? 'NO' : 'SI';
+    const fechaVisita =
+      formatDateIso(casoZurich?.fechaInspeccion) || formatDateIso(new Date());
     const payload = {
       ...casoZurich,
       severidadCat,
@@ -303,6 +297,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       accesoPredio,
       evidenciaCat: { ...EVIDENCIA_CAT_VACIA, ...evidencia },
       observacionesCat: observacionesCat || null,
+      fechaInspeccion: fechaVisita,
     };
     delete payload._id;
     delete payload.__v;
@@ -359,6 +354,27 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     }
   };
 
+  /** Solo Word con el estado actual de pantalla (no persiste en el caso). */
+  const exportarDesprendibleSinGuardar = async () => {
+    setGenerandoDoc(true);
+    setError('');
+    setMensaje('');
+    try {
+      const { payload } = buildCatPayload();
+      const base = {
+        ...(casoZurich || {}),
+        ...payload,
+        archivos: archivos?.length ? archivos : casoZurich?.archivos || [],
+      };
+      const nombre = await descargarDesprendibleCatZurich(base);
+      setMensaje(`Desprendible exportado (sin guardar): ${nombre}`);
+    } catch (err) {
+      setError(err.message || 'No se pudo generar el desprendible Word');
+    } finally {
+      setGenerandoDoc(false);
+    }
+  };
+
   const th =
     'border border-gray-300 bg-gray-100 px-2 py-2 text-left font-body text-[11px] font-bold uppercase tracking-wide text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200';
   const td =
@@ -369,14 +385,21 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       {error ? <div className={expressAlertError}>{error}</div> : null}
       {mensaje ? <div className={expressAlertSuccess}>{mensaje}</div> : null}
 
-      <header className="space-y-1 border-b border-gray-200 pb-4 dark:border-gray-700">
-        <p className="font-heading text-sm font-bold tracking-widest text-[#002060]">ZURICH</p>
-        <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">
-          Manual para Inspecciones.
-        </h2>
-        <p className="font-body text-base font-semibold text-gray-800 dark:text-gray-200">
-          Inspecciones visuales y reporte de exposición por Evento CAT
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-200 pb-4 dark:border-gray-700">
+        <div className="space-y-1">
+          <p className="font-heading text-sm font-bold tracking-widest text-[#002060]">ZURICH</p>
+          <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">
+            Manual para Inspecciones.
+          </h2>
+          <p className="font-body text-base font-semibold text-gray-800 dark:text-gray-200">
+            Inspecciones visuales y reporte de exposición por Evento CAT
+          </p>
+        </div>
+        <img
+          src={logoZurich}
+          alt="Zurich"
+          className="h-14 w-auto max-w-[180px] object-contain"
+        />
       </header>
 
       <div className="rounded border border-amber-300 bg-amber-50 px-4 py-3 font-body text-sm leading-relaxed text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
@@ -437,61 +460,8 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       </section>
 
       <section>
-        <h3 className="mb-3 font-heading text-lg font-bold text-gray-900 dark:text-white">
-          2. Registro fotográfico y documental
-        </h3>
-
-        <div className="overflow-x-auto overflow-hidden rounded-lg border border-gray-300 dark:border-gray-600">
-          <table className="min-w-full border-collapse">
-            <thead>
-              <tr>
-                <th className={`${th} w-36`}>Evidencia</th>
-                <th className={th}>Mínimo requerido</th>
-                <th className={`${th} w-36`}>Cuándo aplica</th>
-                <th className={`${th} w-44`}>Aplica / No aplica</th>
-              </tr>
-            </thead>
-            <tbody>
-              {EVIDENCIA_MANUAL_CAT.map((fila) => {
-                const item = evidenciaCat[fila.key] || { aplica: null, observacion: '' };
-                return (
-                  <tr key={fila.key} className="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                    <td className={`${td} font-semibold`}>{fila.evidencia}</td>
-                    <td className={td}>{fila.minimo}</td>
-                    <td className={td}>{fila.cuando}</td>
-                    <td className={td}>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            type="radio"
-                            name={`ev-aplica-${fila.key}`}
-                            checked={item.aplica === 'SI'}
-                            onChange={() => setEvidenciaAplica(fila.key, 'SI')}
-                          />
-                          Aplica
-                        </label>
-                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            type="radio"
-                            name={`ev-aplica-${fila.key}`}
-                            checked={item.aplica === 'NO'}
-                            onChange={() => setEvidenciaAplica(fila.key, 'NO')}
-                          />
-                          No aplica
-                        </label>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section>
         <h3 className="mb-2 font-heading text-lg font-bold text-gray-900 dark:text-white">
-          3. Fotos de la inspección
+          2. Fotos de la inspección
         </h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-300">
           Suba fotos, escriba la descripción de cada una y reordene arrastrando o con las flechas
@@ -717,6 +687,16 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
         >
           <FaFileWord className="mr-2 inline" />
           {generandoDoc ? 'Generando…' : 'Guardar y descargar desprendible'}
+        </button>
+        <button
+          type="button"
+          className={expressBtnGhost}
+          onClick={exportarDesprendibleSinGuardar}
+          disabled={guardando || generandoDoc}
+          title="Genera el Word con lo que ve en pantalla, sin guardar en el caso"
+        >
+          <FaFileWord className="mr-2 inline" />
+          {generandoDoc ? 'Generando…' : 'Solo exportar (sin guardar)'}
         </button>
       </div>
     </div>
