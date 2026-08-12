@@ -1,7 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { subscribeAutosaveStatus, getAutosaveStatus } from '../services/autosaveOfflineService.js';
 import { getSyncStatus } from '../services/syncService.js';
-import { checkConnectivity } from '../services/connectivityService.js';
+import {
+  checkConnectivity,
+  subscribeConnectivity,
+} from '../services/connectivityService.js';
 import { OFFLINE_FIRST_ENABLED } from '../config/autoSaveConfig.js';
 
 export default function useSyncStatus() {
@@ -21,13 +24,17 @@ export default function useSyncStatus() {
     if (!OFFLINE_FIRST_ENABLED) return;
     const s = await getSyncStatus();
     setSummary(s);
-    const online = await checkConnectivity(); // usa cache TTL interno
+    const online = await checkConnectivity();
     setIsOnline(online);
   }, []);
 
   useEffect(() => {
     if (!OFFLINE_FIRST_ENABLED) return undefined;
     const unsub = subscribeAutosaveStatus(setStatus);
+    const unsubConn = subscribeConnectivity((ok) => {
+      setIsOnline(ok);
+      if (ok) refresh();
+    });
     refresh();
     const t = setInterval(refresh, 15000);
     const onVis = () => {
@@ -36,6 +43,7 @@ export default function useSyncStatus() {
     document.addEventListener('visibilitychange', onVis);
     return () => {
       unsub();
+      unsubConn();
       clearInterval(t);
       document.removeEventListener('visibilitychange', onVis);
     };

@@ -10,6 +10,13 @@ import {
   envolverSeccion,
 } from './reporteHtmlSecciones.js';
 import { generarSeccionesEjecutivasHtml } from './reporteEjecutivoHtml.js';
+import {
+  formatearFechaCorta,
+  obtenerMetaEstadoRecomendacion,
+  recomendacionTieneContenido,
+  resolverAvanceRecomendacion,
+  seguimientosConContenido,
+} from '../components/MatrizRiesgoAvanzada/gestionRiesgosHelpers.js';
 
 export class ReporteService {
   
@@ -1140,64 +1147,42 @@ const nivelRiesgo = this.obtenerNivelRiesgo(clasificacion);
 
   // Generar sección de gestión de riesgos
   static generarSeccionGestionRiesgos(gestionRiesgos) {
-if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomendaciones.length === 0) {
+    const recomendaciones = (gestionRiesgos?.recomendaciones || []).filter(recomendacionTieneContenido);
+    if (recomendaciones.length === 0) {
       return '';
     }
 
     const renderSeguimientos = (recomendacion) => {
-      const seguimientos = [];
-
-      if (Array.isArray(recomendacion.seguimientos) && recomendacion.seguimientos.length > 0) {
-        recomendacion.seguimientos.forEach((seg, segIndex) => {
-          if (!seg?.fecha && !seg?.comentarios) return;
-          seguimientos.push(`
-            <div class="seguimiento-item-report">
-              <strong>📌 Seguimiento ${segIndex + 1}:</strong>
-              ${seg.fecha ? `<span class="fecha-seguimiento-report">${seg.fecha}</span>` : ''}
-              ${seg.comentarios ? `
-                <div class="comentarios-report">
-                  <strong>💬 Comentarios:</strong> ${seg.comentarios}
-                </div>
-              ` : ''}
-            </div>
-          `);
-        });
-      }
-
-      if (seguimientos.length === 0 && recomendacion.fechaImplementacion1) {
-        seguimientos.push(`
-          <div class="seguimiento-item-report">
-            <strong>📌 Seguimiento 1:</strong>
-            <span class="fecha-seguimiento-report">${recomendacion.fechaImplementacion1}</span>
-            ${recomendacion.comentariosImplementacion1 ? `
-              <div class="comentarios-report">
-                <strong>💬 Comentarios:</strong> ${recomendacion.comentariosImplementacion1}
-              </div>
-            ` : ''}
+      const seguimientos = seguimientosConContenido(recomendacion);
+      if (seguimientos.length === 0) {
+        return `
+          <div class="seguimientos-container-report">
+            <h4>Seguimiento</h4>
+            <p class="seguimiento-vacio-report">Sin seguimientos registrados.</p>
           </div>
-        `);
+        `;
       }
-
-      if (recomendacion.fechaImplementacion2) {
-        seguimientos.push(`
-          <div class="seguimiento-item-report">
-            <strong>📌 Seguimiento 2:</strong>
-            <span class="fecha-seguimiento-report">${recomendacion.fechaImplementacion2}</span>
-            ${recomendacion.comentariosImplementacion2 ? `
-              <div class="comentarios-report">
-                <strong>💬 Comentarios:</strong> ${recomendacion.comentariosImplementacion2}
-              </div>
-            ` : ''}
-          </div>
-        `);
-      }
-
-      if (seguimientos.length === 0) return '';
 
       return `
         <div class="seguimientos-container-report">
           <h4>Seguimiento</h4>
-          ${seguimientos.join('')}
+          <ol class="seguimiento-lista-report">
+            ${seguimientos
+              .map((seg, segIndex) => {
+                const fecha = formatearFechaCorta(seg.fecha);
+                const comentarios = this.escaparHtml(String(seg.comentarios || '').trim());
+                return `
+                  <li class="seguimiento-item-report">
+                    <div class="seguimiento-meta-report">
+                      <span>Seguimiento ${segIndex + 1}</span>
+                      ${fecha ? `<span class="fecha-seguimiento-report">${this.escaparHtml(fecha)}</span>` : ''}
+                    </div>
+                    ${comentarios ? `<p class="comentarios-report">${comentarios}</p>` : ''}
+                  </li>
+                `;
+              })
+              .join('')}
+          </ol>
         </div>
       `;
     };
@@ -1205,66 +1190,52 @@ if (!gestionRiesgos || !gestionRiesgos.recomendaciones || gestionRiesgos.recomen
     const inner = `
       <div class="section reporte-card">
         <h2>Recomendaciones de gestión de riesgos</h2>
-        <p class="section-subtitulo">Recomendaciones identificadas, estado de progreso y seguimiento</p>
-        
+        <p class="section-subtitulo">Recomendaciones identificadas, estado de avance y seguimientos registrados.</p>
+
         <div class="recomendaciones-container-report">
-          ${gestionRiesgos.recomendaciones.map((recomendacion, index) => {
-            const textoRecomendacion =
-              recomendacion.recomendacion || recomendacion.descripcion || recomendacion.texto || '';
-            const estadoId = recomendacion.estado || 'abierta';
-            const avance = Number.isFinite(Number(recomendacion.avance))
-              ? Number(recomendacion.avance)
-              : 0;
-            const etiquetaEstado =
-              estadoId === 'abierta'
-                ? 'No iniciada'
-                : estadoId === 'en_proceso'
-                  ? 'En proceso'
-                  : estadoId === 'avanzada'
-                    ? 'Avanzada'
-                    : estadoId === 'cerrada'
-                      ? 'Completada'
-                      : estadoId;
-            return `
-            <div class="recomendacion-card-report">
-              <div class="recomendacion-header-report">
-                <h3>Recomendación ${index + 1}</h3>
-                ${recomendacion.fechaRecomendacion || recomendacion.fechaInicial ? `
-                  <p class="fecha-recomendacion-report">
-                    <strong>Fecha:</strong>
-                    ${recomendacion.fechaRecomendacion || recomendacion.fechaInicial}
-                  </p>
-                ` : ''}
-                <p class="fecha-recomendacion-report">
-                  <strong>Estado:</strong> ${etiquetaEstado}
-                  · <strong>Avance:</strong> ${avance}%
-                </p>
-                <div style="margin-top:8px;height:8px;background:#e5e7eb;border-radius:999px;overflow:hidden;">
-                  <div style="height:100%;width:${avance}%;background:${
-                    avance >= 100
-                      ? '#28a745'
-                      : avance >= 75
-                        ? '#eab308'
-                        : avance >= 25
-                          ? '#fd7e14'
-                          : '#dc3545'
-                  };"></div>
-                </div>
-              </div>
-              
-              <div class="recomendacion-content-report">
-                ${textoRecomendacion ? `
-                  <div class="recomendacion-descripcion-report">
-                    <h4>Descripción</h4>
-                    <p>${textoRecomendacion}</p>
+          ${recomendaciones
+            .map((recomendacion, index) => {
+              const textoRecomendacion = String(
+                recomendacion.recomendacion || recomendacion.descripcion || recomendacion.texto || ''
+              ).trim();
+              const meta = obtenerMetaEstadoRecomendacion(recomendacion.estado);
+              const avance = resolverAvanceRecomendacion(recomendacion);
+              const fecha = formatearFechaCorta(
+                recomendacion.fechaRecomendacion || recomendacion.fechaInicial
+              );
+
+              return `
+            <article class="recomendacion-card-report">
+              <header class="recomendacion-header-report">
+                <div class="recomendacion-header-izq">
+                  <span class="recomendacion-numero-report">${index + 1}</span>
+                  <div>
+                    <h3>Recomendación ${index + 1}</h3>
+                    ${fecha ? `<p class="fecha-recomendacion-report">Fecha: ${this.escaparHtml(fecha)}</p>` : ''}
                   </div>
-                ` : ''}
-                
+                </div>
+                <div class="recomendacion-estado-report">
+                  <span class="recomendacion-badge-report" style="background:${meta.color}">
+                    ${this.escaparHtml(meta.label)} · ${avance}%
+                  </span>
+                  <div class="recomendacion-barra-track">
+                    <div class="recomendacion-barra-fill" style="width:${avance}%;background:${meta.color}"></div>
+                  </div>
+                </div>
+              </header>
+
+              <div class="recomendacion-content-report">
+                <p class="recomendacion-texto-report">${
+                  textoRecomendacion
+                    ? this.escaparHtml(textoRecomendacion)
+                    : 'Sin texto de recomendación.'
+                }</p>
                 ${renderSeguimientos(recomendacion)}
               </div>
-            </div>
+            </article>
           `;
-          }).join('')}
+            })
+            .join('')}
         </div>
       </div>
     `;

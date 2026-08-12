@@ -7,8 +7,11 @@ import {
   crearRecomendacionVacia,
   crearSeguimientoVacio,
   ESTADOS_RECOMENDACION,
+  formatearFechaCorta,
   normalizarGestionRiesgos,
   obtenerMetaEstadoRecomendacion,
+  recomendacionTieneContenido,
+  seguimientosConContenido,
 } from './gestionRiesgosHelpers';
 import {
   matrizBtnDanger,
@@ -128,6 +131,122 @@ const GestionRiesgos = ({ datos, onDatosChange, modoReporte = false }) => {
       ),
     }));
   };
+
+  if (modoReporte) {
+    const recomendaciones = (gestionRiesgos.recomendaciones || []).filter(recomendacionTieneContenido);
+
+    return (
+      <div className="gestion-riesgos gestion-riesgos--reporte space-y-4">
+        <MatrizSeccionTitulo
+          icon={FaShieldAlt}
+          title={t('riskMatrix.gestionUi.title')}
+          description={t('riskMatrix.gestionUi.reportDescription')}
+        />
+
+        {recomendaciones.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-500 dark:border-gray-700 dark:bg-[#1A1A1A] dark:text-gray-400">
+            {t('riskMatrix.gestionUi.noRecommendationsReport')}
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {recomendaciones.map((recomendacion, index) => {
+              const metaEstado = obtenerMetaEstadoRecomendacion(recomendacion.estado);
+              const avance = Number(recomendacion.avance) || metaEstado.avance;
+              const texto = String(
+                recomendacion.recomendacion || recomendacion.descripcion || recomendacion.texto || ''
+              ).trim();
+              const fecha = formatearFechaCorta(
+                recomendacion.fechaRecomendacion || recomendacion.fechaInicial
+              );
+              const seguimientos = seguimientosConContenido(recomendacion);
+
+              return (
+                <article
+                  key={recomendacion.id || index}
+                  className="gr-reporte-card break-inside-avoid overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-[#1A1A1A]"
+                >
+                  <header className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-100 bg-red-50/70 px-4 py-3 dark:border-gray-800 dark:bg-red-950/20 sm:px-5">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="mt-0.5 inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-fenix-primario px-2 font-heading text-sm font-bold text-white">
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-heading text-xs font-semibold uppercase tracking-wide text-fenix-primario">
+                          {t('riskMatrix.gestionUi.recommendationN', { n: index + 1 })}
+                        </p>
+                        {fecha ? (
+                          <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                            {t('riskMatrix.gestionUi.issuedOn')}: {fecha}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="flex min-w-[180px] flex-1 flex-col items-end gap-1 sm:max-w-xs">
+                      <span
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white"
+                        style={{ backgroundColor: metaEstado.color }}
+                      >
+                        {t(metaEstado.labelKey || 'riskMatrix.recStatus.open')} · {avance}%
+                      </span>
+                      <div className="h-1.5 w-full max-w-[220px] overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                        <div
+                          className="h-full rounded-full"
+                          style={{ width: `${avance}%`, backgroundColor: metaEstado.color }}
+                        />
+                      </div>
+                    </div>
+                  </header>
+
+                  <div className="space-y-4 p-4 sm:p-5">
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                      {texto || t('riskMatrix.gestionUi.noRecommendationText')}
+                    </p>
+
+                    <section>
+                      <p className="mb-2 font-heading text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                        {t('riskMatrix.gestionUi.followUp')}
+                      </p>
+                      {seguimientos.length === 0 ? (
+                        <p className="text-sm italic text-gray-400">
+                          {t('riskMatrix.gestionUi.noFollowUps')}
+                        </p>
+                      ) : (
+                        <ol className="space-y-2">
+                          {seguimientos.map((seguimiento, segIndex) => (
+                            <li
+                              key={seguimiento.id || segIndex}
+                              className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 dark:border-gray-800 dark:bg-gray-900/50"
+                            >
+                              <div className="mb-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                                <span>
+                                  {t('riskMatrix.gestionUi.followUpN', { n: segIndex + 1 })}
+                                </span>
+                                {formatearFechaCorta(seguimiento.fecha) ? (
+                                  <span className="font-medium text-fenix-primario">
+                                    {formatearFechaCorta(seguimiento.fecha)}
+                                  </span>
+                                ) : null}
+                              </div>
+                              {String(seguimiento.comentarios || '').trim() ? (
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700 dark:text-gray-300">
+                                  {seguimiento.comentarios}
+                                </p>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </section>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="gestion-riesgos space-y-4">

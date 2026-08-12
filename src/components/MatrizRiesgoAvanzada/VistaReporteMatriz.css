@@ -416,4 +416,10 @@ html.reporte-matriz-impresion body {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+
+  .vista-reporte-matriz .gr-reporte-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
 }

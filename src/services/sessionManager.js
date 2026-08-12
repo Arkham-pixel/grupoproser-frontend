@@ -171,10 +171,16 @@ this.verificarSesionActiva();
 
   showWarning() {
     if (this.isWarningShown) return;
+    // El aviso principal de 30 min lo muestra Layout (modal de plataforma).
+    // Evitar un segundo diálogo duplicado desde este gestor.
+    if (document.getElementById('session-warning-title')) {
+      this.isWarningShown = true;
+      return;
+    }
     
     this.isWarningShown = true;
     
-    // Crear modal de advertencia
+    // Crear modal de advertencia (estilo plataforma, no alert del navegador)
     const warningModal = document.createElement('div');
     warningModal.id = 'session-warning-modal';
     warningModal.innerHTML = `
@@ -184,46 +190,55 @@ this.verificarSesionActiva();
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: rgba(0,0,0,0.5);
+        background: rgba(0,0,0,0.6);
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 9999;
+        z-index: 10050;
+        backdrop-filter: blur(4px);
+        padding: 16px;
+        box-sizing: border-box;
       ">
         <div style="
-          background: white;
-          padding: 30px;
-          border-radius: 10px;
-          max-width: 400px;
-          text-align: center;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+          background: #111827;
+          padding: 24px;
+          border-radius: 16px;
+          max-width: 420px;
+          width: 100%;
+          text-align: left;
+          box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+          border: 1px solid #374151;
+          color: #e5e7eb;
         ">
-          <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
-          <h3 style="color: #dc2626; margin-bottom: 15px;">{SESSION_MESSAGES.WARNING_TITLE}</h3>
-          <p style="color: #374151; margin-bottom: 25px;">
-            {SESSION_MESSAGES.WARNING_MESSAGE}
+          <h3 style="color: #f87171; margin: 0 0 12px; font-size: 18px;">${SESSION_MESSAGES.WARNING_TITLE}</h3>
+          <p style="color: #d1d5db; margin: 0 0 20px; line-height: 1.5; font-size: 14px;">
+            ${SESSION_MESSAGES.WARNING_MESSAGE}
           </p>
-          <div style="display: flex; gap: 10px; justify-content: center;">
+          <div style="display: flex; gap: 10px; justify-content: stretch; flex-wrap: wrap;">
             <button id="extend-session" style="
-              background: #059669;
+              flex: 1;
+              background: #DC2626;
               color: white;
               border: none;
-              padding: 10px 20px;
-              border-radius: 5px;
+              padding: 12px 20px;
+              border-radius: 12px;
               cursor: pointer;
               font-weight: bold;
+              min-width: 120px;
             ">
-              {SESSION_MESSAGES.CONTINUE_BUTTON}
+              ${SESSION_MESSAGES.CONTINUE_BUTTON}
             </button>
             <button id="logout-now" style="
-              background: #dc2626;
-              color: white;
-              border: none;
-              padding: 10px 20px;
-              border-radius: 5px;
+              flex: 1;
+              background: #1f2937;
+              color: #e5e7eb;
+              border: 1px solid #4b5563;
+              padding: 12px 20px;
+              border-radius: 12px;
               cursor: pointer;
+              min-width: 120px;
             ">
-              {SESSION_MESSAGES.LOGOUT_BUTTON}
+              ${SESSION_MESSAGES.LOGOUT_BUTTON}
             </button>
           </div>
         </div>

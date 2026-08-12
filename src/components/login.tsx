@@ -74,6 +74,7 @@ if (res.data.token && res.data.usuario) {
          localStorage.setItem('nombre', res.data.usuario.name);
          await applyUserLocale(res.data.usuario.locale);
          localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
+         sessionStorage.removeItem('sessionWarning30Dismissed');
          if (res.data.twoFASetupRecommended || res.data.twoFASetupPending) {
            sessionStorage.setItem('aviso2fa_mostrar', '1');
            sessionStorage.removeItem('aviso2fa_modal_cerrado');
@@ -122,6 +123,7 @@ if (res.data.token && res.data.usuario && res.data.usuario.role) {
         await applyUserLocale(res.data.usuario.locale);
         localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
         localStorage.setItem('sessionStart', currentTime.toString());
+        sessionStorage.removeItem('sessionWarning30Dismissed');
         
 navigate('/inicio');
       } else {

@@ -1,6 +1,7 @@
 // src/components/Layout.jsx
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FaBars,
@@ -42,6 +43,9 @@ import {
   FaInbox,
   FaTasks,
   FaHandHoldingHeart,
+  FaUmbrella,
+  FaTimes,
+  FaSignOutAlt,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
@@ -58,8 +62,13 @@ import {
   obtenerResumenAlertas,
 } from '../services/alertasComplexService.js';
 import { useIsMobileShell } from '../hooks/useMediaQuery';
+import { apiRequest } from '../config/apiConfig.js';
+import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
 
 const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
+/** Aviso interno (modal de plataforma) 30 minutos antes del cierre automático */
+const SESSION_WARNING_MS = 30 * 60 * 1000;
+const SESSION_WARNING_DISMISSED_KEY = 'sessionWarning30Dismissed';
 
 function formatTimer(time) {
   const h = String(time.hours).padStart(2, '0');
@@ -80,11 +89,16 @@ function formatRol(rol, t) {
   return etiquetaRol(rol, t);
 }
 
-/** Timer de sesión en pie del sidebar */
+/** Timer de sesión en pie del sidebar + aviso modal 30 min antes del cierre */
 function SessionTimerSidebar({ compact = false }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [elapsed, setElapsed] = useState({ hours: 0, minutes: 0, seconds: 0 });
   const [remaining, setRemaining] = useState({ hours: 0, minutes: 0, seconds: 0 });
+  const [remainingMs, setRemainingMs] = useState(SESSION_MAX_MS);
+  const [showWarning, setShowWarning] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const warningOpenedRef = useRef(false);
 
   useEffect(() => {
     const tick = () => {
@@ -92,8 +106,12 @@ function SessionTimerSidebar({ compact = false }) {
       if (!start) return;
       const duration = Date.now() - parseInt(start, 10);
       const left = SESSION_MAX_MS - duration;
-      if (left <= 0) return;
+      if (left <= 0) {
+        setRemainingMs(0);
+        return;
+      }
 
+      setRemainingMs(left);
       setElapsed({
         hours: Math.floor(duration / 3600000),
         minutes: Math.floor((duration % 3600000) / 60000),
@@ -104,34 +122,184 @@ function SessionTimerSidebar({ compact = false }) {
         minutes: Math.floor((left % 3600000) / 60000),
         seconds: Math.floor((left % 60000) / 1000),
       });
+
+      const dismissedFor = sessionStorage.getItem(SESSION_WARNING_DISMISSED_KEY);
+      const alreadyDismissed = dismissedFor === start;
+      if (left <= SESSION_WARNING_MS && !alreadyDismissed && !warningOpenedRef.current) {
+        warningOpenedRef.current = true;
+        setShowWarning(true);
+      }
     };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
 
+  const dismissWarning = () => {
+    const start = localStorage.getItem('sessionStartTime') || '';
+    sessionStorage.setItem(SESSION_WARNING_DISMISSED_KEY, start);
+    setShowWarning(false);
+  };
+
+  const handleLogoutNow = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          await apiRequest('/secur-auth/logout', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+          });
+        } catch {
+          /* continuar con cierre local */
+        }
+      }
+    } finally {
+      limpiarSesionLocal();
+      sessionStorage.removeItem(SESSION_WARNING_DISMISSED_KEY);
+      navigate('/login', { replace: true });
+    }
+  };
+
+  const warningModal =
+    showWarning &&
+    createPortal(
+      <div
+        className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+        role="presentation"
+      >
+        <div
+          className="relative w-full max-w-md rounded-2xl border border-gray-700 bg-gray-900 p-6 shadow-2xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="session-warning-title"
+        >
+          <button
+            type="button"
+            onClick={dismissWarning}
+            className="absolute right-4 top-4 rounded-lg p-1.5 text-gray-500 transition hover:bg-gray-800 hover:text-gray-300"
+            aria-label={t('nav.sessionWarningClose')}
+          >
+            <FaTimes />
+          </button>
+
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-500/15">
+              <FaExclamationTriangle className="text-xl text-fenix-primario" />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-fenix-primario">
+                ARNALD Data Flow
+              </p>
+              <h2
+                id="session-warning-title"
+                className="text-lg font-bold text-white"
+              >
+                {t('nav.sessionWarningTitle')}
+              </h2>
+            </div>
+          </div>
+
+          <p className="mb-4 text-sm leading-relaxed text-gray-300">
+            {t('nav.sessionWarningMessage')}
+          </p>
+
+          <div className="mb-5 rounded-xl border border-gray-700 bg-gray-800/60 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <FaClock className="shrink-0 text-fenix-primario" />
+              <span>
+                {t('nav.autoLogoutIn', {
+                  time: formatTimer(
+                    remainingMs > 0
+                      ? remaining
+                      : { hours: 0, minutes: 0, seconds: 0 }
+                  ),
+                })}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={dismissWarning}
+              className="flex-1 rounded-xl bg-fenix-primario px-4 py-3 text-sm font-bold text-white shadow-lg transition hover:opacity-90"
+            >
+              {t('nav.sessionWarningContinue')}
+            </button>
+            <button
+              type="button"
+              onClick={handleLogoutNow}
+              disabled={loggingOut}
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-600 bg-gray-800 px-4 py-3 text-sm font-medium text-gray-200 transition hover:border-red-500/50 hover:bg-gray-700 hover:text-white disabled:opacity-60"
+            >
+              <FaSignOutAlt />
+              {loggingOut ? t('nav.sessionWarningLoggingOut') : t('auth.logout')}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+
   if (compact) {
     return (
-      <div className="flex flex-col items-center gap-0.5 text-[10px] text-gray-400">
-        <FaClock className="text-fenix-primario" />
-        <span className="font-mono font-medium text-gray-300">{formatTimer(elapsed)}</span>
-      </div>
+      <>
+        <div className="flex flex-col items-center gap-0.5 text-[10px] text-gray-400">
+          <FaClock
+            className={
+              remainingMs <= SESSION_WARNING_MS
+                ? 'text-amber-400'
+                : 'text-fenix-primario'
+            }
+          />
+          <span className="font-mono font-medium text-gray-300">
+            {formatTimer(elapsed)}
+          </span>
+        </div>
+        {warningModal}
+      </>
     );
   }
 
   return (
-    <div className="rounded-lg border border-gray-700/80 bg-gray-800/50 px-3 py-2.5 text-xs text-gray-300">
-      <div className="flex items-center gap-2">
-        <FaClock className="shrink-0 text-fenix-primario" />
-        <span>
-          {t('nav.sessionLabel')}{' '}
-          <span className="font-mono font-semibold text-white">{formatTimer(elapsed)}</span>
-        </span>
+    <>
+      <div
+        className={`rounded-lg border px-3 py-2.5 text-xs text-gray-300 ${
+          remainingMs <= SESSION_WARNING_MS
+            ? 'border-amber-500/40 bg-amber-950/30'
+            : 'border-gray-700/80 bg-gray-800/50'
+        }`}
+      >
+        <div className="flex items-center gap-2">
+          <FaClock
+            className={`shrink-0 ${
+              remainingMs <= SESSION_WARNING_MS
+                ? 'text-amber-400'
+                : 'text-fenix-primario'
+            }`}
+          />
+          <span>
+            {t('nav.sessionLabel')}{' '}
+            <span className="font-mono font-semibold text-white">
+              {formatTimer(elapsed)}
+            </span>
+          </span>
+        </div>
+        <p
+          className={`mt-1 pl-6 text-[11px] ${
+            remainingMs <= SESSION_WARNING_MS
+              ? 'font-medium text-amber-300/90'
+              : 'text-gray-500'
+          }`}
+        >
+          {t('nav.autoLogoutIn', { time: formatTimer(remaining) })}
+        </p>
       </div>
-      <p className="mt-1 pl-6 text-[11px] text-gray-500">
-        {t('nav.autoLogoutIn', { time: formatTimer(remaining) })}
-      </p>
-    </div>
+      {warningModal}
+    </>
   );
 }
 
@@ -257,6 +425,18 @@ export default function Layout() {
     '/equidad-fdm/liquidador': t('nav.pageTitles.fdmSettlement'),
     '/equidad-fdm/reporte': t('nav.pageTitles.fdmReport'),
     '/equidad-fdm/dashboard': t('nav.pageTitles.fdmDashboard'),
+    '/seguros-alfa/carga': t('nav.pageTitles.alfaAdd'),
+    '/seguros-alfa/reporte': t('nav.pageTitles.alfaReport'),
+    '/seguros-alfa/boletin': t('nav.pageTitles.alfaBulletin'),
+    '/seguros-alfa/caso': t('nav.pageTitles.alfaCase'),
+    '/seguros-alfa/liquidador': t('nav.pageTitles.alfaCase'),
+    '/seguros-alfa/informe-unico': t('nav.pageTitles.alfaCase'),
+    '/zurich/carga': t('nav.pageTitles.zurichAdd'),
+    '/zurich/reporte': t('nav.pageTitles.zurichReport'),
+    '/zurich/boletin': t('nav.pageTitles.zurichBulletin'),
+    '/zurich/caso': t('nav.pageTitles.zurichCase'),
+    '/zurich/liquidador': t('nav.pageTitles.zurichCase'),
+    '/zurich/informe-unico': t('nav.pageTitles.zurichCase'),
     '/propiedades/carga': t('nav.pageTitles.propertiesNew'),
     '/propiedades/dashboard': t('nav.pageTitles.propertiesDashboard'),
     '/propiedades/reporte': t('nav.pageTitles.propertiesReport'),
@@ -303,6 +483,8 @@ export default function Layout() {
     else if (path.startsWith('/riesgos')) setExpandedSection('riesgos');
     else if (path.startsWith('/express')) setExpandedSection('express');
     else if (path.startsWith('/equidad-fdm')) setExpandedSection('equidadFdm');
+    else if (path.startsWith('/seguros-alfa')) setExpandedSection('segurosAlfa');
+    else if (path.startsWith('/zurich')) setExpandedSection('zurich');
     else if (path.startsWith('/propiedades')) setExpandedSection('propiedades');
     else if (path.startsWith('/puertos')) setExpandedSection('puertos');
     else if (
@@ -448,6 +630,22 @@ export default function Layout() {
           { path: '/equidad-fdm/reporte', icon: FaTable, label: t('nav.fdmReport') },
         ]
       : [],
+    segurosAlfa: !accesoRestringido
+      ? [
+          { path: '/seguros-alfa/carga', icon: FaPlus, label: t('nav.alfaAddCase') },
+          { path: '/seguros-alfa/caso', icon: FaFileAlt, label: t('nav.alfaCase') },
+          { path: '/seguros-alfa/reporte', icon: FaTable, label: t('nav.alfaReport') },
+          { path: '/seguros-alfa/boletin', icon: FaChartLine, label: t('nav.alfaBulletin') },
+        ]
+      : [],
+    zurich: !accesoRestringido
+      ? [
+          { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
+          { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
+          { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
+          { path: '/zurich/boletin', icon: FaChartLine, label: t('nav.zurichBulletin') },
+        ]
+      : [],
     puertos: !esVisualizador
       ? [
           { path: '/puertos/actas', icon: FaClipboardList, label: t('nav.portsActas') },
@@ -528,6 +726,8 @@ export default function Layout() {
             { key: 'riesgos', title: t('nav.sections.riesgos'), icon: FaChartBar, items: menuItems.riesgos },
             { key: 'express', title: t('nav.sections.express'), icon: FaBolt, items: menuItems.express },
             { key: 'equidadFdm', title: t('nav.sections.equidadFdm'), icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
+            { key: 'segurosAlfa', title: t('nav.sections.segurosAlfa'), icon: FaUmbrella, items: menuItems.segurosAlfa },
+            { key: 'zurich', title: t('nav.sections.zurich'), icon: FaUmbrella, items: menuItems.zurich },
             { key: 'propiedades', title: t('nav.sections.propiedades'), icon: FaBuilding, items: menuItems.propiedades },
             { key: 'sgSst', title: t('nav.sections.sgSst'), icon: FaShieldAlt, items: menuItems.sgSst },
             { key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos },

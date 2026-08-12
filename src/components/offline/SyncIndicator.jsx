@@ -14,11 +14,11 @@ export default function SyncIndicator() {
 
   let label = status.message || 'Listo';
   let color = '#059669';
-  if (!isOnline) {
+  if (!isOnline || status.state === 'offline') {
     label =
       pendingCount > 0
         ? `Sin conexión — ${pendingCount} pendientes`
-        : 'Sin conexión — puedes continuar trabajando';
+        : status.message || 'Sin conexión — puedes continuar trabajando';
     color = '#B45309';
   } else if (status.state === 'saving') {
     label = 'Guardando…';

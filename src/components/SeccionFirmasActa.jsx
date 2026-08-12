@@ -311,6 +311,8 @@ export default function SeccionFirmasActa({
   descripcion,
   permitirRegistrarAjustadores = false,
   sinContenedor = false,
+  /** Si true, oculta el bloque de firma del cliente (solo ajustador/inspector). */
+  soloAjustador = false,
 }) {
   const { t } = useTranslation();
   const ui = usePropiedadesTheme();
@@ -440,7 +442,12 @@ export default function SeccionFirmasActa({
         <p className="mb-6 text-sm" style={{ color: ui.textSecondary }}>{textoDescripcion}</p>
       )}
 
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2 lg:gap-8">
+      <div
+        className={`grid grid-cols-1 items-start gap-6 ${
+          soloAjustador ? '' : 'lg:grid-cols-2 lg:gap-8'
+        }`}
+      >
+        {!soloAjustador && (
         <div
           className="rounded-xl border p-5"
           style={{ borderColor: ui.borderColor, backgroundColor: ui.theme === 'dark' ? 'rgba(255,255,255,0.02)' : '#FAFAFA' }}
@@ -514,6 +521,7 @@ export default function SeccionFirmasActa({
             )}
           </div>
         </div>
+        )}
 
         <div
           className="rounded-xl border p-5"

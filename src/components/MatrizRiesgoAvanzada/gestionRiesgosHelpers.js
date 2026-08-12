@@ -47,6 +47,46 @@ export function etiquetaEstadoRecomendacion(estadoId) {
   return obtenerMetaEstadoRecomendacion(estadoId).label;
 }
 
+/** Convierte YYYY-MM-DD (o ISO) a dd/mm/aaaa para reporte. */
+export function formatearFechaCorta(valor) {
+  const texto = String(valor || '').trim();
+  if (!texto) return '';
+  const iso = /^(\d{4})-(\d{2})-(\d{2})/.exec(texto);
+  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
+  return texto;
+}
+
+export function seguimientosConContenido(rec = {}) {
+  const lista = Array.isArray(rec.seguimientos) ? rec.seguimientos : [];
+  const conDatos = lista.filter(
+    (seg) => String(seg?.fecha || '').trim() || String(seg?.comentarios || '').trim()
+  );
+  if (conDatos.length > 0) return conDatos;
+
+  const legacy = [];
+  if (rec.fechaImplementacion1 || rec.comentariosImplementacion1) {
+    legacy.push({
+      id: 'legacy-1',
+      fecha: rec.fechaImplementacion1 || '',
+      comentarios: rec.comentariosImplementacion1 || '',
+    });
+  }
+  if (rec.fechaImplementacion2 || rec.comentariosImplementacion2) {
+    legacy.push({
+      id: 'legacy-2',
+      fecha: rec.fechaImplementacion2 || '',
+      comentarios: rec.comentariosImplementacion2 || '',
+    });
+  }
+  return legacy;
+}
+
+export function recomendacionTieneContenido(rec = {}) {
+  const texto = String(rec.recomendacion || rec.descripcion || rec.texto || '').trim();
+  const fecha = String(rec.fechaRecomendacion || rec.fechaInicial || '').trim();
+  return Boolean(texto || fecha || seguimientosConContenido(rec).length);
+}
+
 /** Infiere estado a partir de seguimientos (datos legacy sin campo estado). */
 export function inferirEstadoDesdeSeguimientos(rec = {}) {
   const seguimientos = (rec.seguimientos || []).filter(

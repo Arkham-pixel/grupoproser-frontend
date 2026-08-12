@@ -61,6 +61,20 @@ import FormularioEquidadFdm from './components/SubcomponenteEquidadFdm/Formulari
 import ReporteEquidadFdm from './components/SubcomponenteEquidadFdm/ReporteEquidadFdm';
 import DashboardEquidadFdm from './components/SubcomponenteEquidadFdm/DashboardEquidadFdm';
 import LiquidadorEquidadFdmPage from './components/SubcomponenteEquidadFdm/LiquidadorEquidadFdmPage';
+import FormularioSegurosAlfa from './components/SubcomponenteSegurosAlfa/FormularioSegurosAlfa';
+import ReporteSegurosAlfa from './components/SubcomponenteSegurosAlfa/ReporteSegurosAlfa';
+import BoletinSemanalSegurosAlfa from './components/SubcomponenteSegurosAlfa/BoletinSemanalSegurosAlfa';
+import CasoSegurosAlfaWorkspace, {
+  RedirectAlfaInforme,
+  RedirectAlfaLiquidador,
+} from './components/SubcomponenteSegurosAlfa/CasoSegurosAlfaWorkspace';
+import FormularioZurich from './components/SubcomponenteZurich/FormularioZurich';
+import ReporteZurich from './components/SubcomponenteZurich/ReporteZurich';
+import BoletinSemanalZurich from './components/SubcomponenteZurich/BoletinSemanalZurich';
+import CasoZurichWorkspace, {
+  RedirectZurichInforme,
+  RedirectZurichLiquidador,
+} from './components/SubcomponenteZurich/CasoZurichWorkspace';
 import CargaPropiedades from './components/SubcomponentePropiedades/CargaPropiedades';
 import DashboardPropiedades from './components/SubcomponentePropiedades/DashboardPropiedades';
 import ReportePropiedades from './components/SubcomponentePropiedades/ReportePropiedades';
@@ -523,6 +537,20 @@ export default function App() {
           <Route path="equidad-fdm/liquidador" element={<LiquidadorEquidadFdmPage />} />
           <Route path="equidad-fdm/reporte" element={<ReporteEquidadFdm />} />
           <Route path="equidad-fdm/dashboard" element={<DashboardEquidadFdm />} />
+
+          <Route path="seguros-alfa/carga" element={<FormularioSegurosAlfa />} />
+          <Route path="seguros-alfa/reporte" element={<ReporteSegurosAlfa />} />
+          <Route path="seguros-alfa/boletin" element={<BoletinSemanalSegurosAlfa />} />
+          <Route path="seguros-alfa/caso" element={<CasoSegurosAlfaWorkspace />} />
+          <Route path="seguros-alfa/liquidador" element={<RedirectAlfaLiquidador />} />
+          <Route path="seguros-alfa/informe-unico" element={<RedirectAlfaInforme />} />
+
+          <Route path="zurich/carga" element={<FormularioZurich />} />
+          <Route path="zurich/reporte" element={<ReporteZurich />} />
+          <Route path="zurich/boletin" element={<BoletinSemanalZurich />} />
+          <Route path="zurich/caso" element={<CasoZurichWorkspace />} />
+          <Route path="zurich/liquidador" element={<RedirectZurichLiquidador />} />
+          <Route path="zurich/informe-unico" element={<RedirectZurichInforme />} />
 
           <Route path="formulario-inspeccion-propiedades" element={<Navigate to="/propiedades/carga" replace />} />
           <Route

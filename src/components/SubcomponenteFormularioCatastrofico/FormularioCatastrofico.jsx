@@ -218,6 +218,11 @@ export default function FormularioCatastrofico() {
           ...(prev.metadata || {}),
           ...(prefill.metadata || {}),
           complexId: location.state?.complexId || prefill.metadata?.complexId,
+          zurichCasoId:
+            location.state?.zurichCasoId ||
+            prefill.zurichCasoId ||
+            prefill.metadata?.zurichCasoId,
+          origen: location.state?.origen || prefill.origen || prev.metadata?.origen,
         },
         presupuestoCatastrofico:
           prev.presupuestoCatastrofico?.items?.length
