@@ -120,8 +120,7 @@ const p = (text, opts = {}) =>
 
 const labelAplica = (aplica) => {
   if (aplica === 'SI') return 'APLICA';
-  if (aplica === 'NO') return 'NO APLICA';
-  return 'SIN MARCAR';
+  return 'NO APLICA';
 };
 
 function celdaFotoVacia() {
@@ -311,7 +310,7 @@ export async function generarDesprendibleCatZurich(caso = {}) {
       children: [
         headCell('Nivel', 1440),
         headCell('Descripción del daño observado', 6480),
-        headCell('Aplica / No aplica', 2160),
+        headCell('Aplica', 2160),
       ],
     }),
     ...SEVERIDAD_CAT_ZURICH.map((s) => {

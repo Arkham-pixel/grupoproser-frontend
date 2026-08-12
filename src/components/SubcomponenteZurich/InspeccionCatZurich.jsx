@@ -31,6 +31,7 @@ import {
   SEVERIDAD_CAT_ZURICH,
   normalizeEvidenciaCat,
   normalizeSeveridadCatNiveles,
+  finalizarSeveridadCatNiveles,
   derivarSeveridadCatDesdeNiveles,
   formatDateIso,
 } from './zurichHelpers.js';
@@ -45,7 +46,7 @@ const OBJETIVO_MANUAL =
   'Objetivo: entregar al ajustador información clave, sencilla y resumida para clasificar la severidad, completar la base de Excel y registrar evidencia fotográfica/documental. Este documento no autoriza a confirmar cobertura, negar cobertura, prometer pagos o actuar como vocero de Zurich.';
 
 const INTRO_SEVERIDAD =
-  'La severidad es un criterio operativo preliminar para priorizar el reporte de exposición. No constituye definición de cobertura ni liquidación del siniestro. Indique Aplica o No aplica en cada tipo de daño observado.';
+  'La severidad es un criterio operativo preliminar para priorizar el reporte de exposición. No constituye definición de cobertura ni liquidación del siniestro. Marque Aplica en cada tipo de daño observado; si no lo marca, se registra como No aplica.';
 
 const RECORDATORIO =
   'Recordatorio operativo: documentar hechos observables, no conclusiones de cobertura. Mantener trazabilidad de fecha, hora, ubicación, fuente y soporte.';
@@ -110,13 +111,15 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
   );
 
   useEffect(() => {
+    // Solo al cambiar de caso: no resetear severidad al subir fotos / refrescar updatedAt
     setSeveridadNiveles(
       normalizeSeveridadCatNiveles(casoZurich?.severidadCatNiveles, casoZurich?.severidadCat)
     );
     setEvidenciaCat(normalizeEvidenciaCat(casoZurich?.evidenciaCat));
     setArchivos(casoZurich?.archivos || []);
     setObservacionesCat(casoZurich?.observacionesCat || '');
-  }, [casoZurich?._id, casoZurich?.updatedAt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [casoZurich?._id]);
 
   useEffect(() => {
     return () => {
@@ -124,11 +127,14 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     };
   }, []);
 
-  const setSeveridadAplica = (nivel, aplica) => {
+  const setSeveridadAplica = (nivel, marcado) => {
     const key = String(nivel);
     setSeveridadNiveles((prev) => ({
       ...prev,
-      [key]: { ...(prev[key] || { aplica: null, observacion: '' }), aplica },
+      [key]: {
+        ...(prev[key] || { aplica: null, observacion: '' }),
+        aplica: marcado ? 'SI' : 'NO',
+      },
     }));
   };
 
@@ -284,7 +290,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
   };
 
   const buildCatPayload = () => {
-    const niveles = normalizeSeveridadCatNiveles(severidadNiveles);
+    const niveles = finalizarSeveridadCatNiveles(severidadNiveles);
     const evidencia = normalizeEvidenciaCat(evidenciaCat);
     const severidadCat = derivarSeveridadCatDesdeNiveles(niveles);
     const accesoPredio = evidencia.noAcceso?.aplica === 'SI' ? 'NO' : 'SI';
@@ -318,6 +324,12 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     try {
       const { payload } = buildCatPayload();
       const actualizado = await actualizarCasoZurich(casoZurich._id, payload);
+      setSeveridadNiveles(
+        finalizarSeveridadCatNiveles(
+          actualizado?.severidadCatNiveles ?? payload.severidadCatNiveles,
+          actualizado?.severidadCat ?? payload.severidadCat
+        )
+      );
       onCasoChange?.(actualizado);
       setMensaje(t('zurich.cat.savedOk'));
       return actualizado;
@@ -340,9 +352,16 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     try {
       const { payload } = buildCatPayload();
       const guardado = await actualizarCasoZurich(casoZurich._id, payload);
+      setSeveridadNiveles(
+        finalizarSeveridadCatNiveles(
+          guardado?.severidadCatNiveles ?? payload.severidadCatNiveles,
+          guardado?.severidadCat ?? payload.severidadCat
+        )
+      );
       onCasoChange?.(guardado);
       const base = {
         ...(guardado || {}),
+        ...payload,
         archivos: archivos?.length ? archivos : guardado?.archivos || casoZurich.archivos || [],
       };
       const nombre = await descargarDesprendibleCatZurich(base);
@@ -418,7 +437,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
               <tr>
                 <th className={`${th} w-24`}>Nivel</th>
                 <th className={th}>Descripción del daño observado</th>
-                <th className={`${th} w-44`}>Aplica / No aplica</th>
+                <th className={`${th} w-36`}>Aplica</th>
               </tr>
             </thead>
             <tbody>
@@ -430,26 +449,14 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
                     <td className={`${td} font-semibold`}>Nivel {fila.nivel}</td>
                     <td className={`${td} font-semibold`}>{fila.descripcion}</td>
                     <td className={td}>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            type="radio"
-                            name={`sev-aplica-${fila.nivel}`}
-                            checked={item.aplica === 'SI'}
-                            onChange={() => setSeveridadAplica(fila.nivel, 'SI')}
-                          />
-                          Aplica
-                        </label>
-                        <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                          <input
-                            type="radio"
-                            name={`sev-aplica-${fila.nivel}`}
-                            checked={item.aplica === 'NO'}
-                            onChange={() => setSeveridadAplica(fila.nivel, 'NO')}
-                          />
-                          No aplica
-                        </label>
-                      </div>
+                      <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={item.aplica === 'SI'}
+                          onChange={(e) => setSeveridadAplica(fila.nivel, e.target.checked)}
+                        />
+                        Aplica
+                      </label>
                     </td>
                   </tr>
                 );

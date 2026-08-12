@@ -716,13 +716,13 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
             </div>
             <nav className="flex flex-wrap gap-2">
               <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.ZurichAddCase')}
+                {t('nav.zurichAddCase')}
               </span>
               <Link
                 to="/zurich/reporte"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
-                {t('nav.ZurichReport')}
+                {t('nav.zurichReport')}
               </Link>
             </nav>
           </div>

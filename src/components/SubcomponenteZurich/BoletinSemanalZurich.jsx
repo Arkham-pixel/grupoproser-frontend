@@ -195,7 +195,7 @@ export default function BoletinSemanalzurich() {
               <FaPrint /> {t('zurich.boletin.print')}
             </button>
             <Link to="/zurich/reporte" className={expressBtnGhost}>
-              {t('nav.ZurichReport')}
+              {t('nav.zurichReport')}
             </Link>
           </div>
         </header>

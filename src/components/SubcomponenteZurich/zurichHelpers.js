@@ -1,4 +1,4 @@
-import { crearFechaLocal } from '../../utils/fechaUtils.js';
+﻿import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const ZURICH_REPORTE_PAGE_SIZE = 25;
 
@@ -113,6 +113,23 @@ export const derivarSeveridadCatDesdeNiveles = (niveles = {}) => {
     if (norm[String(n)]?.aplica === 'SI') max = n;
   }
   return max;
+};
+
+/**
+ * Al guardar el formato CAT: lo no marcado como APLICA queda NO APLICA.
+ */
+export const finalizarSeveridadCatNiveles = (raw = {}, severidadCatLegacy = null) => {
+  const norm = normalizeSeveridadCatNiveles(raw, severidadCatLegacy);
+  const out = {};
+  for (let n = 1; n <= 6; n += 1) {
+    const key = String(n);
+    const item = norm[key] || { aplica: null, observacion: '' };
+    out[key] = {
+      ...item,
+      aplica: item.aplica === 'SI' ? 'SI' : 'NO',
+    };
+  }
+  return out;
 };
 
 export const ACCESO_PREDIO_ZURICH = ['SI', 'NO', 'PARCIAL'];

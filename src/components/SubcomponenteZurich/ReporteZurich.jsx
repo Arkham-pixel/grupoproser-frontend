@@ -358,10 +358,10 @@ export default function ReporteZurich() {
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
                 <FaPlus />
-                {t('nav.ZurichAddCase')}
+                {t('nav.zurichAddCase')}
               </Link>
               <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.ZurichReport')}
+                {t('nav.zurichReport')}
               </span>
             </nav>
           </div>
