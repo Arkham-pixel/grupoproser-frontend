@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCloudUploadAlt, FaFileWord, FaMapMarkerAlt, FaRedo, FaTrash } from 'react-icons/fa';
+import { FaCamera, FaCloudUploadAlt, FaFileWord, FaImages, FaMapMarkerAlt, FaRedo, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -33,12 +33,18 @@ import {
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
+import { ImageCompression } from '../../utils/imageCompression.js';
 
 const esImagen = (fileOrName) => {
   const name = typeof fileOrName === 'string' ? fileOrName : fileOrName?.name || '';
   const type = typeof fileOrName === 'object' ? fileOrName?.type || '' : '';
-  return type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(name);
+  if (type.startsWith('image/')) return true;
+  return /\.(jpe?g|png|gif|webp|heic|heif|bmp|tif{1,2})$/i.test(name);
 };
+
+/** Inputs file ocultos pero accionables (display:none rompe el picker en iOS/algunos Android). */
+const fileInputClass =
+  'absolute h-px w-px overflow-hidden whitespace-nowrap border-0 p-0 opacity-0 [clip:rect(0,0,0,0)]';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -62,7 +68,8 @@ export default function InformeUnicoSegurosAlfa({
   guardandoCaso = false,
 }) {
   const { t } = useTranslation();
-  const fileRef = useRef(null);
+  const galeriaRef = useRef(null);
+  const camaraRef = useRef(null);
   const [informe, setInforme] = useState(() => defaultInformeUnicoAlfa(casoAlfa || {}));
   const [liquidador, setLiquidador] = useState(() => mapCasoAlfaALiquidador(casoAlfa || {}));
   const [error, setError] = useState('');
@@ -183,17 +190,35 @@ export default function InformeUnicoSegurosAlfa({
     setError('');
     setMensaje('');
     try {
-      for (const file of files) {
+      let listos = files;
+      try {
+        listos = await ImageCompression.compressImages(files, {
+          maxWidth: 1920,
+          maxHeight: 1080,
+          quality: 0.82,
+          maxSizeKB: 800,
+        });
+      } catch (compErr) {
+        console.warn('Compresión de fotos Alfa omitida:', compErr);
+        listos = files;
+      }
+      for (const file of listos) {
         await subirArchivoAlfa(casoAlfa._id, file, 'FOTOS');
       }
       await refrescarCaso();
-      setMensaje(t('segurosAlfa.reportUnique.photosUploaded', { count: files.length }));
+      setMensaje(t('segurosAlfa.reportUnique.photosUploaded', { count: listos.length }));
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.reportUnique.photosUploadError'));
     } finally {
       setSubiendoFotos(false);
     }
+  };
+
+  const onPickFotos = (e) => {
+    const files = e.target?.files;
+    e.target.value = '';
+    if (files?.length) subirFotos(files);
   };
 
   const handleDrop = (e) => {
@@ -489,55 +514,87 @@ export default function InformeUnicoSegurosAlfa({
           {t('segurosAlfa.reportUnique.photosUploadHint')}
         </p>
 
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = e.target.files;
-            e.target.value = '';
-            if (files?.length) subirFotos(files);
-          }}
-        />
+        {!casoAlfa?._id ? (
+          <p className={expressAlertError}>{t('segurosAlfa.reportUnique.savedCaseRequired')}</p>
+        ) : (
+          <>
+            <input
+              ref={camaraRef}
+              id="alfa-informe-foto-camara"
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className={fileInputClass}
+              disabled={subiendoFotos}
+              onChange={onPickFotos}
+            />
+            <input
+              ref={galeriaRef}
+              id="alfa-informe-foto-galeria"
+              type="file"
+              accept="image/*"
+              multiple
+              className={fileInputClass}
+              disabled={subiendoFotos}
+              onChange={onPickFotos}
+            />
 
-        <div
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
-          }}
-          onClick={() => !subiendoFotos && fileRef.current?.click()}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-          }}
-          onDrop={handleDrop}
-          className={`mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
-            dragOver
-              ? 'border-fenix-primario bg-fenix-primario/5'
-              : 'border-gray-300 bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-900/40'
-          } ${subiendoFotos ? 'pointer-events-none opacity-60' : ''}`}
-        >
-          <FaCloudUploadAlt className="mb-2 text-3xl text-fenix-primario" />
-          <p className="font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {subiendoFotos
-              ? t('segurosAlfa.reportUnique.photosUploading')
-              : t('segurosAlfa.reportUnique.photosDropTitle')}
-          </p>
-          <p className="mt-1 font-body text-xs text-gray-500">
-            {t('segurosAlfa.reportUnique.photosDropSubtitle')}
-          </p>
-        </div>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <label
+                htmlFor="alfa-informe-foto-camara"
+                className={`${expressBtnPrimary} ${subiendoFotos ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
+              >
+                <FaCamera /> {t('segurosAlfa.reportUnique.photosTake')}
+              </label>
+              <label
+                htmlFor="alfa-informe-foto-galeria"
+                className={`${expressBtnSecondary} ${subiendoFotos ? 'pointer-events-none opacity-60' : 'cursor-pointer'}`}
+              >
+                <FaImages /> {t('segurosAlfa.reportUnique.photosGallery')}
+              </label>
+            </div>
+
+            <div
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (!subiendoFotos) galeriaRef.current?.click();
+                }
+              }}
+              onClick={() => !subiendoFotos && galeriaRef.current?.click()}
+              onDragEnter={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+              }}
+              onDrop={handleDrop}
+              className={`mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
+                dragOver
+                  ? 'border-fenix-primario bg-fenix-primario/5'
+                  : 'border-gray-300 bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-900/40'
+              } ${subiendoFotos ? 'pointer-events-none opacity-60' : ''}`}
+            >
+              <FaCloudUploadAlt className="mb-2 text-3xl text-fenix-primario" />
+              <p className="font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
+                {subiendoFotos
+                  ? t('segurosAlfa.reportUnique.photosUploading')
+                  : t('segurosAlfa.reportUnique.photosDropTitle')}
+              </p>
+              <p className="mt-1 font-body text-xs text-gray-500">
+                {t('segurosAlfa.reportUnique.photosDropSubtitle')}
+              </p>
+            </div>
+          </>
+        )}
 
         {fotos.length === 0 ? (
           <p className="text-sm text-gray-500">{t('segurosAlfa.reportUnique.noPhotos')}</p>
@@ -545,7 +602,7 @@ export default function InformeUnicoSegurosAlfa({
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {fotos.slice(0, 24).map((f) => {
               const url = urlDescargaArchivoAlfa(f.ruta);
-              const isImg = esImagen(f.nombreOriginal || f.nombre || '');
+              const isImg = esImagen(f.nombreOriginal || f.nombre || '') || String(f.tipoMime || '').startsWith('image/');
               return (
                 <div
                   key={f._id || f.ruta}
