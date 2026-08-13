@@ -24,6 +24,7 @@ export const ETIQUETAS_ARCHIVO_ALFA = [
   'POLIZA',
   'INSPECCION',
   'LIQUIDACION',
+  'INFORME',
   'FOTOS',
   'OTRO',
 ];

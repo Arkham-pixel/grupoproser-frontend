@@ -306,6 +306,7 @@ export function defaultInformeUnicoAlfa(caso = {}) {
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
+    fotosInspeccion: [],
     actaAjustadorNombre: caso.ajustador || '',
     actaAjustadorCargo: '',
     actaAjustadorEmail: '',
@@ -324,6 +325,9 @@ export function defaultInformeUnicoAlfa(caso = {}) {
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
+    fotosInspeccion: Array.isArray(guardado.fotosInspeccion)
+      ? guardado.fotosInspeccion
+      : base.fotosInspeccion,
   };
 }
 

@@ -1,0 +1,13 @@
+# Coolify detecta Nixpacks por defecto (aunque exista Dockerfile).
+# Con NODE_ENV=production, `npm ci` omite vite/tailwind/postcss y el build falla.
+# Forzar instalación de devDependencies durante el build.
+
+[variables]
+NPM_CONFIG_PRODUCTION = "false"
+NIXPACKS_NODE_VERSION = "22"
+
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = ["npm run build"]

@@ -1,4 +1,4 @@
-import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 
 const ALFA_API_URL = `${BASE_URL}/api/seguros-alfa`;
 
@@ -171,6 +171,21 @@ export const eliminarArchivoAlfa = async (casoId, archivoId) => {
     throw new Error(payload?.error || `Error al eliminar archivo (${response.status})`);
   }
   return payload;
+};
+
+/** Actualiza metadatos del archivo (p. ej. descripción/leyenda de foto). */
+export const actualizarArchivoAlfa = async (casoId, archivoId, datos = {}) => {
+  if (!casoId || !archivoId) throw new Error('Caso y archivo requeridos');
+  const response = await fetch(`${ALFA_API_URL}/${casoId}/archivos/${archivoId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(datos),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al actualizar archivo (${response.status})`);
+  }
+  return payload?.data ?? payload;
 };
 
 export const urlDescargaArchivoAlfa = (ruta) => resolveUploadsUrl(ruta);

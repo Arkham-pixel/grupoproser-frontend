@@ -9,6 +9,7 @@ import {
   Paragraph,
   Table,
   TableCell,
+  TableLayoutType,
   TableRow,
   TextRun,
   VerticalAlign,
@@ -26,6 +27,7 @@ import {
   parsearNumero,
 } from './liquidadorAlfaHelpers.js';
 import { urlDescargaArchivoAlfa } from '../../services/segurosAlfaService.js';
+import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -483,20 +485,169 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
   });
 }
 
+function detectarTipoImagen(bytes) {
+  if (!bytes || bytes.length < 12) return 'jpg';
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+    return 'png';
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'jpg';
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'png';
+  if (
+    bytes[0] === 0x52 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x46 &&
+    bytes[8] === 0x57 &&
+    bytes[9] === 0x45
+  ) {
+    return 'webp';
+  }
+  return 'jpg';
+}
+
+function esCabeceraImagen(bytes) {
+  if (!bytes || bytes.length < 3) return false;
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) return true;
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) return true;
+  if (bytes[0] === 0x47 && bytes[1] === 0x49) return true;
+  if (bytes[0] === 0x52 && bytes[1] === 0x49) return true;
+  return false;
+}
+
+/** Convierte webp/otros a JPEG vía canvas para que docx los acepte. */
+async function bytesAJpegSiNecesario(bytes, tipo) {
+  if (tipo === 'jpg' || tipo === 'png') {
+    return { bytes, type: tipo };
+  }
+  try {
+    const blob = new Blob([bytes], { type: tipo === 'webp' ? 'image/webp' : 'image/*' });
+    const url = URL.createObjectURL(blob);
+    const imgEl = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = reject;
+      el.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = imgEl.naturalWidth || imgEl.width;
+    canvas.height = imgEl.naturalHeight || imgEl.height;
+    canvas.getContext('2d').drawImage(imgEl, 0, 0);
+    URL.revokeObjectURL(url);
+    const jpegBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    if (!jpegBlob) return { bytes, type: 'jpg' };
+    const buf = await jpegBlob.arrayBuffer();
+    return { bytes: new Uint8Array(buf), type: 'jpg' };
+  } catch {
+    return { bytes, type: 'jpg' };
+  }
+}
+
 async function fetchImageBytes(url) {
+  if (!url || typeof url !== 'string') return null;
+  // blob: no usar fetch: CSP connect-src suele bloquearlo; img-src sí permite blob
+  if (url.startsWith('blob:')) {
+    return bytesDesdeBlobUrl(url);
+  }
   try {
     const token = localStorage.getItem('token');
     const response = await fetch(url, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith('image/')) return null;
-    const buf = await blob.arrayBuffer();
-    return { bytes: new Uint8Array(buf), type: blob.type.includes('png') ? 'png' : 'jpg' };
+    const buf = await response.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    if (bytes.length < 32) return null;
+    const ct = String(response.headers.get('content-type') || '').toLowerCase();
+    // S3/proxy a menudo manda application/octet-stream: no rechazar solo por MIME
+    if (!esCabeceraImagen(bytes) && ct && !ct.startsWith('image/') && !ct.includes('octet-stream')) {
+      return null;
+    }
+    const tipo = ct.includes('png')
+      ? 'png'
+      : ct.includes('webp')
+        ? 'webp'
+        : detectarTipoImagen(bytes);
+    return bytesAJpegSiNecesario(bytes, tipo);
   } catch {
     return null;
   }
+}
+
+/** Lee blob: vía Image+canvas (evita fetch bloqueado por CSP). */
+async function bytesDesdeBlobUrl(blobUrl) {
+  try {
+    const imgEl = await new Promise((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error('blob image load failed'));
+      el.src = blobUrl;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = imgEl.naturalWidth || imgEl.width || 1;
+    canvas.height = imgEl.naturalHeight || imgEl.height || 1;
+    canvas.getContext('2d').drawImage(imgEl, 0, 0);
+    const jpegBlob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    if (!jpegBlob) return null;
+    const buf = await jpegBlob.arrayBuffer();
+    return { bytes: new Uint8Array(buf), type: 'jpg' };
+  } catch {
+    return null;
+  }
+}
+
+async function resolverBytesFoto(foto, archivosCaso = []) {
+  if (!foto) return null;
+
+  let ruta = foto.ruta || '';
+  if (!ruta && foto._id) {
+    const arch = (archivosCaso || []).find((a) => String(a._id) === String(foto._id));
+    if (arch?.ruta) ruta = arch.ruta;
+  }
+
+  if (foto.file && typeof foto.file.arrayBuffer === 'function') {
+    try {
+      const buf = await foto.file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+      return bytesAJpegSiNecesario(bytes, detectarTipoImagen(bytes));
+    } catch {
+      /* continue */
+    }
+  }
+
+  if (foto.preview && String(foto.preview).startsWith('data:')) {
+    const fromData = await imagenDesdeDataUrl(foto.preview);
+    if (fromData?.data) {
+      const bytes = new Uint8Array(fromData.data);
+      const t = fromData.type === 'png' ? 'png' : detectarTipoImagen(bytes);
+      return bytesAJpegSiNecesario(bytes, t);
+    }
+  }
+  if (foto.base64 && String(foto.base64).startsWith('data:')) {
+    const fromData = await imagenDesdeDataUrl(foto.base64);
+    if (fromData?.data) {
+      const bytes = new Uint8Array(fromData.data);
+      const t = fromData.type === 'png' ? 'png' : detectarTipoImagen(bytes);
+      return bytesAJpegSiNecesario(bytes, t);
+    }
+  }
+
+  // Preferir ruta del servidor antes que blob: local (más estable al generar Word)
+  if (ruta) {
+    const candidatos = getUploadsUrlCandidates(ruta);
+    const primary = urlDescargaArchivoAlfa(ruta);
+    const urls = [...new Set([primary, ...(candidatos || [])].filter(Boolean))];
+    for (const url of urls) {
+      const img = await fetchImageBytes(url);
+      if (img) return img;
+    }
+  }
+
+  if (foto.preview && String(foto.preview).startsWith('blob:')) {
+    const img = await bytesDesdeBlobUrl(foto.preview);
+    if (img) return img;
+  }
+
+  return null;
 }
 
 async function imagenDesdeDataUrl(dataUrl) {
@@ -801,49 +952,130 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
     const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
-    return et === 'FOTOS' || et === 'INSPECCION' || /\.(jpe?g|png|gif|webp)$/i.test(nombre);
+    const mime = String(a.tipoMime || '');
+    return (
+      et === 'FOTOS' ||
+      et === 'INSPECCION' ||
+      mime.startsWith('image/') ||
+      /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre)
+    );
   });
+  const fotosInforme = Array.isArray(info?.fotosInspeccion)
+    ? info.fotosInspeccion
+    : Array.isArray(informe?.fotosInspeccion)
+      ? informe.fotosInspeccion
+      : [];
+  const archivosById = new Map(
+    fotosArchivos.filter((a) => a?._id).map((a) => [String(a._id), a])
+  );
 
-  const fotoParrafos = [];
-  let fotosIncluidas = 0;
-  for (const archivo of fotosArchivos.slice(0, 12)) {
-    const url = urlDescargaArchivoAlfa(archivo.ruta);
-    if (!url) continue;
-    const img = await fetchImageBytes(url);
-    if (!img) {
-      fotoParrafos.push(
-        p(`• ${archivo.nombreOriginal || archivo.nombre || 'Foto'} (no embebida)`, {
-          size: SIZE_12,
+  const fotosParaWord = (
+    fotosInforme.length
+      ? fotosInforme.map((f) => {
+          const arch = f._id ? archivosById.get(String(f._id)) : null;
+          return {
+            ...f,
+            nombreOriginal: f.nombre || f.nombreOriginal || arch?.nombreOriginal,
+            descripcion: f.descripcion || arch?.descripcion || '',
+            ruta: f.ruta || arch?.ruta || '',
+            preview: f.preview || f.base64 || '',
+            file: f.file || null,
+            tipoMime: f.tipoMime || arch?.tipoMime || '',
+          };
         })
-      );
+      : fotosArchivos
+  );
+
+  // Embebidas y layout de dos en dos (mismo patrón que Informe de Ajuste)
+  const fotosEmbebidas = [];
+  for (const archivo of fotosParaWord.slice(0, 12)) {
+    const img = await resolverBytesFoto(archivo, fotosArchivos);
+    if (!img?.bytes?.length) {
+      console.warn('Foto no embebida en Word Alfa:', archivo?.nombreOriginal || archivo?.nombre);
       continue;
     }
-    fotosIncluidas += 1;
-    fotoParrafos.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 100, after: 40 },
-        children: [
-          new ImageRun({
-            data: img.bytes,
-            transformation: { width: 400, height: 260 },
-            type: img.type,
-          }),
-        ],
-      }),
-      p(archivo.nombreOriginal || archivo.nombre || `Foto ${fotosIncluidas}`, {
-        alignment: AlignmentType.CENTER,
-        size: SIZE_12,
-        after: 120,
-      })
-    );
+    fotosEmbebidas.push({
+      bytes: img.bytes,
+      type: img.type === 'png' ? 'png' : 'jpg',
+      leyenda:
+        String(archivo.descripcion || '').trim() || `Foto ${fotosEmbebidas.length + 1}`,
+    });
   }
-  if (!fotoParrafos.length) {
+  const fotosIncluidas = fotosEmbebidas.length;
+
+  const fotoParrafos = [];
+  if (!fotosEmbebidas.length) {
     fotoParrafos.push(
       p(
-        'Pendiente registro fotográfico. Suba las fotos en la sección 5 del informe (zona de arrastre).',
+        'Pendiente registro fotográfico. Suba las fotos en la sección 6 del informe (Carga de Imágenes).',
         { size: SIZE_12 }
       )
+    );
+  } else {
+    // Grid 2 columnas (foto | foto) con anchos DXA fijos — evita que Word apile las celdas
+    const COL_W = 4500;
+    const IMG_W = 210;
+    const IMG_H = 158;
+    const filasFoto = [];
+
+    const celdaFoto = (foto) => {
+      if (!foto) {
+        return new TableCell({
+          borders: noBorders,
+          width: { size: COL_W, type: WidthType.DXA },
+          children: [new Paragraph({ children: [] })],
+        });
+      }
+      return new TableCell({
+        borders: noBorders,
+        width: { size: COL_W, type: WidthType.DXA },
+        margins: { top: 60, bottom: 60, left: 80, right: 80 },
+        verticalAlign: VerticalAlign.TOP,
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 40, after: 40 },
+            children: [
+              new ImageRun({
+                data: foto.bytes,
+                transformation: { width: IMG_W, height: IMG_H },
+                type: foto.type,
+              }),
+            ],
+          }),
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 100 },
+            children: [
+              new TextRun({
+                text: foto.leyenda,
+                font: FONT,
+                size: SIZE_12,
+              }),
+            ],
+          }),
+        ],
+      });
+    };
+
+    for (let i = 0; i < fotosEmbebidas.length; i += 2) {
+      filasFoto.push(
+        new TableRow({
+          children: [
+            celdaFoto(fotosEmbebidas[i]),
+            celdaFoto(fotosEmbebidas[i + 1] || null),
+          ],
+        })
+      );
+    }
+
+    fotoParrafos.push(
+      new Table({
+        width: { size: COL_W * 2, type: WidthType.DXA },
+        columnWidths: [COL_W, COL_W],
+        layout: TableLayoutType.FIXED,
+        rows: filasFoto,
+      })
     );
   }
 
@@ -1284,9 +1516,15 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   });
 
   const blob = await Packer.toBlob(doc);
-  const nombre = `Informe_Unico_Alfa_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
+  const stamp = new Date()
+    .toISOString()
+    .slice(0, 16)
+    .replace('T', '_')
+    .replace(/:/g, '');
+  const nombre = `Informe_Unico_Alfa_${caso.siniestro || caso.consecutivo || 'caso'}_${stamp}.docx`.replace(
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );
   saveAs(blob, nombre);
+  return { blob, nombre };
 }

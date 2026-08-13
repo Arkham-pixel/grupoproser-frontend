@@ -192,7 +192,8 @@
     "soporte": "Support",
     "usuario": "User",
     "visualizador": "Viewer",
-    "puertos": "Ports"
+    "puertos": "Ports",
+    "contractor_zurich": "Contractor Zurich"
   },
   "nav": {
     "sections": {
@@ -344,27 +345,27 @@
       "alfaAdd": "Add Seguros Alfa case",
       "alfaReport": "Seguros Alfa report",
       "alfaBulletin": "Seguros Alfa weekly bulletin",
+      "alfaBlocks": "Seguros Alfa proximity blocks",
       "alfaCase": "Seguros Alfa case",
       "alfaSettlement": "Seguros Alfa settlement",
       "alfaUniqueReport": "Seguros Alfa unique report",
       "zurichAdd": "Add Zurich case",
       "zurichReport": "Zurich report",
       "zurichBulletin": "Zurich weekly bulletin",
-      "zurichCase": "Zurich case",
-      "alfaBlocks": "Seguros Alfa proximity blocks"
+      "zurichCase": "Zurich case"
     },
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
     "alfaReport": "Alfa report",
     "alfaBulletin": "Weekly bulletin",
+    "alfaBlocks": "Nearby blocks",
     "alfaCase": "Alfa case",
     "alfaSettlement": "Alfa settlement",
     "alfaUniqueReport": "Unique report",
     "zurichAddCase": "Add case",
     "zurichReport": "Zurich report",
     "zurichBulletin": "Weekly bulletin",
-    "zurichCase": "Zurich case",
-    "alfaBlocks": "Nearby blocks"
+    "zurichCase": "Zurich case"
   },
   "translation": {
     "preview": "English translation",
@@ -930,6 +931,14 @@
       "caseCreated": "Case {{caseNumber}} created successfully.",
       "saveError": "The case could not be saved."
     },
+    "bulk": {
+      "title": "FDM bulk upload",
+      "upload": "Upload FDLM Excel",
+      "importing": "Importing…",
+      "emptyFile": "The file has no data rows to import.",
+      "error": "The Excel file could not be imported.",
+      "success": "Import done: {{created}} created (marked as new), {{updated}} updated, {{skipped}} skipped. Existing cases were not deleted."
+    },
     "sections": {
       "insured": "Insured person details",
       "policyCoverage": "Policy and coverage",
@@ -953,6 +962,11 @@
       "premiumsCurrent": "Premiums up to date",
       "businessSubsidy": "Business subsidy",
       "coverage": "Coverage",
+      "event": "Event",
+      "newCases": "New cases",
+      "department": "Department",
+      "filingOffice": "Filing office",
+      "registrationDate": "Registration date",
       "adjuster": "Adjuster",
       "aif": "AIF (Comprehensive Advisor)",
       "case": "Case",
@@ -984,7 +998,7 @@
       "municipality": "E.g. LORICA",
       "businessType": "E.g. GROCERY STORE",
       "policy": "E.g. AB003005",
-      "coverage": "E.g. FLOODING",
+      "coverage": "E.g. TEMBLOR / FLOODING",
       "caseNumber": "Case number",
       "claimNumber": "Claim number",
       "objection": "Objection value or observation"
@@ -1045,6 +1059,9 @@
       "filters": "Search filters",
       "searchPlaceholder": "Name, ID, case, claim…",
       "all": "All",
+      "onlyNew": "New only ({{count}})",
+      "previousCases": "Previous",
+      "newBadge": "NEW",
       "from": "Date from",
       "to": "Date to",
       "zeroRecords": "0 records",
@@ -1182,13 +1199,13 @@
       "reserva": "Reserve",
       "valorReclamado": "Claimed value",
       "valorLiquidado": "Settled value",
+      "fechaLlamada": "Call date",
       "fechaInspeccion": "Inspection date",
       "fechaUltimoDocumento": "Last document date",
       "fechaLiquidado": "Settlement date",
       "fechaAceptacionLiquidacion": "Settlement acceptance date",
       "fechaEnvioAseguradora": "Date sent to insurer",
-      "estado": "Status",
-      "fechaLlamada": "Call date"
+      "estado": "Status"
     },
     "placeholders": {
       "siniestro": "Claim number",
@@ -1346,8 +1363,31 @@
         "POLIZA": "Policy",
         "INSPECCION": "Inspection",
         "LIQUIDACION": "Settlement",
+        "INFORME": "Report",
         "FOTOS": "Photos",
         "OTRO": "Other"
+      },
+      "sharepoint": {
+        "column": "SharePoint",
+        "refresh": "Refresh status",
+        "summaryTitle": "SharePoint",
+        "summaryLine": "{{synced}} synced · {{pending}} pending · {{syncing}} syncing · {{failed}} errors · {{none}} not synced",
+        "open": "Open in SharePoint",
+        "retry": "Retry",
+        "retrying": "Retrying…",
+        "retryOk": "Queued for retry. The worker will process it soon.",
+        "retryError": "Could not retry synchronization.",
+        "pendingHint": "Pending synchronization",
+        "syncingHint": "Syncing…",
+        "failedHint": "Could not copy this document to SharePoint. The original file remains available in ARNALD.",
+        "status": {
+          "pending": "Pending",
+          "syncing": "Syncing",
+          "synced": "Synced",
+          "failed": "Error",
+          "disabled": "Not synced",
+          "none": "Not synced"
+        }
       }
     },
     "settlement": {
@@ -1431,6 +1471,10 @@
       "noSettlementItems": "No settlement items yet. Complete the settlement first.",
       "photosHint": "Photos from the file cabinet labeled FOTOS or INSPECCION (included in Word).",
       "photosUploadHint": "Use “Take photo” or “Gallery”, or drag images here. They are saved on the case (FOTOS label) and included in Word.",
+      "photosDescHint": "Under each photo, write the caption that will appear in the Word report. It saves when you leave the field.",
+      "photoDescPlaceholder": "Photo description (e.g. North facade, wall crack…)",
+      "photoDescSaveError": "Could not save the photo description.",
+      "photoN": "Photo {{n}}",
       "photosDropTitle": "Drag photos here or click to select",
       "photosDropSubtitle": "JPG, PNG, WEBP, HEIC — you can upload several at once",
       "photosTake": "Take photo",
@@ -1444,6 +1488,9 @@
       "recommendation": "Adjuster recommendation",
       "downloadWord": "Download Word report",
       "wordError": "Could not generate the Word report.",
+      "wordSavedArchive": "Report downloaded and saved to the file cabinet (will sync to SharePoint).",
+      "wordArchiveError": "Word downloaded, but it could not be saved to the file cabinet.",
+      "wordNeedsCase": "Word downloaded. Open/save the case to copy it to the file cabinet and SharePoint.",
       "saveDraft": "Save draft",
       "saving": "Saving…",
       "savedMessage": "Unique report saved to the case.",
@@ -1454,19 +1501,6 @@
       "loading": "Loading case…",
       "backReport": "Back to report",
       "goSettlement": "Go to settlement"
-    },
-    "workspace": {
-      "title": "Seguros Alfa case",
-      "subtitle": "CAT inspection, settlement and unique report for the case.",
-      "tabSettlement": "Settlement",
-      "tabUniqueReport": "Unique report",
-      "saveCurrent": "Save current section",
-      "saving": "Saving…",
-      "backReport": "Back to report",
-      "loading": "Loading case…",
-      "loadError": "Could not load the case.",
-      "pickCase": "Pick a case from the report to work on settlement and unique report.",
-      "goReport": "Go to report"
     },
     "bloques": {
       "title": "Nearby address blocks",
@@ -1496,6 +1530,19 @@
       "colDistance": "Dist. center",
       "colStatus": "Geo status",
       "openCase": "Open"
+    },
+    "workspace": {
+      "title": "Seguros Alfa case",
+      "subtitle": "CAT inspection, settlement and unique report for the case.",
+      "tabSettlement": "Settlement",
+      "tabUniqueReport": "Unique report",
+      "saveCurrent": "Save current section",
+      "saving": "Saving…",
+      "backReport": "Back to report",
+      "loading": "Loading case…",
+      "loadError": "Could not load the case.",
+      "pickCase": "Pick a case from the report to work on settlement and unique report.",
+      "goReport": "Go to report"
     }
   },
   "properties": {
@@ -6139,6 +6186,7 @@
         "roles": {
           "admin": "Administrator",
           "puertos": "Ports",
+          "contractor_zurich": "Contractor Zurich",
           "soporte": "Support",
           "usuario": "User",
           "visualizador": "Viewer"

@@ -192,7 +192,8 @@
     "soporte": "Soporte",
     "usuario": "Usuario",
     "visualizador": "Visualizador",
-    "puertos": "Puertos"
+    "puertos": "Puertos",
+    "contractor_zurich": "Contractor Zurich"
   },
   "nav": {
     "sections": {
@@ -339,27 +340,27 @@
       "alfaAdd": "Agregar caso Seguros Alfa",
       "alfaReport": "Reporte Seguros Alfa",
       "alfaBulletin": "Boletín semanal Seguros Alfa",
+      "alfaBlocks": "Bloques de cercanía Seguros Alfa",
       "alfaCase": "Caso Seguros Alfa",
       "alfaSettlement": "Liquidador Seguros Alfa",
       "alfaUniqueReport": "Informe único Seguros Alfa",
       "zurichAdd": "Agregar caso Zurich",
       "zurichReport": "Reporte Zurich",
       "zurichBulletin": "Boletín semanal Zurich",
-      "zurichCase": "Caso Zurich",
-      "alfaBlocks": "Bloques de cercanía Seguros Alfa"
+      "zurichCase": "Caso Zurich"
     },
     "segurosAlfaForm": "Formulario Seguros Alfa",
     "alfaAddCase": "Agregar caso",
     "alfaReport": "Reporte Alfa",
     "alfaBulletin": "Boletín semanal",
+    "alfaBlocks": "Bloques cercanos",
     "alfaCase": "Caso Alfa",
     "alfaSettlement": "Liquidador Alfa",
     "alfaUniqueReport": "Informe único",
     "zurichAddCase": "Agregar caso",
     "zurichReport": "Reporte Zurich",
     "zurichBulletin": "Boletín semanal",
-    "zurichCase": "Caso Zurich",
-    "alfaBlocks": "Bloques cercanos"
+    "zurichCase": "Caso Zurich"
   },
   "translation": {
     "preview": "Traducción al inglés",
@@ -925,6 +926,14 @@
       "caseCreated": "Caso {{caseNumber}} creado correctamente.",
       "saveError": "No fue posible guardar el caso."
     },
+    "bulk": {
+      "title": "Carga masiva FDM",
+      "upload": "Subir Excel FDLM",
+      "importing": "Importando…",
+      "emptyFile": "El archivo no tiene filas con datos para importar.",
+      "error": "No fue posible importar el Excel.",
+      "success": "Importación lista: {{created}} creados (marcados como nuevos), {{updated}} actualizados, {{skipped}} omitidos. No se borró nada de lo existente."
+    },
     "sections": {
       "insured": "Datos del asegurado",
       "policyCoverage": "Póliza y cobertura",
@@ -948,6 +957,11 @@
       "premiumsCurrent": "Primas al día",
       "businessSubsidy": "Subsidio empresarial",
       "coverage": "Cobertura",
+      "event": "Evento",
+      "newCases": "Casos nuevos",
+      "department": "Departamento",
+      "filingOffice": "Oficina radicadora",
+      "registrationDate": "Fecha de registro",
       "adjuster": "Ajustador",
       "aif": "AIF (Asesor Integral)",
       "case": "Caso",
@@ -979,7 +993,7 @@
       "municipality": "Ej: LORICA",
       "businessType": "Ej: TIENDA DE VÍVERES",
       "policy": "Ej: AB003005",
-      "coverage": "Ej: ANEGACION",
+      "coverage": "Ej: TEMBLOR / ANEGACION",
       "caseNumber": "Número de caso",
       "claimNumber": "Número de siniestro",
       "objection": "Valor u observación de la objeción"
@@ -1040,6 +1054,9 @@
       "filters": "Filtros de búsqueda",
       "searchPlaceholder": "Nombre, cédula, caso, siniestro…",
       "all": "Todos",
+      "onlyNew": "Solo nuevos ({{count}})",
+      "previousCases": "Anteriores",
+      "newBadge": "NUEVO",
       "from": "Fecha desde",
       "to": "Fecha hasta",
       "zeroRecords": "0 registros",
@@ -1177,13 +1194,13 @@
       "reserva": "Reserva",
       "valorReclamado": "Valor reclamado",
       "valorLiquidado": "Valor liquidado",
+      "fechaLlamada": "Fecha de llamada",
       "fechaInspeccion": "Fecha inspección",
       "fechaUltimoDocumento": "Fecha último documento",
       "fechaLiquidado": "Fecha liquidado",
       "fechaAceptacionLiquidacion": "Fecha aceptación liquidación",
       "fechaEnvioAseguradora": "Fecha envío a la aseguradora",
-      "estado": "Estado",
-      "fechaLlamada": "Fecha de llamada"
+      "estado": "Estado"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -1341,8 +1358,31 @@
         "POLIZA": "Póliza",
         "INSPECCION": "Inspección",
         "LIQUIDACION": "Liquidación",
+        "INFORME": "Informe",
         "FOTOS": "Fotos",
         "OTRO": "Otro"
+      },
+      "sharepoint": {
+        "column": "SharePoint",
+        "refresh": "Actualizar estado",
+        "summaryTitle": "SharePoint",
+        "summaryLine": "{{synced}} sincronizados · {{pending}} pendientes · {{syncing}} sincronizando · {{failed}} errores · {{none}} no sincronizados",
+        "open": "Abrir en SharePoint",
+        "retry": "Reintentar",
+        "retrying": "Reintentando…",
+        "retryOk": "Marcado para reintento. El worker lo procesará pronto.",
+        "retryError": "No se pudo reintentar la sincronización.",
+        "pendingHint": "Pendiente de sincronización",
+        "syncingHint": "Sincronizando…",
+        "failedHint": "No fue posible copiar este documento a SharePoint. El archivo original continúa disponible en ARNALD.",
+        "status": {
+          "pending": "Pendiente",
+          "syncing": "Sincronizando",
+          "synced": "Sincronizado",
+          "failed": "Error",
+          "disabled": "No sincronizado",
+          "none": "No sincronizado"
+        }
       }
     },
     "settlement": {
@@ -1426,6 +1466,10 @@
       "noSettlementItems": "Aún no hay ítems en el liquidador. Complétalos primero.",
       "photosHint": "Fotos del archivero con etiqueta FOTOS o INSPECCIÓN (se incluyen en el Word).",
       "photosUploadHint": "Usa «Tomar foto» o «Galería», o arrastra imágenes aquí. Se guardan en el caso (etiqueta FOTOS) y salen en el Word.",
+      "photosDescHint": "Escribe bajo cada foto la descripción/leyenda que irá en el informe Word. Se guarda al salir del campo.",
+      "photoDescPlaceholder": "Descripción de la foto (ej. Fachada norte, fisura en muro…)",
+      "photoDescSaveError": "No se pudo guardar la descripción de la foto.",
+      "photoN": "Foto {{n}}",
       "photosDropTitle": "Arrastra fotos aquí o haz clic para seleccionar",
       "photosDropSubtitle": "JPG, PNG, WEBP, HEIC — puedes subir varias a la vez",
       "photosTake": "Tomar foto",
@@ -1439,6 +1483,9 @@
       "recommendation": "Recomendación del ajustador",
       "downloadWord": "Descargar informe Word",
       "wordError": "No se pudo generar el informe Word.",
+      "wordSavedArchive": "Informe descargado y copiado al archivero (se enviará a SharePoint).",
+      "wordArchiveError": "El Word se descargó, pero no se pudo guardar en el archivero.",
+      "wordNeedsCase": "El Word se descargó. Guarda/abre el caso para poder copiarlo al archivero y SharePoint.",
       "saveDraft": "Guardar borrador",
       "saving": "Guardando…",
       "savedMessage": "Informe único guardado en el caso.",
@@ -1449,19 +1496,6 @@
       "loading": "Cargando caso…",
       "backReport": "Volver al reporte",
       "goSettlement": "Ir al liquidador"
-    },
-    "workspace": {
-      "title": "Caso Seguros Alfa",
-      "subtitle": "Inspección CAT, liquidador e informe único del caso.",
-      "tabSettlement": "Liquidador",
-      "tabUniqueReport": "Informe único",
-      "saveCurrent": "Guardar sección actual",
-      "saving": "Guardando…",
-      "backReport": "Volver al reporte",
-      "loading": "Cargando caso…",
-      "loadError": "No se pudo cargar el caso.",
-      "pickCase": "Selecciona un caso desde el reporte para trabajar liquidador e informe.",
-      "goReport": "Ir al reporte"
     },
     "bloques": {
       "title": "Bloques de direcciones cercanas",
@@ -1493,6 +1527,19 @@
       "colDistance": "Dist. centro",
       "colStatus": "Estado geo",
       "openCase": "Abrir"
+    },
+    "workspace": {
+      "title": "Caso Seguros Alfa",
+      "subtitle": "Inspección CAT, liquidador e informe único del caso.",
+      "tabSettlement": "Liquidador",
+      "tabUniqueReport": "Informe único",
+      "saveCurrent": "Guardar sección actual",
+      "saving": "Guardando…",
+      "backReport": "Volver al reporte",
+      "loading": "Cargando caso…",
+      "loadError": "No se pudo cargar el caso.",
+      "pickCase": "Selecciona un caso desde el reporte para trabajar liquidador e informe.",
+      "goReport": "Ir al reporte"
     }
   },
   "properties": {
@@ -6131,6 +6178,7 @@
         "roles": {
           "admin": "Administrador",
           "puertos": "Puertos",
+          "contractor_zurich": "Contractor Zurich",
           "soporte": "Soporte",
           "usuario": "Usuario",
           "visualizador": "Visualizador"
