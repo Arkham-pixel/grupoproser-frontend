@@ -488,6 +488,13 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           <Campo label={t('segurosAlfa.fields.fechaSiniestro')}>
             <InputFenix type="date" value={form.fechaSiniestro} onChange={setCampo('fechaSiniestro')} />
           </Campo>
+          <Campo label={t('segurosAlfa.fields.fechaLlamada')}>
+            <InputFenix
+              type="date"
+              value={form.fechaLlamada}
+              onChange={setCampo('fechaLlamada')}
+            />
+          </Campo>
           <Campo label={t('segurosAlfa.fields.fechaInspeccion')}>
             <InputFenix
               type="date"

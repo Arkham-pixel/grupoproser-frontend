@@ -350,7 +350,8 @@
       "zurichAdd": "Add Zurich case",
       "zurichReport": "Zurich report",
       "zurichBulletin": "Zurich weekly bulletin",
-      "zurichCase": "Zurich case"
+      "zurichCase": "Zurich case",
+      "alfaBlocks": "Seguros Alfa proximity blocks"
     },
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
@@ -362,7 +363,8 @@
     "zurichAddCase": "Add case",
     "zurichReport": "Zurich report",
     "zurichBulletin": "Weekly bulletin",
-    "zurichCase": "Zurich case"
+    "zurichCase": "Zurich case",
+    "alfaBlocks": "Nearby blocks"
   },
   "translation": {
     "preview": "English translation",
@@ -1185,7 +1187,8 @@
       "fechaLiquidado": "Settlement date",
       "fechaAceptacionLiquidacion": "Settlement acceptance date",
       "fechaEnvioAseguradora": "Date sent to insurer",
-      "estado": "Status"
+      "estado": "Status",
+      "fechaLlamada": "Call date"
     },
     "placeholders": {
       "siniestro": "Claim number",
@@ -1464,6 +1467,35 @@
       "loadError": "Could not load the case.",
       "pickCase": "Pick a case from the report to work on settlement and unique report.",
       "goReport": "Go to report"
+    },
+    "bloques": {
+      "title": "Nearby address blocks",
+      "subtitle": "Group properties by proximity to plan visits. Coordinates are not synced to SharePoint.",
+      "mapTitle": "Nearby blocks map",
+      "mapHint": "Click a block to filter the table and assign visits by zone.",
+      "clickToFilter": "Click to filter the table by this block",
+      "filterTable": "Filter table",
+      "filtering": "Filtering…",
+      "clearBlockFilter": "Show all blocks",
+      "noMarkers": "No properties located on the map yet.",
+      "noMarkersHint": "Press “Update locations” to geocode addresses for the current filter.",
+      "fromCenter": "from center",
+      "radius": "Block radius",
+      "updateLocations": "Update locations",
+      "geocoding": "Geocoding…",
+      "summary": "{{total}} cases · {{ubicados}} located · {{sin}} unlocated · {{bloques}} blocks ({{radio}} km radius)",
+      "empty": "No cases to show.",
+      "loadError": "Could not load the blocks.",
+      "geocodeError": "Could not update locations.",
+      "geocodeDone": "Geocoding: {{ok}} ok · {{failed}} failed · {{sin}} no address.",
+      "geocodeDoneClient": "Locations (client): {{ok}} ok · {{failed}} failed.",
+      "nothingPending": "No properties pending geocoding.",
+      "mapsKeyMissing": "Missing VITE_GOOGLE_MAPS_API_KEY to geocode from the browser.",
+      "unlocated": "Unlocated",
+      "cases": "cases",
+      "colDistance": "Dist. center",
+      "colStatus": "Geo status",
+      "openCase": "Open"
     }
   },
   "properties": {

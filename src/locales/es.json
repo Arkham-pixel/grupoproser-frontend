@@ -345,7 +345,8 @@
       "zurichAdd": "Agregar caso Zurich",
       "zurichReport": "Reporte Zurich",
       "zurichBulletin": "Boletín semanal Zurich",
-      "zurichCase": "Caso Zurich"
+      "zurichCase": "Caso Zurich",
+      "alfaBlocks": "Bloques de cercanía Seguros Alfa"
     },
     "segurosAlfaForm": "Formulario Seguros Alfa",
     "alfaAddCase": "Agregar caso",
@@ -357,7 +358,8 @@
     "zurichAddCase": "Agregar caso",
     "zurichReport": "Reporte Zurich",
     "zurichBulletin": "Boletín semanal",
-    "zurichCase": "Caso Zurich"
+    "zurichCase": "Caso Zurich",
+    "alfaBlocks": "Bloques cercanos"
   },
   "translation": {
     "preview": "Traducción al inglés",
@@ -1180,7 +1182,8 @@
       "fechaLiquidado": "Fecha liquidado",
       "fechaAceptacionLiquidacion": "Fecha aceptación liquidación",
       "fechaEnvioAseguradora": "Fecha envío a la aseguradora",
-      "estado": "Estado"
+      "estado": "Estado",
+      "fechaLlamada": "Fecha de llamada"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -1459,6 +1462,37 @@
       "loadError": "No se pudo cargar el caso.",
       "pickCase": "Selecciona un caso desde el reporte para trabajar liquidador e informe.",
       "goReport": "Ir al reporte"
+    },
+    "bloques": {
+      "title": "Bloques de direcciones cercanas",
+      "subtitle": "Agrupa predios por cercanía para planear visitas. Las coordenadas no se sincronizan con SharePoint.",
+      "mapTitle": "Mapa de bloques cercanos",
+      "mapHint": "Haz clic en un bloque para filtrar la tabla y asignar visitas por zona.",
+      "clickToFilter": "Clic para filtrar la tabla por este bloque",
+      "filterTable": "Filtrar tabla",
+      "filtering": "Filtrando…",
+      "clearBlockFilter": "Ver todos los bloques",
+      "noMarkers": "Aún no hay predios ubicados en el mapa.",
+      "noMarkersHint": "Pulsa «Actualizar ubicaciones» para geocodificar las direcciones del filtro actual.",
+      "fromCenter": "del centro",
+      "radius": "Radio del bloque",
+      "updateLocations": "Actualizar ubicaciones",
+      "geocoding": "Geocodificando…",
+      "summary": "{{total}} casos · {{ubicados}} ubicados · {{sin}} sin ubicar · {{bloques}} bloques (radio {{radio}} km)",
+      "empty": "No hay casos para mostrar.",
+      "loadError": "No se pudieron cargar los bloques.",
+      "geocodeError": "No se pudieron actualizar las ubicaciones.",
+      "geocodeDone": "Geocodificación: {{ok}} ok · {{failed}} fallidos · {{sin}} sin dirección.",
+      "geocodeDoneClient": "Ubicaciones (cliente): {{ok}} ok · {{failed}} fallidos.",
+      "nothingPending": "No hay predios pendientes de geocodificar.",
+      "mapsKeyMissing": "Falta VITE_GOOGLE_MAPS_API_KEY para geocodificar desde el navegador.",
+      "unlocated": "Sin ubicar",
+      "cases_one": "caso",
+      "cases_other": "casos",
+      "cases": "casos",
+      "colDistance": "Dist. centro",
+      "colStatus": "Estado geo",
+      "openCase": "Abrir"
     }
   },
   "properties": {

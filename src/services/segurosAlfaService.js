@@ -233,3 +233,46 @@ export const guardarInformeUnicoEnCasoAlfa = async ({
 
   return actualizarCasoAlfa(casoId, payload);
 };
+
+/** GET /bloques-cercania — agrupa casos por cercanía (solo ARNALD). */
+export const getBloquesCercaniaAlfa = async ({ radioKm = 2.5, ciudad = '', estado = '' } = {}) => {
+  const queryString = buildQueryString({ radioKm, ciudad, estado, _t: Date.now() });
+  const response = await fetch(`${ALFA_API_URL}/bloques-cercania${queryString}`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al obtener bloques (${response.status})`);
+  }
+  return payload?.data ?? payload;
+};
+
+/** POST /geocode-pendientes — geocodifica en backend (requiere GOOGLE_MAPS_API_KEY). */
+export const postGeocodePendientesAlfa = async ({ limit = 40, force = false } = {}) => {
+  const response = await fetch(`${ALFA_API_URL}/geocode-pendientes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ limit, force }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    const err = new Error(payload?.error || `Error al geocodificar (${response.status})`);
+    err.payload = payload;
+    throw err;
+  }
+  return payload?.data ?? payload;
+};
+
+/** POST /ubicaciones-predio — guarda coords geocodificadas en el cliente. */
+export const postUbicacionesPredioAlfa = async (items = []) => {
+  const response = await fetch(`${ALFA_API_URL}/ubicaciones-predio`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ items }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al guardar ubicaciones (${response.status})`);
+  }
+  return payload?.data ?? payload;
+};

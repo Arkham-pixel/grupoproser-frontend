@@ -46,6 +46,7 @@ import {
   FaUmbrella,
   FaTimes,
   FaSignOutAlt,
+  FaMapMarkerAlt,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
@@ -428,6 +429,7 @@ export default function Layout() {
     '/seguros-alfa/carga': t('nav.pageTitles.alfaAdd'),
     '/seguros-alfa/reporte': t('nav.pageTitles.alfaReport'),
     '/seguros-alfa/boletin': t('nav.pageTitles.alfaBulletin'),
+    '/seguros-alfa/bloques': t('nav.pageTitles.alfaBlocks'),
     '/seguros-alfa/caso': t('nav.pageTitles.alfaCase'),
     '/seguros-alfa/liquidador': t('nav.pageTitles.alfaCase'),
     '/seguros-alfa/informe-unico': t('nav.pageTitles.alfaCase'),
@@ -636,6 +638,7 @@ export default function Layout() {
           { path: '/seguros-alfa/caso', icon: FaFileAlt, label: t('nav.alfaCase') },
           { path: '/seguros-alfa/reporte', icon: FaTable, label: t('nav.alfaReport') },
           { path: '/seguros-alfa/boletin', icon: FaChartLine, label: t('nav.alfaBulletin') },
+          { path: '/seguros-alfa/bloques', icon: FaMapMarkerAlt, label: t('nav.alfaBlocks') },
         ]
       : [],
     zurich: !accesoRestringido

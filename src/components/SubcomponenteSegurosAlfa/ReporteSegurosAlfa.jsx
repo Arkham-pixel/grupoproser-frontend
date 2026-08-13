@@ -10,6 +10,7 @@ import {
 import FormularioSegurosAlfa from './FormularioSegurosAlfa.jsx';
 import ArchiveroSegurosAlfa from './ArchiveroSegurosAlfa.jsx';
 import AccionesAlfaMenu from './AccionesAlfaMenu.jsx';
+import MapaBloquesAlfaPanel from './MapaBloquesAlfaPanel.jsx';
 import {
   ALFA_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
@@ -58,6 +59,7 @@ const COLUMNAS = [
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'departamento', labelKey: 'departamento' },
   { clave: 'fechaSiniestro', labelKey: 'fechaSiniestro' },
+  { clave: 'fechaLlamada', labelKey: 'fechaLlamada' },
   { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
   { clave: 'valorAseguradoContenidos', labelKey: 'valorAseguradoContenidos' },
   { clave: 'cobertura', labelKey: 'cobertura' },
@@ -87,6 +89,7 @@ const CAMPOS_MONEDA = new Set([
 ]);
 const CAMPOS_FECHA = new Set([
   'fechaSiniestro',
+  'fechaLlamada',
   'fechaInspeccion',
   'fechaUltimoDocumento',
   'fechaLiquidado',
@@ -111,6 +114,7 @@ const buildExportRow = (caso) => ({
   CIUDAD: caso.ciudad ?? '',
   DEPARTAMENTO: caso.departamento ?? '',
   'FECHA SINIESTRO': formatDate(caso.fechaSiniestro),
+  'FECHA DE LLAMADA': formatDate(caso.fechaLlamada),
   'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
   'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
   COBERTURA: caso.cobertura ?? '',
@@ -146,6 +150,8 @@ export default function ReporteSegurosAlfa() {
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
+  const [bloqueSeleccionadoId, setBloqueSeleccionadoId] = useState(null);
+  const [idsBloqueSeleccionado, setIdsBloqueSeleccionado] = useState([]);
 
   const recargar = useCallback(async () => {
     setLoading(true);
@@ -171,7 +177,9 @@ export default function ReporteSegurosAlfa() {
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
+    const idsBloque = new Set((idsBloqueSeleccionado || []).map(String));
     return casos.filter((c) => {
+      if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
@@ -194,6 +202,7 @@ export default function ReporteSegurosAlfa() {
         c.estado,
         c.informacionContacto,
         c.canalRadicacion,
+        c.direccionPredio,
       ]
         .map(normTexto)
         .join(' ');
@@ -208,6 +217,7 @@ export default function ReporteSegurosAlfa() {
     filtroAjustador,
     fechaInicio,
     fechaFin,
+    idsBloqueSeleccionado,
   ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / ALFA_REPORTE_PAGE_SIZE));
@@ -217,7 +227,16 @@ export default function ReporteSegurosAlfa() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin]);
+  }, [
+    busqueda,
+    filtroCiudad,
+    filtroDepto,
+    filtroEstado,
+    filtroAjustador,
+    fechaInicio,
+    fechaFin,
+    idsBloqueSeleccionado,
+  ]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -227,6 +246,8 @@ export default function ReporteSegurosAlfa() {
     setFiltroAjustador('');
     setFechaInicio('');
     setFechaFin('');
+    setBloqueSeleccionadoId(null);
+    setIdsBloqueSeleccionado([]);
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -295,7 +316,8 @@ export default function ReporteSegurosAlfa() {
       filtroEstado ||
       filtroAjustador ||
       fechaInicio ||
-      fechaFin
+      fechaFin ||
+      bloqueSeleccionadoId
   );
 
   return (
@@ -402,6 +424,17 @@ export default function ReporteSegurosAlfa() {
                 })}
           </p>
         </ExpressFilterSection>
+
+        <MapaBloquesAlfaPanel
+          ciudad={filtroCiudad}
+          estado={filtroEstado}
+          bloqueSeleccionadoId={bloqueSeleccionadoId}
+          onBloqueChange={(bloqueId, casoIds) => {
+            setBloqueSeleccionadoId(bloqueId);
+            setIdsBloqueSeleccionado(casoIds || []);
+          }}
+          compact
+        />
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
           <div className="overflow-x-auto">

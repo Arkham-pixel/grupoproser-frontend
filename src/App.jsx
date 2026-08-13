@@ -64,6 +64,7 @@ import LiquidadorEquidadFdmPage from './components/SubcomponenteEquidadFdm/Liqui
 import FormularioSegurosAlfa from './components/SubcomponenteSegurosAlfa/FormularioSegurosAlfa';
 import ReporteSegurosAlfa from './components/SubcomponenteSegurosAlfa/ReporteSegurosAlfa';
 import BoletinSemanalSegurosAlfa from './components/SubcomponenteSegurosAlfa/BoletinSemanalSegurosAlfa';
+import BloquesCercaniaSegurosAlfa from './components/SubcomponenteSegurosAlfa/BloquesCercaniaSegurosAlfa';
 import CasoSegurosAlfaWorkspace, {
   RedirectAlfaInforme,
   RedirectAlfaLiquidador,
@@ -541,6 +542,7 @@ export default function App() {
           <Route path="seguros-alfa/carga" element={<FormularioSegurosAlfa />} />
           <Route path="seguros-alfa/reporte" element={<ReporteSegurosAlfa />} />
           <Route path="seguros-alfa/boletin" element={<BoletinSemanalSegurosAlfa />} />
+          <Route path="seguros-alfa/bloques" element={<BloquesCercaniaSegurosAlfa />} />
           <Route path="seguros-alfa/caso" element={<CasoSegurosAlfaWorkspace />} />
           <Route path="seguros-alfa/liquidador" element={<RedirectAlfaLiquidador />} />
           <Route path="seguros-alfa/informe-unico" element={<RedirectAlfaInforme />} />
