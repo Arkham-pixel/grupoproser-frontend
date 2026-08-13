@@ -24,8 +24,8 @@ import {
   postGeocodePendientesAlfa,
   postUbicacionesPredioAlfa,
 } from '../../services/segurosAlfaService.js';
+import { googleMapsLoaderOptions } from '../../config/googleMapsLoader.js';
 
-const LIBRARIES = [];
 const RADIOS = [
   { value: '2', label: '2 km' },
   { value: '2.5', label: '2.5 km' },
@@ -78,11 +78,7 @@ function geocodeConGoogle(address) {
 export default function BloquesCercaniaSegurosAlfa() {
   const { t } = useTranslation();
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
-  const { isLoaded } = useJsApiLoader({
-    id: 'alfa-bloques-maps',
-    googleMapsApiKey: apiKey,
-    libraries: LIBRARIES,
-  });
+  const { isLoaded } = useJsApiLoader(googleMapsLoaderOptions(apiKey));
 
   const [radioKm, setRadioKm] = useState('2.5');
   const [data, setData] = useState(null);

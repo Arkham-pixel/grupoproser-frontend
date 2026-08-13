@@ -5,9 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useJsApiLoader, GoogleMap, Marker, InfoWindow, Autocomplete } from '@react-google-maps/api'
 import { FaSearch, FaCrosshairs, FaCamera, FaMapMarkerAlt } from 'react-icons/fa'
 import html2canvas from 'html2canvas'
-
-// Librerías de Google Maps a cargar (debe ser un array constante para evitar re-renders)
-const LIBRARIES = ['places']
+import { googleMapsLoaderOptions } from '../config/googleMapsLoader.js'
 
 // Estilo del contenedor del mapa
 const mapContainerStyle = {
@@ -119,10 +117,7 @@ export default function MapaGoogleEarth({
   const apiKey = apiKeyProp || import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''
   
   // Usar useJsApiLoader en lugar de LoadScript para evitar cargas múltiples
-  const { isLoaded, loadError } = useJsApiLoader({
-    googleMapsApiKey: apiKey,
-    libraries: LIBRARIES,
-  })
+  const { isLoaded, loadError } = useJsApiLoader(googleMapsLoaderOptions(apiKey))
   
   // Estados
   const [posicion, setPosicion] = useState(() => {
