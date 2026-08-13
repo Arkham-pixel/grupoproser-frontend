@@ -26,8 +26,12 @@ export const normalizeFdmItem = (item = {}) => ({
   nombre: item.nombre ?? '',
   cedula: item.cedula ?? '',
   municipio: item.municipio ?? '',
+  departamento: item.departamento ?? '',
+  oficinaRadicadora: item.oficinaRadicadora ?? '',
   ajustador: item.ajustador ?? '',
+  evento: item.evento ?? '',
   estado: item.estado ?? '',
+  esNuevo: item.esNuevo === true,
   liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   totalPerdidaNumero: toNumber(item.totalPerdida),
   totalLiquidadoNumero: toNumber(item.totalLiquidado),
@@ -111,6 +115,22 @@ export const actualizarCasoFdm = async (id, datos) => {
     throw new Error(payload?.error || payload?.detalle || `Error al actualizar el caso FDM (${response.status})`);
   }
   return normalizeFdmItem(payload?.data ?? payload);
+};
+
+/** Importación masiva: crea o actualiza sin duplicar ni borrar. */
+export const importarCasosFdm = async (casos = []) => {
+  const response = await fetch(`${FDM_API_URL}/importar`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ casos }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(
+      payload?.error || payload?.detalle || `Error al importar casos Equidad FDM (${response.status})`
+    );
+  }
+  return payload?.data ?? payload;
 };
 
 export const deleteCasoFdm = async (id) => {

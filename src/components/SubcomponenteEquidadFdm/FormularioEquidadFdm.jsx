@@ -22,7 +22,7 @@ import {
   TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { FdmPageHeader } from './EquidadFdmUiBlocks.jsx';
-import { ESTADOS_FDM, fechaParaInput } from './equidadFdmHelpers.js';
+import { ESTADOS_FDM, EVENTOS_FDM, fechaParaInput } from './equidadFdmHelpers.js';
 
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -35,6 +35,8 @@ const FORM_VACIO = {
   celular: '',
   direccionAfectada: '',
   municipio: '',
+  departamento: '',
+  oficinaRadicadora: '',
   tipoNegocio: '',
   polizaDanosVigente: '',
   polizaAfectar: '',
@@ -45,11 +47,13 @@ const FORM_VACIO = {
   primas: '',
   subsidioEmpresarial: '',
   cobertura: '',
+  evento: '',
   ajustador: '',
   aif: '',
   caso: '',
   siniestro: '',
   estado: 'PENDIENTE',
+  fechaRegistro: '',
   fechaAviso: '',
   fechaLiquidacion: '',
   fechaCausacion: '',
@@ -233,6 +237,12 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
           <Campo label={t('equidadFdm.fields.municipality')}>
             <InputFenix value={form.municipio} onChange={setCampo('municipio')} placeholder={t('equidadFdm.placeholders.municipality')} />
           </Campo>
+          <Campo label={t('equidadFdm.fields.department')}>
+            <InputFenix value={form.departamento} onChange={setCampo('departamento')} />
+          </Campo>
+          <Campo label={t('equidadFdm.fields.filingOffice')}>
+            <InputFenix value={form.oficinaRadicadora} onChange={setCampo('oficinaRadicadora')} />
+          </Campo>
           <Campo label={t('equidadFdm.fields.businessType')}>
             <InputFenix value={form.tipoNegocio} onChange={setCampo('tipoNegocio')} placeholder={t('equidadFdm.placeholders.businessType')} />
           </Campo>
@@ -273,6 +283,9 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
           <Campo label={t('equidadFdm.fields.coverage')}>
             <InputFenix value={form.cobertura} onChange={setCampo('cobertura')} placeholder={t('equidadFdm.placeholders.coverage')} />
           </Campo>
+          <Campo label={t('equidadFdm.fields.event')}>
+            {selectSimple('evento', EVENTOS_FDM)}
+          </Campo>
         </div>
       </section>
 
@@ -293,6 +306,9 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
           </Campo>
           <Campo label={t('equidadFdm.fields.status')} required>
             {selectSimple('estado', ESTADOS_FDM)}
+          </Campo>
+          <Campo label={t('equidadFdm.fields.registrationDate')}>
+            <InputFenix type="date" value={form.fechaRegistro} onChange={setCampo('fechaRegistro')} />
           </Campo>
           <Campo label={t('equidadFdm.fields.noticeDate')}>
             <InputFenix type="date" value={form.fechaAviso} onChange={setCampo('fechaAviso')} />

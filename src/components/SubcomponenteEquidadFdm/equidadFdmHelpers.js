@@ -1,9 +1,12 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
-export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v1';
+export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v2';
 export const FDM_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADOS_FDM = ['PENDIENTE', 'LIQUIDADO', 'OBJETADO', 'GIRADO'];
+export const EVENTOS_FDM = ['OLA INVERNAL', 'TERREMOTO 10 AGOSTO 2026'];
+
+export const esCasoNuevoFdm = (caso = {}) => caso?.esNuevo === true;
 
 export const formatCurrency = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {

@@ -10,6 +10,7 @@ import {
 import FormularioSegurosAlfa from './FormularioSegurosAlfa.jsx';
 import ArchiveroSegurosAlfa from './ArchiveroSegurosAlfa.jsx';
 import AccionesAlfaMenu from './AccionesAlfaMenu.jsx';
+import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import MapaBloquesAlfaPanel from './MapaBloquesAlfaPanel.jsx';
 import {
   ALFA_REPORTE_PAGE_SIZE,
@@ -350,6 +351,12 @@ export default function ReporteSegurosAlfa() {
             </button>
           </div>
         </header>
+
+        <AlfaControlSeguimientoBanner
+          onCompleted={async () => {
+            await recargar();
+          }}
+        />
 
         <ExpressFilterSection
           title={t('segurosAlfa.report.filters')}

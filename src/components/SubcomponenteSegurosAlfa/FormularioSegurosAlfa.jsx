@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FaFileExcel, FaSave, FaUndo, FaUpload } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig.js';
-import { crearCasoAlfa, actualizarCasoAlfa, importarCasosAlfa } from '../../services/segurosAlfaService.js';
+import { crearCasoAlfa, actualizarCasoAlfa } from '../../services/segurosAlfaService.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -32,8 +32,11 @@ import {
   construirFormDesdeCasoAlfa,
   formatMilesInput,
 } from './segurosAlfaHelpers.js';
-import { parsearCasosAlfaDesdeExcel } from './importarSegurosAlfaExcel.js';
 import CampoTomadorAlfa from './CampoTomadorAlfa.jsx';
+import ModalImportarExcelAlfa, {
+  esAdminOSoporteAlfa,
+} from './ModalImportarExcelAlfa.jsx';
+import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 
 const alfaRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -58,13 +61,13 @@ const opcionHuerfana = (valor, opciones = []) => {
 
 const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onSaved }) => {
   const { t } = useTranslation();
-  const fileInputRef = useRef(null);
   const esEdicion = Boolean(initialData?._id);
+  const puedeImportarExcel = esAdminOSoporteAlfa();
   const [form, setForm] = useState(() =>
     initialData ? construirFormDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA }
   );
   const [guardando, setGuardando] = useState(false);
-  const [importando, setImportando] = useState(false);
+  const [modalImportOpen, setModalImportOpen] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [resumenImport, setResumenImport] = useState(null);
@@ -207,38 +210,6 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       payload[clave] = aNumero(payload[clave]);
     });
     return payload;
-  };
-
-  const handleImportExcel = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setError(null);
-    setExito(null);
-    setResumenImport(null);
-    setImportando(true);
-    try {
-      const { casos, hoja } = await parsearCasosAlfaDesdeExcel(file);
-      if (!casos.length) {
-        throw new Error(t('segurosAlfa.bulk.emptyFile'));
-      }
-      const resumen = await importarCasosAlfa(casos);
-      setResumenImport({ ...resumen, hoja, archivo: file.name });
-      setExito(
-        t('segurosAlfa.bulk.success', {
-          created: resumen.creados ?? 0,
-          updated: resumen.actualizados ?? 0,
-          skipped: resumen.omitidos ?? 0,
-        })
-      );
-      if (onSaved) await onSaved(resumen);
-    } catch (err) {
-      console.error('Error importando Seguros Alfa:', err);
-      setError(err.message || t('segurosAlfa.bulk.error'));
-    } finally {
-      setImportando(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -586,83 +557,76 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
         {error && <div className={expressAlertError}>{error}</div>}
         {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
-        <section className={expressCard}>
-          <div className={expressCardHeader}>
-            <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
-              {t('segurosAlfa.bulk.title')}
-            </h2>
-          </div>
-          <div className={expressCardBody}>
-            <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-300">
-              {t('segurosAlfa.bulk.subtitle')}
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xlsm,.xls"
-              className="hidden"
-              onChange={handleImportExcel}
-            />
-            <div className="flex flex-wrap items-center gap-2">
+        {!esEdicion && (
+          <AlfaControlSeguimientoBanner
+            onCompleted={(data) => {
+              setResumenImport(data?.totals || null);
+              setExito(
+                data?.successMessage || '✓ ARNALD está actualizado con Seguros Alfa'
+              );
+            }}
+          />
+        )}
+
+        {puedeImportarExcel && !esEdicion && (
+          <section className={expressCard}>
+            <div className={expressCardHeader}>
+              <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+                Importar Excel
+              </h2>
+            </div>
+            <div className={expressCardBody}>
+              <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-300">
+                Analice y confirme un Excel de Seguros Alfa (preview → execute). Solo admin/soporte.
+              </p>
               <button
                 type="button"
                 className={expressBtnPrimary}
-                disabled={importando || guardando}
-                onClick={() => fileInputRef.current?.click()}
+                disabled={guardando}
+                onClick={() => {
+                  setModalImportOpen(true);
+                }}
               >
                 <FaUpload />
-                {importando ? t('segurosAlfa.bulk.importing') : t('segurosAlfa.bulk.upload')}
+                Importar Excel
               </button>
-              <span className="inline-flex items-center gap-2 font-body text-xs text-gray-500 dark:text-gray-400">
+              <span className="ml-3 inline-flex items-center gap-2 font-body text-xs text-gray-500 dark:text-gray-400">
                 <FaFileExcel />
-                {t('segurosAlfa.bulk.hint')}
+                .xlsx / .xls
               </span>
+              {resumenImport && (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="font-body text-xs text-gray-500">Leídos</p>
+                    <p className="font-heading text-xl font-bold">{resumenImport.rows ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="font-body text-xs text-gray-500">Creados</p>
+                    <p className="font-heading text-xl font-bold text-fenix-primario">
+                      {resumenImport.created ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="font-body text-xs text-gray-500">Actualizados</p>
+                    <p className="font-heading text-xl font-bold">{resumenImport.updated ?? 0}</p>
+                  </div>
+                </div>
+              )}
             </div>
-            {resumenImport && (
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('segurosAlfa.bulk.received')}</p>
-                  <p className="font-heading text-xl font-bold">{resumenImport.totalRecibidos ?? 0}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('segurosAlfa.bulk.created')}</p>
-                  <p className="font-heading text-xl font-bold text-fenix-primario">
-                    {resumenImport.creados ?? 0}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('segurosAlfa.bulk.updated')}</p>
-                  <p className="font-heading text-xl font-bold text-gray-800 dark:text-gray-100">
-                    {resumenImport.actualizados ?? 0}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('segurosAlfa.bulk.skipped')}</p>
-                  <p className="font-heading text-xl font-bold text-gray-600 dark:text-gray-300">
-                    {resumenImport.omitidos ?? 0}
-                  </p>
-                </div>
-              </div>
-            )}
-            {Array.isArray(resumenImport?.errores) && resumenImport.errores.length > 0 && (
-              <details className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">
-                <summary className="cursor-pointer font-semibold text-amber-800 dark:text-amber-200">
-                  {t('segurosAlfa.bulk.errorsTitle', { count: resumenImport.errores.length })}
-                </summary>
-                <ul className="mt-2 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-amber-900 dark:text-amber-100">
-                  {resumenImport.errores.slice(0, 50).map((errItem) => (
-                    <li key={`${errItem.fila}-${errItem.motivo}`}>
-                      {t('segurosAlfa.bulk.errorRow', {
-                        row: errItem.fila,
-                        reason: errItem.motivo,
-                      })}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        </section>
+          </section>
+        )}
+
+        <ModalImportarExcelAlfa
+          open={modalImportOpen}
+          onClose={() => {
+            setModalImportOpen(false);
+          }}
+          onCompleted={async (data) => {
+            setResumenImport(data?.totals || null);
+            setExito('Importación Excel completada');
+            if (onSaved) await onSaved(data);
+          }}
+        />
 
         <section className={expressCard}>
           <div className={expressCardHeader}>

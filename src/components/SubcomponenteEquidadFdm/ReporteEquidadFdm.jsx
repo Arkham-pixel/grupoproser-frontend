@@ -1,22 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import * as XLSX from 'xlsx';
-import { FaCog, FaFileExcel } from 'react-icons/fa';
+import { FaCog, FaFileExcel, FaUpload } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import { deleteCasoFdm, fetchAllCasosFdm } from '../../services/equidadFdmService.js';
+import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
 import AccionesFdmMenu from './AccionesFdmMenu.jsx';
-import { convertirFechaParaExcelDate } from '../../utils/fechaUtils.js';
+import { descargarExcelFdlmBase } from './generarExcelFdlmBase.js';
+import { parsearCasosFdmDesdeExcel } from './importarEquidadFdmExcel.js';
 import {
   FDM_COLUMNAS_STORAGE_KEY,
   FDM_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
   coincideFiltroTexto,
+  esCasoNuevoFdm,
   fechaEnRango,
   formatCurrency,
   formatDate,
 } from './equidadFdmHelpers.js';
 import {
+  expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
   expressBtnSuccess,
@@ -37,69 +39,17 @@ import { FdmPageHeader } from './EquidadFdmUiBlocks.jsx';
 const fdmReportRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const fdmPageWrapWide = 'w-full min-w-0 space-y-4 sm:space-y-6';
 
-const formatDateForExcel = (value) => convertirFechaParaExcelDate(value);
-
-const buildExportRow = (caso) => ({
-  Consecutivo: caso.consecutivo ?? '',
-  'N°': caso.numero ?? '',
-  Nombre: caso.nombre ?? '',
-  Cédula: caso.cedula ?? '',
-  Celular: caso.celular ?? '',
-  'Dirección afectada': caso.direccionAfectada ?? '',
-  Municipio: caso.municipio ?? '',
-  Ajustador: caso.ajustador ?? '',
-  AIF: caso.aif ?? '',
-  'Póliza daños vigente': caso.polizaDanosVigente ?? '',
-  'Póliza a afectar': caso.polizaAfectar ?? '',
-  Orden: caso.orden ?? '',
-  'Vigencia póliza': caso.vigenciaPoliza ?? '',
-  'Afectaciones anteriores': caso.afectacionesAnteriores ?? '',
-  'Siniestro indemnizado': caso.siniestroIndemnizado ?? '',
-  'Valor edificio': caso.valorEdificio ?? '',
-  'Valor contenido': caso.valorContenido ?? '',
-  'Valores indemnizables': caso.valoresIndemnizables ?? '',
-  'Subsidio empresarial': caso.subsidioEmpresarial ?? '',
-  Cobertura: caso.cobertura ?? '',
-  Primas: caso.primas ?? '',
-  'Tipo de negocio': caso.tipoNegocio ?? '',
-  'Pérdida por contenidos': caso.perdidaContenidos ?? '',
-  'Pérdida por edificio': caso.perdidaEdificio ?? '',
-  'Total pérdida': caso.totalPerdida ?? '',
-  Deducible: caso.deducible ?? '',
-  'Total liquidado': caso.totalLiquidado ?? '',
-  Subsidio: caso.subsidio ?? '',
-  'Valor indemnizado (ajustador)': caso.valorIndemnizadoAjustador ?? '',
-  Caso: caso.caso ?? '',
-  Siniestro: caso.siniestro ?? '',
-  'Fecha de liquidación': formatDateForExcel(caso.fechaLiquidacion),
-  'Fecha de aviso': formatDateForExcel(caso.fechaAviso),
-  'Valor de objeción': caso.valorObjecion ?? '',
-  'Fecha de causación': formatDateForExcel(caso.fechaCausacion),
-  'Valor indemnizado': caso.valorIndemnizado ?? '',
-  'Fecha de giro': formatDateForExcel(caso.fechaGiro),
-  Estado: caso.estado ?? '',
-  Observaciones: caso.observaciones ?? '',
-  Detalle: caso.detalle ?? '',
-  'Creado el': formatDateForExcel(caso.createdAt),
-  'Actualizado el': formatDateForExcel(caso.updatedAt),
-});
-
-const COLUMNAS_FECHA_EXCEL = [
-  'Fecha de liquidación',
-  'Fecha de aviso',
-  'Fecha de causación',
-  'Fecha de giro',
-  'Creado el',
-  'Actualizado el',
-];
-
 const todasLasColumnasFdm = [
+  { clave: 'esNuevo', label: 'Nuevo' },
   { clave: 'consecutivo', label: 'Consecutivo' },
+  { clave: 'evento', label: 'Evento' },
   { clave: 'nombre', label: 'Nombre' },
   { clave: 'cedula', label: 'Cédula' },
   { clave: 'celular', label: 'Celular' },
   { clave: 'direccionAfectada', label: 'Dirección afectada' },
-  { clave: 'municipio', label: 'Municipio' },
+  { clave: 'municipio', label: 'Ciudad / Municipio' },
+  { clave: 'departamento', label: 'Departamento' },
+  { clave: 'oficinaRadicadora', label: 'Oficina radicadora' },
   { clave: 'ajustador', label: 'Ajustador' },
   { clave: 'aif', label: 'AIF' },
   { clave: 'polizaAfectar', label: 'Póliza a afectar' },
@@ -112,6 +62,7 @@ const todasLasColumnasFdm = [
   { clave: 'valorIndemnizado', label: 'Valor indemnizado' },
   { clave: 'caso', label: 'Caso' },
   { clave: 'siniestro', label: 'Siniestro' },
+  { clave: 'fechaRegistro', label: 'Fecha de registro' },
   { clave: 'fechaAviso', label: 'Fecha de aviso' },
   { clave: 'fechaLiquidacion', label: 'Fecha de liquidación' },
   { clave: 'fechaGiro', label: 'Fecha de giro' },
@@ -122,16 +73,16 @@ const todasLasColumnasFdm = [
 ];
 
 const columnasInicialesFdm = [
+  'esNuevo',
   'consecutivo',
+  'evento',
   'nombre',
   'cedula',
   'municipio',
-  'ajustador',
+  'cobertura',
   'estado',
-  'totalPerdida',
-  'totalLiquidado',
-  'valorIndemnizado',
-  'fechaLiquidacion',
+  'fechaRegistro',
+  'polizaAfectar',
 ];
 
 function cargarColumnasGuardadas() {
@@ -172,12 +123,17 @@ const ReporteEquidadFdm = () => {
   const [filtroMunicipio, setFiltroMunicipio] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroEvento, setFiltroEvento] = useState('');
+  const [filtroNuevos, setFiltroNuevos] = useState('nuevos');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [paginaActual, setPaginaActual] = useState(1);
   const [confirmEliminar, setConfirmEliminar] = useState({ open: false, registro: null });
   const [eliminando, setEliminando] = useState(false);
   const [aviso, setAviso] = useState({ open: false, titulo: '', mensaje: '', tipo: 'info' });
+  const [importando, setImportando] = useState(false);
+  const [resumenImport, setResumenImport] = useState(null);
+  const fileInputRef = useRef(null);
 
   const recargar = useCallback(async () => {
     setLoading(true);
@@ -197,6 +153,44 @@ const ReporteEquidadFdm = () => {
   useEffect(() => {
     recargar();
   }, [recargar]);
+
+  const handleImportExcel = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setImportando(true);
+    setResumenImport(null);
+    try {
+      const { casos: filas } = await parsearCasosFdmDesdeExcel(file);
+      if (!filas.length) {
+        throw new Error(t('equidadFdm.bulk.emptyFile'));
+      }
+      const resumen = await importarCasosFdm(filas);
+      setResumenImport(resumen);
+      setFiltroNuevos('nuevos');
+      await recargar();
+      setAviso({
+        open: true,
+        titulo: t('equidadFdm.bulk.title'),
+        mensaje: t('equidadFdm.bulk.success', {
+          created: resumen.creados ?? 0,
+          updated: resumen.actualizados ?? 0,
+          skipped: resumen.omitidos ?? 0,
+        }),
+        tipo: 'success',
+      });
+    } catch (err) {
+      console.error('Error importando Equidad FDM:', err);
+      setAviso({
+        open: true,
+        titulo: t('equidadFdm.bulk.error'),
+        mensaje: err.message || t('equidadFdm.bulk.error'),
+        tipo: 'error',
+      });
+    } finally {
+      setImportando(false);
+    }
+  };
 
   const abrirModalEdicion = useCallback((registro) => {
     setRegistroEditar(registro);
@@ -259,9 +253,18 @@ const ReporteEquidadFdm = () => {
   const municipios = useMemo(() => buildOpcionesFiltro(casos, 'municipio'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const eventos = useMemo(() => buildOpcionesFiltro(casos, 'evento'), [casos]);
+  const totalNuevos = useMemo(() => casos.filter((item) => esCasoNuevoFdm(item)).length, [casos]);
 
   const filtrosActivos = Boolean(
-    busqueda || filtroMunicipio || filtroAjustador || filtroEstado || fechaInicio || fechaFin
+    busqueda ||
+      filtroMunicipio ||
+      filtroAjustador ||
+      filtroEstado ||
+      filtroEvento ||
+      filtroNuevos ||
+      fechaInicio ||
+      fechaFin
   );
 
   const limpiarFiltros = () => {
@@ -269,6 +272,8 @@ const ReporteEquidadFdm = () => {
     setFiltroMunicipio('');
     setFiltroAjustador('');
     setFiltroEstado('');
+    setFiltroEvento('');
+    setFiltroNuevos('');
     setFechaInicio('');
     setFechaFin('');
   };
@@ -289,6 +294,7 @@ const ReporteEquidadFdm = () => {
           item.ajustador,
           item.caso,
           item.siniestro,
+          item.evento,
           item.polizaAfectar,
         ]
           .filter(Boolean)
@@ -304,15 +310,37 @@ const ReporteEquidadFdm = () => {
     if (filtroEstado) {
       resultado = resultado.filter((item) => coincideFiltroTexto(item.estado, filtroEstado));
     }
+    if (filtroEvento) {
+      resultado = resultado.filter((item) => coincideFiltroTexto(item.evento, filtroEvento));
+    }
+    if (filtroNuevos === 'nuevos') {
+      resultado = resultado.filter((item) => esCasoNuevoFdm(item));
+    } else if (filtroNuevos === 'anteriores') {
+      resultado = resultado.filter((item) => !esCasoNuevoFdm(item));
+    }
     if (fechaInicio || fechaFin) {
       resultado = resultado.filter((item) =>
-        fechaEnRango(item.fechaLiquidacion || item.fechaAviso || item.createdAt, fechaInicio, fechaFin)
+        fechaEnRango(
+          item.fechaRegistro || item.fechaLiquidacion || item.fechaAviso || item.createdAt,
+          fechaInicio,
+          fechaFin
+        )
       );
     }
 
     setFiltrados(resultado);
     setPaginaActual(1);
-  }, [casos, busqueda, filtroMunicipio, filtroAjustador, filtroEstado, fechaInicio, fechaFin]);
+  }, [
+    casos,
+    busqueda,
+    filtroMunicipio,
+    filtroAjustador,
+    filtroEstado,
+    filtroEvento,
+    filtroNuevos,
+    fechaInicio,
+    fechaFin,
+  ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / FDM_REPORTE_PAGE_SIZE));
 
@@ -340,28 +368,7 @@ const ReporteEquidadFdm = () => {
     }
 
     try {
-      const rows = filtrados.map((item) => buildExportRow(item));
-      const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true });
-      const encabezados = rows.length > 0 ? Object.keys(rows[0]) : [];
-      const indicesColumnasFecha = COLUMNAS_FECHA_EXCEL.map((nombre) => encabezados.indexOf(nombre)).filter(
-        (idx) => idx >= 0
-      );
-
-      if (indicesColumnasFecha.length > 0 && worksheet['!ref']) {
-        const range = XLSX.utils.decode_range(worksheet['!ref']);
-        for (let r = 1; r <= range.e.r; r++) {
-          for (const c of indicesColumnasFecha) {
-            const addr = XLSX.utils.encode_cell({ r, c });
-            if (worksheet[addr] && worksheet[addr].t === 'd' && !worksheet[addr].z) {
-              worksheet[addr].z = 'dd/mm/yyyy';
-            }
-          }
-        }
-      }
-
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Equidad FDM');
-      XLSX.writeFile(workbook, `reporte-equidad-fdm-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      descargarExcelFdlmBase(filtrados);
     } catch (err) {
       console.error('Error exportando Excel Equidad FDM:', err);
       setAviso({
@@ -419,9 +426,25 @@ const ReporteEquidadFdm = () => {
     'totalLiquidado',
     'valorIndemnizado',
   ]);
-  const CAMPOS_FECHA = new Set(['fechaAviso', 'fechaLiquidacion', 'fechaGiro', 'createdAt', 'updatedAt']);
+  const CAMPOS_FECHA = new Set([
+    'fechaRegistro',
+    'fechaAviso',
+    'fechaLiquidacion',
+    'fechaGiro',
+    'createdAt',
+    'updatedAt',
+  ]);
 
   const obtenerValorCelda = (item, clave) => {
+    if (clave === 'esNuevo') {
+      return esCasoNuevoFdm(item) ? (
+        <span className="inline-flex rounded-full bg-fenix-primario px-2 py-0.5 font-body text-xs font-semibold text-white">
+          {t('equidadFdm.report.newBadge')}
+        </span>
+      ) : (
+        '—'
+      );
+    }
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
     }
@@ -443,6 +466,22 @@ const ReporteEquidadFdm = () => {
           activePath="/equidad-fdm/reporte"
           actions={
             <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xlsm,.xls"
+                className="hidden"
+                onChange={handleImportExcel}
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={expressBtnGhost}
+                disabled={loading || importando}
+              >
+                <FaUpload />
+                {importando ? t('equidadFdm.bulk.importing') : t('equidadFdm.bulk.upload')}
+              </button>
               <button type="button" onClick={abrirPersonalizarColumnas} className={expressBtnSecondary}>
                 <FaCog />
                 {t('equidadFdm.report.columns')}
@@ -498,6 +537,23 @@ const ReporteEquidadFdm = () => {
                     {es.label}
                   </option>
                 ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('equidadFdm.fields.event')}>
+              <SelectFenix value={filtroEvento} onChange={(e) => setFiltroEvento(e.target.value)}>
+                <option value="">{t('equidadFdm.report.all')}</option>
+                {eventos.map((ev) => (
+                  <option key={ev.value} value={ev.value}>
+                    {ev.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('equidadFdm.fields.newCases')}>
+              <SelectFenix value={filtroNuevos} onChange={(e) => setFiltroNuevos(e.target.value)}>
+                <option value="">{t('equidadFdm.report.all')}</option>
+                <option value="nuevos">{t('equidadFdm.report.onlyNew', { count: totalNuevos })}</option>
+                <option value="anteriores">{t('equidadFdm.report.previousCases')}</option>
               </SelectFenix>
             </Campo>
             <Campo label={t('equidadFdm.report.from')}>
@@ -563,7 +619,9 @@ const ReporteEquidadFdm = () => {
                   filtradosPagina.map((item) => (
                     <tr
                       key={item._id ?? `${item.consecutivo}-${item.cedula}`}
-                      className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
+                      className={`transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30 ${
+                        esCasoNuevoFdm(item) ? 'bg-red-50/40 dark:bg-red-950/20' : ''
+                      }`}
                     >
                       <td className="sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesFdmMenu

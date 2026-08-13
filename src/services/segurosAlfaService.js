@@ -121,7 +121,7 @@ export const deleteCasoAlfa = async (id) => {
   return payload;
 };
 
-/** Importación masiva: crea o actualiza sin duplicar. */
+/** Importación masiva legacy JSON (preferir preview/execute). */
 export const importarCasosAlfa = async (casos = [], opciones = {}) => {
   const response = await fetch(`${ALFA_API_URL}/importar`, {
     method: 'POST',
@@ -140,6 +140,103 @@ export const importarCasosAlfa = async (casos = [], opciones = {}) => {
     );
   }
   return payload?.data ?? payload;
+};
+
+/** Preview Excel (admin/soporte) — no modifica casos. */
+export const previewImportExcelAlfa = async (file) => {
+  if (!file) throw new Error('Archivo Excel requerido');
+  const formData = new FormData();
+  formData.append('file', file, file.name || 'alfa.xlsx');
+  const response = await fetch(`${ALFA_API_URL}/import/preview`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    const err = new Error(payload?.error || `Error en preview (${response.status})`);
+    err.code = payload?.code;
+    err.status = response.status;
+    throw err;
+  }
+  return payload;
+};
+
+/** Execute sesión de importación (admin/soporte). */
+export const executeImportExcelAlfa = async (importSessionId, { force = false } = {}) => {
+  if (!importSessionId) throw new Error('importSessionId requerido');
+  const response = await fetch(`${ALFA_API_URL}/import/execute`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ importSessionId, force }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    const err = new Error(payload?.error || `Error en execute (${response.status})`);
+    err.code = payload?.code;
+    err.status = response.status;
+    throw err;
+  }
+  return payload;
+};
+
+export const urlReporteImportExcelAlfa = (importSessionId) =>
+  `${ALFA_API_URL}/import/${importSessionId}/report.xlsx`;
+
+export const getImportExcelAlfaStatus = async (importSessionId) => {
+  if (!importSessionId) throw new Error('importSessionId requerido');
+  const response = await fetch(`${ALFA_API_URL}/import/${importSessionId}`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error status import (${response.status})`);
+  }
+  return payload;
+};
+
+/** Estado Control y Seguimiento (SharePoint → preview automático). */
+export const getControlSeguimientoAlfaStatus = async () => {
+  const response = await fetch(`${ALFA_API_URL}/control-seguimiento/status`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    const err = new Error(
+      payload?.error || `Error consultando Control y Seguimiento (${response.status})`
+    );
+    err.code = payload?.code;
+    err.uiStatus = 'error';
+    throw err;
+  }
+  return payload;
+};
+
+/** Fuerza un ciclo de detección+preview (admin/soporte). */
+export const checkControlSeguimientoAlfa = async ({ force = false } = {}) => {
+  const response = await fetch(`${ALFA_API_URL}/control-seguimiento/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ force }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error en check (${response.status})`);
+  }
+  return payload;
+};
+
+export const dismissControlSeguimientoAlfaNotification = async () => {
+  const response = await fetch(`${ALFA_API_URL}/control-seguimiento/notification/dismiss`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: '{}',
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || 'Error al descartar notificación');
+  }
+  return payload;
 };
 
 export const subirArchivoAlfa = async (casoId, file, etiqueta = 'GENERAL') => {
@@ -186,6 +283,58 @@ export const actualizarArchivoAlfa = async (casoId, archivoId, datos = {}) => {
     throw new Error(payload?.error || `Error al actualizar archivo (${response.status})`);
   }
   return payload?.data ?? payload;
+};
+
+/** Estado SharePoint batch para archivos del caso (sin secretos). */
+export const getDocumentosSharePointAlfa = async (casoId) => {
+  if (!casoId) throw new Error('Caso requerido');
+  const response = await fetch(`${ALFA_API_URL}/${casoId}/documentos-sharepoint`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al obtener estado SharePoint (${response.status})`);
+  }
+  return {
+    documents: Array.isArray(payload.documents) ? payload.documents : [],
+    summary: payload.summary || {},
+    total: payload.total ?? 0,
+  };
+};
+
+/** Reintento SharePoint (solo admin/soporte). No sincroniza en el request. */
+export const reintentarSharePointAlfa = async (casoId, archivoId) => {
+  if (!casoId || !archivoId) throw new Error('Caso y archivo requeridos');
+  const response = await fetch(
+    `${ALFA_API_URL}/${casoId}/archivos/${archivoId}/sharepoint/retry`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    }
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    const err = new Error(
+      payload?.error || payload?.message || `Error al reintentar (${response.status})`
+    );
+    err.status = response.status;
+    err.code = payload?.code;
+    throw err;
+  }
+  return payload?.data ?? payload;
+};
+
+/** GET /:id/polizas-importadas — pólizas SharePoint→S3 asociadas al caso. */
+export const getPolizasImportadasAlfa = async (casoId) => {
+  if (!casoId) throw new Error('Caso requerido');
+  const response = await fetch(`${ALFA_API_URL}/${casoId}/polizas-importadas`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al listar pólizas importadas (${response.status})`);
+  }
+  return payload;
 };
 
 export const urlDescargaArchivoAlfa = (ruta) => resolveUploadsUrl(ruta);

@@ -21,6 +21,7 @@ import { useTheme } from '../../context/ThemeContext';
 import {
   buildOpcionesFiltro,
   coincideFiltroTexto,
+  esCasoNuevoFdm,
   fechaEnRango,
   formatCurrency,
   parseDate,
@@ -61,6 +62,8 @@ const DashboardEquidadFdm = () => {
   const [filtroMunicipio, setFiltroMunicipio] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroEvento, setFiltroEvento] = useState('');
+  const [filtroNuevos, setFiltroNuevos] = useState('nuevos');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
@@ -89,13 +92,15 @@ const DashboardEquidadFdm = () => {
   }, [t]);
 
   const filtrosAplicados = Boolean(
-    filtroMunicipio || filtroAjustador || filtroEstado || fechaDesde || fechaHasta
+    filtroMunicipio || filtroAjustador || filtroEstado || filtroEvento || filtroNuevos || fechaDesde || fechaHasta
   );
 
   const limpiarFiltros = () => {
     setFiltroMunicipio('');
     setFiltroAjustador('');
     setFiltroEstado('');
+    setFiltroEvento('');
+    setFiltroNuevos('');
     setFechaDesde('');
     setFechaHasta('');
   };
@@ -105,16 +110,19 @@ const DashboardEquidadFdm = () => {
       if (filtroMunicipio && !coincideFiltroTexto(item.municipio, filtroMunicipio)) return false;
       if (filtroAjustador && !coincideFiltroTexto(item.ajustador, filtroAjustador)) return false;
       if (filtroEstado && !coincideFiltroTexto(item.estado, filtroEstado)) return false;
+      if (filtroEvento && !coincideFiltroTexto(item.evento, filtroEvento)) return false;
+      if (filtroNuevos === 'nuevos' && !esCasoNuevoFdm(item)) return false;
+      if (filtroNuevos === 'anteriores' && esCasoNuevoFdm(item)) return false;
       if (fechaDesde || fechaHasta) {
         return fechaEnRango(
-          item.fechaLiquidacion || item.fechaAviso || item.createdAt,
+          item.fechaRegistro || item.fechaLiquidacion || item.fechaAviso || item.createdAt,
           fechaDesde,
           fechaHasta
         );
       }
       return true;
     });
-  }, [casos, filtroMunicipio, filtroAjustador, filtroEstado, fechaDesde, fechaHasta]);
+  }, [casos, filtroMunicipio, filtroAjustador, filtroEstado, filtroEvento, filtroNuevos, fechaDesde, fechaHasta]);
 
   const totalCasos = casosFiltrados.length;
   const totalPerdida = casosFiltrados.reduce((acc, item) => acc + (item.totalPerdidaNumero || 0), 0);
@@ -183,6 +191,8 @@ const DashboardEquidadFdm = () => {
   const municipiosUnicos = useMemo(() => buildOpcionesFiltro(casos, 'municipio'), [casos]);
   const ajustadoresUnicos = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const estadosUnicos = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const eventosUnicos = useMemo(() => buildOpcionesFiltro(casos, 'evento'), [casos]);
+  const totalNuevos = useMemo(() => casos.filter((item) => esCasoNuevoFdm(item)).length, [casos]);
 
   const tooltipStyle = {
     backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
@@ -252,6 +262,23 @@ const DashboardEquidadFdm = () => {
                     {es.label}
                   </option>
                 ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('equidadFdm.fields.event')}>
+              <SelectFenix value={filtroEvento} onChange={(e) => setFiltroEvento(e.target.value)}>
+                <option value="">{t('equidadFdm.dashboard.all')}</option>
+                {eventosUnicos.map((ev) => (
+                  <option key={ev.value} value={ev.value}>
+                    {ev.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('equidadFdm.fields.newCases')}>
+              <SelectFenix value={filtroNuevos} onChange={(e) => setFiltroNuevos(e.target.value)}>
+                <option value="">{t('equidadFdm.dashboard.all')}</option>
+                <option value="nuevos">{t('equidadFdm.report.onlyNew', { count: totalNuevos })}</option>
+                <option value="anteriores">{t('equidadFdm.report.previousCases')}</option>
               </SelectFenix>
             </Campo>
             <Campo label={t('equidadFdm.dashboard.from')}>
