@@ -400,6 +400,27 @@ export const TIPOS_NEGOCIO_HOMOLOGADO_ZURICH = [
   'coaseguro cedido',
 ];
 
+/** Afectación / Lucro cesante parametrizados */
+export const OPCIONES_SI_NO_ZURICH = ['SI', 'NO'];
+
+/** Grado de afectación (1–6), independiente de la severidad CAT del desprendible */
+export const GRADOS_AFECTACION_ZURICH = ['1', '2', '3', '4', '5', '6'];
+
+export const normalizarSiNoZurich = (raw) => {
+  const n = normTexto(raw);
+  if (!n) return '';
+  if (['SI', 'S', 'YES', 'TRUE', '1', 'APLICA'].includes(n)) return 'SI';
+  if (['NO', 'N', 'FALSE', '0', 'NO APLICA', 'NA', 'N/A'].includes(n)) return 'NO';
+  return String(raw ?? '').trim();
+};
+
+export const normalizarGradoAfectacionZurich = (raw) => {
+  if (raw === '' || raw == null) return '';
+  const n = Number(String(raw).trim().replace(',', '.'));
+  if (Number.isFinite(n) && n >= 1 && n <= 6) return String(Math.round(n));
+  return String(raw).trim();
+};
+
 export const CAMPOS_FECHA_Zurich = [
   'fechaSiniestro',
   'fechaInicioPoliza',
@@ -451,6 +472,12 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
             return [clave, valor === 0 || valor ? String(valor) : ''];
           }
           if (clave === 'severidadCat') return [clave, valor === 0 || valor ? String(valor) : ''];
+          if (clave === 'afectacion' || clave === 'lucroCesante') {
+            return [clave, normalizarSiNoZurich(valor)];
+          }
+          if (clave === 'gradoAfectacion') {
+            return [clave, normalizarGradoAfectacionZurich(valor)];
+          }
           return [clave, String(valor)];
         })
     ),

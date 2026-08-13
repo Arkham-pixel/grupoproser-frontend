@@ -1,4 +1,8 @@
 ﻿import * as XLSX from 'xlsx';
+import {
+  normalizarGradoAfectacionZurich,
+  normalizarSiNoZurich,
+} from './zurichHelpers.js';
 
 const normHeader = (valor) =>
   String(valor ?? '')
@@ -254,6 +258,12 @@ const parsearHojaACasos = (sheet) => {
       const raw = row[col];
       if (campo === 'severidadCat') {
         caso[campo] = parseSeveridadCat(raw);
+      } else if (campo === 'afectacion' || campo === 'lucroCesante') {
+        const v = normalizarSiNoZurich(raw);
+        caso[campo] = v === 'SI' || v === 'NO' ? v : raw == null || raw === '' ? null : String(raw).trim();
+      } else if (campo === 'gradoAfectacion') {
+        const v = normalizarGradoAfectacionZurich(raw);
+        caso[campo] = /^[1-6]$/.test(v) ? v : raw == null || raw === '' ? null : String(raw).trim();
       } else if (campo === 'accesoPredio') {
         caso[campo] = parseAccesoPredio(raw);
       } else if (campo === 'addressNumber' || campo === 'riskId') {

@@ -35,6 +35,8 @@ import {
   CAMPOS_DECIMAL_ZURICH,
   ESTADOS_ZURICH,
   FORM_VACIO_ZURICH,
+  GRADOS_AFECTACION_ZURICH,
+  OPCIONES_SI_NO_ZURICH,
   TIPOS_NEGOCIO_HOMOLOGADO_ZURICH,
   construirFormDesdecasoZurich,
   formatMilesInput,
@@ -415,13 +417,13 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
             <InputFenix value={form.grupoInspeccion} onChange={setCampo('grupoInspeccion')} />
           </Campo>
           <Campo label={t('zurich.fields.afectacion')}>
-            <InputFenix value={form.afectacion} onChange={setCampo('afectacion')} />
+            {selectSimple('afectacion', OPCIONES_SI_NO_ZURICH)}
           </Campo>
           <Campo label={t('zurich.fields.gradoAfectacion')}>
-            <InputFenix value={form.gradoAfectacion} onChange={setCampo('gradoAfectacion')} />
+            {selectSimple('gradoAfectacion', GRADOS_AFECTACION_ZURICH)}
           </Campo>
           <Campo label={t('zurich.fields.lucroCesante')}>
-            <InputFenix value={form.lucroCesante} onChange={setCampo('lucroCesante')} />
+            {selectSimple('lucroCesante', OPCIONES_SI_NO_ZURICH)}
           </Campo>
           <Campo label={t('zurich.fields.fechaInspeccion')}>
             <InputFenix
