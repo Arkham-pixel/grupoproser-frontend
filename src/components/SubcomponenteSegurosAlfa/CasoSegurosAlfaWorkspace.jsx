@@ -317,6 +317,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onCasoChange={setCasoAlfa}
                 guardandoCaso={guardando}
               />
             )}

@@ -24,6 +24,7 @@ import {
   Campo,
   InputFenix,
   SelectFenix,
+  TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   CAMPOS_NUMERICOS_ALFA,
@@ -80,7 +81,9 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     setError(null);
     setExito(null);
     setResumenImport(null);
-  }, [initialData]);
+    // Solo al cambiar de caso (no en cada re-render del objeto initialData)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?._id]);
 
   useEffect(() => {
     let cancelado = false;
@@ -209,6 +212,10 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     camposNumericos.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
     });
+    // Asegurar campos ARNALD de llamada (no dependen de Excel/SharePoint)
+    payload.fechaLlamada = form.fechaLlamada ? String(form.fechaLlamada).trim() : '';
+    payload.observacionLlamada =
+      form.observacionLlamada != null ? String(form.observacionLlamada) : '';
     return payload;
   };
 
@@ -240,7 +247,9 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           ? t('segurosAlfa.messages.caseUpdated', { caseNumber: guardado.consecutivo || '' })
           : t('segurosAlfa.messages.caseCreated', { caseNumber: guardado.consecutivo || '' })
       );
-      if (!esEdicion) {
+      if (esEdicion) {
+        setForm(construirFormDesdeCasoAlfa(guardado));
+      } else {
         setForm({ ...FORM_VACIO_ALFA });
       }
       if (onSaved) await onSaved(guardado);
@@ -473,6 +482,16 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               onChange={setCampo('fechaInspeccion')}
             />
           </Campo>
+        </div>
+        <Campo label={t('segurosAlfa.fields.observacionLlamada')} className="mt-4">
+          <TextareaFenix
+            rows={3}
+            value={form.observacionLlamada || ''}
+            onChange={setCampo('observacionLlamada')}
+            placeholder={t('segurosAlfa.placeholders.observacionLlamada')}
+          />
+        </Campo>
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Campo label={t('segurosAlfa.fields.fechaUltimoDocumento')}>
             <InputFenix
               type="date"

@@ -24,6 +24,10 @@ import {
 import { descargarFiniquitoAlfaWord } from './generarFiniquitoAlfaWord.js';
 import { descargarLiquidadorAlfaExcel } from './generarLiquidadorAlfaExcel.js';
 import { descargarLiquidadorAlfaPdf } from './generarLiquidadorAlfaPdf.js';
+import {
+  sincronizarFotosNsrEnInformeCaso,
+  subirFotoFilaNsrAlfa,
+} from './syncFotosNsrAlInformeAlfa.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -36,11 +40,13 @@ export default function LiquidadorSegurosAlfa({
   onGuardarEnCaso,
   guardandoCaso = false,
   onEstadoChange,
+  onCasoChange,
 }) {
   const { t } = useTranslation();
   const [liquidador, setLiquidador] = useState(() => mapCasoAlfaALiquidador(casoAlfa || {}));
   const [error, setError] = useState('');
   const [exportando, setExportando] = useState('');
+  const casoId = casoAlfa?._id ? String(casoAlfa._id) : '';
 
   useEffect(() => {
     setLiquidador(mapCasoAlfaALiquidador(casoAlfa || {}));
@@ -74,6 +80,69 @@ export default function LiquidadorSegurosAlfa({
       }
       return next;
     });
+  };
+
+  const patchItemFoto = (index, fotoPatch) => {
+    let itemsSnapshot = [];
+    setLiquidador((prev) => {
+      const evalData = prev.evaluacionSismicaNSR10 || {};
+      const items = Array.isArray(evalData.items) ? [...evalData.items] : [];
+      if (!items[index]) {
+        itemsSnapshot = items;
+        return prev;
+      }
+      items[index] = { ...items[index], ...fotoPatch };
+      itemsSnapshot = items;
+      return {
+        ...prev,
+        modelo: 'nsr10',
+        evaluacionSismicaNSR10: { ...evalData, items },
+      };
+    });
+    return itemsSnapshot;
+  };
+
+  const syncInformeConItems = async (items) => {
+    if (!casoId) return;
+    const actualizado = await sincronizarFotosNsrEnInformeCaso({
+      casoId,
+      casoBase: casoAlfa || {},
+      itemsNsr: items,
+    });
+    if (actualizado) onCasoChange?.(actualizado);
+  };
+
+  const handleUploadFotoFila = async (index, file, item) => {
+    const patch = await subirFotoFilaNsrAlfa({ casoId, file, item });
+    const preview =
+      typeof URL !== 'undefined' && file ? URL.createObjectURL(file) : '';
+    const items = patchItemFoto(index, { ...patch, fotoPreview: preview });
+    await syncInformeConItems(items);
+  };
+
+  const handleRemoveFotoFila = async (index) => {
+    const items = patchItemFoto(index, {
+      fotoRef: '',
+      fotoArchivoId: '',
+      fotoRuta: '',
+      fotoPreview: '',
+    });
+    await syncInformeConItems(items);
+  };
+
+  const handleGuardar = async () => {
+    if (!onGuardarEnCaso) return;
+    setError('');
+    try {
+      const items = liquidador?.evaluacionSismicaNSR10?.items || [];
+      if (casoId && items.some((it) => it?.fotoArchivoId || it?.fotoRuta)) {
+        await syncInformeConItems(items);
+      }
+      await onGuardarEnCaso(liquidador, totales);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('segurosAlfa.settlement.saveError'));
+    }
   };
 
   const correrExport = async (tipo, fn) => {
@@ -123,7 +192,7 @@ export default function LiquidadorSegurosAlfa({
             type="button"
             className={expressBtnPrimary}
             disabled={guardandoCaso}
-            onClick={() => onGuardarEnCaso(liquidador, totales)}
+            onClick={handleGuardar}
           >
             {guardandoCaso
               ? t('segurosAlfa.settlement.saving')
@@ -204,6 +273,9 @@ export default function LiquidadorSegurosAlfa({
           formData={formDataNsr}
           onInputChange={handleNsrChange}
           modoLiquidador={false}
+          habilitarUploadFotos={Boolean(casoId)}
+          onUploadFotoFila={casoId ? handleUploadFotoFila : null}
+          onRemoveFotoFila={casoId ? handleRemoveFotoFila : null}
         />
       </section>
     </div>

@@ -153,6 +153,7 @@ export default function LiquidadorSegurosAlfaPage() {
                 casoAlfa={casoAlfa}
                 onEstadoChange={handleEstadoChange}
                 onGuardarEnCaso={casoId ? handleGuardarEnCaso : undefined}
+                onCasoChange={setCasoAlfa}
                 guardandoCaso={guardando}
               />
             )}

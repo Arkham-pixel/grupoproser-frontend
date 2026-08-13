@@ -166,6 +166,7 @@ export const FORM_VACIO_ALFA = {
   valorReclamado: '',
   valorLiquidado: '',
   fechaLlamada: '',
+  observacionLlamada: '',
   fechaInspeccion: '',
   fechaUltimoDocumento: '',
   fechaLiquidado: '',

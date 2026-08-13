@@ -240,6 +240,9 @@ export function crearItemsRespuestaVacios() {
     requiereIntervencion: '',
     observacion: '',
     fotoRef: '',
+    fotoArchivoId: '',
+    fotoRuta: '',
+    fotoPreview: '',
     accionSugerida: '',
   }));
 }
@@ -267,6 +270,9 @@ export function normalizarItemsRespuesta(itemsGuardados = []) {
         (estado ? requiereIntervencionPorEstado(estado) : ''),
       observacion: prev.observacion || '',
       fotoRef: prev.fotoRef || '',
+      fotoArchivoId: prev.fotoArchivoId || '',
+      fotoRuta: prev.fotoRuta || '',
+      fotoPreview: prev.fotoPreview || '',
       accionSugerida: prev.accionSugerida || '',
     };
   });

@@ -1200,6 +1200,7 @@
       "valorReclamado": "Claimed value",
       "valorLiquidado": "Settled value",
       "fechaLlamada": "Call date",
+      "observacionLlamada": "Call notes",
       "fechaInspeccion": "Inspection date",
       "fechaUltimoDocumento": "Last document date",
       "fechaLiquidado": "Settlement date",
@@ -1212,6 +1213,7 @@
       "identificacion": "ID document",
       "tomador": "E.g. BANCO BOGOTA",
       "contacto": "Phone or contact",
+      "observacionLlamada": "Call details (who answered, agreements, follow-up…)",
       "correo": "email@example.com",
       "poliza": "E.g. INC-25334",
       "cobertura": "E.g. EARTHQUAKE",
@@ -1244,6 +1246,14 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "callComments": {
+        "title": "Call observations",
+        "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
+        "listTitle": "Detail by comment",
+        "empty": "No call observations recorded this week.",
+        "cases": "Cases",
+        "siniestros": "Claims"
+      },
       "kpis": {
         "reported": "Reported cases",
         "reportedHint": "Created during the week",
@@ -9885,6 +9895,14 @@
       "print": "Print / PDF",
       "loadError": "Could not load the bulletin.",
       "funnel": "Pipeline by status (current portfolio)",
+      "callComments": {
+        "title": "Call observations",
+        "subtitle": "{{comentarios}} distinct comments · {{casos}} cases this week",
+        "listTitle": "Detail by comment",
+        "empty": "No call observations recorded this week.",
+        "cases": "Cases",
+        "siniestros": "Claims"
+      },
       "kpis": {
         "reported": "Reported cases",
         "reportedHint": "Created during the week",

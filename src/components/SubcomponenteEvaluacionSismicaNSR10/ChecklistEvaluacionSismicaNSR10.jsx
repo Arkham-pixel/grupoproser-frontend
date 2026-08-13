@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { FaPlus, FaTrash } from 'react-icons/fa';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { FaCamera, FaPlus, FaTrash } from 'react-icons/fa';
 import { useTheme } from '../../context/ThemeContext';
+import { getImageUrl } from '../../utils/imageUtils.js';
 import {
   CAPITULOS_PRESUPUESTO_NSR10,
   ESTADOS_DANO_NSR10,
@@ -33,13 +34,17 @@ function money(n) {
 }
 
 /**
- * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean }} props
+ * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function }} props
  * modoLiquidador: solo hoja Presupuesto + diagrama de liquidación (informe único).
+ * habilitarUploadFotos: celda Foto/Ref. permite adjuntar imagen (p. ej. Seguros Alfa).
  */
 export default function ChecklistEvaluacionSismicaNSR10({
   formData,
   onInputChange,
   modoLiquidador = false,
+  habilitarUploadFotos = false,
+  onUploadFotoFila = null,
+  onRemoveFotoFila = null,
 }) {
   const { theme } = useTheme();
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -47,6 +52,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
   const borderColor = theme === 'dark' ? '#2D2D2D' : '#E6E6E6';
   const inputBg = theme === 'dark' ? '#1A1A1A' : '#FFFFFF';
   const softBg = theme === 'dark' ? '#141414' : '#F8FAFC';
+  const [subiendoFotoIdx, setSubiendoFotoIdx] = useState(null);
+  const [errorFoto, setErrorFoto] = useState('');
 
   const inputClass =
     'w-full rounded-lg border px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500';
@@ -196,6 +203,37 @@ export default function ChecklistEvaluacionSismicaNSR10({
     commit({ items: next, criterioFinal: calcularCriterioFinal(next) });
   };
 
+  const onSeleccionarFotoFila = async (index, file) => {
+    if (!file || typeof onUploadFotoFila !== 'function') return;
+    setErrorFoto('');
+    setSubiendoFotoIdx(index);
+    try {
+      await onUploadFotoFila(index, file, items[index]);
+    } catch (err) {
+      setErrorFoto(err?.message || 'No se pudo subir la foto');
+    } finally {
+      setSubiendoFotoIdx(null);
+    }
+  };
+
+  const onQuitarFotoFila = async (index) => {
+    if (typeof onRemoveFotoFila === 'function') {
+      setErrorFoto('');
+      try {
+        await onRemoveFotoFila(index, items[index]);
+      } catch (err) {
+        setErrorFoto(err?.message || 'No se pudo quitar la foto');
+      }
+      return;
+    }
+    actualizarItem(index, {
+      fotoRef: '',
+      fotoArchivoId: '',
+      fotoRuta: '',
+      fotoPreview: '',
+    });
+  };
+
   const setPresupuesto = (nextPresupuesto) => {
     commit({ presupuesto: nextPresupuesto });
   };
@@ -309,6 +347,16 @@ export default function ChecklistEvaluacionSismicaNSR10({
               {portada.direccion || '—'} · Insp. {portada.fechaInspeccion || '—'} ·{' '}
               {portada.inspector || '—'}
             </p>
+            {habilitarUploadFotos && (
+              <p className="mt-1 text-xs" style={{ color: textSecondary }}>
+                En Foto / Ref. puedes subir la evidencia; se incluye automáticamente en el informe único.
+              </p>
+            )}
+            {errorFoto && (
+              <p className="mt-1 text-xs font-medium" style={{ color: '#B91C1C' }}>
+                {errorFoto}
+              </p>
+            )}
           </div>
 
           <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
@@ -373,13 +421,73 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         }
                       />
                     </td>
-                    <td className="px-2 py-2 min-w-[100px]">
-                      <input
-                        className={inputClass}
-                        style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                        value={item.fotoRef || ''}
-                        onChange={(e) => actualizarItem(index, { fotoRef: e.target.value })}
-                      />
+                    <td className="px-2 py-2 min-w-[140px]">
+                      {habilitarUploadFotos ? (
+                        <div className="flex flex-col gap-1">
+                          {(item.fotoPreview || item.fotoRuta) && (
+                            <img
+                              src={
+                                item.fotoPreview ||
+                                getImageUrl({ ruta: item.fotoRuta }) ||
+                                getImageUrl(item.fotoRuta)
+                              }
+                              alt={item.fotoRef || item.codigo || 'Foto'}
+                              className="h-14 w-20 rounded object-cover"
+                              style={{ border: `1px solid ${borderColor}` }}
+                            />
+                          )}
+                          <div className="flex flex-wrap items-center gap-1">
+                            <label
+                              className="inline-flex cursor-pointer items-center gap-1 rounded px-2 py-1 text-[10px] font-medium"
+                              style={{
+                                backgroundColor: softBg,
+                                border: `1px solid ${borderColor}`,
+                                color: textPrimary,
+                                opacity: subiendoFotoIdx === index ? 0.6 : 1,
+                              }}
+                            >
+                              <FaCamera className="shrink-0" />
+                              {subiendoFotoIdx === index ? 'Subiendo…' : item.fotoRuta || item.fotoPreview ? 'Cambiar' : 'Subir'}
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={subiendoFotoIdx === index}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  e.target.value = '';
+                                  if (file) onSeleccionarFotoFila(index, file);
+                                }}
+                              />
+                            </label>
+                            {(item.fotoRuta || item.fotoPreview || item.fotoArchivoId) && (
+                              <button
+                                type="button"
+                                className="inline-flex items-center rounded px-1.5 py-1 text-[10px]"
+                                style={{ color: '#B91C1C' }}
+                                title="Quitar foto"
+                                onClick={() => onQuitarFotoFila(index)}
+                              >
+                                <FaTrash />
+                              </button>
+                            )}
+                          </div>
+                          <input
+                            className={inputClass}
+                            style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                            placeholder="Ref. / nombre"
+                            value={item.fotoRef || ''}
+                            onChange={(e) => actualizarItem(index, { fotoRef: e.target.value })}
+                          />
+                        </div>
+                      ) : (
+                        <input
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={item.fotoRef || ''}
+                          onChange={(e) => actualizarItem(index, { fotoRef: e.target.value })}
+                        />
+                      )}
                     </td>
                     <td className="px-2 py-2 min-w-[120px]">
                       <input

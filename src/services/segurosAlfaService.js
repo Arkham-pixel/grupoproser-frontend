@@ -22,6 +22,8 @@ export const normalizeAlfaItem = (item = {}) => ({
   tomador: item.tomador ?? '',
   numeroPoliza: item.numeroPoliza ?? '',
   estado: item.estado ?? '',
+  fechaLlamada: item.fechaLlamada ?? null,
+  observacionLlamada: item.observacionLlamada ?? '',
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
 });
 

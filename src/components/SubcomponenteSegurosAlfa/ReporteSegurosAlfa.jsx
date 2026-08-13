@@ -61,6 +61,7 @@ const COLUMNAS = [
   { clave: 'departamento', labelKey: 'departamento' },
   { clave: 'fechaSiniestro', labelKey: 'fechaSiniestro' },
   { clave: 'fechaLlamada', labelKey: 'fechaLlamada' },
+  { clave: 'observacionLlamada', labelKey: 'observacionLlamada' },
   { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
   { clave: 'valorAseguradoContenidos', labelKey: 'valorAseguradoContenidos' },
   { clave: 'cobertura', labelKey: 'cobertura' },
@@ -116,6 +117,7 @@ const buildExportRow = (caso) => ({
   DEPARTAMENTO: caso.departamento ?? '',
   'FECHA SINIESTRO': formatDate(caso.fechaSiniestro),
   'FECHA DE LLAMADA': formatDate(caso.fechaLlamada),
+  'OBSERVACIÓN LLAMADA': caso.observacionLlamada ?? '',
   'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
   'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
   COBERTURA: caso.cobertura ?? '',
@@ -204,6 +206,7 @@ export default function ReporteSegurosAlfa() {
         c.informacionContacto,
         c.canalRadicacion,
         c.direccionPredio,
+        c.observacionLlamada,
       ]
         .map(normTexto)
         .join(' ');
@@ -502,7 +505,16 @@ export default function ReporteSegurosAlfa() {
                       {COLUMNAS.map((col) => (
                         <td
                           key={col.clave}
-                          className="whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200"
+                          className={
+                            col.clave === 'observacionLlamada'
+                              ? 'max-w-xs whitespace-normal px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
+                              : 'whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
+                          }
+                          title={
+                            col.clave === 'observacionLlamada'
+                              ? String(item.observacionLlamada || '')
+                              : undefined
+                          }
                         >
                           {obtenerValorCelda(item, col.clave)}
                         </td>
@@ -551,7 +563,12 @@ export default function ReporteSegurosAlfa() {
             embed
             initialData={casoEdicion}
             onClose={() => setCasoEdicion(null)}
-            onSaved={async () => {
+            onSaved={async (guardado) => {
+              if (guardado?._id) {
+                setCasos((prev) =>
+                  prev.map((c) => (String(c._id) === String(guardado._id) ? { ...c, ...guardado } : c))
+                );
+              }
               setCasoEdicion(null);
               await recargar();
             }}

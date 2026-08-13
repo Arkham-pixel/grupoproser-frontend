@@ -135,6 +135,12 @@ export default function BoletinSemanalSegurosAlfa() {
     [boletin.embudo, isDark]
   );
 
+  const observacionesLlamada = boletin.observacionesLlamada || {
+    items: [],
+    totalComentarios: 0,
+    totalCasos: 0,
+  };
+
   const filasDetalle = useMemo(
     () => [
       ...boletin.detalle.reportados.map((c) => ({ tipo: 'reportado', c })),
@@ -320,6 +326,107 @@ export default function BoletinSemanalSegurosAlfa() {
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+        </section>
+
+        {/* Observaciones de llamada */}
+        <section className="grid gap-4 lg:grid-cols-5">
+          <div className={`${expressChartCard} lg:col-span-3`}>
+            <h2 className="mb-1 font-heading text-lg font-bold text-gray-900 dark:text-white">
+              {t('segurosAlfa.boletin.callComments.title')}
+            </h2>
+            <p className="mb-4 font-body text-xs text-gray-500 dark:text-gray-400">
+              {t('segurosAlfa.boletin.callComments.subtitle', {
+                comentarios: observacionesLlamada.totalComentarios,
+                casos: observacionesLlamada.totalCasos,
+              })}
+            </p>
+            {observacionesLlamada.items.length === 0 ? (
+              <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                {t('segurosAlfa.boletin.callComments.empty')}
+              </p>
+            ) : (
+              <div
+                className="w-full min-w-0"
+                style={{
+                  height: Math.min(
+                    480,
+                    Math.max(220, observacionesLlamada.items.length * 36 + 48)
+                  ),
+                }}
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    layout="vertical"
+                    data={observacionesLlamada.items}
+                    margin={{ top: 4, right: 16, left: 8, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.3} horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
+                    <YAxis
+                      type="category"
+                      dataKey="etiqueta"
+                      width={180}
+                      tick={{ fontSize: 10 }}
+                      interval={0}
+                    />
+                    <Tooltip
+                      formatter={(value) => [
+                        value,
+                        t('segurosAlfa.boletin.callComments.cases'),
+                      ]}
+                      labelFormatter={(_, payload) =>
+                        payload?.[0]?.payload?.comentario || ''
+                      }
+                    />
+                    <Bar dataKey="cantidad" name="casos" radius={[0, 6, 6, 0]}>
+                      {observacionesLlamada.items.map((_, i) => (
+                        <Cell
+                          key={observacionesLlamada.items[i].comentario}
+                          fill={getFenixChartColor(i, isDark)}
+                        />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+
+          <div className={`${expressCard} lg:col-span-2`}>
+            <div className={expressCardHeader}>
+              <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+                {t('segurosAlfa.boletin.callComments.listTitle')}
+              </h2>
+            </div>
+            <div className={`${expressCardBody} max-h-[480px] space-y-2 overflow-y-auto`}>
+              {observacionesLlamada.items.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {t('segurosAlfa.boletin.callComments.empty')}
+                </p>
+              ) : (
+                observacionesLlamada.items.map((item) => (
+                  <article
+                    key={item.comentario}
+                    className="rounded-lg border border-gray-100 px-3 py-2 dark:border-gray-800"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                        {item.comentario}
+                      </p>
+                      <span className="shrink-0 rounded-full bg-fenix-primario/10 px-2 py-0.5 text-xs font-bold text-fenix-primario">
+                        {item.cantidad}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                      {t('segurosAlfa.boletin.callComments.siniestros')}:{' '}
+                      {item.siniestros.join(', ')}
+                      {item.cantidad > item.siniestros.length ? '…' : ''}
+                    </p>
+                  </article>
+                ))
+              )}
             </div>
           </div>
         </section>

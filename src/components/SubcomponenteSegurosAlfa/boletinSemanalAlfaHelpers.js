@@ -97,6 +97,60 @@ export function mediana(nums) {
   return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
 }
 
+function truncarTexto(valor, max = 42) {
+  const texto = String(valor ?? '').trim();
+  if (!texto) return '—';
+  return texto.length > max ? `${texto.slice(0, max - 1)}…` : texto;
+}
+
+/**
+ * Agrupa cada comentario distinto de `observacionLlamada` (conteo de casos).
+ * Semana: fechaLlamada en rango, o sin fecha de llamada → updatedAt en rango.
+ */
+export function agruparObservacionesLlamada(casos = [], { desde = null, hasta = null } = {}) {
+  const map = new Map();
+
+  for (const c of Array.isArray(casos) ? casos : []) {
+    const comentario = String(c.observacionLlamada || '').trim();
+    if (!comentario) continue;
+
+    if (desde && hasta) {
+      const fLlamada = parseFechaCaso(c.fechaLlamada);
+      if (fLlamada) {
+        if (!enRangoInclusive(fLlamada, desde, hasta)) continue;
+      } else {
+        const fUpd = parseFechaCaso(c.updatedAt);
+        if (!enRangoInclusive(fUpd, desde, hasta)) continue;
+      }
+    }
+
+    const key = comentario.toLocaleLowerCase('es');
+    const prev = map.get(key);
+    const ref = c.siniestro || c.consecutivo || c.identificacion || '—';
+    if (prev) {
+      prev.cantidad += 1;
+      if (prev.siniestros.length < 8) prev.siniestros.push(ref);
+    } else {
+      map.set(key, {
+        comentario,
+        etiqueta: truncarTexto(comentario, 48),
+        cantidad: 1,
+        siniestros: [ref],
+      });
+    }
+  }
+
+  const items = [...map.values()].sort(
+    (a, b) => b.cantidad - a.cantidad || a.comentario.localeCompare(b.comentario, 'es')
+  );
+
+  return {
+    items,
+    totalComentarios: items.length,
+    totalCasos: items.reduce((acc, it) => acc + it.cantidad, 0),
+  };
+}
+
 /**
  * Calcula KPIs del boletín para [desde, hasta] (inclusive, fechas Date).
  */
@@ -266,6 +320,7 @@ export function calcularBoletinSemanalAlfa(casos = [], alertasPayload = null, ra
       inspeccionados,
       liquidados,
     },
+    observacionesLlamada: agruparObservacionesLlamada(lista, { desde, hasta }),
   };
 }
 

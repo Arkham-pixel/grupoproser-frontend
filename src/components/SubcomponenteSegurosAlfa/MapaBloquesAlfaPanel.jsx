@@ -20,6 +20,11 @@ import {
   postUbicacionesPredioAlfa,
 } from '../../services/segurosAlfaService.js';
 import { googleMapsLoaderOptions } from '../../config/googleMapsLoader.js';
+import {
+  construirQueryGeocodeAlfa,
+  esDireccionPredioGeocodableAlfa,
+  necesitaGeocodeCliente,
+} from './alfaGeocodeHelpers.js';
 
 const RADIOS = [
   { value: '2', label: '2 km' },
@@ -53,25 +58,6 @@ function markerIcon(color) {
     strokeWeight: 2,
     scale: 10,
   };
-}
-
-function construirQuery(caso) {
-  return [caso.direccionPredio, caso.ciudad, caso.departamento, 'Colombia']
-    .map((p) => String(p || '').trim())
-    .filter(Boolean)
-    .join(', ');
-}
-
-function necesitaGeocodeCliente(caso) {
-  const dir = String(caso?.direccionPredio || '').trim();
-  if (!dir) return false;
-  const u = caso?.ubicacionPredio;
-  if (!u) return true;
-  if (['stale', 'pending', 'failed'].includes(u.geocodeStatus)) return true;
-  if (u.geocodeStatus === 'ok' || u.geocodeStatus === 'manual') {
-    return !(Number.isFinite(Number(u.lat)) && Number.isFinite(Number(u.lng)));
-  }
-  return true;
 }
 
 function geocodeConGoogle(address) {
@@ -221,8 +207,8 @@ export default function MapaBloquesAlfaPanel({
 
     const items = [];
     for (const caso of filtrados) {
-      const query = construirQuery(caso);
-      if (!String(caso.direccionPredio || '').trim()) {
+      const query = construirQueryGeocodeAlfa(caso);
+      if (!esDireccionPredioGeocodableAlfa(caso.direccionPredio)) {
         items.push({ casoId: caso._id, geocodeStatus: 'sin_direccion', geocodeQuery: query });
         continue;
       }

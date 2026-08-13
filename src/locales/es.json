@@ -1195,6 +1195,7 @@
       "valorReclamado": "Valor reclamado",
       "valorLiquidado": "Valor liquidado",
       "fechaLlamada": "Fecha de llamada",
+      "observacionLlamada": "Observación de llamada",
       "fechaInspeccion": "Fecha inspección",
       "fechaUltimoDocumento": "Fecha último documento",
       "fechaLiquidado": "Fecha liquidado",
@@ -1207,6 +1208,7 @@
       "identificacion": "Documento de identificación",
       "tomador": "Ej: BANCO BOGOTA",
       "contacto": "Teléfono o contacto",
+      "observacionLlamada": "Detalle de la llamada (quién atendió, acuerdos, pendiente…)",
       "correo": "correo@ejemplo.com",
       "poliza": "Ej: INC-25334",
       "cobertura": "Ej: TERREMOTO",
@@ -1239,6 +1241,14 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "callComments": {
+        "title": "Observaciones de llamada",
+        "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
+        "listTitle": "Detalle por comentario",
+        "empty": "No hay observaciones de llamada registradas en esta semana.",
+        "cases": "Casos",
+        "siniestros": "Siniestros"
+      },
       "kpis": {
         "reported": "Casos reportados",
         "reportedHint": "Creados en la semana",
@@ -9877,6 +9887,14 @@
       "print": "Imprimir / PDF",
       "loadError": "No fue posible cargar el boletín.",
       "funnel": "Embudo por estado (cartera actual)",
+      "callComments": {
+        "title": "Observaciones de llamada",
+        "subtitle": "{{comentarios}} comentarios distintos · {{casos}} casos en la semana",
+        "listTitle": "Detalle por comentario",
+        "empty": "No hay observaciones de llamada registradas en esta semana.",
+        "cases": "Casos",
+        "siniestros": "Siniestros"
+      },
       "kpis": {
         "reported": "Casos reportados",
         "reportedHint": "Creados en la semana",

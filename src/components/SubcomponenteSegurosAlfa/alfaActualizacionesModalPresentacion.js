@@ -24,6 +24,7 @@ export const ALFA_FIELD_LABELS = Object.freeze({
   fechaInicioPoliza: 'Fecha inicio póliza',
   fechaFinPoliza: 'Fecha fin póliza',
   fechaLlamada: 'Fecha de llamada',
+  observacionLlamada: 'Observación de llamada',
   fechaInspeccion: 'Fecha de inspección',
   fechaUltimoDocumento: 'Fecha último documento',
   fechaLiquidado: 'Fecha liquidado',
