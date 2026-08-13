@@ -208,6 +208,7 @@ if (!esAdminOSoporte) {
                 <option value="usuario">{t('roles.usuario')}</option>
                 <option value="visualizador">{t('roles.visualizador')}</option>
                 <option value="puertos">{t('roles.puertos')}</option>
+                <option value="contractor_zurich">{t('roles.contractor_zurich')}</option>
                 <option value="soporte">{t('roles.soporte')}</option>
                 <option value="admin">{t('roles.admin')}</option>
               </select>

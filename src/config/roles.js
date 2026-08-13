@@ -1,4 +1,11 @@
-export const ROLES_VALIDOS = ['admin', 'soporte', 'usuario', 'visualizador', 'puertos'];
+export const ROLES_VALIDOS = [
+  'admin',
+  'soporte',
+  'usuario',
+  'visualizador',
+  'puertos',
+  'contractor_zurich',
+];
 
 export function normalizarRol(rol) {
   return String(rol || '').trim().toLowerCase();
@@ -16,6 +23,10 @@ export function esRolPuertos(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === 'puertos';
 }
 
+export function esRolContractorZurich(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === 'contractor_zurich';
+}
+
 /** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */
 export function esRolExterno(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === 'externo';
@@ -25,6 +36,7 @@ export function rutaInicioPorRol(rol = obtenerRolAlmacenado()) {
   const r = normalizarRol(rol);
   if (r === 'visualizador') return '/matrices-riesgo';
   if (r === 'puertos') return '/puertos/actas';
+  if (r === 'contractor_zurich') return '/zurich/reporte';
   if (r === 'externo') {
     return localStorage.getItem('subtareaExternaReturn') || '/login';
   }
@@ -49,6 +61,14 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
     return path.startsWith('/puertos') || RUTAS_CUENTA.some((p) => path === p || path.startsWith(`${p}/`));
   }
 
+  if (r === 'contractor_zurich') {
+    return (
+      path.startsWith('/zurich') ||
+      path === '/micuenta' ||
+      path.startsWith('/micuenta/')
+    );
+  }
+
   if (r === 'externo') {
     return path.startsWith('/ajuste') || path.startsWith('/complex/subtarea');
   }
@@ -63,6 +83,7 @@ export function etiquetaRol(rol, t) {
   if (r === 'soporte') return translate('roles.soporte', 'Soporte');
   if (r === 'visualizador') return translate('roles.visualizador', 'Visualizador');
   if (r === 'puertos') return translate('roles.puertos', 'Puertos');
+  if (r === 'contractor_zurich') return translate('roles.contractor_zurich', 'Contractor Zurich');
   if (r === 'usuario' || !rol) return translate('roles.usuario', 'Usuario');
   return String(rol).charAt(0).toUpperCase() + String(rol).slice(1);
 }

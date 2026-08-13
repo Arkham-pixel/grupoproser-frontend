@@ -99,7 +99,7 @@ import { updateCasoComplex } from './services/complexService';
 import { CasosRiesgoProvider } from './context/CasosRiesgoContext'
 import RequireAuth from './components/RequireAuth'
 import RequireRutaPermitida from './components/RequireRutaPermitida'
-import { esRolVisualizador, esRolPuertos, esRolExterno, rutaInicioPorRol } from './config/roles'
+import { esRolVisualizador, esRolPuertos, esRolContractorZurich, esRolExterno, rutaInicioPorRol } from './config/roles'
 import PaginaError from './components/PaginaError'
 import DetectorConexion from './components/DetectorConexion'
 import OfflineBanner from './components/offline/OfflineBanner.jsx'
@@ -112,6 +112,7 @@ const isAuthenticated = () => !!localStorage.getItem('token')
 
 const esRolVisualizadorLocal = () => esRolVisualizador()
 const esRolPuertosLocal = () => esRolPuertos()
+const esRolContractorZurichLocal = () => esRolContractorZurich()
 
 /** Raíz: sesión externa no debe reenviar en bucle a la subtarea. */
 function RootRedirect() {
@@ -127,6 +128,7 @@ function RootRedirect() {
 function InicioOrRedirectPorRol() {
   if (esRolVisualizadorLocal()) return <Navigate to="/matrices-riesgo" replace />
   if (esRolPuertosLocal()) return <Navigate to="/puertos/actas" replace />
+  if (esRolContractorZurichLocal()) return <Navigate to="/zurich/reporte" replace />
   return <Inicio />
 }
 

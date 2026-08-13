@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useTranslation } from "react-i18next";
+import { BASE_URL } from "../../config/apiConfig.js";
 import { sanitizeUploadFileName } from "../../utils/sanitizeUploadFileName.js";
 
 export default function AgregarCuenta() {
@@ -61,7 +62,7 @@ export default function AgregarCuenta() {
         }
       });
 
-      await axios.post("/api/secur-auth/register", form, {
+      await axios.post(`${BASE_URL}/api/secur-auth/register`, form, {
         headers: {
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`,
@@ -180,6 +181,7 @@ export default function AgregarCuenta() {
             <option value="usuario">{t('account.ui.cuenta.roles.usuario')}</option>
             <option value="visualizador">{t('account.ui.cuenta.roles.visualizador')}</option>
             <option value="puertos">{t('account.ui.cuenta.roles.puertos')}</option>
+            <option value="contractor_zurich">{t('account.ui.cuenta.roles.contractor_zurich')}</option>
             <option value="soporte">{t('account.ui.cuenta.roles.soporte')}</option>
             <option value="admin">{t('account.ui.cuenta.roles.admin')}</option>
           </select>

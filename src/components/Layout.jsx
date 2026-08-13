@@ -57,7 +57,7 @@ import LanguageSelector from './LanguageSelector';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
-import { esRolPuertos, esRolVisualizador, etiquetaRol, obtenerRolAlmacenado } from '../config/roles';
+import { esRolContractorZurich, esRolPuertos, esRolVisualizador, etiquetaRol, obtenerRolAlmacenado } from '../config/roles';
 import {
   obtenerMisAlertas,
   obtenerResumenAlertas,
@@ -80,10 +80,18 @@ function formatTimer(time) {
 
 function formatNombreCorto(nombre, login) {
   const base = (nombre || login || 'Usuario').trim();
-  const partes = base.split(/\s+/);
-  if (partes.length === 1) return partes[0];
-  const inicial = partes[partes.length - 1].charAt(0).toUpperCase();
-  return `${partes[0]} ${inicial}.`;
+  const match = base.match(/^(.*?)(\s*\([^)]+\))\s*$/);
+  const nombreSinSufijo = (match ? match[1] : base).trim();
+  const sufijo = match ? match[2].replace(/\s+/g, ' ').trim() : '';
+  const partes = nombreSinSufijo.split(/\s+/).filter(Boolean);
+  let corto;
+  if (partes.length <= 1) {
+    corto = partes[0] || login || 'Usuario';
+  } else {
+    const inicial = partes[partes.length - 1].charAt(0).toUpperCase();
+    corto = `${partes[0]} ${inicial}.`;
+  }
+  return sufijo ? `${corto} ${sufijo}` : corto;
 }
 
 function formatRol(rol, t) {
@@ -313,6 +321,7 @@ export default function Layout() {
     const rol = obtenerRolAlmacenado();
     if (esRolVisualizador(rol)) return 'matrices';
     if (esRolPuertos(rol)) return 'puertos';
+    if (esRolContractorZurich(rol)) return 'zurich';
     return null;
   });
   const [fotoUsuarioQueue, setFotoUsuarioQueue] = useState([]);
@@ -343,7 +352,8 @@ export default function Layout() {
   const esAdminOSoporte = esAdmin || rolNorm === 'soporte';
   const esVisualizador = esRolVisualizador(rolNorm);
   const esPuertos = esRolPuertos(rolNorm);
-  const accesoRestringido = esVisualizador || esPuertos || rolNorm === 'externo';
+  const esContractorZurich = esRolContractorZurich(rolNorm);
+  const accesoRestringido = esVisualizador || esPuertos || esContractorZurich || rolNorm === 'externo';
   const puedeCatalogosExpress = usuarioAutorizadoCatalogosExpress(
     localStorage.getItem('cedula'),
     localStorage.getItem('login'),
@@ -641,7 +651,7 @@ export default function Layout() {
           { path: '/seguros-alfa/bloques', icon: FaMapMarkerAlt, label: t('nav.alfaBlocks') },
         ]
       : [],
-    zurich: !accesoRestringido
+    zurich: !accesoRestringido || esContractorZurich
       ? [
           { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
           { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
@@ -664,7 +674,7 @@ export default function Layout() {
           { path: '/puertos/actas/inspeccion-asegurado/nueva', icon: FaFileAlt, label: t('nav.portsInsured') },
         ]
       : [],
-    cuenta: !esVisualizador
+    cuenta: !esVisualizador && !esContractorZurich
       ? esPuertos
         ? [{ path: '/cuenta', icon: FaUserCircle, label: t('nav.myAccount') }]
         : [
@@ -723,6 +733,8 @@ export default function Layout() {
     { key: 'principal', title: t('nav.sections.principal'), icon: FaHome, items: menuItems.principal },
     ...(esPuertos
       ? [{ key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos }]
+      : esContractorZurich
+        ? [{ key: 'zurich', title: t('nav.sections.zurich'), icon: FaUmbrella, items: menuItems.zurich }]
       : !esVisualizador
         ? [
             { key: 'complex', title: t('nav.sections.complex'), icon: FaFileAlt, items: menuItems.complex },
@@ -737,11 +749,11 @@ export default function Layout() {
             { key: 'formularios', title: t('nav.sections.formularios'), icon: FaFileInvoice, items: menuItems.formularios },
           ]
         : []),
-    ...(!esPuertos ? [{ key: 'matrices', title: t('nav.sections.matrices'), icon: FaChartBar, items: menuItems.matrices }] : []),
+    ...(!esPuertos && !esContractorZurich ? [{ key: 'matrices', title: t('nav.sections.matrices'), icon: FaChartBar, items: menuItems.matrices }] : []),
     ...(esAdminOSoporte
       ? [{ key: 'admin', title: t('nav.sections.admin'), icon: FaShieldAlt, items: menuItems.admin }]
       : []),
-    ...(!esVisualizador
+    ...(!esVisualizador && !esContractorZurich
       ? [{ key: 'cuenta', title: t('nav.sections.cuenta'), icon: FaUserCircle, items: menuItems.cuenta }]
       : []),
   ].filter((s) => s.items?.length > 0);
@@ -1051,6 +1063,7 @@ export default function Layout() {
             <div className="hidden md:block">
               <LanguageSelector compact />
             </div>
+            {!esContractorZurich && (
             <button
               type="button"
               className="hidden h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 sm:flex"
@@ -1060,6 +1073,7 @@ export default function Layout() {
             >
               <FaSearch className="text-lg" />
             </button>
+            )}
 
             {!accesoRestringido && (
               <>
@@ -1098,6 +1112,7 @@ export default function Layout() {
               </>
             )}
 
+            {!esContractorZurich && (
             <button
               type="button"
               className="hidden h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 md:flex"
@@ -1107,6 +1122,7 @@ export default function Layout() {
             >
               <FaQuestionCircle className="text-lg" />
             </button>
+            )}
 
             <div className="relative ml-1 border-l border-gray-200 pl-2 dark:border-gray-700 sm:ml-2 sm:pl-3">
               <button
@@ -1153,6 +1169,7 @@ export default function Layout() {
                     <div className="border-b border-gray-100 px-2 py-1 md:hidden dark:border-gray-800">
                       <LanguageSelector compact />
                     </div>
+                    {!esContractorZurich && (
                     <button
                       type="button"
                       className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800 sm:hidden"
@@ -1163,6 +1180,8 @@ export default function Layout() {
                     >
                       {t('layout.searchTasks')}
                     </button>
+                    )}
+                    {!esContractorZurich && (
                     <Link
                       to="/ayuda"
                       className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800 md:hidden"
@@ -1170,6 +1189,7 @@ export default function Layout() {
                     >
                       {t('layout.openHelp')}
                     </Link>
+                    )}
                     <Link
                       to="/micuenta"
                       className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -1177,6 +1197,7 @@ export default function Layout() {
                     >
                       {t('common.myAccount')}
                     </Link>
+                    {!esContractorZurich && (
                     <Link
                       to="/cuenta"
                       className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -1184,7 +1205,8 @@ export default function Layout() {
                     >
                       {t('common.settings')}
                     </Link>
-                    {puedeCatalogosExpress && !esAdminOSoporte && (
+                    )}
+                    {puedeCatalogosExpress && !esAdminOSoporte && !esContractorZurich && (
                       <Link
                         to="/admin/catalogos-express"
                         className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
