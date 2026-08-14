@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaSave, FaUndo } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { crearCasoFdm, actualizarCasoFdm } from '../../services/equidadFdmService.js';
@@ -22,7 +22,7 @@ import {
   TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { FdmPageHeader } from './EquidadFdmUiBlocks.jsx';
-import { ESTADOS_FDM, EVENTOS_FDM, fechaParaInput } from './equidadFdmHelpers.js';
+import { CAMPOS_NUMERICOS_FDM, ESTADOS_FDM, EVENTOS_FDM, fechaParaInput, formatMiles, formatMilesInput } from './equidadFdmHelpers.js';
 
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -81,6 +81,7 @@ const construirFormDesdeCaso = (caso = {}) => ({
       const valor = caso[clave];
       if (valor === null || valor === undefined) return [clave, ''];
       if (clave.startsWith('fecha')) return [clave, fechaParaInput(valor)];
+      if (CAMPOS_NUMERICOS_FDM.includes(clave)) return [clave, formatMiles(valor)];
       return [clave, String(valor)];
     })
   ),
@@ -88,7 +89,7 @@ const construirFormDesdeCaso = (caso = {}) => ({
 
 const aNumero = (valor) => {
   if (valor === '' || valor === null || valor === undefined) return null;
-  const n = Number(String(valor).replace(/[^\d.-]/g, ''));
+  const n = Number(String(valor).replace(/\./g, '').replace(/[^\d-]/g, ''));
   return Number.isNaN(n) ? null : n;
 };
 
@@ -109,46 +110,29 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
   }, [initialData]);
 
   const setCampo = (clave) => (e) => {
-    const valor = e?.target ? e.target.value : e;
+    const crudo = e?.target ? e.target.value : e;
     setForm((prev) => {
+      const valor = CAMPOS_NUMERICOS_FDM.includes(clave) ? formatMilesInput(crudo) : crudo;
       const siguiente = { ...prev, [clave]: valor };
 
-      // Recalcula totales de pérdida y liquidación al cambiar sus componentes
       if (['perdidaContenidos', 'perdidaEdificio', 'deducible', 'subsidio'].includes(clave)) {
         const contenidos = aNumero(siguiente.perdidaContenidos) ?? 0;
         const edificio = aNumero(siguiente.perdidaEdificio) ?? 0;
         const deducible = aNumero(siguiente.deducible) ?? 0;
         const subsidio = aNumero(siguiente.subsidio) ?? 0;
         const totalPerdida = contenidos + edificio;
-        siguiente.totalPerdida = totalPerdida ? String(totalPerdida) : '';
+        siguiente.totalPerdida = totalPerdida ? formatMiles(totalPerdida) : '';
         const totalLiquidado = totalPerdida - deducible + subsidio;
-        siguiente.totalLiquidado = totalPerdida ? String(Math.max(0, totalLiquidado)) : '';
+        siguiente.totalLiquidado = totalPerdida ? formatMiles(Math.max(0, totalLiquidado)) : '';
       }
 
       return siguiente;
     });
   };
 
-  const camposNumericos = useMemo(
-    () => [
-      'valorEdificio',
-      'valorContenido',
-      'valoresIndemnizables',
-      'perdidaContenidos',
-      'perdidaEdificio',
-      'totalPerdida',
-      'deducible',
-      'totalLiquidado',
-      'subsidio',
-      'valorIndemnizadoAjustador',
-      'valorIndemnizado',
-    ],
-    []
-  );
-
   const construirPayload = () => {
     const payload = { ...form };
-    camposNumericos.forEach((clave) => {
+    CAMPOS_NUMERICOS_FDM.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
     });
     return payload;
@@ -212,6 +196,16 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
         <option value={form[clave]}>{form[clave]}</option>
       )}
     </SelectFenix>
+  );
+
+  const inputMiles = (clave) => (
+    <InputFenix
+      type="text"
+      inputMode="numeric"
+      value={form[clave]}
+      onChange={setCampo(clave)}
+      placeholder="0"
+    />
   );
 
   const contenidoFormulario = (
@@ -329,57 +323,37 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
         <h3 className={expressSectionTitle}>{t('equidadFdm.sections.valuesLosses')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Campo label={t('equidadFdm.fields.buildingValue')}>
-            <InputFenix type="number" min="0" value={form.valorEdificio} onChange={setCampo('valorEdificio')} />
+            {inputMiles('valorEdificio')}
           </Campo>
           <Campo label={t('equidadFdm.fields.contentsValue')}>
-            <InputFenix type="number" min="0" value={form.valorContenido} onChange={setCampo('valorContenido')} />
+            {inputMiles('valorContenido')}
           </Campo>
           <Campo label={t('equidadFdm.fields.insurableValues')}>
-            <InputFenix
-              type="number"
-              min="0"
-              value={form.valoresIndemnizables}
-              onChange={setCampo('valoresIndemnizables')}
-            />
+            {inputMiles('valoresIndemnizables')}
           </Campo>
           <Campo label={t('equidadFdm.fields.contentsLoss')}>
-            <InputFenix
-              type="number"
-              min="0"
-              value={form.perdidaContenidos}
-              onChange={setCampo('perdidaContenidos')}
-            />
+            {inputMiles('perdidaContenidos')}
           </Campo>
           <Campo label={t('equidadFdm.fields.buildingLoss')}>
-            <InputFenix type="number" min="0" value={form.perdidaEdificio} onChange={setCampo('perdidaEdificio')} />
+            {inputMiles('perdidaEdificio')}
           </Campo>
           <Campo label={t('equidadFdm.fields.totalLoss')}>
-            <InputFenix type="number" min="0" value={form.totalPerdida} onChange={setCampo('totalPerdida')} />
+            {inputMiles('totalPerdida')}
           </Campo>
           <Campo label={t('equidadFdm.fields.deductible')}>
-            <InputFenix type="number" min="0" value={form.deducible} onChange={setCampo('deducible')} />
+            {inputMiles('deducible')}
           </Campo>
           <Campo label={t('equidadFdm.fields.subsidy')}>
-            <InputFenix type="number" min="0" value={form.subsidio} onChange={setCampo('subsidio')} />
+            {inputMiles('subsidio')}
           </Campo>
           <Campo label={t('equidadFdm.fields.totalSettled')}>
-            <InputFenix type="number" min="0" value={form.totalLiquidado} onChange={setCampo('totalLiquidado')} />
+            {inputMiles('totalLiquidado')}
           </Campo>
           <Campo label={t('equidadFdm.fields.adjusterIndemnity')}>
-            <InputFenix
-              type="number"
-              min="0"
-              value={form.valorIndemnizadoAjustador}
-              onChange={setCampo('valorIndemnizadoAjustador')}
-            />
+            {inputMiles('valorIndemnizadoAjustador')}
           </Campo>
           <Campo label={t('equidadFdm.fields.indemnity')}>
-            <InputFenix
-              type="number"
-              min="0"
-              value={form.valorIndemnizado}
-              onChange={setCampo('valorIndemnizado')}
-            />
+            {inputMiles('valorIndemnizado')}
           </Campo>
           <Campo label={t('equidadFdm.fields.objectionValue')}>
             <InputFenix
