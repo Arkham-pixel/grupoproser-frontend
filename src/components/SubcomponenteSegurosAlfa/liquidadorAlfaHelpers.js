@@ -19,9 +19,15 @@ export const SMMLV_POR_ANIO = {
 export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
 
 /** Texto fijo editable: información general del evento (consolidado terremoto Alfa). */
-export const INFO_EVENTO_DEFAULT_ALFA = `El presente informe se elabora en el marco de la atención del evento sísmico / catastrófico reportado ante Seguros Alfa S.A., conforme a la visita de inspección realizada al predio asegurado y a la documentación aportada por el tomador/asegurado.
+export const INFO_EVENTO_DEFAULT_ALFA = `Contexto general del evento sísmico
 
-La evaluación técnica tiene por objeto verificar la existencia y alcance de los daños, confrontarlos con las coberturas de la póliza vigente y cuantificar las pérdidas indemnizables de acuerdo con las condiciones particulares del contrato de seguro.`;
+El 10 de agosto de 2026 se registró en Colombia un sismo de magnitud 7,4, con epicentro en San José del Palmar, Chocó, el cual fue percibido ampliamente en diferentes regiones del país, especialmente en el suroccidente y el Eje Cafetero.
+
+El movimiento generó afectaciones en edificaciones, viviendas e infraestructura, con reportes de daños de distinta severidad en ciudades como Cali, Pereira, Manizales y Armenia, entre otros municipios cercanos a la zona de influencia.
+
+Posterior al evento principal se han presentado diferentes réplicas, por lo que las autoridades y organismos técnicos han mantenido labores de inspección y evaluación de las construcciones afectadas, con el propósito de identificar posibles condiciones de riesgo y determinar su seguridad para la ocupación.
+
+Este evento sísmico constituye el antecedente general bajo el cual se desarrollan las inspecciones y evaluaciones de daños objeto del presente informe.`;
 
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
