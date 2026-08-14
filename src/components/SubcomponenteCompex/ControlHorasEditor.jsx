@@ -33,6 +33,7 @@ export default function ControlHorasEditor({
   nombreAseguradora,
   controlHorasGuardado,
   onGuardar,
+  tarifaBloqueada = false,
 }) {
   const [datos, setDatos] = useState(null);
   const [mensajeTarifa, setMensajeTarifa] = useState('');
@@ -54,10 +55,21 @@ export default function ControlHorasEditor({
     const inicial = crearControlHorasInicial(formData, nombreAseguradoraResuelto, controlHorasGuardado);
     setMensajeTarifa(inicial._mensajeTarifa || '');
     const { _mensajeTarifa, ...resto } = inicial;
+    if (tarifaBloqueada) {
+      const tarifa = resolverTarifaHora({
+        codiAsgrdra: formData.codiAsgrdra,
+        nombreAseguradora: nombreAseguradoraResuelto || 'SURA',
+        nombreCliente: formData.nombreCliente || 'SURA',
+        fchaAsgncion: formData.fchaAsgncion,
+      });
+      resto.valor_hora = tarifa.valorHora ?? 187400;
+      resto.valor_hora_origen = 'tarifa';
+      setMensajeTarifa(tarifa.mensaje || inicial._mensajeTarifa || '');
+    }
     setDatos(resto);
-    setEdicionManualValorHora(resto.valor_hora_origen !== 'tarifa');
+    setEdicionManualValorHora(tarifaBloqueada ? false : resto.valor_hora_origen !== 'tarifa');
     setEmailAnalista(resolverEmailAnalistaAseguradora(formData));
-  }, [abierto, formData, nombreAseguradoraResuelto, controlHorasGuardado]);
+  }, [abierto, formData, nombreAseguradoraResuelto, controlHorasGuardado, tarifaBloqueada]);
 
   const cabecera = useMemo(
     () =>
@@ -78,7 +90,8 @@ export default function ControlHorasEditor({
 
   if (!abierto || !datos) return null;
 
-  const valorHoraPorTarifa = datos.valor_hora_origen === 'tarifa' && !edicionManualValorHora;
+  const valorHoraPorTarifa =
+    tarifaBloqueada || (datos.valor_hora_origen === 'tarifa' && !edicionManualValorHora);
   const tarifaCatalogo = resolverTarifaHora({
     codiAsgrdra: formData.codiAsgrdra,
     nombreAseguradora: nombreAseguradoraResuelto,
@@ -300,7 +313,7 @@ export default function ControlHorasEditor({
             <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
               <h3 className="font-heading text-base font-bold text-gray-800 dark:text-white">{t("complex.ui.control_horas_editor.liquidacion")}</h3>
               <div className="flex flex-wrap gap-2">
-                {valorHoraPorTarifa && (
+                {valorHoraPorTarifa && !tarifaBloqueada && (
                   <button
                     type="button"
                     onClick={() => setEdicionManualValorHora(true)}

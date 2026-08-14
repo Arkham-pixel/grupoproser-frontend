@@ -98,6 +98,7 @@ export default function DatosGenerales({
   onResponsableChange,
   onFuncionarioChange,
   camposFijos = false,
+  aseguradoraFija = false,
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -194,7 +195,7 @@ export default function DatosGenerales({
         </Campo>
 
         <Campo label={t("complex.ui.datos_generales.cliente")}>
-          {camposFijos ? (
+          {camposFijos || aseguradoraFija ? (
             <ValorFijo>{labelCliente}</ValorFijo>
           ) : (
             <SelectFenix

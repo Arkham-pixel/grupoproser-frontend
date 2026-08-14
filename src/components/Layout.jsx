@@ -451,6 +451,14 @@ export default function Layout() {
     '/zurich/caso': t('nav.pageTitles.zurichCase'),
     '/zurich/liquidador': t('nav.pageTitles.zurichCase'),
     '/zurich/informe-unico': t('nav.pageTitles.zurichCase'),
+    '/sura/carga': t('nav.pageTitles.suraAdd'),
+    '/sura/editar': t('nav.pageTitles.suraAdd'),
+    '/sura/reporte': t('nav.pageTitles.suraReport'),
+    '/sura/boletin': t('nav.pageTitles.suraBulletin'),
+    '/sura/bloques': t('nav.pageTitles.suraBlocks'),
+    '/sura/caso': t('nav.pageTitles.suraCase'),
+    '/sura/liquidador': t('nav.pageTitles.suraCase'),
+    '/sura/informe-unico': t('nav.pageTitles.suraCase'),
     '/sura': t('nav.pageTitles.sura'),
     '/propiedades/carga': t('nav.pageTitles.propertiesNew'),
     '/propiedades/dashboard': t('nav.pageTitles.propertiesDashboard'),
@@ -664,7 +672,13 @@ export default function Layout() {
         ]
       : [],
     sura: !accesoRestringido || configContractor?.seccionesMenu?.includes('sura')
-      ? [{ path: '/sura', icon: FaUmbrella, label: t('nav.suraHome') }]
+      ? [
+          { path: '/sura/carga', icon: FaPlus, label: t('nav.suraAddCase') },
+          { path: '/sura/caso', icon: FaFileAlt, label: t('nav.suraCase') },
+          { path: '/sura/reporte', icon: FaTable, label: t('nav.suraReport') },
+          { path: '/sura/boletin', icon: FaChartLine, label: t('nav.suraBulletin') },
+          { path: '/sura/bloques', icon: FaMapMarkerAlt, label: t('nav.suraBlocks') },
+        ]
       : [],
     puertos: !esVisualizador
       ? [

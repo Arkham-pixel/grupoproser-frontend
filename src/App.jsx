@@ -76,7 +76,14 @@ import CasoZurichWorkspace, {
   RedirectZurichInforme,
   RedirectZurichLiquidador,
 } from './components/SubcomponenteZurich/CasoZurichWorkspace';
-import SuraPlaceholder from './components/SubcomponenteSura/SuraPlaceholder';
+import { FormularioCasoSuraPage } from './components/SubcomponenteSura/FormularioCasoSura';
+import ReporteSegurosSura from './components/SubcomponenteSura/ReporteSegurosSura';
+import BoletinSemanalSegurosSura from './components/SubcomponenteSura/BoletinSemanalSegurosSura';
+import BloquesCercaniaSegurosSura from './components/SubcomponenteSura/BloquesCercaniaSegurosSura';
+import CasoSegurosSuraWorkspace, {
+  RedirectSuraInforme,
+  RedirectSuraLiquidador,
+} from './components/SubcomponenteSura/CasoSegurosSuraWorkspace';
 import CargaPropiedades from './components/SubcomponentePropiedades/CargaPropiedades';
 import DashboardPropiedades from './components/SubcomponentePropiedades/DashboardPropiedades';
 import ReportePropiedades from './components/SubcomponentePropiedades/ReportePropiedades';
@@ -555,7 +562,16 @@ export default function App() {
           <Route path="zurich/caso" element={<CasoZurichWorkspace />} />
           <Route path="zurich/liquidador" element={<RedirectZurichLiquidador />} />
           <Route path="zurich/informe-unico" element={<RedirectZurichInforme />} />
-          <Route path="sura" element={<SuraPlaceholder />} />
+
+          <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
+          <Route path="sura/editar" element={<FormularioCasoSuraPage />} />
+          <Route path="sura/reporte" element={<ReporteSegurosSura />} />
+          <Route path="sura/boletin" element={<BoletinSemanalSegurosSura />} />
+          <Route path="sura/bloques" element={<BloquesCercaniaSegurosSura />} />
+          <Route path="sura/caso" element={<CasoSegurosSuraWorkspace />} />
+          <Route path="sura/liquidador" element={<RedirectSuraLiquidador />} />
+          <Route path="sura/informe-unico" element={<RedirectSuraInforme />} />
+          <Route path="sura" element={<Navigate to="/sura/reporte" replace />} />
 
           <Route path="formulario-inspeccion-propiedades" element={<Navigate to="/propiedades/carga" replace />} />
           <Route

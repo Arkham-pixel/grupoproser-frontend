@@ -63,6 +63,7 @@ export default function Facturacion({
   isDragActiveSeguimientoEvidencia,
   historialDocs,
   updateHistorialDocs,
+  tarifaBloqueada = false,
 }) {
   const { t } = useTranslation();
   const [enviando, setEnviando] = useState(false);
@@ -716,6 +717,7 @@ export default function Facturacion({
           nombreAseguradora={nombreAseguradora}
           controlHorasGuardado={formData.control_horas}
           onGuardar={handleGuardarControlHoras}
+          tarifaBloqueada={tarifaBloqueada}
         />
       )}
 

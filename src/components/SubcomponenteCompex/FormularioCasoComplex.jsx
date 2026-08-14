@@ -21,6 +21,7 @@ import { ComplexFormActions, ComplexFormTabs } from './FacturacionHelpers';
 import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
 import { getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
+import { getCasoSuraById, actualizarCasoSura } from '../../services/segurosSuraService.js';
 import { calcularTotalesControlHoras, controlHorasTieneDatos, resolverControlHorasDesdeEnvios } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
 import { enriquecerPlantillaContactoInicial } from '../../utils/contactoInicialPlantillaCorreo.js';
@@ -43,6 +44,13 @@ import {
 } from '../../utils/complexFechaHoraUtils.js';
 import { CAMPOS_FECHA_HITOS_TRAZABILIDAD } from '../../utils/ajusteTrazabilidadComplexMap.js';
 
+const SURA_ALIASES = ['SEGUROS GENERALES SURAMERICANA', 'SURAMERICANA', 'SEGUROS SURA', 'SURA'];
+
+function esClienteSura(cliente = {}) {
+  const blob = `${cliente.codiAsgrdra || ''} ${cliente.rzonSocial || ''} ${cliente.nombre || ''}`.toUpperCase();
+  return SURA_ALIASES.some((alias) => blob.includes(alias));
+}
+
 /** Normaliza opciones del catálogo de funcionarios de aseguradora (incluye email). */
 function mapearOpcionFuncionarioAseguradora(f) {
   const rawValue =
@@ -57,8 +65,13 @@ function mapearOpcionFuncionarioAseguradora(f) {
   };
 }
 
-export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false }) {
+export default function FormularioCasoComplex({ initialData, onSave, onAutoSave, onCancel, camposFijos = false, autoGuardadoActivo = false, variant = 'complex' }) {
   const { t } = useTranslation();
+  const esSura = variant === 'sura';
+  const storageKey = esSura ? 'formularioSura' : 'formularioComplex';
+  const apiModulo = esSura ? 'sura' : 'complex';
+  const cargarCasoPorServicio = esSura ? getCasoSuraById : getCasoComplex;
+  const actualizarCasoPorServicio = esSura ? actualizarCasoSura : updateCasoComplex;
   const autoguardadoEfectivo = AUTO_SAVE_ENABLED && autoGuardadoActivo;
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,18 +79,41 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
   const [tabActiva, setTabActiva] = useState('datosGenerales');
 
   const FORM_TABS = useMemo(
-    () => [
-      { id: 'datosGenerales', label: t('complex.ui.formulario_caso_complex.tab_datos_generales') },
-      { id: 'valores', label: t('complex.ui.formulario_caso_complex.tab_valores') },
-      { id: 'trazabilidad', label: t('complex.ui.formulario_caso_complex.tab_trazabilidad') },
-      { id: 'facturacion', label: t('complex.ui.formulario_caso_complex.tab_facturacion') },
-      { id: 'honorarios', label: t('complex.ui.formulario_caso_complex.tab_honorarios') },
-      { id: 'seguimiento', label: t('complex.ui.formulario_caso_complex.tab_seguimiento') },
-      { id: 'observacionesPendientes', label: t('complex.ui.formulario_caso_complex.tab_observaciones_pendientes') },
-      { id: 'observaciones', label: t('complex.ui.formulario_caso_complex.tab_observaciones') },
-    ],
-    [t]
+    () => {
+      const tabs = [
+        { id: 'datosGenerales', label: t('complex.ui.formulario_caso_complex.tab_datos_generales') },
+        { id: 'valores', label: t('complex.ui.formulario_caso_complex.tab_valores') },
+        { id: 'trazabilidad', label: t('complex.ui.formulario_caso_complex.tab_trazabilidad') },
+        { id: 'facturacion', label: t('complex.ui.formulario_caso_complex.tab_facturacion') },
+        { id: 'honorarios', label: t('complex.ui.formulario_caso_complex.tab_honorarios') },
+        { id: 'seguimiento', label: t('complex.ui.formulario_caso_complex.tab_seguimiento') },
+        { id: 'observacionesPendientes', label: t('complex.ui.formulario_caso_complex.tab_observaciones_pendientes') },
+        { id: 'observaciones', label: t('complex.ui.formulario_caso_complex.tab_observaciones') },
+      ];
+      const tabsOcultasSura = new Set([
+        'trazabilidad',
+        'honorarios',
+        'seguimiento',
+        'observacionesPendientes',
+        'observaciones',
+      ]);
+      return esSura ? tabs.filter((tab) => !tabsOcultasSura.has(tab.id)) : tabs;
+    },
+    [t, esSura]
   );
+
+  useEffect(() => {
+    const tabsOcultasSura = new Set([
+      'trazabilidad',
+      'honorarios',
+      'seguimiento',
+      'observacionesPendientes',
+      'observaciones',
+    ]);
+    if (esSura && tabsOcultasSura.has(tabActiva)) {
+      setTabActiva('datosGenerales');
+    }
+  }, [esSura, tabActiva]);
   const [formData, setFormData] = useState({
     nmroAjste: '',
     nmroSinstro: '',
@@ -105,6 +141,8 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     fchaSinstro: '',
     fchaInspccion: '',
     fchaContIni: '',
+    nombreCliente: esSura ? 'SEGUROS GENERALES SURAMERICANA S.A.' : '',
+    nombreAseguradora: esSura ? 'SEGUROS GENERALES SURAMERICANA S.A.' : '',
 
     // ...otros campos existentes...
     historialDocs: [],
@@ -428,6 +466,24 @@ const nuevoFormData = {
           })(),
           estado: resolverEstadoParaSelect({ ...initialData, ...normalizados }, estados),
         };
+
+        if (esSura) {
+          nuevoFormData.nmroAjste = nuevoFormData.nmroAjste || initialData.consecutivo || '';
+          nuevoFormData.nmroSinstro = nuevoFormData.nmroSinstro || initialData.siniestro || '';
+          nuevoFormData.numDocumento = nuevoFormData.numDocumento || initialData.identificacion || '';
+          nuevoFormData.asgrBenfcro = nuevoFormData.asgrBenfcro || initialData.asegurado || '';
+          nuevoFormData.nmroPolza = nuevoFormData.nmroPolza || initialData.numeroPoliza || '';
+          nuevoFormData.codiRespnsble = nuevoFormData.codiRespnsble || initialData.ajustador || '';
+          nuevoFormData.nombIntermediario = nuevoFormData.nombIntermediario || initialData.tomador || '';
+          nuevoFormData.ciudadSiniestro = nuevoFormData.ciudadSiniestro || initialData.ciudad || '';
+          nuevoFormData.departamentoCiudad = nuevoFormData.departamentoCiudad || initialData.departamento || '';
+          nuevoFormData.nombreCliente =
+            nuevoFormData.nombreCliente || initialData.nombreCliente || 'SEGUROS GENERALES SURAMERICANA S.A.';
+          nuevoFormData.nombreAseguradora =
+            nuevoFormData.nombreAseguradora ||
+            initialData.nombreAseguradora ||
+            'SEGUROS GENERALES SURAMERICANA S.A.';
+        }
         
 // Verificación final: asegurar que las fechas formateadas no estén vacías si había una fecha raw
         if (fchaInfoPrelmRaw && !nuevoFormData.fchaInfoPrelm) {
@@ -512,7 +568,7 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
           });
       }
     }
-  }, [initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, estados, resolverEstadoParaSelect]);
+  }, [initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, estados, resolverEstadoParaSelect, esSura]);
 
   // Cargar datos frescos del caso desde la API.
   // - Si hay ID en URL (enlace directo), usar ese.
@@ -525,10 +581,25 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`)
           aplicandoDesdeServidorRef.current = true;
 const token = localStorage.getItem('token');
           
-          const casoData = await getCasoComplex(casoId);
+          const casoData = await cargarCasoPorServicio(casoId);
 if (casoData && casoData._id) {
             // Establecer los datos como initialData para que se procesen correctamente
-            const normalizados = { ...casoData, origen: 'complex' };
+            const normalizados = { ...casoData, origen: esSura ? 'sura' : 'complex' };
+            if (esSura) {
+              normalizados.nmroAjste = casoData.nmroAjste || casoData.consecutivo || '';
+              normalizados.nmroSinstro = casoData.nmroSinstro || casoData.siniestro || '';
+              normalizados.numDocumento = casoData.numDocumento || casoData.identificacion || '';
+              normalizados.asgrBenfcro = casoData.asgrBenfcro || casoData.asegurado || '';
+              normalizados.nmroPolza = casoData.nmroPolza || casoData.numeroPoliza || '';
+              normalizados.codiRespnsble = casoData.codiRespnsble || casoData.ajustador || '';
+              normalizados.nombIntermediario = casoData.nombIntermediario || casoData.tomador || '';
+              normalizados.ciudadSiniestro = casoData.ciudadSiniestro || casoData.ciudad || '';
+              normalizados.departamentoCiudad = casoData.departamentoCiudad || casoData.departamento || '';
+              normalizados.fchaSinstro = casoData.fchaSinstro || casoData.fechaSiniestro || '';
+              normalizados.fchaInspccion = casoData.fchaInspccion || casoData.fechaInspeccion || '';
+              normalizados.vlorResrva = casoData.vlorResrva ?? casoData.reserva;
+              normalizados.vlorReclmo = casoData.vlorReclmo ?? casoData.valorReclamado;
+            }
             
             // Aplicar las mismas normalizaciones que se hacen con initialData
             const equivalencias = {
@@ -715,14 +786,14 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
     };
 
     cargarCasoPorId();
-  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, forceReloadCaso, estados, resolverEstadoParaSelect, t]);
+  }, [id, initialData, normalizarHistorialDocs, formatearFechaParaInput, formatearCampoParaInput, ordenarPorLabel, forceReloadCaso, estados, resolverEstadoParaSelect, t, esSura]);
 
   // Cargar datos desde localStorage al iniciar (solo si no hay ID ni initialData)
   // IMPORTANTE: No cargar si tiene nmroAjste (es un caso ya guardado)
   useEffect(() => {
     if (!AUTO_SAVE_ENABLED) return;
     if (!id && !initialData) {
-      const datosGuardados = localStorage.getItem('formularioComplex');
+      const datosGuardados = localStorage.getItem(storageKey);
       if (datosGuardados) {
         try {
           const datosParseados = JSON.parse(datosGuardados);
@@ -731,11 +802,11 @@ fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`, {
             setFormData(prev => ({ ...prev, ...datosParseados }));
 } else if (datosParseados?.nmroAjste) {
             // Si tiene nmroAjste, limpiar el localStorage para evitar usar datos de casos guardados
-localStorage.removeItem('formularioComplex');
+localStorage.removeItem(storageKey);
           }
         } catch (error) {
           console.error('Error al cargar datos guardados:', error);
-          localStorage.removeItem('formularioComplex');
+          localStorage.removeItem(storageKey);
         }
       }
     }
@@ -757,12 +828,12 @@ localStorage.removeItem('formularioComplex');
     const timeoutId = setTimeout(() => {
       try {
         const datosParaGuardar = JSON.stringify(formData);
-        localStorage.setItem('formularioComplex', datosParaGuardar);
+        localStorage.setItem(storageKey, datosParaGuardar);
 } catch (error) {
         console.error('Error al guardar datos:', error);
         try {
-          localStorage.removeItem('formularioComplex');
-          localStorage.setItem('formularioComplex', JSON.stringify(formData));
+          localStorage.removeItem(storageKey);
+          localStorage.setItem(storageKey, JSON.stringify(formData));
         } catch (e) {
           console.error('Error crítico al guardar:', e);
         }
@@ -779,7 +850,7 @@ localStorage.removeItem('formularioComplex');
       const esRutaComplex = window.location.pathname.includes('/complex') || window.location.pathname.includes('/agregar-caso') || window.location.pathname.includes('/editar-caso');
       if (esRutaComplex) {
         try {
-          localStorage.setItem('formularioComplex', JSON.stringify(formData));
+          localStorage.setItem(storageKey, JSON.stringify(formData));
         } catch (error) {
           console.error('Error al guardar antes de salir:', error);
         }
@@ -794,14 +865,14 @@ localStorage.removeItem('formularioComplex');
   useEffect(() => {
     const esRutaComplex = location.pathname.includes('/complex') || location.pathname.includes('/agregar-caso') || location.pathname.includes('/editar-caso');
     if (!esRutaComplex) {
-localStorage.removeItem('formularioComplex');
+localStorage.removeItem(storageKey);
     }
 
     return () => {
       setTimeout(() => {
         const sigueEnRutaComplex = window.location.pathname.includes('/complex') || window.location.pathname.includes('/agregar-caso') || window.location.pathname.includes('/editar-caso');
         if (!sigueEnRutaComplex) {
-localStorage.removeItem('formularioComplex');
+localStorage.removeItem(storageKey);
         }
       }, 100);
     };
@@ -946,7 +1017,7 @@ localStorage.removeItem('formularioComplex');
         const formDataUpload = new FormData();
         appendUploadFile(formDataUpload, 'file', file, 'documento');
 
-        const response = await fetch(`${BASE_URL}/api/complex/upload`, {
+        const response = await fetch(`${BASE_URL}/api/${apiModulo}/upload`, {
           method: 'POST',
           headers: token ? { 'Authorization': `Bearer ${token}` } : undefined,
           body: formDataUpload
@@ -1060,7 +1131,7 @@ localStorage.removeItem('formularioComplex');
           // Notificación para honorarios
           if (tipoDocumento === 'honorarios') {
             try {
-              await fetch(`${BASE_URL}/api/complex/notificaciones/honorarios`, {
+              await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/honorarios`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1141,7 +1212,7 @@ localStorage.removeItem('formularioComplex');
       // Si no hay casoId pero hay número de caso, intentar buscar el caso
       if (!casoId && numeroCaso && numeroCaso !== sinNumero) {
         try {
-const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
+const buscarResponse = await fetch(`${BASE_URL}/api/${apiModulo}?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
           if (buscarResponse.ok) {
@@ -1156,7 +1227,7 @@ const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeUR
         }
       }
 
-const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, {
+const response = await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/gerencia`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1257,7 +1328,7 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
           payload.valor_gastos = Math.round(totales.gastos);
         }
 
-        const respuesta = await updateCasoComplex(casoId, payload);
+        const respuesta = await actualizarCasoPorServicio(casoId, payload);
         datosInicialesAutoSaveRef.current = {
           ...(datosInicialesAutoSaveRef.current || {}),
           control_horas: respuesta?.control_horas || controlHoras,
@@ -1274,6 +1345,7 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
       formData.fcha_control_horas,
       initialData?._id,
       id,
+      actualizarCasoPorServicio,
     ]
   );
 
@@ -1339,7 +1411,7 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/gerencia`, 
       // Si no hay casoId pero hay número de caso, intentar buscar el caso
       if (!casoId && numeroCaso && numeroCaso !== sinNumero) {
         try {
-const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
+const buscarResponse = await fetch(`${BASE_URL}/api/${apiModulo}?nmroAjste=${encodeURIComponent(numeroCaso)}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
           });
           if (buscarResponse.ok) {
@@ -1354,7 +1426,7 @@ const buscarResponse = await fetch(`${BASE_URL}/api/complex?nmroAjste=${encodeUR
         }
       }
 
-const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-horas`, {
+const response = await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/control-horas`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
@@ -1484,8 +1556,10 @@ const response = await fetch(`${BASE_URL}/api/complex/notificaciones/control-hor
 
   // Generar key única para autoguardado (usa ID si existe, sino un key genérico)
   const autoSaveKey = (initialData?._id || id)
-    ? `formulario-complex-${initialData?._id || id}`
-    : 'formulario-complex-nuevo';
+    ? `${esSura ? 'formulario-sura' : 'formulario-complex'}-${initialData?._id || id}`
+    : esSura
+      ? 'formulario-sura-nuevo'
+      : 'formulario-complex-nuevo';
   const isOnline = useOnlineStatus();
   const [pendingServerSync, setPendingServerSync] = useState(() =>
     autoSaveService.hasPendingServerSync(autoSaveKey)
@@ -1995,6 +2069,30 @@ return prev;
           }))
           .filter(opcion => opcion.value && opcion.label);
         setAseguradoraOptions(ordenarPorLabel(opciones));
+
+        if (esSura) {
+          const clienteSura = clientes.find(esClienteSura);
+          if (clienteSura) {
+            setFormData((prev) => {
+              if (prev.codiAsgrdra && String(prev.codiAsgrdra) === String(clienteSura.codiAsgrdra)) {
+                return prev;
+              }
+              if (prev.codiAsgrdra && initialData?._id) {
+                return {
+                  ...prev,
+                  nombreCliente: prev.nombreCliente || clienteSura.rzonSocial,
+                  nombreAseguradora: prev.nombreAseguradora || clienteSura.rzonSocial,
+                };
+              }
+              return {
+                ...prev,
+                codiAsgrdra: clienteSura.codiAsgrdra,
+                nombreCliente: clienteSura.rzonSocial,
+                nombreAseguradora: clienteSura.rzonSocial,
+              };
+            });
+          }
+        }
       })
       .catch(err => {
         console.error('Error cargando clientes:', err);
@@ -3060,7 +3158,7 @@ clearSavedData();
         respuestaServidor = await onAutoSave(payload, { datosBase });
       } else {
         const normalizado = prepararPayloadParaComplex(payload, datosBase);
-        respuestaServidor = await updateCasoComplex(casoId, normalizado);
+        respuestaServidor = await actualizarCasoPorServicio(casoId, normalizado);
       }
 
       if (respuestaServidor === false || respuestaServidor?.error) {
@@ -3233,6 +3331,7 @@ clearSavedData();
         onFuncionarioChange={handleFuncionarioChange}
         onResponsableChange={handleResponsableChange}
         camposFijos={camposFijos}
+        aseguradoraFija={esSura}
       />
         )}
         {tabActiva === 'valores' && (
@@ -3242,7 +3341,7 @@ clearSavedData();
             // ...pasa aquí las props necesarias
           />
         )}
-        {tabActiva === 'trazabilidad' && (
+        {tabActiva === 'trazabilidad' && !esSura && (
           <Trazabilidad
             formData={formData}
             handleChange={handleChange}
@@ -3255,7 +3354,7 @@ clearSavedData();
             errorAdjuntos={errorAdjuntos}
           />
         )}
-        {tabActiva === 'seguimiento' && (
+        {tabActiva === 'seguimiento' && !esSura && (
           <Seguimiento
             formData={formData}
             handleChange={handleChange}
@@ -3266,7 +3365,7 @@ clearSavedData();
             errorAdjuntos={errorAdjuntos}
           />
         )}
-        {tabActiva === 'observacionesPendientes' && (
+        {tabActiva === 'observacionesPendientes' && !esSura && (
           <ObservacionesPendientes
             formData={formData}
             handleChange={handleChange}
@@ -3300,9 +3399,10 @@ clearSavedData();
             onEnviarGerencia={handleEnviarGerencia}
             historialDocs={formData.historialDocs}
             updateHistorialDocs={updateHistorialDocs}
+            tarifaBloqueada={esSura}
           />
         )}
-        {tabActiva === 'honorarios' && (
+        {tabActiva === 'honorarios' && !esSura && (
           <Honorarios
             formData={formData}
             handleChange={handleChange}
@@ -3311,7 +3411,7 @@ clearSavedData();
             isDragActiveHonorarios={dropzonePropsHonorarios.isDragActive}
           />
         )}
-        {tabActiva === 'observaciones' && (
+        {tabActiva === 'observaciones' && !esSura && (
           <ObservacionesCliente
             formData={formData}
             handleChange={handleChange}
