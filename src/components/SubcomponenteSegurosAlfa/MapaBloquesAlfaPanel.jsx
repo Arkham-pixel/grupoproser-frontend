@@ -23,7 +23,9 @@ import { googleMapsLoaderOptions } from '../../config/googleMapsLoader.js';
 import {
   construirQueryGeocodeAlfa,
   esDireccionPredioGeocodableAlfa,
+  geocodeConGooglePreciso,
   necesitaGeocodeCliente,
+  urlGoogleMaps,
 } from './alfaGeocodeHelpers.js';
 
 const RADIOS = [
@@ -44,6 +46,8 @@ const BLOCK_COLORS = [
   '#EA580C',
 ];
 
+const SIN_UBICAR_ID = 'sinUbicar';
+
 function colorBloque(index) {
   return BLOCK_COLORS[index % BLOCK_COLORS.length];
 }
@@ -58,24 +62,6 @@ function markerIcon(color) {
     strokeWeight: 2,
     scale: 10,
   };
-}
-
-function geocodeConGoogle(address) {
-  return new Promise((resolve) => {
-    if (!window.google?.maps?.Geocoder) {
-      resolve({ status: 'failed', error: 'Google Maps no cargado' });
-      return;
-    }
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address, region: 'CO' }, (results, status) => {
-      if (status === 'OK' && results?.[0]?.geometry?.location) {
-        const loc = results[0].geometry.location;
-        resolve({ status: 'ok', lat: loc.lat(), lng: loc.lng(), geocodeQuery: address });
-      } else {
-        resolve({ status: 'failed', error: status || 'ZERO_RESULTS', geocodeQuery: address });
-      }
-    });
-  });
 }
 
 /**
@@ -203,7 +189,7 @@ export default function MapaBloquesAlfaPanel({
         return false;
       }
       return necesitaGeocodeCliente(c);
-    }).slice(0, 40);
+    }).slice(0, 80);
 
     const items = [];
     for (const caso of filtrados) {
@@ -212,13 +198,16 @@ export default function MapaBloquesAlfaPanel({
         items.push({ casoId: caso._id, geocodeStatus: 'sin_direccion', geocodeQuery: query });
         continue;
       }
-      const geo = await geocodeConGoogle(query);
+      const geo = await geocodeConGooglePreciso(query);
       items.push({
         casoId: caso._id,
         lat: geo.lat,
         lng: geo.lng,
         geocodeStatus: geo.status,
         geocodeQuery: query,
+        locationType: geo.locationType || '',
+        formattedAddress: geo.formattedAddress || '',
+        placeTypes: geo.placeTypes || [],
       });
       await new Promise((r) => setTimeout(r, 150));
     }
@@ -235,7 +224,7 @@ export default function MapaBloquesAlfaPanel({
     setMensaje('');
     try {
       try {
-        const resumen = await postGeocodePendientesAlfa({ limit: 40, force: false });
+        const resumen = await postGeocodePendientesAlfa({ limit: 80, force: false });
         if (resumen?.resultados?.some((r) => String(r.error || '').includes('GOOGLE_MAPS_API_KEY'))) {
           throw new Error('GOOGLE_MAPS_API_KEY no configurada en el backend');
         }
@@ -265,7 +254,22 @@ export default function MapaBloquesAlfaPanel({
     }
   };
 
+  const seleccionarSinUbicar = () => {
+    if (!onBloqueChange) {
+      setAbiertos((prev) => ({ ...prev, [SIN_UBICAR_ID]: !prev[SIN_UBICAR_ID] }));
+      return;
+    }
+    if (bloqueSeleccionadoId === SIN_UBICAR_ID) {
+      onBloqueChange(null, []);
+      return;
+    }
+    const ids = sinUbicar.map((c) => String(c._id));
+    onBloqueChange(SIN_UBICAR_ID, ids);
+    setAbiertos((prev) => ({ ...prev, [SIN_UBICAR_ID]: true }));
+  };
+
   const toggleLista = (id) => setAbiertos((prev) => ({ ...prev, [id]: !prev[id] }));
+  const sinUbicarActivo = bloqueSeleccionadoId === SIN_UBICAR_ID;
 
   return (
     <section className={expressCard}>
@@ -313,14 +317,22 @@ export default function MapaBloquesAlfaPanel({
         {data && (
           <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
             {t('segurosAlfa.bloques.summary', {
-              total: data.totalCasos,
+              total: data.planificar ?? data.totalCasos,
               ubicados: data.ubicados,
               sin: data.sinUbicarCount,
               bloques: bloques.length,
               radio: data.radioKm,
             })}
+            {data.omitidosInspeccionados > 0
+              ? ` · ${t('segurosAlfa.bloques.omittedInspected', {
+                  count: data.omitidosInspeccionados,
+                })}`
+              : ''}
           </p>
         )}
+        <p className="mb-3 font-body text-xs text-amber-800 dark:text-amber-200">
+          {t('segurosAlfa.bloques.precisionHint')}
+        </p>
 
         {/* Chips de bloques */}
         <div className="mb-3 flex flex-wrap gap-2">
@@ -349,9 +361,18 @@ export default function MapaBloquesAlfaPanel({
             );
           })}
           {sinUbicar.length > 0 && (
-            <span className="inline-flex items-center rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 font-body text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+            <button
+              type="button"
+              onClick={seleccionarSinUbicar}
+              className={`inline-flex items-center rounded-lg border px-3 py-1.5 font-body text-sm font-semibold transition ${
+                sinUbicarActivo
+                  ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
+                  : 'border-amber-200 bg-amber-50 text-amber-900 hover:border-amber-400 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100'
+              }`}
+              title={t('segurosAlfa.bloques.clickUnlocated')}
+            >
               {t('segurosAlfa.bloques.unlocated')}: {sinUbicar.length}
-            </span>
+            </button>
           )}
         </div>
 
@@ -369,10 +390,19 @@ export default function MapaBloquesAlfaPanel({
             <div className="flex h-full items-center justify-center bg-gray-50 text-sm text-gray-500 dark:bg-gray-900">
               {t('common.loading')}…
             </div>
-          ) : markers.length === 0 ? (
+          ) : markers.length === 0 || sinUbicarActivo ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 bg-gray-50 p-4 text-center text-sm text-gray-500 dark:bg-gray-900">
-              <p>{t('segurosAlfa.bloques.noMarkers')}</p>
-              <p className="text-xs">{t('segurosAlfa.bloques.noMarkersHint')}</p>
+              {sinUbicarActivo ? (
+                <>
+                  <p>{t('segurosAlfa.bloques.unlocatedMapHint', { count: sinUbicar.length })}</p>
+                  <p className="text-xs">{t('segurosAlfa.bloques.unlocatedListHint')}</p>
+                </>
+              ) : (
+                <>
+                  <p>{t('segurosAlfa.bloques.noMarkers')}</p>
+                  <p className="text-xs">{t('segurosAlfa.bloques.noMarkersHint')}</p>
+                </>
+              )}
             </div>
           ) : (
             <GoogleMap
@@ -381,19 +411,39 @@ export default function MapaBloquesAlfaPanel({
               zoom={12}
               onLoad={setMap}
               options={{
-                mapTypeControl: false,
+                mapTypeId: 'hybrid',
+                mapTypeControl: true,
+                mapTypeControlOptions: window.google?.maps
+                  ? {
+                      style: window.google.maps.MapTypeControlStyle.DROPDOWN_MENU,
+                      mapTypeIds: ['hybrid', 'satellite', 'roadmap'],
+                    }
+                  : undefined,
                 streetViewControl: false,
                 fullscreenControl: true,
+                tilt: 0,
               }}
             >
               {markers
-                .filter((m) => !bloqueSeleccionadoId || m.bloqueId === bloqueSeleccionadoId)
+                .filter((m) => {
+                  if (!bloqueSeleccionadoId) return true;
+                  if (String(bloqueSeleccionadoId).startsWith('caso-')) {
+                    return String(m._id) === String(bloqueSeleccionadoId).replace(/^caso-/, '');
+                  }
+                  if (bloqueSeleccionadoId === SIN_UBICAR_ID) return false;
+                  return m.bloqueId === bloqueSeleccionadoId;
+                })
                 .map((m) => (
                   <Marker
                     key={m._id}
                     position={{ lat: Number(m.lat), lng: Number(m.lng) }}
                     icon={markerIcon(m.color)}
-                    onClick={() => setInfoCaso(m)}
+                    onClick={() => {
+                      setInfoCaso(m);
+                      if (onBloqueChange) {
+                        onBloqueChange(`caso-${m._id}`, [String(m._id)]);
+                      }
+                    }}
                     title={`${m.bloqueNombre}: ${m.direccionPredio || m.siniestro || ''}`}
                   />
                 ))}
@@ -402,7 +452,7 @@ export default function MapaBloquesAlfaPanel({
                   position={{ lat: Number(infoCaso.lat), lng: Number(infoCaso.lng) }}
                   onCloseClick={() => setInfoCaso(null)}
                 >
-                  <div className="max-w-[220px] space-y-1 p-1 font-body text-xs text-gray-800">
+                  <div className="max-w-[260px] space-y-1 p-1 font-body text-xs text-gray-800">
                     <p className="font-semibold">{infoCaso.bloqueNombre}</p>
                     <p>{infoCaso.asegurado || infoCaso.tomador || '—'}</p>
                     <p>{infoCaso.direccionPredio || '—'}</p>
@@ -411,12 +461,25 @@ export default function MapaBloquesAlfaPanel({
                         ? `${infoCaso.distanciaKmCentro} km ${t('segurosAlfa.bloques.fromCenter')}`
                         : ''}
                     </p>
-                    <Link
-                      to={`/seguros-alfa/caso?casoId=${infoCaso._id}`}
-                      className="inline-block text-fenix-primario underline"
-                    >
-                      {t('segurosAlfa.bloques.openCase')}
-                    </Link>
+                    <p className="text-[11px] text-gray-500">{t('segurosAlfa.bloques.filteredToCase')}</p>
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      <Link
+                        to={`/seguros-alfa/caso?casoId=${infoCaso._id}`}
+                        className="inline-block text-fenix-primario underline"
+                      >
+                        {t('segurosAlfa.bloques.openCase')}
+                      </Link>
+                      {urlGoogleMaps(infoCaso.lat, infoCaso.lng) && (
+                        <a
+                          href={urlGoogleMaps(infoCaso.lat, infoCaso.lng)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block text-fenix-primario underline"
+                        >
+                          {t('segurosAlfa.bloques.openMaps')}
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </InfoWindow>
               )}
@@ -490,6 +553,67 @@ export default function MapaBloquesAlfaPanel({
               </div>
             );
           })}
+
+          {sinUbicar.length > 0 && (
+            <div
+              className={`overflow-hidden rounded-xl border ${
+                sinUbicarActivo
+                  ? 'border-amber-500 ring-1 ring-amber-400/40'
+                  : 'border-amber-200 dark:border-amber-900/50'
+              }`}
+            >
+              <div className="flex items-stretch">
+                <button
+                  type="button"
+                  className="flex flex-1 items-center gap-2 px-3 py-2.5 text-left"
+                  onClick={() => toggleLista(SIN_UBICAR_ID)}
+                >
+                  {abiertos[SIN_UBICAR_ID] ? <FaChevronDown /> : <FaChevronRight />}
+                  <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />
+                  <span className="font-heading text-sm font-semibold text-gray-900 dark:text-white">
+                    {t('segurosAlfa.bloques.unlocated')}
+                  </span>
+                  <span className="font-body text-xs text-gray-500">
+                    ({sinUbicar.length} {t('segurosAlfa.bloques.cases')})
+                  </span>
+                </button>
+                {onBloqueChange && (
+                  <button
+                    type="button"
+                    className="border-l border-amber-200 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-50 dark:border-amber-900/50 dark:text-amber-200 dark:hover:bg-amber-950/30"
+                    onClick={seleccionarSinUbicar}
+                  >
+                    {sinUbicarActivo
+                      ? t('segurosAlfa.bloques.filtering')
+                      : t('segurosAlfa.bloques.filterTable')}
+                  </button>
+                )}
+              </div>
+              {(abiertos[SIN_UBICAR_ID] || sinUbicarActivo) && (
+                <ul className="max-h-52 space-y-1 overflow-y-auto border-t border-amber-100 px-3 py-2 text-xs dark:border-amber-900/40">
+                  {sinUbicar.map((c) => (
+                    <li key={c._id} className="flex justify-between gap-2">
+                      <span className="min-w-0 truncate">
+                        <span className="font-semibold text-gray-700 dark:text-gray-200">
+                          {c.consecutivo || c.siniestro || '—'}
+                        </span>
+                        {' · '}
+                        {c.direccionPredio || t('segurosAlfa.bloques.noAddress')}
+                        {c.ciudad ? ` · ${c.ciudad}` : ''}
+                        {c.geocodeStatus ? ` · ${c.geocodeStatus}` : ''}
+                      </span>
+                      <Link
+                        to={`/seguros-alfa/caso?casoId=${c._id}`}
+                        className="shrink-0 text-fenix-primario hover:underline"
+                      >
+                        {t('segurosAlfa.bloques.openCase')}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>

@@ -13,6 +13,10 @@ import AccionesAlfaMenu from './AccionesAlfaMenu.jsx';
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import MapaBloquesAlfaPanel from './MapaBloquesAlfaPanel.jsx';
 import {
+  coordsUbicacionPredio,
+  urlGoogleMaps,
+} from './alfaGeocodeHelpers.js';
+import {
   ALFA_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
   coincideFiltroTexto,
@@ -442,6 +446,7 @@ export default function ReporteSegurosAlfa() {
           onBloqueChange={(bloqueId, casoIds) => {
             setBloqueSeleccionadoId(bloqueId);
             setIdsBloqueSeleccionado(casoIds || []);
+            setPagina(1);
           }}
           compact
         />
@@ -485,9 +490,26 @@ export default function ReporteSegurosAlfa() {
                     </td>
                   </tr>
                 ) : (
-                  paginaItems.map((item) => (
-                    <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
-                      <td className="sticky left-0 z-20 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                  paginaItems.map((item) => {
+                    const coords = coordsUbicacionPredio(item);
+                    const mapsUrl = coords ? urlGoogleMaps(coords.lat, coords.lng) : '';
+                    const resaltado =
+                      idsBloqueSeleccionado.length === 1 &&
+                      String(idsBloqueSeleccionado[0]) === String(item._id);
+                    return (
+                    <tr
+                      key={item._id}
+                      className={`transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30 ${
+                        resaltado ? 'bg-amber-50/80 dark:bg-amber-950/20' : ''
+                      }`}
+                    >
+                      <td
+                        className={`sticky left-0 z-20 whitespace-nowrap px-4 py-3 ${
+                          resaltado
+                            ? 'bg-amber-50/80 dark:bg-amber-950/20'
+                            : 'bg-white dark:bg-[#1A1A1A]'
+                        }`}
+                      >
                         <AccionesAlfaMenu
                           docsCount={item.archivos?.length || 0}
                           tieneLiquidador={!!item.liquidador}
@@ -506,21 +528,40 @@ export default function ReporteSegurosAlfa() {
                         <td
                           key={col.clave}
                           className={
-                            col.clave === 'observacionLlamada'
+                            col.clave === 'observacionLlamada' || col.clave === 'direccionPredio'
                               ? 'max-w-xs whitespace-normal px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
                               : 'whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
                           }
                           title={
                             col.clave === 'observacionLlamada'
                               ? String(item.observacionLlamada || '')
-                              : undefined
+                              : col.clave === 'direccionPredio'
+                                ? String(item.direccionPredio || '')
+                                : undefined
                           }
                         >
-                          {obtenerValorCelda(item, col.clave)}
+                          {col.clave === 'direccionPredio' ? (
+                            <div className="space-y-1">
+                              <div>{obtenerValorCelda(item, col.clave)}</div>
+                              {mapsUrl && (
+                                <a
+                                  href={mapsUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs font-semibold text-fenix-primario underline"
+                                >
+                                  {t('segurosAlfa.bloques.openMaps')}
+                                </a>
+                              )}
+                            </div>
+                          ) : (
+                            obtenerValorCelda(item, col.clave)
+                          )}
                         </td>
                       ))}
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

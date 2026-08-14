@@ -1531,6 +1531,8 @@
       "clearBlockFilter": "Ver todos los bloques",
       "noMarkers": "Aún no hay predios ubicados en el mapa.",
       "noMarkersHint": "Pulsa «Actualizar ubicaciones» para geocodificar las direcciones del filtro actual.",
+      "precisionHint": "Se ubican direcciones de calle y de lugar (barrio, conjunto, parcelación). Se rechaza solo el centro de ciudad. El mapa usa vista satélite. Los ya inspeccionados no aparecen en el mapa de rutas. «POR CONFIRMAR» no se ubica hasta tener dirección.",
+      "omittedInspected": "{{count}} ya inspeccionados omitidos",
       "fromCenter": "del centro",
       "radius": "Radio del bloque",
       "updateLocations": "Actualizar ubicaciones",
@@ -1544,12 +1546,18 @@
       "nothingPending": "No hay predios pendientes de geocodificar.",
       "mapsKeyMissing": "Falta VITE_GOOGLE_MAPS_API_KEY para geocodificar desde el navegador.",
       "unlocated": "Sin ubicar",
+      "clickUnlocated": "Clic para ver y filtrar los casos sin ubicar",
+      "unlocatedMapHint": "{{count}} casos sin coordenadas precisas en el mapa",
+      "unlocatedListHint": "Revisa la lista abajo o la tabla filtrada para corregir la dirección.",
+      "noAddress": "Sin dirección",
       "cases_one": "caso",
       "cases_other": "casos",
       "cases": "casos",
       "colDistance": "Dist. centro",
       "colStatus": "Estado geo",
-      "openCase": "Abrir"
+      "openCase": "Abrir",
+      "openMaps": "Abrir en Maps",
+      "filteredToCase": "Tabla filtrada a este caso"
     },
     "workspace": {
       "title": "Caso Seguros Alfa",

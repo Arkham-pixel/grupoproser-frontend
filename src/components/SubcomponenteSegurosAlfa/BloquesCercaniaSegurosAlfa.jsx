@@ -28,6 +28,7 @@ import { googleMapsLoaderOptions } from '../../config/googleMapsLoader.js';
 import {
   construirQueryGeocodeAlfa,
   esDireccionPredioGeocodableAlfa,
+  geocodeConGooglePreciso,
   necesitaGeocodeCliente,
 } from './alfaGeocodeHelpers.js';
 
@@ -37,29 +38,6 @@ const RADIOS = [
   { value: '3', label: '3 km' },
   { value: '5', label: '5 km' },
 ];
-
-function geocodeConGoogle(address) {
-  return new Promise((resolve) => {
-    if (!window.google?.maps?.Geocoder) {
-      resolve({ status: 'failed', error: 'Google Maps no cargado' });
-      return;
-    }
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address, region: 'CO' }, (results, status) => {
-      if (status === 'OK' && results?.[0]?.geometry?.location) {
-        const loc = results[0].geometry.location;
-        resolve({
-          status: 'ok',
-          lat: loc.lat(),
-          lng: loc.lng(),
-          geocodeQuery: address,
-        });
-      } else {
-        resolve({ status: 'failed', error: status || 'ZERO_RESULTS', geocodeQuery: address });
-      }
-    });
-  });
-}
 
 export default function BloquesCercaniaSegurosAlfa() {
   const { t } = useTranslation();
@@ -104,7 +82,7 @@ export default function BloquesCercaniaSegurosAlfa() {
       throw new Error(t('segurosAlfa.bloques.mapsKeyMissing'));
     }
     const casos = await fetchAllCasosAlfa();
-    const pendientes = casos.filter(necesitaGeocodeCliente).slice(0, 40);
+    const pendientes = casos.filter(necesitaGeocodeCliente).slice(0, 80);
     const items = [];
     for (const caso of pendientes) {
       const query = construirQueryGeocodeAlfa(caso);
@@ -116,13 +94,16 @@ export default function BloquesCercaniaSegurosAlfa() {
         });
         continue;
       }
-      const geo = await geocodeConGoogle(query);
+      const geo = await geocodeConGooglePreciso(query);
       items.push({
         casoId: caso._id,
         lat: geo.lat,
         lng: geo.lng,
         geocodeStatus: geo.status,
         geocodeQuery: query,
+        locationType: geo.locationType || '',
+        formattedAddress: geo.formattedAddress || '',
+        placeTypes: geo.placeTypes || [],
       });
       await new Promise((r) => setTimeout(r, 150));
     }
@@ -142,7 +123,7 @@ export default function BloquesCercaniaSegurosAlfa() {
     try {
       let resumen;
       try {
-        resumen = await postGeocodePendientesAlfa({ limit: 40, force: false });
+        resumen = await postGeocodePendientesAlfa({ limit: 80, force: false });
         if (resumen?.resultados?.some((r) => String(r.error || '').includes('GOOGLE_MAPS_API_KEY'))) {
           throw new Error('GOOGLE_MAPS_API_KEY no configurada en el backend');
         }
@@ -181,13 +162,19 @@ export default function BloquesCercaniaSegurosAlfa() {
 
   const resumenTxt = useMemo(() => {
     if (!data) return '';
-    return t('segurosAlfa.bloques.summary', {
-      total: data.totalCasos,
+    const base = t('segurosAlfa.bloques.summary', {
+      total: data.planificar ?? data.totalCasos,
       ubicados: data.ubicados,
       sin: data.sinUbicarCount,
       bloques: bloques.length,
       radio: data.radioKm,
     });
+    if (data.omitidosInspeccionados > 0) {
+      return `${base} · ${t('segurosAlfa.bloques.omittedInspected', {
+        count: data.omitidosInspeccionados,
+      })}`;
+    }
+    return base;
   }, [data, bloques.length, t]);
 
   return (
@@ -235,6 +222,9 @@ export default function BloquesCercaniaSegurosAlfa() {
             )}
           </div>
           <div className={expressCardBody}>
+            <p className="mb-3 font-body text-xs text-amber-800 dark:text-amber-200">
+              {t('segurosAlfa.bloques.precisionHint')}
+            </p>
             {mensaje && <p className={`${expressAlertSuccess} mb-3`}>{mensaje}</p>}
             {error && <p className={`${expressAlertError} mb-3`}>{error}</p>}
 

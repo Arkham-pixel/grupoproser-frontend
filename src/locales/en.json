@@ -1536,6 +1536,8 @@
       "clearBlockFilter": "Show all blocks",
       "noMarkers": "No properties located on the map yet.",
       "noMarkersHint": "Press “Update locations” to geocode addresses for the current filter.",
+      "precisionHint": "Street and place-level addresses are kept (neighborhood, complex, parcel). Only city-center pins are rejected. The map uses satellite view. Already inspected cases are hidden from the route map. “POR CONFIRMAR” stays unlocated until there is an address.",
+      "omittedInspected": "{{count}} already inspected omitted",
       "fromCenter": "from center",
       "radius": "Block radius",
       "updateLocations": "Update locations",
@@ -1549,10 +1551,16 @@
       "nothingPending": "No properties pending geocoding.",
       "mapsKeyMissing": "Missing VITE_GOOGLE_MAPS_API_KEY to geocode from the browser.",
       "unlocated": "Unlocated",
+      "clickUnlocated": "Click to view and filter unlocated cases",
+      "unlocatedMapHint": "{{count}} cases without precise map coordinates",
+      "unlocatedListHint": "Check the list below or the filtered table to fix the address.",
+      "noAddress": "No address",
       "cases": "cases",
       "colDistance": "Dist. center",
       "colStatus": "Geo status",
-      "openCase": "Open"
+      "openCase": "Open",
+      "openMaps": "Open in Maps",
+      "filteredToCase": "Table filtered to this case"
     },
     "workspace": {
       "title": "Seguros Alfa case",
