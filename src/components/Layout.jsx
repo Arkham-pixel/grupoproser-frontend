@@ -321,7 +321,8 @@ export default function Layout() {
     const rol = obtenerRolAlmacenado();
     if (esRolVisualizador(rol)) return 'matrices';
     if (esRolPuertos(rol)) return 'puertos';
-    if (obtenerConfigContractor(rol)) return 'zurich';
+    const contractor = obtenerConfigContractor(rol);
+    if (contractor) return contractor.seccionesMenu?.[0] || 'zurich';
     return null;
   });
   const [fotoUsuarioQueue, setFotoUsuarioQueue] = useState([]);
@@ -645,7 +646,7 @@ export default function Layout() {
           { path: '/equidad-fdm/reporte', icon: FaTable, label: t('nav.fdmReport') },
         ]
       : [],
-    alfa: !accesoRestringido || esContractor
+    alfa: !accesoRestringido || configContractor?.seccionesMenu?.includes('alfa')
       ? [
           { path: '/seguros-alfa/carga', icon: FaPlus, label: t('nav.alfaAddCase') },
           { path: '/seguros-alfa/caso', icon: FaFileAlt, label: t('nav.alfaCase') },
@@ -654,7 +655,7 @@ export default function Layout() {
           { path: '/seguros-alfa/bloques', icon: FaMapMarkerAlt, label: t('nav.alfaBlocks') },
         ]
       : [],
-    zurich: !accesoRestringido || esContractor
+    zurich: !accesoRestringido || configContractor?.seccionesMenu?.includes('zurich')
       ? [
           { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
           { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
@@ -662,7 +663,7 @@ export default function Layout() {
           { path: '/zurich/boletin', icon: FaChartLine, label: t('nav.zurichBulletin') },
         ]
       : [],
-    sura: !accesoRestringido || esContractor
+    sura: !accesoRestringido || configContractor?.seccionesMenu?.includes('sura')
       ? [{ path: '/sura', icon: FaUmbrella, label: t('nav.suraHome') }]
       : [],
     puertos: !esVisualizador
@@ -739,12 +740,13 @@ export default function Layout() {
     { key: 'principal', title: t('nav.sections.principal'), icon: FaHome, items: menuItems.principal },
     ...(esPuertos
       ? [{ key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos }]
-      : esContractor
-        ? [
-            { key: 'alfa', title: t('nav.sections.alfa'), icon: FaUmbrella, items: menuItems.alfa },
-            { key: 'zurich', title: t('nav.sections.zurich'), icon: FaUmbrella, items: menuItems.zurich },
-            { key: 'sura', title: t('nav.sections.sura'), icon: FaUmbrella, items: menuItems.sura },
-          ]
+      : esContractor && configContractor
+        ? (configContractor.seccionesMenu || []).map((key) => ({
+            key,
+            title: t(`nav.sections.${key}`),
+            icon: FaUmbrella,
+            items: menuItems[key],
+          }))
       : !esVisualizador
         ? [
             { key: 'complex', title: t('nav.sections.complex'), icon: FaFileAlt, items: menuItems.complex },

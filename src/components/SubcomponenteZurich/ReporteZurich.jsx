@@ -21,7 +21,9 @@ import {
   normTexto,
   evidenciaAplicaSi,
   normalizeEvidenciaItem,
+  esChecklistCatLleno,
 } from './zurichHelpers.js';
+import { esRolContractorZurich } from '../../config/roles.js';
 import {
   expressBadge,
   expressBtnPrimary,
@@ -175,6 +177,7 @@ const buildExportRow = (caso) => ({
 export default function ReporteZurich() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const soloChecklistLleno = esRolContractorZurich();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -190,22 +193,45 @@ export default function ReporteZurich() {
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
 
-  const recargar = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchAllCasosZurich();
-      setCasos(data);
-    } catch (err) {
-      setError(err.message || t('zurich.report.loadError'));
-    } finally {
-      setLoading(false);
+  const recargar = useCallback(async ({ silencioso = false } = {}) => {
+    if (!silencioso) {
+      setLoading(true);
+      setError(null);
     }
-  }, [t]);
+    try {
+      const data = await fetchAllCasosZurich(2000, { soloChecklistLleno });
+      setCasos(soloChecklistLleno ? data.filter(esChecklistCatLleno) : data);
+      if (silencioso) setError(null);
+    } catch (err) {
+      if (!silencioso) {
+        setError(err.message || t('zurich.report.loadError'));
+      }
+    } finally {
+      if (!silencioso) setLoading(false);
+    }
+  }, [t, soloChecklistLleno]);
 
   useEffect(() => {
     recargar();
   }, [recargar]);
+
+  useEffect(() => {
+    if (!soloChecklistLleno) return undefined;
+    const alVolverVisible = () => {
+      if (document.visibilityState === 'visible') recargar({ silencioso: true });
+    };
+    const onFocus = () => recargar({ silencioso: true });
+    document.addEventListener('visibilitychange', alVolverVisible);
+    window.addEventListener('focus', onFocus);
+    const intervalo = window.setInterval(() => {
+      if (document.visibilityState === 'visible') recargar({ silencioso: true });
+    }, 25000);
+    return () => {
+      document.removeEventListener('visibilitychange', alVolverVisible);
+      window.removeEventListener('focus', onFocus);
+      window.clearInterval(intervalo);
+    };
+  }, [soloChecklistLleno, recargar]);
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
@@ -350,9 +376,14 @@ export default function ReporteZurich() {
             <span className={expressBadge}>Zurich</span>
             <div>
               <h1 className={expressPageTitle}>{t('zurich.report.title')}</h1>
-              <p className={expressPageSubtitle}>{t('zurich.report.subtitle')}</p>
+              <p className={expressPageSubtitle}>
+                {soloChecklistLleno
+                  ? t('zurich.report.subtitleChecklist')
+                  : t('zurich.report.subtitle')}
+              </p>
             </div>
             <nav className="flex flex-wrap gap-2">
+              {!soloChecklistLleno && (
               <Link
                 to="/zurich/carga"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -360,6 +391,7 @@ export default function ReporteZurich() {
                 <FaPlus />
                 {t('nav.zurichAddCase')}
               </Link>
+              )}
               <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
                 {t('nav.zurichReport')}
               </span>
@@ -482,7 +514,9 @@ export default function ReporteZurich() {
                 ) : filtrados.length === 0 ? (
                   <tr>
                     <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                      {t('zurich.report.noCases')}
+                      {soloChecklistLleno
+                        ? t('zurich.report.noCasesChecklist')
+                        : t('zurich.report.noCases')}
                     </td>
                   </tr>
                 ) : (

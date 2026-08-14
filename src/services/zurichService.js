@@ -28,8 +28,17 @@ export const normalizeZurichItem = (item = {}) => ({
 const normalizeResponseArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeZurichItem(item ?? {})) : [];
 
-export const getCasosZurichPaginado = async ({ page = 1, limit = 100 } = {}) => {
-  const queryString = buildQueryString({ page, limit, _t: Date.now() });
+export const getCasosZurichPaginado = async ({
+  page = 1,
+  limit = 100,
+  soloChecklistLleno = false,
+} = {}) => {
+  const queryString = buildQueryString({
+    page,
+    limit,
+    _t: Date.now(),
+    ...(soloChecklistLleno ? { soloChecklistLleno: '1' } : {}),
+  });
   const response = await fetch(`${ZURICH_API_URL}${queryString}`, { headers: authHeaders() });
   if (!response.ok) {
     throw new Error('Error al obtener los casos Zurich');
@@ -44,13 +53,18 @@ export const getCasosZurichPaginado = async ({ page = 1, limit = 100 } = {}) => 
   return payload;
 };
 
-export const fetchAllCasosZurich = async (batchSize = 2000) => {
+export const fetchAllCasosZurich = async (batchSize = 2000, opciones = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
+  const soloChecklistLleno = opciones.soloChecklistLleno === true;
 
   while (true) {
-    const respuesta = await getCasosZurichPaginado({ page, limit: batchSize });
+    const respuesta = await getCasosZurichPaginado({
+      page,
+      limit: batchSize,
+      soloChecklistLleno,
+    });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') {
       total = respuesta.total;

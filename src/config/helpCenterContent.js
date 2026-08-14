@@ -49,7 +49,7 @@ export const HELP_MODULES = [
     icono: 'briefcase',
     ruta: '/complex/mis-casos',
     palabrasClave: ['casos', 'siniestros', 'trazabilidad', 'subtareas', 'alertas', 'indicadores', 'facturación'],
-    excluirRoles: ['contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     manualCompleto: true,
     articulos: [
       {
@@ -77,7 +77,7 @@ export const HELP_MODULES = [
     icono: 'shield',
     ruta: '/riesgos/dashboard',
     palabrasClave: ['riesgos', 'inspección', 'dashboard', 'exportar', 'formulario'],
-    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     articulos: [
       {
         titulo: 'Gestión de casos de riesgo',
@@ -99,7 +99,7 @@ export const HELP_MODULES = [
     icono: 'chart',
     ruta: '/matrices-riesgo',
     palabrasClave: ['matriz', 'mapa de calor', 'identificar', 'evaluar', 'risk intelligence'],
-    excluirRoles: ['puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     articulos: [
       {
         titulo: 'Matriz de riesgos',
@@ -121,7 +121,7 @@ export const HELP_MODULES = [
     icono: 'bolt',
     ruta: '/express/carga',
     palabrasClave: ['express', 'cargue', 'liquidador', 'protocolo', 'ans', 'reporte'],
-    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     articulos: [
       {
         titulo: 'Flujo Express',
@@ -144,7 +144,7 @@ export const HELP_MODULES = [
     icono: 'balance',
     ruta: '/equidad-fdm/carga',
     palabrasClave: ['equidad', 'fdm', 'carga', 'liquidador', 'dashboard', 'reporte'],
-    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     articulos: [
       {
         titulo: 'Flujo de Equidad FDM',
@@ -161,7 +161,7 @@ export const HELP_MODULES = [
     icono: 'building',
     ruta: '/propiedades/carga',
     palabrasClave: ['propiedades', 'caso', 'inspección', 'dashboard', 'reporte'],
-    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     articulos: [
       {
         titulo: 'Casos de propiedades',
@@ -178,7 +178,7 @@ export const HELP_MODULES = [
     icono: 'ship',
     ruta: '/puertos/actas',
     palabrasClave: ['puertos', 'actas', 'asegurado', 'inspección', 'exportación', 'catálogos'],
-    excluirRoles: ['visualizador', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['visualizador', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     articulos: [
       {
         titulo: 'Actas e inspecciones',
@@ -200,7 +200,7 @@ export const HELP_MODULES = [
     icono: 'file',
     ruta: '/historial',
     palabrasClave: ['formularios', 'ajuste', 'pol', 'maquinaria', 'historial', 'documentos'],
-    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura'],
+    excluirRoles: ['visualizador', 'puertos', 'externo', 'contractor_zurich', 'contractor_alfa', 'contractor_sura', 'contractor_solo_zurich'],
     articulos: [
       {
         titulo: 'Formularios transversales',

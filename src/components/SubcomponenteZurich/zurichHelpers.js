@@ -116,6 +116,24 @@ export const derivarSeveridadCatDesdeNiveles = (niveles = {}) => {
 };
 
 /**
+ * Checklist CAT lleno: los 6 niveles de severidad tienen APLICA o NO APLICA.
+ * Se marca al guardar la inspección CAT (lo no marcado queda NO APLICA).
+ */
+export const esChecklistCatLleno = (caso = {}) => {
+  const niveles = caso?.severidadCatNiveles && typeof caso.severidadCatNiveles === 'object'
+    ? caso.severidadCatNiveles
+    : {};
+  for (let n = 1; n <= 6; n += 1) {
+    const item = niveles[String(n)] ?? niveles[n];
+    const aplica = item && typeof item === 'object' ? item.aplica : item;
+    if (aplica !== 'SI' && aplica !== 'NO' && aplica !== true && aplica !== false) {
+      return false;
+    }
+  }
+  return true;
+};
+
+/**
  * Al guardar el formato CAT: lo no marcado como APLICA queda NO APLICA.
  */
 export const finalizarSeveridadCatNiveles = (raw = {}, severidadCatLegacy = null) => {

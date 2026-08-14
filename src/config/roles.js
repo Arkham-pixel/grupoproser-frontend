@@ -7,16 +7,29 @@ export const ROLES_VALIDOS = [
   'contractor_zurich',
   'contractor_alfa',
   'contractor_sura',
+  'contractor_solo_zurich',
 ];
 
-/** Un solo perfil contratista: Zurich + Alfa + Sura. */
-export const ROLES_CONTRACTOR = ['contractor_zurich', 'contractor_alfa', 'contractor_sura'];
+/** Contratista con Zurich + Alfa + Sura (Rodrigo y similares). */
+export const ROLES_CONTRACTOR_TRES = ['contractor_zurich', 'contractor_alfa', 'contractor_sura'];
 
-export const CONFIG_CONTRACTOR = {
+/** Contratista solo módulo Zurich (nuevo, aparte de los tres). */
+export const ROL_SOLO_ZURICH = 'contractor_solo_zurich';
+
+export const ROLES_CONTRACTOR = [...ROLES_CONTRACTOR_TRES, ROL_SOLO_ZURICH];
+
+export const CONFIG_CONTRACTOR_TRES = {
   seccionesMenu: ['alfa', 'zurich', 'sura'],
   inicio: '/zurich/reporte',
   prefijosRuta: ['/zurich', '/seguros-alfa', '/sura'],
   etiqueta: 'Zurich, Alfa y Sura',
+};
+
+export const CONFIG_SOLO_ZURICH = {
+  seccionesMenu: ['zurich'],
+  inicio: '/zurich/reporte',
+  prefijosRuta: ['/zurich'],
+  etiqueta: 'Zurich',
 };
 
 export function normalizarRol(rol) {
@@ -28,7 +41,10 @@ export function obtenerRolAlmacenado() {
 }
 
 export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
-  return ROLES_CONTRACTOR.includes(normalizarRol(rol)) ? CONFIG_CONTRACTOR : null;
+  const r = normalizarRol(rol);
+  if (r === ROL_SOLO_ZURICH) return CONFIG_SOLO_ZURICH;
+  if (ROLES_CONTRACTOR_TRES.includes(r)) return CONFIG_CONTRACTOR_TRES;
+  return null;
 }
 
 export function esRolVisualizador(rol = obtenerRolAlmacenado()) {
@@ -44,7 +60,7 @@ export function esRolContractor(rol = obtenerRolAlmacenado()) {
 }
 
 export function esRolContractorZurich(rol = obtenerRolAlmacenado()) {
-  return esRolContractor(rol);
+  return normalizarRol(rol) === ROL_SOLO_ZURICH;
 }
 
 /** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */
@@ -105,8 +121,9 @@ export function etiquetaRol(rol, t) {
   if (r === 'soporte') return translate('roles.soporte', 'Soporte');
   if (r === 'visualizador') return translate('roles.visualizador', 'Visualizador');
   if (r === 'puertos') return translate('roles.puertos', 'Puertos');
-  if (obtenerConfigContractor(r)) {
-    return translate('roles.contractor_zurich', CONFIG_CONTRACTOR.etiqueta);
+  const contractor = obtenerConfigContractor(r);
+  if (contractor) {
+    return translate(`roles.${r}`, contractor.etiqueta);
   }
   if (r === 'usuario' || !rol) return translate('roles.usuario', 'Usuario');
   return String(rol).charAt(0).toUpperCase() + String(rol).slice(1);

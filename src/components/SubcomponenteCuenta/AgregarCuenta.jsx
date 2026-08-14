@@ -182,6 +182,7 @@ export default function AgregarCuenta() {
             <option value="visualizador">{t('account.ui.cuenta.roles.visualizador')}</option>
             <option value="puertos">{t('account.ui.cuenta.roles.puertos')}</option>
             <option value="contractor_zurich">{t('account.ui.cuenta.roles.contractor_zurich')}</option>
+            <option value="contractor_solo_zurich">{t('account.ui.cuenta.roles.contractor_solo_zurich')}</option>
             <option value="soporte">{t('account.ui.cuenta.roles.soporte')}</option>
             <option value="admin">{t('account.ui.cuenta.roles.admin')}</option>
           </select>

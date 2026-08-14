@@ -7,6 +7,7 @@ import {
   FaFileWord,
   FaGripVertical,
   FaSave,
+  FaTimes,
   FaTrash,
 } from 'react-icons/fa';
 import logoZurich from '../../assets/zurich-logo.png';
@@ -98,6 +99,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
   const [dragOver, setDragOver] = useState(false);
   const [arrastrandoId, setArrastrandoId] = useState(null);
   const [destinoArrastreId, setDestinoArrastreId] = useState(null);
+  const [imagenAmpliada, setImagenAmpliada] = useState(null);
   const [archivos, setArchivos] = useState(() => casoZurich?.archivos || []);
   const [observacionesCat, setObservacionesCat] = useState(
     () => casoZurich?.observacionesCat || ''
@@ -126,6 +128,15 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       Object.values(descripcionTimeoutRef.current || {}).forEach((id) => clearTimeout(id));
     };
   }, []);
+
+  useEffect(() => {
+    if (!imagenAmpliada) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setImagenAmpliada(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [imagenAmpliada]);
 
   const setSeveridadAplica = (nivel, marcado) => {
     const key = String(nivel);
@@ -399,8 +410,52 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
   const td =
     'border border-gray-300 px-2 py-2 font-body text-sm text-gray-800 dark:border-gray-600 dark:text-gray-100 align-top';
 
+  const abrirFotoGrande = (e, foto, url) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (arrastrandoId || !url) return;
+    setImagenAmpliada({
+      url,
+      descripcion: foto?.descripcion || '',
+      nombre: foto?.nombreOriginal || 'Foto',
+    });
+  };
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
+      {imagenAmpliada ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.9)' }}
+          onClick={() => setImagenAmpliada(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Vista ampliada de la foto"
+        >
+          <button
+            type="button"
+            onClick={() => setImagenAmpliada(null)}
+            className="absolute right-4 top-4 rounded-full p-2 text-white hover:bg-white/20"
+            title="Cerrar"
+            aria-label="Cerrar"
+          >
+            <FaTimes size={24} />
+          </button>
+          <div className="max-h-full max-w-7xl overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={imagenAmpliada.url}
+              alt={imagenAmpliada.descripcion || imagenAmpliada.nombre || 'Vista ampliada'}
+              className="max-h-[90vh] max-w-full rounded object-contain"
+            />
+            {(imagenAmpliada.descripcion || imagenAmpliada.nombre) && (
+              <p className="mt-4 rounded bg-black/70 px-4 py-2 text-center font-body text-sm text-white">
+                {imagenAmpliada.descripcion || imagenAmpliada.nombre}
+              </p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
       {error ? <div className={expressAlertError}>{error}</div> : null}
       {mensaje ? <div className={expressAlertSuccess}>{mensaje}</div> : null}
 
@@ -597,12 +652,20 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
 
                   <div className="relative">
                     {url ? (
-                      <img
-                        src={url}
-                        alt={f.nombreOriginal || 'Foto'}
-                        draggable={false}
-                        className="h-36 w-full rounded-lg object-cover"
-                      />
+                      <button
+                        type="button"
+                        className="block w-full cursor-zoom-in p-0"
+                        title="Clic para ampliar"
+                        onClick={(e) => abrirFotoGrande(e, f, url)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                      >
+                        <img
+                          src={url}
+                          alt={f.nombreOriginal || 'Foto'}
+                          draggable={false}
+                          className="h-36 w-full rounded-lg object-cover"
+                        />
+                      </button>
                     ) : (
                       <div className="flex h-36 items-center justify-center rounded-lg bg-gray-200 text-xs dark:bg-gray-800">
                         Sin vista previa

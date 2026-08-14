@@ -195,7 +195,8 @@
     "puertos": "Puertos",
     "contractor_zurich": "Zurich, Alfa y Sura",
     "contractor_alfa": "Zurich, Alfa y Sura",
-    "contractor_sura": "Zurich, Alfa y Sura"
+    "contractor_sura": "Zurich, Alfa y Sura",
+    "contractor_solo_zurich": "Zurich"
   },
   "nav": {
     "sections": {
@@ -6203,6 +6204,7 @@
           "contractor_zurich": "Zurich, Alfa y Sura",
           "contractor_alfa": "Zurich, Alfa y Sura",
           "contractor_sura": "Zurich, Alfa y Sura",
+          "contractor_solo_zurich": "Zurich",
           "soporte": "Soporte",
           "usuario": "Usuario",
           "visualizador": "Visualizador"
@@ -9981,6 +9983,7 @@
     "report": {
       "title": "Reporte Zurich",
       "subtitle": "Consulta, edita y gestiona documentos de los casos cargados.",
+      "subtitleChecklist": "Solo se muestran los casos con el checklist de inspección CAT completo. La lista se actualiza al llenar más casos.",
       "filters": "Filtros",
       "all": "Todos",
       "from": "Fecha desde",
@@ -9999,6 +10002,7 @@
       "loadError": "No fue posible cargar los casos Zurich.",
       "loadingCases": "Cargando casos…",
       "noCases": "No hay casos para mostrar.",
+      "noCasesChecklist": "Aún no hay casos con el checklist CAT completo. Cuando se llene la inspección, aparecerán aquí.",
       "noData": "Sin datos",
       "noDataExport": "No hay datos para exportar con los filtros actuales.",
       "exportError": "Error al exportar",
