@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCog, FaFileExcel, FaUpload } from 'react-icons/fa';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
 import AccionesFdmMenu from './AccionesFdmMenu.jsx';
@@ -10,7 +10,9 @@ import { parsearCasosFdmDesdeExcel } from './importarEquidadFdmExcel.js';
 import {
   FDM_COLUMNAS_STORAGE_KEY,
   FDM_REPORTE_PAGE_SIZE,
+  buildCiudadesFdm,
   buildOpcionesFiltro,
+  ciudadClaveFdm,
   coincideFiltroTexto,
   esCasoNuevoFdm,
   fechaEnRango,
@@ -22,6 +24,9 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
   expressBtnSuccess,
+  expressCard,
+  expressCardBody,
+  expressCardHeader,
   expressScope,
   expressTableHead,
   expressTableWrap,
@@ -103,8 +108,9 @@ function cargarColumnasGuardadas() {
 const ReporteEquidadFdm = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ciudadUrl = searchParams.get('ciudad') || '';
   const [casos, setCasos] = useState([]);
-  const [filtrados, setFiltrados] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -120,7 +126,6 @@ const ReporteEquidadFdm = () => {
   const [draggedIndex, setDraggedIndex] = useState(null);
 
   const [busqueda, setBusqueda] = useState('');
-  const [filtroMunicipio, setFiltroMunicipio] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroEvento, setFiltroEvento] = useState('');
@@ -141,7 +146,6 @@ const ReporteEquidadFdm = () => {
     try {
       const data = await fetchAllCasosFdm();
       setCasos(data);
-      setFiltrados(data);
     } catch (err) {
       console.error('Error cargando casos Equidad FDM:', err);
       setError(err.message || t('equidadFdm.report.loadError'));
@@ -175,6 +179,7 @@ const ReporteEquidadFdm = () => {
         mensaje: t('equidadFdm.bulk.success', {
           created: resumen.creados ?? 0,
           updated: resumen.actualizados ?? 0,
+          merged: resumen.fusionadosEnArchivo ?? 0,
           skipped: resumen.omitidos ?? 0,
         }),
         tipo: 'success',
@@ -228,7 +233,6 @@ const ReporteEquidadFdm = () => {
     try {
       await deleteCasoFdm(registro._id);
       setCasos((prev) => prev.filter((c) => c._id !== registro._id));
-      setFiltrados((prev) => prev.filter((c) => c._id !== registro._id));
       setConfirmEliminar({ open: false, registro: null });
       setAviso({
         open: true,
@@ -250,35 +254,13 @@ const ReporteEquidadFdm = () => {
     }
   }, [confirmEliminar.registro, t]);
 
-  const municipios = useMemo(() => buildOpcionesFiltro(casos, 'municipio'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const eventos = useMemo(() => buildOpcionesFiltro(casos, 'evento'), [casos]);
   const totalNuevos = useMemo(() => casos.filter((item) => esCasoNuevoFdm(item)).length, [casos]);
+  const filtroMunicipio = ciudadUrl;
 
-  const filtrosActivos = Boolean(
-    busqueda ||
-      filtroMunicipio ||
-      filtroAjustador ||
-      filtroEstado ||
-      filtroEvento ||
-      filtroNuevos ||
-      fechaInicio ||
-      fechaFin
-  );
-
-  const limpiarFiltros = () => {
-    setBusqueda('');
-    setFiltroMunicipio('');
-    setFiltroAjustador('');
-    setFiltroEstado('');
-    setFiltroEvento('');
-    setFiltroNuevos('');
-    setFechaInicio('');
-    setFechaFin('');
-  };
-
-  useEffect(() => {
+  const casosBase = useMemo(() => {
     let resultado = [...casos];
 
     if (busqueda) {
@@ -300,9 +282,6 @@ const ReporteEquidadFdm = () => {
           .filter(Boolean)
           .some((campo) => campo.toString().toLowerCase().includes(termino))
       );
-    }
-    if (filtroMunicipio) {
-      resultado = resultado.filter((item) => coincideFiltroTexto(item.municipio, filtroMunicipio));
     }
     if (filtroAjustador) {
       resultado = resultado.filter((item) => coincideFiltroTexto(item.ajustador, filtroAjustador));
@@ -327,20 +306,57 @@ const ReporteEquidadFdm = () => {
         )
       );
     }
+    return resultado;
+  }, [casos, busqueda, filtroAjustador, filtroEstado, filtroEvento, filtroNuevos, fechaInicio, fechaFin]);
 
-    setFiltrados(resultado);
+  const ciudades = useMemo(() => buildCiudadesFdm(casosBase), [casosBase]);
+  const ciudadActiva = useMemo(
+    () => ciudades.find((c) => c.value === filtroMunicipio) || null,
+    [ciudades, filtroMunicipio]
+  );
+
+  const filtrados = useMemo(() => {
+    if (!filtroMunicipio) return casosBase;
+    return casosBase.filter((item) => ciudadClaveFdm(item) === filtroMunicipio);
+  }, [casosBase, filtroMunicipio]);
+
+  const filtrosActivos = Boolean(
+    busqueda ||
+      filtroMunicipio ||
+      filtroAjustador ||
+      filtroEstado ||
+      filtroEvento ||
+      filtroNuevos ||
+      fechaInicio ||
+      fechaFin
+  );
+
+  const limpiarFiltros = () => {
+    setBusqueda('');
+    setFiltroAjustador('');
+    setFiltroEstado('');
+    setFiltroEvento('');
+    setFiltroNuevos('');
+    setFechaInicio('');
+    setFechaFin('');
+    if (searchParams.get('ciudad')) {
+      const next = new URLSearchParams(searchParams);
+      next.delete('ciudad');
+      setSearchParams(next, { replace: true });
+    }
+  };
+
+  const hrefCiudad = (value) => {
+    const next = new URLSearchParams(searchParams);
+    if (value) next.set('ciudad', value);
+    else next.delete('ciudad');
+    const qs = next.toString();
+    return qs ? `/equidad-fdm/reporte?${qs}` : '/equidad-fdm/reporte';
+  };
+
+  useEffect(() => {
     setPaginaActual(1);
-  }, [
-    casos,
-    busqueda,
-    filtroMunicipio,
-    filtroAjustador,
-    filtroEstado,
-    filtroEvento,
-    filtroNuevos,
-    fechaInicio,
-    fechaFin,
-  ]);
+  }, [casosBase, filtroMunicipio]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / FDM_REPORTE_PAGE_SIZE));
 
@@ -368,7 +384,11 @@ const ReporteEquidadFdm = () => {
     }
 
     try {
-      descargarExcelFdlmBase(filtrados);
+      descargarExcelFdlmBase(filtrados, {
+        nombreArchivo: filtroMunicipio
+          ? `FDLM ${filtroMunicipio} ${new Date().toISOString().slice(0, 10)}.xlsx`
+          : undefined,
+      });
     } catch (err) {
       console.error('Error exportando Excel Equidad FDM:', err);
       setAviso({
@@ -461,8 +481,16 @@ const ReporteEquidadFdm = () => {
     <div className={`${expressScope} ${fdmReportRoot}`}>
       <div className={fdmPageWrapWide}>
         <FdmPageHeader
-          title={t('equidadFdm.report.title')}
-          subtitle={t('equidadFdm.report.subtitle')}
+          title={
+            ciudadActiva
+              ? t('equidadFdm.report.titleCity', { city: ciudadActiva.label })
+              : t('equidadFdm.report.title')
+          }
+          subtitle={
+            ciudadActiva
+              ? t('equidadFdm.report.subtitleCity', { city: ciudadActiva.label, count: ciudadActiva.count })
+              : t('equidadFdm.report.subtitle')
+          }
           activePath="/equidad-fdm/reporte"
           actions={
             <>
@@ -499,6 +527,54 @@ const ReporteEquidadFdm = () => {
           }
         />
 
+        <section className={expressCard}>
+          <div className={expressCardHeader}>
+            <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+              {t('equidadFdm.report.cityWindows')}
+            </h2>
+            <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">
+              {t('equidadFdm.report.cityHint')}
+            </p>
+          </div>
+          <div className={expressCardBody}>
+            <nav className="flex flex-wrap gap-2" aria-label={t('equidadFdm.report.cityWindows')}>
+              <Link
+                to={hrefCiudad('')}
+                className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 font-body text-sm font-semibold transition ${
+                  !filtroMunicipio
+                    ? 'bg-fenix-primario text-white shadow-sm'
+                    : 'border border-gray-200 bg-white text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
+                }`}
+              >
+                {t('equidadFdm.report.allCities')}
+                <span className={`rounded-full px-2 py-0.5 text-xs ${!filtroMunicipio ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                  {casosBase.length}
+                </span>
+              </Link>
+              {ciudades.map((ciudad) => {
+                const activa = filtroMunicipio === ciudad.value;
+                return (
+                  <Link
+                    key={ciudad.value}
+                    to={hrefCiudad(ciudad.value)}
+                    title={t('equidadFdm.report.openCityWindow', { city: ciudad.label })}
+                    className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 font-body text-sm font-semibold transition ${
+                      activa
+                        ? 'bg-fenix-primario text-white shadow-sm'
+                        : 'border border-gray-200 bg-white text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200'
+                    }`}
+                  >
+                    {ciudad.label}
+                    <span className={`rounded-full px-2 py-0.5 text-xs ${activa ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                      {ciudad.count}
+                    </span>
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        </section>
+
         <ExpressFilterSection title={t('equidadFdm.report.filters')} showClear={filtrosActivos} onClear={limpiarFiltros}>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Campo label={t('common.search')}>
@@ -508,16 +584,6 @@ const ReporteEquidadFdm = () => {
                 onChange={(e) => setBusqueda(e.target.value)}
                 placeholder={t('equidadFdm.report.searchPlaceholder')}
               />
-            </Campo>
-            <Campo label={t('equidadFdm.fields.municipality')}>
-              <SelectFenix value={filtroMunicipio} onChange={(e) => setFiltroMunicipio(e.target.value)}>
-                <option value="">{t('equidadFdm.report.all')}</option>
-                {municipios.map((m) => (
-                  <option key={m.value} value={m.value}>
-                    {m.label}
-                  </option>
-                ))}
-              </SelectFenix>
             </Campo>
             <Campo label={t('equidadFdm.fields.adjuster')}>
               <SelectFenix value={filtroAjustador} onChange={(e) => setFiltroAjustador(e.target.value)}>

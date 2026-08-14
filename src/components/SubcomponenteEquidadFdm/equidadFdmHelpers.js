@@ -6,6 +6,31 @@ export const FDM_REPORTE_PAGE_SIZE = 25;
 export const ESTADOS_FDM = ['PENDIENTE', 'LIQUIDADO', 'OBJETADO', 'GIRADO'];
 export const EVENTOS_FDM = ['OLA INVERNAL', 'TERREMOTO 10 AGOSTO 2026'];
 
+export const CAMPOS_NUMERICOS_FDM = [
+  'valorEdificio',
+  'valorContenido',
+  'valoresIndemnizables',
+  'perdidaContenidos',
+  'perdidaEdificio',
+  'totalPerdida',
+  'deducible',
+  'totalLiquidado',
+  'subsidio',
+  'valorIndemnizadoAjustador',
+  'valorIndemnizado',
+];
+
+/** Formatea entero con puntos de miles (es-CO): 5000000 → 5.000.000 */
+export const formatMiles = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const digitos = String(valor).replace(/[^\d]/g, '');
+  if (!digitos) return '';
+  const sinCeros = digitos.replace(/^0+(?=\d)/, '');
+  return sinCeros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+};
+
+export const formatMilesInput = (valor) => formatMiles(valor);
+
 export const esCasoNuevoFdm = (caso = {}) => caso?.esNuevo === true;
 
 export const formatCurrency = (value) => {
@@ -64,6 +89,34 @@ export const buildOpcionesFiltro = (casos = [], campo) => {
 export const coincideFiltroTexto = (valorCaso, filtro) => {
   if (!filtro) return true;
   return normTexto(valorCaso) === normTexto(filtro);
+};
+
+export const SIN_CIUDAD_FDM = 'SIN CIUDAD';
+
+export const ciudadClaveFdm = (caso = {}) => {
+  const norm = normTexto(caso.municipio);
+  return norm || SIN_CIUDAD_FDM;
+};
+
+/** Ciudades del lote, ordenadas por cantidad (Cali, Quibdó, etc.). */
+export const buildCiudadesFdm = (casos = []) => {
+  const porNorm = new Map();
+  for (const item of casos) {
+    const value = ciudadClaveFdm(item);
+    const crudo = String(item.municipio || '').replace(/\s+/g, ' ').trim();
+    if (!porNorm.has(value)) {
+      porNorm.set(value, {
+        value,
+        label: value === SIN_CIUDAD_FDM ? 'Sin ciudad' : crudo.toUpperCase(),
+        count: 0,
+      });
+    }
+    porNorm.get(value).count += 1;
+  }
+  return [...porNorm.values()].sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return a.label.localeCompare(b.label, 'es');
+  });
 };
 
 /** Fecha ISO (YYYY-MM-DD) para inputs date desde valores de la API */

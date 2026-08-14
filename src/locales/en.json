@@ -193,7 +193,9 @@
     "usuario": "User",
     "visualizador": "Viewer",
     "puertos": "Ports",
-    "contractor_zurich": "Contractor Zurich"
+    "contractor_zurich": "Zurich, Alfa and Sura",
+    "contractor_alfa": "Zurich, Alfa and Sura",
+    "contractor_sura": "Zurich, Alfa and Sura"
   },
   "nav": {
     "sections": {
@@ -209,8 +211,10 @@
       "matrices": "RISK INTELLIGENCE",
       "admin": "ADMINISTRATION",
       "cuenta": "ACCOUNT",
-      "segurosAlfa": "SEGUROS ALFA",
-      "zurich": "ZURICH"
+      "segurosAlfa": "ALFA",
+      "alfa": "ALFA",
+      "zurich": "ZURICH",
+      "sura": "SURA"
     },
     "home": "Home",
     "help": "Help",
@@ -352,7 +356,8 @@
       "zurichAdd": "Add Zurich case",
       "zurichReport": "Zurich report",
       "zurichBulletin": "Zurich weekly bulletin",
-      "zurichCase": "Zurich case"
+      "zurichCase": "Zurich case",
+      "sura": "Sura"
     },
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
@@ -365,7 +370,8 @@
     "zurichAddCase": "Add case",
     "zurichReport": "Zurich report",
     "zurichBulletin": "Weekly bulletin",
-    "zurichCase": "Zurich case"
+    "zurichCase": "Zurich case",
+    "suraHome": "Sura"
   },
   "translation": {
     "preview": "English translation",
@@ -937,7 +943,7 @@
       "importing": "Importing…",
       "emptyFile": "The file has no data rows to import.",
       "error": "The Excel file could not be imported.",
-      "success": "Import done: {{created}} created (marked as new), {{updated}} updated, {{skipped}} skipped. Existing cases were not deleted."
+      "success": "Import done: {{created}} created (marked as new), {{updated}} updated, {{merged}} merged as duplicates, {{skipped}} skipped. Existing cases were not deleted."
     },
     "sections": {
       "insured": "Insured person details",
@@ -1042,7 +1048,13 @@
     },
     "report": {
       "title": "Equidad FDM report",
+      "titleCity": "Equidad FDM report · {{city}}",
       "subtitle": "View, filter, and export Fundación de la Mujer cases registered in the system.",
+      "subtitleCity": "{{city}} window: {{count}} case(s) with the current filters.",
+      "cityWindows": "Windows by city",
+      "cityHint": "Each city is its own window. Ctrl+click or right-click → Open link in a new tab to view Cali, Quibdó, etc. separately.",
+      "allCities": "All cities",
+      "openCityWindow": "Open {{city}} in this window. Ctrl+click to open it in another.",
       "loadError": "Error loading Equidad FDM cases",
       "cannotDelete": "Cannot delete",
       "invalidRecord": "This record has no valid identifier.",
@@ -6196,7 +6208,9 @@
         "roles": {
           "admin": "Administrator",
           "puertos": "Ports",
-          "contractor_zurich": "Contractor Zurich",
+          "contractor_zurich": "Zurich, Alfa and Sura",
+          "contractor_alfa": "Zurich, Alfa and Sura",
+          "contractor_sura": "Zurich, Alfa and Sura",
           "soporte": "Support",
           "usuario": "User",
           "visualizador": "Viewer"

@@ -57,7 +57,7 @@ import LanguageSelector from './LanguageSelector';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
-import { esRolContractorZurich, esRolPuertos, esRolVisualizador, etiquetaRol, obtenerRolAlmacenado } from '../config/roles';
+import { esRolContractor, esRolPuertos, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado } from '../config/roles';
 import {
   obtenerMisAlertas,
   obtenerResumenAlertas,
@@ -321,7 +321,7 @@ export default function Layout() {
     const rol = obtenerRolAlmacenado();
     if (esRolVisualizador(rol)) return 'matrices';
     if (esRolPuertos(rol)) return 'puertos';
-    if (esRolContractorZurich(rol)) return 'zurich';
+    if (obtenerConfigContractor(rol)) return 'zurich';
     return null;
   });
   const [fotoUsuarioQueue, setFotoUsuarioQueue] = useState([]);
@@ -352,8 +352,9 @@ export default function Layout() {
   const esAdminOSoporte = esAdmin || rolNorm === 'soporte';
   const esVisualizador = esRolVisualizador(rolNorm);
   const esPuertos = esRolPuertos(rolNorm);
-  const esContractorZurich = esRolContractorZurich(rolNorm);
-  const accesoRestringido = esVisualizador || esPuertos || esContractorZurich || rolNorm === 'externo';
+  const configContractor = obtenerConfigContractor(rolNorm);
+  const esContractor = Boolean(configContractor);
+  const accesoRestringido = esVisualizador || esPuertos || esContractor || rolNorm === 'externo';
   const puedeCatalogosExpress = usuarioAutorizadoCatalogosExpress(
     localStorage.getItem('cedula'),
     localStorage.getItem('login'),
@@ -449,6 +450,7 @@ export default function Layout() {
     '/zurich/caso': t('nav.pageTitles.zurichCase'),
     '/zurich/liquidador': t('nav.pageTitles.zurichCase'),
     '/zurich/informe-unico': t('nav.pageTitles.zurichCase'),
+    '/sura': t('nav.pageTitles.sura'),
     '/propiedades/carga': t('nav.pageTitles.propertiesNew'),
     '/propiedades/dashboard': t('nav.pageTitles.propertiesDashboard'),
     '/propiedades/reporte': t('nav.pageTitles.propertiesReport'),
@@ -495,8 +497,9 @@ export default function Layout() {
     else if (path.startsWith('/riesgos')) setExpandedSection('riesgos');
     else if (path.startsWith('/express')) setExpandedSection('express');
     else if (path.startsWith('/equidad-fdm')) setExpandedSection('equidadFdm');
-    else if (path.startsWith('/seguros-alfa')) setExpandedSection('segurosAlfa');
+    else if (path.startsWith('/seguros-alfa')) setExpandedSection('alfa');
     else if (path.startsWith('/zurich')) setExpandedSection('zurich');
+    else if (path.startsWith('/sura')) setExpandedSection('sura');
     else if (path.startsWith('/propiedades')) setExpandedSection('propiedades');
     else if (path.startsWith('/puertos')) setExpandedSection('puertos');
     else if (
@@ -642,7 +645,7 @@ export default function Layout() {
           { path: '/equidad-fdm/reporte', icon: FaTable, label: t('nav.fdmReport') },
         ]
       : [],
-    segurosAlfa: !accesoRestringido
+    alfa: !accesoRestringido || esContractor
       ? [
           { path: '/seguros-alfa/carga', icon: FaPlus, label: t('nav.alfaAddCase') },
           { path: '/seguros-alfa/caso', icon: FaFileAlt, label: t('nav.alfaCase') },
@@ -651,13 +654,16 @@ export default function Layout() {
           { path: '/seguros-alfa/bloques', icon: FaMapMarkerAlt, label: t('nav.alfaBlocks') },
         ]
       : [],
-    zurich: !accesoRestringido || esContractorZurich
+    zurich: !accesoRestringido || esContractor
       ? [
           { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
           { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
           { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
           { path: '/zurich/boletin', icon: FaChartLine, label: t('nav.zurichBulletin') },
         ]
+      : [],
+    sura: !accesoRestringido || esContractor
+      ? [{ path: '/sura', icon: FaUmbrella, label: t('nav.suraHome') }]
       : [],
     puertos: !esVisualizador
       ? [
@@ -674,7 +680,7 @@ export default function Layout() {
           { path: '/puertos/actas/inspeccion-asegurado/nueva', icon: FaFileAlt, label: t('nav.portsInsured') },
         ]
       : [],
-    cuenta: !esVisualizador && !esContractorZurich
+    cuenta: !esVisualizador && !esContractor
       ? esPuertos
         ? [{ path: '/cuenta', icon: FaUserCircle, label: t('nav.myAccount') }]
         : [
@@ -733,27 +739,32 @@ export default function Layout() {
     { key: 'principal', title: t('nav.sections.principal'), icon: FaHome, items: menuItems.principal },
     ...(esPuertos
       ? [{ key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos }]
-      : esContractorZurich
-        ? [{ key: 'zurich', title: t('nav.sections.zurich'), icon: FaUmbrella, items: menuItems.zurich }]
+      : esContractor
+        ? [
+            { key: 'alfa', title: t('nav.sections.alfa'), icon: FaUmbrella, items: menuItems.alfa },
+            { key: 'zurich', title: t('nav.sections.zurich'), icon: FaUmbrella, items: menuItems.zurich },
+            { key: 'sura', title: t('nav.sections.sura'), icon: FaUmbrella, items: menuItems.sura },
+          ]
       : !esVisualizador
         ? [
             { key: 'complex', title: t('nav.sections.complex'), icon: FaFileAlt, items: menuItems.complex },
             { key: 'riesgos', title: t('nav.sections.riesgos'), icon: FaChartBar, items: menuItems.riesgos },
             { key: 'express', title: t('nav.sections.express'), icon: FaBolt, items: menuItems.express },
             { key: 'equidadFdm', title: t('nav.sections.equidadFdm'), icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
-            { key: 'segurosAlfa', title: t('nav.sections.segurosAlfa'), icon: FaUmbrella, items: menuItems.segurosAlfa },
+            { key: 'alfa', title: t('nav.sections.alfa'), icon: FaUmbrella, items: menuItems.alfa },
             { key: 'zurich', title: t('nav.sections.zurich'), icon: FaUmbrella, items: menuItems.zurich },
+            { key: 'sura', title: t('nav.sections.sura'), icon: FaUmbrella, items: menuItems.sura },
             { key: 'propiedades', title: t('nav.sections.propiedades'), icon: FaBuilding, items: menuItems.propiedades },
             { key: 'sgSst', title: t('nav.sections.sgSst'), icon: FaShieldAlt, items: menuItems.sgSst },
             { key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos },
             { key: 'formularios', title: t('nav.sections.formularios'), icon: FaFileInvoice, items: menuItems.formularios },
           ]
         : []),
-    ...(!esPuertos && !esContractorZurich ? [{ key: 'matrices', title: t('nav.sections.matrices'), icon: FaChartBar, items: menuItems.matrices }] : []),
+    ...(!esPuertos && !esContractor ? [{ key: 'matrices', title: t('nav.sections.matrices'), icon: FaChartBar, items: menuItems.matrices }] : []),
     ...(esAdminOSoporte
       ? [{ key: 'admin', title: t('nav.sections.admin'), icon: FaShieldAlt, items: menuItems.admin }]
       : []),
-    ...(!esVisualizador && !esContractorZurich
+    ...(!esVisualizador && !esContractor
       ? [{ key: 'cuenta', title: t('nav.sections.cuenta'), icon: FaUserCircle, items: menuItems.cuenta }]
       : []),
   ].filter((s) => s.items?.length > 0);
@@ -1063,7 +1074,7 @@ export default function Layout() {
             <div className="hidden md:block">
               <LanguageSelector compact />
             </div>
-            {!esContractorZurich && (
+            {!esContractor && (
             <button
               type="button"
               className="hidden h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 sm:flex"
@@ -1112,7 +1123,7 @@ export default function Layout() {
               </>
             )}
 
-            {!esContractorZurich && (
+            {!esContractor && (
             <button
               type="button"
               className="hidden h-11 w-11 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 md:flex"
@@ -1169,7 +1180,7 @@ export default function Layout() {
                     <div className="border-b border-gray-100 px-2 py-1 md:hidden dark:border-gray-800">
                       <LanguageSelector compact />
                     </div>
-                    {!esContractorZurich && (
+                    {!esContractor && (
                     <button
                       type="button"
                       className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800 sm:hidden"
@@ -1181,7 +1192,7 @@ export default function Layout() {
                       {t('layout.searchTasks')}
                     </button>
                     )}
-                    {!esContractorZurich && (
+                    {!esContractor && (
                     <Link
                       to="/ayuda"
                       className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800 md:hidden"
@@ -1197,7 +1208,7 @@ export default function Layout() {
                     >
                       {t('common.myAccount')}
                     </Link>
-                    {!esContractorZurich && (
+                    {!esContractor && (
                     <Link
                       to="/cuenta"
                       className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
@@ -1206,7 +1217,7 @@ export default function Layout() {
                       {t('common.settings')}
                     </Link>
                     )}
-                    {puedeCatalogosExpress && !esAdminOSoporte && !esContractorZurich && (
+                    {puedeCatalogosExpress && !esAdminOSoporte && !esContractor && (
                       <Link
                         to="/admin/catalogos-express"
                         className="block px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"

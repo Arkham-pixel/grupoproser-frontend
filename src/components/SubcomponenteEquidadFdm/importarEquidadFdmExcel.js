@@ -20,10 +20,15 @@ const normHeader = (valor) =>
 const HEADER_MAP = {
   NUMERO: 'numero',
   N: 'numero',
+  REGISTRO: 'numero',
   NOMBRE: 'nombre',
   ASEGURADO: 'nombre',
+  'NOMBRE CLIENTE': 'nombre',
+  'NOMBRE DEL CLIENTE': 'nombre',
+  'NOMBRE DEL ASEGURADO': 'nombre',
   CEDULA: 'cedula',
   IDENTIFICACION: 'cedula',
+  DOCUMENTO: 'cedula',
   CELULAR: 'celular',
   TELEFONO: 'celular',
   'DIRECCION AFECTADA': 'direccionAfectada',
@@ -39,6 +44,7 @@ const HEADER_MAP = {
   'ASESOR INTEGRAL': 'aif',
   'POLIZA DANOS VIGENTE SI NO': 'polizaDanosVigente',
   'POLIZA DANOS VIGENTE': 'polizaDanosVigente',
+  'POLIZA VIGENTE': 'polizaDanosVigente',
   'POLIZA AFECTAR': 'polizaAfectar',
   POLIZA: 'polizaAfectar',
   ORDEN: 'orden',
@@ -56,6 +62,8 @@ const HEADER_MAP = {
   COBERTURA: 'cobertura',
   PRIMAS: 'primas',
   'TIPO DE NEGOCIO': 'tipoNegocio',
+  'TIPO NEGOCIO': 'tipoNegocio',
+  ATENCION: 'tipoNegocio',
   'PERDIDA POR CONTENIDOS': 'perdidaContenidos',
   'PERDIDA POR EDIFICIO': 'perdidaEdificio',
   'TOTAL PERDIDA': 'totalPerdida',
@@ -82,6 +90,38 @@ const HEADER_MAP = {
   OBSERVACIONES: 'observaciones',
   DETALLE: 'detalle',
   EVENTO: 'evento',
+};
+
+const esEncabezadoNombre = (celda) => {
+  const h = normHeader(celda);
+  return h === 'NOMBRE' || h === 'ASEGURADO' || h.startsWith('NOMBRE ');
+};
+
+const esEncabezadoCedula = (celda) => {
+  const h = normHeader(celda);
+  return (
+    h === 'CEDULA' ||
+    h === 'IDENTIFICACION' ||
+    h === 'DOCUMENTO' ||
+    h.startsWith('CEDULA') ||
+    h.startsWith('IDENTIFICACION')
+  );
+};
+
+const resolverCampoEncabezado = (headerNorm) => {
+  if (!headerNorm) return null;
+  if (HEADER_MAP[headerNorm]) return HEADER_MAP[headerNorm];
+  let mejorCampo = null;
+  let mejorLen = 0;
+  for (const [key, campo] of Object.entries(HEADER_MAP)) {
+    if (key.length < 6) continue;
+    if (headerNorm !== key && !headerNorm.startsWith(`${key} `)) continue;
+    if (key.length > mejorLen) {
+      mejorLen = key.length;
+      mejorCampo = campo;
+    }
+  }
+  return mejorCampo;
 };
 
 const CAMPOS_FECHA = new Set([
@@ -235,10 +275,19 @@ const toIsoDate = (date) => {
   return `${y}-${m}-${d}`;
 };
 
-export const inferirEventoFdm = ({ cobertura, archivoNombre, hoja } = {}) => {
+export const inferirEventoFdm = ({ cobertura, archivoNombre, hoja, fechaRegistro } = {}) => {
   const blob = `${cobertura || ''} ${archivoNombre || ''} ${hoja || ''}`.toUpperCase();
   if (/TERREMOTO|TEMBLOR/.test(blob)) return 'TERREMOTO 10 AGOSTO 2026';
   if (/ANEGACION|OLA INVERNAL|INVERNAL/.test(blob)) return 'OLA INVERNAL';
+  const fecha =
+    fechaRegistro instanceof Date
+      ? fechaRegistro
+      : fechaRegistro
+        ? new Date(fechaRegistro)
+        : null;
+  if (fecha && !Number.isNaN(fecha.getTime()) && fecha >= new Date(2026, 7, 10)) {
+    return 'TERREMOTO 10 AGOSTO 2026';
+  }
   return null;
 };
 
@@ -260,7 +309,7 @@ const partirSubsidioEmpresarial = (value) => {
 const mapearEncabezados = (headerRow = []) => {
   const indice = {};
   headerRow.forEach((celda, i) => {
-    const campo = HEADER_MAP[normHeader(celda)];
+    const campo = resolverCampoEncabezado(normHeader(celda));
     if (campo && indice[campo] == null) indice[campo] = i;
   });
   return indice;
@@ -280,18 +329,33 @@ const normalizarCobertura = (value) => {
   return cobertura;
 };
 
+const celdaConDato = (value) => {
+  if (value === null || value === undefined || value === '') return false;
+  if (value instanceof Date) return !Number.isNaN(value.getTime());
+  if (typeof value === 'number') return Number.isFinite(value);
+  return String(value).replace(/\s+/g, ' ').trim() !== '';
+};
+
 const mapRow = (row, indice, meta) => {
   const nombre = limpiarTexto(valorCelda(row, indice, 'nombre'));
   const cedula = limpiarTexto(valorCelda(row, indice, 'cedula'));
-  if (!nombre && !cedula) return null;
+  const celularPre = limpiarTexto(valorCelda(row, indice, 'celular'));
+  const direccionPre = limpiarTexto(valorCelda(row, indice, 'direccionAfectada'));
+  const numeroPre = valorCelda(row, indice, 'numero');
+  if (!nombre && !cedula && !celularPre && !direccionPre && !celdaConDato(numeroPre)) return null;
 
   const cobertura = normalizarCobertura(valorCelda(row, indice, 'cobertura'));
   const eventoExcel = limpiarTextoMayusculas(valorCelda(row, indice, 'evento'));
+  const fechaRegistro = parseFechaFlexible(valorCelda(row, indice, 'fechaRegistro'));
   const evento =
     eventoExcel ||
-    inferirEventoFdm({ cobertura, archivoNombre: meta.archivoNombre, hoja: meta.hoja });
+    inferirEventoFdm({
+      cobertura,
+      archivoNombre: meta.archivoNombre,
+      hoja: meta.hoja,
+      fechaRegistro,
+    });
 
-  const fechaRegistro = parseFechaFlexible(valorCelda(row, indice, 'fechaRegistro'));
   const fechaAviso =
     parseFechaFlexible(valorCelda(row, indice, 'fechaAviso')) || fechaRegistro;
 
@@ -335,8 +399,8 @@ const elegirHojaCasos = (wb) => {
     const headerIdx = rows.findIndex(
       (r) =>
         Array.isArray(r) &&
-        r.some((c) => normHeader(c) === 'NOMBRE') &&
-        r.some((c) => ['CEDULA', 'IDENTIFICACION'].includes(normHeader(c)))
+        r.some((c) => esEncabezadoNombre(c)) &&
+        r.some((c) => esEncabezadoCedula(c))
     );
     return headerIdx >= 0;
   });
@@ -357,10 +421,10 @@ export const parsearCasosFdmDesdeExcel = async (file) => {
   });
 
   const headerIdx = rows.findIndex(
-    (r) => Array.isArray(r) && r.some((c) => normHeader(c) === 'NOMBRE')
+    (r) => Array.isArray(r) && r.some((c) => esEncabezadoNombre(c))
   );
   if (headerIdx < 0) {
-    throw new Error('No se encontró la fila de encabezados (columna NOMBRE).');
+    throw new Error('No se encontró la fila de encabezados (columna NOMBRE / NOMBRE CLIENTE).');
   }
 
   const indice = mapearEncabezados(rows[headerIdx]);

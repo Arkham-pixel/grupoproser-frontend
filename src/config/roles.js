@@ -5,7 +5,19 @@ export const ROLES_VALIDOS = [
   'visualizador',
   'puertos',
   'contractor_zurich',
+  'contractor_alfa',
+  'contractor_sura',
 ];
+
+/** Un solo perfil contratista: Zurich + Alfa + Sura. */
+export const ROLES_CONTRACTOR = ['contractor_zurich', 'contractor_alfa', 'contractor_sura'];
+
+export const CONFIG_CONTRACTOR = {
+  seccionesMenu: ['alfa', 'zurich', 'sura'],
+  inicio: '/zurich/reporte',
+  prefijosRuta: ['/zurich', '/seguros-alfa', '/sura'],
+  etiqueta: 'Zurich, Alfa y Sura',
+};
 
 export function normalizarRol(rol) {
   return String(rol || '').trim().toLowerCase();
@@ -13,6 +25,10 @@ export function normalizarRol(rol) {
 
 export function obtenerRolAlmacenado() {
   return normalizarRol(localStorage.getItem('rol'));
+}
+
+export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
+  return ROLES_CONTRACTOR.includes(normalizarRol(rol)) ? CONFIG_CONTRACTOR : null;
 }
 
 export function esRolVisualizador(rol = obtenerRolAlmacenado()) {
@@ -23,8 +39,12 @@ export function esRolPuertos(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === 'puertos';
 }
 
+export function esRolContractor(rol = obtenerRolAlmacenado()) {
+  return Boolean(obtenerConfigContractor(rol));
+}
+
 export function esRolContractorZurich(rol = obtenerRolAlmacenado()) {
-  return normalizarRol(rol) === 'contractor_zurich';
+  return esRolContractor(rol);
 }
 
 /** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */
@@ -36,7 +56,8 @@ export function rutaInicioPorRol(rol = obtenerRolAlmacenado()) {
   const r = normalizarRol(rol);
   if (r === 'visualizador') return '/matrices-riesgo';
   if (r === 'puertos') return '/puertos/actas';
-  if (r === 'contractor_zurich') return '/zurich/reporte';
+  const contractor = obtenerConfigContractor(r);
+  if (contractor) return contractor.inicio;
   if (r === 'externo') {
     return localStorage.getItem('subtareaExternaReturn') || '/login';
   }
@@ -61,9 +82,10 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
     return path.startsWith('/puertos') || RUTAS_CUENTA.some((p) => path === p || path.startsWith(`${p}/`));
   }
 
-  if (r === 'contractor_zurich') {
+  const contractor = obtenerConfigContractor(r);
+  if (contractor) {
     return (
-      path.startsWith('/zurich') ||
+      contractor.prefijosRuta.some((prefijo) => path.startsWith(prefijo)) ||
       path === '/micuenta' ||
       path.startsWith('/micuenta/')
     );
@@ -83,7 +105,9 @@ export function etiquetaRol(rol, t) {
   if (r === 'soporte') return translate('roles.soporte', 'Soporte');
   if (r === 'visualizador') return translate('roles.visualizador', 'Visualizador');
   if (r === 'puertos') return translate('roles.puertos', 'Puertos');
-  if (r === 'contractor_zurich') return translate('roles.contractor_zurich', 'Contractor Zurich');
+  if (obtenerConfigContractor(r)) {
+    return translate('roles.contractor_zurich', CONFIG_CONTRACTOR.etiqueta);
+  }
   if (r === 'usuario' || !rol) return translate('roles.usuario', 'Usuario');
   return String(rol).charAt(0).toUpperCase() + String(rol).slice(1);
 }

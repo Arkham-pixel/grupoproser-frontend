@@ -199,7 +199,11 @@ if (!esAdminOSoporte) {
               </label>
               <select
                 name="role"
-                value={form.role}
+                value={
+                  form.role === 'contractor_alfa' || form.role === 'contractor_sura'
+                    ? 'contractor_zurich'
+                    : form.role
+                }
                 onChange={handleChange}
                 className="w-full px-2 sm:px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm"
                 required

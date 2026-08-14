@@ -193,7 +193,9 @@
     "usuario": "Usuario",
     "visualizador": "Visualizador",
     "puertos": "Puertos",
-    "contractor_zurich": "Contractor Zurich"
+    "contractor_zurich": "Zurich, Alfa y Sura",
+    "contractor_alfa": "Zurich, Alfa y Sura",
+    "contractor_sura": "Zurich, Alfa y Sura"
   },
   "nav": {
     "sections": {
@@ -209,8 +211,10 @@
       "matrices": "RISK INTELLIGENCE",
       "admin": "ADMINISTRACIÓN",
       "cuenta": "CUENTA",
-      "segurosAlfa": "SEGUROS ALFA",
-      "zurich": "ZURICH"
+      "segurosAlfa": "ALFA",
+      "alfa": "ALFA",
+      "zurich": "ZURICH",
+      "sura": "SURA"
     },
     "home": "Inicio",
     "help": "Ayuda",
@@ -347,7 +351,8 @@
       "zurichAdd": "Agregar caso Zurich",
       "zurichReport": "Reporte Zurich",
       "zurichBulletin": "Boletín semanal Zurich",
-      "zurichCase": "Caso Zurich"
+      "zurichCase": "Caso Zurich",
+      "sura": "Sura"
     },
     "segurosAlfaForm": "Formulario Seguros Alfa",
     "alfaAddCase": "Agregar caso",
@@ -360,7 +365,8 @@
     "zurichAddCase": "Agregar caso",
     "zurichReport": "Reporte Zurich",
     "zurichBulletin": "Boletín semanal",
-    "zurichCase": "Caso Zurich"
+    "zurichCase": "Caso Zurich",
+    "suraHome": "Sura"
   },
   "translation": {
     "preview": "Traducción al inglés",
@@ -932,7 +938,7 @@
       "importing": "Importando…",
       "emptyFile": "El archivo no tiene filas con datos para importar.",
       "error": "No fue posible importar el Excel.",
-      "success": "Importación lista: {{created}} creados (marcados como nuevos), {{updated}} actualizados, {{skipped}} omitidos. No se borró nada de lo existente."
+      "success": "Importación lista: {{created}} creados (marcados como nuevos), {{updated}} actualizados, {{merged}} fusionados por duplicado, {{skipped}} omitidos. No se borró nada de lo existente."
     },
     "sections": {
       "insured": "Datos del asegurado",
@@ -1037,7 +1043,13 @@
     },
     "report": {
       "title": "Reporte Equidad FDM",
+      "titleCity": "Reporte Equidad FDM · {{city}}",
       "subtitle": "Visualiza, filtra y exporta los casos de Fundación de la Mujer registrados en el sistema.",
+      "subtitleCity": "Ventana de {{city}}: {{count}} caso(s) con los filtros actuales.",
+      "cityWindows": "Ventanas por ciudad",
+      "cityHint": "Cada ciudad es una ventana. Ctrl+clic o clic derecho → Abrir enlace en una pestaña nueva para ver Cali, Quibdó, etc. por separado.",
+      "allCities": "Todas las ciudades",
+      "openCityWindow": "Abrir {{city}} en esta ventana. Ctrl+clic para abrirla en otra.",
       "loadError": "Error al cargar los casos Equidad FDM",
       "cannotDelete": "No se puede eliminar",
       "invalidRecord": "Este registro no tiene identificador válido.",
@@ -6188,7 +6200,9 @@
         "roles": {
           "admin": "Administrador",
           "puertos": "Puertos",
-          "contractor_zurich": "Contractor Zurich",
+          "contractor_zurich": "Zurich, Alfa y Sura",
+          "contractor_alfa": "Zurich, Alfa y Sura",
+          "contractor_sura": "Zurich, Alfa y Sura",
           "soporte": "Soporte",
           "usuario": "Usuario",
           "visualizador": "Visualizador"
