@@ -3,6 +3,8 @@ import { saveAs } from 'file-saver';
 import {
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
+  OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
+  ocultarHojasEvaluacionYDictamenExcel,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { prefillNsrDesdecasoZurich } from './liquidadorZurichHelpers.js';
 
@@ -106,6 +108,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
   // —— Evaluación · checklist filas 8–26 ——
   // E=estado, H=observación, I=foto, J=acción (F/G son fórmulas de la plantilla)
   const porCodigo = new Map(items.map((it) => [String(it.codigo || '').trim(), it]));
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
   for (let row = EVAL_FIRST_ROW; row <= EVAL_LAST_ROW; row += 1) {
     const codigo = txt(hojaEval.getCell(row, 2).value);
     const it = porCodigo.get(codigo);
@@ -120,6 +123,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
     setVal(hojaEval, row, 8, txt(it.observacion) || null);
     setVal(hojaEval, row, 9, txt(it.fotoRef) || null);
     setVal(hojaEval, row, 10, txt(it.accionSugerida) || null);
+  }
   }
 
   // —— Portada · versión (el resto viene por fórmula desde Evaluación) ——
@@ -188,6 +192,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
 export async function generarLiquidadorZurichExcelBlob(liquidador) {
   const workbook = await cargarPlantillaNsr10();
   rellenarPlantillaNsr10(workbook, liquidador || {});
+  ocultarHojasEvaluacionYDictamenExcel(workbook);
 
   const enc = liquidador?.encabezado || {};
   const buffer = await workbook.xlsx.writeBuffer();

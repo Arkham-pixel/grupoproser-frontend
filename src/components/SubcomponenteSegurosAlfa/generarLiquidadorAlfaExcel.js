@@ -5,6 +5,8 @@ import { urlDescargaArchivoAlfa } from '../../services/segurosAlfaService.js';
 import {
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
+  OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
+  ocultarHojasEvaluacionYDictamenExcel,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { prefillNsrDesdeCasoAlfa } from './liquidadorAlfaHelpers.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeAlfa.js';
@@ -457,6 +459,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
   const porCodigo = new Map(items.map((it) => [String(it.codigo || '').trim(), it]));
   const itemsPorFila = new Map();
 
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
   for (let row = EVAL_FIRST_ROW; row <= EVAL_LAST_ROW; row += 1) {
     const codigo = txt(hojaEval.getCell(row, 2).value);
     const it = porCodigo.get(codigo);
@@ -481,6 +484,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
           : null)
     );
     setVal(hojaEval, row, 10, txt(it.accionSugerida) || null);
+  }
   }
 
   // —— Portada · versión (el resto viene por fórmula desde Evaluación) ——
@@ -555,6 +559,7 @@ export async function generarLiquidadorAlfaExcelBlob(liquidador) {
 
   const logoIds = await registrarLogosAlfaProser(workbook);
 
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
   const layoutEval = prepararCabeceraConLogos(hojaEval, {
     unmerge: 'A1:J1',
     tituloMerge: 'C1:H1',
@@ -567,6 +572,7 @@ export async function generarLiquidadorAlfaExcelBlob(liquidador) {
     altoAlfa: 82,
   });
   colocarLogosEnHoja(hojaEval, logoIds, layoutEval);
+  }
 
   if (hojaPortada) {
     // Portada: fila 3 suele estar vacía → usarla como franja de logos
@@ -603,7 +609,11 @@ export async function generarLiquidadorAlfaExcelBlob(liquidador) {
     colocarLogosEnHoja(hojaPres, logoIds, layoutPres);
   }
 
-  await insertarFotosEnColumna(workbook, hojaEval, itemsPorFila);
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
+    await insertarFotosEnColumna(workbook, hojaEval, itemsPorFila);
+  }
+
+  ocultarHojasEvaluacionYDictamenExcel(workbook);
 
   const enc = liquidador?.encabezado || {};
   const buffer = await workbook.xlsx.writeBuffer();

@@ -5,6 +5,8 @@ import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import {
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
+  OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
+  ocultarHojasEvaluacionYDictamenExcel,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { prefillNsrDesdeCasoSura } from './liquidadorSuraHelpers.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeSura.js';
@@ -457,6 +459,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
   const porCodigo = new Map(items.map((it) => [String(it.codigo || '').trim(), it]));
   const itemsPorFila = new Map();
 
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
   for (let row = EVAL_FIRST_ROW; row <= EVAL_LAST_ROW; row += 1) {
     const codigo = txt(hojaEval.getCell(row, 2).value);
     const it = porCodigo.get(codigo);
@@ -481,6 +484,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
           : null)
     );
     setVal(hojaEval, row, 10, txt(it.accionSugerida) || null);
+  }
   }
 
   // —— Portada · versión (el resto viene por fórmula desde Evaluación) ——
@@ -556,6 +560,7 @@ export async function generarWorkbookLiquidadorSuraNsr(liquidador) {
 
   const logoIds = await registrarLogosSuraProser(workbook);
 
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
   const layoutEval = prepararCabeceraConLogos(hojaEval, {
     unmerge: 'A1:J1',
     tituloMerge: 'C1:H1',
@@ -568,6 +573,7 @@ export async function generarWorkbookLiquidadorSuraNsr(liquidador) {
     altoSura: 82,
   });
   colocarLogosEnHoja(hojaEval, logoIds, layoutEval);
+  }
 
   if (hojaPortada) {
     const row3 = hojaPortada.getRow(3);
@@ -603,7 +609,10 @@ export async function generarWorkbookLiquidadorSuraNsr(liquidador) {
     colocarLogosEnHoja(hojaPres, logoIds, layoutPres);
   }
 
-  await insertarFotosEnColumna(workbook, hojaEval, itemsPorFila);
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
+    await insertarFotosEnColumna(workbook, hojaEval, itemsPorFila);
+  }
+  ocultarHojasEvaluacionYDictamenExcel(workbook);
   return workbook;
 }
 

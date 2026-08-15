@@ -10,6 +10,7 @@ import {
   fotosNsrDesdeLiquidador,
 } from './informeAgilSuraHelpers.js';
 import { calcularLiquidacionSura, defaultInformeUnicoSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
+import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 
 const HEADER_FILL = {
   type: 'pattern',
@@ -245,15 +246,17 @@ function anexarResumenIndemnizacion(hojaPres, totales) {
 }
 
 function ordenarHojasFormatoAgil(workbook) {
-  const orden = [
-    'InformeAgil',
-    'Evaluación',
-    'Dictamen',
-    'Presupuesto',
-    'FOTOS',
-    'DOCUMENTOS',
-    'SALVAMENTO',
-  ];
+  const orden = OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+    ? ['InformeAgil', 'Presupuesto', 'FOTOS', 'DOCUMENTOS', 'SALVAMENTO']
+    : [
+        'InformeAgil',
+        'Evaluación',
+        'Dictamen',
+        'Presupuesto',
+        'FOTOS',
+        'DOCUMENTOS',
+        'SALVAMENTO',
+      ];
   orden.forEach((nombre, i) => {
     const ws = workbook.getWorksheet(nombre);
     if (ws) {
@@ -261,7 +264,10 @@ function ordenarHojasFormatoAgil(workbook) {
       ws.orderNo = i + 1;
     }
   });
-  ['Portada', 'Listas'].forEach((nombre, i) => {
+  const ocultas = OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+    ? ['Evaluación', 'Dictamen', 'Portada', 'Listas']
+    : ['Portada', 'Listas'];
+  ocultas.forEach((nombre, i) => {
     const ws = workbook.getWorksheet(nombre);
     if (ws) {
       ws.state = 'hidden';

@@ -542,3 +542,27 @@ export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = 
     criterioFinal: null,
   };
 }
+
+/** Oculta Evaluación/Dictamen en el Excel (no las borra; Portada sigue leyendo fórmulas). */
+export function ocultarHojasEvaluacionYDictamenExcel(workbook) {
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 || !workbook) return;
+  ['Evaluación', 'Dictamen', 'Listas'].forEach((nombre) => {
+    const hoja = workbook.getWorksheet(nombre);
+    if (hoja) hoja.state = 'hidden';
+  });
+  const portada = workbook.getWorksheet('Portada');
+  if (!portada) return;
+  const idx = workbook.worksheets.findIndex((h) => h.id === portada.id);
+  if (idx < 0) return;
+  workbook.views = [
+    {
+      x: 0,
+      y: 0,
+      width: 20000,
+      height: 20000,
+      firstSheet: 0,
+      activeTab: idx,
+      visibility: 'visible',
+    },
+  ];
+}
