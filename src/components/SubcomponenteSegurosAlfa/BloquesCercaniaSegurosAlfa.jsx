@@ -187,7 +187,15 @@ export default function BloquesCercaniaSegurosAlfa() {
     setAbiertos((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const bloques = data?.bloques || [];
+  const bloques = useMemo(() => {
+    const list = [...(data?.bloques || [])];
+    list.sort((a, b) => {
+      const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
+      if (d !== 0) return d;
+      return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
+    });
+    return list;
+  }, [data]);
   const sinUbicar = data?.sinUbicar || [];
 
   const resumenTxt = useMemo(() => {
