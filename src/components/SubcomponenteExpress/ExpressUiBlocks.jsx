@@ -352,20 +352,20 @@ export function SeccionAcordeon({ abierto, onToggle, icon: Icon, titulo, subtitu
   );
 }
 
-export function ExpressModal({ open, onClose, title, children, wide = false }) {
+export function ExpressModal({ open, onClose, title, children, wide = false, extraWide = false }) {
   const { t } = useTranslation();
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
       <div
         className={`relative flex max-h-[95vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#1A1A1A] ${
-          wide ? 'max-w-6xl' : 'max-w-lg'
+          extraWide ? 'max-w-[96vw]' : wide ? 'max-w-6xl' : 'max-w-lg'
         }`}
         role="dialog"
         aria-modal="true"
         aria-labelledby="express-modal-title"
       >
-        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-6">
+        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-gray-800 sm:px-6">
           <h2 id="express-modal-title" className="font-heading text-lg font-bold text-gray-900 dark:text-white">
             {title}
           </h2>
@@ -378,7 +378,7 @@ export function ExpressModal({ open, onClose, title, children, wide = false }) {
             <FaTimes />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
       </div>
     </div>
   );

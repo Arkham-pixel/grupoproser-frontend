@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCog, FaFileExcel, FaUpload } from 'react-icons/fa';
+import { FaCog, FaFileExcel, FaUpload, FaTable } from 'react-icons/fa';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
@@ -11,15 +11,13 @@ import { parsearCasosFdmDesdeExcel } from './importarEquidadFdmExcel.js';
 import {
   FDM_COLUMNAS_STORAGE_KEY,
   FDM_REPORTE_PAGE_SIZE,
+  aplicarFiltrosCasosFdm,
   buildCiudadesFdm,
   buildOpcionesFiltro,
   cantidadArchivosFdm,
-  casoTieneArchivosFdm,
   ciudadClaveFdm,
-  coincideFiltroTexto,
   esCasoNuevoFdm,
   esUsuarioFdmSoloConArchivos,
-  fechaEnRango,
   formatCurrency,
   formatDate,
   leerFiltrosReporteFdm,
@@ -160,6 +158,10 @@ const ReporteEquidadFdm = () => {
   const [aviso, setAviso] = useState({ open: false, titulo: '', mensaje: '', tipo: 'info' });
   const [importando, setImportando] = useState(false);
   const [resumenImport, setResumenImport] = useState(null);
+  const [modalReporteCompleto, setModalReporteCompleto] = useState(false);
+  const [busquedaCompleto, setBusquedaCompleto] = useState('');
+  const [eventoCompleto, setEventoCompleto] = useState('TERREMOTO 10 AGOSTO 2026');
+  const [paginaCompleto, setPaginaCompleto] = useState(1);
   const fileInputRef = useRef(null);
 
   const recargar = useCallback(async () => {
@@ -284,70 +286,46 @@ const ReporteEquidadFdm = () => {
 
   const soloConArchivos = esUsuarioFdmSoloConArchivos();
 
-  const casosBase = useMemo(() => {
-    let resultado = [...casos];
+  const casosBase = useMemo(
+    () =>
+      aplicarFiltrosCasosFdm(casos, {
+        soloConArchivos,
+        busqueda,
+        filtroAjustador,
+        filtroEstado,
+        filtroEvento,
+        filtroNuevos,
+        fechaInicio,
+        fechaFin,
+      }),
+    [
+      casos,
+      soloConArchivos,
+      busqueda,
+      filtroAjustador,
+      filtroEstado,
+      filtroEvento,
+      filtroNuevos,
+      fechaInicio,
+      fechaFin,
+    ]
+  );
 
-    // Login 1065012991: solo casos que ya tienen documentos en el archivero
-    if (soloConArchivos) {
-      resultado = resultado.filter((item) => casoTieneArchivosFdm(item));
-    }
-
-    if (busqueda) {
-      const termino = busqueda.toLowerCase();
-      resultado = resultado.filter((item) =>
-        [
-          item.consecutivo,
-          item.nombre,
-          item.cedula,
-          item.celular,
-          item.direccionAfectada,
-          item.municipio,
-          item.ajustador,
-          item.caso,
-          item.siniestro,
-          item.evento,
-          item.polizaAfectar,
-        ]
-          .filter(Boolean)
-          .some((campo) => campo.toString().toLowerCase().includes(termino))
-      );
-    }
-    if (filtroAjustador) {
-      resultado = resultado.filter((item) => coincideFiltroTexto(item.ajustador, filtroAjustador));
-    }
-    if (filtroEstado) {
-      resultado = resultado.filter((item) => coincideFiltroTexto(item.estado, filtroEstado));
-    }
-    if (filtroEvento) {
-      resultado = resultado.filter((item) => coincideFiltroTexto(item.evento, filtroEvento));
-    }
-    if (filtroNuevos === 'nuevos') {
-      resultado = resultado.filter((item) => esCasoNuevoFdm(item));
-    } else if (filtroNuevos === 'anteriores') {
-      resultado = resultado.filter((item) => !esCasoNuevoFdm(item));
-    }
-    if (fechaInicio || fechaFin) {
-      resultado = resultado.filter((item) =>
-        fechaEnRango(
-          item.fechaRegistro || item.fechaLiquidacion || item.fechaAviso || item.createdAt,
-          fechaInicio,
-          fechaFin
-        )
-      );
-    }
-    return resultado;
-  }, [
-    casos,
-    soloConArchivos,
-    busqueda,
-    filtroAjustador,
-    filtroEstado,
-    filtroEvento,
-    filtroNuevos,
-    fechaInicio,
-    fechaFin,
-  ]);
-
+  /** Reporte completo (sin filtro de archivero): solo para login especial. */
+  const casosReporteCompleto = useMemo(
+    () =>
+      aplicarFiltrosCasosFdm(casos, {
+        soloConArchivos: false,
+        busqueda: busquedaCompleto,
+        filtroAjustador: '',
+        filtroEstado: '',
+        filtroEvento: eventoCompleto,
+        filtroNuevos: '',
+        fechaInicio: '',
+        fechaFin: '',
+      }),
+    [casos, busquedaCompleto, eventoCompleto]
+  );
   const ciudades = useMemo(() => buildCiudadesFdm(casosBase), [casosBase]);
   const ciudadActiva = useMemo(
     () => ciudades.find((c) => c.value === filtroMunicipio) || null,
@@ -413,6 +391,20 @@ const ReporteEquidadFdm = () => {
 
   const indiceDesde = filtrados.length === 0 ? 0 : (paginaActual - 1) * FDM_REPORTE_PAGE_SIZE + 1;
   const indiceHasta = Math.min(paginaActual * FDM_REPORTE_PAGE_SIZE, filtrados.length);
+
+  const totalPaginasCompleto = Math.max(1, Math.ceil(casosReporteCompleto.length / FDM_REPORTE_PAGE_SIZE));
+  const casosCompletoPagina = useMemo(() => {
+    const inicio = (paginaCompleto - 1) * FDM_REPORTE_PAGE_SIZE;
+    return casosReporteCompleto.slice(inicio, inicio + FDM_REPORTE_PAGE_SIZE);
+  }, [casosReporteCompleto, paginaCompleto]);
+
+  useEffect(() => {
+    setPaginaCompleto(1);
+  }, [busquedaCompleto, eventoCompleto]);
+
+  useEffect(() => {
+    if (paginaCompleto > totalPaginasCompleto) setPaginaCompleto(totalPaginasCompleto);
+  }, [paginaCompleto, totalPaginasCompleto]);
 
   const exportarExcel = () => {
     if (filtrados.length === 0) {
@@ -565,6 +557,23 @@ const ReporteEquidadFdm = () => {
                 <FaFileExcel />
                 {t('equidadFdm.report.exportExcel')}
               </button>
+              {soloConArchivos && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusquedaCompleto('');
+                    setEventoCompleto('TERREMOTO 10 AGOSTO 2026');
+                    setPaginaCompleto(1);
+                    setModalReporteCompleto(true);
+                  }}
+                  className={expressBtnPrimary}
+                  disabled={loading}
+                  title={t('equidadFdm.report.fullReportHint')}
+                >
+                  <FaTable />
+                  {t('equidadFdm.report.fullReport')}
+                </button>
+              )}
             </>
           }
         />
@@ -809,6 +818,154 @@ const ReporteEquidadFdm = () => {
           )}
         </div>
       </div>
+
+      <ExpressModal
+        open={modalReporteCompleto}
+        onClose={() => setModalReporteCompleto(false)}
+        title={t('equidadFdm.report.fullReportTitle')}
+        wide
+        extraWide
+      >
+        <div className="flex min-h-0 flex-col gap-3 p-2 sm:p-4">
+          <p className="font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('equidadFdm.report.fullReportSubtitle', { count: casos.length })}
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Campo label={t('common.search')}>
+              <InputFenix
+                type="text"
+                value={busquedaCompleto}
+                onChange={(e) => setBusquedaCompleto(e.target.value)}
+                placeholder={t('equidadFdm.report.searchPlaceholder')}
+              />
+            </Campo>
+            <Campo label={t('equidadFdm.fields.event')}>
+              <SelectFenix value={eventoCompleto} onChange={(e) => setEventoCompleto(e.target.value)}>
+                <option value="">{t('equidadFdm.report.allEvents', { count: casos.length })}</option>
+                {eventos.map((ev) => (
+                  <option key={ev.value} value={ev.value}>
+                    {ev.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+          </div>
+          <p className="font-body text-xs text-gray-500 dark:text-gray-400">
+            {t('equidadFdm.report.recordsSummary', {
+              count: casosReporteCompleto.length,
+              from:
+                casosReporteCompleto.length === 0
+                  ? 0
+                  : (paginaCompleto - 1) * FDM_REPORTE_PAGE_SIZE + 1,
+              to: Math.min(paginaCompleto * FDM_REPORTE_PAGE_SIZE, casosReporteCompleto.length),
+              page: paginaCompleto,
+              totalPages: totalPaginasCompleto,
+            })}
+          </p>
+          <div className="min-h-[40vh] max-h-[55vh] w-full min-w-0 overflow-auto rounded-2xl border border-gray-100 dark:border-gray-800">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+              <thead className={expressTableHead}>
+                <tr>
+                  <th
+                    scope="col"
+                    className="sticky left-0 top-0 z-20 bg-gray-50 px-3 py-2 dark:bg-gray-900/80"
+                  >
+                    {t('equidadFdm.report.actions')}
+                  </th>
+                  {columnasVisibles.map((col) => (
+                    <th
+                      key={col.clave}
+                      scope="col"
+                      className="sticky top-0 z-10 bg-gray-50 px-3 py-2 dark:bg-gray-900/80"
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
+                {casosReporteCompleto.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={columnasVisibles.length + 1}
+                      className="px-4 py-6 text-center font-body text-sm text-gray-500"
+                    >
+                      {t('equidadFdm.report.noCases')}
+                    </td>
+                  </tr>
+                ) : (
+                  casosCompletoPagina.map((item) => (
+                    <tr
+                      key={`full-${item._id ?? `${item.consecutivo}-${item.cedula}`}`}
+                      className={`transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30 ${
+                        esCasoNuevoFdm(item) ? 'bg-red-50/40 dark:bg-red-950/20' : ''
+                      }`}
+                    >
+                      <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-3 py-2 dark:bg-[#1A1A1A]">
+                        <AccionesFdmMenu
+                          onGestionar={() => {
+                            setModalReporteCompleto(false);
+                            abrirModalEdicion(item);
+                          }}
+                          onArchivero={() => {
+                            setModalReporteCompleto(false);
+                            setCasoArchivero(item);
+                          }}
+                          onLiquidador={() => abrirLiquidador(item)}
+                          onEliminar={() => {
+                            setModalReporteCompleto(false);
+                            solicitarEliminar(item);
+                          }}
+                          tieneLiquidador={Boolean(item.liquidador)}
+                          cantidadArchivos={cantidadArchivosFdm(item)}
+                        />
+                      </td>
+                      {columnasVisibles.map((col) => (
+                        <td
+                          key={col.clave}
+                          className={`px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200 ${
+                            col.clave === 'observaciones' ? 'max-w-xs' : 'whitespace-nowrap'
+                          }`}
+                        >
+                          {obtenerValorCelda(item, col.clave)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {casosReporteCompleto.length > 0 && totalPaginasCompleto > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                className={expressBtnSecondary}
+                disabled={paginaCompleto <= 1}
+                onClick={() => setPaginaCompleto((p) => Math.max(1, p - 1))}
+              >
+                {t('equidadFdm.report.previous')}
+              </button>
+              <span className="font-body text-xs text-gray-500">
+                {t('equidadFdm.report.pageOf', { page: paginaCompleto, total: totalPaginasCompleto })}
+              </span>
+              <button
+                type="button"
+                className={expressBtnSecondary}
+                disabled={paginaCompleto >= totalPaginasCompleto}
+                onClick={() => setPaginaCompleto((p) => Math.min(totalPaginasCompleto, p + 1))}
+              >
+                {t('equidadFdm.report.next')}
+              </button>
+            </div>
+          )}
+          <div className="flex justify-end">
+            <button type="button" className={expressBtnGhost} onClick={() => setModalReporteCompleto(false)}>
+              {t('common.close')}
+            </button>
+          </div>
+        </div>
+      </ExpressModal>
 
       <ExpressModal
         open={modalColumnasOpen}

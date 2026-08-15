@@ -207,3 +207,69 @@ export const buildCiudadesFdm = (casos = []) => {
 
 /** Fecha ISO (YYYY-MM-DD) para inputs date desde valores de la API */
 export const fechaParaInput = (value) => formatDate(value);
+
+/** Aplica filtros del reporte FDM. `soloConArchivos` es exclusivo del login especial. */
+export const aplicarFiltrosCasosFdm = (
+  casos = [],
+  {
+    soloConArchivos = false,
+    busqueda = '',
+    filtroAjustador = '',
+    filtroEstado = '',
+    filtroEvento = '',
+    filtroNuevos = '',
+    fechaInicio = '',
+    fechaFin = '',
+  } = {}
+) => {
+  let resultado = [...casos];
+
+  if (soloConArchivos) {
+    resultado = resultado.filter((item) => casoTieneArchivosFdm(item));
+  }
+
+  if (busqueda) {
+    const termino = busqueda.toLowerCase();
+    resultado = resultado.filter((item) =>
+      [
+        item.consecutivo,
+        item.nombre,
+        item.cedula,
+        item.celular,
+        item.direccionAfectada,
+        item.municipio,
+        item.ajustador,
+        item.caso,
+        item.siniestro,
+        item.evento,
+        item.polizaAfectar,
+      ]
+        .filter(Boolean)
+        .some((campo) => campo.toString().toLowerCase().includes(termino))
+    );
+  }
+  if (filtroAjustador) {
+    resultado = resultado.filter((item) => coincideFiltroTexto(item.ajustador, filtroAjustador));
+  }
+  if (filtroEstado) {
+    resultado = resultado.filter((item) => coincideFiltroTexto(item.estado, filtroEstado));
+  }
+  if (filtroEvento) {
+    resultado = resultado.filter((item) => coincideFiltroTexto(item.evento, filtroEvento));
+  }
+  if (filtroNuevos === 'nuevos') {
+    resultado = resultado.filter((item) => esCasoNuevoFdm(item));
+  } else if (filtroNuevos === 'anteriores') {
+    resultado = resultado.filter((item) => !esCasoNuevoFdm(item));
+  }
+  if (fechaInicio || fechaFin) {
+    resultado = resultado.filter((item) =>
+      fechaEnRango(
+        item.fechaRegistro || item.fechaLiquidacion || item.fechaAviso || item.createdAt,
+        fechaInicio,
+        fechaFin
+      )
+    );
+  }
+  return resultado;
+};
