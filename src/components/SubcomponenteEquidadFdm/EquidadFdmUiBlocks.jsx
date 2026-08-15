@@ -11,16 +11,17 @@ const NAV_FDM = [
   { path: '/equidad-fdm/reporte', icon: FaTable, key: 'report' },
 ];
 
-export function FdmNavTabs({ activePath }) {
+export function FdmNavTabs({ activePath, pathOverrides = {} }) {
   const { t } = useTranslation();
   return (
     <nav className="flex flex-wrap gap-2" aria-label={t('equidadFdm.navigation')}>
       {NAV_FDM.map(({ path, icon: Icon, key }) => {
+        const to = pathOverrides[path] || path;
         const activo = activePath === path;
         return (
           <Link
             key={path}
-            to={path}
+            to={to}
             className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 font-body text-sm font-semibold transition ${
               activo
                 ? 'bg-fenix-primario text-white shadow-sm'
@@ -36,7 +37,7 @@ export function FdmNavTabs({ activePath }) {
   );
 }
 
-export function FdmPageHeader({ badge = 'Equidad FDM', title, subtitle, actions, activePath }) {
+export function FdmPageHeader({ badge = 'Equidad FDM', title, subtitle, actions, activePath, pathOverrides }) {
   return (
     <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div className="space-y-3">
@@ -45,7 +46,7 @@ export function FdmPageHeader({ badge = 'Equidad FDM', title, subtitle, actions,
           <h1 className={expressPageTitle}>{title}</h1>
           {subtitle && <p className={expressPageSubtitle}>{subtitle}</p>}
         </div>
-        {activePath && <FdmNavTabs activePath={activePath} />}
+        {activePath && <FdmNavTabs activePath={activePath} pathOverrides={pathOverrides} />}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </header>

@@ -22,6 +22,8 @@ import {
   fechaEnRango,
   formatCurrency,
   formatDate,
+  leerFiltrosReporteFdm,
+  patchFiltrosReporteFdm,
 } from './equidadFdmHelpers.js';
 import {
   expressBtnGhost,
@@ -113,7 +115,31 @@ const ReporteEquidadFdm = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const ciudadUrl = searchParams.get('ciudad') || '';
+  const filtrosUrl = useMemo(() => leerFiltrosReporteFdm(searchParams), [searchParams]);
+  const {
+    busqueda,
+    filtroAjustador,
+    filtroEstado,
+    filtroEvento,
+    filtroNuevos,
+    fechaInicio,
+    fechaFin,
+    ciudad: ciudadUrl,
+    pagina: paginaActual,
+  } = filtrosUrl;
+
+  const setBusqueda = (v) => patchFiltrosReporteFdm(setSearchParams, { busqueda: v });
+  const setFiltroAjustador = (v) => patchFiltrosReporteFdm(setSearchParams, { filtroAjustador: v });
+  const setFiltroEstado = (v) => patchFiltrosReporteFdm(setSearchParams, { filtroEstado: v });
+  const setFiltroEvento = (v) => patchFiltrosReporteFdm(setSearchParams, { filtroEvento: v });
+  const setFiltroNuevos = (v) => patchFiltrosReporteFdm(setSearchParams, { filtroNuevos: v });
+  const setFechaInicio = (v) => patchFiltrosReporteFdm(setSearchParams, { fechaInicio: v });
+  const setFechaFin = (v) => patchFiltrosReporteFdm(setSearchParams, { fechaFin: v });
+  const setPaginaActual = (v) => {
+    const next = typeof v === 'function' ? v(paginaActual) : v;
+    patchFiltrosReporteFdm(setSearchParams, { pagina: next }, { resetPage: false });
+  };
+
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -129,15 +155,6 @@ const ReporteEquidadFdm = () => {
   const [columnasOrdenadas, setColumnasOrdenadas] = useState([]);
   const [seleccionTemporal, setSeleccionTemporal] = useState([]);
   const [draggedIndex, setDraggedIndex] = useState(null);
-
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroAjustador, setFiltroAjustador] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [filtroEvento, setFiltroEvento] = useState('');
-  const [filtroNuevos, setFiltroNuevos] = useState('nuevos');
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
-  const [paginaActual, setPaginaActual] = useState(1);
   const [confirmEliminar, setConfirmEliminar] = useState({ open: false, registro: null });
   const [eliminando, setEliminando] = useState(false);
   const [aviso, setAviso] = useState({ open: false, titulo: '', mensaje: '', tipo: 'info' });
@@ -354,31 +371,34 @@ const ReporteEquidadFdm = () => {
   );
 
   const limpiarFiltros = () => {
-    setBusqueda('');
-    setFiltroAjustador('');
-    setFiltroEstado('');
-    setFiltroEvento('');
-    setFiltroNuevos('');
-    setFechaInicio('');
-    setFechaFin('');
-    if (searchParams.get('ciudad')) {
-      const next = new URLSearchParams(searchParams);
-      next.delete('ciudad');
-      setSearchParams(next, { replace: true });
-    }
+    patchFiltrosReporteFdm(setSearchParams, {
+      busqueda: '',
+      filtroAjustador: '',
+      filtroEstado: '',
+      filtroEvento: '',
+      filtroNuevos: '',
+      fechaInicio: '',
+      fechaFin: '',
+      ciudad: '',
+    });
   };
 
   const hrefCiudad = (value) => {
     const next = new URLSearchParams(searchParams);
     if (value) next.set('ciudad', value);
     else next.delete('ciudad');
+    next.delete('page');
     const qs = next.toString();
     return qs ? `/equidad-fdm/reporte?${qs}` : '/equidad-fdm/reporte';
   };
 
-  useEffect(() => {
-    setPaginaActual(1);
-  }, [casosBase, filtroMunicipio]);
+  const abrirLiquidador = (item) => {
+    const ret = searchParams.toString();
+    const base = `/equidad-fdm/liquidador?casoId=${item._id}`;
+    navigate(ret ? `${base}&ret=${encodeURIComponent(ret)}` : base, {
+      state: { casoFdm: item },
+    });
+  };
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / FDM_REPORTE_PAGE_SIZE));
 
@@ -715,11 +735,7 @@ const ReporteEquidadFdm = () => {
                         <AccionesFdmMenu
                           onGestionar={() => abrirModalEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
-                          onLiquidador={() =>
-                            navigate(`/equidad-fdm/liquidador?casoId=${item._id}`, {
-                              state: { casoFdm: item },
-                            })
-                          }
+                          onLiquidador={() => abrirLiquidador(item)}
                           onEliminar={() => solicitarEliminar(item)}
                           tieneLiquidador={Boolean(item.liquidador)}
                           cantidadArchivos={cantidadArchivosFdm(item)}

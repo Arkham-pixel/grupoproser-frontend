@@ -3,6 +3,68 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v2';
 export const FDM_REPORTE_PAGE_SIZE = 25;
 
+/** Query keys del reporte (persistencia en URL, sin localStorage). */
+export const FDM_FILTRO_Q = 'q';
+export const FDM_FILTRO_AJUSTADOR = 'ajustador';
+export const FDM_FILTRO_ESTADO = 'estado';
+export const FDM_FILTRO_EVENTO = 'evento';
+export const FDM_FILTRO_NUEVOS = 'nuevos';
+export const FDM_FILTRO_DESDE = 'desde';
+export const FDM_FILTRO_HASTA = 'hasta';
+export const FDM_FILTRO_CIUDAD = 'ciudad';
+export const FDM_FILTRO_PAGE = 'page';
+
+export const leerFiltrosReporteFdm = (searchParams) => {
+  const sp = searchParams instanceof URLSearchParams ? searchParams : new URLSearchParams();
+  return {
+    busqueda: sp.get(FDM_FILTRO_Q) || '',
+    filtroAjustador: sp.get(FDM_FILTRO_AJUSTADOR) || '',
+    filtroEstado: sp.get(FDM_FILTRO_ESTADO) || '',
+    filtroEvento: sp.get(FDM_FILTRO_EVENTO) || '',
+    // Sin clave → solo nuevos (comportamiento histórico). `nuevos=` → todos.
+    filtroNuevos: sp.has(FDM_FILTRO_NUEVOS) ? sp.get(FDM_FILTRO_NUEVOS) || '' : 'nuevos',
+    fechaInicio: sp.get(FDM_FILTRO_DESDE) || '',
+    fechaFin: sp.get(FDM_FILTRO_HASTA) || '',
+    ciudad: sp.get(FDM_FILTRO_CIUDAD) || '',
+    pagina: Math.max(1, Number(sp.get(FDM_FILTRO_PAGE)) || 1),
+  };
+};
+
+/** Actualiza filtros en la URL (replace). `nuevos: ''` se guarda como clave vacía = ver todos. */
+export const patchFiltrosReporteFdm = (setSearchParams, patch = {}, { resetPage = true } = {}) => {
+  setSearchParams(
+    (prev) => {
+      const next = new URLSearchParams(prev);
+      const apply = (key, value, { keepEmpty = false } = {}) => {
+        if (value === null || value === undefined || (value === '' && !keepEmpty)) {
+          next.delete(key);
+          return;
+        }
+        next.set(key, String(value));
+      };
+
+      if ('busqueda' in patch) apply(FDM_FILTRO_Q, patch.busqueda);
+      if ('filtroAjustador' in patch) apply(FDM_FILTRO_AJUSTADOR, patch.filtroAjustador);
+      if ('filtroEstado' in patch) apply(FDM_FILTRO_ESTADO, patch.filtroEstado);
+      if ('filtroEvento' in patch) apply(FDM_FILTRO_EVENTO, patch.filtroEvento);
+      if ('filtroNuevos' in patch) apply(FDM_FILTRO_NUEVOS, patch.filtroNuevos, { keepEmpty: true });
+      if ('fechaInicio' in patch) apply(FDM_FILTRO_DESDE, patch.fechaInicio);
+      if ('fechaFin' in patch) apply(FDM_FILTRO_HASTA, patch.fechaFin);
+      if ('ciudad' in patch) apply(FDM_FILTRO_CIUDAD, patch.ciudad);
+      if ('pagina' in patch) apply(FDM_FILTRO_PAGE, patch.pagina === 1 ? '' : patch.pagina);
+
+      if (resetPage && !('pagina' in patch)) next.delete(FDM_FILTRO_PAGE);
+      return next;
+    },
+    { replace: true }
+  );
+};
+
+export const hrefReporteFdmConFiltros = (qs) => {
+  const raw = String(qs || '').replace(/^\?/, '');
+  return raw ? `/equidad-fdm/reporte?${raw}` : '/equidad-fdm/reporte';
+};
+
 /** Login que solo ve casos con documentos en el archivero */
 export const LOGIN_FDM_SOLO_CON_ARCHIVOS = '1065012991';
 

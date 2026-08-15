@@ -15,6 +15,7 @@ import {
 import { getCasoFdmById, guardarLiquidadorEnCasoFdm, subirArchivoFdm } from '../../services/equidadFdmService.js';
 import { calcularLiquidacionFdm } from './liquidadorEquidadFdmHelpers.js';
 import { generarLiquidadorFdmExcelBlob } from './generarLiquidadorFdmExcel.js';
+import { hrefReporteFdmConFiltros } from './equidadFdmHelpers.js';
 
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -23,6 +24,7 @@ export default function LiquidadorEquidadFdmPage() {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
+  const hrefReporte = hrefReporteFdmConFiltros(searchParams.get('ret') || '');
 
   const [casoFdm, setCasoFdm] = useState(location.state?.casoFdm ?? null);
   const [liquidadorState, setLiquidadorState] = useState(null);
@@ -129,6 +131,7 @@ export default function LiquidadorEquidadFdmPage() {
           title={t('equidadFdm.settlement.title')}
           subtitle={subtitulo}
           activePath="/equidad-fdm/liquidador"
+          pathOverrides={{ '/equidad-fdm/reporte': hrefReporte }}
           actions={
             <div className="flex flex-wrap gap-2">
               {casoId && (
@@ -146,7 +149,7 @@ export default function LiquidadorEquidadFdmPage() {
                       : t('equidadFdm.settlement.saveCase')}
                 </button>
               )}
-              <Link to="/equidad-fdm/reporte" className={expressBtnGhost}>
+              <Link to={hrefReporte} className={expressBtnGhost}>
                 <FaArrowLeft />
                 {t('equidadFdm.settlement.backToReport')}
               </Link>
