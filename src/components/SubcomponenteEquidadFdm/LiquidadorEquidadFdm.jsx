@@ -23,6 +23,7 @@ import {
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
+  buildCartaCoberturaPreview,
   buildConstanciaPreview,
   calcularLiquidacionFdm,
   crearItem,
@@ -32,6 +33,7 @@ import {
 } from './liquidadorEquidadFdmHelpers.js';
 import { parsearLiquidadorFdmExcel } from './parsearLiquidadorFdmExcel.js';
 import { descargarConstanciaFdmWord } from './generarConstanciaFdmWord.js';
+import { descargarCartaCoberturaFdmWord } from './generarCartaCoberturaFdmWord.js';
 import { descargarConstanciaFdmPdf } from './generarConstanciaFdmPdf.js';
 import { descargarLiquidadorFdmExcel } from './generarLiquidadorFdmExcel.js';
 
@@ -134,10 +136,14 @@ export default function LiquidadorEquidadFdm({
   const [mensajeImport, setMensajeImport] = useState('');
   const [error, setError] = useState('');
   const [descargando, setDescargando] = useState(false);
-  const [mostrarPreview, setMostrarPreview] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   const totales = useMemo(() => calcularLiquidacionFdm(liquidador), [liquidador]);
   const preview = useMemo(() => buildConstanciaPreview(liquidador, totales), [liquidador, totales]);
+  const previewCarta = useMemo(
+    () => buildCartaCoberturaPreview(liquidador, totales),
+    [liquidador, totales]
+  );
 
   useEffect(() => {
     onEstadoChange?.(liquidador, totales);
@@ -223,10 +229,24 @@ export default function LiquidadorEquidadFdm({
     setError('');
     try {
       await descargarConstanciaFdmWord(liquidador, totales);
-      setMostrarPreview(false);
+      setPreviewDoc(null);
     } catch (err) {
       console.error(err);
       setError(t('equidadFdm.settlement.wordError'));
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  const handleDescargarCarta = async () => {
+    setDescargando(true);
+    setError('');
+    try {
+      await descargarCartaCoberturaFdmWord(liquidador, totales);
+      setPreviewDoc(null);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('equidadFdm.settlement.coverageLetterError'));
     } finally {
       setDescargando(false);
     }
@@ -237,7 +257,7 @@ export default function LiquidadorEquidadFdm({
     setError('');
     try {
       await descargarConstanciaFdmPdf(liquidador, totales);
-      setMostrarPreview(false);
+      setPreviewDoc(null);
     } catch (err) {
       console.error(err);
       setError(t('equidadFdm.settlement.pdfError'));
@@ -328,8 +348,17 @@ export default function LiquidadorEquidadFdm({
           </button>
           <button
             type="button"
+            className={expressBtnGhost}
+            onClick={() => setPreviewDoc('carta')}
+            disabled={descargando}
+          >
+            <FaFileWord />
+            {t('equidadFdm.settlement.generateCoverageLetter')}
+          </button>
+          <button
+            type="button"
             className={expressBtnSuccess}
-            onClick={() => setMostrarPreview(true)}
+            onClick={() => setPreviewDoc('constancia')}
             disabled={descargando}
           >
             <FaFileWord />
@@ -509,7 +538,7 @@ export default function LiquidadorEquidadFdm({
         </div>
       </section>
 
-      {mostrarPreview && (
+      {previewDoc === 'constancia' && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           role="dialog"
@@ -550,7 +579,7 @@ export default function LiquidadorEquidadFdm({
                 <button
                   type="button"
                   className={expressBtnGhost}
-                  onClick={() => setMostrarPreview(false)}
+                  onClick={() => setPreviewDoc(null)}
                   disabled={descargando}
                 >
                   {t('equidadFdm.settlement.close')}
@@ -565,6 +594,74 @@ export default function LiquidadorEquidadFdm({
                   {descargando
                     ? t('equidadFdm.settlement.generating')
                     : t('equidadFdm.settlement.downloadWord')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {previewDoc === 'carta' && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-[#1A1A1A]">
+            <div className="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+              <h2 className="text-center font-heading text-lg font-bold">
+                {t('equidadFdm.settlement.coverageLetterTitle')}
+              </h2>
+              <p className="text-center font-body text-sm text-gray-600">
+                {previewCarta.asegurado} · ${previewCarta.indemnizacion}
+              </p>
+            </div>
+            <div className="space-y-3 px-5 py-5 font-body text-sm text-gray-800 dark:text-gray-200">
+              <p>
+                {t('equidadFdm.settlement.coverageLetterDate', {
+                  city: previewCarta.ciudadCarta,
+                  date: previewCarta.fechaCarta,
+                })}
+              </p>
+              <p>
+                <strong>{t('equidadFdm.settlement.insuredBeneficiary')}:</strong>{' '}
+                {previewCarta.asegurado}
+              </p>
+              <p>
+                <strong>{t('equidadFdm.fields.id')}:</strong> {previewCarta.cedula} ·{' '}
+                <strong>{t('equidadFdm.settlement.policy')}:</strong> {previewCarta.poliza}
+              </p>
+              <p className="text-justify leading-relaxed">
+                {t('equidadFdm.settlement.coverageLetterIntro', {
+                  cause: previewCarta.causaEvento,
+                  date: previewCarta.fechaEventoCarta,
+                })}
+              </p>
+              <p className="text-justify leading-relaxed">
+                {t('equidadFdm.settlement.coverageLetterAmount', {
+                  amount: previewCarta.indemnizacion,
+                  letters: previewCarta.indemnizacionLetrasCarta,
+                })}
+              </p>
+              <div className="flex flex-wrap justify-end gap-2 pt-4">
+                <button
+                  type="button"
+                  className={expressBtnGhost}
+                  onClick={() => setPreviewDoc(null)}
+                  disabled={descargando}
+                >
+                  {t('equidadFdm.settlement.close')}
+                </button>
+                <button
+                  type="button"
+                  className={expressBtnPrimary}
+                  onClick={handleDescargarCarta}
+                  disabled={descargando}
+                >
+                  <FaFileWord />
+                  {descargando
+                    ? t('equidadFdm.settlement.generating')
+                    : t('equidadFdm.settlement.downloadCoverageLetter')}
                 </button>
               </div>
             </div>

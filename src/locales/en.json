@@ -1128,6 +1128,7 @@
       "unnamed": "unnamed",
       "importError": "The settlement Excel could not be read.",
       "wordError": "The certificate Word file could not be generated.",
+      "coverageLetterError": "The coverage letter could not be generated.",
       "pdfError": "The settlement PDF could not be generated.",
       "excelError": "The settlement model Excel could not be generated.",
       "importing": "Importing…",
@@ -1136,6 +1137,7 @@
       "downloadExcel": "Download Excel",
       "downloadPdf": "Download settlement PDF",
       "generateWord": "Generate Word certificate",
+      "generateCoverageLetter": "Generate coverage letter",
       "existingSettlementNotice": "This case already has a saved settlement. Updating syncs the indemnity value and case totals.",
       "insuredPolicySection": "Insured / policy data",
       "policyholder": "Policyholder",
@@ -1169,7 +1171,12 @@
       "certificateEvent": "Event {{event}} at {{address}}, on {{date}}.",
       "certificateIndemnity": "Indemnity: $ {{indemnity}} ({{letters}}) — loss $ {{loss}} less deductible {{rate}} ($ {{deductible}}) + subsidy $ {{subsidy}}.",
       "close": "Close",
-      "downloadWord": "Download Word"
+      "downloadWord": "Download Word",
+      "coverageLetterTitle": "Coverage letter – First loss",
+      "coverageLetterDate": "Date: {{city}}, {{date}}",
+      "coverageLetterIntro": "Based on the adjustment of this claim, due to {{cause}} that occurred on {{date}}, this First-Loss Technical Opinion is issued and shall serve as a settlement between the parties.",
+      "coverageLetterAmount": "Approved indemnity net of deductible: $ {{amount}} ({{letters}} pesos M/CTE).",
+      "downloadCoverageLetter": "Download letter Word"
     },
     "menu": {
       "manage": "Manage",

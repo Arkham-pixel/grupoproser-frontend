@@ -1123,6 +1123,7 @@
       "unnamed": "sin nombre",
       "importError": "No se pudo leer el Excel del liquidador.",
       "wordError": "No se pudo generar el Word de constancia.",
+      "coverageLetterError": "No se pudo generar la carta de cobertura.",
       "pdfError": "No se pudo generar el PDF del liquidador.",
       "excelError": "No se pudo generar el Excel del modelo de liquidación.",
       "importing": "Importando…",
@@ -1131,6 +1132,7 @@
       "downloadExcel": "Descargar Excel",
       "downloadPdf": "Descargar PDF liquidador",
       "generateWord": "Generar constancia Word",
+      "generateCoverageLetter": "Generar carta de cobertura",
       "existingSettlementNotice": "Este caso ya tiene liquidador guardado. Al actualizar se sincronizan el valor indemnizado y los totales del caso.",
       "insuredPolicySection": "Datos del asegurado / póliza",
       "policyholder": "Tomador",
@@ -1164,7 +1166,12 @@
       "certificateEvent": "Evento {{event}} en {{address}}, hechos el {{date}}.",
       "certificateIndemnity": "Indemnización: $ {{indemnity}} ({{letters}}) — pérdida $ {{loss}} menos deducible {{rate}} ($ {{deductible}}) + subsidio $ {{subsidy}}.",
       "close": "Cerrar",
-      "downloadWord": "Descargar Word"
+      "downloadWord": "Descargar Word",
+      "coverageLetterTitle": "Carta de cobertura – Primera pérdida",
+      "coverageLetterDate": "Fecha: {{city}}, {{date}}",
+      "coverageLetterIntro": "De acuerdo con el proceso de ajuste realizado sobre el siniestro, a causa {{cause}} ocurrido el día {{date}}, se emite el Concepto Técnico de Primera Pérdida de Ajuste y/o Indemnización, que sirve como finiquito entre las partes.",
+      "coverageLetterAmount": "Valor aprobado para indemnización neto descontado el deducible: $ {{amount}} ({{letters}} pesos M/CTE).",
+      "downloadCoverageLetter": "Descargar carta Word"
     },
     "menu": {
       "manage": "Gestionar",

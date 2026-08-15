@@ -297,9 +297,8 @@ export function mapCasoFdmALiquidador(caso = {}) {
   return base;
 }
 
-/** Fecha larga en español: "lunes, 2 de febrero de 2026" */
-export function fechaLargaEs(value) {
-  if (!value) return '—';
+function parseFechaLocal(value) {
+  if (!value) return null;
   let d;
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
     const [y, m, day] = value.slice(0, 10).split('-').map(Number);
@@ -307,13 +306,49 @@ export function fechaLargaEs(value) {
   } else {
     d = new Date(value);
   }
-  if (Number.isNaN(d.getTime())) return String(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+/** Fecha larga en español: "lunes, 2 de febrero de 2026" */
+export function fechaLargaEs(value) {
+  const d = parseFechaLocal(value);
+  if (!d) return value ? String(value) : '—';
   return formatDate(d, getAppLocale(), {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   });
+}
+
+/** Fecha de carta: "10 de Agosto de 2026" */
+export function fechaCartaEs(value) {
+  const d = parseFechaLocal(value);
+  if (!d) return value ? String(value) : '—';
+  const s = formatDate(d, getAppLocale(), {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+  return s.replace(/ de ([a-záéíóúüñ]+) de /i, (_, month) => {
+    const cap = month.charAt(0).toUpperCase() + month.slice(1).toLowerCase();
+    return ` de ${cap} de `;
+  });
+}
+
+export function causaEventoCarta(evento) {
+  const ev = String(evento || '').toUpperCase();
+  if (/TERREMOTO|TEMBLOR|SISMO/.test(ev)) return 'del terremoto';
+  if (/OLA INVERNAL|ANEG|INUND/.test(ev)) return 'de la ola invernal';
+  const nombre = String(evento || '').trim();
+  return nombre ? `del evento ${nombre}` : 'del evento amparado';
+}
+
+export function letrasCartaCobertura(letras) {
+  return String(letras || '')
+    .replace(/\s*Pesos M\/Cte\.?/i, '')
+    .trim();
 }
 
 export function buildConstanciaPreview(liquidador, totales) {
@@ -342,6 +377,19 @@ export function buildConstanciaPreview(liquidador, totales) {
     subsidio: formatearMontoConstancia(totales.subsidio),
     indemnizacion: formatearMontoConstancia(totales.totalIndemnizar),
     indemnizacionLetras: montoALetrasFdm(totales.totalIndemnizar),
+  };
+}
+
+export function buildCartaCoberturaPreview(liquidador, totales) {
+  const c = buildConstanciaPreview(liquidador, totales);
+  const h = liquidador.encabezado || {};
+  return {
+    ...c,
+    ciudadCarta: 'Bogotá',
+    fechaCarta: fechaCartaEs(h.fechaImpreso || hoyInput()),
+    fechaEventoCarta: fechaCartaEs(h.fechaSiniestro || h.fechaImpreso || hoyInput()),
+    causaEvento: causaEventoCarta(c.evento),
+    indemnizacionLetrasCarta: letrasCartaCobertura(c.indemnizacionLetras),
   };
 }
 
