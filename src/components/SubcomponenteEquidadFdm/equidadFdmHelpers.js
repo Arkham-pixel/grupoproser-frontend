@@ -3,8 +3,32 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v2';
 export const FDM_REPORTE_PAGE_SIZE = 25;
 
+/** Login que solo ve casos con documentos en el archivero */
+export const LOGIN_FDM_SOLO_CON_ARCHIVOS = '1065012991';
+
 export const ESTADOS_FDM = ['PENDIENTE', 'LIQUIDADO', 'OBJETADO', 'GIRADO'];
 export const EVENTOS_FDM = ['OLA INVERNAL', 'TERREMOTO 10 AGOSTO 2026'];
+
+export const cantidadArchivosFdm = (caso = {}) =>
+  Array.isArray(caso?.archivos) ? caso.archivos.length : 0;
+
+export const casoTieneArchivosFdm = (caso = {}) => cantidadArchivosFdm(caso) > 0;
+
+export const loginActualFdm = () => {
+  try {
+    const directo = localStorage.getItem('login');
+    if (directo) return String(directo).trim();
+    const raw = localStorage.getItem('usuario');
+    if (!raw) return '';
+    const u = JSON.parse(raw);
+    return String(u?.login || u?.usuario || u?.id || '').trim();
+  } catch {
+    return '';
+  }
+};
+
+export const esUsuarioFdmSoloConArchivos = () =>
+  String(loginActualFdm()) === LOGIN_FDM_SOLO_CON_ARCHIVOS;
 
 export const CAMPOS_NUMERICOS_FDM = [
   'valorEdificio',

@@ -5,6 +5,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
 import AccionesFdmMenu from './AccionesFdmMenu.jsx';
+import ArchiveroEquidadFdm from './ArchiveroEquidadFdm.jsx';
 import { descargarExcelFdlmBase } from './generarExcelFdlmBase.js';
 import { parsearCasosFdmDesdeExcel } from './importarEquidadFdmExcel.js';
 import {
@@ -12,9 +13,12 @@ import {
   FDM_REPORTE_PAGE_SIZE,
   buildCiudadesFdm,
   buildOpcionesFiltro,
+  cantidadArchivosFdm,
+  casoTieneArchivosFdm,
   ciudadClaveFdm,
   coincideFiltroTexto,
   esCasoNuevoFdm,
+  esUsuarioFdmSoloConArchivos,
   fechaEnRango,
   formatCurrency,
   formatDate,
@@ -115,6 +119,7 @@ const ReporteEquidadFdm = () => {
   const [error, setError] = useState(null);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [registroEditar, setRegistroEditar] = useState(null);
+  const [casoArchivero, setCasoArchivero] = useState(null);
   const [columnasVisibles, setColumnasVisibles] = useState(() => {
     const guardadas = cargarColumnasGuardadas();
     if (guardadas) return guardadas;
@@ -260,8 +265,15 @@ const ReporteEquidadFdm = () => {
   const totalNuevos = useMemo(() => casos.filter((item) => esCasoNuevoFdm(item)).length, [casos]);
   const filtroMunicipio = ciudadUrl;
 
+  const soloConArchivos = esUsuarioFdmSoloConArchivos();
+
   const casosBase = useMemo(() => {
     let resultado = [...casos];
+
+    // Login 1065012991: solo casos que ya tienen documentos en el archivero
+    if (soloConArchivos) {
+      resultado = resultado.filter((item) => casoTieneArchivosFdm(item));
+    }
 
     if (busqueda) {
       const termino = busqueda.toLowerCase();
@@ -307,7 +319,17 @@ const ReporteEquidadFdm = () => {
       );
     }
     return resultado;
-  }, [casos, busqueda, filtroAjustador, filtroEstado, filtroEvento, filtroNuevos, fechaInicio, fechaFin]);
+  }, [
+    casos,
+    soloConArchivos,
+    busqueda,
+    filtroAjustador,
+    filtroEstado,
+    filtroEvento,
+    filtroNuevos,
+    fechaInicio,
+    fechaFin,
+  ]);
 
   const ciudades = useMemo(() => buildCiudadesFdm(casosBase), [casosBase]);
   const ciudadActiva = useMemo(
@@ -692,6 +714,7 @@ const ReporteEquidadFdm = () => {
                       <td className="sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesFdmMenu
                           onGestionar={() => abrirModalEdicion(item)}
+                          onArchivero={() => setCasoArchivero(item)}
                           onLiquidador={() =>
                             navigate(`/equidad-fdm/liquidador?casoId=${item._id}`, {
                               state: { casoFdm: item },
@@ -699,6 +722,7 @@ const ReporteEquidadFdm = () => {
                           }
                           onEliminar={() => solicitarEliminar(item)}
                           tieneLiquidador={Boolean(item.liquidador)}
+                          cantidadArchivos={cantidadArchivosFdm(item)}
                         />
                       </td>
                       {columnasVisibles.map((col) => (
@@ -828,6 +852,28 @@ const ReporteEquidadFdm = () => {
           />
         </div>
       </ExpressModal>
+
+      {casoArchivero && (
+        <ExpressModal
+          open
+          onClose={() => setCasoArchivero(null)}
+          title={t('equidadFdm.archive.title')}
+          wide
+        >
+          <div className="p-2 sm:p-4">
+            <ArchiveroEquidadFdm
+              caso={casoArchivero}
+              onClose={() => setCasoArchivero(null)}
+              onChanged={(actualizado) => {
+                setCasoArchivero(actualizado);
+                setCasos((prev) =>
+                  prev.map((c) => (c._id === actualizado._id ? { ...c, ...actualizado } : c))
+                );
+              }}
+            />
+          </div>
+        </ExpressModal>
+      )}
 
       <ExpressAvisoModal
         open={confirmEliminar.open}

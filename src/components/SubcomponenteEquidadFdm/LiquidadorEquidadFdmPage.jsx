@@ -12,8 +12,9 @@ import {
   expressPageWrap,
   expressScope,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import { getCasoFdmById, guardarLiquidadorEnCasoFdm } from '../../services/equidadFdmService.js';
+import { getCasoFdmById, guardarLiquidadorEnCasoFdm, subirArchivoFdm } from '../../services/equidadFdmService.js';
 import { calcularLiquidacionFdm } from './liquidadorEquidadFdmHelpers.js';
+import { generarLiquidadorFdmExcelBlob } from './generarLiquidadorFdmExcel.js';
 
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -94,10 +95,25 @@ export default function LiquidadorEquidadFdmPage() {
         totales,
         casoBase: casoFdm || {},
       });
-      setCasoFdm(actualizado);
-      setMensaje(
-        t('equidadFdm.settlement.savedMessage')
-      );
+
+      // Guardar también el modelo de liquidación Excel en el archivero
+      try {
+        const { blob, nombre } = await generarLiquidadorFdmExcelBlob(liquidador, totales);
+        const file = new File([blob], nombre, {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        await subirArchivoFdm(casoId, file, 'MODELO_LIQUIDACION', {
+          reemplazarMismaEtiqueta: true,
+          descripcion: 'Modelo de liquidación generado desde el liquidador',
+        });
+        const conArchivos = await getCasoFdmById(casoId);
+        setCasoFdm(conArchivos);
+        setMensaje(t('equidadFdm.settlement.savedWithModelMessage'));
+      } catch (archErr) {
+        console.warn('Liquidador guardado, pero no se pudo subir el Excel al archivero:', archErr);
+        setCasoFdm(actualizado);
+        setMensaje(t('equidadFdm.settlement.savedMessage'));
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || t('equidadFdm.settlement.saveError'));

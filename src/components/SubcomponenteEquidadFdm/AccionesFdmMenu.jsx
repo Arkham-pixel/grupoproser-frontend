@@ -6,6 +6,7 @@ import {
   FaChevronDown,
   FaEllipsisV,
   FaFolderOpen,
+  FaArchive,
   FaTrash,
 } from 'react-icons/fa';
 
@@ -17,9 +18,11 @@ const btnAcciones =
  */
 export default function AccionesFdmMenu({
   onGestionar,
+  onArchivero,
   onLiquidador,
   onEliminar,
   tieneLiquidador = false,
+  cantidadArchivos = 0,
 }) {
   const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
@@ -30,7 +33,7 @@ export default function AccionesFdmMenu({
   useLayoutEffect(() => {
     if (!abierto || !btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
-    const menuAltoApprox = 160;
+    const menuAltoApprox = 200;
     const espacioAbajo = window.innerHeight - rect.bottom;
     const abrirArriba = espacioAbajo < menuAltoApprox && rect.top > menuAltoApprox;
     setCoords({
@@ -89,6 +92,16 @@ export default function AccionesFdmMenu({
           >
             <FaFolderOpen className="text-fenix-primario" aria-hidden />
             {t('equidadFdm.menu.manage')}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+            onClick={() => elegir(onArchivero)}
+          >
+            <FaArchive className="text-fenix-primario" aria-hidden />
+            {t('equidadFdm.menu.archive')}
+            {Number(cantidadArchivos) > 0 ? ` (${cantidadArchivos})` : ' (0)'}
           </button>
           <button
             type="button"

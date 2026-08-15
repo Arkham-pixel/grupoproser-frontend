@@ -1,4 +1,4 @@
-import { BASE_URL } from '../config/apiConfig.js';
+import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 
 const FDM_API_URL = `${BASE_URL}/api/equidad-fdm`;
 
@@ -33,6 +33,7 @@ export const normalizeFdmItem = (item = {}) => ({
   estado: item.estado ?? '',
   esNuevo: item.esNuevo === true,
   liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
+  archivos: Array.isArray(item.archivos) ? item.archivos : [],
   totalPerdidaNumero: toNumber(item.totalPerdida),
   totalLiquidadoNumero: toNumber(item.totalLiquidado),
   valorIndemnizadoNumero: toNumber(item.valorIndemnizado),
@@ -179,6 +180,51 @@ export const guardarLiquidadorEnCasoFdm = async ({
   delete payload.totalLiquidadoNumero;
   delete payload.valorIndemnizadoNumero;
   delete payload.deducibleNumero;
+  delete payload.archivos;
 
   return actualizarCasoFdm(casoId, payload);
 };
+
+export const subirArchivoFdm = async (
+  casoId,
+  file,
+  etiqueta = 'GENERAL',
+  extras = {}
+) => {
+  if (!casoId) throw new Error('Caso requerido para subir archivo');
+  if (!file) throw new Error('Archivo requerido');
+  const formData = new FormData();
+  formData.append('archivo', file, file.name || 'documento');
+  formData.append('etiqueta', etiqueta);
+  if (extras?.descripcion != null) {
+    formData.append('descripcion', String(extras.descripcion));
+  }
+  if (extras?.reemplazarMismaEtiqueta) {
+    formData.append('reemplazarMismaEtiqueta', 'true');
+  }
+  const response = await fetch(`${FDM_API_URL}/${casoId}/archivos`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al subir archivo (${response.status})`);
+  }
+  return payload?.data ?? payload;
+};
+
+export const eliminarArchivoFdm = async (casoId, archivoId) => {
+  if (!casoId || !archivoId) throw new Error('Caso y archivo requeridos');
+  const response = await fetch(`${FDM_API_URL}/${casoId}/archivos/${archivoId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al eliminar archivo (${response.status})`);
+  }
+  return payload;
+};
+
+export const urlDescargaArchivoFdm = (ruta) => resolveUploadsUrl(ruta);

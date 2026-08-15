@@ -99,6 +99,15 @@ console.log('\n== Plantilla Word ==');
 const templatePath = path.join(root, 'public/templates/carta-cobertura-primera-perdida-fdm.docx');
 ok('plantilla existe', fs.existsSync(templatePath), templatePath);
 
+const zipCheck = await JSZip.loadAsync(fs.readFileSync(templatePath));
+ok('membrete encabezado', Boolean(zipCheck.file('word/header2.xml')));
+ok('membrete pie', Boolean(zipCheck.file('word/footer2.xml')));
+ok('imagen encabezado', Boolean(zipCheck.file('word/media/image1.png')));
+ok('imagen pie', Boolean(zipCheck.file('word/media/image2.png')));
+const docXml = await zipCheck.file('word/document.xml').async('string');
+ok('document referencia header', docXml.includes('headerReference'));
+ok('document referencia footer', docXml.includes('footerReference'));
+
 function escapeXml(text) {
   return String(text ?? '')
     .replace(/&/g, '&amp;')
@@ -152,8 +161,8 @@ function replaceWtContaining(xml, marker, newText) {
   return replaceWtAt(xml, findLastTagOpen(xml, 't', idx + 1), newText);
 }
 
-const zip = await JSZip.loadAsync(fs.readFileSync(templatePath));
-let xml = await zip.file('word/document.xml').async('string');
+const zip = zipCheck;
+let xml = docXml;
 xml = replaceValueAfterLabel(xml, 'Fecha:', ` ${preview.ciudadCarta}, ${preview.fechaCarta}`);
 xml = replaceWtContaining(
   xml,
