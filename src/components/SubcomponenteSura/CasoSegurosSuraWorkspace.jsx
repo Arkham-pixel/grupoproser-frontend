@@ -1,14 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaFileExcel, FaSave } from 'react-icons/fa';
 import LiquidadorSegurosSura from './LiquidadorSegurosSura.jsx';
 import InformeUnicoSegurosSura from './InformeUnicoSegurosSura.jsx';
+import InformeAgilSura from './InformeAgilSura.jsx';
+import FotosLiquidadorSura from './FotosLiquidadorSura.jsx';
+import SalvamentoSura from './SalvamentoSura.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
   expressBtnGhost,
   expressBtnPrimary,
+  expressBtnSecondary,
   expressCard,
   expressCardBody,
   expressPageWrap,
@@ -18,17 +22,43 @@ import {
   getCasoSuraById,
   guardarInformeUnicoEnCasoSura,
   guardarLiquidadorEnCasoSura,
+  guardarSeccionCasoSura,
 } from '../../services/segurosSuraService.js';
-import { calcularLiquidacionSura } from './liquidadorSuraHelpers.js';
+import { calcularLiquidacionSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
+import { descargarFormatoAgilSuraExcel } from './generarFormatoAgilSuraExcel.js';
 import useSuraCasoAutosave from '../../hooks/useSuraCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
 export const TABS_SURA = {
-  LIQUIDADOR: 'liquidador',
-  INFORME: 'informe',
+  INFORME_AGIL: 'informe-agil',
+  PRESUPUESTO: 'presupuesto',
+  FOTOS: 'fotos',
+  DOCUMENTOS: 'documentos',
+  SALVAMENTO: 'salvamento',
+  /** alias legado */
+  LIQUIDADOR: 'presupuesto',
+  INFORME: 'documentos',
 };
+
+const TABS_ORDEN = [
+  TABS_SURA.INFORME_AGIL,
+  TABS_SURA.PRESUPUESTO,
+  TABS_SURA.FOTOS,
+  TABS_SURA.DOCUMENTOS,
+  TABS_SURA.SALVAMENTO,
+];
+
+function normalizarTab(raw) {
+  if (raw === 'liquidador' || raw === TABS_SURA.PRESUPUESTO) return TABS_SURA.PRESUPUESTO;
+  if (raw === 'informe' || raw === 'informe-unico' || raw === TABS_SURA.DOCUMENTOS) {
+    return TABS_SURA.DOCUMENTOS;
+  }
+  if (raw === TABS_SURA.FOTOS) return TABS_SURA.FOTOS;
+  if (raw === TABS_SURA.SALVAMENTO) return TABS_SURA.SALVAMENTO;
+  return TABS_SURA.INFORME_AGIL;
+}
 
 const pillClass = (activo) =>
   `rounded-lg px-4 py-2 font-body text-sm font-semibold transition ${
@@ -38,8 +68,8 @@ const pillClass = (activo) =>
   }`;
 
 /**
- * Workspace Sura: un solo caso con menú de pills
- * — Liquidador | Informe único —
+ * Workspace Sura: Formato ágil
+ * 1 Informe ágil · 2 Presupuesto · 3 Fotos · 4 Documentos · 5 Salvamento
  */
 export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const { t } = useTranslation();
@@ -49,18 +79,15 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
   const tabFromQuery = searchParams.get('tab');
 
-  const tabActivo = useMemo(() => {
-    const raw = tabFromQuery || tabInicial || TABS_SURA.LIQUIDADOR;
-    return raw === TABS_SURA.INFORME || raw === 'informe-unico'
-      ? TABS_SURA.INFORME
-      : TABS_SURA.LIQUIDADOR;
-  }, [tabInicial, tabFromQuery]);
+  const tabActivo = useMemo(
+    () => normalizarTab(tabFromQuery || tabInicial || TABS_SURA.INFORME_AGIL),
+    [tabInicial, tabFromQuery]
+  );
 
-  // Sincroniza ?tab= al entrar por rutas legacy (/liquidador, /informe-unico)
   useEffect(() => {
     if (tabFromQuery || !tabInicial) return;
     const next = new URLSearchParams(searchParams);
-    next.set('tab', tabInicial === TABS_SURA.INFORME ? TABS_SURA.INFORME : TABS_SURA.LIQUIDADOR);
+    next.set('tab', normalizarTab(tabInicial));
     setSearchParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -69,18 +96,39 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const [liquidadorState, setLiquidadorState] = useState(null);
   const [totalesState, setTotalesState] = useState(null);
   const [informeState, setInformeState] = useState(null);
+  const [informeAgilState, setInformeAgilState] = useState(null);
+  const [salvamentoState, setSalvamentoState] = useState(null);
   const [cargandoCaso, setCargandoCaso] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
 
   const casoId = casoSura?._id || casoIdFromQuery || null;
 
+  const aplicarCasoCargado = (caso) => {
+    setCasoSura(caso);
+    const liq = mapCasoSuraALiquidador(caso || {});
+    setLiquidadorState(liq);
+    setTotalesState(calcularLiquidacionSura(liq));
+  };
+
+  const casoConSecciones = useCallback(
+    () => ({
+      ...(casoSura || {}),
+      informeAgil: informeAgilState || casoSura?.informeAgil,
+      salvamento: salvamentoState || casoSura?.salvamento,
+      liquidador: liquidadorState || casoSura?.liquidador,
+      informeUnico: informeState || casoSura?.informeUnico,
+    }),
+    [casoSura, informeAgilState, salvamentoState, liquidadorState, informeState]
+  );
+
   useEffect(() => {
     let cancelado = false;
     async function cargar() {
       if (!casoIdFromQuery && location.state?.casoSura) {
-        setCasoSura(location.state.casoSura);
+        aplicarCasoCargado(location.state.casoSura);
         return;
       }
       if (!casoIdFromQuery) return;
@@ -88,7 +136,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
       setError('');
       try {
         const caso = await getCasoSuraById(casoIdFromQuery);
-        if (!cancelado) setCasoSura(caso);
+        if (!cancelado) aplicarCasoCargado(caso);
       } catch (err) {
         if (!cancelado) setError(err.message || t('segurosSura.workspace.loadError'));
       } finally {
@@ -141,22 +189,15 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
         casoId,
         liquidador,
         totales,
-        casoBase: casoSura || {},
+        casoBase: casoConSecciones(),
       });
       setCasoSura(actualizado);
       setMensaje(t('segurosSura.settlement.savedMessage'));
-      setAutosaveUiStatus({
-        state: 'synced',
-        pendingCount: 0,
-        message: 'Sincronizado',
-      });
+      setAutosaveUiStatus({ state: 'synced', pendingCount: 0, message: 'Sincronizado' });
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosSura.settlement.saveError'));
-      setAutosaveUiStatus({
-        state: 'error',
-        message: err.message || 'Error al sincronizar',
-      });
+      setAutosaveUiStatus({ state: 'error', message: err.message || 'Error al sincronizar' });
     } finally {
       setGuardando(false);
     }
@@ -179,31 +220,124 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
       const actualizado = await guardarInformeUnicoEnCasoSura({
         casoId,
         informeUnico: informe,
-        casoBase: casoSura || {},
+        casoBase: casoConSecciones(),
       });
       setCasoSura(actualizado);
       setMensaje(t('segurosSura.reportUnique.savedMessage'));
-      setAutosaveUiStatus({
-        state: 'synced',
-        pendingCount: 0,
-        message: 'Sincronizado',
-      });
+      setAutosaveUiStatus({ state: 'synced', pendingCount: 0, message: 'Sincronizado' });
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosSura.reportUnique.saveError'));
-      setAutosaveUiStatus({
-        state: 'error',
-        message: err.message || 'Error al sincronizar',
+      setAutosaveUiStatus({ state: 'error', message: err.message || 'Error al sincronizar' });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleGuardarInformeAgil = async (agilArg) => {
+    if (!casoId) {
+      setError(t('segurosSura.informeAgil.savedCaseRequired'));
+      return;
+    }
+    const informeAgil = agilArg || informeAgilState;
+    if (!informeAgil) {
+      setError(t('segurosSura.informeAgil.noData'));
+      return;
+    }
+    setGuardando(true);
+    setError('');
+    setMensaje('');
+    try {
+      const actualizado = await guardarSeccionCasoSura({
+        casoId,
+        casoBase: casoConSecciones(),
+        patch: { informeAgil },
       });
+      setCasoSura(actualizado);
+      setMensaje(t('segurosSura.informeAgil.savedMessage'));
+      setAutosaveUiStatus({ state: 'synced', pendingCount: 0, message: 'Sincronizado' });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('segurosSura.informeAgil.saveError'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleGuardarSalvamento = async (salArg) => {
+    if (!casoId) {
+      setError(t('segurosSura.salvamento.savedCaseRequired'));
+      return;
+    }
+    const salvamento = salArg || salvamentoState;
+    if (!salvamento) {
+      setError(t('segurosSura.salvamento.noData'));
+      return;
+    }
+    setGuardando(true);
+    setError('');
+    setMensaje('');
+    try {
+      const actualizado = await guardarSeccionCasoSura({
+        casoId,
+        casoBase: casoConSecciones(),
+        patch: { salvamento },
+      });
+      setCasoSura(actualizado);
+      setMensaje(t('segurosSura.salvamento.savedMessage'));
+      setAutosaveUiStatus({ state: 'synced', pendingCount: 0, message: 'Sincronizado' });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('segurosSura.salvamento.saveError'));
     } finally {
       setGuardando(false);
     }
   };
 
   const handleGuardarActual = () => {
-    if (tabActivo === TABS_SURA.INFORME) return handleGuardarInforme();
+    if (tabActivo === TABS_SURA.DOCUMENTOS) return handleGuardarInforme();
+    if (tabActivo === TABS_SURA.INFORME_AGIL) return handleGuardarInformeAgil();
+    if (tabActivo === TABS_SURA.SALVAMENTO) return handleGuardarSalvamento();
+    if (tabActivo === TABS_SURA.FOTOS) return handleGuardarLiquidador();
     return handleGuardarLiquidador();
   };
+
+  const handleExcelAgil = async () => {
+    setError('');
+    setExportando(true);
+    try {
+      await descargarFormatoAgilSuraExcel({
+        casoSura: casoConSecciones(),
+        informeAgil: informeAgilState,
+        liquidador: liquidadorState,
+        totales: totalesState,
+        informeUnico: informeState,
+        salvamento: salvamentoState,
+      });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('segurosSura.workspace.excelError'));
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const puedeGuardar = useMemo(() => {
+    if (!casoId || guardando) return false;
+    if (tabActivo === TABS_SURA.DOCUMENTOS) return Boolean(informeState);
+    if (tabActivo === TABS_SURA.INFORME_AGIL) return Boolean(informeAgilState);
+    if (tabActivo === TABS_SURA.SALVAMENTO) return Boolean(salvamentoState);
+    if (tabActivo === TABS_SURA.FOTOS) return Boolean(liquidadorState);
+    return Boolean(liquidadorState);
+  }, [
+    casoId,
+    guardando,
+    tabActivo,
+    informeState,
+    informeAgilState,
+    salvamentoState,
+    liquidadorState,
+  ]);
 
   const onCasoDesdeAutosave = useCallback((actualizado) => {
     if (actualizado) setCasoSura(actualizado);
@@ -216,9 +350,19 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
     liquidadorState,
     totalesState,
     informeState,
+    informeAgilState,
+    salvamentoState,
     onCasoActualizado: onCasoDesdeAutosave,
     enabled: Boolean(casoId) && !cargandoCaso,
   });
+
+  const etiquetasTab = {
+    [TABS_SURA.INFORME_AGIL]: t('segurosSura.workspace.tabAgileReport'),
+    [TABS_SURA.PRESUPUESTO]: t('segurosSura.workspace.tabBudget'),
+    [TABS_SURA.FOTOS]: t('segurosSura.workspace.tabPhotos'),
+    [TABS_SURA.DOCUMENTOS]: t('segurosSura.workspace.tabDocuments'),
+    [TABS_SURA.SALVAMENTO]: t('segurosSura.workspace.tabSalvage'),
+  };
 
   return (
     <div className={`${root} ${expressScope}`}>
@@ -237,11 +381,21 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
             {casoId && (
               <button
                 type="button"
+                className={expressBtnSecondary}
+                disabled={exportando}
+                onClick={handleExcelAgil}
+              >
+                <FaFileExcel />{' '}
+                {exportando
+                  ? t('segurosSura.workspace.exporting')
+                  : t('segurosSura.workspace.downloadAgileExcel')}
+              </button>
+            )}
+            {casoId && (
+              <button
+                type="button"
                 className={expressBtnPrimary}
-                disabled={
-                  guardando ||
-                  (tabActivo === TABS_SURA.INFORME ? !informeState : !liquidadorState)
-                }
+                disabled={!puedeGuardar}
                 onClick={handleGuardarActual}
               >
                 <FaSave />{' '}
@@ -269,35 +423,42 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
           </p>
         )}
 
-        {mensaje && (
-          <p className={`mb-4 ${expressAlertSuccess}`}>{mensaje}</p>
-        )}
-        {error && (
-          <p className={`mb-4 ${expressAlertError}`}>{error}</p>
-        )}
+        {mensaje && <p className={`mb-4 ${expressAlertSuccess}`}>{mensaje}</p>}
+        {error && <p className={`mb-4 ${expressAlertError}`}>{error}</p>}
 
         <div className="mb-4 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={pillClass(tabActivo === TABS_SURA.LIQUIDADOR)}
-            onClick={() => setTab(TABS_SURA.LIQUIDADOR)}
-          >
-            1. {t('segurosSura.workspace.tabSettlement')}
-          </button>
-          <button
-            type="button"
-            className={pillClass(tabActivo === TABS_SURA.INFORME)}
-            onClick={() => setTab(TABS_SURA.INFORME)}
-          >
-            2. {t('segurosSura.workspace.tabUniqueReport')}
-          </button>
+          {TABS_ORDEN.map((tab, idx) => (
+            <button
+              key={tab}
+              type="button"
+              className={pillClass(tabActivo === tab)}
+              onClick={() => setTab(tab)}
+            >
+              {idx + 1}. {etiquetasTab[tab]}
+            </button>
+          ))}
         </div>
 
         <div className={expressCard}>
           <div className={expressCardBody}>
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('segurosSura.workspace.loading')}</p>
-            ) : tabActivo === TABS_SURA.INFORME ? (
+            ) : tabActivo === TABS_SURA.INFORME_AGIL ? (
+              <InformeAgilSura
+                casoSura={casoSura}
+                liquidador={liquidadorState}
+                totales={totalesState}
+                salvamento={salvamentoState}
+                onEstadoChange={setInformeAgilState}
+                onGuardarEnCaso={casoId ? handleGuardarInformeAgil : undefined}
+                guardandoCaso={guardando}
+              />
+            ) : tabActivo === TABS_SURA.FOTOS ? (
+              <FotosLiquidadorSura
+                liquidador={liquidadorState || casoSura?.liquidador}
+                onIrPresupuesto={() => setTab(TABS_SURA.PRESUPUESTO)}
+              />
+            ) : tabActivo === TABS_SURA.DOCUMENTOS ? (
               <InformeUnicoSegurosSura
                 casoSura={casoSura}
                 onEstadoChange={setInformeState}
@@ -306,6 +467,14 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
+                onCasoChange={setCasoSura}
+                guardandoCaso={guardando}
+              />
+            ) : tabActivo === TABS_SURA.SALVAMENTO ? (
+              <SalvamentoSura
+                casoSura={casoSura}
+                onEstadoChange={setSalvamentoState}
+                onGuardarEnCaso={casoId ? handleGuardarSalvamento : undefined}
                 onCasoChange={setCasoSura}
                 guardandoCaso={guardando}
               />
@@ -328,11 +497,10 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   );
 }
 
-/** Redirecciones desde rutas antiguas hacia el workspace unificado. */
 export function RedirectSuraLiquidador() {
-  return <CasoSegurosSuraWorkspace tabInicial={TABS_SURA.LIQUIDADOR} />;
+  return <CasoSegurosSuraWorkspace tabInicial={TABS_SURA.PRESUPUESTO} />;
 }
 
 export function RedirectSuraInforme() {
-  return <CasoSegurosSuraWorkspace tabInicial={TABS_SURA.INFORME} />;
+  return <CasoSegurosSuraWorkspace tabInicial={TABS_SURA.DOCUMENTOS} />;
 }

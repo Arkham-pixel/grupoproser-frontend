@@ -280,6 +280,11 @@
     "timeProtocol": "Protocolo de tiempos",
     "sessionLabel": "Sesión:",
     "autoLogoutIn": "Cierre automático en {{time}}",
+    "sessionWarningTitle": "La sesión está por expirar",
+    "sessionWarningMessage": "Quedan 30 minutos o menos para el cierre automático. Guarde su trabajo para no perder cambios.",
+    "sessionWarningContinue": "Entendido",
+    "sessionWarningClose": "Cerrar aviso",
+    "sessionWarningLoggingOut": "Cerrando sesión…",
     "expandMenu": "Expandir menú — ARNALD Data Flow",
     "expand": "Expandir",
     "sideMenu": "Menú lateral",
@@ -3580,7 +3585,12 @@
       "followUpComments": "Comentarios del seguimiento",
       "followUpPlaceholder": "Detalle del avance, estado o observaciones...",
       "addFollowUp": "Agregar seguimiento a recomendación {{n}}",
-      "addRecommendation": "Agregar recomendación"
+      "addRecommendation": "Agregar recomendación",
+      "reportDescription": "Recomendaciones identificadas, estado de avance y seguimientos registrados.",
+      "noRecommendationsReport": "No hay recomendaciones registradas.",
+      "noRecommendationText": "Sin texto de recomendación.",
+      "noFollowUps": "No hay seguimientos registrados.",
+      "issuedOn": "Fecha"
     },
     "exec": {
       "kicker": "Matriz de Riesgos Avanzada",

@@ -33,6 +33,12 @@ import {
 } from './alfaGeocodeHelpers.js';
 
 const RADIOS = [
+  { value: '0.1', label: '100 m' },
+  { value: '0.2', label: '200 m' },
+  { value: '0.3', label: '300 m' },
+  { value: '0.5', label: '500 m' },
+  { value: '1', label: '1 km' },
+  { value: '1.5', label: '1.5 km' },
   { value: '2', label: '2 km' },
   { value: '2.5', label: '2.5 km' },
   { value: '3', label: '3 km' },
@@ -44,7 +50,7 @@ export default function BloquesCercaniaSegurosAlfa() {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
   const { isLoaded } = useJsApiLoader(googleMapsLoaderOptions(apiKey));
 
-  const [radioKm, setRadioKm] = useState('2.5');
+  const [radioKm, setRadioKm] = useState('0.5');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
@@ -94,13 +100,13 @@ export default function BloquesCercaniaSegurosAlfa() {
         });
         continue;
       }
-      const geo = await geocodeConGooglePreciso(query);
+      const geo = await geocodeConGooglePreciso(query, caso);
       items.push({
         casoId: caso._id,
         lat: geo.lat,
         lng: geo.lng,
         geocodeStatus: geo.status,
-        geocodeQuery: query,
+        geocodeQuery: geo.geocodeQuery || query,
         locationType: geo.locationType || '',
         formattedAddress: geo.formattedAddress || '',
         placeTypes: geo.placeTypes || [],
@@ -121,18 +127,42 @@ export default function BloquesCercaniaSegurosAlfa() {
     setError('');
     setMensaje('');
     try {
-      let resumen;
       try {
-        resumen = await postGeocodePendientesAlfa({ limit: 80, force: false });
-        if (resumen?.resultados?.some((r) => String(r.error || '').includes('GOOGLE_MAPS_API_KEY'))) {
-          throw new Error('GOOGLE_MAPS_API_KEY no configurada en el backend');
+        let ok = 0;
+        let failed = 0;
+        let sin = 0;
+        let quedan = 1;
+        let rondas = 0;
+        while (quedan > 0 && rondas < 12) {
+          rondas += 1;
+          const resumen = await postGeocodePendientesAlfa({ limit: 120, force: false });
+          if (resumen?.resultados?.some((r) => String(r.error || '').includes('GOOGLE_MAPS_API_KEY'))) {
+            throw new Error('GOOGLE_MAPS_API_KEY no configurada en el backend');
+          }
+          ok += resumen.ok || 0;
+          failed += resumen.failed || 0;
+          sin += resumen.sinDireccion || 0;
+          quedan = Number(resumen.quedanPendientes || 0);
+          if ((resumen.ok || 0) + (resumen.failed || 0) + (resumen.sinDireccion || 0) === 0) break;
+          setMensaje(
+            t('segurosAlfa.bloques.geocodeProgress', {
+              ok,
+              failed,
+              sin,
+              quedan,
+              round: rondas,
+            })
+          );
         }
         setMensaje(
           t('segurosAlfa.bloques.geocodeDone', {
-            ok: resumen.ok || 0,
-            failed: resumen.failed || 0,
-            sin: resumen.sinDireccion || 0,
-          })
+            ok,
+            failed,
+            sin,
+          }) +
+            (quedan > 0
+              ? ` · ${t('segurosAlfa.bloques.geocodeRemaining', { count: quedan })}`
+              : '')
         );
       } catch (backendErr) {
         console.warn('Geocode backend falló, intento cliente:', backendErr);

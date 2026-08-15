@@ -5,13 +5,15 @@ import { setAutosaveUiStatus } from '../services/autosaveOfflineService.js';
 import {
   guardarInformeUnicoEnCasoSura,
   guardarLiquidadorEnCasoSura,
+  guardarSeccionCasoSura,
 } from '../services/segurosSuraService.js';
 
-const TAB_INFORME = 'informe';
+const TAB_DOCUMENTOS = new Set(['informe', 'informe-unico', 'documentos']);
+const TAB_AGIL = new Set(['informe-agil']);
+const TAB_SALVAMENTO = new Set(['salvamento']);
 
 /**
- * Autoguardado del workspace Sura (liquidador / informe)
- * hacia la API, actualizando el indicador de sincronización.
+ * Autoguardado del workspace Sura (presupuesto / documentos / informe ágil / salvamento).
  */
 export default function useSuraCasoAutosave({
   casoId,
@@ -20,22 +22,22 @@ export default function useSuraCasoAutosave({
   liquidadorState,
   totalesState,
   informeState,
+  informeAgilState,
+  salvamentoState,
   onCasoActualizado,
   enabled = true,
 } = {}) {
   const casoRef = useRef(casoSura);
   const savingRef = useRef(false);
   const pendingFlushRef = useRef(null);
-  const lastLiqSnap = useRef('');
-  const lastInfSnap = useRef('');
+  const lastSnap = useRef({ liquidador: '', informe: '', agil: '', salvamento: '' });
   const readyRef = useRef(false);
 
   casoRef.current = casoSura;
 
   useEffect(() => {
     readyRef.current = false;
-    lastLiqSnap.current = '';
-    lastInfSnap.current = '';
+    lastSnap.current = { liquidador: '', informe: '', agil: '', salvamento: '' };
   }, [casoId]);
 
   useEffect(() => {
@@ -43,18 +45,46 @@ export default function useSuraCasoAutosave({
 
     const timers = [];
 
+    const persist = async (payload) => {
+      const base = casoRef.current || {};
+      if (payload.tipo === 'informe') {
+        return guardarInformeUnicoEnCasoSura({
+          casoId,
+          informeUnico: payload.data,
+          casoBase: base,
+        });
+      }
+      if (payload.tipo === 'agil') {
+        return guardarSeccionCasoSura({
+          casoId,
+          casoBase: base,
+          patch: { informeAgil: payload.data },
+        });
+      }
+      if (payload.tipo === 'salvamento') {
+        return guardarSeccionCasoSura({
+          casoId,
+          casoBase: base,
+          patch: { salvamento: payload.data },
+        });
+      }
+      return guardarLiquidadorEnCasoSura({
+        casoId,
+        liquidador: payload.data,
+        totales: payload.totales || {},
+        casoBase: base,
+      });
+    };
+
     const scheduleSave = (payload) => {
       if (!payload?.data) return;
       const snap = JSON.stringify(payload.data);
-      const isInf = payload.tipo === 'informe';
-      const prevSnap = isInf ? lastInfSnap.current : lastLiqSnap.current;
+      const key = payload.tipo;
+      const prevSnap = lastSnap.current[key];
 
-      if (!readyRef.current) {
-        readyRef.current = true;
-      }
+      if (!readyRef.current) readyRef.current = true;
       if (!prevSnap) {
-        if (isInf) lastInfSnap.current = snap;
-        else lastLiqSnap.current = snap;
+        lastSnap.current[key] = snap;
         return;
       }
       if (snap === prevSnap) return;
@@ -76,24 +106,8 @@ export default function useSuraCasoAutosave({
         savingRef.current = true;
         setAutosaveUiStatus({ state: 'saving', message: 'Guardando…' });
         try {
-          const base = casoRef.current || {};
-          let actualizado;
-          if (payload.tipo === 'informe') {
-            actualizado = await guardarInformeUnicoEnCasoSura({
-              casoId,
-              informeUnico: payload.data,
-              casoBase: base,
-            });
-            lastInfSnap.current = JSON.stringify(payload.data);
-          } else {
-            actualizado = await guardarLiquidadorEnCasoSura({
-              casoId,
-              liquidador: payload.data,
-              totales: payload.totales || {},
-              casoBase: base,
-            });
-            lastLiqSnap.current = JSON.stringify(payload.data);
-          }
+          const actualizado = await persist(payload);
+          lastSnap.current[key] = JSON.stringify(payload.data);
           onCasoActualizado?.(actualizado);
           setAutosaveUiStatus({
             state: 'synced',
@@ -114,14 +128,16 @@ export default function useSuraCasoAutosave({
     };
 
     if (liquidadorState) {
-      scheduleSave({
-        tipo: 'liquidador',
-        data: liquidadorState,
-        totales: totalesState,
-      });
+      scheduleSave({ tipo: 'liquidador', data: liquidadorState, totales: totalesState });
     }
-    if (tabActivo === TAB_INFORME && informeState) {
+    if (TAB_DOCUMENTOS.has(tabActivo) && informeState) {
       scheduleSave({ tipo: 'informe', data: informeState });
+    }
+    if (TAB_AGIL.has(tabActivo) && informeAgilState) {
+      scheduleSave({ tipo: 'agil', data: informeAgilState });
+    }
+    if (TAB_SALVAMENTO.has(tabActivo) && salvamentoState) {
+      scheduleSave({ tipo: 'salvamento', data: salvamentoState });
     }
 
     return () => timers.forEach((t) => clearTimeout(t));
@@ -132,6 +148,8 @@ export default function useSuraCasoAutosave({
     liquidadorState,
     totalesState,
     informeState,
+    informeAgilState,
+    salvamentoState,
     onCasoActualizado,
   ]);
 
@@ -153,7 +171,18 @@ export default function useSuraCasoAutosave({
             informeUnico: payload.data,
             casoBase: base,
           });
-          lastInfSnap.current = JSON.stringify(payload.data);
+        } else if (payload.tipo === 'agil') {
+          actualizado = await guardarSeccionCasoSura({
+            casoId,
+            casoBase: base,
+            patch: { informeAgil: payload.data },
+          });
+        } else if (payload.tipo === 'salvamento') {
+          actualizado = await guardarSeccionCasoSura({
+            casoId,
+            casoBase: base,
+            patch: { salvamento: payload.data },
+          });
         } else {
           actualizado = await guardarLiquidadorEnCasoSura({
             casoId,
@@ -161,8 +190,8 @@ export default function useSuraCasoAutosave({
             totales: payload.totales || {},
             casoBase: base,
           });
-          lastLiqSnap.current = JSON.stringify(payload.data);
         }
+        lastSnap.current[payload.tipo] = JSON.stringify(payload.data);
         onCasoActualizado?.(actualizado);
         setAutosaveUiStatus({
           state: 'synced',

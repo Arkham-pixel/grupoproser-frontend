@@ -400,6 +400,18 @@ export const guardarInformeUnicoEnCasoSura = async ({
   return actualizarCasoSura(casoId, payload);
 };
 
+/** Guarda una sección extra del caso (informe ágil, salvamento, etc.) sin pisar archivos. */
+export const guardarSeccionCasoSura = async ({ casoId, casoBase = {}, patch = {} }) => {
+  if (!casoId) throw new Error('El caso Sura debe estar guardado antes de actualizar la sección.');
+  const payload = { ...casoBase, ...patch };
+  delete payload._id;
+  delete payload.__v;
+  delete payload.createdAt;
+  delete payload.updatedAt;
+  delete payload.archivos;
+  return actualizarCasoSura(casoId, payload);
+};
+
 /** GET /bloques-cercania — agrupa casos por cercanía (solo ARNALD). */
 export const getBloquesCercaniaSura = async ({ radioKm = 2.5, ciudad = '', estado = '' } = {}) => {
   const queryString = buildQueryString({ radioKm, ciudad, estado, _t: Date.now() });

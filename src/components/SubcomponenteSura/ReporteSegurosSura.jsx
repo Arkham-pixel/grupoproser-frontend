@@ -484,7 +484,7 @@ export default function ReporteSegurosSura() {
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
-                            navigate(`/sura/caso?casoId=${item._id}&tab=liquidador`, {
+                            navigate(`/sura/caso?casoId=${item._id}&tab=informe-agil`, {
                               state: { casoSura: item },
                             })
                           }

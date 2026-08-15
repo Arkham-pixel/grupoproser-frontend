@@ -545,8 +545,9 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
 
 /**
  * Excel liquidador Sura = plantilla oficial Evaluación Sísmica NSR-10 rellenada.
+ * Hojas: Listas | Portada | Evaluación | Dictamen | Presupuesto
  */
-export async function generarLiquidadorSuraExcelBlob(liquidador) {
+export async function generarWorkbookLiquidadorSuraNsr(liquidador) {
   const workbook = await cargarPlantillaNsr10();
   const { hojaEval, hojaPortada, hojaPres, itemsPorFila } = rellenarPlantillaNsr10(
     workbook,
@@ -569,7 +570,6 @@ export async function generarLiquidadorSuraExcelBlob(liquidador) {
   colocarLogosEnHoja(hojaEval, logoIds, layoutEval);
 
   if (hojaPortada) {
-    // Portada: fila 3 suele estar vacía → usarla como franja de logos
     const row3 = hojaPortada.getRow(3);
     row3.height = Math.max(row3.height || 0, 72);
     if (logoIds.proserId != null) {
@@ -604,7 +604,11 @@ export async function generarLiquidadorSuraExcelBlob(liquidador) {
   }
 
   await insertarFotosEnColumna(workbook, hojaEval, itemsPorFila);
+  return workbook;
+}
 
+export async function generarLiquidadorSuraExcelBlob(liquidador) {
+  const workbook = await generarWorkbookLiquidadorSuraNsr(liquidador);
   const enc = liquidador?.encabezado || {};
   const buffer = await workbook.xlsx.writeBuffer();
   const safe = String(enc.siniestro || enc.consecutivo || enc.poliza || 'NSR10')

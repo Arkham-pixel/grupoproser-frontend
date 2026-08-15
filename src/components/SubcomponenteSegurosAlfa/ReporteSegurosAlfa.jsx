@@ -12,6 +12,7 @@ import ArchiveroSegurosAlfa from './ArchiveroSegurosAlfa.jsx';
 import AccionesAlfaMenu from './AccionesAlfaMenu.jsx';
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import MapaBloquesAlfaPanel from './MapaBloquesAlfaPanel.jsx';
+import AlfaCondicionesMenu from './AlfaCondicionesMenu.jsx';
 import {
   coordsUbicacionPredio,
   urlGoogleMaps,
@@ -352,6 +353,7 @@ export default function ReporteSegurosAlfa() {
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
+            <AlfaCondicionesMenu />
             <button type="button" className={expressBtnSecondary} onClick={exportarExcel} disabled={loading}>
               <FaFileExcel />
               {t('segurosAlfa.report.exportExcel')}

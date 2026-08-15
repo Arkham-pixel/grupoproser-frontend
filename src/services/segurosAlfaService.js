@@ -442,3 +442,29 @@ export const postUbicacionesPredioAlfa = async (items = []) => {
   }
   return payload?.data ?? payload;
 };
+
+/** GET /condiciones — PDFs raíz SharePoint SEGUROS ALFA/PÓLIZAS */
+export const getCondicionesAlfa = async () => {
+  const response = await fetch(`${ALFA_API_URL}/condiciones`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al listar condiciones (${response.status})`);
+  }
+  return payload;
+};
+
+/** URL autenticada (abrir en nueva pestaña vía blob). */
+export const fetchCondicionAlfaBlobUrl = async (itemId) => {
+  const response = await fetch(
+    `${ALFA_API_URL}/condiciones/${encodeURIComponent(itemId)}/download`,
+    { headers: authHeaders() }
+  );
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload?.error || `Error al abrir documento (${response.status})`);
+  }
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+};
