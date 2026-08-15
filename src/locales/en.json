@@ -4692,6 +4692,12 @@
         "secciones_del_caso": "Case sections",
         "desea_cancelar_el_proceso_elija_si_para_salir_o_no_para_": "Do you want to cancel the process? Choose Yes to exit or No to continue.",
         "enviar_a_riesgos": "Send to Risks",
+        "enviar_a_sura": "Send to SURA",
+        "enviar_a_sura_hint": "Copies this case to SURA and deletes it from Complex. Attachments are kept.",
+        "enviar_a_sura_titulo": "Send case to SURA",
+        "enviar_a_sura_confirmar": "This case will be copied to the SURA module with a new consecutive number and deleted from Complex. Attachments are kept. This action cannot be undone.",
+        "si_enviar_sura": "Yes, send to SURA",
+        "enviando_a_sura": "Sending…",
         "caso_guardado": "Case saved",
         "guardar": "Save",
         "texto": "(",
@@ -4773,7 +4779,10 @@
         "no_archivos_evidencia": "No evidence files found. Please upload the documents first.",
         "datos_restaurados": "✅ Data restored successfully",
         "docs_en_carga": "Documents are still uploading. Wait until they finish before saving the case.",
-        "autoguardado_rechazado": "Autosave rejected by the server"
+        "autoguardado_rechazado": "Autosave rejected by the server",
+        "mover_sura_sin_id": "Save the case in Complex before sending it to SURA.",
+        "mover_sura_ok": "The case was sent to SURA as {{consecutivo}} and removed from Complex.",
+        "mover_sura_error": "The case could not be sent to SURA."
       },
       "gestion_estados_complex": {
         "gestion_de_estados_complex": "📋 COMPLEX Status Management",

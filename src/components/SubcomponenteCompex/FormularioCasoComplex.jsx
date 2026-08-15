@@ -20,7 +20,7 @@ import {
 import { ComplexFormActions, ComplexFormTabs } from './FacturacionHelpers';
 import AutoSaveNotification from '../AutoSave/AutoSaveNotification';
 import AutoSaveRestoreDialog from '../AutoSave/AutoSaveRestoreDialog';
-import { getCasoComplex, updateCasoComplex } from '../../services/complexService.js';
+import { getCasoComplex, updateCasoComplex, moverCasoComplexASura } from '../../services/complexService.js';
 import { getCasoSuraById, actualizarCasoSura } from '../../services/segurosSuraService.js';
 import { calcularTotalesControlHoras, controlHorasTieneDatos, resolverControlHorasDesdeEnvios } from './controlHoras/controlHorasUtils';
 import { appendUploadFile } from '../../utils/sanitizeUploadFileName.js';
@@ -77,6 +77,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
   const location = useLocation();
   const { id } = useParams();
   const [tabActiva, setTabActiva] = useState('datosGenerales');
+  const [moviendoASura, setMoviendoASura] = useState(false);
 
   const FORM_TABS = useMemo(
     () => {
@@ -3303,6 +3304,50 @@ clearSavedData();
     };
   }, [autoSaveKey, autoguardadoEfectivo, formData._id, initialData?._id, id, hayActualizacionRemota]);
 
+  const handleMoverASura = async () => {
+    if (moviendoASura || esSura) return;
+    const casoId = formData._id || initialData?._id || id;
+    if (!casoId) {
+      alert(t('complex.ui.formulario_caso_complex.mover_sura_sin_id'));
+      return;
+    }
+    if (Object.values(cargandoAdjuntos || {}).some(Boolean)) {
+      alert(t('complex.ui.formulario_caso_complex.docs_en_carga'));
+      return;
+    }
+
+    setMoviendoASura(true);
+    try {
+      const payload = mapFormDataToBackend(formData);
+      const datosBase = initialData || {};
+      const normalizado = prepararPayloadParaComplex(payload, datosBase);
+
+      try {
+        await actualizarCasoPorServicio(casoId, normalizado);
+      } catch (errorGuardar) {
+        console.warn('No se pudo guardar el caso Complex antes de enviarlo a SURA:', errorGuardar);
+      }
+
+      const resultado = await moverCasoComplexASura(casoId, normalizado);
+      try {
+        localStorage.removeItem(storageKey);
+      } catch {
+        /* ignore */
+      }
+      const consecutivo = resultado?.consecutivo || resultado?.data?.consecutivo || '';
+      const mensaje = t('complex.ui.formulario_caso_complex.mover_sura_ok', {
+        consecutivo: consecutivo || 'SURA',
+      });
+      alert(resultado?.advertencia ? `${mensaje}\n\n${resultado.advertencia}` : mensaje);
+      navigate('/sura/reporte', { replace: true });
+    } catch (error) {
+      console.error('Error enviando caso Complex a SURA:', error);
+      alert(error?.message || t('complex.ui.formulario_caso_complex.mover_sura_error'));
+    } finally {
+      setMoviendoASura(false);
+    }
+  };
+
   return (
     <>
     <div className={complexFormRoot}>
@@ -3310,7 +3355,13 @@ clearSavedData();
         <ComplexFormTabs tabs={FORM_TABS} activeId={tabActiva} onChange={setTabActiva} />
         <ComplexFormActions
           onCancel={onCancel || (() => {})}
-          onEnviarRiesgos={handleEnviarARiesgos}
+          onEnviarRiesgos={esSura ? undefined : handleEnviarARiesgos}
+          onMoverASura={
+            !esSura && (formData._id || initialData?._id || id)
+              ? handleMoverASura
+              : undefined
+          }
+          moviendoASura={moviendoASura}
         />
         <div className="min-w-0">
         {tabActiva === 'datosGenerales' && (

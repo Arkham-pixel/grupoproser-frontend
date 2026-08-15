@@ -4686,6 +4686,12 @@
         "secciones_del_caso": "Secciones del caso",
         "desea_cancelar_el_proceso_elija_si_para_salir_o_no_para_": "¿Desea cancelar el proceso? Elija Sí para salir o No para continuar.",
         "enviar_a_riesgos": "Enviar a Riesgos",
+        "enviar_a_sura": "Enviar a SURA",
+        "enviar_a_sura_hint": "Copia este caso a SURA y lo elimina de Complex. Los documentos se conservan.",
+        "enviar_a_sura_titulo": "Enviar caso a SURA",
+        "enviar_a_sura_confirmar": "Este caso se copiará al módulo SURA con un consecutivo nuevo y se eliminará de Complex. Los documentos adjuntos se conservan. Esta acción no se puede deshacer.",
+        "si_enviar_sura": "Sí, enviar a SURA",
+        "enviando_a_sura": "Enviando…",
         "caso_guardado": "Caso guardado",
         "guardar": "Guardar",
         "texto": "(",
@@ -4767,7 +4773,10 @@
         "no_archivos_evidencia": "No se encontraron archivos de evidencia. Por favor, suba los documentos primero.",
         "datos_restaurados": "✅ Datos restaurados exitosamente",
         "docs_en_carga": "Hay documentos en proceso de carga. Espera a que terminen para guardar el caso.",
-        "autoguardado_rechazado": "Autoguardado rechazado por el servidor"
+        "autoguardado_rechazado": "Autoguardado rechazado por el servidor",
+        "mover_sura_sin_id": "Guarde el caso en Complex antes de enviarlo a SURA.",
+        "mover_sura_ok": "El caso se envió a SURA como {{consecutivo}} y se eliminó de Complex.",
+        "mover_sura_error": "No fue posible enviar el caso a SURA."
       },
       "gestion_estados_complex": {
         "gestion_de_estados_complex": "📋 Gestión de Estados COMPLEX",

@@ -47,6 +47,9 @@ export const complexBtnFormActionSaveHover =
 export const complexBtnFormActionCancelHover =
   'hover:border-fenix-primario hover:bg-fenix-primario hover:text-white dark:hover:border-red-600 dark:hover:bg-red-700';
 
+export const complexBtnFormActionSuraHover =
+  'hover:border-sky-700 hover:bg-sky-700 hover:text-white dark:hover:border-sky-600 dark:hover:bg-sky-600';
+
 /** Popover de ayuda sobre botones del formulario (visible en hover, dentro de la app) */
 export const complexFormHintPopover =
   'absolute bottom-full right-0 z-30 mb-2 w-max max-w-[260px] rounded-xl border border-gray-200 bg-white px-4 py-3 text-center font-body text-xs font-medium leading-snug text-gray-700 shadow-lg dark:border-gray-700 dark:bg-[#252525] dark:text-gray-200';

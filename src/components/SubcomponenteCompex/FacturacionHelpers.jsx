@@ -22,11 +22,12 @@ import {
   complexBtnFormAction,
   complexBtnFormActionCancelHover,
   complexBtnFormActionSaveHover,
+  complexBtnFormActionSuraHover,
   complexFormHintPopover,
 } from './complexFenixUi';
 import { ComplexAvisoModal } from './ComplexUiBlocks';
 
-function FormActionWithHint({ hint, hoverClassName = '', className = '', children, onClick, type = 'button' }) {
+function FormActionWithHint({ hint, hoverClassName = '', className = '', children, onClick, type = 'button', disabled = false }) {
   const [mostrarHint, setMostrarHint] = useState(false);
 
   return (
@@ -37,12 +38,13 @@ function FormActionWithHint({ hint, hoverClassName = '', className = '', childre
     >
       <button
         type={type}
-        className={`${complexBtnFormAction} ${hoverClassName} ${className}`.trim()}
+        disabled={disabled}
+        className={`${complexBtnFormAction} ${hoverClassName} ${className} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`.trim()}
         onClick={onClick}
       >
         {children}
       </button>
-      {mostrarHint && hint && (
+      {mostrarHint && hint && !disabled && (
         <div className={complexFormHintPopover} role="status">
           {hint}
         </div>
@@ -138,14 +140,20 @@ export function ComplexFormTabs({ tabs, activeId, onChange }) {
   );
 }
 
-export function ComplexFormActions({ onCancel, onEnviarRiesgos, cancelLabel }) {
+export function ComplexFormActions({ onCancel, onEnviarRiesgos, onMoverASura, moviendoASura = false, cancelLabel }) {
   const { t } = useTranslation();
   const [modalCancelarAbierto, setModalCancelarAbierto] = useState(false);
+  const [modalSuraAbierto, setModalSuraAbierto] = useState(false);
   const cancelLabelFinal = cancelLabel ?? t('complex.ui.facturacion_helpers.cancelar');
 
   const confirmarCancelar = () => {
     setModalCancelarAbierto(false);
     onCancel?.();
+  };
+
+  const confirmarMoverASura = () => {
+    setModalSuraAbierto(false);
+    onMoverASura?.();
   };
 
   return (
@@ -155,20 +163,35 @@ export function ComplexFormActions({ onCancel, onEnviarRiesgos, cancelLabel }) {
           hint={t("complex.ui.facturacion_helpers.desea_cancelar_el_proceso_elija_si_para_salir_o_no_para_")}
           hoverClassName={complexBtnFormActionCancelHover}
           onClick={() => setModalCancelarAbierto(true)}
+          disabled={moviendoASura}
         >
           {cancelLabelFinal}
         </FormActionWithHint>
         {onEnviarRiesgos && (
           <button
             type="button"
-            className={`${complexBtnFormAction} hover:bg-gray-50 dark:hover:bg-gray-800`}
+            disabled={moviendoASura}
+            className={`${complexBtnFormAction} hover:bg-gray-50 dark:hover:bg-gray-800 ${moviendoASura ? 'cursor-not-allowed opacity-60' : ''}`}
             onClick={onEnviarRiesgos}
           >{t("complex.ui.facturacion_helpers.enviar_a_riesgos")}</button>
+        )}
+        {onMoverASura && (
+          <FormActionWithHint
+            hint={t("complex.ui.facturacion_helpers.enviar_a_sura_hint")}
+            hoverClassName={complexBtnFormActionSuraHover}
+            onClick={() => setModalSuraAbierto(true)}
+            disabled={moviendoASura}
+          >
+            {moviendoASura
+              ? t("complex.ui.facturacion_helpers.enviando_a_sura")
+              : t("complex.ui.facturacion_helpers.enviar_a_sura")}
+          </FormActionWithHint>
         )}
         <FormActionWithHint
           type="submit"
           hint={t("complex.ui.facturacion_helpers.caso_guardado")}
           hoverClassName={complexBtnFormActionSaveHover}
+          disabled={moviendoASura}
         >{t("complex.ui.facturacion_helpers.guardar")}</FormActionWithHint>
       </div>
 
@@ -180,6 +203,17 @@ export function ComplexFormActions({ onCancel, onEnviarRiesgos, cancelLabel }) {
         tipo="warning"
         onConfirm={confirmarCancelar}
         confirmTexto={t('complex.ui.facturacion_helpers.si_cancelar')}
+        cancelTexto={t('complex.ui.facturacion_helpers.no_continuar')}
+        confirmVariant="danger"
+      />
+      <ComplexAvisoModal
+        open={modalSuraAbierto}
+        onClose={() => setModalSuraAbierto(false)}
+        titulo={t('complex.ui.facturacion_helpers.enviar_a_sura_titulo')}
+        mensaje={t('complex.ui.facturacion_helpers.enviar_a_sura_confirmar')}
+        tipo="warning"
+        onConfirm={confirmarMoverASura}
+        confirmTexto={t('complex.ui.facturacion_helpers.si_enviar_sura')}
         cancelTexto={t('complex.ui.facturacion_helpers.no_continuar')}
         confirmVariant="danger"
       />

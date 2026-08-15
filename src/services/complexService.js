@@ -214,6 +214,23 @@ export const deleteCasoComplex = async (id) => {
   }
 };
 
+export const moverCasoComplexASura = async (id, datos = {}) => {
+  const identificador = String(id || '').trim();
+  if (!identificador) {
+    throw new Error('Identificador de caso requerido para enviarlo a SURA');
+  }
+
+  const response = await fetch(
+    `${BASE_URL}/api/complex/${encodeURIComponent(identificador)}/mover-a-sura`,
+    buildComplexRequestInit('POST', datos)
+  );
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body?.error || body?.message || `Error al enviar el caso a SURA (${response.status})`);
+  }
+  return body;
+};
+
 export const updateCasoComplex = async (id, data) => {
   try {
     const response = await fetch(`${BASE_URL}/api/complex/${id}`, buildComplexRequestInit('PUT', data));
