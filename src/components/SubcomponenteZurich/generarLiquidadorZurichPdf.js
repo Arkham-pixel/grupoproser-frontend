@@ -1,6 +1,7 @@
 ﻿import { jsPDF } from 'jspdf';
 import { saveAs } from 'file-saver';
 import {
+  OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
   calcularCriterioFinal,
   calcularTotalesPresupuesto,
   fusionarPortadaConFormData,
@@ -194,6 +195,7 @@ export async function generarLiquidadorZurichPdfBlob(liquidador) {
   drawKv(x + colW + gap, right);
   y += Math.max(left.length, right.length) * kvH + 2;
 
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
   // ── Evaluación ──
   band(doc, x, y, w, 5, 'EVALUACIÓN — CHECKLIST POST-SISMO');
   y += 5.5;
@@ -355,6 +357,7 @@ export async function generarLiquidadorZurichPdfBlob(liquidador) {
   });
 
   y += boxH + 2;
+  }
 
   // ── Presupuesto: nueva página solo si no cabe la tabla ──
   const needPresupuestoMin = 50;

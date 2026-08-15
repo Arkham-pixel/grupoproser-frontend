@@ -3,7 +3,7 @@ import { formatMiles } from './segurosAlfaHelpers.js';
 import {
   calcularCriterioFinal,
   calcularTotalesPresupuesto,
-  crearEvaluacionSismicaNSR10Inicial,
+  fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
@@ -230,7 +230,7 @@ export function itemsPlanosAlfa(liquidador = {}) {
 export function mapCasoAlfaALiquidador(caso = {}) {
   const encabezado = encabezadoDesdeCasoAlfa(caso);
   const prefill = prefillNsrDesdeCasoAlfa(caso, encabezado);
-  const evalInicial = crearEvaluacionSismicaNSR10Inicial(prefill);
+  const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill);
   const base = {
     ...DEFAULT_LIQUIDADOR_ALFA,
     encabezado,
@@ -260,18 +260,10 @@ export function mapCasoAlfaALiquidador(caso = {}) {
     ...guardado,
     modelo: 'nsr10',
     encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
-    evaluacionSismicaNSR10: {
-      ...evalInicial,
-      ...(guardado.evaluacionSismicaNSR10 || {}),
-      portada: {
-        ...evalInicial.portada,
-        ...(guardado.evaluacionSismicaNSR10?.portada || {}),
-      },
-      presupuesto: {
-        ...evalInicial.presupuesto,
-        ...(guardado.evaluacionSismicaNSR10?.presupuesto || {}),
-      },
-    },
+    evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
+      guardado.evaluacionSismicaNSR10,
+      prefill
+    ),
     liquidacionCatastrofico: {
       ...base.liquidacionCatastrofico,
       ...(guardado.liquidacionCatastrofico || {}),

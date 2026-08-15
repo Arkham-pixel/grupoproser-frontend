@@ -179,15 +179,28 @@ export const ITEMS_EVALUACION_NSR10 = [
   },
 ];
 
+/**
+ * Evaluación y Dictamen se ocultan para todos los liquidadores catastróficos.
+ * El código de esas hojas se conserva para reactivarlas después.
+ */
+export const OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 = true;
+
 export const HOJAS_NSR10 = [
   { id: 'listas', label: 'Listas', oculta: true },
   { id: 'portada', label: 'Portada' },
-  { id: 'evaluacion', label: 'Evaluación' },
-  { id: 'dictamen', label: 'Dictamen' },
+  { id: 'evaluacion', label: 'Evaluación', oculta: OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 },
+  { id: 'dictamen', label: 'Dictamen', oculta: OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 },
   { id: 'presupuesto', label: 'Presupuesto' },
 ];
 
 export const HOJAS_VISIBLES_NSR10 = HOJAS_NSR10.filter((h) => !h.oculta);
+
+export function hojaActivaVisibleNSR10(hojaId) {
+  const id = String(hojaId || '').trim() || 'portada';
+  const hoja = HOJAS_NSR10.find((h) => h.id === id);
+  if (!hoja || hoja.oculta) return 'portada';
+  return hoja.id;
+}
 
 const CONCEPTOS_POR_PUNTAJE = {
   0: 'No se identifican daños relevantes en los componentes evaluados. El inmueble se clasifica preliminarmente como habitable.',
@@ -502,6 +515,30 @@ export function crearEvaluacionSismicaNSR10Inicial(prefill = {}) {
       imprevistosPorcentaje: 0.1,
       impuestosPorcentaje: 0,
     },
+    criterioFinal: null,
+  };
+}
+
+/**
+ * Restaura portada y presupuesto; Evaluación/Dictamen quedan vacíos mientras estén ocultos.
+ */
+export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = {}) {
+  const base = crearEvaluacionSismicaNSR10Inicial(prefill);
+  const actual = guardada && typeof guardada === 'object' ? guardada : {};
+  const fusionada = {
+    ...base,
+    ...actual,
+    hojaActiva: hojaActivaVisibleNSR10(actual.hojaActiva || base.hojaActiva),
+    portada: fusionarPortadaConFormData(actual.portada || base.portada, prefill),
+    presupuesto: {
+      ...base.presupuesto,
+      ...(actual.presupuesto || {}),
+    },
+  };
+  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) return fusionada;
+  return {
+    ...fusionada,
+    items: crearItemsRespuestaVacios(),
     criterioFinal: null,
   };
 }

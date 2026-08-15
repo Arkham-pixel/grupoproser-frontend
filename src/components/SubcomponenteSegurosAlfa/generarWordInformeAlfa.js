@@ -16,7 +16,7 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularLiquidacionAlfa,
   defaultInformeUnicoAlfa,
@@ -1220,12 +1220,16 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   ];
 
   const liquidacionResumen = [
-    campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
-    campoFila(
-      'Categoría / Habitabilidad',
-      `${txt(criterio.categoria)} / ${txt(criterio.habitabilidad)}`,
-      { labelW: 5000, valueW: 5000 }
-    ),
+    ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+      ? []
+      : [
+          campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
+          campoFila(
+            'Categoría / Habitabilidad',
+            `${txt(criterio.categoria)} / ${txt(criterio.habitabilidad)}`,
+            { labelW: 5000, valueW: 5000 }
+          ),
+        ]),
     campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
       labelW: 5000,
       valueW: 5000,

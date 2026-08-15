@@ -6,8 +6,10 @@ import {
   CAPITULOS_PRESUPUESTO_NSR10,
   ESTADOS_DANO_NSR10,
   HOJAS_VISIBLES_NSR10,
+  OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
   PRIORIDADES_PRESUPUESTO_NSR10,
   UNIDADES_PRESUPUESTO_NSR10,
+  hojaActivaVisibleNSR10,
   aplicarEstadoAItem,
   calcularCriterioFinal,
   calcularTotalesPresupuesto,
@@ -76,11 +78,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
     [presupuesto]
   );
   const hojaRaw = evalData.hojaActiva || 'portada';
-  const hoja = modoLiquidador
-    ? 'presupuesto'
-    : hojaRaw === 'listas'
-      ? 'portada'
-      : hojaRaw;
+  const hoja = modoLiquidador ? 'presupuesto' : hojaActivaVisibleNSR10(hojaRaw);
   const portadaSyncRef = useRef('');
 
   const liquidacion = formData.liquidacionCatastrofico || {
@@ -269,8 +267,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
               Plantilla evaluación sísmica NSR-10
             </h2>
             <p className="mt-1 text-sm" style={{ color: textSecondary }}>
-              Portada, Evaluación, Dictamen y Presupuesto. El presupuesto es el liquidador del
-              informe único.
+              {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+                ? 'Portada y Presupuesto. El presupuesto es el liquidador del informe único.'
+                : 'Portada, Evaluación, Dictamen y Presupuesto. El presupuesto es el liquidador del informe único.'}
             </p>
           </div>
 
@@ -607,19 +606,21 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold"
-                style={{ borderColor, color: textPrimary }}
-                onClick={() =>
-                  setPresupuesto({
-                    ...presupuesto,
-                    items: sugerirFilasPresupuestoDesdeEvaluacion(items, filasPresupuesto),
-                  })
-                }
-              >
-                Traer ítems con intervención
-              </button>
+              {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                  style={{ borderColor, color: textPrimary }}
+                  onClick={() =>
+                    setPresupuesto({
+                      ...presupuesto,
+                      items: sugerirFilasPresupuestoDesdeEvaluacion(items, filasPresupuesto),
+                    })
+                  }
+                >
+                  Traer ítems con intervención
+                </button>
+              ) : null}
               <button
                 type="button"
                 className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600"

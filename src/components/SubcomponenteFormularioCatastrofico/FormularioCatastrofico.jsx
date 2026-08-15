@@ -1,7 +1,5 @@
-import ChecklistEvaluacionSismicaNSR10, {
-  crearEvaluacionSismicaNSR10Inicial,
-} from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import { fusionarPortadaConFormData } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
+import { fusionarEvaluacionSismicaNSR10Guardada } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import InformeUnicoCatastrofico from './InformeUnicoCatastrofico.jsx';
 import {
   crearItemsPresupuestoDesdeCatalogo,
@@ -119,13 +117,10 @@ function crearFormDataInicial(prefill = {}) {
     ...prefill,
     evaluacionSismicaNSR10: (() => {
       const merged = { ...prefill };
-      const base = crearEvaluacionSismicaNSR10Inicial(merged);
-      const guardada = prefill.evaluacionSismicaNSR10 || {};
-      return {
-        ...base,
-        ...guardada,
-        portada: fusionarPortadaConFormData(guardada.portada || base.portada, merged),
-      };
+      return fusionarEvaluacionSismicaNSR10Guardada(
+        prefill.evaluacionSismicaNSR10 || {},
+        merged
+      );
     })(),
   };
 }
@@ -246,13 +241,10 @@ export default function FormularioCatastrofico() {
         ...datos,
         evaluacionSismicaNSR10: (() => {
           const merged = { ...prev, ...datos };
-          const base = crearEvaluacionSismicaNSR10Inicial(merged);
-          const guardada = datos.evaluacionSismicaNSR10 || {};
-          return {
-            ...base,
-            ...guardada,
-            portada: fusionarPortadaConFormData(guardada.portada || base.portada, merged),
-          };
+          return fusionarEvaluacionSismicaNSR10Guardada(
+            datos.evaluacionSismicaNSR10 || {},
+            merged
+          );
         })(),
         presupuestoCatastrofico: {
           aiuPorcentaje: AIU_PORCENTAJE_DEFAULT,

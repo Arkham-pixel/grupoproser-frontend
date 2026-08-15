@@ -27,6 +27,7 @@ import { descargarWordInformeSura } from './generarWordInformeSura.js';
 import { subirArchivoSura } from '../../services/segurosSuraService.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
+import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import FotosInspeccionSura from './FotosInspeccionSura.jsx';
 
@@ -368,12 +369,18 @@ export default function InformeUnicoSegurosSura({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>4. Dictamen y liquidador NSR-10</h3>
+        <h3 className={expressSectionTitle}>
+          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+            ? '4. Liquidador NSR-10'
+            : '4. Dictamen y liquidador NSR-10'}
+        </h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          Dictamen de la evaluación sísmica y cuadro de precios / diagrama de liquidación (mismo
-          modelo Catastrófico Complex).
+          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+            ? 'Cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'
+            : 'Dictamen de la evaluación sísmica y cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'}
         </p>
 
+        {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
         <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-2">
           <div>
             <span className="text-gray-500">Categoría</span>
@@ -392,6 +399,7 @@ export default function InformeUnicoSegurosSura({
             <p className="font-medium whitespace-pre-wrap">{criterio.descripcionDanios || '—'}</p>
           </div>
         </div>
+        ) : null}
 
         <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
