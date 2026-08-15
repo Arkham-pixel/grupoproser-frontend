@@ -974,6 +974,41 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
     children.push(heading('ANTECEDENTES'));
     children.push(p(txt(fd.antecedentes, 'Sin información')));
 
+    {
+      const mapaEventoDataUrl = await convertirImagenImportadaABase64(
+        `${import.meta.env.BASE_URL || '/'}templates/mapa-evento-siniestro.png`
+      );
+      if (mapaEventoDataUrl) {
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { before: 160, after: 80 },
+            children: [
+              new ImageRun({
+                data: stripMapaBase64(mapaEventoDataUrl),
+                transformation: { width: 480, height: 342 },
+                type: 'png',
+              }),
+            ],
+          })
+        );
+        children.push(
+          new Paragraph({
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 120 },
+            children: [
+              new TextRun({
+                text: 'Mapa del evento — impacto del sismo en Colombia',
+                size: 18,
+                font: 'Calibri',
+                color: '555555',
+              }),
+            ],
+          })
+        );
+      }
+    }
+
     children.push(heading('CIRCUNSTANCIA DEL SINIESTRO'));
     children.push(
       p(txt(fd.circunstanciasSiniestro || fd.descripcionSiniestro, 'Sin información'))

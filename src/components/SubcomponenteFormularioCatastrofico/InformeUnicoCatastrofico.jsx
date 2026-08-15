@@ -250,6 +250,16 @@ export default function InformeUnicoCatastrofico({
           value={formData.antecedentes || ''}
           onChange={(e) => set('antecedentes', e.target.value)}
         />
+        <figure className="mt-4 overflow-hidden rounded-lg border" style={{ borderColor, backgroundColor: cardBg }}>
+          <img
+            src={`${import.meta.env.BASE_URL || '/'}templates/mapa-evento-siniestro.png`}
+            alt="Mapa del evento sísmico en Colombia"
+            className="mx-auto max-h-[420px] w-full object-contain bg-white p-2"
+          />
+          <figcaption className="border-t px-3 py-2 text-center text-xs" style={{ borderColor, color: textSecondary }}>
+            Mapa del evento — impacto del sismo en Colombia
+          </figcaption>
+        </figure>
       </section>
 
       <section className="rounded-xl border p-4" style={{ borderColor, backgroundColor: cardBg }}>
