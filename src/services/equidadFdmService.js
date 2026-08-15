@@ -134,6 +134,67 @@ export const importarCasosFdm = async (casos = []) => {
   return payload?.data ?? payload;
 };
 
+/** Estado sync Excel SharePoint SEGUROS EQUIDAD. */
+export const getBaseTerremotoFdmStatus = async () => {
+  const response = await fetch(`${FDM_API_URL}/base-terremoto/status`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error status base terremoto (${response.status})`);
+  }
+  return payload?.data ?? payload;
+};
+
+export const checkBaseTerremotoFdm = async ({ force = false } = {}) => {
+  const response = await fetch(`${FDM_API_URL}/base-terremoto/check`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ force }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error check base terremoto (${response.status})`);
+  }
+  return payload?.data ?? payload;
+};
+
+export const dismissBaseTerremotoFdmNotification = async () => {
+  const response = await fetch(`${FDM_API_URL}/base-terremoto/notification/dismiss`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || 'No se pudo descartar la notificación');
+  }
+  return payload?.data ?? payload;
+};
+
+export const getBaseTerremotoFdmImportSession = async (sessionId) => {
+  const response = await fetch(`${FDM_API_URL}/base-terremoto/import/${sessionId}`, {
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || 'No se pudo cargar la sesión de importación');
+  }
+  return payload?.data ?? payload;
+};
+
+export const executeBaseTerremotoFdmImport = async (sessionId) => {
+  const response = await fetch(`${FDM_API_URL}/base-terremoto/execute`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ sessionId }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || 'No se pudo aplicar la actualización desde Excel');
+  }
+  return payload?.data ?? payload;
+};
+
 export const deleteCasoFdm = async (id) => {
   if (!id) throw new Error('Identificador de caso FDM no válido');
   const response = await fetch(`${FDM_API_URL}/${id}`, {
@@ -169,6 +230,9 @@ export const guardarLiquidadorEnCasoFdm = async ({
     subsidio: totales.subsidio ?? casoBase.subsidio,
     perdidaContenidos: totales.subtotalContenidos ?? casoBase.perdidaContenidos,
     perdidaEdificio: totales.subtotalEdificios ?? casoBase.perdidaEdificio,
+    // Fecha de liquidación al guardar (si aún no tenía)
+    fechaLiquidacion:
+      casoBase.fechaLiquidacion || new Date().toISOString().slice(0, 10),
   };
 
   // No reenviar _id / timestamps

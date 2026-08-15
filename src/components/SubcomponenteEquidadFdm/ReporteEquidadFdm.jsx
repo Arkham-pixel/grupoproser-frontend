@@ -6,6 +6,7 @@ import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm } from '../../service
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
 import AccionesFdmMenu from './AccionesFdmMenu.jsx';
 import ArchiveroEquidadFdm from './ArchiveroEquidadFdm.jsx';
+import EquidadFdmBaseTerremotoBanner from './EquidadFdmBaseTerremotoBanner.jsx';
 import { descargarExcelFdlmBase } from './generarExcelFdlmBase.js';
 import { parsearCasosFdmDesdeExcel } from './importarEquidadFdmExcel.js';
 import {
@@ -577,6 +578,8 @@ const ReporteEquidadFdm = () => {
             </>
           }
         />
+
+        <EquidadFdmBaseTerremotoBanner onCompleted={recargar} />
 
         <section className={expressCard}>
           <div className={expressCardHeader}>
