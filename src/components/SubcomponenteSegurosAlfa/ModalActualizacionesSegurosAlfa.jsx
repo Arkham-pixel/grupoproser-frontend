@@ -373,18 +373,18 @@ export default function ModalActualizacionesSegurosAlfa({
 
         <DialogActions sx={{ px: 3, py: 2, gap: 1, flexWrap: 'wrap' }}>
           {(vm.additionalCount > 0 || showAllChanges || vm.allActionable.length > 0) && (
-            <Button onClick={onToggleAll} disabled={loadingPreview}>
+            <Button onClick={() => onToggleAll?.()} disabled={loadingPreview}>
               {showAllChanges ? 'Ver menos' : 'Ver todos los cambios'}
             </Button>
           )}
           <Box sx={{ flex: 1 }} />
-          <Button onClick={onClose} disabled={executing}>
+          <Button onClick={() => onClose?.()} disabled={executing}>
             Revisar después
           </Button>
           {vm.canExecute && (
             <Button
               variant="contained"
-              onClick={onAskConfirm}
+              onClick={() => onAskConfirm?.()}
               disabled={executing || loadingPreview || !vm.sessionId}
             >
               {executing ? 'Actualizando…' : 'Actualizar ARNALD'}
@@ -393,7 +393,7 @@ export default function ModalActualizacionesSegurosAlfa({
         </DialogActions>
       </Dialog>
 
-      <Dialog open={Boolean(confirmOpen)} onClose={onCancelConfirm} maxWidth="xs" fullWidth>
+      <Dialog open={Boolean(confirmOpen)} onClose={() => onCancelConfirm?.()} maxWidth="xs" fullWidth>
         <DialogTitle>Confirmar actualización</DialogTitle>
         <DialogContent>
           <Typography variant="body2">ARNALD aplicará:</Typography>
@@ -411,10 +411,10 @@ export default function ModalActualizacionesSegurosAlfa({
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={onCancelConfirm} disabled={executing}>
+          <Button onClick={() => onCancelConfirm?.()} disabled={executing}>
             Cancelar
           </Button>
-          <Button variant="contained" onClick={onConfirmExecute} disabled={executing}>
+          <Button variant="contained" onClick={() => onConfirmExecute?.()} disabled={executing}>
             {executing ? 'Actualizando…' : 'Sí, actualizar ARNALD'}
           </Button>
         </DialogActions>
