@@ -39,10 +39,10 @@ import ModalImportarExcelAlfa, {
 } from './ModalImportarExcelAlfa.jsx';
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
+import SelectBuscable from '../SelectBuscable.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
-  esRolAdminOSoporte,
   esRolInspector,
   filtrarPayloadCasoPorRol,
   puedeEditarCampoCaso,
@@ -80,7 +80,6 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
   const soloInspector = esRolInspector(rolUsuario);
-  const esAdminAsignacion = esRolAdminOSoporte(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
   const puedeImportarExcel = esAdminOSoporteAlfa();
   const [form, setForm] = useState(() =>
@@ -193,19 +192,22 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     return [...unicas.values()].sort((a, b) => a.localeCompare(b, 'es'));
   }, [ciudadesRaw, form.departamento]);
 
+  const opcionesCiudad = useMemo(() => {
+    const base = ciudadesFiltradas.map((c) => ({ value: c, label: c }));
+    const actual = String(form.ciudad || '').trim();
+    if (actual && !ciudadesFiltradas.some((c) => normTxt(c) === normTxt(actual))) {
+      return [{ value: actual, label: actual }, ...base];
+    }
+    return base;
+  }, [ciudadesFiltradas, form.ciudad]);
+
   const ajustadoresPorCiudad = useMemo(
-    () =>
-      esAdminAsignacion
-        ? ajustadoresCat
-        : filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad),
-    [ajustadoresCat, form.ciudad, esAdminAsignacion]
+    () => filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad),
+    [ajustadoresCat, form.ciudad]
   );
   const inspectoresPorCiudad = useMemo(
-    () =>
-      esAdminAsignacion
-        ? inspectoresCat
-        : filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad),
-    [inspectoresCat, form.ciudad, esAdminAsignacion]
+    () => filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad),
+    [inspectoresCat, form.ciudad]
   );
   const lideresSoloSilvia = useMemo(
     () => filtrarLideresPorModulo(responsables, 'alfa'),
@@ -213,7 +215,6 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   );
 
   useEffect(() => {
-    if (esAdminAsignacion) return;
     setForm((prev) => {
       let cambio = false;
       const next = { ...prev };
@@ -233,7 +234,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       }
       return cambio ? next : prev;
     });
-  }, [ajustadoresPorCiudad, inspectoresPorCiudad, esAdminAsignacion]);
+  }, [ajustadoresPorCiudad, inspectoresPorCiudad]);
 
   const setCampo = (clave) => (e) => {
     if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
@@ -448,25 +449,22 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             </SelectFenix>
           </Campo>
           <Campo label={t('segurosAlfa.fields.ciudad')}>
-            <SelectFenix
-              value={form.ciudad}
-              onChange={setCampo('ciudad')}
-              disabled={cargandoCatalogos && ciudadesFiltradas.length === 0}
-            >
-              <option value="">
-                {form.departamento
+            <SelectBuscable
+              options={opcionesCiudad}
+              value={form.ciudad || ''}
+              onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
+              disabled={
+                attrsCampoCaso(rolUsuario, 'ciudad').disabled ||
+                (cargandoCatalogos && ciudadesFiltradas.length === 0)
+              }
+              placeholder={
+                form.departamento
                   ? t('segurosAlfa.placeholders.selectCity')
-                  : t('segurosAlfa.placeholders.selectDepartmentFirst')}
-              </option>
-              {opcionHuerfana(form.ciudad, ciudadesFiltradas) && (
-                <option value={form.ciudad}>{form.ciudad}</option>
-              )}
-              {ciudadesFiltradas.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </SelectFenix>
+                  : t('segurosAlfa.placeholders.selectDepartmentFirst')
+              }
+              searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
+              buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
           </Campo>
         </div>
       </section>
@@ -524,7 +522,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             rol={rolUsuario}
             i18nNs="segurosAlfa"
             ciudadSeleccionada={form.ciudad}
-            filtrarPorCiudad={!esAdminAsignacion}
+            filtrarPorCiudad
           />
         </div>
         {soloInspector ? (

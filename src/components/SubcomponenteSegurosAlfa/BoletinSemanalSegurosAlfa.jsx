@@ -15,6 +15,7 @@ import { FaChevronLeft, FaChevronRight, FaPrint } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import { fetchAllCasosAlfa, getAlertasAlfa } from '../../services/segurosAlfaService.js';
+import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
 import { formatCurrency } from './segurosAlfaHelpers.js';
 import {
   calcularBoletinSemanalAlfa,
@@ -97,7 +98,7 @@ export default function BoletinSemanalSegurosAlfa() {
           getAlertasAlfa().catch(() => null),
         ]);
         if (!cancelado) {
-          setCasos(lista);
+          setCasos(filtrarCasosPorAsignacionUsuario(lista));
           setAlertasPayload(alertas);
         }
       } catch (err) {

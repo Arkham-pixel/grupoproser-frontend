@@ -95,3 +95,44 @@ export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}) {
   }
   return { payload: { ...payload }, soloEstado: false };
 }
+
+/** Normaliza nombre/login para comparar asignación. */
+export function normalizarClavePersona(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+}
+
+export function coincidenPersonas(a, b) {
+  const na = normalizarClavePersona(a);
+  const nb = normalizarClavePersona(b);
+  if (!na || !nb) return false;
+  return na === nb || na.includes(nb) || nb.includes(na);
+}
+
+/** Ajustador e inspector: solo casos que el líder les asignó. */
+export function rolConVistaRestringidaAsignacion(rol = obtenerRolAlmacenado()) {
+  const r = normalizarRol(rol);
+  return r === ROL_AJUSTADOR_CASO || r === ROL_INSPECTOR;
+}
+
+/**
+ * Filtra lista de casos Alfa/Sura según rol del usuario en localStorage.
+ * Admin / soporte / líder / otros: sin filtro.
+ */
+export function filtrarCasosPorAsignacionUsuario(casos = [], {
+  rol = obtenerRolAlmacenado(),
+  nombre = typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') || '' : '',
+  login = typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '',
+} = {}) {
+  if (!rolConVistaRestringidaAsignacion(rol)) return Array.isArray(casos) ? casos : [];
+  const claves = [nombre, login].map((s) => String(s || '').trim()).filter(Boolean);
+  if (!claves.length) return [];
+  const campo = normalizarRol(rol) === ROL_INSPECTOR ? 'inspector' : 'ajustador';
+  return (Array.isArray(casos) ? casos : []).filter((caso) =>
+    claves.some((k) => coincidenPersonas(caso?.[campo], k))
+  );
+}

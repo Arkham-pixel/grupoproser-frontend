@@ -11,8 +11,8 @@ const optsDe = (lista = [], valorActual, t) => (
         <option value={valorActual}>{valorActual}</option>
       )}
     {lista.map((r) => (
-      <option key={r.codigo || r.value} value={r.value}>
-        {r.label}
+      <option key={`${r.codigo || r.value}-${r.ciudad || ''}`} value={r.value}>
+        {r.ciudad ? `${r.label} (${r.ciudad})` : r.label}
       </option>
     ))}
   </>
@@ -20,9 +20,7 @@ const optsDe = (lista = [], valorActual, t) => (
 
 /**
  * Tres selects de asignación con listas independientes.
- * @param {{ form: object, setCampo: Function, lideres?: Array, ajustadores?: Array, inspectores?: Array, responsables?: Array, rol: string, i18nNs?: string, ciudadSeleccionada?: string, filtrarPorCiudad?: boolean }} props
- * `responsables` se acepta como alias de `lideres` por compatibilidad.
- * Si `filtrarPorCiudad` es false (admin/soporte), no exige ciudad ni bloquea los selects.
+ * Ajustador e inspector siempre dependen de la ciudad del caso.
  */
 export default function CamposAsignacionCaso({
   form,

@@ -15,6 +15,7 @@ import { FaChevronLeft, FaChevronRight, FaPrint } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import { fetchAllCasosSura, getAlertasSura } from '../../services/segurosSuraService.js';
+import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
 import { formatCurrency } from './segurosSuraHelpers.js';
 import {
   calcularBoletinSemanalSura,
@@ -97,7 +98,7 @@ export default function BoletinSemanalSegurosSura() {
           getAlertasSura().catch(() => null),
         ]);
         if (!cancelado) {
-          setCasos(lista);
+          setCasos(filtrarCasosPorAsignacionUsuario(lista));
           setAlertasPayload(alertas);
         }
       } catch (err) {

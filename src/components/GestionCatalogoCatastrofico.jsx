@@ -100,7 +100,6 @@ export default function GestionCatalogoCatastrofico({
         .replace(/\p{M}/gu, '')
         .toUpperCase()
         .trim();
-      if (!c || c === 'TODAS' || c === 'TODOS') return true;
       return c === target;
     });
   }, [items, filtroCiudad]);

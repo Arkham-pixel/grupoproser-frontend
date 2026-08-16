@@ -44,8 +44,6 @@ import {
   mapCatalogoCatastroficoAOpciones,
   resolverLiderPorModulo,
 } from '../../utils/catalogosAsignacionCatastrofico.js';
-import { esRolAdminOSoporte } from '../../utils/permisosCasoPorRol.js';
-import { obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   CAMPOS_FECHA_HORA_PROTOCOLO,
   formatearFechaHoraParaInput,
@@ -2600,7 +2598,6 @@ setFormData(prev => ({
     };
   }, [esSura]);
 
-  const esAdminAsignacion = esRolAdminOSoporte(obtenerRolAlmacenado());
   const lideresAsignacion = useMemo(() => {
     const todos = (responsables || []).map((r) => ({
       value: r.label || r.value,
@@ -2622,20 +2619,45 @@ setFormData(prev => ({
 
   const ajustadoresCatFiltrados = useMemo(() => {
     if (!esSura) return [];
-    if (esAdminAsignacion) return ajustadoresCatastrofico;
     return filtrarOpcionesPorCiudad(
       ajustadoresCatastrofico,
       formData.ciudadSiniestro || formData.ciudad || ''
     );
-  }, [esSura, esAdminAsignacion, ajustadoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
+  }, [esSura, ajustadoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
   const inspectoresCatFiltrados = useMemo(() => {
     if (!esSura) return [];
-    if (esAdminAsignacion) return inspectoresCatastrofico;
     return filtrarOpcionesPorCiudad(
       inspectoresCatastrofico,
       formData.ciudadSiniestro || formData.ciudad || ''
     );
-  }, [esSura, esAdminAsignacion, inspectoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
+  }, [esSura, inspectoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
+
+  useEffect(() => {
+    if (!esSura) return;
+    setFormData((prev) => {
+      let cambio = false;
+      const next = { ...prev };
+      if (
+        prev.ajustador &&
+        !ajustadoresCatFiltrados.some(
+          (a) => a.value === prev.ajustador || a.codigo === prev.ajustador
+        )
+      ) {
+        next.ajustador = '';
+        cambio = true;
+      }
+      if (
+        prev.inspector &&
+        !inspectoresCatFiltrados.some(
+          (a) => a.value === prev.inspector || a.codigo === prev.inspector
+        )
+      ) {
+        next.inspector = '';
+        cambio = true;
+      }
+      return cambio ? next : prev;
+    });
+  }, [esSura, ajustadoresCatFiltrados, inspectoresCatFiltrados]);
 
   useEffect(() => {
     if (!responsables.length) {

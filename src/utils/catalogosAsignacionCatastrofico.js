@@ -38,15 +38,11 @@ export function mapCatalogoCatastroficoAOpciones(lista = []) {
     .sort((a, b) => a.label.localeCompare(b.label, 'es'));
 }
 
-/** Filtra opciones por ciudad del caso. Incluye cobertura "Todas". */
+/** Filtra opciones por ciudad exacta del caso (Cali ≠ Pereira). */
 export function filtrarOpcionesPorCiudad(opciones = [], ciudadCaso) {
   const target = normCiudadCatastrofico(ciudadCaso);
   if (!target) return [];
-  return opciones.filter((o) => {
-    const c = normCiudadCatastrofico(o.ciudad);
-    if (!c || c === 'TODAS' || c === 'TODOS') return true;
-    return c === target;
-  });
+  return opciones.filter((o) => normCiudadCatastrofico(o.ciudad) === target);
 }
 
 /** Needle de nombre para el líder fijo por módulo. */

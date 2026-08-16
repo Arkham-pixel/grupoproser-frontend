@@ -38,6 +38,7 @@ import {
   InputFenix,
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -162,7 +163,7 @@ export default function ReporteSegurosSura() {
     setError(null);
     try {
       const data = await fetchAllCasosSura();
-      setCasos(data);
+      setCasos(filtrarCasosPorAsignacionUsuario(data));
     } catch (err) {
       setError(err.message || t('segurosSura.report.loadError'));
     } finally {

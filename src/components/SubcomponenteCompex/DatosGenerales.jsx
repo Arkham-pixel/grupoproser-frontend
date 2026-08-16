@@ -21,7 +21,6 @@ import {
 import { InputFechaHoraProtocolo } from './ComplexUiBlocks.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
-import { esRolAdminOSoporte } from '../../utils/permisosCasoPorRol.js';
 
 function resolverEstadoSelect(formData, estados = []) {
   const seleccionUsuario = String(formData?.estado ?? '').trim();
@@ -113,7 +112,6 @@ export default function DatosGenerales({
   const selectStyles = useMemo(() => getComplexSelectStyles(isDark), [isDark]);
   const sinAsignar = t('complex.ui.datos_generales.sin_asignar');
   const rolUsuario = obtenerRolAlmacenado();
-  const esAdminAsignacion = esRolAdminOSoporte(rolUsuario);
 
   const setCampoAsignacion = (clave) => (e) => {
     const valor = e?.target ? e.target.value : e;
@@ -198,7 +196,7 @@ export default function DatosGenerales({
             rol={rolUsuario}
             i18nNs="segurosSura"
             ciudadSeleccionada={formData.ciudadSiniestro || formData.ciudad || ''}
-            filtrarPorCiudad={!esAdminAsignacion}
+            filtrarPorCiudad
           />
         ) : (
           <Campo label={t("complex.ui.datos_generales.responsable")}>
