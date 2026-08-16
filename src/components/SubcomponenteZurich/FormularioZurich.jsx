@@ -44,6 +44,13 @@ import {
 } from './zurichHelpers.js';
 import { parsearCasosZurichDesdeExcel } from './importarZurichExcel.js';
 import CampoTomadorZurich from './CampoTomadorZurich.jsx';
+import { obtenerRolAlmacenado } from '../../config/roles.js';
+import {
+  attrsCampoCaso,
+  esRolInspector,
+  filtrarPayloadCasoPorRol,
+  puedeEditarCampoCaso,
+} from '../../utils/permisosCasoPorRol.js';
 
 const ZurichRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -69,6 +76,8 @@ const opcionHuerfana = (valor, opciones = []) => {
 const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved }) => {
   const { t } = useTranslation();
   const fileInputRef = useRef(null);
+  const rolUsuario = obtenerRolAlmacenado();
+  const soloInspector = esRolInspector(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
   const [form, setForm] = useState(() =>
     initialData ? construirFormDesdecasoZurich(initialData) : { ...FORM_VACIO_ZURICH }
@@ -79,7 +88,6 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
   const [exito, setExito] = useState(null);
   const [resumenImport, setResumenImport] = useState(null);
   const [ciudadesRaw, setCiudadesRaw] = useState([]);
-  const [responsables, setResponsables] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
 
   useEffect(() => {
@@ -94,12 +102,8 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
     const cargar = async () => {
       setCargandoCatalogos(true);
       try {
-        const [resCiudades, resResp] = await Promise.all([
-          fetch(`${BASE_URL}/api/ciudades`),
-          fetch(`${BASE_URL}/api/responsables`),
-        ]);
+        const resCiudades = await fetch(`${BASE_URL}/api/ciudades`);
         const dataCiudades = await resCiudades.json().catch(() => ({}));
-        const dataResp = await resResp.json().catch(() => ({}));
         if (cancelado) return;
         const lista = Array.isArray(dataCiudades?.data)
           ? dataCiudades.data
@@ -113,30 +117,6 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
               departamento: String(c.descDepto || c.departamento || '').trim(),
             }))
             .filter((c) => c.ciudad)
-        );
-        const listaResp = Array.isArray(dataResp?.data)
-          ? dataResp.data
-          : Array.isArray(dataResp)
-            ? dataResp
-            : [];
-        setResponsables(
-          listaResp
-            .map((r) => {
-              const codigo = String(r.codiRespnsble ?? r.codigo ?? r.value ?? r._id ?? '').trim();
-              const nombre = String(
-                r.nmbrRespnsble || r.nombre || r.nombreResponsable || r.label || ''
-              ).trim();
-              if (!nombre) return null;
-              return {
-                // Guardar y mostrar por nombre (alertas resuelven también por nombre)
-                value: nombre,
-                label: nombre,
-                codigo,
-              };
-            })
-            .filter(Boolean)
-            .filter((r, idx, arr) => arr.findIndex((x) => x.value === r.value) === idx)
-            .sort((a, b) => a.label.localeCompare(b.label, 'es'))
         );
       } catch (err) {
         if (!cancelado) console.error('Error cargando catálogos Zurich:', err);
@@ -174,11 +154,13 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
   }, [ciudadesRaw, form.departamento]);
 
   const setCampo = (clave) => (e) => {
+    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: valor }));
   };
 
   const setDepartamento = (e) => {
+    if (!puedeEditarCampoCaso(rolUsuario, 'departamento')) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => {
       const siguiente = { ...prev, departamento: valor };
@@ -195,6 +177,7 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
   };
 
   const setCampoMiles = (clave) => (e) => {
+    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: formatMilesInput(valor) }));
   };
@@ -208,6 +191,7 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
       value={form[clave]}
       onChange={setCampoMiles(clave)}
       placeholder="0"
+      {...attrsCampoCaso(rolUsuario, clave)}
     />
   );
 
@@ -316,11 +300,25 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
 
     setGuardando(true);
     try {
-      const payload = construirPayload();
+      const bruto = construirPayload();
+      const { payload } = filtrarPayloadCasoPorRol(
+        rolUsuario,
+        bruto,
+        esEdicion ? initialData || {} : {}
+      );
       let guardado;
       if (esEdicion) {
         guardado = await actualizarCasoZurich(initialData._id, payload);
       } else {
+        if (soloInspector) {
+          setError(
+            t('zurich.permissions.inspectorCannotCreate', {
+              defaultValue: 'El inspector no puede crear casos; solo modificar el estado.',
+            })
+          );
+          setGuardando(false);
+          return;
+        }
         guardado = await crearCasoZurich(payload);
       }
       setExito(
@@ -347,7 +345,11 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
   };
 
   const selectSimple = (clave, opciones, placeholder = t('common.select')) => (
-    <SelectFenix value={form[clave]} onChange={setCampo(clave)}>
+    <SelectFenix
+      value={form[clave]}
+      onChange={setCampo(clave)}
+      {...attrsCampoCaso(rolUsuario, clave)}
+    >
       <option value="">{placeholder}</option>
       {opciones.map((op) => (
         <option key={op} value={op}>
@@ -365,6 +367,27 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>{t('zurich.fields.estado')}</h3>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('zurich.fields.estado')} required>
+            {selectSimple('estado', ESTADOS_ZURICH)}
+          </Campo>
+        </div>
+        {soloInspector ? (
+          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+            {t('zurich.permissions.inspectorHint', {
+              defaultValue:
+                'Su rol de inspector solo permite ver el caso y modificar el estado.',
+            })}
+          </p>
+        ) : null}
+      </section>
+
+      <fieldset
+        disabled={soloInspector}
+        className="min-w-0 space-y-5 border-0 p-0 m-0 disabled:opacity-80"
+      >
       {/* CAT Zurich — campos del Excel CAT_ZURICH */}
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.sections.catZurich')}</h3>
@@ -431,9 +454,6 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
               value={form.fechaInspeccion}
               onChange={setCampo('fechaInspeccion')}
             />
-          </Campo>
-          <Campo label={t('zurich.fields.estado')} required>
-            {selectSimple('estado', ESTADOS_ZURICH)}
           </Campo>
           <Campo label={t('zurich.fields.observacionesCat')} className="md:col-span-2 lg:col-span-3">
             <textarea
@@ -548,20 +568,6 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
                   {ciudadesFiltradas.map((c) => (
                     <option key={c} value={c}>
                       {c}
-                    </option>
-                  ))}
-                </SelectFenix>
-              </Campo>
-              <Campo label={t('zurich.fields.ajustador')}>
-                <SelectFenix value={form.ajustador} onChange={setCampo('ajustador')}>
-                  <option value="">{t('common.select')}</option>
-                  {form.ajustador &&
-                    !responsables.some(
-                      (r) => r.value === form.ajustador || r.codigo === form.ajustador
-                    ) && <option value={form.ajustador}>{form.ajustador}</option>}
-                  {responsables.map((r) => (
-                    <option key={r.codigo || r.value} value={r.value}>
-                      {r.label}
                     </option>
                   ))}
                 </SelectFenix>
@@ -686,6 +692,7 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
           </section>
         </div>
       </details>
+      </fieldset>
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
         {embed && onClose && (

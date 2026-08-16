@@ -179,6 +179,9 @@ export default function AgregarCuenta() {
             className="w-full px-3 sm:px-4 py-2 rounded border text-xs sm:text-sm"
           >
             <option value="usuario">{t('account.ui.cuenta.roles.usuario')}</option>
+            <option value="ajustador_lider">{t('roles.ajustador_lider')}</option>
+            <option value="ajustador">{t('roles.ajustador')}</option>
+            <option value="inspector">{t('roles.inspector')}</option>
             <option value="visualizador">{t('account.ui.cuenta.roles.visualizador')}</option>
             <option value="puertos">{t('account.ui.cuenta.roles.puertos')}</option>
             <option value="contractor_zurich">{t('account.ui.cuenta.roles.contractor_zurich')}</option>

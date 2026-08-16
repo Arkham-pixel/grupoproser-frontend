@@ -1,6 +1,6 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
-export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v6-excel-completo';
+export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v7-hecho';
 /** Checklist «hecho» solo para el usuario con filtro de archivos (local). */
 export const FDM_CHECKLIST_STORAGE_KEY = 'equidad-fdm-reporte-checklist-v1';
 export const FDM_REPORTE_PAGE_SIZE = 25;

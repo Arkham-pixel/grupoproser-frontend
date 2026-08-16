@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next';
 import { FaArrowDown, FaArrowUp, FaCog, FaFileExcel, FaUpload, FaTable } from 'react-icons/fa';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm } from '../../services/equidadFdmService.js';
+import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm, toggleChecklistHechoCasoFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
 import AccionesFdmMenu from './AccionesFdmMenu.jsx';
 import ArchiveroEquidadFdm from './ArchiveroEquidadFdm.jsx';
@@ -11,6 +11,7 @@ import { descargarExcelFdlmBase } from './generarExcelFdlmBase.js';
 import { parsearCasosFdmDesdeExcel } from './importarEquidadFdmExcel.js';
 import {
   FDM_COLUMNAS_STORAGE_KEY,
+  FDM_CHECKLIST_STORAGE_KEY,
   FDM_REPORTE_PAGE_SIZE,
   aplicarFiltrosCasosFdm,
   buildCiudadesFdm,
@@ -22,7 +23,6 @@ import {
   esUsuarioFdmSoloConArchivos,
   formatCurrency,
   formatDate,
-  guardarChecklistFdm,
   leerFiltrosReporteFdm,
   patchFiltrosReporteFdm,
 } from './equidadFdmHelpers.js';
@@ -53,6 +53,7 @@ const fdmPageWrapWide = 'w-full min-w-0 space-y-4 sm:space-y-6';
 
 const todasLasColumnasFdm = [
   { clave: 'esNuevo', label: 'Nuevo' },
+  { clave: 'checklistHecho', label: 'Hecho' },
   { clave: 'consecutivo', label: 'Consecutivo' },
   { clave: 'evento', label: 'Evento' },
   { clave: 'fechaRegistro', label: 'Fecha de registro' },
@@ -104,6 +105,7 @@ const todasLasColumnasFdm = [
 /** Columnas por defecto = datos del Excel (todos los usuarios). */
 const columnasInicialesFdm = [
   'esNuevo',
+  'checklistHecho',
   'consecutivo',
   'evento',
   'fechaRegistro',
@@ -218,26 +220,70 @@ const ReporteEquidadFdm = () => {
   const [busquedaCompleto, setBusquedaCompleto] = useState('');
   const [eventoCompleto, setEventoCompleto] = useState('TERREMOTO 10 AGOSTO 2026');
   const [paginaCompleto, setPaginaCompleto] = useState(1);
-  const [checklistHechos, setChecklistHechos] = useState(() => cargarChecklistFdm());
+  const [checklistGuardandoId, setChecklistGuardandoId] = useState(null);
+  const checklistMigradoRef = useRef(false);
   const fileInputRef = useRef(null);
 
-  const toggleChecklistHecho = useCallback((casoId) => {
-    const id = String(casoId || '');
-    if (!id) return;
-    setChecklistHechos((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      guardarChecklistFdm(next);
-      return next;
-    });
-  }, []);
+  const toggleChecklistHecho = useCallback(
+    async (casoId) => {
+      const id = String(casoId || '');
+      if (!id || checklistGuardandoId === id) return;
+
+      let marcado = true;
+      setCasos((prev) => {
+        const casoActual = prev.find((c) => String(c._id) === id);
+        marcado = !(casoActual?.checklistHecho === true);
+        return prev.map((c) => (String(c._id) === id ? { ...c, checklistHecho: marcado } : c));
+      });
+      setChecklistGuardandoId(id);
+      try {
+        await toggleChecklistHechoCasoFdm(id, marcado);
+      } catch (err) {
+        console.error('Error guardando check hecho FDM:', err);
+        setCasos((prev) =>
+          prev.map((c) => (String(c._id) === id ? { ...c, checklistHecho: !marcado } : c))
+        );
+        setAviso({
+          open: true,
+          titulo: t('equidadFdm.report.checklistTitle'),
+          mensaje: err.message || t('equidadFdm.report.checklistSaveError'),
+          tipo: 'error',
+        });
+      } finally {
+        setChecklistGuardandoId(null);
+      }
+    },
+    [checklistGuardandoId, t]
+  );
 
   const recargar = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchAllCasosFdm();
+      let data = await fetchAllCasosFdm();
+
+      // Una sola vez: pasar checks viejos del navegador a la BD (sobreviven al cerrar sesión).
+      if (!checklistMigradoRef.current) {
+        checklistMigradoRef.current = true;
+        const locales = cargarChecklistFdm();
+        const pendientes = [...locales].filter((cid) => {
+          const caso = data.find((c) => String(c._id) === cid);
+          return cid && caso && caso.checklistHecho !== true;
+        });
+        if (pendientes.length) {
+          await Promise.allSettled(
+            pendientes.map((cid) => toggleChecklistHechoCasoFdm(cid, true).catch(() => null))
+          );
+          data = await fetchAllCasosFdm();
+        }
+        // Ya no dependemos del navegador: el check queda en el caso (BD).
+        try {
+          localStorage.removeItem(FDM_CHECKLIST_STORAGE_KEY);
+        } catch {
+          /* ignore */
+        }
+      }
+
       setCasos(data);
     } catch (err) {
       console.error('Error cargando casos Equidad FDM:', err);
@@ -616,6 +662,15 @@ const ReporteEquidadFdm = () => {
         '—'
       );
     }
+    if (clave === 'checklistHecho') {
+      return item.checklistHecho === true ? (
+        <span className="inline-flex rounded-full bg-emerald-600 px-2 py-0.5 font-body text-xs font-semibold text-white">
+          {t('equidadFdm.report.checklistDone')}
+        </span>
+      ) : (
+        '—'
+      );
+    }
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
     }
@@ -869,7 +924,8 @@ const ReporteEquidadFdm = () => {
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 accent-emerald-600"
-                                checked={checklistHechos.has(String(item._id || ''))}
+                                checked={item.checklistHecho === true}
+                                disabled={checklistGuardandoId === String(item._id || '')}
                                 onChange={() => toggleChecklistHecho(item._id)}
                                 aria-label={`Hecho ${item.consecutivo || ''}`}
                               />
@@ -1046,7 +1102,8 @@ const ReporteEquidadFdm = () => {
                               <input
                                 type="checkbox"
                                 className="h-4 w-4 accent-emerald-600"
-                                checked={checklistHechos.has(String(item._id || ''))}
+                                checked={item.checklistHecho === true}
+                                disabled={checklistGuardandoId === String(item._id || '')}
                                 onChange={() => toggleChecklistHecho(item._id)}
                                 aria-label={`Hecho ${item.consecutivo || ''}`}
                               />

@@ -19,6 +19,9 @@ import {
   ValorFijo,
 } from './FacturacionHelpers';
 import { InputFechaHoraProtocolo } from './ComplexUiBlocks.jsx';
+import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
+import { obtenerRolAlmacenado } from '../../config/roles.js';
+import { esRolAdminOSoporte } from '../../utils/permisosCasoPorRol.js';
 
 function resolverEstadoSelect(formData, estados = []) {
   const seleccionUsuario = String(formData?.estado ?? '').trim();
@@ -99,12 +102,28 @@ export default function DatosGenerales({
   onFuncionarioChange,
   camposFijos = false,
   aseguradoraFija = false,
+  mostrarAsignacionCatastrofico = false,
+  lideresAsignacion = null,
+  ajustadoresCatastrofico = [],
+  inspectoresCatastrofico = [],
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const selectStyles = useMemo(() => getComplexSelectStyles(isDark), [isDark]);
   const sinAsignar = t('complex.ui.datos_generales.sin_asignar');
+  const rolUsuario = obtenerRolAlmacenado();
+  const esAdminAsignacion = esRolAdminOSoporte(rolUsuario);
+
+  const setCampoAsignacion = (clave) => (e) => {
+    const valor = e?.target ? e.target.value : e;
+    handleChange({ target: { name: clave, value: valor } });
+    if (clave === 'ajustador') {
+      onResponsableChange?.(valor);
+      handleChange({ target: { name: 'codiRespnsble', value: valor } });
+      handleChange({ target: { name: 'nombreResponsable', value: valor } });
+    }
+  };
 
   const labelResponsable =
     responsables?.find(
@@ -165,34 +184,52 @@ export default function DatosGenerales({
       <h2 className={complexSectionTitle}>{t("complex.ui.datos_generales.datos_generales_del_caso")}</h2>
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
-        <Campo label={t("complex.ui.datos_generales.responsable")}>
-          {camposFijos ? (
-            <ValorFijo>{labelResponsable}</ValorFijo>
-          ) : (
-            <>
-              <SelectFenix
-                name="codiRespnsble"
-                value={formData.codiRespnsble || ''}
-                onChange={(e) => {
-                  handleChange(e);
-                  onResponsableChange?.(e.target.value);
-                }}
-                required
-                disabled={!hayResponsables}
-              >
-                <option value="">{t("complex.ui.datos_generales.seleccionar")}</option>
-                {(responsables || []).map((responsable) => (
-                  <option key={responsable.value} value={responsable.value}>
-                    {responsable.label}
-                  </option>
-                ))}
-              </SelectFenix>
-              {!hayResponsables && (
-                <p className={complexAlertError}>{t("complex.ui.datos_generales.no_hay_responsables_disponibles")}</p>
-              )}
-            </>
-          )}
-        </Campo>
+        {mostrarAsignacionCatastrofico && !camposFijos ? (
+          <CamposAsignacionCaso
+            form={{
+              ajustadorLider: formData.ajustadorLider || '',
+              ajustador: formData.ajustador || formData.codiRespnsble || '',
+              inspector: formData.inspector || '',
+            }}
+            setCampo={setCampoAsignacion}
+            lideres={lideresAsignacion || responsables || []}
+            ajustadores={ajustadoresCatastrofico}
+            inspectores={inspectoresCatastrofico}
+            rol={rolUsuario}
+            i18nNs="segurosSura"
+            ciudadSeleccionada={formData.ciudadSiniestro || formData.ciudad || ''}
+            filtrarPorCiudad={!esAdminAsignacion}
+          />
+        ) : (
+          <Campo label={t("complex.ui.datos_generales.responsable")}>
+            {camposFijos ? (
+              <ValorFijo>{labelResponsable}</ValorFijo>
+            ) : (
+              <>
+                <SelectFenix
+                  name="codiRespnsble"
+                  value={formData.codiRespnsble || ''}
+                  onChange={(e) => {
+                    handleChange(e);
+                    onResponsableChange?.(e.target.value);
+                  }}
+                  required
+                  disabled={!hayResponsables}
+                >
+                  <option value="">{t("complex.ui.datos_generales.seleccionar")}</option>
+                  {(responsables || []).map((responsable) => (
+                    <option key={responsable.value} value={responsable.value}>
+                      {responsable.label}
+                    </option>
+                  ))}
+                </SelectFenix>
+                {!hayResponsables && (
+                  <p className={complexAlertError}>{t("complex.ui.datos_generales.no_hay_responsables_disponibles")}</p>
+                )}
+              </>
+            )}
+          </Campo>
+        )}
 
         <Campo label={t("complex.ui.datos_generales.cliente")}>
           {camposFijos || aseguradoraFija ? (

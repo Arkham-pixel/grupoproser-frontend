@@ -38,6 +38,22 @@ import ModalImportarExcelAlfa, {
   esAdminOSoporteAlfa,
 } from './ModalImportarExcelAlfa.jsx';
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
+import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
+import { obtenerRolAlmacenado } from '../../config/roles.js';
+import {
+  attrsCampoCaso,
+  esRolAdminOSoporte,
+  esRolInspector,
+  filtrarPayloadCasoPorRol,
+  puedeEditarCampoCaso,
+} from '../../utils/permisosCasoPorRol.js';
+import {
+  filtrarLideresPorModulo,
+  filtrarOpcionesPorCiudad,
+  mapCatalogoCatastroficoAOpciones,
+  mapResponsablesAOpciones,
+  resolverLiderPorModulo,
+} from '../../utils/catalogosAsignacionCatastrofico.js';
 
 const alfaRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -62,6 +78,9 @@ const opcionHuerfana = (valor, opciones = []) => {
 
 const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onSaved }) => {
   const { t } = useTranslation();
+  const rolUsuario = obtenerRolAlmacenado();
+  const soloInspector = esRolInspector(rolUsuario);
+  const esAdminAsignacion = esRolAdminOSoporte(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
   const puedeImportarExcel = esAdminOSoporteAlfa();
   const [form, setForm] = useState(() =>
@@ -74,6 +93,8 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   const [resumenImport, setResumenImport] = useState(null);
   const [ciudadesRaw, setCiudadesRaw] = useState([]);
   const [responsables, setResponsables] = useState([]);
+  const [ajustadoresCat, setAjustadoresCat] = useState([]);
+  const [inspectoresCat, setInspectoresCat] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
 
   useEffect(() => {
@@ -90,12 +111,16 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     const cargar = async () => {
       setCargandoCatalogos(true);
       try {
-        const [resCiudades, resResp] = await Promise.all([
+        const [resCiudades, resResp, resAj, resIns] = await Promise.all([
           fetch(`${BASE_URL}/api/ciudades`),
           fetch(`${BASE_URL}/api/responsables`),
+          fetch(`${BASE_URL}/api/ajustadores-catastrofico`),
+          fetch(`${BASE_URL}/api/inspectores-catastrofico`),
         ]);
         const dataCiudades = await resCiudades.json().catch(() => ({}));
         const dataResp = await resResp.json().catch(() => ({}));
+        const dataAj = await resAj.json().catch(() => ({}));
+        const dataIns = await resIns.json().catch(() => ({}));
         if (cancelado) return;
         const lista = Array.isArray(dataCiudades?.data)
           ? dataCiudades.data
@@ -115,25 +140,24 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           : Array.isArray(dataResp)
             ? dataResp
             : [];
-        setResponsables(
-          listaResp
-            .map((r) => {
-              const codigo = String(r.codiRespnsble ?? r.codigo ?? r.value ?? r._id ?? '').trim();
-              const nombre = String(
-                r.nmbrRespnsble || r.nombre || r.nombreResponsable || r.label || ''
-              ).trim();
-              if (!nombre) return null;
-              return {
-                // Guardar y mostrar por nombre (alertas resuelven también por nombre)
-                value: nombre,
-                label: nombre,
-                codigo,
-              };
-            })
-            .filter(Boolean)
-            .filter((r, idx, arr) => arr.findIndex((x) => x.value === r.value) === idx)
-            .sort((a, b) => a.label.localeCompare(b.label, 'es'))
-        );
+        setResponsables(mapResponsablesAOpciones(listaResp));
+        const listaAj = Array.isArray(dataAj?.data) ? dataAj.data : Array.isArray(dataAj) ? dataAj : [];
+        const listaIns = Array.isArray(dataIns?.data)
+          ? dataIns.data
+          : Array.isArray(dataIns)
+            ? dataIns
+            : [];
+        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj));
+        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns));
+        const lideresOpts = mapResponsablesAOpciones(listaResp);
+        if (!esEdicion) {
+          const liderDefault = resolverLiderPorModulo(lideresOpts, 'alfa');
+          if (liderDefault) {
+            setForm((prev) =>
+              prev.ajustadorLider ? prev : { ...prev, ajustadorLider: liderDefault }
+            );
+          }
+        }
       } catch (err) {
         if (!cancelado) console.error('Error cargando catálogos Seguros Alfa:', err);
       } finally {
@@ -169,12 +193,56 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     return [...unicas.values()].sort((a, b) => a.localeCompare(b, 'es'));
   }, [ciudadesRaw, form.departamento]);
 
+  const ajustadoresPorCiudad = useMemo(
+    () =>
+      esAdminAsignacion
+        ? ajustadoresCat
+        : filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad),
+    [ajustadoresCat, form.ciudad, esAdminAsignacion]
+  );
+  const inspectoresPorCiudad = useMemo(
+    () =>
+      esAdminAsignacion
+        ? inspectoresCat
+        : filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad),
+    [inspectoresCat, form.ciudad, esAdminAsignacion]
+  );
+  const lideresSoloSilvia = useMemo(
+    () => filtrarLideresPorModulo(responsables, 'alfa'),
+    [responsables]
+  );
+
+  useEffect(() => {
+    if (esAdminAsignacion) return;
+    setForm((prev) => {
+      let cambio = false;
+      const next = { ...prev };
+      if (
+        prev.ajustador &&
+        !ajustadoresPorCiudad.some((a) => a.value === prev.ajustador || a.codigo === prev.ajustador)
+      ) {
+        next.ajustador = '';
+        cambio = true;
+      }
+      if (
+        prev.inspector &&
+        !inspectoresPorCiudad.some((a) => a.value === prev.inspector || a.codigo === prev.inspector)
+      ) {
+        next.inspector = '';
+        cambio = true;
+      }
+      return cambio ? next : prev;
+    });
+  }, [ajustadoresPorCiudad, inspectoresPorCiudad, esAdminAsignacion]);
+
   const setCampo = (clave) => (e) => {
+    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: valor }));
   };
 
   const setDepartamento = (e) => {
+    if (!puedeEditarCampoCaso(rolUsuario, 'departamento')) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => {
       const siguiente = { ...prev, departamento: valor };
@@ -191,6 +259,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   };
 
   const setCampoMiles = (clave) => (e) => {
+    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: formatMilesInput(valor) }));
   };
@@ -204,6 +273,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       value={form[clave]}
       onChange={setCampoMiles(clave)}
       placeholder="0"
+      {...attrsCampoCaso(rolUsuario, clave)}
     />
   );
 
@@ -235,11 +305,25 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
 
     setGuardando(true);
     try {
-      const payload = construirPayload();
+      const bruto = construirPayload();
+      const { payload } = filtrarPayloadCasoPorRol(
+        rolUsuario,
+        bruto,
+        esEdicion ? initialData || {} : {}
+      );
       let guardado;
       if (esEdicion) {
         guardado = await actualizarCasoAlfa(initialData._id, payload);
       } else {
+        if (soloInspector) {
+          setError(
+            t('segurosAlfa.permissions.inspectorCannotCreate', {
+              defaultValue: 'El inspector no puede crear casos; solo modificar el estado.',
+            })
+          );
+          setGuardando(false);
+          return;
+        }
         guardado = await crearCasoAlfa(payload);
       }
       setExito(
@@ -268,7 +352,11 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   };
 
   const selectSimple = (clave, opciones, placeholder = t('common.select')) => (
-    <SelectFenix value={form[clave]} onChange={setCampo(clave)}>
+    <SelectFenix
+      value={form[clave]}
+      onChange={setCampo(clave)}
+      {...attrsCampoCaso(rolUsuario, clave)}
+    >
       <option value="">{placeholder}</option>
       {opciones.map((op) => (
         <option key={op} value={op}>
@@ -427,23 +515,32 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           <Campo label={t('segurosAlfa.fields.estado')} required>
             {selectSimple('estado', ESTADOS_ALFA)}
           </Campo>
-          <Campo label={t('segurosAlfa.fields.ajustador')}>
-            <SelectFenix value={form.ajustador} onChange={setCampo('ajustador')}>
-              <option value="">{t('common.select')}</option>
-              {form.ajustador &&
-                !responsables.some((r) => r.value === form.ajustador || r.codigo === form.ajustador) && (
-                  <option value={form.ajustador}>{form.ajustador}</option>
-                )}
-              {responsables.map((r) => (
-                <option key={r.codigo || r.value} value={r.value}>
-                  {r.label}
-                </option>
-              ))}
-            </SelectFenix>
-          </Campo>
+          <CamposAsignacionCaso
+            form={form}
+            setCampo={setCampo}
+            lideres={lideresSoloSilvia}
+            ajustadores={ajustadoresPorCiudad}
+            inspectores={inspectoresPorCiudad}
+            rol={rolUsuario}
+            i18nNs="segurosAlfa"
+            ciudadSeleccionada={form.ciudad}
+            filtrarPorCiudad={!esAdminAsignacion}
+          />
         </div>
+        {soloInspector ? (
+          <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+            {t('segurosAlfa.permissions.inspectorHint', {
+              defaultValue:
+                'Su rol de inspector solo permite ver el caso y modificar el estado.',
+            })}
+          </p>
+        ) : null}
       </section>
 
+      <fieldset
+        disabled={soloInspector}
+        className="min-w-0 space-y-5 border-0 p-0 m-0 disabled:opacity-80"
+      >
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('segurosAlfa.sections.values')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -529,6 +626,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           </Campo>
         </div>
       </section>
+      </fieldset>
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
         {embed && onClose && (

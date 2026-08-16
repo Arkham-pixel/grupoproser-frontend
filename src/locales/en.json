@@ -193,6 +193,9 @@
     "usuario": "User",
     "visualizador": "Viewer",
     "puertos": "Ports",
+    "ajustador_lider": "Lead adjuster",
+    "ajustador": "Adjuster",
+    "inspector": "Inspector",
     "contractor_zurich": "Zurich, Alfa and Sura",
     "contractor_alfa": "Zurich, Alfa and Sura",
     "contractor_sura": "Zurich, Alfa and Sura",
@@ -363,7 +366,9 @@
       "suraReport": "Sura report",
       "suraBulletin": "Sura weekly bulletin",
       "suraBlocks": "Sura proximity blocks",
-      "suraCase": "Sura case"
+      "suraCase": "Sura case",
+      "adminCatastrophicAdjusters": "Catastrophic adjusters",
+      "adminCatastrophicInspectors": "Catastrophic inspectors"
     },
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
@@ -382,7 +387,9 @@
     "suraReport": "Sura report",
     "suraBulletin": "Weekly bulletin",
     "suraBlocks": "Nearby blocks",
-    "suraCase": "Sura case"
+    "suraCase": "Sura case",
+    "catastrophicAdjusters": "Catastrophic adjusters",
+    "catastrophicInspectors": "Catastrophic inspectors"
   },
   "translation": {
     "preview": "English translation",
@@ -1112,6 +1119,9 @@
       "columnsSaved": "Column order saved.",
       "columnsNeedOne": "Keep at least one visible column.",
       "columnsVisibleCount": "{{count}} of {{total}} visible",
+      "checklistTitle": "Report checklist",
+      "checklistSaveError": "Could not save the check. Try again.",
+      "checklistDone": "Done",
       "manageCase": "Manage Equidad FDM case",
       "deleteCase": "Delete Equidad FDM case",
       "deleteConfirm": "Do you want to delete case {{caseNumber}}? This action cannot be undone.",
@@ -1288,7 +1298,9 @@
       "fechaLiquidado": "Settlement date",
       "fechaAceptacionLiquidacion": "Settlement acceptance date",
       "fechaEnvioAseguradora": "Date sent to insurer",
-      "estado": "Status"
+      "estado": "Status",
+      "ajustadorLider": "Lead adjuster (assigns cases)",
+      "inspector": "Inspector"
     },
     "placeholders": {
       "siniestro": "Claim number",
@@ -1652,6 +1664,10 @@
       "loadError": "Could not load the case.",
       "pickCase": "Pick a case from the report to work on settlement and unique report.",
       "goReport": "Go to report"
+    },
+    "permissions": {
+      "inspectorHint": "Inspector role can only view the case and change status.",
+      "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
     }
   },
   "segurosSura": {
@@ -1705,7 +1721,9 @@
       "fechaLiquidado": "Settlement date",
       "fechaAceptacionLiquidacion": "Settlement acceptance date",
       "fechaEnvioAseguradora": "Date sent to insurer",
-      "estado": "Status"
+      "estado": "Status",
+      "ajustadorLider": "Lead adjuster (assigns cases)",
+      "inspector": "Inspector"
     },
     "placeholders": {
       "siniestro": "Claim number",
@@ -2114,6 +2132,10 @@
       "uploadError": "Salvage photos could not be uploaded.",
       "savedCaseRequired": "The case must be saved before recording salvage.",
       "noData": "There is no salvage data to save."
+    },
+    "permissions": {
+      "inspectorHint": "Inspector role can only view the case and change status.",
+      "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
     }
   },
   "properties": {
@@ -7322,6 +7344,66 @@
           "lastSession": "Last Session",
           "firstSession": "First Session"
         }
+      },
+      "ajustadoresCatastrofico": {
+        "accessDeniedTitle": "Access Denied",
+        "accessDeniedMessage": "You do not have permission. Admin or support role required.",
+        "loading": "Loading...",
+        "filterCity": "Filter by city",
+        "allCities": "All cities",
+        "empty": "No catastrophic adjusters registered",
+        "edit": "Edit",
+        "editTitle": "Edit catastrophic adjuster",
+        "newTitle": "New catastrophic adjuster",
+        "codeRequired": "Code *",
+        "nameRequired": "Name *",
+        "cityRequired": "City *",
+        "email": "Email",
+        "phone": "Phone",
+        "cancel": "Cancel",
+        "update": "Update",
+        "save": "Save",
+        "loadError": "Error loading",
+        "requiredFields": "Code, name and city are required",
+        "saveError": "Error saving",
+        "updated": "Updated successfully",
+        "created": "Created successfully",
+        "confirmDelete": "Delete this record?",
+        "deleteError": "Error deleting",
+        "deleted": "Deleted successfully",
+        "errorPrefix": "Error: {{message}}",
+        "title": "Catastrophic adjusters",
+        "newItem": "New adjuster"
+      },
+      "inspectoresCatastrofico": {
+        "accessDeniedTitle": "Access Denied",
+        "accessDeniedMessage": "You do not have permission. Admin or support role required.",
+        "loading": "Loading...",
+        "filterCity": "Filter by city",
+        "allCities": "All cities",
+        "empty": "No catastrophic inspectors registered",
+        "edit": "Edit",
+        "editTitle": "Edit catastrophic inspector",
+        "newTitle": "New catastrophic inspector",
+        "codeRequired": "Code *",
+        "nameRequired": "Name *",
+        "cityRequired": "City *",
+        "email": "Email",
+        "phone": "Phone",
+        "cancel": "Cancel",
+        "update": "Update",
+        "save": "Save",
+        "loadError": "Error loading",
+        "requiredFields": "Code, name and city are required",
+        "saveError": "Error saving",
+        "updated": "Updated successfully",
+        "created": "Created successfully",
+        "confirmDelete": "Delete this record?",
+        "deleteError": "Error deleting",
+        "deleted": "Deleted successfully",
+        "errorPrefix": "Error: {{message}}",
+        "title": "Catastrophic inspectors",
+        "newItem": "New inspector"
       }
     }
   },
@@ -10429,7 +10511,9 @@
       "lucroCesante": "Business interruption",
       "severidadCat": "CAT severity (1–6)",
       "accesoPredio": "Property access",
-      "observacionesCat": "CAT inspection observations"
+      "observacionesCat": "CAT inspection observations",
+      "ajustadorLider": "Lead adjuster (assigns cases)",
+      "inspector": "Inspector"
     },
     "placeholders": {
       "siniestro": "Claim number",
@@ -10772,6 +10856,10 @@
       "photosDropSubtitle": "JPG, PNG, GIF or WEBP — you can upload several at once",
       "noPhotos": "No photos yet. Use the drop zone above.",
       "descriptionHint": "Describe observable facts from the inspection (date, time, location, source and support). Saved with the CAT inspection button."
+    },
+    "permissions": {
+      "inspectorHint": "Inspector role can only view the case and change status.",
+      "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
     }
   }
 }

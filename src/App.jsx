@@ -45,6 +45,8 @@ import ListaMatricesRiesgo from './components/ListaMatricesRiesgo';
 import GestionClientesFuncionarios from './components/GestionClientesFuncionarios';
 import GestionIntermediarios from './components/GestionIntermediarios';
 import GestionResponsables from './components/GestionResponsables';
+import GestionAjustadoresCatastrofico from './components/GestionAjustadoresCatastrofico';
+import GestionInspectoresCatastrofico from './components/GestionInspectoresCatastrofico';
 import GestionEstadosComplex from './components/SubcomponenteCompex/GestionEstadosComplex';
 import ProtocoloTiemposComplex from './components/SubcomponenteCompex/ProtocoloTiemposComplex';
 import PortalSubtareaExterna from './components/SubcomponenteCompex/PortalSubtareaExterna';
@@ -623,6 +625,8 @@ export default function App() {
           <Route path="admin/clientes-funcionarios" element={<GestionClientesFuncionarios />} />
           <Route path="admin/intermediarios" element={<GestionIntermediarios />} />
           <Route path="admin/responsables" element={<GestionResponsables />} />
+          <Route path="admin/ajustadores-catastrofico" element={<GestionAjustadoresCatastrofico />} />
+          <Route path="admin/inspectores-catastrofico" element={<GestionInspectoresCatastrofico />} />
           <Route path="admin/catalogos-express" element={<CatalogosExpress />} />
           <Route path="admin/documentos" element={<GestionDocumentos />} />
           <Route path="test-email" element={<TestEmail />} />

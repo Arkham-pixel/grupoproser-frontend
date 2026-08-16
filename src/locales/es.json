@@ -188,6 +188,9 @@
     "alertSystem": "Sistema de alertas"
   },
   "roles": {
+    "ajustador_lider": "Ajustador líder",
+    "ajustador": "Ajustador",
+    "inspector": "Inspector",
     "admin": "Administrador",
     "soporte": "Soporte",
     "usuario": "Usuario",
@@ -363,7 +366,9 @@
       "suraReport": "Reporte Sura",
       "suraBulletin": "Boletín semanal Sura",
       "suraBlocks": "Bloques de cercanía Sura",
-      "suraCase": "Caso Sura"
+      "suraCase": "Caso Sura",
+      "adminCatastrophicAdjusters": "Ajustadores catastróficos",
+      "adminCatastrophicInspectors": "Inspectores catastróficos"
     },
     "segurosAlfaForm": "Formulario Seguros Alfa",
     "alfaAddCase": "Agregar caso",
@@ -382,7 +387,9 @@
     "suraReport": "Reporte Sura",
     "suraBulletin": "Boletín semanal",
     "suraBlocks": "Bloques cercanos",
-    "suraCase": "Caso Sura"
+    "suraCase": "Caso Sura",
+    "catastrophicAdjusters": "Ajustadores catastróficos",
+    "catastrophicInspectors": "Inspectores catastróficos"
   },
   "translation": {
     "preview": "Traducción al inglés",
@@ -1112,6 +1119,9 @@
       "columnsSaved": "Orden de columnas guardado.",
       "columnsNeedOne": "Debes dejar al menos una columna visible.",
       "columnsVisibleCount": "{{count}} de {{total}} visibles",
+      "checklistTitle": "Check del reporte",
+      "checklistSaveError": "No se pudo guardar el check. Intenta de nuevo.",
+      "checklistDone": "Hecho",
       "manageCase": "Gestionar caso Equidad FDM",
       "deleteCase": "Eliminar caso Equidad FDM",
       "deleteConfirm": "¿Confirma eliminar el caso {{caseNumber}}? Esta acción no se puede deshacer.",
@@ -1288,7 +1298,9 @@
       "fechaLiquidado": "Fecha liquidado",
       "fechaAceptacionLiquidacion": "Fecha aceptación liquidación",
       "fechaEnvioAseguradora": "Fecha envío a la aseguradora",
-      "estado": "Estado"
+      "estado": "Estado",
+      "ajustadorLider": "Ajustador líder (quien asigna)",
+      "inspector": "Inspector"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -1652,6 +1664,10 @@
       "loadError": "No se pudo cargar el caso.",
       "pickCase": "Selecciona un caso desde el reporte para trabajar liquidador e informe.",
       "goReport": "Ir al reporte"
+    },
+    "permissions": {
+      "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
+      "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
     }
   },
   "segurosSura": {
@@ -1705,7 +1721,9 @@
       "fechaLiquidado": "Fecha liquidado",
       "fechaAceptacionLiquidacion": "Fecha aceptación liquidación",
       "fechaEnvioAseguradora": "Fecha envío a la aseguradora",
-      "estado": "Estado"
+      "estado": "Estado",
+      "ajustadorLider": "Ajustador líder (quien asigna)",
+      "inspector": "Inspector"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -2114,6 +2132,10 @@
       "uploadError": "No se pudieron subir las fotos de salvamento.",
       "savedCaseRequired": "El caso debe estar guardado para registrar salvamento.",
       "noData": "No hay datos de salvamento para guardar."
+    },
+    "permissions": {
+      "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
+      "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
     }
   },
   "properties": {
@@ -7322,6 +7344,75 @@
           "lastSession": "Última Sesión",
           "firstSession": "Primera Sesión"
         }
+      },
+      "ajustadoresCatastrofico": {
+        "accessDeniedTitle": "Acceso Denegado",
+        "accessDeniedMessage": "No tienes permisos para acceder a esta función. Se requieren permisos de administrador o soporte.",
+        "loading": "Cargando...",
+        "filterCity": "Filtrar por ciudad",
+        "allCities": "Todas las ciudades",
+        "empty": "No hay ajustadores catastróficos registrados",
+        "edit": "Editar",
+        "editTitle": "Editar ajustador catastrófico",
+        "newTitle": "Nuevo ajustador catastrófico",
+        "codeRequired": "Código *",
+        "nameRequired": "Nombre *",
+        "cityRequired": "Ciudad *",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "cancel": "Cancelar",
+        "update": "Actualizar",
+        "save": "Guardar",
+        "loadError": "Error al cargar",
+        "requiredFields": "Código, nombre y ciudad son requeridos",
+        "saveError": "Error al guardar",
+        "updated": "Actualizado exitosamente",
+        "created": "Creado exitosamente",
+        "confirmDelete": "¿Eliminar este registro?",
+        "deleteError": "Error al eliminar",
+        "deleted": "Eliminado exitosamente",
+        "errorPrefix": "Error: {{message}}",
+        "title": "Ajustadores catastróficos",
+        "newItem": "Nuevo ajustador",
+        "subtitle": "Copia adaptada de Responsables, con ciudad para filtrar en Alfa/Sura.",
+        "importFromResponsables": "Copiar desde Responsables",
+        "importTitle": "Copiar desde Responsables",
+        "importHint": "Copia la base de Responsables a este catálogo. Indique la ciudad (Cali, Pereira, etc.).",
+        "importCityRequired": "Seleccione la ciudad para la copia.",
+        "importResult": "Copia: {{created}} creados, {{skipped}} omitidos (ciudad: {{city}}).",
+        "importing": "Copiando…",
+        "importConfirm": "Copiar"
+      },
+      "inspectoresCatastrofico": {
+        "accessDeniedTitle": "Acceso Denegado",
+        "accessDeniedMessage": "No tienes permisos para acceder a esta función. Se requieren permisos de administrador o soporte.",
+        "loading": "Cargando...",
+        "filterCity": "Filtrar por ciudad",
+        "allCities": "Todas las ciudades",
+        "empty": "No hay inspectores catastróficos registrados",
+        "edit": "Editar",
+        "editTitle": "Editar inspector catastrófico",
+        "newTitle": "Nuevo inspector catastrófico",
+        "codeRequired": "Código *",
+        "nameRequired": "Nombre *",
+        "cityRequired": "Ciudad *",
+        "email": "Correo",
+        "phone": "Teléfono",
+        "cancel": "Cancelar",
+        "update": "Actualizar",
+        "save": "Guardar",
+        "loadError": "Error al cargar",
+        "requiredFields": "Código, nombre y ciudad son requeridos",
+        "saveError": "Error al guardar",
+        "updated": "Actualizado exitosamente",
+        "created": "Creado exitosamente",
+        "confirmDelete": "¿Eliminar este registro?",
+        "deleteError": "Error al eliminar",
+        "deleted": "Eliminado exitosamente",
+        "errorPrefix": "Error: {{message}}",
+        "title": "Inspectores catastróficos",
+        "newItem": "Nuevo inspector",
+        "subtitle": "Ventana para crear inspectores catastróficos con ciudad de cobertura."
       }
     }
   },
@@ -10429,7 +10520,9 @@
       "lucroCesante": "Lucro cesante",
       "severidadCat": "Severidad CAT (1–6)",
       "accesoPredio": "Acceso al predio",
-      "observacionesCat": "Observaciones inspección CAT"
+      "observacionesCat": "Observaciones inspección CAT",
+      "ajustadorLider": "Ajustador líder (quien asigna)",
+      "inspector": "Inspector"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -10772,6 +10865,10 @@
       "photosDropSubtitle": "JPG, PNG, GIF o WEBP — puede subir varias a la vez",
       "noPhotos": "Aún no hay fotos. Use la zona de arrastre de arriba.",
       "descriptionHint": "Describa hechos observables de la inspección (fecha, hora, ubicación, fuente y soporte). Se guarda con el botón de inspección CAT."
+    },
+    "permissions": {
+      "inspectorHint": "Su rol de inspector solo permite ver el caso y modificar el estado.",
+      "inspectorCannotCreate": "El inspector no puede crear casos; solo modificar el estado."
     }
   }
 }

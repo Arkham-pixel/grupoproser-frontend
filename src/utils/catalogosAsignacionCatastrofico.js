@@ -1,0 +1,79 @@
+/** Normaliza texto para comparar ciudades (sin acentos / mayúsculas). */
+export function normCiudadCatastrofico(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase();
+}
+
+/** Mapea filas de /api/responsables a opciones de select. */
+export function mapResponsablesAOpciones(lista = []) {
+  return lista
+    .map((r) => {
+      const codigo = String(r.codiRespnsble ?? r.codigo ?? r.value ?? r._id ?? '').trim();
+      const nombre = String(
+        r.nmbrRespnsble || r.nombre || r.nombreResponsable || r.label || ''
+      ).trim();
+      if (!nombre) return null;
+      return { value: nombre, label: nombre, codigo };
+    })
+    .filter(Boolean)
+    .filter((r, idx, arr) => arr.findIndex((x) => x.value === r.value) === idx)
+    .sort((a, b) => a.label.localeCompare(b.label, 'es'));
+}
+
+/** Mapea filas de catálogos catastróficos (ajustador/inspector) a opciones. */
+export function mapCatalogoCatastroficoAOpciones(lista = []) {
+  return lista
+    .map((r) => {
+      const codigo = String(r.codigo ?? r.value ?? r._id ?? '').trim();
+      const nombre = String(r.nombre || r.label || '').trim();
+      const ciudad = String(r.ciudad || '').trim();
+      if (!nombre) return null;
+      return { value: nombre, label: nombre, codigo, ciudad };
+    })
+    .filter(Boolean)
+    .filter((r, idx, arr) => arr.findIndex((x) => x.value === r.value && x.ciudad === r.ciudad) === idx)
+    .sort((a, b) => a.label.localeCompare(b.label, 'es'));
+}
+
+/** Filtra opciones por ciudad del caso. Incluye cobertura "Todas". */
+export function filtrarOpcionesPorCiudad(opciones = [], ciudadCaso) {
+  const target = normCiudadCatastrofico(ciudadCaso);
+  if (!target) return [];
+  return opciones.filter((o) => {
+    const c = normCiudadCatastrofico(o.ciudad);
+    if (!c || c === 'TODAS' || c === 'TODOS') return true;
+    return c === target;
+  });
+}
+
+/** Needle de nombre para el líder fijo por módulo. */
+export function needleLiderPorModulo(modulo = '') {
+  const m = String(modulo || '').toLowerCase();
+  if (m === 'alfa') return 'SILVIA';
+  if (m === 'sura') return 'BERNARDO';
+  return '';
+}
+
+/**
+ * Solo el líder permitido en el select:
+ * Alfa → Silvia; Sura → Bernardo.
+ */
+export function filtrarLideresPorModulo(lideres = [], modulo = '') {
+  const needle = needleLiderPorModulo(modulo);
+  if (!needle) return lideres;
+  return lideres.filter((l) =>
+    normCiudadCatastrofico(l.label || l.value).includes(needle)
+  );
+}
+
+/**
+ * Resuelve el ajustador líder por módulo.
+ * Alfa → Silvia; Sura → Bernardo.
+ */
+export function resolverLiderPorModulo(lideres = [], modulo = '') {
+  const filtrados = filtrarLideresPorModulo(lideres, modulo);
+  return filtrados[0]?.value || '';
+}

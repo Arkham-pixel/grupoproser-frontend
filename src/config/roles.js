@@ -4,6 +4,9 @@ export const ROLES_VALIDOS = [
   'usuario',
   'visualizador',
   'puertos',
+  'ajustador_lider',
+  'ajustador',
+  'inspector',
   'contractor_zurich',
   'contractor_alfa',
   'contractor_sura',
@@ -119,6 +122,9 @@ export function etiquetaRol(rol, t) {
   const translate = typeof t === 'function' ? t : (key, fallback) => fallback;
   if (r === 'admin' || r === 'administrador') return translate('roles.admin', 'Administrador');
   if (r === 'soporte') return translate('roles.soporte', 'Soporte');
+  if (r === 'ajustador_lider') return translate('roles.ajustador_lider', 'Ajustador líder');
+  if (r === 'ajustador') return translate('roles.ajustador', 'Ajustador');
+  if (r === 'inspector') return translate('roles.inspector', 'Inspector');
   if (r === 'visualizador') return translate('roles.visualizador', 'Visualizador');
   if (r === 'puertos') return translate('roles.puertos', 'Puertos');
   const contractor = obtenerConfigContractor(r);

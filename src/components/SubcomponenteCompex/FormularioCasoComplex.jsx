@@ -39,6 +39,14 @@ import {
 } from '../../services/formSyncChannel.js';
 import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig.js';
 import {
+  filtrarLideresPorModulo,
+  filtrarOpcionesPorCiudad,
+  mapCatalogoCatastroficoAOpciones,
+  resolverLiderPorModulo,
+} from '../../utils/catalogosAsignacionCatastrofico.js';
+import { esRolAdminOSoporte } from '../../utils/permisosCasoPorRol.js';
+import { obtenerRolAlmacenado } from '../../config/roles.js';
+import {
   CAMPOS_FECHA_HORA_PROTOCOLO,
   formatearFechaHoraParaInput,
 } from '../../utils/complexFechaHoraUtils.js';
@@ -127,6 +135,9 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     funcAsgrdraNombre: '',
     emailFuncionarioAseguradora: '',
     nombreResponsable: '',
+    ajustadorLider: '',
+    ajustador: '',
+    inspector: '',
     asgrBenfcro: '',
     tipoDucumento: '',
     numDocumento: '',
@@ -475,6 +486,11 @@ const nuevoFormData = {
           nuevoFormData.asgrBenfcro = nuevoFormData.asgrBenfcro || initialData.asegurado || '';
           nuevoFormData.nmroPolza = nuevoFormData.nmroPolza || initialData.numeroPoliza || '';
           nuevoFormData.codiRespnsble = nuevoFormData.codiRespnsble || initialData.ajustador || '';
+          nuevoFormData.ajustador =
+            nuevoFormData.ajustador || initialData.ajustador || nuevoFormData.codiRespnsble || '';
+          nuevoFormData.ajustadorLider =
+            nuevoFormData.ajustadorLider || initialData.ajustadorLider || '';
+          nuevoFormData.inspector = nuevoFormData.inspector || initialData.inspector || '';
           nuevoFormData.nombIntermediario = nuevoFormData.nombIntermediario || initialData.tomador || '';
           nuevoFormData.ciudadSiniestro = nuevoFormData.ciudadSiniestro || initialData.ciudad || '';
           nuevoFormData.departamentoCiudad = nuevoFormData.departamentoCiudad || initialData.departamento || '';
@@ -1535,6 +1551,8 @@ const response = await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/contro
   }, [formData.codiAsgrdra, formData.nombreCliente, aseguradoraOptionsRaw]);
 
   const [responsables, setResponsables] = useState([]);
+  const [ajustadoresCatastrofico, setAjustadoresCatastrofico] = useState([]);
+  const [inspectoresCatastrofico, setInspectoresCatastrofico] = useState([]);
 
   // Estados para autoguardado
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
@@ -2546,6 +2564,80 @@ setFormData(prev => ({
   ]);
 
   useEffect(() => {
+    if (!esSura) {
+      setAjustadoresCatastrofico([]);
+      setInspectoresCatastrofico([]);
+      return undefined;
+    }
+    let cancelado = false;
+    (async () => {
+      try {
+        const [resAj, resIns] = await Promise.all([
+          fetch(`${BASE_URL}/api/ajustadores-catastrofico`),
+          fetch(`${BASE_URL}/api/inspectores-catastrofico`),
+        ]);
+        const dataAj = await resAj.json().catch(() => ({}));
+        const dataIns = await resIns.json().catch(() => ({}));
+        if (cancelado) return;
+        const listaAj = Array.isArray(dataAj?.data) ? dataAj.data : Array.isArray(dataAj) ? dataAj : [];
+        const listaIns = Array.isArray(dataIns?.data)
+          ? dataIns.data
+          : Array.isArray(dataIns)
+            ? dataIns
+            : [];
+        setAjustadoresCatastrofico(mapCatalogoCatastroficoAOpciones(listaAj));
+        setInspectoresCatastrofico(mapCatalogoCatastroficoAOpciones(listaIns));
+      } catch (err) {
+        if (!cancelado) {
+          console.error('Error cargando catálogos catastróficos SURA:', err);
+          setAjustadoresCatastrofico([]);
+          setInspectoresCatastrofico([]);
+        }
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [esSura]);
+
+  const esAdminAsignacion = esRolAdminOSoporte(obtenerRolAlmacenado());
+  const lideresAsignacion = useMemo(() => {
+    const todos = (responsables || []).map((r) => ({
+      value: r.label || r.value,
+      label: r.label || r.value,
+      codigo: r.value,
+    }));
+    if (!esSura) return todos;
+    return filtrarLideresPorModulo(todos, 'sura');
+  }, [responsables, esSura]);
+
+  useEffect(() => {
+    if (!esSura || initialData?._id || !lideresAsignacion.length) return;
+    const liderDefault = resolverLiderPorModulo(lideresAsignacion, 'sura');
+    if (!liderDefault) return;
+    setFormData((prev) =>
+      prev.ajustadorLider ? prev : { ...prev, ajustadorLider: liderDefault }
+    );
+  }, [esSura, lideresAsignacion, initialData?._id]);
+
+  const ajustadoresCatFiltrados = useMemo(() => {
+    if (!esSura) return [];
+    if (esAdminAsignacion) return ajustadoresCatastrofico;
+    return filtrarOpcionesPorCiudad(
+      ajustadoresCatastrofico,
+      formData.ciudadSiniestro || formData.ciudad || ''
+    );
+  }, [esSura, esAdminAsignacion, ajustadoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
+  const inspectoresCatFiltrados = useMemo(() => {
+    if (!esSura) return [];
+    if (esAdminAsignacion) return inspectoresCatastrofico;
+    return filtrarOpcionesPorCiudad(
+      inspectoresCatastrofico,
+      formData.ciudadSiniestro || formData.ciudad || ''
+    );
+  }, [esSura, esAdminAsignacion, inspectoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
+
+  useEffect(() => {
     if (!responsables.length) {
       return;
     }
@@ -2672,6 +2764,9 @@ setFormData(prev => ({
       codiRespnsble: formData.codiRespnsble,
       nombreResponsable: formData.nombreResponsable || '',
       responsable: formData.nombreResponsable || '',
+      ajustadorLider: formData.ajustadorLider || '',
+      ajustador: formData.ajustador || formData.nombreResponsable || formData.codiRespnsble || '',
+      inspector: formData.inspector || '',
       codiAsgrdra: formData.codiAsgrdra,
       funcAsgrdra: formData.funcAsgrdra,
       funcAsgrdraNombre: formData.funcAsgrdraNombre || '',
@@ -3383,6 +3478,10 @@ clearSavedData();
         onResponsableChange={handleResponsableChange}
         camposFijos={camposFijos}
         aseguradoraFija={esSura}
+        mostrarAsignacionCatastrofico={esSura}
+        lideresAsignacion={lideresAsignacion}
+        ajustadoresCatastrofico={ajustadoresCatFiltrados}
+        inspectoresCatastrofico={inspectoresCatFiltrados}
       />
         )}
         {tabActiva === 'valores' && (

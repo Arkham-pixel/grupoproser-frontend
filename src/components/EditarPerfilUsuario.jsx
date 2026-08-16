@@ -210,6 +210,9 @@ if (!esAdminOSoporte) {
               >
                 <option value="">{t('admin.ui.editarPerfilUsuario.fields.selectRole')}</option>
                 <option value="usuario">{t('roles.usuario')}</option>
+                <option value="ajustador_lider">{t('roles.ajustador_lider')}</option>
+                <option value="ajustador">{t('roles.ajustador')}</option>
+                <option value="inspector">{t('roles.inspector')}</option>
                 <option value="visualizador">{t('roles.visualizador')}</option>
                 <option value="puertos">{t('roles.puertos')}</option>
                 <option value="contractor_zurich">{t('roles.contractor_zurich')}</option>

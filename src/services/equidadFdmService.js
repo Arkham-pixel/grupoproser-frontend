@@ -33,6 +33,7 @@ export const normalizeFdmItem = (item = {}) => ({
   evento: item.evento ?? '',
   estado: item.estado ?? '',
   esNuevo: item.esNuevo === true,
+  checklistHecho: item.checklistHecho === true,
   liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
   totalPerdidaNumero: toNumber(item.totalPerdida),
@@ -210,6 +211,30 @@ export const deleteCasoFdm = async (id) => {
     throw new Error(payload?.error || `Error al eliminar el caso FDM (${response.status})`);
   }
   return payload;
+};
+
+/** Guarda el check «hecho» del reporte en la base de datos. */
+export const toggleChecklistHechoCasoFdm = async (casoId, hecho) => {
+  if (!casoId) throw new Error('Caso FDM requerido');
+  const response = await fetch(`${FDM_API_URL}/${casoId}/checklist-hecho`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({
+      hecho: Boolean(hecho),
+      login: (() => {
+        try {
+          return localStorage.getItem('login') || '';
+        } catch {
+          return '';
+        }
+      })(),
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al guardar el check (${response.status})`);
+  }
+  return payload?.data ?? payload;
 };
 
 /**
