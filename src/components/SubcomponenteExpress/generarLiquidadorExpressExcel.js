@@ -3,6 +3,8 @@ import { saveAs } from 'file-saver';
 import {
   DOCUMENTOS_SOPORTE,
   documentoChecklistFinalizado,
+  calcularLiquidacion,
+  listaConceptosLiquidador,
   nombreAjustadorParaDocumento,
   nombreUsuarioPlataforma,
   normalizarEstadoDocumento,
@@ -192,6 +194,30 @@ function rellenarLiquidacion(sheet, liquidador, totales, opciones = {}) {
   const enc = liquidador.encabezado || {};
   const ded = liquidador.deducible || {};
 
+  // Columna D permanece oculta (cálculo intermedio). E–G con ancho para que no salga ####.
+  sheet.getColumn(4).hidden = true;
+  if (!sheet.getColumn(5).width || sheet.getColumn(5).width < 10) {
+    sheet.getColumn(5).width = 10;
+  }
+  if (!sheet.getColumn(6).width || sheet.getColumn(6).width < 8) {
+    sheet.getColumn(6).width = 8;
+  }
+  if (!sheet.getColumn(7).width || sheet.getColumn(7).width < 16) {
+    sheet.getColumn(7).width = 16;
+  }
+
+  const asegurado = String(enc.asegurado || '');
+  if (asegurado.length > 28) {
+    const row6 = sheet.getRow(6);
+    row6.height = Math.max(row6.height || 15, 28);
+  }
+  sheet.getCell('C6').alignment = {
+    ...(sheet.getCell('C6').alignment || {}),
+    wrapText: true,
+    vertical: 'middle',
+    horizontal: 'right',
+  };
+
   // Datos del encabezado en columna C (la B queda libre / más limpia)
   setCell(sheet, 'B4', null);
   setCell(sheet, 'B5', null);
@@ -219,21 +245,26 @@ function rellenarLiquidacion(sheet, liquidador, totales, opciones = {}) {
     setCell(sheet, 'B27', null);
   }
 
-  // No forzar anchos de E–G: altera la proporción del logo Zurich de la plantilla.
-
   for (let row = FILA_INI_CONCEPTOS; row <= FILA_FIN_CONCEPTOS; row += 1) {
     setCell(sheet, `A${row}`, null);
     setCell(sheet, `B${row}`, null);
     setCell(sheet, `H${row}`, null);
   }
 
-  const conceptos = liquidador.conceptos || [];
+  const conceptos = listaConceptosLiquidador(liquidador);
   conceptos.slice(0, FILA_FIN_CONCEPTOS - FILA_INI_CONCEPTOS + 1).forEach((item, idx) => {
     const row = FILA_INI_CONCEPTOS + idx;
-    setCell(sheet, `A${row}`, item.concepto || null);
-    setCell(sheet, `B${row}`, item.detalle || item.concepto || null);
+    const concepto = String(item.concepto || '').trim();
+    const detalle = String(item.detalle || item.concepto || '').trim();
+    setCell(sheet, `A${row}`, concepto || null);
+    setCell(sheet, `B${row}`, detalle || concepto || null);
     const monto = parsearNumero(item.valor);
-    setCell(sheet, `H${row}`, monto || null);
+    const hCell = sheet.getCell(`H${row}`);
+    if (item.valor === '' || item.valor === null || item.valor === undefined) {
+      hCell.value = null;
+    } else {
+      hCell.value = monto;
+    }
   });
 
   // Entradas de deducible (las fórmulas de totales se mantienen)
@@ -433,6 +464,10 @@ export async function crearWorkbookLiquidadorExpress(liquidador, totales, opcion
   const workbook = await cargarPlantillaWorkbook();
   const incluirSalvamento = opciones.incluirSalvamento !== false;
   const soloLiquidacion = opciones.soloLiquidacion === true;
+  const conceptos = listaConceptosLiquidador(liquidador);
+  const liquidadorNorm = { ...liquidador, conceptos };
+  const totalesNorm = calcularLiquidacion(liquidadorNorm);
+  void totales;
 
   const hojaLiq =
     workbook.getWorksheet('FORMATO_LIQUIDACION') || workbook.worksheets[0];
@@ -441,20 +476,20 @@ export async function crearWorkbookLiquidadorExpress(liquidador, totales, opcion
   const hojaSal = workbook.getWorksheet('SALVAMENTO') || workbook.worksheets[2];
 
   if (hojaLiq) {
-    rellenarLiquidacion(hojaLiq, liquidador, totales, opciones);
+    rellenarLiquidacion(hojaLiq, liquidadorNorm, totalesNorm, opciones);
     await corregirLogoZurichLiquidacion(workbook, hojaLiq);
   }
 
   if (!soloLiquidacion) {
     if (hojaChk) {
       quitarMarcoNegroChecklist(hojaChk);
-      rellenarChecklist(hojaChk, liquidador, totales, {
+      rellenarChecklist(hojaChk, liquidadorNorm, totalesNorm, {
         fechaUltimoDocumento: opciones.fechaUltimoDocumento,
       });
     }
 
     if (incluirSalvamento && hojaSal) {
-      rellenarSalvamento(hojaSal, liquidador);
+      rellenarSalvamento(hojaSal, liquidadorNorm);
     } else if (hojaSal) {
       workbook.removeWorksheet(hojaSal.id);
     }

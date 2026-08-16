@@ -231,8 +231,81 @@ export function numDeducible(valor, defaultVal) {
   return isNaN(n) ? defaultVal : n;
 }
 
+function textoConcepto(valor) {
+  if (valor === null || valor === undefined) return '';
+  return String(valor).trim();
+}
+
+function itemConceptoTieneContenido(item) {
+  if (!item || typeof item !== 'object') return false;
+  return Boolean(
+    textoConcepto(item.concepto) ||
+      textoConcepto(item.detalle) ||
+      textoConcepto(item.valor) ||
+      parsearNumero(item.valor)
+  );
+}
+
+function normalizarItemConcepto(item = {}, idx = 0) {
+  const concepto = textoConcepto(
+    item.concepto ?? item.descripcion ?? item.item ?? item.nombre ?? item.conceptoNombre
+  );
+  const detalle = textoConcepto(
+    item.detalle ?? item.observacion ?? item.descripcion ?? item.concepto
+  );
+  const valorRaw =
+    item.valor ??
+    item.monto ??
+    item.valorAjustado ??
+    item.ajustado ??
+    item.valorIndemnizable ??
+    item.reclamado ??
+    '';
+  return {
+    id: item.id || `concepto-${idx + 1}`,
+    concepto,
+    detalle: detalle && detalle !== concepto ? detalle : detalle || concepto,
+    valor: valorRaw,
+  };
+}
+
+function listaDesdeCampoConceptos(raw) {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === 'object') return Object.values(raw);
+  return [];
+}
+
+/**
+ * Ítems de la hoja FORMATO_LIQUIDACION.
+ * Prioriza `conceptos`; si vienen vacíos o con otra forma, usa el análisis del checklist.
+ * El PDF/Excel del liquidador no depende de que el checklist esté diligenciado.
+ */
+export function listaConceptosLiquidador(liquidador = {}) {
+  const desdeConceptos = listaDesdeCampoConceptos(liquidador.conceptos)
+    .map((item, idx) => normalizarItemConcepto(item, idx))
+    .filter(itemConceptoTieneContenido);
+  if (desdeConceptos.length) return desdeConceptos;
+
+  const analisis = listaDesdeCampoConceptos(liquidador.checklist?.itemsAnalisis);
+  return analisis
+    .map((item, idx) =>
+      normalizarItemConcepto(
+        {
+          id: item.id,
+          concepto: item.descripcion,
+          detalle: item.observacion || item.descripcion,
+          valor: item.ajustado || item.reclamado,
+        },
+        idx
+      )
+    )
+    .filter(itemConceptoTieneContenido);
+}
+
 export function calcularLiquidacion(liquidador) {
-  const conceptos = liquidador.conceptos || [];
+  const conceptos = listaDesdeCampoConceptos(liquidador.conceptos)
+    .map((item, idx) => normalizarItemConcepto(item, idx))
+    .filter(itemConceptoTieneContenido);
   const totalPerdida = conceptos.reduce(
     (sum, item) => sum + parsearNumero(item.valor),
     0

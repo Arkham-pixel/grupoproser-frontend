@@ -263,6 +263,7 @@ export default function LiquidadorExpress({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- callbacks de padre; evitamos bucles
   }, [liquidador, totales, liquidadorParaExport]);
 
+  /** Solo aplica al check-list (Word/PDF). No bloquea liquidador ni el guardado del caso. */
   const validarTipoProducto = () => {
     const valor = String(liquidador.checklist?.tipoProducto || '').trim();
     if (valor) return true;
@@ -481,7 +482,6 @@ export default function LiquidadorExpress({
   };
 
   const handleDescargarExcel = async () => {
-    if (!validarTipoProducto()) return;
     setDescargandoWord(true);
     setErrorWord('');
     try {
@@ -499,7 +499,6 @@ export default function LiquidadorExpress({
   };
 
   const handleDescargarPdf = async () => {
-    if (!validarTipoProducto()) return;
     setErrorWord('');
     try {
       await descargarLiquidadorExpressPdf(liquidadorParaExport, totales, { locale: documentLocale });
@@ -544,7 +543,6 @@ export default function LiquidadorExpress({
                 type="button"
                 className={expressBtnPrimary}
                 onClick={() => {
-                  if (!validarTipoProducto()) return;
                   onGuardarEnCaso(liquidadorParaExport, totales, documentLocale);
                 }}
                 disabled={guardandoCaso || descargandoWord}

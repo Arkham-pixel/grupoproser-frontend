@@ -12,7 +12,7 @@ import {
   resolverNombreCatalogo,
 } from '../../services/expressCatalogoService.js';
 import { ordenarLista, resolverCodigoResponsable, resolverCodigoAseguradora, resolverCodigoEstado, formatDate } from './expressHelpers.js';
-import { calcularLiquidacion, liquidadorConNombreAjustador, aplicaFormatoSalvamento, formatearMontoConPeso } from './liquidadorExpressHelpers.js';
+import { calcularLiquidacion, liquidadorConNombreAjustador, aplicaFormatoSalvamento, formatearMontoConPeso, mapCasoExpressALiquidador } from './liquidadorExpressHelpers.js';
 import { descargarLiquidadorExpressPdf } from './generarLiquidadorExpressPdf.js';
 import DocumentLanguageSelector from '../DocumentLanguageSelector.jsx';
 import {
@@ -669,7 +669,8 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
   }, [t]);
 
   const prepararLiquidadorExport = useCallback(() => {
-    const liquidadorRaw = initialData?.liquidador;
+    const caso = initialData && typeof initialData === 'object' ? initialData : formData;
+    const liquidadorRaw = caso?.liquidador;
     if (!liquidadorRaw || typeof liquidadorRaw !== 'object') {
       return null;
     }
@@ -680,15 +681,15 @@ const SubcomponenteExpress = ({ initialData = null, onClose, onSaved, embed = fa
       return hit?.label || valor;
     };
     const liquidador = liquidadorConNombreAjustador(
-      liquidadorRaw,
+      mapCasoExpressALiquidador(caso, { obtenerNombreResponsable: obtenerNombre }),
       obtenerNombre,
-      formData.responsable || initialData?.responsable
+      formData.responsable || caso?.responsable
     );
     return {
       liquidador,
       totales: calcularLiquidacion(liquidador),
     };
-  }, [initialData, formData.responsable, mappedResponsables]);
+  }, [initialData, formData, mappedResponsables]);
 
   const handleDescargarPdfLiquidador = useCallback(async () => {
     const prep = prepararLiquidadorExport();

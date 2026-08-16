@@ -1,6 +1,11 @@
 import { jsPDF } from 'jspdf';
 import { saveAs } from 'file-saver';
 import { crearWorkbookLiquidadorExpress } from './generarLiquidadorExpressExcel.js';
+import {
+  calcularLiquidacion,
+  listaConceptosLiquidador,
+  parsearNumero,
+} from './liquidadorExpressHelpers.js';
 
 /** Área de impresión de FORMATO_LIQUIDACION en la plantilla. */
 const FILA_INI = 1;
@@ -30,8 +35,8 @@ function ratioPng(u8) {
 }
 
 function excelColWidthToMm(width) {
-  // Ancho Excel (caracteres) → mm (aprox. Calibri/Arial en plantilla Zurich)
-  return (width == null || width <= 0 ? 10 : width) * 2.05;
+  // Ancho Excel (caracteres) → mm. Default 8.43 = ancho estándar de Excel.
+  return (width == null || width <= 0 ? 8.43 : width) * 2.05;
 }
 
 function excelRowHeightToMm(height) {
@@ -62,11 +67,29 @@ function colorDesdeExcel(color) {
 function fillRgb(cell) {
   const fill = cell.fill;
   if (!fill || fill.type !== 'pattern' || fill.pattern === 'none') return null;
-  return colorDesdeExcel(fill.fgColor) || colorDesdeExcel(fill.bgColor);
+  const rgb = colorDesdeExcel(fill.fgColor) || colorDesdeExcel(fill.bgColor);
+  if (!rgb) return null;
+  // theme 0 / blanco: Excel no lo pinta; si lo dibujamos tapa bordes y textos
+  if (esColorClaro(rgb)) return null;
+  return rgb;
+}
+
+function esColorClaro(rgb) {
+  if (!rgb) return true;
+  return rgb[0] + rgb[1] + rgb[2] > 600;
 }
 
 function fontRgb(cell) {
-  return colorDesdeExcel(cell.font?.color) || [0, 0, 0];
+  const fill = fillRgb(cell);
+  const fromFont = colorDesdeExcel(cell.font?.color);
+  if (fromFont) {
+    // theme 0 = blanco: correcto sobre azul Zurich, ilegible sobre fondo claro
+    if (esColorClaro(fromFont) && esColorClaro(fill || [255, 255, 255])) {
+      return [0, 0, 0];
+    }
+    return fromFont;
+  }
+  return esColorClaro(fill || [255, 255, 255]) ? [0, 0, 0] : [255, 255, 255];
 }
 
 function formatearNumeroPlantilla(n, numFmt = '') {
@@ -155,12 +178,27 @@ function mapaMerges(sheet) {
   return { cubiertas, maestros };
 }
 
-function anchosColumnasMm(sheet) {
-  const widths = [];
+/** Columnas visibles (Excel no imprime las hidden, p. ej. D). */
+function geometriaColumnasVisibles(sheet) {
+  const visibles = [];
+  let x = 0;
   for (let c = COL_INI; c <= COL_FIN; c += 1) {
-    widths.push(excelColWidthToMm(sheet.getColumn(c).width));
+    const col = sheet.getColumn(c);
+    if (col.hidden) continue;
+    const w = excelColWidthToMm(col.width);
+    visibles.push({ c, x, w });
+    x += w;
   }
-  return widths;
+  return { visibles, totalW: x, byIndex: new Map(visibles.map((v) => [v.c, v])) };
+}
+
+function spanVisible(byIndex, c1, c2) {
+  let w = 0;
+  for (let c = c1; c <= c2; c += 1) {
+    const col = byIndex.get(c);
+    if (col) w += col.w;
+  }
+  return w;
 }
 
 function altosFilasMm(sheet) {
@@ -171,15 +209,6 @@ function altosFilasMm(sheet) {
   return heights;
 }
 
-function offsetX(widths, col) {
-  let x = 0;
-  const limite = COL_INI + widths.length;
-  for (let c = COL_INI; c < col && c < limite; c += 1) {
-    x += widths[c - COL_INI] || 0;
-  }
-  return x;
-}
-
 function offsetY(heights, row) {
   let y = 0;
   const limite = FILA_INI + heights.length;
@@ -187,12 +216,6 @@ function offsetY(heights, row) {
     y += heights[r - FILA_INI] || 0;
   }
   return y;
-}
-
-function spanAncho(widths, c1, c2) {
-  let w = 0;
-  for (let c = c1; c <= c2; c += 1) w += widths[c - COL_INI] || 0;
-  return w;
 }
 
 function spanAlto(heights, r1, r2) {
@@ -221,42 +244,64 @@ function dibujarBordes(doc, x, y, w, h, border, scale) {
   });
 }
 
-/**
- * Renderiza la hoja FORMATO_LIQUIDACION del workbook (plantilla Excel real) a PDF.
- */
-function renderHojaLiquidacionAPdf(workbook, sheet) {
+function textoConceptoEnCelda(r, c, item, cell) {
+  if (!item) return null;
+  if (c === 1) return String(item.concepto || '').trim();
+  if (c === 2) return String(item.detalle || item.concepto || '').trim();
+  if (c === 8) {
+    if (item.valor === '' || item.valor === null || item.valor === undefined) return '';
+    return formatearNumeroPlantilla(parsearNumero(item.valor), cell.numFmt);
+  }
+  return null;
+}
+
+/** Renderiza la hoja FORMATO_LIQUIDACION como la vista previa de Excel (1 página, apaisado). */
+function renderHojaLiquidacionAPdf(workbook, sheet, { conceptos = [], totales = {}, titulo = 'FORMATO DE LIQUIDACIÓN EXPRESS' } = {}) {
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
-  const margen = 10;
+  const margenX = 12;
+  const margenTop = 16;
+  const margenBot = 10;
 
-  const widths = anchosColumnasMm(sheet);
+  const geo = geometriaColumnasVisibles(sheet);
   const heights = altosFilasMm(sheet);
-  const totalW = widths.reduce((a, b) => a + b, 0);
   const totalH = heights.reduce((a, b) => a + b, 0);
-
-  const scale = Math.min((pageW - margen * 2) / totalW, (pageH - margen * 2) / totalH);
-  const scaledW = widths.map((w) => w * scale);
+  const areaW = pageW - margenX * 2;
+  const areaH = pageH - margenTop - margenBot;
+  const scale = Math.min(areaW / (geo.totalW || 1), areaH / (totalH || 1));
   const scaledH = heights.map((h) => h * scale);
-  const origenX = margen + ((pageW - margen * 2) - totalW * scale) / 2;
-  const origenY = margen + ((pageH - margen * 2) - totalH * scale) / 2;
+  const origenX = margenX + (areaW - geo.totalW * scale) / 2;
+  const origenY = margenTop + (areaH - totalH * scale) / 2;
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.text(String(titulo || 'FORMATO DE LIQUIDACIÓN EXPRESS'), pageW / 2, 9, { align: 'center' });
 
   const { cubiertas, maestros } = mapaMerges(sheet);
+  const conceptoPorFila = new Map();
+  conceptos.slice(0, 12).forEach((item, idx) => {
+    conceptoPorFila.set(14 + idx, item);
+  });
 
   for (let r = FILA_INI; r <= FILA_FIN; r += 1) {
     for (let c = COL_INI; c <= COL_FIN; c += 1) {
+      if (!geo.byIndex.has(c)) continue;
       const key = `${r}:${c}`;
       if (cubiertas.has(key)) continue;
 
       const merge = maestros.get(key);
       const r2 = merge ? merge.r2 : r;
       const c2 = merge ? merge.c2 : c;
+      const colGeo = geo.byIndex.get(c);
 
       const cell = sheet.getCell(r, c);
-      const x = origenX + offsetX(scaledW, c);
+      const x = origenX + colGeo.x * scale;
       const y = origenY + offsetY(scaledH, r);
-      const w = spanAncho(scaledW, c, Math.min(c2, COL_FIN));
+      const w = spanVisible(geo.byIndex, c, Math.min(c2, COL_FIN)) * scale;
       const h = spanAlto(scaledH, r, Math.min(r2, FILA_FIN));
+      if (w <= 0 || h <= 0) continue;
 
       const bg = fillRgb(cell);
       if (bg) {
@@ -266,23 +311,36 @@ function renderHojaLiquidacionAPdf(workbook, sheet) {
 
       dibujarBordes(doc, x, y, w, h, cell.border, scale);
 
-      const texto = valorCeldaVisible(cell);
+      let texto = valorCeldaVisible(cell);
+      const itemFila = conceptoPorFila.get(r);
+      const textoConcepto = textoConceptoEnCelda(r, c, itemFila, cell);
+      if (textoConcepto) texto = textoConcepto;
+      if (r === 26 && c === 8 && totales.totalPerdida != null && totales.totalPerdida !== '') {
+        texto = formatearNumeroPlantilla(Number(totales.totalPerdida) || 0, cell.numFmt);
+      }
+      if (r === 27 && c === 8 && totales.deducibleAplicado != null) {
+        texto = formatearNumeroPlantilla(Number(totales.deducibleAplicado) || 0, cell.numFmt);
+      }
+      if (r === 28 && c === 8 && totales.totalIndemnizar != null && totales.totalIndemnizar !== '') {
+        texto = formatearNumeroPlantilla(Number(totales.totalIndemnizar) || 0, cell.numFmt);
+      }
       if (texto) {
-        const fontSize = Math.max(6, (cell.font?.size || 10) * scale * 0.9);
+        const fontSize = Math.max(7, (cell.font?.size || 11) * scale * 0.95);
         doc.setFont('helvetica', cell.font?.bold ? 'bold' : 'normal');
         doc.setFontSize(fontSize);
         doc.setTextColor(...fontRgb(cell));
 
-        const pad = 1.2 * scale;
+        const pad = Math.max(0.8, 1.1 * scale);
         const align = cell.alignment?.horizontal || 'left';
         const valign = cell.alignment?.vertical || 'middle';
         const maxW = Math.max(4, w - pad * 2);
         const lines = doc.splitTextToSize(String(texto), maxW);
-        const lineH = fontSize * 0.4;
+        const lineH = fontSize * 0.352778 * 1.2;
         const blockH = lines.length * lineH;
-        let textY = y + pad + lineH;
-        if (valign === 'middle') textY = y + (h - blockH) / 2 + lineH * 0.85;
-        if (valign === 'bottom') textY = y + h - pad - blockH + lineH;
+        let textY = y + pad + lineH * 0.85;
+        if (valign === 'middle') textY = y + (h - blockH) / 2 + lineH * 0.8;
+        if (valign === 'bottom') textY = y + h - pad - blockH + lineH * 0.8;
+        if (textY < y + lineH * 0.75) textY = y + lineH * 0.85;
 
         let textX = x + pad;
         let jsAlign = 'left';
@@ -294,12 +352,20 @@ function renderHojaLiquidacionAPdf(workbook, sheet) {
           jsAlign = 'right';
         }
 
-        doc.text(lines, textX, textY, { align: jsAlign });
+        try {
+          doc.saveGraphicsState();
+          doc.rect(x, y, w, h);
+          doc.clip();
+          if (typeof doc.discardPath === 'function') doc.discardPath();
+          doc.text(lines, textX, textY, { align: jsAlign });
+          doc.restoreGraphicsState();
+        } catch {
+          doc.text(lines, textX, textY, { align: jsAlign });
+        }
       }
     }
   }
 
-  // Logo Zurich: respetar proporción natural del PNG (no estirar al recuadro Excel)
   try {
     const imgs = sheet.getImages?.() || [];
     imgs.forEach((img) => {
@@ -308,7 +374,6 @@ function renderHojaLiquidacionAPdf(workbook, sheet) {
       const tl = img.range?.tl;
       if (!tl) return;
 
-      // ExcelJS oneCell: tl.col / tl.row pueden ser fraccionarios
       const colF = tl.col != null ? tl.col : (tl.nativeCol ?? 0);
       const rowF = tl.row != null ? tl.row : (tl.nativeRow ?? 0);
       const colOffMm = (tl.nativeColOff || 0) / EMU_POR_MM;
@@ -319,19 +384,13 @@ function renderHojaLiquidacionAPdf(workbook, sheet) {
       const fracCol = colF - Math.floor(colF);
       const fracRow = rowF - Math.floor(rowF);
 
-      const colW =
-        scaledW[Math.min(Math.max(colBase, COL_INI), COL_FIN) - COL_INI] || 10;
-      const rowH =
-        scaledH[Math.min(Math.max(rowBase, FILA_INI), FILA_FIN) - FILA_INI] || 5;
+      const colGeo = geo.byIndex.get(colBase) || geo.visibles[geo.visibles.length - 1];
+      if (!colGeo) return;
+      const rowH = scaledH[Math.min(Math.max(rowBase, FILA_INI), FILA_FIN) - FILA_INI] || 5;
 
-      let xBox =
-        origenX +
-        offsetX(scaledW, Math.min(Math.max(colBase, COL_INI), COL_FIN)) +
-        fracCol * colW +
-        colOffMm * scale;
-      let yBox =
-        origenY +
-        offsetY(scaledH, Math.min(Math.max(rowBase, FILA_INI), FILA_FIN)) +
+      const xBox = origenX + colGeo.x * scale + fracCol * colGeo.w * scale + colOffMm * scale;
+      const yBox =
+        origenY + offsetY(scaledH, Math.min(Math.max(rowBase, FILA_INI), FILA_FIN)) +
         fracRow * rowH +
         rowOffMm * scale;
 
@@ -345,7 +404,6 @@ function renderHojaLiquidacionAPdf(workbook, sheet) {
       const u8 = new Uint8Array(bytes);
       const ratioNatural = ratioPng(u8) || 671 / 417;
 
-      // Preferir tamaño ext (px @96dpi → mm) si la plantilla ya viene corregida
       const ext = img.range?.ext;
       let wMm;
       let hMm;
@@ -353,27 +411,11 @@ function renderHojaLiquidacionAPdf(workbook, sheet) {
         wMm = (ext.width / 96) * 25.4 * scale;
         hMm = (ext.height / 96) * 25.4 * scale;
       } else {
-        const br = img.range?.br;
-        let boxW = 36 * scale;
-        let boxH = 24 * scale;
-        if (br) {
-          const brCol = (br.nativeCol ?? 0) + 1;
-          const brRow = (br.nativeRow ?? 0) + 1;
-          const xBr = origenX + offsetX(scaledW, Math.min(brCol, COL_FIN + 1));
-          const yBr = origenY + offsetY(scaledH, Math.min(brRow, FILA_FIN + 1));
-          boxW = Math.max(12, xBr - xBox);
-          boxH = Math.max(10, yBr - yBox);
-        }
-        wMm = boxW;
+        wMm = 36 * scale;
         hMm = wMm / ratioNatural;
-        if (hMm > boxH) {
-          hMm = boxH;
-          wMm = hMm * ratioNatural;
-        }
       }
 
-      // Ajuste fino: si el ext no respeta ratio, forzar ratio natural
-      const ratioExt = wMm / hMm;
+      const ratioExt = wMm / (hMm || 1);
       if (Math.abs(ratioExt - ratioNatural) / ratioNatural > 0.05) {
         hMm = wMm / ratioNatural;
       }
@@ -399,13 +441,20 @@ function renderHojaLiquidacionAPdf(workbook, sheet) {
 
   return doc;
 }
-
 /**
  * PDF = hoja FORMATO_LIQUIDACION del Excel plantilla, rellena y renderizada.
  * Misma fuente de datos/estilos que el .xlsx (equivalente a “Guardar como PDF”).
  */
 export async function generarLiquidadorExpressPdfBlob(liquidador = {}, totales = {}, opciones = {}) {
-  const workbook = await crearWorkbookLiquidadorExpress(liquidador, totales, {
+  void totales;
+  const conceptos = listaConceptosLiquidador(liquidador);
+  const liquidadorNorm = { ...liquidador, conceptos };
+  const totalesNorm = calcularLiquidacion(liquidadorNorm);
+  const titulo = String(opciones.locale || 'es').toLowerCase().startsWith('en')
+    ? 'EXPRESS LIQUIDATION FORM'
+    : 'FORMATO DE LIQUIDACIÓN EXPRESS';
+
+  const workbook = await crearWorkbookLiquidadorExpress(liquidadorNorm, totalesNorm, {
     ...opciones,
     soloLiquidacion: true,
     incluirSalvamento: false,
@@ -417,7 +466,11 @@ export async function generarLiquidadorExpressPdfBlob(liquidador = {}, totales =
     throw new Error('No se encontró la hoja FORMATO_LIQUIDACION en la plantilla Excel.');
   }
 
-  const doc = renderHojaLiquidacionAPdf(workbook, sheet);
+  const doc = renderHojaLiquidacionAPdf(workbook, sheet, {
+    conceptos,
+    totales: totalesNorm,
+    titulo,
+  });
   const reclamo = liquidador?.encabezado?.reclamo || 'sin-reclamo';
   const blob = doc.output('blob');
 
