@@ -500,6 +500,13 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
                   placeholder={t('zurich.placeholders.correo')}
                 />
               </Campo>
+              <Campo label={t('zurich.fields.celular')}>
+                <InputFenix
+                  value={form.celular}
+                  onChange={setCampo('celular')}
+                  placeholder={t('zurich.placeholders.celular')}
+                />
+              </Campo>
               <Campo label={t('zurich.fields.canalRadicacion')}>
                 <InputFenix
                   value={form.canalRadicacion}

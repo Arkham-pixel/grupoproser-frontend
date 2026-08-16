@@ -16,6 +16,7 @@ import {
   expressScope,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
+  fetchAllCasosZurich,
   getCasoZurichById,
   guardarInformeUnicoEnCasoZurich,
   guardarLiquidadorEnCasoZurich,
@@ -78,6 +79,8 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [busquedaCaso, setBusquedaCaso] = useState('');
+  const [listaCasos, setListaCasos] = useState([]);
 
   const casoId = casoZurich?._id || casoIdFromQuery || null;
 
@@ -106,6 +109,21 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
     };
   }, [casoIdFromQuery, location.state, t]);
 
+  useEffect(() => {
+    if (casoIdFromQuery) return undefined;
+    let cancelado = false;
+    fetchAllCasosZurich()
+      .then((data) => {
+        if (!cancelado) setListaCasos(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelado) setListaCasos([]);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [casoIdFromQuery]);
+
   const setTab = useCallback(
     (tab) => {
       const next = new URLSearchParams(searchParams);
@@ -126,6 +144,27 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
     }
     return t('zurich.workspace.subtitle');
   }, [casoZurich, t]);
+
+  const casosFiltradosPicker = useMemo(() => {
+    const q = String(busquedaCaso || '')
+      .trim()
+      .toLowerCase();
+    if (!q) return listaCasos;
+    return listaCasos.filter((c) => {
+      const blob = [
+        c.consecutivo,
+        c.asegurado,
+        c.tomador,
+        c.siniestro,
+        c.identificacion,
+        c.ciudad,
+        c.numeroPoliza,
+      ]
+        .map((v) => String(v || '').toLowerCase())
+        .join(' ');
+      return blob.includes(q);
+    });
+  }, [listaCasos, busquedaCaso]);
 
   const handleGuardarLiquidador = async (liqArg, totArg) => {
     if (!casoId) {
@@ -266,16 +305,50 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
         </div>
 
         {!casoId && !cargandoCaso && (
-          <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-            {t('zurich.workspace.pickCase')}{' '}
-            <button
-              type="button"
-              className="font-semibold underline"
-              onClick={() => navigate('/zurich/reporte')}
-            >
-              {t('zurich.workspace.goReport')}
-            </button>
-          </p>
+          <div className="mb-4 space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+            <p>
+              {t('zurich.workspace.pickCase')}{' '}
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => navigate('/zurich/reporte')}
+              >
+                {t('zurich.workspace.goReport')}
+              </button>
+            </p>
+            <label className="block font-semibold text-amber-950 dark:text-amber-50">
+              {t('common.search')}
+              <input
+                type="search"
+                value={busquedaCaso}
+                onChange={(e) => setBusquedaCaso(e.target.value)}
+                placeholder={t('zurich.report.searchPlaceholder')}
+                className="mt-1 w-full rounded-lg border border-amber-200 bg-white px-3 py-2 font-body text-sm text-gray-800 dark:border-amber-800 dark:bg-gray-950 dark:text-gray-100"
+              />
+            </label>
+            {casosFiltradosPicker.length > 0 && (
+              <ul className="max-h-48 overflow-auto rounded-lg border border-amber-200 bg-white dark:border-amber-800 dark:bg-gray-950">
+                {casosFiltradosPicker.slice(0, 12).map((c) => (
+                  <li key={c._id}>
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm text-gray-800 hover:bg-amber-100 dark:text-gray-100 dark:hover:bg-amber-950"
+                      onClick={() => {
+                        const next = new URLSearchParams(searchParams);
+                        next.set('casoId', c._id);
+                        next.set('tab', tabActivo || TABS_ZURICH.CAT);
+                        setSearchParams(next);
+                      }}
+                    >
+                      {[c.consecutivo, c.asegurado, c.siniestro, c.ciudad]
+                        .filter(Boolean)
+                        .join(' · ') || c._id}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
 
         {mensaje && <p className={`mb-4 ${expressAlertSuccess}`}>{mensaje}</p>}

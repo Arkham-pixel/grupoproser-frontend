@@ -121,11 +121,12 @@ export function computarInformeAgilDesdeCaso({
   totales = null,
   salvamento = null,
 } = {}) {
-  const enc = encabezadoDesdeCasoSura(caso);
-  const liq = liquidador || mapCasoSuraALiquidador(caso);
+  const casoSafe = caso && typeof caso === 'object' ? caso : {};
+  const enc = encabezadoDesdeCasoSura(casoSafe);
+  const liq = liquidador || mapCasoSuraALiquidador(casoSafe);
   const tot = totales || calcularLiquidacionSura(liq);
-  const sal = salvamento || defaultSalvamentoSura(caso);
-  const ident = texto(enc.identificacion, caso.identificacion, caso.numDocumento);
+  const sal = salvamento || defaultSalvamentoSura(casoSafe);
+  const ident = texto(enc.identificacion, casoSafe.identificacion, casoSafe.numDocumento);
   const valorSug = tot.totalIndemnizar ? formatearMonto(tot.totalIndemnizar) : '';
   const hospedaje = tot.diagrama?.gastosHospedaje
     ? formatearMonto(tot.diagrama.gastosHospedaje)
@@ -138,42 +139,42 @@ export function computarInformeAgilDesdeCaso({
         : '';
 
   return {
-    siniestroNro: texto(enc.siniestro, caso.siniestro, caso.nmroSinstro),
-    tomador: texto(enc.tomador, caso.tomador),
+    siniestroNro: texto(enc.siniestro, casoSafe.siniestro, casoSafe.nmroSinstro),
+    tomador: texto(enc.tomador, casoSafe.tomador),
     nitTomador: '',
-    asegurado: texto(enc.asegurado, caso.asegurado, caso.asgrBenfcro),
+    asegurado: texto(enc.asegurado, casoSafe.asegurado, casoSafe.asgrBenfcro),
     nitAsegurado: ident,
     pagoTransferenciaOCaja: '',
     cuentaBancaria: '',
     cuentaEmbargada: '',
-    siniestroAjustador: texto(enc.consecutivo, caso.nmroAjste, caso.consecutivo),
-    poliza: texto(enc.poliza, caso.numeroPoliza, caso.nmroPolza),
-    vigenciaPoliza: vigenciaDesdeCaso(caso),
-    sucursal: texto(enc.ciudad, caso.ciudad, caso.ciudadSiniestro),
-    intermediario: texto(caso.nombIntermediario, caso.intermediario),
+    siniestroAjustador: texto(enc.consecutivo, casoSafe.nmroAjste, casoSafe.consecutivo),
+    poliza: texto(enc.poliza, casoSafe.numeroPoliza, casoSafe.nmroPolza),
+    vigenciaPoliza: vigenciaDesdeCaso(casoSafe),
+    sucursal: texto(enc.ciudad, casoSafe.ciudad, casoSafe.ciudadSiniestro),
+    intermediario: texto(casoSafe.nombIntermediario, casoSafe.intermediario),
     coaseguro: '',
-    fechaOcurrencia: fechaInput(caso.fechaSiniestro || caso.fchaSinstro || enc.fechaSiniestro),
+    fechaOcurrencia: fechaInput(casoSafe.fechaSiniestro || casoSafe.fchaSinstro || enc.fechaSiniestro),
     fechaAviso: '',
-    fechaAsignacion: fechaInput(caso.fchaAsgncion),
-    fechaAtencion: fechaInput(caso.fechaInspeccion || caso.fchaInspccion),
+    fechaAsignacion: fechaInput(casoSafe.fchaAsgncion),
+    fechaAtencion: fechaInput(casoSafe.fechaInspeccion || casoSafe.fchaInspccion),
     fechaCierreEnvio: fechaInput(
-      caso.fechaEnvioAseguradora || caso.fechaLiquidado || caso.informeUnico?.fechaInforme
+      casoSafe.fechaEnvioAseguradora || casoSafe.fechaLiquidado || casoSafe.informeUnico?.fechaInforme
     ),
-    fechaUltimoDocumento: fechaInput(caso.fechaUltimoDocumento),
+    fechaUltimoDocumento: fechaInput(casoSafe.fechaUltimoDocumento),
     envioInformacionAnalista: '',
-    lugarHechos: lugarHechos(caso, enc),
+    lugarHechos: lugarHechos(casoSafe, enc),
     actividad: '',
-    causaSiniestro: texto(caso.causa_siniestro, caso.cobertura, enc.evento, 'TERREMOTO'),
-    conceptoPerdida: texto(caso.descSinstro, caso.informeUnico?.descripcionDanios),
-    amparoAfectado: texto(caso.amprAfctdo, caso.cobertura, enc.cobertura),
-    articulo: articuloDesdeCaso(caso),
+    causaSiniestro: texto(casoSafe.causa_siniestro, casoSafe.cobertura, enc.evento, 'TERREMOTO'),
+    conceptoPerdida: texto(casoSafe.descSinstro, casoSafe.informeUnico?.descripcionDanios),
+    amparoAfectado: texto(casoSafe.amprAfctdo, casoSafe.cobertura, enc.cobertura),
+    articulo: articuloDesdeCaso(casoSafe),
     valorReclamado:
-      caso.valorReclamado != null && caso.valorReclamado !== ''
-        ? formatearMonto(caso.valorReclamado)
+      casoSafe.valorReclamado != null && casoSafe.valorReclamado !== ''
+        ? formatearMonto(casoSafe.valorReclamado)
         : tot.totalReclamado
           ? formatearMonto(tot.totalReclamado)
           : '',
-    valorAsegurado: valorAseguradoDesdeCaso(caso),
+    valorAsegurado: valorAseguradoDesdeCaso(casoSafe),
     solicitudDocumentos: '',
     valorSugeridoIndemnizar: valorSug,
     deducibleAplicar: texto(tot.deducibleTexto, tot.diagrama?.deducible, 'No aplica'),
@@ -183,10 +184,10 @@ export function computarInformeAgilDesdeCaso({
     salvamento: salvamentoTxt,
     subrogacion: '',
     analista: texto(
-      caso.funcAsgrdraNombre,
-      caso.ajustador,
+      casoSafe.funcAsgrdraNombre,
+      casoSafe.ajustador,
       enc.ajustador,
-      caso.informeUnico?.ajustadorNombre
+      casoSafe.informeUnico?.ajustadorNombre
     ),
   };
 }

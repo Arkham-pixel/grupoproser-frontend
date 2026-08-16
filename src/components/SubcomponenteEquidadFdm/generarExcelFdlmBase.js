@@ -21,6 +21,7 @@ export const buildFilaExcelFdlm = (caso = {}) => ({
   NOMBRE: caso.nombre || '',
   CEDULA: caso.cedula || '',
   CELULAR: caso.celular || '',
+  CORREO: caso.correo || '',
   'DIRECCIÓN AFECTADA': caso.direccionAfectada || '',
   'OFICINA RADICADORA': caso.oficinaRadicadora || '',
   'CIUDAD / MUNICIPIO': caso.municipio || '',

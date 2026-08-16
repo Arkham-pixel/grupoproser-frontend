@@ -4,40 +4,290 @@ import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl } from '../../utils/imageUtils.js';
 import {
   CAPITULOS_PRESUPUESTO_NSR10,
+  CATEGORIAS_CONTENIDOS_NSR10,
+  ESTADOS_CONTENIDO_NSR10,
   ESTADOS_DANO_NSR10,
+  HOJAS_LIQUIDADOR_NSR10,
   HOJAS_VISIBLES_NSR10,
   OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
   PRIORIDADES_PRESUPUESTO_NSR10,
+  TIPOS_INMUEBLE_CONTENIDOS_NSR10,
+  UNIDADES_CONTENIDOS_NSR10,
   UNIDADES_PRESUPUESTO_NSR10,
+  aplicarCatalogoAFilaContenido,
+  aplicarCatalogoAFilaPresupuesto,
+  calcularTotalesContenidos,
+  calcularResumenTotalesNsr10,
+  catalogoContenidosPorTipo,
+  formatMilesInputNsr10,
+  formatMilesNsr10,
   hojaActivaVisibleNSR10,
   aplicarEstadoAItem,
   calcularCriterioFinal,
   calcularTotalesPresupuesto,
   crearEvaluacionSismicaNSR10Inicial,
+  crearFilaContenidoVacia,
   crearFilaPresupuestoVacia,
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
+  parseMontoNsr10,
   sugerirFilasPresupuestoDesdeEvaluacion,
+  totalFilaContenido,
   totalFilaPresupuesto,
 } from './catalogoEvaluacionSismicaNSR10.js';
+import {
+  BASE_PRECIOS_PRESUPUESTO,
+  catalogoPresupuestoPorCapitulo,
+} from './basePreciosPresupuesto.js';
 import { sincronizarPresupuestoNsr10AlInforme } from '../SubcomponenteFormularioCatastrofico/syncPresupuestoNsr10AlInforme.js';
 import {
+  ANIOS_SMMLV,
+  DEFAULT_DEDUCIBLE_CATASTROFICO,
+  SMMLV_POR_ANIO,
   calcularDiagramaLiquidacion,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
+  normalizarDeducibleCatastrofico,
+  valorSmdlvDesdeSmmlv,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 
 function money(n) {
   if (n == null || !Number.isFinite(n)) return '—';
+  const hasDecimals = Math.abs(n % 1) > 1e-9;
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(n);
+}
+
+function displayMiles(valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+  if (typeof valor === 'string' && /[.,]/.test(valor)) {
+    return valor;
+  }
+  return formatMilesNsr10(valor);
+}
+
+/** Panel deducible estilo Express (MAX % vs SMMLV/SMDLV). */
+function PanelDeducibleCatastrofico({
+  deducibleCfg,
+  diagrama,
+  onChangeConfig,
+  inputClass,
+  inputBg,
+  borderColor,
+  textPrimary,
+  textSecondary,
+  softBg,
+}) {
+  const tipo = deducibleCfg.tipoMinimo || 'SMMLV';
+  return (
+    <div className="space-y-3 rounded-lg border p-4" style={{ borderColor, backgroundColor: softBg }}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
+            Deducible (estilo Express)
+          </h4>
+          <p className="text-xs" style={{ color: textSecondary }}>
+            Se aplica sobre el total de contenidos: el mayor entre el % y el mínimo en SMMLV o
+            SMDLV. Luego se resta del total a indemnizar (presupuesto + contenidos + hospedaje).
+          </p>
+        </div>
+        <label className="inline-flex items-center gap-2 text-sm" style={{ color: textPrimary }}>
+          <input
+            type="checkbox"
+            checked={Boolean(deducibleCfg.aplica)}
+            onChange={(e) => onChangeConfig({ aplica: e.target.checked })}
+          />
+          Aplicar deducible
+        </label>
+      </div>
+
+      <label className="block text-sm" style={{ color: textSecondary }}>
+        Texto póliza (opcional)
+        <input
+          className={`${inputClass} mt-1`}
+          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+          value={deducibleCfg.texto || ''}
+          placeholder="Ej. 10% mínimo 4 SMMLV"
+          onChange={(e) => onChangeConfig({ texto: e.target.value })}
+        />
+      </label>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+            tipo === 'SMMLV' ? 'border-blue-500 text-blue-600' : ''
+          }`}
+          style={
+            tipo === 'SMMLV'
+              ? undefined
+              : { borderColor, color: textSecondary }
+          }
+          onClick={() => onChangeConfig({ tipoMinimo: 'SMMLV' })}
+        >
+          Mínimo SMMLV
+        </button>
+        <button
+          type="button"
+          className={`rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+            tipo === 'SMDLV' ? 'border-blue-500 text-blue-600' : ''
+          }`}
+          style={
+            tipo === 'SMDLV'
+              ? undefined
+              : { borderColor, color: textSecondary }
+          }
+          onClick={() => onChangeConfig({ tipoMinimo: 'SMDLV' })}
+        >
+          Mínimo SMDLV
+        </button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="block text-sm" style={{ color: textSecondary }}>
+          % deducible
+          <input
+            type="number"
+            min="0"
+            max="100"
+            step="0.1"
+            className={`${inputClass} mt-1`}
+            style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+            value={deducibleCfg.porcentaje ?? 10}
+            onChange={(e) =>
+              onChangeConfig({
+                porcentaje: e.target.value === '' ? '' : Number(e.target.value),
+              })
+            }
+          />
+        </label>
+        <label className="block text-sm" style={{ color: textSecondary }}>
+          Año SMMLV
+          <select
+            className={`${inputClass} mt-1`}
+            style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+            value={deducibleCfg.anioSMMLV}
+            onChange={(e) => {
+              const anio = Number(e.target.value);
+              const valorSMMLV = SMMLV_POR_ANIO[anio];
+              onChangeConfig({
+                anioSMMLV: anio,
+                valorSMMLV,
+                valorSMDLV: valorSmdlvDesdeSmmlv(valorSMMLV),
+              });
+            }}
+          >
+            {ANIOS_SMMLV.map((anio) => (
+              <option key={anio} value={anio}>
+                {anio} — $ {formatMilesNsr10(SMMLV_POR_ANIO[anio])}
+              </option>
+            ))}
+          </select>
+        </label>
+        {tipo === 'SMMLV' ? (
+          <>
+            <label className="block text-sm" style={{ color: textSecondary }}>
+              Cantidad SMMLV
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className={`${inputClass} mt-1`}
+                style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                value={deducibleCfg.cantidadSMMLV ?? 4}
+                onChange={(e) =>
+                  onChangeConfig({
+                    cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label className="block text-sm" style={{ color: textSecondary }}>
+              Valor SMMLV
+              <input
+                type="text"
+                inputMode="decimal"
+                className={`${inputClass} mt-1`}
+                style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                value={displayMiles(deducibleCfg.valorSMMLV)}
+                onChange={(e) => {
+                  const fmt = formatMilesInputNsr10(e.target.value);
+                  const n = parseMontoNsr10(fmt);
+                  onChangeConfig({
+                    valorSMMLV: fmt,
+                    valorSMDLV: n == null ? deducibleCfg.valorSMDLV : valorSmdlvDesdeSmmlv(n),
+                  });
+                }}
+              />
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="block text-sm" style={{ color: textSecondary }}>
+              Cantidad SMDLV
+              <input
+                type="number"
+                min="0"
+                step="1"
+                className={`${inputClass} mt-1`}
+                style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                value={deducibleCfg.cantidadSMDLV ?? 10}
+                onChange={(e) =>
+                  onChangeConfig({
+                    cantidadSMDLV: e.target.value === '' ? '' : Number(e.target.value),
+                  })
+                }
+              />
+            </label>
+            <label className="block text-sm" style={{ color: textSecondary }}>
+              Valor SMDLV
+              <input
+                type="text"
+                inputMode="decimal"
+                className={`${inputClass} mt-1`}
+                style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                value={displayMiles(deducibleCfg.valorSMDLV)}
+                onChange={(e) =>
+                  onChangeConfig({ valorSMDLV: formatMilesInputNsr10(e.target.value) })
+                }
+              />
+            </label>
+          </>
+        )}
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+        <div className="flex justify-between gap-2 border-b pb-1" style={{ borderColor }}>
+          <span style={{ color: textSecondary }}>Deducible {diagrama.deduciblePorcentajeCfg ?? 10}%</span>
+          <strong style={{ color: textPrimary }}>{money(diagrama.deduciblePorcentaje)}</strong>
+        </div>
+        <div className="flex justify-between gap-2 border-b pb-1" style={{ borderColor }}>
+          <span style={{ color: textSecondary }}>
+            {tipo === 'SMDLV'
+              ? `Deducible ${diagrama.deducibleCantidadSMDLV ?? ''} SMDLV`
+              : `Deducible ${diagrama.deducibleCantidadSMMLV ?? ''} SMMLV`}
+          </span>
+          <strong style={{ color: textPrimary }}>
+            {money(tipo === 'SMDLV' ? diagrama.deducibleSMDLV : diagrama.deducibleSMMLV)}
+          </strong>
+        </div>
+        <div className="flex justify-between gap-2 border-b pb-1" style={{ borderColor }}>
+          <span style={{ color: textSecondary }}>
+            Aplicado ({diagrama.deducibleUsaMinimo ? diagrama.deducibleTipoMinimo : '%'})
+          </span>
+          <strong style={{ color: textPrimary }}>{money(diagrama.deducibleAplicado || 0)}</strong>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /**
  * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function }} props
- * modoLiquidador: solo hoja Presupuesto + diagrama de liquidación (informe único).
+ * modoLiquidador: hojas Presupuesto + Contenidos + diagrama de liquidación (informe único).
  * habilitarUploadFotos: celda Foto/Ref. permite adjuntar imagen (p. ej. Seguros Alfa).
  */
 export default function ChecklistEvaluacionSismicaNSR10({
@@ -77,8 +327,34 @@ export default function ChecklistEvaluacionSismicaNSR10({
     () => calcularTotalesPresupuesto(presupuesto),
     [presupuesto]
   );
+  const contenidos = evalData.contenidos || { items: [], tipoInmueble: '' };
+  const filasContenidos = Array.isArray(contenidos.items) ? contenidos.items : [];
+  const totalesContenidos = useMemo(
+    () => calcularTotalesContenidos(contenidos),
+    [contenidos]
+  );
+  const resumenTotales = useMemo(
+    () =>
+      calcularResumenTotalesNsr10({
+        presupuesto,
+        contenidos,
+      }),
+    [presupuesto, contenidos]
+  );
+  const tipoInmuebleContenidos = String(
+    contenidos.tipoInmueble || portada.tipologiaPrincipal || ''
+  ).trim();
+  const catalogoFiltrado = useMemo(
+    () => catalogoContenidosPorTipo(tipoInmuebleContenidos),
+    [tipoInmuebleContenidos]
+  );
   const hojaRaw = evalData.hojaActiva || 'portada';
-  const hoja = modoLiquidador ? 'presupuesto' : hojaActivaVisibleNSR10(hojaRaw);
+  const hoja = modoLiquidador
+    ? HOJAS_LIQUIDADOR_NSR10.some((h) => h.id === hojaRaw)
+      ? hojaRaw
+      : 'presupuesto'
+    : hojaActivaVisibleNSR10(hojaRaw);
+  const hojasMenu = modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10;
   const portadaSyncRef = useRef('');
 
   const liquidacion = formData.liquidacionCatastrofico || {
@@ -86,17 +362,47 @@ export default function ChecklistEvaluacionSismicaNSR10({
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
     hospedajeManual: '',
     deducible: 'No aplica',
+    deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+    deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
   };
+  const deducibleCfg = useMemo(
+    () =>
+      normalizarDeducibleCatastrofico({
+        deducible: liquidacion.deducible,
+        deducibleConfig: liquidacion.deducibleConfigContenidos || liquidacion.deducibleConfig,
+      }),
+    [liquidacion]
+  );
+  const deducibleCfgPresupuesto = useMemo(
+    () =>
+      normalizarDeducibleCatastrofico({
+        deducibleConfig: liquidacion.deducibleConfigPresupuesto,
+      }),
+    [liquidacion]
+  );
   const diagrama = useMemo(
     () =>
       calcularDiagramaLiquidacion({
         valorAsegurado: liquidacion.valorAsegurado,
-        totalDanios: totales.total,
+        totalDanios: resumenTotales.sumaCompleta,
+        totalPresupuesto: resumenTotales.totalPresupuesto,
+        totalContenidos: resumenTotales.totalContenidos,
         hospedajePorcentaje: liquidacion.hospedajePorcentaje,
         hospedajeManual: liquidacion.hospedajeManual,
         deducible: liquidacion.deducible,
+        deducibleConfig: liquidacion.deducibleConfig || deducibleCfg,
+        deducibleConfigContenidos: liquidacion.deducibleConfigContenidos || deducibleCfg,
+        deducibleConfigPresupuesto:
+          liquidacion.deducibleConfigPresupuesto || deducibleCfgPresupuesto,
       }),
-    [liquidacion, totales.total]
+    [
+      liquidacion,
+      resumenTotales.sumaCompleta,
+      resumenTotales.totalPresupuesto,
+      resumenTotales.totalContenidos,
+      deducibleCfg,
+      deducibleCfgPresupuesto,
+    ]
   );
 
   useEffect(() => {
@@ -112,6 +418,28 @@ export default function ChecklistEvaluacionSismicaNSR10({
   const actualizarLiquidacion = (patch) => {
     onInputChange({
       liquidacionCatastrofico: { ...liquidacion, ...patch },
+    });
+  };
+
+  const actualizarDeducibleConfig = (patch) => {
+    const nextCfg = {
+      ...deducibleCfg,
+      ...patch,
+    };
+    actualizarLiquidacion({
+      deducibleConfig: nextCfg,
+      deducibleConfigContenidos: nextCfg,
+      deducible: nextCfg.texto || (nextCfg.aplica ? '' : 'No aplica'),
+    });
+  };
+
+  const actualizarDeduciblePresupuesto = (patch) => {
+    const nextCfg = {
+      ...deducibleCfgPresupuesto,
+      ...patch,
+    };
+    actualizarLiquidacion({
+      deducibleConfigPresupuesto: nextCfg,
     });
   };
 
@@ -137,6 +465,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
         portada,
         items,
         presupuesto,
+        contenidos,
         criterioFinal: criterio,
       },
     });
@@ -165,6 +494,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
       portada,
       items,
       presupuesto,
+      contenidos,
       criterioFinal: criterio,
       ...patch,
     };
@@ -243,6 +573,59 @@ export default function ChecklistEvaluacionSismicaNSR10({
     setPresupuesto({ ...presupuesto, items: nextItems });
   };
 
+  const aplicarBasePreciosEnFila = (index, catalogoId) => {
+    if (catalogoId === '__custom__') {
+      actualizarFilaPresupuesto(index, {
+        catalogoId: '',
+        actividad: filasPresupuesto[index]?.actividad || '',
+      });
+      return;
+    }
+    const hit =
+      BASE_PRECIOS_PRESUPUESTO.find((c) => c.id === catalogoId) || null;
+    actualizarFilaPresupuesto(
+      index,
+      aplicarCatalogoAFilaPresupuesto(filasPresupuesto[index] || {}, hit)
+    );
+  };
+
+  const setContenidos = (nextContenidos) => {
+    commit({ contenidos: nextContenidos });
+  };
+
+  const actualizarFilaContenido = (index, patch) => {
+    const nextItems = filasContenidos.map((row, i) =>
+      i === index ? { ...row, ...patch } : row
+    );
+    setContenidos({ ...contenidos, items: nextItems });
+  };
+
+  const setTipoInmuebleContenidos = (tipo) => {
+    const nextItems = filasContenidos.map((row) => ({
+      ...row,
+      tipoInmueble: tipo,
+    }));
+    setContenidos({ ...contenidos, tipoInmueble: tipo, items: nextItems });
+  };
+
+  const aplicarCatalogoEnFila = (index, catalogoId) => {
+    if (catalogoId === '__custom__') {
+      actualizarFilaContenido(index, {
+        catalogoId: '',
+        articulo: filasContenidos[index]?.articulo || '',
+      });
+      return;
+    }
+    const hit = catalogoFiltrado.find((c) => c.id === catalogoId);
+    actualizarFilaContenido(
+      index,
+      aplicarCatalogoAFilaContenido(
+        { ...filasContenidos[index], tipoInmueble: tipoInmuebleContenidos },
+        hit || null
+      )
+    );
+  };
+
   const portadaFields = [
     { name: 'asegurado', label: 'Asegurado' },
     { name: 'poliza', label: 'Póliza' },
@@ -260,47 +643,37 @@ export default function ChecklistEvaluacionSismicaNSR10({
 
   return (
     <div className="space-y-4">
-      {!modoLiquidador ? (
-        <>
-          <div>
-            <h2 className="text-base font-semibold" style={{ color: textPrimary }}>
-              Plantilla evaluación sísmica NSR-10
-            </h2>
-            <p className="mt-1 text-sm" style={{ color: textSecondary }}>
-              {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-                ? 'Portada y Presupuesto. El presupuesto es el liquidador del informe único.'
-                : 'Portada, Evaluación, Dictamen y Presupuesto. El presupuesto es el liquidador del informe único.'}
-            </p>
-          </div>
+      <div>
+        <h2 className="text-base font-semibold" style={{ color: textPrimary }}>
+          {modoLiquidador
+            ? 'Liquidador · Presupuesto y Contenidos NSR-10'
+            : 'Plantilla evaluación sísmica NSR-10'}
+        </h2>
+        <p className="mt-1 text-sm" style={{ color: textSecondary }}>
+          {modoLiquidador
+            ? 'Presupuesto (edificio), Contenidos y Totales. La suma completa alimenta el diagrama de liquidación del informe único.'
+            : OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+              ? 'Portada, Presupuesto, Contenidos y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'
+              : 'Portada, Evaluación, Dictamen, Presupuesto, Contenidos y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'}
+        </p>
+      </div>
 
-          <div className="flex flex-wrap gap-2 border-b pb-3" style={{ borderColor }}>
-            {HOJAS_VISIBLES_NSR10.map((h) => (
-              <button
-                key={h.id}
-                type="button"
-                onClick={() => setHoja(h.id)}
-                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                  hoja === h.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100'
-                }`}
-              >
-                {h.label}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : (
-        <div>
-          <h2 className="text-base font-semibold" style={{ color: textPrimary }}>
-            Liquidador · Presupuesto NSR-10
-          </h2>
-          <p className="mt-1 text-sm" style={{ color: textSecondary }}>
-            Mismo presupuesto de la evaluación. Aquí cierras el conteo de plata del informe único
-            (también se refleja en el Word).
-          </p>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2 border-b pb-3" style={{ borderColor }}>
+        {hojasMenu.map((h) => (
+          <button
+            key={h.id}
+            type="button"
+            onClick={() => setHoja(h.id)}
+            className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+              hoja === h.id
+                ? 'bg-blue-600 text-white'
+                : 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-100'
+            }`}
+          >
+            {h.label}
+          </button>
+        ))}
+      </div>
 
       {!modoLiquidador && hoja === 'portada' && (
         <section className="space-y-4">
@@ -601,8 +974,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </h3>
               <p className="text-xs" style={{ color: textSecondary }}>
                 {modoLiquidador
-                  ? 'Este es el liquidador del informe. Edita cantidades y unitarios; el total alimenta la liquidación y el Word.'
-                  : 'Este es el liquidador del informe único. Código del hallazgo, actividad, unidad, cantidad y valor unitario; totales con AIU / imprevistos / impuestos.'}
+                  ? 'Elija del catálogo de base de precios (848 ítems) o escriba libre. Edite cantidades; el total alimenta la liquidación y el Word.'
+                  : 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; totales con AIU / imprevistos / impuestos.'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -637,10 +1010,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
           </div>
 
           <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
-            <table className="min-w-[1200px] w-full text-left text-xs">
+            <table className="min-w-[1400px] w-full text-left text-xs">
               <thead style={{ backgroundColor: softBg }}>
                 <tr style={{ color: textSecondary }}>
                   <th className="px-2 py-2">Capítulo</th>
+                  <th className="px-2 py-2">Base precios</th>
                   <th className="px-2 py-2">Código eval.</th>
                   <th className="px-2 py-2">Componente</th>
                   <th className="px-2 py-2">Actividad / reparación</th>
@@ -656,7 +1030,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 </tr>
               </thead>
               <tbody>
-                {filasPresupuesto.map((row, index) => (
+                {filasPresupuesto.map((row, index) => {
+                  const catalogoCap = catalogoPresupuestoPorCapitulo(row.capitulo || '');
+                  const esCustom =
+                    !row.catalogoId ||
+                    !BASE_PRECIOS_PRESUPUESTO.some((c) => c.id === row.catalogoId);
+                  return (
                   <tr key={index} className="border-t align-top" style={{ borderColor }}>
                     <td className="px-1 py-1 min-w-[140px]">
                       <select
@@ -664,7 +1043,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                         value={row.capitulo || ''}
                         onChange={(e) =>
-                          actualizarFilaPresupuesto(index, { capitulo: e.target.value })
+                          actualizarFilaPresupuesto(index, {
+                            capitulo: e.target.value,
+                            catalogoId: '',
+                          })
                         }
                       >
                         <option value="">—</option>
@@ -673,6 +1055,27 @@ export default function ChecklistEvaluacionSismicaNSR10({
                             {c}
                           </option>
                         ))}
+                      </select>
+                    </td>
+                    <td className="px-1 py-1 min-w-[220px]">
+                      <select
+                        className={inputClass}
+                        style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                        value={esCustom ? '__custom__' : row.catalogoId}
+                        onChange={(e) => aplicarBasePreciosEnFila(index, e.target.value)}
+                        title={
+                          row.capitulo
+                            ? `Filtrado por capítulo: ${row.capitulo}`
+                            : 'Elija capítulo para filtrar, o busque en toda la base'
+                        }
+                      >
+                        <option value="">— Elegir de la base —</option>
+                        {catalogoCap.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.actividad} ({money(c.valorUnitario)}/{c.unidad})
+                          </option>
+                        ))}
+                        <option value="__custom__">Otro / escribir libre</option>
                       </select>
                     </td>
                     <td className="px-1 py-1 min-w-[100px]">
@@ -714,7 +1117,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                         value={row.actividad || ''}
                         onChange={(e) =>
-                          actualizarFilaPresupuesto(index, { actividad: e.target.value })
+                          actualizarFilaPresupuesto(index, {
+                            actividad: e.target.value,
+                            catalogoId: '',
+                          })
                         }
                       />
                     </td>
@@ -745,15 +1151,25 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         }
                       />
                     </td>
-                    <td className="px-1 py-1 min-w-[100px]">
+                    <td className="px-1 py-1 min-w-[110px]">
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="decimal"
                         className={inputClass}
                         style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                        value={row.valorUnitario ?? ''}
+                        value={displayMiles(row.valorUnitario)}
+                        placeholder="0"
                         onChange={(e) =>
-                          actualizarFilaPresupuesto(index, { valorUnitario: e.target.value })
+                          actualizarFilaPresupuesto(index, {
+                            valorUnitario: formatMilesInputNsr10(e.target.value),
+                          })
                         }
+                        onBlur={() => {
+                          const n = parseMontoNsr10(row.valorUnitario);
+                          actualizarFilaPresupuesto(index, {
+                            valorUnitario: n == null ? '' : formatMilesNsr10(n),
+                          });
+                        }}
                       />
                     </td>
                     <td className="px-2 py-2 whitespace-nowrap" style={{ color: textPrimary }}>
@@ -820,7 +1236,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       </button>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -948,26 +1365,46 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     }
                   />
                 </label>
-                <label className="block text-sm" style={{ color: textSecondary }}>
-                  Deducible
-                  <input
-                    className={`${inputClass} mt-1`}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={liquidacion.deducible ?? ''}
-                    onChange={(e) => actualizarLiquidacion({ deducible: e.target.value })}
-                  />
-                </label>
               </div>
+
+              <PanelDeducibleCatastrofico
+                deducibleCfg={deducibleCfg}
+                diagrama={diagrama}
+                onChangeConfig={actualizarDeducibleConfig}
+                inputClass={inputClass}
+                inputBg={inputBg}
+                borderColor={borderColor}
+                textPrimary={textPrimary}
+                textSecondary={textSecondary}
+                softBg={softBg}
+              />
+
               <div
                 className="grid gap-2 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3"
                 style={{ borderColor, backgroundColor: softBg }}
               >
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Daños (NSR-10)
+                    Total presupuesto
                   </p>
                   <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.danios)}
+                    {money(resumenTotales.totalPresupuesto)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Total contenidos
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(resumenTotales.totalContenidos)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Suma completa
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(resumenTotales.sumaCompleta)}
                   </p>
                 </div>
                 <div>
@@ -980,9 +1417,808 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 </div>
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Deducible aplicado
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(diagrama.deducibleAplicado || 0)}
+                  </p>
+                  <p className="text-xs" style={{ color: textSecondary }}>
+                    {diagrama.deducible || 'No aplica'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
                     Total a indemnizar
                   </p>
                   <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(diagrama.totalIndemnizar)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      )}
+
+      {hoja === 'contenidos' && (
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                Contenidos del inmueble
+              </h3>
+              <p className="text-xs" style={{ color: textSecondary }}>
+                Elija el tipo (casa, apartamento, industria…) y seleccione ítems del catálogo.
+                Si no aparece lo que necesita, use «Otro / escribir libre» y agregue filas.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600"
+              onClick={() =>
+                setContenidos({
+                  ...contenidos,
+                  items: [
+                    ...filasContenidos,
+                    crearFilaContenidoVacia({ tipoInmueble: tipoInmuebleContenidos }),
+                  ],
+                })
+              }
+            >
+              <FaPlus /> Agregar fila
+            </button>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <label className="block">
+              <span className={labelClass} style={{ color: textSecondary }}>
+                Tipo de inmueble / riesgo
+              </span>
+              <select
+                className={inputClass}
+                style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                value={tipoInmuebleContenidos}
+                onChange={(e) => setTipoInmuebleContenidos(e.target.value)}
+              >
+                <option value="">— Seleccione —</option>
+                {TIPOS_INMUEBLE_CONTENIDOS_NSR10.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
+            <table className="min-w-[1100px] w-full text-left text-xs">
+              <thead style={{ backgroundColor: softBg }}>
+                <tr style={{ color: textSecondary }}>
+                  <th className="px-2 py-2">Catálogo</th>
+                  <th className="px-2 py-2">Categoría</th>
+                  <th className="px-2 py-2">Artículo / descripción</th>
+                  <th className="px-2 py-2">Marca / ref.</th>
+                  <th className="px-2 py-2">Unidad</th>
+                  <th className="px-2 py-2">Cantidad</th>
+                  <th className="px-2 py-2">Vlr. unitario</th>
+                  <th className="px-2 py-2">Vlr. total</th>
+                  <th className="px-2 py-2">Estado</th>
+                  <th className="px-2 py-2">Observación</th>
+                  <th className="px-2 py-2" />
+                </tr>
+              </thead>
+              <tbody>
+                {filasContenidos.map((row, index) => {
+                  const esCustom =
+                    !row.catalogoId ||
+                    !catalogoFiltrado.some((c) => c.id === row.catalogoId);
+                  return (
+                    <tr key={index} className="border-t align-top" style={{ borderColor }}>
+                      <td className="px-1 py-1 min-w-[180px]">
+                        <select
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={esCustom ? '__custom__' : row.catalogoId}
+                          onChange={(e) => aplicarCatalogoEnFila(index, e.target.value)}
+                        >
+                          <option value="">— Elegir del catálogo —</option>
+                          {catalogoFiltrado.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.categoria}: {c.articulo}
+                            </option>
+                          ))}
+                          <option value="__custom__">Otro / escribir libre</option>
+                        </select>
+                      </td>
+                      <td className="px-1 py-1 min-w-[130px]">
+                        <select
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={row.categoria || ''}
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, { categoria: e.target.value })
+                          }
+                        >
+                          <option value="">—</option>
+                          {CATEGORIAS_CONTENIDOS_NSR10.map((c) => (
+                            <option key={c} value={c}>
+                              {c}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-1 py-1 min-w-[160px]">
+                        <input
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={row.articulo || ''}
+                          placeholder="Descripción del bien"
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, {
+                              articulo: e.target.value,
+                              catalogoId: '',
+                            })
+                          }
+                        />
+                      </td>
+                      <td className="px-1 py-1 min-w-[100px]">
+                        <input
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={row.marca || ''}
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, { marca: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-1 py-1 min-w-[80px]">
+                        <select
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={row.unidad || 'und'}
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, { unidad: e.target.value })
+                          }
+                        >
+                          {UNIDADES_CONTENIDOS_NSR10.map((u) => (
+                            <option key={u} value={u}>
+                              {u}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-1 py-1 min-w-[80px]">
+                        <input
+                          type="number"
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={row.cantidad ?? ''}
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, { cantidad: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-1 py-1 min-w-[110px]">
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={displayMiles(row.valorUnitario)}
+                          placeholder="0"
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, {
+                              valorUnitario: formatMilesInputNsr10(e.target.value),
+                            })
+                          }
+                          onBlur={() => {
+                            const n = parseMontoNsr10(row.valorUnitario);
+                            actualizarFilaContenido(index, {
+                              valorUnitario: n == null ? '' : formatMilesNsr10(n),
+                            });
+                          }}
+                        />
+                      </td>
+                      <td className="px-2 py-2 whitespace-nowrap" style={{ color: textPrimary }}>
+                        {money(totalFilaContenido(row))}
+                      </td>
+                      <td className="px-1 py-1 min-w-[100px]">
+                        <select
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={row.estado || 'Dañado'}
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, { estado: e.target.value })
+                          }
+                        >
+                          {ESTADOS_CONTENIDO_NSR10.map((est) => (
+                            <option key={est} value={est}>
+                              {est}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="px-1 py-1 min-w-[120px]">
+                        <input
+                          className={inputClass}
+                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                          value={row.observacion || ''}
+                          onChange={(e) =>
+                            actualizarFilaContenido(index, { observacion: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-1 py-1">
+                        <button
+                          type="button"
+                          className="text-red-600"
+                          onClick={() =>
+                            setContenidos({
+                              ...contenidos,
+                              items: filasContenidos.filter((_, i) => i !== index),
+                            })
+                          }
+                        >
+                          <FaTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            className="ml-auto w-full max-w-lg space-y-3 rounded-lg border p-4 text-sm"
+            style={{ borderColor, backgroundColor: softBg }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="font-semibold" style={{ color: textPrimary }}>
+                Liquidación contenidos
+              </h4>
+              <label className="inline-flex items-center gap-2 text-xs" style={{ color: textPrimary }}>
+                <input
+                  type="checkbox"
+                  checked={Boolean(deducibleCfg.aplica)}
+                  onChange={(e) => actualizarDeducibleConfig({ aplica: e.target.checked })}
+                />
+                Aplicar deducible
+              </label>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={`rounded border px-2 py-1 text-xs font-semibold ${
+                  (deducibleCfg.tipoMinimo || 'SMMLV') === 'SMMLV'
+                    ? 'border-blue-500 text-blue-600'
+                    : ''
+                }`}
+                style={
+                  (deducibleCfg.tipoMinimo || 'SMMLV') === 'SMMLV'
+                    ? undefined
+                    : { borderColor, color: textSecondary }
+                }
+                onClick={() => actualizarDeducibleConfig({ tipoMinimo: 'SMMLV' })}
+              >
+                SMMLV
+              </button>
+              <button
+                type="button"
+                className={`rounded border px-2 py-1 text-xs font-semibold ${
+                  deducibleCfg.tipoMinimo === 'SMDLV' ? 'border-blue-500 text-blue-600' : ''
+                }`}
+                style={
+                  deducibleCfg.tipoMinimo === 'SMDLV'
+                    ? undefined
+                    : { borderColor, color: textSecondary }
+                }
+                onClick={() => actualizarDeducibleConfig({ tipoMinimo: 'SMDLV' })}
+              >
+                SMDLV
+              </button>
+            </div>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="block text-xs" style={{ color: textSecondary }}>
+                % deducible
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  className={`${inputClass} mt-1`}
+                  style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                  value={deducibleCfg.porcentaje ?? 10}
+                  onChange={(e) =>
+                    actualizarDeducibleConfig({
+                      porcentaje: e.target.value === '' ? '' : Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label className="block text-xs" style={{ color: textSecondary }}>
+                Año SMMLV
+                <select
+                  className={`${inputClass} mt-1`}
+                  style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                  value={deducibleCfg.anioSMMLV}
+                  onChange={(e) => {
+                    const anio = Number(e.target.value);
+                    const valorSMMLV = SMMLV_POR_ANIO[anio];
+                    actualizarDeducibleConfig({
+                      anioSMMLV: anio,
+                      valorSMMLV,
+                      valorSMDLV: valorSmdlvDesdeSmmlv(valorSMMLV),
+                    });
+                  }}
+                >
+                  {ANIOS_SMMLV.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {(deducibleCfg.tipoMinimo || 'SMMLV') === 'SMMLV' ? (
+                <>
+                  <label className="block text-xs" style={{ color: textSecondary }}>
+                    Cant. SMMLV
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={`${inputClass} mt-1`}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={deducibleCfg.cantidadSMMLV ?? 4}
+                      onChange={(e) =>
+                        actualizarDeducibleConfig({
+                          cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs" style={{ color: textSecondary }}>
+                    Valor SMMLV
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className={`${inputClass} mt-1`}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={displayMiles(deducibleCfg.valorSMMLV)}
+                      onChange={(e) => {
+                        const fmt = formatMilesInputNsr10(e.target.value);
+                        const n = parseMontoNsr10(fmt);
+                        actualizarDeducibleConfig({
+                          valorSMMLV: fmt,
+                          valorSMDLV:
+                            n == null ? deducibleCfg.valorSMDLV : valorSmdlvDesdeSmmlv(n),
+                        });
+                      }}
+                    />
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="block text-xs" style={{ color: textSecondary }}>
+                    Cant. SMDLV
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className={`${inputClass} mt-1`}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={deducibleCfg.cantidadSMDLV ?? 10}
+                      onChange={(e) =>
+                        actualizarDeducibleConfig({
+                          cantidadSMDLV: e.target.value === '' ? '' : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                  <label className="block text-xs" style={{ color: textSecondary }}>
+                    Valor SMDLV
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className={`${inputClass} mt-1`}
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={displayMiles(deducibleCfg.valorSMDLV)}
+                      onChange={(e) =>
+                        actualizarDeducibleConfig({
+                          valorSMDLV: formatMilesInputNsr10(e.target.value),
+                        })
+                      }
+                    />
+                  </label>
+                </>
+              )}
+            </div>
+
+            <div className="overflow-hidden rounded border" style={{ borderColor }}>
+              <table className="w-full text-sm">
+                <tbody style={{ color: textPrimary }}>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2">TOTAL CONTENIDOS</td>
+                    <td className="px-3 py-2 text-right font-semibold">
+                      {money(totalesContenidos.total)}
+                    </td>
+                  </tr>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2" style={{ color: textSecondary }}>
+                      DEDUCIBLE {diagrama.deduciblePorcentajeCfg ?? deducibleCfg.porcentaje ?? 10}%
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {money(diagrama.deduciblePorcentaje || 0)}
+                    </td>
+                  </tr>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2" style={{ color: textSecondary }}>
+                      {(deducibleCfg.tipoMinimo || 'SMMLV') === 'SMDLV'
+                        ? `DEDUCIBLE ${diagrama.deducibleCantidadSMDLV ?? deducibleCfg.cantidadSMDLV ?? ''} SMDLV`
+                        : `DEDUCIBLE ${diagrama.deducibleCantidadSMMLV ?? deducibleCfg.cantidadSMMLV ?? ''} SMMLV`}
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {money(
+                        (deducibleCfg.tipoMinimo || 'SMMLV') === 'SMDLV'
+                          ? diagrama.deducibleSMDLV || 0
+                          : diagrama.deducibleSMMLV || 0
+                      )}
+                    </td>
+                  </tr>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2 font-semibold">
+                      DEDUCIBLE APLICADO (
+                      {diagrama.deducibleAplica
+                        ? diagrama.deducibleUsaMinimo
+                          ? diagrama.deducibleTipoMinimo
+                          : '%'
+                        : 'No aplica'}
+                      )
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold">
+                      {money(diagrama.deducibleAplicado || 0)}
+                    </td>
+                  </tr>
+                  <tr style={{ backgroundColor: softBg }}>
+                    <td className="px-3 py-2.5 font-bold text-emerald-600">
+                      CONTENIDOS NETO
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
+                      {money(
+                        Math.max(
+                          0,
+                          (Number(totalesContenidos.total) || 0) -
+                            (diagrama.deducibleAplicado || 0)
+                        )
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs" style={{ color: textSecondary }}>
+              El deducible se calcula sobre el total de contenidos (MAX % vs mínimo). La suma con
+              presupuesto e hospedaje está en Totales.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {hoja === 'totales' && (
+        <section className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
+              Totales del liquidador
+            </h3>
+            <p className="text-xs" style={{ color: textSecondary }}>
+              Resumen de presupuesto (inmueble), contenidos (bienes muebles) y suma completa
+              para el informe único.
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div
+              className="rounded-xl border p-5"
+              style={{ borderColor, backgroundColor: softBg }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: textSecondary }}>
+                Total presupuesto
+              </p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: textPrimary }}>
+                {money(resumenTotales.totalPresupuesto)}
+              </p>
+              <p className="mt-1 text-xs" style={{ color: textSecondary }}>
+                Reparación / intervención NSR-10 (con AIU, imprevistos e impuestos)
+              </p>
+            </div>
+            <div
+              className="rounded-xl border p-5"
+              style={{ borderColor, backgroundColor: softBg }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: textSecondary }}>
+                Total contenidos
+              </p>
+              <p className="mt-2 text-2xl font-bold" style={{ color: textPrimary }}>
+                {money(resumenTotales.totalContenidos)}
+              </p>
+              <p className="mt-1 text-xs" style={{ color: textSecondary }}>
+                Bienes muebles del inmueble
+              </p>
+            </div>
+            <div
+              className="rounded-xl border-2 border-blue-500 p-5"
+              style={{ backgroundColor: softBg }}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                Suma completa
+              </p>
+              <p className="mt-2 text-2xl font-bold text-blue-600">
+                {money(resumenTotales.sumaCompleta)}
+              </p>
+              <p className="mt-1 text-xs" style={{ color: textSecondary }}>
+                Presupuesto + contenidos
+              </p>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
+            <table className="min-w-full text-left text-sm">
+              <thead style={{ backgroundColor: softBg }}>
+                <tr style={{ color: textSecondary }}>
+                  <th className="px-4 py-3">Concepto</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody style={{ color: textPrimary }}>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2">Subtotal presupuesto (costo directo)</td>
+                  <td className="px-4 py-2 text-right">{money(totales.subtotal)}</td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2">AIU / imprevistos / impuestos</td>
+                  <td className="px-4 py-2 text-right">
+                    {money((totales.aiu || 0) + (totales.imprevistos || 0) + (totales.impuestos || 0))}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2 font-semibold">Total presupuesto</td>
+                  <td className="px-4 py-2 text-right font-semibold">
+                    {money(resumenTotales.totalPresupuesto)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2" style={{ color: textSecondary }}>
+                    (−) Deducible presupuesto
+                    {diagrama.deduciblePresupuesto?.texto
+                      ? ` (${diagrama.deduciblePresupuesto.texto})`
+                      : ''}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2">Presupuesto neto</td>
+                  <td className="px-4 py-2 text-right">
+                    {money(diagrama.deduciblePresupuesto?.neto ?? resumenTotales.totalPresupuesto)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2 font-semibold">Total contenidos</td>
+                  <td className="px-4 py-2 text-right font-semibold">
+                    {money(resumenTotales.totalContenidos)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2" style={{ color: textSecondary }}>
+                    (−) Deducible contenidos
+                    {diagrama.deducibleContenidos?.texto
+                      ? ` (${diagrama.deducibleContenidos.texto})`
+                      : ''}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    {money(diagrama.deducibleContenidos?.aplicado || diagrama.deducibleAplicado || 0)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2">Contenidos neto</td>
+                  <td className="px-4 py-2 text-right">
+                    {money(
+                      diagrama.deducibleContenidos?.neto ??
+                        Math.max(
+                          0,
+                          (resumenTotales.totalContenidos || 0) - (diagrama.deducibleAplicado || 0)
+                        )
+                    )}
+                  </td>
+                </tr>
+                <tr className="border-t bg-blue-50/50 dark:bg-blue-950/20" style={{ borderColor }}>
+                  <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">
+                    SUMA COMPLETA (bruta)
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-blue-700 dark:text-blue-300">
+                    {money(resumenTotales.sumaCompleta)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2">(+) Hospedaje</td>
+                  <td className="px-4 py-2 text-right">{money(diagrama.gastosHospedaje || 0)}</td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2 font-semibold">(−) Suma deducibles</td>
+                  <td className="px-4 py-2 text-right font-semibold">
+                    {money(diagrama.sumaDeducibles || 0)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-2">Suma neta (presupuesto + contenidos)</td>
+                  <td className="px-4 py-2 text-right">
+                    {money(diagrama.sumaNeta ?? resumenTotales.sumaCompleta)}
+                  </td>
+                </tr>
+                <tr className="border-t" style={{ borderColor }}>
+                  <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
+                    TOTAL A INDEMNIZAR
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-300">
+                    {money(diagrama.totalIndemnizar)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <div className="space-y-2 rounded-lg border p-4" style={{ borderColor, backgroundColor: softBg }}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                  Deducible presupuesto
+                </h4>
+                <label className="inline-flex items-center gap-2 text-xs" style={{ color: textPrimary }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(deducibleCfgPresupuesto.aplica)}
+                    onChange={(e) =>
+                      actualizarDeduciblePresupuesto({ aplica: e.target.checked })
+                    }
+                  />
+                  Aplicar
+                </label>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block text-xs" style={{ color: textSecondary }}>
+                  %
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    className={`${inputClass} mt-1`}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={deducibleCfgPresupuesto.porcentaje ?? 10}
+                    onChange={(e) =>
+                      actualizarDeduciblePresupuesto({
+                        porcentaje: e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label className="block text-xs" style={{ color: textSecondary }}>
+                  Cant. SMMLV
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className={`${inputClass} mt-1`}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={deducibleCfgPresupuesto.cantidadSMMLV ?? 4}
+                    onChange={(e) =>
+                      actualizarDeduciblePresupuesto({
+                        cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
+                        tipoMinimo: 'SMMLV',
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <p className="text-xs" style={{ color: textSecondary }}>
+                Aplicado: {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
+              </p>
+            </div>
+            <div className="space-y-2 rounded-lg border p-4" style={{ borderColor, backgroundColor: softBg }}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                  Deducible contenidos
+                </h4>
+                <label className="inline-flex items-center gap-2 text-xs" style={{ color: textPrimary }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(deducibleCfg.aplica)}
+                    onChange={(e) => actualizarDeducibleConfig({ aplica: e.target.checked })}
+                  />
+                  Aplicar
+                </label>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="block text-xs" style={{ color: textSecondary }}>
+                  %
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    className={`${inputClass} mt-1`}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={deducibleCfg.porcentaje ?? 10}
+                    onChange={(e) =>
+                      actualizarDeducibleConfig({
+                        porcentaje: e.target.value === '' ? '' : Number(e.target.value),
+                      })
+                    }
+                  />
+                </label>
+                <label className="block text-xs" style={{ color: textSecondary }}>
+                  Cant. SMMLV
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className={`${inputClass} mt-1`}
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={deducibleCfg.cantidadSMMLV ?? 4}
+                    onChange={(e) =>
+                      actualizarDeducibleConfig({
+                        cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
+                        tipoMinimo: 'SMMLV',
+                      })
+                    }
+                  />
+                </label>
+              </div>
+              <p className="text-xs" style={{ color: textSecondary }}>
+                Aplicado: {money(diagrama.deducibleContenidos?.aplicado || 0)} · Detalle completo en
+                pestaña Contenidos
+              </p>
+            </div>
+          </div>
+
+          {modoLiquidador ? (
+            <div className="space-y-3 rounded-lg border p-4" style={{ borderColor }}>
+              <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
+                Liquidación del informe único
+              </h4>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Suma neta
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(diagrama.sumaNeta)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Hospedaje
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(diagrama.gastosHospedaje)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Suma deducibles
+                  </p>
+                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                    {money(diagrama.sumaDeducibles || 0)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                    Total a indemnizar
+                  </p>
+                  <p className="text-lg font-bold text-emerald-600">
                     {money(diagrama.totalIndemnizar)}
                   </p>
                 </div>

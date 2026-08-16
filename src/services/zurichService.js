@@ -254,6 +254,40 @@ export const getAlertasZurich = async () => {
   return payload;
 };
 
+const CAMPOS_CAT_NO_PISAR = [
+  'severidadCat',
+  'severidadCatNiveles',
+  'evidenciaCat',
+  'observacionesCat',
+  'accesoPredio',
+  'fechaInspeccion',
+  'checklistCatCompleto',
+];
+
+const omitirCampos = (obj, claves) => {
+  const out = { ...obj };
+  claves.forEach((k) => {
+    delete out[k];
+  });
+  return out;
+};
+
+/** Guarda solo inspección CAT (no envía el resto del caso, para no pisar el checklist). */
+export const guardarCatEnCasoZurich = async ({ casoId, cat = {}, casoBase = {} }) => {
+  if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de registrar la inspección CAT.');
+  const payload = {
+    identificacion: casoBase.identificacion,
+    estado: casoBase.estado || 'PENDIENTE',
+    severidadCat: cat.severidadCat ?? null,
+    severidadCatNiveles: cat.severidadCatNiveles || {},
+    evidenciaCat: cat.evidenciaCat || {},
+    observacionesCat: cat.observacionesCat ?? null,
+    accesoPredio: cat.accesoPredio ?? null,
+    fechaInspeccion: cat.fechaInspeccion ?? null,
+  };
+  return actualizarCasoZurich(casoId, payload);
+};
+
 /** Guarda el liquidador en el caso y sincroniza valores reclamado/liquidado. */
 export const guardarLiquidadorEnCasoZurich = async ({
   casoId,
@@ -264,7 +298,7 @@ export const guardarLiquidadorEnCasoZurich = async ({
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el liquidador.');
 
   const payload = {
-    ...casoBase,
+    ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
     liquidador: liquidador || {},
     valorReclamado:
       totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
@@ -290,7 +324,7 @@ export const guardarInformeUnicoEnCasoZurich = async ({
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el informe.');
 
   const payload = {
-    ...casoBase,
+    ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
     informeUnico: informeUnico || {},
   };
 

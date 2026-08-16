@@ -5,6 +5,18 @@
  * Cantidades y observaciones siguen por caso.
  */
 
+import {
+  ANIOS_SMMLV,
+  DIAS_SMDLV,
+  SMMLV_ANIO_MAS_RECIENTE,
+  SMMLV_DEFAULT,
+  SMMLV_POR_ANIO,
+  numDeducible,
+  parsearNumero,
+  resolverSmmlvPorAnio,
+  valorSmdlvDesdeSmmlv,
+} from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
+
 const catalogoPorId = new Map();
 
 export const CATALOGO_PRESUPUESTO_CATASTROFICO = [
@@ -204,6 +216,27 @@ export const CATALOGO_PRESUPUESTO_CATASTROFICO = [
 export const AIU_PORCENTAJE_DEFAULT = 0.2;
 export const HOSPEDAJE_PORCENTAJE_DEFAULT = 0.01;
 
+/** Deducible numérico al estilo Express (MAX % vs mínimo SMMLV/SMDLV). */
+export const DEFAULT_DEDUCIBLE_CATASTROFICO = {
+  aplica: false,
+  porcentaje: 10,
+  tipoMinimo: 'SMMLV',
+  cantidadSMMLV: 4,
+  cantidadSMDLV: 10,
+  anioSMMLV: SMMLV_ANIO_MAS_RECIENTE,
+  valorSMMLV: SMMLV_DEFAULT,
+  valorSMDLV: Math.round(SMMLV_DEFAULT / DIAS_SMDLV),
+  texto: '',
+};
+
+export {
+  ANIOS_SMMLV,
+  SMMLV_POR_ANIO,
+  SMMLV_ANIO_MAS_RECIENTE,
+  SMMLV_DEFAULT,
+  valorSmdlvDesdeSmmlv,
+};
+
 for (const item of CATALOGO_PRESUPUESTO_CATASTROFICO) {
   catalogoPorId.set(item.id, item);
 }
@@ -297,26 +330,204 @@ export function calcularResumenPresupuesto(items = [], aiuPorcentaje = AIU_PORCE
   return { costoDirecto, aiu, total };
 }
 
+/** Normaliza liquidacion.deducible (string legacy) + deducibleConfig. */
+export function normalizarDeducibleCatastrofico(liquidacion = {}) {
+  const raw = liquidacion?.deducibleConfig;
+  const base = {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    ...(raw && typeof raw === 'object' ? raw : {}),
+  };
+  const anioRef = Number(base.anioSMMLV) || SMMLV_ANIO_MAS_RECIENTE;
+  const smmlvResuelto = resolverSmmlvPorAnio(anioRef);
+  const valorSMMLV = parsearNumero(
+    base.valorSMMLV != null && base.valorSMMLV !== ''
+      ? base.valorSMMLV
+      : smmlvResuelto.valor ?? SMMLV_DEFAULT
+  );
+  const valorSMDLV = parsearNumero(
+    base.valorSMDLV != null && base.valorSMDLV !== ''
+      ? base.valorSMDLV
+      : valorSmdlvDesdeSmmlv(valorSMMLV)
+  );
+  const textoLegacy =
+    typeof liquidacion?.deducible === 'string' ? liquidacion.deducible.trim() : '';
+  return {
+    ...base,
+    aplica: Boolean(base.aplica),
+    porcentaje: numDeducible(base.porcentaje, 10),
+    tipoMinimo: base.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV',
+    cantidadSMMLV: numDeducible(base.cantidadSMMLV, 4),
+    cantidadSMDLV: numDeducible(base.cantidadSMDLV, 10),
+    anioSMMLV: smmlvResuelto.anio,
+    valorSMMLV,
+    valorSMDLV,
+    texto: String(base.texto || '').trim() || textoLegacy,
+  };
+}
+
+/**
+ * Calcula deducible sobre una base (p. ej. suma completa / daños).
+ * Misma regla Express: MAX(% de la base, mínimo SMMLV|SMDLV).
+ */
+export function calcularDeducibleEstiloExpress(base = 0, deducibleConfig = {}) {
+  const cfg = {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    ...(deducibleConfig && typeof deducibleConfig === 'object' ? deducibleConfig : {}),
+  };
+  const totalBase = Number(base) || 0;
+  const porcentaje = numDeducible(cfg.porcentaje, 10);
+  const deduciblePorcentaje = totalBase * (porcentaje / 100);
+
+  const anioRef = Number(cfg.anioSMMLV) || SMMLV_ANIO_MAS_RECIENTE;
+  const smmlvResuelto = resolverSmmlvPorAnio(anioRef);
+  const valorSMMLV = parsearNumero(
+    cfg.valorSMMLV != null && cfg.valorSMMLV !== ''
+      ? cfg.valorSMMLV
+      : smmlvResuelto.valor ?? SMMLV_DEFAULT
+  );
+  const cantidadSMMLV = numDeducible(cfg.cantidadSMMLV, 4);
+  const deducibleSMMLV = valorSMMLV * cantidadSMMLV;
+
+  const valorSMDLV = parsearNumero(
+    cfg.valorSMDLV != null && cfg.valorSMDLV !== ''
+      ? cfg.valorSMDLV
+      : valorSmdlvDesdeSmmlv(valorSMMLV)
+  );
+  const cantidadSMDLV = numDeducible(cfg.cantidadSMDLV, 10);
+  const deducibleSMDLV = valorSMDLV * cantidadSMDLV;
+
+  const tipoMinimo = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
+  const deducibleMinimo = tipoMinimo === 'SMDLV' ? deducibleSMDLV : deducibleSMMLV;
+  const deducibleAplicadoBruto = Math.max(deduciblePorcentaje, deducibleMinimo);
+  const aplica = Boolean(cfg.aplica);
+  const deducibleAplicado = aplica
+    ? Math.round(Math.min(deducibleAplicadoBruto, totalBase) * 100) / 100
+    : 0;
+  const usaMinimo = deducibleMinimo > deduciblePorcentaje;
+  const textoAuto = aplica
+    ? `${porcentaje}% · Mínimo ${
+        tipoMinimo === 'SMDLV' ? cantidadSMDLV : cantidadSMMLV
+      } ${tipoMinimo}`
+    : 'No aplica';
+  const texto = String(cfg.texto || '').trim() || textoAuto;
+
+  return {
+    aplica,
+    totalBase,
+    porcentaje,
+    deduciblePorcentaje: Math.round(deduciblePorcentaje * 100) / 100,
+    deducibleSMMLV: Math.round(deducibleSMMLV * 100) / 100,
+    deducibleSMDLV: Math.round(deducibleSMDLV * 100) / 100,
+    deducibleAplicado,
+    usaMinimo,
+    tipoMinimo,
+    cantidadSMMLV,
+    cantidadSMDLV,
+    valorSMMLV,
+    valorSMDLV,
+    anioSMMLV: smmlvResuelto.anio,
+    texto,
+  };
+}
+
 export function calcularDiagramaLiquidacion({
   valorAsegurado = 0,
   totalDanios = 0,
+  totalPresupuesto = null,
+  totalContenidos = null,
+  /** @deprecated usar deducibleConfigContenidos; se mantiene por compat. */
+  baseDeducible = null,
   hospedajePorcentaje = HOSPEDAJE_PORCENTAJE_DEFAULT,
   hospedajeManual = null,
   deducible = '',
+  deducibleConfig = null,
+  deducibleConfigContenidos = null,
+  deducibleConfigPresupuesto = null,
 } = {}) {
   const va = Number(valorAsegurado) || 0;
   const danios = Number(totalDanios) || 0;
+  const presupuestoN =
+    totalPresupuesto === null || totalPresupuesto === undefined || totalPresupuesto === ''
+      ? null
+      : Number(totalPresupuesto) || 0;
+  const contenidosN =
+    totalContenidos === null || totalContenidos === undefined || totalContenidos === ''
+      ? null
+      : Number(totalContenidos) || 0;
   const hospedaje =
     hospedajeManual !== null && hospedajeManual !== undefined && hospedajeManual !== ''
       ? Number(hospedajeManual) || 0
       : Math.round(va * (Number(hospedajePorcentaje) || 0));
-  const deducibleTexto = String(deducible ?? '').trim() || 'No aplica';
-  const totalIndemnizar = Math.round((danios + hospedaje) * 100) / 100;
+
+  const cfgContenidos = normalizarDeducibleCatastrofico({
+    deducible,
+    deducibleConfig:
+      deducibleConfigContenidos && typeof deducibleConfigContenidos === 'object'
+        ? deducibleConfigContenidos
+        : deducibleConfig && typeof deducibleConfig === 'object'
+          ? deducibleConfig
+          : typeof deducible === 'object' && deducible
+            ? deducible
+            : undefined,
+  });
+  const cfgPresupuesto = normalizarDeducibleCatastrofico({
+    deducibleConfig:
+      deducibleConfigPresupuesto && typeof deducibleConfigPresupuesto === 'object'
+        ? deducibleConfigPresupuesto
+        : undefined,
+  });
+
+  const baseContenidos =
+    baseDeducible !== null && baseDeducible !== undefined && baseDeducible !== ''
+      ? Number(baseDeducible) || 0
+      : contenidosN != null
+        ? contenidosN
+        : 0;
+  const basePresupuesto = presupuestoN != null ? presupuestoN : Math.max(0, danios - baseContenidos);
+
+  const calcCont = calcularDeducibleEstiloExpress(baseContenidos, cfgContenidos);
+  const calcPres = calcularDeducibleEstiloExpress(basePresupuesto, cfgPresupuesto);
+  const deducibleContenidosAplicado = calcCont.deducibleAplicado || 0;
+  const deduciblePresupuestoAplicado = calcPres.deducibleAplicado || 0;
+  const sumaDeducibles =
+    Math.round((deducibleContenidosAplicado + deduciblePresupuestoAplicado) * 100) / 100;
+  const presupuestoNeto = Math.max(0, basePresupuesto - deduciblePresupuestoAplicado);
+  const contenidosNeto = Math.max(0, baseContenidos - deducibleContenidosAplicado);
+  const sumaNeta = Math.round((presupuestoNeto + contenidosNeto) * 100) / 100;
+  const totalIndemnizar = Math.round((sumaNeta + hospedaje) * 100) / 100;
+
+  // Compat: campos “deducible*” apuntan a contenidos (histórico)
   return {
     valorAsegurado: va,
     danios,
+    totalPresupuesto: presupuestoN,
+    totalContenidos: contenidosN,
+    baseDeducible: baseContenidos,
+    baseDeduciblePresupuesto: basePresupuesto,
     gastosHospedaje: hospedaje,
-    deducible: deducibleTexto,
+    deducible: calcCont.texto,
+    deducibleAplicado: deducibleContenidosAplicado,
+    deduciblePorcentaje: calcCont.deduciblePorcentaje,
+    deducibleSMMLV: calcCont.deducibleSMMLV,
+    deducibleSMDLV: calcCont.deducibleSMDLV,
+    deducibleUsaMinimo: calcCont.usaMinimo,
+    deducibleTipoMinimo: calcCont.tipoMinimo,
+    deducibleAplica: calcCont.aplica,
+    deduciblePorcentajeCfg: calcCont.porcentaje,
+    deducibleCantidadSMMLV: calcCont.cantidadSMMLV,
+    deducibleCantidadSMDLV: calcCont.cantidadSMDLV,
+    deducibleContenidos: {
+      ...calcCont,
+      aplicado: deducibleContenidosAplicado,
+      neto: contenidosNeto,
+    },
+    deduciblePresupuesto: {
+      ...calcPres,
+      aplicado: deduciblePresupuestoAplicado,
+      neto: presupuestoNeto,
+    },
+    sumaDeducibles,
+    sumaNeta,
     totalIndemnizar,
   };
 }

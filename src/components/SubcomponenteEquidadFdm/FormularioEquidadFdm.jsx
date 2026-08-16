@@ -34,6 +34,7 @@ const FORM_VACIO = {
   nombre: '',
   cedula: '',
   celular: '',
+  correo: '',
   direccionAfectada: '',
   municipio: '',
   departamento: '',
@@ -254,6 +255,14 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
           </Campo>
           <Campo label={t('equidadFdm.fields.mobile')}>
             <InputFenix value={form.celular} onChange={setCampo('celular')} placeholder={t('equidadFdm.placeholders.contactMobile')} />
+          </Campo>
+          <Campo label={t('equidadFdm.fields.email')}>
+            <InputFenix
+              type="email"
+              value={form.correo}
+              onChange={setCampo('correo')}
+              placeholder={t('equidadFdm.placeholders.contactEmail')}
+            />
           </Campo>
           <Campo label={t('equidadFdm.fields.affectedAddress')}>
             <InputFenix value={form.direccionAfectada} onChange={setCampo('direccionAfectada')} />

@@ -13,9 +13,9 @@ import {
 import logoZurich from '../../assets/zurich-logo.png';
 import {
   actualizarArchivoZurich,
-  actualizarCasoZurich,
   eliminarArchivoZurich,
   getCasoZurichById,
+  guardarCatEnCasoZurich,
   reordenarArchivosZurich,
   subirArchivoZurich,
   urlDescargaArchivoZurich,
@@ -37,6 +37,7 @@ import {
   formatDateIso,
 } from './zurichHelpers.js';
 import { descargarDesprendibleCatZurich } from './generarDesprendibleCatZurich.js';
+import { AUTOSAVE_DEBOUNCE_MS } from '../../config/autoSaveConfig.js';
 
 const SEVERIDAD_MANUAL_CAT = SEVERIDAD_CAT_ZURICH.map((s) => ({
   nivel: s.valor,
@@ -111,8 +112,10 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
   const [evidenciaCat, setEvidenciaCat] = useState(() =>
     normalizeEvidenciaCat(casoZurich?.evidenciaCat)
   );
+  const catListoRef = useRef(false);
 
   useEffect(() => {
+    catListoRef.current = false;
     // Solo al cambiar de caso: no resetear severidad al subir fotos / refrescar updatedAt
     setSeveridadNiveles(
       normalizeSeveridadCatNiveles(casoZurich?.severidadCatNiveles, casoZurich?.severidadCat)
@@ -244,7 +247,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       return;
     }
     if (!casoZurich?._id) {
-      setError(t('zurich.reportUnique.savedCaseRequired'));
+      setError(t('zurich.cat.needSavedCase'));
       return;
     }
     setError('');
@@ -307,8 +310,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     const accesoPredio = evidencia.noAcceso?.aplica === 'SI' ? 'NO' : 'SI';
     const fechaVisita =
       formatDateIso(casoZurich?.fechaInspeccion) || formatDateIso(new Date());
-    const payload = {
-      ...casoZurich,
+    const cat = {
       severidadCat,
       severidadCatNiveles: niveles,
       accesoPredio,
@@ -316,63 +318,79 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       observacionesCat: observacionesCat || null,
       fechaInspeccion: fechaVisita,
     };
-    delete payload._id;
-    delete payload.__v;
-    delete payload.createdAt;
-    delete payload.updatedAt;
-    delete payload.archivos;
-    return { payload, niveles, evidencia, severidadCat };
+    return { cat, niveles, evidencia, severidadCat };
   };
 
-  const guardarCat = async () => {
+  const persistirCat = async ({ silencioso = false } = {}) => {
     if (!casoZurich?._id) {
-      setError(t('zurich.reportUnique.savedCaseRequired'));
+      if (!silencioso) setError(t('zurich.cat.needSavedCase'));
       return null;
     }
-    setGuardando(true);
-    setError('');
-    setMensaje('');
+    if (!silencioso) {
+      setGuardando(true);
+      setError('');
+      setMensaje('');
+    }
     try {
-      const { payload } = buildCatPayload();
-      const actualizado = await actualizarCasoZurich(casoZurich._id, payload);
-      setSeveridadNiveles(
-        finalizarSeveridadCatNiveles(
-          actualizado?.severidadCatNiveles ?? payload.severidadCatNiveles,
-          actualizado?.severidadCat ?? payload.severidadCat
-        )
-      );
+      const { cat } = buildCatPayload();
+      const actualizado = await guardarCatEnCasoZurich({
+        casoId: casoZurich._id,
+        cat,
+        casoBase: casoZurich,
+      });
+      if (!silencioso) {
+        setSeveridadNiveles(
+          finalizarSeveridadCatNiveles(
+            actualizado?.severidadCatNiveles ?? cat.severidadCatNiveles,
+            actualizado?.severidadCat ?? cat.severidadCat
+          )
+        );
+      }
       onCasoChange?.(actualizado);
-      setMensaje(t('zurich.cat.savedOk'));
+      if (!silencioso) setMensaje(t('zurich.cat.savedOk'));
       return actualizado;
     } catch (err) {
-      setError(err.message || t('zurich.cat.savedError'));
+      if (!silencioso) setError(err.message || t('zurich.cat.savedError'));
       return null;
     } finally {
-      setGuardando(false);
+      if (!silencioso) setGuardando(false);
     }
   };
+
+  useEffect(() => {
+    if (!casoZurich?._id) return undefined;
+    if (!catListoRef.current) {
+      catListoRef.current = true;
+      return undefined;
+    }
+    const timer = setTimeout(() => {
+      persistirCat({ silencioso: true });
+    }, AUTOSAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [severidadNiveles, observacionesCat, evidenciaCat, casoZurich?._id]);
+
+  const guardarCat = async () => persistirCat({ silencioso: false });
 
   const guardarYDesprendible = async () => {
     if (!casoZurich?._id) {
-      setError(t('zurich.reportUnique.savedCaseRequired'));
+      setError(t('zurich.cat.needSavedCase'));
       return;
     }
     setGenerandoDoc(true);
     setError('');
     setMensaje('');
     try {
-      const { payload } = buildCatPayload();
-      const guardado = await actualizarCasoZurich(casoZurich._id, payload);
-      setSeveridadNiveles(
-        finalizarSeveridadCatNiveles(
-          guardado?.severidadCatNiveles ?? payload.severidadCatNiveles,
-          guardado?.severidadCat ?? payload.severidadCat
-        )
-      );
+      const { cat } = buildCatPayload();
+      const guardado = await guardarCatEnCasoZurich({
+        casoId: casoZurich._id,
+        cat,
+        casoBase: casoZurich,
+      });
       onCasoChange?.(guardado);
       const base = {
         ...(guardado || {}),
-        ...payload,
+        ...cat,
         archivos: archivos?.length ? archivos : guardado?.archivos || casoZurich.archivos || [],
       };
       const nombre = await descargarDesprendibleCatZurich(base);
@@ -390,10 +408,10 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     setError('');
     setMensaje('');
     try {
-      const { payload } = buildCatPayload();
+      const { cat } = buildCatPayload();
       const base = {
         ...(casoZurich || {}),
-        ...payload,
+        ...cat,
         archivos: archivos?.length ? archivos : casoZurich?.archivos || [],
       };
       const nombre = await descargarDesprendibleCatZurich(base);
@@ -480,6 +498,10 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
         {OBJETIVO_MANUAL}
       </div>
 
+      {!casoZurich?._id ? (
+        <div className={expressAlertError}>{t('zurich.cat.needSavedCase')}</div>
+      ) : null}
+
       <section>
         <h3 className="mb-2 font-heading text-lg font-bold text-gray-900 dark:text-white">
           1. Clasificación de severidad para reporte de exposición
@@ -531,9 +553,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
         </p>
 
         {!casoZurich?._id ? (
-          <div className={expressAlertError}>
-            Debe abrir un caso Zurich guardado para subir fotos.
-          </div>
+          <div className={expressAlertError}>{t('zurich.cat.needSavedCase')}</div>
         ) : null}
 
         <label className="mb-1 block font-body text-sm font-semibold text-gray-800 dark:text-gray-200">

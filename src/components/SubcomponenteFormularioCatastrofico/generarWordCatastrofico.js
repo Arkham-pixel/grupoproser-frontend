@@ -1159,12 +1159,16 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
           impuestos: 0,
         };
     const liquidacion = fd.liquidacionCatastrofico || {};
+    const totalDaniosInforme = obtenerTotalDaniosParaInforme(presupuesto);
+    const totalContenidosNsr = Number(presupuesto?.totalesNsr10?.totalContenidos);
     const diagrama = calcularDiagramaLiquidacion({
       valorAsegurado: liquidacion.valorAsegurado,
-      totalDanios: obtenerTotalDaniosParaInforme(presupuesto),
+      totalDanios: totalDaniosInforme,
+      totalContenidos: Number.isFinite(totalContenidosNsr) ? totalContenidosNsr : null,
       hospedajePorcentaje: liquidacion.hospedajePorcentaje ?? HOSPEDAJE_PORCENTAJE_DEFAULT,
       hospedajeManual: liquidacion.hospedajeManual,
       deducible: liquidacion.deducible,
+      deducibleConfig: liquidacion.deducibleConfig,
     });
 
     children.push(
@@ -1329,7 +1333,14 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
             `GASTOS DE HOSPEDAJE (${Math.round((Number(liquidacion.hospedajePorcentaje) || HOSPEDAJE_PORCENTAJE_DEFAULT) * 100)}% DEL VALOR ASEGURADO)`,
             fmtMoney(diagrama.gastosHospedaje)
           ),
-          filaDos('DEDUCIBLE', diagrama.deducible),
+          filaDos(
+            diagrama.deducibleAplica
+              ? `DEDUCIBLE (${diagrama.deducible || 'aplicado'})`
+              : 'DEDUCIBLE',
+            diagrama.deducibleAplica
+              ? fmtMoney(diagrama.deducibleAplicado || 0)
+              : diagrama.deducible || 'No aplica'
+          ),
           filaDos('TOTAL A INDEMNIZAR', fmtMoney(diagrama.totalIndemnizar)),
         ],
       })

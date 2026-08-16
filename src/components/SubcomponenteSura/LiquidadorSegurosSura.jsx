@@ -258,6 +258,10 @@ export default function LiquidadorSegurosSura({
             <span>Hospedaje</span>
             <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
           </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>Deducible (contenidos)</span>
+            <span>$ {formatearMonto(totales.deducibleAplicado || 0)}</span>
+          </div>
           <div className="flex justify-between px-4 py-2 text-sm font-bold">
             <span>{t('segurosSura.settlement.totalPay')}</span>
             <span>$ {formatearMonto(totales.totalIndemnizar)}</span>

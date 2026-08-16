@@ -2,12 +2,14 @@ import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 import { formatMiles } from './segurosSuraHelpers.js';
 import {
   calcularCriterioFinal,
+  calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
+  DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 
@@ -81,35 +83,39 @@ const fechaInput = (value) => {
 };
 
 export function liquidacionCatastroficoDefaultSura(caso = {}) {
+  const c = caso && typeof caso === 'object' ? caso : {};
   const va =
-    caso.valorAseguradoInmueble != null && caso.valorAseguradoInmueble !== ''
-      ? Number(caso.valorAseguradoInmueble) || ''
+    c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
+      ? Number(c.valorAseguradoInmueble) || ''
       : '';
   return {
     valorAsegurado: va,
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
     hospedajeManual: '',
     deducible: 'No aplica',
+    deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+    deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
   };
 }
 
 export function encabezadoDesdeCasoSura(caso = {}) {
+  const c = caso && typeof caso === 'object' ? caso : {};
   return {
-    tomador: caso.tomador || '',
-    asegurado: caso.asegurado || caso.informacionContacto || '',
-    poliza: caso.numeroPoliza || '',
-    credito: caso.numeroCredito || '',
-    siniestro: caso.siniestro || '',
-    consecutivo: caso.consecutivo || '',
-    identificacion: caso.identificacion || '',
-    fechaSiniestro: fechaInput(caso.fechaSiniestro),
-    direccion: caso.direccionPredio || '',
-    ciudad: caso.ciudad || '',
-    departamento: caso.departamento || '',
-    cobertura: caso.cobertura || '',
-    evento: caso.cobertura || 'TERREMOTO',
-    ajustador: caso.ajustador || '',
-    valorAseguradoInmueble: caso.valorAseguradoInmueble ?? '',
+    tomador: c.tomador || '',
+    asegurado: c.asegurado || c.informacionContacto || '',
+    poliza: c.numeroPoliza || '',
+    credito: c.numeroCredito || '',
+    siniestro: c.siniestro || '',
+    consecutivo: c.consecutivo || '',
+    identificacion: c.identificacion || '',
+    fechaSiniestro: fechaInput(c.fechaSiniestro),
+    direccion: c.direccionPredio || '',
+    ciudad: c.ciudad || '',
+    departamento: c.departamento || '',
+    cobertura: c.cobertura || '',
+    evento: c.cobertura || 'TERREMOTO',
+    ajustador: c.ajustador || '',
+    valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
   };
 }
 
@@ -164,20 +170,26 @@ export function esLiquidadorNsrSura(liquidador = {}) {
 }
 
 /**
- * Totales Sura = presupuesto NSR-10 + diagrama (daños + hospedaje).
+ * Totales Sura = presupuesto NSR-10 + contenidos + diagrama (suma + hospedaje).
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionSura(liquidador = {}) {
   const evalData = liquidador.evaluacionSismicaNSR10 || {};
   const presupuesto = evalData.presupuesto || { items: [] };
   const totalesPres = calcularTotalesPresupuesto(presupuesto);
+  const resumen = calcularResumenTotalesNsr10(evalData);
   const liq = liquidador.liquidacionCatastrofico || {};
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: liq.valorAsegurado,
-    totalDanios: totalesPres.total,
+    totalDanios: resumen.sumaCompleta,
+    totalPresupuesto: resumen.totalPresupuesto,
+    totalContenidos: resumen.totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
     hospedajeManual: liq.hospedajeManual,
     deducible: liq.deducible,
+    deducibleConfig: liq.deducibleConfig,
+    deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
+    deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -185,23 +197,34 @@ export function calcularLiquidacionSura(liquidador = {}) {
   return {
     modelo: 'nsr10',
     presupuesto: totalesPres,
+    contenidos: resumen.contenidos,
+    totalPresupuesto: resumen.totalPresupuesto,
+    totalContenidos: resumen.totalContenidos,
+    sumaCompleta: resumen.sumaCompleta,
     subtotal: totalesPres.subtotal,
     aiu: totalesPres.aiu,
     imprevistos: totalesPres.imprevistos,
     impuestos: totalesPres.impuestos,
-    totalDanios: totalesPres.total,
+    totalDanios: resumen.sumaCompleta,
     diagrama,
     criterio,
     totalIndemnizar: diagrama.totalIndemnizar,
-    totalIndemnizable: totalesPres.total,
-    totalPerdida: totalesPres.total,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || totalesPres.total,
-    deducibleAplicado: 0,
-    deducibleTexto: diagrama.deducible,
-    subtotalContenidos: 0,
-    subtotalEdificios: totalesPres.total,
+    totalIndemnizable: diagrama.totalIndemnizar,
+    totalPerdida: resumen.sumaCompleta,
+    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
+    deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
+    deducibleTexto: [
+      diagrama.deduciblePresupuesto?.aplica ? `Presupuesto: ${diagrama.deduciblePresupuesto.texto}` : null,
+      diagrama.deducibleContenidos?.aplica || diagrama.deducibleAplica
+        ? `Contenidos: ${diagrama.deducibleContenidos?.texto || diagrama.deducible}`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') || diagrama.deducible,
+    subtotalContenidos: resumen.totalContenidos,
+    subtotalEdificios: resumen.totalPresupuesto,
     diferencia: 0,
-    usaSMMLV: false,
+    usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
   };
 }
 
@@ -222,21 +245,22 @@ export function itemsPlanosSura(liquidador = {}) {
 }
 
 export function mapCasoSuraALiquidador(caso = {}) {
-  const encabezado = encabezadoDesdeCasoSura(caso);
-  const prefill = prefillNsrDesdeCasoSura(caso, encabezado);
+  const c = caso && typeof caso === 'object' ? caso : {};
+  const encabezado = encabezadoDesdeCasoSura(c);
+  const prefill = prefillNsrDesdeCasoSura(c, encabezado);
   const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill);
   const base = {
     ...DEFAULT_LIQUIDADOR_SURA,
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
-    liquidacionCatastrofico: liquidacionCatastroficoDefaultSura(caso),
+    liquidacionCatastrofico: liquidacionCatastroficoDefaultSura(c),
     valorReclamadoCaso:
-      caso.valorReclamado != null && caso.valorReclamado !== ''
-        ? formatMiles(caso.valorReclamado)
+      c.valorReclamado != null && c.valorReclamado !== ''
+        ? formatMiles(c.valorReclamado)
         : '',
   };
 
-  const guardado = caso.liquidador && typeof caso.liquidador === 'object' ? caso.liquidador : null;
+  const guardado = c.liquidador && typeof c.liquidador === 'object' ? c.liquidador : null;
   if (!guardado) return base;
 
   // Liquidador FDM antiguo: no migrar ítems; abrir NSR fresco conservando encabezado

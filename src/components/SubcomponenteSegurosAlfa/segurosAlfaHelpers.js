@@ -150,6 +150,7 @@ export const FORM_VACIO_ALFA = {
   numeroCredito: '',
   informacionContacto: '',
   correo: '',
+  celular: '',
   canalRadicacion: '',
   ciudad: '',
   departamento: '',

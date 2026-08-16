@@ -32,6 +32,7 @@ export const DEFAULT_LIQUIDADOR_FDM = {
   },
   contenidos: [],
   edificios: [],
+  tipoInmuebleContenidos: '',
   deducible: {
     anioSMMLV: 2026,
     valorSMMLV: SMMLV_DEFAULT,
@@ -231,6 +232,7 @@ function crearItem(item = '', valor = '', id) {
     id: id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     item: item || '',
     valor: valor === null || valor === undefined || valor === '' ? '' : String(valor),
+    catalogoId: '',
   };
 }
 

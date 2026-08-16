@@ -17,6 +17,7 @@ import {
 } from 'docx';
 import { saveAs } from 'file-saver';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionAlfa,
   defaultInformeUnicoAlfa,
@@ -370,6 +371,8 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
     ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto)],
+    ['CORREO ELECTRÓNICO', txt(caso.correo)],
+    ['CELULAR', txt(caso.celular)],
     ['IDENTIFICACIÓN', txt(caso.identificacion || enc.identificacion)],
     ['N° PÓLIZA', txt(caso.numeroPoliza || enc.poliza)],
     ['N° CRÉDITO', txt(caso.numeroCredito || enc.credito)],
@@ -937,6 +940,7 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
     ? liq.evaluacionSismicaNSR10.presupuesto.items
     : [];
+  const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
     (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.05) * 100
@@ -1243,7 +1247,16 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
       labelW: 5000,
       valueW: 5000,
     }),
-    campoFila('Total estimado daños NSR-10', money(totales.totalDanios), {
+    campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
+      boldValue: true,
       labelW: 5000,
       valueW: 5000,
     }),
@@ -1251,10 +1264,18 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
       labelW: 5000,
       valueW: 5000,
     }),
-    campoFila('Deducible', txt(totales.deducibleTexto || 'No aplica'), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
+    campoFila(
+      totales.deducibleAplicado > 0
+        ? `Deducible (${txt(totales.deducibleTexto || 'aplicado')})`
+        : 'Deducible',
+      totales.deducibleAplicado > 0
+        ? money(totales.deducibleAplicado)
+        : txt(totales.deducibleTexto || 'No aplica'),
+      {
+        labelW: 5000,
+        valueW: 5000,
+      }
+    ),
     campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
       boldValue: true,
       labelW: 5000,
@@ -1386,6 +1407,12 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
     rows: filasNsr,
   });
 
+  const { tabla: tablaContenidos } = construirTablaContenidosWord({
+    contenidos: contenidosNsr,
+    cell,
+    size: SIZE_NSR,
+  });
+
   const firmasParrafos = await construirZonaFirmasAlfa({ caso, enc, info });
   const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionAlfa({ info, caso });
 
@@ -1454,6 +1481,19 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
             { after: 120 }
           ),
           tablaLiquidadorCompleto,
+          p('Contenidos del inmueble (bienes muebles)', {
+            bold: true,
+            before: 180,
+            after: 80,
+            size: SIZE_12,
+          }),
+          p(
+            contenidosNsr.tipoInmueble
+              ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
+              : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
+            { after: 100 }
+          ),
+          tablaContenidos,
           p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
           new Table({
             width: { size: 10000, type: WidthType.DXA },

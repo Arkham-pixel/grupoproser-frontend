@@ -25,7 +25,20 @@ export const CATEGORIAS_OPERATIVAS_NSR10 = [
 
 export const URGENCIAS_NSR10 = ['Bajo', 'Medio', 'Alto', 'Crítico'];
 
-export const UNIDADES_PRESUPUESTO_NSR10 = ['m²', 'm³', 'ml', 'und', 'kg', 'día', 'gl', 'mes', 'otro'];
+export const UNIDADES_PRESUPUESTO_NSR10 = [
+  'm²',
+  'm³',
+  'ml',
+  'und',
+  'kg',
+  'día',
+  'gl',
+  'mes',
+  'juego',
+  'kit',
+  'punto',
+  'otro',
+];
 
 export const COMPONENTES_LISTA_NSR10 = [
   'Condición general',
@@ -58,6 +71,114 @@ export const CAPITULOS_PRESUPUESTO_NSR10 = [
 ];
 
 export const PRIORIDADES_PRESUPUESTO_NSR10 = ['Bajo', 'Medio', 'Alto', 'Crítico'];
+
+/** Tipos de inmueble / riesgo para liquidar contenidos */
+export const TIPOS_INMUEBLE_CONTENIDOS_NSR10 = [
+  'Casa',
+  'Apartamento',
+  'Industria',
+  'Oficina',
+  'Local comercial',
+  'Bodega',
+  'Finca / rural',
+  'Otro',
+];
+
+export const CATEGORIAS_CONTENIDOS_NSR10 = [
+  'Electrodomésticos',
+  'Electrónicos',
+  'Muebles',
+  'Textiles / ropa',
+  'Menaje / vajilla',
+  'Cocina',
+  'Baño',
+  'Herramientas',
+  'Maquinaria / equipo',
+  'Inventario / mercancía',
+  'Oficina / equipo de cómputo',
+  'Otros',
+];
+
+export const ESTADOS_CONTENIDO_NSR10 = [
+  'Dañado',
+  'Destruido',
+  'Perdido',
+  'Reparable',
+  'Sin daño',
+];
+
+export const UNIDADES_CONTENIDOS_NSR10 = ['und', 'juego', 'par', 'kg', 'm', 'm²', 'lt', 'gl', 'otro'];
+
+/**
+ * Catálogo inicial de contenidos (casa, apartamento, industria, oficina…).
+ * El usuario puede elegir uno o agregar un ítem libre si no está en la lista.
+ */
+export const CATALOGO_CONTENIDOS_NSR10 = [
+  // Electrodomésticos / casa-apartamento
+  { id: 'nevera', categoria: 'Electrodomésticos', articulo: 'Nevera / refrigerador', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Finca / rural'] },
+  { id: 'lavadora', categoria: 'Electrodomésticos', articulo: 'Lavadora', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Finca / rural'] },
+  { id: 'secadora', categoria: 'Electrodomésticos', articulo: 'Secadora', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  { id: 'estufa', categoria: 'Electrodomésticos', articulo: 'Estufa / cocina', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Local comercial', 'Finca / rural'] },
+  { id: 'horno', categoria: 'Electrodomésticos', articulo: 'Horno', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Local comercial'] },
+  { id: 'microondas', categoria: 'Electrodomésticos', articulo: 'Microondas', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Local comercial'] },
+  { id: 'lavavajillas', categoria: 'Electrodomésticos', articulo: 'Lavavajillas', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  { id: 'aire_acondicionado', categoria: 'Electrodomésticos', articulo: 'Aire acondicionado', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Local comercial', 'Industria'] },
+  { id: 'ventilador', categoria: 'Electrodomésticos', articulo: 'Ventilador', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Local comercial'] },
+  { id: 'calentador', categoria: 'Electrodomésticos', articulo: 'Calentador de agua', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  { id: 'aspiradora', categoria: 'Electrodomésticos', articulo: 'Aspiradora', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina'] },
+  // Electrónicos
+  { id: 'tv', categoria: 'Electrónicos', articulo: 'Televisor', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Local comercial', 'Oficina'] },
+  { id: 'equipo_sonido', categoria: 'Electrónicos', articulo: 'Equipo de sonido', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Local comercial'] },
+  { id: 'computador', categoria: 'Electrónicos', articulo: 'Computador de escritorio', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Industria'] },
+  { id: 'portatil', categoria: 'Electrónicos', articulo: 'Portátil / laptop', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Industria'] },
+  { id: 'impresora', categoria: 'Electrónicos', articulo: 'Impresora / multifuncional', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Industria'] },
+  { id: 'tablet', categoria: 'Electrónicos', articulo: 'Tablet', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina'] },
+  { id: 'celular', categoria: 'Electrónicos', articulo: 'Celular', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina'] },
+  { id: 'router', categoria: 'Electrónicos', articulo: 'Router / modem', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Local comercial'] },
+  // Muebles
+  { id: 'cama', categoria: 'Muebles', articulo: 'Cama / camarote', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  { id: 'colchon', categoria: 'Muebles', articulo: 'Colchón', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  { id: 'sofa', categoria: 'Muebles', articulo: 'Sofá / sala', unidad: 'juego', tipos: ['Casa', 'Apartamento'] },
+  { id: 'comedor', categoria: 'Muebles', articulo: 'Comedor (mesa y sillas)', unidad: 'juego', tipos: ['Casa', 'Apartamento'] },
+  { id: 'closet', categoria: 'Muebles', articulo: 'Closet / ropero', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  { id: 'escritorio', categoria: 'Muebles', articulo: 'Escritorio', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina'] },
+  { id: 'silla_oficina', categoria: 'Muebles', articulo: 'Silla de oficina', unidad: 'und', tipos: ['Oficina', 'Casa', 'Apartamento'] },
+  { id: 'estanteria', categoria: 'Muebles', articulo: 'Estantería / biblioteca', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Bodega'] },
+  { id: 'mesa_centro', categoria: 'Muebles', articulo: 'Mesa de centro', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  // Textiles
+  { id: 'ropa', categoria: 'Textiles / ropa', articulo: 'Ropa / vestuario', unidad: 'gl', tipos: ['Casa', 'Apartamento'] },
+  { id: 'ropa_cama', categoria: 'Textiles / ropa', articulo: 'Ropa de cama / toallas', unidad: 'gl', tipos: ['Casa', 'Apartamento'] },
+  { id: 'cortinas', categoria: 'Textiles / ropa', articulo: 'Cortinas', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina'] },
+  // Menaje / cocina / baño
+  { id: 'vajilla', categoria: 'Menaje / vajilla', articulo: 'Vajilla / cristalería', unidad: 'juego', tipos: ['Casa', 'Apartamento', 'Local comercial'] },
+  { id: 'ollas', categoria: 'Cocina', articulo: 'Ollas / utensilios de cocina', unidad: 'juego', tipos: ['Casa', 'Apartamento', 'Local comercial'] },
+  { id: 'licuadora', categoria: 'Cocina', articulo: 'Licuadora', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Local comercial'] },
+  { id: 'cafetera', categoria: 'Cocina', articulo: 'Cafetera', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Oficina', 'Local comercial'] },
+  { id: 'sanitarios', categoria: 'Baño', articulo: 'Aparatos sanitarios', unidad: 'und', tipos: ['Casa', 'Apartamento'] },
+  // Herramientas / industria / bodega
+  { id: 'herramientas_manuales', categoria: 'Herramientas', articulo: 'Herramientas manuales', unidad: 'juego', tipos: ['Casa', 'Finca / rural', 'Industria', 'Bodega'] },
+  { id: 'taladro', categoria: 'Herramientas', articulo: 'Taladro / herramientas eléctricas', unidad: 'und', tipos: ['Casa', 'Industria', 'Bodega'] },
+  { id: 'maquinaria', categoria: 'Maquinaria / equipo', articulo: 'Maquinaria industrial', unidad: 'und', tipos: ['Industria'] },
+  { id: 'equipo_proceso', categoria: 'Maquinaria / equipo', articulo: 'Equipo de proceso / producción', unidad: 'und', tipos: ['Industria'] },
+  { id: 'montacargas', categoria: 'Maquinaria / equipo', articulo: 'Montacargas', unidad: 'und', tipos: ['Industria', 'Bodega'] },
+  { id: 'inventario', categoria: 'Inventario / mercancía', articulo: 'Inventario / mercancía', unidad: 'gl', tipos: ['Industria', 'Local comercial', 'Bodega'] },
+  { id: 'materia_prima', categoria: 'Inventario / mercancía', articulo: 'Materia prima', unidad: 'gl', tipos: ['Industria', 'Bodega'] },
+  { id: 'estanteria_bodega', categoria: 'Inventario / mercancía', articulo: 'Estantería de bodega', unidad: 'und', tipos: ['Bodega', 'Industria'] },
+  // Oficina
+  { id: 'servidor', categoria: 'Oficina / equipo de cómputo', articulo: 'Servidor / NAS', unidad: 'und', tipos: ['Oficina', 'Industria'] },
+  { id: 'switch_red', categoria: 'Oficina / equipo de cómputo', articulo: 'Switch / equipo de red', unidad: 'und', tipos: ['Oficina', 'Industria'] },
+  { id: 'archivo', categoria: 'Oficina / equipo de cómputo', articulo: 'Archivador', unidad: 'und', tipos: ['Oficina'] },
+  { id: 'otro_contenido', categoria: 'Otros', articulo: 'Otro (especificar)', unidad: 'und', tipos: TIPOS_INMUEBLE_CONTENIDOS_NSR10 },
+];
+
+/** Filtra catálogo por tipo de inmueble; si no hay tipo, devuelve todo. */
+export function catalogoContenidosPorTipo(tipoInmueble = '') {
+  const tipo = String(tipoInmueble || '').trim();
+  if (!tipo || tipo === 'Otro') return CATALOGO_CONTENIDOS_NSR10;
+  return CATALOGO_CONTENIDOS_NSR10.filter(
+    (item) => !item.tipos?.length || item.tipos.includes(tipo)
+  );
+}
 
 /** Hoja Evaluación · filas de checklist (igual al Excel) */
 export const ITEMS_EVALUACION_NSR10 = [
@@ -191,6 +312,15 @@ export const HOJAS_NSR10 = [
   { id: 'evaluacion', label: 'Evaluación', oculta: OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 },
   { id: 'dictamen', label: 'Dictamen', oculta: OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 },
   { id: 'presupuesto', label: 'Presupuesto' },
+  { id: 'contenidos', label: 'Contenidos' },
+  { id: 'totales', label: 'Totales' },
+];
+
+/** En liquidador / informe único se navega entre Presupuesto, Contenidos y Totales. */
+export const HOJAS_LIQUIDADOR_NSR10 = [
+  { id: 'presupuesto', label: 'Presupuesto' },
+  { id: 'contenidos', label: 'Contenidos' },
+  { id: 'totales', label: 'Totales' },
 ];
 
 export const HOJAS_VISIBLES_NSR10 = HOJAS_NSR10.filter((h) => !h.oculta);
@@ -401,6 +531,7 @@ export function calcularCriterioFinal(items = []) {
 export function crearFilaPresupuestoVacia() {
   return {
     capitulo: '',
+    catalogoId: '',
     codigoEvaluacion: '',
     componente: '',
     actividad: '',
@@ -414,10 +545,155 @@ export function crearFilaPresupuestoVacia() {
   };
 }
 
+/** Aplica un ítem de basePreciosPresupuesto.js a una fila del liquidador. */
+export function aplicarCatalogoAFilaPresupuesto(row = {}, catalogoItem = null) {
+  if (!catalogoItem) {
+    return {
+      ...row,
+      catalogoId: '',
+    };
+  }
+  return {
+    ...row,
+    catalogoId: catalogoItem.id,
+    capitulo: catalogoItem.capitulo || row.capitulo || '',
+    actividad: catalogoItem.actividad || row.actividad || '',
+    unidad: catalogoItem.unidad || row.unidad || 'und',
+    valorUnitario:
+      catalogoItem.valorUnitario != null && catalogoItem.valorUnitario !== ''
+        ? formatMilesNsr10(catalogoItem.valorUnitario)
+        : row.valorUnitario,
+    fuente: row.fuente || 'Base precios general',
+  };
+}
+
+export function crearFilaContenidoVacia(extras = {}) {
+  return {
+    tipoInmueble: extras.tipoInmueble || '',
+    categoria: '',
+    catalogoId: '',
+    articulo: '',
+    marca: '',
+    unidad: 'und',
+    cantidad: '',
+    valorUnitario: '',
+    estado: 'Dañado',
+    observacion: '',
+    ...extras,
+  };
+}
+
+export function totalFilaContenido(row) {
+  return totalFilaPresupuesto(row);
+}
+
+export function calcularTotalesContenidos(contenidos = {}) {
+  const items = Array.isArray(contenidos.items) ? contenidos.items : [];
+  const subtotal = items.reduce((acc, row) => {
+    const t = totalFilaContenido(row);
+    return acc + (t == null ? 0 : t);
+  }, 0);
+  return { subtotal, total: subtotal };
+}
+
+/**
+ * Resumen unificado para la ventana Totales y el informe único.
+ * sumaCompleta = total presupuesto NSR-10 + total contenidos.
+ */
+export function calcularResumenTotalesNsr10(evalData = {}) {
+  const presupuesto = evalData.presupuesto || {};
+  const contenidos = evalData.contenidos || {};
+  const totalesPresupuesto = calcularTotalesPresupuesto(presupuesto);
+  const totalesContenidos = calcularTotalesContenidos(contenidos);
+  const totalPresupuesto = Number(totalesPresupuesto.total) || 0;
+  const totalContenidos = Number(totalesContenidos.total) || 0;
+  const sumaCompleta = Math.round((totalPresupuesto + totalContenidos) * 100) / 100;
+  return {
+    presupuesto: totalesPresupuesto,
+    contenidos: totalesContenidos,
+    totalPresupuesto,
+    totalContenidos,
+    sumaCompleta,
+  };
+}
+
+/** Aplica un ítem del catálogo a la fila (conserva cantidad/valor/obs si ya hay). */
+export function aplicarCatalogoAFilaContenido(row = {}, catalogoItem = null) {
+  if (!catalogoItem) {
+    return {
+      ...row,
+      catalogoId: '',
+    };
+  }
+  return {
+    ...row,
+    catalogoId: catalogoItem.id,
+    categoria: catalogoItem.categoria || row.categoria || '',
+    articulo: catalogoItem.articulo || row.articulo || '',
+    unidad: catalogoItem.unidad || row.unidad || 'und',
+  };
+}
+
+/** Parsea monto es-CO (1.313.178,75) o número. */
+export function parseMontoNsr10(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+  let numero = String(valor).replace(/[^\d.,-]/g, '').trim();
+  if (!numero || numero === '-' || numero === '.' || numero === ',') return null;
+
+  if (numero.includes(',') && numero.includes('.')) {
+    if (numero.lastIndexOf(',') > numero.lastIndexOf('.')) {
+      numero = numero.replace(/\./g, '').replace(',', '.');
+    } else {
+      numero = numero.replace(/,/g, '');
+    }
+  } else if (numero.includes(',')) {
+    const partes = numero.split(',');
+    if (partes.length === 2 && partes[1].length <= 2) {
+      numero = `${partes[0].replace(/\./g, '')}.${partes[1]}`;
+    } else {
+      numero = numero.replace(/,/g, '');
+    }
+  } else if (numero.includes('.')) {
+    const partes = numero.split('.');
+    if (partes.length > 2 || (partes.length === 2 && partes[1].length === 3)) {
+      numero = numero.replace(/\./g, '');
+    }
+  }
+
+  const n = Number(numero);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** 2107.5 → "2.107,50" (miles con punto). */
+export function formatMilesNsr10(valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const n = typeof valor === 'number' ? valor : parseMontoNsr10(valor);
+  if (n === null || Number.isNaN(n)) return '';
+  const hasDecimals = Math.abs(n % 1) > 1e-9;
+  return new Intl.NumberFormat('es-CO', {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(n);
+}
+
+/** Mientras se escribe: miles con punto y decimales con coma. */
+export function formatMilesInputNsr10(valor) {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const cleaned = String(valor).replace(/[^\d,]/g, '');
+  const commaIdx = cleaned.indexOf(',');
+  let enteros = (commaIdx >= 0 ? cleaned.slice(0, commaIdx) : cleaned).replace(/^0+(?=\d)/, '');
+  const decimales =
+    commaIdx >= 0 ? cleaned.slice(commaIdx + 1).replace(/,/g, '').slice(0, 2) : null;
+  const enterosFmt = enteros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  if (commaIdx >= 0) return `${enterosFmt},${decimales ?? ''}`;
+  return enterosFmt;
+}
+
 export function totalFilaPresupuesto(row) {
-  const cant = Number(row?.cantidad);
-  const vu = Number(row?.valorUnitario);
-  if (!Number.isFinite(cant) || !Number.isFinite(vu) || row?.cantidad === '' || row?.valorUnitario === '') {
+  const cant = parseMontoNsr10(row?.cantidad);
+  const vu = parseMontoNsr10(row?.valorUnitario);
+  if (cant == null || vu == null || row?.cantidad === '' || row?.valorUnitario === '') {
     return null;
   }
   return cant * vu;
@@ -515,12 +791,20 @@ export function crearEvaluacionSismicaNSR10Inicial(prefill = {}) {
       imprevistosPorcentaje: 0.1,
       impuestosPorcentaje: 0,
     },
+    contenidos: {
+      tipoInmueble: prefill.tipoInmueble || prefill.tipologiaPrincipal || '',
+      items: Array.from({ length: 6 }, () =>
+        crearFilaContenidoVacia({
+          tipoInmueble: prefill.tipoInmueble || prefill.tipologiaPrincipal || '',
+        })
+      ),
+    },
     criterioFinal: null,
   };
 }
 
 /**
- * Restaura portada y presupuesto; Evaluación/Dictamen quedan vacíos mientras estén ocultos.
+ * Restaura portada, presupuesto y contenidos; Evaluación/Dictamen quedan vacíos mientras estén ocultos.
  */
 export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = {}) {
   const base = crearEvaluacionSismicaNSR10Inicial(prefill);
@@ -533,6 +817,13 @@ export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = 
     presupuesto: {
       ...base.presupuesto,
       ...(actual.presupuesto || {}),
+    },
+    contenidos: {
+      ...base.contenidos,
+      ...(actual.contenidos || {}),
+      items: Array.isArray(actual.contenidos?.items)
+        ? actual.contenidos.items
+        : base.contenidos.items,
     },
   };
   if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) return fusionada;

@@ -2,25 +2,33 @@
  * Lleva el conteo de plata de la hoja Presupuesto NSR-10
  * al presupuesto / indemnización del informe único catastrófico.
  */
-import { calcularTotalesPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import { calcularResumenPresupuesto } from './catalogoPresupuestoCatastrofico.js';
+import {
+  calcularResumenTotalesNsr10,
+  calcularTotalesPresupuesto,
+  parseMontoNsr10,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  calcularDiagramaLiquidacion,
+  calcularResumenPresupuesto,
+  HOSPEDAJE_PORCENTAJE_DEFAULT,
+} from './catalogoPresupuestoCatastrofico.js';
 
 const INTRO_NSR10 =
-  'Presupuesto de intervención / reparación post-sismo (plantilla evaluación NSR-10). Los valores corresponden al conteo de la evaluación sísmica y se trasladan al informe único.';
+  'Presupuesto de intervención / reparación post-sismo (plantilla evaluación NSR-10) más liquidación de contenidos. Los valores se trasladan al informe único.';
 
 export function mapearItemsNsr10APresupuestoInforme(filas = []) {
   return (filas || [])
     .filter((row) => {
-      const cant = Number(row?.cantidad);
-      const vu = Number(row?.valorUnitario);
+      const cant = parseMontoNsr10(row?.cantidad);
+      const vu = parseMontoNsr10(row?.valorUnitario);
       const tieneActividad =
         String(row?.actividad || '').trim() ||
         String(row?.componente || '').trim() ||
         String(row?.capitulo || '').trim();
       return (
         tieneActividad ||
-        (Number.isFinite(cant) && cant !== 0) ||
-        (Number.isFinite(vu) && vu !== 0)
+        (cant != null && cant !== 0) ||
+        (vu != null && vu !== 0)
       );
     })
     .map((row, index) => ({
@@ -31,12 +39,8 @@ export function mapearItemsNsr10APresupuestoInforme(filas = []) {
       componente: row.componente || '',
       actividad: String(row.actividad || '').trim() || String(row.componente || '').trim(),
       unidad: row.unidad || 'und',
-      valorUnitario:
-        row.valorUnitario === '' || row.valorUnitario == null
-          ? 0
-          : Number(row.valorUnitario),
-      cantidad:
-        row.cantidad === '' || row.cantidad == null ? 0 : Number(row.cantidad),
+      valorUnitario: parseMontoNsr10(row.valorUnitario) ?? 0,
+      cantidad: parseMontoNsr10(row.cantidad) ?? 0,
       prioridad: row.prioridad || '',
       cubierto: row.cubierto || '',
       observacion: row.observacion || '',
@@ -57,16 +61,42 @@ export function sincronizarPresupuestoNsr10AlInforme(formData = {}, { forzar = f
   const presupuestoNsr = evalData.presupuesto || {};
   const filas = Array.isArray(presupuestoNsr.items) ? presupuestoNsr.items : [];
   const totales = calcularTotalesPresupuesto(presupuestoNsr);
+  const resumen = calcularResumenTotalesNsr10(evalData);
   const items = mapearItemsNsr10APresupuestoInforme(filas);
 
-  if (!forzar && !items.length && !(totales.total > 0)) {
+  if (!forzar && !items.length && !(resumen.sumaCompleta > 0)) {
     return null;
   }
 
   const prev = formData.presupuestoCatastrofico || {};
+  const liquidacion = formData.liquidacionCatastrofico || {};
+  const diagrama = calcularDiagramaLiquidacion({
+    valorAsegurado: liquidacion.valorAsegurado,
+    totalDanios: resumen.sumaCompleta,
+    totalPresupuesto: resumen.totalPresupuesto,
+    totalContenidos: resumen.totalContenidos,
+    hospedajePorcentaje: liquidacion.hospedajePorcentaje ?? HOSPEDAJE_PORCENTAJE_DEFAULT,
+    hospedajeManual: liquidacion.hospedajeManual,
+    deducible: liquidacion.deducible,
+    deducibleConfig: liquidacion.deducibleConfig,
+    deducibleConfigContenidos:
+      liquidacion.deducibleConfigContenidos || liquidacion.deducibleConfig,
+    deducibleConfigPresupuesto: liquidacion.deducibleConfigPresupuesto,
+  });
   return {
-    totales,
-    indemnizacionSugerida: String(Math.round(totales.total || 0)),
+    totales: {
+      ...totales,
+      totalPresupuesto: resumen.totalPresupuesto,
+      totalContenidos: resumen.totalContenidos,
+      sumaCompleta: resumen.sumaCompleta,
+      deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado,
+      deduciblePresupuesto: diagrama.deduciblePresupuesto?.aplicado || 0,
+      deducibleContenidos: diagrama.deducibleContenidos?.aplicado || 0,
+      sumaDeducibles: diagrama.sumaDeducibles || 0,
+      gastosHospedaje: diagrama.gastosHospedaje,
+      totalIndemnizar: diagrama.totalIndemnizar,
+    },
+    indemnizacionSugerida: String(Math.round(diagrama.totalIndemnizar || 0)),
     presupuestoCatastrofico: {
       ...prev,
       fuente: 'nsr10',
@@ -81,7 +111,17 @@ export function sincronizarPresupuestoNsr10AlInforme(formData = {}, { forzar = f
         imprevistos: totales.imprevistos,
         impuestos: totales.impuestos,
         total: totales.total,
+        totalPresupuesto: resumen.totalPresupuesto,
+        totalContenidos: resumen.totalContenidos,
+        sumaCompleta: resumen.sumaCompleta,
+        deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado,
+        deduciblePresupuesto: diagrama.deduciblePresupuesto?.aplicado || 0,
+        deducibleContenidos: diagrama.deducibleContenidos?.aplicado || 0,
+        sumaDeducibles: diagrama.sumaDeducibles || 0,
+        gastosHospedaje: diagrama.gastosHospedaje,
+        totalIndemnizar: diagrama.totalIndemnizar,
       },
+      contenidosNsr10: evalData.contenidos || null,
     },
   };
 }
@@ -101,6 +141,8 @@ export function resolverPresupuestoParaWord(formData = {}) {
 /** Total de daños que debe usar el informe / Word / liquidación. */
 export function obtenerTotalDaniosParaInforme(presupuesto = {}) {
   if (presupuesto?.fuente === 'nsr10' && presupuesto?.totalesNsr10) {
+    const suma = Number(presupuesto.totalesNsr10.sumaCompleta);
+    if (Number.isFinite(suma) && suma > 0) return suma;
     return Number(presupuesto.totalesNsr10.total) || 0;
   }
   const resumen = calcularResumenPresupuesto(

@@ -35,6 +35,7 @@ const FIELD_LABELS = {
   nombre: 'Nombre',
   cedula: 'Cédula',
   celular: 'Celular',
+  correo: 'Correo electrónico',
   direccionAfectada: 'Dirección',
   municipio: 'Municipio',
   departamento: 'Departamento',
@@ -70,6 +71,7 @@ const FIELD_LABELS = {
 const CREATE_PREVIEW_FIELDS = [
   'cedula',
   'celular',
+  'correo',
   'direccionAfectada',
   'municipio',
   'departamento',

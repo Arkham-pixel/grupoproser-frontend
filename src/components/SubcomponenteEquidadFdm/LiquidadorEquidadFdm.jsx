@@ -23,6 +23,11 @@ import {
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
+  CATALOGO_CONTENIDOS_NSR10,
+  catalogoContenidosPorTipo,
+  TIPOS_INMUEBLE_CONTENIDOS_NSR10,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
   buildCartaCoberturaPreview,
   buildConstanciaPreview,
   calcularLiquidacionFdm,
@@ -55,8 +60,21 @@ function FilaTotal({ label, valor, destacado = false }) {
   );
 }
 
-function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
+function TablaItems({
+  titulo,
+  items,
+  onAdd,
+  onChange,
+  onChangePatch,
+  onRemove,
+  conCatalogo = false,
+  tipoInmueble = '',
+  onTipoInmuebleChange,
+}) {
   const { t } = useTranslation();
+  const catalogo = conCatalogo
+    ? catalogoContenidosPorTipo(tipoInmueble)
+    : CATALOGO_CONTENIDOS_NSR10;
   return (
     <section className={expressFormSection}>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -65,12 +83,33 @@ function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
           <FaPlus /> {t('equidadFdm.settlement.addItem')}
         </button>
       </div>
+      {conCatalogo ? (
+        <div className="mb-4 max-w-sm">
+          <Campo label="Tipo de inmueble / riesgo">
+            <SelectFenix
+              value={tipoInmueble || ''}
+              onChange={(e) => onTipoInmuebleChange?.(e.target.value)}
+            >
+              <option value="">— Seleccione —</option>
+              {TIPOS_INMUEBLE_CONTENIDOS_NSR10.map((tipo) => (
+                <option key={tipo} value={tipo}>
+                  {tipo}
+                </option>
+              ))}
+            </SelectFenix>
+          </Campo>
+          <p className="mt-1 font-body text-xs text-gray-500">
+            Elija del catálogo o escriba un ítem libre si no aparece.
+          </p>
+        </div>
+      ) : null}
       <div className={expressTableWrap}>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-800">
             <thead className={expressTableHead}>
               <tr>
                 <th className="px-3 py-2 w-12">{t('equidadFdm.settlement.colNumber')}</th>
+                {conCatalogo ? <th className="px-3 py-2 min-w-[180px]">Catálogo</th> : null}
                 <th className="px-3 py-2">{t('equidadFdm.settlement.colItem')}</th>
                 <th className="px-3 py-2 min-w-[140px]">{t('equidadFdm.settlement.colValue')}</th>
                 <th className="px-3 py-2 w-12" />
@@ -79,7 +118,10 @@ function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
               {!items.length ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-sm text-gray-500">
+                  <td
+                    colSpan={conCatalogo ? 5 : 4}
+                    className="px-3 py-6 text-center text-sm text-gray-500"
+                  >
                     {t('equidadFdm.settlement.noItems')}
                   </td>
                 </tr>
@@ -87,6 +129,33 @@ function TablaItems({ titulo, items, onAdd, onChange, onRemove }) {
                 items.map((item, idx) => (
                   <tr key={item.id}>
                     <td className="px-3 py-2 text-center text-sm text-gray-500">{idx + 1}</td>
+                    {conCatalogo ? (
+                      <td className="px-2 py-2">
+                        <SelectFenix
+                          value={item.catalogoId || ''}
+                          onChange={(e) => {
+                            const id = e.target.value;
+                            if (!id || id === '__custom__') {
+                              onChangePatch?.(item.id, { catalogoId: '' });
+                              return;
+                            }
+                            const hit = catalogo.find((c) => c.id === id);
+                            onChangePatch?.(item.id, {
+                              catalogoId: id,
+                              ...(hit?.articulo ? { item: hit.articulo } : {}),
+                            });
+                          }}
+                        >
+                          <option value="">— Elegir —</option>
+                          {catalogo.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.categoria}: {c.articulo}
+                            </option>
+                          ))}
+                          <option value="__custom__">Otro / escribir libre</option>
+                        </SelectFenix>
+                      </td>
+                    ) : null}
                     <td className="px-2 py-2">
                       <InputFenix
                         value={item.item}
@@ -188,6 +257,15 @@ export default function LiquidadorEquidadFdm({
       ...prev,
       [lista]: (prev[lista] || []).map((item) =>
         item.id === id ? { ...item, [campo]: valor } : item
+      ),
+    }));
+  };
+
+  const actualizarItemPatch = (lista, id, patch) => {
+    setLiquidador((prev) => ({
+      ...prev,
+      [lista]: (prev[lista] || []).map((item) =>
+        item.id === id ? { ...item, ...patch } : item
       ),
     }));
   };
@@ -448,7 +526,11 @@ export default function LiquidadorEquidadFdm({
         items={liquidador.contenidos || []}
         onAdd={() => agregarItem('contenidos')}
         onChange={(id, campo, valor) => actualizarItem('contenidos', id, campo, valor)}
+        onChangePatch={(id, patch) => actualizarItemPatch('contenidos', id, patch)}
         onRemove={(id) => eliminarItem('contenidos', id)}
+        conCatalogo
+        tipoInmueble={liquidador.tipoInmuebleContenidos || ''}
+        onTipoInmuebleChange={(valor) => actualizar('tipoInmuebleContenidos', valor)}
       />
 
       <TablaItems

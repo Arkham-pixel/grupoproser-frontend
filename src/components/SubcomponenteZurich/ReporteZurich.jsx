@@ -72,6 +72,7 @@ const COLUMNAS = [
   { clave: 'numeroCredito', labelKey: 'numeroCredito' },
   { clave: 'informacionContacto', labelKey: 'informacionContacto' },
   { clave: 'correo', labelKey: 'correo' },
+  { clave: 'celular', labelKey: 'celular' },
   { clave: 'canalRadicacion', labelKey: 'canalRadicacion' },
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'departamento', labelKey: 'departamento' },
@@ -139,6 +140,7 @@ const buildExportRow = (caso) => ({
   'N CRÉDITO': caso.numeroCredito ?? '',
   'INFORMACION DE CONTACTO': caso.informacionContacto ?? '',
   CORREO: caso.correo ?? '',
+  CELULAR: caso.celular ?? '',
   'CANAL DE RADICACIÓN': caso.canalRadicacion ?? '',
   CIUDAD: caso.ciudad ?? '',
   DEPARTAMENTO: caso.departamento ?? '',
@@ -262,6 +264,8 @@ export default function ReporteZurich() {
         c.departamento,
         c.estado,
         c.informacionContacto,
+        c.correo,
+        c.celular,
         c.canalRadicacion,
       ]
         .map(normTexto)

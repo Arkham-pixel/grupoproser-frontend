@@ -328,6 +328,13 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               placeholder={t('segurosAlfa.placeholders.correo')}
             />
           </Campo>
+          <Campo label={t('segurosAlfa.fields.celular')}>
+            <InputFenix
+              value={form.celular}
+              onChange={setCampo('celular')}
+              placeholder={t('segurosAlfa.placeholders.celular')}
+            />
+          </Campo>
           <Campo label={t('segurosAlfa.fields.canalRadicacion')}>
             <InputFenix
               value={form.canalRadicacion}

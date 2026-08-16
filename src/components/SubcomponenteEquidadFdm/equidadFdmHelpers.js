@@ -310,6 +310,7 @@ export const aplicarFiltrosCasosFdm = (
         item.nombre,
         item.cedula,
         item.celular,
+        item.correo,
         item.direccionAfectada,
         item.municipio,
         item.ajustador,

@@ -88,14 +88,20 @@ export const normalizeSeveridadNivelItem = (raw) => {
 
 /**
  * Normaliza mapa de niveles 1–6.
+ * Acepta {1:…}, {nivel1:…} o arreglo (Mongo a veces convierte claves numéricas en array).
  * Si solo existe severidadCat numérico legacy, marca ese nivel como APLICA.
  */
 export const normalizeSeveridadCatNiveles = (raw = {}, severidadCatLegacy = null) => {
-  const src = raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
   const out = {};
   for (let n = 1; n <= 6; n += 1) {
-    const key = String(n);
-    out[key] = normalizeSeveridadNivelItem(src[key] ?? src[n]);
+    let item;
+    if (Array.isArray(raw)) {
+      const porNivel = raw.find((it) => Number(it?.nivel) === n);
+      item = porNivel ?? raw[n] ?? raw[n - 1];
+    } else if (raw && typeof raw === 'object') {
+      item = raw[`nivel${n}`] ?? raw[String(n)] ?? raw[n];
+    }
+    out[String(n)] = normalizeSeveridadNivelItem(item);
   }
   const legacy = Number(severidadCatLegacy);
   const hayAlguno = Object.values(out).some((v) => v.aplica === 'SI' || v.aplica === 'NO');
@@ -120,12 +126,9 @@ export const derivarSeveridadCatDesdeNiveles = (niveles = {}) => {
  * Se marca al guardar la inspección CAT (lo no marcado queda NO APLICA).
  */
 export const esChecklistCatLleno = (caso = {}) => {
-  const niveles = caso?.severidadCatNiveles && typeof caso.severidadCatNiveles === 'object'
-    ? caso.severidadCatNiveles
-    : {};
+  const niveles = normalizeSeveridadCatNiveles(caso?.severidadCatNiveles, caso?.severidadCat);
   for (let n = 1; n <= 6; n += 1) {
-    const item = niveles[String(n)] ?? niveles[n];
-    const aplica = item && typeof item === 'object' ? item.aplica : item;
+    const aplica = niveles[String(n)]?.aplica;
     if (aplica !== 'SI' && aplica !== 'NO' && aplica !== true && aplica !== false) {
       return false;
     }
@@ -373,6 +376,7 @@ export const FORM_VACIO_ZURICH = {
   numeroCredito: '',
   informacionContacto: '',
   correo: '',
+  celular: '',
   canalRadicacion: '',
   ciudad: '',
   departamento: '',

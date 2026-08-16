@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCog, FaFileExcel, FaUpload, FaTable } from 'react-icons/fa';
+import { FaArrowDown, FaArrowUp, FaCog, FaFileExcel, FaUpload, FaTable } from 'react-icons/fa';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
@@ -59,6 +59,7 @@ const todasLasColumnasFdm = [
   { clave: 'nombre', label: 'Nombre' },
   { clave: 'cedula', label: 'Cédula' },
   { clave: 'celular', label: 'Celular' },
+  { clave: 'correo', label: 'Correo electrónico' },
   { clave: 'direccionAfectada', label: 'Dirección afectada' },
   { clave: 'oficinaRadicadora', label: 'Oficina radicadora' },
   { clave: 'municipio', label: 'Ciudad / Municipio' },
@@ -109,6 +110,7 @@ const columnasInicialesFdm = [
   'nombre',
   'cedula',
   'celular',
+  'correo',
   'direccionAfectada',
   'oficinaRadicadora',
   'municipio',
@@ -509,8 +511,39 @@ const ReporteEquidadFdm = () => {
     setModalColumnasOpen(true);
   };
 
+  const moverColumna = (index, direccion) => {
+    const destino = index + direccion;
+    if (destino < 0 || destino >= columnasOrdenadas.length) return;
+    setColumnasOrdenadas((prev) => {
+      const nuevas = [...prev];
+      const [item] = nuevas.splice(index, 1);
+      nuevas.splice(destino, 0, item);
+      return nuevas;
+    });
+  };
+
+  const seleccionarTodasColumnas = () => {
+    setSeleccionTemporal(columnasOrdenadas.map((c) => c.clave));
+  };
+
+  const restablecerColumnasDefault = () => {
+    const defaults = todasLasColumnasFdm.filter((c) => columnasInicialesFdm.includes(c.clave));
+    const resto = todasLasColumnasFdm.filter((c) => !columnasInicialesFdm.includes(c.clave));
+    setColumnasOrdenadas([...defaults, ...resto]);
+    setSeleccionTemporal(defaults.map((c) => c.clave));
+  };
+
   const guardarColumnasPersonalizadas = () => {
     const seleccionadas = columnasOrdenadas.filter((c) => seleccionTemporal.includes(c.clave));
+    if (seleccionadas.length === 0) {
+      setAviso({
+        open: true,
+        titulo: t('equidadFdm.report.customizeColumns'),
+        mensaje: t('equidadFdm.report.columnsNeedOne'),
+        tipo: 'error',
+      });
+      return;
+    }
     setColumnasVisibles(seleccionadas);
     try {
       localStorage.setItem(
@@ -521,6 +554,12 @@ const ReporteEquidadFdm = () => {
       /* ignore */
     }
     setModalColumnasOpen(false);
+    setAviso({
+      open: true,
+      titulo: t('equidadFdm.report.customizeColumns'),
+      mensaje: t('equidadFdm.report.columnsSaved'),
+      tipo: 'success',
+    });
   };
 
   const handleDragStart = (index) => setDraggedIndex(index);
@@ -624,7 +663,7 @@ const ReporteEquidadFdm = () => {
               </button>
               <button type="button" onClick={abrirPersonalizarColumnas} className={expressBtnSecondary}>
                 <FaCog />
-                {t('equidadFdm.report.columns')}
+                {t('equidadFdm.report.customizeColumns')}
               </button>
               <button
                 type="button"
@@ -1085,9 +1124,23 @@ const ReporteEquidadFdm = () => {
         title={t('equidadFdm.report.customizeColumns')}
       >
         <div className="p-4 sm:p-6">
-          <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
             {t('equidadFdm.report.columnsHelp')}
           </p>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button type="button" className={expressBtnGhost} onClick={seleccionarTodasColumnas}>
+              {t('equidadFdm.report.columnsSelectAll')}
+            </button>
+            <button type="button" className={expressBtnGhost} onClick={restablecerColumnasDefault}>
+              {t('equidadFdm.report.columnsReset')}
+            </button>
+            <span className="self-center font-body text-xs text-gray-500 dark:text-gray-400">
+              {t('equidadFdm.report.columnsVisibleCount', {
+                count: seleccionTemporal.length,
+                total: listaColumnasModal.length,
+              })}
+            </span>
+          </div>
           <div className="mb-4 max-h-60 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700 sm:max-h-80">
             {listaColumnasModal.map((campo, index) => (
               <div
@@ -1102,8 +1155,10 @@ const ReporteEquidadFdm = () => {
                     : 'hover:bg-gray-50 dark:hover:bg-gray-900/40'
                 }`}
               >
-                <span className="text-gray-400">☰</span>
-                <label className="flex flex-1 cursor-pointer items-center gap-2 font-body text-sm">
+                <span className="select-none text-gray-400" aria-hidden>
+                  ☰
+                </span>
+                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 font-body text-sm">
                   <input
                     type="checkbox"
                     className="accent-fenix-primario"
@@ -1111,8 +1166,36 @@ const ReporteEquidadFdm = () => {
                     onChange={() => toggleColumna(campo.clave)}
                     onClick={(e) => e.stopPropagation()}
                   />
-                  {campo.label}
+                  <span className="truncate">{campo.label}</span>
                 </label>
+                <div className="flex shrink-0 gap-1">
+                  <button
+                    type="button"
+                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800"
+                    disabled={index === 0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moverColumna(index, -1);
+                    }}
+                    title={t('equidadFdm.report.columnsMoveUp')}
+                    aria-label={t('equidadFdm.report.columnsMoveUp')}
+                  >
+                    <FaArrowUp className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded p-1.5 text-gray-500 hover:bg-gray-100 disabled:opacity-30 dark:hover:bg-gray-800"
+                    disabled={index === listaColumnasModal.length - 1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moverColumna(index, 1);
+                    }}
+                    title={t('equidadFdm.report.columnsMoveDown')}
+                    aria-label={t('equidadFdm.report.columnsMoveDown')}
+                  >
+                    <FaArrowDown className="h-3 w-3" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -1121,7 +1204,7 @@ const ReporteEquidadFdm = () => {
               {t('common.cancel')}
             </button>
             <button type="button" className={expressBtnPrimary} onClick={guardarColumnasPersonalizadas}>
-              {t('common.save')}
+              {t('equidadFdm.report.columnsSaveOrder')}
             </button>
           </div>
         </div>

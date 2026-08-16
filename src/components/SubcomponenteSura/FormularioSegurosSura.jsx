@@ -327,6 +327,13 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
               placeholder={t('segurosSura.placeholders.correo')}
             />
           </Campo>
+          <Campo label={t('segurosSura.fields.celular')}>
+            <InputFenix
+              value={form.celular}
+              onChange={setCampo('celular')}
+              placeholder={t('segurosSura.placeholders.celular')}
+            />
+          </Campo>
           <Campo label={t('segurosSura.fields.canalRadicacion')}>
             <InputFenix
               value={form.canalRadicacion}
