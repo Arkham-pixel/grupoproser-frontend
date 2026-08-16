@@ -1189,20 +1189,19 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
       )
     );
 
-    // Mismo cuadro del liquidador NSR-10 de la plataforma (11 columnas; no el resumen BASE PRESUPUESTAL de 5).
+    // Mismo cuadro del liquidador NSR-10 de la plataforma (sin código eval.).
     children.push(p('LIQUIDADOR NSR-10 · MISMO CUADRO DE LA PLATAFORMA', { bold: true, before: 160 }));
     children.push(
       p(
-        'Capítulo, código eval., componente, actividad, unidad, cantidad, vlr. unitario/total, prioridad, cubierto y observación.',
+        'Capítulo, componente, actividad, unidad, cantidad, vlr. unitario/total, prioridad, cubierto y observación.',
         { before: 40, after: 80 }
       )
     );
 
     const W = {
-      cap: 1050,
-      cod: 700,
-      comp: 950,
-      act: 1300,
+      cap: 1200,
+      comp: 1100,
+      act: 1600,
       uni: 550,
       cant: 700,
       vu: 900,
@@ -1243,8 +1242,8 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
     const filaResumenNsr = (etiqueta, valor) =>
       new TableRow({
         children: [
-          cellSpan(etiqueta, W.cap + W.cod + W.comp + W.act + W.uni + W.cant + W.vu, {
-            span: 7,
+          cellSpan(etiqueta, W.cap + W.comp + W.act + W.uni + W.cant + W.vu, {
+            span: 6,
           }),
           cellNsr(fmtMoney(valor), W.vt, { bold: true, shading: 'F3F4F6' }),
           cellNsr('', W.pri, { shading: 'F3F4F6' }),
@@ -1276,7 +1275,6 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
           new TableRow({
             children: [
               cellNsr('CAPÍTULO', W.cap, { bold: true, shading: 'E5E7EB' }),
-              cellNsr('CÓDIGO EVAL.', W.cod, { bold: true, shading: 'E5E7EB' }),
               cellNsr('COMPONENTE', W.comp, { bold: true, shading: 'E5E7EB' }),
               cellNsr('ACTIVIDAD / REPARACIÓN', W.act, { bold: true, shading: 'E5E7EB' }),
               cellNsr('UND', W.uni, { bold: true, shading: 'E5E7EB' }),
@@ -1294,7 +1292,6 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
                   new TableRow({
                     children: [
                       cellNsr(item.capitulo || '', W.cap),
-                      cellNsr(item.codigoEvaluacion || '', W.cod),
                       cellNsr(item.componente || '', W.comp),
                       cellNsr(item.actividad || '', W.act),
                       cellNsr(item.unidad || 'und', W.uni),
@@ -1310,7 +1307,7 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
             : [
                 new TableRow({
                   children: [
-                    cellSpan('Sin ítems de presupuesto', W_TOTAL, { span: 11 }),
+                    cellSpan('Sin ítems de presupuesto', W_TOTAL, { span: 10 }),
                   ],
                 }),
               ]),

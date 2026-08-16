@@ -139,7 +139,6 @@ export async function generarLiquidadorSuraPdfBlob(liquidador) {
       String(it?.actividad || '').trim() ||
       String(it?.componente || '').trim() ||
       String(it?.capitulo || '').trim() ||
-      String(it?.codigoEvaluacion || '').trim() ||
       Number(it?.cantidad) > 0 ||
       Number(it?.valorUnitario) > 0
   );
@@ -370,7 +369,7 @@ export async function generarLiquidadorSuraPdfBlob(liquidador) {
   const presupuestoTableTop = y;
 
   // Anchos proporcionales a la plantilla Excel
-  const rawW = [20, 15, 24, 42, 11, 12, 16, 17, 13, 18, 28, 20];
+  const rawW = [24, 28, 48, 11, 12, 16, 17, 13, 18, 28, 20];
   const sumRaw = rawW.reduce((a, b) => a + b, 0);
   const tableW = w * 0.72;
   const boxW = w - tableW - 3;
@@ -378,7 +377,6 @@ export async function generarLiquidadorSuraPdfBlob(liquidador) {
   const presW = rawW.map((n) => (n / sumRaw) * tableW);
   const presL = [
     'Capítulo',
-    'Código eval.',
     'Componente',
     'Actividad / reparación',
     'Unidad',
@@ -419,7 +417,6 @@ export async function generarLiquidadorSuraPdfBlob(liquidador) {
     const tot = totalFilaPresupuesto(it);
     const vals = [
       it.capitulo || '',
-      it.codigoEvaluacion || '',
       it.componente || '',
       it.actividad || '',
       it.unidad || '',
@@ -435,7 +432,7 @@ export async function generarLiquidadorSuraPdfBlob(liquidador) {
     if (idx % 2 === 0) fillRect(doc, x, y, tableW, pRow, SOFT);
     vals.forEach((val, i) => {
       strokeRect(doc, cx, y, presW[i], pRow);
-      const right = i >= 5 && i <= 7;
+      const right = i >= 4 && i <= 6;
       cellText(
         doc,
         val,

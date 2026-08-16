@@ -1010,12 +1010,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
           </div>
 
           <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
-            <table className="min-w-[1400px] w-full text-left text-xs">
+            <table className="min-w-[1280px] w-full text-left text-xs">
               <thead style={{ backgroundColor: softBg }}>
                 <tr style={{ color: textSecondary }}>
                   <th className="px-2 py-2">Capítulo</th>
                   <th className="px-2 py-2">Base precios</th>
-                  <th className="px-2 py-2">Código eval.</th>
                   <th className="px-2 py-2">Componente</th>
                   <th className="px-2 py-2">Actividad / reparación</th>
                   <th className="px-2 py-2">Unidad</th>
@@ -1076,29 +1075,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           </option>
                         ))}
                         <option value="__custom__">Otro / escribir libre</option>
-                      </select>
-                    </td>
-                    <td className="px-1 py-1 min-w-[100px]">
-                      <select
-                        className={inputClass}
-                        style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                        value={row.codigoEvaluacion || ''}
-                        onChange={(e) => {
-                          const codigo = e.target.value;
-                          const hit = items.find((it) => it.codigo === codigo);
-                          actualizarFilaPresupuesto(index, {
-                            codigoEvaluacion: codigo,
-                            componente: hit?.componente || row.componente,
-                            actividad: hit?.elemento || row.actividad,
-                          });
-                        }}
-                      >
-                        <option value="">—</option>
-                        {items.map((it) => (
-                          <option key={it.codigo} value={it.codigo}>
-                            {it.codigo}
-                          </option>
-                        ))}
                       </select>
                     </td>
                     <td className="px-1 py-1 min-w-[120px]">

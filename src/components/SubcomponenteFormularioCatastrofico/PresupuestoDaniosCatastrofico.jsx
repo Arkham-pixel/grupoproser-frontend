@@ -324,7 +324,6 @@ export default function PresupuestoDaniosCatastrofico({
             <thead style={{ backgroundColor: headerBg }}>
               <tr>
                 <th className="px-2 py-2 text-left">Capítulo</th>
-                <th className="px-2 py-2 text-left">Código eval.</th>
                 <th className="px-2 py-2 text-left">Componente</th>
                 <th className="px-2 py-2 text-left">Actividad / reparación</th>
                 <th className="px-2 py-2 text-left">Unidad</th>
@@ -341,9 +340,6 @@ export default function PresupuestoDaniosCatastrofico({
                 <tr key={item.id || index} className="border-t" style={{ borderColor }}>
                   <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
                     {item.capitulo || '—'}
-                  </td>
-                  <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
-                    {item.codigoEvaluacion || '—'}
                   </td>
                   <td className="px-2 py-2 align-top" style={{ color: textPrimary }}>
                     {item.componente || '—'}

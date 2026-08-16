@@ -61,10 +61,9 @@ const SIZE_NSR = 14; // 7 pt — tabla presupuesto completa en landscape
 
 /** Anchos DXA del presupuesto NSR-10 completo (landscape ≈ 15.200 útil). */
 const NSR_COLS = {
-  widths: [1300, 900, 1300, 2500, 550, 700, 1050, 1050, 850, 850, 1550, 1100],
+  widths: [1500, 1500, 2800, 550, 700, 1050, 1050, 850, 850, 1550, 1100],
   labels: [
     'CAPÍTULO',
-    'CÓDIGO EVAL.',
     'COMPONENTE',
     'ACTIVIDAD / REPARACIÓN',
     'UND',
@@ -1308,7 +1307,6 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
       String(it?.actividad || '').trim() ||
       String(it?.componente || '').trim() ||
       String(it?.capitulo || '').trim() ||
-      String(it?.codigoEvaluacion || '').trim() ||
       Number(it?.cantidad) > 0
   );
 
@@ -1319,27 +1317,26 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
         new TableRow({
           children: [
             cellNsr(it.capitulo || '—', 0),
-            cellNsr(it.codigoEvaluacion || '—', 1, { alignment: AlignmentType.CENTER }),
-            cellNsr(it.componente || '—', 2),
-            cellNsr(it.actividad || '—', 3),
-            cellNsr(it.unidad || '—', 4, { alignment: AlignmentType.CENTER }),
+            cellNsr(it.componente || '—', 1),
+            cellNsr(it.actividad || '—', 2),
+            cellNsr(it.unidad || '—', 3, { alignment: AlignmentType.CENTER }),
             cellNsr(
               it.cantidad === '' || it.cantidad == null ? '—' : String(it.cantidad),
-              5,
+              4,
               { alignment: AlignmentType.RIGHT }
             ),
             cellNsr(
               it.valorUnitario === '' || it.valorUnitario == null
                 ? '—'
                 : money(it.valorUnitario),
-              6,
+              5,
               { alignment: AlignmentType.RIGHT }
             ),
-            cellNsr(tot == null ? '—' : money(tot), 7, { alignment: AlignmentType.RIGHT }),
-            cellNsr(it.prioridad || '—', 8, { alignment: AlignmentType.CENTER }),
-            cellNsr(it.cubierto || '—', 9, { alignment: AlignmentType.CENTER }),
-            cellNsr(it.observacion || '—', 10),
-            cellNsr(it.fuente || '—', 11),
+            cellNsr(tot == null ? '—' : money(tot), 6, { alignment: AlignmentType.RIGHT }),
+            cellNsr(it.prioridad || '—', 7, { alignment: AlignmentType.CENTER }),
+            cellNsr(it.cubierto || '—', 8, { alignment: AlignmentType.CENTER }),
+            cellNsr(it.observacion || '—', 9),
+            cellNsr(it.fuente || '—', 10),
           ],
         })
       );
@@ -1350,7 +1347,7 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
         children: [
           cell('Sin ítems en el presupuesto NSR-10', {
             width: NSR_TABLE_W,
-            columnSpan: 12,
+            columnSpan: 11,
             size: SIZE_NSR,
             compact: true,
             cuadro: true,

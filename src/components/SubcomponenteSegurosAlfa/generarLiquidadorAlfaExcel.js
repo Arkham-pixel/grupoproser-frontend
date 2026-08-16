@@ -499,7 +499,6 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
       txt(it.actividad) ||
       txt(it.componente) ||
       txt(it.capitulo) ||
-      txt(it.codigoEvaluacion) ||
       numeroONull(it.cantidad) != null ||
       numeroONull(it.valorUnitario) != null
   );
@@ -522,7 +521,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
       continue;
     }
     setVal(hojaPres, row, 1, txt(it.capitulo) || null);
-    setVal(hojaPres, row, 2, txt(it.codigoEvaluacion) || null);
+    setVal(hojaPres, row, 2, null); // Código eval. ya no se usa
     setVal(hojaPres, row, 3, txt(it.componente) || null);
     setVal(hojaPres, row, 4, txt(it.actividad) || null);
     setVal(hojaPres, row, 5, txt(it.unidad) || null);
