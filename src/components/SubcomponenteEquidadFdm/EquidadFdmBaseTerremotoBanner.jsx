@@ -31,6 +31,77 @@ const toneClass = {
     'border-gray-200 bg-gray-50 text-gray-800 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
 };
 
+const FIELD_LABELS = {
+  nombre: 'Nombre',
+  cedula: 'Cédula',
+  celular: 'Celular',
+  direccionAfectada: 'Dirección',
+  municipio: 'Municipio',
+  departamento: 'Departamento',
+  oficinaRadicadora: 'Oficina radicadora',
+  ajustador: 'Ajustador',
+  aif: 'AIF',
+  polizaDanosVigente: 'Póliza daños vigente',
+  polizaAfectar: 'Póliza a afectar',
+  orden: 'Orden',
+  vigenciaPoliza: 'Vigencia póliza',
+  caso: 'Caso',
+  siniestro: 'Siniestro',
+  estado: 'Estado',
+  observaciones: 'Observaciones',
+  cobertura: 'Cobertura',
+  valorEdificio: 'Valor edificio',
+  valorContenido: 'Valor contenido',
+  valoresIndemnizables: 'Valores indemnizables',
+  perdidaContenidos: 'Pérdida contenidos',
+  perdidaEdificio: 'Pérdida edificio',
+  totalPerdida: 'Total pérdida',
+  deducible: 'Deducible',
+  subsidio: 'Subsidio',
+  totalLiquidado: 'Total liquidado',
+  valorIndemnizadoAjustador: 'Valor indemnizado ajustador',
+  valorIndemnizado: 'Valor indemnizado',
+  fechaRegistro: 'Fecha registro',
+  fechaAviso: 'Fecha aviso',
+  fechaLiquidacion: 'Fecha liquidación',
+  evento: 'Evento',
+};
+
+const CREATE_PREVIEW_FIELDS = [
+  'cedula',
+  'celular',
+  'direccionAfectada',
+  'municipio',
+  'departamento',
+  'ajustador',
+  'oficinaRadicadora',
+  'polizaDanosVigente',
+  'siniestro',
+  'estado',
+  'evento',
+];
+
+function formatPreviewValue(value) {
+  if (value == null || value === '') return '—';
+  if (value instanceof Date) return value.toLocaleDateString('es-CO');
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const d = new Date(value);
+    if (!Number.isNaN(d.getTime())) return d.toLocaleDateString('es-CO');
+  }
+  if (typeof value === 'object') {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
+function fieldLabel(key) {
+  return FIELD_LABELS[key] || key;
+}
+
 /**
  * Banner sync Excel SharePoint SEGUROS EQUIDAD ↔ Equidad FDM.
  */
@@ -41,13 +112,23 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [rows, setRows] = useState([]);
+  const [sessionTotals, setSessionTotals] = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [modalError, setModalError] = useState(null);
   const puedeAdmin = esAdminOSoporte();
 
   const source = status?.source;
-  const summary = source?.summary || {};
+  const summary = sessionTotals || source?.summary || {};
+
+  const applySession = (session) => {
+    setSessionTotals(session?.totals || null);
+    setRows(
+      (session?.rows || []).filter((r) =>
+        ['CREATE', 'UPDATE', 'AMBIGUOUS', 'REJECTED'].includes(r.action)
+      )
+    );
+  };
 
   const cargarStatus = useCallback(async () => {
     try {
@@ -87,11 +168,7 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
     setModalError(null);
     try {
       const session = await getBaseTerremotoFdmImportSession(sessionId);
-      setRows(
-        (session.rows || []).filter((r) =>
-          ['CREATE', 'UPDATE', 'AMBIGUOUS', 'REJECTED'].includes(r.action)
-        )
-      );
+      applySession(session);
     } catch (err) {
       setModalError(err.message);
     } finally {
@@ -114,11 +191,7 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
           const sid = result.sessionId || result.source?.lastPreviewSessionId;
           if (!sid) throw new Error('No hay preview disponible.');
           const session = await getBaseTerremotoFdmImportSession(sid);
-          setRows(
-            (session.rows || []).filter((r) =>
-              ['CREATE', 'UPDATE', 'AMBIGUOUS', 'REJECTED'].includes(r.action)
-            )
-          );
+          applySession(session);
         } catch (err) {
           setModalError(err.message);
         } finally {
@@ -221,7 +294,7 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         title="Actualizaciones Excel Equidad"
-        wide
+        extraWide
       >
         <div className="space-y-3 p-3 sm:p-4">
           {modalError && (
@@ -230,37 +303,133 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
             </p>
           )}
           <p className="font-body text-sm text-gray-600 dark:text-gray-300">
-            Crear: {summary.created || 0} · Actualizar: {summary.updated || 0} · Ambiguos:{' '}
-            {summary.ambiguous || 0} · Sin cambios: {summary.unchanged || 0}
+            Comparación Excel (SharePoint) → ARNALD. Crear: {summary.created || 0} · Actualizar:{' '}
+            {summary.updated || 0} · Ambiguos: {summary.ambiguous || 0} · Sin cambios:{' '}
+            {summary.unchanged || 0}
           </p>
-          <div className="max-h-[50vh] overflow-auto rounded-xl border border-gray-200 dark:border-gray-700">
+          <p className="font-body text-xs text-gray-500 dark:text-gray-400">
+            Esto solo muestra lo detectado. Hasta que pulses «Actualizar ARNALD», los datos del Excel
+            no se escriben en la plataforma. El llenado automático del Excel es el sentido contrario
+            (ARNALD → Excel) al guardar en liquidador/caso.
+          </p>
+          <div className="max-h-[70vh] overflow-auto rounded-xl border border-gray-200 dark:border-gray-700">
             {loadingPreview ? (
               <p className="p-4 text-sm text-gray-500">Cargando preview…</p>
             ) : rows.length === 0 ? (
               <p className="p-4 text-sm text-gray-500">No hay filas con cambios en el preview.</p>
             ) : (
-              <table className="min-w-full text-left text-xs">
-                <thead className="bg-gray-50 dark:bg-gray-900">
+              <table className="min-w-[1100px] w-full text-left text-xs">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900">
                   <tr>
-                    <th className="px-3 py-2">Acción</th>
-                    <th className="px-3 py-2">Nombre</th>
-                    <th className="px-3 py-2">Cédula</th>
-                    <th className="px-3 py-2">Detalle</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Acción</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Fila Excel</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Consecutivo</th>
+                    <th className="px-3 py-2 min-w-[160px]">Nombre</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Cédula</th>
+                    <th className="px-3 py-2 min-w-[140px]">Campo</th>
+                    <th className="px-3 py-2 min-w-[180px]">Valor en ARNALD</th>
+                    <th className="px-3 py-2 min-w-[180px]">Valor en Excel</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.slice(0, 200).map((r, i) => (
-                    <tr key={`${r.action}-${r.excelRow}-${i}`} className="border-t border-gray-100 dark:border-gray-800">
-                      <td className="px-3 py-2 font-semibold">{r.action}</td>
-                      <td className="px-3 py-2">{r.nombre || '—'}</td>
-                      <td className="px-3 py-2">{r.cedula || '—'}</td>
-                      <td className="px-3 py-2">
-                        {r.changes
-                          ? Object.keys(r.changes).join(', ')
-                          : r.reason || r.consecutivo || '—'}
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.slice(0, 300).flatMap((r, i) => {
+                    const rowKey = `${r.action}-${r.excelRow}-${i}`;
+                    const baseCells = (
+                      <>
+                        <td className="px-3 py-2 align-top font-semibold whitespace-nowrap">{r.action}</td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap">{r.excelRow ?? '—'}</td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap">
+                          {r.consecutivo || '—'}
+                        </td>
+                        <td className="px-3 py-2 align-top">{r.nombre || r.payload?.nombre || '—'}</td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap">
+                          {r.cedula || r.payload?.cedula || '—'}
+                        </td>
+                      </>
+                    );
+
+                    if (r.action === 'UPDATE' && r.changes && Object.keys(r.changes).length > 0) {
+                      return Object.entries(r.changes).map(([field, diff], j) => (
+                        <tr
+                          key={`${rowKey}-${field}`}
+                          className="border-t border-gray-100 dark:border-gray-800"
+                        >
+                          {j === 0 ? (
+                            baseCells
+                          ) : (
+                            <>
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                            </>
+                          )}
+                          <td className="px-3 py-2 align-top font-medium">{fieldLabel(field)}</td>
+                          <td className="px-3 py-2 align-top text-amber-800 dark:text-amber-200">
+                            {formatPreviewValue(diff?.from)}
+                          </td>
+                          <td className="px-3 py-2 align-top font-semibold text-emerald-800 dark:text-emerald-200">
+                            {formatPreviewValue(diff?.to)}
+                          </td>
+                        </tr>
+                      ));
+                    }
+
+                    if (r.action === 'CREATE') {
+                      const payload = r.payload || {};
+                      const entries = CREATE_PREVIEW_FIELDS.filter(
+                        (f) => payload[f] != null && payload[f] !== ''
+                      ).map((f) => [f, payload[f]]);
+                      if (entries.length === 0) {
+                        return [
+                          <tr key={rowKey} className="border-t border-gray-100 dark:border-gray-800">
+                            {baseCells}
+                            <td className="px-3 py-2" colSpan={3}>
+                              Caso nuevo (sin más campos en el Excel)
+                            </td>
+                          </tr>,
+                        ];
+                      }
+                      return entries.map(([field, value], j) => (
+                        <tr
+                          key={`${rowKey}-${field}`}
+                          className="border-t border-gray-100 dark:border-gray-800"
+                        >
+                          {j === 0 ? (
+                            baseCells
+                          ) : (
+                            <>
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                              <td className="px-3 py-2" />
+                            </>
+                          )}
+                          <td className="px-3 py-2 align-top font-medium">{fieldLabel(field)}</td>
+                          <td className="px-3 py-2 align-top text-gray-400">— (no existe)</td>
+                          <td className="px-3 py-2 align-top font-semibold text-emerald-800 dark:text-emerald-200">
+                            {formatPreviewValue(value)}
+                          </td>
+                        </tr>
+                      ));
+                    }
+
+                    return [
+                      <tr key={rowKey} className="border-t border-gray-100 dark:border-gray-800">
+                        {baseCells}
+                        <td className="px-3 py-2 align-top" colSpan={3}>
+                          {r.reason ||
+                            (r.candidatos?.length
+                              ? `Candidatos: ${r.candidatos
+                                  .map((c) => c.consecutivo || c.cedula || c.id)
+                                  .join(', ')}`
+                              : '—')}
+                        </td>
+                      </tr>,
+                    ];
+                  })}
                 </tbody>
               </table>
             )}
