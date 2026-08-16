@@ -1,7 +1,32 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
-export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v2';
+export const FDM_COLUMNAS_STORAGE_KEY = 'equidad-fdm-reporte-columnas-v6-excel-completo';
+/** Checklist «hecho» solo para el usuario con filtro de archivos (local). */
+export const FDM_CHECKLIST_STORAGE_KEY = 'equidad-fdm-reporte-checklist-v1';
 export const FDM_REPORTE_PAGE_SIZE = 25;
+
+export const cargarChecklistFdm = () => {
+  try {
+    const raw = localStorage.getItem(FDM_CHECKLIST_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.map(String).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+};
+
+export const guardarChecklistFdm = (idsSet) => {
+  try {
+    localStorage.setItem(
+      FDM_CHECKLIST_STORAGE_KEY,
+      JSON.stringify([...(idsSet || [])].map(String))
+    );
+  } catch {
+    /* ignore */
+  }
+};
 
 /** Query keys del reporte (persistencia en URL, sin localStorage). */
 export const FDM_FILTRO_Q = 'q';
@@ -106,16 +131,62 @@ export const CAMPOS_NUMERICOS_FDM = [
   'valorIndemnizado',
 ];
 
-/** Formatea entero con puntos de miles (es-CO): 5000000 → 5.000.000 */
-export const formatMiles = (valor) => {
-  if (valor === null || valor === undefined || valor === '') return '';
-  const digitos = String(valor).replace(/[^\d]/g, '');
-  if (!digitos) return '';
-  const sinCeros = digitos.replace(/^0+(?=\d)/, '');
-  return sinCeros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+/** Parsea monto es-CO / en-US / número. Conserva decimales (ej. 1.313.178,75). */
+export const parseMontoFdm = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : null;
+  let numero = String(valor).replace(/[^\d.,-]/g, '').trim();
+  if (!numero || numero === '-' || numero === '.' || numero === ',') return null;
+
+  if (numero.includes(',') && numero.includes('.')) {
+    if (numero.lastIndexOf(',') > numero.lastIndexOf('.')) {
+      numero = numero.replace(/\./g, '').replace(',', '.');
+    } else {
+      numero = numero.replace(/,/g, '');
+    }
+  } else if (numero.includes(',')) {
+    const partes = numero.split(',');
+    if (partes.length === 2 && partes[1].length <= 2) {
+      numero = `${partes[0].replace(/\./g, '')}.${partes[1]}`;
+    } else {
+      numero = numero.replace(/,/g, '');
+    }
+  } else if (numero.includes('.')) {
+    const partes = numero.split('.');
+    // 5.500.000 o 1.750.905 (miles) vs 1313178.75 (decimal)
+    if (partes.length > 2 || (partes.length === 2 && partes[1].length === 3)) {
+      numero = numero.replace(/\./g, '');
+    }
+  }
+
+  const n = Number(numero);
+  return Number.isFinite(n) ? n : null;
 };
 
-export const formatMilesInput = (valor) => formatMiles(valor);
+/** Formatea monto es-CO conservando hasta 2 decimales: 1313178.75 → 1.313.178,75 */
+export const formatMiles = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const n = typeof valor === 'number' ? valor : parseMontoFdm(valor);
+  if (n === null || Number.isNaN(n)) return '';
+  const hasDecimals = Math.abs(n % 1) > 1e-9;
+  return new Intl.NumberFormat('es-CO', {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(n);
+};
+
+/** Mientras se escribe: miles con punto y decimales con coma. */
+export const formatMilesInput = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return '';
+  const s = String(valor);
+  const cleaned = s.replace(/[^\d,]/g, '');
+  const commaIdx = cleaned.indexOf(',');
+  let enteros = (commaIdx >= 0 ? cleaned.slice(0, commaIdx) : cleaned).replace(/^0+(?=\d)/, '');
+  const decimales = commaIdx >= 0 ? cleaned.slice(commaIdx + 1).replace(/,/g, '').slice(0, 2) : null;
+  const enterosFmt = enteros.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  if (commaIdx >= 0) return `${enterosFmt},${decimales ?? ''}`;
+  return enterosFmt;
+};
 
 export const esCasoNuevoFdm = (caso = {}) => caso?.esNuevo === true;
 
@@ -123,11 +194,14 @@ export const formatCurrency = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '$0';
   }
+  const n = Number(value);
+  const hasDecimals = Math.abs(n % 1) > 1e-9;
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
     currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(Number(value));
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(n);
 };
 
 export const parseDate = (value) => crearFechaLocal(value);

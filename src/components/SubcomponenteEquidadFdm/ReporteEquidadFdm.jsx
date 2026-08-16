@@ -16,11 +16,13 @@ import {
   buildCiudadesFdm,
   buildOpcionesFiltro,
   cantidadArchivosFdm,
+  cargarChecklistFdm,
   ciudadClaveFdm,
   esCasoNuevoFdm,
   esUsuarioFdmSoloConArchivos,
   formatCurrency,
   formatDate,
+  guardarChecklistFdm,
   leerFiltrosReporteFdm,
   patchFiltrosReporteFdm,
 } from './equidadFdmHelpers.js';
@@ -53,46 +55,97 @@ const todasLasColumnasFdm = [
   { clave: 'esNuevo', label: 'Nuevo' },
   { clave: 'consecutivo', label: 'Consecutivo' },
   { clave: 'evento', label: 'Evento' },
+  { clave: 'fechaRegistro', label: 'Fecha de registro' },
   { clave: 'nombre', label: 'Nombre' },
   { clave: 'cedula', label: 'Cédula' },
   { clave: 'celular', label: 'Celular' },
   { clave: 'direccionAfectada', label: 'Dirección afectada' },
+  { clave: 'oficinaRadicadora', label: 'Oficina radicadora' },
   { clave: 'municipio', label: 'Ciudad / Municipio' },
   { clave: 'departamento', label: 'Departamento' },
-  { clave: 'oficinaRadicadora', label: 'Oficina radicadora' },
-  { clave: 'ajustador', label: 'Ajustador' },
   { clave: 'aif', label: 'AIF' },
+  { clave: 'polizaDanosVigente', label: 'Póliza daños vigente' },
   { clave: 'polizaAfectar', label: 'Póliza a afectar' },
+  { clave: 'orden', label: 'Orden' },
   { clave: 'vigenciaPoliza', label: 'Vigencia póliza' },
+  { clave: 'afectacionesAnteriores', label: 'Afectaciones anteriores' },
+  { clave: 'siniestroIndemnizado', label: 'Siniestro indemnizado' },
+  { clave: 'valorEdificio', label: 'Valor edificio' },
+  { clave: 'valorContenido', label: 'Valor contenido' },
+  { clave: 'valoresIndemnizables', label: 'Valores indemnizables' },
+  { clave: 'subsidioEmpresarial', label: 'Subsidio empresarial' },
   { clave: 'cobertura', label: 'Cobertura' },
+  { clave: 'primas', label: 'Primas' },
   { clave: 'tipoNegocio', label: 'Tipo de negocio' },
+  { clave: 'perdidaContenidos', label: 'Pérdida por contenidos' },
+  { clave: 'perdidaEdificio', label: 'Pérdida por edificio' },
   { clave: 'totalPerdida', label: 'Total pérdida' },
   { clave: 'deducible', label: 'Deducible' },
   { clave: 'totalLiquidado', label: 'Total liquidado' },
-  { clave: 'valorIndemnizado', label: 'Valor indemnizado' },
+  { clave: 'subsidio', label: 'Subsidio' },
+  { clave: 'valorIndemnizadoAjustador', label: 'Valor indemnizado (ajustador)' },
   { clave: 'caso', label: 'Caso' },
   { clave: 'siniestro', label: 'Siniestro' },
-  { clave: 'fechaRegistro', label: 'Fecha de registro' },
-  { clave: 'fechaAviso', label: 'Fecha de aviso' },
   { clave: 'fechaLiquidacion', label: 'Fecha de liquidación' },
+  { clave: 'fechaAviso', label: 'Fecha de aviso' },
+  { clave: 'valorObjecion', label: 'Valor de objeción' },
+  { clave: 'fechaCausacion', label: 'Fecha de causación' },
+  { clave: 'valorIndemnizado', label: 'Valor indemnizado' },
   { clave: 'fechaGiro', label: 'Fecha de giro' },
   { clave: 'estado', label: 'Estado' },
   { clave: 'observaciones', label: 'Observaciones' },
+  { clave: 'detalle', label: 'Detalle' },
+  { clave: 'ajustador', label: 'Ajustador' },
   { clave: 'createdAt', label: 'Creado el' },
   { clave: 'updatedAt', label: 'Actualizado el' },
 ];
 
+/** Columnas por defecto = datos del Excel (todos los usuarios). */
 const columnasInicialesFdm = [
   'esNuevo',
   'consecutivo',
   'evento',
+  'fechaRegistro',
   'nombre',
   'cedula',
+  'celular',
+  'direccionAfectada',
+  'oficinaRadicadora',
   'municipio',
-  'cobertura',
-  'estado',
-  'fechaRegistro',
+  'departamento',
+  'aif',
+  'polizaDanosVigente',
   'polizaAfectar',
+  'orden',
+  'vigenciaPoliza',
+  'afectacionesAnteriores',
+  'siniestroIndemnizado',
+  'valorEdificio',
+  'valorContenido',
+  'valoresIndemnizables',
+  'subsidioEmpresarial',
+  'cobertura',
+  'primas',
+  'tipoNegocio',
+  'perdidaContenidos',
+  'perdidaEdificio',
+  'totalPerdida',
+  'deducible',
+  'totalLiquidado',
+  'subsidio',
+  'valorIndemnizadoAjustador',
+  'caso',
+  'siniestro',
+  'fechaLiquidacion',
+  'fechaAviso',
+  'valorObjecion',
+  'fechaCausacion',
+  'valorIndemnizado',
+  'fechaGiro',
+  'estado',
+  'observaciones',
+  'detalle',
+  'ajustador',
 ];
 
 function cargarColumnasGuardadas() {
@@ -163,7 +216,20 @@ const ReporteEquidadFdm = () => {
   const [busquedaCompleto, setBusquedaCompleto] = useState('');
   const [eventoCompleto, setEventoCompleto] = useState('TERREMOTO 10 AGOSTO 2026');
   const [paginaCompleto, setPaginaCompleto] = useState(1);
+  const [checklistHechos, setChecklistHechos] = useState(() => cargarChecklistFdm());
   const fileInputRef = useRef(null);
+
+  const toggleChecklistHecho = useCallback((casoId) => {
+    const id = String(casoId || '');
+    if (!id) return;
+    setChecklistHechos((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      guardarChecklistFdm(next);
+      return next;
+    });
+  }, []);
 
   const recargar = useCallback(async () => {
     setLoading(true);
@@ -476,16 +542,27 @@ const ReporteEquidadFdm = () => {
   };
 
   const CAMPOS_MONEDA = new Set([
+    'valorEdificio',
+    'valorContenido',
+    'valoresIndemnizables',
+    'subsidioEmpresarial',
+    'primas',
+    'perdidaContenidos',
+    'perdidaEdificio',
     'totalPerdida',
     'deducible',
     'totalLiquidado',
+    'subsidio',
+    'valorIndemnizadoAjustador',
     'valorIndemnizado',
+    'valorObjecion',
   ]);
   const CAMPOS_FECHA = new Set([
     'fechaRegistro',
     'fechaAviso',
     'fechaLiquidacion',
     'fechaGiro',
+    'fechaCausacion',
     'createdAt',
     'updatedAt',
   ]);
@@ -744,14 +821,30 @@ const ReporteEquidadFdm = () => {
                       }`}
                     >
                       <td className="sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
-                        <AccionesFdmMenu
-                          onGestionar={() => abrirModalEdicion(item)}
-                          onArchivero={() => setCasoArchivero(item)}
-                          onLiquidador={() => abrirLiquidador(item)}
-                          onEliminar={() => solicitarEliminar(item)}
-                          tieneLiquidador={Boolean(item.liquidador)}
-                          cantidadArchivos={cantidadArchivosFdm(item)}
-                        />
+                        <div className="flex items-center gap-2">
+                          {soloConArchivos && (
+                            <label
+                              className="inline-flex items-center"
+                              title="Marcar como hecho"
+                            >
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 accent-emerald-600"
+                                checked={checklistHechos.has(String(item._id || ''))}
+                                onChange={() => toggleChecklistHecho(item._id)}
+                                aria-label={`Hecho ${item.consecutivo || ''}`}
+                              />
+                            </label>
+                          )}
+                          <AccionesFdmMenu
+                            onGestionar={() => abrirModalEdicion(item)}
+                            onArchivero={() => setCasoArchivero(item)}
+                            onLiquidador={() => abrirLiquidador(item)}
+                            onEliminar={() => solicitarEliminar(item)}
+                            tieneLiquidador={Boolean(item.liquidador)}
+                            cantidadArchivos={cantidadArchivosFdm(item)}
+                          />
+                        </div>
                       </td>
                       {columnasVisibles.map((col) => (
                         <td
@@ -905,23 +998,39 @@ const ReporteEquidadFdm = () => {
                       }`}
                     >
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-3 py-2 dark:bg-[#1A1A1A]">
-                        <AccionesFdmMenu
-                          onGestionar={() => {
-                            setModalReporteCompleto(false);
-                            abrirModalEdicion(item);
-                          }}
-                          onArchivero={() => {
-                            setModalReporteCompleto(false);
-                            setCasoArchivero(item);
-                          }}
-                          onLiquidador={() => abrirLiquidador(item)}
-                          onEliminar={() => {
-                            setModalReporteCompleto(false);
-                            solicitarEliminar(item);
-                          }}
-                          tieneLiquidador={Boolean(item.liquidador)}
-                          cantidadArchivos={cantidadArchivosFdm(item)}
-                        />
+                        <div className="flex items-center gap-2">
+                          {soloConArchivos && (
+                            <label
+                              className="inline-flex items-center"
+                              title="Marcar como hecho"
+                            >
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 accent-emerald-600"
+                                checked={checklistHechos.has(String(item._id || ''))}
+                                onChange={() => toggleChecklistHecho(item._id)}
+                                aria-label={`Hecho ${item.consecutivo || ''}`}
+                              />
+                            </label>
+                          )}
+                          <AccionesFdmMenu
+                            onGestionar={() => {
+                              setModalReporteCompleto(false);
+                              abrirModalEdicion(item);
+                            }}
+                            onArchivero={() => {
+                              setModalReporteCompleto(false);
+                              setCasoArchivero(item);
+                            }}
+                            onLiquidador={() => abrirLiquidador(item)}
+                            onEliminar={() => {
+                              setModalReporteCompleto(false);
+                              solicitarEliminar(item);
+                            }}
+                            tieneLiquidador={Boolean(item.liquidador)}
+                            cantidadArchivos={cantidadArchivosFdm(item)}
+                          />
+                        </div>
                       </td>
                       {columnasVisibles.map((col) => (
                         <td

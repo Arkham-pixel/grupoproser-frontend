@@ -1,4 +1,5 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import { calcularLiquidacionFdm } from '../components/SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
 
 const FDM_API_URL = `${BASE_URL}/api/equidad-fdm`;
 
@@ -217,25 +218,40 @@ export const deleteCasoFdm = async (id) => {
 export const guardarLiquidadorEnCasoFdm = async ({
   casoId,
   liquidador,
-  totales = {},
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso FDM debe estar guardado antes de adjuntar el liquidador.');
 
+  // Siempre recalcular desde el liquidador (evita totales stale o mal formateados).
+  const t = calcularLiquidacionFdm(liquidador || {});
+
   const payload = {
     ...casoBase,
     liquidador: liquidador || {},
-    totalPerdida: totales.totalPerdida ?? casoBase.totalPerdida,
-    deducible: totales.deducibleAplicado ?? casoBase.deducible,
-    totalLiquidado: totales.totalIndemnizar ?? casoBase.totalLiquidado,
-    valorIndemnizado: totales.totalIndemnizar ?? casoBase.valorIndemnizado,
-    valorIndemnizadoAjustador: totales.totalIndemnizar ?? casoBase.valorIndemnizadoAjustador,
-    subsidio: totales.subsidio ?? casoBase.subsidio,
-    perdidaContenidos: totales.subtotalContenidos ?? casoBase.perdidaContenidos,
-    perdidaEdificio: totales.subtotalEdificios ?? casoBase.perdidaEdificio,
-    // Fecha de liquidación al guardar (si aún no tenía)
+    // Si el liquidador trae caso/siniestro, sincronizar al caso (Excel outbound usa estos campos).
+    caso: String(liquidador?.encabezado?.caso || casoBase.caso || '').trim() || casoBase.caso || null,
+    siniestro:
+      String(liquidador?.encabezado?.siniestro || casoBase.siniestro || '').trim() ||
+      casoBase.siniestro ||
+      null,
+    totalPerdida: t.totalPerdida,
+    deducible: t.deducibleAplicado,
+    totalLiquidado: t.totalIndemnizar,
+    valorIndemnizado: t.totalIndemnizar,
+    valorIndemnizadoAjustador: t.totalIndemnizar,
+    subsidio: t.subsidio,
+    perdidaContenidos: t.subtotalContenidos,
+    perdidaEdificio: t.subtotalEdificios,
     fechaLiquidacion:
       casoBase.fechaLiquidacion || new Date().toISOString().slice(0, 10),
+    // Al guardar liquidador, marcar LIQUIDADO salvo que ya esté GIRADO/OBJETADO.
+    estado: (() => {
+      const actual = String(casoBase.estado || '')
+        .trim()
+        .toUpperCase();
+      if (actual === 'GIRADO' || actual === 'OBJETADO') return casoBase.estado;
+      return 'LIQUIDADO';
+    })(),
   };
 
   // No reenviar _id / timestamps

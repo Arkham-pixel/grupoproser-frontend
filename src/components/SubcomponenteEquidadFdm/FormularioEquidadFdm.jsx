@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FaSave, FaUndo } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
+import { BASE_URL } from '../../config/apiConfig.js';
 import { crearCasoFdm, actualizarCasoFdm } from '../../services/equidadFdmService.js';
 import {
   expressAlertError,
@@ -22,7 +23,7 @@ import {
   TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { FdmPageHeader } from './EquidadFdmUiBlocks.jsx';
-import { CAMPOS_NUMERICOS_FDM, ESTADOS_FDM, EVENTOS_FDM, fechaParaInput, formatMiles, formatMilesInput } from './equidadFdmHelpers.js';
+import { CAMPOS_NUMERICOS_FDM, ESTADOS_FDM, EVENTOS_FDM, fechaParaInput, formatMiles, formatMilesInput, parseMontoFdm } from './equidadFdmHelpers.js';
 
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -87,11 +88,7 @@ const construirFormDesdeCaso = (caso = {}) => ({
   ),
 });
 
-const aNumero = (valor) => {
-  if (valor === '' || valor === null || valor === undefined) return null;
-  const n = Number(String(valor).replace(/\./g, '').replace(/[^\d-]/g, ''));
-  return Number.isNaN(n) ? null : n;
-};
+const aNumero = (valor) => parseMontoFdm(valor);
 
 const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSaved }) => {
   const { t } = useTranslation();
@@ -102,12 +99,45 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  const [ajustadores, setAjustadores] = useState([]);
 
   useEffect(() => {
     setForm(initialData ? construirFormDesdeCaso(initialData) : { ...FORM_VACIO });
     setError(null);
     setExito(null);
   }, [initialData]);
+
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/responsables`);
+        const data = await res.json().catch(() => ({}));
+        if (cancelado) return;
+        const lista = Array.isArray(data?.data)
+          ? data.data
+          : Array.isArray(data)
+            ? data
+            : [];
+        const opciones = lista
+          .map((r) => {
+            const nombre = String(
+              r.nmbrRespnsble || r.nombre || r.nombreResponsable || r.label || ''
+            ).trim();
+            return nombre || null;
+          })
+          .filter(Boolean)
+          .filter((nombre, idx, arr) => arr.findIndex((x) => x.toLowerCase() === nombre.toLowerCase()) === idx)
+          .sort((a, b) => a.localeCompare(b, 'es'));
+        setAjustadores(opciones);
+      } catch (err) {
+        if (!cancelado) console.error('Error cargando ajustadores FDM:', err);
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   const setCampo = (clave) => (e) => {
     const crudo = e?.target ? e.target.value : e;
@@ -287,7 +317,18 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
         <h3 className={expressSectionTitle}>{t('equidadFdm.sections.caseManagement')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Campo label={t('equidadFdm.fields.adjuster')}>
-            <InputFenix value={form.ajustador} onChange={setCampo('ajustador')} />
+            <SelectFenix value={form.ajustador} onChange={setCampo('ajustador')}>
+              <option value="">{t('common.select')}</option>
+              {form.ajustador &&
+                !ajustadores.some((a) => a.toLowerCase() === String(form.ajustador).toLowerCase()) && (
+                  <option value={form.ajustador}>{form.ajustador}</option>
+                )}
+              {ajustadores.map((nombre) => (
+                <option key={nombre} value={nombre}>
+                  {nombre}
+                </option>
+              ))}
+            </SelectFenix>
           </Campo>
           <Campo label={t('equidadFdm.fields.aif')}>
             <InputFenix value={form.aif} onChange={setCampo('aif')} />
