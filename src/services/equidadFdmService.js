@@ -182,11 +182,14 @@ export const getBaseTerremotoFdmImportSession = async (sessionId) => {
   return payload?.data ?? payload;
 };
 
-export const executeBaseTerremotoFdmImport = async (sessionId) => {
+export const executeBaseTerremotoFdmImport = async (sessionId, { excelRows } = {}) => {
   const response = await fetch(`${FDM_API_URL}/base-terremoto/execute`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ sessionId }),
+    body: JSON.stringify({
+      sessionId,
+      ...(Array.isArray(excelRows) ? { excelRows } : {}),
+    }),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {

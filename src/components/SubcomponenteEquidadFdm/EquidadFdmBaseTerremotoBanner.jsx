@@ -113,6 +113,7 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [rows, setRows] = useState([]);
   const [sessionTotals, setSessionTotals] = useState(null);
+  const [selectedExcelRows, setSelectedExcelRows] = useState(() => new Set());
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [executing, setExecuting] = useState(false);
   const [modalError, setModalError] = useState(null);
@@ -121,14 +122,46 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
   const source = status?.source;
   const summary = sessionTotals || source?.summary || {};
 
+  const applicableRows = useMemo(
+    () => rows.filter((r) => r.action === 'CREATE' || r.action === 'UPDATE'),
+    [rows]
+  );
+
   const applySession = (session) => {
     setSessionTotals(session?.totals || null);
-    setRows(
-      (session?.rows || []).filter((r) =>
-        ['CREATE', 'UPDATE', 'AMBIGUOUS', 'REJECTED'].includes(r.action)
+    const nextRows = (session?.rows || []).filter((r) =>
+      ['CREATE', 'UPDATE', 'AMBIGUOUS', 'REJECTED'].includes(r.action)
+    );
+    setRows(nextRows);
+    setSelectedExcelRows(
+      new Set(
+        nextRows
+          .filter((r) => r.action === 'CREATE' || r.action === 'UPDATE')
+          .map((r) => Number(r.excelRow))
+          .filter((n) => Number.isFinite(n))
       )
     );
   };
+
+  const toggleExcelRow = (excelRow) => {
+    const key = Number(excelRow);
+    setSelectedExcelRows((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const selectAllApplicable = () => {
+    setSelectedExcelRows(
+      new Set(
+        applicableRows.map((r) => Number(r.excelRow)).filter((n) => Number.isFinite(n))
+      )
+    );
+  };
+
+  const clearApplicable = () => setSelectedExcelRows(new Set());
 
   const cargarStatus = useCallback(async () => {
     try {
@@ -209,11 +242,22 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
     if (!puedeAdmin) return;
     const sessionId = source?.lastPreviewSessionId;
     if (!sessionId) return;
-    if (!window.confirm('¿Aplicar los cambios del Excel de SEGUROS EQUIDAD a ARNALD?')) return;
+    const excelRows = [...selectedExcelRows];
+    if (excelRows.length === 0) {
+      setModalError('Marca al menos una fila para aplicar, o desmarca las que no quieras.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `¿Aplicar ${excelRows.length} fila(s) del Excel de SEGUROS EQUIDAD a ARNALD?`
+      )
+    ) {
+      return;
+    }
     setExecuting(true);
     setModalError(null);
     try {
-      await executeBaseTerremotoFdmImport(sessionId);
+      await executeBaseTerremotoFdmImport(sessionId, { excelRows });
       setModalOpen(false);
       await cargarStatus();
       if (typeof onCompleted === 'function') onCompleted();
@@ -308,19 +352,32 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
             {summary.unchanged || 0}
           </p>
           <p className="font-body text-xs text-gray-500 dark:text-gray-400">
-            Esto solo muestra lo detectado. Hasta que pulses «Actualizar ARNALD», los datos del Excel
-            no se escriben en la plataforma. El llenado automático del Excel es el sentido contrario
-            (ARNALD → Excel) al guardar en liquidador/caso.
+            Desmarca las filas que no quieras aplicar (por ejemplo las que ya corregiste a mano). Solo
+            las marcadas se escriben en ARNALD al pulsar «Actualizar ARNALD».
           </p>
+          {applicableRows.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="font-semibold text-gray-700 dark:text-gray-200">
+                Seleccionadas: {selectedExcelRows.size} / {applicableRows.length}
+              </span>
+              <button type="button" className={expressBtnGhost} onClick={selectAllApplicable}>
+                Marcar todas
+              </button>
+              <button type="button" className={expressBtnGhost} onClick={clearApplicable}>
+                Quitar todas
+              </button>
+            </div>
+          )}
           <div className="max-h-[70vh] overflow-auto rounded-xl border border-gray-200 dark:border-gray-700">
             {loadingPreview ? (
               <p className="p-4 text-sm text-gray-500">Cargando preview…</p>
             ) : rows.length === 0 ? (
               <p className="p-4 text-sm text-gray-500">No hay filas con cambios en el preview.</p>
             ) : (
-              <table className="min-w-[1100px] w-full text-left text-xs">
+              <table className="min-w-[1180px] w-full text-left text-xs">
                 <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900">
                   <tr>
+                    <th className="px-3 py-2 whitespace-nowrap">Aplicar</th>
                     <th className="px-3 py-2 whitespace-nowrap">Acción</th>
                     <th className="px-3 py-2 whitespace-nowrap">Fila Excel</th>
                     <th className="px-3 py-2 whitespace-nowrap">Consecutivo</th>
@@ -334,17 +391,50 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
                 <tbody>
                   {rows.slice(0, 300).flatMap((r, i) => {
                     const rowKey = `${r.action}-${r.excelRow}-${i}`;
+                    const canSelect = r.action === 'CREATE' || r.action === 'UPDATE';
+                    const checked = canSelect && selectedExcelRows.has(Number(r.excelRow));
+                    const selectCell = (
+                      <td className="px-3 py-2 align-top">
+                        {canSelect ? (
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleExcelRow(r.excelRow)}
+                            aria-label={`Aplicar fila ${r.excelRow}`}
+                          />
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    );
                     const baseCells = (
                       <>
-                        <td className="px-3 py-2 align-top font-semibold whitespace-nowrap">{r.action}</td>
-                        <td className="px-3 py-2 align-top whitespace-nowrap">{r.excelRow ?? '—'}</td>
+                        {selectCell}
+                        <td className="px-3 py-2 align-top font-semibold whitespace-nowrap">
+                          {r.action}
+                        </td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap">
+                          {r.excelRow ?? '—'}
+                        </td>
                         <td className="px-3 py-2 align-top whitespace-nowrap">
                           {r.consecutivo || '—'}
                         </td>
-                        <td className="px-3 py-2 align-top">{r.nombre || r.payload?.nombre || '—'}</td>
+                        <td className="px-3 py-2 align-top">
+                          {r.nombre || r.payload?.nombre || '—'}
+                        </td>
                         <td className="px-3 py-2 align-top whitespace-nowrap">
                           {r.cedula || r.payload?.cedula || '—'}
                         </td>
+                      </>
+                    );
+                    const emptyLead = (
+                      <>
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" />
+                        <td className="px-3 py-2" />
                       </>
                     );
 
@@ -352,19 +442,11 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
                       return Object.entries(r.changes).map(([field, diff], j) => (
                         <tr
                           key={`${rowKey}-${field}`}
-                          className="border-t border-gray-100 dark:border-gray-800"
+                          className={`border-t border-gray-100 dark:border-gray-800 ${
+                            canSelect && !checked ? 'opacity-50' : ''
+                          }`}
                         >
-                          {j === 0 ? (
-                            baseCells
-                          ) : (
-                            <>
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                            </>
-                          )}
+                          {j === 0 ? baseCells : emptyLead}
                           <td className="px-3 py-2 align-top font-medium">{fieldLabel(field)}</td>
                           <td className="px-3 py-2 align-top text-amber-800 dark:text-amber-200">
                             {formatPreviewValue(diff?.from)}
@@ -383,7 +465,12 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
                       ).map((f) => [f, payload[f]]);
                       if (entries.length === 0) {
                         return [
-                          <tr key={rowKey} className="border-t border-gray-100 dark:border-gray-800">
+                          <tr
+                            key={rowKey}
+                            className={`border-t border-gray-100 dark:border-gray-800 ${
+                              !checked ? 'opacity-50' : ''
+                            }`}
+                          >
                             {baseCells}
                             <td className="px-3 py-2" colSpan={3}>
                               Caso nuevo (sin más campos en el Excel)
@@ -394,19 +481,11 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
                       return entries.map(([field, value], j) => (
                         <tr
                           key={`${rowKey}-${field}`}
-                          className="border-t border-gray-100 dark:border-gray-800"
+                          className={`border-t border-gray-100 dark:border-gray-800 ${
+                            !checked ? 'opacity-50' : ''
+                          }`}
                         >
-                          {j === 0 ? (
-                            baseCells
-                          ) : (
-                            <>
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                              <td className="px-3 py-2" />
-                            </>
-                          )}
+                          {j === 0 ? baseCells : emptyLead}
                           <td className="px-3 py-2 align-top font-medium">{fieldLabel(field)}</td>
                           <td className="px-3 py-2 align-top text-gray-400">— (no existe)</td>
                           <td className="px-3 py-2 align-top font-semibold text-emerald-800 dark:text-emerald-200">
@@ -443,9 +522,11 @@ export default function EquidadFdmBaseTerremotoBanner({ onCompleted }) {
                 type="button"
                 className={expressBtnPrimary}
                 onClick={handleExecute}
-                disabled={executing || !(summary.created || summary.updated)}
+                disabled={executing || selectedExcelRows.size === 0}
               >
-                {executing ? 'Aplicando…' : 'Actualizar ARNALD'}
+                {executing
+                  ? 'Aplicando…'
+                  : `Actualizar ARNALD (${selectedExcelRows.size})`}
               </button>
             )}
           </div>
