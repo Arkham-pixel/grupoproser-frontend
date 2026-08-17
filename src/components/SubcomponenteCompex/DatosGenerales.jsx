@@ -394,6 +394,41 @@ export default function DatosGenerales({
           />
         </Campo>
 
+        {mostrarAsignacionCatastrofico ? (
+          <>
+            <Campo
+              label={t('complex.ui.datos_generales.correo', {
+                defaultValue: 'Correo electrónico',
+              })}
+            >
+              <InputFenix
+                type="email"
+                name="correo"
+                value={formData.correo || ''}
+                onChange={handleChange}
+                placeholder={t('complex.ui.datos_generales.correo_placeholder', {
+                  defaultValue: 'correo@ejemplo.com',
+                })}
+              />
+            </Campo>
+            <Campo
+              label={t('complex.ui.datos_generales.celular', {
+                defaultValue: 'Celular / teléfono',
+              })}
+            >
+              <InputFenix
+                type="text"
+                name="celular"
+                value={formData.celular || ''}
+                onChange={handleChange}
+                placeholder={t('complex.ui.datos_generales.celular_placeholder', {
+                  defaultValue: 'Ej: 300 000 0000',
+                })}
+              />
+            </Campo>
+          </>
+        ) : null}
+
         <Campo label={t("complex.ui.datos_generales.fecha_y_hora_de_asignacion")}>
           <InputFechaHoraProtocolo
             name="fchaAsgncion"

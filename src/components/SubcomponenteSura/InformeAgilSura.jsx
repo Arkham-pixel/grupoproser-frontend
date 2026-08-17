@@ -49,6 +49,8 @@ export default function InformeAgilSura({
     totales?.totalDanios,
     salvamento?.aplica,
     salvamento?.descripcion,
+    casoSura?.correo,
+    casoSura?.celular,
   ]);
 
   useEffect(() => {

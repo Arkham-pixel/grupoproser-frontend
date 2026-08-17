@@ -136,6 +136,8 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     ajustadorLider: '',
     ajustador: '',
     inspector: '',
+    correo: '',
+    celular: '',
     asgrBenfcro: '',
     tipoDucumento: '',
     numDocumento: '',
@@ -489,6 +491,8 @@ const nuevoFormData = {
           nuevoFormData.ajustadorLider =
             nuevoFormData.ajustadorLider || initialData.ajustadorLider || '';
           nuevoFormData.inspector = nuevoFormData.inspector || initialData.inspector || '';
+          nuevoFormData.correo = nuevoFormData.correo || initialData.correo || '';
+          nuevoFormData.celular = nuevoFormData.celular || initialData.celular || '';
           nuevoFormData.nombIntermediario = nuevoFormData.nombIntermediario || initialData.tomador || '';
           nuevoFormData.ciudadSiniestro = nuevoFormData.ciudadSiniestro || initialData.ciudad || '';
           nuevoFormData.departamentoCiudad = nuevoFormData.departamentoCiudad || initialData.departamento || '';
@@ -607,6 +611,8 @@ if (casoData && casoData._id) {
               normalizados.asgrBenfcro = casoData.asgrBenfcro || casoData.asegurado || '';
               normalizados.nmroPolza = casoData.nmroPolza || casoData.numeroPoliza || '';
               normalizados.codiRespnsble = casoData.codiRespnsble || casoData.ajustador || '';
+              normalizados.correo = casoData.correo || '';
+              normalizados.celular = casoData.celular || '';
               normalizados.nombIntermediario = casoData.nombIntermediario || casoData.tomador || '';
               normalizados.ciudadSiniestro = casoData.ciudadSiniestro || casoData.ciudad || '';
               normalizados.departamentoCiudad = casoData.departamentoCiudad || casoData.departamento || '';
@@ -2789,6 +2795,8 @@ setFormData(prev => ({
       ajustadorLider: formData.ajustadorLider || '',
       ajustador: formData.ajustador || formData.nombreResponsable || formData.codiRespnsble || '',
       inspector: formData.inspector || '',
+      correo: formData.correo || '',
+      celular: formData.celular || '',
       codiAsgrdra: formData.codiAsgrdra,
       funcAsgrdra: formData.funcAsgrdra,
       funcAsgrdraNombre: formData.funcAsgrdraNombre || '',
