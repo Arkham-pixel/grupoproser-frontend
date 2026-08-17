@@ -163,7 +163,7 @@ export default function ReporteSegurosSura() {
     setError(null);
     try {
       const data = await fetchAllCasosSura();
-      setCasos(filtrarCasosPorAsignacionUsuario(data));
+      setCasos(filtrarCasosPorAsignacionUsuario(data, { modulo: 'sura' }));
     } catch (err) {
       setError(err.message || t('segurosSura.report.loadError'));
     } finally {

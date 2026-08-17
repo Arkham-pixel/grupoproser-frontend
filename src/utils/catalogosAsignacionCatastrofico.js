@@ -38,11 +38,28 @@ export function mapCatalogoCatastroficoAOpciones(lista = []) {
     .sort((a, b) => a.label.localeCompare(b.label, 'es'));
 }
 
-/** Filtra opciones por ciudad exacta del caso (Cali ≠ Pereira). */
+/**
+ * Filtra opciones por ciudad del caso.
+ * Incluye cobertura «Todas» (ajustador/inspector nacional) sin quitar el filtro por ciudad.
+ */
 export function filtrarOpcionesPorCiudad(opciones = [], ciudadCaso) {
   const target = normCiudadCatastrofico(ciudadCaso);
   if (!target) return [];
-  return opciones.filter((o) => normCiudadCatastrofico(o.ciudad) === target);
+  return opciones.filter((o) => {
+    const c = normCiudadCatastrofico(o.ciudad);
+    return c === target || c === 'TODAS';
+  });
+}
+
+/**
+ * Asegura que el valor ya guardado siga en el select (aunque no esté en el filtro),
+ * para no perder la asignación al abrir/guardar el caso.
+ */
+export function asegurarOpcionActual(opciones = [], valorActual = '') {
+  const v = String(valorActual || '').trim();
+  if (!v) return opciones;
+  if (opciones.some((o) => o.value === v || o.codigo === v)) return opciones;
+  return [{ value: v, label: `${v} (asignado)`, codigo: '', ciudad: '' }, ...opciones];
 }
 
 /** Needle de nombre para el líder fijo por módulo. */

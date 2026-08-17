@@ -30,6 +30,7 @@ export default function CamposAsignacionCaso({
   inspectores,
   responsables = [],
   rol,
+  modulo = '',
   i18nNs = 'segurosSura',
   ciudadSeleccionada = '',
   filtrarPorCiudad = true,
@@ -39,6 +40,10 @@ export default function CamposAsignacionCaso({
   const listaAjustadores = ajustadores ?? [];
   const listaInspectores = inspectores ?? [];
   const sinCiudad = filtrarPorCiudad && !String(ciudadSeleccionada || '').trim();
+  const permisoOpts = {
+    modulo: String(modulo || '').toLowerCase(),
+    login: typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '',
+  };
 
   return (
     <>
@@ -50,7 +55,7 @@ export default function CamposAsignacionCaso({
         <SelectFenix
           value={form.ajustadorLider || ''}
           onChange={setCampo('ajustadorLider')}
-          {...attrsCampoCaso(rol, 'ajustadorLider')}
+          {...attrsCampoCaso(rol, 'ajustadorLider', permisoOpts)}
         >
           {optsDe(listaLideres, form.ajustadorLider, t)}
         </SelectFenix>
@@ -59,8 +64,8 @@ export default function CamposAsignacionCaso({
         <SelectFenix
           value={form.ajustador || ''}
           onChange={setCampo('ajustador')}
-          {...attrsCampoCaso(rol, 'ajustador')}
-          disabled={attrsCampoCaso(rol, 'ajustador').disabled || sinCiudad}
+          {...attrsCampoCaso(rol, 'ajustador', permisoOpts)}
+          disabled={attrsCampoCaso(rol, 'ajustador', permisoOpts).disabled || sinCiudad}
         >
           {sinCiudad ? (
             <option value="">
@@ -84,8 +89,8 @@ export default function CamposAsignacionCaso({
         <SelectFenix
           value={form.inspector || ''}
           onChange={setCampo('inspector')}
-          {...attrsCampoCaso(rol, 'inspector')}
-          disabled={attrsCampoCaso(rol, 'inspector').disabled || sinCiudad}
+          {...attrsCampoCaso(rol, 'inspector', permisoOpts)}
+          disabled={attrsCampoCaso(rol, 'inspector', permisoOpts).disabled || sinCiudad}
         >
           {sinCiudad ? (
             <option value="">

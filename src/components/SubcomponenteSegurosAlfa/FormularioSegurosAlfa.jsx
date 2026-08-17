@@ -50,6 +50,7 @@ import {
 import {
   filtrarLideresPorModulo,
   filtrarOpcionesPorCiudad,
+  asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
   resolverLiderPorModulo,
@@ -201,40 +202,18 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     return base;
   }, [ciudadesFiltradas, form.ciudad]);
 
-  const ajustadoresPorCiudad = useMemo(
-    () => filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad),
-    [ajustadoresCat, form.ciudad]
-  );
-  const inspectoresPorCiudad = useMemo(
-    () => filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad),
-    [inspectoresCat, form.ciudad]
-  );
+  const ajustadoresPorCiudad = useMemo(() => {
+    const filtrados = filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad);
+    return asegurarOpcionActual(filtrados, form.ajustador);
+  }, [ajustadoresCat, form.ciudad, form.ajustador]);
+  const inspectoresPorCiudad = useMemo(() => {
+    const filtrados = filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad);
+    return asegurarOpcionActual(filtrados, form.inspector);
+  }, [inspectoresCat, form.ciudad, form.inspector]);
   const lideresSoloSilvia = useMemo(
     () => filtrarLideresPorModulo(responsables, 'alfa'),
     [responsables]
   );
-
-  useEffect(() => {
-    setForm((prev) => {
-      let cambio = false;
-      const next = { ...prev };
-      if (
-        prev.ajustador &&
-        !ajustadoresPorCiudad.some((a) => a.value === prev.ajustador || a.codigo === prev.ajustador)
-      ) {
-        next.ajustador = '';
-        cambio = true;
-      }
-      if (
-        prev.inspector &&
-        !inspectoresPorCiudad.some((a) => a.value === prev.inspector || a.codigo === prev.inspector)
-      ) {
-        next.inspector = '';
-        cambio = true;
-      }
-      return cambio ? next : prev;
-    });
-  }, [ajustadoresPorCiudad, inspectoresPorCiudad]);
 
   const setCampo = (clave) => (e) => {
     if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
@@ -520,6 +499,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             ajustadores={ajustadoresPorCiudad}
             inspectores={inspectoresPorCiudad}
             rol={rolUsuario}
+            modulo="alfa"
             i18nNs="segurosAlfa"
             ciudadSeleccionada={form.ciudad}
             filtrarPorCiudad

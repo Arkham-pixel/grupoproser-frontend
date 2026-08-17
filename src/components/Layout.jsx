@@ -440,6 +440,7 @@ export default function Layout() {
     '/equidad-fdm/dashboard': t('nav.pageTitles.fdmDashboard'),
     '/seguros-alfa/carga': t('nav.pageTitles.alfaAdd'),
     '/seguros-alfa/reporte': t('nav.pageTitles.alfaReport'),
+    '/seguros-alfa/dashboard': t('nav.pageTitles.alfaDashboard'),
     '/seguros-alfa/boletin': t('nav.pageTitles.alfaBulletin'),
     '/seguros-alfa/bloques': t('nav.pageTitles.alfaBlocks'),
     '/seguros-alfa/caso': t('nav.pageTitles.alfaCase'),
@@ -447,6 +448,7 @@ export default function Layout() {
     '/seguros-alfa/informe-unico': t('nav.pageTitles.alfaCase'),
     '/zurich/carga': t('nav.pageTitles.zurichAdd'),
     '/zurich/reporte': t('nav.pageTitles.zurichReport'),
+    '/zurich/dashboard': t('nav.pageTitles.zurichDashboard'),
     '/zurich/boletin': t('nav.pageTitles.zurichBulletin'),
     '/zurich/caso': t('nav.pageTitles.zurichCase'),
     '/zurich/liquidador': t('nav.pageTitles.zurichCase'),
@@ -454,6 +456,7 @@ export default function Layout() {
     '/sura/carga': t('nav.pageTitles.suraAdd'),
     '/sura/editar': t('nav.pageTitles.suraAdd'),
     '/sura/reporte': t('nav.pageTitles.suraReport'),
+    '/sura/dashboard': t('nav.pageTitles.suraDashboard'),
     '/sura/boletin': t('nav.pageTitles.suraBulletin'),
     '/sura/bloques': t('nav.pageTitles.suraBlocks'),
     '/sura/caso': t('nav.pageTitles.suraCase'),
@@ -660,6 +663,7 @@ export default function Layout() {
       ? [
           { path: '/seguros-alfa/carga', icon: FaPlus, label: t('nav.alfaAddCase') },
           { path: '/seguros-alfa/caso', icon: FaFileAlt, label: t('nav.alfaCase') },
+          { path: '/seguros-alfa/dashboard', icon: FaChartBar, label: t('nav.alfaDashboard') },
           { path: '/seguros-alfa/reporte', icon: FaTable, label: t('nav.alfaReport') },
           { path: '/seguros-alfa/boletin', icon: FaChartLine, label: t('nav.alfaBulletin') },
           { path: '/seguros-alfa/bloques', icon: FaMapMarkerAlt, label: t('nav.alfaBlocks') },
@@ -669,6 +673,7 @@ export default function Layout() {
       ? [
           { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
           { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
+          { path: '/zurich/dashboard', icon: FaChartBar, label: t('nav.zurichDashboard') },
           { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
           { path: '/zurich/boletin', icon: FaChartLine, label: t('nav.zurichBulletin') },
         ]
@@ -677,6 +682,7 @@ export default function Layout() {
       ? [
           { path: '/sura/carga', icon: FaPlus, label: t('nav.suraAddCase') },
           { path: '/sura/caso', icon: FaFileAlt, label: t('nav.suraCase') },
+          { path: '/sura/dashboard', icon: FaChartBar, label: t('nav.suraDashboard') },
           { path: '/sura/reporte', icon: FaTable, label: t('nav.suraReport') },
           { path: '/sura/boletin', icon: FaChartLine, label: t('nav.suraBulletin') },
           { path: '/sura/bloques', icon: FaMapMarkerAlt, label: t('nav.suraBlocks') },

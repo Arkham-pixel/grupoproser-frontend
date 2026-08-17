@@ -8,6 +8,7 @@ import {
   defaultInformeAgilSura,
   defaultSalvamentoSura,
   fotosNsrDesdeLiquidador,
+  valorActividadInformeAgil,
 } from './informeAgilSuraHelpers.js';
 import { calcularLiquidacionSura, defaultInformeUnicoSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -123,12 +124,16 @@ function rellenarInformeAgil(sheet, informe) {
   sheet.getCell(2, 2).value = 'DATOS BÁSICOS DE LA PÓLIZA Y DEL EVENTO';
   sheet.getRow(2).height = 20;
   CAMPOS_INFORME_AGIL.forEach((campo) => {
+    const valor =
+      campo.key === 'actividad'
+        ? valorActividadInformeAgil(informe)
+        : informe?.[campo.key] || '';
     pintarFilaLabelValor(
       sheet,
       campo.row,
       campo.row - 2,
       campo.label,
-      informe?.[campo.key] || ''
+      valor
     );
     sheet.getRow(campo.row).height = campo.tipo === 'textarea' ? 36 : 18;
   });

@@ -194,6 +194,7 @@ export default function DatosGenerales({
             ajustadores={ajustadoresCatastrofico}
             inspectores={inspectoresCatastrofico}
             rol={rolUsuario}
+            modulo="sura"
             i18nNs="segurosSura"
             ciudadSeleccionada={formData.ciudadSiniestro || formData.ciudad || ''}
             filtrarPorCiudad

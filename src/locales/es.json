@@ -352,6 +352,7 @@
       "fullEmployeeInfo": "Información Completa de Empleados",
       "alfaAdd": "Agregar caso Seguros Alfa",
       "alfaReport": "Reporte Seguros Alfa",
+      "alfaDashboard": "Dashboard Seguros Alfa",
       "alfaBulletin": "Boletín semanal Seguros Alfa",
       "alfaBlocks": "Bloques de cercanía Seguros Alfa",
       "alfaCase": "Caso Seguros Alfa",
@@ -359,11 +360,13 @@
       "alfaUniqueReport": "Informe único Seguros Alfa",
       "zurichAdd": "Agregar caso Zurich",
       "zurichReport": "Reporte Zurich",
+      "zurichDashboard": "Dashboard Zurich",
       "zurichBulletin": "Boletín semanal Zurich",
       "zurichCase": "Caso Zurich",
       "sura": "Sura",
       "suraAdd": "Agregar caso Sura",
       "suraReport": "Reporte Sura",
+      "suraDashboard": "Dashboard Sura",
       "suraBulletin": "Boletín semanal Sura",
       "suraBlocks": "Bloques de cercanía Sura",
       "suraCase": "Caso Sura",
@@ -373,6 +376,7 @@
     "segurosAlfaForm": "Formulario Seguros Alfa",
     "alfaAddCase": "Agregar caso",
     "alfaReport": "Reporte Alfa",
+    "alfaDashboard": "Dashboard",
     "alfaBulletin": "Boletín semanal",
     "alfaBlocks": "Bloques cercanos",
     "alfaCase": "Caso Alfa",
@@ -380,11 +384,13 @@
     "alfaUniqueReport": "Informe único",
     "zurichAddCase": "Agregar caso",
     "zurichReport": "Reporte Zurich",
+    "zurichDashboard": "Dashboard",
     "zurichBulletin": "Boletín semanal",
     "zurichCase": "Caso Zurich",
     "suraHome": "Sura",
     "suraAddCase": "Agregar caso",
     "suraReport": "Reporte Sura",
+    "suraDashboard": "Dashboard",
     "suraBulletin": "Boletín semanal",
     "suraBlocks": "Bloques cercanos",
     "suraCase": "Caso Sura",
@@ -1247,6 +1253,56 @@
       }
     }
   },
+  "catastroficoDashboard": {
+    "title": "Dashboard operativo",
+    "subtitle": "Cartera, ANS, valores y carga de equipo sobre los casos visibles.",
+    "loadError": "No fue posible cargar el dashboard.",
+    "filters": "Filtros",
+    "all": "Todos",
+    "from": "Desde",
+    "to": "Hasta",
+    "openBulletin": "Ver boletín semanal",
+    "noData": "No hay datos para mostrar con los filtros actuales.",
+    "kpis": {
+      "cases": "Casos",
+      "casesHint": "{{active}} activos en cartera",
+      "claimed": "Valor reclamado",
+      "claimedHint": "En activos: {{value}}",
+      "settled": "Valor liquidado",
+      "settledHint": "{{settled}} casos · {{pct}}% de la cartera",
+      "reserve": "Reserva activa",
+      "reserveHint": "Suma de reservas en casos abiertos"
+    },
+    "ans": {
+      "inspection": "ANS inspección (15 días)",
+      "settlement": "ANS liquidación (45 días)",
+      "inspectionShort": "Inspección",
+      "settlementShort": "Liquidación",
+      "overdue": "Atrasados sin fecha"
+    },
+    "charts": {
+      "byStatus": "Casos por estado",
+      "byCity": "Casos por ciudad",
+      "monthlyTrend": "Tendencia mensual · casos, reclamado y liquidado",
+      "claimed": "Reclamado",
+      "settledAmount": "Liquidado",
+      "byAdjuster": "Carga por ajustador",
+      "byInspector": "Carga por inspector",
+      "byHolder": "Casos por tomador",
+      "ansDays": "Tiempos ANS (siniestro → inspección / liquidación)",
+      "severity": "Severidad CAT (niveles 1–6)",
+      "checklist": "Checklist CAT",
+      "hoursType": "Horas por tipo",
+      "hoursPerson": "Horas por funcionario",
+      "hours": "Horas"
+    },
+    "hours": {
+      "travel": "Viaje",
+      "field": "Campo",
+      "office": "Oficina",
+      "admin": "Secretaría"
+    }
+  },
   "segurosAlfa": {
     "validation": {
       "identificacionRequired": "La identificación es obligatoria.",
@@ -2104,7 +2160,8 @@
       "savedMessage": "Informe ágil guardado en el caso.",
       "saveError": "No se pudo guardar el informe ágil.",
       "savedCaseRequired": "El caso debe estar guardado para editar el informe ágil.",
-      "noData": "No hay datos del informe ágil para guardar."
+      "noData": "No hay datos del informe ágil para guardar.",
+      "actividadOtroPlaceholder": "Especifique la actividad"
     },
     "fotosAgil": {
       "title": "Fotos del liquidador",

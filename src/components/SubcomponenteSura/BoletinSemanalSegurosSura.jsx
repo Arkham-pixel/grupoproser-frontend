@@ -98,7 +98,7 @@ export default function BoletinSemanalSegurosSura() {
           getAlertasSura().catch(() => null),
         ]);
         if (!cancelado) {
-          setCasos(filtrarCasosPorAsignacionUsuario(lista));
+          setCasos(filtrarCasosPorAsignacionUsuario(lista, { modulo: 'sura' }));
           setAlertasPayload(alertas);
         }
       } catch (err) {
@@ -201,6 +201,9 @@ export default function BoletinSemanalSegurosSura() {
             <button type="button" className={expressBtnPrimary} onClick={() => window.print()}>
               <FaPrint /> {t('segurosSura.boletin.print')}
             </button>
+            <Link to="/sura/dashboard" className={expressBtnGhost}>
+              {t('nav.suraDashboard')}
+            </Link>
             <Link to="/sura/reporte" className={expressBtnGhost}>
               {t('nav.suraReport')}
             </Link>

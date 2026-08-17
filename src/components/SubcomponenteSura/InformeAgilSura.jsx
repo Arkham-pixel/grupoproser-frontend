@@ -4,6 +4,7 @@ import {
   Campo,
   expressBtnPrimary,
   InputFenix,
+  SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
@@ -15,6 +16,7 @@ import {
   defaultInformeAgilSura,
   fusionarVaciosInformeAgil,
   computarInformeAgilDesdeCaso,
+  esOpcionOtros,
 } from './informeAgilSuraHelpers.js';
 
 export default function InformeAgilSura({
@@ -98,19 +100,70 @@ export default function InformeAgilSura({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {CAMPOS_INFORME_AGIL.map((campo) => {
             const span = campo.tipo === 'textarea' ? 'sm:col-span-2' : '';
+            const valor = form[campo.key] || '';
+            const opciones = campo.opciones || [];
+            const mostrarOtros = campo.conOtros && esOpcionOtros(valor);
+            const sufijoNit =
+              campo.key === 'nitTomador'
+                ? ' (tomador)'
+                : campo.key === 'nitAsegurado'
+                  ? ' (asegurado)'
+                  : '';
             return (
-              <Campo key={campo.key} label={`${campo.row - 2}. ${campo.label}${campo.key === 'nitTomador' ? ' (tomador)' : campo.key === 'nitAsegurado' ? ' (asegurado)' : ''}`} className={span}>
+              <Campo
+                key={campo.key}
+                label={`${campo.row - 2}. ${campo.label}${sufijoNit}`}
+                className={span}
+              >
                 {campo.tipo === 'textarea' ? (
                   <textarea
                     className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
                     rows={3}
-                    value={form[campo.key] || ''}
+                    value={valor}
                     onChange={(e) => setCampo(campo.key, e.target.value)}
                   />
+                ) : campo.tipo === 'select' ? (
+                  <>
+                    <SelectFenix
+                      value={valor}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        if (campo.conOtros && !esOpcionOtros(next)) {
+                          setForm((prev) => ({
+                            ...prev,
+                            [campo.key]: next,
+                            actividadOtro: '',
+                          }));
+                          return;
+                        }
+                        setCampo(campo.key, next);
+                      }}
+                    >
+                      <option value="">{t('common.select')}</option>
+                      {opciones.map((op) => (
+                        <option key={op} value={op}>
+                          {op}
+                        </option>
+                      ))}
+                      {valor &&
+                        !opciones.includes(valor) &&
+                        !esOpcionOtros(valor) && (
+                          <option value={valor}>{valor}</option>
+                        )}
+                    </SelectFenix>
+                    {mostrarOtros && (
+                      <InputFenix
+                        className="mt-2"
+                        placeholder={t('segurosSura.informeAgil.actividadOtroPlaceholder')}
+                        value={form.actividadOtro || ''}
+                        onChange={(e) => setCampo('actividadOtro', e.target.value)}
+                      />
+                    )}
+                  </>
                 ) : (
                   <InputFenix
                     type={campo.tipo === 'date' ? 'date' : 'text'}
-                    value={form[campo.key] || ''}
+                    value={valor}
                     onChange={(e) => setCampo(campo.key, e.target.value)}
                   />
                 )}

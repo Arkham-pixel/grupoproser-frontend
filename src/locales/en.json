@@ -352,6 +352,7 @@
       "fullEmployeeInfo": "Complete employee information",
       "alfaAdd": "Add Seguros Alfa case",
       "alfaReport": "Seguros Alfa report",
+      "alfaDashboard": "Seguros Alfa dashboard",
       "alfaBulletin": "Seguros Alfa weekly bulletin",
       "alfaBlocks": "Seguros Alfa proximity blocks",
       "alfaCase": "Seguros Alfa case",
@@ -359,11 +360,13 @@
       "alfaUniqueReport": "Seguros Alfa unique report",
       "zurichAdd": "Add Zurich case",
       "zurichReport": "Zurich report",
+      "zurichDashboard": "Zurich dashboard",
       "zurichBulletin": "Zurich weekly bulletin",
       "zurichCase": "Zurich case",
       "sura": "Sura",
       "suraAdd": "Add Sura case",
       "suraReport": "Sura report",
+      "suraDashboard": "Sura dashboard",
       "suraBulletin": "Sura weekly bulletin",
       "suraBlocks": "Sura proximity blocks",
       "suraCase": "Sura case",
@@ -373,6 +376,7 @@
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
     "alfaReport": "Alfa report",
+    "alfaDashboard": "Dashboard",
     "alfaBulletin": "Weekly bulletin",
     "alfaBlocks": "Nearby blocks",
     "alfaCase": "Alfa case",
@@ -380,11 +384,13 @@
     "alfaUniqueReport": "Unique report",
     "zurichAddCase": "Add case",
     "zurichReport": "Zurich report",
+    "zurichDashboard": "Dashboard",
     "zurichBulletin": "Weekly bulletin",
     "zurichCase": "Zurich case",
     "suraHome": "Sura",
     "suraAddCase": "Add case",
     "suraReport": "Sura report",
+    "suraDashboard": "Dashboard",
     "suraBulletin": "Weekly bulletin",
     "suraBlocks": "Nearby blocks",
     "suraCase": "Sura case",
@@ -1247,6 +1253,56 @@
       }
     }
   },
+  "catastroficoDashboard": {
+    "title": "Operations dashboard",
+    "subtitle": "Portfolio, SLA, amounts and team workload for the cases you can see.",
+    "loadError": "The dashboard could not be loaded.",
+    "filters": "Filters",
+    "all": "All",
+    "from": "From",
+    "to": "To",
+    "openBulletin": "Open weekly bulletin",
+    "noData": "No data to show with the current filters.",
+    "kpis": {
+      "cases": "Cases",
+      "casesHint": "{{active}} active in portfolio",
+      "claimed": "Claimed amount",
+      "claimedHint": "In active cases: {{value}}",
+      "settled": "Settled amount",
+      "settledHint": "{{settled}} cases · {{pct}}% of portfolio",
+      "reserve": "Active reserve",
+      "reserveHint": "Sum of reserves on open cases"
+    },
+    "ans": {
+      "inspection": "Inspection SLA (15 days)",
+      "settlement": "Settlement SLA (45 days)",
+      "inspectionShort": "Inspection",
+      "settlementShort": "Settlement",
+      "overdue": "Overdue without date"
+    },
+    "charts": {
+      "byStatus": "Cases by status",
+      "byCity": "Cases by city",
+      "monthlyTrend": "Monthly trend · cases, claimed and settled",
+      "claimed": "Claimed",
+      "settledAmount": "Settled",
+      "byAdjuster": "Load by adjuster",
+      "byInspector": "Load by inspector",
+      "byHolder": "Cases by policyholder",
+      "ansDays": "SLA times (loss → inspection / settlement)",
+      "severity": "CAT severity (levels 1–6)",
+      "checklist": "CAT checklist",
+      "hoursType": "Hours by type",
+      "hoursPerson": "Hours by staff member",
+      "hours": "Hours"
+    },
+    "hours": {
+      "travel": "Travel",
+      "field": "Field",
+      "office": "Office",
+      "admin": "Admin"
+    }
+  },
   "segurosAlfa": {
     "validation": {
       "identificacionRequired": "Identification is required.",
@@ -2104,7 +2160,8 @@
       "savedMessage": "Agile report saved on the case.",
       "saveError": "The agile report could not be saved.",
       "savedCaseRequired": "The case must be saved before editing the agile report.",
-      "noData": "There is no agile report data to save."
+      "noData": "There is no agile report data to save.",
+      "actividadOtroPlaceholder": "Specify the activity"
     },
     "fotosAgil": {
       "title": "Settlement photos",

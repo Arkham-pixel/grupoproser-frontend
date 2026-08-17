@@ -66,6 +66,7 @@ import LiquidadorEquidadFdmPage from './components/SubcomponenteEquidadFdm/Liqui
 import FormularioSegurosAlfa from './components/SubcomponenteSegurosAlfa/FormularioSegurosAlfa';
 import ReporteSegurosAlfa from './components/SubcomponenteSegurosAlfa/ReporteSegurosAlfa';
 import BoletinSemanalSegurosAlfa from './components/SubcomponenteSegurosAlfa/BoletinSemanalSegurosAlfa';
+import DashboardSegurosAlfa from './components/SubcomponenteSegurosAlfa/DashboardSegurosAlfa';
 import BloquesCercaniaSegurosAlfa from './components/SubcomponenteSegurosAlfa/BloquesCercaniaSegurosAlfa';
 import CasoSegurosAlfaWorkspace, {
   RedirectAlfaInforme,
@@ -74,6 +75,7 @@ import CasoSegurosAlfaWorkspace, {
 import FormularioZurich from './components/SubcomponenteZurich/FormularioZurich';
 import ReporteZurich from './components/SubcomponenteZurich/ReporteZurich';
 import BoletinSemanalZurich from './components/SubcomponenteZurich/BoletinSemanalZurich';
+import DashboardZurich from './components/SubcomponenteZurich/DashboardZurich';
 import CasoZurichWorkspace, {
   RedirectZurichInforme,
   RedirectZurichLiquidador,
@@ -81,6 +83,7 @@ import CasoZurichWorkspace, {
 import { FormularioCasoSuraPage } from './components/SubcomponenteSura/FormularioCasoSura';
 import ReporteSegurosSura from './components/SubcomponenteSura/ReporteSegurosSura';
 import BoletinSemanalSegurosSura from './components/SubcomponenteSura/BoletinSemanalSegurosSura';
+import DashboardSegurosSura from './components/SubcomponenteSura/DashboardSegurosSura';
 import BloquesCercaniaSegurosSura from './components/SubcomponenteSura/BloquesCercaniaSegurosSura';
 import CasoSegurosSuraWorkspace, {
   RedirectSuraInforme,
@@ -552,6 +555,7 @@ export default function App() {
 
           <Route path="seguros-alfa/carga" element={<FormularioSegurosAlfa />} />
           <Route path="seguros-alfa/reporte" element={<ReporteSegurosAlfa />} />
+          <Route path="seguros-alfa/dashboard" element={<DashboardSegurosAlfa />} />
           <Route path="seguros-alfa/boletin" element={<BoletinSemanalSegurosAlfa />} />
           <Route path="seguros-alfa/bloques" element={<BloquesCercaniaSegurosAlfa />} />
           <Route path="seguros-alfa/caso" element={<CasoSegurosAlfaWorkspace />} />
@@ -560,6 +564,7 @@ export default function App() {
 
           <Route path="zurich/carga" element={<FormularioZurich />} />
           <Route path="zurich/reporte" element={<ReporteZurich />} />
+          <Route path="zurich/dashboard" element={<DashboardZurich />} />
           <Route path="zurich/boletin" element={<BoletinSemanalZurich />} />
           <Route path="zurich/caso" element={<CasoZurichWorkspace />} />
           <Route path="zurich/liquidador" element={<RedirectZurichLiquidador />} />
@@ -568,6 +573,7 @@ export default function App() {
           <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
           <Route path="sura/editar" element={<FormularioCasoSuraPage />} />
           <Route path="sura/reporte" element={<ReporteSegurosSura />} />
+          <Route path="sura/dashboard" element={<DashboardSegurosSura />} />
           <Route path="sura/boletin" element={<BoletinSemanalSegurosSura />} />
           <Route path="sura/bloques" element={<BloquesCercaniaSegurosSura />} />
           <Route path="sura/caso" element={<CasoSegurosSuraWorkspace />} />

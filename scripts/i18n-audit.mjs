@@ -38,6 +38,13 @@ function moduleOf(f) {
     return 'Riesgos';
   if (rel.startsWith('SubcomponenteExpress')) return 'Express';
   if (rel.startsWith('SubcomponenteEquidadFdm')) return 'Equidad FDM';
+  if (
+    rel.startsWith('SubcomponenteDashboardCatastrofico') ||
+    rel.startsWith('SubcomponenteSegurosAlfa') ||
+    rel.startsWith('SubcomponenteSura') ||
+    rel.startsWith('SubcomponenteZurich')
+  )
+    return 'Catastrófico';
   if (rel.startsWith('SubcomponentePropiedades') || /FormularioInspeccionPropiedades/.test(rel))
     return 'Propiedades';
   if (rel.startsWith('FormularioPuertos') || rel.startsWith('Puertos') || /Puertos/.test(rel))

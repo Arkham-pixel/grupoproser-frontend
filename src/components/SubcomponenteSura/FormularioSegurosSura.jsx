@@ -44,11 +44,13 @@ import {
   attrsCampoCaso,
   esRolInspector,
   filtrarPayloadCasoPorRol,
+  obtenerContextoPermisoCaso,
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
 import {
   filtrarLideresPorModulo,
   filtrarOpcionesPorCiudad,
+  asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
   resolverLiderPorModulo,
@@ -78,6 +80,7 @@ const opcionHuerfana = (valor, opciones = []) => {
 const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onSaved }) => {
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
+  const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('sura'), []);
   const soloInspector = esRolInspector(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
   const puedeImportarExcel = esAdminOSoporteSura();
@@ -200,49 +203,27 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
     return base;
   }, [ciudadesFiltradas, form.ciudad]);
 
-  const ajustadoresPorCiudad = useMemo(
-    () => filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad),
-    [ajustadoresCat, form.ciudad]
-  );
-  const inspectoresPorCiudad = useMemo(
-    () => filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad),
-    [inspectoresCat, form.ciudad]
-  );
+  const ajustadoresPorCiudad = useMemo(() => {
+    const filtrados = filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad);
+    return asegurarOpcionActual(filtrados, form.ajustador);
+  }, [ajustadoresCat, form.ciudad, form.ajustador]);
+  const inspectoresPorCiudad = useMemo(() => {
+    const filtrados = filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad);
+    return asegurarOpcionActual(filtrados, form.inspector);
+  }, [inspectoresCat, form.ciudad, form.inspector]);
   const lideresSoloBernardo = useMemo(
     () => filtrarLideresPorModulo(responsables, 'sura'),
     [responsables]
   );
 
-  useEffect(() => {
-    setForm((prev) => {
-      let cambio = false;
-      const next = { ...prev };
-      if (
-        prev.ajustador &&
-        !ajustadoresPorCiudad.some((a) => a.value === prev.ajustador || a.codigo === prev.ajustador)
-      ) {
-        next.ajustador = '';
-        cambio = true;
-      }
-      if (
-        prev.inspector &&
-        !inspectoresPorCiudad.some((a) => a.value === prev.inspector || a.codigo === prev.inspector)
-      ) {
-        next.inspector = '';
-        cambio = true;
-      }
-      return cambio ? next : prev;
-    });
-  }, [ajustadoresPorCiudad, inspectoresPorCiudad]);
-
   const setCampo = (clave) => (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
+    if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: valor }));
   };
 
   const setDepartamento = (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, 'departamento')) return;
+    if (!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => {
       const siguiente = { ...prev, departamento: valor };
@@ -259,7 +240,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
   };
 
   const setCampoMiles = (clave) => (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
+    if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: formatMilesInput(valor) }));
   };
@@ -273,7 +254,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
       value={form[clave]}
       onChange={setCampoMiles(clave)}
       placeholder="0"
-      {...attrsCampoCaso(rolUsuario, clave)}
+      {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
     />
   );
 
@@ -309,7 +290,8 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
       const { payload } = filtrarPayloadCasoPorRol(
         rolUsuario,
         bruto,
-        esEdicion ? initialData || {} : {}
+        esEdicion ? initialData || {} : {},
+        ctxPermiso
       );
       let guardado;
       if (esEdicion) {
@@ -355,7 +337,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
     <SelectFenix
       value={form[clave]}
       onChange={setCampo(clave)}
-      {...attrsCampoCaso(rolUsuario, clave)}
+      {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
     >
       <option value="">{placeholder}</option>
       {opciones.map((op) => (
@@ -453,7 +435,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
               value={form.ciudad || ''}
               onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
               disabled={
-                attrsCampoCaso(rolUsuario, 'ciudad').disabled ||
+                attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
                 (cargandoCatalogos && ciudadesFiltradas.length === 0)
               }
               placeholder={
@@ -519,6 +501,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
             ajustadores={ajustadoresPorCiudad}
             inspectores={inspectoresPorCiudad}
             rol={rolUsuario}
+            modulo="sura"
             i18nNs="segurosSura"
             ciudadSeleccionada={form.ciudad}
             filtrarPorCiudad

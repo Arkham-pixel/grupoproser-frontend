@@ -1,9 +1,87 @@
+import { TIPOS_INMUEBLE_CONTENIDOS_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularLiquidacionSura,
   encabezadoDesdeCasoSura,
   formatearMonto,
   mapCasoSuraALiquidador,
 } from './liquidadorSuraHelpers.js';
+
+export const VALOR_OTROS_INFORME_AGIL = 'Otros';
+
+export const OPCIONES_PAGO_INFORME_AGIL = ['Caja', 'Transferencia'];
+export const OPCIONES_SI_NO_INFORME_AGIL = ['Sí', 'No'];
+export const OPCIONES_ARTICULO_INFORME_AGIL = ['Edificio', 'Contenido', 'Edificio y contenido'];
+
+const normTxt = (valor) =>
+  String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase();
+
+export function esOpcionOtros(valor) {
+  return /^OTROS?$/.test(normTxt(valor));
+}
+
+/** Ocupaciones ya usadas en Sura (NSR-10) + Otros. */
+export const ACTIVIDADES_INFORME_AGIL = [
+  ...TIPOS_INMUEBLE_CONTENIDOS_NSR10.filter((tipo) => !esOpcionOtros(tipo)),
+  VALOR_OTROS_INFORME_AGIL,
+];
+
+const matchOpcion = (valor, opciones = []) => {
+  const n = normTxt(valor);
+  if (!n) return '';
+  return opciones.find((op) => normTxt(op) === n) || '';
+};
+
+const matchArticulo = (valor) => {
+  const n = normTxt(valor);
+  if (!n) return '';
+  const tieneEdificio = n.includes('EDIFICIO');
+  const tieneContenido = n.includes('CONTENIDO');
+  if (tieneEdificio && tieneContenido) return 'Edificio y contenido';
+  if (tieneContenido) return 'Contenido';
+  if (tieneEdificio) return 'Edificio';
+  return matchOpcion(valor, OPCIONES_ARTICULO_INFORME_AGIL);
+};
+
+/** Texto que va al Excel: si eligió Otros, usa el texto libre. */
+export function valorActividadInformeAgil(informe = {}) {
+  if (esOpcionOtros(informe.actividad)) {
+    const otro = String(informe.actividadOtro || '').trim();
+    return otro || VALOR_OTROS_INFORME_AGIL;
+  }
+  return String(informe.actividad || '').trim();
+}
+
+export function normalizarCamposSelectInformeAgil(form = {}) {
+  const next = { ...form };
+  const pago = matchOpcion(form.pagoTransferenciaOCaja, OPCIONES_PAGO_INFORME_AGIL);
+  if (pago) next.pagoTransferenciaOCaja = pago;
+  const siNo = matchOpcion(form.cuentaEmbargada, OPCIONES_SI_NO_INFORME_AGIL);
+  if (siNo) next.cuentaEmbargada = siNo;
+  const articulo = matchArticulo(form.articulo);
+  if (articulo) next.articulo = articulo;
+
+  const act = String(form.actividad || '').trim();
+  if (act) {
+    const catalogoSinOtros = ACTIVIDADES_INFORME_AGIL.filter((op) => !esOpcionOtros(op));
+    const match = matchOpcion(act, catalogoSinOtros);
+    if (match) {
+      next.actividad = match;
+    } else if (esOpcionOtros(act)) {
+      next.actividad = VALOR_OTROS_INFORME_AGIL;
+    } else {
+      next.actividad = VALOR_OTROS_INFORME_AGIL;
+      next.actividadOtro = String(form.actividadOtro || act).trim();
+    }
+  }
+  if (!esVacio(form.actividadOtro) && esVacio(next.actividadOtro)) {
+    next.actividadOtro = form.actividadOtro;
+  }
+  return next;
+}
 
 const fechaInput = (value) => {
   if (!value) return '';
@@ -42,10 +120,10 @@ const lugarHechos = (caso = {}, enc = {}) => {
 const articuloDesdeCaso = (caso = {}) => {
   const inmueble = caso.valorAseguradoInmueble != null && caso.valorAseguradoInmueble !== '';
   const contenidos = caso.valorAseguradoContenidos != null && caso.valorAseguradoContenidos !== '';
-  if (inmueble && contenidos) return 'EDIFICIO, CONTENIDOS';
-  if (contenidos) return 'CONTENIDOS';
-  if (inmueble) return 'EDIFICIO';
-  return texto(caso.amprAfctdo, caso.cobertura);
+  if (inmueble && contenidos) return 'Edificio y contenido';
+  if (contenidos) return 'Contenido';
+  if (inmueble) return 'Edificio';
+  return matchArticulo(texto(caso.amprAfctdo, caso.cobertura));
 };
 
 const valorAseguradoDesdeCaso = (caso = {}) => {
@@ -66,9 +144,21 @@ export const CAMPOS_INFORME_AGIL = [
   { key: 'nitAsegurado', label: 'NIT/CC.', row: 7, tipo: 'text' },
   { key: 'correo', label: 'CORREO ELECTRÓNICO', row: 8, tipo: 'text' },
   { key: 'celular', label: 'CELULAR / TELÉFONO', row: 9, tipo: 'text' },
-  { key: 'pagoTransferenciaOCaja', label: 'PAGO POR TRANSFERENCIA O CAJA', row: 10, tipo: 'text' },
+  {
+    key: 'pagoTransferenciaOCaja',
+    label: 'PAGO POR TRANSFERENCIA O CAJA',
+    row: 10,
+    tipo: 'select',
+    opciones: OPCIONES_PAGO_INFORME_AGIL,
+  },
   { key: 'cuentaBancaria', label: 'CUENTA BANCARIA', row: 11, tipo: 'text' },
-  { key: 'cuentaEmbargada', label: 'CUENTA EMBARGADA?', row: 12, tipo: 'text' },
+  {
+    key: 'cuentaEmbargada',
+    label: 'CUENTA EMBARGADA?',
+    row: 12,
+    tipo: 'select',
+    opciones: OPCIONES_SI_NO_INFORME_AGIL,
+  },
   { key: 'siniestroAjustador', label: 'SINIESTRO AJUSTADOR (si aplica)', row: 13, tipo: 'text' },
   { key: 'poliza', label: 'PÓLIZA', row: 14, tipo: 'text' },
   { key: 'vigenciaPoliza', label: 'VIGENCIA DE LA PÓLIZA', row: 15, tipo: 'text' },
@@ -83,11 +173,24 @@ export const CAMPOS_INFORME_AGIL = [
   { key: 'fechaUltimoDocumento', label: 'FECHA ÚLTIMO DOCUMENTO', row: 24, tipo: 'date' },
   { key: 'envioInformacionAnalista', label: 'ENVÍO INFORMACIÓN POR ANALISTA', row: 25, tipo: 'text' },
   { key: 'lugarHechos', label: 'LUGAR DE LOS HECHOS (dirección/ciudad)', row: 26, tipo: 'textarea' },
-  { key: 'actividad', label: 'ACTIVIDAD', row: 27, tipo: 'text' },
+  {
+    key: 'actividad',
+    label: 'ACTIVIDAD',
+    row: 27,
+    tipo: 'select',
+    opciones: ACTIVIDADES_INFORME_AGIL,
+    conOtros: true,
+  },
   { key: 'causaSiniestro', label: 'CAUSA DEL SINIESTRO', row: 28, tipo: 'textarea' },
   { key: 'conceptoPerdida', label: 'CONCEPTO DE LA PÉRDIDA', row: 29, tipo: 'textarea' },
   { key: 'amparoAfectado', label: 'AMPARO AFECTADO', row: 30, tipo: 'text' },
-  { key: 'articulo', label: 'ARTÍCULO (EDIFICIO, CONTENIDOS)', row: 31, tipo: 'text' },
+  {
+    key: 'articulo',
+    label: 'ARTÍCULO (EDIFICIO, CONTENIDOS)',
+    row: 31,
+    tipo: 'select',
+    opciones: OPCIONES_ARTICULO_INFORME_AGIL,
+  },
   { key: 'valorReclamado', label: 'VALOR RECLAMADO', row: 32, tipo: 'text' },
   { key: 'valorAsegurado', label: 'VALOR ASEGURADO', row: 33, tipo: 'text' },
   { key: 'solicitudDocumentos', label: 'SOLICITUD DOCUMENTOS (SI APLICA)', row: 34, tipo: 'textarea' },
@@ -209,7 +312,8 @@ export function defaultInformeAgilSura(opts = {}) {
   for (const campo of CAMPOS_INFORME_AGIL) {
     if (!esVacio(guardado[campo.key])) merged[campo.key] = guardado[campo.key];
   }
-  return merged;
+  if (!esVacio(guardado.actividadOtro)) merged.actividadOtro = guardado.actividadOtro;
+  return normalizarCamposSelectInformeAgil(merged);
 }
 
 export function fusionarVaciosInformeAgil(actual = {}, computed = {}) {
@@ -219,7 +323,10 @@ export function fusionarVaciosInformeAgil(actual = {}, computed = {}) {
       next[campo.key] = computed[campo.key];
     }
   }
-  return next;
+  if (esVacio(next.actividadOtro) && !esVacio(computed.actividadOtro)) {
+    next.actividadOtro = computed.actividadOtro;
+  }
+  return normalizarCamposSelectInformeAgil(next);
 }
 
 export function fotosNsrDesdeLiquidador(liquidador = {}) {
