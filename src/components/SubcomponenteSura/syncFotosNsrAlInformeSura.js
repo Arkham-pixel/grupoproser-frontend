@@ -5,9 +5,11 @@
 import {
   actualizarArchivoSura,
   guardarInformeUnicoEnCasoSura,
+  guardarSeccionCasoSura,
   subirArchivoSura,
 } from '../../services/segurosSuraService.js';
 import { defaultInformeUnicoSura } from './liquidadorSuraHelpers.js';
+import { fusionarFotosAgilEnInforme, serializarFotosAgilSura } from './informeAgilSuraHelpers.js';
 
 export function descripcionFotoNsr(item = {}) {
   const codigo = String(item.codigo || '').trim();
@@ -105,5 +107,33 @@ export async function sincronizarFotosNsrEnInformeCaso({
     casoId,
     informeUnico: informe,
     casoBase,
+  });
+}
+
+/** Persiste fotosAgil y las copia a informeUnico.fotosInspeccion (Word / pestaña Documentos). */
+export async function sincronizarFotosAgilEnInformeCaso({
+  casoId,
+  casoBase = {},
+  fotosAgil = [],
+}) {
+  if (!casoId) return null;
+  const lista = serializarFotosAgilSura(fotosAgil);
+  const baseInforme = defaultInformeUnicoSura(casoBase);
+  const guardado =
+    casoBase.informeUnico && typeof casoBase.informeUnico === 'object'
+      ? casoBase.informeUnico
+      : {};
+  const informe = {
+    ...baseInforme,
+    ...guardado,
+    fotosInspeccion: fusionarFotosAgilEnInforme(
+      Array.isArray(guardado.fotosInspeccion) ? guardado.fotosInspeccion : [],
+      lista
+    ),
+  };
+  return guardarSeccionCasoSura({
+    casoId,
+    casoBase,
+    patch: { fotosAgil: lista, informeUnico: informe },
   });
 }

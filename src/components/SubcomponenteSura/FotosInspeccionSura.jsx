@@ -37,6 +37,7 @@ export default function FotosInspeccionSura({
   onFotosInformeChange,
   onArchivoCreado,
   onArchivoEliminado,
+  inputIdPrefix = 'sura-foto',
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -300,7 +301,7 @@ export default function FotosInspeccionSura({
             </div>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <input
-                id="sura-foto-camara"
+                id={`${inputIdPrefix}-camara`}
                 type="file"
                 accept="image/*"
                 capture="environment"
@@ -309,7 +310,7 @@ export default function FotosInspeccionSura({
                 onChange={handleImageUpload}
               />
               <input
-                id="sura-foto-galeria"
+                id={`${inputIdPrefix}-galeria`}
                 type="file"
                 accept="image/*"
                 multiple
@@ -318,7 +319,7 @@ export default function FotosInspeccionSura({
                 onChange={handleImageUpload}
               />
               <label
-                htmlFor="sura-foto-camara"
+                htmlFor={`${inputIdPrefix}-camara`}
                 className="inline-flex cursor-pointer items-center gap-2 rounded-lg px-4 py-2 text-white"
                 style={{ backgroundColor: theme === 'dark' ? '#2563EB' : '#2563EB' }}
               >
@@ -326,7 +327,7 @@ export default function FotosInspeccionSura({
                 Tomar foto
               </label>
               <label
-                htmlFor="sura-foto-galeria"
+                htmlFor={`${inputIdPrefix}-galeria`}
                 className="inline-flex cursor-pointer items-center rounded-lg px-4 py-2 text-white"
                 style={{ backgroundColor: theme === 'dark' ? '#9333EA' : '#9333EA' }}
               >

@@ -5,6 +5,7 @@ import { descripcionFotoNsr } from './syncFotosNsrAlInformeSura.js';
 import { generarWorkbookLiquidadorSuraNsr } from './generarLiquidadorSuraExcel.js';
 import {
   CAMPOS_INFORME_AGIL,
+  defaultFotosAgilSura,
   defaultInformeAgilSura,
   defaultSalvamentoSura,
   fotosNsrDesdeLiquidador,
@@ -139,16 +140,29 @@ function rellenarInformeAgil(sheet, informe) {
   });
 }
 
-async function rellenarFotos(workbook, sheet, liquidador) {
+function tituloFotoAgil(item = {}) {
+  const leyenda = String(item.descripcion || item.nombre || item.nombreOriginal || '').trim();
+  if (leyenda) return leyenda;
+  return descripcionFotoNsr(item);
+}
+
+function listaFotosParaExcel(fotosAgil, liquidador) {
+  const propias = Array.isArray(fotosAgil)
+    ? fotosAgil.filter((f) => f?.ruta || f?.fotoRuta || f?.preview || f?.fotoPreview || f?._id)
+    : [];
+  if (propias.length) return propias;
+  return fotosNsrDesdeLiquidador(liquidador);
+}
+
+async function rellenarFotos(workbook, sheet, fotos = []) {
   sheet.name = 'FOTOS';
   sheet.getColumn(1).width = 48;
   sheet.getColumn(2).width = 48;
   estiloEncabezado(sheet.getCell(1, 1));
   sheet.mergeCells(1, 1, 1, 2);
-  sheet.getCell(1, 1).value = 'FOTOS (liquidador NSR-10)';
-  const fotos = fotosNsrDesdeLiquidador(liquidador);
+  sheet.getCell(1, 1).value = 'FOTOS';
   if (!fotos.length) {
-    sheet.getCell(3, 1).value = 'No hay fotos cargadas en el liquidador.';
+    sheet.getCell(3, 1).value = 'No hay fotos cargadas en la sección Fotos.';
     return;
   }
   let row = 3;
@@ -158,7 +172,7 @@ async function rellenarFotos(workbook, sheet, liquidador) {
     for (let c = 0; c < par.length; c++) {
       const item = par[c];
       const img = await resolverBufferFoto(item);
-      sheet.getCell(row + 1, c + 1).value = descripcionFotoNsr(item);
+      sheet.getCell(row + 1, c + 1).value = tituloFotoAgil(item);
       sheet.getCell(row + 1, c + 1).font = VALUE_FONT;
       sheet.getCell(row + 1, c + 1).alignment = { wrapText: true };
       if (!img) continue;
@@ -288,6 +302,7 @@ export async function descargarFormatoAgilSuraExcel({
   totales = null,
   informeUnico = null,
   salvamento = null,
+  fotosAgil = null,
 } = {}) {
   const liq = liquidador || mapCasoSuraALiquidador(casoSura);
   const tot = totales || calcularLiquidacionSura(liq);
@@ -296,6 +311,10 @@ export async function descargarFormatoAgilSuraExcel({
     defaultInformeAgilSura({ caso: casoSura, liquidador: liq, totales: tot, salvamento });
   const informe = informeUnico || defaultInformeUnicoSura(casoSura);
   const sal = salvamento || defaultSalvamentoSura(casoSura);
+  const fotos = listaFotosParaExcel(
+    fotosAgil ?? defaultFotosAgilSura(casoSura, liq),
+    liq
+  );
 
   const workbook = await generarWorkbookLiquidadorSuraNsr(liq);
   workbook.creator = 'Grupo Proser';
@@ -303,7 +322,7 @@ export async function descargarFormatoAgilSuraExcel({
 
   rellenarInformeAgil(workbook.addWorksheet('InformeAgil'), agil);
   anexarResumenIndemnizacion(workbook.getWorksheet('Presupuesto'), tot);
-  await rellenarFotos(workbook, workbook.addWorksheet('FOTOS'), liq);
+  await rellenarFotos(workbook, workbook.addWorksheet('FOTOS'), fotos);
   rellenarDocumentos(workbook.addWorksheet('DOCUMENTOS'), informe, casoSura);
   rellenarSalvamento(workbook.addWorksheet('SALVAMENTO'), sal);
   ordenarHojasFormatoAgil(workbook);

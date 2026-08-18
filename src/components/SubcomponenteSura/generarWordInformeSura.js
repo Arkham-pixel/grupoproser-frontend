@@ -29,6 +29,7 @@ import {
 } from './liquidadorSuraHelpers.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { fusionarFotosAgilEnInforme } from './informeAgilSuraHelpers.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -963,11 +964,14 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
       /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre)
     );
   });
-  const fotosInforme = Array.isArray(info?.fotosInspeccion)
-    ? info.fotosInspeccion
-    : Array.isArray(informe?.fotosInspeccion)
-      ? informe.fotosInspeccion
-      : [];
+  const fotosInforme = fusionarFotosAgilEnInforme(
+    Array.isArray(info?.fotosInspeccion)
+      ? info.fotosInspeccion
+      : Array.isArray(informe?.fotosInspeccion)
+        ? informe.fotosInspeccion
+        : [],
+    Array.isArray(caso.fotosAgil) ? caso.fotosAgil : []
+  );
   const archivosById = new Map(
     fotosArchivos.filter((a) => a?._id).map((a) => [String(a._id), a])
   );
@@ -1010,7 +1014,7 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
   if (!fotosEmbebidas.length) {
     fotoParrafos.push(
       p(
-        'Pendiente registro fotográfico. Suba las fotos en la sección 6 del informe (Carga de Imágenes).',
+        'Pendiente registro fotográfico. Suba las fotos en la pestaña Fotos o en la sección 6 del informe (Carga de Imágenes).',
         { size: SIZE_12 }
       )
     );

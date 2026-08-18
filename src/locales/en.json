@@ -2164,10 +2164,13 @@
       "actividadOtroPlaceholder": "Specify the activity"
     },
     "fotosAgil": {
-      "title": "Settlement photos",
-      "hint": "These are the same NSR-10 budget photos, shown larger. Upload them in Budget so they appear here and in Excel.",
-      "goBudget": "Go to Budget",
-      "empty": "No photos yet. Open Budget and upload them on each settlement item."
+      "title": "Photos",
+      "hint": "Upload the case photos here. They will appear in this section, in the unique report and in the agile Excel.",
+      "save": "Save photos",
+      "savedMessage": "Photos saved on the case.",
+      "saveError": "The photos could not be saved.",
+      "savedCaseRequired": "The case must be saved before uploading photos.",
+      "empty": "No photos yet. Use “Take photo” or “Gallery” to upload them."
     },
     "salvamento": {
       "title": "Salvage",

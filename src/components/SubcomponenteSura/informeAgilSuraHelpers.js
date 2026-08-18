@@ -1,6 +1,7 @@
 import { TIPOS_INMUEBLE_CONTENIDOS_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularLiquidacionSura,
+  defaultInformeUnicoSura,
   encabezadoDesdeCasoSura,
   formatearMonto,
   mapCasoSuraALiquidador,
@@ -335,6 +336,90 @@ export function fotosNsrDesdeLiquidador(liquidador = {}) {
   return items
     .map((it, index) => ({ ...it, _indexNsr: index }))
     .filter((it) => it?.fotoArchivoId || it?.fotoRuta || it?.fotoPreview);
+}
+
+/** Convierte ítems NSR con foto al formato de galería de la pestaña Fotos. */
+export function fotosAgilDesdeNsr(liquidador = {}) {
+  return fotosNsrDesdeLiquidador(liquidador).map((it) => ({
+    _id: it.fotoArchivoId || undefined,
+    ruta: it.fotoRuta || '',
+    preview: it.fotoPreview || '',
+    nombre: it.fotoRef || it.elemento || it.codigo || 'Foto',
+    nombreOriginal: it.fotoRef || '',
+    descripcion: [it.codigo, it.elemento].filter(Boolean).join(' — ') || it.fotoRef || '',
+    origen: 'liquidador-nsr10',
+    codigoNsr: it.codigo || '',
+  }));
+}
+
+/**
+ * Fotos de la pestaña 3 del formato ágil.
+ * Si el caso ya tiene `fotosAgil` (aunque esté vacío), se respeta.
+ * Si no, se migran las fotos NSR-10 históricas.
+ */
+export function defaultFotosAgilSura(caso = {}, liquidador = null) {
+  if (Array.isArray(caso?.fotosAgil)) return caso.fotosAgil;
+  return fotosAgilDesdeNsr(liquidador || caso?.liquidador || {});
+}
+
+/** Quita File/blob antes de persistir el caso. */
+export function serializarFotosAgilSura(fotos = []) {
+  return (Array.isArray(fotos) ? fotos : [])
+    .map((f) => ({
+      _id: f?._id || undefined,
+      ruta: f?.ruta || f?.fotoRuta || '',
+      nombre: f?.nombre || f?.nombreOriginal || '',
+      nombreOriginal: f?.nombreOriginal || f?.nombre || '',
+      descripcion: f?.descripcion || '',
+      tipoMime: f?.tipoMime || '',
+      origen: f?.origen || 'fotos-agil',
+      codigoNsr: f?.codigoNsr || '',
+    }))
+    .filter((f) => f._id || f.ruta);
+}
+
+/**
+ * Fusiona la galería de la pestaña Fotos en informeUnico.fotosInspeccion
+ * sin borrar las subidas a mano en Documentos.
+ */
+export function fusionarFotosAgilEnInforme(fotosInforme = [], fotosAgil = []) {
+  const desdeAgil = serializarFotosAgilSura(fotosAgil).map((f) => ({
+    ...f,
+    origen: f.origen === 'liquidador-nsr10' ? 'liquidador-nsr10' : 'fotos-agil',
+  }));
+  const idsAgil = new Set(desdeAgil.map((f) => String(f._id || '')).filter(Boolean));
+  const rutasAgil = new Set(desdeAgil.map((f) => String(f.ruta || '')).filter(Boolean));
+
+  const base = (Array.isArray(fotosInforme) ? fotosInforme : []).filter((f) => {
+    if (f?.origen === 'fotos-agil' || f?.origen === 'liquidador-nsr10') {
+      const id = String(f._id || '');
+      const ruta = String(f.ruta || '');
+      if (id && idsAgil.has(id)) return false;
+      if (!id && ruta && rutasAgil.has(ruta)) return false;
+      if (f?.origen === 'fotos-agil') return false;
+    }
+    return true;
+  });
+
+  const sinDup = base.filter((f) => {
+    if (f?._id && idsAgil.has(String(f._id))) return false;
+    if (f?.ruta && rutasAgil.has(String(f.ruta))) return false;
+    return true;
+  });
+
+  return [...sinDup, ...desdeAgil];
+}
+
+/** Informe único con las fotos de la pestaña 3 ya mezcladas. */
+export function informeUnicoConFotosAgil(caso = {}) {
+  const informe = defaultInformeUnicoSura(caso);
+  return {
+    ...informe,
+    fotosInspeccion: fusionarFotosAgilEnInforme(
+      informe.fotosInspeccion,
+      Array.isArray(caso.fotosAgil) ? caso.fotosAgil : []
+    ),
+  };
 }
 
 export function filasPresupuestoDesdeLiquidador(liquidador = {}) {

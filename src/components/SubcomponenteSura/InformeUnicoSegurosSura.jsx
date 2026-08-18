@@ -17,12 +17,12 @@ import {
 import {
   INFO_EVENTO_DEFAULT_SURA,
   calcularLiquidacionSura,
-  defaultInformeUnicoSura,
   formDataNsrDesdeLiquidadorSura,
   formatearMonto,
   formatDateLarga,
   mapCasoSuraALiquidador,
 } from './liquidadorSuraHelpers.js';
+import { informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
 import { descargarWordInformeSura } from './generarWordInformeSura.js';
 import { subirArchivoSura } from '../../services/segurosSuraService.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
@@ -53,7 +53,7 @@ export default function InformeUnicoSegurosSura({
   guardandoCaso = false,
 }) {
   const { t } = useTranslation();
-  const [informe, setInforme] = useState(() => defaultInformeUnicoSura(casoSura || {}));
+  const [informe, setInforme] = useState(() => informeUnicoConFotosAgil(casoSura || {}));
   const [liquidador, setLiquidador] = useState(() => mapCasoSuraALiquidador(casoSura || {}));
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -99,7 +99,7 @@ export default function InformeUnicoSegurosSura({
   };
 
   useEffect(() => {
-    setInforme(defaultInformeUnicoSura(casoSura || {}));
+    setInforme(informeUnicoConFotosAgil(casoSura || {}));
     setLiquidador(mapCasoSuraALiquidador(casoSura || {}));
   }, [casoSura?._id]);
 

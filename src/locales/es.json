@@ -2164,10 +2164,13 @@
       "actividadOtroPlaceholder": "Especifique la actividad"
     },
     "fotosAgil": {
-      "title": "Fotos del liquidador",
-      "hint": "Son las mismas fotos del presupuesto (NSR-10), con mayor tamaño. Cárguelas en Presupuesto para que aparezcan aquí y en el Excel.",
-      "goBudget": "Ir a Presupuesto",
-      "empty": "Aún no hay fotos. Ábralas en Presupuesto y súbalas en cada ítem del liquidador."
+      "title": "Fotos",
+      "hint": "Cargue aquí las fotos del caso. Aparecerán en esta sección, en el informe único y en el Excel del formato ágil.",
+      "save": "Guardar fotos",
+      "savedMessage": "Fotos guardadas en el caso.",
+      "saveError": "No se pudieron guardar las fotos.",
+      "savedCaseRequired": "El caso debe estar guardado para cargar fotos.",
+      "empty": "Aún no hay fotos. Use «Tomar foto» o «Galería» para cargarlas."
     },
     "salvamento": {
       "title": "Salvamento",

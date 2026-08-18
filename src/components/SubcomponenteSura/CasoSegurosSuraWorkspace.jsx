@@ -26,6 +26,8 @@ import {
 } from '../../services/segurosSuraService.js';
 import { calcularLiquidacionSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
 import { descargarFormatoAgilSuraExcel } from './generarFormatoAgilSuraExcel.js';
+import { defaultFotosAgilSura, serializarFotosAgilSura } from './informeAgilSuraHelpers.js';
+import { sincronizarFotosAgilEnInformeCaso } from './syncFotosNsrAlInformeSura.js';
 import useSuraCasoAutosave from '../../hooks/useSuraCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 
@@ -98,6 +100,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const [informeState, setInformeState] = useState(null);
   const [informeAgilState, setInformeAgilState] = useState(null);
   const [salvamentoState, setSalvamentoState] = useState(null);
+  const [fotosAgilState, setFotosAgilState] = useState(null);
   const [cargandoCaso, setCargandoCaso] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [exportando, setExportando] = useState(false);
@@ -111,6 +114,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
     const liq = mapCasoSuraALiquidador(caso || {});
     setLiquidadorState(liq);
     setTotalesState(calcularLiquidacionSura(liq));
+    setFotosAgilState(defaultFotosAgilSura(caso || {}, liq));
   };
 
   const casoConSecciones = useCallback(
@@ -118,10 +122,13 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
       ...(casoSura || {}),
       informeAgil: informeAgilState || casoSura?.informeAgil,
       salvamento: salvamentoState || casoSura?.salvamento,
+      fotosAgil: serializarFotosAgilSura(
+        fotosAgilState ?? defaultFotosAgilSura(casoSura || {}, liquidadorState)
+      ),
       liquidador: liquidadorState || casoSura?.liquidador,
       informeUnico: informeState || casoSura?.informeUnico,
     }),
-    [casoSura, informeAgilState, salvamentoState, liquidadorState, informeState]
+    [casoSura, informeAgilState, salvamentoState, fotosAgilState, liquidadorState, informeState]
   );
 
   useEffect(() => {
@@ -294,11 +301,41 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
     }
   };
 
+  const handleGuardarFotosAgil = async (fotosArg) => {
+    if (!casoId) {
+      setError(t('segurosSura.fotosAgil.savedCaseRequired'));
+      return;
+    }
+    const fotosAgil = serializarFotosAgilSura(
+      fotosArg ?? fotosAgilState ?? defaultFotosAgilSura(casoSura || {}, liquidadorState)
+    );
+    setGuardando(true);
+    setError('');
+    setMensaje('');
+    try {
+      const actualizado = await sincronizarFotosAgilEnInformeCaso({
+        casoId,
+        casoBase: casoConSecciones(),
+        fotosAgil,
+      });
+      setCasoSura(actualizado);
+      setFotosAgilState(Array.isArray(actualizado?.fotosAgil) ? actualizado.fotosAgil : fotosAgil);
+      if (actualizado?.informeUnico) setInformeState(actualizado.informeUnico);
+      setMensaje(t('segurosSura.fotosAgil.savedMessage'));
+      setAutosaveUiStatus({ state: 'synced', pendingCount: 0, message: 'Sincronizado' });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('segurosSura.fotosAgil.saveError'));
+    } finally {
+      setGuardando(false);
+    }
+  };
+
   const handleGuardarActual = () => {
     if (tabActivo === TABS_SURA.DOCUMENTOS) return handleGuardarInforme();
     if (tabActivo === TABS_SURA.INFORME_AGIL) return handleGuardarInformeAgil();
     if (tabActivo === TABS_SURA.SALVAMENTO) return handleGuardarSalvamento();
-    if (tabActivo === TABS_SURA.FOTOS) return handleGuardarLiquidador();
+    if (tabActivo === TABS_SURA.FOTOS) return handleGuardarFotosAgil();
     return handleGuardarLiquidador();
   };
 
@@ -313,6 +350,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
         totales: totalesState,
         informeUnico: informeState,
         salvamento: salvamentoState,
+        fotosAgil: fotosAgilState,
       });
     } catch (err) {
       console.error(err);
@@ -327,7 +365,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
     if (tabActivo === TABS_SURA.DOCUMENTOS) return Boolean(informeState);
     if (tabActivo === TABS_SURA.INFORME_AGIL) return Boolean(informeAgilState);
     if (tabActivo === TABS_SURA.SALVAMENTO) return Boolean(salvamentoState);
-    if (tabActivo === TABS_SURA.FOTOS) return Boolean(liquidadorState);
+    if (tabActivo === TABS_SURA.FOTOS) return fotosAgilState != null;
     return Boolean(liquidadorState);
   }, [
     casoId,
@@ -336,6 +374,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
     informeState,
     informeAgilState,
     salvamentoState,
+    fotosAgilState,
     liquidadorState,
   ]);
 
@@ -352,6 +391,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
     informeState,
     informeAgilState,
     salvamentoState,
+    fotosAgilState,
     onCasoActualizado: onCasoDesdeAutosave,
     enabled: Boolean(casoId) && !cargandoCaso,
   });
@@ -455,8 +495,12 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
               />
             ) : tabActivo === TABS_SURA.FOTOS ? (
               <FotosLiquidadorSura
-                liquidador={liquidadorState || casoSura?.liquidador}
-                onIrPresupuesto={() => setTab(TABS_SURA.PRESUPUESTO)}
+                casoId={casoId}
+                fotos={fotosAgilState || []}
+                onFotosChange={setFotosAgilState}
+                onGuardarEnCaso={casoId ? () => handleGuardarFotosAgil() : undefined}
+                onCasoChange={setCasoSura}
+                guardandoCaso={guardando}
               />
             ) : tabActivo === TABS_SURA.DOCUMENTOS ? (
               <InformeUnicoSegurosSura
@@ -486,7 +530,6 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
-                onCasoChange={setCasoSura}
                 guardandoCaso={guardando}
               />
             )}

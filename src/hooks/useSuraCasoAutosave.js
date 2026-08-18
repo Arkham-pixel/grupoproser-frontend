@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react';
 import { AUTOSAVE_DEBOUNCE_MS } from '../config/autoSaveConfig.js';
 import { checkConnectivity } from '../services/connectivityService.js';
 import { setAutosaveUiStatus } from '../services/autosaveOfflineService.js';
+import { serializarFotosAgilSura } from '../components/SubcomponenteSura/informeAgilSuraHelpers.js';
+import { sincronizarFotosAgilEnInformeCaso } from '../components/SubcomponenteSura/syncFotosNsrAlInformeSura.js';
 import {
   guardarInformeUnicoEnCasoSura,
   guardarLiquidadorEnCasoSura,
@@ -11,9 +13,10 @@ import {
 const TAB_DOCUMENTOS = new Set(['informe', 'informe-unico', 'documentos']);
 const TAB_AGIL = new Set(['informe-agil']);
 const TAB_SALVAMENTO = new Set(['salvamento']);
+const TAB_FOTOS = new Set(['fotos']);
 
 /**
- * Autoguardado del workspace Sura (presupuesto / documentos / informe ágil / salvamento).
+ * Autoguardado del workspace Sura (presupuesto / documentos / informe ágil / fotos / salvamento).
  */
 export default function useSuraCasoAutosave({
   casoId,
@@ -24,20 +27,21 @@ export default function useSuraCasoAutosave({
   informeState,
   informeAgilState,
   salvamentoState,
+  fotosAgilState,
   onCasoActualizado,
   enabled = true,
 } = {}) {
   const casoRef = useRef(casoSura);
   const savingRef = useRef(false);
   const pendingFlushRef = useRef(null);
-  const lastSnap = useRef({ liquidador: '', informe: '', agil: '', salvamento: '' });
+  const lastSnap = useRef({ liquidador: '', informe: '', agil: '', salvamento: '', fotos: '' });
   const readyRef = useRef(false);
 
   casoRef.current = casoSura;
 
   useEffect(() => {
     readyRef.current = false;
-    lastSnap.current = { liquidador: '', informe: '', agil: '', salvamento: '' };
+    lastSnap.current = { liquidador: '', informe: '', agil: '', salvamento: '', fotos: '' };
   }, [casoId]);
 
   useEffect(() => {
@@ -66,6 +70,13 @@ export default function useSuraCasoAutosave({
           casoId,
           casoBase: base,
           patch: { salvamento: payload.data },
+        });
+      }
+      if (payload.tipo === 'fotos') {
+        return sincronizarFotosAgilEnInformeCaso({
+          casoId,
+          casoBase: base,
+          fotosAgil: payload.data,
         });
       }
       return guardarLiquidadorEnCasoSura({
@@ -139,6 +150,9 @@ export default function useSuraCasoAutosave({
     if (TAB_SALVAMENTO.has(tabActivo) && salvamentoState) {
       scheduleSave({ tipo: 'salvamento', data: salvamentoState });
     }
+    if (TAB_FOTOS.has(tabActivo) && Array.isArray(fotosAgilState)) {
+      scheduleSave({ tipo: 'fotos', data: serializarFotosAgilSura(fotosAgilState) });
+    }
 
     return () => timers.forEach((t) => clearTimeout(t));
   }, [
@@ -150,6 +164,7 @@ export default function useSuraCasoAutosave({
     informeState,
     informeAgilState,
     salvamentoState,
+    fotosAgilState,
     onCasoActualizado,
   ]);
 
@@ -182,6 +197,12 @@ export default function useSuraCasoAutosave({
             casoId,
             casoBase: base,
             patch: { salvamento: payload.data },
+          });
+        } else if (payload.tipo === 'fotos') {
+          actualizado = await sincronizarFotosAgilEnInformeCaso({
+            casoId,
+            casoBase: base,
+            fotosAgil: payload.data,
           });
         } else {
           actualizado = await guardarLiquidadorEnCasoSura({

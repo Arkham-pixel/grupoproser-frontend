@@ -24,10 +24,6 @@ import {
 import { descargarFiniquitoSuraWord } from './generarFiniquitoSuraWord.js';
 import { descargarLiquidadorSuraExcel } from './generarLiquidadorSuraExcel.js';
 import { descargarLiquidadorSuraPdf } from './generarLiquidadorSuraPdf.js';
-import {
-  sincronizarFotosNsrEnInformeCaso,
-  subirFotoFilaNsrSura,
-} from './syncFotosNsrAlInformeSura.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -40,13 +36,11 @@ export default function LiquidadorSegurosSura({
   onGuardarEnCaso,
   guardandoCaso = false,
   onEstadoChange,
-  onCasoChange,
 }) {
   const { t } = useTranslation();
   const [liquidador, setLiquidador] = useState(() => mapCasoSuraALiquidador(casoSura || {}));
   const [error, setError] = useState('');
   const [exportando, setExportando] = useState('');
-  const casoId = casoSura?._id ? String(casoSura._id) : '';
 
   useEffect(() => {
     setLiquidador(mapCasoSuraALiquidador(casoSura || {}));
@@ -82,62 +76,10 @@ export default function LiquidadorSegurosSura({
     });
   };
 
-  const patchItemFoto = (index, fotoPatch) => {
-    let itemsSnapshot = [];
-    setLiquidador((prev) => {
-      const evalData = prev.evaluacionSismicaNSR10 || {};
-      const items = Array.isArray(evalData.items) ? [...evalData.items] : [];
-      if (!items[index]) {
-        itemsSnapshot = items;
-        return prev;
-      }
-      items[index] = { ...items[index], ...fotoPatch };
-      itemsSnapshot = items;
-      return {
-        ...prev,
-        modelo: 'nsr10',
-        evaluacionSismicaNSR10: { ...evalData, items },
-      };
-    });
-    return itemsSnapshot;
-  };
-
-  const syncInformeConItems = async (items) => {
-    if (!casoId) return;
-    const actualizado = await sincronizarFotosNsrEnInformeCaso({
-      casoId,
-      casoBase: casoSura || {},
-      itemsNsr: items,
-    });
-    if (actualizado) onCasoChange?.(actualizado);
-  };
-
-  const handleUploadFotoFila = async (index, file, item) => {
-    const patch = await subirFotoFilaNsrSura({ casoId, file, item });
-    const preview =
-      typeof URL !== 'undefined' && file ? URL.createObjectURL(file) : '';
-    const items = patchItemFoto(index, { ...patch, fotoPreview: preview });
-    await syncInformeConItems(items);
-  };
-
-  const handleRemoveFotoFila = async (index) => {
-    const items = patchItemFoto(index, {
-      fotoRef: '',
-      fotoArchivoId: '',
-      fotoRuta: '',
-      fotoPreview: '',
-    });
-    await syncInformeConItems(items);
-  };
-
   const handleGuardar = async () => {
     if (!onGuardarEnCaso) return;
     setError('');
     try {
-      const items = liquidador?.evaluacionSismicaNSR10?.items || [];
-      if (casoId && items.some((it) => it?.fotoArchivoId || it?.fotoRuta)) {
-        await syncInformeConItems(items);
-      }
       await onGuardarEnCaso(liquidador, totales);
     } catch (err) {
       console.error(err);
@@ -277,9 +219,7 @@ export default function LiquidadorSegurosSura({
           formData={formDataNsr}
           onInputChange={handleNsrChange}
           modoLiquidador={false}
-          habilitarUploadFotos={Boolean(casoId)}
-          onUploadFotoFila={casoId ? handleUploadFotoFila : null}
-          onRemoveFotoFila={casoId ? handleRemoveFotoFila : null}
+          habilitarUploadFotos={false}
         />
       </section>
     </div>
