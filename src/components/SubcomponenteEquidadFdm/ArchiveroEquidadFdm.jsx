@@ -45,7 +45,7 @@ const formatDate = (value) => {
 };
 
 const ACCEPT_UNIR =
-  '.pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif,.bmp,application/pdf,image/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  '.pdf,.doc,.docx,.xls,.xlsx,.xlsm,.png,.jpg,.jpeg,.webp,.gif,.bmp,application/pdf,image/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 const ACCEPT_ADICIONAL =
   '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.zip,.msg,application/pdf,image/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -60,6 +60,7 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  const [arrastrando, setArrastrando] = useState(false);
   const ocupado = procesando || subiendo;
 
   const refrescar = async () => {
@@ -105,17 +106,8 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
     }
   };
 
-  /**
-   * Flujo simple:
-   * 1) Elige varios archivos (locales)
-   * 2) Se genera un solo PDF
-   * 3) Solo ese PDF unido se guarda en el archivero (no los originales)
-   */
-  const handleUnirYArchivar = async (e) => {
-    const list = Array.from(e.target.files || []);
-    e.target.value = '';
-    if (!list.length) return;
-
+  const procesarUnirArchivos = async (list) => {
+    if (!list?.length) return;
     setError(null);
     setExito(null);
     setProcesando(true);
@@ -144,6 +136,21 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
     } finally {
       setProcesando(false);
     }
+  };
+
+  const handleUnirYArchivar = async (e) => {
+    const list = Array.from(e.target.files || []);
+    e.target.value = '';
+    await procesarUnirArchivos(list);
+  };
+
+  const handleDropUnir = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setArrastrando(false);
+    if (ocupado) return;
+    const list = Array.from(e.dataTransfer?.files || []);
+    await procesarUnirArchivos(list);
   };
 
   const handleDelete = async (archivoId) => {
@@ -178,7 +185,25 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
-      <div className="flex flex-col gap-3 rounded-xl border border-dashed border-fenix-primario/40 bg-fenix-primario/5 p-4 sm:flex-row sm:flex-wrap sm:items-end">
+      <div
+        className={`flex flex-col gap-3 rounded-xl border border-dashed p-4 sm:flex-row sm:flex-wrap sm:items-end ${
+          arrastrando
+            ? 'border-fenix-primario bg-fenix-primario/15'
+            : 'border-fenix-primario/40 bg-fenix-primario/5'
+        }`}
+        onDragEnter={(e) => {
+          e.preventDefault();
+          if (!ocupado) setArrastrando(true);
+        }}
+        onDragOver={(e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setArrastrando(false);
+        }}
+        onDrop={handleDropUnir}
+      >
         <Campo label={t('equidadFdm.archive.label')}>
           <SelectFenix value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)}>
             {ETIQUETAS_ARCHIVO_FDM.filter(

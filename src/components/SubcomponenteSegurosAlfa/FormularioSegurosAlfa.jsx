@@ -35,7 +35,7 @@ import {
 } from './segurosAlfaHelpers.js';
 import CampoTomadorAlfa from './CampoTomadorAlfa.jsx';
 import ModalImportarExcelAlfa, {
-  esAdminOSoporteAlfa,
+  esUsuarioAlfaExcelActualizar,
 } from './ModalImportarExcelAlfa.jsx';
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
@@ -82,7 +82,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   const rolUsuario = obtenerRolAlmacenado();
   const soloInspector = esRolInspector(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
-  const puedeImportarExcel = esAdminOSoporteAlfa();
+  const puedeImportarExcel = esUsuarioAlfaExcelActualizar();
   const [form, setForm] = useState(() =>
     initialData ? construirFormDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA }
   );
@@ -679,7 +679,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             </div>
             <div className={expressCardBody}>
               <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-300">
-                Analice y confirme un Excel de Seguros Alfa (preview → execute). Solo admin/soporte.
+                Analice y confirme un Excel de Seguros Alfa (preview → execute). Solo el usuario autorizado.
               </p>
               <button
                 type="button"

@@ -187,6 +187,7 @@ export default function ModalActualizacionesSegurosAlfa({
   onAskConfirm,
   onCancelConfirm,
   onConfirmExecute,
+  allowExecute = false,
 }) {
   if (!open || !viewModel) return null;
 
@@ -381,7 +382,7 @@ export default function ModalActualizacionesSegurosAlfa({
           <Button onClick={() => onClose?.()} disabled={executing}>
             Revisar después
           </Button>
-          {vm.canExecute && (
+          {vm.canExecute && allowExecute && (
             <Button
               variant="contained"
               onClick={() => onAskConfirm?.()}
@@ -404,7 +405,8 @@ export default function ModalActualizacionesSegurosAlfa({
             {vm.indicators.updated} casos actualizados
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5 }}>
-            Los registros que requieren revisión no serán aplicados automáticamente.
+            Las celdas vacías no borran datos llenos (Excel ↔ ARNALD). Los registros que
+            requieren revisión no se aplican automáticamente.
           </Typography>
           <Typography variant="body2" sx={{ mt: 1.5 }}>
             ¿Deseas continuar?

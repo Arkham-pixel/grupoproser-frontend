@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileWord, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
+import { FaFileExcel } from 'react-icons/fa';
 import {
   Campo,
-  expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
   InputFenix,
@@ -15,34 +14,13 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
-  INFO_EVENTO_DEFAULT_ALFA,
   calcularLiquidacionAlfa,
   defaultInformeUnicoAlfa,
-  formDataNsrDesdeLiquidadorAlfa,
-  formatearMonto,
-  formatDateLarga,
   mapCasoAlfaALiquidador,
 } from './liquidadorAlfaHelpers.js';
-import { descargarWordInformeAlfa } from './generarWordInformeAlfa.js';
-import { subirArchivoAlfa } from '../../services/segurosAlfaService.js';
+import { descargarInformeCatAlfaExcel } from './generarInformeCatAlfaExcel.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
-import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
-import FotosInspeccionAlfa from './FotosInspeccionAlfa.jsx';
-
-function extraerLatLng(texto) {
-  const parts = String(texto || '')
-    .split(',')
-    .map((c) => parseFloat(String(c).trim()));
-  if (parts.length >= 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
-    return {
-      latitud: parts[0].toFixed(6),
-      longitud: parts[1].toFixed(6),
-    };
-  }
-  return { latitud: '', longitud: '' };
-}
+import AnalisisCoberturaCriteriaAlfa from './AnalisisCoberturaCriteriaAlfa.jsx';
 
 export default function InformeUnicoSegurosAlfa({
   casoAlfa = null,
@@ -61,15 +39,6 @@ export default function InformeUnicoSegurosAlfa({
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
 
   const totales = useMemo(() => calcularLiquidacionAlfa(liquidador), [liquidador]);
-  const criterio = totales.criterio || {};
-  const formDataNsr = useMemo(
-    () => formDataNsrDesdeLiquidadorAlfa(liquidador, casoAlfa || {}),
-    [liquidador, casoAlfa]
-  );
-  const coordsRiesgo = useMemo(
-    () => extraerLatLng(informe.coordenadasRiesgo),
-    [informe.coordenadasRiesgo]
-  );
   const capturaMapaInicial = useMemo(() => {
     const im = informe.imagenMapa;
     if (!im) return '';
@@ -91,8 +60,16 @@ export default function InformeUnicoSegurosAlfa({
       }
       const img = info?.imagenMapa || info?.imagen;
       if (img) next.imagenMapa = img;
-      if (info?.direccion && !String(prev.direccionRiesgo || '').trim()) {
+      if (info?.direccion) {
         next.direccionRiesgo = info.direccion;
+        next.analisisGeneral = {
+          ...(next.analisisGeneral || {}),
+          ubicacionEvento:
+            next.analisisGeneral?.ubicacionEvento ||
+            info.direccion ||
+            prev.analisisGeneral?.ubicacionEvento ||
+            '',
+        };
       }
       return next;
     });
@@ -102,6 +79,17 @@ export default function InformeUnicoSegurosAlfa({
     setInforme(defaultInformeUnicoAlfa(casoAlfa || {}));
     setLiquidador(mapCasoAlfaALiquidador(casoAlfa || {}));
   }, [casoAlfa?._id]);
+
+  // Si hay coordenadas pero no captura, forzar Static Maps al abrir el informe
+  useEffect(() => {
+    const coords = String(informe.coordenadasRiesgo || '').trim();
+    const tieneMapa = Boolean(String(informe.imagenMapa || '').trim());
+    if (coords && !tieneMapa) {
+      setForzarCapturaMapa((n) => (n === 0 ? 1 : n));
+    }
+    // solo al cargar caso / cuando aparecen coords sin imagen
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [casoAlfa?._id, informe.coordenadasRiesgo]);
 
   useEffect(() => {
     onEstadoChange?.(informe);
@@ -124,51 +112,50 @@ export default function InformeUnicoSegurosAlfa({
     });
   };
 
-  const handleNsrChange = (patch) => {
-    setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
+  const setAnalisisGeneral = (campo, valor) => {
+    setInforme((prev) => {
+      const next = {
+        ...prev,
+        analisisGeneral: {
+          ...(prev.analisisGeneral || {}),
+          [campo]: valor,
+        },
+      };
+      if (campo === 'descripcionEvento') next.infoEvento = valor;
+      if (campo === 'ubicacionEvento' && !String(prev.direccionRiesgo || '').trim()) {
+        next.direccionRiesgo = valor;
+      }
+      return next;
+    });
   };
 
-  const restaurarInfoEvento = () => {
-    setCampo('infoEvento', INFO_EVENTO_DEFAULT_ALFA);
+  const setIndicadorFraude = (key, patch) => {
+    setInforme((prev) => {
+      const ag = prev.analisisGeneral || {};
+      const indicadores = { ...(ag.indicadoresFraude || {}) };
+      indicadores[key] = { ...(indicadores[key] || {}), ...patch };
+      return {
+        ...prev,
+        analisisGeneral: { ...ag, indicadoresFraude: indicadores },
+      };
+    });
   };
 
-  const handleWord = async () => {
+  const handleExcelCat = async () => {
     setDescargando(true);
     setError('');
     setMensaje('');
     try {
-      const resultado = await descargarWordInformeAlfa({
+      await descargarInformeCatAlfaExcel({
         caso: casoAlfa || {},
-        informe,
         liquidador,
+        totales,
+        informe,
       });
-      const casoId = casoAlfa?._id;
-      if (!casoId) {
-        setMensaje(t('segurosAlfa.reportUnique.wordNeedsCase'));
-        return;
-      }
-      const blob = resultado?.blob;
-      const nombre =
-        resultado?.nombre ||
-        `Informe_Unico_Alfa_${casoAlfa.siniestro || casoAlfa.consecutivo || 'caso'}.docx`;
-      if (!blob) {
-        setMensaje(t('segurosAlfa.reportUnique.wordNeedsCase'));
-        return;
-      }
-      try {
-        const file = new File([blob], nombre, {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        });
-        const creado = await subirArchivoAlfa(casoId, file, 'INFORME');
-        appendArchivosAlCaso([creado]);
-        setMensaje(t('segurosAlfa.reportUnique.wordSavedArchive'));
-      } catch (errArchivo) {
-        console.warn('No se pudo guardar el informe en el archivero:', errArchivo);
-        setError(t('segurosAlfa.reportUnique.wordArchiveError'));
-      }
+      setMensaje('Excel CAT Alfa descargado (Liquidador + Análisis + anexos).');
     } catch (err) {
       console.error(err);
-      setError(t('segurosAlfa.reportUnique.wordError'));
+      setError(err.message || 'No se pudo generar el Excel CAT Alfa.');
     } finally {
       setDescargando(false);
     }
@@ -204,313 +191,48 @@ export default function InformeUnicoSegurosAlfa({
       {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
       {error && <p className={expressAlertError}>{error}</p>}
 
-      <section className={expressFormSection}>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className={`${expressSectionTitle} mb-0`}>
-            1. {t('segurosAlfa.reportUnique.sectionEvent')}
-          </h3>
-          <button type="button" className={expressBtnGhost} onClick={restaurarInfoEvento}>
-            <FaRedo /> {t('segurosAlfa.reportUnique.resetEvent')}
-          </button>
-        </div>
-        <p className="mb-2 font-body text-xs text-gray-500">
-          {t('segurosAlfa.reportUnique.eventHint')}
-        </p>
-        <textarea
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-          rows={6}
-          value={informe.infoEvento || ''}
-          onChange={(e) => setCampo('infoEvento', e.target.value)}
-        />
-        <figure className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
-          <img
-            src={`${import.meta.env.BASE_URL || '/'}templates/mapa-evento-siniestro-alfa.png`}
-            alt={t('segurosAlfa.reportUnique.eventMapAlt')}
-            className="mx-auto max-h-[420px] w-full object-contain bg-white p-2"
-          />
-          <figcaption className="border-t border-gray-100 px-3 py-2 text-center font-body text-xs text-gray-500 dark:border-gray-800">
-            {t('segurosAlfa.reportUnique.eventMapCaption')}
-          </figcaption>
-        </figure>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Campo label={t('segurosAlfa.reportUnique.adjuster')}>
-            <InputFenix
-              value={informe.ajustadorNombre || ''}
-              onChange={(e) => setCampo('ajustadorNombre', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('segurosAlfa.reportUnique.reportDate')}>
-            <InputFenix
-              type="date"
-              value={informe.fechaInforme || ''}
-              onChange={(e) => setCampo('fechaInforme', e.target.value)}
-            />
-          </Campo>
-        </div>
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          2. {t('segurosAlfa.reportUnique.sectionDamages')}
-        </h3>
-        <textarea
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-          rows={5}
-          value={informe.descripcionDanios || ''}
-          onChange={(e) => setCampo('descripcionDanios', e.target.value)}
-          placeholder={t('segurosAlfa.reportUnique.sectionDamagesHint')}
-        />
-
-        <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h4 className="inline-flex items-center gap-2 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-              <FaMapMarkerAlt className="text-blue-600" />
-              {t('segurosAlfa.reportUnique.sectionRiskMap')}
-            </h4>
-            <button
-              type="button"
-              className={expressBtnSecondary}
-              onClick={() => setForzarCapturaMapa((n) => n + 1)}
-            >
-              {t('segurosAlfa.reportUnique.updateMapCapture')}
-            </button>
-          </div>
-
-          <div className="mb-3 grid gap-3 sm:grid-cols-2">
-            <Campo label={t('segurosAlfa.reportUnique.latitude')}>
-              <InputFenix
-                readOnly
-                className="font-mono"
-                value={coordsRiesgo.latitud}
-                placeholder="Se llena desde el mapa"
-              />
-            </Campo>
-            <Campo label={t('segurosAlfa.reportUnique.longitude')}>
-              <InputFenix
-                readOnly
-                className="font-mono"
-                value={coordsRiesgo.longitud}
-                placeholder="Se llena desde el mapa"
-              />
-            </Campo>
-          </div>
-
-          <Campo label={t('segurosAlfa.reportUnique.coordinatesText')}>
-            <InputFenix
-              className="font-mono"
-              value={informe.coordenadasRiesgo || ''}
-              onChange={(e) => setCampo('coordenadasRiesgo', e.target.value)}
-              placeholder="8.760470, -75.902449"
-            />
-          </Campo>
-
-          <div className="mt-3 min-h-[320px] overflow-hidden rounded-lg">
-            <MapaGoogleEarth
-              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-              coordenadasIniciales={informe.coordenadasRiesgo}
-              direccionInicial={informe.direccionRiesgo || casoAlfa?.direccionPredio || ''}
-              capturaInicial={capturaMapaInicial || undefined}
-              forzarCaptura={forzarCapturaMapa}
-              onMapaChange={handleMapaChange}
-            />
-          </div>
-          <p className="mt-2 font-body text-xs text-gray-500">
-            {capturaMapaInicial
-              ? t('segurosAlfa.reportUnique.mapCaptureReady')
-              : t('segurosAlfa.reportUnique.mapCaptureHint')}
-          </p>
-        </div>
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>3. {t('segurosAlfa.reportUnique.sectionPolicy')}</h3>
-        <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-          <div>
-            <dt className="text-gray-500">{t('segurosAlfa.fields.tomador')}</dt>
-            <dd className="font-medium">{casoAlfa?.tomador || '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">{t('segurosAlfa.fields.numeroPoliza')}</dt>
-            <dd className="font-medium">{casoAlfa?.numeroPoliza || '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">{t('segurosAlfa.fields.fechaInicioPoliza')}</dt>
-            <dd className="font-medium">
-              {formatDateLarga(casoAlfa?.fechaInicioPoliza)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">{t('segurosAlfa.fields.fechaFinPoliza')}</dt>
-            <dd className="font-medium">
-              {formatDateLarga(casoAlfa?.fechaFinPoliza)}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">{t('segurosAlfa.fields.cobertura')}</dt>
-            <dd className="font-medium">{casoAlfa?.cobertura || '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">{t('segurosAlfa.fields.estadoPagoPrimas')}</dt>
-            <dd className="font-medium">{casoAlfa?.estadoPagoPrimas || '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">{t('segurosAlfa.fields.direccionPredio')}</dt>
-            <dd className="font-medium">{casoAlfa?.direccionPredio || '—'}</dd>
-          </div>
-          <div>
-            <dt className="text-gray-500">
-              {t('segurosAlfa.fields.ciudad')} / {t('segurosAlfa.fields.departamento')}
-            </dt>
-            <dd className="font-medium">
-              {casoAlfa?.ciudad || '—'} / {casoAlfa?.departamento || '—'}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? '4. Liquidador NSR-10'
-            : '4. Dictamen y liquidador NSR-10'}
-        </h3>
-        <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? 'Cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'
-            : 'Dictamen de la evaluación sísmica y cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'}
-        </p>
-
-        {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
-        <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-2">
-          <div>
-            <span className="text-gray-500">Categoría</span>
-            <p className="font-medium">{criterio.categoria || '—'}</p>
-          </div>
-          <div>
-            <span className="text-gray-500">Habitabilidad</span>
-            <p className="font-medium">{criterio.habitabilidad || '—'}</p>
-          </div>
-          <div className="sm:col-span-2">
-            <span className="text-gray-500">Dictamen</span>
-            <p className="font-medium whitespace-pre-wrap">{criterio.dictamen || '—'}</p>
-          </div>
-          <div className="sm:col-span-2">
-            <span className="text-gray-500">Descripción de daños</span>
-            <p className="font-medium whitespace-pre-wrap">{criterio.descripcionDanios || '—'}</p>
-          </div>
-        </div>
-        ) : null}
-
-        <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible</span>
-            <span>{totales.deducibleTexto || 'No aplica'}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('segurosAlfa.settlement.totalPay')}</span>
-            <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-          </div>
-        </div>
-
-        <ChecklistEvaluacionSismicaNSR10
-          formData={formDataNsr}
-          onInputChange={handleNsrChange}
-          modoLiquidador
-        />
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>5. {t('segurosAlfa.reportUnique.sectionTable')}</h3>
-        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          Resumen de ítems del presupuesto NSR-10.
-        </p>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
-            <thead>
-              <tr className="text-left text-gray-500">
-                <th className="px-2 py-2">#</th>
-                <th className="px-2 py-2">Actividad</th>
-                <th className="px-2 py-2">Cant.</th>
-                <th className="px-2 py-2">V. unitario</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || [])
-                .filter((it) => String(it?.actividad || '').trim())
-                .map((it, idx) => (
-                  <tr key={it.id || idx}>
-                    <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2">{it.actividad || '—'}</td>
-                    <td className="px-2 py-2">{it.cantidad ?? '—'}</td>
-                    <td className="px-2 py-2">$ {formatearMonto(it.valorUnitario)}</td>
-                  </tr>
-                ))}
-              {!(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || []).some((it) =>
-                String(it?.actividad || '').trim()
-              ) && (
-                <tr>
-                  <td colSpan={4} className="px-2 py-4 text-center text-gray-500">
-                    {t('segurosAlfa.reportUnique.noSettlementItems')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-            <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>6. {t('segurosAlfa.reportUnique.sectionPhotos')}</h3>
-        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          Arrastra, toma o selecciona fotos. Deben aparecer abajo en «Imágenes Cargadas» (igual que en Ajuste) para
-          poner descripción y generar el Word.
-        </p>
-        <FotosInspeccionAlfa
-          casoId={casoAlfa?._id}
-          fotosInforme={informe.fotosInspeccion || []}
-          onFotosInformeChange={(lista) => setCampo('fotosInspeccion', lista)}
-          onArchivoCreado={(creado) => {
-            if (creado) appendArchivosAlCaso([creado]);
-            setMensaje(t('segurosAlfa.reportUnique.photosUploaded', { count: 1 }));
-          }}
-          onArchivoEliminado={(archivoId) => {
-            quitarArchivoDelCaso(archivoId);
-            setMensaje(t('segurosAlfa.archive.deleteOk'));
-          }}
-        />
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>7. {t('segurosAlfa.reportUnique.sectionConclusions')}</h3>
-        <Campo label={t('segurosAlfa.reportUnique.conclusions')}>
-          <textarea
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-            rows={4}
-            value={informe.conclusiones || ''}
-            onChange={(e) => setCampo('conclusiones', e.target.value)}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Campo label={t('segurosAlfa.reportUnique.adjuster')}>
+          <InputFenix
+            value={informe.ajustadorNombre || ''}
+            onChange={(e) => setCampo('ajustadorNombre', e.target.value)}
           />
         </Campo>
-        <div className="mt-3">
-          <Campo label={t('segurosAlfa.reportUnique.recommendation')}>
-            <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-              rows={4}
-              value={informe.recomendacion || ''}
-              onChange={(e) => setCampo('recomendacion', e.target.value)}
-            />
-          </Campo>
-        </div>
-      </section>
+        <Campo label={t('segurosAlfa.reportUnique.reportDate')}>
+          <InputFenix
+            type="date"
+            value={informe.fechaInforme || ''}
+            onChange={(e) => setCampo('fechaInforme', e.target.value)}
+          />
+        </Campo>
+      </div>
+
+      <AnalisisCoberturaCriteriaAlfa
+        analisis={informe.analisisGeneral || {}}
+        coordenadasRiesgo={informe.coordenadasRiesgo || ''}
+        direccionRiesgo={informe.direccionRiesgo || casoAlfa?.direccionPredio || ''}
+        imagenMapa={capturaMapaInicial}
+        forzarCapturaMapa={forzarCapturaMapa}
+        onAnalisisChange={setAnalisisGeneral}
+        onIndicadorFraudeChange={setIndicadorFraude}
+        onMapaChange={handleMapaChange}
+        onForzarCaptura={() => setForzarCapturaMapa((n) => n + 1)}
+        onCoordenadasChange={(v) => setCampo('coordenadasRiesgo', v)}
+        fotosInspeccion={informe.fotosInspeccion || []}
+        onFotosChange={(lista) => setCampo('fotosInspeccion', lista)}
+        casoId={casoAlfa?._id}
+        onArchivoCreado={(creado) => {
+          if (creado) appendArchivosAlCaso([creado]);
+          setMensaje(t('segurosAlfa.reportUnique.photosUploaded', { count: 1 }));
+        }}
+        onArchivoEliminado={(archivoId) => {
+          quitarArchivoDelCaso(archivoId);
+          setMensaje(t('segurosAlfa.archive.deleteOk'));
+        }}
+      />
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>8. {t('segurosAlfa.reportUnique.sectionSignatures')}</h3>
+        <h3 className={expressSectionTitle}>{t('segurosAlfa.reportUnique.sectionSignatures')}</h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('segurosAlfa.reportUnique.signaturesHint')}
         </p>
@@ -530,9 +252,9 @@ export default function InformeUnicoSegurosAlfa({
           type="button"
           className={expressBtnSecondary}
           disabled={descargando}
-          onClick={handleWord}
+          onClick={handleExcelCat}
         >
-          <FaFileWord /> {t('segurosAlfa.reportUnique.downloadWord')}
+          <FaFileExcel /> Excel CAT
         </button>
         {onGuardarEnCaso && (
           <button

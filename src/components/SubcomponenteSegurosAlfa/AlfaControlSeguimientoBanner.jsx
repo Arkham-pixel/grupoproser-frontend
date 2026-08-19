@@ -10,7 +10,7 @@ import {
   expressBtnGhost,
   expressBtnPrimary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import { esAdminOSoporteAlfa } from './ModalImportarExcelAlfa.jsx';
+import { esUsuarioAlfaExcelActualizar } from './ModalImportarExcelAlfa.jsx';
 import {
   buildAlfaCsModalKey,
   buildAlfaCsNoChangesKey,
@@ -42,7 +42,7 @@ const toneClass = {
 
 /**
  * Banner + modal automático de actualizaciones Control y Seguimiento.
- * Solo UI — no altera monitor/cron/matching.
+ * Visible solo para el usuario autorizado (1065012991).
  */
 export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   const [status, setStatus] = useState(null);
@@ -63,7 +63,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   const [autoOpenedKey, setAutoOpenedKey] = useState(null);
   const [autoOpenedNoChangesKey, setAutoOpenedNoChangesKey] = useState(null);
   const [pinnedSessionId, setPinnedSessionId] = useState(null);
-  const puedeAdmin = esAdminOSoporteAlfa();
+  const puedeActualizar = esUsuarioAlfaExcelActualizar();
 
   const source = status?.source;
   const summary = source?.summary || {};
@@ -205,13 +205,18 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   }, []);
 
   useEffect(() => {
+    if (!puedeActualizar) {
+      setLoading(false);
+      return undefined;
+    }
     load();
     const id = setInterval(load, 60_000);
     return () => clearInterval(id);
-  }, [load]);
+  }, [load, puedeActualizar]);
 
   // Auto: hay actualizaciones
   useEffect(() => {
+    if (!puedeActualizar) return;
     const ui = status?.uiStatus;
     const seen = wasAlfaCsModalSeen(window.localStorage, key);
     const should = shouldAutoOpenAlfaCsModal({
@@ -240,10 +245,12 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     modalOpen,
     noChangesOpen,
     loadPreviewRows,
+    puedeActualizar,
   ]);
 
   // Auto: sin actualizaciones (una vez por eTag)
   useEffect(() => {
+    if (!puedeActualizar) return;
     const ui = status?.uiStatus;
     const seen = wasAlfaCsModalSeen(window.localStorage, noChangesKey);
     const should = shouldAutoOpenAlfaCsNoChangesModal({
@@ -264,6 +271,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     autoOpenedNoChangesKey,
     modalOpen,
     noChangesOpen,
+    puedeActualizar,
   ]);
 
   const handleDismissToast = async () => {
@@ -276,7 +284,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   };
 
   const handleCheck = async () => {
-    if (!puedeAdmin) return;
+    if (!puedeActualizar) return;
     setChecking(true);
     try {
       await checkControlSeguimientoAlfa({ force: false });
@@ -306,6 +314,10 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
   };
 
   const handleConfirmExecute = async () => {
+    if (!puedeActualizar) {
+      setModalError('Solo el usuario autorizado puede actualizar ARNALD');
+      return;
+    }
     const sessionId = pinnedSessionId || source?.lastPreviewImportId;
     if (!sessionId) {
       setModalError('No hay importSessionId disponible');
@@ -314,7 +326,9 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
     setExecuting(true);
     setModalError(null);
     try {
-      const data = await executeImportExcelAlfa(sessionId, { force: false });
+      // SharePoint puede re-previsualizar el mismo archivo (mismo hash) tras un
+      // execute previo; sin force=true el backend bloquea ALREADY_IMPORTED.
+      const data = await executeImportExcelAlfa(sessionId, { force: true });
       if (isCompleteAlfaCsModalKey(key)) {
         markAlfaCsModalSeen(window.localStorage, key);
       }
@@ -353,6 +367,8 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
       setExecuting(false);
     }
   };
+
+  if (!puedeActualizar) return null;
 
   if (loading && !status) {
     return (
@@ -421,7 +437,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
             )}
           </div>
           <div className="flex flex-wrap gap-2">
-            {puedeAdmin && (
+            {puedeActualizar && (
               <button
                 type="button"
                 className={expressBtnGhost}
@@ -472,6 +488,7 @@ export default function AlfaControlSeguimientoBanner({ onCompleted }) {
         onAskConfirm={() => setConfirmOpen(true)}
         onCancelConfirm={() => setConfirmOpen(false)}
         onConfirmExecute={handleConfirmExecute}
+        allowExecute={puedeActualizar}
       />
 
       <ModalSinActualizacionesAlfa

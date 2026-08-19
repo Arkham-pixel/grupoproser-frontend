@@ -492,3 +492,12 @@ export function esAdminOSoporteAlfa() {
     .toLowerCase();
   return rol === 'admin' || rol === 'soporte' || rol === 'administrador' || rol === 'support';
 }
+
+/** Único usuario que puede pulsar Actualizar (Excel ↔ ARNALD). */
+export const LOGIN_ALFA_EXCEL_ACTUALIZAR = '1065012991';
+
+export function esUsuarioAlfaExcelActualizar() {
+  const login = String(localStorage.getItem('login') || '').trim();
+  const cedula = String(localStorage.getItem('cedula') || '').trim();
+  return login === LOGIN_ALFA_EXCEL_ACTUALIZAR || cedula === LOGIN_ALFA_EXCEL_ACTUALIZAR;
+}

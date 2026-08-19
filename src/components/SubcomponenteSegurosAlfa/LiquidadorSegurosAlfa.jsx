@@ -1,39 +1,36 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { startTransition, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileExcel, FaFilePdf, FaFileWord } from 'react-icons/fa';
+import { FaFileExcel, FaFileWord } from 'react-icons/fa';
 import {
-  Campo,
   expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
-  InputFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
-  expressFormSection,
-  expressSectionTitle,
+  expressAlertSuccess,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import CampoTomadorAlfa from './CampoTomadorAlfa.jsx';
+import FormatoLiquidacionAlfa from './FormatoLiquidacionAlfa.jsx';
 import {
   calcularLiquidacionAlfa,
-  formDataNsrDesdeLiquidadorAlfa,
-  formatearMonto,
   mapCasoAlfaALiquidador,
+  nuevoItemDetalleLiquidacionCat,
+  recalcularTotalesFilaDetalleCat,
+  resolverDetalleLiquidacionCat,
+  sincronizarDetalleCatConPresupuestoNsr,
+  SMMLV_POR_ANIO,
 } from './liquidadorAlfaHelpers.js';
 import { descargarFiniquitoAlfaWord } from './generarFiniquitoAlfaWord.js';
-import { descargarLiquidadorAlfaExcel } from './generarLiquidadorAlfaExcel.js';
-import { descargarLiquidadorAlfaPdf } from './generarLiquidadorAlfaPdf.js';
+import { descargarInformeCatAlfaExcel } from './generarInformeCatAlfaExcel.js';
+import { subirArchivoAlfa } from '../../services/segurosAlfaService.js';
 import {
-  sincronizarFotosNsrEnInformeCaso,
-  subirFotoFilaNsrAlfa,
-} from './syncFotosNsrAlInformeAlfa.js';
-
-const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
+  aplicarCatalogoAFilaPresupuesto,
+  formatMilesNsr10,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { buscarItemBasePrecios } from '../SubcomponenteEvaluacionSismicaNSR10/basePreciosPresupuesto.js';
 
 /**
- * Liquidador Alfa = evaluación NSR-10 completa (portada / eval / dictamen / presupuesto)
- * + diagrama de liquidación, mismo motor que Catastrófico Complex.
+ * Liquidador Alfa = FORMATO LIQUIDACIÓN (Excel CAT).
  */
 export default function LiquidadorSegurosAlfa({
   casoAlfa = null,
@@ -44,26 +41,28 @@ export default function LiquidadorSegurosAlfa({
 }) {
   const { t } = useTranslation();
   const [liquidador, setLiquidador] = useState(() => mapCasoAlfaALiquidador(casoAlfa || {}));
+  const [casoLocal, setCasoLocal] = useState(() => ({ ...(casoAlfa || {}) }));
   const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState('');
   const [exportando, setExportando] = useState('');
   const casoId = casoAlfa?._id ? String(casoAlfa._id) : '';
 
   useEffect(() => {
     setLiquidador(mapCasoAlfaALiquidador(casoAlfa || {}));
+    setCasoLocal({ ...(casoAlfa || {}) });
   }, [casoAlfa?._id]);
 
   const totales = useMemo(() => calcularLiquidacionAlfa(liquidador), [liquidador]);
   const enc = liquidador.encabezado || {};
+  const itemsDetalle = useMemo(
+    () => resolverDetalleLiquidacionCat(liquidador, totales),
+    [liquidador, totales]
+  );
 
   useEffect(() => {
     onEstadoChange?.(liquidador, totales);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liquidador, totales]);
-
-  const formDataNsr = useMemo(
-    () => formDataNsrDesdeLiquidadorAlfa(liquidador, casoAlfa || {}),
-    [liquidador, casoAlfa]
-  );
 
   const actualizarEncabezado = (campo, valor) => {
     setLiquidador((prev) => ({
@@ -72,84 +71,238 @@ export default function LiquidadorSegurosAlfa({
     }));
   };
 
-  const handleNsrChange = (patch) => {
+  const actualizarCasoCampo = (campo, valor) => {
+    setCasoLocal((prev) => ({ ...prev, [campo]: valor }));
+    onCasoChange?.((prev) => (prev ? { ...prev, [campo]: valor } : prev));
+  };
+
+  const actualizarDeducible = (campoOPatch, valor) => {
     setLiquidador((prev) => {
-      const next = { ...prev, ...patch, modelo: 'nsr10' };
-      if (patch.indemnizacionSugerida != null) {
-        next.indemnizacionSugerida = patch.indemnizacionSugerida;
+      const liq = prev.liquidacionCatastrofico || {};
+      const patch =
+        campoOPatch && typeof campoOPatch === 'object'
+          ? { ...campoOPatch }
+          : { [campoOPatch]: valor };
+      if (patch.anioSMMLV != null && patch.valorSMMLV == null) {
+        const anioSel = Number(patch.anioSMMLV);
+        const vSmmlv = SMMLV_POR_ANIO[anioSel];
+        if (vSmmlv != null) {
+          patch.valorSMMLV = vSmmlv;
+          patch.valorSMDLV = Math.round(vSmmlv / 30);
+        }
       }
-      return next;
+      const cfg = {
+        ...(liq.deducibleConfigPresupuesto || liq.deducibleConfig || {}),
+        ...patch,
+        aplica: true,
+      };
+      return {
+        ...prev,
+        liquidacionCatastrofico: {
+          ...liq,
+          deducibleConfig: cfg,
+          deducibleConfigPresupuesto: cfg,
+          valorAsegurado:
+            Object.prototype.hasOwnProperty.call(patch, 'valorAsegurado')
+              ? patch.valorAsegurado
+              : liq.valorAsegurado ?? prev.encabezado?.valorAseguradoInmueble,
+        },
+      };
     });
   };
 
-  const patchItemFoto = (index, fotoPatch) => {
-    let itemsSnapshot = [];
+  const actualizarAiu = (aiuPorcentaje) => {
     setLiquidador((prev) => {
       const evalData = prev.evaluacionSismicaNSR10 || {};
-      const items = Array.isArray(evalData.items) ? [...evalData.items] : [];
-      if (!items[index]) {
-        itemsSnapshot = items;
-        return prev;
-      }
-      items[index] = { ...items[index], ...fotoPatch };
-      itemsSnapshot = items;
+      const presupuesto = evalData.presupuesto || {};
       return {
         ...prev,
         modelo: 'nsr10',
-        evaluacionSismicaNSR10: { ...evalData, items },
+        evaluacionSismicaNSR10: {
+          ...evalData,
+          presupuesto: {
+            ...presupuesto,
+            aiuPorcentaje:
+              Number.isFinite(Number(aiuPorcentaje)) ? Number(aiuPorcentaje) : 0.05,
+          },
+        },
       };
     });
-    return itemsSnapshot;
   };
 
-  const syncInformeConItems = async (items) => {
-    if (!casoId) return;
-    const actualizado = await sincronizarFotosNsrEnInformeCaso({
-      casoId,
-      casoBase: casoAlfa || {},
-      itemsNsr: items,
+  const setDetalle = (filas) => {
+    setLiquidador((prev) => sincronizarDetalleCatConPresupuestoNsr(prev, filas));
+  };
+
+  const materializarDetalle = () =>
+    resolverDetalleLiquidacionCat(liquidador, totales).map((it) => ({ ...it }));
+
+  const handleItemChange = (index, patch = {}) => {
+    const base = materializarDetalle();
+    if (!base[index]) return;
+    const next = { ...base[index], ...patch };
+    const tocaronCantVu = Object.prototype.hasOwnProperty.call(patch, 'cantidad')
+      || Object.prototype.hasOwnProperty.call(patch, 'valorUnitario');
+    if (tocaronCantVu || !Object.prototype.hasOwnProperty.call(patch, 'valorPerdida')) {
+      base[index] = recalcularTotalesFilaDetalleCat(next);
+    } else {
+      base[index] = {
+        ...next,
+        valorReal: next.valorReal === '' || next.valorReal == null ? next.valorPerdida : next.valorReal,
+      };
+    }
+    setDetalle(base);
+  };
+
+  const handleCatalogoItem = (index, catalogoId) => {
+    const base = materializarDetalle();
+    if (!base[index]) return;
+    if (catalogoId === '__custom__') {
+      base[index] = {
+        ...base[index],
+        catalogoId: '',
+      };
+      setDetalle(base);
+      return;
+    }
+    const hit = buscarItemBasePrecios(catalogoId);
+    const aplicado = aplicarCatalogoAFilaPresupuesto(
+      {
+        catalogoId: base[index].catalogoId,
+        capitulo: base[index].capitulo,
+        actividad: base[index].descripcion,
+        unidad: base[index].unidad,
+        valorUnitario: base[index].valorUnitario,
+      },
+      hit
+    );
+    base[index] = recalcularTotalesFilaDetalleCat({
+      ...base[index],
+      catalogoId: aplicado.catalogoId || '',
+      capitulo: aplicado.capitulo || base[index].capitulo || hit?.capitulo || '',
+      descripcion: aplicado.actividad || '',
+      unidad: aplicado.unidad || 'und',
+      valorUnitario:
+        aplicado.valorUnitario != null && aplicado.valorUnitario !== ''
+          ? aplicado.valorUnitario
+          : hit?.valorUnitario != null
+            ? formatMilesNsr10(hit.valorUnitario)
+            : '',
+      cantidad: base[index].cantidad === '' || base[index].cantidad == null ? 1 : base[index].cantidad,
     });
-    if (actualizado) onCasoChange?.(actualizado);
+    setDetalle(base);
   };
 
-  const handleUploadFotoFila = async (index, file, item) => {
-    const patch = await subirFotoFilaNsrAlfa({ casoId, file, item });
-    const preview =
-      typeof URL !== 'undefined' && file ? URL.createObjectURL(file) : '';
-    const items = patchItemFoto(index, { ...patch, fotoPreview: preview });
-    await syncInformeConItems(items);
+  const handleAddItem = () => {
+    const base = materializarDetalle();
+    setDetalle([...base, nuevoItemDetalleLiquidacionCat()]);
   };
 
-  const handleRemoveFotoFila = async (index) => {
-    const items = patchItemFoto(index, {
-      fotoRef: '',
-      fotoArchivoId: '',
-      fotoRuta: '',
-      fotoPreview: '',
+  const handleRemoveItem = (index) => {
+    const base = materializarDetalle();
+    base.splice(index, 1);
+    setDetalle(base);
+  };
+
+  const MIME = {
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  };
+
+  const appendArchivoAlCaso = (creado) => {
+    if (!creado || !onCasoChange) return;
+    onCasoChange((prev) => {
+      if (!prev) return prev;
+      const list = Array.isArray(prev.archivos) ? prev.archivos : [];
+      return { ...prev, archivos: [...list, creado] };
     });
-    await syncInformeConItems(items);
+  };
+
+  const copiarAlArchivero = async (blob, nombre, mime) => {
+    if (!casoId) {
+      setMensaje(t('segurosAlfa.settlement.archiveNeedsCase'));
+      return;
+    }
+    if (!blob || !nombre) return;
+    const file = new File([blob], nombre, { type: mime });
+    const creado = await subirArchivoAlfa(casoId, file, 'LIQUIDACION');
+    appendArchivoAlCaso(creado);
+    setMensaje(t('segurosAlfa.settlement.archiveSaved'));
   };
 
   const handleGuardar = async () => {
     if (!onGuardarEnCaso) return;
     setError('');
     try {
-      const items = liquidador?.evaluacionSismicaNSR10?.items || [];
-      if (casoId && items.some((it) => it?.fotoArchivoId || it?.fotoRuta)) {
-        await syncInformeConItems(items);
-      }
-      await onGuardarEnCaso(liquidador, totales);
+      const conDetalle = {
+        ...liquidador,
+        detalleLiquidacionCat: itemsDetalle,
+        encabezado: {
+          ...enc,
+          valorAseguradoInmueble:
+            enc.valorAseguradoInmueble ?? liquidador.liquidacionCatastrofico?.valorAsegurado,
+        },
+        liquidacionCatastrofico: {
+          ...(liquidador.liquidacionCatastrofico || {}),
+          valorAsegurado:
+            liquidador.liquidacionCatastrofico?.valorAsegurado ?? enc.valorAseguradoInmueble,
+        },
+      };
+      await onGuardarEnCaso(conDetalle, totales);
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.settlement.saveError'));
     }
   };
 
-  const correrExport = async (tipo, fn) => {
+  const correrExport = async (tipo, fn, mime) => {
     setError('');
+    setMensaje('');
     setExportando(tipo);
     try {
-      await fn(liquidador, totales);
+      const resultado = await fn(
+        { ...liquidador, detalleLiquidacionCat: itemsDetalle },
+        totales
+      );
+      const blob = resultado?.blob;
+      const nombre = resultado?.nombre || resultado?.filename;
+      if (blob && nombre) {
+        try {
+          await copiarAlArchivero(blob, nombre, mime);
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar en el archivero:', errArchivo);
+          setError(t('segurosAlfa.settlement.archiveError'));
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('segurosAlfa.settlement.exportError'));
+    } finally {
+      setExportando('');
+    }
+  };
+
+  const exportarExcelCat = async () => {
+    setError('');
+    setMensaje('');
+    setExportando('excel');
+    try {
+      const resultado = await descargarInformeCatAlfaExcel({
+        caso: { ...(casoAlfa || {}), ...casoLocal },
+        liquidador: { ...liquidador, detalleLiquidacionCat: itemsDetalle },
+        totales,
+        informe: casoAlfa?.informeUnico || null,
+      });
+      try {
+        await copiarAlArchivero(
+          resultado?.blob,
+          resultado?.filename || resultado?.nombre,
+          MIME.xlsx
+        );
+      } catch (errArchivo) {
+        console.warn('No se pudo guardar el Excel CAT en el archivero:', errArchivo);
+        setError(t('segurosAlfa.settlement.archiveError'));
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.settlement.exportError'));
@@ -166,23 +319,16 @@ export default function LiquidadorSegurosAlfa({
             type="button"
             className={expressBtnSecondary}
             disabled={!!exportando}
-            onClick={() => correrExport('excel', descargarLiquidadorAlfaExcel)}
+            onClick={exportarExcelCat}
+            title="Informe CAT Alfa (Liquidador + Análisis + anexos)"
           >
-            <FaFileExcel /> Excel
-          </button>
-          <button
-            type="button"
-            className={expressBtnSecondary}
-            disabled={!!exportando}
-            onClick={() => correrExport('pdf', descargarLiquidadorAlfaPdf)}
-          >
-            <FaFilePdf /> PDF
+            <FaFileExcel /> Excel CAT
           </button>
           <button
             type="button"
             className={expressBtnGhost}
             disabled={!!exportando}
-            onClick={() => correrExport('finiquito', descargarFiniquitoAlfaWord)}
+            onClick={() => correrExport('finiquito', descargarFiniquitoAlfaWord, MIME.docx)}
           >
             <FaFileWord /> {t('segurosAlfa.settlement.downloadFiniquito')}
           </button>
@@ -201,87 +347,65 @@ export default function LiquidadorSegurosAlfa({
         )}
       </div>
 
+      {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
       {error && <p className={expressAlertError}>{error}</p>}
 
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>{t('segurosAlfa.settlement.headerTitle')}</h3>
-        <div className={grid3}>
-          <CampoTomadorAlfa
-            className="sm:col-span-3"
-            value={enc.tomador}
-            onChange={(valor) => actualizarEncabezado('tomador', valor)}
-            mostrarGestion={false}
-          />
-          <Campo label={t('segurosAlfa.settlement.insured')}>
-            <InputFenix
-              value={enc.asegurado || ''}
-              onChange={(e) => actualizarEncabezado('asegurado', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('segurosAlfa.fields.numeroPoliza')}>
-            <InputFenix
-              value={enc.poliza || ''}
-              onChange={(e) => actualizarEncabezado('poliza', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('segurosAlfa.fields.siniestro')}>
-            <InputFenix
-              value={enc.siniestro || ''}
-              onChange={(e) => actualizarEncabezado('siniestro', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('segurosAlfa.fields.identificacion')}>
-            <InputFenix
-              value={enc.identificacion || ''}
-              onChange={(e) => actualizarEncabezado('identificacion', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('segurosAlfa.fields.cobertura')}>
-            <InputFenix
-              value={enc.cobertura || ''}
-              onChange={(e) => actualizarEncabezado('cobertura', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('segurosAlfa.fields.direccionPredio')}>
-            <InputFenix
-              value={enc.direccion || ''}
-              onChange={(e) => actualizarEncabezado('direccion', e.target.value)}
-            />
-          </Campo>
-        </div>
-        <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible (contenidos)</span>
-            <span>$ {formatearMonto(totales.deducibleAplicado || 0)}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('segurosAlfa.settlement.totalPay')}</span>
-            <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-          </div>
-        </div>
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {t('segurosAlfa.settlement.nsrTitle', { defaultValue: 'Evaluación y liquidador NSR-10' })}
-        </h3>
-        <ChecklistEvaluacionSismicaNSR10
-          formData={formDataNsr}
-          onInputChange={handleNsrChange}
-          modoLiquidador={false}
-          habilitarUploadFotos={Boolean(casoId)}
-          onUploadFotoFila={casoId ? handleUploadFotoFila : null}
-          onRemoveFotoFila={casoId ? handleRemoveFotoFila : null}
-        />
-      </section>
+      <FormatoLiquidacionAlfa
+        caso={casoLocal}
+        encabezado={enc}
+        liquidacionCatastrofico={liquidador.liquidacionCatastrofico || {}}
+        itemsDetalle={itemsDetalle}
+        totales={totales}
+        observaciones={liquidador.observaciones || ''}
+        liquidadoPor={enc.ajustador || casoLocal.ajustador || ''}
+        datosBancarios={liquidador.datosBancarios || {}}
+        aiuPorcentaje={
+          liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje ?? 0.05
+        }
+        aceptacionIndemnizacion={liquidador.aceptacionIndemnizacion || ''}
+        firmaCliente={liquidador.firmaCliente || ''}
+        nombreFirmante={
+          liquidador.nombreFirmante ||
+          enc.asegurado ||
+          enc.tomador ||
+          casoLocal.asegurado ||
+          casoLocal.tomador ||
+          ''
+        }
+        onEncabezadoChange={actualizarEncabezado}
+        onCasoCampoChange={actualizarCasoCampo}
+        onDeducibleChange={actualizarDeducible}
+        onAiuChange={actualizarAiu}
+        onItemChange={handleItemChange}
+        onCatalogoItem={handleCatalogoItem}
+        onAddItem={handleAddItem}
+        onRemoveItem={handleRemoveItem}
+        onObservacionesChange={(v) =>
+          setLiquidador((prev) => ({ ...prev, observaciones: v }))
+        }
+        onLiquidadoPorChange={(v) => actualizarEncabezado('ajustador', v)}
+        onDatosBancariosChange={(campo, valor) =>
+          setLiquidador((prev) => ({
+            ...prev,
+            datosBancarios: {
+              ...(prev.datosBancarios || {}),
+              [campo]: valor,
+            },
+          }))
+        }
+        onAceptacionChange={(v) =>
+          setLiquidador((prev) => ({ ...prev, aceptacionIndemnizacion: v }))
+        }
+        onFirmaClienteChange={(v) => {
+          // Transición: el data URL no debe bloquear el hilo al firmar
+          startTransition(() => {
+            setLiquidador((prev) => ({ ...prev, firmaCliente: v }));
+          });
+        }}
+        onNombreFirmanteChange={(v) =>
+          setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))
+        }
+      />
     </div>
   );
 }

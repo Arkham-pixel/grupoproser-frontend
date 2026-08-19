@@ -21,18 +21,31 @@ import {
   formatDateLarga,
 } from './liquidadorAlfaHelpers.js';
 
+/**
+ * Finiquito oficial Seguros Alfa — plantilla
+ * «FINIQUITO DE INDEMNIZACIÓN SINIESTRO SISMO»
+ * (FINIQUITO DE GENERALES). Solo se reemplazan los campos marcados con X.
+ */
+
 const thin = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
 const borders = { top: thin, bottom: thin, left: thin, right: thin };
 const none = { style: BorderStyle.NONE, size: 0, color: 'FFFFFF' };
 const noBorders = { top: none, bottom: none, left: none, right: none };
-const lineBottom = {
-  top: none,
-  left: none,
-  right: none,
-  bottom: { style: BorderStyle.SINGLE, size: 12, color: '000000' },
-};
 
-const ASEGURADORA = 'SEGUROS ALFA S.A.';
+const MESES_ES = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
 
 async function loadLogoBytes(url) {
   try {
@@ -55,33 +68,6 @@ async function buildLogosHeader() {
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
   const alfa = await loadLogoBytes(`${base}templates/logo-seguros-alfa.png`);
 
-  const left = new Paragraph({
-    spacing: { after: 0 },
-    children: proser
-      ? [
-          new ImageRun({
-            data: proser.bytes,
-            transformation: { width: 150, height: 48 },
-            type: proser.type,
-          }),
-        ]
-      : [new TextRun({ text: 'GRUPO PROSER', bold: true, font: 'Arial', size: 18 })],
-  });
-
-  const right = new Paragraph({
-    alignment: AlignmentType.RIGHT,
-    spacing: { after: 0 },
-    children: alfa
-      ? [
-          new ImageRun({
-            data: alfa.bytes,
-            transformation: { width: 150, height: 66 },
-            type: alfa.type,
-          }),
-        ]
-      : [new TextRun({ text: 'SEGUROS ALFA', bold: true, font: 'Arial', size: 18 })],
-  });
-
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
     columnWidths: [4680, 4680],
@@ -92,23 +78,40 @@ async function buildLogosHeader() {
             borders: noBorders,
             width: { size: 4680, type: WidthType.DXA },
             verticalAlign: VerticalAlign.CENTER,
-            children: [left],
+            children: [
+              new Paragraph({
+                spacing: { after: 0 },
+                children: proser
+                  ? [
+                      new ImageRun({
+                        data: proser.bytes,
+                        transformation: { width: 140, height: 45 },
+                        type: proser.type,
+                      }),
+                    ]
+                  : [new TextRun({ text: 'GRUPO PROSER', bold: true, font: 'Arial', size: 18 })],
+              }),
+            ],
           }),
           new TableCell({
             borders: noBorders,
             width: { size: 4680, type: WidthType.DXA },
             verticalAlign: VerticalAlign.CENTER,
-            children: [right],
-          }),
-        ],
-      }),
-      new TableRow({
-        children: [
-          new TableCell({
-            borders: lineBottom,
-            columnSpan: 2,
-            width: { size: 9360, type: WidthType.DXA },
-            children: [new Paragraph({ spacing: { after: 40 }, children: [] })],
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                spacing: { after: 0 },
+                children: alfa
+                  ? [
+                      new ImageRun({
+                        data: alfa.bytes,
+                        transformation: { width: 140, height: 62 },
+                        type: alfa.type,
+                      }),
+                    ]
+                  : [new TextRun({ text: 'SEGUROS ALFA', bold: true, font: 'Arial', size: 18 })],
+              }),
+            ],
           }),
         ],
       }),
@@ -120,54 +123,32 @@ const run = (text, opts = {}) =>
   new TextRun({
     text: String(text ?? ''),
     font: 'Arial',
-    size: opts.size || 18,
+    size: opts.size || 20,
     bold: !!opts.bold,
   });
 
 const p = (text, opts = {}) =>
   new Paragraph({
     alignment: opts.alignment || AlignmentType.JUSTIFIED,
-    spacing: { after: opts.after ?? 120, before: opts.before ?? 0 },
-    children: [run(text, opts)],
+    spacing: { after: opts.after ?? 160, before: opts.before ?? 0, line: opts.line || 276 },
+    children: Array.isArray(text)
+      ? text.map((part) =>
+          typeof part === 'string' ? run(part, opts) : run(part.text, { ...opts, ...part })
+        )
+      : [run(text, opts)],
   });
 
-const pMixed = (parts, opts = {}) =>
+/** Etiqueta + valor en una sola línea (como la plantilla Alfa). */
+const lineaCampo = (label, value) =>
   new Paragraph({
-    alignment: opts.alignment || AlignmentType.JUSTIFIED,
-    spacing: { after: opts.after ?? 120, before: opts.before ?? 0 },
-    children: parts.map((part) =>
-      typeof part === 'string' ? run(part, opts) : run(part.text, { ...opts, ...part })
-    ),
-  });
-
-/** Fila etiqueta | valor — estilo constancia FDM, sin colores */
-const filaDato = (label, value) =>
-  new TableRow({
+    alignment: AlignmentType.LEFT,
+    spacing: { after: 60, line: 276 },
     children: [
-      new TableCell({
-        borders,
-        width: { size: 3200, type: WidthType.DXA },
-        children: [
-          new Paragraph({
-            children: [run(`${label}`, { bold: true, size: 17 })],
-          }),
-        ],
-      }),
-      new TableCell({
-        borders,
-        width: { size: 6160, type: WidthType.DXA },
-        children: [
-          new Paragraph({
-            children: [run(value || '—', { size: 17 })],
-          }),
-        ],
-      }),
+      run(`${label}`, { bold: true, size: 20 }),
+      run('\t'),
+      run(String(value || '—'), { size: 20 }),
     ],
   });
-
-function formatearMontoConstancia(valor) {
-  return formatearMonto(valor, { decimals: 2 });
-}
 
 function formatearCedula(cedula) {
   const digits = String(cedula || '').replace(/\D/g, '');
@@ -175,51 +156,70 @@ function formatearCedula(cedula) {
   return digits.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-function letrasConstancia(letras) {
-  return String(letras || '')
-    .replace(/\s*Pesos M\/Cte\.?/i, ' PESOS M/CTE.')
-    .trim();
+function letrasFiniquito(valor) {
+  const raw = montoALetrasFdm(valor) || '';
+  return String(raw)
+    .replace(/\s*Pesos M\/Cte\.?/i, '')
+    .replace(/\s*PESOS M\/CTE\.?/i, '')
+    .trim()
+    .toUpperCase();
 }
 
-function tasaDeducibleTxt(totales) {
-  if (totales?.deducibleTexto) return String(totales.deducibleTexto);
-  if (totales.usaSMMLV) {
-    return `${String(totales.cantidadSMMLV ?? 0).replace('.', ',')} SMMLV`;
+function partesFechaFirma(fecha = new Date()) {
+  const d = fecha instanceof Date ? fecha : new Date(fecha);
+  if (Number.isNaN(d.getTime())) {
+    const now = new Date();
+    return {
+      dia: String(now.getDate()),
+      mes: MESES_ES[now.getMonth()],
+      anio: String(now.getFullYear()),
+    };
   }
-  return `${totales.porcentaje || 0}%`;
+  return {
+    dia: String(d.getDate()),
+    mes: MESES_ES[d.getMonth()],
+    anio: String(d.getFullYear()),
+  };
+}
+
+function celdaBanco(label) {
+  return new TableCell({
+    borders,
+    width: { size: 3120, type: WidthType.DXA },
+    children: [
+      new Paragraph({
+        spacing: { after: 40 },
+        children: [run(label, { bold: true, size: 18 })],
+      }),
+      new Paragraph({
+        spacing: { after: 80 },
+        children: [run(' ', { size: 18 })],
+      }),
+    ],
+  });
 }
 
 /**
- * Finiquito / Constancia de indemnización Seguros Alfa
- * (mismo esquema legal que Fundación de la Mujer / Equidad FDM),
- * con nombres de Alfa y logos Proser + Alfa.
+ * Genera y descarga el Finiquito de Generales (siniestro sismo) Seguros Alfa.
  */
 export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) {
   const enc = liquidador.encabezado || {};
   const totales = totalesInput || calcularLiquidacionAlfa(liquidador);
+  const banco = liquidador.datosBancarios || liquidador.finiquitoBancario || {};
 
   const tomador = enc.tomador || '—';
-  const asegurado = enc.asegurado || enc.contacto || '—';
-  const cobertura = enc.cobertura || enc.evento || enc.ramo || '—';
+  const asegurado = enc.asegurado || enc.contacto || tomador || '—';
+  const ramo = enc.cobertura || enc.evento || enc.ramo || 'TODO RIESGO DAÑO MATERIAL';
   const poliza = enc.poliza || '—';
-  const orden = enc.consecutivo || enc.orden || '—';
-  const siniestro = enc.siniestro || '0';
-  const agencia = enc.ciudad || enc.agencia || '—';
+  const siniestro = String(enc.siniestro || '—');
   const cedula = formatearCedula(enc.identificacion || enc.cedula);
-  const evento = enc.evento || enc.cobertura || '—';
-  const direccion = enc.direccion || '—';
-  const fechaSiniestroLarga = formatDateLarga(enc.fechaSiniestro);
-  const fechaImpresoLarga = formatDateLarga(enc.fechaImpreso || new Date());
-  const ciudadFirma = enc.ciudad || enc.ciudadFirma || 'Colombia';
+  const ciudad = enc.ciudad || enc.ciudadFirma || '____________';
+  const fechaEventoLarga =
+    formatDateLarga(enc.fechaSiniestro) || '10 de agosto de 2026';
+  const firma = partesFechaFirma(enc.fechaImpreso || new Date());
 
-  const totalPerdida = formatearMontoConstancia(
-    totales.totalDanios ?? totales.totalPerdida ?? totales.totalIndemnizable
-  );
-  const deducible = String(totales.deducibleTexto || totales.diagrama?.deducible || 'No aplica');
-  const indemnizacion = formatearMontoConstancia(totales.totalIndemnizar);
-  const letras = letrasConstancia(montoALetrasFdm(totales.totalIndemnizar));
-  const tasaTxt = tasaDeducibleTxt(totales);
-  const hospedaje = formatearMontoConstancia(totales.diagrama?.gastosHospedaje || 0);
+  const montoNum = formatearMonto(totales.totalIndemnizar, { decimals: 2 });
+  const montoLetras = letrasFiniquito(totales.totalIndemnizar);
 
   const logosTable = await buildLogosHeader();
 
@@ -228,7 +228,7 @@ export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) 
       {
         properties: {
           page: {
-            margin: { top: 900, bottom: 850, left: 900, right: 900 },
+            margin: { top: 900, bottom: 900, left: 1080, right: 1080 },
           },
         },
         headers: {
@@ -237,75 +237,131 @@ export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) 
           }),
         },
         children: [
-          p('CONSTANCIA DE INDEMNIZACIÓN Y PAZ Y SALVO', {
+          p('FINIQUITO DE GENERALES', {
             alignment: AlignmentType.CENTER,
             bold: true,
-            size: 22,
-            after: 200,
-            before: 40,
+            size: 28,
+            after: 280,
+            before: 80,
+          }),
+
+          lineaCampo('RAMO:', ramo),
+          lineaCampo('POLIZA:', poliza),
+          lineaCampo('TOMADOR:', tomador),
+          lineaCampo('ASEGURADO:', asegurado),
+          lineaCampo('CC.', cedula),
+          lineaCampo('SINIESTRO:', siniestro),
+
+          new Paragraph({ spacing: { after: 200 }, children: [] }),
+
+          p(
+            [
+              { text: 'Nosotros, ' },
+              { text: asegurado, bold: true },
+              { text: ' identificado con CC: ' },
+              { text: cedula, bold: true },
+              {
+                text:
+                  ' en calidad de BENEFICIARIO, declaro haber recibido de la COMPAÑÍA SEGUROS ALFA S.A., con NIT 860.031.979-8, de conformidad y a entera satisfacción la suma de ',
+              },
+              { text: `${montoLetras} PESOS M/CTE.`, bold: true },
+              { text: ' ($' },
+              { text: montoNum, bold: true },
+              {
+                text: `) a título de indemnización total y definitiva por el terremoto ocurrido, el pasado ${fechaEventoLarga}, en una parte del territorio nacional.`,
+              },
+            ],
+            { after: 200 }
+          ),
+
+          p(
+            'De conformidad con lo anterior, mediante el presente FINIQUITO, declaro quedar indemnizado(a) a entera satisfacción de conformidad con lo pactado en el contrato de seguro citado, así como de todo perjuicio ocasionado en relación con el evento ocurrido, razón por la que de manera voluntaria no iniciaré acciones de carácter civil, penal, mercantil o de cualquiera otra índole en contra de SEGUROS ALFA S.A.',
+            { after: 200 }
+          ),
+
+          p(
+            'Así mismo, de acuerdo con lo dispuesto en el artículo 1096 del Código de Comercio, demás normas concordantes y a lo pactado en la Póliza de Seguro en mención, manifiesto expresamente que conozco y acepto que mediante el presente documento, SEGUROS ALFA S.A. se subroga hasta por la cantidad pagada, en todos los derechos y acciones en contra terceros que se pudieran derivar como consecuencia del siniestro ocurrido, por lo que me obligo a prestar la ayuda necesaria, a comparecer a juicio, a cumplir con las obligaciones pactadas en el contrato de seguro y a realizar todas las actividades razonables en el momento y bajo las condiciones que la Aseguradora así lo requiera, con el objeto que la misma pueda ejercer su derecho de subrogación.',
+            { after: 240 }
+          ),
+
+          p('DATOS BANCARIOS PARA PAGO:', {
+            alignment: AlignmentType.LEFT,
+            bold: true,
+            after: 120,
           }),
 
           new Table({
             width: { size: 9360, type: WidthType.DXA },
-            columnWidths: [3200, 6160],
+            columnWidths: [3120, 3120, 3120],
             rows: [
-              filaDato('TOMADOR:', tomador),
-              filaDato('ASEGURADO Y BENEFICIARIO:', asegurado),
-              filaDato('COBERTURA / RAMO:', cobertura),
-              filaDato('PÓLIZA:', poliza),
-              filaDato('ORDEN / CONSECUTIVO:', orden),
-              filaDato('SINIESTRO:', String(siniestro)),
-              filaDato('CIUDAD / AGENCIA:', agencia),
+              new TableRow({
+                children: [
+                  celdaBanco('No. CUENTA'),
+                  celdaBanco('BANCO'),
+                  celdaBanco('TIPO DE CUENTA'),
+                ],
+              }),
+              new TableRow({
+                children: [
+                  new TableCell({
+                    borders,
+                    width: { size: 3120, type: WidthType.DXA },
+                    children: [
+                      new Paragraph({
+                        children: [run(banco.numeroCuenta || banco.cuenta || '', { size: 18 })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    borders,
+                    width: { size: 3120, type: WidthType.DXA },
+                    children: [
+                      new Paragraph({
+                        children: [run(banco.banco || '', { size: 18 })],
+                      }),
+                    ],
+                  }),
+                  new TableCell({
+                    borders,
+                    width: { size: 3120, type: WidthType.DXA },
+                    children: [
+                      new Paragraph({
+                        children: [
+                          run(banco.tipoCuenta || banco.tipo || '', { size: 18 }),
+                        ],
+                      }),
+                    ],
+                  }),
+                ],
+              }),
             ],
           }),
 
-          p(
-            `${asegurado} identificado (a) como aparece al pie de mi firma, obrando en calidad de asegurado (a) beneficiario (a), y afectado (a) por el siniestro de la póliza citada, por medio del presente documento hago constar:`,
-            { before: 220, after: 160 }
-          ),
+          new Paragraph({ spacing: { after: 220 }, children: [] }),
 
           p(
-            `PRIMERO. - Que he llegado con ${ASEGURADORA}, aseguradora de los riesgos de la póliza citada, a un arreglo transaccional definitivo, con ocasión al evento ${evento} que afectó el bien asegurado, en la dirección: ${direccion}, en hechos ocurridos el ${fechaSiniestroLarga}.`,
-            { after: 140 }
+            `En constancia de lo anterior, se suscribe el presente FINIQUITO en la Ciudad de ${ciudad} a los ${firma.dia} del mes de ${firma.mes} del año ${firma.anio}.`,
+            { after: 400 }
           ),
 
-          p(
-            `SEGUNDO. - Que recibiré de ${ASEGURADORA}, la suma de: ($${indemnizacion})-(${letras}), valor en que estimo los perjuicios sufridos, dado que el total de daños según presupuesto NSR-10 es por valor de ($${totalPerdida}), más gastos de hospedaje ($${hospedaje}), con deducible: ${tasaTxt}, para un total a indemnizar de: ($${indemnizacion}).`,
-            { after: 140 }
-          ),
-
-          p(
-            `TERCERO. - Que en consecuencia de lo anterior declaro a PAZ Y SALVO y libre de posteriores reclamos a ${ASEGURADORA}, por los hechos el ${fechaSiniestroLarga}.`,
-            { after: 140 }
-          ),
-
-          p(
-            `CUARTO. - De acuerdo con lo establecido por los artículos 15, 2.483 y concordantes del Código Civil Colombiano, renuncio y desisto de las acciones y derechos que me confieren las leyes civiles y penales, para iniciar en un futuro acción alguna que persiga el pago de perjuicios materiales y morales en contra de ${ASEGURADORA}, en consideración a que los daños fueron indemnizados en su totalidad.`,
-            { after: 180 }
-          ),
-
-          p(`Para constancia de lo anterior se firma en ${ciudadFirma} ${fechaImpresoLarga}.`, {
-            after: 360,
-          }),
-
-          p('Firma:', { alignment: AlignmentType.LEFT, after: 280 }),
-          p('_________________________________', {
+          p('___________________________', {
             alignment: AlignmentType.LEFT,
-            after: 60,
+            after: 40,
           }),
-          pMixed(
+          p('FIRMA', { alignment: AlignmentType.LEFT, bold: true, after: 40 }),
+          p(
             [
-              { text: 'Asegurado (a): ', bold: true },
-              { text: asegurado },
+              { text: 'CC. ', bold: true },
+              { text: cedula },
             ],
             { alignment: AlignmentType.LEFT, after: 40 }
           ),
-          pMixed(
+          p(
             [
-              { text: 'Cédula de Ciudadanía No: ', bold: true },
-              { text: cedula },
+              { text: 'Nombre: ', bold: true },
+              { text: asegurado },
             ],
-            { alignment: AlignmentType.LEFT, after: 200 }
+            { alignment: AlignmentType.LEFT, after: 80 }
           ),
         ],
       },
@@ -316,6 +372,7 @@ export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) 
   const safe = String(asegurado || siniestro || 'caso')
     .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, '_')
     .slice(0, 50);
-  const nombre = `Finiquito_Constancia_Alfa_${safe}.docx`;
+  const nombre = `Finiquito_Generales_Alfa_${safe}.docx`;
   saveAs(blob, nombre);
+  return { blob, nombre };
 }

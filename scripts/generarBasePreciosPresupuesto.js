@@ -13,7 +13,7 @@ const FRONT = path.join(__dirname, '..');
 const defaultExcel = path.join(
   process.env.USERPROFILE || '',
   'Downloads',
-  'BASE DE PRECIOS GENERAL .xlsx'
+  'BASE DE PRECIOS.xlsx'
 );
 const excelPath = process.argv[2] || defaultExcel;
 const outJs = path.join(
@@ -61,10 +61,13 @@ fs.mkdirSync(publicDir, { recursive: true });
 fs.copyFileSync(excelPath, publicExcel);
 
 const wb = XLSX.readFile(excelPath, { cellDates: true });
-const sheetName = wb.SheetNames.find((n) => String(n).includes('25')) || '(25%)';
+const sheetName =
+  wb.SheetNames.find((n) => /base\s*de\s*datos/i.test(String(n))) ||
+  wb.SheetNames.find((n) => String(n).includes('25')) ||
+  wb.SheetNames[0];
 const ws = wb.Sheets[sheetName];
 if (!ws) {
-  console.error('No está la hoja (25%) en el Excel. Hojas:', wb.SheetNames);
+  console.error('No se encontró hoja de precios. Hojas:', wb.SheetNames);
   process.exit(1);
 }
 
@@ -103,23 +106,46 @@ for (const r of rows) {
   }
 }
 
+function ordenarMayorAMenorPorCapitulo(lista) {
+  const caps = [...new Set(lista.map((i) => i.capitulo))];
+  const out = [];
+  for (const cap of caps) {
+    const grupo = lista
+      .filter((i) => i.capitulo === cap)
+      .sort((a, b) => (Number(b.valorUnitario) || 0) - (Number(a.valorUnitario) || 0));
+    out.push(...grupo);
+  }
+  return out;
+}
+
+const itemsOrdenados = ordenarMayorAMenorPorCapitulo(items);
+
 const header = `/**
  * Base de precios general para Presupuesto NSR-10.
- * Fuente: public/templates/base-precios-presupuesto-general.xlsx (hoja "(25%)").
+ * Fuente: public/templates/base-precios-presupuesto-general.xlsx (hoja "${sheetName}").
  * Generado con scripts/generarBasePreciosPresupuesto.js — no editar a mano.
- * Items: ${items.length}
+ * Items: ${itemsOrdenados.length}
+ * Orden: mayor a menor valor unitario dentro de cada capítulo.
  */
 
-export const BASE_PRECIOS_PRESUPUESTO = Object.freeze(${JSON.stringify(items, null, 2)});
+export const BASE_PRECIOS_PRESUPUESTO = Object.freeze(${JSON.stringify(itemsOrdenados, null, 2)});
 
 export const CAPITULOS_BASE_PRECIOS = Object.freeze(
   [...new Set(BASE_PRECIOS_PRESUPUESTO.map((i) => i.capitulo))]
 );
 
+function ordenarPorValorDesc(lista) {
+  return [...lista].sort(
+    (a, b) => (Number(b.valorUnitario) || 0) - (Number(a.valorUnitario) || 0)
+  );
+}
+
 export function catalogoPresupuestoPorCapitulo(capitulo = '') {
   const cap = String(capitulo || '').trim();
-  if (!cap) return BASE_PRECIOS_PRESUPUESTO;
-  return BASE_PRECIOS_PRESUPUESTO.filter((i) => i.capitulo === cap);
+  const lista = !cap
+    ? BASE_PRECIOS_PRESUPUESTO
+    : BASE_PRECIOS_PRESUPUESTO.filter((i) => i.capitulo === cap);
+  return ordenarPorValorDesc(lista);
 }
 
 export function buscarItemBasePrecios(id) {
@@ -128,7 +154,7 @@ export function buscarItemBasePrecios(id) {
 `;
 
 fs.writeFileSync(outJs, header, 'utf8');
-console.log('OK items=', items.length);
+console.log('OK items=', itemsOrdenados.length);
 console.log('JS =', outJs);
 console.log('Excel =', publicExcel);
 console.log('Hoja =', sheetName);

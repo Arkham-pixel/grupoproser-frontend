@@ -3,6 +3,7 @@ import { saveAs } from 'file-saver';
 import mammoth from 'mammoth';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import ExcelJS from 'exceljs';
 import { urlDescargaArchivoFdm } from '../../services/equidadFdmService.js';
 
 /** Etiquetas que NUNCA entran al PDF unificado (liquidador / modelo Excel). */
@@ -13,6 +14,7 @@ export const ETIQUETAS_EXCLUIDAS_MERGE_PDF = new Set([
 
 const IMAGE_EXTS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.bmp']);
 const WORD_EXTS = new Set(['.docx']);
+const EXCEL_EXTS = new Set(['.xlsx', '.xlsm']);
 const PDF_EXTS = new Set(['.pdf']);
 
 const authFetchHeaders = () => {
@@ -20,11 +22,28 @@ const authFetchHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
+const asUint8 = (bytes) => {
+  if (!bytes) return new Uint8Array();
+  if (bytes instanceof Uint8Array) return bytes;
+  if (bytes instanceof ArrayBuffer) return new Uint8Array(bytes);
+  if (ArrayBuffer.isView(bytes)) {
+    return new Uint8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  }
+  return new Uint8Array(bytes);
+};
+
 const extDeArchivo = (arch) => {
-  const nombre = String(arch?.nombreOriginal || '').toLowerCase();
+  const nombre = String(arch?.nombreOriginal || arch?.name || '').toLowerCase();
   const i = nombre.lastIndexOf('.');
   return i >= 0 ? nombre.slice(i) : '';
 };
+
+const escapeHtml = (valor) =>
+  String(valor ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 
 export const esExcluidoDelExpedienteFdm = (arch) => {
   const etiqueta = String(arch?.etiqueta || '').toUpperCase();
@@ -33,33 +52,56 @@ export const esExcluidoDelExpedienteFdm = (arch) => {
   return /Liquidador_FDM/i.test(nombre) && /\.pdf$/i.test(nombre);
 };
 
-export const tipoConvertibleFdm = (arch) => {
-  if (!arch || esExcluidoDelExpedienteFdm(arch)) return null;
-  const mime = String(arch?.tipoMime || '').toLowerCase();
-  const ext = extDeArchivo(arch);
+const detectarTipoPorBytes = (bytes, nombre = '', mime = '') => {
+  const u8 = asUint8(bytes);
+  const mimeL = String(mime || '').toLowerCase();
+  const ext = extDeArchivo({ nombreOriginal: nombre });
+  if (u8.length >= 5) {
+    const ascii = String.fromCharCode(u8[0], u8[1], u8[2], u8[3], u8[4]);
+    if (ascii.startsWith('%PDF')) return 'pdf';
+    if (u8[0] === 0xff && u8[1] === 0xd8) return 'image';
+    if (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47) return 'image';
+    if (ascii.startsWith('GIF')) return 'image';
+    if (u8[0] === 0x42 && u8[1] === 0x4d) return 'image';
+    if (u8[0] === 0x52 && u8[1] === 0x49 && u8[2] === 0x46 && u8[3] === 0x46) return 'image';
+    if (u8[0] === 0x50 && u8[1] === 0x4b) {
+      if (EXCEL_EXTS.has(ext) || mimeL.includes('spreadsheet')) return 'excel';
+      if (WORD_EXTS.has(ext) || mimeL.includes('wordprocessing')) return 'word';
+      if (ext === '.docx') return 'word';
+      if (ext === '.xlsx' || ext === '.xlsm') return 'excel';
+    }
+  }
+  if (mimeL.includes('pdf') || PDF_EXTS.has(ext)) return 'pdf';
+  if (mimeL.startsWith('image/') || IMAGE_EXTS.has(ext)) return 'image';
+  if (mimeL.includes('spreadsheet') || EXCEL_EXTS.has(ext)) return 'excel';
+  if (mimeL.includes('wordprocessingml') || WORD_EXTS.has(ext)) return 'word';
+  if (ext === '.doc' || (mimeL.includes('msword') && ext === '.doc')) return 'word_legacy';
+  return null;
+};
 
+export const tipoConvertibleFdm = (arch, bytes = null) => {
+  if (!arch || esExcluidoDelExpedienteFdm(arch)) return null;
+  if (bytes) {
+    return detectarTipoPorBytes(bytes, arch.nombreOriginal || arch.name, arch.tipoMime || arch.type);
+  }
+  const mime = String(arch?.tipoMime || arch?.type || '').toLowerCase();
+  const ext = extDeArchivo(arch);
   if (mime.includes('pdf') || PDF_EXTS.has(ext)) return 'pdf';
   if (mime.startsWith('image/') || IMAGE_EXTS.has(ext)) return 'image';
-  if (
-    mime.includes('wordprocessingml') ||
-    mime.includes('msword') ||
-    WORD_EXTS.has(ext) ||
-    ext === '.doc'
-  ) {
+  if (mime.includes('spreadsheet') || EXCEL_EXTS.has(ext)) return 'excel';
+  if (mime.includes('wordprocessingml') || WORD_EXTS.has(ext) || ext === '.doc') {
     if (ext === '.doc' && !mime.includes('wordprocessingml')) return 'word_legacy';
     return 'word';
   }
   return null;
 };
 
-/** Archivos que se pueden convertir/unir (PDF, imagen, Word). Excluye liquidador. */
 export const archivosParaExpedienteFdm = (archivos = []) =>
   (archivos || []).filter((a) => {
     const tipo = tipoConvertibleFdm(a);
-    return tipo === 'pdf' || tipo === 'image' || tipo === 'word';
+    return tipo === 'pdf' || tipo === 'image' || tipo === 'word' || tipo === 'excel';
   });
 
-/** @deprecated usar archivosParaExpedienteFdm */
 export const archivosPdfParaUnirFdm = archivosParaExpedienteFdm;
 
 async function fetchArchivoBytes(arch) {
@@ -73,86 +115,154 @@ async function fetchArchivoBytes(arch) {
 }
 
 async function appendPdfBytes(merged, pdfBytes) {
-  const src = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+  const src = await PDFDocument.load(asUint8(pdfBytes), { ignoreEncryption: true });
+  if (!src.getPageCount()) {
+    throw new Error('El PDF de origen no tiene páginas');
+  }
   const pages = await merged.copyPages(src, src.getPageIndices());
   pages.forEach((p) => merged.addPage(p));
 }
 
-async function imageBytesToPdfBytes(imageBytes, mimeHint = '') {
-  const pdf = await PDFDocument.create();
-  const mime = String(mimeHint || '').toLowerCase();
-  let image;
-  const isJpg = mime.includes('jpeg') || mime.includes('jpg');
-  const isPng = mime.includes('png');
-  try {
-    if (isJpg) image = await pdf.embedJpg(imageBytes);
-    else if (isPng) image = await pdf.embedPng(imageBytes);
-    else {
-      try {
-        image = await pdf.embedJpg(imageBytes);
-      } catch {
-        image = await pdf.embedPng(imageBytes);
-      }
-    }
-  } catch {
-    throw new Error('No se pudo convertir la imagen a PDF (use JPG o PNG).');
-  }
+const loadHtmlImage = (url) =>
+  new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('No se pudo leer la imagen'));
+    img.src = url;
+  });
 
-  const pageW = 612; // Letter
+/** Cualquier imagen del navegador → JPEG (evita webp/gif/bmp vacíos en pdf-lib). */
+async function rasterizarImagenAJpeg(imageBytes) {
+  const blob = new Blob([asUint8(imageBytes)]);
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = await loadHtmlImage(url);
+    const w = Math.max(1, img.naturalWidth || img.width || 0);
+    const h = Math.max(1, img.naturalHeight || img.height || 0);
+    if (w < 2 || h < 2) throw new Error('La imagen está vacía o dañada');
+    const maxSide = 2400;
+    const scale = Math.min(1, maxSide / Math.max(w, h));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(w * scale));
+    canvas.height = Math.max(1, Math.round(h * scale));
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const jpegBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        (b) => (b ? resolve(b) : reject(new Error('No se pudo convertir la imagen'))),
+        'image/jpeg',
+        0.9
+      );
+    });
+    return jpegBlob.arrayBuffer();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function imageBytesToPdfBytes(imageBytes) {
+  const jpegBytes = await rasterizarImagenAJpeg(imageBytes);
+  const pdf = await PDFDocument.create();
+  const image = await pdf.embedJpg(asUint8(jpegBytes));
+  const pageW = 612;
   const pageH = 792;
-  const page = pdf.addPage([pageW, pageH]);
-  const margin = 36;
-  const maxW = pageW - margin * 2;
-  const maxH = pageH - margin * 2;
+  const landscape = image.width > image.height;
+  const pw = landscape ? pageH : pageW;
+  const ph = landscape ? pageW : pageH;
+  const page = pdf.addPage([pw, ph]);
+  const margin = 28;
+  const maxW = pw - margin * 2;
+  const maxH = ph - margin * 2;
   const scale = Math.min(maxW / image.width, maxH / image.height);
   const w = image.width * scale;
   const h = image.height * scale;
   page.drawImage(image, {
-    x: (pageW - w) / 2,
-    y: (pageH - h) / 2,
+    x: (pw - w) / 2,
+    y: (ph - h) / 2,
     width: w,
     height: h,
   });
   return pdf.save();
 }
 
-/**
- * Convierte .docx → HTML (mammoth) → canvas (html2canvas) → PDF (jsPDF).
- */
-async function docxBytesToPdfBytes(docxBytes, nombre = 'documento.docx') {
-  const result = await mammoth.convertToHtml({ arrayBuffer: docxBytes });
-  const html = result.value || '<p>(Documento vacío)</p>';
+const waitFrames = (n = 3) =>
+  new Promise((resolve) => {
+    const step = (left) => {
+      if (left <= 0) return resolve();
+      requestAnimationFrame(() => step(left - 1));
+    };
+    step(n);
+  });
 
+async function waitForImages(root) {
+  const imgs = Array.from(root.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map(
+      (img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise((resolve) => {
+              img.onload = () => resolve();
+              img.onerror = () => resolve();
+            })
+    )
+  );
+}
+
+/**
+ * HTML visible (opacity baja) → PDF paginado, sin páginas extra en blanco.
+ */
+async function htmlToPdfBytes(html, { title = '' } = {}) {
   const host = document.createElement('div');
-  host.setAttribute('data-fdm-docx-convert', '1');
+  host.setAttribute('data-fdm-html-convert', '1');
   host.style.cssText = [
     'position:fixed',
-    'left:-10000px',
+    'left:0',
     'top:0',
     'width:794px',
-    'padding:40px',
+    'padding:36px 40px 48px',
     'background:#ffffff',
     'color:#111111',
     'font-family:Arial,Helvetica,sans-serif',
     'font-size:12pt',
     'line-height:1.45',
-    'z-index:-1',
+    'opacity:0.02',
+    'pointer-events:none',
+    'z-index:2147483646',
+    'overflow:visible',
+    'box-sizing:border-box',
   ].join(';');
   host.innerHTML = `
-    <div style="margin-bottom:12px;font-size:10pt;color:#666;">${String(nombre)
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')}</div>
-    <div class="fdm-docx-body">${html}</div>
+    ${title ? `<div style="margin-bottom:12px;font-size:10pt;color:#555;">${escapeHtml(title)}</div>` : ''}
+    <div class="fdm-html-body">${html}</div>
   `;
   document.body.appendChild(host);
 
   try {
+    await waitFrames(4);
+    await waitForImages(host);
+    await waitFrames(2);
+
+    const captureH = Math.max(host.scrollHeight, host.offsetHeight, 200);
     const canvas = await html2canvas(host, {
       backgroundColor: '#ffffff',
       scale: 2,
       useCORS: true,
       logging: false,
+      width: 794,
+      height: captureH,
+      windowWidth: 794,
+      windowHeight: captureH,
+      scrollX: 0,
+      scrollY: 0,
     });
+
+    if (!canvas.width || canvas.height < 8) {
+      throw new Error('La captura del documento quedó vacía');
+    }
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
     const pageW = pdf.internal.pageSize.getWidth();
@@ -160,42 +270,27 @@ async function docxBytesToPdfBytes(docxBytes, nombre = 'documento.docx') {
     const margin = 28;
     const usableW = pageW - margin * 2;
     const usableH = pageH - margin * 2;
-    const imgW = usableW;
-    const imgH = (canvas.height * imgW) / canvas.width;
+    const pxPerPt = canvas.width / usableW;
+    const pagePx = Math.max(1, Math.round(usableH * pxPerPt));
+    const totalPages = Math.max(1, Math.ceil(canvas.height / pagePx));
 
-    let remaining = imgH;
-    let offsetY = 0;
-    const sliceCanvas = document.createElement('canvas');
-    const sliceCtx = sliceCanvas.getContext('2d');
-    const pxPerPt = canvas.width / imgW;
+    for (let p = 0; p < totalPages; p += 1) {
+      const srcY = p * pagePx;
+      const sliceHpx = Math.min(pagePx, canvas.height - srcY);
+      if (sliceHpx <= 2) break;
 
-    while (remaining > 0.5) {
-      const sliceHpt = Math.min(usableH, remaining);
-      const sliceHpx = Math.max(1, Math.floor(sliceHpt * pxPerPt));
-      const srcY = Math.floor(offsetY * pxPerPt);
-
+      const sliceCanvas = document.createElement('canvas');
       sliceCanvas.width = canvas.width;
       sliceCanvas.height = sliceHpx;
-      sliceCtx.fillStyle = '#ffffff';
-      sliceCtx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      sliceCtx.drawImage(
-        canvas,
-        0,
-        srcY,
-        canvas.width,
-        sliceHpx,
-        0,
-        0,
-        canvas.width,
-        sliceHpx
-      );
+      const ctx = sliceCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+      ctx.drawImage(canvas, 0, srcY, canvas.width, sliceHpx, 0, 0, canvas.width, sliceHpx);
 
-      const dataUrl = sliceCanvas.toDataURL('image/jpeg', 0.92);
-      if (offsetY > 0) pdf.addPage();
-      pdf.addImage(dataUrl, 'JPEG', margin, margin, imgW, sliceHpt);
-
-      offsetY += sliceHpt;
-      remaining -= sliceHpt;
+      const dataUrl = sliceCanvas.toDataURL('image/jpeg', 0.9);
+      if (p > 0) pdf.addPage();
+      const sliceHpt = sliceHpx / pxPerPt;
+      pdf.addImage(dataUrl, 'JPEG', margin, margin, usableW, sliceHpt);
     }
 
     return pdf.output('arraybuffer');
@@ -204,26 +299,80 @@ async function docxBytesToPdfBytes(docxBytes, nombre = 'documento.docx') {
   }
 }
 
-async function archivoAPdfBytes(arch) {
-  const tipo = tipoConvertibleFdm(arch);
-  const bytes = await fetchArchivoBytes(arch);
-
-  if (tipo === 'pdf') return bytes;
-  if (tipo === 'image') {
-    return imageBytesToPdfBytes(bytes, arch.tipoMime || extDeArchivo(arch));
-  }
-  if (tipo === 'word') {
-    return docxBytesToPdfBytes(bytes, arch.nombreOriginal || 'documento.docx');
-  }
-  if (tipo === 'word_legacy') {
-    throw new Error(
-      `${arch.nombreOriginal}: el formato .doc antiguo no es compatible. Guárdelo como .docx e inténtelo de nuevo.`
-    );
-  }
-  throw new Error(`${arch.nombreOriginal}: tipo no convertible a PDF`);
+async function docxBytesToPdfBytes(docxBytes, nombre = 'documento.docx') {
+  const u8 = asUint8(docxBytes);
+  const arrayBuffer = u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+  const result = await mammoth.convertToHtml(
+    { arrayBuffer },
+    {
+      convertImage: mammoth.images.imgElement(async (image) => {
+        const base64 = await image.read('base64');
+        return { src: `data:${image.contentType};base64,${base64}` };
+      }),
+    }
+  );
+  const html = String(result.value || '').trim() || '<p>(Documento sin texto visible)</p>';
+  return htmlToPdfBytes(html, { title: nombre });
 }
 
-/** Normaliza File local a shape convertible (sin etiqueta de liquidador). */
+function valorCeldaExcel(cell) {
+  if (!cell) return '';
+  if (cell.text != null && String(cell.text).trim() !== '') return String(cell.text);
+  const v = cell.value;
+  if (v == null) return '';
+  if (typeof v === 'object') {
+    if (v.text != null) return String(v.text);
+    if (v.result != null) return String(v.result);
+    if (v.richText) return v.richText.map((p) => p.text || '').join('');
+    if (v.hyperlink) return String(v.text || v.hyperlink);
+  }
+  return String(v);
+}
+
+async function excelBytesToPdfBytes(excelBytes, nombre = 'libro.xlsx') {
+  const wb = new ExcelJS.Workbook();
+  const u8 = asUint8(excelBytes);
+  await wb.xlsx.load(u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength));
+  const ws = wb.worksheets[0];
+  if (!ws) throw new Error('El Excel no tiene hojas');
+
+  let table = '<table style="border-collapse:collapse;width:100%;font-size:9pt;">';
+  const maxRow = Math.min(ws.rowCount || 0, 200);
+  const maxCol = Math.min(ws.columnCount || 0, 20) || 12;
+  for (let r = 1; r <= Math.max(maxRow, 1); r += 1) {
+    const row = ws.getRow(r);
+    table += '<tr>';
+    for (let c = 1; c <= maxCol; c += 1) {
+      table += `<td style="border:1px solid #ccc;padding:3px 5px;vertical-align:top;">${escapeHtml(
+        valorCeldaExcel(row.getCell(c))
+      )}</td>`;
+    }
+    table += '</tr>';
+  }
+  table += '</table>';
+  return htmlToPdfBytes(table, { title: nombre });
+}
+
+async function bytesAPdf(bytes, nombre, mime) {
+  const tipo = detectarTipoPorBytes(bytes, nombre, mime) || tipoConvertibleFdm({
+    nombreOriginal: nombre,
+    tipoMime: mime,
+  });
+  if (tipo === 'pdf') return asUint8(bytes);
+  if (tipo === 'image') return imageBytesToPdfBytes(bytes);
+  if (tipo === 'word') return docxBytesToPdfBytes(bytes, nombre);
+  if (tipo === 'excel') return excelBytesToPdfBytes(bytes, nombre);
+  if (tipo === 'word_legacy') {
+    throw new Error(`${nombre}: el .doc antiguo no es compatible. Guárdelo como .docx.`);
+  }
+  throw new Error(`${nombre}: tipo no convertible a PDF`);
+}
+
+async function archivoAPdfBytes(arch) {
+  const bytes = await fetchArchivoBytes(arch);
+  return bytesAPdf(bytes, arch.nombreOriginal || 'documento', arch.tipoMime || '');
+}
+
 export const fileLocalAMetaFdm = (file) => ({
   nombreOriginal: file?.name || 'archivo',
   tipoMime: file?.type || '',
@@ -235,31 +384,23 @@ export const archivosLocalesParaExpedienteFdm = (files = []) =>
   [...(files || [])]
     .map(fileLocalAMetaFdm)
     .filter((a) => {
-      // No meter Excel de modelo ni liquidador PDF a la unión
-      const n = String(a.nombreOriginal || '').toLowerCase();
-      if (n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.xlsm')) return false;
-      if (/liquidador_fdm/i.test(a.nombreOriginal) && n.endsWith('.pdf')) return false;
+      const n = String(a.nombreOriginal || '');
+      if (/liquidador_fdm/i.test(n) && /\.pdf$/i.test(n)) return false;
+      if (/liquidador_fdm/i.test(n) && /\.xlsx?$/i.test(n)) return false;
       const tipo = tipoConvertibleFdm(a);
-      return tipo === 'pdf' || tipo === 'image' || tipo === 'word';
+      return tipo === 'pdf' || tipo === 'image' || tipo === 'word' || tipo === 'excel';
     });
 
 async function localFileAPdfBytes(meta) {
-  const file = meta._file;
-  const tipo = tipoConvertibleFdm(meta);
-  const bytes = await file.arrayBuffer();
-  if (tipo === 'pdf') return bytes;
-  if (tipo === 'image') return imageBytesToPdfBytes(bytes, meta.tipoMime || extDeArchivo(meta));
-  if (tipo === 'word') return docxBytesToPdfBytes(bytes, meta.nombreOriginal);
-  if (tipo === 'word_legacy') {
-    throw new Error(
-      `${meta.nombreOriginal}: use .docx (el .doc antiguo no es compatible).`
-    );
-  }
-  throw new Error(`${meta.nombreOriginal}: tipo no convertible`);
+  const bytes = await meta._file.arrayBuffer();
+  return bytesAPdf(bytes, meta.nombreOriginal, meta.tipoMime);
 }
 
 async function guardarPdfUnido(merged, nombreBase, { descargar = true } = {}) {
-  const out = await merged.save();
+  if (!merged.getPageCount()) {
+    throw new Error('El PDF unido quedó vacío. Revise que los archivos de origen se puedan abrir.');
+  }
+  const out = asUint8(await merged.save());
   const blob = new Blob([out], { type: 'application/pdf' });
   const safe = String(nombreBase || 'Expediente_FDM')
     .replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ_-]+/g, '_')
@@ -269,10 +410,6 @@ async function guardarPdfUnido(merged, nombreBase, { descargar = true } = {}) {
   return { blob, nombre };
 }
 
-/**
- * Flujo rápido: archivos locales (File[]) → un solo PDF.
- * PDF + imágenes + Word (.docx). Sin liquidador / Excel.
- */
 export async function unirArchivosLocalesFdm(
   files = [],
   { nombreBase = 'Expediente_FDM', onProgress, descargar = false } = {}
@@ -280,7 +417,7 @@ export async function unirArchivosLocalesFdm(
   const candidatos = archivosLocalesParaExpedienteFdm(files);
   if (!candidatos.length) {
     throw new Error(
-      'Seleccione PDF, Word (.docx) o imágenes. El liquidador y el Excel de liquidación no se unen.'
+      'Seleccione PDF, Word (.docx), Excel (.xlsx) o imágenes. El liquidador no se une.'
     );
   }
 
@@ -301,9 +438,6 @@ export async function unirArchivosLocalesFdm(
   return { blob, nombre, count: candidatos.length };
 }
 
-/**
- * Convertidor desde documentos ya en el archivero.
- */
 export async function unirDocumentosArchiveroFdm(
   archivos = [],
   { nombreBase = 'Expediente_FDM', onProgress, descargar = false } = {}
@@ -311,7 +445,7 @@ export async function unirDocumentosArchiveroFdm(
   const candidatos = archivosParaExpedienteFdm(archivos);
   if (!candidatos.length) {
     throw new Error(
-      'No hay documentos convertibles (PDF, Word .docx o imágenes). El liquidador y el modelo de liquidación se excluyen.'
+      'No hay documentos convertibles (PDF, Word, Excel o imágenes). El liquidador se excluye.'
     );
   }
 
@@ -324,8 +458,7 @@ export async function unirDocumentosArchiveroFdm(
       const pdfBytes = await archivoAPdfBytes(arch);
       await appendPdfBytes(merged, pdfBytes);
     } catch (err) {
-      const msg = err?.message || String(err);
-      throw new Error(`Error con «${arch.nombreOriginal}»: ${msg}`);
+      throw new Error(`Error con «${arch.nombreOriginal}»: ${err?.message || err}`);
     }
   }
 
@@ -333,7 +466,6 @@ export async function unirDocumentosArchiveroFdm(
   return { blob, nombre, count: candidatos.length };
 }
 
-/** Alias retrocompatible */
 export async function unirPdfsArchiveroFdm(archivos, opts) {
   return unirDocumentosArchiveroFdm(archivos, opts);
 }

@@ -15,7 +15,13 @@ import {
 /**
  * Select de tomador con defaults Alfa + área para agregar/quitar extras (localStorage).
  */
-const CampoTomadorAlfa = ({ value = '', onChange, className = '', mostrarGestion = true }) => {
+const CampoTomadorAlfa = ({
+  value = '',
+  onChange,
+  className = '',
+  mostrarGestion = true,
+  ocultarLabel = false,
+}) => {
   const { t } = useTranslation();
   const [extras, setExtras] = useState(() => leerTomadoresExtraAlfa());
   const [nuevo, setNuevo] = useState('');
@@ -59,19 +65,25 @@ const CampoTomadorAlfa = ({ value = '', onChange, className = '', mostrarGestion
     }
   };
 
+  const selectEl = (
+    <SelectFenix value={valorActual} onChange={handleSelect}>
+      <option value="">{t('common.select')}</option>
+      {valorHuerfano && <option value={valorActual}>{valorActual}</option>}
+      {opciones.map((op) => (
+        <option key={op} value={op}>
+          {op}
+        </option>
+      ))}
+    </SelectFenix>
+  );
+
   return (
     <div className={className || 'space-y-3 md:col-span-2 lg:col-span-3'}>
-      <Campo label={t('segurosAlfa.fields.tomador')}>
-        <SelectFenix value={valorActual} onChange={handleSelect}>
-          <option value="">{t('common.select')}</option>
-          {valorHuerfano && <option value={valorActual}>{valorActual}</option>}
-          {opciones.map((op) => (
-            <option key={op} value={op}>
-              {op}
-            </option>
-          ))}
-        </SelectFenix>
-      </Campo>
+      {ocultarLabel ? (
+        selectEl
+      ) : (
+        <Campo label={t('segurosAlfa.fields.tomador')}>{selectEl}</Campo>
+      )}
 
       {mostrarGestion && (
         <div className="rounded-lg border border-gray-200 bg-white/60 p-3 dark:border-gray-700 dark:bg-gray-900/40">

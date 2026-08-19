@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaCamera, FaPlus, FaTrash } from 'react-icons/fa';
 import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl } from '../../utils/imageUtils.js';
+import SelectBuscable from '../SelectBuscable.jsx';
 import {
   CAPITULOS_PRESUPUESTO_NSR10,
   CATEGORIAS_CONTENIDOS_NSR10,
@@ -974,7 +975,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </h3>
               <p className="text-xs" style={{ color: textSecondary }}>
                 {modoLiquidador
-                  ? 'Elija del catálogo de base de precios (848 ítems) o escriba libre. Edite cantidades; el total alimenta la liquidación y el Word.'
+                  ? 'Elija del catálogo de base de precios (951 ítems, de mayor a menor). Puede buscar por nombre. Edite cantidades; el total alimenta la liquidación y el Word.'
                   : 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; totales con AIU / imprevistos / impuestos.'}
               </p>
             </div>
@@ -1056,26 +1057,21 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         ))}
                       </select>
                     </td>
-                    <td className="px-1 py-1 min-w-[220px]">
-                      <select
-                        className={inputClass}
-                        style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    <td className="px-1 py-1 min-w-[260px]">
+                      <SelectBuscable
+                        options={catalogoCap.map((c) => ({
+                          value: c.id,
+                          label: `${c.actividad} (${money(c.valorUnitario)}/${c.unidad})`,
+                        }))}
                         value={esCustom ? '__custom__' : row.catalogoId}
-                        onChange={(e) => aplicarBasePreciosEnFila(index, e.target.value)}
-                        title={
-                          row.capitulo
-                            ? `Filtrado por capítulo: ${row.capitulo}`
-                            : 'Elija capítulo para filtrar, o busque en toda la base'
-                        }
-                      >
-                        <option value="">— Elegir de la base —</option>
-                        {catalogoCap.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.actividad} ({money(c.valorUnitario)}/{c.unidad})
-                          </option>
-                        ))}
-                        <option value="__custom__">Otro / escribir libre</option>
-                      </select>
+                        onChange={(val) => aplicarBasePreciosEnFila(index, val)}
+                        placeholder="— Elegir de la base —"
+                        searchPlaceholder="Buscar actividad o valor…"
+                        emptyOption
+                        emptyLabel="— Elegir de la base —"
+                        extraOptions={[{ value: '__custom__', label: 'Otro / escribir libre' }]}
+                        buttonClassName={inputClass}
+                      />
                     </td>
                     <td className="px-1 py-1 min-w-[120px]">
                       <input

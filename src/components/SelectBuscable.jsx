@@ -29,6 +29,7 @@ export default function SelectBuscable({
   buttonClassName = '',
   emptyOption = true,
   emptyLabel,
+  extraOptions = [],
 }) {
   const { t } = useTranslation();
   const placeholderText = placeholder ?? t('common.selectShort');
@@ -50,7 +51,10 @@ export default function SelectBuscable({
   }, [options, busqueda]);
 
   const etiquetaSeleccion =
-    options.find((o) => String(o.value) === String(value))?.label || value || '';
+    options.find((o) => String(o.value) === String(value))?.label ||
+    extraOptions.find((o) => String(o.value) === String(value))?.label ||
+    value ||
+    '';
 
   const actualizarPosicion = () => {
     const el = buttonRef.current;
@@ -195,6 +199,24 @@ export default function SelectBuscable({
                 );
               })
             )}
+            {extraOptions.map((o) => {
+              const seleccionado = String(o.value) === String(value);
+              return (
+                <li key={`extra-${String(o.value)}`}>
+                  <button
+                    type="button"
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-blue-50 dark:hover:bg-sky-950/40 ${
+                      seleccionado
+                        ? 'bg-blue-600 text-white hover:bg-blue-600'
+                        : 'text-gray-800 dark:text-slate-100'
+                    }`}
+                    onClick={() => elegir(o.value)}
+                  >
+                    {o.label}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>,
         document.body

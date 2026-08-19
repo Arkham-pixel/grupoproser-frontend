@@ -14,10 +14,19 @@ import {
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 
 export const SMMLV_POR_ANIO = {
+  2018: 781242,
+  2019: 828116,
+  2020: 877803,
+  2021: 908526,
+  2022: 1000000,
+  2023: 1160000,
   2024: 1300000,
   2025: 1423500,
   2026: 1750905,
 };
+export const ANIOS_SMMLV = Object.keys(SMMLV_POR_ANIO)
+  .map(Number)
+  .sort((a, b) => b - a);
 export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
 
 /** Texto fijo editable: información general del evento (consolidado terremoto Alfa). */
@@ -120,6 +129,7 @@ export function encabezadoDesdeCasoAlfa(caso = {}) {
     departamento: c.departamento || '',
     cobertura: c.cobertura || '',
     evento: c.cobertura || 'TERREMOTO',
+    causa: c.cobertura || '',
     ajustador: c.ajustador || '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
   };
@@ -158,13 +168,29 @@ export const DEFAULT_LIQUIDADOR_ALFA = {
     departamento: '',
     cobertura: '',
     evento: 'TERREMOTO',
+    causa: '',
     ajustador: '',
     valorAseguradoInmueble: '',
   },
   evaluacionSismicaNSR10: null,
   liquidacionCatastrofico: liquidacionCatastroficoDefaultAlfa(),
+  /** Filas del FORMATO LIQUIDACIÓN. null = derivar del presupuesto NSR; [] o filas = edición manual. */
+  detalleLiquidacionCat: null,
   indemnizacionSugerida: '',
   observaciones: '',
+  /** ACEPTO | NO_ACEPTO — pie del FORMATO LIQUIDACIÓN */
+  aceptacionIndemnizacion: '',
+  /** Firma manuscrita del cliente (data URL PNG) */
+  firmaCliente: '',
+  nombreFirmante: '',
+  /** Datos para el finiquito / pie del FORMATO LIQUIDACIÓN (Excel CAT). */
+  datosBancarios: {
+    numeroCuenta: '',
+    banco: '',
+    tipoCuenta: '',
+    sucursal: '',
+    ciudadFirma: '',
+  },
 };
 
 export function esLiquidadorNsrAlfa(liquidador = {}) {
@@ -250,6 +276,148 @@ export function itemsPlanosAlfa(liquidador = {}) {
     }));
 }
 
+/** Construye filas del FORMATO LIQUIDACIÓN desde presupuesto NSR + hospedaje. */
+export function detalleLiquidacionCatDesdePresupuesto(liquidador = {}, totales = null) {
+  const tot = totales || calcularLiquidacionAlfa(liquidador);
+  const filas = [];
+  const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
+  if (Array.isArray(items)) {
+    items.forEach((it, idx) => {
+      const desc = String(it.actividad || it.componente || '').trim();
+      if (!desc && !it.catalogoId) return;
+      const cantidad = it.cantidad ?? '';
+      const valorUnitario = it.valorUnitario ?? '';
+      const perdida =
+        parsearNumero(it.total) ||
+        parsearNumero(valorUnitario) * parsearNumero(cantidad);
+      filas.push({
+        id: it.id || `nsr-${idx}`,
+        catalogoId: it.catalogoId || '',
+        capitulo: it.capitulo || '',
+        descripcion: desc,
+        unidad: it.unidad || 'und',
+        cantidad,
+        valorUnitario,
+        valorAsegurado: '',
+        indiceVariable: 0,
+        valorAseguradoFecha: '',
+        valorAsegurable: '',
+        valorPerdida: perdida || '',
+        demerito: 0,
+        valorReal: perdida || '',
+      });
+    });
+  }
+  const hospedaje = parsearNumero(tot?.diagrama?.gastosHospedaje);
+  if (hospedaje > 0) {
+    filas.push({
+      id: 'hospedaje',
+      catalogoId: '',
+      capitulo: '',
+      descripcion: 'Gastos de hospedaje / alojamiento temporal',
+      unidad: 'glb',
+      cantidad: 1,
+      valorUnitario: hospedaje,
+      valorAsegurado: '',
+      indiceVariable: 0,
+      valorAseguradoFecha: '',
+      valorAsegurable: '',
+      valorPerdida: hospedaje,
+      demerito: 0,
+      valorReal: hospedaje,
+    });
+  }
+  return filas;
+}
+
+/**
+ * Preferencia: si detalleLiquidacionCat es un array (modo manual, aunque tenga filas vacías), usarlo.
+ * Si es null/undefined, derivar del presupuesto NSR.
+ */
+export function resolverDetalleLiquidacionCat(liquidador = {}, totales = null) {
+  if (Array.isArray(liquidador?.detalleLiquidacionCat)) {
+    return liquidador.detalleLiquidacionCat;
+  }
+  return detalleLiquidacionCatDesdePresupuesto(liquidador, totales);
+}
+
+export function nuevoItemDetalleLiquidacionCat() {
+  return {
+    id: `det-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    catalogoId: '',
+    capitulo: '',
+    descripcion: '',
+    unidad: 'und',
+    cantidad: 1,
+    valorUnitario: '',
+    valorAsegurado: '',
+    indiceVariable: 0,
+    valorAseguradoFecha: '',
+    valorAsegurable: '',
+    valorPerdida: '',
+    demerito: 0,
+    valorReal: '',
+  };
+}
+
+/** Recalcula valorPerdida / valorReal desde cantidad × valorUnitario. */
+export function recalcularTotalesFilaDetalleCat(fila = {}) {
+  const cant = parsearNumero(fila.cantidad);
+  const vu = parsearNumero(fila.valorUnitario);
+  const total =
+    fila.cantidad !== '' && fila.valorUnitario !== '' && (cant > 0 || vu > 0)
+      ? Math.round(cant * vu * 100) / 100
+      : parsearNumero(fila.valorPerdida);
+  const conDecimales = (() => {
+    if (total === '' || total == null || Number.isNaN(Number(total))) return '';
+    const n = Number(total);
+    const hasDec = Math.abs(n % 1) > 1e-9;
+    return new Intl.NumberFormat('es-CO', {
+      minimumFractionDigits: hasDec ? 2 : 0,
+      maximumFractionDigits: 2,
+    }).format(n);
+  })();
+  return {
+    ...fila,
+    valorPerdida: conDecimales,
+    valorReal: conDecimales === '' ? fila.valorReal ?? '' : conDecimales,
+  };
+}
+
+/** Espeja el detalle CAT al presupuesto NSR-10 para mantener un solo origen de precios. */
+export function sincronizarDetalleCatConPresupuestoNsr(liquidador = {}, filasDetalle = []) {
+  const evalData = liquidador.evaluacionSismicaNSR10 || {};
+  const presupuesto = evalData.presupuesto || {};
+  const items = (filasDetalle || [])
+    .filter((it) => String(it?.descripcion || '').trim() || it?.catalogoId)
+    .map((it) => ({
+      id: it.id,
+      catalogoId: it.catalogoId || '',
+      capitulo: it.capitulo || '',
+      componente: '',
+      actividad: it.descripcion || '',
+      unidad: it.unidad || 'und',
+      cantidad: it.cantidad ?? '',
+      valorUnitario: it.valorUnitario ?? '',
+      total: it.valorPerdida ?? '',
+      prioridad: 'Medio',
+      cubierto: '',
+      observacion: '',
+      fuente: it.catalogoId ? 'Base precios general' : '',
+    }));
+  return {
+    ...liquidador,
+    detalleLiquidacionCat: filasDetalle,
+    evaluacionSismicaNSR10: {
+      ...evalData,
+      presupuesto: {
+        ...presupuesto,
+        items,
+      },
+    },
+  };
+}
+
 export function mapCasoAlfaALiquidador(caso = {}) {
   const encabezado = encabezadoDesdeCasoAlfa(caso);
   const prefill = prefillNsrDesdeCasoAlfa(caso, encabezado);
@@ -259,6 +427,7 @@ export function mapCasoAlfaALiquidador(caso = {}) {
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
     liquidacionCatastrofico: liquidacionCatastroficoDefaultAlfa(caso),
+    detalleLiquidacionCat: null,
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
         ? formatMiles(caso.valorReclamado)
@@ -274,6 +443,13 @@ export function mapCasoAlfaALiquidador(caso = {}) {
       ...base,
       encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
       observaciones: guardado.observaciones || '',
+      aceptacionIndemnizacion: guardado.aceptacionIndemnizacion || '',
+      firmaCliente: guardado.firmaCliente || '',
+      nombreFirmante: guardado.nombreFirmante || '',
+      datosBancarios: {
+        ...base.datosBancarios,
+        ...(guardado.datosBancarios || {}),
+      },
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
     };
   }
@@ -282,7 +458,11 @@ export function mapCasoAlfaALiquidador(caso = {}) {
     ...base,
     ...guardado,
     modelo: 'nsr10',
-    encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
+    encabezado: {
+      ...base.encabezado,
+      ...(guardado.encabezado || {}),
+      causa: guardado.encabezado?.causa || guardado.encabezado?.cobertura || base.encabezado.cobertura,
+    },
     evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
       guardado.evaluacionSismicaNSR10,
       prefill
@@ -291,7 +471,14 @@ export function mapCasoAlfaALiquidador(caso = {}) {
       ...base.liquidacionCatastrofico,
       ...(guardado.liquidacionCatastrofico || {}),
     },
+    detalleLiquidacionCat: Array.isArray(guardado.detalleLiquidacionCat)
+      ? guardado.detalleLiquidacionCat
+      : null,
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
+    datosBancarios: {
+      ...base.datosBancarios,
+      ...(guardado.datosBancarios || {}),
+    },
   };
 }
 
@@ -312,18 +499,60 @@ export function formDataNsrDesdeLiquidadorAlfa(liquidador = {}, caso = {}) {
   };
 }
 
+/** Bloque ANALISIS COBERTURA CRITERIA (hoja ANALISIS GENERAL del Excel CAT Alfa). */
+export function defaultAnalisisGeneralInformeAlfa(caso = {}, informeParcial = {}) {
+  const guardado =
+    informeParcial?.analisisGeneral && typeof informeParcial.analisisGeneral === 'object'
+      ? informeParcial.analisisGeneral
+      : {};
+  const ubicacion =
+    [caso.direccionPredio, caso.ciudad, caso.departamento].filter(Boolean).join(', ') ||
+    informeParcial.direccionRiesgo ||
+    '';
+  return {
+    ubicacionEvento: guardado.ubicacionEvento || ubicacion,
+    coaseguro: guardado.coaseguro || 'N/A',
+    descripcionEvento:
+      guardado.descripcionEvento ||
+      informeParcial.infoEvento ||
+      informeParcial.descripcionDanios ||
+      '',
+    causaEvento: guardado.causaEvento || caso.cobertura || '',
+    fechaAsignacion: guardado.fechaAsignacion || fechaInput(caso.fechaAsignacion || caso.fechaInspeccion),
+    fechaUltimoDocumento:
+      guardado.fechaUltimoDocumento || fechaInput(caso.fechaUltimoDocumento),
+    aplicacionExclusiones: guardado.aplicacionExclusiones || 'No aplica',
+    cumplimientoGarantias: guardado.cumplimientoGarantias || 'Cumple',
+    salvamento: guardado.salvamento || 'No aplica',
+    indicadoresFraude:
+      guardado.indicadoresFraude && typeof guardado.indicadoresFraude === 'object'
+        ? guardado.indicadoresFraude
+        : {},
+    posibilidadRecobro: guardado.posibilidadRecobro || 'No aplica',
+    observaciones:
+      guardado.observaciones ||
+      [informeParcial.conclusiones, informeParcial.recomendacion].filter(Boolean).join('\n\n') ||
+      '',
+  };
+}
+
 export function defaultInformeUnicoAlfa(caso = {}) {
   const guardado =
     caso.informeUnico && typeof caso.informeUnico === 'object' ? caso.informeUnico : null;
+  const coordsCaso =
+    caso.ubicacionPredio?.lat != null && caso.ubicacionPredio?.lng != null
+      ? `${caso.ubicacionPredio.lat}, ${caso.ubicacionPredio.lng}`
+      : '';
   const base = {
     fechaInforme: fechaInput(new Date()),
     ajustadorNombre: caso.ajustador || '',
     infoEvento: INFO_EVENTO_DEFAULT_ALFA,
     descripcionDanios: '',
-    coordenadasRiesgo: '',
+    coordenadasRiesgo: coordsCaso,
     imagenMapa: '',
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
+    analisisGeneral: defaultAnalisisGeneralInformeAlfa(caso, {}),
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
@@ -334,8 +563,13 @@ export function defaultInformeUnicoAlfa(caso = {}) {
     actaAjustadorFirmaImagen: '',
     firmaAjustador: '',
   };
-  if (!guardado) return base;
-  return {
+  if (!guardado) {
+    return {
+      ...base,
+      analisisGeneral: defaultAnalisisGeneralInformeAlfa(caso, base),
+    };
+  }
+  const merged = {
     ...base,
     ...guardado,
     ajustadorNombre: guardado.ajustadorNombre || guardado.actaAjustadorNombre || base.ajustadorNombre,
@@ -343,13 +577,15 @@ export function defaultInformeUnicoAlfa(caso = {}) {
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,
     infoEvento: guardado.infoEvento || base.infoEvento,
     descripcionDanios: guardado.descripcionDanios || base.descripcionDanios,
-    coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
+    coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo || coordsCaso,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
     fotosInspeccion: Array.isArray(guardado.fotosInspeccion)
       ? guardado.fotosInspeccion
       : base.fotosInspeccion,
   };
+  merged.analisisGeneral = defaultAnalisisGeneralInformeAlfa(caso, merged);
+  return merged;
 }
 
 export function formatDateLarga(value) {
