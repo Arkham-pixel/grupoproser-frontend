@@ -58,7 +58,7 @@ export default function FotosInspeccionSura({
   const ultimaEstructuraRef = useRef('');
   const descripcionTimeoutRef = useRef(null);
 
-  // Sync desde props solo si cambió la estructura (no borrar previews locales)
+  // Sync desde props: si el padre trae fotos (p. ej. pestaña Fotos → informe único), mostrarlas.
   useEffect(() => {
     if (isInternalUpdateRef.current) {
       isInternalUpdateRef.current = false;
@@ -69,9 +69,8 @@ export default function FotosInspeccionSura({
       .map((img, idx) => idImagen(img, idx))
       .join('|');
     if (clave === ultimaEstructuraRef.current) return;
-    // Si tenemos más fotos locales con preview que el prop, no pisar
     const localesConPreview = imagenes.filter((i) => i.preview || i.file || i.base64);
-    if (localesConPreview.length > incoming.length) return;
+    if (localesConPreview.length > incoming.length && incoming.length > 0) return;
     ultimaEstructuraRef.current = clave;
     setImagenes(incoming);
   }, [fotosInforme]); // eslint-disable-line react-hooks/exhaustive-deps

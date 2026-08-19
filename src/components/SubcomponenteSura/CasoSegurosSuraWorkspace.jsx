@@ -505,6 +505,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
             ) : tabActivo === TABS_SURA.DOCUMENTOS ? (
               <InformeUnicoSegurosSura
                 casoSura={casoSura}
+                fotosAgil={fotosAgilState || casoSura?.fotosAgil || []}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
                   setLiquidadorState(liq);

@@ -383,10 +383,20 @@ export function serializarFotosAgilSura(fotos = []) {
  * sin borrar las subidas a mano en Documentos.
  */
 export function fusionarFotosAgilEnInforme(fotosInforme = [], fotosAgil = []) {
-  const desdeAgil = serializarFotosAgilSura(fotosAgil).map((f) => ({
-    ...f,
-    origen: f.origen === 'liquidador-nsr10' ? 'liquidador-nsr10' : 'fotos-agil',
-  }));
+  const desdeAgil = (Array.isArray(fotosAgil) ? fotosAgil : [])
+    .filter((f) => f && (f._id || f.ruta || f.fotoRuta || f.preview || f.file || f.id))
+    .map((f) => ({
+      ...f,
+      _id: f._id || undefined,
+      ruta: f.ruta || f.fotoRuta || '',
+      preview: f.preview || '',
+      nombre: f.nombre || f.nombreOriginal || '',
+      nombreOriginal: f.nombreOriginal || f.nombre || '',
+      descripcion: f.descripcion || '',
+      tipoMime: f.tipoMime || '',
+      origen: f.origen === 'liquidador-nsr10' ? 'liquidador-nsr10' : 'fotos-agil',
+      codigoNsr: f.codigoNsr || '',
+    }));
   const idsAgil = new Set(desdeAgil.map((f) => String(f._id || '')).filter(Boolean));
   const rutasAgil = new Set(desdeAgil.map((f) => String(f.ruta || '')).filter(Boolean));
 
@@ -411,14 +421,16 @@ export function fusionarFotosAgilEnInforme(fotosInforme = [], fotosAgil = []) {
 }
 
 /** Informe único con las fotos de la pestaña 3 ya mezcladas. */
-export function informeUnicoConFotosAgil(caso = {}) {
+export function informeUnicoConFotosAgil(caso = {}, fotosAgilExtra = null) {
   const informe = defaultInformeUnicoSura(caso);
+  const fotosAgil = Array.isArray(fotosAgilExtra)
+    ? fotosAgilExtra
+    : Array.isArray(caso.fotosAgil)
+      ? caso.fotosAgil
+      : [];
   return {
     ...informe,
-    fotosInspeccion: fusionarFotosAgilEnInforme(
-      informe.fotosInspeccion,
-      Array.isArray(caso.fotosAgil) ? caso.fotosAgil : []
-    ),
+    fotosInspeccion: fusionarFotosAgilEnInforme(informe.fotosInspeccion, fotosAgil),
   };
 }
 

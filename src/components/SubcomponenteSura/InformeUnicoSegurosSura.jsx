@@ -22,7 +22,7 @@ import {
   formatDateLarga,
   mapCasoSuraALiquidador,
 } from './liquidadorSuraHelpers.js';
-import { informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
+import { fusionarFotosAgilEnInforme, informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
 import { descargarWordInformeSura } from './generarWordInformeSura.js';
 import { subirArchivoSura } from '../../services/segurosSuraService.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
@@ -46,6 +46,7 @@ function extraerLatLng(texto) {
 
 export default function InformeUnicoSegurosSura({
   casoSura = null,
+  fotosAgil = null,
   onEstadoChange,
   onLiquidadorChange,
   onGuardarEnCaso,
@@ -53,7 +54,9 @@ export default function InformeUnicoSegurosSura({
   guardandoCaso = false,
 }) {
   const { t } = useTranslation();
-  const [informe, setInforme] = useState(() => informeUnicoConFotosAgil(casoSura || {}));
+  const [informe, setInforme] = useState(() =>
+    informeUnicoConFotosAgil(casoSura || {}, fotosAgil)
+  );
   const [liquidador, setLiquidador] = useState(() => mapCasoSuraALiquidador(casoSura || {}));
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -99,9 +102,24 @@ export default function InformeUnicoSegurosSura({
   };
 
   useEffect(() => {
-    setInforme(informeUnicoConFotosAgil(casoSura || {}));
+    setInforme(informeUnicoConFotosAgil(casoSura || {}, fotosAgil));
     setLiquidador(mapCasoSuraALiquidador(casoSura || {}));
-  }, [casoSura?._id]);
+  }, [casoSura?._id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!Array.isArray(fotosAgil) || !fotosAgil.length) return;
+    setInforme((prev) => {
+      const mezcladas = fusionarFotosAgilEnInforme(prev.fotosInspeccion || [], fotosAgil);
+      const idsPrev = (prev.fotosInspeccion || [])
+        .map((f) => String(f?._id || f?.ruta || f?.id || f?.preview || ''))
+        .join('|');
+      const idsNext = mezcladas
+        .map((f) => String(f?._id || f?.ruta || f?.id || f?.preview || ''))
+        .join('|');
+      if (idsPrev === idsNext) return prev;
+      return { ...prev, fotosInspeccion: mezcladas };
+    });
+  }, [fotosAgil]);
 
   useEffect(() => {
     onEstadoChange?.(informe);
@@ -469,8 +487,8 @@ export default function InformeUnicoSegurosSura({
             <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>6. {t('segurosSura.reportUnique.sectionPhotos')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          Arrastra, toma o selecciona fotos. Deben aparecer abajo en «Imágenes Cargadas» (igual que en Ajuste) para
-          poner descripción y generar el Word.
+          Las fotos de la pestaña Fotos aparecen aquí. También puede arrastrar, tomar o seleccionar más
+          imágenes. Deben listarse abajo en «Imágenes Cargadas» para poner descripción y generar el Word.
         </p>
         <FotosInspeccionSura
           casoId={casoSura?._id}
