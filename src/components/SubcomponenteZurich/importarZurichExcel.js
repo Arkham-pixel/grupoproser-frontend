@@ -20,6 +20,10 @@ const HEADER_MAP = {
   SINIESTRO: 'siniestro',
   IDENTIFICACION: 'identificacion',
   CEDULA: 'identificacion',
+  'TIPO IDENTIFICACION': 'tipoIdentificacion',
+  'TIPO DE IDENTIFICACION': 'tipoIdentificacion',
+  'TIPO DOCUMENTO': 'tipoIdentificacion',
+  'TIPO DE DOCUMENTO': 'tipoIdentificacion',
   ASEGURADO: 'asegurado',
   NOMBRE: 'asegurado',
   'INSURED NAME': 'asegurado',
@@ -27,6 +31,13 @@ const HEADER_MAP = {
   'N POLIZA': 'numeroPoliza',
   'NUMERO POLIZA': 'numeroPoliza',
   'NO POLIZA': 'numeroPoliza',
+  POLIZA: 'numeroPoliza',
+  'TIPO POLIZA': 'tipoPoliza',
+  'TIPO DE POLIZA': 'tipoPoliza',
+  RAMO: 'tipoPoliza',
+  CAUSA: 'causa',
+  'CAUSA SINIESTRO': 'causa',
+  'CAUSA DEL SINIESTRO': 'causa',
   'DIRECCION PREDIO': 'direccionPredio',
   'N CREDITO': 'numeroCredito',
   'NUMERO CREDITO': 'numeroCredito',
@@ -365,6 +376,22 @@ const HEADER_MAP_LISTADO = {
   'NO SINIESTRO': 'siniestro',
   ASEGURADO: 'asegurado',
   NOMBRE: 'asegurado',
+  IDENTIFICACION: 'identificacion',
+  CEDULA: 'identificacion',
+  'TIPO IDENTIFICACION': 'tipoIdentificacion',
+  'TIPO DE IDENTIFICACION': 'tipoIdentificacion',
+  'TIPO DOCUMENTO': 'tipoIdentificacion',
+  'TIPO DE DOCUMENTO': 'tipoIdentificacion',
+  POLIZA: 'numeroPoliza',
+  'N POLIZA': 'numeroPoliza',
+  'NUMERO POLIZA': 'numeroPoliza',
+  'NO POLIZA': 'numeroPoliza',
+  'TIPO POLIZA': 'tipoPoliza',
+  'TIPO DE POLIZA': 'tipoPoliza',
+  RAMO: 'tipoPoliza',
+  CAUSA: 'causa',
+  'CAUSA SINIESTRO': 'causa',
+  'CAUSA DEL SINIESTRO': 'causa',
   'CONTACTO INTERMEDIARIO': 'contactoIntermediario',
   INTERMEDIARIO: 'contactoIntermediario',
   'CONTACTO ASEGURADO': 'contactoAsegurado',
@@ -418,6 +445,11 @@ const parsearHojaListadoCliente = (sheet) => {
     const caso = {
       zc: '',
       siniestro: '',
+      identificacion: '',
+      tipoIdentificacion: '',
+      numeroPoliza: '',
+      tipoPoliza: '',
+      causa: '',
       asegurado: '',
       contactoIntermediario: '',
       contactoAsegurado: '',
@@ -435,8 +467,10 @@ const parsearHojaListadoCliente = (sheet) => {
       caso.observaciones = [caso.observaciones, ...extras].filter(Boolean).join(' | ');
     }
     if (!caso.zc && !caso.siniestro && !caso.asegurado) continue;
-    if (caso.zc) caso.identificacion = caso.zc;
-    else if (caso.siniestro) caso.identificacion = caso.siniestro;
+    if (!caso.identificacion) {
+      if (caso.zc) caso.identificacion = caso.zc;
+      else if (caso.siniestro) caso.identificacion = caso.siniestro;
+    }
     casos.push(caso);
   }
 

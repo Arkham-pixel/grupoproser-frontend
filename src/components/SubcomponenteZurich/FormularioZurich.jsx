@@ -37,6 +37,8 @@ import {
   CAMPOS_DECIMAL_ZURICH,
   ESTADOS_ZURICH,
   FORM_VACIO_ZURICH,
+  TIPOS_IDENTIFICACION_ZURICH,
+  TIPOS_POLIZA_ZURICH,
   GRADOS_AFECTACION_ZURICH,
   OPCIONES_SI_NO_ZURICH,
   TIPOS_NEGOCIO_HOMOLOGADO_ZURICH,
@@ -285,6 +287,10 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         zc: form.zc,
         siniestro: form.siniestro,
         identificacion: form.identificacion,
+        tipoIdentificacion: form.tipoIdentificacion,
+        numeroPoliza: form.numeroPoliza,
+        tipoPoliza: form.tipoPoliza,
+        causa: form.causa,
         asegurado: form.asegurado,
         contactoIntermediario: form.contactoIntermediario,
         contactoAsegurado: form.contactoAsegurado,
@@ -444,6 +450,37 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           <Campo label={t('zurich.fields.asegurado')}>
             <InputFenix value={form.asegurado} onChange={setCampo('asegurado')} />
           </Campo>
+          {esModuloListado && (
+            <>
+          <Campo label={t('zurich.fields.tipoIdentificacion')}>
+            {selectSimple('tipoIdentificacion', TIPOS_IDENTIFICACION_ZURICH)}
+          </Campo>
+          <Campo label={t('zurich.fields.identificacion')}>
+            <InputFenix
+              value={form.identificacion}
+              onChange={setCampo('identificacion')}
+              placeholder={t('zurich.placeholders.identificacion')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.numeroPoliza')}>
+            <InputFenix
+              value={form.numeroPoliza}
+              onChange={setCampo('numeroPoliza')}
+              placeholder={t('zurich.placeholders.poliza')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.tipoPoliza')}>
+            {selectSimple('tipoPoliza', TIPOS_POLIZA_ZURICH)}
+          </Campo>
+          <Campo label={t('zurich.fields.causa')} className="md:col-span-2 lg:col-span-3">
+            <InputFenix
+              value={form.causa}
+              onChange={setCampo('causa')}
+              placeholder={t('zurich.placeholders.causa')}
+            />
+          </Campo>
+            </>
+          )}
           <Campo label={t('zurich.fields.contactoIntermediario')} className="md:col-span-2 lg:col-span-3">
             <InputFenix
               value={form.contactoIntermediario}
@@ -612,11 +649,21 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
                   placeholder={t('zurich.placeholders.siniestro')}
                 />
               </Campo>
+              <Campo label={t('zurich.fields.tipoIdentificacion')}>
+                {selectSimple('tipoIdentificacion', TIPOS_IDENTIFICACION_ZURICH)}
+              </Campo>
               <Campo label={t('zurich.fields.identificacion')}>
                 <InputFenix
                   value={form.identificacion}
                   onChange={setCampo('identificacion')}
                   placeholder={t('zurich.placeholders.identificacion')}
+                />
+              </Campo>
+              <Campo label={t('zurich.fields.causa')}>
+                <InputFenix
+                  value={form.causa}
+                  onChange={setCampo('causa')}
+                  placeholder={t('zurich.placeholders.causa')}
                 />
               </Campo>
               <CampoTomadorZurich
@@ -707,6 +754,9 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
                   onChange={setCampo('numeroPoliza')}
                   placeholder={t('zurich.placeholders.poliza')}
                 />
+              </Campo>
+              <Campo label={t('zurich.fields.tipoPoliza')}>
+                {selectSimple('tipoPoliza', TIPOS_POLIZA_ZURICH)}
               </Campo>
               <Campo label={t('zurich.fields.fechaInicioPoliza')}>
                 <InputFenix

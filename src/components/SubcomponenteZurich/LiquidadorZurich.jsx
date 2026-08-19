@@ -155,16 +155,34 @@ export default function LiquidadorZurich({
               onChange={(e) => actualizarEncabezado('poliza', e.target.value)}
             />
           </Campo>
+          <Campo label={t('zurich.fields.tipoPoliza')}>
+            <InputFenix
+              value={enc.tipoPoliza || ''}
+              onChange={(e) => actualizarEncabezado('tipoPoliza', e.target.value)}
+            />
+          </Campo>
           <Campo label={t('zurich.fields.siniestro')}>
             <InputFenix
               value={enc.siniestro || ''}
               onChange={(e) => actualizarEncabezado('siniestro', e.target.value)}
             />
           </Campo>
+          <Campo label={t('zurich.fields.tipoIdentificacion')}>
+            <InputFenix
+              value={enc.tipoIdentificacion || ''}
+              onChange={(e) => actualizarEncabezado('tipoIdentificacion', e.target.value)}
+            />
+          </Campo>
           <Campo label={t('zurich.fields.identificacion')}>
             <InputFenix
               value={enc.identificacion || ''}
               onChange={(e) => actualizarEncabezado('identificacion', e.target.value)}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.causa')}>
+            <InputFenix
+              value={enc.causa || ''}
+              onChange={(e) => actualizarEncabezado('causa', e.target.value)}
             />
           </Campo>
           <Campo label={t('zurich.fields.cobertura')}>

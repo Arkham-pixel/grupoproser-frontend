@@ -157,8 +157,11 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
         c.tomador,
         c.siniestro,
         c.identificacion,
+        c.tipoIdentificacion,
         c.ciudad,
         c.numeroPoliza,
+        c.tipoPoliza,
+        c.causa,
       ]
         .map((v) => String(v || '').toLowerCase())
         .join(' ');

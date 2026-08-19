@@ -11,6 +11,28 @@ export const ESTADOS_ZURICH = [
   'CERRADO',
 ];
 
+/** Mismos tipos de documento que Complex. */
+export const TIPOS_IDENTIFICACION_ZURICH = [
+  'CC',
+  'CE',
+  'NIT',
+  'PASAPORTE',
+  'PEP',
+  'RC',
+  'TI',
+  'OTRO',
+];
+
+export const TIPOS_POLIZA_ZURICH = [
+  'HOGAR',
+  'INCENDIO',
+  'TERREMOTO',
+  'TODO RIESGO',
+  'PYME',
+  'INDUSTRIAL',
+  'OTRO',
+];
+
 /** Tomadores base del consolidado Zurich (columna TOMADOR). */
 export const TOMADORES_ZURICH_DEFAULT = [
   'BANCO AV VILLAS',
@@ -369,6 +391,7 @@ export const FORM_VACIO_ZURICH = {
   siniestro: '',
   zc: '',
   identificacion: '',
+  tipoIdentificacion: '',
   asegurado: '',
   contactoIntermediario: '',
   contactoAsegurado: '',
@@ -378,6 +401,8 @@ export const FORM_VACIO_ZURICH = {
   ajustador: '',
   inspector: '',
   numeroPoliza: '',
+  tipoPoliza: '',
+  causa: '',
   direccionPredio: '',
   numeroCredito: '',
   informacionContacto: '',
