@@ -1,6 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import DashboardCatastrofico from '../SubcomponenteDashboardCatastrofico/DashboardCatastrofico.jsx';
-import { fetchAllCasosZurich } from '../../services/zurichService.js';
+import { fetchAllCasosZurichListado } from '../../services/zurichListadoService.js';
 import {
   ESTADOS_ZURICH,
   buildOpcionesFiltro,
@@ -9,18 +10,21 @@ import {
   formatCurrency,
 } from './zurichHelpers.js';
 
-export default function DashboardZurich() {
+export default function DashboardZurichListado() {
+  const { t } = useTranslation();
   return (
     <DashboardCatastrofico
-      badge="Zurich · CAT"
-      fetchCasos={fetchAllCasosZurich}
+      variant="listado"
+      badge="Zurich · Listado"
+      title={t('zurich.listadoDashboard.title')}
+      subtitle={t('zurich.listadoDashboard.subtitle')}
+      fetchCasos={fetchAllCasosZurichListado}
       formatCurrency={formatCurrency}
       fechaEnRango={fechaEnRango}
       coincideFiltroTexto={coincideFiltroTexto}
       buildOpcionesFiltro={buildOpcionesFiltro}
       estados={ESTADOS_ZURICH}
       i18nNs="zurich"
-      extras={{ severidad: true }}
     />
   );
 }

@@ -356,3 +356,122 @@ export const parsearCasosZurichDesdeExcel = async (file) => {
 
   return { hoja: hojaUsada, casos };
 };
+
+const HEADER_MAP_LISTADO = {
+  ZC: 'zc',
+  STRO: 'siniestro',
+  SINIESTRO: 'siniestro',
+  'N SINIESTRO': 'siniestro',
+  'NO SINIESTRO': 'siniestro',
+  ASEGURADO: 'asegurado',
+  NOMBRE: 'asegurado',
+  'CONTACTO INTERMEDIARIO': 'contactoIntermediario',
+  INTERMEDIARIO: 'contactoIntermediario',
+  'CONTACTO ASEGURADO': 'contactoAsegurado',
+  CIUDAD: 'ciudad',
+  OBSERVACIONES: 'observaciones',
+  OBSERVACION: 'observaciones',
+  NOTAS: 'observaciones',
+};
+
+const limpiarTextoListado = (raw) => {
+  if (raw === null || raw === undefined || raw === '') return '';
+  return String(raw)
+    .replace(/\t/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const parsearHojaListadoCliente = (sheet) => {
+  const matriz = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
+  if (!matriz.length) return { casos: [], headerRowIdx: -1 };
+
+  let headerRowIdx = -1;
+  let colMap = {};
+  const columnasSinMapa = [];
+
+  for (let r = 0; r < Math.min(matriz.length, 20); r += 1) {
+    const row = matriz[r] || [];
+    const provisional = {};
+    const sinMapa = [];
+    row.forEach((celda, c) => {
+      const header = normHeader(celda);
+      if (header === 'ITEM') return;
+      const campo = HEADER_MAP_LISTADO[header];
+      if (campo) provisional[c] = campo;
+      else sinMapa.push(c);
+    });
+    const campos = new Set(Object.values(provisional));
+    if (campos.has('zc') && (campos.has('siniestro') || campos.has('asegurado'))) {
+      headerRowIdx = r;
+      colMap = provisional;
+      columnasSinMapa.push(...sinMapa);
+      break;
+    }
+  }
+
+  if (headerRowIdx < 0) return { casos: [], headerRowIdx: -1 };
+
+  const casos = [];
+  for (let r = headerRowIdx + 1; r < matriz.length; r += 1) {
+    const row = matriz[r] || [];
+    const caso = {
+      zc: '',
+      siniestro: '',
+      asegurado: '',
+      contactoIntermediario: '',
+      contactoAsegurado: '',
+      ciudad: '',
+      observaciones: '',
+      estado: 'PENDIENTE',
+    };
+    Object.entries(colMap).forEach(([colStr, campo]) => {
+      caso[campo] = limpiarTextoListado(row[Number(colStr)]);
+    });
+    const extras = columnasSinMapa
+      .map((c) => limpiarTextoListado(row[c]))
+      .filter(Boolean);
+    if (extras.length) {
+      caso.observaciones = [caso.observaciones, ...extras].filter(Boolean).join(' | ');
+    }
+    if (!caso.zc && !caso.siniestro && !caso.asegurado) continue;
+    if (caso.zc) caso.identificacion = caso.zc;
+    else if (caso.siniestro) caso.identificacion = caso.siniestro;
+    casos.push(caso);
+  }
+
+  return { casos, headerRowIdx };
+};
+
+/**
+ * Lee el listado breve de cliente (Item, ZC, STRO, Asegurado, contactos, Ciudad).
+ */
+export const parsearListadoClienteZurichDesdeExcel = async (file) => {
+  if (!file) throw new Error('No se seleccionó archivo');
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  if (!workbook.SheetNames?.length) throw new Error('El archivo no contiene hojas válidas');
+
+  let hojaUsada = null;
+  let casos = [];
+
+  for (const nombre of workbook.SheetNames) {
+    const sheet = workbook.Sheets[nombre];
+    if (!sheet) continue;
+    const parseado = parsearHojaListadoCliente(sheet);
+    if (parseado.casos.length > 0) {
+      hojaUsada = nombre;
+      casos = parseado.casos;
+      break;
+    }
+  }
+
+  if (!hojaUsada) {
+    throw new Error(
+      'No se encontró el listado de siniestros. Use columnas ZC, STRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO y CIUDAD.'
+    );
+  }
+
+  return { hoja: hojaUsada, casos, modo: 'listado' };
+};
+

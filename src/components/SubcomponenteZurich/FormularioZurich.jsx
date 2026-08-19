@@ -1,14 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FaFileExcel, FaSave, FaSync, FaUndo, FaUpload } from 'react-icons/fa';
+import React, { useEffect, useMemo, useState } from 'react';
+import { FaFileExcel, FaSave, FaUndo, FaUpload } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig.js';
 import {
   crearCasoZurich,
   actualizarCasoZurich,
-  importarCasosZurich,
-  syncZurichDesdeExpress,
 } from '../../services/zurichService.js';
+import {
+  crearCasoZurichListado,
+  actualizarCasoZurichListado,
+} from '../../services/zurichListadoService.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -42,15 +44,28 @@ import {
   formatMilesInput,
   normalizeEvidenciaCat,
 } from './zurichHelpers.js';
-import { parsearCasosZurichDesdeExcel } from './importarZurichExcel.js';
 import CampoTomadorZurich from './CampoTomadorZurich.jsx';
+import ModalImportarExcelZurich, {
+  esAdminOSoporteZurich,
+} from './ModalImportarExcelZurich.jsx';
+import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
+import SelectBuscable from '../SelectBuscable.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
   esRolInspector,
   filtrarPayloadCasoPorRol,
+  obtenerContextoPermisoCaso,
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
+import {
+  filtrarLideresPorModulo,
+  filtrarOpcionesPorCiudad,
+  asegurarOpcionActual,
+  mapCatalogoCatastroficoAOpciones,
+  mapResponsablesAOpciones,
+  resolverLiderPorModulo,
+} from '../../utils/catalogosAsignacionCatastrofico.js';
 
 const ZurichRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -73,21 +88,27 @@ const opcionHuerfana = (valor, opciones = []) => {
   return !opciones.some((op) => normTxt(op) === normTxt(v));
 };
 
-const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved }) => {
+const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', onClose, onSaved }) => {
   const { t } = useTranslation();
-  const fileInputRef = useRef(null);
   const rolUsuario = obtenerRolAlmacenado();
+  const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('zurich'), []);
   const soloInspector = esRolInspector(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
+  const esModuloListado = origen === 'listado';
+  const puedeImportarExcel = esAdminOSoporteZurich();
+  const esAltaCliente = esModuloListado && !esEdicion;
   const [form, setForm] = useState(() =>
     initialData ? construirFormDesdecasoZurich(initialData) : { ...FORM_VACIO_ZURICH }
   );
   const [guardando, setGuardando] = useState(false);
-  const [importando, setImportando] = useState(false);
+  const [modalImportOpen, setModalImportOpen] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [resumenImport, setResumenImport] = useState(null);
   const [ciudadesRaw, setCiudadesRaw] = useState([]);
+  const [responsables, setResponsables] = useState([]);
+  const [ajustadoresCat, setAjustadoresCat] = useState([]);
+  const [inspectoresCat, setInspectoresCat] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
 
   useEffect(() => {
@@ -102,8 +123,16 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
     const cargar = async () => {
       setCargandoCatalogos(true);
       try {
-        const resCiudades = await fetch(`${BASE_URL}/api/ciudades`);
+        const [resCiudades, resResp, resAj, resIns] = await Promise.all([
+          fetch(`${BASE_URL}/api/ciudades`),
+          fetch(`${BASE_URL}/api/responsables`),
+          fetch(`${BASE_URL}/api/ajustadores-catastrofico`),
+          fetch(`${BASE_URL}/api/inspectores-catastrofico`),
+        ]);
         const dataCiudades = await resCiudades.json().catch(() => ({}));
+        const dataResp = await resResp.json().catch(() => ({}));
+        const dataAj = await resAj.json().catch(() => ({}));
+        const dataIns = await resIns.json().catch(() => ({}));
         if (cancelado) return;
         const lista = Array.isArray(dataCiudades?.data)
           ? dataCiudades.data
@@ -118,6 +147,29 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
             }))
             .filter((c) => c.ciudad)
         );
+        const listaResp = Array.isArray(dataResp?.data)
+          ? dataResp.data
+          : Array.isArray(dataResp)
+            ? dataResp
+            : [];
+        setResponsables(mapResponsablesAOpciones(listaResp));
+        const listaAj = Array.isArray(dataAj?.data) ? dataAj.data : Array.isArray(dataAj) ? dataAj : [];
+        const listaIns = Array.isArray(dataIns?.data)
+          ? dataIns.data
+          : Array.isArray(dataIns)
+            ? dataIns
+            : [];
+        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj));
+        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns));
+        const lideresOpts = mapResponsablesAOpciones(listaResp);
+        if (!esEdicion) {
+          const liderDefault = resolverLiderPorModulo(lideresOpts, 'zurich');
+          if (liderDefault) {
+            setForm((prev) =>
+              prev.ajustadorLider ? prev : { ...prev, ajustadorLider: liderDefault }
+            );
+          }
+        }
       } catch (err) {
         if (!cancelado) console.error('Error cargando catálogos Zurich:', err);
       } finally {
@@ -153,14 +205,46 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
     return [...unicas.values()].sort((a, b) => a.localeCompare(b, 'es'));
   }, [ciudadesRaw, form.departamento]);
 
+  const opcionesCiudad = useMemo(() => {
+    const fuente = esModuloListado
+      ? ciudadesRaw.map((c) => c.ciudad)
+      : ciudadesFiltradas;
+    const unicas = new Map();
+    for (const ciudad of fuente) {
+      const key = normTxt(ciudad);
+      if (key && !unicas.has(key)) unicas.set(key, ciudad);
+    }
+    const base = [...unicas.values()]
+      .sort((a, b) => a.localeCompare(b, 'es'))
+      .map((c) => ({ value: c, label: c }));
+    const actual = String(form.ciudad || '').trim();
+    if (actual && !base.some((c) => normTxt(c.value) === normTxt(actual))) {
+      return [{ value: actual, label: actual }, ...base];
+    }
+    return base;
+  }, [ciudadesRaw, ciudadesFiltradas, esModuloListado, form.ciudad]);
+
+  const ajustadoresPorCiudad = useMemo(() => {
+    const filtrados = filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad);
+    return asegurarOpcionActual(filtrados, form.ajustador);
+  }, [ajustadoresCat, form.ciudad, form.ajustador]);
+  const inspectoresPorCiudad = useMemo(() => {
+    const filtrados = filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad);
+    return asegurarOpcionActual(filtrados, form.inspector);
+  }, [inspectoresCat, form.ciudad, form.inspector]);
+  const lideresZurich = useMemo(
+    () => filtrarLideresPorModulo(responsables, 'zurich'),
+    [responsables]
+  );
+
   const setCampo = (clave) => (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
+    if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: valor }));
   };
 
   const setDepartamento = (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, 'departamento')) return;
+    if (!puedeEditarCampoCaso(rolUsuario, 'departamento', ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => {
       const siguiente = { ...prev, departamento: valor };
@@ -177,7 +261,7 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
   };
 
   const setCampoMiles = (clave) => (e) => {
-    if (!puedeEditarCampoCaso(rolUsuario, clave)) return;
+    if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
     setForm((prev) => ({ ...prev, [clave]: formatMilesInput(valor) }));
   };
@@ -191,11 +275,33 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
       value={form[clave]}
       onChange={setCampoMiles(clave)}
       placeholder="0"
-      {...attrsCampoCaso(rolUsuario, clave)}
+      {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
     />
   );
 
   const construirPayload = () => {
+    if (esModuloListado) {
+      const payload = {
+        zc: form.zc,
+        siniestro: form.siniestro,
+        identificacion: form.identificacion,
+        asegurado: form.asegurado,
+        contactoIntermediario: form.contactoIntermediario,
+        contactoAsegurado: form.contactoAsegurado,
+        observaciones: form.observaciones,
+        ciudad: form.ciudad,
+        departamento: form.departamento,
+        ajustadorLider: form.ajustadorLider,
+        ajustador: form.ajustador,
+        inspector: form.inspector,
+        estado: form.estado,
+      };
+      if (!String(payload.identificacion || '').trim()) {
+        if (payload.zc) payload.identificacion = String(payload.zc).trim();
+        else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
+      }
+      return payload;
+    }
     const payload = { ...form };
     camposNumericos.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
@@ -212,74 +318,12 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
     const sev = String(form.severidadCat || '').trim();
     payload.severidadCat = sev ? Number(sev) : null;
     payload.evidenciaCat = normalizeEvidenciaCat(form.evidenciaCat);
-    if (!String(payload.identificacion || '').trim() && payload.riskId) {
-      payload.identificacion = String(payload.riskId).trim();
+    if (!String(payload.identificacion || '').trim()) {
+      if (payload.zc) payload.identificacion = String(payload.zc).trim();
+      else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
+      else if (payload.riskId) payload.identificacion = String(payload.riskId).trim();
     }
     return payload;
-  };
-
-  const handleImportExcel = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-
-    setError(null);
-    setExito(null);
-    setResumenImport(null);
-    setImportando(true);
-    try {
-      const { casos, hoja } = await parsearCasosZurichDesdeExcel(file);
-      if (!casos.length) {
-        throw new Error(t('zurich.bulk.emptyFile'));
-      }
-      const resumen = await importarCasosZurich(casos);
-      setResumenImport({ ...resumen, hoja, archivo: file.name });
-      setExito(
-        t('zurich.bulk.success', {
-          created: resumen.creados ?? 0,
-          updated: resumen.actualizados ?? 0,
-          skipped: resumen.omitidos ?? 0,
-        })
-      );
-      if (onSaved) await onSaved(resumen);
-    } catch (err) {
-      console.error('Error importando Zurich:', err);
-      setError(err.message || t('zurich.bulk.error'));
-    } finally {
-      setImportando(false);
-    }
-  };
-
-  const handleSyncExpress = async () => {
-    setError(null);
-    setExito(null);
-    setResumenImport(null);
-    setImportando(true);
-    try {
-      const resumen = await syncZurichDesdeExpress();
-      setResumenImport({
-        totalRecibidos: resumen.totalExpress ?? 0,
-        creados: resumen.creados ?? 0,
-        actualizados: resumen.actualizados ?? 0,
-        omitidos: resumen.omitidos ?? 0,
-        errores: resumen.errores || [],
-        hoja: 'EXPRESS',
-        archivo: 'SiniestroExpress',
-      });
-      setExito(
-        t('zurich.bulk.syncExpressSuccess', {
-          created: resumen.creados ?? 0,
-          updated: resumen.actualizados ?? 0,
-          skipped: resumen.omitidos ?? 0,
-        })
-      );
-      if (onSaved) await onSaved(resumen);
-    } catch (err) {
-      console.error('Error sync Express → Zurich:', err);
-      setError(err.message || t('zurich.bulk.syncExpressError'));
-    } finally {
-      setImportando(false);
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -287,7 +331,12 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
     setError(null);
     setExito(null);
 
-    if (!form.identificacion.trim() && !String(form.riskId || '').trim()) {
+    if (esModuloListado) {
+      if (!String(form.zc || '').trim() && !String(form.siniestro || '').trim()) {
+        setError(t('zurich.validation.zcOrStroRequired'));
+        return;
+      }
+    } else if (!form.identificacion.trim() && !String(form.riskId || '').trim() && !String(form.zc || '').trim()) {
       setError(t('zurich.validation.identificacionOrRiskRequired', {
         defaultValue: 'Indique identificación o Risk ID',
       }));
@@ -304,11 +353,14 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
       const { payload } = filtrarPayloadCasoPorRol(
         rolUsuario,
         bruto,
-        esEdicion ? initialData || {} : {}
+        esEdicion ? initialData || {} : {},
+        ctxPermiso
       );
       let guardado;
       if (esEdicion) {
-        guardado = await actualizarCasoZurich(initialData._id, payload);
+        guardado = esModuloListado
+          ? await actualizarCasoZurichListado(initialData._id, payload)
+          : await actualizarCasoZurich(initialData._id, payload);
       } else {
         if (soloInspector) {
           setError(
@@ -319,7 +371,9 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
           setGuardando(false);
           return;
         }
-        guardado = await crearCasoZurich(payload);
+        guardado = esModuloListado
+          ? await crearCasoZurichListado(payload)
+          : await crearCasoZurich(payload);
       }
       setExito(
         esEdicion
@@ -348,7 +402,7 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
     <SelectFenix
       value={form[clave]}
       onChange={setCampo(clave)}
-      {...attrsCampoCaso(rolUsuario, clave)}
+      {...attrsCampoCaso(rolUsuario, clave, ctxPermiso)}
     >
       <option value="">{placeholder}</option>
       {opciones.map((op) => (
@@ -368,10 +422,78 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>{t('zurich.fields.estado')}</h3>
+        <h3 className={expressSectionTitle}>{t('zurich.sections.listadoCliente')}</h3>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('zurich.sections.listadoClienteHint')}
+        </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('zurich.fields.zc')} required={esAltaCliente}>
+            <InputFenix
+              value={form.zc}
+              onChange={setCampo('zc')}
+              placeholder={t('zurich.placeholders.zc')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.siniestro')} required={esAltaCliente}>
+            <InputFenix
+              value={form.siniestro}
+              onChange={setCampo('siniestro')}
+              placeholder={t('zurich.placeholders.siniestro')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.asegurado')}>
+            <InputFenix value={form.asegurado} onChange={setCampo('asegurado')} />
+          </Campo>
+          <Campo label={t('zurich.fields.contactoIntermediario')} className="md:col-span-2 lg:col-span-3">
+            <InputFenix
+              value={form.contactoIntermediario}
+              onChange={setCampo('contactoIntermediario')}
+              placeholder={t('zurich.placeholders.contactoIntermediario')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.contactoAsegurado')} className="md:col-span-2 lg:col-span-3">
+            <InputFenix
+              value={form.contactoAsegurado}
+              onChange={setCampo('contactoAsegurado')}
+              placeholder={t('zurich.placeholders.contactoAsegurado')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.ciudad')}>
+            <SelectBuscable
+              options={opcionesCiudad}
+              value={form.ciudad || ''}
+              onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
+              disabled={
+                attrsCampoCaso(rolUsuario, 'ciudad', ctxPermiso).disabled ||
+                (cargandoCatalogos && opcionesCiudad.length === 0)
+              }
+              placeholder={t('zurich.placeholders.selectCity')}
+              searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
+              buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </Campo>
           <Campo label={t('zurich.fields.estado')} required>
             {selectSimple('estado', ESTADOS_ZURICH)}
+          </Campo>
+          <CamposAsignacionCaso
+            form={form}
+            setCampo={setCampo}
+            lideres={lideresZurich}
+            ajustadores={ajustadoresPorCiudad}
+            inspectores={inspectoresPorCiudad}
+            rol={rolUsuario}
+            modulo="zurich"
+            i18nNs="zurich"
+            ciudadSeleccionada={form.ciudad}
+            filtrarPorCiudad
+          />
+          <Campo label={t('zurich.fields.observaciones')} className="md:col-span-2 lg:col-span-3">
+            <textarea
+              className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              value={form.observaciones}
+              onChange={setCampo('observaciones')}
+              placeholder={t('zurich.placeholders.observaciones')}
+            />
           </Campo>
         </div>
         {soloInspector ? (
@@ -388,6 +510,8 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
         disabled={soloInspector}
         className="min-w-0 space-y-5 border-0 p-0 m-0 disabled:opacity-80"
       >
+      {!esModuloListado && (
+      <>
       {/* CAT Zurich — campos del Excel CAT_ZURICH */}
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.sections.catZurich')}</h3>
@@ -395,9 +519,6 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
           {t('zurich.sections.catZurichHint')}
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Campo label={t('zurich.fields.asegurado')}>
-            <InputFenix value={form.asegurado} onChange={setCampo('asegurado')} />
-          </Campo>
           <Campo label={t('zurich.fields.riskId')}>
             <InputFenix value={form.riskId} onChange={setCampo('riskId')} placeholder="Ej: 3518" />
           </Campo>
@@ -692,6 +813,8 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
           </section>
         </div>
       </details>
+      </>
+      )}
       </fieldset>
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
@@ -725,7 +848,7 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
       <div className={expressPageWrap}>
         <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
-            <span className={expressBadge}>Zurich</span>
+            <span className={expressBadge}>{esModuloListado ? 'Zurich · Listado' : 'Zurich · CAT'}</span>
             <div>
               <h1 className={expressPageTitle}>{t('zurich.page.addTitle')}</h1>
               <p className={expressPageSubtitle}>{t('zurich.page.addSubtitle')}</p>
@@ -735,10 +858,10 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
                 {t('nav.zurichAddCase')}
               </span>
               <Link
-                to="/zurich/reporte"
+                to={esModuloListado ? '/zurich/listado/reporte' : '/zurich/reporte'}
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
-                {t('nav.zurichReport')}
+                {esModuloListado ? t('nav.zurichListadoReport') : t('nav.zurichReport')}
               </Link>
             </nav>
           </div>
@@ -747,95 +870,65 @@ const FormularioZurich = ({ initialData = null, embed = false, onClose, onSaved 
         {error && <div className={expressAlertError}>{error}</div>}
         {exito && <div className={expressAlertSuccess}>{exito}</div>}
 
-        <section className={expressCard}>
-          <div className={expressCardHeader}>
-            <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
-              {t('zurich.bulk.title')}
-            </h2>
-          </div>
-          <div className={expressCardBody}>
-            <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-300">
-              {t('zurich.bulk.subtitle')}
-            </p>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xlsm,.xls"
-              className="hidden"
-              onChange={handleImportExcel}
-            />
-            <div className="flex flex-wrap items-center gap-2">
+        {puedeImportarExcel && !esEdicion && esModuloListado && (
+          <section className={expressCard}>
+            <div className={expressCardHeader}>
+              <h2 className="font-heading text-lg font-bold text-gray-900 dark:text-white">
+                {t('zurich.bulk.title')}
+              </h2>
+            </div>
+            <div className={expressCardBody}>
+              <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-300">
+                {t('zurich.bulk.subtitle')}
+              </p>
               <button
                 type="button"
                 className={expressBtnPrimary}
-                disabled={importando || guardando}
-                onClick={() => fileInputRef.current?.click()}
+                disabled={guardando}
+                onClick={() => setModalImportOpen(true)}
               >
                 <FaUpload />
-                {importando ? t('zurich.bulk.importing') : t('zurich.bulk.upload')}
+                {t('zurich.bulk.upload')}
               </button>
-              <button
-                type="button"
-                className={expressBtnGhost}
-                disabled={importando || guardando}
-                onClick={handleSyncExpress}
-              >
-                <FaSync />
-                {t('zurich.bulk.syncExpress')}
-              </button>
-              <span className="inline-flex items-center gap-2 font-body text-xs text-gray-500 dark:text-gray-400">
+              <span className="ml-3 inline-flex items-center gap-2 font-body text-xs text-gray-500 dark:text-gray-400">
                 <FaFileExcel />
                 {t('zurich.bulk.hint')}
               </span>
+              {resumenImport && (
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="font-body text-xs text-gray-500">{t('zurich.bulk.received')}</p>
+                    <p className="font-heading text-xl font-bold">{resumenImport.rows ?? 0}</p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="font-body text-xs text-gray-500">{t('zurich.bulk.created')}</p>
+                    <p className="font-heading text-xl font-bold text-fenix-primario">
+                      {resumenImport.created ?? 0}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="font-body text-xs text-gray-500">{t('zurich.bulk.updated')}</p>
+                    <p className="font-heading text-xl font-bold">{resumenImport.updated ?? 0}</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <p className="mt-2 font-body text-xs text-gray-500 dark:text-gray-400">
-              {t('zurich.bulk.syncExpressHint')}
-            </p>
-            {resumenImport && (
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('zurich.bulk.received')}</p>
-                  <p className="font-heading text-xl font-bold">{resumenImport.totalRecibidos ?? 0}</p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('zurich.bulk.created')}</p>
-                  <p className="font-heading text-xl font-bold text-fenix-primario">
-                    {resumenImport.creados ?? 0}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('zurich.bulk.updated')}</p>
-                  <p className="font-heading text-xl font-bold text-gray-800 dark:text-gray-100">
-                    {resumenImport.actualizados ?? 0}
-                  </p>
-                </div>
-                <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
-                  <p className="font-body text-xs text-gray-500">{t('zurich.bulk.skipped')}</p>
-                  <p className="font-heading text-xl font-bold text-gray-600 dark:text-gray-300">
-                    {resumenImport.omitidos ?? 0}
-                  </p>
-                </div>
-              </div>
-            )}
-            {Array.isArray(resumenImport?.errores) && resumenImport.errores.length > 0 && (
-              <details className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900/40 dark:bg-amber-950/30">
-                <summary className="cursor-pointer font-semibold text-amber-800 dark:text-amber-200">
-                  {t('zurich.bulk.errorsTitle', { count: resumenImport.errores.length })}
-                </summary>
-                <ul className="mt-2 max-h-40 list-disc space-y-1 overflow-y-auto pl-5 text-amber-900 dark:text-amber-100">
-                  {resumenImport.errores.slice(0, 50).map((errItem) => (
-                    <li key={`${errItem.fila}-${errItem.motivo}`}>
-                      {t('zurich.bulk.errorRow', {
-                        row: errItem.fila,
-                        reason: errItem.motivo,
-                      })}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </div>
-        </section>
+          </section>
+        )}
+
+        <ModalImportarExcelZurich
+          open={modalImportOpen}
+          onClose={() => setModalImportOpen(false)}
+          onCompleted={async (data) => {
+            setResumenImport(data?.totals || null);
+            setExito(t('zurich.bulk.success', {
+              created: data?.totals?.created ?? 0,
+              updated: data?.totals?.updated ?? 0,
+              skipped: data?.totals?.skipped ?? 0,
+            }));
+            if (onSaved) await onSaved(data);
+          }}
+        />
 
         <section className={expressCard}>
           <div className={expressCardHeader}>

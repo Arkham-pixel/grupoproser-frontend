@@ -92,11 +92,15 @@ export default function DashboardCatastrofico({
   i18nNs,
   boletinPath,
   extras = {},
+  variant = 'cat',
+  title,
+  subtitle,
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const td = (key, opts) => t(`catastroficoDashboard.${key}`, opts);
+  const esListado = variant === 'listado';
 
   const [casos, setCasos] = useState([]);
   const [mapaNombres, setMapaNombres] = useState(() => new Map());
@@ -255,8 +259,8 @@ export default function DashboardCatastrofico({
           <div className="space-y-3">
             <span className={expressBadge}>{badge}</span>
             <div>
-              <h1 className={expressPageTitle}>{td('title')}</h1>
-              <p className={expressPageSubtitle}>{td('subtitle')}</p>
+              <h1 className={expressPageTitle}>{title || td('title')}</h1>
+              <p className={expressPageSubtitle}>{subtitle || td('subtitle')}</p>
             </div>
           </div>
           {boletinPath && (
@@ -308,6 +312,7 @@ export default function DashboardCatastrofico({
                 ))}
               </SelectFenix>
             </Campo>
+            {!esListado && (
             <Campo label={t(`${i18nNs}.fields.tomador`)}>
               <SelectFenix value={filtroTomador} onChange={(e) => setFiltroTomador(e.target.value)}>
                 <option value="">{td('all')}</option>
@@ -318,6 +323,7 @@ export default function DashboardCatastrofico({
                 ))}
               </SelectFenix>
             </Campo>
+            )}
             <Campo label={td('from')}>
               <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
             </Campo>
@@ -333,6 +339,8 @@ export default function DashboardCatastrofico({
             value={kpis.totalCasos}
             hint={td('kpis.casesHint', { active: kpis.casosActivos })}
           />
+          {!esListado && (
+            <>
           <ExpressMetricCard
             label={td('kpis.claimed')}
             value={formatCurrency(kpis.totalReclamado)}
@@ -348,8 +356,11 @@ export default function DashboardCatastrofico({
             value={formatCurrency(kpis.reservaActivos)}
             hint={td('kpis.reserveHint')}
           />
+            </>
+          )}
         </section>
 
+        {!esListado && (
         <section className="grid w-full min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
           <AnsCard
             title={td('ans.inspection')}
@@ -372,6 +383,7 @@ export default function DashboardCatastrofico({
             atrasadosLabel={td('ans.overdue')}
           />
         </section>
+        )}
 
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <ChartCard title={td('charts.byStatus')} empty={stats.porEstado.length === 0}>
@@ -448,6 +460,7 @@ export default function DashboardCatastrofico({
                 tickFormatter={formatCompactCop}
                 tick={{ fill: tickColor, fontSize: 10 }}
                 width={72}
+                hide={esListado}
               />
               <Tooltip
                 contentStyle={tooltipStyle}
@@ -457,6 +470,8 @@ export default function DashboardCatastrofico({
                 }}
               />
               <Legend wrapperStyle={{ color: tickColor, fontSize: 12 }} />
+              {!esListado && (
+                <>
               <Bar
                 yAxisId="right"
                 dataKey="reclamado"
@@ -473,6 +488,8 @@ export default function DashboardCatastrofico({
                 radius={[4, 4, 0, 0]}
                 barSize={18}
               />
+                </>
+              )}
               <Line
                 yAxisId="left"
                 type="monotone"
@@ -508,6 +525,7 @@ export default function DashboardCatastrofico({
           />
         </section>
 
+        {!esListado && (
         <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <HorizontalBars
             title={td('charts.byHolder')}
@@ -542,8 +560,9 @@ export default function DashboardCatastrofico({
             </ExpressChartPlot>
           </ChartCard>
         </section>
+        )}
 
-        {extras.severidad && (
+        {extras.severidad && !esListado && (
           <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
             <ChartCard title={td('charts.severity')} empty={stats.severidad.every((r) => r.cantidad === 0)}>
               <ExpressChartPlot height={300}>

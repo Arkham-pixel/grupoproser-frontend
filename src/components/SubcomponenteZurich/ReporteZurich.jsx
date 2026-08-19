@@ -1,7 +1,7 @@
 ﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
-import { FaFileExcel, FaPlus } from 'react-icons/fa';
+import { FaFileExcel } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoZurich,
@@ -91,6 +91,7 @@ const COLUMNAS = [
   { clave: 'fechaAceptacionLiquidacion', labelKey: 'fechaAceptacionLiquidacion' },
   { clave: 'fechaEnvioAseguradora', labelKey: 'fechaEnvioAseguradora' },
   { clave: 'estado', labelKey: 'estado' },
+  { clave: 'observaciones', labelKey: 'observaciones' },
   { clave: 'severidadCat', labelKey: 'severidadCat' },
   { clave: 'accesoPredio', labelKey: 'accesoPredio' },
   { clave: 'docs', labelKey: 'docs' },
@@ -267,6 +268,7 @@ export default function ReporteZurich() {
         c.correo,
         c.celular,
         c.canalRadicacion,
+        c.observaciones,
       ]
         .map(normTexto)
         .join(' ');
@@ -322,8 +324,8 @@ export default function ReporteZurich() {
       const rows = filtrados.map(buildExportRow);
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Zurich');
-      XLSX.writeFile(wb, `zurich-${new Date().toISOString().slice(0, 10)}.xlsx`);
+      XLSX.utils.book_append_sheet(wb, ws, 'Zurich CAT');
+      XLSX.writeFile(wb, `zurich-cat-${new Date().toISOString().slice(0, 10)}.xlsx`);
     } catch (err) {
       setAviso({
         tipo: 'error',
@@ -377,7 +379,7 @@ export default function ReporteZurich() {
       <div className={wrap}>
         <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
-            <span className={expressBadge}>Zurich</span>
+            <span className={expressBadge}>Zurich · CAT</span>
             <div>
               <h1 className={expressPageTitle}>{t('zurich.report.title')}</h1>
               <p className={expressPageSubtitle}>
@@ -387,15 +389,12 @@ export default function ReporteZurich() {
               </p>
             </div>
             <nav className="flex flex-wrap gap-2">
-              {!soloChecklistLleno && (
               <Link
-                to="/zurich/carga"
+                to="/zurich/dashboard"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
-                <FaPlus />
-                {t('nav.zurichAddCase')}
+                {t('nav.zurichDashboard')}
               </Link>
-              )}
               <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
                 {t('nav.zurichReport')}
               </span>
@@ -602,6 +601,7 @@ export default function ReporteZurich() {
         >
           <FormularioZurich
             embed
+            origen="cat"
             initialData={casoEdicion}
             onClose={() => setCasoEdicion(null)}
             onSaved={async () => {

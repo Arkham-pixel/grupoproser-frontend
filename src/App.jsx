@@ -74,8 +74,9 @@ import CasoSegurosAlfaWorkspace, {
 } from './components/SubcomponenteSegurosAlfa/CasoSegurosAlfaWorkspace';
 import FormularioZurich from './components/SubcomponenteZurich/FormularioZurich';
 import ReporteZurich from './components/SubcomponenteZurich/ReporteZurich';
-import BoletinSemanalZurich from './components/SubcomponenteZurich/BoletinSemanalZurich';
 import DashboardZurich from './components/SubcomponenteZurich/DashboardZurich';
+import ReporteZurichListado from './components/SubcomponenteZurich/ReporteZurichListado';
+import DashboardZurichListado from './components/SubcomponenteZurich/DashboardZurichListado';
 import CasoZurichWorkspace, {
   RedirectZurichInforme,
   RedirectZurichLiquidador,
@@ -562,10 +563,12 @@ export default function App() {
           <Route path="seguros-alfa/liquidador" element={<RedirectAlfaLiquidador />} />
           <Route path="seguros-alfa/informe-unico" element={<RedirectAlfaInforme />} />
 
-          <Route path="zurich/carga" element={<FormularioZurich />} />
+          <Route path="zurich/carga" element={<FormularioZurich origen="listado" />} />
+          <Route path="zurich/listado/reporte" element={<ReporteZurichListado />} />
+          <Route path="zurich/listado/dashboard" element={<DashboardZurichListado />} />
           <Route path="zurich/reporte" element={<ReporteZurich />} />
           <Route path="zurich/dashboard" element={<DashboardZurich />} />
-          <Route path="zurich/boletin" element={<BoletinSemanalZurich />} />
+          <Route path="zurich/boletin" element={<Navigate to="/zurich/dashboard" replace />} />
           <Route path="zurich/caso" element={<CasoZurichWorkspace />} />
           <Route path="zurich/liquidador" element={<RedirectZurichLiquidador />} />
           <Route path="zurich/informe-unico" element={<RedirectZurichInforme />} />

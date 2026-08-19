@@ -367,8 +367,12 @@ export const fechaParaInput = (value) => formatDateIso(value);
 
 export const FORM_VACIO_ZURICH = {
   siniestro: '',
+  zc: '',
   identificacion: '',
   asegurado: '',
+  contactoIntermediario: '',
+  contactoAsegurado: '',
+  observaciones: '',
   tomador: '',
   ajustadorLider: '',
   ajustador: '',

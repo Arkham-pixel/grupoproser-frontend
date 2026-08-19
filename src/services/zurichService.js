@@ -18,7 +18,12 @@ const authHeaders = () => {
 export const normalizeZurichItem = (item = {}) => ({
   ...item,
   siniestro: item.siniestro ?? '',
+  zc: item.zc ?? '',
   identificacion: item.identificacion ?? '',
+  asegurado: item.asegurado ?? '',
+  contactoIntermediario: item.contactoIntermediario ?? '',
+  contactoAsegurado: item.contactoAsegurado ?? '',
+  observaciones: item.observaciones ?? '',
   tomador: item.tomador ?? '',
   numeroPoliza: item.numeroPoliza ?? '',
   estado: item.estado ?? '',
@@ -143,6 +148,7 @@ export const importarCasosZurich = async (casos = [], opciones = {}) => {
     body: JSON.stringify({
       casos,
       reemplazarTodo: opciones.reemplazarTodo === true,
+      modo: opciones.modo || undefined,
     }),
   });
   const payload = await response.json().catch(() => ({}));

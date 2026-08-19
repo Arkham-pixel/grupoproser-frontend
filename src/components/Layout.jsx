@@ -57,7 +57,7 @@ import LanguageSelector from './LanguageSelector';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
-import { esRolContractor, esRolPuertos, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado } from '../config/roles';
+import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado } from '../config/roles';
 import {
   obtenerMisAlertas,
   obtenerResumenAlertas,
@@ -447,6 +447,8 @@ export default function Layout() {
     '/seguros-alfa/liquidador': t('nav.pageTitles.alfaCase'),
     '/seguros-alfa/informe-unico': t('nav.pageTitles.alfaCase'),
     '/zurich/carga': t('nav.pageTitles.zurichAdd'),
+    '/zurich/listado/reporte': t('nav.pageTitles.zurichListadoReport'),
+    '/zurich/listado/dashboard': t('nav.pageTitles.zurichListadoDashboard'),
     '/zurich/reporte': t('nav.pageTitles.zurichReport'),
     '/zurich/dashboard': t('nav.pageTitles.zurichDashboard'),
     '/zurich/boletin': t('nav.pageTitles.zurichBulletin'),
@@ -492,15 +494,11 @@ export default function Layout() {
 
   useEffect(() => {
     const pathname = location.pathname;
-    let pageTitle = routeTitles[pathname];
-    if (!pageTitle) {
-      for (const [route, title] of Object.entries(routeTitles)) {
-        if (pathname.startsWith(route) && route !== '/inicio') {
-          pageTitle = title;
-          break;
-        }
-      }
-    }
+    const pageTitle =
+      routeTitles[pathname] ||
+      Object.entries(routeTitles)
+        .filter(([route]) => route !== '/inicio' && pathname.startsWith(route))
+        .sort((a, b) => b[0].length - a[0].length)[0]?.[1];
     document.title = pageTitle ? `Arnald DataFlow - ${pageTitle}` : 'Arnald DataFlow';
   }, [location.pathname, routeTitles]);
 
@@ -671,11 +669,16 @@ export default function Layout() {
       : [],
     zurich: !accesoRestringido || configContractor?.seccionesMenu?.includes('zurich')
       ? [
-          { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
+          ...(!esRolContractorZurich(rolNorm)
+            ? [
+                { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
+                { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
+                { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
+              ]
+            : []),
           { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
           { path: '/zurich/dashboard', icon: FaChartBar, label: t('nav.zurichDashboard') },
           { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
-          { path: '/zurich/boletin', icon: FaChartLine, label: t('nav.zurichBulletin') },
         ]
       : [],
     sura: !accesoRestringido || configContractor?.seccionesMenu?.includes('sura')
@@ -1096,10 +1099,12 @@ export default function Layout() {
             </button>
             <h1 className="truncate text-sm font-semibold text-gray-800 dark:text-gray-100 lg:hidden">
               {routeTitles[location.pathname] ||
-                Object.entries(routeTitles).find(
-                  ([route]) =>
-                    location.pathname.startsWith(route) && route !== '/inicio'
-                )?.[1] ||
+                Object.entries(routeTitles)
+                  .filter(
+                    ([route]) =>
+                      route !== '/inicio' && location.pathname.startsWith(route)
+                  )
+                  .sort((a, b) => b[0].length - a[0].length)[0]?.[1] ||
                 'ARNALD'}
             </h1>
           </div>

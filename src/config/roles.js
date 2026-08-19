@@ -32,6 +32,7 @@ export const CONFIG_SOLO_ZURICH = {
   seccionesMenu: ['zurich'],
   inicio: '/zurich/reporte',
   prefijosRuta: ['/zurich'],
+  rutasExcluidas: ['/zurich/carga', '/zurich/listado'],
   etiqueta: 'Zurich',
 };
 
@@ -103,8 +104,12 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
 
   const contractor = obtenerConfigContractor(r);
   if (contractor) {
+    const permitida = contractor.prefijosRuta.some((prefijo) => path.startsWith(prefijo));
+    const excluida = (contractor.rutasExcluidas || []).some(
+      (ex) => path === ex || path.startsWith(`${ex}/`)
+    );
     return (
-      contractor.prefijosRuta.some((prefijo) => path.startsWith(prefijo)) ||
+      (permitida && !excluida) ||
       path === '/micuenta' ||
       path.startsWith('/micuenta/')
     );
