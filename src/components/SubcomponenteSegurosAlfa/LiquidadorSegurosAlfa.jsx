@@ -65,10 +65,20 @@ export default function LiquidadorSegurosAlfa({
   }, [liquidador, totales]);
 
   const actualizarEncabezado = (campo, valor) => {
-    setLiquidador((prev) => ({
-      ...prev,
-      encabezado: { ...(prev.encabezado || {}), [campo]: valor },
-    }));
+    setLiquidador((prev) => {
+      const next = {
+        ...prev,
+        encabezado: { ...(prev.encabezado || {}), [campo]: valor },
+      };
+      if (campo === 'valorAseguradoInmueble') {
+        const liq = prev.liquidacionCatastrofico || {};
+        next.liquidacionCatastrofico = {
+          ...liq,
+          valorAsegurado: valor,
+        };
+      }
+      return next;
+    });
   };
 
   const actualizarCasoCampo = (campo, valor) => {

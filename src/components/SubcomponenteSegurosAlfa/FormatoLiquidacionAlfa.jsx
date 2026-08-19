@@ -514,6 +514,7 @@ export default function FormatoLiquidacionAlfa({
                 encabezado.valorAseguradoInmueble ?? liquidacionCatastrofico.valorAsegurado ?? ''
               }
               onChange={(e) => onEncabezadoChange?.('valorAseguradoInmueble', e.target.value)}
+              placeholder="Obligatorio para el deducible"
             />
           </CeldaInput>
         </div>
@@ -528,6 +529,26 @@ export default function FormatoLiquidacionAlfa({
           </CeldaInput>
         </div>
       </div>
+      {totales.deducibleRequiereValorAsegurado ? (
+        <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+          El deducible Alfa es el mayor entre el % del <strong>valor asegurado</strong> y los SMMLV.
+          Llene «Valor límite asegurado» para calcularlo (no se toma de la pérdida).
+        </p>
+      ) : totales.deducibleAlfa ? (
+        <p className="border-b border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+          Deducible = mayor entre{' '}
+          <strong>
+            {totales.deducibleAlfa.porcentaje}% del valor asegurado ($
+            {formatearMonto(totales.deducibleAlfa.deduciblePorcentaje)})
+          </strong>{' '}
+          y{' '}
+          <strong>
+            {totales.deducibleAlfa.cantidadSMMLV} SMMLV ($
+            {formatearMonto(totales.deducibleAlfa.deducibleSMMLV)})
+          </strong>
+          {totales.deducibleAlfa.usaMinimo ? ' → aplica el mínimo SMMLV.' : ' → aplica el %.'}
+        </p>
+      ) : null}
 
       <div className="border-b border-gray-300 dark:border-gray-600">
         <div className={`${alfaCatHeaderBlue} !py-2 text-sm`}>Detalle de la liquidación</div>

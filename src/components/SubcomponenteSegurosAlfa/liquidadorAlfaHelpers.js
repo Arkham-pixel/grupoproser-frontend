@@ -103,13 +103,22 @@ export function liquidacionCatastroficoDefaultAlfa(caso = {}) {
     c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
       ? Number(c.valorAseguradoInmueble) || ''
       : '';
+  /** Alfa terremoto: 2% del valor asegurado, mínimo 2 SMMLV (el mayor). */
+  const deducibleAlfa = {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    aplica: true,
+    porcentaje: 2,
+    cantidadSMMLV: 2,
+    tipoMinimo: 'SMMLV',
+    texto: '2% valor asegurado · Mínimo 2 SMMLV',
+  };
   return {
     valorAsegurado: va,
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
     hospedajeManual: '',
-    deducible: 'No aplica',
-    deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
-    deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+    deducible: deducibleAlfa.texto,
+    deducibleConfig: { ...deducibleAlfa },
+    deducibleConfigPresupuesto: { ...deducibleAlfa },
   };
 }
 
@@ -202,8 +211,77 @@ export function esLiquidadorNsrAlfa(liquidador = {}) {
 }
 
 /**
- * Totales Alfa = presupuesto NSR-10 + contenidos + diagrama (suma + hospedaje).
- * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
+ * Deducible Alfa: MAX(% del valor asegurado, N × SMMLV).
+ * No usa la pérdida / total del presupuesto como base del %.
+ */
+export function calcularDeducibleAlfaSobreValorAsegurado({
+  valorAsegurado = 0,
+  totalDanios = 0,
+  deducibleConfig = {},
+} = {}) {
+  const cfg = {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    porcentaje: 2,
+    cantidadSMMLV: 2,
+    tipoMinimo: 'SMMLV',
+    aplica: true,
+    ...(deducibleConfig && typeof deducibleConfig === 'object' ? deducibleConfig : {}),
+  };
+  const va = parsearNumero(valorAsegurado);
+  const danios = parsearNumero(totalDanios);
+  const porcentaje = Number(cfg.porcentaje);
+  const pct = Number.isFinite(porcentaje) ? porcentaje : 2;
+  const cantidadSMMLV = Number(cfg.cantidadSMMLV);
+  const cant = Number.isFinite(cantidadSMMLV) ? cantidadSMMLV : 2;
+  const anio = Number(cfg.anioSMMLV) || ANIOS_SMMLV[0] || 2026;
+  const valorSMMLV =
+    parsearNumero(cfg.valorSMMLV) || SMMLV_POR_ANIO[anio] || SMMLV_DEFAULT;
+
+  if (!va) {
+    return {
+      aplica: false,
+      requiereValorAsegurado: true,
+      valorAsegurado: 0,
+      porcentaje: pct,
+      cantidadSMMLV: cant,
+      valorSMMLV,
+      anioSMMLV: anio,
+      deduciblePorcentaje: 0,
+      deducibleSMMLV: Math.round(cant * valorSMMLV * 100) / 100,
+      deducibleAplicado: 0,
+      usaMinimo: false,
+      texto: 'Indique el valor asegurado para calcular el deducible',
+    };
+  }
+
+  const deduciblePorcentaje = Math.round(va * (pct / 100) * 100) / 100;
+  const deducibleSMMLV = Math.round(cant * valorSMMLV * 100) / 100;
+  const bruto = Math.max(deduciblePorcentaje, deducibleSMMLV);
+  const usaMinimo = deducibleSMMLV > deduciblePorcentaje;
+  const deducibleAplicado =
+    danios > 0
+      ? Math.round(Math.min(bruto, danios) * 100) / 100
+      : Math.round(bruto * 100) / 100;
+
+  return {
+    aplica: true,
+    requiereValorAsegurado: false,
+    valorAsegurado: va,
+    porcentaje: pct,
+    cantidadSMMLV: cant,
+    valorSMMLV,
+    anioSMMLV: anio,
+    deduciblePorcentaje,
+    deducibleSMMLV,
+    deducibleAplicado,
+    usaMinimo,
+    texto: `${pct}% del valor asegurado · Mínimo ${cant} SMMLV (se aplica el mayor)`,
+  };
+}
+
+/**
+ * Totales Alfa = presupuesto NSR-10 + contenidos + hospedaje.
+ * Deducible = mayor entre % del valor asegurado y N SMMLV (no % de la pérdida).
  */
 export function calcularLiquidacionAlfa(liquidador = {}) {
   const evalData = liquidador.evaluacionSismicaNSR10 || {};
@@ -211,18 +289,38 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
   const totalesPres = calcularTotalesPresupuesto(presupuesto);
   const resumen = calcularResumenTotalesNsr10(evalData);
   const liq = liquidador.liquidacionCatastrofico || {};
+  const enc = liquidador.encabezado || {};
+  const valorAsegurado =
+    parsearNumero(liq.valorAsegurado) ||
+    parsearNumero(enc.valorAseguradoInmueble) ||
+    0;
+  const cfgDed = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
+
   const diagrama = calcularDiagramaLiquidacion({
-    valorAsegurado: liq.valorAsegurado,
+    valorAsegurado,
     totalDanios: resumen.sumaCompleta,
     totalPresupuesto: resumen.totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
     hospedajeManual: liq.hospedajeManual,
     deducible: liq.deducible,
-    deducibleConfig: liq.deducibleConfig,
-    deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
-    deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
+    deducibleConfig: cfgDed,
+    deducibleConfigContenidos: liq.deducibleConfigContenidos || cfgDed,
+    deducibleConfigPresupuesto: cfgDed,
   });
+
+  const dedAlfa = calcularDeducibleAlfaSobreValorAsegurado({
+    valorAsegurado,
+    totalDanios: resumen.sumaCompleta,
+    deducibleConfig: cfgDed,
+  });
+
+  const hospedaje = parsearNumero(diagrama.gastosHospedaje);
+  const totalIndemnizar = Math.max(
+    0,
+    Math.round((resumen.sumaCompleta - dedAlfa.deducibleAplicado + hospedaje) * 100) / 100
+  );
+
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
 
@@ -238,25 +336,31 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     imprevistos: totalesPres.imprevistos,
     impuestos: totalesPres.impuestos,
     totalDanios: resumen.sumaCompleta,
-    diagrama,
+    diagrama: {
+      ...diagrama,
+      valorAsegurado,
+      deducibleAplicado: dedAlfa.deducibleAplicado,
+      sumaDeducibles: dedAlfa.deducibleAplicado,
+      deduciblePorcentaje: dedAlfa.deduciblePorcentaje,
+      deducibleSMMLV: dedAlfa.deducibleSMMLV,
+      deducibleUsaMinimo: dedAlfa.usaMinimo,
+      deducibleAplica: dedAlfa.aplica,
+      deducible: dedAlfa.texto,
+      totalIndemnizar,
+    },
     criterio,
-    totalIndemnizar: diagrama.totalIndemnizar,
-    totalIndemnizable: diagrama.totalIndemnizar,
+    deducibleAlfa: dedAlfa,
+    totalIndemnizar,
+    totalIndemnizable: totalIndemnizar,
     totalPerdida: resumen.sumaCompleta,
     totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
-    deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
-    deducibleTexto: [
-      diagrama.deduciblePresupuesto?.aplica ? `Presupuesto: ${diagrama.deduciblePresupuesto.texto}` : null,
-      diagrama.deducibleContenidos?.aplica || diagrama.deducibleAplica
-        ? `Contenidos: ${diagrama.deducibleContenidos?.texto || diagrama.deducible}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(' · ') || diagrama.deducible,
+    deducibleAplicado: dedAlfa.deducibleAplicado,
+    deducibleRequiereValorAsegurado: Boolean(dedAlfa.requiereValorAsegurado),
+    deducibleTexto: dedAlfa.texto,
     subtotalContenidos: resumen.totalContenidos,
     subtotalEdificios: resumen.totalPresupuesto,
     diferencia: 0,
-    usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
+    usaSMMLV: Boolean(dedAlfa.usaMinimo),
   };
 }
 
@@ -467,10 +571,39 @@ export function mapCasoAlfaALiquidador(caso = {}) {
       guardado.evaluacionSismicaNSR10,
       prefill
     ),
-    liquidacionCatastrofico: {
-      ...base.liquidacionCatastrofico,
-      ...(guardado.liquidacionCatastrofico || {}),
-    },
+    liquidacionCatastrofico: (() => {
+      const liqG = guardado.liquidacionCatastrofico || {};
+      const cfgPrev =
+        liqG.deducibleConfigPresupuesto ||
+        liqG.deducibleConfig ||
+        {};
+      // Migrar defaults genéricos (10% / 4 SMMLV) al esquema Alfa (2% VA / 2 SMMLV)
+      const migrarAlfa =
+        Number(cfgPrev.porcentaje) === 10 && Number(cfgPrev.cantidadSMMLV) === 4;
+      const cfgAlfa = {
+        ...base.liquidacionCatastrofico.deducibleConfig,
+        ...cfgPrev,
+        ...(migrarAlfa ? { porcentaje: 2, cantidadSMMLV: 2, aplica: true } : {}),
+        aplica: true,
+        texto:
+          cfgPrev.texto && !migrarAlfa
+            ? cfgPrev.texto
+            : '2% valor asegurado · Mínimo 2 SMMLV',
+      };
+      const va =
+        liqG.valorAsegurado ??
+        guardado.encabezado?.valorAseguradoInmueble ??
+        encabezado.valorAseguradoInmueble ??
+        base.liquidacionCatastrofico.valorAsegurado;
+      return {
+        ...base.liquidacionCatastrofico,
+        ...liqG,
+        valorAsegurado: va,
+        deducibleConfig: cfgAlfa,
+        deducibleConfigPresupuesto: cfgAlfa,
+        deducible: cfgAlfa.texto,
+      };
+    })(),
     detalleLiquidacionCat: Array.isArray(guardado.detalleLiquidacionCat)
       ? guardado.detalleLiquidacionCat
       : null,
