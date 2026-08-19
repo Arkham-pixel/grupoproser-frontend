@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaDownload, FaFilePdf, FaTrash } from 'react-icons/fa';
+import { FaDownload, FaFilePdf, FaTrash, FaUpload } from 'react-icons/fa';
 import {
   eliminarArchivoFdm,
   getCasoFdmById,
@@ -12,6 +12,7 @@ import {
   expressAlertSuccess,
   expressBtnGhost,
   expressBtnPrimary,
+  expressBtnSecondary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { unirArchivosLocalesFdm } from './unirPdfsArchiveroFdm.js';
@@ -46,20 +47,62 @@ const formatDate = (value) => {
 const ACCEPT_UNIR =
   '.pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif,.bmp,application/pdf,image/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
+const ACCEPT_ADICIONAL =
+  '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.webp,.gif,.bmp,.zip,.msg,application/pdf,image/*,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
   const { t } = useTranslation();
   const inputUnirRef = useRef(null);
+  const inputAdicionalRef = useRef(null);
   const [archivos, setArchivos] = useState(() => caso?.archivos || []);
   const [etiqueta, setEtiqueta] = useState('GENERAL');
   const [procesando, setProcesando] = useState(false);
+  const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
+  const ocupado = procesando || subiendo;
 
   const refrescar = async () => {
     const actualizado = await getCasoFdmById(caso._id);
     setArchivos(actualizado.archivos || []);
     if (onChanged) onChanged(actualizado);
     return actualizado;
+  };
+
+  const etiquetaSubida =
+    etiqueta === 'LIQUIDACION' || etiqueta === 'MODELO_LIQUIDACION' ? 'GENERAL' : etiqueta;
+
+  /** Sube documentos tal cual, sin convertir ni unir. */
+  const handleSubirAdicionales = async (e) => {
+    const list = Array.from(e.target.files || []);
+    e.target.value = '';
+    if (!list.length) return;
+
+    setError(null);
+    setExito(null);
+    setSubiendo(true);
+    try {
+      for (const file of list) {
+        await subirArchivoFdm(caso._id, file, etiquetaSubida, {
+          reemplazarMismaEtiqueta: false,
+        });
+      }
+      await refrescar();
+      setExito(
+        list.length === 1
+          ? t('equidadFdm.archive.uploadOk')
+          : t('equidadFdm.archive.uploadOkMultiple', { count: list.length })
+      );
+    } catch (err) {
+      setError(err.message || t('equidadFdm.archive.uploadError'));
+      try {
+        await refrescar();
+      } catch {
+        /* ignore */
+      }
+    } finally {
+      setSubiendo(false);
+    }
   };
 
   /**
@@ -77,9 +120,6 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
     setExito(null);
     setProcesando(true);
     try {
-      const etiquetaSubida =
-        etiqueta === 'LIQUIDACION' || etiqueta === 'MODELO_LIQUIDACION' ? 'GENERAL' : etiqueta;
-
       const nombreBase = `Expediente_FDM_${caso?.consecutivo || caso?.cedula || caso?._id || ''}`;
       const { blob, nombre, count } = await unirArchivosLocalesFdm(list, {
         nombreBase,
@@ -151,6 +191,14 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
           </SelectFenix>
         </Campo>
         <input
+          ref={inputAdicionalRef}
+          type="file"
+          className="hidden"
+          multiple
+          accept={ACCEPT_ADICIONAL}
+          onChange={handleSubirAdicionales}
+        />
+        <input
           ref={inputUnirRef}
           type="file"
           className="hidden"
@@ -160,14 +208,27 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
         />
         <button
           type="button"
+          className={expressBtnSecondary}
+          disabled={ocupado}
+          onClick={() => inputAdicionalRef.current?.click()}
+          title={t('equidadFdm.archive.uploadHelp')}
+        >
+          <FaUpload />
+          {subiendo ? t('equidadFdm.archive.uploading') : t('equidadFdm.archive.upload')}
+        </button>
+        <button
+          type="button"
           className={expressBtnPrimary}
-          disabled={procesando}
+          disabled={ocupado}
           onClick={() => inputUnirRef.current?.click()}
           title={t('equidadFdm.archive.mergeHint')}
         >
           <FaFilePdf />
           {procesando ? t('equidadFdm.archive.merging') : t('equidadFdm.archive.mergeUpload')}
         </button>
+        <p className="w-full font-body text-xs text-gray-500 dark:text-gray-400">
+          {t('equidadFdm.archive.uploadHelp')}
+        </p>
         <p className="w-full font-body text-xs text-gray-500 dark:text-gray-400">
           {t('equidadFdm.archive.mergeUploadHelp')}
         </p>
@@ -254,7 +315,7 @@ export default function ArchiveroEquidadFdm({ caso, onClose, onChanged }) {
 
       {onClose && (
         <div className="flex justify-end">
-          <button type="button" className={expressBtnGhost} onClick={onClose} disabled={procesando}>
+          <button type="button" className={expressBtnGhost} onClick={onClose} disabled={ocupado}>
             {t('equidadFdm.settlement.close')}
           </button>
         </div>
