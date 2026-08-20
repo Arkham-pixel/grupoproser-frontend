@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaFileExcel, FaFilePdf, FaFileWord } from 'react-icons/fa';
 import {
@@ -10,6 +10,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
+  expressAlertSuccess,
   expressFormSection,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
@@ -24,8 +25,15 @@ import {
 import { descargarFiniquitoZurichWord } from './generarFiniquitoZurichWord.js';
 import { descargarLiquidadorZurichExcel } from './generarLiquidadorZurichExcel.js';
 import { descargarLiquidadorZurichPdf } from './generarLiquidadorZurichPdf.js';
+import { zurichArchivosApi } from './zurichArchivosApi.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
+
+const MIME = {
+  excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pdf: 'application/pdf',
+  finiquito: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+};
 
 /**
  * Liquidador Zurich = evaluación NSR-10 completa (portada / eval / dictamen / presupuesto)
@@ -36,14 +44,21 @@ export default function LiquidadorZurich({
   onGuardarEnCaso,
   guardandoCaso = false,
   onEstadoChange,
+  onCasoChange,
+  origen = 'cat',
+  liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
-  const [liquidador, setLiquidador] = useState(() => mapcasoZurichALiquidador(casoZurich || {}));
+  const api = useMemo(() => zurichArchivosApi(origen), [origen]);
+  const [liquidador, setLiquidador] = useState(() =>
+    liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {})
+  );
   const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState('');
   const [exportando, setExportando] = useState('');
 
   useEffect(() => {
-    setLiquidador(mapcasoZurichALiquidador(casoZurich || {}));
+    setLiquidador(liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}));
   }, [casoZurich?._id]);
 
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
@@ -76,11 +91,35 @@ export default function LiquidadorZurich({
     });
   };
 
+  const copiarAlArchivero = async (blob, nombre, mime) => {
+    const casoId = casoZurich?._id;
+    if (!casoId || !blob || !nombre) return;
+    const file = new File([blob], nombre, { type: mime });
+    const creado = await api.subir(casoId, file, 'LIQUIDACION');
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const list = Array.isArray(prev.archivos) ? prev.archivos : [];
+      return { ...prev, archivos: [...list, creado] };
+    });
+    setMensaje(t('zurich.settlement.archiveSaved'));
+  };
+
   const correrExport = async (tipo, fn) => {
     setError('');
+    setMensaje('');
     setExportando(tipo);
     try {
-      await fn(liquidador, totales);
+      const resultado = await fn(liquidador, totales);
+      const blob = resultado?.blob;
+      const nombre = resultado?.filename || resultado?.nombre;
+      if (blob && nombre) {
+        try {
+          await copiarAlArchivero(blob, nombre, MIME[tipo] || 'application/octet-stream');
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar en el archivero Zurich:', errArchivo);
+          setError(t('zurich.settlement.archiveError'));
+        }
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || t('zurich.settlement.exportError'));
@@ -133,6 +172,7 @@ export default function LiquidadorZurich({
       </div>
 
       {error && <p className={expressAlertError}>{error}</p>}
+      {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.settlement.headerTitle')}</h3>

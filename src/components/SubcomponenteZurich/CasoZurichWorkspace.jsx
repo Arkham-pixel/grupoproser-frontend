@@ -1,10 +1,11 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaFolderOpen, FaSave } from 'react-icons/fa';
 import LiquidadorZurich from './LiquidadorZurich.jsx';
 import InspeccionCatZurich from './InspeccionCatZurich.jsx';
 import InformeUnicoZurich from './InformeUnicoZurich.jsx';
+import ArchiveroZurich from './ArchiveroZurich.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -32,6 +33,7 @@ import useZurichCasoAutosave from '../../hooks/useZurichCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -98,6 +100,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   const [restoreNonce, setRestoreNonce] = useState(0);
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
+  const [archiveroAbierto, setArchiveroAbierto] = useState(false);
 
   const casoId = casoZurich?._id || casoIdFromQuery || null;
 
@@ -213,13 +216,19 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
         ? await guardarLiquidadorEnCasoZurichListado({
             casoId,
             liquidador,
-            casoBase: casoZurich || {},
+            casoBase: {
+              ...(casoZurich || {}),
+              informeUnico: informeState || casoZurich?.informeUnico,
+            },
           })
         : await guardarLiquidadorEnCasoZurich({
             casoId,
             liquidador,
             totales,
-            casoBase: casoZurich || {},
+            casoBase: {
+              ...(casoZurich || {}),
+              informeUnico: informeState || casoZurich?.informeUnico,
+            },
           });
       setCasoZurich(actualizado);
       setMensaje(t('zurich.settlement.savedMessage'));
@@ -258,12 +267,18 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
         ? await guardarInformeUnicoEnCasoZurichListado({
             casoId,
             informeUnico: informe,
-            casoBase: casoZurich || {},
+            casoBase: {
+              ...(casoZurich || {}),
+              liquidador: liquidadorState || casoZurich?.liquidador,
+            },
           })
         : await guardarInformeUnicoEnCasoZurich({
             casoId,
             informeUnico: informe,
-            casoBase: casoZurich || {},
+            casoBase: {
+              ...(casoZurich || {}),
+              liquidador: liquidadorState || casoZurich?.liquidador,
+            },
           });
       setCasoZurich(actualizado);
       setMensaje(t('zurich.reportUnique.savedMessage'));
@@ -346,6 +361,16 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
             <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {casoId && (
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => setArchiveroAbierto(true)}
+              >
+                <FaFolderOpen /> {t('zurich.report.archive')}
+                {casoZurich?.archivos?.length ? ` (${casoZurich.archivos.length})` : ''}
+              </button>
+            )}
             {mostrarBotonGuardarSuperior && (
               <button
                 type="button"
@@ -433,14 +458,14 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
             className={pillClass(tabActivo === TABS_ZURICH.LIQUIDADOR)}
             onClick={() => setTab(TABS_ZURICH.LIQUIDADOR)}
           >
-            {esModuloListado ? '1' : '2'}. {t('zurich.workspace.tabSettlement')}
+            2. {t('zurich.workspace.tabSettlement')}
           </button>
           <button
             type="button"
             className={pillClass(tabActivo === TABS_ZURICH.INFORME)}
             onClick={() => setTab(TABS_ZURICH.INFORME)}
           >
-            {esModuloListado ? '2' : '3'}. {t('zurich.workspace.tabUniqueReport')}
+            3. {t('zurich.workspace.tabUniqueReport')}
           </button>
         </div>
 
@@ -457,7 +482,9 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
             ) : tabActivo === TABS_ZURICH.INFORME ? (
               <InformeUnicoZurich
                 key={`inf-${casoId}-${restoreNonce}`}
+                origen={esModuloListado ? 'listado' : 'cat'}
                 casoZurich={casoZurich}
+                liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
                   setLiquidadorState(liq);
@@ -470,18 +497,43 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
             ) : (
               <LiquidadorZurich
                 key={`liq-${casoId}-${restoreNonce}`}
+                origen={esModuloListado ? 'listado' : 'cat'}
                 casoZurich={casoZurich}
+                liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
                   setLiquidadorState(liq);
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onCasoChange={setCasoZurich}
                 guardandoCaso={guardando}
               />
             )}
           </div>
         </div>
       </div>
+      {archiveroAbierto && casoZurich && (
+        <ExpressModal
+          open
+          onClose={() => setArchiveroAbierto(false)}
+          title={t('zurich.archive.title')}
+          wide
+        >
+          <ArchiveroZurich
+            origen={esModuloListado ? 'listado' : 'cat'}
+            caso={casoZurich}
+            etiquetaInicial={
+              tabActivo === TABS_ZURICH.INFORME
+                ? 'INFORME'
+                : tabActivo === TABS_ZURICH.LIQUIDADOR
+                  ? 'LIQUIDACION'
+                  : 'GENERAL'
+            }
+            onClose={() => setArchiveroAbierto(false)}
+            onChanged={(actualizado) => setCasoZurich(actualizado)}
+          />
+        </ExpressModal>
+      )}
       <ArnaldDraftChrome
         draftStatus={draftStatus}
         lastDraftAt={lastDraftAt}

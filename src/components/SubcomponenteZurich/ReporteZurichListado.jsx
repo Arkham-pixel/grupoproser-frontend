@@ -9,6 +9,7 @@ import {
 } from '../../services/zurichListadoService.js';
 import FormularioZurich from './FormularioZurich.jsx';
 import AccionesZurichMenu from './AccionesZurichMenu.jsx';
+import ArchiveroZurich from './ArchiveroZurich.jsx';
 import ModalImportarExcelZurich, {
   esAdminOSoporteZurich,
 } from './ModalImportarExcelZurich.jsx';
@@ -108,6 +109,7 @@ export default function ReporteZurichListado() {
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
   const [casoEdicion, setCasoEdicion] = useState(null);
+  const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
   const puedeImportarExcel = esAdminOSoporteZurich();
@@ -398,16 +400,13 @@ export default function ReporteZurichListado() {
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-20 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesZurichMenu
+                          docsCount={item.archivos?.length || 0}
                           tieneLiquidador={!!item.liquidador}
                           tieneInforme={!!item.informeUnico}
                           onGestionar={() => setCasoEdicion(item)}
-                          onLiquidador={() =>
+                          onArchivero={() => setCasoArchivero(item)}
+                          onAbrirCaso={() =>
                             navigate(`/zurich/listado/caso?casoId=${item._id}&tab=liquidador`, {
-                              state: { casoZurich: item },
-                            })
-                          }
-                          onInformeUnico={() =>
-                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`, {
                               state: { casoZurich: item },
                             })
                           }
@@ -469,6 +468,27 @@ export default function ReporteZurichListado() {
             onSaved={async () => {
               setCasoEdicion(null);
               await recargar();
+            }}
+          />
+        </ExpressModal>
+      )}
+
+      {casoArchivero && (
+        <ExpressModal
+          open
+          onClose={() => setCasoArchivero(null)}
+          title={t('zurich.archive.title')}
+          wide
+        >
+          <ArchiveroZurich
+            origen="listado"
+            caso={casoArchivero}
+            onClose={() => setCasoArchivero(null)}
+            onChanged={(actualizado) => {
+              setCasoArchivero(actualizado);
+              setCasos((prev) =>
+                prev.map((c) => (c._id === actualizado._id ? { ...c, ...actualizado } : c))
+              );
             }}
           />
         </ExpressModal>

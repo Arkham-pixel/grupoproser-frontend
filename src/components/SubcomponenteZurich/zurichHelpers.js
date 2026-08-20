@@ -1,4 +1,4 @@
-﻿import { crearFechaLocal } from '../../utils/fechaUtils.js';
+import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const ZURICH_REPORTE_PAGE_SIZE = 25;
 
@@ -56,6 +56,7 @@ export const ETIQUETAS_ARCHIVO_ZURICH = [
   'POLIZA',
   'INSPECCION',
   'LIQUIDACION',
+  'INFORME',
   'FOTOS',
   /** Manual CAT — evidencia fotográfica/documental */
   'FOTO_GENERAL',
@@ -63,6 +64,15 @@ export const ETIQUETAS_ARCHIVO_ZURICH = [
   'EQUIPOS_CRITICOS',
   'MITIGACION',
   'NO_ACCESO',
+  'OTRO',
+];
+
+export const ETIQUETAS_ARCHIVO_ZURICH_LISTADO = [
+  'GENERAL',
+  'POLIZA',
+  'LIQUIDACION',
+  'INFORME',
+  'FOTOS',
   'OTRO',
 ];
 

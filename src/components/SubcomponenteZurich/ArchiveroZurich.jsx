@@ -1,12 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaDownload, FaTrash, FaUpload } from 'react-icons/fa';
-import {
-  eliminarArchivoZurich,
-  getCasoZurichById,
-  subirArchivoZurich,
-  urlDescargaArchivoZurich,
-} from '../../services/zurichService.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -14,7 +8,12 @@ import {
   expressBtnPrimary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { ETIQUETAS_ARCHIVO_ZURICH, formatDate } from './zurichHelpers.js';
+import {
+  ETIQUETAS_ARCHIVO_ZURICH,
+  ETIQUETAS_ARCHIVO_ZURICH_LISTADO,
+  formatDate,
+} from './zurichHelpers.js';
+import { zurichArchivosApi } from './zurichArchivosApi.js';
 
 const formatBytes = (n) => {
   const num = Number(n);
@@ -24,17 +23,35 @@ const formatBytes = (n) => {
   return `${(num / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export default function ArchiveroZurich({ caso, onClose, onChanged }) {
+export default function ArchiveroZurich({
+  caso,
+  onClose,
+  onChanged,
+  origen = 'cat',
+  etiquetas,
+  etiquetaInicial = 'GENERAL',
+}) {
   const { t } = useTranslation();
   const inputRef = useRef(null);
+  const api = useMemo(() => zurichArchivosApi(origen), [origen]);
+  const opcionesEtiqueta = etiquetas
+    || (origen === 'listado' ? ETIQUETAS_ARCHIVO_ZURICH_LISTADO : ETIQUETAS_ARCHIVO_ZURICH);
   const [archivos, setArchivos] = useState(() => caso?.archivos || []);
-  const [etiqueta, setEtiqueta] = useState('GENERAL');
+  const [etiqueta, setEtiqueta] = useState(etiquetaInicial || 'GENERAL');
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
 
+  useEffect(() => {
+    setArchivos(caso?.archivos || []);
+  }, [caso?._id, caso?.archivos]);
+
+  useEffect(() => {
+    if (etiquetaInicial) setEtiqueta(etiquetaInicial);
+  }, [etiquetaInicial]);
+
   const refrescar = async () => {
-    const actualizado = await getCasoZurichById(caso._id);
+    const actualizado = await api.getById(caso._id);
     setArchivos(actualizado.archivos || []);
     if (onChanged) onChanged(actualizado);
     return actualizado;
@@ -48,7 +65,7 @@ export default function ArchiveroZurich({ caso, onClose, onChanged }) {
     setExito(null);
     setSubiendo(true);
     try {
-      await subirArchivoZurich(caso._id, file, etiqueta);
+      await api.subir(caso._id, file, etiqueta);
       await refrescar();
       setExito(t('zurich.archive.uploadOk'));
     } catch (err) {
@@ -63,7 +80,7 @@ export default function ArchiveroZurich({ caso, onClose, onChanged }) {
     setError(null);
     setExito(null);
     try {
-      await eliminarArchivoZurich(caso._id, archivoId);
+      await api.eliminar(caso._id, archivoId);
       await refrescar();
       setExito(t('zurich.archive.deleteOk'));
     } catch (err) {
@@ -78,13 +95,15 @@ export default function ArchiveroZurich({ caso, onClose, onChanged }) {
           {t('zurich.archive.title')}
         </h3>
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          {t('zurich.archive.subtitle', {
-            caseNumber: caso?.consecutivo || caso?.identificacion || '',
+          {t(origen === 'listado' ? 'zurich.archive.subtitleListado' : 'zurich.archive.subtitle', {
+            caseNumber: caso?.consecutivo || caso?.identificacion || caso?.zc || '',
           })}
         </p>
-        <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
-          {t('zurich.cat.evidenciaHint')}
-        </p>
+        {origen !== 'listado' && (
+          <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
+            {t('zurich.cat.evidenciaHint')}
+          </p>
+        )}
       </div>
 
       {error && <div className={expressAlertError}>{error}</div>}
@@ -93,7 +112,7 @@ export default function ArchiveroZurich({ caso, onClose, onChanged }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Campo label={t('zurich.archive.label')}>
           <SelectFenix value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)}>
-            {ETIQUETAS_ARCHIVO_ZURICH.map((op) => (
+            {opcionesEtiqueta.map((op) => (
               <option key={op} value={op}>
                 {t(`zurich.archive.labels.${op}`, { defaultValue: op })}
               </option>
@@ -147,7 +166,7 @@ export default function ArchiveroZurich({ caso, onClose, onChanged }) {
               </tr>
             ) : (
               archivos.map((arch) => {
-                const url = urlDescargaArchivoZurich(arch.ruta);
+                const url = api.url(arch.ruta);
                 return (
                   <tr key={arch._id}>
                     <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">

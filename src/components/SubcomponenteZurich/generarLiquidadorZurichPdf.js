@@ -1,4 +1,4 @@
-﻿import { jsPDF } from 'jspdf';
+import { jsPDF } from 'jspdf';
 import { saveAs } from 'file-saver';
 import {
   OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
@@ -491,4 +491,5 @@ export async function descargarLiquidadorZurichPdf(liquidador, totales) {
     .replace(/[^\w.-]+/g, '_')
     .slice(0, 40);
   saveAs(blob, `Evaluacion_Sismica_NSR10_Zurich_${safe}.pdf`);
+  return { blob, filename: `Evaluacion_Sismica_NSR10_Zurich_${safe}.pdf` };
 }

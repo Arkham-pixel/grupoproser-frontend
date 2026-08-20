@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaCloudUploadAlt, FaFileWord, FaMapMarkerAlt, FaRedo, FaTrash } from 'react-icons/fa';
 import {
@@ -24,12 +24,7 @@ import {
   mapcasoZurichALiquidador,
 } from './liquidadorZurichHelpers.js';
 import { descargarWordInformeZurich } from './generarWordInformeZurich.js';
-import {
-  eliminarArchivoZurich,
-  getCasoZurichById,
-  subirArchivoZurich,
-  urlDescargaArchivoZurich,
-} from '../../services/zurichService.js';
+import { zurichArchivosApi } from './zurichArchivosApi.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -61,11 +56,16 @@ export default function InformeUnicoZurich({
   onGuardarEnCaso,
   onCasoChange,
   guardandoCaso = false,
+  origen = 'cat',
+  liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
+  const api = useMemo(() => zurichArchivosApi(origen), [origen]);
   const fileRef = useRef(null);
   const [informe, setInforme] = useState(() => defaultInformeUnicoZurich(casoZurich || {}));
-  const [liquidador, setLiquidador] = useState(() => mapcasoZurichALiquidador(casoZurich || {}));
+  const [liquidador, setLiquidador] = useState(() =>
+    liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {})
+  );
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [descargando, setDescargando] = useState(false);
@@ -113,7 +113,7 @@ export default function InformeUnicoZurich({
 
   useEffect(() => {
     setInforme(defaultInformeUnicoZurich(casoZurich || {}));
-    setLiquidador(mapcasoZurichALiquidador(casoZurich || {}));
+    setLiquidador(liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}));
   }, [casoZurich?._id]);
 
   useEffect(() => {
@@ -148,12 +148,34 @@ export default function InformeUnicoZurich({
   const handleWord = async () => {
     setDescargando(true);
     setError('');
+    setMensaje('');
     try {
-      await descargarWordInformeZurich({
+      const resultado = await descargarWordInformeZurich({
         caso: casoZurich || {},
         informe,
         liquidador,
       });
+      const blob = resultado?.blob;
+      const nombre = resultado?.filename || resultado?.nombre;
+      if (blob && nombre && casoZurich?._id) {
+        try {
+          const file = new File(
+            [blob],
+            nombre,
+            { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+          );
+          const creado = await api.subir(casoZurich._id, file, 'INFORME');
+          onCasoChange?.((prev) => {
+            if (!prev) return prev;
+            const list = Array.isArray(prev.archivos) ? prev.archivos : [];
+            return { ...prev, archivos: [...list, creado] };
+          });
+          setMensaje(t('zurich.reportUnique.wordSavedArchive'));
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar el informe en el archivero Zurich:', errArchivo);
+          setError(t('zurich.reportUnique.wordArchiveError'));
+        }
+      }
     } catch (err) {
       console.error(err);
       setError(t('zurich.reportUnique.wordError'));
@@ -164,7 +186,7 @@ export default function InformeUnicoZurich({
 
   const refrescarCaso = async () => {
     if (!casoZurich?._id) return null;
-    const actualizado = await getCasoZurichById(casoZurich._id);
+    const actualizado = await api.getById(casoZurich._id);
     onCasoChange?.(actualizado);
     return actualizado;
   };
@@ -185,7 +207,7 @@ export default function InformeUnicoZurich({
     setMensaje('');
     try {
       for (const file of files) {
-        await subirArchivoZurich(casoZurich._id, file, 'FOTOS');
+        await api.subir(casoZurich._id, file, 'FOTOS');
       }
       await refrescarCaso();
       setMensaje(t('zurich.reportUnique.photosUploaded', { count: files.length }));
@@ -210,7 +232,7 @@ export default function InformeUnicoZurich({
     setError('');
     setMensaje('');
     try {
-      await eliminarArchivoZurich(casoZurich._id, archivoId);
+      await api.eliminar(casoZurich._id, archivoId);
       await refrescarCaso();
       setMensaje(t('zurich.archive.deleteOk'));
     } catch (err) {
@@ -552,7 +574,7 @@ export default function InformeUnicoZurich({
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {fotos.slice(0, 24).map((f) => {
-              const url = urlDescargaArchivoZurich(f.ruta);
+              const url = api.url(f.ruta);
               const isImg = esImagen(f.nombreOriginal || f.nombre || '');
               return (
                 <div

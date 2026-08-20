@@ -1,4 +1,4 @@
-import { BASE_URL } from '../config/apiConfig.js';
+import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 
 const API_URL = `${BASE_URL}/api/zurich-listado`;
 
@@ -34,6 +34,7 @@ export const normalizeZurichListadoItem = (item = {}) => ({
   estado: item.estado ?? '',
   liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
+  archivos: Array.isArray(item.archivos) ? item.archivos : [],
 });
 
 const normalizeArray = (raw) =>
@@ -116,6 +117,7 @@ const omitirMeta = (casoBase = {}) => {
   delete payload.__v;
   delete payload.createdAt;
   delete payload.updatedAt;
+  delete payload.archivos;
   return payload;
 };
 
@@ -168,3 +170,40 @@ export const importarCasosZurichListado = async (casos = []) => {
   }
   return payload?.data ?? payload;
 };
+
+export const subirArchivoZurichListado = async (casoId, file, etiqueta = 'GENERAL', extras = {}) => {
+  if (!casoId) throw new Error('Caso requerido para subir archivo');
+  if (!file) throw new Error('Archivo requerido');
+  const formData = new FormData();
+  formData.append('archivo', file, file.name || 'documento');
+  formData.append('etiqueta', etiqueta);
+  if (extras?.descripcion != null) {
+    formData.append('descripcion', String(extras.descripcion));
+  }
+  const response = await fetch(`${API_URL}/${casoId}/archivos`, {
+    method: 'POST',
+    headers: { ...authHeaders() },
+    body: formData,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al subir archivo (${response.status})`);
+  }
+  return payload?.data ?? payload;
+};
+
+export const eliminarArchivoZurichListado = async (casoId, archivoId) => {
+  if (!casoId || !archivoId) throw new Error('Caso y archivo requeridos');
+  const response = await fetch(`${API_URL}/${casoId}/archivos/${archivoId}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al eliminar archivo (${response.status})`);
+  }
+  return payload;
+};
+
+export const urlDescargaArchivoZurichListado = (ruta) => resolveUploadsUrl(ruta);
+

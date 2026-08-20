@@ -10824,6 +10824,7 @@
     "archive": {
       "title": "Case file cabinet",
       "subtitle": "Documents for case {{caseNumber}}. Upload and download claim files.",
+      "subtitleListado": "Documents for case {{caseNumber}}. Upload policy, settlement and unique report files.",
       "label": "Document type",
       "upload": "Upload document",
       "uploading": "Uploading…",
@@ -10842,6 +10843,7 @@
         "POLIZA": "POLICY",
         "INSPECCION": "INSPECTION",
         "LIQUIDACION": "SETTLEMENT",
+        "INFORME": "UNIQUE REPORT",
         "FOTOS": "PHOTOS",
         "OTRO": "OTHER",
         "FOTO_GENERAL": "CAT — General photo",
@@ -10896,6 +10898,8 @@
       "saveError": "Could not save the settlement.",
       "loadError": "Could not load the case.",
       "savedCaseRequired": "Open the settlement from a case in the report.",
+      "archiveSaved": "Document downloaded and copied to the file cabinet.",
+      "archiveError": "The file was downloaded, but it could not be saved to the file cabinet.",
       "noData": "No settlement data to save.",
       "loading": "Loading case…",
       "backReport": "Back to report"
@@ -10943,6 +10947,8 @@
       "recommendation": "Adjuster recommendation",
       "downloadWord": "Download Word report",
       "wordError": "Could not generate the Word report.",
+      "wordSavedArchive": "Report downloaded and copied to the file cabinet.",
+      "wordArchiveError": "The Word file was downloaded, but it could not be saved to the file cabinet.",
       "saveDraft": "Save draft",
       "saving": "Saving…",
       "savedMessage": "Unique report saved to the case.",

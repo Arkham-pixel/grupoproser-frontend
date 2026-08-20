@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlignmentType,
   BorderStyle,
   Document,
@@ -318,4 +318,5 @@ export async function descargarFiniquitoZurichWord(liquidador = {}, totalesInput
     .slice(0, 50);
   const nombre = `Finiquito_Constancia_Zurich_${safe}.docx`;
   saveAs(blob, nombre);
+  return { blob, filename: nombre };
 }

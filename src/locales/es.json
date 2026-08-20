@@ -10833,6 +10833,7 @@
     "archive": {
       "title": "Archivero del caso",
       "subtitle": "Documentos del caso {{caseNumber}}. Sube y descarga archivos del siniestro.",
+      "subtitleListado": "Documentos del caso {{caseNumber}}. Sube póliza, liquidador e informe único.",
       "label": "Tipo de documento",
       "upload": "Subir documento",
       "uploading": "Subiendo…",
@@ -10851,6 +10852,7 @@
         "POLIZA": "PÓLIZA",
         "INSPECCION": "INSPECCIÓN",
         "LIQUIDACION": "LIQUIDACIÓN",
+        "INFORME": "INFORME ÚNICO",
         "FOTOS": "FOTOS",
         "OTRO": "OTRO",
         "FOTO_GENERAL": "CAT — Foto general",
@@ -10905,6 +10907,8 @@
       "saveError": "No se pudo guardar el liquidador.",
       "loadError": "No se pudo cargar el caso.",
       "savedCaseRequired": "Abre el liquidador desde un caso del reporte.",
+      "archiveSaved": "Documento descargado y copiado al archivero.",
+      "archiveError": "Se descargó, pero no se pudo guardar en el archivero.",
       "noData": "No hay datos de liquidador para guardar.",
       "loading": "Cargando caso…",
       "backReport": "Volver al reporte"
@@ -10952,6 +10956,8 @@
       "recommendation": "Recomendación del ajustador",
       "downloadWord": "Descargar informe Word",
       "wordError": "No se pudo generar el informe Word.",
+      "wordSavedArchive": "Informe descargado y copiado al archivero.",
+      "wordArchiveError": "El Word se descargó, pero no se pudo guardar en el archivero.",
       "saveDraft": "Guardar borrador",
       "saving": "Guardando…",
       "savedMessage": "Informe único guardado en el caso.",

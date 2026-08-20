@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlignmentType,
   BorderStyle,
   Document,
@@ -1336,4 +1336,5 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     '_'
   );
   saveAs(blob, nombre);
+  return { blob, filename: nombre };
 }

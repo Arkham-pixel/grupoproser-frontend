@@ -1,4 +1,4 @@
-﻿import ExcelJS from 'exceljs';
+import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
   fusionarPortadaConFormData,
@@ -209,4 +209,5 @@ export async function generarLiquidadorZurichExcelBlob(liquidador) {
 export async function descargarLiquidadorZurichExcel(liquidador, totales) {
   const { blob, filename } = await generarLiquidadorZurichExcelBlob(liquidador, totales);
   saveAs(blob, filename);
+  return { blob, filename };
 }
