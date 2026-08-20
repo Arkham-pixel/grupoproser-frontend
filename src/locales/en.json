@@ -10543,6 +10543,9 @@
       "identificacion": "Identification",
       "tipoIdentificacion": "ID type",
       "asegurado": "Insured",
+      "intermediario": "Broker",
+      "correoIntermediario": "Broker email",
+      "telefonoIntermediario": "Broker phone",
       "contactoIntermediario": "Broker contact",
       "contactoAsegurado": "Insured contact",
       "observaciones": "Notes",
@@ -10593,7 +10596,9 @@
       "accesoPredio": "Property access",
       "observacionesCat": "CAT inspection observations",
       "ajustadorLider": "Lead adjuster (assigns cases)",
-      "inspector": "Inspector"
+      "inspector": "Inspector",
+      "fechaAsignacion": "Assignment date",
+      "fechaVisita": "Visit date"
     },
     "placeholders": {
       "siniestro": "STRO / claim number",
@@ -10603,6 +10608,9 @@
       "tomador": "E.g. BANCO BOGOTA",
       "contacto": "Phone or contact",
       "contactoIntermediario": "Broker name, email or phone",
+      "intermediario": "Broker name",
+      "correoIntermediario": "broker@email.com",
+      "telefonoIntermediario": "Broker phone",
       "contactoAsegurado": "Insured name and phone",
       "observaciones": "List notes, if any",
       "correo": "email@example.com",

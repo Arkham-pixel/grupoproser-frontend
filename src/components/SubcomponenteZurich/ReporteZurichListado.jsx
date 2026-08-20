@@ -51,13 +51,17 @@ const COLUMNAS = [
   { clave: 'tipoPoliza', labelKey: 'tipoPoliza' },
   { clave: 'causa', labelKey: 'causa' },
   { clave: 'asegurado', labelKey: 'asegurado' },
-  { clave: 'contactoIntermediario', labelKey: 'contactoIntermediario' },
+  { clave: 'intermediario', labelKey: 'intermediario' },
+  { clave: 'correoIntermediario', labelKey: 'correoIntermediario' },
+  { clave: 'telefonoIntermediario', labelKey: 'telefonoIntermediario' },
   { clave: 'contactoAsegurado', labelKey: 'contactoAsegurado' },
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
   { clave: 'inspector', labelKey: 'inspector' },
+  { clave: 'fechaAsignacion', labelKey: 'fechaAsignacion' },
+  { clave: 'fechaVisita', labelKey: 'fechaVisita' },
   { clave: 'observaciones', labelKey: 'observaciones' },
 ];
 
@@ -71,13 +75,17 @@ const buildExportRow = (caso) => ({
   'TIPO PÓLIZA': caso.tipoPoliza ?? '',
   CAUSA: caso.causa ?? '',
   ASEGURADO: caso.asegurado ?? '',
-  'CONTACTO INTERMEDIARIO': caso.contactoIntermediario ?? '',
+  INTERMEDIARIO: caso.intermediario ?? '',
+  'CORREO INTERMEDIARIO': caso.correoIntermediario ?? '',
+  'TELEFONO INTERMEDIARIO': caso.telefonoIntermediario ?? '',
   'CONTACTO ASEGURADO': caso.contactoAsegurado ?? '',
   CIUDAD: caso.ciudad ?? '',
   ESTADO: caso.estado ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
   INSPECTOR: caso.inspector ?? '',
+  'FECHA ASIGNACIÓN': formatDate(caso.fechaAsignacion),
+  'FECHA VISITA': formatDate(caso.fechaVisita),
   OBSERVACIONES: caso.observaciones ?? '',
   'Fecha creación': formatDate(caso.createdAt),
 });
@@ -139,7 +147,9 @@ export default function ReporteZurichListado() {
         c.tipoPoliza,
         c.causa,
         c.asegurado,
-        c.contactoIntermediario,
+        c.intermediario,
+        c.correoIntermediario,
+        c.telefonoIntermediario,
         c.contactoAsegurado,
         c.ciudad,
         c.estado,
@@ -175,6 +185,7 @@ export default function ReporteZurichListado() {
   const obtenerValorCelda = (item, clave) => {
     const valor = item[clave];
     if (valor === null || valor === undefined || valor === '') return '—';
+    if (clave === 'fechaAsignacion' || clave === 'fechaVisita') return formatDate(valor);
     return String(valor);
   };
 

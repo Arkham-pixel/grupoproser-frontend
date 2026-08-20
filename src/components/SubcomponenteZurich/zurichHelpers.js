@@ -393,6 +393,9 @@ export const FORM_VACIO_ZURICH = {
   identificacion: '',
   tipoIdentificacion: '',
   asegurado: '',
+  intermediario: '',
+  correoIntermediario: '',
+  telefonoIntermediario: '',
   contactoIntermediario: '',
   contactoAsegurado: '',
   observaciones: '',
@@ -400,6 +403,8 @@ export const FORM_VACIO_ZURICH = {
   ajustadorLider: '',
   ajustador: '',
   inspector: '',
+  fechaAsignacion: '',
+  fechaVisita: '',
   numeroPoliza: '',
   tipoPoliza: '',
   causa: '',
@@ -483,6 +488,8 @@ export const CAMPOS_FECHA_Zurich = [
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaAsignacion',
+  'fechaVisita',
 ];
 
 export const CAMPOS_NUMERICOS_ZURICH = [
@@ -541,5 +548,17 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
     caso.severidadCatNiveles,
     caso.severidadCat
   );
+  if (!base.intermediario && !base.correoIntermediario && !base.telefonoIntermediario) {
+    const partes = String(base.contactoIntermediario || '')
+      .split('|')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    for (const parte of partes) {
+      if (parte.includes('@') && !base.correoIntermediario) base.correoIntermediario = parte;
+      else if (parte.replace(/\D/g, '').length >= 7 && !base.telefonoIntermediario) {
+        base.telefonoIntermediario = parte;
+      } else if (!base.intermediario) base.intermediario = parte;
+    }
+  }
   return base;
 };

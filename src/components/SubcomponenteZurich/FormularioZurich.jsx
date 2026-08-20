@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FaFileExcel, FaSave, FaUndo, FaUpload } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -68,6 +68,8 @@ import {
   mapResponsablesAOpciones,
   resolverLiderPorModulo,
 } from '../../utils/catalogosAsignacionCatastrofico.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const ZurichRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -112,6 +114,24 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
   const [ajustadoresCat, setAjustadoresCat] = useState([]);
   const [inspectoresCat, setInspectoresCat] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
+  const formKey = esEdicion
+    ? `zurich:${origen}:${initialData._id}`
+    : `zurich:${origen}:nuevo`;
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey,
+    modulo: 'zurich',
+    recursoId: initialData?._id || '',
+    titulo: 'Caso Zurich',
+    formData: form,
+    enabled: true,
+    onRestoreAvailable: onDraftRestoreAvailable,
+  });
 
   useEffect(() => {
     setForm(initialData ? construirFormDesdecasoZurich(initialData) : { ...FORM_VACIO_ZURICH });
@@ -292,7 +312,13 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         tipoPoliza: form.tipoPoliza,
         causa: form.causa,
         asegurado: form.asegurado,
-        contactoIntermediario: form.contactoIntermediario,
+        intermediario: form.intermediario,
+        correoIntermediario: form.correoIntermediario,
+        telefonoIntermediario: form.telefonoIntermediario,
+        contactoIntermediario: [form.intermediario, form.correoIntermediario, form.telefonoIntermediario]
+          .map((x) => String(x || '').trim())
+          .filter(Boolean)
+          .join(' | ') || form.contactoIntermediario,
         contactoAsegurado: form.contactoAsegurado,
         observaciones: form.observaciones,
         ciudad: form.ciudad,
@@ -300,6 +326,8 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         ajustadorLider: form.ajustadorLider,
         ajustador: form.ajustador,
         inspector: form.inspector,
+        fechaAsignacion: form.fechaAsignacion,
+        fechaVisita: form.fechaVisita,
         estado: form.estado,
       };
       if (!String(payload.identificacion || '').trim()) {
@@ -390,6 +418,7 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         setForm({ ...FORM_VACIO_ZURICH });
       }
       if (onSaved) await onSaved(guardado);
+      await discardDraft();
     } catch (err) {
       console.error('Error guardando caso Zurich:', err);
       setError(err.message || t('zurich.messages.saveError'));
@@ -481,11 +510,26 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           </Campo>
             </>
           )}
-          <Campo label={t('zurich.fields.contactoIntermediario')} className="md:col-span-2 lg:col-span-3">
+          <Campo label={t('zurich.fields.intermediario')}>
             <InputFenix
-              value={form.contactoIntermediario}
-              onChange={setCampo('contactoIntermediario')}
-              placeholder={t('zurich.placeholders.contactoIntermediario')}
+              value={form.intermediario}
+              onChange={setCampo('intermediario')}
+              placeholder={t('zurich.placeholders.intermediario')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.correoIntermediario')}>
+            <InputFenix
+              type="email"
+              value={form.correoIntermediario}
+              onChange={setCampo('correoIntermediario')}
+              placeholder={t('zurich.placeholders.correoIntermediario')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.telefonoIntermediario')}>
+            <InputFenix
+              value={form.telefonoIntermediario}
+              onChange={setCampo('telefonoIntermediario')}
+              placeholder={t('zurich.placeholders.telefonoIntermediario')}
             />
           </Campo>
           <Campo label={t('zurich.fields.contactoAsegurado')} className="md:col-span-2 lg:col-span-3">
@@ -524,6 +568,20 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
             ciudadSeleccionada={form.ciudad}
             filtrarPorCiudad
           />
+          <Campo label={t('zurich.fields.fechaAsignacion')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAsignacion}
+              onChange={setCampo('fechaAsignacion')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaVisita')}>
+            <InputFenix
+              type="date"
+              value={form.fechaVisita}
+              onChange={setCampo('fechaVisita')}
+            />
+          </Campo>
           <Campo label={t('zurich.fields.observaciones')} className="md:col-span-2 lg:col-span-3">
             <textarea
               className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
@@ -890,7 +948,28 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
   );
 
   if (embed) {
-    return <div className={`${expressScope}`}>{contenidoFormulario}</div>;
+    return (
+      <div className={`${expressScope}`}>
+        {contenidoFormulario}
+        <ArnaldDraftChrome
+          draftStatus={draftStatus}
+          lastDraftAt={lastDraftAt}
+          consumeDraft={consumeDraft}
+          showRestore={showDraftRestore}
+          savedDataToRestore={draftToRestore}
+          onRestore={() => {
+            if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+            setShowDraftRestore(false);
+          }}
+          onDiscard={() => {
+            discardDraft();
+            setShowDraftRestore(false);
+            setDraftToRestore(null);
+          }}
+          onCancel={() => setShowDraftRestore(false)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -991,6 +1070,23 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           <div className={expressCardBody}>{contenidoFormulario}</div>
         </section>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 };

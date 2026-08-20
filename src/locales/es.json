@@ -10552,6 +10552,9 @@
       "identificacion": "Identificación",
       "tipoIdentificacion": "Tipo de identificación",
       "asegurado": "Asegurado",
+      "intermediario": "Intermediario",
+      "correoIntermediario": "Correo intermediario",
+      "telefonoIntermediario": "Teléfono intermediario",
       "contactoIntermediario": "Contacto intermediario",
       "contactoAsegurado": "Contacto asegurado",
       "observaciones": "Observaciones",
@@ -10602,7 +10605,9 @@
       "accesoPredio": "Acceso al predio",
       "observacionesCat": "Observaciones inspección CAT",
       "ajustadorLider": "Ajustador líder (quien asigna)",
-      "inspector": "Inspector"
+      "inspector": "Inspector",
+      "fechaAsignacion": "Fecha asignación",
+      "fechaVisita": "Fecha visita"
     },
     "placeholders": {
       "siniestro": "Número STRO / siniestro",
@@ -10612,6 +10617,9 @@
       "tomador": "Ej: BANCO BOGOTA",
       "contacto": "Teléfono o contacto",
       "contactoIntermediario": "Nombre, correo o teléfono del intermediario",
+      "intermediario": "Nombre del intermediario",
+      "correoIntermediario": "correo@intermediario.com",
+      "telefonoIntermediario": "Teléfono del intermediario",
       "contactoAsegurado": "Nombre y teléfono del asegurado",
       "observaciones": "Notas del listado, si las hay",
       "correo": "correo@ejemplo.com",

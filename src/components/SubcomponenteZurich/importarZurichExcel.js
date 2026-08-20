@@ -392,10 +392,17 @@ const HEADER_MAP_LISTADO = {
   CAUSA: 'causa',
   'CAUSA SINIESTRO': 'causa',
   'CAUSA DEL SINIESTRO': 'causa',
+  INTERMEDIARIO: 'intermediario',
   'CONTACTO INTERMEDIARIO': 'contactoIntermediario',
-  INTERMEDIARIO: 'contactoIntermediario',
+  'CORREO INTERMEDIARIO': 'correoIntermediario',
+  'TELEFONO INTERMEDIARIO': 'telefonoIntermediario',
   'CONTACTO ASEGURADO': 'contactoAsegurado',
   CIUDAD: 'ciudad',
+  'FECHA ASIGNACION': 'fechaAsignacion',
+  'FECHA VISITA': 'fechaVisita',
+  INSPECTOR: 'inspector',
+  AJUSTADOR: 'ajustador',
+  ESTADO: 'estado',
   OBSERVACIONES: 'observaciones',
   OBSERVACION: 'observaciones',
   NOTAS: 'observaciones',
@@ -451,18 +458,42 @@ const parsearHojaListadoCliente = (sheet) => {
       tipoPoliza: '',
       causa: '',
       asegurado: '',
+      intermediario: '',
+      correoIntermediario: '',
+      telefonoIntermediario: '',
       contactoIntermediario: '',
       contactoAsegurado: '',
       ciudad: '',
       observaciones: '',
+      inspector: '',
+      ajustador: '',
+      fechaAsignacion: '',
+      fechaVisita: '',
       estado: 'PENDIENTE',
     };
     Object.entries(colMap).forEach(([colStr, campo]) => {
-      caso[campo] = limpiarTextoListado(row[Number(colStr)]);
+      const raw = row[Number(colStr)];
+      if (campo === 'fechaAsignacion' || campo === 'fechaVisita') {
+        caso[campo] = parseFechaCelda(raw) || '';
+        return;
+      }
+      caso[campo] = limpiarTextoListado(raw);
     });
+    if (/^pendiente$/i.test(caso.fechaVisita)) caso.fechaVisita = '';
+    if (!caso.intermediario && caso.contactoIntermediario && !caso.contactoIntermediario.includes('|')) {
+      caso.intermediario = caso.contactoIntermediario;
+    }
+    caso.contactoIntermediario = [
+      caso.intermediario,
+      caso.correoIntermediario,
+      caso.telefonoIntermediario,
+    ]
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+      .join(' | ');
     const extras = columnasSinMapa
       .map((c) => limpiarTextoListado(row[c]))
-      .filter(Boolean);
+      .filter((txt) => txt && !/^pendiente$/i.test(txt));
     if (extras.length) {
       caso.observaciones = [caso.observaciones, ...extras].filter(Boolean).join(' | ');
     }
@@ -471,6 +502,7 @@ const parsearHojaListadoCliente = (sheet) => {
       if (caso.zc) caso.identificacion = caso.zc;
       else if (caso.siniestro) caso.identificacion = caso.siniestro;
     }
+    if (!caso.estado || caso.estado === '0') caso.estado = 'PENDIENTE';
     casos.push(caso);
   }
 

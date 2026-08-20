@@ -93,7 +93,7 @@ export default function ModalImportarExcelZurich({ open, onClose, onCompleted })
               Importar listado Zurich
             </p>
             <p className="mt-1 font-body text-sm text-gray-500">
-              Columnas: ZC, STRO, Asegurado, Contacto intermediario, Contacto asegurado y Ciudad.
+              Columnas: ZC, STRO, Asegurado, Intermediario, correo/teléfono intermediario, Contacto asegurado y Ciudad.
               Si el ZC ya existe, se actualiza; si no, se crea un caso nuevo.
             </p>
           </div>
