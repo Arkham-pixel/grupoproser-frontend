@@ -15,12 +15,15 @@ export const normalizeZurichListadoItem = (item = {}) => ({
   tipoIdentificacion: item.tipoIdentificacion ?? '',
   numeroPoliza: item.numeroPoliza ?? '',
   tipoPoliza: item.tipoPoliza ?? '',
+  tipoPolizaOtro: item.tipoPolizaOtro ?? '',
   causa: item.causa ?? '',
   asegurado: item.asegurado ?? '',
   intermediario: item.intermediario ?? '',
   correoIntermediario: item.correoIntermediario ?? '',
   telefonoIntermediario: item.telefonoIntermediario ?? '',
   contactoIntermediario: item.contactoIntermediario ?? '',
+  telefonoAsegurado: item.telefonoAsegurado ?? '',
+  correoAsegurado: item.correoAsegurado ?? '',
   contactoAsegurado: item.contactoAsegurado ?? '',
   observaciones: item.observaciones ?? '',
   ciudad: item.ciudad ?? '',
@@ -29,6 +32,8 @@ export const normalizeZurichListadoItem = (item = {}) => ({
   ajustador: item.ajustador ?? '',
   inspector: item.inspector ?? '',
   estado: item.estado ?? '',
+  liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
+  informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
 });
 
 const normalizeArray = (raw) =>
@@ -92,6 +97,50 @@ export const actualizarCasoZurichListado = async (id, datos) => {
     throw new Error(payload?.error || payload?.detalle || `Error al actualizar (${response.status})`);
   }
   return normalizeZurichListadoItem(payload?.data ?? payload);
+};
+
+export const getCasoZurichListadoById = async (id) => {
+  if (!id) throw new Error('Identificador de caso no válido');
+  const qs = new URLSearchParams({ _t: Date.now() });
+  const response = await fetch(`${API_URL}/${id}?${qs}`, { headers: authHeaders() });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || `Error al obtener el caso (${response.status})`);
+  }
+  return normalizeZurichListadoItem(payload?.data ?? payload);
+};
+
+const omitirMeta = (casoBase = {}) => {
+  const payload = { ...casoBase };
+  delete payload._id;
+  delete payload.__v;
+  delete payload.createdAt;
+  delete payload.updatedAt;
+  return payload;
+};
+
+export const guardarLiquidadorEnCasoZurichListado = async ({
+  casoId,
+  liquidador,
+  casoBase = {},
+}) => {
+  if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
+  return actualizarCasoZurichListado(casoId, {
+    ...omitirMeta(casoBase),
+    liquidador: liquidador || {},
+  });
+};
+
+export const guardarInformeUnicoEnCasoZurichListado = async ({
+  casoId,
+  informeUnico,
+  casoBase = {},
+}) => {
+  if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
+  return actualizarCasoZurichListado(casoId, {
+    ...omitirMeta(casoBase),
+    informeUnico: informeUnico || {},
+  });
 };
 
 export const deleteCasoZurichListado = async (id) => {

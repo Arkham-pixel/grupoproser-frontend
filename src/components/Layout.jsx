@@ -449,6 +449,7 @@ export default function Layout() {
     '/zurich/carga': t('nav.pageTitles.zurichAdd'),
     '/zurich/listado/reporte': t('nav.pageTitles.zurichListadoReport'),
     '/zurich/listado/dashboard': t('nav.pageTitles.zurichListadoDashboard'),
+    '/zurich/listado/caso': t('nav.pageTitles.zurichCase'),
     '/zurich/reporte': t('nav.pageTitles.zurichReport'),
     '/zurich/dashboard': t('nav.pageTitles.zurichDashboard'),
     '/zurich/boletin': t('nav.pageTitles.zurichBulletin'),

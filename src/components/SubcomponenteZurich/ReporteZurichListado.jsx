@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
-import { FaEdit, FaFileExcel, FaPlus, FaTrash, FaUpload } from 'react-icons/fa';
-import { Link } from 'react-router-dom';
+import { FaFileExcel, FaPlus, FaUpload } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoZurichListado,
   fetchAllCasosZurichListado,
 } from '../../services/zurichListadoService.js';
 import FormularioZurich from './FormularioZurich.jsx';
+import AccionesZurichMenu from './AccionesZurichMenu.jsx';
 import ModalImportarExcelZurich, {
   esAdminOSoporteZurich,
 } from './ModalImportarExcelZurich.jsx';
@@ -15,6 +16,7 @@ import {
   ZURICH_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
   coincideFiltroTexto,
+  etiquetaTipoPolizaZurich,
   fechaEnRango,
   formatDate,
   normTexto,
@@ -54,7 +56,8 @@ const COLUMNAS = [
   { clave: 'intermediario', labelKey: 'intermediario' },
   { clave: 'correoIntermediario', labelKey: 'correoIntermediario' },
   { clave: 'telefonoIntermediario', labelKey: 'telefonoIntermediario' },
-  { clave: 'contactoAsegurado', labelKey: 'contactoAsegurado' },
+  { clave: 'telefonoAsegurado', labelKey: 'telefonoAsegurado' },
+  { clave: 'correoAsegurado', labelKey: 'correoAsegurado' },
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
@@ -72,13 +75,14 @@ const buildExportRow = (caso) => ({
   'TIPO IDENTIFICACIÓN': caso.tipoIdentificacion ?? '',
   IDENTIFICACIÓN: caso.identificacion ?? '',
   PÓLIZA: caso.numeroPoliza ?? '',
-  'TIPO PÓLIZA': caso.tipoPoliza ?? '',
+  'TIPO PÓLIZA': etiquetaTipoPolizaZurich(caso),
   CAUSA: caso.causa ?? '',
   ASEGURADO: caso.asegurado ?? '',
   INTERMEDIARIO: caso.intermediario ?? '',
   'CORREO INTERMEDIARIO': caso.correoIntermediario ?? '',
   'TELEFONO INTERMEDIARIO': caso.telefonoIntermediario ?? '',
-  'CONTACTO ASEGURADO': caso.contactoAsegurado ?? '',
+  'TELEFONO ASEGURADO': caso.telefonoAsegurado ?? '',
+  'CORREO ASEGURADO': caso.correoAsegurado ?? '',
   CIUDAD: caso.ciudad ?? '',
   ESTADO: caso.estado ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
@@ -92,6 +96,7 @@ const buildExportRow = (caso) => ({
 
 export default function ReporteZurichListado() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -145,12 +150,14 @@ export default function ReporteZurichListado() {
         c.identificacion,
         c.numeroPoliza,
         c.tipoPoliza,
+        c.tipoPolizaOtro,
         c.causa,
         c.asegurado,
         c.intermediario,
         c.correoIntermediario,
         c.telefonoIntermediario,
-        c.contactoAsegurado,
+        c.telefonoAsegurado,
+        c.correoAsegurado,
         c.ciudad,
         c.estado,
         c.ajustadorLider,
@@ -183,6 +190,7 @@ export default function ReporteZurichListado() {
   };
 
   const obtenerValorCelda = (item, clave) => {
+    if (clave === 'tipoPoliza') return etiquetaTipoPolizaZurich(item) || '—';
     const valor = item[clave];
     if (valor === null || valor === undefined || valor === '') return '—';
     if (clave === 'fechaAsignacion' || clave === 'fechaVisita') return formatDate(valor);
@@ -389,22 +397,22 @@ export default function ReporteZurichListado() {
                   paginaItems.map((item) => (
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-20 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2 py-1 text-xs font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:text-gray-200"
-                            onClick={() => setCasoEdicion(item)}
-                          >
-                            <FaEdit /> {t('zurich.report.manage')}
-                          </button>
-                          <button
-                            type="button"
-                            className="inline-flex items-center gap-1 rounded-lg border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400"
-                            onClick={() => solicitarEliminar(item)}
-                          >
-                            <FaTrash /> {t('zurich.report.delete')}
-                          </button>
-                        </div>
+                        <AccionesZurichMenu
+                          tieneLiquidador={!!item.liquidador}
+                          tieneInforme={!!item.informeUnico}
+                          onGestionar={() => setCasoEdicion(item)}
+                          onLiquidador={() =>
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=liquidador`, {
+                              state: { casoZurich: item },
+                            })
+                          }
+                          onInformeUnico={() =>
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`, {
+                              state: { casoZurich: item },
+                            })
+                          }
+                          onEliminar={() => solicitarEliminar(item)}
+                        />
                       </td>
                       {COLUMNAS.map((col) => (
                         <td

@@ -21,9 +21,17 @@ import {
   guardarInformeUnicoEnCasoZurich,
   guardarLiquidadorEnCasoZurich,
 } from '../../services/zurichService.js';
+import {
+  fetchAllCasosZurichListado,
+  getCasoZurichListadoById,
+  guardarInformeUnicoEnCasoZurichListado,
+  guardarLiquidadorEnCasoZurichListado,
+} from '../../services/zurichListadoService.js';
 import { calcularLiquidacionZurich } from './liquidadorZurichHelpers.js';
 import useZurichCasoAutosave from '../../hooks/useZurichCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -44,24 +52,30 @@ const pillClass = (activo) =>
  * Workspace Zurich: Inspección CAT | Liquidador | Informe único
  * (CAT e informe único son independientes)
  */
-export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
+export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' } = {}) {
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
   const tabFromQuery = searchParams.get('tab');
+  const esModuloListado = origen === 'listado';
+  const rutaReporte = esModuloListado ? '/zurich/listado/reporte' : '/zurich/reporte';
 
   const tabActivo = useMemo(() => {
-    const raw = tabFromQuery || tabInicial || TABS_ZURICH.CAT;
-    if (raw === TABS_ZURICH.CAT || raw === 'inspeccion-cat' || raw === 'catastrofico') {
-      return TABS_ZURICH.CAT;
-    }
+    const raw = tabFromQuery || tabInicial || (esModuloListado ? TABS_ZURICH.LIQUIDADOR : TABS_ZURICH.CAT);
     if (raw === TABS_ZURICH.INFORME || raw === 'informe-unico') {
       return TABS_ZURICH.INFORME;
     }
-    return TABS_ZURICH.LIQUIDADOR;
-  }, [tabInicial, tabFromQuery]);
+    if (raw === TABS_ZURICH.LIQUIDADOR || raw === 'settlement') {
+      return TABS_ZURICH.LIQUIDADOR;
+    }
+    if (esModuloListado) return TABS_ZURICH.LIQUIDADOR;
+    if (raw === TABS_ZURICH.CAT || raw === 'inspeccion-cat' || raw === 'catastrofico') {
+      return TABS_ZURICH.CAT;
+    }
+    return TABS_ZURICH.CAT;
+  }, [tabInicial, tabFromQuery, esModuloListado]);
 
   useEffect(() => {
     if (tabFromQuery || !tabInicial) return;
@@ -79,6 +93,9 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
+  const [restoreNonce, setRestoreNonce] = useState(0);
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
 
@@ -95,7 +112,9 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
       setCargandoCaso(true);
       setError('');
       try {
-        const caso = await getCasoZurichById(casoIdFromQuery);
+        const caso = esModuloListado
+          ? await getCasoZurichListadoById(casoIdFromQuery)
+          : await getCasoZurichById(casoIdFromQuery);
         if (!cancelado) setCasoZurich(caso);
       } catch (err) {
         if (!cancelado) setError(err.message || t('zurich.workspace.loadError'));
@@ -107,12 +126,13 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, location.state, t]);
+  }, [casoIdFromQuery, location.state, t, esModuloListado]);
 
   useEffect(() => {
     if (casoIdFromQuery) return undefined;
     let cancelado = false;
-    fetchAllCasosZurich()
+    const cargarLista = esModuloListado ? fetchAllCasosZurichListado : fetchAllCasosZurich;
+    cargarLista()
       .then((data) => {
         if (!cancelado) setListaCasos(Array.isArray(data) ? data : []);
       })
@@ -122,7 +142,7 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery]);
+  }, [casoIdFromQuery, esModuloListado]);
 
   const setTab = useCallback(
     (tab) => {
@@ -137,13 +157,18 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
   );
 
   const subtitulo = useMemo(() => {
-    if (casoZurich?.tomador || casoZurich?.siniestro) {
-      return `${casoZurich.tomador || '—'}${casoZurich.consecutivo ? ` · ${casoZurich.consecutivo}` : ''}${
-        casoZurich.siniestro ? ` · ${casoZurich.siniestro}` : ''
-      }`;
+    if (casoZurich?.tomador || casoZurich?.siniestro || casoZurich?.asegurado || casoZurich?.zc) {
+      return [
+        casoZurich.tomador || casoZurich.asegurado || null,
+        casoZurich.consecutivo,
+        casoZurich.siniestro,
+        casoZurich.zc ? `ZC ${casoZurich.zc}` : null,
+      ]
+        .filter(Boolean)
+        .join(' · ');
     }
-    return t('zurich.workspace.subtitle');
-  }, [casoZurich, t]);
+    return t(esModuloListado ? 'zurich.workspace.subtitleListado' : 'zurich.workspace.subtitle');
+  }, [casoZurich, t, esModuloListado]);
 
   const casosFiltradosPicker = useMemo(() => {
     const q = String(busquedaCaso || '')
@@ -184,12 +209,18 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
     setError('');
     setMensaje('');
     try {
-      const actualizado = await guardarLiquidadorEnCasoZurich({
-        casoId,
-        liquidador,
-        totales,
-        casoBase: casoZurich || {},
-      });
+      const actualizado = esModuloListado
+        ? await guardarLiquidadorEnCasoZurichListado({
+            casoId,
+            liquidador,
+            casoBase: casoZurich || {},
+          })
+        : await guardarLiquidadorEnCasoZurich({
+            casoId,
+            liquidador,
+            totales,
+            casoBase: casoZurich || {},
+          });
       setCasoZurich(actualizado);
       setMensaje(t('zurich.settlement.savedMessage'));
       setAutosaveUiStatus({
@@ -223,11 +254,17 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
     setError('');
     setMensaje('');
     try {
-      const actualizado = await guardarInformeUnicoEnCasoZurich({
-        casoId,
-        informeUnico: informe,
-        casoBase: casoZurich || {},
-      });
+      const actualizado = esModuloListado
+        ? await guardarInformeUnicoEnCasoZurichListado({
+            casoId,
+            informeUnico: informe,
+            casoBase: casoZurich || {},
+          })
+        : await guardarInformeUnicoEnCasoZurich({
+            casoId,
+            informeUnico: informe,
+            casoBase: casoZurich || {},
+          });
       setCasoZurich(actualizado);
       setMensaje(t('zurich.reportUnique.savedMessage'));
       setAutosaveUiStatus({
@@ -266,6 +303,30 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
     informeState,
     onCasoActualizado: onCasoDesdeAutosave,
     enabled: Boolean(casoId) && !cargandoCaso && tabActivo !== TABS_ZURICH.CAT,
+    guardarLiquidador: esModuloListado
+      ? guardarLiquidadorEnCasoZurichListado
+      : guardarLiquidadorEnCasoZurich,
+    guardarInforme: esModuloListado
+      ? guardarInformeUnicoEnCasoZurichListado
+      : guardarInformeUnicoEnCasoZurich,
+  });
+
+  const draftPayload = useMemo(
+    () => ({ liquidador: liquidadorState, totales: totalesState, informe: informeState }),
+    [liquidadorState, totalesState, informeState]
+  );
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey: casoId ? `${esModuloListado ? 'zurich-listado-ws' : 'zurich-ws'}:${casoId}` : '',
+    modulo: esModuloListado ? 'zurich-listado' : 'zurich',
+    recursoId: casoId || '',
+    titulo: 'Workspace Zurich',
+    formData: draftPayload,
+    enabled: Boolean(casoId) && !cargandoCaso,
+    onRestoreAvailable: onDraftRestoreAvailable,
   });
 
   const mostrarBotonGuardarSuperior =
@@ -277,7 +338,7 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-body text-xs font-semibold uppercase tracking-wide text-fenix-primario">
-              Zurich
+              {esModuloListado ? 'Zurich · Listado' : 'Zurich'}
             </p>
             <h1 className="font-display text-2xl font-bold text-gray-900 dark:text-white">
               {t('zurich.workspace.title')}
@@ -301,7 +362,7 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
                   : t('zurich.workspace.saveCurrent')}
               </button>
             )}
-            <Link to="/zurich/reporte" className={expressBtnGhost}>
+            <Link to={rutaReporte} className={expressBtnGhost}>
               <FaArrowLeft /> {t('zurich.workspace.backReport')}
             </Link>
           </div>
@@ -310,11 +371,11 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
         {!casoId && !cargandoCaso && (
           <div className="mb-4 space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
             <p>
-              {t('zurich.workspace.pickCase')}{' '}
+              {t(esModuloListado ? 'zurich.workspace.pickCaseListado' : 'zurich.workspace.pickCase')}{' '}
               <button
                 type="button"
                 className="font-semibold underline"
-                onClick={() => navigate('/zurich/reporte')}
+                onClick={() => navigate(rutaReporte)}
               >
                 {t('zurich.workspace.goReport')}
               </button>
@@ -339,7 +400,7 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
                       onClick={() => {
                         const next = new URLSearchParams(searchParams);
                         next.set('casoId', c._id);
-                        next.set('tab', tabActivo || TABS_ZURICH.CAT);
+                        next.set('tab', tabActivo || (esModuloListado ? TABS_ZURICH.LIQUIDADOR : TABS_ZURICH.CAT));
                         setSearchParams(next);
                       }}
                     >
@@ -358,6 +419,7 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
         {error && <p className={`mb-4 ${expressAlertError}`}>{error}</p>}
 
         <div className="mb-4 flex flex-wrap gap-2">
+          {!esModuloListado && (
           <button
             type="button"
             className={pillClass(tabActivo === TABS_ZURICH.CAT)}
@@ -365,19 +427,20 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
           >
             1. {t('zurich.workspace.tabCat')}
           </button>
+          )}
           <button
             type="button"
             className={pillClass(tabActivo === TABS_ZURICH.LIQUIDADOR)}
             onClick={() => setTab(TABS_ZURICH.LIQUIDADOR)}
           >
-            2. {t('zurich.workspace.tabSettlement')}
+            {esModuloListado ? '1' : '2'}. {t('zurich.workspace.tabSettlement')}
           </button>
           <button
             type="button"
             className={pillClass(tabActivo === TABS_ZURICH.INFORME)}
             onClick={() => setTab(TABS_ZURICH.INFORME)}
           >
-            3. {t('zurich.workspace.tabUniqueReport')}
+            {esModuloListado ? '2' : '3'}. {t('zurich.workspace.tabUniqueReport')}
           </button>
         </div>
 
@@ -385,10 +448,15 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
           <div className={expressCardBody}>
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('zurich.workspace.loading')}</p>
-            ) : tabActivo === TABS_ZURICH.CAT ? (
-              <InspeccionCatZurich casoZurich={casoZurich} onCasoChange={setCasoZurich} />
+            ) : !esModuloListado && tabActivo === TABS_ZURICH.CAT ? (
+              <InspeccionCatZurich
+                key={`cat-${casoId}-${restoreNonce}`}
+                casoZurich={casoZurich}
+                onCasoChange={setCasoZurich}
+              />
             ) : tabActivo === TABS_ZURICH.INFORME ? (
               <InformeUnicoZurich
+                key={`inf-${casoId}-${restoreNonce}`}
                 casoZurich={casoZurich}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
@@ -401,6 +469,7 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
               />
             ) : (
               <LiquidadorZurich
+                key={`liq-${casoId}-${restoreNonce}`}
                 casoZurich={casoZurich}
                 onEstadoChange={(liq, tot) => {
                   setLiquidadorState(liq);
@@ -413,6 +482,32 @@ export default function CasoZurichWorkspace({ tabInicial = null } = {}) {
           </div>
         </div>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          const data = draftToRestore?.data || {};
+          setCasoZurich((prev) => ({
+            ...(prev || {}),
+            liquidador: data.liquidador || prev?.liquidador,
+            informeUnico: data.informe || prev?.informeUnico,
+          }));
+          if (data.liquidador) setLiquidadorState(data.liquidador);
+          if (data.totales) setTotalesState(data.totales);
+          if (data.informe) setInformeState(data.informe);
+          setRestoreNonce((n) => n + 1);
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 }
@@ -425,6 +520,6 @@ export function RedirectZurichInforme() {
   return <CasoZurichWorkspace tabInicial={TABS_ZURICH.INFORME} />;
 }
 
-export function RedirectZurichCat() {
-  return <CasoZurichWorkspace tabInicial={TABS_ZURICH.CAT} />;
+export function RedirectZurichListadoWorkspace() {
+  return <CasoZurichWorkspace origen="listado" tabInicial={TABS_ZURICH.LIQUIDADOR} />;
 }

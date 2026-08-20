@@ -33,6 +33,16 @@ export const TIPOS_POLIZA_ZURICH = [
   'OTRO',
 ];
 
+export const esTipoPolizaOtroZurich = (valor) =>
+  /^OTROS?$/.test(String(valor || '').trim().toUpperCase());
+
+export const etiquetaTipoPolizaZurich = (caso = {}) => {
+  const tipo = String(caso.tipoPoliza || '').trim();
+  const detalle = String(caso.tipoPolizaOtro || '').trim();
+  if (esTipoPolizaOtroZurich(tipo) && detalle) return detalle;
+  return tipo;
+};
+
 /** Tomadores base del consolidado Zurich (columna TOMADOR). */
 export const TOMADORES_ZURICH_DEFAULT = [
   'BANCO AV VILLAS',
@@ -397,6 +407,8 @@ export const FORM_VACIO_ZURICH = {
   correoIntermediario: '',
   telefonoIntermediario: '',
   contactoIntermediario: '',
+  telefonoAsegurado: '',
+  correoAsegurado: '',
   contactoAsegurado: '',
   observaciones: '',
   tomador: '',
@@ -407,6 +419,7 @@ export const FORM_VACIO_ZURICH = {
   fechaVisita: '',
   numeroPoliza: '',
   tipoPoliza: '',
+  tipoPolizaOtro: '',
   causa: '',
   direccionPredio: '',
   numeroCredito: '',
@@ -559,6 +572,17 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
         base.telefonoIntermediario = parte;
       } else if (!base.intermediario) base.intermediario = parte;
     }
+  }
+  if (!base.telefonoAsegurado && !base.correoAsegurado) {
+    const texto = String(base.contactoAsegurado || '').trim();
+    const email = texto.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+    if (email) base.correoAsegurado = email[0];
+    const resto = email ? texto.replace(email[0], ' ').replace(/[|,;]/g, ' ').trim() : texto;
+    if (resto.replace(/\D/g, '').length >= 7) base.telefonoAsegurado = resto;
+  }
+  if (base.tipoPoliza && !TIPOS_POLIZA_ZURICH.includes(base.tipoPoliza)) {
+    if (!base.tipoPolizaOtro) base.tipoPolizaOtro = base.tipoPoliza;
+    base.tipoPoliza = 'OTRO';
   }
   return base;
 };

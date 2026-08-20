@@ -397,6 +397,12 @@ const HEADER_MAP_LISTADO = {
   'CORREO INTERMEDIARIO': 'correoIntermediario',
   'TELEFONO INTERMEDIARIO': 'telefonoIntermediario',
   'CONTACTO ASEGURADO': 'contactoAsegurado',
+  'TELEFONO ASEGURADO': 'telefonoAsegurado',
+  'TEL ASEGURADO': 'telefonoAsegurado',
+  'CELULAR ASEGURADO': 'telefonoAsegurado',
+  'CORREO ASEGURADO': 'correoAsegurado',
+  'EMAIL ASEGURADO': 'correoAsegurado',
+  'MAIL ASEGURADO': 'correoAsegurado',
   CIUDAD: 'ciudad',
   'FECHA ASIGNACION': 'fechaAsignacion',
   'FECHA VISITA': 'fechaVisita',
@@ -462,6 +468,8 @@ const parsearHojaListadoCliente = (sheet) => {
       correoIntermediario: '',
       telefonoIntermediario: '',
       contactoIntermediario: '',
+      telefonoAsegurado: '',
+      correoAsegurado: '',
       contactoAsegurado: '',
       ciudad: '',
       observaciones: '',
@@ -488,6 +496,19 @@ const parsearHojaListadoCliente = (sheet) => {
       caso.correoIntermediario,
       caso.telefonoIntermediario,
     ]
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+      .join(' | ');
+    const contactoAseguradoTexto = String(caso.contactoAsegurado || '').trim();
+    if (contactoAseguradoTexto && !caso.telefonoAsegurado && !caso.correoAsegurado) {
+      const email = contactoAseguradoTexto.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+      if (email) caso.correoAsegurado = email[0];
+      const resto = email
+        ? contactoAseguradoTexto.replace(email[0], ' ').replace(/[|,;]/g, ' ').trim()
+        : contactoAseguradoTexto;
+      if (resto.replace(/\D/g, '').length >= 7) caso.telefonoAsegurado = resto;
+    }
+    caso.contactoAsegurado = [caso.telefonoAsegurado, caso.correoAsegurado]
       .map((x) => String(x || '').trim())
       .filter(Boolean)
       .join(' | ');
@@ -534,7 +555,7 @@ export const parsearListadoClienteZurichDesdeExcel = async (file) => {
 
   if (!hojaUsada) {
     throw new Error(
-      'No se encontró el listado de siniestros. Use columnas ZC, STRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO y CIUDAD.'
+      'No se encontró el listado de siniestros. Use columnas ZC, STRO, ASEGURADO, INTERMEDIARIO y CIUDAD.'
     );
   }
 

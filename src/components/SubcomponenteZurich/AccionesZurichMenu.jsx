@@ -2,7 +2,9 @@
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  FaCalculator,
   FaChevronDown,
+  FaClipboardList,
   FaEllipsisV,
   FaFileAlt,
   FaFolderOpen,
@@ -17,6 +19,8 @@ export default function AccionesZurichMenu({
   onGestionar,
   onArchivero,
   onAbrirCaso,
+  onLiquidador,
+  onInformeUnico,
   onEliminar,
   docsCount = 0,
   tieneLiquidador = false,
@@ -31,7 +35,7 @@ export default function AccionesZurichMenu({
   useLayoutEffect(() => {
     if (!abierto || !btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
-    const menuAltoApprox = 200;
+    const menuAltoApprox = 280;
     const espacioAbajo = window.innerHeight - rect.bottom;
     const abrirArriba = espacioAbajo < menuAltoApprox && rect.top > menuAltoApprox;
     setCoords({
@@ -82,6 +86,7 @@ export default function AccionesZurichMenu({
             left: coords.left,
           }}
         >
+          {typeof onGestionar === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -91,6 +96,8 @@ export default function AccionesZurichMenu({
             <FaEdit className="text-fenix-primario" />
             {t('zurich.report.manage')}
           </button>
+          )}
+          {typeof onArchivero === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -101,6 +108,8 @@ export default function AccionesZurichMenu({
             {t('zurich.report.archive')}
             {docsCount > 0 ? ` (${docsCount})` : ''}
           </button>
+          )}
+          {typeof onAbrirCaso === 'function' && (
           <button
             type="button"
             role="menuitem"
@@ -111,6 +120,31 @@ export default function AccionesZurichMenu({
             {t('zurich.report.openCase')}
             {marcaCaso}
           </button>
+          )}
+          {typeof onLiquidador === 'function' && (
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+            onClick={() => elegir(onLiquidador)}
+          >
+            <FaCalculator className="text-fenix-primario" />
+            {t('zurich.report.settlement')}
+            {tieneLiquidador ? ' ✓' : ''}
+          </button>
+          )}
+          {typeof onInformeUnico === 'function' && (
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+            onClick={() => elegir(onInformeUnico)}
+          >
+            <FaClipboardList className="text-fenix-primario" />
+            {t('zurich.report.uniqueReport')}
+            {tieneInforme ? ' ✓' : ''}
+          </button>
+          )}
           <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
           <button
             type="button"

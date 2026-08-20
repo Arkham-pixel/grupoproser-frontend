@@ -39,6 +39,7 @@ import {
   FORM_VACIO_ZURICH,
   TIPOS_IDENTIFICACION_ZURICH,
   TIPOS_POLIZA_ZURICH,
+  esTipoPolizaOtroZurich,
   GRADOS_AFECTACION_ZURICH,
   OPCIONES_SI_NO_ZURICH,
   TIPOS_NEGOCIO_HOMOLOGADO_ZURICH,
@@ -262,7 +263,13 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
   const setCampo = (clave) => (e) => {
     if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
     const valor = e?.target ? e.target.value : e;
-    setForm((prev) => ({ ...prev, [clave]: valor }));
+    setForm((prev) => {
+      const siguiente = { ...prev, [clave]: valor };
+      if (clave === 'tipoPoliza' && !esTipoPolizaOtroZurich(valor)) {
+        siguiente.tipoPolizaOtro = '';
+      }
+      return siguiente;
+    });
   };
 
   const setDepartamento = (e) => {
@@ -310,6 +317,7 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         tipoIdentificacion: form.tipoIdentificacion,
         numeroPoliza: form.numeroPoliza,
         tipoPoliza: form.tipoPoliza,
+        tipoPolizaOtro: esTipoPolizaOtroZurich(form.tipoPoliza) ? form.tipoPolizaOtro : '',
         causa: form.causa,
         asegurado: form.asegurado,
         intermediario: form.intermediario,
@@ -319,7 +327,12 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           .map((x) => String(x || '').trim())
           .filter(Boolean)
           .join(' | ') || form.contactoIntermediario,
-        contactoAsegurado: form.contactoAsegurado,
+        telefonoAsegurado: form.telefonoAsegurado,
+        correoAsegurado: form.correoAsegurado,
+        contactoAsegurado: [form.telefonoAsegurado, form.correoAsegurado]
+          .map((x) => String(x || '').trim())
+          .filter(Boolean)
+          .join(' | '),
         observaciones: form.observaciones,
         ciudad: form.ciudad,
         departamento: form.departamento,
@@ -337,6 +350,7 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
       return payload;
     }
     const payload = { ...form };
+    if (!esTipoPolizaOtroZurich(payload.tipoPoliza)) payload.tipoPolizaOtro = '';
     camposNumericos.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
     });
@@ -481,6 +495,21 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           </Campo>
           {esModuloListado && (
             <>
+          <Campo label={t('zurich.fields.telefonoAsegurado')}>
+            <InputFenix
+              value={form.telefonoAsegurado}
+              onChange={setCampo('telefonoAsegurado')}
+              placeholder={t('zurich.placeholders.telefonoAsegurado')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.correoAsegurado')}>
+            <InputFenix
+              type="email"
+              value={form.correoAsegurado}
+              onChange={setCampo('correoAsegurado')}
+              placeholder={t('zurich.placeholders.correoAsegurado')}
+            />
+          </Campo>
           <Campo label={t('zurich.fields.tipoIdentificacion')}>
             {selectSimple('tipoIdentificacion', TIPOS_IDENTIFICACION_ZURICH)}
           </Campo>
@@ -501,7 +530,19 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           <Campo label={t('zurich.fields.tipoPoliza')}>
             {selectSimple('tipoPoliza', TIPOS_POLIZA_ZURICH)}
           </Campo>
-          <Campo label={t('zurich.fields.causa')} className="md:col-span-2 lg:col-span-3">
+          {esTipoPolizaOtroZurich(form.tipoPoliza) && (
+            <Campo label={t('zurich.fields.tipoPolizaOtro')}>
+              <InputFenix
+                value={form.tipoPolizaOtro}
+                onChange={setCampo('tipoPolizaOtro')}
+                placeholder={t('zurich.placeholders.tipoPolizaOtro')}
+              />
+            </Campo>
+          )}
+          <Campo
+            label={t('zurich.fields.causa')}
+            className={esTipoPolizaOtroZurich(form.tipoPoliza) ? '' : 'md:col-span-2 lg:col-span-3'}
+          >
             <InputFenix
               value={form.causa}
               onChange={setCampo('causa')}
@@ -530,13 +571,6 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               value={form.telefonoIntermediario}
               onChange={setCampo('telefonoIntermediario')}
               placeholder={t('zurich.placeholders.telefonoIntermediario')}
-            />
-          </Campo>
-          <Campo label={t('zurich.fields.contactoAsegurado')} className="md:col-span-2 lg:col-span-3">
-            <InputFenix
-              value={form.contactoAsegurado}
-              onChange={setCampo('contactoAsegurado')}
-              placeholder={t('zurich.placeholders.contactoAsegurado')}
             />
           </Campo>
           <Campo label={t('zurich.fields.ciudad')}>
@@ -816,6 +850,15 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               <Campo label={t('zurich.fields.tipoPoliza')}>
                 {selectSimple('tipoPoliza', TIPOS_POLIZA_ZURICH)}
               </Campo>
+              {esTipoPolizaOtroZurich(form.tipoPoliza) && (
+                <Campo label={t('zurich.fields.tipoPolizaOtro')}>
+                  <InputFenix
+                    value={form.tipoPolizaOtro}
+                    onChange={setCampo('tipoPolizaOtro')}
+                    placeholder={t('zurich.placeholders.tipoPolizaOtro')}
+                  />
+                </Campo>
+              )}
               <Campo label={t('zurich.fields.fechaInicioPoliza')}>
                 <InputFenix
                   type="date"

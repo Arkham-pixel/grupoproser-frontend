@@ -23,6 +23,8 @@ export default function useZurichCasoAutosave({
   informeState,
   onCasoActualizado,
   enabled = true,
+  guardarLiquidador = guardarLiquidadorEnCasoZurich,
+  guardarInforme = guardarInformeUnicoEnCasoZurich,
 } = {}) {
   const casoRef = useRef(casoZurich);
   const savingRef = useRef(false);
@@ -80,14 +82,14 @@ export default function useZurichCasoAutosave({
           const base = casoRef.current || {};
           let actualizado;
           if (payload.tipo === 'informe') {
-            actualizado = await guardarInformeUnicoEnCasoZurich({
+            actualizado = await guardarInforme({
               casoId,
               informeUnico: payload.data,
               casoBase: base,
             });
             lastInfSnap.current = JSON.stringify(payload.data);
           } else {
-            actualizado = await guardarLiquidadorEnCasoZurich({
+            actualizado = await guardarLiquidador({
               casoId,
               liquidador: payload.data,
               totales: payload.totales || {},
@@ -135,6 +137,8 @@ export default function useZurichCasoAutosave({
     totalesState,
     informeState,
     onCasoActualizado,
+    guardarLiquidador,
+    guardarInforme,
   ]);
 
   useEffect(() => {
@@ -150,14 +154,14 @@ export default function useZurichCasoAutosave({
         const base = casoRef.current || {};
         let actualizado;
         if (payload.tipo === 'informe') {
-          actualizado = await guardarInformeUnicoEnCasoZurich({
+          actualizado = await guardarInforme({
             casoId,
             informeUnico: payload.data,
             casoBase: base,
           });
           lastInfSnap.current = JSON.stringify(payload.data);
         } else {
-          actualizado = await guardarLiquidadorEnCasoZurich({
+          actualizado = await guardarLiquidador({
             casoId,
             liquidador: payload.data,
             totales: payload.totales || {},
@@ -182,5 +186,5 @@ export default function useZurichCasoAutosave({
     };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [casoId, enabled, onCasoActualizado]);
+  }, [casoId, enabled, onCasoActualizado, guardarLiquidador, guardarInforme]);
 }

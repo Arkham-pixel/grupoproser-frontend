@@ -80,6 +80,7 @@ import DashboardZurichListado from './components/SubcomponenteZurich/DashboardZu
 import CasoZurichWorkspace, {
   RedirectZurichInforme,
   RedirectZurichLiquidador,
+  RedirectZurichListadoWorkspace,
 } from './components/SubcomponenteZurich/CasoZurichWorkspace';
 import { FormularioCasoSuraPage } from './components/SubcomponenteSura/FormularioCasoSura';
 import ReporteSegurosSura from './components/SubcomponenteSura/ReporteSegurosSura';
@@ -566,6 +567,7 @@ export default function App() {
           <Route path="zurich/carga" element={<FormularioZurich origen="listado" />} />
           <Route path="zurich/listado/reporte" element={<ReporteZurichListado />} />
           <Route path="zurich/listado/dashboard" element={<DashboardZurichListado />} />
+          <Route path="zurich/listado/caso" element={<RedirectZurichListadoWorkspace />} />
           <Route path="zurich/reporte" element={<ReporteZurich />} />
           <Route path="zurich/dashboard" element={<DashboardZurich />} />
           <Route path="zurich/boletin" element={<Navigate to="/zurich/dashboard" replace />} />
