@@ -231,6 +231,88 @@ export const normTexto = (value) =>
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
+/** Municipios canónicos del formulario FDM (sin Santiago de Cali: usar CALI). */
+export const MUNICIPIOS_FDM = Object.freeze([
+  'ALCALÁ',
+  'ANSERMA',
+  'ANSERMANUEVO',
+  'ARANZAZU',
+  'ARGELIA',
+  'ARMENIA-QUINDIO',
+  'BOLÍVAR',
+  'BUENAVENTURA',
+  'BUGA',
+  'BUGALAGRANDE',
+  'CAICEDONIA',
+  'CALARCÁ',
+  'CALI',
+  'CANDELARIA',
+  'CARTAGO',
+  'CERRITO',
+  'CHINCHINÁ',
+  'CIRCASIA',
+  'DOSQUEBRADAS',
+  'EL ÁGUILA',
+  'EL DOVIO',
+  'FILADELFIA',
+  'FILANDIA',
+  'FLORIDA',
+  'GUÁTICA',
+  'JAMUNDÍ',
+  'LA CUMBRE',
+  'LA UNIÓN-VALLE DEL CAUCA',
+  'LA VICTORIA-VALLE DEL CAUCA',
+  'LORICA',
+  'MANIZALES',
+  'MANZANARES',
+  'MARQUETALIA',
+  'MONTENEGRO',
+  'NEIRA',
+  'PALESTINA',
+  'PALMIRA',
+  'PENSILVANIA',
+  'PEREIRA',
+  'PUEBLO RICO',
+  'QUIBDÓ',
+  'QUIMBAYA',
+  'QUINCHÍA',
+  'ROLDANILLO',
+  'SALENTO',
+  'SAN BERNARDO DEL VIENTO',
+  'SANTA ISABEL',
+  'SANTA ROSA DE CABAL',
+  'SANTANDER DE QUILICHAO',
+  'SEVILLA',
+  'TORO',
+  'TULUÁ',
+  'VERSALLES',
+  'VIJES',
+  'VILLAMARÍA',
+  'YUMBO',
+  'ZARZAL',
+]);
+
+/** Unifica Santiago de Cali → CALI y deja el valor en mayúsculas. */
+export const normalizarMunicipioFdm = (valor) => {
+  const texto = String(valor ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!texto) return '';
+  const clave = normTexto(texto);
+  if (
+    clave === 'SANTIAGO DE CALI' ||
+    clave === 'CALI VALLE' ||
+    clave === 'CALI VALLE DEL CAUCA' ||
+    /^SANTIAGO DE CALI\b/.test(clave) ||
+    clave === 'BUGA CENTRO'
+  ) {
+    if (clave === 'BUGA CENTRO') return 'BUGA';
+    return 'CALI';
+  }
+  const exacto = MUNICIPIOS_FDM.find((m) => normTexto(m) === clave);
+  return exacto || texto.toUpperCase();
+};
+
 /** Opciones únicas para un select de filtro a partir de los casos */
 export const buildOpcionesFiltro = (casos = [], campo) => {
   const porNorm = new Map();
@@ -254,7 +336,7 @@ export const coincideFiltroTexto = (valorCaso, filtro) => {
 export const SIN_CIUDAD_FDM = 'SIN CIUDAD';
 
 export const ciudadClaveFdm = (caso = {}) => {
-  const norm = normTexto(caso.municipio);
+  const norm = normTexto(normalizarMunicipioFdm(caso.municipio));
   return norm || SIN_CIUDAD_FDM;
 };
 
@@ -263,11 +345,10 @@ export const buildCiudadesFdm = (casos = []) => {
   const porNorm = new Map();
   for (const item of casos) {
     const value = ciudadClaveFdm(item);
-    const crudo = String(item.municipio || '').replace(/\s+/g, ' ').trim();
     if (!porNorm.has(value)) {
       porNorm.set(value, {
         value,
-        label: value === SIN_CIUDAD_FDM ? 'Sin ciudad' : crudo.toUpperCase(),
+        label: value === SIN_CIUDAD_FDM ? 'Sin ciudad' : value,
         count: 0,
       });
     }

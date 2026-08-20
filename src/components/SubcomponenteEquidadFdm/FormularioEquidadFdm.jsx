@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FaSave, FaUndo } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig.js';
@@ -23,7 +23,9 @@ import {
   TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { FdmPageHeader } from './EquidadFdmUiBlocks.jsx';
-import { CAMPOS_NUMERICOS_FDM, ESTADOS_FDM, EVENTOS_FDM, fechaParaInput, formatMiles, formatMilesInput, parseMontoFdm } from './equidadFdmHelpers.js';
+import { CAMPOS_NUMERICOS_FDM, ESTADOS_FDM, EVENTOS_FDM, MUNICIPIOS_FDM, fechaParaInput, formatMiles, formatMilesInput, normalizarMunicipioFdm, parseMontoFdm } from './equidadFdmHelpers.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -84,6 +86,7 @@ const construirFormDesdeCaso = (caso = {}) => ({
       if (valor === null || valor === undefined) return [clave, ''];
       if (clave.startsWith('fecha')) return [clave, fechaParaInput(valor)];
       if (CAMPOS_NUMERICOS_FDM.includes(clave)) return [clave, formatMiles(valor)];
+      if (clave === 'municipio') return [clave, normalizarMunicipioFdm(valor)];
       return [clave, String(valor)];
     })
   ),
@@ -101,6 +104,22 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [ajustadores, setAjustadores] = useState([]);
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
+  const formKey = esEdicion ? `equidad-fdm:${initialData._id}` : 'equidad-fdm:nuevo';
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey,
+    modulo: 'equidad-fdm',
+    recursoId: initialData?._id || '',
+    titulo: 'Caso Equidad FDM',
+    formData: form,
+    enabled: true,
+    onRestoreAvailable: onDraftRestoreAvailable,
+  });
 
   useEffect(() => {
     setForm(initialData ? construirFormDesdeCaso(initialData) : { ...FORM_VACIO });
@@ -166,8 +185,18 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
     CAMPOS_NUMERICOS_FDM.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
     });
+    payload.municipio = normalizarMunicipioFdm(payload.municipio);
     return payload;
   };
+
+  const opcionesMunicipio = (() => {
+    const set = new Set(MUNICIPIOS_FDM);
+    const actual = normalizarMunicipioFdm(form.municipio);
+    if (actual && !set.has(actual) && !/^SANTIAGO DE CALI/i.test(actual)) {
+      return [...MUNICIPIOS_FDM, actual].sort((a, b) => a.localeCompare(b, 'es'));
+    }
+    return MUNICIPIOS_FDM;
+  })();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -201,6 +230,7 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
         setForm({ ...FORM_VACIO });
       }
       if (onSaved) await onSaved(guardado);
+      await discardDraft();
     } catch (err) {
       console.error('Error guardando caso Equidad FDM:', err);
       setError(err.message || t('equidadFdm.messages.saveError'));
@@ -268,7 +298,22 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
             <InputFenix value={form.direccionAfectada} onChange={setCampo('direccionAfectada')} />
           </Campo>
           <Campo label={t('equidadFdm.fields.municipality')}>
-            <InputFenix value={form.municipio} onChange={setCampo('municipio')} placeholder={t('equidadFdm.placeholders.municipality')} />
+            <SelectFenix
+              value={normalizarMunicipioFdm(form.municipio)}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  municipio: normalizarMunicipioFdm(e.target.value),
+                }))
+              }
+            >
+              <option value="">{t('common.select')}</option>
+              {opcionesMunicipio.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </SelectFenix>
           </Campo>
           <Campo label={t('equidadFdm.fields.department')}>
             <InputFenix value={form.departamento} onChange={setCampo('departamento')} />
@@ -446,7 +491,28 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
   );
 
   if (embed) {
-    return <div className={`${expressScope}`}>{contenidoFormulario}</div>;
+    return (
+      <div className={`${expressScope}`}>
+        {contenidoFormulario}
+        <ArnaldDraftChrome
+          draftStatus={draftStatus}
+          lastDraftAt={lastDraftAt}
+          consumeDraft={consumeDraft}
+          showRestore={showDraftRestore}
+          savedDataToRestore={draftToRestore}
+          onRestore={() => {
+            if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+            setShowDraftRestore(false);
+          }}
+          onDiscard={() => {
+            discardDraft();
+            setShowDraftRestore(false);
+            setDraftToRestore(null);
+          }}
+          onCancel={() => setShowDraftRestore(false)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -468,6 +534,23 @@ const FormularioEquidadFdm = ({ initialData = null, embed = false, onClose, onSa
           <div className={expressCardBody}>{contenidoFormulario}</div>
         </section>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 };
