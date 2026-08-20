@@ -558,18 +558,49 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     sumaIndemnizable += sum;
   }
 
-  // Totales en valores (evita #¡VALOR! si faltan inputs de fórmulas)
+  // Totales alineados a la UI: Sub total ítems → AIU → Deducible → Valor a indemnizar
   const limite = va || 0;
-  const subTotal =
+  const subTotalItems =
     limite > 0 && limite < sumaIndemnizable ? limite : sumaIndemnizable;
+  const aiuVal = parsearNumero(totales?.aiu);
+  const aiuPctDecimal = Number(totales?.presupuesto?.aiuPct);
+  const aiuPctUi = Number.isFinite(aiuPctDecimal)
+    ? Math.round(aiuPctDecimal * 10000) / 100
+    : subTotalItems > 0 && aiuVal > 0
+      ? Math.round((aiuVal / subTotalItems) * 10000) / 100
+      : 5;
   const deducibleFinal =
-    dedPesos ||
     parsearNumero(totales?.deducibleAplicado) ||
+    dedPesos ||
     0;
-  const aIndemnizar = Math.max(0, subTotal - deducibleFinal);
-  setVal(sheet, 25, 15, subTotal || null);
-  setVal(sheet, 26, 15, deducibleFinal || 0);
-  setVal(sheet, 27, 15, aIndemnizar || 0);
+  const aIndemnizar =
+    totales?.totalIndemnizar != null && totales.totalIndemnizar !== ''
+      ? parsearNumero(totales.totalIndemnizar)
+      : Math.max(
+          0,
+          parsearNumero(totales?.sumaCompleta || totales?.totalDanios || subTotalItems + aiuVal) -
+            deducibleFinal +
+            parsearNumero(totales?.diagrama?.gastosHospedaje)
+        );
+
+  setVal(sheet, 25, 12, 'Sub Total ítems');
+  setVal(sheet, 25, 15, subTotalItems || null);
+
+  setVal(sheet, 26, 12, `AIU (${aiuPctUi}%)`);
+  setVal(sheet, 26, 15, aiuVal || 0);
+
+  setVal(sheet, 27, 12, 'Deducible Aplicable');
+  setVal(sheet, 27, 15, deducibleFinal || 0);
+
+  // Valor a indemnizar (fila siguiente; L28 suele estar libre junto al bloque de totales)
+  setVal(sheet, 28, 12, 'Valor a Indemnizar');
+  setVal(sheet, 28, 15, aIndemnizar || 0);
+  try {
+    sheet.getCell(28, 12).font = { ...(sheet.getCell(27, 12).font || {}), bold: true };
+    sheet.getCell(28, 15).font = { ...(sheet.getCell(27, 15).font || {}), bold: true };
+  } catch {
+    /* ok */
+  }
 
   // Liquidado por
   setVal(
