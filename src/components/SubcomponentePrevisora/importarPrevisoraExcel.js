@@ -165,9 +165,10 @@ const parseFechaCelda = (valor) => {
   if (typeof valor === 'number') return excelSerialToIso(valor);
   const texto = String(valor).trim();
   if (!texto) return null;
-  if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0, 10);
+  const soloFecha = texto.replace(/\s+\d{1,2}:\d{2}(:\d{2})?.*$/, '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(soloFecha)) return soloFecha.slice(0, 10);
   // dd/mm/yyyy o mm/dd/yyyy
-  const mdy = texto.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  const mdy = soloFecha.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
   if (mdy) {
     let [, a, b, c] = mdy;
     let year = Number(c);
@@ -182,6 +183,31 @@ const parseFechaCelda = (valor) => {
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
   return null;
+};
+
+const parseFechaCeldaDMY = (valor) => {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (valor instanceof Date && !Number.isNaN(valor.getTime())) {
+    return fechaBogotaIso(valor);
+  }
+  if (typeof valor === 'number') return excelSerialToIso(valor);
+  const texto = String(valor).trim();
+  if (!texto) return null;
+  const soloFecha = texto.replace(/\s+\d{1,2}:\d{2}(:\d{2})?.*$/, '').trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(soloFecha)) return soloFecha.slice(0, 10);
+  const dmy = soloFecha.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (!dmy) return parseFechaCelda(valor);
+  let day = Number(dmy[1]);
+  let month = Number(dmy[2]);
+  let year = Number(dmy[3]);
+  if (year < 100) year += 2000;
+  if (month > 12 && day <= 12) {
+    const tmp = day;
+    day = month;
+    month = tmp;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) return parseFechaCelda(valor);
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
 const parseNumeroCelda = (valor) => {
@@ -228,14 +254,22 @@ const HEADERS_QUE_NO_SON_DATOS = new Set([
 const homologarTipoPolizaExcel = (valor) => {
   const t = normHeader(valor);
   if (!t) return { tipoPoliza: null, tipoPolizaOtro: null };
-  if (t === 'HOGAR' || t === 'HOMEOWNERS') return { tipoPoliza: 'HOGAR', tipoPolizaOtro: null };
+  if (t === 'HOGAR' || t === 'HOMEOWNERS' || t === 'PREVIHOGAR') {
+    return { tipoPoliza: 'HOGAR', tipoPolizaOtro: null };
+  }
   if (t === 'INCENDIO' || t === 'PROPERTY') return { tipoPoliza: 'INCENDIO', tipoPolizaOtro: null };
   if (t === 'TERREMOTO') return { tipoPoliza: 'TERREMOTO', tipoPolizaOtro: null };
-  if (t === 'TODO RIESGO' || t === 'TODO RIESGO DAÑOS' || t === 'TRD') {
-    return { tipoPoliza: 'TODO RIESGO', tipoPolizaOtro: null };
+  if (
+    t === 'TODO RIESGO' ||
+    t === 'TODO RIESGO DANOS' ||
+    t === 'TRD' ||
+    t.startsWith('TODO RIESGO')
+  ) {
+    return { tipoPoliza: 'TODO RIESGO', tipoPolizaOtro: t === 'TODO RIESGO' ? null : String(valor).trim() };
   }
-  if (t === 'PYME') return { tipoPoliza: 'PYME', tipoPolizaOtro: null };
+  if (t === 'PYME' || t === 'PREVIPYME') return { tipoPoliza: 'PYME', tipoPolizaOtro: null };
   if (t === 'INDUSTRIAL') return { tipoPoliza: 'INDUSTRIAL', tipoPolizaOtro: null };
+  if (t === 'AREAS COMUNES') return { tipoPoliza: 'AREAS COMUNES', tipoPolizaOtro: null };
   if (t === 'OTRO' || t === 'OTROS') return { tipoPoliza: 'OTRO', tipoPolizaOtro: null };
   return { tipoPoliza: 'OTRO', tipoPolizaOtro: String(valor).trim() };
 };
@@ -430,6 +464,8 @@ export const parsearCasosPrevisoraDesdeExcel = async (file) => {
   for (const nombre of elegirHojasCandidatas(workbook)) {
     const sheet = workbook.Sheets[nombre];
     if (!sheet) continue;
+    const listadoProbe = parsearHojaListadoCliente(sheet);
+    if (listadoProbe.formato === 'reportePrevisora') continue;
     const parseado = parsearHojaACasos(sheet);
     if (parseado.casos.length > 0) {
       hojaUsada = nombre;
@@ -462,10 +498,16 @@ const HEADER_MAP_LISTADO = {
   SINIESTRO: 'siniestro',
   'N SINIESTRO': 'siniestro',
   'NO SINIESTRO': 'siniestro',
+  'NO CASO': 'noCaso',
+  'N CASO': 'noCaso',
+  ITEMDATE: 'fechaCasoNuevo',
+  'ITEM DATE': 'fechaCasoNuevo',
   ASEGURADO: 'asegurado',
   NOMBRE: 'asegurado',
   IDENTIFICACION: 'identificacion',
   CEDULA: 'identificacion',
+  'ID ASEGURADO': 'identificacion',
+  'ID ASEGURO': 'identificacion',
   'TIPO IDENTIFICACION': 'tipoIdentificacion',
   'TIPO DE IDENTIFICACION': 'tipoIdentificacion',
   'TIPO DOCUMENTO': 'tipoIdentificacion',
@@ -477,22 +519,32 @@ const HEADER_MAP_LISTADO = {
   'TIPO POLIZA': 'tipoPoliza',
   'TIPO DE POLIZA': 'tipoPoliza',
   RAMO: 'tipoPoliza',
+  'RAMO COMERCIAL': 'tipoPoliza',
   CAUSA: 'causa',
   'CAUSA SINIESTRO': 'causa',
   'CAUSA DEL SINIESTRO': 'causa',
+  'RAMO TECNICO': 'causa',
   INTERMEDIARIO: 'intermediario',
   'CONTACTO INTERMEDIARIO': 'contactoIntermediario',
   'CORREO INTERMEDIARIO': 'correoIntermediario',
   'TELEFONO INTERMEDIARIO': 'telefonoIntermediario',
   'CONTACTO ASEGURADO': 'contactoAsegurado',
+  TELEFONO: 'telefonoAsegurado',
   'TELEFONO ASEGURADO': 'telefonoAsegurado',
   'TEL ASEGURADO': 'telefonoAsegurado',
   'CELULAR ASEGURADO': 'telefonoAsegurado',
   'CORREO ASEGURADO': 'correoAsegurado',
   'EMAIL ASEGURADO': 'correoAsegurado',
   'MAIL ASEGURADO': 'correoAsegurado',
+  'EMAIL CONTACTO': 'correoAsegurado',
+  DIRECCION: 'direccionPredio',
   CIUDAD: 'ciudad',
+  'CIUDAD SINIESTRO': 'ciudadSiniestro',
+  DEPARTAMENTO: 'departamento',
+  'DEPARTAMENTO SINIESTRO': 'departamento',
   'FECHA ASIGNACION': 'fechaAsignacion',
+  'FECHA ASIGNACION PROVEEDOR': 'fechaAsignacion',
+  'FECHA SINIESTRO': 'notaFechaSiniestro',
   'FECHA VISITA': 'fechaVisita',
   INSPECTOR: 'inspector',
   AJUSTADOR: 'ajustador',
@@ -500,7 +552,31 @@ const HEADER_MAP_LISTADO = {
   OBSERVACIONES: 'observaciones',
   OBSERVACION: 'observaciones',
   NOTAS: 'observaciones',
+  SUCURSAL: 'sucursal',
+  JEFATURA: 'jefatura',
 };
+
+const COLUMNAS_IGNORAR_EXTRAS = new Set([
+  'ITEMNUM',
+  'ITEM NUM',
+  'ITEMNO',
+  'PROVEEDOR',
+  'EMAIL PROVEEDOR',
+  'DIRECCION PROVEEDOR',
+  'REP LEGAL PROVEEDOR',
+  'CIUDAD PROVEEDOR',
+  'ANALISTA EVALUACION',
+  'COORDINADOR EVALUACION',
+  'JEFE OPERACIONES',
+]);
+
+const limpiarNombreAsegurado = (valor) => {
+  const texto = limpiarTextoListado(valor);
+  if (!texto) return '';
+  return texto.replace(/^\d+\s*[-–—]\s*/, '').trim() || texto;
+};
+
+const CAMPOS_FECHA_LISTADO = new Set(['fechaAsignacion', 'fechaVisita', 'fechaCasoNuevo']);
 
 const limpiarTextoListado = (raw) => {
   if (raw === null || raw === undefined || raw === '') return '';
@@ -512,44 +588,55 @@ const limpiarTextoListado = (raw) => {
 
 const parsearHojaListadoCliente = (sheet) => {
   const matriz = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null, raw: true });
-  if (!matriz.length) return { casos: [], headerRowIdx: -1 };
+  if (!matriz.length) return { casos: [], headerRowIdx: -1, formato: 'listado' };
 
   let headerRowIdx = -1;
   let colMap = {};
   const columnasSinMapa = [];
+  let headersNorm = [];
+  let formato = 'listado';
 
   for (let r = 0; r < Math.min(matriz.length, 20); r += 1) {
     const row = matriz[r] || [];
     const provisional = {};
     const sinMapa = [];
+    const norms = [];
     row.forEach((celda, c) => {
       const header = normHeader(celda);
-      if (header === 'ITEM') return;
+      if (!header || header === 'ITEM') return;
+      norms.push(header);
       const campo = HEADER_MAP_LISTADO[header];
       if (campo) provisional[c] = campo;
-      else sinMapa.push(c);
+      else if (!COLUMNAS_IGNORAR_EXTRAS.has(header)) sinMapa.push({ col: c, header });
     });
     const campos = new Set(Object.values(provisional));
-    if (campos.has('siniestro') && (campos.has('asegurado') || campos.has('ciudad'))) {
+    const esReporte =
+      campos.has('noCaso') && campos.has('asegurado') && (campos.has('siniestro') || campos.has('identificacion'));
+    const esClasico = campos.has('siniestro') && (campos.has('asegurado') || campos.has('ciudad'));
+    if (esReporte || esClasico) {
       headerRowIdx = r;
       colMap = provisional;
       columnasSinMapa.push(...sinMapa);
+      headersNorm = norms;
+      formato = esReporte ? 'reportePrevisora' : 'listado';
       break;
     }
   }
 
-  if (headerRowIdx < 0) return { casos: [], headerRowIdx: -1 };
+  if (headerRowIdx < 0) return { casos: [], headerRowIdx: -1, formato: 'listado' };
 
   const casos = [];
   for (let r = headerRowIdx + 1; r < matriz.length; r += 1) {
     const row = matriz[r] || [];
     const caso = {
       zc: '',
+      noCaso: '',
       siniestro: '',
       identificacion: '',
       tipoIdentificacion: '',
       numeroPoliza: '',
       tipoPoliza: '',
+      tipoPolizaOtro: '',
       causa: '',
       asegurado: '',
       intermediario: '',
@@ -560,22 +647,38 @@ const parsearHojaListadoCliente = (sheet) => {
       correoAsegurado: '',
       contactoAsegurado: '',
       ciudad: '',
+      ciudadSiniestro: '',
+      departamento: '',
+      direccionPredio: '',
+      sucursal: '',
+      jefatura: '',
       observaciones: '',
       inspector: '',
       ajustador: '',
       fechaAsignacion: '',
       fechaVisita: '',
+      fechaCasoNuevo: '',
       estado: 'CASO NUEVO',
     };
     Object.entries(colMap).forEach(([colStr, campo]) => {
       const raw = row[Number(colStr)];
-      if (campo === 'fechaAsignacion' || campo === 'fechaVisita') {
-        caso[campo] = parseFechaCelda(raw) || '';
+      if (CAMPOS_FECHA_LISTADO.has(campo)) {
+        const parseFecha = formato === 'reportePrevisora' ? parseFechaCeldaDMY : parseFechaCelda;
+        caso[campo] = parseFecha(raw) || '';
         return;
       }
       caso[campo] = limpiarTextoListado(raw);
     });
     if (/^pendiente$/i.test(caso.fechaVisita)) caso.fechaVisita = '';
+    if (!caso.ciudad) caso.ciudad = caso.ciudadSiniestro || '';
+    delete caso.ciudadSiniestro;
+    caso.asegurado = limpiarNombreAsegurado(caso.asegurado);
+    if (!caso.siniestro) caso.siniestro = caso.noCaso || '';
+    if (caso.tipoPoliza) {
+      const poliza = homologarTipoPolizaExcel(caso.tipoPoliza);
+      caso.tipoPoliza = poliza.tipoPoliza || caso.tipoPoliza;
+      caso.tipoPolizaOtro = poliza.tipoPolizaOtro || '';
+    }
     if (!caso.intermediario && caso.contactoIntermediario && !caso.contactoIntermediario.includes('|')) {
       caso.intermediario = caso.contactoIntermediario;
     }
@@ -600,22 +703,39 @@ const parsearHojaListadoCliente = (sheet) => {
       .map((x) => String(x || '').trim())
       .filter(Boolean)
       .join(' | ');
-    const extras = columnasSinMapa
-      .map((c) => limpiarTextoListado(row[c]))
-      .filter((txt) => txt && !/^pendiente$/i.test(txt));
-    if (extras.length) {
-      caso.observaciones = [caso.observaciones, ...extras].filter(Boolean).join(' | ');
+    const notas = [];
+    if (caso.noCaso && caso.noCaso !== caso.siniestro) notas.push(`No. caso: ${caso.noCaso}`);
+    if (caso.direccionPredio) notas.push(`Dirección: ${caso.direccionPredio}`);
+    if (caso.sucursal) notas.push(`Sucursal: ${caso.sucursal}`);
+    if (caso.jefatura) notas.push(`Jefatura: ${caso.jefatura}`);
+    if (caso.notaFechaSiniestro) {
+      const fechaSin =
+        (formato === 'reportePrevisora'
+          ? parseFechaCeldaDMY(caso.notaFechaSiniestro)
+          : parseFechaCelda(caso.notaFechaSiniestro)) || caso.notaFechaSiniestro;
+      notas.push(`Fecha siniestro: ${fechaSin}`);
     }
-    if (!caso.siniestro && !caso.asegurado) continue;
+    if (formato !== 'reportePrevisora') {
+      const extras = columnasSinMapa
+        .map((item) => limpiarTextoListado(row[item.col ?? item]))
+        .filter((txt) => txt && !/^pendiente$/i.test(txt));
+      notas.push(...extras);
+    }
+    caso.observaciones = [caso.observaciones, ...notas].filter(Boolean).join(' | ');
+    delete caso.direccionPredio;
+    delete caso.sucursal;
+    delete caso.jefatura;
+    delete caso.notaFechaSiniestro;
+    if (!caso.siniestro && !caso.noCaso && !caso.asegurado) continue;
     if (!caso.identificacion) {
-      if (caso.siniestro) caso.identificacion = caso.siniestro;
+      caso.identificacion = caso.siniestro || caso.noCaso || '';
     }
     if (!caso.estado || caso.estado === '0') caso.estado = 'CASO NUEVO';
     caso.estado = homologarEstadoPrevisora(caso.estado);
     casos.push(caso);
   }
 
-  return { casos, headerRowIdx };
+  return { casos, headerRowIdx, formato, headersNorm };
 };
 
 /**
@@ -629,6 +749,7 @@ export const parsearListadoClientePrevisoraDesdeExcel = async (file) => {
 
   let hojaUsada = null;
   let casos = [];
+  let formato = 'listado';
 
   for (const nombre of workbook.SheetNames) {
     const sheet = workbook.Sheets[nombre];
@@ -637,16 +758,17 @@ export const parsearListadoClientePrevisoraDesdeExcel = async (file) => {
     if (parseado.casos.length > 0) {
       hojaUsada = nombre;
       casos = parseado.casos;
+      formato = parseado.formato || 'listado';
       break;
     }
   }
 
   if (!hojaUsada) {
     throw new Error(
-      'No se encontró el listado de siniestros. Use columnas SINIESTRO, ASEGURADO, INTERMEDIARIO y CIUDAD.'
+      'No se encontró el listado de siniestros. Use el reporte Previsora (No_Caso, No_Siniestro, Asegurado, Ciudad) o columnas SINIESTRO, ASEGURADO y CIUDAD.'
     );
   }
 
-  return { hoja: hojaUsada, casos, modo: 'listado' };
+  return { hoja: hojaUsada, casos, modo: 'listado', formato };
 };
 

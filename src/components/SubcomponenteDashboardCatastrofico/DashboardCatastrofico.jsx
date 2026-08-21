@@ -95,6 +95,7 @@ export default function DashboardCatastrofico({
   variant = 'cat',
   title,
   subtitle,
+  modulo = '',
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -127,7 +128,7 @@ export default function DashboardCatastrofico({
           fetch(`${BASE_URL}/api/inspectores-catastrofico`).catch(() => null),
         ]);
         if (cancelado) return;
-        setCasos(filtrarCasosPorAsignacionUsuario(data));
+        setCasos(filtrarCasosPorAsignacionUsuario(data, { modulo }));
         const jsonResp = resResp?.ok ? await resResp.json().catch(() => []) : [];
         const jsonAj = resAj?.ok ? await resAj.json().catch(() => []) : [];
         const jsonIns = resIns?.ok ? await resIns.json().catch(() => []) : [];
@@ -151,7 +152,7 @@ export default function DashboardCatastrofico({
     return () => {
       cancelado = true;
     };
-  }, [fetchCasos, t]);
+  }, [fetchCasos, t, modulo]);
 
   const filtrosAplicados = Boolean(
     filtroCiudad || filtroEstado || filtroAjustador || filtroInspector || filtroTomador || fechaDesde || fechaHasta

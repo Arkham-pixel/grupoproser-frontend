@@ -72,9 +72,24 @@ export function needleLiderPorModulo(modulo = '') {
 
 /**
  * Solo el líder permitido en el select:
- * Alfa → Silvia; Sura → Bernardo.
+ * Alfa → Silvia; Sura → Bernardo y Mario Pinilla.
  */
 export function filtrarLideresPorModulo(lideres = [], modulo = '') {
+  const m = String(modulo || '').toLowerCase();
+  if (m === 'alfa') {
+    return lideres.filter((l) =>
+      normCiudadCatastrofico(l.label || l.value).includes('SILVIA')
+    );
+  }
+  if (m === 'sura') {
+    return lideres.filter((l) => {
+      const blob = normCiudadCatastrofico(
+        `${l.label || ''} ${l.value || ''} ${l.codigo || ''}`
+      );
+      const codigo = String(l.codigo || '').replace(/\D/g, '');
+      return blob.includes('BERNARDO') || blob.includes('PINILLA') || codigo === '72288319';
+    });
+  }
   const needle = needleLiderPorModulo(modulo);
   if (!needle) return lideres;
   return lideres.filter((l) =>
@@ -84,9 +99,15 @@ export function filtrarLideresPorModulo(lideres = [], modulo = '') {
 
 /**
  * Resuelve el ajustador líder por módulo.
- * Alfa → Silvia; Sura → Bernardo.
+ * Alfa → Silvia; Sura → Bernardo (Mario también puede asignarse, pero el default es Bernardo).
  */
 export function resolverLiderPorModulo(lideres = [], modulo = '') {
   const filtrados = filtrarLideresPorModulo(lideres, modulo);
+  if (String(modulo || '').toLowerCase() === 'sura') {
+    const bernardo = filtrados.find((l) =>
+      normCiudadCatastrofico(l.label || l.value).includes('BERNARDO')
+    );
+    if (bernardo) return bernardo.value || '';
+  }
   return filtrados[0]?.value || '';
 }

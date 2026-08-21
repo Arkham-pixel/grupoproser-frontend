@@ -43,6 +43,7 @@ export default function CamposAsignacionCaso({
   const permisoOpts = {
     modulo: String(modulo || '').toLowerCase(),
     login: typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '',
+    cedula: typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '',
   };
 
   return (

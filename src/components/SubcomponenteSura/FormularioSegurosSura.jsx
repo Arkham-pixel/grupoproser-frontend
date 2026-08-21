@@ -43,6 +43,7 @@ import { obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
   esRolInspector,
+  esSesionConPermisoLiderSura,
   filtrarPayloadCasoPorRol,
   obtenerContextoPermisoCaso,
   puedeEditarCampoCaso,
@@ -81,7 +82,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('sura'), []);
-  const soloInspector = esRolInspector(rolUsuario);
+  const soloInspector = esRolInspector(rolUsuario) && !esSesionConPermisoLiderSura();
   const esEdicion = Boolean(initialData?._id);
   const puedeImportarExcel = esAdminOSoporteSura();
   const [form, setForm] = useState(() =>
@@ -670,7 +671,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
             </div>
             <div className={expressCardBody}>
               <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-300">
-                Analice y confirme un Excel de SURA (hoja BD o PENDIENTES). Solo admin/soporte.
+                Analice y confirme un Excel de SURA (hoja BD o PENDIENTES).
               </p>
               <button
                 type="button"

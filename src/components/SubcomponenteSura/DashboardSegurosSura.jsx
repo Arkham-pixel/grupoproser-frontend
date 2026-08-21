@@ -13,6 +13,7 @@ export default function DashboardSegurosSura() {
   return (
     <DashboardCatastrofico
       badge="Seguros Sura"
+      modulo="sura"
       fetchCasos={fetchAllCasosSura}
       formatCurrency={formatCurrency}
       fechaEnRango={fechaEnRango}

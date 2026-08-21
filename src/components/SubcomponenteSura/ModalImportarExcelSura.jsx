@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { FaFileExcel, FaTimes, FaUpload } from 'react-icons/fa';
 import { importarCasosSura } from '../../services/segurosSuraService.js';
 import { parsearCasosSuraDesdeExcel } from './importarSegurosSuraExcel.js';
+import { esSesionConPermisoLiderSura } from '../../utils/permisosCasoPorRol.js';
 import {
   expressBtnGhost,
   expressBtnPrimary,
@@ -11,7 +12,10 @@ export function esAdminOSoporteSura() {
   const rol = String(localStorage.getItem('rol') || '')
     .trim()
     .toLowerCase();
-  return rol === 'admin' || rol === 'soporte' || rol === 'administrador' || rol === 'support';
+  if (rol === 'admin' || rol === 'soporte' || rol === 'administrador' || rol === 'support') {
+    return true;
+  }
+  return esSesionConPermisoLiderSura();
 }
 
 /**

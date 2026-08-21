@@ -73,14 +73,17 @@ export default function ModalImportarExcelPrevisora({ open, onClose, onCompleted
       } catch {
         cat = null;
       }
+      const esReportePrevisora =
+        listado?.formato === 'reportePrevisora' || /reporte total/i.test(listado?.hoja || '');
       const esBasePrevisora = /BASE Previsora/i.test(cat?.hoja || '');
       const usarCat =
         Boolean(cat?.casos?.length) &&
+        !esReportePrevisora &&
         (esBasePrevisora || !listado?.casos?.length || cat.casos.length >= listado.casos.length);
       const parsed = usarCat ? cat : listado;
       if (!parsed?.casos?.length) {
         throw new Error(
-          'No se encontraron filas válidas. Use BASE Previsora (siniestro, ID, asegurado) o el listado con siniestro, asegurado y ciudad.'
+          'No se encontraron filas válidas. Use el reporte Previsora (No_Caso, No_Siniestro, asegurado, ciudad) o BASE Previsora de inspección CAT.'
         );
       }
       setModo(usarCat ? 'cat' : 'listado');
@@ -128,7 +131,7 @@ export default function ModalImportarExcelPrevisora({ open, onClose, onCompleted
             <p className="mt-1 font-body text-sm text-gray-500">
               {modo === 'cat'
                 ? 'Formato BASE Previsora / consolidado: se crean o actualizan expedientes (liquidador e informe) por siniestro o identificación.'
-                : 'Listado: columnas siniestro, asegurado y ciudad. Si el siniestro ya existe, se actualiza; si no, se crea.'}
+                : 'Listado Previsora: No_Caso, No_Siniestro, asegurado, póliza, ciudad y contactos. Si el siniestro o el No. caso ya existe, se actualiza; si no, se crea.'}
             </p>
           </div>
           <button type="button" className={expressBtnGhost} onClick={handleClose}>

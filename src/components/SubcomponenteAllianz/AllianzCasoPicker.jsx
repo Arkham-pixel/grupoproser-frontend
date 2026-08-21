@@ -23,7 +23,6 @@ export default function AllianzCasoPicker({
         c.identificacion,
         c.ciudad,
         c.numeroPoliza,
-        c.zc,
       ]
         .map((v) => String(v || '').toLowerCase())
         .join(' ');

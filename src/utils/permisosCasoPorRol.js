@@ -34,16 +34,35 @@ export function obtenerContextoPermisoCaso(modulo = '') {
     modulo: String(modulo || '').toLowerCase(),
     login:
       typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '',
+    cedula:
+      typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '',
     nombre:
       typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') || '' : '',
   };
 }
 
+function normalizarClaveLoginSura(valor) {
+  const s = String(valor || '').trim();
+  if (!s) return '';
+  const digits = s.replace(/\D/g, '');
+  return digits.length >= 5 ? digits : s.toLowerCase();
+}
+
 export function esLoginConPermisoLiderSura(login, modulo = '') {
   if (String(modulo || '').toLowerCase() !== 'sura') return false;
-  const l = String(login || '').trim();
-  if (!l) return false;
-  return SURA_LOGINS_PERMISO_LIDER.includes(l);
+  const clave = normalizarClaveLoginSura(login);
+  if (!clave) return false;
+  return SURA_LOGINS_PERMISO_LIDER.map(normalizarClaveLoginSura).includes(clave);
+}
+
+export function esIdentidadConPermisoLiderSura(opts = {}) {
+  const modulo = opts.modulo || '';
+  return [opts.login, opts.cedula].some((v) => esLoginConPermisoLiderSura(v, modulo));
+}
+
+/** Sesión actual: Mario Pinilla tiene poderes de líder solo en SURA. */
+export function esSesionConPermisoLiderSura() {
+  return esIdentidadConPermisoLiderSura(obtenerContextoPermisoCaso('sura'));
 }
 
 export function esRolAjustadorLider(rol = obtenerRolAlmacenado()) {
@@ -76,7 +95,7 @@ export function esCampoAsignacionCaso(campo) {
 export function puedeEditarTodoElCaso(rol = obtenerRolAlmacenado(), opts = {}) {
   const r = normalizarRol(rol);
   if (esRolAdminOSoporte(r) || r === ROL_AJUSTADOR_LIDER) return true;
-  if (esLoginConPermisoLiderSura(opts.login, opts.modulo)) return true;
+  if (esIdentidadConPermisoLiderSura(opts)) return true;
   if (r === ROL_AJUSTADOR_CASO || r === ROL_INSPECTOR) return false;
   return true;
 }
@@ -148,7 +167,7 @@ export function coincidenPersonas(a, b) {
  * En SURA, Mario (72288319) ve todos como el líder.
  */
 export function rolConVistaRestringidaAsignacion(rol = obtenerRolAlmacenado(), opts = {}) {
-  if (esLoginConPermisoLiderSura(opts.login, opts.modulo)) return false;
+  if (esIdentidadConPermisoLiderSura(opts)) return false;
   const r = normalizarRol(rol);
   return r === ROL_AJUSTADOR_CASO || r === ROL_INSPECTOR;
 }
@@ -162,12 +181,13 @@ export function filtrarCasosPorAsignacionUsuario(casos = [], {
   rol = obtenerRolAlmacenado(),
   nombre = typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') || '' : '',
   login = typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '',
+  cedula = typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '',
   modulo = '',
 } = {}) {
-  if (!rolConVistaRestringidaAsignacion(rol, { login, modulo })) {
+  if (!rolConVistaRestringidaAsignacion(rol, { login, cedula, modulo })) {
     return Array.isArray(casos) ? casos : [];
   }
-  const claves = [nombre, login].map((s) => String(s || '').trim()).filter(Boolean);
+  const claves = [nombre, login, cedula].map((s) => String(s || '').trim()).filter(Boolean);
   if (!claves.length) return [];
   const campo = normalizarRol(rol) === ROL_INSPECTOR ? 'inspector' : 'ajustador';
   return (Array.isArray(casos) ? casos : []).filter((caso) =>

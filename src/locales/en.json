@@ -12165,6 +12165,7 @@
     },
     "fields": {
       "siniestro": "Claim",
+      "noCaso": "Case no.",
       "zc": "ZC",
       "identificacion": "Identification",
       "tipoIdentificacion": "ID type",
@@ -12366,10 +12367,10 @@
     },
     "bulk": {
       "title": "Import Excel list",
-      "subtitle": "Upload the short claims list (claim number, insured, contacts and city). If the claim already exists it is updated; otherwise a new case is created. Inspection-only CAT cases are not matched. Admin/support only.",
+      "subtitle": "Upload the Previsora report (No_Caso, No_Siniestro, insured, policy, city and contacts). If the claim or case number already exists it is updated; otherwise a new case is created. Inspection-only CAT cases are not matched. Admin/support only.",
       "upload": "Import Excel",
       "importing": "Importing…",
-      "hint": ".xlsx format — columns SINIESTRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO, CIUDAD",
+      "hint": ".xlsx format — Reporte total sheet: No_Caso, No_Siniestro, Asegurado, Poliza, Ciudad, Telefono, email_contacto",
       "emptyFile": "The file has no data rows to import.",
       "error": "The Excel file could not be imported.",
       "success": "Import done: {{created}} created, {{updated}} updated, {{skipped}} skipped.",

@@ -45,8 +45,8 @@ const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
 
 const COLUMNAS = [
   { clave: 'consecutivo', labelKey: 'consecutivo' },
-  { clave: 'zc', labelKey: 'zc' },
   { clave: 'siniestro', labelKey: 'siniestro' },
+  { clave: 'noCaso', labelKey: 'noCaso' },
   { clave: 'tipoIdentificacion', labelKey: 'tipoIdentificacion' },
   { clave: 'identificacion', labelKey: 'identificacion' },
   { clave: 'numeroPoliza', labelKey: 'numeroPoliza' },
@@ -59,6 +59,7 @@ const COLUMNAS = [
   { clave: 'telefonoAsegurado', labelKey: 'telefonoAsegurado' },
   { clave: 'correoAsegurado', labelKey: 'correoAsegurado' },
   { clave: 'ciudad', labelKey: 'ciudad' },
+  { clave: 'departamento', labelKey: 'departamento' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
@@ -82,8 +83,8 @@ const COLUMNAS = [
 
 const buildExportRow = (caso) => ({
   Consecutivo: caso.consecutivo ?? '',
-  ZC: caso.zc ?? '',
-  STRO: caso.siniestro ?? '',
+  Siniestro: caso.siniestro ?? '',
+  'No. caso': caso.noCaso ?? '',
   'TIPO IDENTIFICACIÓN': caso.tipoIdentificacion ?? '',
   IDENTIFICACIÓN: caso.identificacion ?? '',
   PÓLIZA: caso.numeroPoliza ?? '',
@@ -96,6 +97,7 @@ const buildExportRow = (caso) => ({
   'TELEFONO ASEGURADO': caso.telefonoAsegurado ?? '',
   'CORREO ASEGURADO': caso.correoAsegurado ?? '',
   CIUDAD: caso.ciudad ?? '',
+  DEPARTAMENTO: caso.departamento ?? '',
   ESTADO: caso.estado ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
@@ -168,8 +170,8 @@ export default function ReportePrevisoraListado() {
       if (!q) return true;
       const blob = [
         c.consecutivo,
-        c.zc,
         c.siniestro,
+        c.noCaso,
         c.tipoIdentificacion,
         c.identificacion,
         c.numeroPoliza,
@@ -255,7 +257,7 @@ export default function ReportePrevisoraListado() {
       tipo: 'confirm',
       titulo: t('previsora.report.confirmDeleteTitle'),
       mensaje: t('previsora.report.confirmDeleteMessage', {
-        caseNumber: item.consecutivo || item.zc || item.siniestro,
+        caseNumber: item.consecutivo || item.siniestro,
       }),
       onConfirm: async () => {
         try {
@@ -264,7 +266,7 @@ export default function ReportePrevisoraListado() {
             tipo: 'ok',
             titulo: t('previsora.report.deleted'),
             mensaje: t('previsora.report.caseDeleted', {
-              caseNumber: item.consecutivo || item.zc || '',
+              caseNumber: item.consecutivo || item.siniestro || '',
             }),
           });
           await recargar();

@@ -12179,6 +12179,7 @@
     },
     "fields": {
       "siniestro": "Siniestro",
+      "noCaso": "No. caso",
       "zc": "ZC",
       "identificacion": "Identificación",
       "tipoIdentificacion": "Tipo de identificación",
@@ -12380,10 +12381,10 @@
     },
     "bulk": {
       "title": "Importar listado Excel",
-      "subtitle": "Sube el listado breve de siniestros (siniestro, asegurado, contactos y ciudad). Si el siniestro ya existe se actualiza; si no, se crea un caso nuevo. No se cruza con los casos de inspección CAT. Solo admin/soporte.",
+      "subtitle": "Sube el reporte Previsora (No_Caso, No_Siniestro, asegurado, póliza, ciudad y contactos). Si el siniestro o el No. caso ya existe se actualiza; si no, se crea. No se cruza con inspección CAT. Solo admin/soporte.",
       "upload": "Importar Excel",
       "importing": "Importando…",
-      "hint": "Formato .xlsx — columnas SINIESTRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO, CIUDAD",
+      "hint": "Formato .xlsx — hoja Reporte total: No_Caso, No_Siniestro, Asegurado, Poliza, Ciudad, Telefono, email_contacto",
       "emptyFile": "El archivo no tiene filas con datos para importar.",
       "error": "No fue posible importar el Excel.",
       "success": "Importación lista: {{created}} creados, {{updated}} actualizados, {{skipped}} omitidos.",

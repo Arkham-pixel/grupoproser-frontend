@@ -25,6 +25,7 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { ETIQUETAS_ARCHIVO_SURA, formatDate } from './segurosSuraHelpers.js';
+import { esSesionConPermisoLiderSura } from '../../utils/permisosCasoPorRol.js';
 
 const POLL_MS = 45000;
 
@@ -32,7 +33,10 @@ const canRetrySharePoint = () => {
   const rol = String(localStorage.getItem('rol') || '')
     .trim()
     .toLowerCase();
-  return rol === 'admin' || rol === 'soporte' || rol === 'administrador' || rol === 'support';
+  if (rol === 'admin' || rol === 'soporte' || rol === 'administrador' || rol === 'support') {
+    return true;
+  }
+  return esSesionConPermisoLiderSura();
 };
 
 const syncChipClass = (status) => {

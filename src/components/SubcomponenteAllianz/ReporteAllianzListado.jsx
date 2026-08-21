@@ -45,7 +45,6 @@ const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
 
 const COLUMNAS = [
   { clave: 'consecutivo', labelKey: 'consecutivo' },
-  { clave: 'zc', labelKey: 'zc' },
   { clave: 'siniestro', labelKey: 'siniestro' },
   { clave: 'tipoIdentificacion', labelKey: 'tipoIdentificacion' },
   { clave: 'identificacion', labelKey: 'identificacion' },
@@ -70,8 +69,7 @@ const COLUMNAS = [
 
 const buildExportRow = (caso) => ({
   Consecutivo: caso.consecutivo ?? '',
-  ZC: caso.zc ?? '',
-  STRO: caso.siniestro ?? '',
+  Siniestro: caso.siniestro ?? '',
   'TIPO IDENTIFICACIÓN': caso.tipoIdentificacion ?? '',
   IDENTIFICACIÓN: caso.identificacion ?? '',
   PÓLIZA: caso.numeroPoliza ?? '',
@@ -144,7 +142,6 @@ export default function ReporteAllianzListado() {
       if (!q) return true;
       const blob = [
         c.consecutivo,
-        c.zc,
         c.siniestro,
         c.tipoIdentificacion,
         c.identificacion,
@@ -217,7 +214,7 @@ export default function ReporteAllianzListado() {
       tipo: 'confirm',
       titulo: t('allianz.report.confirmDeleteTitle'),
       mensaje: t('allianz.report.confirmDeleteMessage', {
-        caseNumber: item.consecutivo || item.zc || item.siniestro,
+        caseNumber: item.consecutivo || item.siniestro,
       }),
       onConfirm: async () => {
         try {
@@ -226,7 +223,7 @@ export default function ReporteAllianzListado() {
             tipo: 'ok',
             titulo: t('allianz.report.deleted'),
             mensaje: t('allianz.report.caseDeleted', {
-              caseNumber: item.consecutivo || item.zc || '',
+              caseNumber: item.consecutivo || item.siniestro || '',
             }),
           });
           await recargar();

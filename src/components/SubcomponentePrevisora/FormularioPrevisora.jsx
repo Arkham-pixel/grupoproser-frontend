@@ -331,6 +331,7 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     if (esModuloListado) {
       const payload = {
         siniestro: form.siniestro,
+        noCaso: form.noCaso,
         identificacion: form.identificacion,
         tipoIdentificacion: form.tipoIdentificacion,
         numeroPoliza: form.numeroPoliza,
@@ -410,9 +411,9 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     setExito(null);
 
     if (esModuloListado) {
-      if (!String(form.siniestro || '').trim()) {
+      if (!String(form.siniestro || '').trim() && !String(form.noCaso || '').trim()) {
         setError(t('previsora.validation.siniestroRequired', {
-          defaultValue: 'Indique el siniestro',
+          defaultValue: 'Indique el siniestro o el No. caso',
         }));
         return;
       }
@@ -515,6 +516,15 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               placeholder={t('previsora.placeholders.siniestro')}
             />
           </Campo>
+          {esModuloListado && (
+            <Campo label={t('previsora.fields.noCaso', { defaultValue: 'No. caso' })}>
+              <InputFenix
+                value={form.noCaso}
+                onChange={setCampo('noCaso')}
+                placeholder={t('previsora.placeholders.noCaso', { defaultValue: 'Número de caso Previsora' })}
+              />
+            </Campo>
+          )}
           <Campo label={t('previsora.fields.asegurado')}>
             <InputFenix value={form.asegurado} onChange={setCampo('asegurado')} />
           </Campo>

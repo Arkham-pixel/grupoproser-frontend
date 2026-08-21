@@ -20,10 +20,10 @@ export default function PrevisoraCasoPicker({
         c.asegurado,
         c.tomador,
         c.siniestro,
+        c.noCaso,
         c.identificacion,
         c.ciudad,
         c.numeroPoliza,
-        c.zc,
       ]
         .map((v) => String(v || '').toLowerCase())
         .join(' ');

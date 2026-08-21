@@ -37,11 +37,14 @@ export const CAMPOS_FECHA_ACCION_PREVISORA = [
 
 const ESTADOS_PREVISORA_LEGACY = {
   PENDIENTE: 'CASO NUEVO',
+  AVISADO: 'CASO NUEVO',
   'EN INSPECCION': 'COORDINANDO INSPECCIÓN',
+  'EN AJUSTE': 'ANÁLISIS DEL CASO',
   DOCUMENTACION: 'PENDIENTE DE DOCUMENTO',
   LIQUIDADO: 'CASO PARA PAGO',
   'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
   CERRADO: 'CASO PARA PAGO',
+  'CERRADO MANUAL': 'CASO PARA PAGO',
 };
 
 const claveEstadoPrevisora = (valor) =>
@@ -110,6 +113,7 @@ export const TIPOS_POLIZA_PREVISORA = [
   'TODO RIESGO',
   'PYME',
   'INDUSTRIAL',
+  'AREAS COMUNES',
   'OTRO',
 ];
 
@@ -479,6 +483,7 @@ export const fechaParaInput = (value) => formatDateIso(value);
 
 export const FORM_VACIO_PREVISORA = {
   siniestro: '',
+  noCaso: '',
   zc: '',
   identificacion: '',
   tipoIdentificacion: '',
