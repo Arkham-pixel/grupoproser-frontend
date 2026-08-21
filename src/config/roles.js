@@ -57,15 +57,17 @@ export const CONFIG_SOLO_BBVA = {
 };
 
 export const CONFIG_SOLO_EQUIDAD = {
+  /** Home + Fundación de la Mujer (bandeja FDM). */
   seccionesMenu: ['equidadFdm'],
-  inicio: '/equidad-fdm/reporte',
-  prefijosRuta: ['/equidad-fdm'],
+  inicio: '/inicio',
+  prefijosRuta: ['/inicio', '/equidad-fdm'],
   rutasExcluidas: [
     '/equidad-fdm/carga',
     '/equidad-fdm/liquidador',
     '/equidad-fdm/dashboard',
   ],
   soloBandeja: true,
+  incluirHome: true,
   etiqueta: 'Equidad FDM',
 };
 
@@ -143,7 +145,9 @@ export function rutaPermitidaParaRol(pathname, rol = obtenerRolAlmacenado()) {
 
   const contractor = obtenerConfigContractor(r);
   if (contractor) {
-    const permitida = contractor.prefijosRuta.some((prefijo) => path.startsWith(prefijo));
+    const permitida =
+      contractor.prefijosRuta.some((prefijo) => path === prefijo || path.startsWith(`${prefijo}/`)) ||
+      path === '/inicio';
     const excluida = (contractor.rutasExcluidas || []).some(
       (ex) => path === ex || path.startsWith(`${ex}/`)
     );

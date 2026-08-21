@@ -679,7 +679,10 @@ export default function Layout() {
   };
 
   const menuItems = {
-    principal: accesoRestringido ? [] : [{ path: '/inicio', icon: FaHome, label: t('nav.home') }],
+    principal:
+      !accesoRestringido || configContractor?.incluirHome
+        ? [{ path: '/inicio', icon: FaHome, label: t('nav.home') }]
+        : [],
     matrices: esPuertos
       ? []
       : [
