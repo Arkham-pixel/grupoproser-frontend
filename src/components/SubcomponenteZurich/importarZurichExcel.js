@@ -2,6 +2,7 @@
 import {
   normalizarGradoAfectacionZurich,
   normalizarSiNoZurich,
+  homologarEstadoZurich,
 } from './zurichHelpers.js';
 
 const normHeader = (valor) =>
@@ -311,7 +312,7 @@ const parsearHojaACasos = (sheet) => {
       caso.identificacion = aseg ? `${caso.riskId}-${aseg}` : String(caso.riskId);
     }
     if (!caso.identificacion) continue;
-    if (!caso.estado) caso.estado = 'PENDIENTE';
+    caso.estado = homologarEstadoZurich(caso.estado);
     // Ciudad de referencia CAT si no hay ciudad general
     if (!caso.ciudad && caso.catUbicacionReferencia) {
       caso.ciudad = caso.catUbicacionReferencia;
@@ -477,7 +478,7 @@ const parsearHojaListadoCliente = (sheet) => {
       ajustador: '',
       fechaAsignacion: '',
       fechaVisita: '',
-      estado: 'PENDIENTE',
+      estado: '',
     };
     Object.entries(colMap).forEach(([colStr, campo]) => {
       const raw = row[Number(colStr)];
@@ -523,7 +524,8 @@ const parsearHojaListadoCliente = (sheet) => {
       if (caso.zc) caso.identificacion = caso.zc;
       else if (caso.siniestro) caso.identificacion = caso.siniestro;
     }
-    if (!caso.estado || caso.estado === '0') caso.estado = 'PENDIENTE';
+    if (!caso.estado || caso.estado === '0') caso.estado = '';
+    caso.estado = homologarEstadoZurich(caso.estado);
     casos.push(caso);
   }
 

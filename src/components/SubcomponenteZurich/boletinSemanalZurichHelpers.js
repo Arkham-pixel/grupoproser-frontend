@@ -1,4 +1,6 @@
-﻿/**
+﻿import { homologarEstadoZurich } from './zurichHelpers.js';
+
+/**
  * Helpers del boletín semanal Zurich (semana lun–dom, America/Bogota).
  */
 
@@ -124,7 +126,7 @@ export function calcularBoletinSemanalZurich(casos = [], alertasPayload = null, 
   let ansLiquidacionTotal = 0;
 
   for (const c of lista) {
-    const est = String(c.estado || 'PENDIENTE');
+    const est = homologarEstadoZurich(c.estado);
     porEstado[est] = (porEstado[est] || 0) + 1;
 
     const created = parseFechaCaso(c.createdAt);

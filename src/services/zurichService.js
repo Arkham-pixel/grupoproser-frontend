@@ -1,4 +1,9 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import {
+  diasEnEstadoZurich,
+  homologarEstadoZurich,
+  ultimaGestionZurich,
+} from '../components/SubcomponenteZurich/zurichHelpers.js';
 
 const ZURICH_API_URL = `${BASE_URL}/api/zurich`;
 
@@ -15,29 +20,35 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const normalizeZurichItem = (item = {}) => ({
-  ...item,
-  siniestro: item.siniestro ?? '',
-  zc: item.zc ?? '',
-  identificacion: item.identificacion ?? '',
-  tipoIdentificacion: item.tipoIdentificacion ?? '',
-  asegurado: item.asegurado ?? '',
-  intermediario: item.intermediario ?? '',
-  correoIntermediario: item.correoIntermediario ?? '',
-  telefonoIntermediario: item.telefonoIntermediario ?? '',
-  contactoIntermediario: item.contactoIntermediario ?? '',
-  telefonoAsegurado: item.telefonoAsegurado ?? '',
-  correoAsegurado: item.correoAsegurado ?? '',
-  contactoAsegurado: item.contactoAsegurado ?? '',
-  observaciones: item.observaciones ?? '',
-  tomador: item.tomador ?? '',
-  numeroPoliza: item.numeroPoliza ?? '',
-  tipoPoliza: item.tipoPoliza ?? '',
-  tipoPolizaOtro: item.tipoPolizaOtro ?? '',
-  causa: item.causa ?? '',
-  estado: item.estado ?? '',
-  archivos: Array.isArray(item.archivos) ? item.archivos : [],
-});
+export const normalizeZurichItem = (item = {}) => {
+  const estado = homologarEstadoZurich(item.estado);
+  const caso = { ...item, estado };
+  return {
+    ...caso,
+    siniestro: item.siniestro ?? '',
+    zc: item.zc ?? '',
+    identificacion: item.identificacion ?? '',
+    tipoIdentificacion: item.tipoIdentificacion ?? '',
+    asegurado: item.asegurado ?? '',
+    intermediario: item.intermediario ?? '',
+    correoIntermediario: item.correoIntermediario ?? '',
+    telefonoIntermediario: item.telefonoIntermediario ?? '',
+    contactoIntermediario: item.contactoIntermediario ?? '',
+    telefonoAsegurado: item.telefonoAsegurado ?? '',
+    correoAsegurado: item.correoAsegurado ?? '',
+    contactoAsegurado: item.contactoAsegurado ?? '',
+    observaciones: item.observaciones ?? '',
+    tomador: item.tomador ?? '',
+    numeroPoliza: item.numeroPoliza ?? '',
+    tipoPoliza: item.tipoPoliza ?? '',
+    tipoPolizaOtro: item.tipoPolizaOtro ?? '',
+    causa: item.causa ?? '',
+    estado,
+    diasEnEstado: diasEnEstadoZurich(caso),
+    ultimaGestion: ultimaGestionZurich(caso),
+    archivos: Array.isArray(item.archivos) ? item.archivos : [],
+  };
+};
 
 const normalizeResponseArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeZurichItem(item ?? {})) : [];
@@ -292,7 +303,7 @@ export const guardarCatEnCasoZurich = async ({ casoId, cat = {}, casoBase = {} }
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de registrar la inspección CAT.');
   const payload = {
     identificacion: casoBase.identificacion,
-    estado: casoBase.estado || 'PENDIENTE',
+    estado: casoBase.estado || 'CASO NUEVO',
     severidadCat: cat.severidadCat ?? null,
     severidadCatNiveles: cat.severidadCatNiveles || {},
     evidenciaCat: cat.evidenciaCat || {},

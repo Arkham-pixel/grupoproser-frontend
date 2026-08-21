@@ -1,5 +1,6 @@
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { fusionarEvaluacionSismicaNSR10Guardada } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import InformeUnicoCatastrofico from './InformeUnicoCatastrofico.jsx';
 import {
   crearItemsPresupuestoDesdeCatalogo,
@@ -35,6 +36,8 @@ import {
 } from '../../services/offlineDatabase.js';
 import { checkConnectivity } from '../../services/connectivityService.js';
 import { offlineLog } from '../../offline/offlineLog.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const ESTADOS = {
   EVALUACION: 'evaluacionSismica',
@@ -140,6 +143,8 @@ export default function FormularioCatastrofico() {
   const [mensaje, setMensaje] = useState('');
   const [historialId, setHistorialId] = useState(id && id !== 'nuevo' ? id : null);
   const [recoveryDraft, setRecoveryDraft] = useState(null);
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
   const [serverLoadedAt, setServerLoadedAt] = useState(null);
   const [offlineReady, setOfflineReady] = useState(!id || id === 'nuevo');
   const serverSnapshotRef = useRef(null);
@@ -162,6 +167,21 @@ export default function FormularioCatastrofico() {
 
   const getCaseId = useCallback(() => caseIdRef.current, []);
   const getHistorialId = useCallback(() => historialIdRef.current, []);
+
+  const catFormKey = `catastrofico:${id && id !== 'nuevo' ? id : 'nuevo'}`;
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey: catFormKey,
+    modulo: 'catastrofico',
+    recursoId: historialId || '',
+    titulo: 'Formulario catastrófico',
+    formData,
+    enabled: true,
+    onRestoreAvailable: onDraftRestoreAvailable,
+  });
 
   const onRecoverDraft = useCallback((draft) => {
     if (!draft?.data) return;
@@ -217,6 +237,18 @@ export default function FormularioCatastrofico() {
             location.state?.zurichCasoId ||
             prefill.zurichCasoId ||
             prefill.metadata?.zurichCasoId,
+          bbvaCatCasoId:
+            location.state?.bbvaCatCasoId ||
+            prefill.bbvaCatCasoId ||
+            prefill.metadata?.bbvaCatCasoId,
+          alliasCasoId:
+            location.state?.alliasCasoId ||
+            prefill.alliasCasoId ||
+            prefill.metadata?.alliasCasoId,
+          previsoraCasoId:
+            location.state?.previsoraCasoId ||
+            prefill.previsoraCasoId ||
+            prefill.metadata?.previsoraCasoId,
           origen: location.state?.origen || prefill.origen || prev.metadata?.origen,
         },
         presupuestoCatastrofico:
@@ -241,8 +273,12 @@ export default function FormularioCatastrofico() {
         ...datos,
         evaluacionSismicaNSR10: (() => {
           const merged = { ...prev, ...datos };
+          const protegido = fusionarLiquidadorSinPerderPresupuestoNsr(
+            { evaluacionSismicaNSR10: datos.evaluacionSismicaNSR10 },
+            { evaluacionSismicaNSR10: prev.evaluacionSismicaNSR10 }
+          );
           return fusionarEvaluacionSismicaNSR10Guardada(
-            datos.evaluacionSismicaNSR10 || {},
+            protegido.evaluacionSismicaNSR10 || {},
             merged
           );
         })(),
@@ -254,7 +290,9 @@ export default function FormularioCatastrofico() {
           items:
             datos.presupuestoCatastrofico?.items?.length
               ? datos.presupuestoCatastrofico.items
-              : crearItemsPresupuestoDesdeCatalogo(),
+              : prev.presupuestoCatastrofico?.items?.length
+                ? prev.presupuestoCatastrofico.items
+                : crearItemsPresupuestoDesdeCatalogo(),
         },
       }));
       const estadoRaw = datos.estadoActual || meta.estadoActual;
@@ -782,6 +820,25 @@ export default function FormularioCatastrofico() {
           {botonesAccion}
         </footer>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          if (draftToRestore?.data) {
+            setFormData((prev) => ({ ...prev, ...draftToRestore.data }));
+          }
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 }

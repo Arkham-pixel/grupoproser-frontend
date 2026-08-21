@@ -23,6 +23,7 @@ export default function AccionesFdmMenu({
   onEliminar,
   tieneLiquidador = false,
   cantidadArchivos = 0,
+  soloLectura = false,
 }) {
   const { t } = useTranslation();
   const [abierto, setAbierto] = useState(false);
@@ -84,15 +85,17 @@ export default function AccionesFdmMenu({
             left: coords.left,
           }}
         >
-          <button
-            type="button"
-            role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
-            onClick={() => elegir(onGestionar)}
-          >
-            <FaFolderOpen className="text-fenix-primario" aria-hidden />
-            {t('equidadFdm.menu.manage')}
-          </button>
+          {!soloLectura && (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+              onClick={() => elegir(onGestionar)}
+            >
+              <FaFolderOpen className="text-fenix-primario" aria-hidden />
+              {t('equidadFdm.menu.manage')}
+            </button>
+          )}
           <button
             type="button"
             role="menuitem"
@@ -103,26 +106,30 @@ export default function AccionesFdmMenu({
             {t('equidadFdm.menu.archive')}
             {Number(cantidadArchivos) > 0 ? ` (${cantidadArchivos})` : ' (0)'}
           </button>
-          <button
-            type="button"
-            role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
-            onClick={() => elegir(onLiquidador)}
-          >
-            <FaCalculator className="text-fenix-primario" aria-hidden />
-            {t('equidadFdm.menu.settlement')}
-            {tieneLiquidador ? ' ✓' : ''}
-          </button>
-          <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
-          <button
-            type="button"
-            role="menuitem"
-            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-            onClick={() => elegir(onEliminar)}
-          >
-            <FaTrash className="text-[10px]" aria-hidden />
-            {t('equidadFdm.menu.delete')}
-          </button>
+          {!soloLectura && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+                onClick={() => elegir(onLiquidador)}
+              >
+                <FaCalculator className="text-fenix-primario" aria-hidden />
+                {t('equidadFdm.menu.settlement')}
+                {tieneLiquidador ? ' ✓' : ''}
+              </button>
+              <div className="my-1 border-t border-gray-100 dark:border-gray-800" />
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                onClick={() => elegir(onEliminar)}
+              >
+                <FaTrash className="text-[10px]" aria-hidden />
+                {t('equidadFdm.menu.delete')}
+              </button>
+            </>
+          )}
         </div>,
         document.body
       )

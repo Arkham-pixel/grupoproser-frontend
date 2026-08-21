@@ -3,13 +3,93 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 export const ZURICH_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADOS_ZURICH = [
-  'PENDIENTE',
-  'EN INSPECCIÓN',
-  'DOCUMENTACIÓN',
-  'LIQUIDADO',
-  'ENVIADO ASEGURADORA',
-  'CERRADO',
+  'CASO NUEVO',
+  'COORDINANDO INSPECCIÓN',
+  'ANÁLISIS DEL CASO',
+  'PENDIENTE DE DOCUMENTO',
+  'OBJECIÓN',
+  'AUTORIZACIÓN ANALISTA',
+  'CASO PARA PAGO',
 ];
+
+export const MODALIDADES_ZURICH = ['CAMPO', 'VIDEOPERITAJE'];
+
+export const FECHA_ACCION_POR_ESTADO_ZURICH = {
+  'CASO NUEVO': 'fechaCasoNuevo',
+  'COORDINANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
+  'ANÁLISIS DEL CASO': 'fechaAnalisisCaso',
+  'PENDIENTE DE DOCUMENTO': 'fechaSolicitudDocumento',
+  OBJECIÓN: 'fechaObjecion',
+  'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
+  'CASO PARA PAGO': 'fechaCasoParaPago',
+};
+
+export const CAMPOS_FECHA_ACCION_ZURICH = [
+  'fechaCasoNuevo',
+  'fechaCoordinandoInspeccion',
+  'fechaAnalisisCaso',
+  'fechaSolicitudDocumento',
+  'fechaRecepcionDocumento',
+  'fechaObjecion',
+  'fechaAutorizacionAnalista',
+  'fechaCasoParaPago',
+];
+
+const ESTADOS_ZURICH_LEGACY = {
+  PENDIENTE: 'CASO NUEVO',
+  'EN INSPECCION': 'COORDINANDO INSPECCIÓN',
+  DOCUMENTACION: 'PENDIENTE DE DOCUMENTO',
+  LIQUIDADO: 'CASO PARA PAGO',
+  'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
+  CERRADO: 'CASO PARA PAGO',
+};
+
+const claveEstadoZurich = (valor) =>
+  String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+
+export function homologarEstadoZurich(valor) {
+  const raw = String(valor || '').trim();
+  if (!raw) return 'CASO NUEVO';
+  if (ESTADOS_ZURICH.includes(raw)) return raw;
+  const key = claveEstadoZurich(raw);
+  const exacto = ESTADOS_ZURICH.find((est) => claveEstadoZurich(est) === key);
+  if (exacto) return exacto;
+  return ESTADOS_ZURICH_LEGACY[key] || raw;
+}
+
+export function diasEnEstadoZurich(caso = {}) {
+  const estado = homologarEstadoZurich(caso.estado);
+  const clave = FECHA_ACCION_POR_ESTADO_ZURICH[estado];
+  const origen = caso[clave] || caso.updatedAt || caso.createdAt;
+  if (!origen) return '';
+  const d = new Date(origen);
+  if (Number.isNaN(d.getTime())) return '';
+  return String(Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000)));
+}
+
+export function ultimaGestionZurich(caso = {}) {
+  const claves = [
+    ...CAMPOS_FECHA_ACCION_ZURICH,
+    'fechaAsignacion',
+    'fechaVisita',
+    'fechaInspeccion',
+    'fechaUltimoDocumento',
+    'updatedAt',
+  ];
+  let max = null;
+  for (const clave of claves) {
+    if (!caso[clave]) continue;
+    const d = new Date(caso[clave]);
+    if (Number.isNaN(d.getTime())) continue;
+    if (!max || d > max) max = d;
+  }
+  return max;
+}
 
 /** Mismos tipos de documento que Complex. */
 export const TIPOS_IDENTIFICACION_ZURICH = [
@@ -427,6 +507,19 @@ export const FORM_VACIO_ZURICH = {
   inspector: '',
   fechaAsignacion: '',
   fechaVisita: '',
+  modalidadAtencion: '',
+  fechaCasoNuevo: '',
+  fechaCoordinandoInspeccion: '',
+  fechaAnalisisCaso: '',
+  fechaSolicitudDocumento: '',
+  fechaRecepcionDocumento: '',
+  fechaObjecion: '',
+  fechaAutorizacionAnalista: '',
+  fechaCasoParaPago: '',
+  documentoFaltante: '',
+  observacionPendienteDocumento: '',
+  motivoObjecion: '',
+  responsableAporteDocumento: '',
   numeroPoliza: '',
   tipoPoliza: '',
   tipoPolizaOtro: '',
@@ -456,7 +549,7 @@ export const FORM_VACIO_ZURICH = {
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',
   fechaEnvioAseguradora: '',
-  estado: 'PENDIENTE',
+  estado: 'CASO NUEVO',
   riskId: '',
   distanciaEpicentroKm: '',
   tipoNegocioHomologado: '',
@@ -513,6 +606,7 @@ export const CAMPOS_FECHA_Zurich = [
   'fechaEnvioAseguradora',
   'fechaAsignacion',
   'fechaVisita',
+  ...CAMPOS_FECHA_ACCION_ZURICH,
 ];
 
 export const CAMPOS_NUMERICOS_ZURICH = [
@@ -594,5 +688,6 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
     if (!base.tipoPolizaOtro) base.tipoPolizaOtro = base.tipoPoliza;
     base.tipoPoliza = 'OTRO';
   }
+  base.estado = homologarEstadoZurich(base.estado);
   return base;
 };

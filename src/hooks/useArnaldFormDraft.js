@@ -1,11 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { registerArnaldDraftFlusher } from '../services/arnaldDraftFlushRegistry.js';
 import {
   borrarBorradorLocal,
   escribirBorradorLocal,
   leerBorradorLocal,
 } from '../services/arnaldDraftLocalStore.js';
-import { ARNALD_AUTO_RESTORE_KEY, esBorradorReciente } from '../services/arnaldDraftRoutes.js';
+import {
+  ARNALD_AUTO_RESTORE_KEY,
+  esRutaCasoEspecifico,
+  esRutaFormularioGeneral,
+} from '../services/arnaldDraftRoutes.js';
 import {
   eliminarBorradorArnald,
   guardarBorradorArnald,
@@ -53,6 +58,7 @@ export default function useArnaldFormDraft({
   const [draftStatus, setDraftStatus] = useState('idle');
   const [lastDraftAt, setLastDraftAt] = useState(null);
   const [hydrated, setHydrated] = useState(false);
+  const location = useLocation();
   const formDataRef = useRef(formData);
   const baselineRef = useRef('');
   const restoredPromptRef = useRef('');
@@ -185,10 +191,13 @@ export default function useArnaldFormDraft({
       if (!elegido?.payload || esPayloadVacio(elegido.payload)) return;
       const autoApply = sessionStorage.getItem(ARNALD_AUTO_RESTORE_KEY) === formKey;
       if (autoApply) sessionStorage.removeItem(ARNALD_AUTO_RESTORE_KEY);
+      const enMenuFormulario = esRutaFormularioGeneral(location.pathname);
+      const enCaso = esRutaCasoEspecifico(location.pathname, location.search);
+      if (!autoApply && enMenuFormulario) return;
+      if (!autoApply && !enCaso) return;
       const draftSnap = snapshot(elegido.payload);
       if (!autoApply && draftSnap === baselineRef.current) return;
       if (!autoApply && draftSnap === snapshot(formDataRef.current)) return;
-      if (!autoApply && esBorradorReciente(elegido.savedAt)) return;
       if (!autoApply && new Date(elegido.savedAt || 0).getTime() >= mountedAtRef.current - 1000) {
         return;
       }
@@ -208,7 +217,7 @@ export default function useArnaldFormDraft({
       cancelado = true;
       clearTimeout(t);
     };
-  }, [enabled, formKey]);
+  }, [enabled, formKey, location.pathname, location.search]);
 
   const discardDraft = useCallback(async () => {
     if (!formKey) return;

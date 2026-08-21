@@ -39,13 +39,19 @@ export const FDM_FILTRO_HASTA = 'hasta';
 export const FDM_FILTRO_CIUDAD = 'ciudad';
 export const FDM_FILTRO_PAGE = 'page';
 
+/** Evento por defecto del reporte (lote actual). `evento=` en URL = todos. */
+export const FDM_EVENTO_DEFAULT = 'TERREMOTO 10 AGOSTO 2026';
+
 export const leerFiltrosReporteFdm = (searchParams) => {
   const sp = searchParams instanceof URLSearchParams ? searchParams : new URLSearchParams();
   return {
     busqueda: sp.get(FDM_FILTRO_Q) || '',
     filtroAjustador: sp.get(FDM_FILTRO_AJUSTADOR) || '',
     filtroEstado: sp.get(FDM_FILTRO_ESTADO) || '',
-    filtroEvento: sp.get(FDM_FILTRO_EVENTO) || '',
+    // Sin clave → terremoto (lote actual). `evento=` → todos los eventos.
+    filtroEvento: sp.has(FDM_FILTRO_EVENTO)
+      ? sp.get(FDM_FILTRO_EVENTO) || ''
+      : FDM_EVENTO_DEFAULT,
     // Sin clave → solo nuevos (comportamiento histórico). `nuevos=` → todos.
     filtroNuevos: sp.has(FDM_FILTRO_NUEVOS) ? sp.get(FDM_FILTRO_NUEVOS) || '' : 'nuevos',
     fechaInicio: sp.get(FDM_FILTRO_DESDE) || '',
@@ -71,7 +77,9 @@ export const patchFiltrosReporteFdm = (setSearchParams, patch = {}, { resetPage 
       if ('busqueda' in patch) apply(FDM_FILTRO_Q, patch.busqueda);
       if ('filtroAjustador' in patch) apply(FDM_FILTRO_AJUSTADOR, patch.filtroAjustador);
       if ('filtroEstado' in patch) apply(FDM_FILTRO_ESTADO, patch.filtroEstado);
-      if ('filtroEvento' in patch) apply(FDM_FILTRO_EVENTO, patch.filtroEvento);
+      if ('filtroEvento' in patch) {
+        apply(FDM_FILTRO_EVENTO, patch.filtroEvento, { keepEmpty: true });
+      }
       if ('filtroNuevos' in patch) apply(FDM_FILTRO_NUEVOS, patch.filtroNuevos, { keepEmpty: true });
       if ('fechaInicio' in patch) apply(FDM_FILTRO_DESDE, patch.fechaInicio);
       if ('fechaFin' in patch) apply(FDM_FILTRO_HASTA, patch.fechaFin);
@@ -297,8 +305,15 @@ export const normalizarMunicipioFdm = (valor) => {
   const texto = String(valor ?? '')
     .replace(/\s+/g, ' ')
     .trim();
-  if (!texto) return '';
+  if (!texto || texto === '0') return '';
   const clave = normTexto(texto);
+  if (
+    !clave ||
+    clave === '0' ||
+    /^(N\/?A|NA|NULL|UNDEFINED|SIN CIUDAD|SIN MUNICIPIO)$/i.test(clave)
+  ) {
+    return '';
+  }
   if (
     clave === 'SANTIAGO DE CALI' ||
     clave === 'CALI VALLE' ||

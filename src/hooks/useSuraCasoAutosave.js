@@ -9,11 +9,21 @@ import {
   guardarLiquidadorEnCasoSura,
   guardarSeccionCasoSura,
 } from '../services/segurosSuraService.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_DOCUMENTOS = new Set(['informe', 'informe-unico', 'documentos']);
 const TAB_AGIL = new Set(['informe-agil']);
 const TAB_SALVAMENTO = new Set(['salvamento']);
 const TAB_FOTOS = new Set(['fotos']);
+
+function serializarSnap(data) {
+  try {
+    return JSON.stringify(data);
+  } catch (err) {
+    console.error('Autoguardado Sura: no se pudo serializar', err);
+    return `dirty:${Date.now()}`;
+  }
+}
 
 /**
  * Autoguardado del workspace Sura (presupuesto / documentos / informe ágil / fotos / salvamento).
@@ -81,7 +91,10 @@ export default function useSuraCasoAutosave({
       }
       return guardarLiquidadorEnCasoSura({
         casoId,
-        liquidador: payload.data,
+        liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+          payload.data,
+          base.liquidador
+        ),
         totales: payload.totales || {},
         casoBase: base,
       });
@@ -89,7 +102,7 @@ export default function useSuraCasoAutosave({
 
     const scheduleSave = (payload) => {
       if (!payload?.data) return;
-      const snap = JSON.stringify(payload.data);
+      const snap = serializarSnap(payload.data);
       const key = payload.tipo;
       const prevSnap = lastSnap.current[key];
 
@@ -118,7 +131,7 @@ export default function useSuraCasoAutosave({
         setAutosaveUiStatus({ state: 'saving', message: 'Guardando…' });
         try {
           const actualizado = await persist(payload);
-          lastSnap.current[key] = JSON.stringify(payload.data);
+          lastSnap.current[key] = serializarSnap(payload.data);
           onCasoActualizado?.(actualizado);
           setAutosaveUiStatus({
             state: 'synced',
@@ -207,12 +220,15 @@ export default function useSuraCasoAutosave({
         } else {
           actualizado = await guardarLiquidadorEnCasoSura({
             casoId,
-            liquidador: payload.data,
+            liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+              payload.data,
+              base.liquidador
+            ),
             totales: payload.totales || {},
             casoBase: base,
           });
         }
-        lastSnap.current[payload.tipo] = JSON.stringify(payload.data);
+        lastSnap.current[payload.tipo] = serializarSnap(payload.data);
         onCasoActualizado?.(actualizado);
         setAutosaveUiStatus({
           state: 'synced',

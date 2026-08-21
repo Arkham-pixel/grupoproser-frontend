@@ -61,6 +61,9 @@ const checkAndCloseSessionIfExpired = async () => {
       }
     }
     
+    const { flushArnaldDraftsNow } = await import('./arnaldDraftFlushRegistry.js');
+    await flushArnaldDraftsNow({ keepalive: true });
+    
     // Limpiar toda la sesión (incluye subtareaExternaReturn)
     const { limpiarSesionLocal } = await import('../utils/limpiarSesionLocal.js');
     limpiarSesionLocal();

@@ -6,6 +6,7 @@ import {
   guardarInformeUnicoEnCasoZurich,
   guardarLiquidadorEnCasoZurich,
 } from '../services/zurichService.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_INFORME = 'informe';
 
@@ -91,7 +92,10 @@ export default function useZurichCasoAutosave({
           } else {
             actualizado = await guardarLiquidador({
               casoId,
-              liquidador: payload.data,
+              liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+                payload.data,
+                base.liquidador
+              ),
               totales: payload.totales || {},
               casoBase: base,
             });
@@ -163,7 +167,10 @@ export default function useZurichCasoAutosave({
         } else {
           actualizado = await guardarLiquidador({
             casoId,
-            liquidador: payload.data,
+            liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+              payload.data,
+              base.liquidador
+            ),
             totales: payload.totales || {},
             casoBase: base,
           });

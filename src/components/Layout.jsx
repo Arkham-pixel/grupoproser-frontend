@@ -43,16 +43,24 @@ import {
   FaInbox,
   FaTasks,
   FaHandHoldingHeart,
-  FaUmbrella,
   FaTimes,
   FaSignOutAlt,
   FaMapMarkerAlt,
+  FaStar,
+  FaMountain,
+  FaUniversity,
+  FaEye,
+  FaLink,
+  FaGlobeAmericas,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
 import { arnaldLogo, arnaldIcon } from '../config/brandAssets.js';
+import { registrarNavegacionArnald } from '../services/arnaldPlataformaService.js';
+import { flushArnaldDraftsNow } from '../services/arnaldDraftFlushRegistry.js';
 import LogoutButton from './LogoutButton';
 import Aviso2FAPrompt from './Aviso2FAPrompt';
+import ArnaldBorradoresPendientesModal from './ArnaldBorradoresPendientesModal';
 import LanguageSelector from './LanguageSelector';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
@@ -70,6 +78,15 @@ const SESSION_MAX_MS = 8 * 60 * 60 * 1000;
 /** Aviso interno (modal de plataforma) 30 minutos antes del cierre automático */
 const SESSION_WARNING_MS = 30 * 60 * 1000;
 const SESSION_WARNING_DISMISSED_KEY = 'sessionWarning30Dismissed';
+
+const ICONOS_ASEGURADORA = {
+  alfa: FaStar,
+  zurich: FaMountain,
+  bbvaCat: FaUniversity,
+  previsora: FaEye,
+  allias: FaLink,
+  sura: FaGlobeAmericas,
+};
 
 function formatTimer(time) {
   const h = String(time.hours).padStart(2, '0');
@@ -154,6 +171,7 @@ function SessionTimerSidebar({ compact = false }) {
     if (loggingOut) return;
     setLoggingOut(true);
     try {
+      await flushArnaldDraftsNow({ keepalive: true });
       const token = localStorage.getItem('token');
       if (token) {
         try {
@@ -456,6 +474,40 @@ export default function Layout() {
     '/zurich/caso': t('nav.pageTitles.zurichCase'),
     '/zurich/liquidador': t('nav.pageTitles.zurichCase'),
     '/zurich/informe-unico': t('nav.pageTitles.zurichCase'),
+    '/bbva-cat/carga': t('nav.pageTitles.bbvaCatAdd'),
+    '/bbva-cat/listado/reporte': t('nav.pageTitles.bbvaCatListadoReport'),
+    '/bbva-cat/listado/dashboard': t('nav.pageTitles.bbvaCatListadoDashboard'),
+    '/bbva-cat/listado/caso': t('nav.pageTitles.bbvaCatCase'),
+    '/bbva-cat/reporte': t('nav.pageTitles.bbvaCatReport'),
+    '/bbva-cat/dashboard': t('nav.pageTitles.bbvaCatDashboard'),
+    '/bbva-cat/boletin': t('nav.pageTitles.bbvaCatBulletin'),
+    '/bbva-cat/caso': t('nav.pageTitles.bbvaCatCase'),
+    '/bbva-cat/liquidador': t('nav.pageTitles.bbvaCatCase'),
+    '/bbva-cat/informe-unico': t('nav.pageTitles.bbvaCatCase'),
+    '/bbva-cat/archivero': t('nav.pageTitles.bbvaCatArchive'),
+    '/bbva-cat/bloques': t('nav.pageTitles.bbvaCatBlocks'),
+    '/previsora/carga': t('nav.pageTitles.previsoraAdd'),
+    '/previsora/listado/reporte': t('nav.pageTitles.previsoraListadoReport'),
+    '/previsora/listado/dashboard': t('nav.pageTitles.previsoraListadoDashboard'),
+    '/previsora/listado/caso': t('nav.pageTitles.previsoraCase'),
+    '/previsora/reporte': t('nav.pageTitles.previsoraReport'),
+    '/previsora/dashboard': t('nav.pageTitles.previsoraDashboard'),
+    '/previsora/boletin': t('nav.pageTitles.previsoraBulletin'),
+    '/previsora/caso': t('nav.pageTitles.previsoraCase'),
+    '/previsora/liquidador': t('nav.pageTitles.previsoraCase'),
+    '/previsora/informe-unico': t('nav.pageTitles.previsoraCase'),
+    '/previsora/archivero': t('nav.pageTitles.previsoraArchive'),
+    '/allias/carga': t('nav.pageTitles.alliasAdd'),
+    '/allias/listado/reporte': t('nav.pageTitles.alliasListadoReport'),
+    '/allias/listado/dashboard': t('nav.pageTitles.alliasListadoDashboard'),
+    '/allias/listado/caso': t('nav.pageTitles.alliasCase'),
+    '/allias/reporte': t('nav.pageTitles.alliasReport'),
+    '/allias/dashboard': t('nav.pageTitles.alliasDashboard'),
+    '/allias/boletin': t('nav.pageTitles.alliasBulletin'),
+    '/allias/caso': t('nav.pageTitles.alliasCase'),
+    '/allias/liquidador': t('nav.pageTitles.alliasCase'),
+    '/allias/informe-unico': t('nav.pageTitles.alliasCase'),
+    '/allias/archivero': t('nav.pageTitles.alliasArchive'),
     '/sura/carga': t('nav.pageTitles.suraAdd'),
     '/sura/editar': t('nav.pageTitles.suraAdd'),
     '/sura/reporte': t('nav.pageTitles.suraReport'),
@@ -482,6 +534,7 @@ export default function Layout() {
     '/siniestros': t('nav.pageTitles.claims'),
     '/admin/usuarios': t('nav.pageTitles.adminUsers'),
     '/admin/estadisticas-tiempo-uso': t('nav.pageTitles.adminTimeUsage'),
+    '/admin/auditoria': t('nav.pageTitles.adminAudit'),
     '/admin/session-settings': t('nav.pageTitles.adminSession'),
     '/admin/clientes-funcionarios': t('nav.pageTitles.adminClients'),
     '/admin/intermediarios': t('nav.pageTitles.adminIntermediaries'),
@@ -504,6 +557,15 @@ export default function Layout() {
   }, [location.pathname, routeTitles]);
 
   useEffect(() => {
+    if (!localStorage.getItem('token')) return;
+    if (location.pathname === '/login') return;
+    registrarNavegacionArnald({
+      ruta: location.pathname,
+      titulo: routeTitles[location.pathname] || document.title,
+    });
+  }, [location.pathname, routeTitles]);
+
+  useEffect(() => {
     const path = location.pathname;
     if (path === '/inicio' || path === '/') setExpandedSection('principal');
     else if (path.startsWith('/complex')) setExpandedSection('complex');
@@ -512,6 +574,9 @@ export default function Layout() {
     else if (path.startsWith('/equidad-fdm')) setExpandedSection('equidadFdm');
     else if (path.startsWith('/seguros-alfa')) setExpandedSection('alfa');
     else if (path.startsWith('/zurich')) setExpandedSection('zurich');
+    else if (path.startsWith('/bbva-cat')) setExpandedSection('bbvaCat');
+    else if (path.startsWith('/previsora')) setExpandedSection('previsora');
+    else if (path.startsWith('/allias')) setExpandedSection('allias');
     else if (path.startsWith('/sura')) setExpandedSection('sura');
     else if (path.startsWith('/propiedades')) setExpandedSection('propiedades');
     else if (path.startsWith('/puertos')) setExpandedSection('puertos');
@@ -577,6 +642,34 @@ export default function Layout() {
   }, []);
 
   const isActive = (path) => location.pathname === path;
+
+  const destinoMenu = (path) => {
+    const esLiquidadorOInforme =
+      path === '/bbva-cat/liquidador' ||
+      path === '/bbva-cat/informe-unico' ||
+      path === '/previsora/liquidador' ||
+      path === '/previsora/informe-unico' ||
+      path === '/allias/liquidador' ||
+      path === '/allias/informe-unico';
+    if (!esLiquidadorOInforme) return path;
+    const q = new URLSearchParams(location.search);
+    const casoUrl = q.get('casoId') || q.get('id');
+    let casoGuardado = '';
+    try {
+      const storageKey = path.startsWith('/previsora')
+        ? 'previsoraWorkspaceCasoId'
+        : path.startsWith('/allias')
+          ? 'alliasWorkspaceCasoId'
+          : 'bbvaCatWorkspaceCasoId';
+      casoGuardado = sessionStorage.getItem(storageKey) || '';
+    } catch {
+      casoGuardado = '';
+    }
+    const casoId = casoUrl || casoGuardado;
+    if (!casoId) return path;
+    const tab = path.endsWith('informe-unico') ? 'informe' : 'liquidador';
+    return `${path}?casoId=${encodeURIComponent(casoId)}&tab=${tab}`;
+  };
 
   const toggleSection = (section) => {
     setExpandedSection((prev) => (prev === section ? null : section));
@@ -650,14 +743,23 @@ export default function Layout() {
           { path: '/express/reporte', icon: FaTable, label: t('nav.expressReport') },
         ]
       : [],
-    equidadFdm: !accesoRestringido
-      ? [
-          { path: '/equidad-fdm/carga', icon: FaPlus, label: t('nav.fdmAddCase') },
-          { path: '/equidad-fdm/liquidador', icon: FaCalculator, label: t('nav.fdmSettlement') },
-          { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: t('nav.fdmDashboard') },
-          { path: '/equidad-fdm/reporte', icon: FaTable, label: t('nav.fdmReport') },
-        ]
-      : [],
+    equidadFdm:
+      !accesoRestringido
+        ? [
+            { path: '/equidad-fdm/carga', icon: FaPlus, label: t('nav.fdmAddCase') },
+            { path: '/equidad-fdm/liquidador', icon: FaCalculator, label: t('nav.fdmSettlement') },
+            { path: '/equidad-fdm/dashboard', icon: FaChartLine, label: t('nav.fdmDashboard') },
+            { path: '/equidad-fdm/reporte', icon: FaTable, label: t('nav.fdmReport') },
+          ]
+        : configContractor?.seccionesMenu?.includes('equidadFdm')
+          ? [
+              {
+                path: '/equidad-fdm/reporte',
+                icon: FaTable,
+                label: t('nav.fdmTray', { defaultValue: 'Bandeja Equidad FDM' }),
+              },
+            ]
+          : [],
     alfa: !accesoRestringido || configContractor?.seccionesMenu?.includes('alfa')
       ? [
           { path: '/seguros-alfa/carga', icon: FaPlus, label: t('nav.alfaAddCase') },
@@ -680,6 +782,37 @@ export default function Layout() {
           { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
           { path: '/zurich/dashboard', icon: FaChartBar, label: t('nav.zurichDashboard') },
           { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
+        ]
+      : [],
+    bbvaCat: !accesoRestringido || configContractor?.seccionesMenu?.includes('bbvaCat')
+      ? [
+          { path: '/bbva-cat/carga', icon: FaPlus, label: t('nav.bbvaCatAddCase') },
+          { path: '/bbva-cat/listado/dashboard', icon: FaChartBar, label: t('nav.bbvaCatListadoDashboard') },
+          { path: '/bbva-cat/listado/reporte', icon: FaTable, label: t('nav.bbvaCatListadoReport') },
+          { path: '/bbva-cat/liquidador', icon: FaCalculator, label: t('nav.bbvaCatSettlement') },
+          { path: '/bbva-cat/informe-unico', icon: FaFileAlt, label: t('nav.bbvaCatUniqueReport') },
+          { path: '/bbva-cat/bloques', icon: FaMapMarkerAlt, label: t('nav.bbvaCatBlocks') },
+          { path: '/bbva-cat/archivero', icon: FaFolderOpen, label: t('nav.bbvaCatArchive') },
+        ]
+      : [],
+    previsora: !accesoRestringido || configContractor?.seccionesMenu?.includes('previsora')
+      ? [
+          { path: '/previsora/carga', icon: FaPlus, label: t('nav.previsoraAddCase') },
+          { path: '/previsora/listado/dashboard', icon: FaChartBar, label: t('nav.previsoraListadoDashboard') },
+          { path: '/previsora/listado/reporte', icon: FaTable, label: t('nav.previsoraListadoReport') },
+          { path: '/previsora/liquidador', icon: FaCalculator, label: t('nav.previsoraSettlement') },
+          { path: '/previsora/informe-unico', icon: FaFileAlt, label: t('nav.previsoraUniqueReport') },
+          { path: '/previsora/archivero', icon: FaFolderOpen, label: t('nav.previsoraArchive') },
+        ]
+      : [],
+    allias: !accesoRestringido || configContractor?.seccionesMenu?.includes('allias')
+      ? [
+          { path: '/allias/carga', icon: FaPlus, label: t('nav.alliasAddCase') },
+          { path: '/allias/listado/dashboard', icon: FaChartBar, label: t('nav.alliasListadoDashboard') },
+          { path: '/allias/listado/reporte', icon: FaTable, label: t('nav.alliasListadoReport') },
+          { path: '/allias/liquidador', icon: FaCalculator, label: t('nav.alliasSettlement') },
+          { path: '/allias/informe-unico', icon: FaFileAlt, label: t('nav.alliasUniqueReport') },
+          { path: '/allias/archivero', icon: FaFolderOpen, label: t('nav.alliasArchive') },
         ]
       : [],
     sura: !accesoRestringido || configContractor?.seccionesMenu?.includes('sura')
@@ -737,6 +870,7 @@ export default function Layout() {
       ? [
           { path: '/admin/usuarios', icon: FaUsers, label: t('nav.userManagement') },
           { path: '/admin/estadisticas-tiempo-uso', icon: FaChartLine, label: t('nav.timeUsage') },
+          { path: '/admin/auditoria', icon: FaClipboardList, label: t('nav.platformAudit') },
           {
             path: '/cuenta',
             icon: FaPlus,
@@ -780,7 +914,7 @@ export default function Layout() {
         ? (configContractor.seccionesMenu || []).map((key) => ({
             key,
             title: t(`nav.sections.${key}`),
-            icon: FaUmbrella,
+            icon: ICONOS_ASEGURADORA[key] || (key === 'equidadFdm' ? FaHandHoldingHeart : FaFileAlt),
             items: menuItems[key],
           }))
       : !esVisualizador
@@ -789,9 +923,12 @@ export default function Layout() {
             { key: 'riesgos', title: t('nav.sections.riesgos'), icon: FaChartBar, items: menuItems.riesgos },
             { key: 'express', title: t('nav.sections.express'), icon: FaBolt, items: menuItems.express },
             { key: 'equidadFdm', title: t('nav.sections.equidadFdm'), icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
-            { key: 'alfa', title: t('nav.sections.alfa'), icon: FaUmbrella, items: menuItems.alfa },
-            { key: 'zurich', title: t('nav.sections.zurich'), icon: FaUmbrella, items: menuItems.zurich },
-            { key: 'sura', title: t('nav.sections.sura'), icon: FaUmbrella, items: menuItems.sura },
+            { key: 'alfa', title: t('nav.sections.alfa'), icon: ICONOS_ASEGURADORA.alfa, items: menuItems.alfa },
+            { key: 'zurich', title: t('nav.sections.zurich'), icon: ICONOS_ASEGURADORA.zurich, items: menuItems.zurich },
+            { key: 'bbvaCat', title: t('nav.sections.bbvaCat'), icon: ICONOS_ASEGURADORA.bbvaCat, items: menuItems.bbvaCat },
+            { key: 'previsora', title: t('nav.sections.previsora'), icon: ICONOS_ASEGURADORA.previsora, items: menuItems.previsora },
+            { key: 'allias', title: t('nav.sections.allias'), icon: ICONOS_ASEGURADORA.allias, items: menuItems.allias },
+            { key: 'sura', title: t('nav.sections.sura'), icon: ICONOS_ASEGURADORA.sura, items: menuItems.sura },
             { key: 'propiedades', title: t('nav.sections.propiedades'), icon: FaBuilding, items: menuItems.propiedades },
             { key: 'sgSst', title: t('nav.sections.sgSst'), icon: FaShieldAlt, items: menuItems.sgSst },
             { key: 'puertos', title: t('nav.sections.puertos'), icon: FaShip, items: menuItems.puertos },
@@ -846,7 +983,7 @@ export default function Layout() {
               {items.map((item, idx) => (
                 <Link
                   key={idx}
-                  to={item.path}
+                  to={destinoMenu(item.path)}
                   onClick={() => {
                     onItemClick(item);
                     setExpandedSection(null);
@@ -871,7 +1008,7 @@ export default function Layout() {
       <div className="mb-1">
         {singleItem ? (
           <Link
-            to={items[0].path}
+            to={destinoMenu(items[0].path)}
             onClick={() => onItemClick(items[0])}
             className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
               isActive(items[0].path) ? activeClasses : inactiveClasses
@@ -904,7 +1041,7 @@ export default function Layout() {
                 {items.map((item, idx) => (
                   <Link
                     key={idx}
-                    to={item.path}
+                    to={destinoMenu(item.path)}
                     onClick={() => onItemClick(item)}
                     className={`flex min-h-[44px] items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                       isActive(item.path)
@@ -955,6 +1092,7 @@ export default function Layout() {
           </div>
         </header>
         <main className="p-4">
+          <ArnaldBorradoresPendientesModal />
           <Outlet />
         </main>
       </div>
@@ -1279,6 +1417,7 @@ export default function Layout() {
           }`}
         >
           <Aviso2FAPrompt />
+          <ArnaldBorradoresPendientesModal />
           <Outlet />
         </main>
       </div>

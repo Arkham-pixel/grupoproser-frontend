@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
@@ -16,6 +16,8 @@ import { getCasoFdmById, guardarLiquidadorEnCasoFdm, subirArchivoFdm } from '../
 import { calcularLiquidacionFdm } from './liquidadorEquidadFdmHelpers.js';
 import { generarLiquidadorFdmExcelBlob } from './generarLiquidadorFdmExcel.js';
 import { hrefReporteFdmConFiltros } from './equidadFdmHelpers.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const fdmRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -33,6 +35,9 @@ export default function LiquidadorEquidadFdmPage() {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
+  const [restoreNonce, setRestoreNonce] = useState(0);
 
   const casoId = casoFdm?._id || casoIdFromQuery || null;
 
@@ -74,6 +79,24 @@ export default function LiquidadorEquidadFdmPage() {
     setLiquidadorState(liq);
     setTotalesState(tot);
   };
+
+  const draftPayload = useMemo(
+    () => ({ liquidador: liquidadorState, totales: totalesState }),
+    [liquidadorState, totalesState]
+  );
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey: casoId ? `equidad-fdm-liq:${casoId}` : '',
+    modulo: 'equidad-fdm',
+    recursoId: casoId || '',
+    titulo: 'Liquidador FDM',
+    formData: draftPayload,
+    enabled: Boolean(casoId) && !cargandoCaso,
+    onRestoreAvailable: onDraftRestoreAvailable,
+  });
 
   const handleGuardarEnCaso = async () => {
     if (!casoId) {
@@ -179,7 +202,7 @@ export default function LiquidadorEquidadFdmPage() {
               <p className="font-body text-sm text-gray-500">{t('equidadFdm.settlement.loadingCase')}</p>
             ) : (
               <LiquidadorEquidadFdm
-                key={casoFdm?._id || 'nuevo'}
+                key={`${casoFdm?._id || 'nuevo'}-${restoreNonce}`}
                 casoFdm={casoFdm}
                 onEstadoChange={handleEstadoChange}
                 onGuardarEnCaso={casoId ? handleGuardarEnCaso : null}
@@ -190,6 +213,30 @@ export default function LiquidadorEquidadFdmPage() {
           </div>
         </div>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          const data = draftToRestore?.data || {};
+          setCasoFdm((prev) => ({
+            ...(prev || {}),
+            liquidador: data.liquidador || prev?.liquidador,
+          }));
+          if (data.liquidador) setLiquidadorState(data.liquidador);
+          if (data.totales) setTotalesState(data.totales);
+          setRestoreNonce((n) => n + 1);
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 }

@@ -3,11 +3,61 @@ export const ARNALD_PROMPT_DONE_KEY = 'arnald_draft_prompt_done';
 export const ARNALD_PROMPT_LATER_KEY = 'arnald_draft_prompt_later';
 export const ARNALD_PROMPT_SCANNED_KEY = 'arnald_draft_prompt_scanned';
 
-/** Borrador creado en esta misma sesión de edición (no preguntar). */
-export function esBorradorReciente(savedAt, margenMs = 15000) {
-  const saved = new Date(savedAt || 0).getTime();
-  if (!Number.isFinite(saved) || saved <= 0) return false;
-  return Date.now() - saved < margenMs;
+const RUTAS_FORMULARIO_GENERAL = [
+  '/complex/agregar',
+  '/formularioinspeccion',
+  '/ajuste',
+  '/reporte-pol',
+  '/formulario-maquinaria',
+  '/express/carga',
+  '/equidad-fdm/carga',
+  '/propiedades/carga',
+  '/puertos/formulario',
+  '/puertos/actas/inspeccion-asegurado/nueva',
+  '/puertos/actas/nueva',
+  '/puertos/actas/caso/nueva',
+  '/seguros-alfa/carga',
+  '/zurich/carga',
+  '/bbva-cat/carga',
+  '/previsora/carga',
+  '/allias/carga',
+  '/sura/carga',
+  '/catastrofico',
+  '/riesgos/agregar',
+];
+
+function normalizarRuta(pathname = '') {
+  const p = String(pathname || '').replace(/\/$/, '');
+  return p || '/';
+}
+
+/** Alta / formato desde el menú (Formularios u “Agregar caso”), no desde Acciones del reporte. */
+export function esRutaFormularioGeneral(pathname = '') {
+  const p = normalizarRuta(pathname);
+    if (p.includes('/editar')) return false;
+    if (p === '/catastrofico') return true;
+  return RUTAS_FORMULARIO_GENERAL.some((ruta) => p === ruta || p.startsWith(`${ruta}/`));
+}
+
+/** Caso concreto abierto desde Acciones del reporte (liquidador, informe, edición). */
+export function esRutaCasoEspecifico(pathname = '', search = '') {
+  const p = normalizarRuta(pathname);
+  const q = new URLSearchParams(search || '');
+  const tieneCaso = Boolean(q.get('casoId') || q.get('id'));
+  if (p.startsWith('/editar-caso/')) return true;
+  if (p.startsWith('/complex/editar')) return true;
+  if (p.startsWith('/sura/editar')) return true;
+  if (p.startsWith('/catastrofico/editar')) return true;
+  if (p.startsWith('/riesgos/editar')) return true;
+  if (p.includes('/editar/')) return true;
+  if ((p.endsWith('/caso') || p.includes('/caso')) && tieneCaso) return true;
+  if (p.includes('/liquidador') && tieneCaso) return true;
+  if (p.includes('/informe-unico') && tieneCaso) return true;
+  return false;
+}
+
+export function clavePromptGeneral(pathname = '') {
+  return `arnald_general_prompted:${normalizarRuta(pathname)}`;
 }
 
 export function describirBorrador(formKey = '', titulo = '') {
@@ -19,6 +69,18 @@ export function describirBorrador(formKey = '', titulo = '') {
   if (k.startsWith('zurich-ws:')) return 'Zurich · liquidador / informe';
   if (k.includes('zurich:') && k.endsWith(':nuevo')) return 'Zurich · caso nuevo';
   if (k.startsWith('zurich:')) return 'Zurich · caso';
+  if (k.startsWith('bbva-cat-listado-ws:')) return 'BBVA CAT · listado / liquidador / informe';
+  if (k.startsWith('bbva-cat-ws:')) return 'BBVA CAT · liquidador / informe';
+  if (k.includes('bbva-cat:') && k.endsWith(':nuevo')) return 'BBVA CAT · caso nuevo';
+  if (k.startsWith('bbva-cat:')) return 'BBVA CAT · caso';
+  if (k.startsWith('previsora-listado-ws:')) return 'Previsora · listado / liquidador / informe';
+  if (k.startsWith('previsora-ws:')) return 'Previsora · liquidador / informe';
+  if (k.includes('previsora:') && k.endsWith(':nuevo')) return 'Previsora · caso nuevo';
+  if (k.startsWith('previsora:')) return 'Previsora · caso';
+  if (k.startsWith('allias-listado-ws:')) return 'Allias · listado / liquidador / informe';
+  if (k.startsWith('allias-ws:')) return 'Allias · liquidador / informe';
+  if (k.includes('allias:') && k.endsWith(':nuevo')) return 'Allias · caso nuevo';
+  if (k.startsWith('allias:')) return 'Allias · caso';
   if (k.startsWith('sura-ws:')) return 'Sura · workspace del caso';
   if (k === 'formulario-sura-nuevo') return 'Sura · caso nuevo';
   if (k.startsWith('formulario-sura-')) return 'Sura · caso';
@@ -46,6 +108,18 @@ export function rutaDesdeFormKey(formKey = '') {
   if (k.startsWith('zurich-ws:')) return `/zurich/caso?casoId=${k.slice('zurich-ws:'.length)}`;
   if (k.startsWith('zurich:listado')) return '/zurich/carga';
   if (k.startsWith('zurich:')) return '/zurich/caso';
+  if (k.startsWith('bbva-cat-listado-ws:')) return `/bbva-cat/listado/caso?casoId=${k.slice('bbva-cat-listado-ws:'.length)}`;
+  if (k.startsWith('bbva-cat-ws:')) return `/bbva-cat/caso?casoId=${k.slice('bbva-cat-ws:'.length)}`;
+  if (k.startsWith('bbva-cat:listado')) return '/bbva-cat/carga';
+  if (k.startsWith('bbva-cat:')) return '/bbva-cat/caso';
+  if (k.startsWith('previsora-listado-ws:')) return `/previsora/listado/caso?casoId=${k.slice('previsora-listado-ws:'.length)}`;
+  if (k.startsWith('previsora-ws:')) return `/previsora/caso?casoId=${k.slice('previsora-ws:'.length)}`;
+  if (k.startsWith('previsora:listado')) return '/previsora/carga';
+  if (k.startsWith('previsora:')) return '/previsora/caso';
+  if (k.startsWith('allias-listado-ws:')) return `/allias/listado/caso?casoId=${k.slice('allias-listado-ws:'.length)}`;
+  if (k.startsWith('allias-ws:')) return `/allias/liquidador?casoId=${k.slice('allias-ws:'.length)}`;
+  if (k.startsWith('allias:listado')) return '/allias/carga';
+  if (k.startsWith('allias:')) return '/allias/liquidador';
   if (k.startsWith('sura-ws:')) return `/sura/caso?casoId=${k.slice('sura-ws:'.length)}`;
   if (k === 'equidad-fdm:nuevo') return '/equidad-fdm/carga';
   if (k.startsWith('equidad-fdm-liq:')) {

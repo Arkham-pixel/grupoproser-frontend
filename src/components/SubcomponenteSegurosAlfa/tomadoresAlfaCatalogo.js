@@ -10,6 +10,103 @@ export const normalizarTomadorAlfa = (valor) =>
     .trim()
     .toUpperCase();
 
+/**
+ * Reglas de deducible por tomador (póliza / banco).
+ * - valor_asegurable: MAX(% del valor asegurado, N SMMLV)
+ * - perdida: % del valor de la pérdida (sin mínimo SMMLV)
+ */
+export const DEDUCIBLES_POR_TOMADOR_ALFA = {
+  'BANCO BOGOTA': {
+    base: 'valor_asegurable',
+    porcentaje: 2,
+    cantidadSMMLV: 2,
+    texto: '2% del valor asegurable afectado, mínimo 2 SMMLV',
+  },
+  'BANCO DE BOGOTA': {
+    base: 'valor_asegurable',
+    porcentaje: 2,
+    cantidadSMMLV: 2,
+    texto: '2% del valor asegurable afectado, mínimo 2 SMMLV',
+  },
+  'BANCO OCCIDENTE': {
+    base: 'perdida',
+    porcentaje: 1,
+    cantidadSMMLV: 0,
+    texto: '1% del valor de la pérdida',
+  },
+  'BANCO DE OCCIDENTE': {
+    base: 'perdida',
+    porcentaje: 1,
+    cantidadSMMLV: 0,
+    texto: '1% del valor de la pérdida',
+  },
+  'BANCO AV VILLAS': {
+    base: 'valor_asegurable',
+    porcentaje: 2,
+    cantidadSMMLV: 2,
+    texto: '2% del valor asegurable afectado, mínimo 2 SMMLV',
+  },
+  'AV VILLAS': {
+    base: 'valor_asegurable',
+    porcentaje: 2,
+    cantidadSMMLV: 2,
+    texto: '2% del valor asegurable afectado, mínimo 2 SMMLV',
+  },
+  'BANCO POPULAR': {
+    base: 'valor_asegurable',
+    porcentaje: 2,
+    cantidadSMMLV: 2,
+    texto: '2% del valor asegurable afectado, mínimo 2 SMMLV',
+  },
+};
+
+/** Default si el tomador no tiene regla (misma lógica Bogotá / Popular). */
+export const DEDUCIBLE_TOMADOR_ALFA_DEFAULT = {
+  base: 'valor_asegurable',
+  porcentaje: 2,
+  cantidadSMMLV: 2,
+  texto: '2% del valor asegurable afectado, mínimo 2 SMMLV',
+};
+
+export function resolverReglaDeducibleTomadorAlfa(tomador = '') {
+  const key = normalizarTomadorAlfa(tomador);
+  if (!key) return { ...DEDUCIBLE_TOMADOR_ALFA_DEFAULT, tomadorKey: '', conocida: false };
+
+  if (DEDUCIBLES_POR_TOMADOR_ALFA[key]) {
+    return { ...DEDUCIBLES_POR_TOMADOR_ALFA[key], tomadorKey: key, conocida: true };
+  }
+
+  if (key.includes('OCCIDENTE')) {
+    return { ...DEDUCIBLES_POR_TOMADOR_ALFA['BANCO OCCIDENTE'], tomadorKey: key, conocida: true };
+  }
+  if (key.includes('BOGOTA')) {
+    return { ...DEDUCIBLES_POR_TOMADOR_ALFA['BANCO BOGOTA'], tomadorKey: key, conocida: true };
+  }
+  if (key.includes('VILLAS')) {
+    return { ...DEDUCIBLES_POR_TOMADOR_ALFA['BANCO AV VILLAS'], tomadorKey: key, conocida: true };
+  }
+  if (key.includes('POPULAR')) {
+    return { ...DEDUCIBLES_POR_TOMADOR_ALFA['BANCO POPULAR'], tomadorKey: key, conocida: true };
+  }
+
+  return { ...DEDUCIBLE_TOMADOR_ALFA_DEFAULT, tomadorKey: key, conocida: false };
+}
+
+/** Parche de deducibleConfig al elegir tomador (conserva año/valor SMMLV). */
+export function patchDeducibleDesdeTomadorAlfa(tomador, cfgActual = {}) {
+  const regla = resolverReglaDeducibleTomadorAlfa(tomador);
+  return {
+    ...cfgActual,
+    aplica: true,
+    porcentaje: regla.porcentaje,
+    cantidadSMMLV: regla.cantidadSMMLV,
+    baseDeducible: regla.base,
+    tipoMinimo: 'SMMLV',
+    texto: regla.texto,
+    tomadorDeducible: regla.tomadorKey || normalizarTomadorAlfa(tomador),
+  };
+}
+
 const dedupeOrdenado = (lista = []) => {
   const map = new Map();
   for (const item of lista) {

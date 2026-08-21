@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import LiquidadorSegurosAlfa from './LiquidadorSegurosAlfa.jsx';
 import InformeUnicoSegurosAlfa from './InformeUnicoSegurosAlfa.jsx';
+import AlfaSharePointSyncBanner from './AlfaSharePointSyncBanner.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -18,10 +19,25 @@ import {
   getCasoAlfaById,
   guardarInformeUnicoEnCasoAlfa,
   guardarLiquidadorEnCasoAlfa,
+  setSharePointEnabledAlfa,
 } from '../../services/segurosAlfaService.js';
-import { calcularLiquidacionAlfa } from './liquidadorAlfaHelpers.js';
+import { calcularLiquidacionAlfa, mapCasoAlfaALiquidador } from './liquidadorAlfaHelpers.js';
+import {
+  preferirLiquidadorMasRico,
+  scoreContenidoLiquidadorNsr,
+} from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import {
+  generarInformeCatAlfaExcelBlob,
+} from './generarInformeCatAlfaExcel.js';
+import {
+  archivarBlobEnCasoAlfa,
+  MIME_ARCHIVO_ALFA,
+} from './archivarDocumentoAlfa.js';
 import useAlfaCasoAutosave from '../../hooks/useAlfaCasoAutosave.js';
+import useAlfaSharePointSyncStatus from '../../hooks/useAlfaSharePointSyncStatus.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -69,26 +85,89 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
   const [liquidadorState, setLiquidadorState] = useState(null);
   const [totalesState, setTotalesState] = useState(null);
   const [informeState, setInformeState] = useState(null);
-  const [cargandoCaso, setCargandoCaso] = useState(false);
+  /** Evita montar el liquidador vacío antes de traer el caso del API (autoguardado lo podía pisar). */
+  const [cargandoCaso, setCargandoCaso] = useState(() => Boolean(casoIdFromQuery));
+  const [casoHidratado, setCasoHidratado] = useState(() => !casoIdFromQuery);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
+  const [restoreNonce, setRestoreNonce] = useState(0);
 
   const casoId = casoAlfa?._id || casoIdFromQuery || null;
+  const archivosCountPrev = useRef(null);
+
+  const aplicarCasoCargado = useCallback((caso) => {
+    setCasoAlfa(caso || null);
+    // Siempre tomar liquidador/informe del servidor al abrir (no cascarón local)
+    if (caso?.liquidador) {
+      const liqServidor = mapCasoAlfaALiquidador(caso);
+      setLiquidadorState(liqServidor);
+      setTotalesState(calcularLiquidacionAlfa(liqServidor));
+    } else {
+      setLiquidadorState(null);
+      setTotalesState(null);
+    }
+    setInformeState(caso?.informeUnico && typeof caso.informeUnico === 'object' ? caso.informeUnico : null);
+    setCasoHidratado(true);
+    setRestoreNonce((n) => n + 1);
+  }, []);
+
+  const {
+    summary: spSummary,
+    loading: spLoading,
+    refresh: refreshSharePoint,
+    boostPolling,
+    justSynced,
+    dismissJustSynced,
+    hasActivity: spHasActivity,
+    pendingTotal: spPendingTotal,
+    documents: spDocuments,
+  } = useAlfaSharePointSyncStatus(casoId, { enabled: Boolean(casoId) });
+
+  const handleSharePointEnabled = useCallback(
+    async (archivoId, enabled) => {
+      await setSharePointEnabledAlfa(casoId, archivoId, enabled);
+      await refreshSharePoint();
+      if (enabled) boostPolling();
+    },
+    [boostPolling, casoId, refreshSharePoint]
+  );
+
+  useEffect(() => {
+    const n = Array.isArray(casoAlfa?.archivos) ? casoAlfa.archivos.length : 0;
+    if (archivosCountPrev.current != null && n > archivosCountPrev.current) {
+      boostPolling();
+    }
+    archivosCountPrev.current = n;
+  }, [casoAlfa?.archivos, boostPolling]);
+
+  useEffect(() => {
+    setLiquidadorState(null);
+    setTotalesState(null);
+    setInformeState(null);
+    setCasoHidratado(false);
+  }, [casoIdFromQuery]);
 
   useEffect(() => {
     let cancelado = false;
     async function cargar() {
-      if (!casoIdFromQuery && location.state?.casoAlfa) {
-        setCasoAlfa(location.state.casoAlfa);
+      // Siempre priorizar API por id (el state del listado puede venir sin liquidador completo)
+      if (!casoIdFromQuery) {
+        if (location.state?.casoAlfa && !cancelado) {
+          aplicarCasoCargado(location.state.casoAlfa);
+        } else if (!cancelado) {
+          setCasoHidratado(true);
+        }
         return;
       }
-      if (!casoIdFromQuery) return;
       setCargandoCaso(true);
+      setCasoHidratado(false);
       setError('');
       try {
         const caso = await getCasoAlfaById(casoIdFromQuery);
-        if (!cancelado) setCasoAlfa(caso);
+        if (!cancelado) aplicarCasoCargado(caso);
       } catch (err) {
         if (!cancelado) setError(err.message || t('segurosAlfa.workspace.loadError'));
       } finally {
@@ -99,7 +178,9 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, location.state, t]);
+    // Solo al cambiar de caso — no rehidratar por cambios de location.state
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [casoIdFromQuery, t, aplicarCasoCargado]);
 
   const setTab = useCallback(
     (tab) => {
@@ -122,6 +203,48 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     return t('segurosAlfa.workspace.subtitle');
   }, [casoAlfa, t]);
 
+  const appendArchivoAlCaso = useCallback((creado) => {
+    if (!creado) return;
+    setCasoAlfa((prev) => {
+      if (!prev) return prev;
+      const list = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(list.map((a) => String(a._id)));
+      if (creado?._id && ids.has(String(creado._id))) return prev;
+      return { ...prev, archivos: [...list, creado] };
+    });
+    boostPolling();
+  }, [boostPolling]);
+
+  /** Excel CAT → archivero ARNALD → cola SharePoint. */
+  const archivarExcelCatTrasGuardar = useCallback(
+    async ({ caso, liquidador, totales, informe, etiqueta }) => {
+      if (!casoId) return null;
+      const resultado = await generarInformeCatAlfaExcelBlob({
+        caso: caso || casoAlfa || {},
+        liquidador: liquidador || liquidadorState || {},
+        totales: totales || totalesState || {},
+        informe: informe || informeState || casoAlfa?.informeUnico || null,
+      });
+      const creado = await archivarBlobEnCasoAlfa({
+        casoId,
+        blob: resultado.blob,
+        nombre: resultado.filename || resultado.nombre,
+        mime: MIME_ARCHIVO_ALFA.xlsx,
+        etiqueta,
+      });
+      appendArchivoAlCaso(creado);
+      return creado;
+    },
+    [
+      appendArchivoAlCaso,
+      casoAlfa,
+      casoId,
+      informeState,
+      liquidadorState,
+      totalesState,
+    ]
+  );
+
   const handleGuardarLiquidador = async (liqArg, totArg) => {
     if (!casoId) {
       setError(t('segurosAlfa.settlement.savedCaseRequired'));
@@ -133,18 +256,56 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
       setError(t('segurosAlfa.settlement.noData'));
       return;
     }
+    // No permitir guardar un cascarón vacío encima de uno con ítems en el caso
+    if (
+      scoreContenidoLiquidadorNsr(liquidador) === 0 &&
+      scoreContenidoLiquidadorNsr(casoAlfa?.liquidador) > 0
+    ) {
+      setError(
+        'El liquidador en pantalla está vacío y el caso ya tiene ítems guardados. Recargue el caso antes de guardar.'
+      );
+      return;
+    }
     setGuardando(true);
     setError('');
     setMensaje('');
     try {
+      const liquidadorSeguro = preferirLiquidadorMasRico(liquidador, casoAlfa?.liquidador);
       const actualizado = await guardarLiquidadorEnCasoAlfa({
         casoId,
-        liquidador,
+        liquidador: liquidadorSeguro,
         totales,
-        casoBase: casoAlfa || {},
+        casoBase: {
+          ...(casoAlfa || {}),
+          informeUnico: informeState || casoAlfa?.informeUnico,
+        },
       });
       setCasoAlfa(actualizado);
-      setMensaje(t('segurosAlfa.settlement.savedMessage'));
+      setLiquidadorState(
+        preferirLiquidadorMasRico(liquidadorSeguro, actualizado?.liquidador)
+      );
+      try {
+        await archivarExcelCatTrasGuardar({
+          caso: actualizado,
+          liquidador: liquidadorSeguro,
+          totales,
+          informe: informeState || actualizado?.informeUnico,
+          etiqueta: 'LIQUIDACION',
+        });
+        setMensaje(
+          t('segurosAlfa.settlement.savedAndArchived', {
+            defaultValue:
+              'Liquidador guardado y Excel CAT en archivero (cola SharePoint).',
+          })
+        );
+      } catch (errArchivo) {
+        console.error('Archivero tras liquidador:', errArchivo);
+        setError(
+          `Liquidador guardado, pero NO se archivó el Excel: ${
+            errArchivo?.message || 'error'
+          }`
+        );
+      }
       setAutosaveUiStatus({
         state: 'synced',
         pendingCount: 0,
@@ -176,13 +337,43 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     setError('');
     setMensaje('');
     try {
+      // Solo actualiza informe — el service no envía liquidador
       const actualizado = await guardarInformeUnicoEnCasoAlfa({
         casoId,
         informeUnico: informe,
         casoBase: casoAlfa || {},
       });
       setCasoAlfa(actualizado);
-      setMensaje(t('segurosAlfa.reportUnique.savedMessage'));
+      setInformeState(actualizado?.informeUnico || informe);
+      // Si el servidor devolvió liquidador, mantener el más rico en memoria
+      if (actualizado?.liquidador) {
+        setLiquidadorState((prev) => preferirLiquidadorMasRico(prev, actualizado.liquidador));
+      }
+      try {
+        await archivarExcelCatTrasGuardar({
+          caso: actualizado,
+          liquidador: preferirLiquidadorMasRico(
+            liquidadorState,
+            actualizado?.liquidador
+          ),
+          totales: totalesState,
+          informe: actualizado?.informeUnico || informe,
+          etiqueta: 'INFORME',
+        });
+        setMensaje(
+          t('segurosAlfa.reportUnique.savedAndArchived', {
+            defaultValue:
+              'Informe guardado y Excel CAT en archivero (cola SharePoint).',
+          })
+        );
+      } catch (errArchivo) {
+        console.error('Archivero tras informe:', errArchivo);
+        setError(
+          `Informe guardado, pero NO se archivó el Excel: ${
+            errArchivo?.message || 'error'
+          }`
+        );
+      }
       setAutosaveUiStatus({
         state: 'synced',
         pendingCount: 0,
@@ -217,7 +408,25 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     totalesState,
     informeState,
     onCasoActualizado: onCasoDesdeAutosave,
-    enabled: Boolean(casoId) && !cargandoCaso,
+    enabled: Boolean(casoId) && !cargandoCaso && casoHidratado,
+  });
+
+  const draftPayload = useMemo(
+    () => ({ liquidador: liquidadorState, totales: totalesState, informe: informeState }),
+    [liquidadorState, totalesState, informeState]
+  );
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey: casoId ? `alfa-ws:${casoId}` : '',
+    modulo: 'alfa',
+    recursoId: casoId || '',
+    titulo: 'Workspace Alfa',
+    formData: draftPayload,
+    enabled: Boolean(casoId) && !cargandoCaso && casoHidratado,
+    onRestoreAvailable: onDraftRestoreAvailable,
   });
 
   return (
@@ -276,6 +485,23 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           <p className={`mb-4 ${expressAlertError}`}>{error}</p>
         )}
 
+        {casoId && (
+          <AlfaSharePointSyncBanner
+            summary={spSummary}
+            loading={spLoading}
+            hasActivity={spHasActivity}
+            pendingTotal={spPendingTotal}
+            justSynced={justSynced}
+            documents={spDocuments}
+            onRefresh={refreshSharePoint}
+            onDismissSynced={dismissJustSynced}
+            onSetEnabled={handleSharePointEnabled}
+            onOpenArchivero={() =>
+              navigate(`/seguros-alfa/reporte?archivero=${encodeURIComponent(casoId)}`)
+            }
+          />
+        )}
+
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -299,31 +525,63 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
               <p className="text-sm text-gray-500">{t('segurosAlfa.workspace.loading')}</p>
             ) : tabActivo === TABS_ALFA.INFORME ? (
               <InformeUnicoSegurosAlfa
+                key={`inf-${casoId}-${restoreNonce}`}
                 casoAlfa={casoAlfa}
+                liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState(liq);
+                  setLiquidadorState((prev) => preferirLiquidadorMasRico(liq, prev));
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
                 onCasoChange={setCasoAlfa}
+                onArchivoArchivado={boostPolling}
                 guardandoCaso={guardando}
               />
             ) : (
               <LiquidadorSegurosAlfa
+                key={`liq-${casoId}-${restoreNonce}`}
                 casoAlfa={casoAlfa}
+                liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
-                  setLiquidadorState(liq);
+                  setLiquidadorState((prev) => preferirLiquidadorMasRico(liq, prev));
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
                 onCasoChange={setCasoAlfa}
+                onArchivoArchivado={boostPolling}
                 guardandoCaso={guardando}
               />
             )}
           </div>
         </div>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          const data = draftToRestore?.data || {};
+          setCasoAlfa((prev) => ({
+            ...(prev || {}),
+            liquidador: data.liquidador || prev?.liquidador,
+            informeUnico: data.informe || prev?.informeUnico,
+          }));
+          if (data.liquidador) setLiquidadorState(data.liquidador);
+          if (data.totales) setTotalesState(data.totales);
+          if (data.informe) setInformeState(data.informe);
+          setRestoreNonce((n) => n + 1);
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 }

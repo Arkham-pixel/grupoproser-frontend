@@ -29,6 +29,7 @@ import {
   guardarLiquidadorEnCasoZurichListado,
 } from '../../services/zurichListadoService.js';
 import { calcularLiquidacionZurich } from './liquidadorZurichHelpers.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import useZurichCasoAutosave from '../../hooks/useZurichCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
@@ -487,7 +488,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState(liq);
+                  setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
@@ -501,7 +502,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                 casoZurich={casoZurich}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
-                  setLiquidadorState(liq);
+                  setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}

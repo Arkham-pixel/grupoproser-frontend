@@ -817,6 +817,9 @@ export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = 
     presupuesto: {
       ...base.presupuesto,
       ...(actual.presupuesto || {}),
+      items: Array.isArray(actual.presupuesto?.items)
+        ? actual.presupuesto.items
+        : base.presupuesto.items,
     },
     contenidos: {
       ...base.contenidos,

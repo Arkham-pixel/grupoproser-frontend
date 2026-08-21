@@ -12,6 +12,10 @@ import {
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
+import {
+  patchDeducibleDesdeTomadorAlfa,
+  resolverReglaDeducibleTomadorAlfa,
+} from './tomadoresAlfaCatalogo.js';
 
 export const SMMLV_POR_ANIO = {
   2018: 781242,
@@ -103,15 +107,12 @@ export function liquidacionCatastroficoDefaultAlfa(caso = {}) {
     c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
       ? Number(c.valorAseguradoInmueble) || ''
       : '';
-  /** Alfa terremoto: 2% del valor asegurado, mínimo 2 SMMLV (el mayor). */
-  const deducibleAlfa = {
+  /** Deducible según tomador (Bogotá/AV Villas/Popular: 2% VA + 2 SMMLV; Occidente: 1% pérdida). */
+  const deducibleAlfa = patchDeducibleDesdeTomadorAlfa(c.tomador || '', {
     ...DEFAULT_DEDUCIBLE_CATASTROFICO,
     aplica: true,
-    porcentaje: 2,
-    cantidadSMMLV: 2,
     tipoMinimo: 'SMMLV',
-    texto: '2% valor asegurado · Mínimo 2 SMMLV',
-  };
+  });
   return {
     valorAsegurado: va,
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
@@ -211,51 +212,106 @@ export function esLiquidadorNsrAlfa(liquidador = {}) {
 }
 
 /**
- * Deducible Alfa: MAX(% del valor asegurado, N × SMMLV).
- * No usa la pérdida / total del presupuesto como base del %.
+ * Deducible Alfa según tomador:
+ * - valor_asegurable: MAX(% del valor asegurado, N × SMMLV)
+ * - perdida: % del valor de la pérdida (p. ej. Occidente 1%)
  */
 export function calcularDeducibleAlfaSobreValorAsegurado({
   valorAsegurado = 0,
   totalDanios = 0,
   deducibleConfig = {},
+  tomador = '',
 } = {}) {
+  const reglaTomador = resolverReglaDeducibleTomadorAlfa(tomador);
   const cfg = {
     ...DEFAULT_DEDUCIBLE_CATASTROFICO,
-    porcentaje: 2,
-    cantidadSMMLV: 2,
+    porcentaje: reglaTomador.porcentaje,
+    cantidadSMMLV: reglaTomador.cantidadSMMLV,
+    baseDeducible: reglaTomador.base,
     tipoMinimo: 'SMMLV',
     aplica: true,
+    texto: reglaTomador.texto,
     ...(deducibleConfig && typeof deducibleConfig === 'object' ? deducibleConfig : {}),
   };
+  const base =
+    cfg.baseDeducible === 'perdida' || cfg.baseDeducible === 'perdida_total'
+      ? 'perdida'
+      : 'valor_asegurable';
   const va = parsearNumero(valorAsegurado);
   const danios = parsearNumero(totalDanios);
   const porcentaje = Number(cfg.porcentaje);
-  const pct = Number.isFinite(porcentaje) ? porcentaje : 2;
+  const pct = Number.isFinite(porcentaje) ? porcentaje : base === 'perdida' ? 1 : 2;
   const cantidadSMMLV = Number(cfg.cantidadSMMLV);
-  const cant = Number.isFinite(cantidadSMMLV) ? cantidadSMMLV : 2;
+  const cant = Number.isFinite(cantidadSMMLV) ? cantidadSMMLV : base === 'perdida' ? 0 : 2;
   const anio = Number(cfg.anioSMMLV) || ANIOS_SMMLV[0] || 2026;
   const valorSMMLV =
     parsearNumero(cfg.valorSMMLV) || SMMLV_POR_ANIO[anio] || SMMLV_DEFAULT;
+  const deducibleSMMLV =
+    cant > 0 ? Math.round(cant * valorSMMLV * 100) / 100 : 0;
 
+  // Occidente y similares: % de la pérdida
+  if (base === 'perdida') {
+    if (!danios) {
+      return {
+        aplica: false,
+        requiereValorAsegurado: false,
+        requierePerdida: true,
+        baseDeducible: 'perdida',
+        valorAsegurado: va,
+        porcentaje: pct,
+        cantidadSMMLV: cant,
+        valorSMMLV,
+        anioSMMLV: anio,
+        deduciblePorcentaje: 0,
+        deducibleSMMLV: 0,
+        deducibleAplicado: 0,
+        usaMinimo: false,
+        texto: cfg.texto || `${pct}% del valor de la pérdida`,
+        reglaTomador,
+      };
+    }
+    const deduciblePorcentaje = Math.round(danios * (pct / 100) * 100) / 100;
+    return {
+      aplica: true,
+      requiereValorAsegurado: false,
+      requierePerdida: false,
+      baseDeducible: 'perdida',
+      valorAsegurado: va,
+      porcentaje: pct,
+      cantidadSMMLV: cant,
+      valorSMMLV,
+      anioSMMLV: anio,
+      deduciblePorcentaje,
+      deducibleSMMLV: 0,
+      deducibleAplicado: deduciblePorcentaje,
+      usaMinimo: false,
+      texto: cfg.texto || `${pct}% del valor de la pérdida`,
+      reglaTomador,
+    };
+  }
+
+  // Bogotá / AV Villas / Popular: % valor asegurable + mínimo SMMLV
   if (!va) {
     return {
       aplica: false,
       requiereValorAsegurado: true,
+      requierePerdida: false,
+      baseDeducible: 'valor_asegurable',
       valorAsegurado: 0,
       porcentaje: pct,
       cantidadSMMLV: cant,
       valorSMMLV,
       anioSMMLV: anio,
       deduciblePorcentaje: 0,
-      deducibleSMMLV: Math.round(cant * valorSMMLV * 100) / 100,
+      deducibleSMMLV,
       deducibleAplicado: 0,
       usaMinimo: false,
       texto: 'Indique el valor asegurado para calcular el deducible',
+      reglaTomador,
     };
   }
 
   const deduciblePorcentaje = Math.round(va * (pct / 100) * 100) / 100;
-  const deducibleSMMLV = Math.round(cant * valorSMMLV * 100) / 100;
   const bruto = Math.max(deduciblePorcentaje, deducibleSMMLV);
   const usaMinimo = deducibleSMMLV > deduciblePorcentaje;
   const deducibleAplicado =
@@ -266,6 +322,8 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
   return {
     aplica: true,
     requiereValorAsegurado: false,
+    requierePerdida: false,
+    baseDeducible: 'valor_asegurable',
     valorAsegurado: va,
     porcentaje: pct,
     cantidadSMMLV: cant,
@@ -275,13 +333,16 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
     deducibleSMMLV,
     deducibleAplicado,
     usaMinimo,
-    texto: `${pct}% del valor asegurado · Mínimo ${cant} SMMLV (se aplica el mayor)`,
+    texto:
+      cfg.texto ||
+      `${pct}% del valor asegurado · Mínimo ${cant} SMMLV (se aplica el mayor)`,
+    reglaTomador,
   };
 }
 
 /**
  * Totales Alfa = presupuesto NSR-10 + contenidos + hospedaje.
- * Deducible = mayor entre % del valor asegurado y N SMMLV (no % de la pérdida).
+ * Deducible según tomador (valor asegurable + SMMLV, o % de la pérdida).
  */
 export function calcularLiquidacionAlfa(liquidador = {}) {
   const evalData = liquidador.evaluacionSismicaNSR10 || {};
@@ -294,7 +355,12 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     parsearNumero(liq.valorAsegurado) ||
     parsearNumero(enc.valorAseguradoInmueble) ||
     0;
-  const cfgDed = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
+  const cfgDedRaw = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
+  // Si falta baseDeducible, completar desde el tomador actual
+  const cfgDed =
+    cfgDedRaw.baseDeducible || !enc.tomador
+      ? cfgDedRaw
+      : patchDeducibleDesdeTomadorAlfa(enc.tomador, cfgDedRaw);
 
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado,
@@ -313,6 +379,7 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     valorAsegurado,
     totalDanios: resumen.sumaCompleta,
     deducibleConfig: cfgDed,
+    tomador: enc.tomador || '',
   });
 
   const hospedaje = parsearNumero(diagrama.gastosHospedaje);
@@ -577,19 +644,19 @@ export function mapCasoAlfaALiquidador(caso = {}) {
         liqG.deducibleConfigPresupuesto ||
         liqG.deducibleConfig ||
         {};
-      // Migrar defaults genéricos (10% / 4 SMMLV) al esquema Alfa (2% VA / 2 SMMLV)
+      // Migrar defaults genéricos (10% / 4 SMMLV) al esquema Alfa
       const migrarAlfa =
         Number(cfgPrev.porcentaje) === 10 && Number(cfgPrev.cantidadSMMLV) === 4;
-      const cfgAlfa = {
+      const tomador =
+        guardado.encabezado?.tomador || encabezado.tomador || caso.tomador || '';
+      const cfgMerged = {
         ...base.liquidacionCatastrofico.deducibleConfig,
         ...cfgPrev,
         ...(migrarAlfa ? { porcentaje: 2, cantidadSMMLV: 2, aplica: true } : {}),
         aplica: true,
-        texto:
-          cfgPrev.texto && !migrarAlfa
-            ? cfgPrev.texto
-            : '2% valor asegurado · Mínimo 2 SMMLV',
       };
+      // Al cargar, el deducible sigue la regla del tomador (Occidente = % pérdida, resto = % VA + SMMLV)
+      const cfgAlfa = patchDeducibleDesdeTomadorAlfa(tomador, cfgMerged);
       const va =
         liqG.valorAsegurado ??
         guardado.encabezado?.valorAseguradoInmueble ??

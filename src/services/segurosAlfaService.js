@@ -1,4 +1,5 @@
 ﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const ALFA_API_URL = `${BASE_URL}/api/seguros-alfa`;
 
@@ -326,6 +327,33 @@ export const reintentarSharePointAlfa = async (casoId, archivoId) => {
   return payload?.data ?? payload;
 };
 
+/**
+ * Activa o pausa copia a SharePoint de un archivo del archivero.
+ * @param {boolean} enabled true = subir; false = no subir (solo ARNALD)
+ */
+export const setSharePointEnabledAlfa = async (casoId, archivoId, enabled) => {
+  if (!casoId || !archivoId) throw new Error('Caso y archivo requeridos');
+  if (typeof enabled !== 'boolean') throw new Error('enabled debe ser boolean');
+  const response = await fetch(
+    `${ALFA_API_URL}/${casoId}/archivos/${archivoId}/sharepoint/enabled`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ enabled }),
+    }
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    const err = new Error(
+      payload?.error || payload?.message || `Error al actualizar SharePoint (${response.status})`
+    );
+    err.status = response.status;
+    err.code = payload?.code;
+    throw err;
+  }
+  return payload?.data ?? payload;
+};
+
 /** GET /:id/polizas-importadas — pólizas SharePoint→S3 asociadas al caso. */
 export const getPolizasImportadasAlfa = async (casoId) => {
   if (!casoId) throw new Error('Caso requerido');
@@ -360,14 +388,26 @@ export const guardarLiquidadorEnCasoAlfa = async ({
 }) => {
   if (!casoId) throw new Error('El caso Alfa debe estar guardado antes de adjuntar el liquidador.');
 
+  const liquidadorSeguro = fusionarLiquidadorSinPerderPresupuestoNsr(
+    liquidador || {},
+    casoBase?.liquidador
+  );
+
   const payload = {
     ...casoBase,
-    liquidador: liquidador || {},
+    liquidador: liquidadorSeguro,
     valorReclamado:
       totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
     valorLiquidado:
       totales.totalIndemnizar != null ? totales.totalIndemnizar : casoBase.valorLiquidado,
   };
+
+  // Conservar informe: no mandar null/vacío que lo borre
+  if (casoBase.informeUnico && typeof casoBase.informeUnico === 'object') {
+    payload.informeUnico = casoBase.informeUnico;
+  } else {
+    delete payload.informeUnico;
+  }
 
   delete payload._id;
   delete payload.__v;
@@ -390,6 +430,9 @@ export const guardarInformeUnicoEnCasoAlfa = async ({
     ...casoBase,
     informeUnico: informeUnico || {},
   };
+
+  // Crítico: guardar informe NUNCA debe tocar el liquidador (el servidor conserva el de BD).
+  delete payload.liquidador;
 
   delete payload._id;
   delete payload.__v;

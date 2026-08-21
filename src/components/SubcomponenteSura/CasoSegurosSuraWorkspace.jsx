@@ -24,12 +24,15 @@ import {
   guardarLiquidadorEnCasoSura,
   guardarSeccionCasoSura,
 } from '../../services/segurosSuraService.js';
-import { calcularLiquidacionSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
+import { calcularLiquidacionSura, itemsPlanosSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import { descargarFormatoAgilSuraExcel } from './generarFormatoAgilSuraExcel.js';
 import { defaultFotosAgilSura, serializarFotosAgilSura } from './informeAgilSuraHelpers.js';
 import { sincronizarFotosAgilEnInformeCaso } from './syncFotosNsrAlInformeSura.js';
 import useSuraCasoAutosave from '../../hooks/useSuraCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -106,6 +109,9 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const [exportando, setExportando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
+  const [restoreNonce, setRestoreNonce] = useState(0);
 
   const casoId = casoSura?._id || casoIdFromQuery || null;
 
@@ -198,7 +204,14 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
         totales,
         casoBase: casoConSecciones(),
       });
-      setCasoSura(actualizado);
+      const servidorPerdioPresupuesto =
+        itemsPlanosSura(liquidador).length > 0 &&
+        itemsPlanosSura(actualizado?.liquidador).length === 0;
+      setCasoSura(
+        servidorPerdioPresupuesto ? { ...actualizado, liquidador } : actualizado
+      );
+      setLiquidadorState(liquidador);
+      setTotalesState(totales);
       setMensaje(t('segurosSura.settlement.savedMessage'));
       setAutosaveUiStatus({ state: 'synced', pendingCount: 0, message: 'Sincronizado' });
     } catch (err) {
@@ -396,6 +409,31 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
     enabled: Boolean(casoId) && !cargandoCaso,
   });
 
+  const draftPayload = useMemo(
+    () => ({
+      liquidador: liquidadorState,
+      totales: totalesState,
+      informe: informeState,
+      informeAgil: informeAgilState,
+      salvamento: salvamentoState,
+      fotosAgil: fotosAgilState,
+    }),
+    [liquidadorState, totalesState, informeState, informeAgilState, salvamentoState, fotosAgilState]
+  );
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey: casoId ? `sura-ws:${casoId}` : '',
+    modulo: 'sura',
+    recursoId: casoId || '',
+    titulo: 'Workspace Sura',
+    formData: draftPayload,
+    enabled: Boolean(casoId) && !cargandoCaso,
+    onRestoreAvailable: onDraftRestoreAvailable,
+  });
+
   const etiquetasTab = {
     [TABS_SURA.INFORME_AGIL]: t('segurosSura.workspace.tabAgileReport'),
     [TABS_SURA.PRESUPUESTO]: t('segurosSura.workspace.tabBudget'),
@@ -480,7 +518,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
         </div>
 
         <div className={expressCard}>
-          <div className={expressCardBody}>
+          <div className={expressCardBody} key={`sura-ws-${casoId}-${restoreNonce}`}>
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('segurosSura.workspace.loading')}</p>
             ) : tabActivo === TABS_SURA.INFORME_AGIL ? (
@@ -506,9 +544,10 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
               <InformeUnicoSegurosSura
                 casoSura={casoSura}
                 fotosAgil={fotosAgilState || casoSura?.fotosAgil || []}
+                liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState(liq);
+                  setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
@@ -526,8 +565,9 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
             ) : (
               <LiquidadorSegurosSura
                 casoSura={casoSura}
+                liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
-                  setLiquidadorState(liq);
+                  setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
@@ -537,6 +577,38 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
           </div>
         </div>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          const data = draftToRestore?.data || {};
+          setCasoSura((prev) => ({
+            ...(prev || {}),
+            liquidador: data.liquidador || prev?.liquidador,
+            informeUnico: data.informe || prev?.informeUnico,
+            informeAgil: data.informeAgil || prev?.informeAgil,
+            salvamento: data.salvamento || prev?.salvamento,
+            fotosAgil: data.fotosAgil || prev?.fotosAgil,
+          }));
+          if (data.liquidador) setLiquidadorState(data.liquidador);
+          if (data.totales) setTotalesState(data.totales);
+          if (data.informe) setInformeState(data.informe);
+          if (data.informeAgil) setInformeAgilState(data.informeAgil);
+          if (data.salvamento) setSalvamentoState(data.salvamento);
+          if (data.fotosAgil) setFotosAgilState(data.fotosAgil);
+          setRestoreNonce((n) => n + 1);
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 }

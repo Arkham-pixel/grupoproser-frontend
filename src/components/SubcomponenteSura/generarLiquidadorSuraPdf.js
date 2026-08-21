@@ -6,6 +6,7 @@ import {
   calcularTotalesPresupuesto,
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
+  parseMontoNsr10,
   totalFilaPresupuesto,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
@@ -31,7 +32,9 @@ const SOFT = [245, 247, 250];
 
 function money(valor) {
   if (valor == null || valor === '') return '—';
-  return `$ ${formatearMonto(Number(valor) || 0)}`;
+  const n = parseMontoNsr10(valor);
+  if (n == null) return '—';
+  return `$ ${formatearMonto(n)}`;
 }
 
 function txt(v, fallback = '—') {
@@ -139,8 +142,8 @@ export async function generarLiquidadorSuraPdfBlob(liquidador) {
       String(it?.actividad || '').trim() ||
       String(it?.componente || '').trim() ||
       String(it?.capitulo || '').trim() ||
-      Number(it?.cantidad) > 0 ||
-      Number(it?.valorUnitario) > 0
+      (parseMontoNsr10(it?.cantidad) || 0) > 0 ||
+      (parseMontoNsr10(it?.valorUnitario) || 0) > 0
   );
   const totalesPres = calcularTotalesPresupuesto(presupuesto);
 

@@ -38,6 +38,7 @@ import {
   subscribeFormServerSaved,
 } from '../../services/formSyncChannel.js';
 import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import {
   filtrarLideresPorModulo,
   filtrarOpcionesPorCiudad,
@@ -1588,6 +1589,29 @@ const response = await fetch(`${BASE_URL}/api/${apiModulo}/notificaciones/contro
     autoSaveService.hasPendingServerSync(autoSaveKey)
   );
 
+  const consumeDraftRef = useRef(null);
+  const onDraftRestoreAvailable = useCallback((savedInfo) => {
+    if (savedInfo?.metadata?.autoApply && savedInfo.data) {
+      setFormData((prev) => ({ ...prev, ...savedInfo.data }));
+      consumeDraftRef.current?.(savedInfo.data);
+      return;
+    }
+    setSavedDataToRestore(savedInfo);
+    setShowRestoreDialog(true);
+  }, []);
+
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey: autoSaveKey,
+    modulo: esSura ? 'sura' : 'complex',
+    recursoId: initialData?._id || id || '',
+    titulo: esSura ? 'Caso Sura' : 'Caso Complex',
+    formData,
+    enabled: true,
+    shouldSkipSaveRef: aplicandoDesdeServidorRef,
+    onRestoreAvailable: onDraftRestoreAvailable,
+  });
+  consumeDraftRef.current = consumeDraft;
+
   // Refs para rastrear cambios específicos y evitar actualizaciones innecesarias
   const prevControlHorasDocsRef = useRef('');
   const prevFacturaDocsRef = useRef('');
@@ -2944,24 +2968,22 @@ setFormData(prev => ({
   // Handlers para autoguardado
   const handleRestoreData = useCallback(() => {
     if (savedDataToRestore && savedDataToRestore.data) {
-// Restaurar completamente el formData (no merge, reemplazo total)
       setFormData({
-        ...formData, // Mantener estructura base
-        ...savedDataToRestore.data, // Sobrescribir con datos guardados
+        ...formData,
+        ...savedDataToRestore.data,
       });
-      
+      consumeDraft(savedDataToRestore.data);
       setShowRestoreDialog(false);
       enableAutoSave();
-      
-alert(t('complex.ui.formulario_caso_complex.datos_restaurados'));
     }
-  }, [savedDataToRestore, enableAutoSave, formData, t]);
+  }, [savedDataToRestore, enableAutoSave, formData, consumeDraft]);
 
   const handleDiscardSavedData = useCallback(() => {
-clearSavedData();
+    clearSavedData();
+    discardDraft();
     setShowRestoreDialog(false);
     setSavedDataToRestore(null);
-  }, [clearSavedData]);
+  }, [clearSavedData, discardDraft]);
 
   const handleCancelRestore = useCallback(() => {
 setShowRestoreDialog(false);
@@ -3038,14 +3060,16 @@ if (!onSave) {
       if (result && typeof result.then === 'function') {
         result.then(() => {
           fechasHitoEditadasRef.current.clear();
-clearSavedData();
+          clearSavedData();
+          discardDraft();
         }).catch((error) => {
           console.error('❌ Error al guardar, manteniendo autoguardado:', error);
         });
       } else {
         // Si no es una promesa, limpiar inmediatamente
         fechasHitoEditadasRef.current.clear();
-clearSavedData();
+        clearSavedData();
+        discardDraft();
       }
     } catch (error) {
       console.error('❌ Error en handleSubmit:', error);
@@ -3604,6 +3628,42 @@ clearSavedData();
       </form>
     </div>
 
+      {draftStatus !== 'idle' && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            bottom: '16px',
+            right: '16px',
+            zIndex: 9998,
+            maxWidth: '280px',
+            padding: '8px 12px',
+            borderRadius: '10px',
+            backgroundColor: draftStatus === 'error' ? '#7f1d1d' : '#111827',
+            color: '#e5e7eb',
+            fontSize: '12px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+          }}
+        >
+          {draftStatus === 'saving' && t('plataforma.draft.saving')}
+          {draftStatus === 'saved' && t('plataforma.draft.saved', {
+            time: lastDraftAt
+              ? lastDraftAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+              : '',
+          })}
+          {draftStatus === 'error' && t('plataforma.draft.error')}
+        </div>
+      )}
+
+      <AutoSaveRestoreDialog
+        isOpen={showRestoreDialog}
+        savedData={savedDataToRestore?.data}
+        metadata={savedDataToRestore?.metadata}
+        onRestore={handleRestoreData}
+        onDiscard={handleDiscardSavedData}
+        onCancel={handleCancelRestore}
+      />
+
       {autoguardadoEfectivo && (
         <>
           {hayActualizacionRemota && (
@@ -3654,15 +3714,6 @@ clearSavedData();
             onDismissPrompt={() => {}}
             pendingServerSync={pendingServerSync}
             isOnline={isOnline}
-          />
-
-          <AutoSaveRestoreDialog
-            isOpen={showRestoreDialog}
-            savedData={savedDataToRestore?.data}
-            metadata={savedDataToRestore?.metadata}
-            onRestore={handleRestoreData}
-            onDiscard={handleDiscardSavedData}
-            onCancel={handleCancelRestore}
           />
         </>
       )}

@@ -20,9 +20,17 @@ import {
   sincronizarDetalleCatConPresupuestoNsr,
   SMMLV_POR_ANIO,
 } from './liquidadorAlfaHelpers.js';
+import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import { descargarFiniquitoAlfaWord } from './generarFiniquitoAlfaWord.js';
-import { descargarInformeCatAlfaExcel } from './generarInformeCatAlfaExcel.js';
-import { subirArchivoAlfa } from '../../services/segurosAlfaService.js';
+import {
+  descargarInformeCatAlfaExcel,
+  generarInformeCatAlfaExcelBlob,
+} from './generarInformeCatAlfaExcel.js';
+import {
+  archivarBlobEnCasoAlfa,
+  MIME_ARCHIVO_ALFA,
+} from './archivarDocumentoAlfa.js';
 import {
   aplicarCatalogoAFilaPresupuesto,
   formatMilesNsr10,
@@ -38,9 +46,16 @@ export default function LiquidadorSegurosAlfa({
   guardandoCaso = false,
   onEstadoChange,
   onCasoChange,
-}) {
+  onArchivoArchivado,
+  liquidadorInicial = null,
+} = {}) {
   const { t } = useTranslation();
-  const [liquidador, setLiquidador] = useState(() => mapCasoAlfaALiquidador(casoAlfa || {}));
+  const [liquidador, setLiquidador] = useState(() =>
+    fusionarLiquidadorSinPerderPresupuestoNsr(
+      liquidadorInicial || mapCasoAlfaALiquidador(casoAlfa || {}),
+      mapCasoAlfaALiquidador(casoAlfa || {})
+    )
+  );
   const [casoLocal, setCasoLocal] = useState(() => ({ ...(casoAlfa || {}) }));
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -48,8 +63,14 @@ export default function LiquidadorSegurosAlfa({
   const casoId = casoAlfa?._id ? String(casoAlfa._id) : '';
 
   useEffect(() => {
-    setLiquidador(mapCasoAlfaALiquidador(casoAlfa || {}));
+    const desdeCaso = mapCasoAlfaALiquidador(casoAlfa || {});
+    // Preferir el más completo: evita que un liquidadorInicial vacío tape el del servidor
+    setLiquidador(
+      fusionarLiquidadorSinPerderPresupuestoNsr(liquidadorInicial || desdeCaso, desdeCaso)
+    );
     setCasoLocal({ ...(casoAlfa || {}) });
+    // Solo al cambiar de caso (el remount del workspace ya trae liquidadorInicial hidratado)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [casoAlfa?._id]);
 
   const totales = useMemo(() => calcularLiquidacionAlfa(liquidador), [liquidador]);
@@ -65,6 +86,10 @@ export default function LiquidadorSegurosAlfa({
   }, [liquidador, totales]);
 
   const actualizarEncabezado = (campo, valor) => {
+    if (campo === 'tomador') {
+      setCasoLocal((c) => ({ ...c, tomador: valor }));
+      onCasoChange?.((casoPrev) => (casoPrev ? { ...casoPrev, tomador: valor } : casoPrev));
+    }
     setLiquidador((prev) => {
       const next = {
         ...prev,
@@ -75,6 +100,17 @@ export default function LiquidadorSegurosAlfa({
         next.liquidacionCatastrofico = {
           ...liq,
           valorAsegurado: valor,
+        };
+      }
+      if (campo === 'tomador') {
+        const liq = prev.liquidacionCatastrofico || {};
+        const cfgActual = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
+        const cfg = patchDeducibleDesdeTomadorAlfa(valor, cfgActual);
+        next.liquidacionCatastrofico = {
+          ...liq,
+          deducibleConfig: cfg,
+          deducibleConfigPresupuesto: cfg,
+          deducible: cfg.texto,
         };
       }
       return next;
@@ -214,35 +250,43 @@ export default function LiquidadorSegurosAlfa({
     setDetalle(base);
   };
 
-  const MIME = {
-    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  };
+  const MIME = MIME_ARCHIVO_ALFA;
 
   const appendArchivoAlCaso = (creado) => {
     if (!creado || !onCasoChange) return;
     onCasoChange((prev) => {
       if (!prev) return prev;
       const list = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(list.map((a) => String(a._id)));
+      if (creado?._id && ids.has(String(creado._id))) return prev;
       return { ...prev, archivos: [...list, creado] };
     });
   };
 
-  const copiarAlArchivero = async (blob, nombre, mime) => {
+  const copiarAlArchivero = async (blob, nombre, mime, etiqueta = 'LIQUIDACION') => {
     if (!casoId) {
-      setMensaje(t('segurosAlfa.settlement.archiveNeedsCase'));
-      return;
+      throw new Error(
+        t('segurosAlfa.settlement.archiveNeedsCase', {
+          defaultValue: 'Guarde el caso antes de copiar al archivero.',
+        })
+      );
     }
-    if (!blob || !nombre) return;
-    const file = new File([blob], nombre, { type: mime });
-    const creado = await subirArchivoAlfa(casoId, file, 'LIQUIDACION');
+    const creado = await archivarBlobEnCasoAlfa({
+      casoId,
+      blob,
+      nombre,
+      mime,
+      etiqueta,
+    });
     appendArchivoAlCaso(creado);
-    setMensaje(t('segurosAlfa.settlement.archiveSaved'));
+    if (typeof onArchivoArchivado === 'function') onArchivoArchivado(creado);
+    return creado;
   };
 
   const handleGuardar = async () => {
     if (!onGuardarEnCaso) return;
     setError('');
+    setMensaje('');
     try {
       const conDetalle = {
         ...liquidador,
@@ -258,11 +302,31 @@ export default function LiquidadorSegurosAlfa({
             liquidador.liquidacionCatastrofico?.valorAsegurado ?? enc.valorAseguradoInmueble,
         },
       };
+      // El workspace archiva el Excel CAT tras guardar (cola SharePoint)
       await onGuardarEnCaso(conDetalle, totales);
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.settlement.saveError'));
     }
+  };
+
+  /** Genera Excel CAT y lo deja en archivero (cola SharePoint). */
+  const archivarExcelCatAlfa = async ({ descargar = false } = {}) => {
+    const opts = {
+      caso: { ...(casoAlfa || {}), ...casoLocal },
+      liquidador: { ...liquidador, detalleLiquidacionCat: itemsDetalle },
+      totales,
+      informe: casoAlfa?.informeUnico || null,
+    };
+    const resultado = descargar
+      ? await descargarInformeCatAlfaExcel(opts)
+      : await generarInformeCatAlfaExcelBlob(opts);
+    await copiarAlArchivero(
+      resultado?.blob,
+      resultado?.filename || resultado?.nombre,
+      MIME.xlsx,
+      'LIQUIDACION'
+    );
   };
 
   const correrExport = async (tipo, fn, mime) => {
@@ -278,10 +342,21 @@ export default function LiquidadorSegurosAlfa({
       const nombre = resultado?.nombre || resultado?.filename;
       if (blob && nombre) {
         try {
-          await copiarAlArchivero(blob, nombre, mime);
+          await copiarAlArchivero(blob, nombre, mime, 'LIQUIDACION');
+          setMensaje(
+            t('segurosAlfa.archive.sharepoint.queuedOk', {
+              defaultValue:
+                'Guardado en ARNALD. En cola hacia SharePoint (SINIESTROS).',
+            })
+          );
         } catch (errArchivo) {
-          console.warn('No se pudo guardar en el archivero:', errArchivo);
-          setError(t('segurosAlfa.settlement.archiveError'));
+          console.error('No se pudo guardar en el archivero:', errArchivo);
+          setError(
+            errArchivo?.message ||
+              t('segurosAlfa.settlement.archiveError', {
+                defaultValue: 'No se pudo guardar en el archivero.',
+              })
+          );
         }
       }
     } catch (err) {
@@ -297,22 +372,13 @@ export default function LiquidadorSegurosAlfa({
     setMensaje('');
     setExportando('excel');
     try {
-      const resultado = await descargarInformeCatAlfaExcel({
-        caso: { ...(casoAlfa || {}), ...casoLocal },
-        liquidador: { ...liquidador, detalleLiquidacionCat: itemsDetalle },
-        totales,
-        informe: casoAlfa?.informeUnico || null,
-      });
-      try {
-        await copiarAlArchivero(
-          resultado?.blob,
-          resultado?.filename || resultado?.nombre,
-          MIME.xlsx
-        );
-      } catch (errArchivo) {
-        console.warn('No se pudo guardar el Excel CAT en el archivero:', errArchivo);
-        setError(t('segurosAlfa.settlement.archiveError'));
-      }
+      await archivarExcelCatAlfa({ descargar: true });
+      setMensaje(
+        t('segurosAlfa.archive.sharepoint.queuedOk', {
+          defaultValue:
+            'Excel CAT descargado y en archivero (cola SharePoint SINIESTROS).',
+        })
+      );
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.settlement.exportError'));

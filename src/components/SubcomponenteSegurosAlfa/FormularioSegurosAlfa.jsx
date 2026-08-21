@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FaFileExcel, FaSave, FaUndo, FaUpload } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +55,8 @@ import {
   mapResponsablesAOpciones,
   resolverLiderPorModulo,
 } from '../../utils/catalogosAsignacionCatastrofico.js';
+import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
+import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const alfaRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -96,6 +98,23 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   const [ajustadoresCat, setAjustadoresCat] = useState([]);
   const [inspectoresCat, setInspectoresCat] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
+  const [showDraftRestore, setShowDraftRestore] = useState(false);
+  const [draftToRestore, setDraftToRestore] = useState(null);
+
+  const formKey = esEdicion ? `alfa:${initialData._id}` : 'alfa:nuevo';
+  const onDraftRestoreAvailable = useCallback((info) => {
+    setDraftToRestore(info);
+    setShowDraftRestore(true);
+  }, []);
+  const { draftStatus, lastDraftAt, discardDraft, consumeDraft } = useArnaldFormDraft({
+    formKey,
+    modulo: 'alfa',
+    recursoId: initialData?._id || '',
+    titulo: 'Caso Alfa',
+    formData: form,
+    enabled: true,
+    onRestoreAvailable: onDraftRestoreAvailable,
+  });
 
   useEffect(() => {
     setForm(initialData ? construirFormDesdeCasoAlfa(initialData) : { ...FORM_VACIO_ALFA });
@@ -317,6 +336,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
         setForm({ ...FORM_VACIO_ALFA });
       }
       if (onSaved) await onSaved(guardado);
+      await discardDraft();
     } catch (err) {
       console.error('Error guardando caso Seguros Alfa:', err);
       setError(err.message || t('segurosAlfa.messages.saveError'));
@@ -629,7 +649,28 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   );
 
   if (embed) {
-    return <div className={`${expressScope}`}>{contenidoFormulario}</div>;
+    return (
+      <div className={`${expressScope}`}>
+        {contenidoFormulario}
+        <ArnaldDraftChrome
+          draftStatus={draftStatus}
+          lastDraftAt={lastDraftAt}
+          consumeDraft={consumeDraft}
+          showRestore={showDraftRestore}
+          savedDataToRestore={draftToRestore}
+          onRestore={() => {
+            if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+            setShowDraftRestore(false);
+          }}
+          onDiscard={() => {
+            discardDraft();
+            setShowDraftRestore(false);
+            setDraftToRestore(null);
+          }}
+          onCancel={() => setShowDraftRestore(false)}
+        />
+      </div>
+    );
   }
 
   return (
@@ -741,6 +782,23 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           <div className={expressCardBody}>{contenidoFormulario}</div>
         </section>
       </div>
+      <ArnaldDraftChrome
+        draftStatus={draftStatus}
+        lastDraftAt={lastDraftAt}
+        consumeDraft={consumeDraft}
+        showRestore={showDraftRestore}
+        savedDataToRestore={draftToRestore}
+        onRestore={() => {
+          if (draftToRestore?.data) setForm((prev) => ({ ...prev, ...draftToRestore.data }));
+          setShowDraftRestore(false);
+        }}
+        onDiscard={() => {
+          discardDraft();
+          setShowDraftRestore(false);
+          setDraftToRestore(null);
+        }}
+        onCancel={() => setShowDraftRestore(false)}
+      />
     </div>
   );
 };

@@ -11,21 +11,34 @@ export const ROLES_VALIDOS = [
   'contractor_alfa',
   'contractor_sura',
   'contractor_solo_zurich',
+  'contractor_solo_bbva',
+  'contractor_solo_equidad',
 ];
 
-/** Contratista con Zurich + Alfa + Sura (Rodrigo y similares). */
+/** Contratista con Zurich + Alfa + Sura + BBVA (Rodrigo y similares). */
 export const ROLES_CONTRACTOR_TRES = ['contractor_zurich', 'contractor_alfa', 'contractor_sura'];
 
 /** Contratista solo módulo Zurich (nuevo, aparte de los tres). */
 export const ROL_SOLO_ZURICH = 'contractor_solo_zurich';
 
-export const ROLES_CONTRACTOR = [...ROLES_CONTRACTOR_TRES, ROL_SOLO_ZURICH];
+/** Contratista solo módulo BBVA CAT. */
+export const ROL_SOLO_BBVA = 'contractor_solo_bbva';
+
+/** Contratista solo bandeja Equidad FDM. */
+export const ROL_SOLO_EQUIDAD = 'contractor_solo_equidad';
+
+export const ROLES_CONTRACTOR = [
+  ...ROLES_CONTRACTOR_TRES,
+  ROL_SOLO_ZURICH,
+  ROL_SOLO_BBVA,
+  ROL_SOLO_EQUIDAD,
+];
 
 export const CONFIG_CONTRACTOR_TRES = {
-  seccionesMenu: ['alfa', 'zurich', 'sura'],
+  seccionesMenu: ['alfa', 'zurich', 'bbvaCat', 'sura'],
   inicio: '/zurich/reporte',
-  prefijosRuta: ['/zurich', '/seguros-alfa', '/sura'],
-  etiqueta: 'Zurich, Alfa y Sura',
+  prefijosRuta: ['/zurich', '/seguros-alfa', '/sura', '/bbva-cat'],
+  etiqueta: 'Zurich, Alfa, Sura y BBVA',
 };
 
 export const CONFIG_SOLO_ZURICH = {
@@ -34,6 +47,26 @@ export const CONFIG_SOLO_ZURICH = {
   prefijosRuta: ['/zurich'],
   rutasExcluidas: ['/zurich/carga', '/zurich/listado'],
   etiqueta: 'Zurich',
+};
+
+export const CONFIG_SOLO_BBVA = {
+  seccionesMenu: ['bbvaCat'],
+  inicio: '/bbva-cat/liquidador',
+  prefijosRuta: ['/bbva-cat'],
+  etiqueta: 'BBVA',
+};
+
+export const CONFIG_SOLO_EQUIDAD = {
+  seccionesMenu: ['equidadFdm'],
+  inicio: '/equidad-fdm/reporte',
+  prefijosRuta: ['/equidad-fdm'],
+  rutasExcluidas: [
+    '/equidad-fdm/carga',
+    '/equidad-fdm/liquidador',
+    '/equidad-fdm/dashboard',
+  ],
+  soloBandeja: true,
+  etiqueta: 'Equidad FDM',
 };
 
 export function normalizarRol(rol) {
@@ -47,6 +80,8 @@ export function obtenerRolAlmacenado() {
 export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
   const r = normalizarRol(rol);
   if (r === ROL_SOLO_ZURICH) return CONFIG_SOLO_ZURICH;
+  if (r === ROL_SOLO_BBVA) return CONFIG_SOLO_BBVA;
+  if (r === ROL_SOLO_EQUIDAD) return CONFIG_SOLO_EQUIDAD;
   if (ROLES_CONTRACTOR_TRES.includes(r)) return CONFIG_CONTRACTOR_TRES;
   return null;
 }
@@ -65,6 +100,10 @@ export function esRolContractor(rol = obtenerRolAlmacenado()) {
 
 export function esRolContractorZurich(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_ZURICH;
+}
+
+export function esRolSoloEquidad(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === ROL_SOLO_EQUIDAD;
 }
 
 /** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */

@@ -5,6 +5,7 @@ import {
   normalizarItemsRespuesta,
   OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
   ocultarHojasEvaluacionYDictamenExcel,
+  parseMontoNsr10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { prefillNsrDesdecasoZurich } from './liquidadorZurichHelpers.js';
 
@@ -51,9 +52,7 @@ function fechaCelda(value) {
 }
 
 function numeroONull(v) {
-  if (v === '' || v == null) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  return parseMontoNsr10(v);
 }
 
 function setVal(sheet, row, col, value) {

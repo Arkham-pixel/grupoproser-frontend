@@ -82,6 +82,34 @@ import CasoZurichWorkspace, {
   RedirectZurichLiquidador,
   RedirectZurichListadoWorkspace,
 } from './components/SubcomponenteZurich/CasoZurichWorkspace';
+import FormularioBbvaCat from './components/SubcomponenteBbvaCat/FormularioBbvaCat';
+import ReporteBbvaCat from './components/SubcomponenteBbvaCat/ReporteBbvaCat';
+import DashboardBbvaCat from './components/SubcomponenteBbvaCat/DashboardBbvaCat';
+import ReporteBbvaCatListado from './components/SubcomponenteBbvaCat/ReporteBbvaCatListado';
+import DashboardBbvaCatListado from './components/SubcomponenteBbvaCat/DashboardBbvaCatListado';
+import CasoBbvaCatWorkspace, {
+  RedirectBbvaCatListadoWorkspace,
+} from './components/SubcomponenteBbvaCat/CasoBbvaCatWorkspace';
+import ArchiveroBbvaCatPage from './components/SubcomponenteBbvaCat/ArchiveroBbvaCatPage';
+import BloquesCercaniaBbvaCat from './components/SubcomponenteBbvaCat/BloquesCercaniaBbvaCat';
+import FormularioPrevisora from './components/SubcomponentePrevisora/FormularioPrevisora';
+import ReportePrevisora from './components/SubcomponentePrevisora/ReportePrevisora';
+import DashboardPrevisora from './components/SubcomponentePrevisora/DashboardPrevisora';
+import ReportePrevisoraListado from './components/SubcomponentePrevisora/ReportePrevisoraListado';
+import DashboardPrevisoraListado from './components/SubcomponentePrevisora/DashboardPrevisoraListado';
+import CasoPrevisoraWorkspace, {
+  RedirectPrevisoraListadoWorkspace,
+} from './components/SubcomponentePrevisora/CasoPrevisoraWorkspace';
+import ArchiveroPrevisoraPage from './components/SubcomponentePrevisora/ArchiveroPrevisoraPage';
+import FormularioAllias from './components/SubcomponenteAllias/FormularioAllias';
+import ReporteAllias from './components/SubcomponenteAllias/ReporteAllias';
+import DashboardAllias from './components/SubcomponenteAllias/DashboardAllias';
+import ReporteAlliasListado from './components/SubcomponenteAllias/ReporteAlliasListado';
+import DashboardAlliasListado from './components/SubcomponenteAllias/DashboardAlliasListado';
+import ArchiveroAlliasPage from './components/SubcomponenteAllias/ArchiveroAlliasPage';
+import CasoAlliasWorkspace, {
+  RedirectAlliasListadoWorkspace,
+} from './components/SubcomponenteAllias/CasoAlliasWorkspace';
 import { FormularioCasoSuraPage } from './components/SubcomponenteSura/FormularioCasoSura';
 import ReporteSegurosSura from './components/SubcomponenteSura/ReporteSegurosSura';
 import BoletinSemanalSegurosSura from './components/SubcomponenteSura/BoletinSemanalSegurosSura';
@@ -96,6 +124,7 @@ import DashboardPropiedades from './components/SubcomponentePropiedades/Dashboar
 import ReportePropiedades from './components/SubcomponentePropiedades/ReportePropiedades';
 import InspeccionDesdeCasoPropiedades from './components/SubcomponentePropiedades/InspeccionDesdeCasoPropiedades';
 import EstadisticasTiempoUso from './components/EstadisticasTiempoUso';
+import AdminAuditoriaPlataforma from './components/AdminAuditoriaPlataforma';
 import PuertosInspeccionMain from './components/FormularioPuertosModular/PuertosInspeccionMain';
 import PuertosInspeccionMotorysaMain from './components/FormularioPuertosModular/PuertosInspeccionMotorysaMain';
 import PuertosActasMain from './components/PuertosActas/PuertosActasMain';
@@ -575,6 +604,52 @@ export default function App() {
           <Route path="zurich/liquidador" element={<RedirectZurichLiquidador />} />
           <Route path="zurich/informe-unico" element={<RedirectZurichInforme />} />
 
+          <Route path="bbva-cat/carga" element={<FormularioBbvaCat origen="listado" />} />
+          <Route path="bbva-cat/listado/reporte" element={<ReporteBbvaCatListado />} />
+          <Route path="bbva-cat/listado/dashboard" element={<DashboardBbvaCatListado />} />
+          <Route path="bbva-cat/listado/caso" element={<RedirectBbvaCatListadoWorkspace />} />
+          <Route path="bbva-cat/reporte" element={<ReporteBbvaCat />} />
+          <Route path="bbva-cat/dashboard" element={<DashboardBbvaCat />} />
+          <Route path="bbva-cat/boletin" element={<Navigate to="/bbva-cat/dashboard" replace />} />
+          <Route element={<CasoBbvaCatWorkspace />}>
+            <Route path="bbva-cat/caso" element={<></>} />
+            <Route path="bbva-cat/liquidador" element={<></>} />
+            <Route path="bbva-cat/informe-unico" element={<></>} />
+          </Route>
+          <Route path="bbva-cat/archivero" element={<ArchiveroBbvaCatPage />} />
+          <Route path="bbva-cat/bloques" element={<BloquesCercaniaBbvaCat />} />
+          <Route path="bbva-cat" element={<Navigate to="/bbva-cat/liquidador" replace />} />
+
+          <Route path="previsora/carga" element={<FormularioPrevisora origen="listado" />} />
+          <Route path="previsora/listado/reporte" element={<ReportePrevisoraListado />} />
+          <Route path="previsora/listado/dashboard" element={<DashboardPrevisoraListado />} />
+          <Route path="previsora/listado/caso" element={<RedirectPrevisoraListadoWorkspace />} />
+          <Route path="previsora/reporte" element={<ReportePrevisora />} />
+          <Route path="previsora/dashboard" element={<DashboardPrevisora />} />
+          <Route path="previsora/boletin" element={<Navigate to="/previsora/dashboard" replace />} />
+          <Route element={<CasoPrevisoraWorkspace />}>
+            <Route path="previsora/caso" element={<></>} />
+            <Route path="previsora/liquidador" element={<></>} />
+            <Route path="previsora/informe-unico" element={<></>} />
+          </Route>
+          <Route path="previsora/archivero" element={<ArchiveroPrevisoraPage />} />
+          <Route path="previsora" element={<Navigate to="/previsora/liquidador" replace />} />
+
+          <Route path="allias/carga" element={<FormularioAllias origen="listado" />} />
+          <Route path="allias/listado/reporte" element={<ReporteAlliasListado />} />
+          <Route path="allias/listado/dashboard" element={<DashboardAlliasListado />} />
+          <Route path="allias/listado/caso" element={<RedirectAlliasListadoWorkspace />} />
+          <Route path="allias/reporte" element={<ReporteAllias />} />
+          <Route path="allias/dashboard" element={<DashboardAllias />} />
+          <Route path="allias/boletin" element={<Navigate to="/allias/dashboard" replace />} />
+          <Route element={<CasoAlliasWorkspace />}>
+            <Route path="allias/caso" element={<></>} />
+            <Route path="allias/liquidador" element={<></>} />
+            <Route path="allias/informe-unico" element={<></>} />
+          </Route>
+          <Route path="allias/archivero" element={<ArchiveroAlliasPage />} />
+          <Route path="allias" element={<Navigate to="/allias/liquidador" replace />} />
+
           <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
           <Route path="sura/editar" element={<FormularioCasoSuraPage />} />
           <Route path="sura/reporte" element={<ReporteSegurosSura />} />
@@ -632,6 +707,7 @@ export default function App() {
           <Route path="siniestros" element={<SiniestrosList />} />
           <Route path="admin/usuarios" element={<AdminUsuarios />} />
           <Route path="admin/estadisticas-tiempo-uso" element={<EstadisticasTiempoUso />} />
+          <Route path="admin/auditoria" element={<AdminAuditoriaPlataforma />} />
           <Route path="admin/session-settings" element={<SessionSettings />} />
           <Route path="admin/clientes-funcionarios" element={<GestionClientesFuncionarios />} />
           <Route path="admin/intermediarios" element={<GestionIntermediarios />} />

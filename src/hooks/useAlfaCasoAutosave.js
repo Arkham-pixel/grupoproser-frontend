@@ -6,6 +6,7 @@ import {
   guardarInformeUnicoEnCasoAlfa,
   guardarLiquidadorEnCasoAlfa,
 } from '../services/segurosAlfaService.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_INFORME = 'informe';
 
@@ -83,15 +84,24 @@ export default function useAlfaCasoAutosave({
             actualizado = await guardarInformeUnicoEnCasoAlfa({
               casoId,
               informeUnico: payload.data,
-              casoBase: base,
+              casoBase: {
+                ...base,
+                liquidador: liquidadorState || base.liquidador,
+              },
             });
             lastInfSnap.current = JSON.stringify(payload.data);
           } else {
             actualizado = await guardarLiquidadorEnCasoAlfa({
               casoId,
-              liquidador: payload.data,
+              liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+                payload.data,
+                base.liquidador
+              ),
               totales: payload.totales || {},
-              casoBase: base,
+              casoBase: {
+                ...base,
+                informeUnico: informeState || base.informeUnico,
+              },
             });
             lastLiqSnap.current = JSON.stringify(payload.data);
           }
@@ -153,15 +163,24 @@ export default function useAlfaCasoAutosave({
           actualizado = await guardarInformeUnicoEnCasoAlfa({
             casoId,
             informeUnico: payload.data,
-            casoBase: base,
+            casoBase: {
+              ...base,
+              liquidador: liquidadorState || base.liquidador,
+            },
           });
           lastInfSnap.current = JSON.stringify(payload.data);
         } else {
           actualizado = await guardarLiquidadorEnCasoAlfa({
             casoId,
-            liquidador: payload.data,
+            liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+              payload.data,
+              base.liquidador
+            ),
             totales: payload.totales || {},
-            casoBase: base,
+            casoBase: {
+              ...base,
+              informeUnico: informeState || base.informeUnico,
+            },
           });
           lastLiqSnap.current = JSON.stringify(payload.data);
         }
@@ -182,5 +201,5 @@ export default function useAlfaCasoAutosave({
     };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [casoId, enabled, onCasoActualizado]);
+  }, [casoId, enabled, onCasoActualizado, liquidadorState, informeState]);
 }

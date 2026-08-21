@@ -52,12 +52,15 @@ export default function InformeUnicoSegurosSura({
   onGuardarEnCaso,
   onCasoChange,
   guardandoCaso = false,
+  liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
   const [informe, setInforme] = useState(() =>
     informeUnicoConFotosAgil(casoSura || {}, fotosAgil)
   );
-  const [liquidador, setLiquidador] = useState(() => mapCasoSuraALiquidador(casoSura || {}));
+  const [liquidador, setLiquidador] = useState(() =>
+    liquidadorInicial || mapCasoSuraALiquidador(casoSura || {})
+  );
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [descargando, setDescargando] = useState(false);
@@ -103,7 +106,7 @@ export default function InformeUnicoSegurosSura({
 
   useEffect(() => {
     setInforme(informeUnicoConFotosAgil(casoSura || {}, fotosAgil));
-    setLiquidador(mapCasoSuraALiquidador(casoSura || {}));
+    setLiquidador(liquidadorInicial || mapCasoSuraALiquidador(casoSura || {}));
   }, [casoSura?._id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

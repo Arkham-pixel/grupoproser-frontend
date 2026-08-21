@@ -36,14 +36,17 @@ export default function LiquidadorSegurosSura({
   onGuardarEnCaso,
   guardandoCaso = false,
   onEstadoChange,
+  liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
-  const [liquidador, setLiquidador] = useState(() => mapCasoSuraALiquidador(casoSura || {}));
+  const [liquidador, setLiquidador] = useState(() =>
+    liquidadorInicial || mapCasoSuraALiquidador(casoSura || {})
+  );
   const [error, setError] = useState('');
   const [exportando, setExportando] = useState('');
 
   useEffect(() => {
-    setLiquidador(mapCasoSuraALiquidador(casoSura || {}));
+    setLiquidador(liquidadorInicial || mapCasoSuraALiquidador(casoSura || {}));
   }, [casoSura?._id]);
 
   const totales = useMemo(() => calcularLiquidacionSura(liquidador), [liquidador]);

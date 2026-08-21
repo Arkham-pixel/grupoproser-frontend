@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import { FaFileExcel, FaPlus } from 'react-icons/fa';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   deleteCasoAlfa,
   fetchAllCasosAlfa,
+  getCasoAlfaById,
 } from '../../services/segurosAlfaService.js';
 import FormularioSegurosAlfa from './FormularioSegurosAlfa.jsx';
 import ArchiveroSegurosAlfa from './ArchiveroSegurosAlfa.jsx';
@@ -26,6 +27,27 @@ import {
   formatDate,
   normTexto,
 } from './segurosAlfaHelpers.js';
+
+/** Liquidador “real”: tiene ítems de presupuesto o detalle CAT (no solo cascarón vacío). */
+function casoTieneLiquidadorConContenido(caso) {
+  const liq = caso?.liquidador;
+  if (!liq || typeof liq !== 'object') return false;
+  const items = liq?.evaluacionSismicaNSR10?.presupuesto?.items;
+  const det = liq?.detalleLiquidacionCat;
+  const texto = (it = {}) =>
+    String(it?.actividad || it?.concepto || it?.descripcion || it?.componente || '').trim();
+  const nItems = Array.isArray(items) ? items.filter((it) => texto(it)).length : 0;
+  const nDet = Array.isArray(det) ? det.filter((it) => texto(it)).length : 0;
+  return nItems > 0 || nDet > 0;
+}
+
+function casoTieneLiquidadorObj(caso) {
+  return Boolean(caso?.liquidador && typeof caso.liquidador === 'object');
+}
+
+function casoTieneInforme(caso) {
+  return Boolean(caso?.informeUnico && typeof caso.informeUnico === 'object');
+}
 import {
   expressBadge,
   expressBtnPrimary,
@@ -44,7 +66,7 @@ import {
   InputFenix,
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
+import { filtrarCasosPorAsignacionUsuario, coincidenPersonas } from '../../utils/permisosCasoPorRol.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -147,6 +169,7 @@ const buildExportRow = (caso) => ({
 export default function ReporteSegurosAlfa() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -157,6 +180,9 @@ export default function ReporteSegurosAlfa() {
   const [filtroAjustador, setFiltroAjustador] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  /** '' | 'liquidador' | 'informe' | 'alguno' | 'ambos' */
+  const [filtroDocumento, setFiltroDocumento] = useState('');
+  const [soloMisCasos, setSoloMisCasos] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
@@ -181,14 +207,66 @@ export default function ReporteSegurosAlfa() {
     recargar();
   }, [recargar]);
 
+  // Abrir Archivero desde ?archivero=<casoId> (p.ej. banner del workspace)
+  useEffect(() => {
+    const archiveroId = searchParams.get('archivero');
+    if (!archiveroId || casoArchivero) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const fromList = casos.find((c) => String(c._id) === String(archiveroId));
+        const caso = fromList || (await getCasoAlfaById(archiveroId));
+        if (!cancelled && caso) setCasoArchivero(caso);
+      } catch (err) {
+        console.warn('No se pudo abrir archivero desde query:', err?.message);
+      } finally {
+        if (!cancelled) {
+          const next = new URLSearchParams(searchParams);
+          next.delete('archivero');
+          setSearchParams(next, { replace: true });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams, setSearchParams, casos, casoArchivero]);
+
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
 
+  const resumenDocs = useMemo(() => {
+    let conLiq = 0;
+    let conLiqVacio = 0;
+    let conInf = 0;
+    let conAmbos = 0;
+    let conAlguno = 0;
+    for (const c of casos) {
+      const liqReal = casoTieneLiquidadorConContenido(c);
+      const liqObj = casoTieneLiquidadorObj(c);
+      const inf = casoTieneInforme(c);
+      if (liqReal) conLiq += 1;
+      else if (liqObj) conLiqVacio += 1;
+      if (inf) conInf += 1;
+      if (liqReal && inf) conAmbos += 1;
+      if (liqReal || inf) conAlguno += 1;
+    }
+    return { conLiq, conLiqVacio, conInf, conAmbos, conAlguno, total: casos.length };
+  }, [casos]);
+
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     const idsBloque = new Set((idsBloqueSeleccionado || []).map(String));
+    const login =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '';
+    const nombre =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') || '' : '';
+    const cedula =
+      typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '';
+    const misClaves = [nombre, login, cedula].filter(Boolean);
+
     return casos.filter((c) => {
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
@@ -198,6 +276,24 @@ export default function ReporteSegurosAlfa() {
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
       }
+
+      const tieneLiq = casoTieneLiquidadorConContenido(c);
+      const tieneInf = casoTieneInforme(c);
+      if (filtroDocumento === 'liquidador' && !tieneLiq) return false;
+      if (filtroDocumento === 'informe' && !tieneInf) return false;
+      if (filtroDocumento === 'alguno' && !tieneLiq && !tieneInf) return false;
+      if (filtroDocumento === 'ambos' && !(tieneLiq && tieneInf)) return false;
+
+      if (soloMisCasos && misClaves.length) {
+        const ok = misClaves.some(
+          (k) =>
+            coincidenPersonas(c.ajustador, k) ||
+            coincidenPersonas(c.inspector, k) ||
+            coincidenPersonas(c.ajustadorLider, k)
+        );
+        if (!ok) return false;
+      }
+
       if (!q) return true;
       const blob = [
         c.consecutivo,
@@ -232,6 +328,8 @@ export default function ReporteSegurosAlfa() {
     fechaInicio,
     fechaFin,
     idsBloqueSeleccionado,
+    filtroDocumento,
+    soloMisCasos,
   ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / ALFA_REPORTE_PAGE_SIZE));
@@ -250,6 +348,8 @@ export default function ReporteSegurosAlfa() {
     fechaInicio,
     fechaFin,
     idsBloqueSeleccionado,
+    filtroDocumento,
+    soloMisCasos,
   ]);
 
   const limpiarFiltros = () => {
@@ -260,6 +360,8 @@ export default function ReporteSegurosAlfa() {
     setFiltroAjustador('');
     setFechaInicio('');
     setFechaFin('');
+    setFiltroDocumento('');
+    setSoloMisCasos(false);
     setBloqueSeleccionadoId(null);
     setIdsBloqueSeleccionado([]);
   };
@@ -434,7 +536,44 @@ export default function ReporteSegurosAlfa() {
             <Campo label={t('segurosAlfa.report.to')}>
               <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </Campo>
+            <Campo label="Con liquidador / informe">
+              <SelectFenix
+                value={filtroDocumento}
+                onChange={(e) => setFiltroDocumento(e.target.value)}
+              >
+                <option value="">Todos</option>
+                <option value="alguno">Con liquidador o informe</option>
+                <option value="liquidador">Solo con liquidador</option>
+                <option value="informe">Solo con informe</option>
+                <option value="ambos">Con liquidador e informe</option>
+              </SelectFenix>
+            </Campo>
+            <Campo label="Asignación">
+              <label className="flex h-10 cursor-pointer items-center gap-2 font-body text-sm text-gray-700 dark:text-gray-200">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-fenix-primario"
+                  checked={soloMisCasos}
+                  onChange={(e) => setSoloMisCasos(e.target.checked)}
+                />
+                Solo mis casos (mi usuario)
+              </label>
+            </Campo>
           </div>
+          {!loading && (
+            <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-300">
+              En total: <strong>{resumenDocs.total}</strong> · liquidador con ítems:{' '}
+              <strong>{resumenDocs.conLiq}</strong>
+              {resumenDocs.conLiqVacio > 0 ? (
+                <>
+                  {' '}
+                  · cascarón vacío: <strong>{resumenDocs.conLiqVacio}</strong>
+                </>
+              ) : null}{' '}
+              · con informe: <strong>{resumenDocs.conInf}</strong> · con ambos:{' '}
+              <strong>{resumenDocs.conAmbos}</strong>
+            </p>
+          )}
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading
               ? t('common.loading')
@@ -519,8 +658,8 @@ export default function ReporteSegurosAlfa() {
                       >
                         <AccionesAlfaMenu
                           docsCount={item.archivos?.length || 0}
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico}
+                          tieneLiquidador={casoTieneLiquidadorConContenido(item)}
+                          tieneInforme={casoTieneInforme(item)}
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>

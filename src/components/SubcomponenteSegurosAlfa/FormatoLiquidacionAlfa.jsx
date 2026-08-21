@@ -436,7 +436,8 @@ export default function FormatoLiquidacionAlfa({
             },
             {
               key: 'porcentaje',
-              label: '% Deducible',
+              label:
+                dedCfg.baseDeducible === 'perdida' ? '% s/ pérdida' : '% s/ valor aseg.',
               value: dedCfg.porcentaje ?? '',
               type: 'number',
             },
@@ -531,12 +532,21 @@ export default function FormatoLiquidacionAlfa({
       </div>
       {totales.deducibleRequiereValorAsegurado ? (
         <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-          El deducible Alfa es el mayor entre el % del <strong>valor asegurado</strong> y los SMMLV.
-          Llene «Valor límite asegurado» para calcularlo (no se toma de la pérdida).
+          Según el tomador, el deducible usa el <strong>valor asegurado</strong>. Llene «Valor
+          límite asegurado» para calcularlo.
+        </p>
+      ) : totales.deducibleAlfa?.baseDeducible === 'perdida' ? (
+        <p className="border-b border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
+          Deducible del tomador:{' '}
+          <strong>
+            {totales.deducibleAlfa.porcentaje}% de la pérdida ($
+            {formatearMonto(totales.deducibleAlfa.deducibleAplicado)})
+          </strong>
+          {totales.deducibleAlfa.texto ? ` · ${totales.deducibleAlfa.texto}` : ''}
         </p>
       ) : totales.deducibleAlfa ? (
         <p className="border-b border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
-          Deducible = mayor entre{' '}
+          Deducible del tomador = mayor entre{' '}
           <strong>
             {totales.deducibleAlfa.porcentaje}% del valor asegurado ($
             {formatearMonto(totales.deducibleAlfa.deduciblePorcentaje)})

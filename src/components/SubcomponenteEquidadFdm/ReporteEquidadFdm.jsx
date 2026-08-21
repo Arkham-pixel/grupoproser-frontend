@@ -26,6 +26,7 @@ import {
   leerFiltrosReporteFdm,
   patchFiltrosReporteFdm,
 } from './equidadFdmHelpers.js';
+import { esRolSoloEquidad } from '../../config/roles.js';
 import {
   expressBtnGhost,
   expressBtnPrimary,
@@ -169,6 +170,7 @@ function cargarColumnasGuardadas() {
 
 const ReporteEquidadFdm = () => {
   const { t } = useTranslation();
+  const soloBandejaEquidad = esRolSoloEquidad();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filtrosUrl = useMemo(() => leerFiltrosReporteFdm(searchParams), [searchParams]);
@@ -428,8 +430,8 @@ const ReporteEquidadFdm = () => {
 
   /** Reporte completo (sin filtro de archivero): solo para login especial. */
   const casosReporteCompleto = useMemo(
-    () =>
-      aplicarFiltrosCasosFdm(casos, {
+    () => {
+      const lista = aplicarFiltrosCasosFdm(casos, {
         soloConArchivos: false,
         busqueda: busquedaCompleto,
         filtroAjustador: '',
@@ -438,7 +440,14 @@ const ReporteEquidadFdm = () => {
         filtroNuevos: '',
         fechaInicio: '',
         fechaFin: '',
-      }),
+      });
+      // Sin check «Hecho» arriba; finalizados abajo.
+      return [...lista].sort((a, b) => {
+        const ha = a?.checklistHecho === true ? 1 : 0;
+        const hb = b?.checklistHecho === true ? 1 : 0;
+        return ha - hb;
+      });
+    },
     [casos, busquedaCompleto, eventoCompleto]
   );
   const ciudades = useMemo(() => buildCiudadesFdm(casosBase), [casosBase]);
@@ -448,8 +457,15 @@ const ReporteEquidadFdm = () => {
   );
 
   const filtrados = useMemo(() => {
-    if (!filtroMunicipio) return casosBase;
-    return casosBase.filter((item) => ciudadClaveFdm(item) === filtroMunicipio);
+    const base = !filtroMunicipio
+      ? casosBase
+      : casosBase.filter((item) => ciudadClaveFdm(item) === filtroMunicipio);
+    // Pendientes (sin check) arriba; hechos/finalizados abajo.
+    return [...base].sort((a, b) => {
+      const ha = a?.checklistHecho === true ? 1 : 0;
+      const hb = b?.checklistHecho === true ? 1 : 0;
+      return ha - hb;
+    });
   }, [casosBase, filtroMunicipio]);
 
   const filtrosActivos = Boolean(
@@ -540,6 +556,37 @@ const ReporteEquidadFdm = () => {
       });
     } catch (err) {
       console.error('Error exportando Excel Equidad FDM:', err);
+      setAviso({
+        open: true,
+        titulo: t('equidadFdm.report.exportError'),
+        mensaje: t('equidadFdm.report.exportErrorMessage'),
+        tipo: 'error',
+      });
+    }
+  };
+
+  /** Excel del reporte completo (sin filtro de archivero), con los filtros de esa ventana. */
+  const exportarExcelReporteCompleto = () => {
+    if (casosReporteCompleto.length === 0) {
+      setAviso({
+        open: true,
+        titulo: t('equidadFdm.report.noData'),
+        mensaje: t('equidadFdm.report.noDataExport'),
+        tipo: 'warning',
+      });
+      return;
+    }
+
+    try {
+      const fecha = new Date().toISOString().slice(0, 10);
+      const sufijoEvento = eventoCompleto
+        ? eventoCompleto.replace(/\s+/g, ' ').slice(0, 40)
+        : 'TODOS';
+      descargarExcelFdlmBase(casosReporteCompleto, {
+        nombreArchivo: `FDLM reporte completo ${sufijoEvento} ${fecha}.xlsx`,
+      });
+    } catch (err) {
+      console.error('Error exportando Excel reporte completo FDM:', err);
       setAviso({
         open: true,
         titulo: t('equidadFdm.report.exportError'),
@@ -707,15 +754,17 @@ const ReporteEquidadFdm = () => {
                 className="hidden"
                 onChange={handleImportExcel}
               />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className={expressBtnGhost}
-                disabled={loading || importando}
-              >
-                <FaUpload />
-                {importando ? t('equidadFdm.bulk.importing') : t('equidadFdm.bulk.upload')}
-              </button>
+              {!soloBandejaEquidad && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={expressBtnGhost}
+                  disabled={loading || importando}
+                >
+                  <FaUpload />
+                  {importando ? t('equidadFdm.bulk.importing') : t('equidadFdm.bulk.upload')}
+                </button>
+              )}
               <button type="button" onClick={abrirPersonalizarColumnas} className={expressBtnSecondary}>
                 <FaCog />
                 {t('equidadFdm.report.customizeColumns')}
@@ -729,7 +778,7 @@ const ReporteEquidadFdm = () => {
                 <FaFileExcel />
                 {t('equidadFdm.report.exportExcel')}
               </button>
-              {soloConArchivos && (
+              {soloConArchivos && !soloBandejaEquidad && (
                 <button
                   type="button"
                   onClick={() => {
@@ -750,7 +799,7 @@ const ReporteEquidadFdm = () => {
           }
         />
 
-        <EquidadFdmBaseTerremotoBanner onCompleted={recargar} />
+        {!soloBandejaEquidad && <EquidadFdmBaseTerremotoBanner onCompleted={recargar} />}
 
         <section className={expressCard}>
           <div className={expressCardHeader}>
@@ -938,6 +987,7 @@ const ReporteEquidadFdm = () => {
                             onEliminar={() => solicitarEliminar(item)}
                             tieneLiquidador={Boolean(item.liquidador)}
                             cantidadArchivos={cantidadArchivosFdm(item)}
+                            soloLectura={soloBandejaEquidad}
                           />
                         </div>
                       </td>
@@ -1125,6 +1175,7 @@ const ReporteEquidadFdm = () => {
                             }}
                             tieneLiquidador={Boolean(item.liquidador)}
                             cantidadArchivos={cantidadArchivosFdm(item)}
+                            soloLectura={soloBandejaEquidad}
                           />
                         </div>
                       </td>
@@ -1167,7 +1218,19 @@ const ReporteEquidadFdm = () => {
               </button>
             </div>
           )}
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              onClick={exportarExcelReporteCompleto}
+              disabled={casosReporteCompleto.length === 0}
+              title={t('equidadFdm.report.fullReportExportHint')}
+            >
+              <span className="inline-flex items-center gap-2">
+                <FaFileExcel aria-hidden />
+                {t('equidadFdm.report.exportExcel')}
+              </span>
+            </button>
             <button type="button" className={expressBtnGhost} onClick={() => setModalReporteCompleto(false)}>
               {t('common.close')}
             </button>

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { FaSignOutAlt } from 'react-icons/fa'
 import { apiRequest } from '../config/apiConfig.js'
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js'
+import { flushArnaldDraftsNow } from '../services/arnaldDraftFlushRegistry.js'
 
 export default function LogoutButton({ variant = 'default', label }) {
   const { t } = useTranslation()
@@ -15,6 +16,7 @@ export default function LogoutButton({ variant = 'default', label }) {
 
   const handleLogout = async () => {
     try {
+      await flushArnaldDraftsNow({ keepalive: true });
       const token = localStorage.getItem('token');
       if (token) {
         // Intentar registrar el logout en el servidor

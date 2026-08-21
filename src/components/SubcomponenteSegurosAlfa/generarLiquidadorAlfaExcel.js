@@ -7,6 +7,7 @@ import {
   normalizarItemsRespuesta,
   OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
   ocultarHojasEvaluacionYDictamenExcel,
+  parseMontoNsr10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { prefillNsrDesdeCasoAlfa } from './liquidadorAlfaHelpers.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeAlfa.js';
@@ -399,14 +400,25 @@ function fechaCelda(value) {
 }
 
 function numeroONull(v) {
-  if (v === '' || v == null) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  return parseMontoNsr10(v);
 }
 
 function setVal(sheet, row, col, value) {
   if (value === undefined) return;
-  sheet.getCell(row, col).value = value === '' ? null : value;
+  try {
+    const cell = sheet.getCell(row, col);
+    const actual = cell.value;
+    if (
+      actual &&
+      typeof actual === 'object' &&
+      (actual.formula || actual.sharedFormula)
+    ) {
+      return;
+    }
+    cell.value = value === '' ? null : value;
+  } catch {
+    /* Celda combinada o protegida: no abortar el Excel. */
+  }
 }
 
 /**

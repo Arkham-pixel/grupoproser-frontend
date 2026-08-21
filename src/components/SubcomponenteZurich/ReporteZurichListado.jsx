@@ -61,11 +61,23 @@ const COLUMNAS = [
   { clave: 'correoAsegurado', labelKey: 'correoAsegurado' },
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'estado', labelKey: 'estado' },
+  { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
   { clave: 'inspector', labelKey: 'inspector' },
   { clave: 'fechaAsignacion', labelKey: 'fechaAsignacion' },
   { clave: 'fechaVisita', labelKey: 'fechaVisita' },
+  { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
+  { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
+  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
+  { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
+  { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
+  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
+  { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
+  { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
+  { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
+  { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
   { clave: 'observaciones', labelKey: 'observaciones' },
 ];
 
@@ -86,11 +98,23 @@ const buildExportRow = (caso) => ({
   'CORREO ASEGURADO': caso.correoAsegurado ?? '',
   CIUDAD: caso.ciudad ?? '',
   ESTADO: caso.estado ?? '',
+  MODALIDAD: caso.modalidadAtencion ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
   INSPECTOR: caso.inspector ?? '',
   'FECHA ASIGNACIÓN': formatDate(caso.fechaAsignacion),
   'FECHA VISITA': formatDate(caso.fechaVisita),
+  'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
+  'FECHA COORDINANDO INSPECCIÓN': formatDate(caso.fechaCoordinandoInspeccion),
+  'FECHA ANÁLISIS': formatDate(caso.fechaAnalisisCaso),
+  'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
+  'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
+  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
+  'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
+  'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
+  'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
+  'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
   OBSERVACIONES: caso.observaciones ?? '',
   'Fecha creación': formatDate(caso.createdAt),
 });
@@ -191,11 +215,25 @@ export default function ReporteZurichListado() {
     setFechaFin('');
   };
 
+  const FECHAS_LISTADO = new Set([
+    'fechaAsignacion',
+    'fechaVisita',
+    'fechaCasoNuevo',
+    'fechaCoordinandoInspeccion',
+    'fechaAnalisisCaso',
+    'fechaSolicitudDocumento',
+    'fechaRecepcionDocumento',
+    'fechaObjecion',
+    'fechaAutorizacionAnalista',
+    'fechaCasoParaPago',
+    'ultimaGestion',
+  ]);
+
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'tipoPoliza') return etiquetaTipoPolizaZurich(item) || '—';
     const valor = item[clave];
     if (valor === null || valor === undefined || valor === '') return '—';
-    if (clave === 'fechaAsignacion' || clave === 'fechaVisita') return formatDate(valor);
+    if (FECHAS_LISTADO.has(clave)) return formatDate(valor) || '—';
     return String(valor);
   };
 

@@ -11,12 +11,13 @@ import {
 import {
   eliminarArchivoAlfa,
   getCasoAlfaById,
-  getDocumentosSharePointAlfa,
   getPolizasImportadasAlfa,
   reintentarSharePointAlfa,
+  setSharePointEnabledAlfa,
   subirArchivoAlfa,
   urlDescargaArchivoAlfa,
 } from '../../services/segurosAlfaService.js';
+import useAlfaSharePointSyncStatus from '../../hooks/useAlfaSharePointSyncStatus.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -25,8 +26,7 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { ETIQUETAS_ARCHIVO_ALFA, formatDate } from './segurosAlfaHelpers.js';
-
-const POLL_MS = 45000;
+import AlfaSharePointSyncBanner from './AlfaSharePointSyncBanner.jsx';
 
 const canRetrySharePoint = () => {
   const rol = String(localStorage.getItem('rol') || '')
@@ -40,6 +40,7 @@ const syncChipClass = (status) => {
     case 'synced':
       return 'bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900';
     case 'pending':
+    case 'pending_destination':
       return 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900';
     case 'syncing':
       return 'bg-sky-50 text-sky-800 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900';
@@ -60,12 +61,31 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
-  const [syncByArchivoId, setSyncByArchivoId] = useState({});
-  const [summary, setSummary] = useState(null);
-  const [cargandoSync, setCargandoSync] = useState(false);
   const [reintentandoId, setReintentandoId] = useState(null);
   const [documentos, setDocumentos] = useState([]);
   const allowRetry = useMemo(() => canRetrySharePoint(), []);
+
+  const {
+    summary,
+    syncByArchivoId,
+    documents: syncDocuments,
+    loading: cargandoSync,
+    refresh: cargarEstadoSharePoint,
+    boostPolling,
+    justSynced,
+    dismissJustSynced,
+    hasActivity,
+    pendingTotal,
+  } = useAlfaSharePointSyncStatus(caso?._id, { enabled: Boolean(caso?._id) });
+
+  const handleSharePointEnabled = useCallback(
+    async (archivoId, enabled) => {
+      await setSharePointEnabledAlfa(caso._id, archivoId, enabled);
+      await cargarEstadoSharePoint();
+      if (enabled) boostPolling();
+    },
+    [boostPolling, cargarEstadoSharePoint, caso?._id]
+  );
 
   const cargarPolizasImportadas = useCallback(async () => {
     if (!caso?._id) return;
@@ -75,24 +95,6 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
     } catch (err) {
       console.warn('Pólizas importadas Alfa no disponibles:', err.message);
       setDocumentos([]);
-    }
-  }, [caso?._id]);
-
-  const cargarEstadoSharePoint = useCallback(async () => {
-    if (!caso?._id) return;
-    setCargandoSync(true);
-    try {
-      const data = await getDocumentosSharePointAlfa(caso._id);
-      const map = {};
-      for (const doc of data.documents || []) {
-        map[String(doc.archivoId)] = doc.sync || { status: 'none' };
-      }
-      setSyncByArchivoId(map);
-      setSummary(data.summary || null);
-    } catch (err) {
-      console.warn('Estado SharePoint Alfa no disponible:', err.message);
-    } finally {
-      setCargandoSync(false);
     }
   }, [caso?._id]);
 
@@ -109,14 +111,12 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
   }, [caso?._id, caso?.archivos]);
 
   useEffect(() => {
-    cargarEstadoSharePoint();
     cargarPolizasImportadas();
     const timer = setInterval(() => {
-      cargarEstadoSharePoint();
       cargarPolizasImportadas();
-    }, POLL_MS);
+    }, 45000);
     return () => clearInterval(timer);
-  }, [cargarEstadoSharePoint, cargarPolizasImportadas]);
+  }, [cargarPolizasImportadas]);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -128,7 +128,11 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
     try {
       await subirArchivoAlfa(caso._id, file, etiqueta);
       await refrescar();
-      setExito(t('segurosAlfa.archive.uploadOk'));
+      boostPolling();
+      setExito(t('segurosAlfa.archive.sharepoint.queuedOk', {
+        defaultValue:
+          'Guardado en ARNALD. En cola hacia SharePoint (SINIESTROS).',
+      }));
     } catch (err) {
       setError(err.message || t('segurosAlfa.archive.uploadError'));
     } finally {
@@ -157,6 +161,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
     try {
       await reintentarSharePointAlfa(caso._id, archivoId);
       setExito(t('segurosAlfa.archive.sharepoint.retryOk'));
+      boostPolling();
       await cargarEstadoSharePoint();
     } catch (err) {
       setError(err.message || t('segurosAlfa.archive.sharepoint.retryError'));
@@ -209,19 +214,18 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
         </button>
       </div>
 
-      {summary && (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-700 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
-          <span className="font-semibold">{t('segurosAlfa.archive.sharepoint.summaryTitle')}</span>
-          {' · '}
-          {t('segurosAlfa.archive.sharepoint.summaryLine', {
-            synced: summary.synced || 0,
-            pending: summary.pending || 0,
-            syncing: summary.syncing || 0,
-            failed: summary.failed || 0,
-            none: summary.none || 0,
-          })}
-        </div>
-      )}
+      <AlfaSharePointSyncBanner
+        summary={summary}
+        loading={cargandoSync}
+        hasActivity={hasActivity}
+        pendingTotal={pendingTotal}
+        justSynced={justSynced}
+        documents={syncDocuments}
+        onRefresh={cargarEstadoSharePoint}
+        onDismissSynced={dismissJustSynced}
+        onSetEnabled={handleSharePointEnabled}
+        compact
+      />
 
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}

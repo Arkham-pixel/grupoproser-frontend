@@ -18,7 +18,14 @@ import {
   defaultInformeUnicoAlfa,
   mapCasoAlfaALiquidador,
 } from './liquidadorAlfaHelpers.js';
-import { descargarInformeCatAlfaExcel } from './generarInformeCatAlfaExcel.js';
+import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import {
+  descargarInformeCatAlfaExcel,
+} from './generarInformeCatAlfaExcel.js';
+import {
+  archivarBlobEnCasoAlfa,
+  MIME_ARCHIVO_ALFA,
+} from './archivarDocumentoAlfa.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import AnalisisCoberturaCriteriaAlfa from './AnalisisCoberturaCriteriaAlfa.jsx';
 
@@ -28,11 +35,19 @@ export default function InformeUnicoSegurosAlfa({
   onLiquidadorChange,
   onGuardarEnCaso,
   onCasoChange,
+  onArchivoArchivado,
   guardandoCaso = false,
+  liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
   const [informe, setInforme] = useState(() => defaultInformeUnicoAlfa(casoAlfa || {}));
-  const [liquidador, setLiquidador] = useState(() => mapCasoAlfaALiquidador(casoAlfa || {}));
+  const [liquidador, setLiquidador] = useState(() => {
+    const desdeCaso = mapCasoAlfaALiquidador(casoAlfa || {});
+    return fusionarLiquidadorSinPerderPresupuestoNsr(
+      liquidadorInicial || desdeCaso,
+      desdeCaso
+    );
+  });
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [descargando, setDescargando] = useState(false);
@@ -77,7 +92,11 @@ export default function InformeUnicoSegurosAlfa({
 
   useEffect(() => {
     setInforme(defaultInformeUnicoAlfa(casoAlfa || {}));
-    setLiquidador(mapCasoAlfaALiquidador(casoAlfa || {}));
+    const desdeCaso = mapCasoAlfaALiquidador(casoAlfa || {});
+    setLiquidador(
+      fusionarLiquidadorSinPerderPresupuestoNsr(liquidadorInicial || desdeCaso, desdeCaso)
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [casoAlfa?._id]);
 
   // Si hay coordenadas pero no captura, forzar Static Maps al abrir el informe
@@ -146,18 +165,54 @@ export default function InformeUnicoSegurosAlfa({
     setError('');
     setMensaje('');
     try {
-      await descargarInformeCatAlfaExcel({
+      const resultado = await descargarInformeCatAlfaExcel({
         caso: casoAlfa || {},
         liquidador,
         totales,
         informe,
       });
-      setMensaje('Excel CAT Alfa descargado (Liquidador + Análisis + anexos).');
+      const casoId = casoAlfa?._id;
+      if (casoId && resultado?.blob) {
+        try {
+          const creado = await archivarBlobEnCasoAlfa({
+            casoId,
+            blob: resultado.blob,
+            nombre: resultado.filename || resultado.nombre,
+            mime: MIME_ARCHIVO_ALFA.xlsx,
+            etiqueta: 'INFORME',
+          });
+          appendArchivosAlCaso([creado]);
+          if (typeof onArchivoArchivado === 'function') onArchivoArchivado(creado);
+          setMensaje(
+            'Excel CAT descargado y guardado en archivero (cola SharePoint SINIESTROS).'
+          );
+        } catch (errArchivo) {
+          console.error('Archivero informe:', errArchivo);
+          setError(
+            `Excel descargado, pero NO se archivó: ${errArchivo?.message || 'error'}`
+          );
+        }
+      } else {
+        setMensaje('Excel CAT Alfa descargado (Liquidador + Análisis + anexos).');
+      }
     } catch (err) {
       console.error(err);
       setError(err.message || 'No se pudo generar el Excel CAT Alfa.');
     } finally {
       setDescargando(false);
+    }
+  };
+
+  const handleGuardarInforme = async () => {
+    if (!onGuardarEnCaso) return;
+    setError('');
+    setMensaje('');
+    try {
+      // El workspace archiva el Excel CAT tras guardar (cola SharePoint)
+      await onGuardarEnCaso(informe);
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('segurosAlfa.reportUnique.saveError'));
     }
   };
 
@@ -223,6 +278,7 @@ export default function InformeUnicoSegurosAlfa({
         casoId={casoAlfa?._id}
         onArchivoCreado={(creado) => {
           if (creado) appendArchivosAlCaso([creado]);
+          if (typeof onArchivoArchivado === 'function') onArchivoArchivado(creado);
           setMensaje(t('segurosAlfa.reportUnique.photosUploaded', { count: 1 }));
         }}
         onArchivoEliminado={(archivoId) => {
@@ -260,8 +316,8 @@ export default function InformeUnicoSegurosAlfa({
           <button
             type="button"
             className={expressBtnPrimary}
-            disabled={guardandoCaso}
-            onClick={() => onGuardarEnCaso(informe)}
+            disabled={guardandoCaso || descargando}
+            onClick={handleGuardarInforme}
           >
             {guardandoCaso
               ? t('segurosAlfa.reportUnique.saving')

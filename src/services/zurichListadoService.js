@@ -1,4 +1,9 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import {
+  diasEnEstadoZurich,
+  homologarEstadoZurich,
+  ultimaGestionZurich,
+} from '../components/SubcomponenteZurich/zurichHelpers.js';
 
 const API_URL = `${BASE_URL}/api/zurich-listado`;
 
@@ -7,35 +12,41 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const normalizeZurichListadoItem = (item = {}) => ({
-  ...item,
-  zc: item.zc ?? '',
-  siniestro: item.siniestro ?? '',
-  identificacion: item.identificacion ?? '',
-  tipoIdentificacion: item.tipoIdentificacion ?? '',
-  numeroPoliza: item.numeroPoliza ?? '',
-  tipoPoliza: item.tipoPoliza ?? '',
-  tipoPolizaOtro: item.tipoPolizaOtro ?? '',
-  causa: item.causa ?? '',
-  asegurado: item.asegurado ?? '',
-  intermediario: item.intermediario ?? '',
-  correoIntermediario: item.correoIntermediario ?? '',
-  telefonoIntermediario: item.telefonoIntermediario ?? '',
-  contactoIntermediario: item.contactoIntermediario ?? '',
-  telefonoAsegurado: item.telefonoAsegurado ?? '',
-  correoAsegurado: item.correoAsegurado ?? '',
-  contactoAsegurado: item.contactoAsegurado ?? '',
-  observaciones: item.observaciones ?? '',
-  ciudad: item.ciudad ?? '',
-  departamento: item.departamento ?? '',
-  ajustadorLider: item.ajustadorLider ?? '',
-  ajustador: item.ajustador ?? '',
-  inspector: item.inspector ?? '',
-  estado: item.estado ?? '',
-  liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
-  informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
-  archivos: Array.isArray(item.archivos) ? item.archivos : [],
-});
+export const normalizeZurichListadoItem = (item = {}) => {
+  const estado = homologarEstadoZurich(item.estado);
+  const caso = { ...item, estado };
+  return {
+    ...caso,
+    zc: item.zc ?? '',
+    siniestro: item.siniestro ?? '',
+    identificacion: item.identificacion ?? '',
+    tipoIdentificacion: item.tipoIdentificacion ?? '',
+    numeroPoliza: item.numeroPoliza ?? '',
+    tipoPoliza: item.tipoPoliza ?? '',
+    tipoPolizaOtro: item.tipoPolizaOtro ?? '',
+    causa: item.causa ?? '',
+    asegurado: item.asegurado ?? '',
+    intermediario: item.intermediario ?? '',
+    correoIntermediario: item.correoIntermediario ?? '',
+    telefonoIntermediario: item.telefonoIntermediario ?? '',
+    contactoIntermediario: item.contactoIntermediario ?? '',
+    telefonoAsegurado: item.telefonoAsegurado ?? '',
+    correoAsegurado: item.correoAsegurado ?? '',
+    contactoAsegurado: item.contactoAsegurado ?? '',
+    observaciones: item.observaciones ?? '',
+    ciudad: item.ciudad ?? '',
+    departamento: item.departamento ?? '',
+    ajustadorLider: item.ajustadorLider ?? '',
+    ajustador: item.ajustador ?? '',
+    inspector: item.inspector ?? '',
+    estado,
+    diasEnEstado: diasEnEstadoZurich(caso),
+    ultimaGestion: ultimaGestionZurich(caso),
+    liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
+    informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
+    archivos: Array.isArray(item.archivos) ? item.archivos : [],
+  };
+};
 
 const normalizeArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeZurichListadoItem(item ?? {})) : [];

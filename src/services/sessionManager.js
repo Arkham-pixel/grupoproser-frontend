@@ -1,6 +1,7 @@
 import { SESSION_CONFIG, SESSION_MESSAGES } from '../config/session.js';
 import { esRolExterno } from '../config/roles.js';
 import { limpiarSesionLocal } from '../utils/limpiarSesionLocal.js';
+import { flushArnaldDraftsNow } from './arnaldDraftFlushRegistry.js';
 
 // Gestor de sesión con cierre automático por inactividad
 class SessionManager {
@@ -297,6 +298,8 @@ this.verificarSesionActiva();
     } catch (error) {
       console.error('Error en logout:', error);
     }
+
+    await flushArnaldDraftsNow({ keepalive: true });
 
     limpiarSesionLocal();
 

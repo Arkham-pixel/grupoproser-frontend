@@ -1,0 +1,603 @@
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import * as XLSX from 'xlsx';
+import { FaFileExcel, FaPlus, FaUpload } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  deleteCasoBbvaCatListado,
+  fetchAllCasosBbvaCatListado,
+} from '../../services/bbvaCatListadoService.js';
+import FormularioBbvaCat from './FormularioBbvaCat.jsx';
+import AccionesBbvaCatMenu from './AccionesBbvaCatMenu.jsx';
+import MapaBloquesBbvaCatPanel from './MapaBloquesBbvaCatPanel.jsx';
+import ModalImportarExcelBbvaCat, {
+  esAdminOSoporteBbvaCat,
+} from './ModalImportarExcelBbvaCat.jsx';
+import {
+  BBVA_CAT_REPORTE_PAGE_SIZE,
+  buildOpcionesFiltro,
+  coincideFiltroTexto,
+  etiquetaTipoPolizaBbvaCat,
+  fechaEnRango,
+  formatDate,
+  normTexto,
+} from './bbvaCatHelpers.js';
+import {
+  expressBadge,
+  expressBtnPrimary,
+  expressBtnSecondary,
+  expressPageSubtitle,
+  expressPageTitle,
+  expressScope,
+  expressTableHead,
+  expressTableWrap,
+} from '../SubcomponenteExpress/expressFenixUi.js';
+import {
+  Campo,
+  ExpressAvisoModal,
+  ExpressFilterSection,
+  ExpressModal,
+  InputFenix,
+  SelectFenix,
+} from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+
+const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
+const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
+
+const COLUMNAS = [
+  { clave: 'consecutivo', labelKey: 'consecutivo' },
+  { clave: 'zc', labelKey: 'zc' },
+  { clave: 'siniestro', labelKey: 'siniestro' },
+  { clave: 'tipoIdentificacion', labelKey: 'tipoIdentificacion' },
+  { clave: 'identificacion', labelKey: 'identificacion' },
+  { clave: 'numeroPoliza', labelKey: 'numeroPoliza' },
+  { clave: 'tipoPoliza', labelKey: 'tipoPoliza' },
+  { clave: 'causa', labelKey: 'causa' },
+  { clave: 'asegurado', labelKey: 'asegurado' },
+  { clave: 'intermediario', labelKey: 'intermediario' },
+  { clave: 'correoIntermediario', labelKey: 'correoIntermediario' },
+  { clave: 'telefonoIntermediario', labelKey: 'telefonoIntermediario' },
+  { clave: 'telefonoAsegurado', labelKey: 'telefonoAsegurado' },
+  { clave: 'correoAsegurado', labelKey: 'correoAsegurado' },
+  { clave: 'ciudad', labelKey: 'ciudad' },
+  { clave: 'estado', labelKey: 'estado' },
+  { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
+  { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
+  { clave: 'ajustador', labelKey: 'ajustador' },
+  { clave: 'inspector', labelKey: 'inspector' },
+  { clave: 'fechaAsignacion', labelKey: 'fechaAsignacion' },
+  { clave: 'fechaVisita', labelKey: 'fechaVisita' },
+  { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
+  { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
+  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
+  { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
+  { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
+  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
+  { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
+  { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
+  { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
+  { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
+  { clave: 'observaciones', labelKey: 'observaciones' },
+];
+
+const buildExportRow = (caso) => ({
+  Consecutivo: caso.consecutivo ?? '',
+  ZC: caso.zc ?? '',
+  STRO: caso.siniestro ?? '',
+  'TIPO IDENTIFICACIÓN': caso.tipoIdentificacion ?? '',
+  IDENTIFICACIÓN: caso.identificacion ?? '',
+  PÓLIZA: caso.numeroPoliza ?? '',
+  'TIPO PÓLIZA': etiquetaTipoPolizaBbvaCat(caso),
+  CAUSA: caso.causa ?? '',
+  ASEGURADO: caso.asegurado ?? '',
+  INTERMEDIARIO: caso.intermediario ?? '',
+  'CORREO INTERMEDIARIO': caso.correoIntermediario ?? '',
+  'TELEFONO INTERMEDIARIO': caso.telefonoIntermediario ?? '',
+  'TELEFONO ASEGURADO': caso.telefonoAsegurado ?? '',
+  'CORREO ASEGURADO': caso.correoAsegurado ?? '',
+  CIUDAD: caso.ciudad ?? '',
+  ESTADO: caso.estado ?? '',
+  MODALIDAD: caso.modalidadAtencion ?? '',
+  'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
+  AJUSTADOR: caso.ajustador ?? '',
+  INSPECTOR: caso.inspector ?? '',
+  'FECHA ASIGNACIÓN': formatDate(caso.fechaAsignacion),
+  'FECHA VISITA': formatDate(caso.fechaVisita),
+  'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
+  'FECHA COORDINANDO INSPECCIÓN': formatDate(caso.fechaCoordinandoInspeccion),
+  'FECHA ANÁLISIS': formatDate(caso.fechaAnalisisCaso),
+  'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
+  'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
+  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
+  'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
+  'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
+  'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
+  'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
+  OBSERVACIONES: caso.observaciones ?? '',
+  'Fecha creación': formatDate(caso.createdAt),
+});
+
+export default function ReporteBbvaCatListado() {
+  const { t } = useTranslation();
+  const navigate = useNavigate();
+  const [casos, setCasos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroCiudad, setFiltroCiudad] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [fechaInicio, setFechaInicio] = useState('');
+  const [fechaFin, setFechaFin] = useState('');
+  const [pagina, setPagina] = useState(1);
+  const [casoEdicion, setCasoEdicion] = useState(null);
+  const [aviso, setAviso] = useState(null);
+  const [bloqueSeleccionadoId, setBloqueSeleccionadoId] = useState(null);
+  const [siniestrosBloqueSeleccionado, setSiniestrosBloqueSeleccionado] = useState([]);
+  const [modalImportOpen, setModalImportOpen] = useState(false);
+  const puedeImportarExcel = esAdminOSoporteBbvaCat();
+
+  const recargar = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setCasos(await fetchAllCasosBbvaCatListado(2000));
+    } catch (err) {
+      setError(err.message || t('bbvaCat.report.loadError'));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    recargar();
+  }, [recargar]);
+
+  const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
+  const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+
+  const filtrados = useMemo(() => {
+    const q = normTexto(busqueda);
+    const siniestrosBloque = new Set(
+      (siniestrosBloqueSeleccionado || []).map((s) => String(s).trim()).filter(Boolean)
+    );
+    return casos.filter((c) => {
+      if (bloqueSeleccionadoId) {
+        if (siniestrosBloque.size === 0) return false;
+        const keys = [c.siniestro, c.zc].map((v) => String(v || '').trim()).filter(Boolean);
+        if (!keys.some((k) => siniestrosBloque.has(k))) return false;
+      }
+      if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
+      if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
+      if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (fechaInicio || fechaFin) {
+        if (!fechaEnRango(c.createdAt, fechaInicio, fechaFin)) return false;
+      }
+      if (!q) return true;
+      const blob = [
+        c.consecutivo,
+        c.zc,
+        c.siniestro,
+        c.tipoIdentificacion,
+        c.identificacion,
+        c.numeroPoliza,
+        c.tipoPoliza,
+        c.tipoPolizaOtro,
+        c.causa,
+        c.asegurado,
+        c.intermediario,
+        c.correoIntermediario,
+        c.telefonoIntermediario,
+        c.telefonoAsegurado,
+        c.correoAsegurado,
+        c.ciudad,
+        c.estado,
+        c.ajustadorLider,
+        c.ajustador,
+        c.inspector,
+        c.observaciones,
+      ]
+        .map(normTexto)
+        .join(' ');
+      return blob.includes(q);
+    });
+  }, [
+    casos,
+    busqueda,
+    filtroCiudad,
+    filtroEstado,
+    filtroAjustador,
+    fechaInicio,
+    fechaFin,
+    bloqueSeleccionadoId,
+    siniestrosBloqueSeleccionado,
+  ]);
+
+  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / BBVA_CAT_REPORTE_PAGE_SIZE));
+  const paginaActual = Math.min(pagina, totalPaginas);
+  const desde = (paginaActual - 1) * BBVA_CAT_REPORTE_PAGE_SIZE;
+  const paginaItems = filtrados.slice(desde, desde + BBVA_CAT_REPORTE_PAGE_SIZE);
+
+  useEffect(() => {
+    setPagina(1);
+  }, [
+    busqueda,
+    filtroCiudad,
+    filtroEstado,
+    filtroAjustador,
+    fechaInicio,
+    fechaFin,
+    bloqueSeleccionadoId,
+    siniestrosBloqueSeleccionado,
+  ]);
+
+  const limpiarFiltros = () => {
+    setBusqueda('');
+    setFiltroCiudad('');
+    setFiltroEstado('');
+    setFiltroAjustador('');
+    setFechaInicio('');
+    setFechaFin('');
+    setBloqueSeleccionadoId(null);
+    setSiniestrosBloqueSeleccionado([]);
+  };
+
+  const FECHAS_LISTADO = new Set([
+    'fechaAsignacion',
+    'fechaVisita',
+    'fechaCasoNuevo',
+    'fechaCoordinandoInspeccion',
+    'fechaAnalisisCaso',
+    'fechaSolicitudDocumento',
+    'fechaRecepcionDocumento',
+    'fechaObjecion',
+    'fechaAutorizacionAnalista',
+    'fechaCasoParaPago',
+    'ultimaGestion',
+  ]);
+
+  const obtenerValorCelda = (item, clave) => {
+    if (clave === 'tipoPoliza') return etiquetaTipoPolizaBbvaCat(item) || '—';
+    const valor = item[clave];
+    if (valor === null || valor === undefined || valor === '') return '—';
+    if (FECHAS_LISTADO.has(clave)) return formatDate(valor) || '—';
+    return String(valor);
+  };
+
+  const exportarExcel = () => {
+    if (!filtrados.length) {
+      setAviso({
+        tipo: 'error',
+        titulo: t('bbvaCat.report.noData'),
+        mensaje: t('bbvaCat.report.noDataExport'),
+      });
+      return;
+    }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(filtrados.map(buildExportRow));
+    XLSX.utils.book_append_sheet(wb, ws, 'Listado BBVA CAT');
+    XLSX.writeFile(wb, `bbva-cat-listado-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
+  const solicitarEliminar = (item) => {
+    setAviso({
+      tipo: 'confirm',
+      titulo: t('bbvaCat.report.confirmDeleteTitle'),
+      mensaje: t('bbvaCat.report.confirmDeleteMessage', {
+        caseNumber: item.consecutivo || item.zc || item.siniestro,
+      }),
+      onConfirm: async () => {
+        try {
+          await deleteCasoBbvaCatListado(item._id);
+          setAviso({
+            tipo: 'ok',
+            titulo: t('bbvaCat.report.deleted'),
+            mensaje: t('bbvaCat.report.caseDeleted', {
+              caseNumber: item.consecutivo || item.zc || '',
+            }),
+          });
+          await recargar();
+        } catch (err) {
+          setAviso({
+            tipo: 'error',
+            titulo: t('bbvaCat.report.deleteError'),
+            mensaje: err.message || t('bbvaCat.report.deleteErrorMessage'),
+          });
+        }
+      },
+    });
+  };
+
+  const filtrosActivos = Boolean(
+    busqueda ||
+      filtroCiudad ||
+      filtroEstado ||
+      filtroAjustador ||
+      fechaInicio ||
+      fechaFin ||
+      bloqueSeleccionadoId
+  );
+
+  return (
+    <div className={`${expressScope} ${root}`}>
+      <div className={wrap}>
+        <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-3">
+            <span className={expressBadge}>BBVA CAT · Listado</span>
+            <div>
+              <h1 className={expressPageTitle}>{t('bbvaCat.listadoReport.title')}</h1>
+              <p className={expressPageSubtitle}>{t('bbvaCat.listadoReport.subtitle')}</p>
+            </div>
+            <nav className="flex flex-wrap gap-2">
+              <Link
+                to="/bbva-cat/carga"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+              >
+                <FaPlus />
+                {t('nav.bbvaCatAddCase')}
+              </Link>
+              <Link
+                to="/bbva-cat/listado/dashboard"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+              >
+                {t('nav.bbvaCatListadoDashboard')}
+              </Link>
+              <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                {t('nav.bbvaCatListadoReport')}
+              </span>
+            </nav>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {puedeImportarExcel && (
+              <button
+                type="button"
+                className={expressBtnPrimary}
+                onClick={() => setModalImportOpen(true)}
+                disabled={loading}
+              >
+                <FaUpload />
+                {t('bbvaCat.report.importExcel')}
+              </button>
+            )}
+            <button type="button" className={expressBtnSecondary} onClick={exportarExcel} disabled={loading}>
+              <FaFileExcel />
+              {t('bbvaCat.report.exportExcel')}
+            </button>
+          </div>
+        </header>
+
+        <ExpressFilterSection
+          title={t('bbvaCat.report.filters')}
+          showClear={filtrosActivos}
+          onClear={limpiarFiltros}
+        >
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Campo label={t('common.search')}>
+              <InputFenix
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                placeholder={t('bbvaCat.listadoReport.searchPlaceholder')}
+              />
+            </Campo>
+            <Campo label={t('bbvaCat.fields.ciudad')}>
+              <SelectFenix value={filtroCiudad} onChange={(e) => setFiltroCiudad(e.target.value)}>
+                <option value="">{t('bbvaCat.report.all')}</option>
+                {ciudades.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('bbvaCat.fields.estado')}>
+              <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
+                <option value="">{t('bbvaCat.report.all')}</option>
+                {estados.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('bbvaCat.fields.ajustador')}>
+              <SelectFenix
+                value={filtroAjustador}
+                onChange={(e) => setFiltroAjustador(e.target.value)}
+              >
+                <option value="">{t('bbvaCat.report.all')}</option>
+                {ajustadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('bbvaCat.report.from')}>
+              <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
+            </Campo>
+            <Campo label={t('bbvaCat.report.to')}>
+              <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
+            </Campo>
+          </div>
+          <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
+            {loading
+              ? t('common.loading')
+              : t('bbvaCat.report.recordsSummary', {
+                  count: filtrados.length,
+                  page: paginaActual,
+                  totalPages: totalPaginas,
+                })}
+          </p>
+        </ExpressFilterSection>
+
+        <MapaBloquesBbvaCatPanel
+          ciudad={filtroCiudad}
+          estado={filtroEstado}
+          bloqueSeleccionadoId={bloqueSeleccionadoId}
+          onBloqueChange={(bloqueId, _casoIds, extra) => {
+            setBloqueSeleccionadoId(bloqueId);
+            setSiniestrosBloqueSeleccionado(extra?.siniestros || []);
+            setPagina(1);
+          }}
+          compact
+        />
+
+        <div className={`${expressTableWrap} w-full min-w-0`}>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+              <thead className={expressTableHead}>
+                <tr>
+                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                    {t('bbvaCat.report.actions')}
+                  </th>
+                  {COLUMNAS.map((col) => (
+                    <th key={col.clave} className="px-4 py-3">
+                      {col.clave === 'consecutivo'
+                        ? t('bbvaCat.report.consecutivo')
+                        : t(`bbvaCat.fields.${col.labelKey}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
+                {loading ? (
+                  <tr>
+                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                      {t('bbvaCat.report.loadingCases')}
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-red-600">
+                      {error}
+                    </td>
+                  </tr>
+                ) : filtrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                      {t('bbvaCat.report.noCases')}
+                    </td>
+                  </tr>
+                ) : (
+                  paginaItems.map((item) => {
+                    const resaltado =
+                      siniestrosBloqueSeleccionado.length === 1 &&
+                      [item.siniestro, item.zc].some(
+                        (v) => String(v || '').trim() === String(siniestrosBloqueSeleccionado[0]).trim()
+                      );
+                    return (
+                    <tr
+                      key={item._id}
+                      className={`transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30 ${
+                        resaltado ? 'bg-amber-50/80 dark:bg-amber-950/20' : ''
+                      }`}
+                    >
+                      <td
+                        className={`sticky left-0 z-20 whitespace-nowrap px-4 py-3 ${
+                          resaltado
+                            ? 'bg-amber-50/80 dark:bg-amber-950/20'
+                            : 'bg-white dark:bg-[#1A1A1A]'
+                        }`}
+                      >
+                        <AccionesBbvaCatMenu
+                          tieneLiquidador={!!item.liquidador}
+                          tieneInforme={!!item.informeUnico}
+                          onGestionar={() => setCasoEdicion(item)}
+                          onLiquidador={() =>
+                            navigate(`/bbva-cat/listado/caso?casoId=${item._id}&tab=liquidador`, {
+                              state: { casoBbvaCat: item },
+                            })
+                          }
+                          onInformeUnico={() =>
+                            navigate(`/bbva-cat/listado/caso?casoId=${item._id}&tab=informe`, {
+                              state: { casoBbvaCat: item },
+                            })
+                          }
+                          onEliminar={() => solicitarEliminar(item)}
+                        />
+                      </td>
+                      {COLUMNAS.map((col) => (
+                        <td
+                          key={col.clave}
+                          className="whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200"
+                        >
+                          {obtenerValorCelda(item, col.clave)}
+                        </td>
+                      ))}
+                    </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+          {!loading && filtrados.length > 0 && totalPaginas > 1 && (
+            <div className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 dark:border-gray-800">
+              <button
+                type="button"
+                className={expressBtnSecondary}
+                disabled={paginaActual <= 1}
+                onClick={() => setPagina((p) => Math.max(1, p - 1))}
+              >
+                {t('common.prev')}
+              </button>
+              <span className="font-body text-sm text-gray-500">
+                {paginaActual} / {totalPaginas}
+              </span>
+              <button
+                type="button"
+                className={expressBtnPrimary}
+                disabled={paginaActual >= totalPaginas}
+                onClick={() => setPagina((p) => Math.min(totalPaginas, p + 1))}
+              >
+                {t('common.next')}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {casoEdicion && (
+        <ExpressModal
+          open
+          onClose={() => setCasoEdicion(null)}
+          title={t('bbvaCat.page.editCase', { caseNumber: casoEdicion.consecutivo || '' })}
+          wide
+        >
+          <FormularioBbvaCat
+            embed
+            origen="listado"
+            initialData={casoEdicion}
+            onClose={() => setCasoEdicion(null)}
+            onSaved={async () => {
+              setCasoEdicion(null);
+              await recargar();
+            }}
+          />
+        </ExpressModal>
+      )}
+
+      <ModalImportarExcelBbvaCat
+        open={modalImportOpen}
+        onClose={() => setModalImportOpen(false)}
+        onCompleted={async () => {
+          await recargar();
+        }}
+      />
+
+      {aviso && (
+        <ExpressAvisoModal
+          open
+          tipo={aviso.tipo}
+          titulo={aviso.titulo}
+          mensaje={aviso.mensaje}
+          onClose={() => setAviso(null)}
+          onConfirm={aviso.onConfirm}
+        />
+      )}
+    </div>
+  );
+}
