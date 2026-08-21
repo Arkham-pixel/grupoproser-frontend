@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  FaCloudUploadAlt,
+  FaBan,
   FaDownload,
   FaExternalLinkAlt,
   FaRedo,
@@ -62,6 +64,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [reintentandoId, setReintentandoId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
   const [documentos, setDocumentos] = useState([]);
   const allowRetry = useMemo(() => canRetrySharePoint(), []);
 
@@ -131,7 +134,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
       boostPolling();
       setExito(t('segurosAlfa.archive.sharepoint.queuedOk', {
         defaultValue:
-          'Guardado en ARNALD. En cola hacia SharePoint (SINIESTROS).',
+          'Guardado en ARNALD. Revise y pulse «Subir» en la fila para enviarlo a SharePoint.',
       }));
     } catch (err) {
       setError(err.message || t('segurosAlfa.archive.uploadError'));
@@ -190,6 +193,72 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
     return urlDescargaArchivoAlfa(doc.ruta || doc.downloadUrl);
   };
 
+  const handleToggleSharePoint = async (archivoId, enabled) => {
+    if (!archivoId || !caso?._id) return;
+    setError(null);
+    setExito(null);
+    setTogglingId(archivoId);
+    try {
+      await handleSharePointEnabled(archivoId, enabled);
+      setExito(
+        enabled
+          ? t('segurosAlfa.archive.sharepoint.uploadQueued', {
+              defaultValue: 'Marcado para subir a SharePoint.',
+            })
+          : t('segurosAlfa.archive.sharepoint.keptLocal', {
+              defaultValue: 'Quedará solo en ARNALD (no se sube a SharePoint).',
+            })
+      );
+    } catch (err) {
+      setError(err.message || t('segurosAlfa.archive.sharepoint.toggleError'));
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const renderSharePointActions = (archivoId, status, webUrl) => {
+    if (!archivoId) return null;
+    const busy = togglingId === String(archivoId);
+    return (
+      <>
+        {(status === 'disabled' || status === 'failed' || status === 'none') && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100"
+            disabled={busy}
+            onClick={() => handleToggleSharePoint(archivoId, true)}
+            title="Enviar este archivo a SharePoint SINIESTROS"
+          >
+            <FaCloudUploadAlt />
+            {t('segurosAlfa.archive.sharepoint.doUpload', { defaultValue: 'Subir' })}
+          </button>
+        )}
+        {(status === 'pending' || status === 'syncing') && (
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-lg border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+            disabled={busy || status === 'syncing'}
+            onClick={() => handleToggleSharePoint(archivoId, false)}
+          >
+            <FaBan />
+            {t('segurosAlfa.archive.sharepoint.doNotUpload', { defaultValue: 'No subir' })}
+          </button>
+        )}
+        {status === 'synced' && webUrl && (
+          <a
+            href={webUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300"
+          >
+            <FaExternalLinkAlt />
+            {t('segurosAlfa.archive.sharepoint.open')}
+          </a>
+        )}
+      </>
+    );
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -212,6 +281,20 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
           <FaSync className={cargandoSync ? 'animate-spin' : undefined} />
           {t('segurosAlfa.archive.sharepoint.refresh')}
         </button>
+      </div>
+
+      <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 font-body text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100">
+        <p className="font-semibold">
+          {t('segurosAlfa.archive.sharepoint.howToTitle', {
+            defaultValue: 'Subir a SharePoint',
+          })}
+        </p>
+        <p className="mt-0.5 text-xs opacity-90">
+          {t('segurosAlfa.archive.sharepoint.howToBody', {
+            defaultValue:
+              'Los archivos se guardan primero en ARNALD. En la columna Acciones de cada fila pulse el botón verde «Subir» cuando ya lo haya revisado.',
+          })}
+        </p>
       </div>
 
       <AlfaSharePointSyncBanner
@@ -351,6 +434,11 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                             {t('segurosAlfa.archive.sharepoint.open')}
                           </a>
                         )}
+                        {renderSharePointActions(
+                          doc.archivoId,
+                          status === 'imported' ? 'synced' : status,
+                          doc.sharepoint?.webUrl
+                        )}
                         {doc.canRetry && allowRetry && doc.archivoId && (
                           <button
                             type="button"
@@ -421,17 +509,7 @@ export default function ArchiveroSegurosAlfa({ caso, onClose, onChanged }) {
                             {t('segurosAlfa.archive.download')}
                           </a>
                         )}
-                        {status === 'synced' && sync.webUrl && (
-                          <a
-                            href={sync.webUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 px-2 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:text-emerald-300"
-                          >
-                            <FaExternalLinkAlt />
-                            {t('segurosAlfa.archive.sharepoint.open')}
-                          </a>
-                        )}
+                        {renderSharePointActions(arch._id, status, sync.webUrl)}
                         {status === 'failed' && allowRetry && (
                           <button
                             type="button"

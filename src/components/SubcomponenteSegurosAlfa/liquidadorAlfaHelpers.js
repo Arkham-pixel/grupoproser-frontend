@@ -17,6 +17,11 @@ import {
   resolverReglaDeducibleTomadorAlfa,
 } from './tomadoresAlfaCatalogo.js';
 
+/** AIU del FORMATO LIQUIDACIÓN Alfa (único recargo; sin imprevistos NSR ocultos). */
+export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.15;
+export const IMPREVISTOS_PORCENTAJE_DEFAULT_ALFA = 0;
+export const IMPUESTOS_PORCENTAJE_DEFAULT_ALFA = 0;
+
 export const SMMLV_POR_ANIO = {
   2018: 781242,
   2019: 828116,
@@ -341,11 +346,54 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
 }
 
 /**
- * Totales Alfa = presupuesto NSR-10 + contenidos + hospedaje.
- * Deducible según tomador (valor asegurable + SMMLV, o % de la pérdida).
+ * Presupuesto Alfa: AIU 15% único; imprevistos/impuestos en 0 (el formato CAT no los muestra).
+ * Migra el default NSR (5% + 10% imprevistos ≈ 15% efectivo) al AIU único del 15%.
+ */
+export function normalizarPresupuestoAiuAlfa(presupuesto = {}) {
+  const p = presupuesto && typeof presupuesto === 'object' ? { ...presupuesto } : {};
+  const aiu = Number(p.aiuPorcentaje);
+  const impr = Number(p.imprevistosPorcentaje);
+  const imp = Number(p.impuestosPorcentaje);
+  const aiuVacio = p.aiuPorcentaje == null || !Number.isFinite(aiu);
+  const imprVacio = p.imprevistosPorcentaje == null || !Number.isFinite(impr);
+  const esDefaultNsr =
+    (aiuVacio || Math.abs(aiu - 0.05) < 1e-9) &&
+    (imprVacio || Math.abs(impr - 0.1) < 1e-9);
+  const aiuYa15ConImprevistos =
+    Number.isFinite(aiu) &&
+    Math.abs(aiu - AIU_PORCENTAJE_DEFAULT_ALFA) < 1e-9 &&
+    Number.isFinite(impr) &&
+    Math.abs(impr - 0.1) < 1e-9;
+
+  if (esDefaultNsr || aiuYa15ConImprevistos) {
+    p.aiuPorcentaje = AIU_PORCENTAJE_DEFAULT_ALFA;
+    p.imprevistosPorcentaje = IMPREVISTOS_PORCENTAJE_DEFAULT_ALFA;
+    p.impuestosPorcentaje = Number.isFinite(imp) ? imp : IMPUESTOS_PORCENTAJE_DEFAULT_ALFA;
+  } else {
+    if (aiuVacio) p.aiuPorcentaje = AIU_PORCENTAJE_DEFAULT_ALFA;
+    if (imprVacio) p.imprevistosPorcentaje = IMPREVISTOS_PORCENTAJE_DEFAULT_ALFA;
+    if (p.impuestosPorcentaje == null || !Number.isFinite(imp)) {
+      p.impuestosPorcentaje = IMPUESTOS_PORCENTAJE_DEFAULT_ALFA;
+    }
+  }
+  return p;
+}
+
+export function aplicarPresupuestoAiuAlfaEnEvaluacion(evalData = {}) {
+  const data = evalData && typeof evalData === 'object' ? evalData : {};
+  return {
+    ...data,
+    presupuesto: normalizarPresupuestoAiuAlfa(data.presupuesto || {}),
+  };
+}
+
+/**
+ * Totales Alfa = ítems (costo directo) + AIU 15% − deducible.
+ * No suma imprevistos/impuestos NSR ni hospedaje duplicado (si va en el detalle, ya está en el subtotal).
  */
 export function calcularLiquidacionAlfa(liquidador = {}) {
-  const evalData = liquidador.evaluacionSismicaNSR10 || {};
+  const evalDataRaw = liquidador.evaluacionSismicaNSR10 || {};
+  const evalData = aplicarPresupuestoAiuAlfaEnEvaluacion(evalDataRaw);
   const presupuesto = evalData.presupuesto || { items: [] };
   const totalesPres = calcularTotalesPresupuesto(presupuesto);
   const resumen = calcularResumenTotalesNsr10(evalData);
@@ -362,11 +410,18 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
       ? cfgDedRaw
       : patchDeducibleDesdeTomadorAlfa(enc.tomador, cfgDedRaw);
 
+  // Base CAT: costo directo + AIU (sin imprevistos/impuestos)
+  const baseCat =
+    Math.round((Number(totalesPres.subtotal || 0) + Number(totalesPres.aiu || 0)) * 100) / 100;
+  const totalContenidos = Number(resumen.totalContenidos) || 0;
+  const totalDaniosCat =
+    Math.round((baseCat + totalContenidos) * 100) / 100;
+
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado,
-    totalDanios: resumen.sumaCompleta,
-    totalPresupuesto: resumen.totalPresupuesto,
-    totalContenidos: resumen.totalContenidos,
+    totalDanios: totalDaniosCat,
+    totalPresupuesto: baseCat,
+    totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
     hospedajeManual: liq.hospedajeManual,
     deducible: liq.deducible,
@@ -377,15 +432,24 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
 
   const dedAlfa = calcularDeducibleAlfaSobreValorAsegurado({
     valorAsegurado,
-    totalDanios: resumen.sumaCompleta,
+    totalDanios: totalDaniosCat,
     deducibleConfig: cfgDed,
     tomador: enc.tomador || '',
   });
 
-  const hospedaje = parsearNumero(diagrama.gastosHospedaje);
+  // Hospedaje solo si no está ya como ítem del detalle/presupuesto
+  const detalle = Array.isArray(liquidador.detalleLiquidacionCat)
+    ? liquidador.detalleLiquidacionCat
+    : null;
+  const hospedajeYaEnItems = (detalle || presupuesto.items || []).some((it) => {
+    const id = String(it?.id || '');
+    const desc = String(it?.descripcion || it?.actividad || '').toLowerCase();
+    return id === 'hospedaje' || desc.includes('hospedaje');
+  });
+  const hospedaje = hospedajeYaEnItems ? 0 : parsearNumero(diagrama.gastosHospedaje);
   const totalIndemnizar = Math.max(
     0,
-    Math.round((resumen.sumaCompleta - dedAlfa.deducibleAplicado + hospedaje) * 100) / 100
+    Math.round((totalDaniosCat - dedAlfa.deducibleAplicado + hospedaje) * 100) / 100
   );
 
   const items = normalizarItemsRespuesta(evalData.items);
@@ -393,16 +457,22 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
 
   return {
     modelo: 'nsr10',
-    presupuesto: totalesPres,
+    presupuesto: {
+      ...totalesPres,
+      // Alinear aiuPct al % Alfa normalizado (por si el guardado traía 5%)
+      aiuPct: Number(presupuesto.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT_ALFA),
+      imprPct: Number(presupuesto.imprevistosPorcentaje ?? 0),
+      impPct: Number(presupuesto.impuestosPorcentaje ?? 0),
+    },
     contenidos: resumen.contenidos,
-    totalPresupuesto: resumen.totalPresupuesto,
-    totalContenidos: resumen.totalContenidos,
-    sumaCompleta: resumen.sumaCompleta,
+    totalPresupuesto: baseCat,
+    totalContenidos,
+    sumaCompleta: totalDaniosCat,
     subtotal: totalesPres.subtotal,
     aiu: totalesPres.aiu,
-    imprevistos: totalesPres.imprevistos,
-    impuestos: totalesPres.impuestos,
-    totalDanios: resumen.sumaCompleta,
+    imprevistos: 0,
+    impuestos: Number(totalesPres.impuestos) || 0,
+    totalDanios: totalDaniosCat,
     diagrama: {
       ...diagrama,
       valorAsegurado,
@@ -419,13 +489,13 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     deducibleAlfa: dedAlfa,
     totalIndemnizar,
     totalIndemnizable: totalIndemnizar,
-    totalPerdida: resumen.sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
+    totalPerdida: totalDaniosCat,
+    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || totalDaniosCat,
     deducibleAplicado: dedAlfa.deducibleAplicado,
     deducibleRequiereValorAsegurado: Boolean(dedAlfa.requiereValorAsegurado),
     deducibleTexto: dedAlfa.texto,
-    subtotalContenidos: resumen.totalContenidos,
-    subtotalEdificios: resumen.totalPresupuesto,
+    subtotalContenidos: totalContenidos,
+    subtotalEdificios: baseCat,
     diferencia: 0,
     usaSMMLV: Boolean(dedAlfa.usaMinimo),
   };
@@ -592,7 +662,9 @@ export function sincronizarDetalleCatConPresupuestoNsr(liquidador = {}, filasDet
 export function mapCasoAlfaALiquidador(caso = {}) {
   const encabezado = encabezadoDesdeCasoAlfa(caso);
   const prefill = prefillNsrDesdeCasoAlfa(caso, encabezado);
-  const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill);
+  const evalInicial = aplicarPresupuestoAiuAlfaEnEvaluacion(
+    fusionarEvaluacionSismicaNSR10Guardada({}, prefill)
+  );
   const base = {
     ...DEFAULT_LIQUIDADOR_ALFA,
     encabezado,
@@ -634,9 +706,8 @@ export function mapCasoAlfaALiquidador(caso = {}) {
       ...(guardado.encabezado || {}),
       causa: guardado.encabezado?.causa || guardado.encabezado?.cobertura || base.encabezado.cobertura,
     },
-    evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
-      guardado.evaluacionSismicaNSR10,
-      prefill
+    evaluacionSismicaNSR10: aplicarPresupuestoAiuAlfaEnEvaluacion(
+      fusionarEvaluacionSismicaNSR10Guardada(guardado.evaluacionSismicaNSR10, prefill)
     ),
     liquidacionCatastrofico: (() => {
       const liqG = guardado.liquidacionCatastrofico || {};

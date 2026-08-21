@@ -1,4 +1,5 @@
 import {
+  actualizarArchivoZurich,
   eliminarArchivoZurich,
   getCasoZurichById,
   subirArchivoZurich,
@@ -18,6 +19,7 @@ export function zurichArchivosApi(origen = 'cat') {
       getById: getCasoZurichListadoById,
       subir: subirArchivoZurichListado,
       eliminar: eliminarArchivoZurichListado,
+      actualizar: async () => null,
       url: urlDescargaArchivoZurichListado,
     };
   }
@@ -25,6 +27,7 @@ export function zurichArchivosApi(origen = 'cat') {
     getById: getCasoZurichById,
     subir: subirArchivoZurich,
     eliminar: eliminarArchivoZurich,
+    actualizar: actualizarArchivoZurich,
     url: urlDescargaArchivoZurich,
   };
 }

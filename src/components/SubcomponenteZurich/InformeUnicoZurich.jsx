@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCloudUploadAlt, FaFileWord, FaMapMarkerAlt, FaRedo, FaTrash } from 'react-icons/fa';
+import { FaFileWord, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -25,16 +25,11 @@ import {
 } from './liquidadorZurichHelpers.js';
 import { descargarWordInformeZurich } from './generarWordInformeZurich.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
+import FotosInspeccionZurich from './FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
-
-const esImagen = (fileOrName) => {
-  const name = typeof fileOrName === 'string' ? fileOrName : fileOrName?.name || '';
-  const type = typeof fileOrName === 'object' ? fileOrName?.type || '' : '';
-  return type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(name);
-};
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -61,7 +56,6 @@ export default function InformeUnicoZurich({
 }) {
   const { t } = useTranslation();
   const api = useMemo(() => zurichArchivosApi(origen), [origen]);
-  const fileRef = useRef(null);
   const [informe, setInforme] = useState(() => defaultInformeUnicoZurich(casoZurich || {}));
   const [liquidador, setLiquidador] = useState(() =>
     liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {})
@@ -69,8 +63,6 @@ export default function InformeUnicoZurich({
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [descargando, setDescargando] = useState(false);
-  const [subiendoFotos, setSubiendoFotos] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
 
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
@@ -184,67 +176,30 @@ export default function InformeUnicoZurich({
     }
   };
 
-  const refrescarCaso = async () => {
-    if (!casoZurich?._id) return null;
-    const actualizado = await api.getById(casoZurich._id);
-    onCasoChange?.(actualizado);
-    return actualizado;
+  const appendArchivosAlCaso = (creados = []) => {
+    const lista = (Array.isArray(creados) ? creados : [creados]).filter(Boolean);
+    if (!lista.length) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
+      if (!extra.length) return prev;
+      return { ...prev, archivos: [...actuales, ...extra] };
+    });
   };
 
-  const subirFotos = async (fileList) => {
-    if (!casoZurich?._id) {
-      setError(t('zurich.reportUnique.savedCaseRequired'));
-      return;
-    }
-    const files = Array.from(fileList || []).filter(esImagen);
-    if (!files.length) {
-      setError(t('zurich.reportUnique.photosOnlyImages'));
-      return;
-    }
-
-    setSubiendoFotos(true);
-    setError('');
-    setMensaje('');
-    try {
-      for (const file of files) {
-        await api.subir(casoZurich._id, file, 'FOTOS');
-      }
-      await refrescarCaso();
-      setMensaje(t('zurich.reportUnique.photosUploaded', { count: files.length }));
-    } catch (err) {
-      console.error(err);
-      setError(err.message || t('zurich.reportUnique.photosUploadError'));
-    } finally {
-      setSubiendoFotos(false);
-    }
+  const quitarArchivoDelCaso = (archivoId) => {
+    if (!archivoId) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      return {
+        ...prev,
+        archivos: actuales.filter((a) => String(a?._id) !== String(archivoId)),
+      };
+    });
   };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(false);
-    subirFotos(e.dataTransfer?.files);
-  };
-
-  const handleEliminarFoto = async (archivoId) => {
-    if (!casoZurich?._id || !archivoId) return;
-    if (!window.confirm(t('zurich.archive.confirmDelete'))) return;
-    setError('');
-    setMensaje('');
-    try {
-      await api.eliminar(casoZurich._id, archivoId);
-      await refrescarCaso();
-      setMensaje(t('zurich.archive.deleteOk'));
-    } catch (err) {
-      setError(err.message || t('zurich.archive.deleteError'));
-    }
-  };
-
-  const fotos = (Array.isArray(casoZurich?.archivos) ? casoZurich.archivos : []).filter((a) => {
-    const et = String(a.etiqueta || '').toUpperCase();
-    const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
-    return et === 'FOTOS' || et === 'INSPECCION' || /\.(jpe?g|png|gif|webp)$/i.test(nombre);
-  });
 
   return (
     <div className="space-y-5">
@@ -518,101 +473,20 @@ export default function InformeUnicoZurich({
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('zurich.reportUnique.photosUploadHint')}
         </p>
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = e.target.files;
-            e.target.value = '';
-            if (files?.length) subirFotos(files);
+        <FotosInspeccionZurich
+          casoId={casoZurich?._id}
+          origen={origen}
+          fotosInforme={informe.fotosInspeccion || []}
+          onFotosInformeChange={(lista) => setCampo('fotosInspeccion', lista)}
+          onArchivoCreado={(creado) => {
+            if (creado) appendArchivosAlCaso([creado]);
+            setMensaje(t('zurich.reportUnique.photosUploaded', { count: 1 }));
+          }}
+          onArchivoEliminado={(archivoId) => {
+            quitarArchivoDelCaso(archivoId);
+            setMensaje(t('zurich.archive.deleteOk'));
           }}
         />
-
-        <div
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
-          }}
-          onClick={() => !subiendoFotos && fileRef.current?.click()}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-          }}
-          onDrop={handleDrop}
-          className={`mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
-            dragOver
-              ? 'border-fenix-primario bg-fenix-primario/5'
-              : 'border-gray-300 bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-900/40'
-          } ${subiendoFotos ? 'pointer-events-none opacity-60' : ''}`}
-        >
-          <FaCloudUploadAlt className="mb-2 text-3xl text-fenix-primario" />
-          <p className="font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {subiendoFotos
-              ? t('zurich.reportUnique.photosUploading')
-              : t('zurich.reportUnique.photosDropTitle')}
-          </p>
-          <p className="mt-1 font-body text-xs text-gray-500">
-            {t('zurich.reportUnique.photosDropSubtitle')}
-          </p>
-        </div>
-
-        {fotos.length === 0 ? (
-          <p className="text-sm text-gray-500">{t('zurich.reportUnique.noPhotos')}</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {fotos.slice(0, 24).map((f) => {
-              const url = api.url(f.ruta);
-              const isImg = esImagen(f.nombreOriginal || f.nombre || '');
-              return (
-                <div
-                  key={f._id || f.ruta}
-                  className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
-                >
-                  {isImg && url ? (
-                    <img
-                      src={url}
-                      alt={f.nombreOriginal || 'Foto'}
-                      className="h-28 w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-28 items-center justify-center bg-gray-50 px-2 text-center text-xs dark:bg-gray-900">
-                      {f.nombreOriginal || f.nombre}
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between gap-1 px-2 py-1">
-                    <p className="truncate text-xs text-gray-500">{f.etiqueta || 'FOTOS'}</p>
-                    {f._id && (
-                      <button
-                        type="button"
-                        className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-                        title={t('zurich.report.delete')}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEliminarFoto(f._id);
-                        }}
-                      >
-                        <FaTrash className="text-xs" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </section>
 
       <section className={expressFormSection}>

@@ -37,6 +37,7 @@ import {
   formatDateIso,
 } from './zurichHelpers.js';
 import { descargarDesprendibleCatZurich } from './generarDesprendibleCatZurich.js';
+import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { AUTOSAVE_DEBOUNCE_MS } from '../../config/autoSaveConfig.js';
 
 const SEVERIDAD_MANUAL_CAT = SEVERIDAD_CAT_ZURICH.map((s) => ({
@@ -256,10 +257,12 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     try {
       const subidos = [];
       for (const file of files) {
+        const preview = URL.createObjectURL(file);
         const creado = await subirArchivoZurich(casoZurich._id, file, 'FOTOS', {
           descripcion: '',
         });
-        if (creado) subidos.push(creado);
+        if (creado) subidos.push({ ...creado, preview });
+        else URL.revokeObjectURL(preview);
       }
       setArchivos((prev) => [...(prev || []), ...subidos]);
       try {
@@ -623,7 +626,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {fotos.map((f, index) => {
               const clave = idFoto(f, index);
-              const url = urlDescargaArchivoZurich(f.ruta);
+              const url = getImageUrl(f) || urlDescargaArchivoZurich(f.ruta);
               const esOrigen = arrastrandoId === clave;
               const esDestino =
                 destinoArrastreId === clave && arrastrandoId && arrastrandoId !== clave;
@@ -684,6 +687,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
                           alt={f.nombreOriginal || 'Foto'}
                           draggable={false}
                           className="h-36 w-full rounded-lg object-cover"
+                          onError={createImageErrorHandler(f, () => {})}
                         />
                       </button>
                     ) : (

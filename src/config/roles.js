@@ -57,15 +57,16 @@ export const CONFIG_SOLO_BBVA = {
 };
 
 export const CONFIG_SOLO_EQUIDAD = {
-  /** Home + Fundación de la Mujer (bandeja FDM). */
+  /** Home + Fundación de la Mujer (dashboard + bandeja). */
   seccionesMenu: ['equidadFdm'],
   inicio: '/inicio',
   prefijosRuta: ['/inicio', '/equidad-fdm'],
   rutasExcluidas: [
     '/equidad-fdm/carga',
     '/equidad-fdm/liquidador',
-    '/equidad-fdm/dashboard',
   ],
+  /** Rutas FDM visibles en menú/tabs (consulta). */
+  rutasMenuFdm: ['/equidad-fdm/dashboard', '/equidad-fdm/reporte'],
   soloBandeja: true,
   incluirHome: true,
   etiqueta: 'Equidad FDM',

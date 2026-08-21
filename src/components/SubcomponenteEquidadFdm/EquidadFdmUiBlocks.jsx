@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { FaChartLine, FaCalculator, FaPlus, FaTable } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { expressBadge, expressPageSubtitle, expressPageTitle } from '../SubcomponenteExpress/expressFenixUi.js';
+import { esRolSoloEquidad, obtenerConfigContractor } from '../../config/roles.js';
 
 const NAV_FDM = [
   { path: '/equidad-fdm/carga', icon: FaPlus, key: 'addCase' },
@@ -13,9 +14,16 @@ const NAV_FDM = [
 
 export function FdmNavTabs({ activePath, pathOverrides = {} }) {
   const { t } = useTranslation();
+  const rutasPermitidas = esRolSoloEquidad()
+    ? obtenerConfigContractor()?.rutasMenuFdm || ['/equidad-fdm/dashboard', '/equidad-fdm/reporte']
+    : null;
+  const items = rutasPermitidas
+    ? NAV_FDM.filter((item) => rutasPermitidas.includes(item.path))
+    : NAV_FDM;
+
   return (
     <nav className="flex flex-wrap gap-2" aria-label={t('equidadFdm.navigation')}>
-      {NAV_FDM.map(({ path, icon: Icon, key }) => {
+      {items.map(({ path, icon: Icon, key }) => {
         const to = pathOverrides[path] || path;
         const activo = activePath === path;
         return (

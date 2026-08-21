@@ -1,4 +1,5 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import { sanitizarInformeUnicoAllianz } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
 
 const ALLIANZ_API_URL = `${BASE_URL}/api/allianz`;
 
@@ -340,7 +341,7 @@ export const guardarInformeUnicoEnCasoAllianz = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
-    informeUnico: informeUnico || {},
+    informeUnico: sanitizarInformeUnicoAllianz(informeUnico || {}),
   };
 
   delete payload._id;

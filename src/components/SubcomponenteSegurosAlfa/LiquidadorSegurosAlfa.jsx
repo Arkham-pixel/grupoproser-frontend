@@ -14,6 +14,7 @@ import FormatoLiquidacionAlfa from './FormatoLiquidacionAlfa.jsx';
 import {
   calcularLiquidacionAlfa,
   mapCasoAlfaALiquidador,
+  normalizarPresupuestoAiuAlfa,
   nuevoItemDetalleLiquidacionCat,
   recalcularTotalesFilaDetalleCat,
   resolverDetalleLiquidacionCat,
@@ -72,6 +73,29 @@ export default function LiquidadorSegurosAlfa({
     // Solo al cambiar de caso (el remount del workspace ya trae liquidadorInicial hidratado)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [casoAlfa?._id]);
+
+  // Asegura AIU Alfa 15% (sin imprevistos NSR) aunque el caso traiga el default viejo 5%+10%
+  useEffect(() => {
+    setLiquidador((prev) => {
+      const evalData = prev.evaluacionSismicaNSR10 || {};
+      const actual = evalData.presupuesto || {};
+      const next = normalizarPresupuestoAiuAlfa(actual);
+      if (
+        Number(actual.aiuPorcentaje) === Number(next.aiuPorcentaje) &&
+        Number(actual.imprevistosPorcentaje) === Number(next.imprevistosPorcentaje) &&
+        Number(actual.impuestosPorcentaje ?? 0) === Number(next.impuestosPorcentaje ?? 0)
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        evaluacionSismicaNSR10: {
+          ...evalData,
+          presupuesto: { ...actual, ...next },
+        },
+      };
+    });
+  }, [casoId]);
 
   const totales = useMemo(() => calcularLiquidacionAlfa(liquidador), [liquidador]);
   const enc = liquidador.encabezado || {};
@@ -169,7 +193,10 @@ export default function LiquidadorSegurosAlfa({
           presupuesto: {
             ...presupuesto,
             aiuPorcentaje:
-              Number.isFinite(Number(aiuPorcentaje)) ? Number(aiuPorcentaje) : 0.05,
+              Number.isFinite(Number(aiuPorcentaje))
+                ? Number(aiuPorcentaje)
+                : 0.15,
+            imprevistosPorcentaje: 0,
           },
         },
       };
@@ -460,7 +487,7 @@ export default function LiquidadorSegurosAlfa({
         liquidadoPor={enc.ajustador || casoLocal.ajustador || ''}
         datosBancarios={liquidador.datosBancarios || {}}
         aiuPorcentaje={
-          liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje ?? 0.05
+          liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje ?? 0.15
         }
         aceptacionIndemnizacion={liquidador.aceptacionIndemnizacion || ''}
         firmaCliente={liquidador.firmaCliente || ''}

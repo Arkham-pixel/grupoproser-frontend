@@ -542,6 +542,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
             ) : tabActivo === TABS_BBVA_CAT.INFORME ? (
               <InformeUnicoBbvaCat
                 key={`inf-${casoId}-${restoreNonce}`}
+                origen={esModuloListado ? 'listado' : 'cat'}
                 casoBbvaCat={casoBbvaCat}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}

@@ -558,17 +558,19 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     sumaIndemnizable += sum;
   }
 
-  // Totales alineados a la UI: Sub total ítems → AIU → Deducible → Valor a indemnizar
+  // Totales alineados a la UI: Sub total ítems → AIU 15% → Deducible → Valor a indemnizar
   const limite = va || 0;
   const subTotalItems =
     limite > 0 && limite < sumaIndemnizable ? limite : sumaIndemnizable;
-  const aiuVal = parsearNumero(totales?.aiu);
   const aiuPctDecimal = Number(totales?.presupuesto?.aiuPct);
   const aiuPctUi = Number.isFinite(aiuPctDecimal)
     ? Math.round(aiuPctDecimal * 10000) / 100
-    : subTotalItems > 0 && aiuVal > 0
-      ? Math.round((aiuVal / subTotalItems) * 10000) / 100
-      : 5;
+    : 15;
+  const aiuValStored = parsearNumero(totales?.aiu);
+  const aiuVal =
+    aiuValStored > 0
+      ? aiuValStored
+      : Math.round(subTotalItems * (aiuPctUi / 100) * 100) / 100;
   const deducibleFinal =
     parsearNumero(totales?.deducibleAplicado) ||
     dedPesos ||
@@ -576,12 +578,7 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
   const aIndemnizar =
     totales?.totalIndemnizar != null && totales.totalIndemnizar !== ''
       ? parsearNumero(totales.totalIndemnizar)
-      : Math.max(
-          0,
-          parsearNumero(totales?.sumaCompleta || totales?.totalDanios || subTotalItems + aiuVal) -
-            deducibleFinal +
-            parsearNumero(totales?.diagrama?.gastosHospedaje)
-        );
+      : Math.max(0, subTotalItems + aiuVal - deducibleFinal);
 
   setVal(sheet, 25, 12, 'Sub Total ítems');
   setVal(sheet, 25, 15, subTotalItems || null);

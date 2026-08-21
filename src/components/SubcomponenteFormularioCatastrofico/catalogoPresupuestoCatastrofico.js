@@ -218,7 +218,7 @@ export const HOSPEDAJE_PORCENTAJE_DEFAULT = 0.01;
 
 /** Deducible numérico al estilo Express (MAX % vs mínimo SMMLV/SMDLV). */
 export const DEFAULT_DEDUCIBLE_CATASTROFICO = {
-  aplica: false,
+  aplica: true,
   porcentaje: 10,
   tipoMinimo: 'SMMLV',
   cantidadSMMLV: 4,
@@ -353,7 +353,7 @@ export function normalizarDeducibleCatastrofico(liquidacion = {}) {
     typeof liquidacion?.deducible === 'string' ? liquidacion.deducible.trim() : '';
   return {
     ...base,
-    aplica: Boolean(base.aplica),
+    aplica: true,
     porcentaje: numDeducible(base.porcentaje, 10),
     tipoMinimo: base.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV',
     cantidadSMMLV: numDeducible(base.cantidadSMMLV, 4),
@@ -399,16 +399,12 @@ export function calcularDeducibleEstiloExpress(base = 0, deducibleConfig = {}) {
   const tipoMinimo = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
   const deducibleMinimo = tipoMinimo === 'SMDLV' ? deducibleSMDLV : deducibleSMMLV;
   const deducibleAplicadoBruto = Math.max(deduciblePorcentaje, deducibleMinimo);
-  const aplica = Boolean(cfg.aplica);
-  const deducibleAplicado = aplica
-    ? Math.round(Math.min(deducibleAplicadoBruto, totalBase) * 100) / 100
-    : 0;
+  const aplica = true;
+  const deducibleAplicado = Math.round(Math.min(deducibleAplicadoBruto, totalBase) * 100) / 100;
   const usaMinimo = deducibleMinimo > deduciblePorcentaje;
-  const textoAuto = aplica
-    ? `${porcentaje}% · Mínimo ${
+  const textoAuto = `${porcentaje}% · Mínimo ${
         tipoMinimo === 'SMDLV' ? cantidadSMDLV : cantidadSMMLV
-      } ${tipoMinimo}`
-    : 'No aplica';
+      } ${tipoMinimo}`;
   const texto = String(cfg.texto || '').trim() || textoAuto;
 
   return {

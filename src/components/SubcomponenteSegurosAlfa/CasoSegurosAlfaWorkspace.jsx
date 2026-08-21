@@ -317,7 +317,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         setMensaje(
           t('segurosAlfa.settlement.savedAndArchived', {
             defaultValue:
-              'Liquidador guardado. Excel CAT actualizado en archivero (sobrescribe la versión anterior).',
+              'Liquidador guardado. Excel CAT en archivero: revise y pulse Subir en el banner para SharePoint.',
           })
         );
       } catch (errArchivo) {
@@ -385,7 +385,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         setMensaje(
           t('segurosAlfa.reportUnique.savedAndArchived', {
             defaultValue:
-              'Informe guardado. Excel CAT actualizado en archivero (sobrescribe la versión anterior).',
+              'Informe guardado. Excel CAT en archivero: revise y pulse Subir en el banner para SharePoint.',
           })
         );
       } catch (errArchivo) {

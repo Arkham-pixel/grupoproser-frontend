@@ -230,12 +230,11 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
   );
 
   const subtitulo = useMemo(() => {
-    if (casoPrevisora?.tomador || casoPrevisora?.siniestro || casoPrevisora?.asegurado || casoPrevisora?.zc) {
+    if (casoPrevisora?.tomador || casoPrevisora?.siniestro || casoPrevisora?.asegurado) {
       return [
         casoPrevisora.tomador || casoPrevisora.asegurado || null,
         casoPrevisora.consecutivo,
         casoPrevisora.siniestro,
-        casoPrevisora.zc ? `ZC ${casoPrevisora.zc}` : null,
       ]
         .filter(Boolean)
         .join(' · ');
@@ -542,6 +541,7 @@ export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'ca
             ) : tabActivo === TABS_PREVISORA.INFORME ? (
               <InformeUnicoPrevisora
                 key={`inf-${casoId}-${restoreNonce}`}
+                origen={esModuloListado ? 'listado' : 'cat'}
                 casoPrevisora={casoPrevisora}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}

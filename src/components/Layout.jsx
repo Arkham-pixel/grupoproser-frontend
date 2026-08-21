@@ -758,13 +758,16 @@ export default function Layout() {
             { path: '/equidad-fdm/reporte', icon: FaTable, label: t('nav.fdmReport') },
           ]
         : configContractor?.seccionesMenu?.includes('equidadFdm')
-          ? [
-              {
-                path: '/equidad-fdm/reporte',
+          ? (configContractor.rutasMenuFdm || ['/equidad-fdm/reporte']).map((path) => {
+              if (path === '/equidad-fdm/dashboard') {
+                return { path, icon: FaChartLine, label: t('nav.fdmDashboard') };
+              }
+              return {
+                path,
                 icon: FaTable,
                 label: t('nav.fdmTray', { defaultValue: 'Bandeja Equidad FDM' }),
-              },
-            ]
+              };
+            })
           : [],
     alfa: !accesoRestringido || configContractor?.seccionesMenu?.includes('alfa')
       ? [
@@ -795,8 +798,6 @@ export default function Layout() {
           { path: '/bbva-cat/carga', icon: FaPlus, label: t('nav.bbvaCatAddCase') },
           { path: '/bbva-cat/listado/dashboard', icon: FaChartBar, label: t('nav.bbvaCatListadoDashboard') },
           { path: '/bbva-cat/listado/reporte', icon: FaTable, label: t('nav.bbvaCatListadoReport') },
-          { path: '/bbva-cat/liquidador', icon: FaCalculator, label: t('nav.bbvaCatSettlement') },
-          { path: '/bbva-cat/informe-unico', icon: FaFileAlt, label: t('nav.bbvaCatUniqueReport') },
           { path: '/bbva-cat/bloques', icon: FaMapMarkerAlt, label: t('nav.bbvaCatBlocks') },
           { path: '/bbva-cat/archivero', icon: FaFolderOpen, label: t('nav.bbvaCatArchive') },
         ]
@@ -806,8 +807,6 @@ export default function Layout() {
           { path: '/previsora/carga', icon: FaPlus, label: t('nav.previsoraAddCase') },
           { path: '/previsora/listado/dashboard', icon: FaChartBar, label: t('nav.previsoraListadoDashboard') },
           { path: '/previsora/listado/reporte', icon: FaTable, label: t('nav.previsoraListadoReport') },
-          { path: '/previsora/liquidador', icon: FaCalculator, label: t('nav.previsoraSettlement') },
-          { path: '/previsora/informe-unico', icon: FaFileAlt, label: t('nav.previsoraUniqueReport') },
           { path: '/previsora/archivero', icon: FaFolderOpen, label: t('nav.previsoraArchive') },
         ]
       : [],
@@ -816,8 +815,6 @@ export default function Layout() {
           { path: '/allianz/carga', icon: FaPlus, label: t('nav.allianzAddCase') },
           { path: '/allianz/listado/dashboard', icon: FaChartBar, label: t('nav.allianzListadoDashboard') },
           { path: '/allianz/listado/reporte', icon: FaTable, label: t('nav.allianzListadoReport') },
-          { path: '/allianz/liquidador', icon: FaCalculator, label: t('nav.allianzSettlement') },
-          { path: '/allianz/informe-unico', icon: FaFileAlt, label: t('nav.allianzUniqueReport') },
           { path: '/allianz/archivero', icon: FaFolderOpen, label: t('nav.allianzArchive') },
         ]
       : [],

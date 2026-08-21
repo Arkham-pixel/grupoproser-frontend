@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCloudUploadAlt, FaFileWord, FaMapMarkerAlt, FaRedo, FaTrash } from 'react-icons/fa';
+import { FaFileWord, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -24,22 +24,12 @@ import {
   mapcasoPrevisoraALiquidador,
 } from './liquidadorPrevisoraHelpers.js';
 import { descargarWordInformePrevisora } from './generarWordInformePrevisora.js';
-import {
-  eliminarArchivoPrevisora,
-  getCasoPrevisoraById,
-  subirArchivoPrevisora,
-  urlDescargaArchivoPrevisora,
-} from '../../services/previsoraService.js';
+import { previsoraArchivosApi } from './previsoraArchivosApi.js';
+import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
-
-const esImagen = (fileOrName) => {
-  const name = typeof fileOrName === 'string' ? fileOrName : fileOrName?.name || '';
-  const type = typeof fileOrName === 'object' ? fileOrName?.type || '' : '';
-  return type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(name);
-};
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -61,10 +51,11 @@ export default function InformeUnicoPrevisora({
   onGuardarEnCaso,
   onCasoChange,
   guardandoCaso = false,
+  origen = 'cat',
   liquidadorInicial = null,
 }) {
   const { t } = useTranslation();
-  const fileRef = useRef(null);
+  const api = useMemo(() => previsoraArchivosApi(origen), [origen]);
   const [informe, setInforme] = useState(() => defaultInformeUnicoPrevisora(casoPrevisora || {}));
   const [liquidador, setLiquidador] = useState(() =>
     liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {})
@@ -72,8 +63,6 @@ export default function InformeUnicoPrevisora({
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [descargando, setDescargando] = useState(false);
-  const [subiendoFotos, setSubiendoFotos] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
 
   const totales = useMemo(() => calcularLiquidacionPrevisora(liquidador), [liquidador]);
@@ -165,67 +154,30 @@ export default function InformeUnicoPrevisora({
     }
   };
 
-  const refrescarCaso = async () => {
-    if (!casoPrevisora?._id) return null;
-    const actualizado = await getCasoPrevisoraById(casoPrevisora._id);
-    onCasoChange?.(actualizado);
-    return actualizado;
+  const appendArchivosAlCaso = (creados = []) => {
+    const lista = (Array.isArray(creados) ? creados : [creados]).filter(Boolean);
+    if (!lista.length) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
+      if (!extra.length) return prev;
+      return { ...prev, archivos: [...actuales, ...extra] };
+    });
   };
 
-  const subirFotos = async (fileList) => {
-    if (!casoPrevisora?._id) {
-      setError(t('previsora.reportUnique.savedCaseRequired'));
-      return;
-    }
-    const files = Array.from(fileList || []).filter(esImagen);
-    if (!files.length) {
-      setError(t('previsora.reportUnique.photosOnlyImages'));
-      return;
-    }
-
-    setSubiendoFotos(true);
-    setError('');
-    setMensaje('');
-    try {
-      for (const file of files) {
-        await subirArchivoPrevisora(casoPrevisora._id, file, 'FOTOS');
-      }
-      await refrescarCaso();
-      setMensaje(t('previsora.reportUnique.photosUploaded', { count: files.length }));
-    } catch (err) {
-      console.error(err);
-      setError(err.message || t('previsora.reportUnique.photosUploadError'));
-    } finally {
-      setSubiendoFotos(false);
-    }
+  const quitarArchivoDelCaso = (archivoId) => {
+    if (!archivoId) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      return {
+        ...prev,
+        archivos: actuales.filter((a) => String(a?._id) !== String(archivoId)),
+      };
+    });
   };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOver(false);
-    subirFotos(e.dataTransfer?.files);
-  };
-
-  const handleEliminarFoto = async (archivoId) => {
-    if (!casoPrevisora?._id || !archivoId) return;
-    if (!window.confirm(t('previsora.archive.confirmDelete'))) return;
-    setError('');
-    setMensaje('');
-    try {
-      await eliminarArchivoPrevisora(casoPrevisora._id, archivoId);
-      await refrescarCaso();
-      setMensaje(t('previsora.archive.deleteOk'));
-    } catch (err) {
-      setError(err.message || t('previsora.archive.deleteError'));
-    }
-  };
-
-  const fotos = (Array.isArray(casoPrevisora?.archivos) ? casoPrevisora.archivos : []).filter((a) => {
-    const et = String(a.etiqueta || '').toUpperCase();
-    const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
-    return et === 'FOTOS' || et === 'INSPECCION' || /\.(jpe?g|png|gif|webp)$/i.test(nombre);
-  });
 
   return (
     <div className="space-y-5">
@@ -499,101 +451,22 @@ export default function InformeUnicoPrevisora({
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('previsora.reportUnique.photosUploadHint')}
         </p>
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            const files = e.target.files;
-            e.target.value = '';
-            if (files?.length) subirFotos(files);
+        <FotosInspeccionZurich
+          casoId={casoPrevisora?._id}
+          origen={origen}
+          api={api}
+          inputIdPrefix="previsora-foto"
+          fotosInforme={informe.fotosInspeccion || []}
+          onFotosInformeChange={(lista) => setCampo('fotosInspeccion', lista)}
+          onArchivoCreado={(creado) => {
+            if (creado) appendArchivosAlCaso([creado]);
+            setMensaje(t('previsora.reportUnique.photosUploaded', { count: 1 }));
+          }}
+          onArchivoEliminado={(archivoId) => {
+            quitarArchivoDelCaso(archivoId);
+            setMensaje(t('previsora.archive.deleteOk'));
           }}
         />
-
-        <div
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') fileRef.current?.click();
-          }}
-          onClick={() => !subiendoFotos && fileRef.current?.click()}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-          }}
-          onDrop={handleDrop}
-          className={`mb-4 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition ${
-            dragOver
-              ? 'border-fenix-primario bg-fenix-primario/5'
-              : 'border-gray-300 bg-gray-50 hover:border-gray-400 dark:border-gray-600 dark:bg-gray-900/40'
-          } ${subiendoFotos ? 'pointer-events-none opacity-60' : ''}`}
-        >
-          <FaCloudUploadAlt className="mb-2 text-3xl text-fenix-primario" />
-          <p className="font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-            {subiendoFotos
-              ? t('previsora.reportUnique.photosUploading')
-              : t('previsora.reportUnique.photosDropTitle')}
-          </p>
-          <p className="mt-1 font-body text-xs text-gray-500">
-            {t('previsora.reportUnique.photosDropSubtitle')}
-          </p>
-        </div>
-
-        {fotos.length === 0 ? (
-          <p className="text-sm text-gray-500">{t('previsora.reportUnique.noPhotos')}</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {fotos.slice(0, 24).map((f) => {
-              const url = urlDescargaArchivoPrevisora(f.ruta);
-              const isImg = esImagen(f.nombreOriginal || f.nombre || '');
-              return (
-                <div
-                  key={f._id || f.ruta}
-                  className="group relative overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700"
-                >
-                  {isImg && url ? (
-                    <img
-                      src={url}
-                      alt={f.nombreOriginal || 'Foto'}
-                      className="h-28 w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-28 items-center justify-center bg-gray-50 px-2 text-center text-xs dark:bg-gray-900">
-                      {f.nombreOriginal || f.nombre}
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between gap-1 px-2 py-1">
-                    <p className="truncate text-xs text-gray-500">{f.etiqueta || 'FOTOS'}</p>
-                    {f._id && (
-                      <button
-                        type="button"
-                        className="rounded p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40"
-                        title={t('previsora.report.delete')}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEliminarFoto(f._id);
-                        }}
-                      >
-                        <FaTrash className="text-xs" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </section>
 
       <section className={expressFormSection}>

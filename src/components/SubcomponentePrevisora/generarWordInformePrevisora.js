@@ -27,6 +27,7 @@ import {
   parsearNumero,
 } from './liquidadorPrevisoraHelpers.js';
 import { urlDescargaArchivoPrevisora } from '../../services/previsoraService.js';
+import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -498,12 +499,49 @@ async function fetchImageBytes(url) {
     });
     if (!response.ok) return null;
     const blob = await response.blob();
-    if (!blob.type.startsWith('image/')) return null;
+    if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') return null;
     const buf = await blob.arrayBuffer();
-    return { bytes: new Uint8Array(buf), type: blob.type.includes('png') ? 'png' : 'jpg' };
+    const u8 = new Uint8Array(buf);
+    const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
+    return { bytes: u8, type: isPng || blob.type.includes('png') ? 'png' : 'jpg' };
   } catch {
     return null;
   }
+}
+
+async function bytesDesdeFoto(foto = {}, urlFn) {
+  try {
+    if (foto?.file instanceof Blob) {
+      const buf = await foto.file.arrayBuffer();
+      const u8 = new Uint8Array(buf);
+      const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
+      return { bytes: u8, type: isPng ? 'png' : 'jpg' };
+    }
+    if (typeof foto?.preview === 'string' && (foto.preview.startsWith('blob:') || foto.preview.startsWith('data:'))) {
+      const resp = await fetch(foto.preview);
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const buf = await blob.arrayBuffer();
+        const u8 = new Uint8Array(buf);
+        const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
+        return { bytes: u8, type: isPng ? 'png' : 'jpg' };
+      }
+    }
+  } catch {
+    /* continuar con ruta */
+  }
+  const candidatos = [
+    ...(foto?.ruta ? getUploadsUrlCandidates(foto.ruta) : []),
+    urlFn?.(foto?.ruta),
+  ].filter(Boolean);
+  const vistos = new Set();
+  for (const url of candidatos) {
+    if (vistos.has(url)) continue;
+    vistos.add(url);
+    const img = await fetchImageBytes(url);
+    if (img) return img;
+  }
+  return null;
 }
 
 async function imagenDesdeDataUrl(dataUrl) {
@@ -811,13 +849,15 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
     const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
     return et === 'FOTOS' || et === 'INSPECCION' || /\.(jpe?g|png|gif|webp)$/i.test(nombre);
   });
+  const fotosInforme = Array.isArray(info?.fotosInspeccion)
+    ? info.fotosInspeccion.filter((f) => f && (f.ruta || f.file || f.preview || f._id))
+    : [];
+  const fotosParaWord = fotosInforme.length ? fotosInforme : fotosArchivos;
 
   const fotoParrafos = [];
   let fotosIncluidas = 0;
-  for (const archivo of fotosArchivos.slice(0, 12)) {
-    const url = urlDescargaArchivoPrevisora(archivo.ruta);
-    if (!url) continue;
-    const img = await fetchImageBytes(url);
+  for (const archivo of fotosParaWord.slice(0, 24)) {
+    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoPrevisora);
     if (!img) {
       fotoParrafos.push(
         p(`• ${archivo.nombreOriginal || archivo.nombre || 'Foto'} (no embebida)`, {

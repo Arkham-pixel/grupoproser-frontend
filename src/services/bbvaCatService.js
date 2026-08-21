@@ -4,6 +4,7 @@ import {
   homologarEstadoBbvaCat,
   ultimaGestionBbvaCat,
 } from '../components/SubcomponenteBbvaCat/bbvaCatHelpers.js';
+import { sanitizarInformeUnicoBbvaCat } from '../components/SubcomponenteBbvaCat/liquidadorBbvaCatHelpers.js';
 
 const BBVA_CAT_API_URL = `${BASE_URL}/api/bbva-cat`;
 
@@ -351,7 +352,7 @@ export const guardarInformeUnicoEnCasoBbvaCat = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
-    informeUnico: informeUnico || {},
+    informeUnico: sanitizarInformeUnicoBbvaCat(informeUnico || {}),
   };
 
   delete payload._id;

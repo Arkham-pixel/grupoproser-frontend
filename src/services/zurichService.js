@@ -4,6 +4,7 @@ import {
   homologarEstadoZurich,
   ultimaGestionZurich,
 } from '../components/SubcomponenteZurich/zurichHelpers.js';
+import { sanitizarInformeUnicoZurich } from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
 
 const ZURICH_API_URL = `${BASE_URL}/api/zurich`;
 
@@ -351,7 +352,7 @@ export const guardarInformeUnicoEnCasoZurich = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
-    informeUnico: informeUnico || {},
+    informeUnico: sanitizarInformeUnicoZurich(informeUnico || {}),
   };
 
   delete payload._id;

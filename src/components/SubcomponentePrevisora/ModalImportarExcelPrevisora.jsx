@@ -21,7 +21,7 @@ export function esAdminOSoportePrevisora() {
 /**
  * Carga masiva Previsora:
  * - BASE Previsora / consolidado CAT → expedientes de inspección (liquidador e informe).
- * - Listado cliente (ZC, STRO) → módulo listado.
+ * - Listado cliente (siniestro) → módulo listado.
  */
 export default function ModalImportarExcelPrevisora({ open, onClose, onCompleted }) {
   const fileRef = useRef(null);
@@ -80,7 +80,7 @@ export default function ModalImportarExcelPrevisora({ open, onClose, onCompleted
       const parsed = usarCat ? cat : listado;
       if (!parsed?.casos?.length) {
         throw new Error(
-          'No se encontraron filas válidas. Use BASE Previsora (siniestro, ID, asegurado) o el listado con ZC/STRO.'
+          'No se encontraron filas válidas. Use BASE Previsora (siniestro, ID, asegurado) o el listado con siniestro, asegurado y ciudad.'
         );
       }
       setModo(usarCat ? 'cat' : 'listado');
@@ -128,7 +128,7 @@ export default function ModalImportarExcelPrevisora({ open, onClose, onCompleted
             <p className="mt-1 font-body text-sm text-gray-500">
               {modo === 'cat'
                 ? 'Formato BASE Previsora / consolidado: se crean o actualizan expedientes (liquidador e informe) por siniestro o identificación.'
-                : 'Listado cliente: columnas ZC, STRO, Asegurado y Ciudad. Si el ZC ya existe, se actualiza; si no, se crea.'}
+                : 'Listado: columnas siniestro, asegurado y ciudad. Si el siniestro ya existe, se actualiza; si no, se crea.'}
             </p>
           </div>
           <button type="button" className={expressBtnGhost} onClick={handleClose}>

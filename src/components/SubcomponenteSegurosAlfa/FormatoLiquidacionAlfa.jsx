@@ -211,7 +211,7 @@ export default function FormatoLiquidacionAlfa({
   aceptacionIndemnizacion = '',
   firmaCliente = '',
   nombreFirmante = '',
-  aiuPorcentaje = 0.05,
+  aiuPorcentaje = 0.15,
   onEncabezadoChange,
   onCasoCampoChange,
   onDeducibleChange,
@@ -243,7 +243,7 @@ export default function FormatoLiquidacionAlfa({
   const aiuPctNum = Number(aiuPorcentaje);
   const aiuPctUi = Number.isFinite(aiuPctNum)
     ? Math.round(aiuPctNum * 10000) / 100
-    : 5;
+    : 15;
 
   const capitulos = useMemo(() => {
     const fromNsr = Array.isArray(CAPITULOS_PRESUPUESTO_NSR10) ? CAPITULOS_PRESUPUESTO_NSR10 : [];
@@ -255,11 +255,16 @@ export default function FormatoLiquidacionAlfa({
     return (itemsDetalle || []).reduce((acc, it) => acc + parsearNumero(it.valorPerdida), 0);
   }, [itemsDetalle]);
 
+  const aiuMonto = useMemo(() => {
+    const desdeTotales = parsearNumero(totales.aiu);
+    if (desdeTotales > 0 && Math.abs(Number(totales.subtotal || 0) - subtotal) < 0.01) {
+      return desdeTotales;
+    }
+    return Math.round(subtotal * (aiuPctUi / 100) * 100) / 100;
+  }, [totales.aiu, totales.subtotal, subtotal, aiuPctUi]);
+
   const deducible = parsearNumero(totales.deducibleAplicado);
-  const totalIndemnizar =
-    totales.totalIndemnizar != null
-      ? parsearNumero(totales.totalIndemnizar)
-      : Math.max(0, subtotal - deducible);
+  const totalIndemnizar = Math.max(0, Math.round((subtotal + aiuMonto - deducible) * 100) / 100);
 
   return (
     <div className={alfaCatShell}>
@@ -485,7 +490,7 @@ export default function FormatoLiquidacionAlfa({
                 onChange={(e) => {
                   const pct = Number(e.target.value);
                   onAiuChange?.(
-                    Number.isFinite(pct) ? Math.max(0, pct) / 100 : 0.05
+                    Number.isFinite(pct) ? Math.max(0, pct) / 100 : 0.15
                   );
                 }}
                 title="Porcentaje de AIU sobre el subtotal de ítems"
@@ -498,7 +503,7 @@ export default function FormatoLiquidacionAlfa({
               <input
                 className={alfaCatInput}
                 readOnly
-                value={formatearMonto(totales.aiu ?? subtotal * (aiuPctUi / 100))}
+                value={formatearMonto(aiuMonto)}
               />
             </CeldaInput>
           </div>
@@ -745,7 +750,7 @@ export default function FormatoLiquidacionAlfa({
             </div>
             <div className="flex justify-between gap-4 px-2 py-1">
               <span>AIU ({aiuPctUi}%)</span>
-              <span>$ {formatearMonto(totales.aiu ?? subtotal * (aiuPctUi / 100))}</span>
+              <span>$ {formatearMonto(aiuMonto)}</span>
             </div>
             <div className="flex justify-between gap-4 px-2 py-1">
               <span>Deducible aplicable</span>

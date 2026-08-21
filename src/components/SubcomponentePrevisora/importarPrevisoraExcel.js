@@ -530,7 +530,7 @@ const parsearHojaListadoCliente = (sheet) => {
       else sinMapa.push(c);
     });
     const campos = new Set(Object.values(provisional));
-    if (campos.has('zc') && (campos.has('siniestro') || campos.has('asegurado'))) {
+    if (campos.has('siniestro') && (campos.has('asegurado') || campos.has('ciudad'))) {
       headerRowIdx = r;
       colMap = provisional;
       columnasSinMapa.push(...sinMapa);
@@ -606,10 +606,9 @@ const parsearHojaListadoCliente = (sheet) => {
     if (extras.length) {
       caso.observaciones = [caso.observaciones, ...extras].filter(Boolean).join(' | ');
     }
-    if (!caso.zc && !caso.siniestro && !caso.asegurado) continue;
+    if (!caso.siniestro && !caso.asegurado) continue;
     if (!caso.identificacion) {
-      if (caso.zc) caso.identificacion = caso.zc;
-      else if (caso.siniestro) caso.identificacion = caso.siniestro;
+      if (caso.siniestro) caso.identificacion = caso.siniestro;
     }
     if (!caso.estado || caso.estado === '0') caso.estado = 'CASO NUEVO';
     caso.estado = homologarEstadoPrevisora(caso.estado);
@@ -620,7 +619,7 @@ const parsearHojaListadoCliente = (sheet) => {
 };
 
 /**
- * Lee el listado breve de cliente (Item, ZC, STRO, Asegurado, contactos, Ciudad).
+ * Lee el listado breve de cliente (siniestro, asegurado, contactos, ciudad).
  */
 export const parsearListadoClientePrevisoraDesdeExcel = async (file) => {
   if (!file) throw new Error('No se seleccionó archivo');
@@ -644,7 +643,7 @@ export const parsearListadoClientePrevisoraDesdeExcel = async (file) => {
 
   if (!hojaUsada) {
     throw new Error(
-      'No se encontró el listado de siniestros. Use columnas ZC, STRO, ASEGURADO, INTERMEDIARIO y CIUDAD.'
+      'No se encontró el listado de siniestros. Use columnas SINIESTRO, ASEGURADO, INTERMEDIARIO y CIUDAD.'
     );
   }
 

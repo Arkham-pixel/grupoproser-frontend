@@ -12,6 +12,9 @@ import {
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
+import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
+
+export { sanitizarInformeUnicoFotos as sanitizarInformeUnicoAllianz };
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -327,6 +330,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
+    fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
     actaAjustadorNombre: caso.ajustador || '',
     actaAjustadorCargo: '',
     actaAjustadorEmail: '',
@@ -345,6 +349,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
+    fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
   };
 }
 

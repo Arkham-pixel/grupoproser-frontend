@@ -4,6 +4,7 @@ import {
   homologarEstadoZurich,
   ultimaGestionZurich,
 } from '../components/SubcomponenteZurich/zurichHelpers.js';
+import { sanitizarInformeUnicoZurich } from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
 
 const API_URL = `${BASE_URL}/api/zurich-listado`;
 
@@ -152,7 +153,7 @@ export const guardarInformeUnicoEnCasoZurichListado = async ({
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
   return actualizarCasoZurichListado(casoId, {
     ...omitirMeta(casoBase),
-    informeUnico: informeUnico || {},
+    informeUnico: sanitizarInformeUnicoZurich(informeUnico || {}),
   });
 };
 

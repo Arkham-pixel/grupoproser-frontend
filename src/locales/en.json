@@ -1653,9 +1653,9 @@
         "summaryLine": "{{synced}} synced · {{pending}} pending · {{syncing}} syncing · {{failed}} errors · {{none}} not synced",
         "bannerLine": "{{synced}} on SharePoint · {{pending}} queued · {{failed}} failed",
         "queueHint": "Copy to SharePoint runs in the background (every few minutes).",
-        "chooseHint": "Choose which files go to SharePoint and which stay only in ARNALD, so SharePoint stays clean.",
-          "queuedOk": "Saved in ARNALD. Queued for SharePoint (SINIESTROS).",
-        "replacedOk": "Document updated in the file cabinet (overwritten). Queued for SharePoint.",
+        "chooseHint": "Files stay in ARNALD. Review and click Upload only for those that should go to SharePoint.",
+        "queuedOk": "Saved in ARNALD. Review the banner and click Upload if it should go to SharePoint.",
+        "replacedOk": "Document updated in the file cabinet. Review and click Upload to send it to SharePoint.",
         "syncedToast": "«{{name}}» is now on SharePoint (SINIESTROS).",
         "viewArchive": "Open file cabinet",
         "showQueue": "Show queue ({{count}})",
@@ -11042,15 +11042,15 @@
       "reportDate": "Report date",
       "settlementHint": "Totals come from the settlement saved on the case.",
       "noSettlementItems": "No settlement items yet. Complete the settlement first.",
-      "photosHint": "Photos from the file cabinet labeled FOTOS or INSPECCION (included in Word).",
-      "photosUploadHint": "Drag or select photos here. They are saved on the case (FOTOS label) and included in Word.",
+      "photosHint": "Photos from the report and the file cabinet (FOTOS or INSPECCION). Included in Word.",
+      "photosUploadHint": "Use “Take photo” or “Gallery”, or drag images. Preview appears immediately and they are saved on the case.",
       "photosDropTitle": "Drag photos here or click to select",
-      "photosDropSubtitle": "JPG, PNG, GIF or WEBP — you can upload several at once",
+      "photosDropSubtitle": "JPG, PNG, WEBP or HEIC — you can upload several at once. Preview appears immediately.",
       "photosUploading": "Uploading photos…",
       "photosUploaded": "{{count}} photo(s) uploaded successfully.",
       "photosUploadError": "Could not upload the photos.",
       "photosOnlyImages": "Only image files are allowed.",
-      "noPhotos": "No photos yet. Use the drop zone above.",
+      "noPhotos": "No photos yet. Use “Take photo” or “Gallery”.",
       "conclusions": "Conclusions",
       "recommendation": "Adjuster recommendation",
       "downloadWord": "Download Word report",
@@ -11669,7 +11669,8 @@
     "validation": {
       "identificacionRequired": "Identification is required.",
       "identificacionOrRiskRequired": "Enter identification or Risk ID.",
-      "zcOrStroRequired": "Enter ZC or STRO (claim number).",
+      "siniestroRequired": "Enter the claim number.",
+      "zcOrStroRequired": "Enter the claim number.",
       "statusRequired": "The case status is required."
     },
     "messages": {
@@ -11679,8 +11680,8 @@
     },
     "sections": {
       "identification": "Identification and location",
-      "listadoCliente": "Client list data",
-      "listadoClienteHint": "Fields from the LISTADO SINIESTRO Excel: ZC, STRO, insured, identification, policy, cause, contacts and city. Not matched to inspection-only cases.",
+      "listadoCliente": "Case data",
+      "listadoClienteHint": "Claim number, insured, identification, policy, cause, contacts and city.",
       "policyCoverage": "Policy and coverage",
       "values": "Values",
       "dates": "Dates and follow-up",
@@ -11691,7 +11692,7 @@
       "generalInfoHint": "Expand to complete identification, contact, policy, values and additional dates."
     },
     "fields": {
-      "siniestro": "STRO / Claim",
+      "siniestro": "Claim",
       "zc": "ZC",
       "identificacion": "Identification",
       "tipoIdentificacion": "ID type",
@@ -11757,7 +11758,7 @@
       "fechaVisita": "Visit date"
     },
     "placeholders": {
-      "siniestro": "STRO / claim number",
+      "siniestro": "Claim number",
       "zc": "E.g. 317924",
       "identificacion": "ID document",
       "causa": "E.g. earthquake, fire, flood",
@@ -11862,14 +11863,14 @@
     },
     "page": {
       "addTitle": "Add Allianz case",
-      "addSubtitle": "Register cases from the claims list (ZC, STRO, insured and contacts).",
+      "addSubtitle": "Register cases from the claims list (claim number, insured and contacts).",
       "editCase": "Edit case {{caseNumber}}",
       "newCase": "New case"
     },
     "listadoReport": {
       "title": "Allianz list report",
-      "subtitle": "Client list cases (ZC, STRO, insured and contacts). Independent from CAT inspection.",
-      "searchPlaceholder": "ZC, STRO, insured, city…"
+      "subtitle": "Client list cases (claim number, insured and contacts). Independent from CAT inspection.",
+      "searchPlaceholder": "Claim, insured, city…"
     },
     "listadoDashboard": {
       "title": "Allianz list dashboard",
@@ -11877,10 +11878,10 @@
     },
     "bulk": {
       "title": "Import Excel list",
-      "subtitle": "Upload the short claims list (ZC, STRO, Insured, contacts and City). If ZC already exists it is updated; otherwise a new case is created. Inspection-only CAT cases are not matched. Admin/support only.",
+      "subtitle": "Upload the short claims list (claim number, insured, contacts and city). If the claim already exists it is updated; otherwise a new case is created. Inspection-only CAT cases are not matched. Admin/support only.",
       "upload": "Import Excel",
       "importing": "Importing…",
-      "hint": ".xlsx format — columns ZC, STRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO, CIUDAD",
+      "hint": ".xlsx format — columns SINIESTRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO, CIUDAD",
       "emptyFile": "The file has no data rows to import.",
       "error": "The Excel file could not be imported.",
       "success": "Import done: {{created}} created, {{updated}} updated, {{skipped}} skipped.",
@@ -12138,7 +12139,8 @@
     "validation": {
       "identificacionRequired": "Identification is required.",
       "identificacionOrRiskRequired": "Enter identification or Risk ID.",
-      "zcOrStroRequired": "Enter ZC or STRO (claim number).",
+      "siniestroRequired": "Enter the claim number.",
+      "zcOrStroRequired": "Enter the claim number.",
       "statusRequired": "The case status is required."
     },
     "messages": {
@@ -12148,8 +12150,8 @@
     },
     "sections": {
       "identification": "Identification and location",
-      "listadoCliente": "Client list data",
-      "listadoClienteHint": "Fields from the LISTADO SINIESTRO Excel: ZC, STRO, insured, identification, policy, cause, contacts and city. Not matched to inspection-only cases.",
+      "listadoCliente": "Case data",
+      "listadoClienteHint": "Claim number, insured, identification, policy, cause, contacts and city.",
       "policyCoverage": "Policy and coverage",
       "values": "Values",
       "dates": "Dates and follow-up",
@@ -12162,7 +12164,7 @@
       "actionDatesHint": "Date of each CAT workflow status. Changing status stamps the matching date when it is still empty."
     },
     "fields": {
-      "siniestro": "STRO / Claim",
+      "siniestro": "Claim",
       "zc": "ZC",
       "identificacion": "Identification",
       "tipoIdentificacion": "ID type",
@@ -12349,14 +12351,14 @@
     },
     "page": {
       "addTitle": "Add Previsora case",
-      "addSubtitle": "Register cases from the claims list (ZC, STRO, insured and contacts).",
+      "addSubtitle": "Register cases from the claims list (claim number, insured and contacts).",
       "editCase": "Edit case {{caseNumber}}",
       "newCase": "New case"
     },
     "listadoReport": {
       "title": "Previsora list report",
-      "subtitle": "Client list cases (ZC, STRO, insured and contacts). Independent from CAT inspection.",
-      "searchPlaceholder": "ZC, STRO, insured, city…"
+      "subtitle": "Client list cases (claim number, insured and contacts). Independent from CAT inspection.",
+      "searchPlaceholder": "Claim, insured, city…"
     },
     "listadoDashboard": {
       "title": "Previsora list dashboard",
@@ -12364,10 +12366,10 @@
     },
     "bulk": {
       "title": "Import Excel list",
-      "subtitle": "Upload the short claims list (ZC, STRO, Insured, contacts and City). If ZC already exists it is updated; otherwise a new case is created. Inspection-only CAT cases are not matched. Admin/support only.",
+      "subtitle": "Upload the short claims list (claim number, insured, contacts and city). If the claim already exists it is updated; otherwise a new case is created. Inspection-only CAT cases are not matched. Admin/support only.",
       "upload": "Import Excel",
       "importing": "Importing…",
-      "hint": ".xlsx format — columns ZC, STRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO, CIUDAD",
+      "hint": ".xlsx format — columns SINIESTRO, ASEGURADO, CONTACTO INTERMEDIARIO, CONTACTO ASEGURADO, CIUDAD",
       "emptyFile": "The file has no data rows to import.",
       "error": "The Excel file could not be imported.",
       "success": "Import done: {{created}} created, {{updated}} updated, {{skipped}} skipped.",

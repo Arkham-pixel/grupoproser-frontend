@@ -224,12 +224,11 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
   );
 
   const subtitulo = useMemo(() => {
-    if (casoAllianz?.tomador || casoAllianz?.siniestro || casoAllianz?.asegurado || casoAllianz?.zc) {
+    if (casoAllianz?.tomador || casoAllianz?.siniestro || casoAllianz?.asegurado) {
       return [
         casoAllianz.tomador || casoAllianz.asegurado || null,
         casoAllianz.consecutivo,
         casoAllianz.siniestro,
-        casoAllianz.zc ? `ZC ${casoAllianz.zc}` : null,
       ]
         .filter(Boolean)
         .join(' · ');
@@ -519,6 +518,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
             ) : tabActivo === TABS_ALLIANZ.INFORME ? (
               <InformeUnicoAllianz
                 key={`inf-${casoId}-${restoreNonce}`}
+                origen={esModuloListado ? 'listado' : 'cat'}
                 casoAllianz={casoAllianz}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}

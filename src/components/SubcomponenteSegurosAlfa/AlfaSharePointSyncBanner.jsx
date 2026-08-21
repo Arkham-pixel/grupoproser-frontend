@@ -115,7 +115,7 @@ export default function AlfaSharePointSyncBanner({
               <span className="mt-0.5 block text-[11px] opacity-80">
                 {t('segurosAlfa.archive.sharepoint.chooseHint', {
                   defaultValue:
-                    'Elija qué archivos subir a SharePoint y cuáles dejar solo en ARNALD, para no mezclar allá.',
+                    'Revise cada archivo y pulse «Subir» solo cuando esté listo. Por defecto no se copia a SharePoint.',
                 })}
               </span>
             </div>

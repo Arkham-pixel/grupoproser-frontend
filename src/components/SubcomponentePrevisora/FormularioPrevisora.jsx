@@ -330,7 +330,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
   const construirPayload = () => {
     if (esModuloListado) {
       const payload = {
-        zc: form.zc,
         siniestro: form.siniestro,
         identificacion: form.identificacion,
         tipoIdentificacion: form.tipoIdentificacion,
@@ -376,8 +375,7 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         estado: homologarEstadoPrevisora(form.estado),
       };
       if (!String(payload.identificacion || '').trim()) {
-        if (payload.zc) payload.identificacion = String(payload.zc).trim();
-        else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
+        if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       }
       return payload;
     }
@@ -400,8 +398,7 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     payload.severidadCat = sev ? Number(sev) : null;
     payload.evidenciaCat = normalizeEvidenciaCat(form.evidenciaCat);
     if (!String(payload.identificacion || '').trim()) {
-      if (payload.zc) payload.identificacion = String(payload.zc).trim();
-      else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
+      if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       else if (payload.riskId) payload.identificacion = String(payload.riskId).trim();
     }
     return payload;
@@ -413,11 +410,13 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     setExito(null);
 
     if (esModuloListado) {
-      if (!String(form.zc || '').trim() && !String(form.siniestro || '').trim()) {
-        setError(t('previsora.validation.zcOrStroRequired'));
+      if (!String(form.siniestro || '').trim()) {
+        setError(t('previsora.validation.siniestroRequired', {
+          defaultValue: 'Indique el siniestro',
+        }));
         return;
       }
-    } else if (!form.identificacion.trim() && !String(form.riskId || '').trim() && !String(form.zc || '').trim()) {
+    } else if (!form.identificacion.trim() && !String(form.riskId || '').trim()) {
       setError(t('previsora.validation.identificacionOrRiskRequired', {
         defaultValue: 'Indique identificación o Risk ID',
       }));
@@ -509,13 +508,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
           {t('previsora.sections.listadoClienteHint')}
         </p>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Campo label={t('previsora.fields.zc')} required={esAltaCliente}>
-            <InputFenix
-              value={form.zc}
-              onChange={setCampo('zc')}
-              placeholder={t('previsora.placeholders.zc')}
-            />
-          </Campo>
           <Campo label={t('previsora.fields.siniestro')} required={esAltaCliente}>
             <InputFenix
               value={form.siniestro}

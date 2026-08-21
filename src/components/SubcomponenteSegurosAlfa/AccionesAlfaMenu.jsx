@@ -98,7 +98,9 @@ export default function AccionesAlfaMenu({
             onClick={() => elegir(onArchivero)}
           >
             <FaFolderOpen className="text-fenix-primario" />
-            {t('segurosAlfa.report.archive')}
+            {t('segurosAlfa.report.archiveSharePoint', {
+              defaultValue: 'Archivero · SharePoint',
+            })}
             {docsCount > 0 ? ` (${docsCount})` : ''}
           </button>
           <button
