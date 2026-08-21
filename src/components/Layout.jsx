@@ -84,7 +84,7 @@ const ICONOS_ASEGURADORA = {
   zurich: FaMountain,
   bbvaCat: FaUniversity,
   previsora: FaEye,
-  allias: FaLink,
+  allianz: FaLink,
   sura: FaGlobeAmericas,
 };
 
@@ -497,17 +497,17 @@ export default function Layout() {
     '/previsora/liquidador': t('nav.pageTitles.previsoraCase'),
     '/previsora/informe-unico': t('nav.pageTitles.previsoraCase'),
     '/previsora/archivero': t('nav.pageTitles.previsoraArchive'),
-    '/allias/carga': t('nav.pageTitles.alliasAdd'),
-    '/allias/listado/reporte': t('nav.pageTitles.alliasListadoReport'),
-    '/allias/listado/dashboard': t('nav.pageTitles.alliasListadoDashboard'),
-    '/allias/listado/caso': t('nav.pageTitles.alliasCase'),
-    '/allias/reporte': t('nav.pageTitles.alliasReport'),
-    '/allias/dashboard': t('nav.pageTitles.alliasDashboard'),
-    '/allias/boletin': t('nav.pageTitles.alliasBulletin'),
-    '/allias/caso': t('nav.pageTitles.alliasCase'),
-    '/allias/liquidador': t('nav.pageTitles.alliasCase'),
-    '/allias/informe-unico': t('nav.pageTitles.alliasCase'),
-    '/allias/archivero': t('nav.pageTitles.alliasArchive'),
+    '/allianz/carga': t('nav.pageTitles.allianzAdd'),
+    '/allianz/listado/reporte': t('nav.pageTitles.allianzListadoReport'),
+    '/allianz/listado/dashboard': t('nav.pageTitles.allianzListadoDashboard'),
+    '/allianz/listado/caso': t('nav.pageTitles.allianzCase'),
+    '/allianz/reporte': t('nav.pageTitles.allianzReport'),
+    '/allianz/dashboard': t('nav.pageTitles.allianzDashboard'),
+    '/allianz/boletin': t('nav.pageTitles.allianzBulletin'),
+    '/allianz/caso': t('nav.pageTitles.allianzCase'),
+    '/allianz/liquidador': t('nav.pageTitles.allianzCase'),
+    '/allianz/informe-unico': t('nav.pageTitles.allianzCase'),
+    '/allianz/archivero': t('nav.pageTitles.allianzArchive'),
     '/sura/carga': t('nav.pageTitles.suraAdd'),
     '/sura/editar': t('nav.pageTitles.suraAdd'),
     '/sura/reporte': t('nav.pageTitles.suraReport'),
@@ -576,7 +576,7 @@ export default function Layout() {
     else if (path.startsWith('/zurich')) setExpandedSection('zurich');
     else if (path.startsWith('/bbva-cat')) setExpandedSection('bbvaCat');
     else if (path.startsWith('/previsora')) setExpandedSection('previsora');
-    else if (path.startsWith('/allias')) setExpandedSection('allias');
+    else if (path.startsWith('/allianz') || path.startsWith('/allias')) setExpandedSection('allianz');
     else if (path.startsWith('/sura')) setExpandedSection('sura');
     else if (path.startsWith('/propiedades')) setExpandedSection('propiedades');
     else if (path.startsWith('/puertos')) setExpandedSection('puertos');
@@ -649,8 +649,8 @@ export default function Layout() {
       path === '/bbva-cat/informe-unico' ||
       path === '/previsora/liquidador' ||
       path === '/previsora/informe-unico' ||
-      path === '/allias/liquidador' ||
-      path === '/allias/informe-unico';
+      path === '/allianz/liquidador' ||
+      path === '/allianz/informe-unico';
     if (!esLiquidadorOInforme) return path;
     const q = new URLSearchParams(location.search);
     const casoUrl = q.get('casoId') || q.get('id');
@@ -658,10 +658,13 @@ export default function Layout() {
     try {
       const storageKey = path.startsWith('/previsora')
         ? 'previsoraWorkspaceCasoId'
-        : path.startsWith('/allias')
-          ? 'alliasWorkspaceCasoId'
+        : path.startsWith('/allianz')
+          ? 'allianzWorkspaceCasoId'
           : 'bbvaCatWorkspaceCasoId';
-      casoGuardado = sessionStorage.getItem(storageKey) || '';
+      casoGuardado =
+        sessionStorage.getItem(storageKey) ||
+        (path.startsWith('/allianz') ? sessionStorage.getItem('alliasWorkspaceCasoId') : '') ||
+        '';
     } catch {
       casoGuardado = '';
     }
@@ -805,14 +808,14 @@ export default function Layout() {
           { path: '/previsora/archivero', icon: FaFolderOpen, label: t('nav.previsoraArchive') },
         ]
       : [],
-    allias: !accesoRestringido || configContractor?.seccionesMenu?.includes('allias')
+    allianz: !accesoRestringido || configContractor?.seccionesMenu?.includes('allianz') || configContractor?.seccionesMenu?.includes('allias')
       ? [
-          { path: '/allias/carga', icon: FaPlus, label: t('nav.alliasAddCase') },
-          { path: '/allias/listado/dashboard', icon: FaChartBar, label: t('nav.alliasListadoDashboard') },
-          { path: '/allias/listado/reporte', icon: FaTable, label: t('nav.alliasListadoReport') },
-          { path: '/allias/liquidador', icon: FaCalculator, label: t('nav.alliasSettlement') },
-          { path: '/allias/informe-unico', icon: FaFileAlt, label: t('nav.alliasUniqueReport') },
-          { path: '/allias/archivero', icon: FaFolderOpen, label: t('nav.alliasArchive') },
+          { path: '/allianz/carga', icon: FaPlus, label: t('nav.allianzAddCase') },
+          { path: '/allianz/listado/dashboard', icon: FaChartBar, label: t('nav.allianzListadoDashboard') },
+          { path: '/allianz/listado/reporte', icon: FaTable, label: t('nav.allianzListadoReport') },
+          { path: '/allianz/liquidador', icon: FaCalculator, label: t('nav.allianzSettlement') },
+          { path: '/allianz/informe-unico', icon: FaFileAlt, label: t('nav.allianzUniqueReport') },
+          { path: '/allianz/archivero', icon: FaFolderOpen, label: t('nav.allianzArchive') },
         ]
       : [],
     sura: !accesoRestringido || configContractor?.seccionesMenu?.includes('sura')
@@ -927,7 +930,7 @@ export default function Layout() {
             { key: 'zurich', title: t('nav.sections.zurich'), icon: ICONOS_ASEGURADORA.zurich, items: menuItems.zurich },
             { key: 'bbvaCat', title: t('nav.sections.bbvaCat'), icon: ICONOS_ASEGURADORA.bbvaCat, items: menuItems.bbvaCat },
             { key: 'previsora', title: t('nav.sections.previsora'), icon: ICONOS_ASEGURADORA.previsora, items: menuItems.previsora },
-            { key: 'allias', title: t('nav.sections.allias'), icon: ICONOS_ASEGURADORA.allias, items: menuItems.allias },
+            { key: 'allianz', title: t('nav.sections.allianz'), icon: ICONOS_ASEGURADORA.allianz, items: menuItems.allianz },
             { key: 'sura', title: t('nav.sections.sura'), icon: ICONOS_ASEGURADORA.sura, items: menuItems.sura },
             { key: 'propiedades', title: t('nav.sections.propiedades'), icon: FaBuilding, items: menuItems.propiedades },
             { key: 'sgSst', title: t('nav.sections.sgSst'), icon: FaShieldAlt, items: menuItems.sgSst },

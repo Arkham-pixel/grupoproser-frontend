@@ -264,7 +264,7 @@
       "bbvaCat": "BBVA CAT",
       "previsora": "PREVISORA",
       "sura": "SURA",
-      "allias": "ALLIAS"
+      "allianz": "ALLIANZ"
     },
     "home": "Inicio",
     "help": "Ayuda",
@@ -444,16 +444,16 @@
       "suraCase": "Caso Sura",
       "adminCatastrophicAdjusters": "Ajustadores catastróficos",
       "adminCatastrophicInspectors": "Inspectores catastróficos",
-      "alliasAdd": "Agregar caso Allias",
-      "alliasListadoReport": "Reporte listado Allias",
-      "alliasListadoDashboard": "Dashboard listado Allias",
-      "alliasReport": "Reporte CAT Allias",
-      "alliasDashboard": "Dashboard CAT Allias",
-      "alliasBulletin": "Boletín semanal Allias",
-      "alliasCase": "Caso Allias",
-      "alliasSettlement": "Liquidador Allias",
-      "alliasUniqueReport": "Informe único Allias",
-      "alliasArchive": "Archivero Allias"
+      "allianzAdd": "Agregar caso Allianz",
+      "allianzListadoReport": "Reporte listado Allianz",
+      "allianzListadoDashboard": "Dashboard listado Allianz",
+      "allianzReport": "Reporte CAT Allianz",
+      "allianzDashboard": "Dashboard CAT Allianz",
+      "allianzBulletin": "Boletín semanal Allianz",
+      "allianzCase": "Caso Allianz",
+      "allianzSettlement": "Liquidador Allianz",
+      "allianzUniqueReport": "Informe único Allianz",
+      "allianzArchive": "Archivero Allianz"
     },
     "segurosAlfaForm": "Formulario Seguros Alfa",
     "alfaAddCase": "Agregar caso",
@@ -501,16 +501,16 @@
     "suraCase": "Caso Sura",
     "catastrophicAdjusters": "Ajustadores catastróficos",
     "catastrophicInspectors": "Inspectores catastróficos",
-    "alliasAddCase": "Agregar caso",
-    "alliasListadoReport": "Reporte listado",
-    "alliasListadoDashboard": "Dashboard listado",
-    "alliasReport": "Reporte CAT",
-    "alliasDashboard": "Dashboard CAT",
-    "alliasBulletin": "Boletín semanal",
-    "alliasCase": "Caso Allias",
-    "alliasSettlement": "Liquidador",
-    "alliasUniqueReport": "Informe único",
-    "alliasArchive": "Archivero"
+    "allianzAddCase": "Agregar caso",
+    "allianzListadoReport": "Reporte listado",
+    "allianzListadoDashboard": "Dashboard listado",
+    "allianzReport": "Reporte CAT",
+    "allianzDashboard": "Dashboard CAT",
+    "allianzBulletin": "Boletín semanal",
+    "allianzCase": "Caso Allianz",
+    "allianzSettlement": "Liquidador",
+    "allianzUniqueReport": "Informe único",
+    "allianzArchive": "Archivero"
   },
   "translation": {
     "preview": "Traducción al inglés",
@@ -11673,7 +11673,7 @@
       "filteredToCase": "Tabla filtrada a este caso"
     }
   },
-  "allias": {
+  "allianz": {
     "validation": {
       "identificacionRequired": "La identificación es obligatoria.",
       "identificacionOrRiskRequired": "Indique identificación o Risk ID.",
@@ -11693,8 +11693,8 @@
       "values": "Valores",
       "dates": "Fechas y seguimiento",
       "catInspection": "Inspección CAT (exposición)",
-      "catAllias": "CAT Allias (exposición)",
-      "catAlliasHint": "Datos del Excel CAT_ALLIAS: Risk ID, ubicación, afectación y referencias de inspección.",
+      "catAllianz": "CAT Allianz (exposición)",
+      "catAllianzHint": "Datos del Excel CAT_ALLIANZ: Risk ID, ubicación, afectación y referencias de inspección.",
       "generalInfo": "Información general de personas / póliza",
       "generalInfoHint": "Despliegue para completar identificación, contacto, póliza, valores y fechas adicionales."
     },
@@ -11869,18 +11869,18 @@
       }
     },
     "page": {
-      "addTitle": "Agregar caso Allias",
+      "addTitle": "Agregar caso Allianz",
       "addSubtitle": "Registra los casos del listado de siniestros (ZC, STRO, asegurado y contactos).",
       "editCase": "Editar caso {{caseNumber}}",
       "newCase": "Nuevo caso"
     },
     "listadoReport": {
-      "title": "Reporte listado Allias",
+      "title": "Reporte listado Allianz",
       "subtitle": "Casos del listado cliente (ZC, STRO, asegurado y contactos). Base independiente de la inspección CAT.",
       "searchPlaceholder": "ZC, STRO, asegurado, ciudad…"
     },
     "listadoDashboard": {
-      "title": "Dashboard listado Allias",
+      "title": "Dashboard listado Allianz",
       "subtitle": "Seguimiento operativo del listado cliente. No incluye inspección CAT ni valores de siniestro."
     },
     "bulk": {
@@ -11899,12 +11899,12 @@
       "errorsTitle": "Detalle de filas omitidas ({{count}})",
       "errorRow": "Fila {{row}}: {{reason}}",
       "syncExpress": "Sincronizar desde Express",
-      "syncExpressHint": "Trae los casos de Express (Allias) sin duplicar.",
+      "syncExpressHint": "Trae los casos de Express (Allianz) sin duplicar.",
       "syncExpressSuccess": "Sync Express: {{created}} creados, {{updated}} actualizados, {{skipped}} omitidos.",
       "syncExpressError": "No fue posible sincronizar desde Express."
     },
     "report": {
-      "title": "Reporte CAT Allias",
+      "title": "Reporte CAT Allianz",
       "subtitle": "Consulta, edita y gestiona documentos de los casos de inspección CAT.",
       "subtitleChecklist": "Solo se muestran los casos con el checklist de inspección CAT completo. La lista se actualiza al llenar más casos.",
       "filters": "Filtros",
@@ -11923,7 +11923,7 @@
       "consecutivo": "Consecutivo",
       "exportExcel": "Exportar Excel",
       "importExcel": "Importar Excel",
-      "loadError": "No fue posible cargar los casos Allias.",
+      "loadError": "No fue posible cargar los casos Allianz.",
       "loadingCases": "Cargando casos…",
       "noCases": "No hay casos para mostrar.",
       "noCasesChecklist": "Aún no hay casos con el checklist CAT completo. Cuando se llene la inspección, aparecerán aquí.",
@@ -11955,7 +11955,7 @@
       "size": "Tamaño",
       "date": "Fecha",
       "download": "Descargar",
-      "pageTitle": "Archivero Allias",
+      "pageTitle": "Archivero Allianz",
       "pageSubtitle": "Selecciona un caso para subir y consultar documentos.",
       "pickCase": "Selecciona un caso para abrir su archivero.",
       "labels": {
@@ -11973,7 +11973,7 @@
       }
     },
     "settlement": {
-      "title": "Liquidador Allias",
+      "title": "Liquidador Allianz",
       "subtitle": "Liquidación de pérdidas y finiquito del caso.",
       "pickCase": "Selecciona un caso para trabajar el liquidador.",
       "headerTitle": "Datos del siniestro",
@@ -12023,7 +12023,7 @@
       "backReport": "Volver al reporte"
     },
     "reportUnique": {
-      "title": "Informe único Allias",
+      "title": "Informe único Allianz",
       "subtitle": "Informe con las seis secciones del ajuste.",
       "pickCase": "Selecciona un caso para trabajar el informe único.",
       "sectionEvent": "Información general del evento",
@@ -12071,13 +12071,13 @@
       "savedMessage": "Informe único guardado en el caso.",
       "saveError": "No se pudo guardar el informe.",
       "loadError": "No se pudo cargar el caso.",
-      "savedCaseRequired": "Guarde el caso Allias antes de abrir el informe.",
+      "savedCaseRequired": "Guarde el caso Allianz antes de abrir el informe.",
       "noData": "No hay datos de informe para guardar.",
       "loading": "Cargando caso…",
       "backReport": "Volver al reporte",
       "goSettlement": "Ir al liquidador",
       "catastroficoTitle": "Informe catastrófico (Complex)",
-      "catastroficoHint": "Abre el mismo informe catastrófico de Complex, precargado con los datos de este caso Allias.",
+      "catastroficoHint": "Abre el mismo informe catastrófico de Complex, precargado con los datos de este caso Allianz.",
       "openCatastrofico": "Abrir informe catastrófico",
       "continueCatastrofico": "Continuar informe catastrófico",
       "openingCatastrofico": "Abriendo informe catastrófico…",
@@ -12085,7 +12085,7 @@
       "linkedId": "Historial vinculado: {{id}}"
     },
     "workspace": {
-      "title": "Caso Allias",
+      "title": "Caso Allianz",
       "subtitle": "Liquidador e informe único del caso.",
       "subtitleListado": "Liquidador e informe único del caso (mismo formato CAT).",
       "tabSettlement": "Liquidador",
@@ -12102,8 +12102,8 @@
       "tabCat": "Inspección CAT"
     },
     "cat": {
-      "disclaimerTitle": "Aviso operativo CAT Allias",
-      "disclaimerBody": "Documento operativo para clasificar severidad, completar la base de exposición y registrar evidencia. No autoriza confirmar ni negar cobertura, prometer pagos ni actuar como vocero de Allias. La severidad es preliminar y no constituye liquidación del siniestro.",
+      "disclaimerTitle": "Aviso operativo CAT Allianz",
+      "disclaimerBody": "Documento operativo para clasificar severidad, completar la base de exposición y registrar evidencia. No autoriza confirmar ni negar cobertura, prometer pagos ni actuar como vocero de Allianz. La severidad es preliminar y no constituye liquidación del siniestro.",
       "evidenciaTitle": "Evidencia fotográfica / documental",
       "evidenciaHint": "Marque lo registrado. Foto general es obligatoria cuando aplica inspección.",
       "acceso": {
@@ -12128,7 +12128,7 @@
       "saveCat": "Guardar inspección CAT",
       "savedOk": "Inspección CAT guardada.",
       "savedError": "No fue posible guardar la inspección CAT.",
-      "needSavedCase": "Abra un caso Allias desde el reporte (botón Abrir caso) para guardar el checklist, las fotos y las observaciones.",
+      "needSavedCase": "Abra un caso Allianz desde el reporte (botón Abrir caso) para guardar el checklist, las fotos y las observaciones.",
       "panelHint": "Severidad de exposición y evidencia fotográfica (Manual CAT). Independiente del informe único y del liquidador.",
       "photosTitle": "Fotos de la inspección",
       "photosHint": "Suba las fotos de la inspección. Se guardan de inmediato en el caso.",

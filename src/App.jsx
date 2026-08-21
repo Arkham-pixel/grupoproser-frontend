@@ -101,15 +101,15 @@ import CasoPrevisoraWorkspace, {
   RedirectPrevisoraListadoWorkspace,
 } from './components/SubcomponentePrevisora/CasoPrevisoraWorkspace';
 import ArchiveroPrevisoraPage from './components/SubcomponentePrevisora/ArchiveroPrevisoraPage';
-import FormularioAllias from './components/SubcomponenteAllias/FormularioAllias';
-import ReporteAllias from './components/SubcomponenteAllias/ReporteAllias';
-import DashboardAllias from './components/SubcomponenteAllias/DashboardAllias';
-import ReporteAlliasListado from './components/SubcomponenteAllias/ReporteAlliasListado';
-import DashboardAlliasListado from './components/SubcomponenteAllias/DashboardAlliasListado';
-import ArchiveroAlliasPage from './components/SubcomponenteAllias/ArchiveroAlliasPage';
-import CasoAlliasWorkspace, {
-  RedirectAlliasListadoWorkspace,
-} from './components/SubcomponenteAllias/CasoAlliasWorkspace';
+import FormularioAllianz from './components/SubcomponenteAllianz/FormularioAllianz';
+import ReporteAllianz from './components/SubcomponenteAllianz/ReporteAllianz';
+import DashboardAllianz from './components/SubcomponenteAllianz/DashboardAllianz';
+import ReporteAllianzListado from './components/SubcomponenteAllianz/ReporteAllianzListado';
+import DashboardAllianzListado from './components/SubcomponenteAllianz/DashboardAllianzListado';
+import ArchiveroAllianzPage from './components/SubcomponenteAllianz/ArchiveroAllianzPage';
+import CasoAllianzWorkspace, {
+  RedirectAllianzListadoWorkspace,
+} from './components/SubcomponenteAllianz/CasoAllianzWorkspace';
 import { FormularioCasoSuraPage } from './components/SubcomponenteSura/FormularioCasoSura';
 import ReporteSegurosSura from './components/SubcomponenteSura/ReporteSegurosSura';
 import BoletinSemanalSegurosSura from './components/SubcomponenteSura/BoletinSemanalSegurosSura';
@@ -178,6 +178,12 @@ function InicioOrRedirectPorRol() {
 function RedirectPropiedadesEdit() {
   // Rutas antiguas del historial: ir al reporte (la inspección se abre desde el caso)
   return <Navigate to="/propiedades/reporte" replace />
+}
+
+function RedirectAlliasToAllianz() {
+  const location = useLocation();
+  const next = `${location.pathname.replace(/^\/allias/, '/allianz')}${location.search}${location.hash}`;
+  return <Navigate to={next} replace />;
 }
 
 // Para redirigir al dashboard si ya estás logueado
@@ -635,20 +641,22 @@ export default function App() {
           <Route path="previsora/archivero" element={<ArchiveroPrevisoraPage />} />
           <Route path="previsora" element={<Navigate to="/previsora/liquidador" replace />} />
 
-          <Route path="allias/carga" element={<FormularioAllias origen="listado" />} />
-          <Route path="allias/listado/reporte" element={<ReporteAlliasListado />} />
-          <Route path="allias/listado/dashboard" element={<DashboardAlliasListado />} />
-          <Route path="allias/listado/caso" element={<RedirectAlliasListadoWorkspace />} />
-          <Route path="allias/reporte" element={<ReporteAllias />} />
-          <Route path="allias/dashboard" element={<DashboardAllias />} />
-          <Route path="allias/boletin" element={<Navigate to="/allias/dashboard" replace />} />
-          <Route element={<CasoAlliasWorkspace />}>
-            <Route path="allias/caso" element={<></>} />
-            <Route path="allias/liquidador" element={<></>} />
-            <Route path="allias/informe-unico" element={<></>} />
+          <Route path="allianz/carga" element={<FormularioAllianz origen="listado" />} />
+          <Route path="allianz/listado/reporte" element={<ReporteAllianzListado />} />
+          <Route path="allianz/listado/dashboard" element={<DashboardAllianzListado />} />
+          <Route path="allianz/listado/caso" element={<RedirectAllianzListadoWorkspace />} />
+          <Route path="allianz/reporte" element={<ReporteAllianz />} />
+          <Route path="allianz/dashboard" element={<DashboardAllianz />} />
+          <Route path="allianz/boletin" element={<Navigate to="/allianz/dashboard" replace />} />
+          <Route element={<CasoAllianzWorkspace />}>
+            <Route path="allianz/caso" element={<></>} />
+            <Route path="allianz/liquidador" element={<></>} />
+            <Route path="allianz/informe-unico" element={<></>} />
           </Route>
-          <Route path="allias/archivero" element={<ArchiveroAlliasPage />} />
-          <Route path="allias" element={<Navigate to="/allias/liquidador" replace />} />
+          <Route path="allianz/archivero" element={<ArchiveroAllianzPage />} />
+          <Route path="allianz" element={<Navigate to="/allianz/liquidador" replace />} />
+          <Route path="allias/*" element={<RedirectAlliasToAllianz />} />
+          <Route path="allias" element={<Navigate to="/allianz/liquidador" replace />} />
 
           <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
           <Route path="sura/editar" element={<FormularioCasoSuraPage />} />

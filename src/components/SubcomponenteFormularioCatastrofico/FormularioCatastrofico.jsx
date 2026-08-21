@@ -241,9 +241,12 @@ export default function FormularioCatastrofico() {
             location.state?.bbvaCatCasoId ||
             prefill.bbvaCatCasoId ||
             prefill.metadata?.bbvaCatCasoId,
-          alliasCasoId:
+          allianzCasoId:
+            location.state?.allianzCasoId ||
             location.state?.alliasCasoId ||
+            prefill.allianzCasoId ||
             prefill.alliasCasoId ||
+            prefill.metadata?.allianzCasoId ||
             prefill.metadata?.alliasCasoId,
           previsoraCasoId:
             location.state?.previsoraCasoId ||

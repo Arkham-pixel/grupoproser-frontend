@@ -264,7 +264,7 @@
       "bbvaCat": "BBVA CAT",
       "previsora": "PREVISORA",
       "sura": "SURA",
-      "allias": "ALLIAS"
+      "allianz": "ALLIANZ"
     },
     "home": "Home",
     "help": "Help",
@@ -444,16 +444,16 @@
       "suraCase": "Sura case",
       "adminCatastrophicAdjusters": "Catastrophic adjusters",
       "adminCatastrophicInspectors": "Catastrophic inspectors",
-      "alliasAdd": "Add Allias case",
-      "alliasListadoReport": "Allias listing report",
-      "alliasListadoDashboard": "Allias listing dashboard",
-      "alliasReport": "Allias report",
-      "alliasDashboard": "Allias dashboard",
-      "alliasBulletin": "Allias weekly bulletin",
-      "alliasCase": "Allias case",
-      "alliasSettlement": "Allias settlement",
-      "alliasUniqueReport": "Allias unique report",
-      "alliasArchive": "Allias archive"
+      "allianzAdd": "Add Allianz case",
+      "allianzListadoReport": "Allianz listing report",
+      "allianzListadoDashboard": "Allianz listing dashboard",
+      "allianzReport": "Allianz report",
+      "allianzDashboard": "Allianz dashboard",
+      "allianzBulletin": "Allianz weekly bulletin",
+      "allianzCase": "Allianz case",
+      "allianzSettlement": "Allianz settlement",
+      "allianzUniqueReport": "Allianz unique report",
+      "allianzArchive": "Allianz archive"
     },
     "segurosAlfaForm": "Seguros Alfa form",
     "alfaAddCase": "Add case",
@@ -501,16 +501,16 @@
     "suraCase": "Sura case",
     "catastrophicAdjusters": "Catastrophic adjusters",
     "catastrophicInspectors": "Catastrophic inspectors",
-    "alliasAddCase": "Add case",
-    "alliasListadoReport": "Listing report",
-    "alliasListadoDashboard": "Listing dashboard",
-    "alliasReport": "CAT report",
-    "alliasDashboard": "CAT dashboard",
-    "alliasBulletin": "Weekly bulletin",
-    "alliasCase": "Allias case",
-    "alliasSettlement": "Settlement",
-    "alliasUniqueReport": "Unique report",
-    "alliasArchive": "Archive"
+    "allianzAddCase": "Add case",
+    "allianzListadoReport": "Listing report",
+    "allianzListadoDashboard": "Listing dashboard",
+    "allianzReport": "CAT report",
+    "allianzDashboard": "CAT dashboard",
+    "allianzBulletin": "Weekly bulletin",
+    "allianzCase": "Allianz case",
+    "allianzSettlement": "Settlement",
+    "allianzUniqueReport": "Unique report",
+    "allianzArchive": "Archive"
   },
   "translation": {
     "preview": "English translation",
@@ -11664,7 +11664,7 @@
       "filteredToCase": "Table filtered to this case"
     }
   },
-  "allias": {
+  "allianz": {
     "validation": {
       "identificacionRequired": "Identification is required.",
       "identificacionOrRiskRequired": "Enter identification or Risk ID.",
@@ -11684,8 +11684,8 @@
       "values": "Values",
       "dates": "Dates and follow-up",
       "catInspection": "CAT inspection (exposure)",
-      "catAllias": "CAT Allias (exposure)",
-      "catAlliasHint": "Fields from CAT_ALLIAS Excel: Risk ID, location, damage and inspection references.",
+      "catAllianz": "CAT Allianz (exposure)",
+      "catAllianzHint": "Fields from CAT_ALLIANZ Excel: Risk ID, location, damage and inspection references.",
       "generalInfo": "General person / policy information",
       "generalInfoHint": "Expand to complete identification, contact, policy, values and additional dates."
     },
@@ -11860,18 +11860,18 @@
       }
     },
     "page": {
-      "addTitle": "Add Allias case",
+      "addTitle": "Add Allianz case",
       "addSubtitle": "Register cases from the claims list (ZC, STRO, insured and contacts).",
       "editCase": "Edit case {{caseNumber}}",
       "newCase": "New case"
     },
     "listadoReport": {
-      "title": "Allias list report",
+      "title": "Allianz list report",
       "subtitle": "Client list cases (ZC, STRO, insured and contacts). Independent from CAT inspection.",
       "searchPlaceholder": "ZC, STRO, insured, city…"
     },
     "listadoDashboard": {
-      "title": "Allias list dashboard",
+      "title": "Allianz list dashboard",
       "subtitle": "Operational follow-up of the client list. CAT inspection and claim amounts are not included."
     },
     "bulk": {
@@ -11890,12 +11890,12 @@
       "errorsTitle": "Skipped rows detail ({{count}})",
       "errorRow": "Row {{row}}: {{reason}}",
       "syncExpress": "Sync from Express",
-      "syncExpressHint": "Imports Allias Colombia cases from Express without duplicating.",
+      "syncExpressHint": "Imports Allianz Colombia cases from Express without duplicating.",
       "syncExpressSuccess": "Express sync: {{created}} created, {{updated}} updated, {{skipped}} skipped.",
       "syncExpressError": "Could not sync from Express."
     },
     "report": {
-      "title": "Allias report",
+      "title": "Allianz report",
       "subtitle": "View, edit and manage documents for CAT inspection cases.",
       "subtitleChecklist": "Only cases with a completed CAT inspection checklist are shown. The list updates as more cases are filled in.",
       "filters": "Filters",
@@ -11914,7 +11914,7 @@
       "consecutivo": "Case ID",
       "exportExcel": "Export Excel",
       "importExcel": "Import Excel",
-      "loadError": "Could not load Allias cases.",
+      "loadError": "Could not load Allianz cases.",
       "loadingCases": "Loading cases…",
       "noCases": "No cases to display.",
       "noCasesChecklist": "There are no cases with a completed CAT checklist yet. They will appear here as inspections are filled in.",
@@ -11946,7 +11946,7 @@
       "size": "Size",
       "date": "Date",
       "download": "Download",
-      "pageTitle": "Allias archive",
+      "pageTitle": "Allianz archive",
       "pageSubtitle": "Select a case to upload and review documents.",
       "pickCase": "Select a case to open its archive.",
       "labels": {
@@ -11964,7 +11964,7 @@
       }
     },
     "settlement": {
-      "title": "Allias settlement",
+      "title": "Allianz settlement",
       "subtitle": "Loss settlement and case release letter.",
       "pickCase": "Select a case to work on the settlement.",
       "headerTitle": "Claim details",
@@ -12014,7 +12014,7 @@
       "backReport": "Back to report"
     },
     "reportUnique": {
-      "title": "Allias unique report",
+      "title": "Allianz unique report",
       "subtitle": "Report with the six adjustment sections.",
       "pickCase": "Select a case to work on the unique report.",
       "sectionEvent": "General event information",
@@ -12062,13 +12062,13 @@
       "savedMessage": "Unique report saved to the case.",
       "saveError": "Could not save the report.",
       "loadError": "Could not load the case.",
-      "savedCaseRequired": "Save the Allias case before opening the report.",
+      "savedCaseRequired": "Save the Allianz case before opening the report.",
       "noData": "No report data to save.",
       "loading": "Loading case…",
       "backReport": "Back to report",
       "goSettlement": "Go to settlement",
       "catastroficoTitle": "Catastrophic report (Complex)",
-      "catastroficoHint": "Opens the same catastrophic report used in Complex, prefilled with this Allias case.",
+      "catastroficoHint": "Opens the same catastrophic report used in Complex, prefilled with this Allianz case.",
       "openCatastrofico": "Open catastrophic report",
       "continueCatastrofico": "Continue catastrophic report",
       "openingCatastrofico": "Opening catastrophic report…",
@@ -12076,7 +12076,7 @@
       "linkedId": "Linked historial: {{id}}"
     },
     "workspace": {
-      "title": "Allias case",
+      "title": "Allianz case",
       "subtitle": "Settlement and unique report for the case.",
       "subtitleListado": "Settlement and unique report for the case (same CAT format).",
       "tabSettlement": "Settlement",
@@ -12093,8 +12093,8 @@
       "tabCat": "CAT inspection"
     },
     "cat": {
-      "disclaimerTitle": "Allias operational notice",
-      "disclaimerBody": "Operational guidance to classify severity, complete the exposure base and record evidence. It does not authorize confirming or denying coverage, promising payments, or acting as a Allias spokesperson. Severity is preliminary and is not a claim settlement.",
+      "disclaimerTitle": "Allianz operational notice",
+      "disclaimerBody": "Operational guidance to classify severity, complete the exposure base and record evidence. It does not authorize confirming or denying coverage, promising payments, or acting as an Allianz spokesperson. Severity is preliminary and is not a claim settlement.",
       "evidenciaTitle": "Photographic / documentary evidence",
       "evidenciaHint": "Mark what was recorded. Photo general is always required when inspection applies.",
       "acceso": {
@@ -12119,7 +12119,7 @@
       "saveCat": "Save CAT inspection",
       "savedOk": "CAT inspection saved.",
       "savedError": "Could not save CAT inspection.",
-      "needSavedCase": "Open a Allias case from the report (Open case) to save the checklist, photos and observations.",
+      "needSavedCase": "Open an Allianz case from the report (Open case) to save the checklist, photos and observations.",
       "panelHint": "Exposure severity and photographic evidence (Manual CAT). Independent from the unique report and liquidator.",
       "photosTitle": "Inspection photos",
       "photosHint": "Upload inspection photos. They are saved immediately on the case.",

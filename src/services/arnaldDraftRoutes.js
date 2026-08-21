@@ -20,7 +20,7 @@ const RUTAS_FORMULARIO_GENERAL = [
   '/zurich/carga',
   '/bbva-cat/carga',
   '/previsora/carga',
-  '/allias/carga',
+  '/allianz/carga',
   '/sura/carga',
   '/catastrofico',
   '/riesgos/agregar',
@@ -77,10 +77,10 @@ export function describirBorrador(formKey = '', titulo = '') {
   if (k.startsWith('previsora-ws:')) return 'Previsora · liquidador / informe';
   if (k.includes('previsora:') && k.endsWith(':nuevo')) return 'Previsora · caso nuevo';
   if (k.startsWith('previsora:')) return 'Previsora · caso';
-  if (k.startsWith('allias-listado-ws:')) return 'Allias · listado / liquidador / informe';
-  if (k.startsWith('allias-ws:')) return 'Allias · liquidador / informe';
-  if (k.includes('allias:') && k.endsWith(':nuevo')) return 'Allias · caso nuevo';
-  if (k.startsWith('allias:')) return 'Allias · caso';
+  if (k.startsWith('allianz-listado-ws:')) return 'Allianz · listado / liquidador / informe';
+  if (k.startsWith('allianz-ws:')) return 'Allianz · liquidador / informe';
+  if (k.includes('allianz:') && k.endsWith(':nuevo')) return 'Allianz · caso nuevo';
+  if (k.startsWith('allianz:')) return 'Allianz · caso';
   if (k.startsWith('sura-ws:')) return 'Sura · workspace del caso';
   if (k === 'formulario-sura-nuevo') return 'Sura · caso nuevo';
   if (k.startsWith('formulario-sura-')) return 'Sura · caso';
@@ -116,10 +116,10 @@ export function rutaDesdeFormKey(formKey = '') {
   if (k.startsWith('previsora-ws:')) return `/previsora/caso?casoId=${k.slice('previsora-ws:'.length)}`;
   if (k.startsWith('previsora:listado')) return '/previsora/carga';
   if (k.startsWith('previsora:')) return '/previsora/caso';
-  if (k.startsWith('allias-listado-ws:')) return `/allias/listado/caso?casoId=${k.slice('allias-listado-ws:'.length)}`;
-  if (k.startsWith('allias-ws:')) return `/allias/liquidador?casoId=${k.slice('allias-ws:'.length)}`;
-  if (k.startsWith('allias:listado')) return '/allias/carga';
-  if (k.startsWith('allias:')) return '/allias/liquidador';
+  if (k.startsWith('allianz-listado-ws:')) return `/allianz/listado/caso?casoId=${k.slice('allianz-listado-ws:'.length)}`;
+  if (k.startsWith('allianz-ws:')) return `/allianz/liquidador?casoId=${k.slice('allianz-ws:'.length)}`;
+  if (k.startsWith('allianz:listado')) return '/allianz/carga';
+  if (k.startsWith('allianz:')) return '/allianz/liquidador';
   if (k.startsWith('sura-ws:')) return `/sura/caso?casoId=${k.slice('sura-ws:'.length)}`;
   if (k === 'equidad-fdm:nuevo') return '/equidad-fdm/carga';
   if (k.startsWith('equidad-fdm-liq:')) {
