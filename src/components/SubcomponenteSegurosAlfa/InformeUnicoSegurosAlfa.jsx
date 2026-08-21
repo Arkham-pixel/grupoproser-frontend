@@ -184,7 +184,9 @@ export default function InformeUnicoSegurosAlfa({
           appendArchivosAlCaso([creado]);
           if (typeof onArchivoArchivado === 'function') onArchivoArchivado(creado);
           setMensaje(
-            'Excel CAT descargado y guardado en archivero (cola SharePoint SINIESTROS).'
+            creado?.replaced
+              ? 'Excel CAT actualizado en archivero (sobrescrito; cola SharePoint).'
+              : 'Excel CAT descargado y guardado en archivero (cola SharePoint SINIESTROS).'
           );
         } catch (errArchivo) {
           console.error('Archivero informe:', errArchivo);
@@ -220,13 +222,34 @@ export default function InformeUnicoSegurosAlfa({
     if (!nuevos.length || !onCasoChange) return;
     onCasoChange((prev) => {
       if (!prev) return prev;
-      const list = Array.isArray(prev.archivos) ? prev.archivos : [];
-      const ids = new Set(list.map((a) => String(a._id)));
-      const merged = [...list];
+      let list = Array.isArray(prev.archivos) ? [...prev.archivos] : [];
       nuevos.forEach((a) => {
-        if (a?._id && !ids.has(String(a._id))) merged.push(a);
+        if (!a) return;
+        const id = a._id ? String(a._id) : null;
+        if (id) {
+          const idx = list.findIndex((x) => String(x._id) === id);
+          if (idx >= 0) {
+            list[idx] = { ...list[idx], ...a };
+            return;
+          }
+        }
+        const et = String(a.etiqueta || '').toUpperCase();
+        const ext = String(a.nombreOriginal || '')
+          .toLowerCase()
+          .match(/\.([a-z0-9]+)$/)?.[1];
+        if (a.replaced && et && ext) {
+          list = list.filter((x) => {
+            if (String(x._id) === id) return true;
+            if (String(x.etiqueta || '').toUpperCase() !== et) return true;
+            const aExt = String(x.nombreOriginal || x.nombreArchivo || '')
+              .toLowerCase()
+              .match(/\.([a-z0-9]+)$/)?.[1];
+            return aExt !== ext;
+          });
+        }
+        list.push(a);
       });
-      return { ...prev, archivos: merged };
+      return { ...prev, archivos: list };
     });
   };
 

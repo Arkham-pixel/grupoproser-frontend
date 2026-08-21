@@ -91,18 +91,10 @@ function PanelDeducibleCatastrofico({
             Deducible (estilo Express)
           </h4>
           <p className="text-xs" style={{ color: textSecondary }}>
-            Se aplica sobre el total de contenidos: el mayor entre el % y el mínimo en SMMLV o
+            Se aplica siempre sobre el total de contenidos: el mayor entre el % y el mínimo en SMMLV o
             SMDLV. Luego se resta del total a indemnizar (presupuesto + contenidos + hospedaje).
           </p>
         </div>
-        <label className="inline-flex items-center gap-2 text-sm" style={{ color: textPrimary }}>
-          <input
-            type="checkbox"
-            checked={Boolean(deducibleCfg.aplica)}
-            onChange={(e) => onChangeConfig({ aplica: e.target.checked })}
-          />
-          Aplicar deducible
-        </label>
       </div>
 
       <label className="block text-sm" style={{ color: textSecondary }}>
@@ -362,7 +354,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
     valorAsegurado: '',
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
     hospedajeManual: '',
-    deducible: 'No aplica',
+    deducible: '',
     deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
     deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
   };
@@ -426,11 +418,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
     const nextCfg = {
       ...deducibleCfg,
       ...patch,
+      aplica: true,
     };
     actualizarLiquidacion({
       deducibleConfig: nextCfg,
       deducibleConfigContenidos: nextCfg,
-      deducible: nextCfg.texto || (nextCfg.aplica ? '' : 'No aplica'),
+      deducible: nextCfg.texto || '',
     });
   };
 
@@ -438,6 +431,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
     const nextCfg = {
       ...deducibleCfgPresupuesto,
       ...patch,
+      aplica: true,
     };
     actualizarLiquidacion({
       deducibleConfigPresupuesto: nextCfg,
@@ -1287,6 +1281,110 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </div>
           </div>
 
+          <div
+            className="ml-auto w-full max-w-lg space-y-3 rounded-lg border p-4 text-sm"
+            style={{ borderColor, backgroundColor: softBg }}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h4 className="font-semibold" style={{ color: textPrimary }}>
+                Liquidación presupuesto
+              </h4>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <label className="block text-xs" style={{ color: textSecondary }}>
+                % deducible
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  className={`${inputClass} mt-1`}
+                  style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                  value={deducibleCfgPresupuesto.porcentaje ?? 10}
+                  onChange={(e) =>
+                    actualizarDeduciblePresupuesto({
+                      porcentaje: e.target.value === '' ? '' : Number(e.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label className="block text-xs" style={{ color: textSecondary }}>
+                Cant. SMMLV
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className={`${inputClass} mt-1`}
+                  style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                  value={deducibleCfgPresupuesto.cantidadSMMLV ?? 4}
+                  onChange={(e) =>
+                    actualizarDeduciblePresupuesto({
+                      cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
+                      tipoMinimo: 'SMMLV',
+                    })
+                  }
+                />
+              </label>
+            </div>
+            <div className="overflow-hidden rounded border" style={{ borderColor }}>
+              <table className="w-full text-sm">
+                <tbody style={{ color: textPrimary }}>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2">TOTAL PRESUPUESTO</td>
+                    <td className="px-3 py-2 text-right font-semibold">
+                      {money(totales.total)}
+                    </td>
+                  </tr>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2" style={{ color: textSecondary }}>
+                      DEDUCIBLE {diagrama.deduciblePresupuesto?.porcentaje ?? deducibleCfgPresupuesto.porcentaje ?? 10}%
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {money(diagrama.deduciblePresupuesto?.deduciblePorcentaje || 0)}
+                    </td>
+                  </tr>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2" style={{ color: textSecondary }}>
+                      DEDUCIBLE {diagrama.deduciblePresupuesto?.cantidadSMMLV ?? deducibleCfgPresupuesto.cantidadSMMLV ?? 4} SMMLV
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {money(diagrama.deduciblePresupuesto?.deducibleSMMLV || 0)}
+                    </td>
+                  </tr>
+                  <tr className="border-b" style={{ borderColor }}>
+                    <td className="px-3 py-2 font-semibold">
+                      DEDUCIBLE APLICADO (
+                      {diagrama.deduciblePresupuesto?.usaMinimo ? 'SMMLV' : '%'}
+                      )
+                    </td>
+                    <td className="px-3 py-2 text-right font-semibold">
+                      {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
+                    </td>
+                  </tr>
+                  <tr style={{ backgroundColor: softBg }}>
+                    <td className="px-3 py-2.5 font-bold text-emerald-600">
+                      PRESUPUESTO NETO
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
+                      {money(
+                        diagrama.deduciblePresupuesto?.neto ??
+                          Math.max(
+                            0,
+                            (Number(totales.total) || 0) -
+                              (diagrama.deduciblePresupuesto?.aplicado || 0)
+                          )
+                      )}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p className="text-xs" style={{ color: textSecondary }}>
+              El deducible del inmueble es obligatorio: se resta siempre el mayor entre el % y el
+              mínimo SMMLV. Es independiente del deducible de contenidos.
+            </p>
+          </div>
+
           {modoLiquidador ? (
             <div className="space-y-4 border-t pt-4" style={{ borderColor }}>
               <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
@@ -1649,14 +1747,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <h4 className="font-semibold" style={{ color: textPrimary }}>
                 Liquidación contenidos
               </h4>
-              <label className="inline-flex items-center gap-2 text-xs" style={{ color: textPrimary }}>
-                <input
-                  type="checkbox"
-                  checked={Boolean(deducibleCfg.aplica)}
-                  onChange={(e) => actualizarDeducibleConfig({ aplica: e.target.checked })}
-                />
-                Aplicar deducible
-              </label>
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -1842,11 +1932,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2 font-semibold">
                       DEDUCIBLE APLICADO (
-                      {diagrama.deducibleAplica
-                        ? diagrama.deducibleUsaMinimo
-                          ? diagrama.deducibleTipoMinimo
-                          : '%'
-                        : 'No aplica'}
+                      {diagrama.deducibleUsaMinimo
+                        ? diagrama.deducibleTipoMinimo
+                        : '%'}
                       )
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">
@@ -2048,16 +2136,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
                   Deducible presupuesto
                 </h4>
-                <label className="inline-flex items-center gap-2 text-xs" style={{ color: textPrimary }}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(deducibleCfgPresupuesto.aplica)}
-                    onChange={(e) =>
-                      actualizarDeduciblePresupuesto({ aplica: e.target.checked })
-                    }
-                  />
-                  Aplicar
-                </label>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block text-xs" style={{ color: textSecondary }}>
@@ -2104,14 +2182,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
                   Deducible contenidos
                 </h4>
-                <label className="inline-flex items-center gap-2 text-xs" style={{ color: textPrimary }}>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(deducibleCfg.aplica)}
-                    onChange={(e) => actualizarDeducibleConfig({ aplica: e.target.checked })}
-                  />
-                  Aplicar
-                </label>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <label className="block text-xs" style={{ color: textSecondary }}>

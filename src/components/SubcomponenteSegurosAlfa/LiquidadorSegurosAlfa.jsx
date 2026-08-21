@@ -257,9 +257,32 @@ export default function LiquidadorSegurosAlfa({
     onCasoChange((prev) => {
       if (!prev) return prev;
       const list = Array.isArray(prev.archivos) ? prev.archivos : [];
-      const ids = new Set(list.map((a) => String(a._id)));
-      if (creado?._id && ids.has(String(creado._id))) return prev;
-      return { ...prev, archivos: [...list, creado] };
+      const id = creado?._id ? String(creado._id) : null;
+      if (id) {
+        const idx = list.findIndex((a) => String(a._id) === id);
+        if (idx >= 0) {
+          const next = [...list];
+          next[idx] = { ...list[idx], ...creado };
+          return { ...prev, archivos: next };
+        }
+      }
+      // Tras replace, el backend puede haber limpiado duplicados del mismo slot
+      const et = String(creado.etiqueta || '').toUpperCase();
+      const ext = String(creado.nombreOriginal || '')
+        .toLowerCase()
+        .match(/\.([a-z0-9]+)$/)?.[1];
+      let filtered = list;
+      if (creado.replaced && et && ext) {
+        filtered = list.filter((a) => {
+          if (String(a._id) === id) return true;
+          if (String(a.etiqueta || '').toUpperCase() !== et) return true;
+          const aExt = String(a.nombreOriginal || a.nombreArchivo || '')
+            .toLowerCase()
+            .match(/\.([a-z0-9]+)$/)?.[1];
+          return aExt !== ext;
+        });
+      }
+      return { ...prev, archivos: [...filtered, creado] };
     });
   };
 
@@ -282,6 +305,17 @@ export default function LiquidadorSegurosAlfa({
     if (typeof onArchivoArchivado === 'function') onArchivoArchivado(creado);
     return creado;
   };
+
+  const mensajeArchivado = (creado) =>
+    creado?.replaced
+      ? t('segurosAlfa.archive.sharepoint.replacedOk', {
+          defaultValue:
+            'Documento actualizado en el archivero (sobrescrito). En cola hacia SharePoint.',
+        })
+      : t('segurosAlfa.archive.sharepoint.queuedOk', {
+          defaultValue:
+            'Guardado en ARNALD. En cola hacia SharePoint (SINIESTROS).',
+        });
 
   const handleGuardar = async () => {
     if (!onGuardarEnCaso) return;
@@ -321,7 +355,7 @@ export default function LiquidadorSegurosAlfa({
     const resultado = descargar
       ? await descargarInformeCatAlfaExcel(opts)
       : await generarInformeCatAlfaExcelBlob(opts);
-    await copiarAlArchivero(
+    return copiarAlArchivero(
       resultado?.blob,
       resultado?.filename || resultado?.nombre,
       MIME.xlsx,
@@ -342,13 +376,8 @@ export default function LiquidadorSegurosAlfa({
       const nombre = resultado?.nombre || resultado?.filename;
       if (blob && nombre) {
         try {
-          await copiarAlArchivero(blob, nombre, mime, 'LIQUIDACION');
-          setMensaje(
-            t('segurosAlfa.archive.sharepoint.queuedOk', {
-              defaultValue:
-                'Guardado en ARNALD. En cola hacia SharePoint (SINIESTROS).',
-            })
-          );
+          const creado = await copiarAlArchivero(blob, nombre, mime, 'LIQUIDACION');
+          setMensaje(mensajeArchivado(creado));
         } catch (errArchivo) {
           console.error('No se pudo guardar en el archivero:', errArchivo);
           setError(
@@ -372,13 +401,8 @@ export default function LiquidadorSegurosAlfa({
     setMensaje('');
     setExportando('excel');
     try {
-      await archivarExcelCatAlfa({ descargar: true });
-      setMensaje(
-        t('segurosAlfa.archive.sharepoint.queuedOk', {
-          defaultValue:
-            'Excel CAT descargado y en archivero (cola SharePoint SINIESTROS).',
-        })
-      );
+      const creado = await archivarExcelCatAlfa({ descargar: true });
+      setMensaje(mensajeArchivado(creado));
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.settlement.exportError'));

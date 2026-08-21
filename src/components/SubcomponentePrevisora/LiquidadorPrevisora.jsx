@@ -211,8 +211,19 @@ export default function LiquidadorPrevisora({
             <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible (contenidos)</span>
-            <span>$ {formatearMonto(totales.deducibleAplicado || 0)}</span>
+            <span>Deducible presupuesto</span>
+            <span>$ {formatearMonto(totales.diagrama?.deduciblePresupuesto?.aplicado || 0)}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>Deducible contenidos</span>
+            <span>
+              ${' '}
+              {formatearMonto(
+                totales.diagrama?.deducibleContenidos?.aplicado ||
+                  totales.diagrama?.deducibleAplicado ||
+                  0
+              )}
+            </span>
           </div>
           <div className="flex justify-between px-4 py-2 text-sm font-bold">
             <span>{t('previsora.settlement.totalPay')}</span>

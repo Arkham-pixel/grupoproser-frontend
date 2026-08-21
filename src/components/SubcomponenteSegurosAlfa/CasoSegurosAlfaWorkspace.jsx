@@ -208,9 +208,31 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     setCasoAlfa((prev) => {
       if (!prev) return prev;
       const list = Array.isArray(prev.archivos) ? prev.archivos : [];
-      const ids = new Set(list.map((a) => String(a._id)));
-      if (creado?._id && ids.has(String(creado._id))) return prev;
-      return { ...prev, archivos: [...list, creado] };
+      const id = creado?._id ? String(creado._id) : null;
+      if (id) {
+        const idx = list.findIndex((a) => String(a._id) === id);
+        if (idx >= 0) {
+          const next = [...list];
+          next[idx] = { ...list[idx], ...creado };
+          return { ...prev, archivos: next };
+        }
+      }
+      const et = String(creado.etiqueta || '').toUpperCase();
+      const ext = String(creado.nombreOriginal || '')
+        .toLowerCase()
+        .match(/\.([a-z0-9]+)$/)?.[1];
+      let filtered = list;
+      if (creado.replaced && et && ext) {
+        filtered = list.filter((a) => {
+          if (String(a._id) === id) return true;
+          if (String(a.etiqueta || '').toUpperCase() !== et) return true;
+          const aExt = String(a.nombreOriginal || a.nombreArchivo || '')
+            .toLowerCase()
+            .match(/\.([a-z0-9]+)$/)?.[1];
+          return aExt !== ext;
+        });
+      }
+      return { ...prev, archivos: [...filtered, creado] };
     });
     boostPolling();
   }, [boostPolling]);
@@ -295,7 +317,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         setMensaje(
           t('segurosAlfa.settlement.savedAndArchived', {
             defaultValue:
-              'Liquidador guardado y Excel CAT en archivero (cola SharePoint).',
+              'Liquidador guardado. Excel CAT actualizado en archivero (sobrescribe la versión anterior).',
           })
         );
       } catch (errArchivo) {
@@ -363,7 +385,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         setMensaje(
           t('segurosAlfa.reportUnique.savedAndArchived', {
             defaultValue:
-              'Informe guardado y Excel CAT en archivero (cola SharePoint).',
+              'Informe guardado. Excel CAT actualizado en archivero (sobrescribe la versión anterior).',
           })
         );
       } catch (errArchivo) {

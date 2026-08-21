@@ -242,12 +242,15 @@ export const dismissControlSeguimientoAlfaNotification = async () => {
   return payload;
 };
 
-export const subirArchivoAlfa = async (casoId, file, etiqueta = 'GENERAL') => {
+export const subirArchivoAlfa = async (casoId, file, etiqueta = 'GENERAL', options = {}) => {
   if (!casoId) throw new Error('Caso requerido para subir archivo');
   if (!file) throw new Error('Archivo requerido');
   const formData = new FormData();
   formData.append('archivo', file, file.name || 'documento');
   formData.append('etiqueta', etiqueta);
+  if (options.replaceSameSlot) {
+    formData.append('replaceSameSlot', 'true');
+  }
   const response = await fetch(`${ALFA_API_URL}/${casoId}/archivos`, {
     method: 'POST',
     headers: { ...authHeaders() },
@@ -257,7 +260,11 @@ export const subirArchivoAlfa = async (casoId, file, etiqueta = 'GENERAL') => {
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || `Error al subir archivo (${response.status})`);
   }
-  return payload?.data ?? payload;
+  const data = payload?.data ?? payload;
+  if (data && typeof data === 'object') {
+    data.replaced = Boolean(payload?.replaced);
+  }
+  return data;
 };
 
 export const eliminarArchivoAlfa = async (casoId, archivoId) => {
