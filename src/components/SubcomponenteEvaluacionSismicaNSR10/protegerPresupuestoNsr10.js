@@ -35,12 +35,24 @@ export function contarItemsDetalleCat(liquidador) {
   return items.filter((it) => textoItem(it)).length;
 }
 
+export function contarOtrosAmparosAlfa(liquidador) {
+  const items = liquidador?.otrosAmparos;
+  if (!Array.isArray(items)) return 0;
+  return items.filter((it) => {
+    if (it?.aplica === false) return false;
+    const v = it?.valor;
+    if (v == null || v === '' || v === 0) return false;
+    return String(v).replace(/[^\d]/g, '').length > 0;
+  }).length;
+}
+
 export function scoreContenidoLiquidadorNsr(liquidador) {
   if (!liquidador || typeof liquidador !== 'object') return 0;
   return (
     contarItemsPresupuestoNsr(liquidador) +
     contarItemsContenidosNsr(liquidador) +
-    contarItemsDetalleCat(liquidador)
+    contarItemsDetalleCat(liquidador) +
+    contarOtrosAmparosAlfa(liquidador)
   );
 }
 
@@ -81,6 +93,13 @@ export function fusionarLiquidadorSinPerderPresupuestoNsr(propuesto, actual) {
     Array.isArray(actual.detalleLiquidacionCat)
   ) {
     next = { ...next, detalleLiquidacionCat: actual.detalleLiquidacionCat };
+  }
+
+  if (
+    contarOtrosAmparosAlfa(actual) > contarOtrosAmparosAlfa(next) &&
+    Array.isArray(actual.otrosAmparos)
+  ) {
+    next = { ...next, otrosAmparos: actual.otrosAmparos };
   }
 
   if (scoreOld >= scoreNew) {

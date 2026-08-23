@@ -82,6 +82,10 @@ export function sincronizarPresupuestoNsr10AlInforme(formData = {}, { forzar = f
     deducibleConfigContenidos:
       liquidacion.deducibleConfigContenidos || liquidacion.deducibleConfig,
     deducibleConfigPresupuesto: liquidacion.deducibleConfigPresupuesto,
+    otrosAmparos: formData.otrosAmparos,
+    deducibleContenidosPorArticulos: resumen.usaDeduciblePorArticulo
+      ? resumen.deduciblePorArticulos
+      : null,
   });
   return {
     totales: {

@@ -48,6 +48,7 @@ import {
   FaMapMarkerAlt,
   FaStar,
   FaMountain,
+  FaUserCheck,
   FaUniversity,
   FaEye,
   FaLink,
@@ -65,7 +66,7 @@ import LanguageSelector from './LanguageSelector';
 import { useTheme } from '../context/ThemeContext';
 import { usuarioAutorizadoGestionDocumentos } from '../config/gestionDocumentosPermitidos';
 import { usuarioAutorizadoCatalogosExpress } from '../config/expressCatalogosPermitidos';
-import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado } from '../config/roles';
+import { esRolContractor, esRolContractorZurich, esRolPuertos, esRolSoloBbva, esRolVisualizador, etiquetaRol, obtenerConfigContractor, obtenerRolAlmacenado } from '../config/roles';
 import {
   obtenerMisAlertas,
   obtenerResumenAlertas,
@@ -476,6 +477,7 @@ export default function Layout() {
     '/zurich/informe-unico': t('nav.pageTitles.zurichCase'),
     '/bbva-cat/carga': t('nav.pageTitles.bbvaCatAdd'),
     '/bbva-cat/listado/reporte': t('nav.pageTitles.bbvaCatListadoReport'),
+    '/bbva-cat/listado/analista': t('nav.pageTitles.bbvaCatListadoAnalista'),
     '/bbva-cat/listado/dashboard': t('nav.pageTitles.bbvaCatListadoDashboard'),
     '/bbva-cat/listado/caso': t('nav.pageTitles.bbvaCatCase'),
     '/bbva-cat/reporte': t('nav.pageTitles.bbvaCatReport'),
@@ -511,6 +513,7 @@ export default function Layout() {
     '/sura/carga': t('nav.pageTitles.suraAdd'),
     '/sura/editar': t('nav.pageTitles.suraAdd'),
     '/sura/reporte': t('nav.pageTitles.suraReport'),
+    '/sura/documentacion': 'Documentación SURA',
     '/sura/dashboard': t('nav.pageTitles.suraDashboard'),
     '/sura/boletin': t('nav.pageTitles.suraBulletin'),
     '/sura/bloques': t('nav.pageTitles.suraBlocks'),
@@ -795,9 +798,12 @@ export default function Layout() {
       : [],
     bbvaCat: !accesoRestringido || configContractor?.seccionesMenu?.includes('bbvaCat')
       ? [
+          { path: '/bbva-cat/listado/analista', icon: FaUserCheck, label: t('nav.bbvaCatListadoAnalista') },
           { path: '/bbva-cat/carga', icon: FaPlus, label: t('nav.bbvaCatAddCase') },
           { path: '/bbva-cat/listado/dashboard', icon: FaChartBar, label: t('nav.bbvaCatListadoDashboard') },
-          { path: '/bbva-cat/listado/reporte', icon: FaTable, label: t('nav.bbvaCatListadoReport') },
+          ...(!esRolSoloBbva(rolNorm)
+            ? [{ path: '/bbva-cat/listado/reporte', icon: FaTable, label: t('nav.bbvaCatListadoReport') }]
+            : []),
           { path: '/bbva-cat/bloques', icon: FaMapMarkerAlt, label: t('nav.bbvaCatBlocks') },
           { path: '/bbva-cat/archivero', icon: FaFolderOpen, label: t('nav.bbvaCatArchive') },
         ]
@@ -824,6 +830,7 @@ export default function Layout() {
           { path: '/sura/caso', icon: FaFileAlt, label: t('nav.suraCase') },
           { path: '/sura/dashboard', icon: FaChartBar, label: t('nav.suraDashboard') },
           { path: '/sura/reporte', icon: FaTable, label: t('nav.suraReport') },
+          { path: '/sura/documentacion', icon: FaFolderOpen, label: 'Documentación' },
           { path: '/sura/boletin', icon: FaChartLine, label: t('nav.suraBulletin') },
           { path: '/sura/bloques', icon: FaMapMarkerAlt, label: t('nav.suraBlocks') },
         ]

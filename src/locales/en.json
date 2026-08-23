@@ -242,7 +242,8 @@
     "contractor_sura": "Zurich, Alfa, Sura and BBVA",
     "contractor_solo_zurich": "Zurich",
     "contractor_solo_bbva": "BBVA",
-    "contractor_solo_equidad": "Equidad FDM"
+    "contractor_solo_equidad": "Equidad FDM",
+    "contractor_solo_previsora": "Previsora"
   },
   "nav": {
     "sections": {
@@ -417,6 +418,7 @@
       "bbvaCatAdd": "Add BBVA CAT case",
       "previsoraAdd": "Add Previsora case",
       "bbvaCatListadoReport": "BBVA CAT listing report",
+      "bbvaCatListadoAnalista": "BBVA CAT analyst report",
       "previsoraListadoReport": "Previsora listing report",
       "bbvaCatListadoDashboard": "BBVA CAT listing dashboard",
       "previsoraListadoDashboard": "Previsora listing dashboard",
@@ -474,6 +476,7 @@
     "bbvaCatAddCase": "Add case",
     "previsoraAddCase": "Add case",
     "bbvaCatListadoReport": "Listing report",
+    "bbvaCatListadoAnalista": "Analyst report",
     "previsoraListadoReport": "Listing report",
     "bbvaCatListadoDashboard": "Listing dashboard",
     "previsoraListadoDashboard": "Listing dashboard",
@@ -6995,6 +6998,7 @@
           "contractor_solo_zurich": "Zurich",
           "contractor_solo_bbva": "BBVA",
           "contractor_solo_equidad": "Equidad FDM",
+          "contractor_solo_previsora": "Previsora",
           "soporte": "Support",
           "usuario": "User",
           "visualizador": "Viewer"
@@ -11158,7 +11162,18 @@
       "generalInfo": "General person / policy information",
       "generalInfoHint": "Expand to complete identification, contact, policy, values and additional dates.",
       "actionDates": "Action dates",
-      "actionDatesHint": "Date of each CAT workflow status. Changing status stamps the matching date when it is still empty."
+      "actionDatesHint": "Date of each CAT workflow status. Changing status stamps the matching date when it is still empty.",
+      "documentoPago": "Payment document",
+      "documentoPagoLead": "Attach the payment receipt when the case is ready for payment or already paid.",
+      "documentoPagoHint": "Drop the receipt here or use the button to upload it.",
+      "documentoPagoSaveFirst": "Save the case first to attach the payment document.",
+      "documentoPagoEmpty": "There are no payment receipts on this case yet."
+    },
+    "statusBar": {
+      "hint": "Select the status on the bar. Changing it stamps the action date when it is still empty.",
+      "inspeccion": "Inspection and analysis",
+      "objecion": "Objection",
+      "pago": "Authorization and payment"
     },
     "fields": {
       "siniestro": "STRO / Claim",
@@ -11232,8 +11247,10 @@
       "fechaSolicitudDocumento": "Document request date",
       "fechaRecepcionDocumento": "Document receipt date",
       "fechaObjecion": "OBJECTION date",
+      "fechaObjetado": "OBJECTED date",
       "fechaAutorizacionAnalista": "ANALYST AUTHORIZATION date",
       "fechaCasoParaPago": "READY FOR PAYMENT date",
+      "fechaCasoPagado": "CASE PAID date",
       "diasEnEstado": "Days in status",
       "ultimaGestion": "Last action",
       "documentoFaltante": "Missing document",
@@ -11355,7 +11372,16 @@
     "listadoReport": {
       "title": "BBVA CAT list report",
       "subtitle": "Client list cases (ZC, STRO, insured and contacts). Independent from CAT inspection.",
-      "searchPlaceholder": "ZC, STRO, insured, city…"
+      "subtitleDocumented": "Only list cases with files uploaded by analysts. Pending work lives in the analyst report.",
+      "searchPlaceholder": "ZC, STRO, insured, city…",
+      "searchIndependentlyHint": "If a case is missing a file and you need to upload it, search here by ZC or STRO. Even if it no longer appears on the map or in this report queue, search will still find it so you can attach the file.",
+      "analistaTitle": "BBVA CAT analyst report",
+      "analistaSubtitle": "Work queue with a 5 km map. Blocks stay fixed; uploading a file removes the case from the block so it is not handled twice. Search can still find already documented cases.",
+      "includeDocumented": "Documented cases",
+      "includeDocumentedHint": "Also show cases that already have a file",
+      "analistaSummary": "{{pendientes}} pending · {{conArchivo}} with file · {{visibles}} visible · page {{page}} of {{totalPages}}",
+      "noCasesAnalista": "No pending cases in this view. Upload files, enable “show documented”, or search by ZC/STRO.",
+      "noCasesDocumented": "There are no cases with analyst files yet. Upload them in the analyst report."
     },
     "listadoDashboard": {
       "title": "BBVA CAT list dashboard",
@@ -11420,8 +11446,10 @@
     "archive": {
       "title": "Case file cabinet",
       "subtitle": "Documents for case {{caseNumber}}. Upload and download claim files.",
+      "subtitleListado": "Documents for case {{caseNumber}}. Upload policy, settlement and unique report.",
       "label": "Document type",
       "upload": "Upload document",
+      "uploadPago": "Upload payment receipt",
       "uploading": "Uploading…",
       "uploadOk": "Document uploaded successfully.",
       "uploadError": "Could not upload the document.",
@@ -11441,13 +11469,16 @@
         "POLIZA": "POLICY",
         "INSPECCION": "INSPECTION",
         "LIQUIDACION": "SETTLEMENT",
+        "INFORME": "UNIQUE REPORT",
         "FOTOS": "PHOTOS",
         "OTRO": "OTHER",
         "FOTO_GENERAL": "CAT — General photo",
         "FOTO_DANOS": "CAT — Damage photo",
         "EQUIPOS_CRITICOS": "CAT — Critical equipment",
         "MITIGACION": "CAT — Mitigation",
-        "NO_ACCESO": "CAT — No access"
+        "NO_ACCESO": "CAT — No access",
+        "PAGO": "PAYMENT DOCUMENT",
+        "DOCUMENTO_PAGO": "PAYMENT DOCUMENT"
       }
     },
     "settlement": {
@@ -11631,6 +11662,11 @@
       "noMarkers": "No properties located on the map yet.",
       "noMarkersHint": "Press “Update locations” to geocode addresses in the current filter.",
       "precisionHint": "Street and place addresses (neighborhood, complex) are located. City-center pins are rejected. Satellite view. Inspected cases are omitted from the routing map.",
+      "fixedHint": "Fixed numbering by location (north → south). Closing cases does not move Block 1 to another area.",
+      "fixedHintAnalista": "Default radius 5 km (adjustable). Blocks stay fixed; uploading a file clears the case from the block without changing the numbering.",
+      "fixedHintListado": "Default radius 500 m (adjustable). Same map groups; only cases that already have a file are shown here.",
+      "cleanedCount": "−{{count}} with file",
+      "depuracionSummary": "{{pendientes}} pending · {{conArchivo}} already documented",
       "omittedInspected": "{{count}} already inspected omitted",
       "fromCenter": "from center",
       "radius": "Block radius",
@@ -11685,6 +11721,8 @@
       "policyCoverage": "Policy and coverage",
       "values": "Values",
       "dates": "Dates and follow-up",
+      "actionDates": "Action dates",
+      "actionDatesHint": "Date of each CAT workflow status. Changing status stamps the matching date when it is still empty.",
       "catInspection": "CAT inspection (exposure)",
       "catAllianz": "CAT Allianz (exposure)",
       "catAllianzHint": "Fields from CAT_ALLIANZ Excel: Risk ID, location, damage and inspection references.",
@@ -11755,7 +11793,22 @@
       "ajustadorLider": "Lead adjuster (assigns cases)",
       "inspector": "Inspector",
       "fechaAsignacion": "Assignment date",
-      "fechaVisita": "Visit date"
+      "fechaVisita": "Visit date",
+      "modalidadAtencion": "Modality",
+      "fechaCasoNuevo": "NEW CASE date",
+      "fechaCoordinandoInspeccion": "COORDINATING INSPECTION date",
+      "fechaAnalisisCaso": "CASE ANALYSIS date",
+      "fechaSolicitudDocumento": "Document request date",
+      "fechaRecepcionDocumento": "Document receipt date",
+      "fechaObjecion": "OBJECTION date",
+      "fechaAutorizacionAnalista": "ANALYST AUTHORIZATION date",
+      "fechaCasoParaPago": "READY FOR PAYMENT date",
+      "diasEnEstado": "Days in status",
+      "ultimaGestion": "Last action",
+      "documentoFaltante": "Missing document",
+      "observacionPendienteDocumento": "Pending-document observation",
+      "motivoObjecion": "Objection reason",
+      "responsableAporteDocumento": "Party responsible for providing it"
     },
     "placeholders": {
       "siniestro": "Claim number",
@@ -11783,7 +11836,8 @@
       "selectDepartmentFirst": "Select department first",
       "noCatastrophicAdjusters": "No catastrophic adjusters — create them in Administration → Catastrophic adjusters",
       "noCatastrophicInspectors": "No inspectors — create them in Administration → Catastrophic inspectors",
-      "observacionesCat": "Observable facts only — do not conclude coverage"
+      "observacionesCat": "Observable facts only — do not conclude coverage",
+      "documentoFaltante": "Specify the required document"
     },
     "tomadores": {
       "manageTitle": "Policyholders",

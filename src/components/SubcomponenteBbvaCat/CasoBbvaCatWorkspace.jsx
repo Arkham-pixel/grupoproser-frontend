@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaFolderOpen, FaSave } from 'react-icons/fa';
 import LiquidadorBbvaCat from './LiquidadorBbvaCat.jsx';
 import InspeccionCatBbvaCat from './InspeccionCatBbvaCat.jsx';
 import InformeUnicoBbvaCat from './InformeUnicoBbvaCat.jsx';
+import ArchiveroBbvaCat from './ArchiveroBbvaCat.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -33,6 +34,9 @@ import useBbvaCatCasoAutosave from '../../hooks/useBbvaCatCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { STORAGE_ORIGEN_LISTADO_BBVA_CAT } from './bbvaCatHelpers.js';
+import { esRolSoloBbva } from '../../config/roles.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -95,7 +99,18 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
   const tabFromQuery = searchParams.get('tab');
   const esModuloListado = origen === 'listado';
-  const rutaReporte = esModuloListado ? '/bbva-cat/listado/reporte' : '/bbva-cat/reporte';
+  const rutaReporte = (() => {
+    if (!esModuloListado) return '/bbva-cat/reporte';
+    if (esRolSoloBbva()) return '/bbva-cat/listado/analista';
+    try {
+      if (sessionStorage.getItem(STORAGE_ORIGEN_LISTADO_BBVA_CAT) === 'analista') {
+        return '/bbva-cat/listado/analista';
+      }
+    } catch {
+      /* ignore */
+    }
+    return '/bbva-cat/listado/reporte';
+  })();
 
   const tabDesdeRuta = useMemo(
     () => tabDesdePathname(location.pathname) || tabInicial,
@@ -150,6 +165,7 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
   const [restoreNonce, setRestoreNonce] = useState(0);
+  const [archiveroAbierto, setArchiveroAbierto] = useState(false);
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
 
@@ -431,6 +447,16 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
             <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {casoId && (
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => setArchiveroAbierto(true)}
+              >
+                <FaFolderOpen /> {t('bbvaCat.report.archive')}
+                {casoBbvaCat?.archivos?.length ? ` (${casoBbvaCat.archivos.length})` : ''}
+              </button>
+            )}
             {mostrarBotonGuardarSuperior && (
               <button
                 type="button"
@@ -570,6 +596,28 @@ export default function CasoBbvaCatWorkspace({ tabInicial = null, origen = 'cat'
           </div>
         </div>
       </div>
+      {archiveroAbierto && casoBbvaCat && (
+        <ExpressModal
+          open
+          onClose={() => setArchiveroAbierto(false)}
+          title={t('bbvaCat.archive.title')}
+          wide
+        >
+          <ArchiveroBbvaCat
+            origen={esModuloListado ? 'listado' : 'cat'}
+            caso={casoBbvaCat}
+            etiquetaInicial={
+              tabActivo === TABS_BBVA_CAT.INFORME
+                ? 'INFORME'
+                : tabActivo === TABS_BBVA_CAT.LIQUIDADOR
+                  ? 'LIQUIDACION'
+                  : 'GENERAL'
+            }
+            onClose={() => setArchiveroAbierto(false)}
+            onChanged={(actualizado) => setCasoBbvaCat(actualizado)}
+          />
+        </ExpressModal>
+      )}
       <ArnaldDraftChrome
         draftStatus={draftStatus}
         lastDraftAt={lastDraftAt}

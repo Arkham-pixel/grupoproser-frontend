@@ -20,16 +20,23 @@ import {
 } from './alfaGeocodeHelpers.js';
 import {
   ALFA_REPORTE_PAGE_SIZE,
+  ESTADOS_ALFA,
   buildOpcionesFiltro,
   coincideFiltroTexto,
+  contarKpisGestionAlfa,
+  casoAlfaVenceSla2Dias,
   fechaEnRango,
   formatCurrency,
   formatDate,
+  homologarEstadoAlfa,
   normTexto,
 } from './segurosAlfaHelpers.js';
 
-/** Liquidador “real”: tiene ítems de presupuesto o detalle CAT (no solo cascarón vacío). */
+/** Liquidador “real”: ítems de presupuesto o detalle CAT (o bandera del listado). */
 function casoTieneLiquidadorConContenido(caso) {
+  if (typeof caso?.tieneLiquidadorConContenido === 'boolean') {
+    return caso.tieneLiquidadorConContenido;
+  }
   const liq = caso?.liquidador;
   if (!liq || typeof liq !== 'object') return false;
   const items = liq?.evaluacionSismicaNSR10?.presupuesto?.items;
@@ -42,11 +49,36 @@ function casoTieneLiquidadorConContenido(caso) {
 }
 
 function casoTieneLiquidadorObj(caso) {
+  if (typeof caso?.tieneLiquidador === 'boolean') return caso.tieneLiquidador;
   return Boolean(caso?.liquidador && typeof caso.liquidador === 'object');
 }
 
 function casoTieneInforme(caso) {
+  if (typeof caso?.tieneInforme === 'boolean') return caso.tieneInforme;
   return Boolean(caso?.informeUnico && typeof caso.informeUnico === 'object');
+}
+
+/** Evita reinyectar liquidador/informe (base64) al array del reporte. */
+function fusionarCasoEnListadoAlfa(prev, actualizado = {}) {
+  const { liquidador, informeUnico, ...rest } = actualizado;
+  return {
+    ...prev,
+    ...rest,
+    tieneLiquidador: Boolean(
+      actualizado.tieneLiquidador ??
+        (liquidador && typeof liquidador === 'object') ??
+        prev.tieneLiquidador
+    ),
+    tieneInforme: Boolean(
+      actualizado.tieneInforme ??
+        (informeUnico && typeof informeUnico === 'object') ??
+        prev.tieneInforme
+    ),
+    tieneLiquidadorConContenido:
+      typeof actualizado.tieneLiquidadorConContenido === 'boolean'
+        ? actualizado.tieneLiquidadorConContenido
+        : Boolean(prev.tieneLiquidadorConContenido),
+  };
 }
 import {
   expressBadge,
@@ -162,7 +194,11 @@ const buildExportRow = (caso) => ({
   'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
   'FECHA ACEPTACIÓN LIQUIDACIÓN': formatDate(caso.fechaAceptacionLiquidacion),
   'FECHA ENVÍO A LA ASEGURADORA': formatDate(caso.fechaEnvioAseguradora),
-  ESTADO: caso.estado ?? '',
+  ESTADO: homologarEstadoAlfa(caso.estado, caso),
+  'ESTADO GESTION': caso.estadoGestion ?? '',
+  OBSERVACIONES: caso.observacionesGestion ?? '',
+  ZONA: caso.zonaAsignada ?? '',
+  'FUERA DE ZONA': caso.fueraDeZona ? 'SI' : 'NO',
   Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
 });
 
@@ -182,6 +218,7 @@ export default function ReporteSegurosAlfa() {
   const [fechaFin, setFechaFin] = useState('');
   /** '' | 'liquidador' | 'informe' | 'alguno' | 'ambos' */
   const [filtroDocumento, setFiltroDocumento] = useState('');
+  const [filtroSla, setFiltroSla] = useState('');
   const [soloMisCasos, setSoloMisCasos] = useState(false);
   const [pagina, setPagina] = useState(1);
   const [casoEdicion, setCasoEdicion] = useState(null);
@@ -234,8 +271,12 @@ export default function ReporteSegurosAlfa() {
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
-  const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const estados = useMemo(
+    () => ESTADOS_ALFA.map((e) => ({ value: e, label: e })),
+    []
+  );
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const kpisGestion = useMemo(() => contarKpisGestionAlfa(casos), [casos]);
 
   const resumenDocs = useMemo(() => {
     let conLiq = 0;
@@ -271,7 +312,7 @@ export default function ReporteSegurosAlfa() {
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
-      if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
+      if (!coincideFiltroTexto(homologarEstadoAlfa(c.estado, c), filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
@@ -283,6 +324,8 @@ export default function ReporteSegurosAlfa() {
       if (filtroDocumento === 'informe' && !tieneInf) return false;
       if (filtroDocumento === 'alguno' && !tieneLiq && !tieneInf) return false;
       if (filtroDocumento === 'ambos' && !(tieneLiq && tieneInf)) return false;
+      if (filtroSla === 'vencido' && !casoAlfaVenceSla2Dias(c)) return false;
+      if (filtroSla === 'ok' && casoAlfaVenceSla2Dias(c)) return false;
 
       if (soloMisCasos && misClaves.length) {
         const ok = misClaves.some(
@@ -329,6 +372,7 @@ export default function ReporteSegurosAlfa() {
     fechaFin,
     idsBloqueSeleccionado,
     filtroDocumento,
+    filtroSla,
     soloMisCasos,
   ]);
 
@@ -349,6 +393,7 @@ export default function ReporteSegurosAlfa() {
     fechaFin,
     idsBloqueSeleccionado,
     filtroDocumento,
+    filtroSla,
     soloMisCasos,
   ]);
 
@@ -357,6 +402,7 @@ export default function ReporteSegurosAlfa() {
     setFiltroCiudad('');
     setFiltroDepto('');
     setFiltroEstado('');
+    setFiltroSla('');
     setFiltroAjustador('');
     setFechaInicio('');
     setFechaFin('');
@@ -368,6 +414,7 @@ export default function ReporteSegurosAlfa() {
 
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+    if (clave === 'estado') return homologarEstadoAlfa(item.estado, item);
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
     }
@@ -430,9 +477,12 @@ export default function ReporteSegurosAlfa() {
       filtroCiudad ||
       filtroDepto ||
       filtroEstado ||
+      filtroSla ||
       filtroAjustador ||
       fechaInicio ||
       fechaFin ||
+      filtroDocumento ||
+      soloMisCasos ||
       bloqueSeleccionadoId
   );
 
@@ -473,6 +523,30 @@ export default function ReporteSegurosAlfa() {
             await recargar();
           }}
         />
+
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            ['Sin contactar', kpisGestion.sinContactar],
+            ['Contactado y programado', kpisGestion.contactadoProgramado],
+            ['Inspeccionado', kpisGestion.inspeccionado],
+            ['Solicitud docs', kpisGestion.solicitudDocumentos],
+            ['Sin respuesta', kpisGestion.sinRespuesta],
+            ['Definidos', kpisGestion.definidos],
+          ].map(([label, n]) => (
+            <div
+              key={label}
+              className="rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-900"
+            >
+              <div className="text-[11px] uppercase tracking-wide text-gray-500">{label}</div>
+              <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">{n}</div>
+            </div>
+          ))}
+        </div>
+        {(kpisGestion.slaVencido > 0 || kpisGestion.fueraDeZona > 0) && (
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            SLA vencidos: {kpisGestion.slaVencido} · Fuera de zona: {kpisGestion.fueraDeZona}
+          </p>
+        )}
 
         <ExpressFilterSection
           title={t('segurosAlfa.report.filters')}
@@ -515,6 +589,13 @@ export default function ReporteSegurosAlfa() {
                     {o.label}
                   </option>
                 ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label="SLA 2 días">
+              <SelectFenix value={filtroSla} onChange={(e) => setFiltroSla(e.target.value)}>
+                <option value="">Todos</option>
+                <option value="vencido">Vencidos post-inspección</option>
+                <option value="ok">Dentro de plazo</option>
               </SelectFenix>
             </Campo>
             <Campo label={t('segurosAlfa.fields.ajustador')}>
@@ -663,9 +744,7 @@ export default function ReporteSegurosAlfa() {
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
-                            navigate(`/seguros-alfa/caso?casoId=${item._id}&tab=liquidador`, {
-                              state: { casoAlfa: item },
-                            })
+                            navigate(`/seguros-alfa/caso?casoId=${item._id}&tab=liquidador`)
                           }
                           onEliminar={() => solicitarEliminar(item)}
                         />
@@ -753,7 +832,9 @@ export default function ReporteSegurosAlfa() {
             onSaved={async (guardado) => {
               if (guardado?._id) {
                 setCasos((prev) =>
-                  prev.map((c) => (String(c._id) === String(guardado._id) ? { ...c, ...guardado } : c))
+                  prev.map((c) =>
+                    String(c._id) === String(guardado._id) ? fusionarCasoEnListadoAlfa(c, guardado) : c
+                  )
                 );
               }
               setCasoEdicion(null);
@@ -776,7 +857,11 @@ export default function ReporteSegurosAlfa() {
             onChanged={(actualizado) => {
               setCasoArchivero(actualizado);
               setCasos((prev) =>
-                prev.map((c) => (c._id === actualizado._id ? { ...c, ...actualizado } : c))
+                prev.map((c) =>
+                  String(c._id) === String(actualizado._id)
+                    ? fusionarCasoEnListadoAlfa(c, actualizado)
+                    : c
+                )
               );
             }}
           />

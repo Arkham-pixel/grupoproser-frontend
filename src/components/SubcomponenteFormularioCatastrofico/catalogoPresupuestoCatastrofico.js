@@ -16,6 +16,10 @@ import {
   resolverSmmlvPorAnio,
   valorSmdlvDesdeSmmlv,
 } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
+import {
+  filasOtrosAmparosActivos,
+  sumarOtrosAmparos,
+} from '../liquidacion/otrosAmparosLiquidacion.js';
 
 const catalogoPorId = new Map();
 
@@ -219,6 +223,9 @@ export const HOSPEDAJE_PORCENTAJE_DEFAULT = 0.01;
 /** Deducible numérico al estilo Express (MAX % vs mínimo SMMLV/SMDLV). */
 export const DEFAULT_DEDUCIBLE_CATASTROFICO = {
   aplica: true,
+  /** max_pct_minimo | solo_porcentaje | solo_minimo | valor_fijo | no_aplica */
+  modo: 'max_pct_minimo',
+  valorFijo: 0,
   porcentaje: 10,
   tipoMinimo: 'SMMLV',
   cantidadSMMLV: 4,
@@ -351,9 +358,14 @@ export function normalizarDeducibleCatastrofico(liquidacion = {}) {
   );
   const textoLegacy =
     typeof liquidacion?.deducible === 'string' ? liquidacion.deducible.trim() : '';
+  const modo = ['solo_porcentaje', 'solo_minimo', 'valor_fijo', 'no_aplica'].includes(base.modo)
+    ? base.modo
+    : 'max_pct_minimo';
   return {
     ...base,
-    aplica: true,
+    aplica: modo !== 'no_aplica' && base.aplica !== false,
+    modo,
+    valorFijo: numDeducible(base.valorFijo, 0),
     porcentaje: numDeducible(base.porcentaje, 10),
     tipoMinimo: base.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV',
     cantidadSMMLV: numDeducible(base.cantidadSMMLV, 4),
@@ -398,13 +410,50 @@ export function calcularDeducibleEstiloExpress(base = 0, deducibleConfig = {}) {
 
   const tipoMinimo = cfg.tipoMinimo === 'SMDLV' ? 'SMDLV' : 'SMMLV';
   const deducibleMinimo = tipoMinimo === 'SMDLV' ? deducibleSMDLV : deducibleSMMLV;
-  const deducibleAplicadoBruto = Math.max(deduciblePorcentaje, deducibleMinimo);
+  const modo = ['solo_porcentaje', 'solo_minimo', 'valor_fijo', 'no_aplica'].includes(cfg.modo)
+    ? cfg.modo
+    : 'max_pct_minimo';
+  if (modo === 'no_aplica' || cfg.aplica === false) {
+    return {
+      aplica: false,
+      totalBase,
+      porcentaje,
+      deduciblePorcentaje: 0,
+      deducibleSMMLV: 0,
+      deducibleSMDLV: 0,
+      deducibleAplicado: 0,
+      usaMinimo: false,
+      tipoMinimo,
+      cantidadSMMLV,
+      cantidadSMDLV,
+      valorSMMLV,
+      valorSMDLV,
+      anioSMMLV: smmlvResuelto.anio,
+      texto: String(cfg.texto || '').trim() || 'No aplica',
+      modo,
+      valorFijo: 0,
+    };
+  }
+
+  const valorFijo = numDeducible(cfg.valorFijo, 0);
+  let deducibleAplicadoBruto = Math.max(deduciblePorcentaje, deducibleMinimo);
+  if (modo === 'solo_porcentaje') deducibleAplicadoBruto = deduciblePorcentaje;
+  else if (modo === 'solo_minimo') deducibleAplicadoBruto = deducibleMinimo;
+  else if (modo === 'valor_fijo') deducibleAplicadoBruto = valorFijo;
+
   const aplica = true;
   const deducibleAplicado = Math.round(Math.min(deducibleAplicadoBruto, totalBase) * 100) / 100;
-  const usaMinimo = deducibleMinimo > deduciblePorcentaje;
-  const textoAuto = `${porcentaje}% · Mínimo ${
-        tipoMinimo === 'SMDLV' ? cantidadSMDLV : cantidadSMMLV
-      } ${tipoMinimo}`;
+  const usaMinimo = modo === 'solo_minimo' || (modo === 'max_pct_minimo' && deducibleMinimo > deduciblePorcentaje);
+  const textoAuto =
+    modo === 'valor_fijo'
+      ? `Valor fijo`
+      : modo === 'solo_porcentaje'
+        ? `${porcentaje}%`
+        : modo === 'solo_minimo'
+          ? `Mínimo ${tipoMinimo === 'SMDLV' ? cantidadSMDLV : cantidadSMMLV} ${tipoMinimo}`
+          : `${porcentaje}% · Mínimo ${
+              tipoMinimo === 'SMDLV' ? cantidadSMDLV : cantidadSMMLV
+            } ${tipoMinimo}`;
   const texto = String(cfg.texto || '').trim() || textoAuto;
 
   return {
@@ -423,6 +472,8 @@ export function calcularDeducibleEstiloExpress(base = 0, deducibleConfig = {}) {
     valorSMDLV,
     anioSMMLV: smmlvResuelto.anio,
     texto,
+    modo,
+    valorFijo: numDeducible(cfg.valorFijo, 0),
   };
 }
 
@@ -439,6 +490,9 @@ export function calcularDiagramaLiquidacion({
   deducibleConfig = null,
   deducibleConfigContenidos = null,
   deducibleConfigPresupuesto = null,
+  otrosAmparos = [],
+  /** Suma de deducibles por artículo (tabla contenidos). Si hay, reemplaza el global de contenidos. */
+  deducibleContenidosPorArticulos = null,
 } = {}) {
   const va = Number(valorAsegurado) || 0;
   const danios = Number(totalDanios) || 0;
@@ -483,14 +537,27 @@ export function calcularDiagramaLiquidacion({
 
   const calcCont = calcularDeducibleEstiloExpress(baseContenidos, cfgContenidos);
   const calcPres = calcularDeducibleEstiloExpress(basePresupuesto, cfgPresupuesto);
-  const deducibleContenidosAplicado = calcCont.deducibleAplicado || 0;
+  const deduciblePorArticulosN = Number(deducibleContenidosPorArticulos);
+  const usaDeduciblePorArticulo =
+    deducibleContenidosPorArticulos != null &&
+    deducibleContenidosPorArticulos !== '' &&
+    Number.isFinite(deduciblePorArticulosN);
+  let deducibleContenidosAplicado = calcCont.deducibleAplicado || 0;
+  if (usaDeduciblePorArticulo) {
+    const tope = baseContenidos > 0 ? baseContenidos : deduciblePorArticulosN;
+    deducibleContenidosAplicado =
+      Math.round(Math.min(Math.max(0, deduciblePorArticulosN), tope) * 100) / 100;
+  }
   const deduciblePresupuestoAplicado = calcPres.deducibleAplicado || 0;
   const sumaDeducibles =
     Math.round((deducibleContenidosAplicado + deduciblePresupuestoAplicado) * 100) / 100;
   const presupuestoNeto = Math.max(0, basePresupuesto - deduciblePresupuestoAplicado);
   const contenidosNeto = Math.max(0, baseContenidos - deducibleContenidosAplicado);
   const sumaNeta = Math.round((presupuestoNeto + contenidosNeto) * 100) / 100;
-  const totalIndemnizar = Math.round((sumaNeta + hospedaje) * 100) / 100;
+  const totalOtrosAmparos = sumarOtrosAmparos(otrosAmparos);
+  const indemnizacionPrincipal = Math.round((sumaNeta + hospedaje) * 100) / 100;
+  const totalIndemnizar =
+    Math.round((indemnizacionPrincipal + totalOtrosAmparos) * 100) / 100;
 
   // Compat: campos “deducible*” apuntan a contenidos (histórico)
   return {
@@ -516,6 +583,10 @@ export function calcularDiagramaLiquidacion({
       ...calcCont,
       aplicado: deducibleContenidosAplicado,
       neto: contenidosNeto,
+      porArticulos: usaDeduciblePorArticulo,
+      texto: usaDeduciblePorArticulo
+        ? 'Suma de deducibles por artículo (cobertura)'
+        : calcCont.texto,
     },
     deduciblePresupuesto: {
       ...calcPres,
@@ -524,6 +595,9 @@ export function calcularDiagramaLiquidacion({
     },
     sumaDeducibles,
     sumaNeta,
+    indemnizacionPrincipal,
+    totalOtrosAmparos,
+    otrosAmparos: filasOtrosAmparosActivos(otrosAmparos),
     totalIndemnizar,
   };
 }

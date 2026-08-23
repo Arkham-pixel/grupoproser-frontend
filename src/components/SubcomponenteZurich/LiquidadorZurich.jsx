@@ -26,6 +26,8 @@ import { descargarFiniquitoZurichWord } from './generarFiniquitoZurichWord.js';
 import { descargarLiquidadorZurichExcel } from './generarLiquidadorZurichExcel.js';
 import { descargarLiquidadorZurichPdf } from './generarLiquidadorZurichPdf.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
+import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
+import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -238,6 +240,17 @@ export default function LiquidadorZurich({
             />
           </Campo>
         </div>
+        <div className="mt-4">
+          <OtrosAmparosLiquidacion
+            otrosAmparos={liquidador.otrosAmparos}
+            onChange={(filas) =>
+              setLiquidador((prev) => ({
+                ...prev,
+                otrosAmparos: Array.isArray(filas) && filas.length ? filas : defaultOtrosAmparos(),
+              }))
+            }
+          />
+        </div>
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>Total daños (NSR-10)</span>
@@ -261,6 +274,10 @@ export default function LiquidadorZurich({
                   0
               )}
             </span>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>Otros amparos (sin deducible)</span>
+            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
           </div>
           <div className="flex justify-between px-4 py-2 text-sm font-bold">
             <span>{t('zurich.settlement.totalPay')}</span>

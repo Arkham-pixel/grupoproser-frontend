@@ -13,6 +13,7 @@ export const ROLES_VALIDOS = [
   'contractor_solo_zurich',
   'contractor_solo_bbva',
   'contractor_solo_equidad',
+  'contractor_solo_previsora',
 ];
 
 /** Contratista con Zurich + Alfa + Sura + BBVA (Rodrigo y similares). */
@@ -27,11 +28,15 @@ export const ROL_SOLO_BBVA = 'contractor_solo_bbva';
 /** Contratista solo bandeja Equidad FDM. */
 export const ROL_SOLO_EQUIDAD = 'contractor_solo_equidad';
 
+/** Contratista solo módulo Previsora (Home + Previsora). */
+export const ROL_SOLO_PREVISORA = 'contractor_solo_previsora';
+
 export const ROLES_CONTRACTOR = [
   ...ROLES_CONTRACTOR_TRES,
   ROL_SOLO_ZURICH,
   ROL_SOLO_BBVA,
   ROL_SOLO_EQUIDAD,
+  ROL_SOLO_PREVISORA,
 ];
 
 export const CONFIG_CONTRACTOR_TRES = {
@@ -51,8 +56,9 @@ export const CONFIG_SOLO_ZURICH = {
 
 export const CONFIG_SOLO_BBVA = {
   seccionesMenu: ['bbvaCat'],
-  inicio: '/bbva-cat/liquidador',
+  inicio: '/bbva-cat/listado/analista',
   prefijosRuta: ['/bbva-cat'],
+  rutasExcluidas: ['/bbva-cat/listado/reporte'],
   etiqueta: 'BBVA',
 };
 
@@ -72,6 +78,15 @@ export const CONFIG_SOLO_EQUIDAD = {
   etiqueta: 'Equidad FDM',
 };
 
+export const CONFIG_SOLO_PREVISORA = {
+  /** Home + módulo Previsora completo. */
+  seccionesMenu: ['previsora'],
+  inicio: '/inicio',
+  prefijosRuta: ['/inicio', '/previsora'],
+  incluirHome: true,
+  etiqueta: 'Previsora',
+};
+
 export function normalizarRol(rol) {
   return String(rol || '').trim().toLowerCase();
 }
@@ -85,6 +100,7 @@ export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
   if (r === ROL_SOLO_ZURICH) return CONFIG_SOLO_ZURICH;
   if (r === ROL_SOLO_BBVA) return CONFIG_SOLO_BBVA;
   if (r === ROL_SOLO_EQUIDAD) return CONFIG_SOLO_EQUIDAD;
+  if (r === ROL_SOLO_PREVISORA) return CONFIG_SOLO_PREVISORA;
   if (ROLES_CONTRACTOR_TRES.includes(r)) return CONFIG_CONTRACTOR_TRES;
   return null;
 }
@@ -105,8 +121,16 @@ export function esRolContractorZurich(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_ZURICH;
 }
 
+export function esRolSoloBbva(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === ROL_SOLO_BBVA;
+}
+
 export function esRolSoloEquidad(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_EQUIDAD;
+}
+
+export function esRolSoloPrevisora(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === ROL_SOLO_PREVISORA;
 }
 
 /** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */

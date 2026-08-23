@@ -12,6 +12,7 @@ import {
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
+import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -20,10 +21,112 @@ export const SMMLV_POR_ANIO = {
 };
 export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
 
-/** Texto fijo editable: información general del evento (consolidado terremoto Zurich). */
-export const INFO_EVENTO_DEFAULT_ZURICH = `El presente informe se elabora en el marco de la atención del evento sísmico / catastrófico reportado ante Zurich S.A., conforme a la visita de inspección realizada al predio asegurado y a la documentación aportada por el tomador/asegurado.
+/** Texto fijo editable: información general del evento (informe preliminar Zurich). */
+export const INFO_EVENTO_DEFAULT_ZURICH = `El presente informe se emite con base en la atención del evento sísmico reportado ante Zurich S.A., la visita de inspección realizada al predio asegurado y la documentación aportada por el tomador/asegurado.
 
-La evaluación técnica tiene por objeto verificar la existencia y alcance de los daños, confrontarlos con las coberturas de la póliza vigente y cuantificar las pérdidas indemnizables de acuerdo con las condiciones particulares del contrato de seguro.`;
+La evaluación técnica busca verificar la existencia y alcance de los daños, contrastarlos con las coberturas de la póliza vigente y establecer, de manera preliminar, las pérdidas indemnizables conforme a las condiciones particulares del contrato de seguro.`;
+
+export const NIVELES_AFECTACION_ZURICH = [
+  'CRÍTICO',
+  'ALTO',
+  'MEDIO–ALTO',
+  'MEDIO',
+  'POR DEFINIR',
+];
+
+/** Zonas de la tabla de daños del informe preliminar Zurich. */
+export const ZONAS_DANIOS_PRELIMINAR_ZURICH = [
+  'Fachadas',
+  'Zona de acceso',
+  'Muros de mampostería',
+  'Muros con grietas abiertas',
+  'Encuentros muro–estructura',
+  'Núcleo de escaleras',
+  'Cielos rasos',
+  'Cubiertas y elementos livianos',
+  'Aulas, oficinas y archivos',
+  'Pasillos y zonas comunes',
+  'Pañetes, estucos y pintura',
+  'Puertas, ventanería y elementos metálicos',
+  'Instalaciones y equipos adosados',
+  'Columnas, vigas y sistema aporticado visible',
+];
+
+export const CONCEPTOS_POLIZA_PRELIMINAR_ZURICH = [
+  'Vigencia',
+  'Ubicación del riesgo',
+  'Evento',
+  'Interés afectado',
+  'Deducible',
+  'Infraseguro',
+  'Remoción de escombros',
+  'Honorarios profesionales',
+  'Exclusiones',
+  'Reserva preliminar',
+  'Concepto preliminar',
+];
+
+export const CAPITULOS_PRESUPUESTO_PRELIMINAR_ZURICH = [
+  '1. Preliminares, seguridad y protecciones',
+  '2. Fachada – desmonte y reconstrucción de los dos últimos niveles',
+  '3. Demolición y reconstrucción de mampostería interior',
+  '4. Reparación de fisuras y grietas menores',
+  '5. Pañetes, estucos y acabados de muros',
+  '6. Pintura interior y exterior',
+  '7. Cielos rasos y elementos suspendidos',
+  '8. Cubiertas y estructura liviana asociada',
+  '9. Carpintería metálica, ventanería, puertas y divisiones',
+  '10. Instalaciones eléctricas e iluminación',
+  '11. Aires acondicionados y redes complementarias',
+  '12. Escaleras, circulaciones y zonas comunes',
+  '13. Retiro y disposición de escombros',
+  '14. Estudios, evaluación especializada y contingencias técnicas',
+];
+
+export function plantillaFilasDaniosZurich() {
+  return ZONAS_DANIOS_PRELIMINAR_ZURICH.map((zona) => ({
+    zona,
+    condicion: '',
+    nivel: '',
+  }));
+}
+
+export function plantillaFilasPolizaZurich() {
+  return CONCEPTOS_POLIZA_PRELIMINAR_ZURICH.map((concepto) => ({
+    concepto,
+    analisis: '',
+    conclusion: '',
+  }));
+}
+
+export function plantillaFilasPresupuestoPreliminarZurich() {
+  return CAPITULOS_PRESUPUESTO_PRELIMINAR_ZURICH.map((capitulo) => ({
+    capitulo,
+    descripcion: '',
+    valor: '',
+  }));
+}
+
+export function esInformePreliminarZurich(info = {}) {
+  return String(info?.tipoInforme || 'preliminar') !== 'final';
+}
+
+export function totalPresupuestoPreliminarZurich(filas = []) {
+  return (Array.isArray(filas) ? filas : []).reduce(
+    (acc, fila) => acc + parsearNumero(fila?.valor),
+    0
+  );
+}
+
+export function reservaSugeridaZurich(info = {}) {
+  const directa = parsearNumero(info?.reservaSugerida);
+  if (directa > 0) return directa;
+  return totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar);
+}
+
+function usarPlantillaSiVacio(filas, plantilla) {
+  return Array.isArray(filas) && filas.length ? filas : plantilla;
+}
 
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
@@ -196,6 +299,10 @@ export function calcularLiquidacionZurich(liquidador = {}) {
     deducibleConfig: liq.deducibleConfig,
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
+    otrosAmparos: liquidador.otrosAmparos,
+    deducibleContenidosPorArticulos: resumen.usaDeduciblePorArticulo
+      ? resumen.deduciblePorArticulos
+      : null,
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -231,6 +338,8 @@ export function calcularLiquidacionZurich(liquidador = {}) {
     subtotalEdificios: resumen.totalPresupuesto,
     diferencia: 0,
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
+    totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
+    otrosAmparos: diagrama.otrosAmparos || [],
   };
 }
 
@@ -259,6 +368,7 @@ export function mapcasoZurichALiquidador(caso = {}) {
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
     liquidacionCatastrofico: liquidacionCatastroficoDefaultZurich(caso),
+    otrosAmparos: defaultOtrosAmparos(),
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
         ? formatMiles(caso.valorReclamado)
@@ -275,6 +385,9 @@ export function mapcasoZurichALiquidador(caso = {}) {
       encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
       observaciones: guardado.observaciones || '',
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
+      otrosAmparos: Array.isArray(guardado.otrosAmparos)
+        ? normalizarOtrosAmparos(guardado.otrosAmparos)
+        : defaultOtrosAmparos(),
     };
   }
 
@@ -292,6 +405,9 @@ export function mapcasoZurichALiquidador(caso = {}) {
       ...(guardado.liquidacionCatastrofico || {}),
     },
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
+    otrosAmparos: Array.isArray(guardado.otrosAmparos)
+      ? normalizarOtrosAmparos(guardado.otrosAmparos)
+      : defaultOtrosAmparos(),
   };
 }
 
@@ -303,6 +419,7 @@ export function formDataNsrDesdeLiquidadorZurich(liquidador = {}, caso = {}) {
     evaluacionSismicaNSR10: liquidador.evaluacionSismicaNSR10,
     liquidacionCatastrofico: liquidador.liquidacionCatastrofico,
     indemnizacionSugerida: liquidador.indemnizacionSugerida,
+    otrosAmparos: liquidador.otrosAmparos,
     asegurado: enc.asegurado,
     ciudad: enc.ciudad,
     direccionRiesgo: enc.direccion,
@@ -376,6 +493,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
   const guardado =
     caso.informeUnico && typeof caso.informeUnico === 'object' ? caso.informeUnico : null;
   const base = {
+    tipoInforme: 'preliminar',
     fechaInforme: fechaInput(new Date()),
     ajustadorNombre: caso.ajustador || '',
     infoEvento: INFO_EVENTO_DEFAULT_ZURICH,
@@ -384,6 +502,10 @@ export function defaultInformeUnicoZurich(caso = {}) {
     imagenMapa: '',
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
+    reservaSugerida: '',
+    filasDanios: plantillaFilasDaniosZurich(),
+    filasPolizaCobertura: plantillaFilasPolizaZurich(),
+    filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarZurich(),
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
@@ -398,6 +520,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
   return {
     ...base,
     ...guardado,
+    tipoInforme: guardado.tipoInforme || 'final',
     ajustadorNombre: guardado.ajustadorNombre || guardado.actaAjustadorNombre || base.ajustadorNombre,
     actaAjustadorNombre:
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,
@@ -406,6 +529,16 @@ export function defaultInformeUnicoZurich(caso = {}) {
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
+    reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
+    filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
+    filasPolizaCobertura: usarPlantillaSiVacio(
+      guardado.filasPolizaCobertura,
+      base.filasPolizaCobertura
+    ),
+    filasPresupuestoPreliminar: usarPlantillaSiVacio(
+      guardado.filasPresupuestoPreliminar,
+      base.filasPresupuestoPreliminar
+    ),
     fotosInspeccion: fotosInformeDesdeCasoZurich(caso, guardado),
   };
 }

@@ -9,6 +9,7 @@ import {
 } from 'docx';
 import {
   calcularTotalesContenidos,
+  filaContenidoListaParaDeducible,
   totalFilaContenido,
 } from './catalogoEvaluacionSismicaNSR10.js';
 
@@ -95,7 +96,25 @@ export function construirTablaContenidosWord({
               alignment: AlignmentType.RIGHT,
             }),
             cellCont(
-              [it.estado, it.observacion].filter(Boolean).join(' · ') || '—',
+              [
+                it.estado,
+                it.observacion,
+                ...(filaContenidoListaParaDeducible(it)
+                  ? [
+                      it.tipoCobertura || it.coberturaAfectar
+                        ? `Cobertura: ${it.tipoCobertura || it.coberturaAfectar}`
+                        : '',
+                      it.porcentajeDeducible !== '' && it.porcentajeDeducible != null
+                        ? `${it.porcentajeDeducible}%`
+                        : '',
+                      it.deducibleCalculado
+                        ? `Deducible: ${money(it.deducibleCalculado)}`
+                        : '',
+                    ]
+                  : []),
+              ]
+                .filter(Boolean)
+                .join(' · ') || '—',
               7
             ),
           ],

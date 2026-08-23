@@ -4,6 +4,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import DatosGenerales from './DatosGenerales';
 import Trazabilidad from './Trazabilidad';
+import FechasTrazabilidadSura from '../SubcomponenteSura/FechasTrazabilidadSura.jsx';
 import ValoresPrestaciones from './ValoresPrestaciones';
 import Seguimiento from './Seguimiento';
 import Facturacion from './Facturacion';
@@ -50,6 +51,7 @@ import {
   formatearFechaHoraParaInput,
 } from '../../utils/complexFechaHoraUtils.js';
 import { CAMPOS_FECHA_HITOS_TRAZABILIDAD } from '../../utils/ajusteTrazabilidadComplexMap.js';
+import { ESTADOS_SURA, normalizarEstadoSura } from '../SubcomponenteSura/segurosSuraHelpers.js';
 
 const SURA_ALIASES = ['SEGUROS GENERALES SURAMERICANA', 'SURAMERICANA', 'SEGUROS SURA', 'SURA'];
 
@@ -91,7 +93,7 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
       const tabs = [
         { id: 'datosGenerales', label: t('complex.ui.formulario_caso_complex.tab_datos_generales') },
         { id: 'valores', label: t('complex.ui.formulario_caso_complex.tab_valores') },
-        { id: 'trazabilidad', label: t('complex.ui.formulario_caso_complex.tab_trazabilidad') },
+        { id: 'trazabilidad', label: esSura ? 'Fechas' : t('complex.ui.formulario_caso_complex.tab_trazabilidad') },
         { id: 'facturacion', label: t('complex.ui.formulario_caso_complex.tab_facturacion') },
         { id: 'honorarios', label: t('complex.ui.formulario_caso_complex.tab_honorarios') },
         { id: 'seguimiento', label: t('complex.ui.formulario_caso_complex.tab_seguimiento') },
@@ -99,7 +101,6 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
         { id: 'observaciones', label: t('complex.ui.formulario_caso_complex.tab_observaciones') },
       ];
       const tabsOcultasSura = new Set([
-        'trazabilidad',
         'honorarios',
         'seguimiento',
         'observacionesPendientes',
@@ -112,7 +113,6 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
 
   useEffect(() => {
     const tabsOcultasSura = new Set([
-      'trazabilidad',
       'honorarios',
       'seguimiento',
       'observacionesPendientes',
@@ -318,6 +318,7 @@ if (initialData && initialData._id) {
         fchaRepoActi: ['fchaRepoActi', 'fcha_repo_acti'],
         fchaPresentacionCifras: ['fchaPresentacionCifras', 'fcha_presentacion_cifras'],
         fchaAceptacionCifrasAseguradora: ['fchaAceptacionCifrasAseguradora', 'fcha_aceptacion_cifras_aseguradora'],
+        fchaReconsideracion: ['fchaReconsideracion', 'fcha_reconsideracion'],
         fchaEnvioFiniquito: ['fchaEnvioFiniquito', 'fcha_envio_finiquito'],
         // Mapear campos de coordinación de inspección
         fchaCoordInspeccion: ['fchaCoordInspeccion', 'fcha_coord_inspeccion'],
@@ -355,6 +356,7 @@ setFormData(prev => {
         const fchaRepoActiRaw = initialData.fchaRepoActi || initialData.fcha_repo_acti || normalizados.fchaRepoActi;
         const fchaPresentacionCifrasRaw = initialData.fchaPresentacionCifras || initialData.fcha_presentacion_cifras || normalizados.fchaPresentacionCifras;
         const fchaAceptacionCifrasAseguradoraRaw = initialData.fchaAceptacionCifrasAseguradora || initialData.fcha_aceptacion_cifras_aseguradora || normalizados.fchaAceptacionCifrasAseguradora;
+        const fchaReconsideracionRaw = initialData.fchaReconsideracion || initialData.fcha_reconsideracion || normalizados.fchaReconsideracion;
         const fchaEnvioFiniquitoRaw = initialData.fchaEnvioFiniquito || initialData.fcha_envio_finiquito || normalizados.fchaEnvioFiniquito;
         const fchaCoordInspeccionRaw = initialData.fchaCoordInspeccion || initialData.fcha_coord_inspeccion || normalizados.fchaCoordInspeccion;
         const fchaProgInspeccionRaw = initialData.fchaProgInspeccion || initialData.fcha_prog_inspeccion || normalizados.fchaProgInspeccion;
@@ -375,6 +377,10 @@ setFormData(prev => {
         const fchaAceptacionCifrasAseguradoraFormateada = formatearCampoParaInput(
           'fchaAceptacionCifrasAseguradora',
           fchaAceptacionCifrasAseguradoraRaw
+        );
+        const fchaReconsideracionFormateada = formatearCampoParaInput(
+          'fchaReconsideracion',
+          fchaReconsideracionRaw
         );
         const fchaEnvioFiniquitoFormateada = formatearCampoParaInput(
           'fchaEnvioFiniquito',
@@ -420,6 +426,7 @@ const nuevoFormData = {
           fchaRepoActi: fchaRepoActiFormateada,
           fchaPresentacionCifras: fchaPresentacionCifrasFormateada,
           fchaAceptacionCifrasAseguradora: fchaAceptacionCifrasAseguradoraFormateada,
+          fchaReconsideracion: fchaReconsideracionFormateada,
           fchaEnvioFiniquito: fchaEnvioFiniquitoFormateada,
           fchaCoordInspeccion: fchaCoordInspeccionFormateada,
           fchaProgInspeccion: fchaProgInspeccionFormateada,
@@ -641,6 +648,7 @@ if (casoData && casoData._id) {
               fchaRepoActi: ['fchaRepoActi', 'fcha_repo_acti'],
               fchaPresentacionCifras: ['fchaPresentacionCifras', 'fcha_presentacion_cifras'],
               fchaAceptacionCifrasAseguradora: ['fchaAceptacionCifrasAseguradora', 'fcha_aceptacion_cifras_aseguradora'],
+              fchaReconsideracion: ['fchaReconsideracion', 'fcha_reconsideracion'],
               fchaEnvioFiniquito: ['fchaEnvioFiniquito', 'fcha_envio_finiquito'],
               fchaCoordInspeccion: ['fchaCoordInspeccion', 'fcha_coord_inspeccion'],
               fchaProgInspeccion: ['fchaProgInspeccion', 'fcha_prog_inspeccion'],
@@ -675,6 +683,10 @@ if (casoData && casoData._id) {
               'fchaAceptacionCifrasAseguradora',
               normalizados.fchaAceptacionCifrasAseguradora || casoData.fcha_aceptacion_cifras_aseguradora
             );
+            const fchaReconsideracionFormateada = formatearCampoParaInput(
+              'fchaReconsideracion',
+              normalizados.fchaReconsideracion || casoData.fcha_reconsideracion
+            );
             const fchaEnvioFiniquitoFormateada = formatearCampoParaInput(
               'fchaEnvioFiniquito',
               normalizados.fchaEnvioFiniquito || casoData.fcha_envio_finiquito
@@ -707,6 +719,7 @@ if (casoData && casoData._id) {
               fchaRepoActi: fchaRepoActiFormateada,
               fchaPresentacionCifras: fchaPresentacionCifrasFormateada,
               fchaAceptacionCifrasAseguradora: fchaAceptacionCifrasAseguradoraFormateada,
+              fchaReconsideracion: fchaReconsideracionFormateada,
               fchaEnvioFiniquito: fchaEnvioFiniquitoFormateada,
               fchaCoordInspeccion: fchaCoordInspeccionFormateada,
               fchaProgInspeccion: fchaProgInspeccionFormateada,
@@ -2717,6 +2730,11 @@ setFormData(prev => ({
   useEffect(() => {
     if (!estados.length) return;
     setFormData((prev) => {
+      if (esSura) {
+        const norm = normalizarEstadoSura(prev.estado || prev.descripcionEstado);
+        if (norm === prev.estado) return prev;
+        return { ...prev, estado: norm, descripcionEstado: prev.descripcionEstado || norm };
+      }
       const estadoActual = String(prev.estado || '').trim();
       if (estadoActual && estados.some((e) => e.value === estadoActual)) {
         return prev;
@@ -2725,9 +2743,13 @@ setFormData(prev => ({
       if (!resolved || resolved === prev.estado) return prev;
       return { ...prev, estado: resolved, codiEstdo: resolved };
     });
-  }, [estados, resolverEstadoParaSelect]);
+  }, [estados, resolverEstadoParaSelect, esSura]);
 
   useEffect(() => {
+    if (esSura) {
+      setEstados(ESTADOS_SURA.map((e) => ({ value: e, label: e })));
+      return undefined;
+    }
     fetch(`${BASE_URL}/api/estados`)
       .then(res => res.json())
       .then(data => {
@@ -2750,7 +2772,7 @@ setFormData(prev => ({
         console.error('Error cargando estados:', err);
         setEstados([]);
       });
-  }, [ordenarPorLabel]);
+  }, [esSura, ordenarPorLabel]);
 
   // Cargar intermediarios desde la nueva API
   useEffect(() => {
@@ -2865,6 +2887,7 @@ setFormData(prev => ({
       anxoRepoActi: pick('anxoRepoActi', 'adjunto_entrega_ultimo_documento'),
       fchaPresentacionCifras: formData.fchaPresentacionCifras !== undefined && formData.fchaPresentacionCifras !== null && formData.fchaPresentacionCifras !== '' ? formData.fchaPresentacionCifras : undefined,
       fchaAceptacionCifrasAseguradora: formData.fchaAceptacionCifrasAseguradora !== undefined && formData.fchaAceptacionCifrasAseguradora !== null && formData.fchaAceptacionCifrasAseguradora !== '' ? formData.fchaAceptacionCifrasAseguradora : undefined,
+      fchaReconsideracion: formData.fchaReconsideracion !== undefined && formData.fchaReconsideracion !== null && formData.fchaReconsideracion !== '' ? formData.fchaReconsideracion : undefined,
       obsePresentacionCifras: pick('obsePresentacionCifras', 'obse_presentacion_cifras'),
       anxoPresentacionCifras: pick('anxoPresentacionCifras', 'adjunto_presentacion_cifras'),
       fchaEnvioFiniquito: formData.fchaEnvioFiniquito !== undefined && formData.fchaEnvioFiniquito !== null && formData.fchaEnvioFiniquito !== '' ? formData.fchaEnvioFiniquito : undefined,
@@ -3219,6 +3242,7 @@ if (!onSave) {
       'anxoRepoActi',
       'fchaPresentacionCifras',
       'fchaAceptacionCifrasAseguradora',
+      'fchaReconsideracion',
       'obsePresentacionCifras',
       'anxoPresentacionCifras',
       'fchaEnvioFiniquito',
@@ -3544,6 +3568,9 @@ if (!onSave) {
             handleChange={handleChange}
             // ...pasa aquí las props necesarias
           />
+        )}
+        {tabActiva === 'trazabilidad' && esSura && (
+          <FechasTrazabilidadSura formData={formData} handleChange={handleChange} />
         )}
         {tabActiva === 'trazabilidad' && !esSura && (
           <Trazabilidad

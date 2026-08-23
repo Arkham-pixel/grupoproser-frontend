@@ -209,7 +209,16 @@ const CAMPOS_FECHA = new Set([
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaAsignacion',
+  'fechaVisita',
   'fechaCasoNuevo',
+  'fechaCoordinandoInspeccion',
+  'fechaAnalisisCaso',
+  'fechaSolicitudDocumento',
+  'fechaRecepcionDocumento',
+  'fechaObjecion',
+  'fechaAutorizacionAnalista',
+  'fechaCasoParaPago',
 ]);
 
 const HEADERS_QUE_NO_SON_DATOS = new Set([

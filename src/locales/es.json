@@ -242,7 +242,8 @@
     "contractor_sura": "Zurich, Alfa, Sura y BBVA",
     "contractor_solo_zurich": "Zurich",
     "contractor_solo_bbva": "BBVA",
-    "contractor_solo_equidad": "Equidad FDM"
+    "contractor_solo_equidad": "Equidad FDM",
+    "contractor_solo_previsora": "Previsora"
   },
   "nav": {
     "sections": {
@@ -417,6 +418,7 @@
       "bbvaCatAdd": "Agregar caso BBVA CAT",
       "previsoraAdd": "Agregar caso Previsora",
       "bbvaCatListadoReport": "Reporte listado BBVA CAT",
+      "bbvaCatListadoAnalista": "Reporte analista BBVA CAT",
       "previsoraListadoReport": "Reporte listado Previsora",
       "bbvaCatListadoDashboard": "Dashboard listado BBVA CAT",
       "previsoraListadoDashboard": "Dashboard listado Previsora",
@@ -474,6 +476,7 @@
     "bbvaCatAddCase": "Agregar caso",
     "previsoraAddCase": "Agregar caso",
     "bbvaCatListadoReport": "Reporte listado",
+    "bbvaCatListadoAnalista": "Reporte analista",
     "previsoraListadoReport": "Reporte listado",
     "bbvaCatListadoDashboard": "Dashboard listado",
     "previsoraListadoDashboard": "Dashboard listado",
@@ -7000,6 +7003,7 @@
           "contractor_solo_zurich": "Zurich",
           "contractor_solo_bbva": "BBVA",
           "contractor_solo_equidad": "Equidad FDM",
+          "contractor_solo_previsora": "Previsora",
           "soporte": "Soporte",
           "usuario": "Usuario",
           "visualizador": "Visualizador"
@@ -11168,11 +11172,22 @@
       "dates": "Fechas y seguimiento",
       "actionDates": "Fechas de acción",
       "actionDatesHint": "Fecha de cada estado del flujo CAT. Al cambiar el estado se registra automáticamente la fecha correspondiente si aún está vacía.",
+      "documentoPago": "Documento de pago",
+      "documentoPagoLead": "Adjunte el comprobante cuando el caso está para pago o ya pagado.",
+      "documentoPagoHint": "Arrastre el comprobante aquí o pulse el botón para subirlo.",
+      "documentoPagoSaveFirst": "Guarde el caso primero para poder adjuntar el documento de pago.",
+      "documentoPagoEmpty": "Aún no hay comprobantes de pago en este caso.",
       "catInspection": "Inspección CAT (exposición)",
       "catBbvaCat": "CAT BBVA (exposición)",
       "catBbvaCatHint": "Datos del Excel CAT_BBVA: Risk ID, ubicación, afectación y referencias de inspección.",
       "generalInfo": "Información general de personas / póliza",
       "generalInfoHint": "Despliegue para completar identificación, contacto, póliza, valores y fechas adicionales."
+    },
+    "statusBar": {
+      "hint": "Seleccione el estado en la barra. Al cambiarlo se registra la fecha de acción si aún está vacía.",
+      "inspeccion": "Inspección y análisis",
+      "objecion": "Objeción",
+      "pago": "Autorización y pago"
     },
     "fields": {
       "siniestro": "STRO / Siniestro",
@@ -11246,8 +11261,10 @@
       "fechaSolicitudDocumento": "Fecha solicitud documento",
       "fechaRecepcionDocumento": "Fecha recepción documento",
       "fechaObjecion": "Fecha OBJECIÓN",
+      "fechaObjetado": "Fecha OBJETADO",
       "fechaAutorizacionAnalista": "Fecha AUTORIZACIÓN ANALISTA",
       "fechaCasoParaPago": "Fecha CASO PARA PAGO",
+      "fechaCasoPagado": "Fecha CASO PAGADO",
       "diasEnEstado": "Días en estado",
       "ultimaGestion": "Última gestión",
       "documentoFaltante": "Documento faltante",
@@ -11369,7 +11386,16 @@
     "listadoReport": {
       "title": "Reporte listado BBVA CAT",
       "subtitle": "Casos del listado cliente (ZC, STRO, asegurado y contactos). Base independiente de la inspección CAT.",
-      "searchPlaceholder": "ZC, STRO, asegurado, ciudad…"
+      "subtitleDocumented": "Solo casos del listado con documentos cargados por analistas. El trabajo pendiente está en Reporte analista.",
+      "searchPlaceholder": "ZC, STRO, asegurado, ciudad…",
+      "searchIndependentlyHint": "Si a un caso le falta un archivo y necesitan subirlo, búsquenlo aquí por ZC o STRO. Aunque ya no salga en el mapa ni en la cola de este reporte, el buscador lo encuentra para que puedan cargarlo.",
+      "analistaTitle": "Reporte analista BBVA CAT",
+      "analistaSubtitle": "Cola de trabajo con mapa a 5 km. Los bloques quedan fijos; al subir un archivo el caso sale del bloque para no duplicar gestión. El buscador sí encuentra casos ya documentados.",
+      "includeDocumented": "Casos documentados",
+      "includeDocumentedHint": "Mostrar también los que ya tienen archivo",
+      "analistaSummary": "{{pendientes}} pendientes · {{conArchivo}} con archivo · {{visibles}} visibles · página {{page}} de {{totalPages}}",
+      "noCasesAnalista": "No hay casos pendientes en esta vista. Suba archivos o active “mostrar documentados”, o busque por ZC/STRO.",
+      "noCasesDocumented": "Aún no hay casos con archivos de analista. Cárguelos en el reporte analista."
     },
     "listadoDashboard": {
       "title": "Dashboard listado BBVA CAT",
@@ -11434,8 +11460,10 @@
     "archive": {
       "title": "Archivero del caso",
       "subtitle": "Documentos del caso {{caseNumber}}. Sube y descarga archivos del siniestro.",
+      "subtitleListado": "Documentos del caso {{caseNumber}}. Sube póliza, liquidador e informe único.",
       "label": "Tipo de documento",
       "upload": "Subir documento",
+      "uploadPago": "Subir comprobante de pago",
       "uploading": "Subiendo…",
       "uploadOk": "Documento subido correctamente.",
       "uploadError": "No se pudo subir el documento.",
@@ -11455,13 +11483,16 @@
         "POLIZA": "PÓLIZA",
         "INSPECCION": "INSPECCIÓN",
         "LIQUIDACION": "LIQUIDACIÓN",
+        "INFORME": "INFORME ÚNICO",
         "FOTOS": "FOTOS",
         "OTRO": "OTRO",
         "FOTO_GENERAL": "CAT — Foto general",
         "FOTO_DANOS": "CAT — Foto de daños",
         "EQUIPOS_CRITICOS": "CAT — Equipos críticos",
         "MITIGACION": "CAT — Mitigación",
-        "NO_ACCESO": "CAT — No acceso"
+        "NO_ACCESO": "CAT — No acceso",
+        "PAGO": "DOCUMENTO DE PAGO",
+        "DOCUMENTO_PAGO": "DOCUMENTO DE PAGO"
       }
     },
     "settlement": {
@@ -11645,6 +11676,11 @@
       "noMarkers": "Aún no hay predios ubicados en el mapa.",
       "noMarkersHint": "Pulsa «Actualizar ubicaciones» para geocodificar las direcciones del filtro actual.",
       "precisionHint": "Se ubican direcciones de calle y de lugar (barrio, conjunto, parcelación). Se rechaza solo el centro de ciudad. El mapa usa vista satélite. Los ya inspeccionados no aparecen en el mapa de rutas.",
+      "fixedHint": "Numeración fija por ubicación (norte → sur). Al cerrar casos el Bloque 1 no cambia de zona.",
+      "fixedHintAnalista": "Radio 5 km por defecto (se puede cambiar). Los bloques quedan fijos; al subir un archivo el caso se limpia del bloque sin mover la numeración.",
+      "fixedHintListado": "Radio 500 m por defecto (se puede cambiar). Mismos grupos del mapa; aquí solo se ven los casos que ya tienen archivo.",
+      "cleanedCount": "−{{count}} con archivo",
+      "depuracionSummary": "{{pendientes}} pendientes · {{conArchivo}} ya documentados",
       "omittedInspected": "{{count}} ya inspeccionados omitidos",
       "fromCenter": "del centro",
       "radius": "Radio del bloque",
@@ -11699,6 +11735,8 @@
       "policyCoverage": "Póliza y cobertura",
       "values": "Valores",
       "dates": "Fechas y seguimiento",
+      "actionDates": "Fechas de acción",
+      "actionDatesHint": "Fecha de cada estado del flujo CAT. Al cambiar el estado se registra automáticamente la fecha correspondiente si aún está vacía.",
       "catInspection": "Inspección CAT (exposición)",
       "catAllianz": "CAT Allianz (exposición)",
       "catAllianzHint": "Datos del Excel CAT_ALLIANZ: Risk ID, ubicación, afectación y referencias de inspección.",
@@ -11769,7 +11807,22 @@
       "ajustadorLider": "Ajustador líder (quien asigna)",
       "inspector": "Inspector",
       "fechaAsignacion": "Fecha asignación",
-      "fechaVisita": "Fecha visita"
+      "fechaVisita": "Fecha visita",
+      "modalidadAtencion": "Modalidad",
+      "fechaCasoNuevo": "Fecha CASO NUEVO",
+      "fechaCoordinandoInspeccion": "Fecha COORDINANDO INSPECCIÓN",
+      "fechaAnalisisCaso": "Fecha ANÁLISIS DEL CASO",
+      "fechaSolicitudDocumento": "Fecha solicitud documento",
+      "fechaRecepcionDocumento": "Fecha recepción documento",
+      "fechaObjecion": "Fecha OBJECIÓN",
+      "fechaAutorizacionAnalista": "Fecha AUTORIZACIÓN ANALISTA",
+      "fechaCasoParaPago": "Fecha CASO PARA PAGO",
+      "diasEnEstado": "Días en estado",
+      "ultimaGestion": "Última gestión",
+      "documentoFaltante": "Documento faltante",
+      "observacionPendienteDocumento": "Observación pendiente de documento",
+      "motivoObjecion": "Motivo de objeción",
+      "responsableAporteDocumento": "Responsable de aportar"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -11797,7 +11850,8 @@
       "selectDepartmentFirst": "Primero seleccione departamento",
       "noCatastrophicAdjusters": "Sin ajustadores catastróficos — créelos en Administración → Ajustadores catastróficos",
       "noCatastrophicInspectors": "Sin inspectores — créelos en Administración → Inspectores catastróficos",
-      "observacionesCat": "Solo hechos observables — no concluya cobertura"
+      "observacionesCat": "Solo hechos observables — no concluya cobertura",
+      "documentoFaltante": "Indique el documento requerido"
     },
     "tomadores": {
       "manageTitle": "Tomadores",

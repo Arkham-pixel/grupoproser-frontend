@@ -2,14 +2,136 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const ALFA_REPORTE_PAGE_SIZE = 25;
 
+/**
+ * Catálogo único de estado (barra Alfa).
+ * Une lineamiento correo + cierre de liquidación.
+ */
 export const ESTADOS_ALFA = [
-  'PENDIENTE',
-  'EN INSPECCIÓN',
-  'DOCUMENTACIÓN',
+  'Sin contactar',
+  'Contactado y programado',
+  'Inspeccionado',
+  'Sin respuesta',
+  'Solicitud de documentos',
   'LIQUIDADO',
   'ENVIADO ASEGURADORA',
   'CERRADO',
 ];
+
+/** @deprecated Usar ESTADOS_ALFA (un solo eje). */
+export const ESTADOS_GESTION_ALFA = [
+  'Sin contactar',
+  'Contactado y programado',
+  'Inspeccionado',
+  'Sin respuesta',
+  'Solicitud de documentos',
+];
+
+export const GRUPOS_BARRA_ESTADOS_ALFA = [
+  {
+    id: 'gestion',
+    label: 'Gestión',
+    estados: [
+      'Sin contactar',
+      'Contactado y programado',
+      'Inspeccionado',
+      'Sin respuesta',
+      'Solicitud de documentos',
+    ],
+  },
+  {
+    id: 'cierre',
+    label: 'Cierre',
+    estados: ['LIQUIDADO', 'ENVIADO ASEGURADORA', 'CERRADO'],
+  },
+];
+
+export const ESTADOS_REQUIEREN_OBS_ALFA = new Set([
+  'Sin respuesta',
+  'Solicitud de documentos',
+]);
+
+/** @deprecated Alias de ESTADOS_REQUIEREN_OBS_ALFA */
+export const ESTADOS_GESTION_REQUIEREN_OBS = ESTADOS_REQUIEREN_OBS_ALFA;
+
+const ESTADOS_ALFA_SET = new Set(ESTADOS_ALFA);
+
+const LEGACY_ESTADO_A_UNIFICADO = {
+  PENDIENTE: 'Sin contactar',
+  'EN TRAMITE': 'Contactado y programado',
+  'EN TRÁMITE': 'Contactado y programado',
+  'EN INSPECCION': 'Contactado y programado',
+  'EN INSPECCIÓN': 'Contactado y programado',
+  DOCUMENTACION: 'Solicitud de documentos',
+  DOCUMENTACIÓN: 'Solicitud de documentos',
+  LIQUIDADO: 'LIQUIDADO',
+  'ENVIADO ASEGURADORA': 'ENVIADO ASEGURADORA',
+  CERRADO: 'CERRADO',
+};
+
+function normKeyEstado(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+}
+
+/** Homologa valores legacy / duales al catálogo único. */
+export function homologarEstadoAlfa(valor, extras = {}) {
+  const raw = String(valor || '').trim();
+  if (ESTADOS_ALFA_SET.has(raw)) return raw;
+
+  const key = normKeyEstado(raw);
+  if (key === 'EN INSPECCION' || key === 'EN TRAMITE') {
+    if (extras.fechaInspeccion) return 'Inspeccionado';
+    return LEGACY_ESTADO_A_UNIFICADO[raw] || LEGACY_ESTADO_A_UNIFICADO['EN INSPECCIÓN'] || 'Contactado y programado';
+  }
+
+  if (LEGACY_ESTADO_A_UNIFICADO[raw]) return LEGACY_ESTADO_A_UNIFICADO[raw];
+  for (const [k, v] of Object.entries(LEGACY_ESTADO_A_UNIFICADO)) {
+    if (normKeyEstado(k) === key) return v;
+  }
+
+  const eg = String(extras.estadoGestion || '').trim();
+  if (ESTADOS_ALFA_SET.has(eg)) return eg;
+
+  return 'Sin contactar';
+}
+
+/**
+ * Vista Excel AD (ESTADO GESTION): solo los 5 del correo.
+ * En cierre de liquidación se reporta Inspeccionado.
+ */
+export function estadoGestionDesdeEstadoAlfa(estado) {
+  const e = homologarEstadoAlfa(estado);
+  if (isAlfaEstadoDefinido(e)) return 'Inspeccionado';
+  if (ESTADOS_GESTION_ALFA.includes(e)) return e;
+  return 'Sin contactar';
+}
+
+/** Plantilla de comunicación cuando el reclamo queda bajo deducible. */
+export const PLANTILLA_COMUNICACION_BAJO_DEDUCIBLE = `Asunto: Comunicación — reclamación bajo deducible
+
+Estimado(a) asegurado(a):
+
+Tras la inspección y evaluación del siniestro, el valor de la pérdida resulta inferior al deducible aplicable a la póliza, por lo cual no procede indemnización.
+
+Quedamos atentos a cualquier inquietud y a la carga de la constancia de esta comunicación en el expediente (etiqueta COMUNICACION / OBJECION_DEDUCIBLE).
+
+Cordialmente,
+Equipo de ajuste Seguros Alfa`;
+
+export function casoTieneEvidenciaComunicacionBajoDeducible(caso = {}) {
+  const archivos = Array.isArray(caso.archivos) ? caso.archivos : [];
+  return archivos.some((a) => {
+    const et = String(a?.etiqueta || a?.tag || '')
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .toUpperCase();
+    return et.includes('COMUNICACION') || et.includes('OBJECION_DEDUCIBLE') || et.includes('FINIQUITO');
+  });
+}
 
 /** Tomadores base del consolidado Alfa (columna TOMADOR). */
 export const TOMADORES_ALFA_DEFAULT = [
@@ -26,8 +148,64 @@ export const ETIQUETAS_ARCHIVO_ALFA = [
   'LIQUIDACION',
   'INFORME',
   'FOTOS',
+  'COMUNICACION',
+  'SOLICITUD_DOCUMENTOS',
+  'DESISTIMIENTO',
+  'OBJECION_DEDUCIBLE',
+  'FINIQUITO',
   'OTRO',
 ];
+
+/** SLA: máx. 2 días hábiles calendario tras inspección sin actualizar docs/estado. */
+export const SLA_DIAS_POST_INSPECCION_ALFA = 2;
+
+export function isAlfaEstadoDefinido(estado) {
+  const n = String(estado || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toUpperCase();
+  return n.includes('LIQUIDADO') || n.includes('ENVIADO') || n === 'CERRADO';
+}
+
+export function casoAlfaVenceSla2Dias(caso = {}, ahora = new Date()) {
+  if (!caso.fechaInspeccion) return false;
+  const estado = homologarEstadoAlfa(caso.estado, caso);
+  if (isAlfaEstadoDefinido(estado)) return false;
+  const fi = new Date(caso.fechaInspeccion);
+  if (Number.isNaN(fi.getTime())) return false;
+  const limite = new Date(fi.getTime() + SLA_DIAS_POST_INSPECCION_ALFA * 86400000);
+  const tieneDoc =
+    caso.fechaUltimoDocumento ||
+    (Array.isArray(caso.archivos) && caso.archivos.length > 0);
+  const gestionOk = ['Inspeccionado', 'Solicitud de documentos'].includes(estado);
+  if (tieneDoc && gestionOk) return false;
+  return ahora.getTime() > limite.getTime();
+}
+
+export function contarKpisGestionAlfa(casos = []) {
+  const base = {
+    sinContactar: 0,
+    contactadoProgramado: 0,
+    inspeccionado: 0,
+    solicitudDocumentos: 0,
+    sinRespuesta: 0,
+    definidos: 0,
+    slaVencido: 0,
+    fueraDeZona: 0,
+  };
+  for (const c of casos) {
+    const g = homologarEstadoAlfa(c.estado, c);
+    if (g === 'Sin contactar') base.sinContactar += 1;
+    else if (g === 'Contactado y programado') base.contactadoProgramado += 1;
+    else if (g === 'Inspeccionado') base.inspeccionado += 1;
+    else if (g === 'Solicitud de documentos') base.solicitudDocumentos += 1;
+    else if (g === 'Sin respuesta') base.sinRespuesta += 1;
+    if (isAlfaEstadoDefinido(g)) base.definidos += 1;
+    if (casoAlfaVenceSla2Dias(c)) base.slaVencido += 1;
+    if (c.fueraDeZona) base.fueraDeZona += 1;
+  }
+  return base;
+}
 
 export const formatCurrency = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
@@ -175,7 +353,13 @@ export const FORM_VACIO_ALFA = {
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',
   fechaEnvioAseguradora: '',
-  estado: 'PENDIENTE',
+  estado: 'Sin contactar',
+  observacionesGestion: '',
+  zonaAsignada: '',
+  fueraDeZona: false,
+  noAceptacionOferta: false,
+  grupoReclamacion: '',
+  fechaComunicacionBajoDeducible: '',
 };
 
 export const CAMPOS_FECHA_ALFA = [
@@ -188,6 +372,7 @@ export const CAMPOS_FECHA_ALFA = [
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaComunicacionBajoDeducible',
 ];
 
 export const CAMPOS_NUMERICOS_ALFA = [
@@ -212,15 +397,26 @@ export const formatMiles = (valor) => {
 /** Al escribir: solo dígitos + puntos de miles */
 export const formatMilesInput = (valor) => formatMiles(valor);
 
-export const construirFormDesdeCasoAlfa = (caso = {}) => ({
-  ...FORM_VACIO_ALFA,
-  ...Object.fromEntries(
-    Object.keys(FORM_VACIO_ALFA).map((clave) => {
-      const valor = caso[clave];
-      if (valor === null || valor === undefined) return [clave, ''];
-      if (CAMPOS_FECHA_ALFA.includes(clave)) return [clave, fechaParaInput(valor)];
-      if (CAMPOS_NUMERICOS_ALFA.includes(clave)) return [clave, formatMiles(valor)];
-      return [clave, String(valor)];
-    })
-  ),
-});
+export const construirFormDesdeCasoAlfa = (caso = {}) => {
+  const base = {
+    ...FORM_VACIO_ALFA,
+    ...Object.fromEntries(
+      Object.keys(FORM_VACIO_ALFA).map((clave) => {
+        const valor = caso[clave];
+        if (clave === 'fueraDeZona' || clave === 'noAceptacionOferta') return [clave, Boolean(valor)];
+        if (valor === null || valor === undefined)
+          return [clave, clave === 'fueraDeZona' || clave === 'noAceptacionOferta' ? false : ''];
+        if (CAMPOS_FECHA_ALFA.includes(clave)) return [clave, fechaParaInput(valor)];
+        if (CAMPOS_NUMERICOS_ALFA.includes(clave)) return [clave, formatMiles(valor)];
+        return [clave, String(valor)];
+      })
+    ),
+    fueraDeZona: Boolean(caso.fueraDeZona),
+    noAceptacionOferta: Boolean(caso.noAceptacionOferta),
+  };
+  base.estado = homologarEstadoAlfa(caso.estado, {
+    fechaInspeccion: caso.fechaInspeccion,
+    estadoGestion: caso.estadoGestion,
+  });
+  return base;
+};

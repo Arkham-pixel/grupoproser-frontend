@@ -16,6 +16,13 @@ import {
   patchDeducibleDesdeTomadorAlfa,
   resolverReglaDeducibleTomadorAlfa,
 } from './tomadoresAlfaCatalogo.js';
+import {
+  defaultOtrosAmparos as defaultOtrosAmparosAlfa,
+  filasOtrosAmparosActivos as filasOtrosAmparosActivosAlfa,
+  normalizarOtrosAmparos as normalizarOtrosAmparosAlfa,
+  sumarOtrosAmparos as sumarOtrosAmparosAlfa,
+  textoResumenOtrosAmparos as textoResumenOtrosAmparosAlfa,
+} from '../liquidacion/otrosAmparosLiquidacion.js';
 
 /** AIU del FORMATO LIQUIDACIÓN Alfa (único recargo; sin imprevistos NSR ocultos). */
 export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.15;
@@ -75,6 +82,19 @@ export function formatearMonto(valor, { decimals = 0 } = {}) {
     maximumFractionDigits: decimals,
   });
 }
+
+export {
+  TIPOS_OTROS_AMPAROS as TIPOS_OTROS_AMPAROS_ALFA,
+  nombreTipoOtroAmparo as nombreTipoOtroAmparoAlfa,
+  nuevoOtroAmparo as nuevoOtroAmparoAlfa,
+  defaultOtrosAmparos as defaultOtrosAmparosAlfa,
+  recalcularValorOtroAmparo as recalcularValorOtroAmparoAlfa,
+  normalizarOtrosAmparos as normalizarOtrosAmparosAlfa,
+  esOtroAmparoActivo as esOtroAmparoActivoAlfa,
+  filasOtrosAmparosActivos as filasOtrosAmparosActivosAlfa,
+  sumarOtrosAmparos as sumarOtrosAmparosAlfa,
+  textoResumenOtrosAmparos as textoResumenOtrosAmparosAlfa,
+} from '../liquidacion/otrosAmparosLiquidacion.js';
 
 /** @deprecated compat — ítems FDM ya no se usan en el flujo activo */
 export function crearItemAlfa(item = '', valor = '', id) {
@@ -206,6 +226,11 @@ export const DEFAULT_LIQUIDADOR_ALFA = {
     sucursal: '',
     ciudadFirma: '',
   },
+  /**
+   * Arriendo, retiro de escombros y similares.
+   * Se liquidan aparte: sin deducible ni AIU. null = hidratar defaults al mapear.
+   */
+  otrosAmparos: null,
 };
 
 export function esLiquidadorNsrAlfa(liquidador = {}) {
@@ -388,7 +413,8 @@ export function aplicarPresupuestoAiuAlfaEnEvaluacion(evalData = {}) {
 }
 
 /**
- * Totales Alfa = ítems (costo directo) + AIU 15% − deducible.
+ * Totales Alfa = ítems (costo directo) + AIU 15% − deducible + otros amparos.
+ * Otros amparos (arriendo, retiro de escombros) van por aparte: sin deducible ni AIU.
  * No suma imprevistos/impuestos NSR ni hospedaje duplicado (si va en el detalle, ya está en el subtotal).
  */
 export function calcularLiquidacionAlfa(liquidador = {}) {
@@ -428,6 +454,9 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     deducibleConfig: cfgDed,
     deducibleConfigContenidos: liq.deducibleConfigContenidos || cfgDed,
     deducibleConfigPresupuesto: cfgDed,
+    deducibleContenidosPorArticulos: resumen.usaDeduciblePorArticulo
+      ? resumen.deduciblePorArticulos
+      : null,
   });
 
   const dedAlfa = calcularDeducibleAlfaSobreValorAsegurado({
@@ -447,9 +476,17 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     return id === 'hospedaje' || desc.includes('hospedaje');
   });
   const hospedaje = hospedajeYaEnItems ? 0 : parsearNumero(diagrama.gastosHospedaje);
-  const totalIndemnizar = Math.max(
+  const otrosAmparos = Array.isArray(liquidador.otrosAmparos)
+    ? liquidador.otrosAmparos
+    : [];
+  const totalOtrosAmparos = sumarOtrosAmparosAlfa(otrosAmparos);
+  const indemnizacionPrincipal = Math.max(
     0,
     Math.round((totalDaniosCat - dedAlfa.deducibleAplicado + hospedaje) * 100) / 100
+  );
+  const totalIndemnizar = Math.max(
+    0,
+    Math.round((indemnizacionPrincipal + totalOtrosAmparos) * 100) / 100
   );
 
   const items = normalizarItemsRespuesta(evalData.items);
@@ -498,6 +535,10 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     subtotalEdificios: baseCat,
     diferencia: 0,
     usaSMMLV: Boolean(dedAlfa.usaMinimo),
+    otrosAmparos: filasOtrosAmparosActivosAlfa(otrosAmparos),
+    totalOtrosAmparos,
+    indemnizacionPrincipal,
+    resumenOtrosAmparos: textoResumenOtrosAmparosAlfa(otrosAmparos),
   };
 }
 
@@ -671,6 +712,7 @@ export function mapCasoAlfaALiquidador(caso = {}) {
     evaluacionSismicaNSR10: evalInicial,
     liquidacionCatastrofico: liquidacionCatastroficoDefaultAlfa(caso),
     detalleLiquidacionCat: null,
+    otrosAmparos: defaultOtrosAmparosAlfa(),
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
         ? formatMiles(caso.valorReclamado)
@@ -694,6 +736,9 @@ export function mapCasoAlfaALiquidador(caso = {}) {
         ...(guardado.datosBancarios || {}),
       },
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
+      otrosAmparos: Array.isArray(guardado.otrosAmparos)
+        ? normalizarOtrosAmparosAlfa(guardado.otrosAmparos)
+        : defaultOtrosAmparosAlfa(),
     };
   }
 
@@ -750,6 +795,9 @@ export function mapCasoAlfaALiquidador(caso = {}) {
       ...base.datosBancarios,
       ...(guardado.datosBancarios || {}),
     },
+    otrosAmparos: Array.isArray(guardado.otrosAmparos)
+      ? normalizarOtrosAmparosAlfa(guardado.otrosAmparos)
+      : defaultOtrosAmparosAlfa(),
   };
 }
 

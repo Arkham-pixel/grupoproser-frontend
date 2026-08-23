@@ -36,7 +36,14 @@ import {
   CAMPOS_NUMERICOS_ALLIANZ,
   CAMPOS_DECIMAL_ALLIANZ,
   ESTADOS_ALLIANZ,
+  FECHA_ACCION_POR_ESTADO_ALLIANZ,
   FORM_VACIO_ALLIANZ,
+  MODALIDADES_ALLIANZ,
+  homologarEstadoAllianz,
+  fechaParaInput,
+  diasEnEstadoAllianz,
+  ultimaGestionAllianz,
+  formatDate,
   TIPOS_IDENTIFICACION_ALLIANZ,
   TIPOS_POLIZA_ALLIANZ,
   esTipoPolizaOtroAllianz,
@@ -102,8 +109,13 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
   const esModuloListado = origen === 'listado';
   const puedeImportarExcel = esAdminOSoporteAllianz();
   const esAltaCliente = esModuloListado && !esEdicion;
+  const formNuevoAllianz = () => ({
+    ...FORM_VACIO_ALLIANZ,
+    estado: 'CASO NUEVO',
+    fechaCasoNuevo: fechaParaInput(new Date()),
+  });
   const [form, setForm] = useState(() =>
-    initialData ? construirFormDesdecasoAllianz(initialData) : { ...FORM_VACIO_ALLIANZ }
+    initialData ? construirFormDesdecasoAllianz(initialData) : formNuevoAllianz()
   );
   const [guardando, setGuardando] = useState(false);
   const [modalImportOpen, setModalImportOpen] = useState(false);
@@ -135,7 +147,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
   });
 
   useEffect(() => {
-    setForm(initialData ? construirFormDesdecasoAllianz(initialData) : { ...FORM_VACIO_ALLIANZ });
+    setForm(initialData ? construirFormDesdecasoAllianz(initialData) : formNuevoAllianz());
     setError(null);
     setExito(null);
     setResumenImport(null);
@@ -268,6 +280,13 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
       if (clave === 'tipoPoliza' && !esTipoPolizaOtroAllianz(valor)) {
         siguiente.tipoPolizaOtro = '';
       }
+      if (clave === 'estado') {
+        siguiente.estado = homologarEstadoAllianz(valor);
+        const campoFecha = FECHA_ACCION_POR_ESTADO_ALLIANZ[siguiente.estado];
+        if (campoFecha && !siguiente[campoFecha]) {
+          siguiente[campoFecha] = fechaParaInput(new Date());
+        }
+      }
       return siguiente;
     });
   };
@@ -340,7 +359,20 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         inspector: form.inspector,
         fechaAsignacion: form.fechaAsignacion,
         fechaVisita: form.fechaVisita,
-        estado: form.estado,
+        modalidadAtencion: form.modalidadAtencion,
+        fechaCasoNuevo: form.fechaCasoNuevo,
+        fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
+        fechaAnalisisCaso: form.fechaAnalisisCaso,
+        fechaSolicitudDocumento: form.fechaSolicitudDocumento,
+        fechaRecepcionDocumento: form.fechaRecepcionDocumento,
+        fechaObjecion: form.fechaObjecion,
+        fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
+        fechaCasoParaPago: form.fechaCasoParaPago,
+        documentoFaltante: form.documentoFaltante,
+        observacionPendienteDocumento: form.observacionPendienteDocumento,
+        motivoObjecion: form.motivoObjecion,
+        responsableAporteDocumento: form.responsableAporteDocumento,
+        estado: homologarEstadoAllianz(form.estado),
       };
       if (!String(payload.identificacion || '').trim()) {
         if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
@@ -348,6 +380,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
       return payload;
     }
     const payload = { ...form };
+    payload.estado = homologarEstadoAllianz(payload.estado);
     if (!esTipoPolizaOtroAllianz(payload.tipoPoliza)) payload.tipoPolizaOtro = '';
     camposNumericos.forEach((clave) => {
       payload[clave] = aNumero(payload[clave]);
@@ -428,7 +461,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
           : t('allianz.messages.caseCreated', { caseNumber: guardado.consecutivo || '' })
       );
       if (!esEdicion) {
-        setForm({ ...FORM_VACIO_ALLIANZ });
+        setForm(formNuevoAllianz());
       }
       if (onSaved) await onSaved(guardado);
       await discardDraft();
@@ -441,7 +474,7 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
   };
 
   const limpiar = () => {
-    setForm(initialData ? construirFormDesdecasoAllianz(initialData) : { ...FORM_VACIO_ALLIANZ });
+    setForm(initialData ? construirFormDesdecasoAllianz(initialData) : formNuevoAllianz());
     setError(null);
     setExito(null);
   };
@@ -582,6 +615,9 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
           <Campo label={t('allianz.fields.estado')} required>
             {selectSimple('estado', ESTADOS_ALLIANZ)}
           </Campo>
+          <Campo label={t('allianz.fields.modalidadAtencion')}>
+            {selectSimple('modalidadAtencion', MODALIDADES_ALLIANZ)}
+          </Campo>
           <CamposAsignacionCaso
             form={form}
             setCampo={setCampo}
@@ -625,6 +661,96 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
             })}
           </p>
         ) : null}
+      </section>
+
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>{t('allianz.sections.actionDates')}</h3>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('allianz.sections.actionDatesHint')}
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('allianz.fields.fechaCasoNuevo')}>
+            <InputFenix type="date" value={form.fechaCasoNuevo} onChange={setCampo('fechaCasoNuevo')} />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaCoordinandoInspeccion')}>
+            <InputFenix
+              type="date"
+              value={form.fechaCoordinandoInspeccion}
+              onChange={setCampo('fechaCoordinandoInspeccion')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaAnalisisCaso')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAnalisisCaso}
+              onChange={setCampo('fechaAnalisisCaso')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaSolicitudDocumento')}>
+            <InputFenix
+              type="date"
+              value={form.fechaSolicitudDocumento}
+              onChange={setCampo('fechaSolicitudDocumento')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaRecepcionDocumento')}>
+            <InputFenix
+              type="date"
+              value={form.fechaRecepcionDocumento}
+              onChange={setCampo('fechaRecepcionDocumento')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaObjecion')}>
+            <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaAutorizacionAnalista')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAutorizacionAnalista}
+              onChange={setCampo('fechaAutorizacionAnalista')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.fechaCasoParaPago')}>
+            <InputFenix
+              type="date"
+              value={form.fechaCasoParaPago}
+              onChange={setCampo('fechaCasoParaPago')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.diasEnEstado')}>
+            <InputFenix value={diasEnEstadoAllianz(form)} readOnly />
+          </Campo>
+          <Campo label={t('allianz.fields.ultimaGestion')}>
+            <InputFenix value={formatDate(ultimaGestionAllianz(form)) || '—'} readOnly />
+          </Campo>
+          <Campo label={t('allianz.fields.documentoFaltante')} className="md:col-span-2 lg:col-span-3">
+            <InputFenix
+              value={form.documentoFaltante}
+              onChange={setCampo('documentoFaltante')}
+              placeholder={t('allianz.placeholders.documentoFaltante')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.responsableAporteDocumento')}>
+            <InputFenix
+              value={form.responsableAporteDocumento}
+              onChange={setCampo('responsableAporteDocumento')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.observacionPendienteDocumento')} className="md:col-span-2">
+            <textarea
+              className="min-h-[72px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              value={form.observacionPendienteDocumento}
+              onChange={setCampo('observacionPendienteDocumento')}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.motivoObjecion')} className="md:col-span-2 lg:col-span-3">
+            <textarea
+              className="min-h-[72px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              value={form.motivoObjecion}
+              onChange={setCampo('motivoObjecion')}
+            />
+          </Campo>
+        </div>
       </section>
 
       <fieldset

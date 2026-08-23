@@ -8,6 +8,7 @@ import {
   mapCasoAlfaALiquidador,
   parsearNumero,
   SMMLV_POR_ANIO,
+  textoResumenOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
 
 const PLANTILLA_URL = `${import.meta.env.BASE_URL || '/'}templates/Informe_CAT_Seguros_Alfa.xlsx`;
@@ -580,6 +581,11 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
       ? parsearNumero(totales.totalIndemnizar)
       : Math.max(0, subTotalItems + aiuVal - deducibleFinal);
 
+  const totalOtrosAmparos = parsearNumero(totales?.totalOtrosAmparos);
+  const resumenOtros = textoResumenOtrosAmparosAlfa(
+    liquidador?.otrosAmparos || totales?.otrosAmparos || []
+  );
+
   setVal(sheet, 25, 12, 'Sub Total ítems');
   setVal(sheet, 25, 15, subTotalItems || null);
 
@@ -589,14 +595,26 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
   setVal(sheet, 27, 12, 'Deducible Aplicable');
   setVal(sheet, 27, 15, deducibleFinal || 0);
 
-  // Valor a indemnizar (fila siguiente; L28 suele estar libre junto al bloque de totales)
-  setVal(sheet, 28, 12, 'Valor a Indemnizar');
-  setVal(sheet, 28, 15, aIndemnizar || 0);
-  try {
-    sheet.getCell(28, 12).font = { ...(sheet.getCell(27, 12).font || {}), bold: true };
-    sheet.getCell(28, 15).font = { ...(sheet.getCell(27, 15).font || {}), bold: true };
-  } catch {
-    /* ok */
+  if (totalOtrosAmparos > 0) {
+    setVal(sheet, 28, 12, 'Otros amparos (sin deducible)');
+    setVal(sheet, 28, 15, totalOtrosAmparos);
+    setVal(sheet, 29, 12, 'Valor a Indemnizar');
+    setVal(sheet, 29, 15, aIndemnizar || 0);
+    try {
+      sheet.getCell(29, 12).font = { ...(sheet.getCell(27, 12).font || {}), bold: true };
+      sheet.getCell(29, 15).font = { ...(sheet.getCell(27, 15).font || {}), bold: true };
+    } catch {
+      /* ok */
+    }
+  } else {
+    setVal(sheet, 28, 12, 'Valor a Indemnizar');
+    setVal(sheet, 28, 15, aIndemnizar || 0);
+    try {
+      sheet.getCell(28, 12).font = { ...(sheet.getCell(27, 12).font || {}), bold: true };
+      sheet.getCell(28, 15).font = { ...(sheet.getCell(27, 15).font || {}), bold: true };
+    } catch {
+      /* ok */
+    }
   }
 
   // Liquidado por
@@ -613,7 +631,11 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     txt(informe?.analisisGeneral?.observaciones) ||
     txt(informe?.conclusiones) ||
     '';
-  setVal(sheet, 30, 4, obs ? `OBSERVACIÓN:\n${obs}` : 'OBSERVACIÓN:');
+  const obsOtros = resumenOtros
+    ? `OTROS AMPAROS (sin deducible): ${resumenOtros}`
+    : '';
+  const obsFinal = [obs, obsOtros].filter(Boolean).join('\n');
+  setVal(sheet, 30, 4, obsFinal ? `OBSERVACIÓN:\n${obsFinal}` : 'OBSERVACIÓN:');
 
   // Pie: aceptación + datos bancarios (D36) y firma (D38)
   const banco = liquidador?.datosBancarios || liquidador?.finiquitoBancario || {};

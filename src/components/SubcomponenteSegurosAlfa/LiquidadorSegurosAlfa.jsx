@@ -20,6 +20,7 @@ import {
   resolverDetalleLiquidacionCat,
   sincronizarDetalleCatConPresupuestoNsr,
   SMMLV_POR_ANIO,
+  defaultOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
 import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
@@ -352,6 +353,9 @@ export default function LiquidadorSegurosAlfa({
       const conDetalle = {
         ...liquidador,
         detalleLiquidacionCat: itemsDetalle,
+        otrosAmparos: Array.isArray(liquidador.otrosAmparos)
+          ? liquidador.otrosAmparos
+          : defaultOtrosAmparosAlfa(),
         encabezado: {
           ...enc,
           valorAseguradoInmueble:
@@ -375,7 +379,13 @@ export default function LiquidadorSegurosAlfa({
   const archivarExcelCatAlfa = async ({ descargar = false } = {}) => {
     const opts = {
       caso: { ...(casoAlfa || {}), ...casoLocal },
-      liquidador: { ...liquidador, detalleLiquidacionCat: itemsDetalle },
+      liquidador: {
+        ...liquidador,
+        detalleLiquidacionCat: itemsDetalle,
+        otrosAmparos: Array.isArray(liquidador.otrosAmparos)
+          ? liquidador.otrosAmparos
+          : defaultOtrosAmparosAlfa(),
+      },
       totales,
       informe: casoAlfa?.informeUnico || null,
     };
@@ -531,6 +541,17 @@ export default function LiquidadorSegurosAlfa({
         }}
         onNombreFirmanteChange={(v) =>
           setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))
+        }
+        otrosAmparos={
+          Array.isArray(liquidador.otrosAmparos)
+            ? liquidador.otrosAmparos
+            : defaultOtrosAmparosAlfa()
+        }
+        onOtrosAmparosChange={(filas) =>
+          setLiquidador((prev) => ({
+            ...prev,
+            otrosAmparos: Array.isArray(filas) ? filas : defaultOtrosAmparosAlfa(),
+          }))
         }
       />
     </div>

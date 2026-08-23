@@ -2,14 +2,70 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const SURA_REPORTE_PAGE_SIZE = 25;
 
+/** Flujo pedido tras inducción SURA. */
 export const ESTADOS_SURA = [
-  'PENDIENTE',
-  'EN INSPECCIÓN',
-  'DOCUMENTACIÓN',
-  'LIQUIDADO',
-  'ENVIADO ASEGURADORA',
-  'CERRADO',
+  'CASO NUEVO',
+  'ASIGNADO (PARA ASIGNAR INSPECTOR)',
+  'INSPECCIONADO',
+  'INFORME DEL INSPECTOR',
+  'INFORME PRELIMINAR Y/O ACTUALIZACIÓN',
+  'INFORME ÚNICO O FINAL',
+  'ANULADO',
 ];
+
+export const ESTADOS_SURA_CERRADOS = ['ANULADO', 'CERRADO'];
+
+const MAPA_ESTADO_SURA_LEGADO = {
+  PENDIENTE: 'CASO NUEVO',
+  'EN INSPECCION': 'ASIGNADO (PARA ASIGNAR INSPECTOR)',
+  'EN INSPECCIÓN': 'ASIGNADO (PARA ASIGNAR INSPECTOR)',
+  DOCUMENTACION: 'INFORME DEL INSPECTOR',
+  DOCUMENTACIÓN: 'INFORME DEL INSPECTOR',
+  LIQUIDADO: 'INFORME ÚNICO O FINAL',
+  'ENVIADO ASEGURADORA': 'INFORME ÚNICO O FINAL',
+  CERRADO: 'INFORME ÚNICO O FINAL',
+};
+
+function normEstadoClave(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+}
+
+/** Convierte estados viejos al catálogo actual sin perder el dato. */
+export function normalizarEstadoSura(valor) {
+  const raw = String(valor ?? '').trim();
+  if (!raw) return 'CASO NUEVO';
+  if (ESTADOS_SURA.includes(raw)) return raw;
+  const mapeado = MAPA_ESTADO_SURA_LEGADO[raw] || MAPA_ESTADO_SURA_LEGADO[normEstadoClave(raw)];
+  if (mapeado) return mapeado;
+  const hit = ESTADOS_SURA.find((e) => normEstadoClave(e) === normEstadoClave(raw));
+  return hit || raw;
+}
+
+export function esEstadoSuraCerrado(valor) {
+  const n = normalizarEstadoSura(valor);
+  return ESTADOS_SURA_CERRADOS.includes(n) || normEstadoClave(valor) === 'CERRADO';
+}
+
+export function casoSuraTieneDocumentacion(caso = {}) {
+  if (Array.isArray(caso.archivos) && caso.archivos.length > 0) return true;
+  if (Array.isArray(caso.fotosAgil?.imagenes) && caso.fotosAgil.imagenes.length > 0) return true;
+  const inf = caso.informeUnico;
+  if (inf && typeof inf === 'object') {
+    if (Array.isArray(inf.fotosInspeccion) && inf.fotosInspeccion.length > 0) return true;
+    const texto = [inf.infoEvento, inf.descripcionDanios, inf.conclusiones, inf.recomendacion]
+      .map((s) => String(s || '').trim())
+      .join('');
+    if (texto.length > 40) return true;
+  }
+  const items = caso.liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
+  if (Array.isArray(items) && items.some((it) => String(it?.actividad || '').trim())) return true;
+  return false;
+}
 
 /** Tomadores base del consolidado Sura (columna TOMADOR). */
 export const TOMADORES_SURA_DEFAULT = [

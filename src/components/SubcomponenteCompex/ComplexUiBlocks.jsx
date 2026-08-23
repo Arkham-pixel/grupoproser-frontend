@@ -273,8 +273,9 @@ export function SelectFenix({ children, className = '', ...props }) {
 /**
  * Fecha + hora de hitos de protocolo.
  * - Fecha: input date nativo.
- * - Hora: selects 12h (hora / minuto / a.m.|p.m.) + campo de escritura libre
- *   (acepta 11, 11:00, 1100, 11am…) para no pelear con type="time" en Windows.
+ * - Hora (Complex): selects 12h + campo de escritura libre.
+ * - compacto (SURA, igual que Express): solo calendario; la hora queda
+ *   en texto pequeño arriba y se guarda al elegir la fecha.
  */
 export function InputFechaHoraProtocolo({
   name,
@@ -288,6 +289,7 @@ export function InputFechaHoraProtocolo({
   disabled = false,
   required = false,
   id,
+  compacto = false,
 }) {
   const { t } = useTranslation();
   const { fecha, hora } = partirFechaHoraParaInputs(value);
@@ -360,32 +362,58 @@ export function InputFechaHoraProtocolo({
 
   const minutosOpts = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
   const horasOpts = Array.from({ length: 12 }, (_, i) => String(i + 1));
+  const horaLegible = fecha && partes.hora12
+    ? `${partes.hora12}:${partes.minuto} ${partes.ampm === 'pm' ? 'p. m.' : 'a. m.'}`
+    : '';
+
+  const inputFecha = (
+    <input
+      id={id}
+      type="date"
+      name={`${name}__fecha`}
+      value={fecha}
+      min={min}
+      max={max}
+      disabled={disabled}
+      required={required}
+      className={`${complexInput} ${className}`}
+      onChange={(e) => {
+        const nuevaFecha = e.target.value;
+        if (!nuevaFecha) {
+          emitir('', '');
+          return;
+        }
+        emitir(nuevaFecha, hora || horaActualHHMM());
+      }}
+      onBlur={onBlur}
+      aria-label={t("complex.ui.complex_ui_blocks.fecha")}
+    />
+  );
+
+  if (compacto) {
+    return (
+      <div>
+        {horaLegible ? (
+          <p className="mb-1 font-body text-[11px] leading-tight text-gray-400 dark:text-gray-500">
+            {horaLegible}
+          </p>
+        ) : (
+          <p
+            className="mb-1 min-h-[14px] font-body text-[11px] leading-tight text-transparent"
+            aria-hidden
+          >
+            —
+          </p>
+        )}
+        {inputFecha}
+      </div>
+    );
+  }
 
   return (
     <div>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.4fr)]">
-        <input
-          id={id}
-          type="date"
-          name={`${name}__fecha`}
-          value={fecha}
-          min={min}
-          max={max}
-          disabled={disabled}
-          required={required}
-          className={`${complexInput} ${className}`}
-          onChange={(e) => {
-            const nuevaFecha = e.target.value;
-            if (!nuevaFecha) {
-              emitir('', '');
-              return;
-            }
-            // Si aún no hay hora, usa la hora actual del dispositivo.
-            emitir(nuevaFecha, hora || horaActualHHMM());
-          }}
-          onBlur={onBlur}
-          aria-label={t("complex.ui.complex_ui_blocks.fecha")}
-        />
+        {inputFecha}
         <div className="grid grid-cols-[1fr_1fr_auto] gap-1.5">
           <select
             name={`${name}__hora12`}

@@ -145,3 +145,34 @@ export function buildPrefillAjusteDesdeCasoComplex(caso) {
     })
   );
 }
+
+/** Mapea un caso SURA al prefill del informe de Complex. */
+export function buildPrefillAjusteDesdeCasoSura(caso) {
+  if (!caso || typeof caso !== 'object') return {};
+  const suraId = toTrim(caso._id || caso.id);
+  return buildPrefillAjusteDesdeCasoComplex({
+    ...caso,
+    nmroAjste: caso.nmroAjste || caso.consecutivo,
+    numero_ajuste: caso.consecutivo || caso.nmroAjste,
+    nmroSinstro: caso.nmroSinstro || caso.siniestro,
+    nmroPolza: caso.nmroPolza || caso.numeroPoliza,
+    asgrBenfcro: caso.asgrBenfcro || caso.asegurado,
+    nombreCliente: caso.nombreCliente || caso.asegurado,
+    nombreCiudad: caso.nombreCiudad || caso.ciudad,
+    ciudadSiniestro: caso.ciudadSiniestro || caso.ciudad,
+    departamentoCiudad: caso.departamentoCiudad || caso.departamento,
+    direccion: caso.direccion || caso.direccionPredio,
+    direccionRiesgo: caso.direccionRiesgo || caso.direccionPredio,
+    fchaSinstro: caso.fchaSinstro || caso.fechaSiniestro,
+    fchaInspccion: caso.fchaInspccion || caso.fechaInspeccion,
+    fchaAsgncion: caso.fchaAsgncion || caso.fechaAsignacion || caso.createdAt,
+    numDocumento: caso.numDocumento || caso.identificacion,
+    descSinstro: caso.descSinstro || caso.observacionLlamada,
+    nombreAseguradora: caso.nombreAseguradora || 'Seguros Sura',
+    metadata: {
+      ...(typeof caso.metadata === 'object' && caso.metadata ? caso.metadata : {}),
+      ...(suraId ? { suraId } : {}),
+      origen: 'sura',
+    },
+  });
+}

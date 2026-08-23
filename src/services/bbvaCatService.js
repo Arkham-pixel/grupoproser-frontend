@@ -365,8 +365,23 @@ export const guardarInformeUnicoEnCasoBbvaCat = async ({
 };
 
 /** GET /bloques-cercania — agrupa predios por cercanía. */
-export const getBloquesCercaniaBbvaCat = async ({ radioKm = 2.5, ciudad = '', estado = '' } = {}) => {
-  const queryString = buildQueryString({ radioKm, ciudad, estado, _t: Date.now() });
+export const getBloquesCercaniaBbvaCat = async ({
+  radioKm = 2.5,
+  ciudad = '',
+  estado = '',
+  depurarArchivos = false,
+  incluirConArchivos = false,
+  soloConArchivos = false,
+} = {}) => {
+  const queryString = buildQueryString({
+    radioKm,
+    ciudad,
+    estado,
+    ...(depurarArchivos ? { depurarArchivos: '1' } : {}),
+    ...(incluirConArchivos ? { incluirConArchivos: '1' } : {}),
+    ...(soloConArchivos ? { soloConArchivos: '1' } : {}),
+    _t: Date.now(),
+  });
   const response = await fetch(`${BBVA_CAT_API_URL}/bloques-cercania${queryString}`, {
     headers: authHeaders(),
   });

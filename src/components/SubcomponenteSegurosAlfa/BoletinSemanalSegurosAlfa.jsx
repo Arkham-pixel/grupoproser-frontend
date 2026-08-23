@@ -16,7 +16,7 @@ import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import { fetchAllCasosAlfa, getAlertasAlfa } from '../../services/segurosAlfaService.js';
 import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
-import { formatCurrency } from './segurosAlfaHelpers.js';
+import { contarKpisGestionAlfa, formatCurrency } from './segurosAlfaHelpers.js';
 import {
   calcularBoletinSemanalAlfa,
   inicioSemanaBogota,
@@ -125,6 +125,8 @@ export default function BoletinSemanalSegurosAlfa() {
     [casos, alertasPayload, desde, hasta]
   );
 
+  const kpisGestion = useMemo(() => contarKpisGestionAlfa(casos), [casos]);
+
   const onNotasChange = (campo, valor) => {
     const next = { ...notas, [campo]: valor };
     setNotas(next);
@@ -215,6 +217,26 @@ export default function BoletinSemanalSegurosAlfa() {
             {error}
           </div>
         )}
+
+        {/* KPIs lineamiento gestión Alfa (correo punto 11) */}
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <ExpressMetricCard label="Sin contactar" value={String(kpisGestion.sinContactar)} />
+          <ExpressMetricCard
+            label="Contactado y programado"
+            value={String(kpisGestion.contactadoProgramado)}
+          />
+          <ExpressMetricCard label="Inspeccionado" value={String(kpisGestion.inspeccionado)} />
+          <ExpressMetricCard
+            label="Solicitud documentos"
+            value={String(kpisGestion.solicitudDocumentos)}
+          />
+          <ExpressMetricCard label="Sin respuesta" value={String(kpisGestion.sinRespuesta)} />
+          <ExpressMetricCard
+            label="Definidos"
+            value={String(kpisGestion.definidos)}
+            hint="LIQUIDADO + ENVIADO + CERRADO"
+          />
+        </section>
 
         {/* KPIs operativos */}
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

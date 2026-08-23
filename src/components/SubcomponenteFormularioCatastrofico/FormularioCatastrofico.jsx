@@ -7,6 +7,7 @@ import {
   AIU_PORCENTAJE_DEFAULT,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from './catalogoPresupuestoCatastrofico.js';
+import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { descargarBlob, generarWordCatastrofico } from './generarWordCatastrofico.js';
 import { sincronizarPresupuestoNsr10AlInforme, formDataConPresupuestoNsr10 } from './syncPresupuestoNsr10AlInforme.js';
 import historialService, { TIPOS_FORMULARIOS } from '../../services/historialService.js';
@@ -116,6 +117,7 @@ function crearFormDataInicial(prefill = {}) {
       hospedajeManual: '',
       deducible: 'No aplica',
     },
+    otrosAmparos: defaultOtrosAmparos(),
     metadata: {},
     ...prefill,
     evaluacionSismicaNSR10: (() => {

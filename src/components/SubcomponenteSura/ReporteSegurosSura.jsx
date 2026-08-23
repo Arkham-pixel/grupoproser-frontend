@@ -15,11 +15,15 @@ import {
   SURA_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
   coincideFiltroTexto,
+  casoSuraTieneDocumentacion,
+  ESTADOS_SURA,
   fechaEnRango,
   formatCurrency,
   formatDate,
+  normalizarEstadoSura,
   normTexto,
 } from './segurosSuraHelpers.js';
+import { zonaAtencionSura, ZONAS_ATENCION_SURA } from './suraZonas.js';
 import {
   expressBadge,
   expressBtnPrimary,
@@ -60,6 +64,7 @@ const COLUMNAS = [
   { clave: 'canalRadicacion', labelKey: 'canalRadicacion' },
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'departamento', labelKey: 'departamento' },
+  { clave: 'zonaAtencion', labelKey: 'zonaAtencion' },
   { clave: 'fechaSiniestro', labelKey: 'fechaSiniestro' },
   { clave: 'fechaLlamada', labelKey: 'fechaLlamada' },
   { clave: 'observacionLlamada', labelKey: 'observacionLlamada' },
@@ -117,6 +122,7 @@ const buildExportRow = (caso) => ({
   'CANAL DE RADICACIÓN': caso.canalRadicacion ?? '',
   CIUDAD: caso.ciudad ?? '',
   DEPARTAMENTO: caso.departamento ?? '',
+  'ZONA ATENCIÓN': zonaAtencionSura(caso),
   'FECHA SINIESTRO': formatDate(caso.fechaSiniestro),
   'FECHA DE LLAMADA': formatDate(caso.fechaLlamada),
   'OBSERVACIÓN LLAMADA': caso.observacionLlamada ?? '',
@@ -138,7 +144,7 @@ const buildExportRow = (caso) => ({
   Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
 });
 
-export default function ReporteSegurosSura() {
+export default function ReporteSegurosSura({ soloDocumentacion = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [casos, setCasos] = useState([]);
@@ -149,6 +155,8 @@ export default function ReporteSegurosSura() {
   const [filtroDepto, setFiltroDepto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroZona, setFiltroZona] = useState('');
+  const [filtroDocs, setFiltroDocs] = useState(soloDocumentacion ? 'con' : '');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -177,7 +185,10 @@ export default function ReporteSegurosSura() {
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
-  const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const estados = useMemo(() => {
+    const set = new Set([...ESTADOS_SURA, ...casos.map((c) => normalizarEstadoSura(c.estado) || c.estado)]);
+    return [...set].filter(Boolean).map((v) => ({ value: v, label: v }));
+  }, [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
 
   const filtrados = useMemo(() => {
@@ -185,8 +196,15 @@ export default function ReporteSegurosSura() {
     return casos.filter((c) => {
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
-      if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
+      if (filtroEstado) {
+        const estCaso = normalizarEstadoSura(c.estado);
+        if (estCaso !== filtroEstado && String(c.estado || '') !== filtroEstado) return false;
+      }
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (filtroZona && zonaAtencionSura(c) !== filtroZona) return false;
+      const conDocs = casoSuraTieneDocumentacion(c);
+      if (filtroDocs === 'con' && !conDocs) return false;
+      if (filtroDocs === 'sin' && conDocs) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
       }
@@ -221,6 +239,8 @@ export default function ReporteSegurosSura() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroZona,
+    filtroDocs,
     fechaInicio,
     fechaFin,
   ]);
@@ -238,6 +258,8 @@ export default function ReporteSegurosSura() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroZona,
+    filtroDocs,
     fechaInicio,
     fechaFin,
   ]);
@@ -248,12 +270,16 @@ export default function ReporteSegurosSura() {
     setFiltroDepto('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroZona('');
+    setFiltroDocs(soloDocumentacion ? 'con' : '');
     setFechaInicio('');
     setFechaFin('');
   };
 
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+    if (clave === 'zonaAtencion') return zonaAtencionSura(item);
+    if (clave === 'estado') return normalizarEstadoSura(item.estado);
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
     }
@@ -317,6 +343,8 @@ export default function ReporteSegurosSura() {
       filtroDepto ||
       filtroEstado ||
       filtroAjustador ||
+      filtroZona ||
+      (filtroDocs && !soloDocumentacion) ||
       fechaInicio ||
       fechaFin
   );
@@ -328,8 +356,16 @@ export default function ReporteSegurosSura() {
           <div className="space-y-3">
             <span className={expressBadge}>Seguros Sura</span>
             <div>
-              <h1 className={expressPageTitle}>{t('segurosSura.report.title')}</h1>
-              <p className={expressPageSubtitle}>{t('segurosSura.report.subtitle')}</p>
+              <h1 className={expressPageTitle}>
+                {soloDocumentacion
+                  ? 'Casos SURA con documentación'
+                  : t('segurosSura.report.title')}
+              </h1>
+              <p className={expressPageSubtitle}>
+                {soloDocumentacion
+                  ? 'Solo aparecen casos con archivos, fotos, informe o presupuesto almacenado.'
+                  : t('segurosSura.report.subtitle')}
+              </p>
             </div>
             <nav className="flex flex-wrap gap-2">
               <Link
@@ -419,6 +455,27 @@ export default function ReporteSegurosSura() {
                 ))}
               </SelectFenix>
             </Campo>
+            <Campo label="Zona de atención">
+              <SelectFenix value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)}>
+                <option value="">{t('segurosSura.report.all')}</option>
+                {ZONAS_ATENCION_SURA.map((z) => (
+                  <option key={z} value={z}>
+                    {z}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label="Documentación">
+              <SelectFenix
+                value={filtroDocs}
+                onChange={(e) => setFiltroDocs(e.target.value)}
+                disabled={soloDocumentacion}
+              >
+                <option value="">{t('segurosSura.report.all')}</option>
+                <option value="con">Solo con documentación almacenada</option>
+                <option value="sin">Sin documentación</option>
+              </SelectFenix>
+            </Campo>
             <Campo label={t('segurosSura.report.from')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>
@@ -451,7 +508,9 @@ export default function ReporteSegurosSura() {
                         ? t('segurosSura.report.docs')
                         : col.clave === 'consecutivo'
                           ? t('segurosSura.report.consecutivo')
-                          : t(`segurosSura.fields.${col.labelKey}`)}
+                          : col.clave === 'zonaAtencion'
+                            ? 'Zona'
+                            : t(`segurosSura.fields.${col.labelKey}`)}
                     </th>
                   ))}
                 </tr>

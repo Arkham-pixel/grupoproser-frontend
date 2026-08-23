@@ -46,11 +46,19 @@ export function normEstado(estado) {
 
 export function esLiquidadoEstado(estado) {
   const e = normEstado(estado);
-  return e === 'LIQUIDADO' || e === 'ENVIADO ASEGURADORA' || e === 'CERRADO';
+  return (
+    e === 'LIQUIDADO' ||
+    e === 'ENVIADO ASEGURADORA' ||
+    e === 'CERRADO' ||
+    e.includes('INFORME UNICO') ||
+    e.includes('INFORME ÚNICO') ||
+    e === 'ANULADO'
+  );
 }
 
 export function esActivo(estado) {
-  return normEstado(estado) !== 'CERRADO';
+  const e = normEstado(estado);
+  return e !== 'CERRADO' && e !== 'ANULADO';
 }
 
 function diasEntre(a, b) {
@@ -172,12 +180,17 @@ function pct(ok, total) {
  */
 export function construirDashboardCatastrofico(
   casos = [],
-  { estadosOrden = ESTADOS_EMBUDO_CATASTROFICO, mapaNombres = new Map() } = {}
+  { estadosOrden = ESTADOS_EMBUDO_CATASTROFICO, mapaNombres = new Map(), normalizarEstadoFn } = {}
 ) {
   const lista = Array.isArray(casos) ? casos : [];
+  const estadoDe = (c) => {
+    const raw = String(c?.estado || '').trim();
+    if (typeof normalizarEstadoFn === 'function') return normalizarEstadoFn(raw);
+    return raw || 'PENDIENTE';
+  };
   const totalCasos = lista.length;
-  const casosActivos = lista.filter((c) => esActivo(c.estado)).length;
-  const casosLiquidados = lista.filter((c) => esLiquidadoEstado(c.estado)).length;
+  const casosActivos = lista.filter((c) => esActivo(estadoDe(c))).length;
+  const casosLiquidados = lista.filter((c) => esLiquidadoEstado(estadoDe(c))).length;
 
   let totalReclamado = 0;
   let totalLiquidado = 0;
@@ -214,12 +227,12 @@ export function construirDashboardCatastrofico(
     totalReclamado += reclamado;
     totalLiquidado += liquidado;
     totalReserva += reserva;
-    if (esActivo(c.estado)) {
+    if (esActivo(estadoDe(c))) {
       reclamadoActivos += reclamado;
       reservaActivos += reserva;
     }
 
-    const estado = String(c.estado || 'PENDIENTE').trim() || 'PENDIENTE';
+    const estado = estadoDe(c);
     porEstadoMap.set(estado, (porEstadoMap.get(estado) || 0) + 1);
 
     const fSin = parseFecha(c.fechaSiniestro);
@@ -246,7 +259,7 @@ export function construirDashboardCatastrofico(
         const cub = cubetaDias(d);
         cubetasInsp.set(cub, (cubetasInsp.get(cub) || 0) + 1);
       }
-    } else if (fSin && !fInsp && esActivo(c.estado)) {
+    } else if (fSin && !fInsp && esActivo(estadoDe(c))) {
       const d = diasEntre(fSin, hoy);
       if (d != null && d > DIAS_ANS_INSPECCION) atrasadosInspeccion += 1;
     }
@@ -260,7 +273,7 @@ export function construirDashboardCatastrofico(
         const cub = cubetaDias(d);
         cubetasLiq.set(cub, (cubetasLiq.get(cub) || 0) + 1);
       }
-    } else if (fSin && !fLiq && esActivo(c.estado)) {
+    } else if (fSin && !fLiq && esActivo(estadoDe(c))) {
       const d = diasEntre(fSin, hoy);
       if (d != null && d > DIAS_ANS_LIQUIDACION) atrasadosLiquidacion += 1;
     }

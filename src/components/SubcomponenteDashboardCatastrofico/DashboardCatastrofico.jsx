@@ -96,6 +96,7 @@ export default function DashboardCatastrofico({
   title,
   subtitle,
   modulo = '',
+  normalizarEstadoFn,
 }) {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -207,8 +208,13 @@ export default function DashboardCatastrofico({
   );
 
   const stats = useMemo(
-    () => construirDashboardCatastrofico(casosFiltrados, { estadosOrden: estados, mapaNombres }),
-    [casosFiltrados, estados, mapaNombres]
+    () =>
+      construirDashboardCatastrofico(casosFiltrados, {
+        estadosOrden: estados,
+        mapaNombres,
+        normalizarEstadoFn,
+      }),
+    [casosFiltrados, estados, mapaNombres, normalizarEstadoFn]
   );
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos, buildOpcionesFiltro]);

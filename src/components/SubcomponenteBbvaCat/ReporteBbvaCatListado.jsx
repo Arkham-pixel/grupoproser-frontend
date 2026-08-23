@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
-import { FaFileExcel, FaPlus, FaUpload } from 'react-icons/fa';
+import { FaFileExcel, FaInfoCircle, FaPlus, FaUpload } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteCasoBbvaCatListado,
@@ -9,13 +9,19 @@ import {
 } from '../../services/bbvaCatListadoService.js';
 import FormularioBbvaCat from './FormularioBbvaCat.jsx';
 import AccionesBbvaCatMenu from './AccionesBbvaCatMenu.jsx';
+import ArchiveroBbvaCat from './ArchiveroBbvaCat.jsx';
 import MapaBloquesBbvaCatPanel from './MapaBloquesBbvaCatPanel.jsx';
 import ModalImportarExcelBbvaCat, {
   esAdminOSoporteBbvaCat,
 } from './ModalImportarExcelBbvaCat.jsx';
+import { esRolSoloBbva } from '../../config/roles.js';
 import {
   BBVA_CAT_REPORTE_PAGE_SIZE,
+  RADIO_KM_ANALISTA_BBVA_CAT,
+  RADIO_KM_LISTADO_BBVA_CAT,
+  STORAGE_ORIGEN_LISTADO_BBVA_CAT,
   buildOpcionesFiltro,
+  casoTieneArchivosBbvaCat,
   coincideFiltroTexto,
   etiquetaTipoPolizaBbvaCat,
   fechaEnRango,
@@ -73,8 +79,10 @@ const COLUMNAS = [
   { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
   { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
   { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
+  { clave: 'fechaObjetado', labelKey: 'fechaObjetado' },
   { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
   { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'fechaCasoPagado', labelKey: 'fechaCasoPagado' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -110,8 +118,10 @@ const buildExportRow = (caso) => ({
   'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
   'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
   'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
+  'FECHA OBJETADO': formatDate(caso.fechaObjetado),
   'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
   'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'FECHA CASO PAGADO': formatDate(caso.fechaCasoPagado),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -119,9 +129,11 @@ const buildExportRow = (caso) => ({
   'Fecha creación': formatDate(caso.createdAt),
 });
 
-export default function ReporteBbvaCatListado() {
+export default function ReporteBbvaCatListado({ modo = 'listado' }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const esAnalista = modo === 'analista';
+  const esBbvaSolo = esRolSoloBbva();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -131,8 +143,11 @@ export default function ReporteBbvaCatListado() {
   const [filtroAjustador, setFiltroAjustador] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+  const [incluirConArchivos, setIncluirConArchivos] = useState(false);
+  const [mapaReloadToken, setMapaReloadToken] = useState(0);
   const [pagina, setPagina] = useState(1);
   const [casoEdicion, setCasoEdicion] = useState(null);
+  const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [bloqueSeleccionadoId, setBloqueSeleccionadoId] = useState(null);
   const [siniestrosBloqueSeleccionado, setSiniestrosBloqueSeleccionado] = useState([]);
@@ -155,9 +170,29 @@ export default function ReporteBbvaCatListado() {
     recargar();
   }, [recargar]);
 
+  useEffect(() => {
+    marcarOrigenListado();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esAnalista]);
+
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const listadoPorClave = useMemo(() => {
+    const m = new Map();
+    casos.forEach((c) => {
+      const k = String(c.zc || c.siniestro || '').trim();
+      if (k && !m.has(k)) m.set(k, c);
+    });
+    return m;
+  }, [casos]);
+  const conteoArchivos = useMemo(() => {
+    let con = 0;
+    casos.forEach((c) => {
+      if (casoTieneArchivosBbvaCat(c)) con += 1;
+    });
+    return { total: casos.length, conArchivo: con, pendientes: casos.length - con };
+  }, [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -165,6 +200,13 @@ export default function ReporteBbvaCatListado() {
       (siniestrosBloqueSeleccionado || []).map((s) => String(s).trim()).filter(Boolean)
     );
     return casos.filter((c) => {
+      const conArchivo = casoTieneArchivosBbvaCat(c);
+      if (esAnalista) {
+        const buscarDocumentados = Boolean(q) || incluirConArchivos;
+        if (!buscarDocumentados && conArchivo) return false;
+      } else if (!conArchivo) {
+        return false;
+      }
       if (bloqueSeleccionadoId) {
         if (siniestrosBloque.size === 0) return false;
         const keys = [c.siniestro, c.zc].map((v) => String(v || '').trim()).filter(Boolean);
@@ -214,6 +256,8 @@ export default function ReporteBbvaCatListado() {
     fechaFin,
     bloqueSeleccionadoId,
     siniestrosBloqueSeleccionado,
+    esAnalista,
+    incluirConArchivos,
   ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / BBVA_CAT_REPORTE_PAGE_SIZE));
@@ -232,7 +276,35 @@ export default function ReporteBbvaCatListado() {
     fechaFin,
     bloqueSeleccionadoId,
     siniestrosBloqueSeleccionado,
+    incluirConArchivos,
   ]);
+
+  const marcarOrigenListado = () => {
+    try {
+      sessionStorage.setItem(
+        STORAGE_ORIGEN_LISTADO_BBVA_CAT,
+        esAnalista ? 'analista' : 'listado'
+      );
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const hrefDesdeMapa = (casoMapa) => {
+    const k = String(casoMapa?.zc || casoMapa?.siniestro || '').trim();
+    const lst = k ? listadoPorClave.get(k) : null;
+    if (lst?._id) {
+      return `/bbva-cat/listado/caso?casoId=${lst._id}&tab=liquidador`;
+    }
+    return casoMapa?._id ? `/bbva-cat/caso?casoId=${casoMapa._id}` : '/bbva-cat/listado/analista';
+  };
+
+  const irACasoListado = (item, tab) => {
+    marcarOrigenListado();
+    navigate(`/bbva-cat/listado/caso?casoId=${item._id}&tab=${tab}`, {
+      state: { casoBbvaCat: item },
+    });
+  };
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -243,6 +315,7 @@ export default function ReporteBbvaCatListado() {
     setFechaFin('');
     setBloqueSeleccionadoId(null);
     setSiniestrosBloqueSeleccionado([]);
+    setIncluirConArchivos(false);
   };
 
   const FECHAS_LISTADO = new Set([
@@ -254,8 +327,10 @@ export default function ReporteBbvaCatListado() {
     'fechaSolicitudDocumento',
     'fechaRecepcionDocumento',
     'fechaObjecion',
+    'fechaObjetado',
     'fechaAutorizacionAnalista',
     'fechaCasoParaPago',
+    'fechaCasoPagado',
     'ultimaGestion',
   ]);
 
@@ -318,7 +393,8 @@ export default function ReporteBbvaCatListado() {
       filtroAjustador ||
       fechaInicio ||
       fechaFin ||
-      bloqueSeleccionadoId
+      bloqueSeleccionadoId ||
+      (esAnalista && incluirConArchivos)
   );
 
   return (
@@ -326,10 +402,18 @@ export default function ReporteBbvaCatListado() {
       <div className={wrap}>
         <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
-            <span className={expressBadge}>BBVA CAT · Listado</span>
+            <span className={expressBadge}>
+              {esAnalista ? 'BBVA CAT · Analista' : 'BBVA CAT · Listado'}
+            </span>
             <div>
-              <h1 className={expressPageTitle}>{t('bbvaCat.listadoReport.title')}</h1>
-              <p className={expressPageSubtitle}>{t('bbvaCat.listadoReport.subtitle')}</p>
+              <h1 className={expressPageTitle}>
+                {esAnalista ? t('bbvaCat.listadoReport.analistaTitle') : t('bbvaCat.listadoReport.title')}
+              </h1>
+              <p className={expressPageSubtitle}>
+                {esAnalista
+                  ? t('bbvaCat.listadoReport.analistaSubtitle')
+                  : t('bbvaCat.listadoReport.subtitleDocumented')}
+              </p>
             </div>
             <nav className="flex flex-wrap gap-2">
               <Link
@@ -345,9 +429,31 @@ export default function ReporteBbvaCatListado() {
               >
                 {t('nav.bbvaCatListadoDashboard')}
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.bbvaCatListadoReport')}
-              </span>
+              {esAnalista ? (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.bbvaCatListadoAnalista')}
+                </span>
+              ) : (
+                <Link
+                  to="/bbva-cat/listado/analista"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.bbvaCatListadoAnalista')}
+                </Link>
+              )}
+              {!esBbvaSolo &&
+                (esAnalista ? (
+                  <Link
+                    to="/bbva-cat/listado/reporte"
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                  >
+                    {t('nav.bbvaCatListadoReport')}
+                  </Link>
+                ) : (
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                    {t('nav.bbvaCatListadoReport')}
+                  </span>
+                ))}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -374,6 +480,14 @@ export default function ReporteBbvaCatListado() {
           showClear={filtrosActivos}
           onClear={limpiarFiltros}
         >
+          {esAnalista && (
+            <div className="mb-4 flex gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <FaInfoCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+              <p className="font-body text-sm leading-relaxed">
+                {t('bbvaCat.listadoReport.searchIndependentlyHint')}
+              </p>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Campo label={t('common.search')}>
               <InputFenix
@@ -421,15 +535,36 @@ export default function ReporteBbvaCatListado() {
             <Campo label={t('bbvaCat.report.to')}>
               <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </Campo>
+            {esAnalista && (
+              <Campo label={t('bbvaCat.listadoReport.includeDocumented')}>
+                <label className="mt-2 inline-flex items-center gap-2 font-body text-sm text-gray-700 dark:text-gray-200">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-gray-300 text-fenix-primario focus:ring-fenix-primario"
+                    checked={incluirConArchivos}
+                    onChange={(e) => setIncluirConArchivos(e.target.checked)}
+                  />
+                  {t('bbvaCat.listadoReport.includeDocumentedHint')}
+                </label>
+              </Campo>
+            )}
           </div>
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading
               ? t('common.loading')
-              : t('bbvaCat.report.recordsSummary', {
-                  count: filtrados.length,
-                  page: paginaActual,
-                  totalPages: totalPaginas,
-                })}
+              : esAnalista
+                ? t('bbvaCat.listadoReport.analistaSummary', {
+                    pendientes: conteoArchivos.pendientes,
+                    conArchivo: conteoArchivos.conArchivo,
+                    visibles: filtrados.length,
+                    page: paginaActual,
+                    totalPages: totalPaginas,
+                  })
+                : t('bbvaCat.report.recordsSummary', {
+                    count: filtrados.length,
+                    page: paginaActual,
+                    totalPages: totalPaginas,
+                  })}
           </p>
         </ExpressFilterSection>
 
@@ -443,6 +578,12 @@ export default function ReporteBbvaCatListado() {
             setPagina(1);
           }}
           compact
+          radioKmInicial={esAnalista ? RADIO_KM_ANALISTA_BBVA_CAT : RADIO_KM_LISTADO_BBVA_CAT}
+          depurarArchivos
+          incluirConArchivos={esAnalista ? incluirConArchivos : false}
+          soloConArchivos={!esAnalista}
+          reloadToken={mapaReloadToken}
+          getCasoHref={hrefDesdeMapa}
         />
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
@@ -478,7 +619,9 @@ export default function ReporteBbvaCatListado() {
                 ) : filtrados.length === 0 ? (
                   <tr>
                     <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                      {t('bbvaCat.report.noCases')}
+                      {esAnalista
+                        ? t('bbvaCat.listadoReport.noCasesAnalista')
+                        : t('bbvaCat.listadoReport.noCasesDocumented')}
                     </td>
                   </tr>
                 ) : (
@@ -503,19 +646,13 @@ export default function ReporteBbvaCatListado() {
                         }`}
                       >
                         <AccionesBbvaCatMenu
+                          docsCount={item.archivos?.length || 0}
                           tieneLiquidador={!!item.liquidador}
                           tieneInforme={!!item.informeUnico}
                           onGestionar={() => setCasoEdicion(item)}
-                          onLiquidador={() =>
-                            navigate(`/bbva-cat/listado/caso?casoId=${item._id}&tab=liquidador`, {
-                              state: { casoBbvaCat: item },
-                            })
-                          }
-                          onInformeUnico={() =>
-                            navigate(`/bbva-cat/listado/caso?casoId=${item._id}&tab=informe`, {
-                              state: { casoBbvaCat: item },
-                            })
-                          }
+                          onArchivero={() => setCasoArchivero(item)}
+                          onLiquidador={() => irACasoListado(item, 'liquidador')}
+                          onInformeUnico={() => irACasoListado(item, 'informe')}
                           onEliminar={() => solicitarEliminar(item)}
                         />
                       </td>
@@ -575,6 +712,27 @@ export default function ReporteBbvaCatListado() {
             onSaved={async () => {
               setCasoEdicion(null);
               await recargar();
+              setMapaReloadToken((n) => n + 1);
+            }}
+          />
+        </ExpressModal>
+      )}
+
+      {casoArchivero && (
+        <ExpressModal
+          open
+          onClose={() => setCasoArchivero(null)}
+          title={t('bbvaCat.archive.title')}
+          wide
+        >
+          <ArchiveroBbvaCat
+            origen="listado"
+            caso={casoArchivero}
+            onClose={() => setCasoArchivero(null)}
+            onChanged={(actualizado) => {
+              setCasoArchivero(actualizado);
+              recargar();
+              setMapaReloadToken((n) => n + 1);
             }}
           />
         </ExpressModal>
@@ -585,6 +743,7 @@ export default function ReporteBbvaCatListado() {
         onClose={() => setModalImportOpen(false)}
         onCompleted={async () => {
           await recargar();
+          setMapaReloadToken((n) => n + 1);
         }}
       />
 

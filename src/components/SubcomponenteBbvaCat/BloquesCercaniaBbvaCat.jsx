@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useJsApiLoader } from '@react-google-maps/api';
@@ -25,12 +25,14 @@ import {
   postUbicacionesPredioBbvaCat,
 } from '../../services/bbvaCatService.js';
 import { googleMapsLoaderOptions } from '../../config/googleMapsLoader.js';
+import { esRolSoloBbva } from '../../config/roles.js';
 import {
   construirQueryGeocodeBbvaCat,
   esDireccionPredioGeocodableBbvaCat,
   geocodeConGooglePrecisoBbvaCat,
   necesitaGeocodeCliente,
 } from './bbvaCatGeocodeHelpers.js';
+import { zcCasoBbvaCat } from './bbvaCatHelpers.js';
 
 const RADIOS = [
   { value: '0.1', label: '100 m' },
@@ -198,15 +200,7 @@ export default function BloquesCercaniaBbvaCat() {
     setAbiertos((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const bloques = useMemo(() => {
-    const list = [...(data?.bloques || [])];
-    list.sort((a, b) => {
-      const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
-      if (d !== 0) return d;
-      return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
-    });
-    return list;
-  }, [data]);
+  const bloques = data?.bloques || [];
   const sinUbicar = data?.sinUbicar || [];
 
   const resumenTxt = useMemo(() => {
@@ -241,9 +235,14 @@ export default function BloquesCercaniaBbvaCat() {
             <Link to="/bbva-cat/reporte" className={expressBtnGhost}>
               {t('nav.bbvaCatReport')}
             </Link>
-            <Link to="/bbva-cat/listado/reporte" className={expressBtnGhost}>
-              {t('nav.bbvaCatListadoReport')}
+            <Link to="/bbva-cat/listado/analista" className={expressBtnGhost}>
+              {t('nav.bbvaCatListadoAnalista')}
             </Link>
+            {!esRolSoloBbva() && (
+              <Link to="/bbva-cat/listado/reporte" className={expressBtnGhost}>
+                {t('nav.bbvaCatListadoReport')}
+              </Link>
+            )}
             <button
               type="button"
               className={expressBtnPrimary}
@@ -323,6 +322,7 @@ export default function BloquesCercaniaBbvaCat() {
                             <thead>
                               <tr className="border-b border-gray-100 text-xs uppercase text-gray-500 dark:border-gray-800">
                                 <th className="px-3 py-2">{t('bbvaCat.bloques.colDistance')}</th>
+                                <th className="px-3 py-2">{t('bbvaCat.fields.zc')}</th>
                                 <th className="px-3 py-2">{t('bbvaCat.fields.siniestro')}</th>
                                 <th className="px-3 py-2">{t('bbvaCat.fields.asegurado')}</th>
                                 <th className="px-3 py-2">{t('bbvaCat.fields.direccionPredio')}</th>
@@ -341,6 +341,9 @@ export default function BloquesCercaniaBbvaCat() {
                                     {c.distanciaKmCentro != null
                                       ? `${c.distanciaKmCentro} km`
                                       : '—'}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap font-semibold">
+                                    {zcCasoBbvaCat(c) || '—'}
                                   </td>
                                   <td className="px-3 py-2">{c.siniestro || c.consecutivo || '—'}</td>
                                   <td className="px-3 py-2">{c.asegurado || c.tomador || '—'}</td>
@@ -387,6 +390,7 @@ export default function BloquesCercaniaBbvaCat() {
                         <table className="min-w-full text-left text-sm">
                           <thead>
                             <tr className="border-b border-amber-100 text-xs uppercase text-gray-500 dark:border-amber-900/40">
+                              <th className="px-3 py-2">{t('bbvaCat.fields.zc')}</th>
                               <th className="px-3 py-2">{t('bbvaCat.fields.siniestro')}</th>
                               <th className="px-3 py-2">{t('bbvaCat.fields.asegurado')}</th>
                               <th className="px-3 py-2">{t('bbvaCat.fields.direccionPredio')}</th>
@@ -401,6 +405,7 @@ export default function BloquesCercaniaBbvaCat() {
                                 key={c._id}
                                 className="border-b border-amber-50 dark:border-amber-950/20"
                               >
+                                <td className="px-3 py-2 font-semibold">{zcCasoBbvaCat(c) || '—'}</td>
                                 <td className="px-3 py-2">{c.siniestro || c.consecutivo || '—'}</td>
                                 <td className="px-3 py-2">{c.asegurado || c.tomador || '—'}</td>
                                 <td className="max-w-xs truncate px-3 py-2" title={c.direccionPredio}>

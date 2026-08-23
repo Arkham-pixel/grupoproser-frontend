@@ -251,8 +251,8 @@ async function crearEncabezadoSura({ caso = {}, informe = {} } = {}) {
   });
 }
 
-/** Título azul con «ÚNICO» subrayado (fórmula Catastrófico). */
-function crearTituloInformeUnico() {
+/** Título azul: INFORME ÚNICO o INFORME PRELIMINAR. */
+function crearTituloInformeUnico(esPreliminar = false) {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 120, after: 200 },
@@ -265,7 +265,7 @@ function crearTituloInformeUnico() {
         color: '0070C0',
       }),
       new TextRun({
-        text: 'ÚNICO',
+        text: esPreliminar ? 'PRELIMINAR' : 'ÚNICO',
         bold: true,
         size: SIZE_12,
         font: FONT,
@@ -933,6 +933,7 @@ async function construirZonaFirmasSura({ info = {} } = {}) {
  */
 export async function descargarWordInformeSura({ caso = {}, informe = null, liquidador = null } = {}) {
   const info = informe || defaultInformeUnicoSura(caso);
+  const esPreliminar = String(info.tipoInforme || '') === 'preliminar';
   const liq = liquidador || mapCasoSuraALiquidador(caso);
   const totales = calcularLiquidacionSura(liq);
   const enc = liq.encabezado || {};
@@ -1279,6 +1280,21 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
         valueW: 5000,
       }
     ),
+    ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
+      ? [
+          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+          ...totales.otrosAmparos.map((it) =>
+            campoFila(
+              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
+              money(it.valor),
+              { labelW: 5000, valueW: 5000 }
+            )
+          ),
+        ]
+      : []),
     campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
       boldValue: true,
       labelW: 5000,
@@ -1432,7 +1448,7 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
         properties: { page: pagePortrait },
         headers: { default: header },
         children: [
-          crearTituloInformeUnico(),
+          crearTituloInformeUnico(esPreliminar),
           p('SEGUROS SURA S.A.', {
             alignment: AlignmentType.CENTER,
             bold: true,
@@ -1536,6 +1552,18 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
           ...fotoParrafos,
 
           heading('7. Conclusiones y recomendación del ajustador'),
+          ...(esPreliminar
+            ? [
+                p('Reserva recomendada', { bold: true, after: 40 }),
+                p(txt(info.reservaRecomendada, 'Pendiente diligenciar reserva.'), {
+                  after: 80,
+                }),
+                p('Anticipo recomendado', { bold: true, after: 40 }),
+                p(txt(info.anticipoRecomendado, 'No se recomienda anticipo en este informe.'), {
+                  after: 120,
+                }),
+              ]
+            : []),
           p('Conclusiones', { bold: true, after: 40 }),
           p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
             after: 120,
@@ -1548,7 +1576,9 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
           }),
 
           p(
-            `Para constancia se firma el presente informe único en ${txt(
+            `Para constancia se firma el presente ${
+              esPreliminar ? 'informe preliminar' : 'informe único'
+            } en ${txt(
               caso.ciudad || enc.ciudad,
               'Colombia'
             )}, ${fmtFecha(info.fechaInforme || new Date())}.`,

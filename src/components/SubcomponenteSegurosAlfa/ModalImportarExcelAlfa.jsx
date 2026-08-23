@@ -52,6 +52,9 @@ function mapSessionToPreview(payload) {
       estadoActual: r.previewSnapshot?.estadoActual,
       estadoExcel: r.previewSnapshot?.estadoExcel,
       estadoAction: r.previewSnapshot?.estadoAction,
+      estadoGestionActual: r.previewSnapshot?.estadoGestionActual,
+      estadoGestionExcel: r.previewSnapshot?.estadoGestionExcel,
+      estadoGestionAction: r.previewSnapshot?.estadoGestionAction,
       changeFields: r.previewSnapshot?.changeFields || Object.keys(r.changes || {}),
       changes: r.changes,
       ignoredFields: r.ignoredFields,
@@ -316,7 +319,8 @@ export default function ModalImportarExcelAlfa({
                       <th className="px-2 py-2">ID / Crédito</th>
                       <th className="px-2 py-2">Póliza act.→Excel</th>
                       <th className="px-2 py-2">Siniestro act.→Excel</th>
-                      <th className="px-2 py-2">Estado</th>
+                      <th className="px-2 py-2">Estado siniestro</th>
+                      <th className="px-2 py-2">Estado gestión</th>
                       <th className="px-2 py-2">Cambios</th>
                       <th className="px-2 py-2">Warnings</th>
                       <th className="px-2 py-2">Evento siniestro</th>
@@ -338,6 +342,12 @@ export default function ModalImportarExcelAlfa({
                           ? `${r.estadoActual || '∅'}→${r.estadoExcel || '∅'} IGNORED_PROTECTED`
                           : r.estadoActual || r.estadoExcel
                             ? `${r.estadoActual || '∅'} / ${r.estadoExcel || '∅'}`
+                            : '—';
+                      const estadoGestionLine =
+                        r.estadoGestionAction === 'IGNORED_PROTECTED'
+                          ? `${r.estadoGestionActual || '∅'}→${r.estadoGestionExcel || '∅'} IGNORED_PROTECTED`
+                          : r.estadoGestionActual || r.estadoGestionExcel
+                            ? `${r.estadoGestionActual || '∅'} / ${r.estadoGestionExcel || '∅'}`
                             : '—';
                       return (
                         <tr
@@ -371,6 +381,7 @@ export default function ModalImportarExcelAlfa({
                             {(r.siniestroActual || '∅') + ' → ' + (r.siniestroExcel || '∅')}
                           </td>
                           <td className="px-2 py-1.5 text-xs">{estadoLine}</td>
+                          <td className="px-2 py-1.5 text-xs">{estadoGestionLine}</td>
                           <td className="px-2 py-1.5 text-gray-600 dark:text-gray-300">
                             {(r.changeFields || []).join(', ') ||
                               (r.changes ? Object.keys(r.changes).join(', ') : '') ||

@@ -28,6 +28,7 @@ const CAMPOS_FECHA_CAMEL_SNAKE = [
   ['fchaRepoActi', 'fcha_repo_acti'],
   ['fchaProgInspeccion', 'fcha_prog_inspeccion'],
   ['fchaAceptacionCifrasAseguradora', 'fcha_aceptacion_cifras_aseguradora'],
+  ['fchaReconsideracion', 'fcha_reconsideracion'],
   ['fchaEnvioFiniquito', 'fcha_envio_finiquito'],
   ['fchaFinqtoIndem', 'fcha_finqto_indem'],
   ['fchaFactra', 'fcha_factra'],

@@ -16,17 +16,35 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const normalizeAlfaItem = (item = {}) => ({
-  ...item,
-  siniestro: item.siniestro ?? '',
-  identificacion: item.identificacion ?? '',
-  tomador: item.tomador ?? '',
-  numeroPoliza: item.numeroPoliza ?? '',
-  estado: item.estado ?? '',
-  fechaLlamada: item.fechaLlamada ?? null,
-  observacionLlamada: item.observacionLlamada ?? '',
-  archivos: Array.isArray(item.archivos) ? item.archivos : [],
-});
+export const normalizeAlfaItem = (item = {}) => {
+  const liquidadorObj = item.liquidador && typeof item.liquidador === 'object';
+  const informeObj = item.informeUnico && typeof item.informeUnico === 'object';
+  return {
+    ...item,
+    siniestro: item.siniestro ?? '',
+    identificacion: item.identificacion ?? '',
+    tomador: item.tomador ?? '',
+    numeroPoliza: item.numeroPoliza ?? '',
+    estado: item.estado ?? 'Sin contactar',
+    estadoGestion: item.estadoGestion ?? '',
+    observacionesGestion: item.observacionesGestion ?? '',
+    zonaAsignada: item.zonaAsignada ?? '',
+    fueraDeZona: Boolean(item.fueraDeZona),
+    noAceptacionOferta: Boolean(item.noAceptacionOferta),
+    grupoReclamacion: item.grupoReclamacion ?? '',
+    fechaLlamada: item.fechaLlamada ?? null,
+    observacionLlamada: item.observacionLlamada ?? '',
+    fechaComunicacionBajoDeducible: item.fechaComunicacionBajoDeducible ?? null,
+    archivos: Array.isArray(item.archivos) ? item.archivos : [],
+    tieneLiquidador: Boolean(
+      item.tieneLiquidador ?? liquidadorObj
+    ),
+    tieneInforme: Boolean(item.tieneInforme ?? informeObj),
+    tieneLiquidadorConContenido: Boolean(
+      item.tieneLiquidadorConContenido ?? liquidadorObj
+    ),
+  };
+};
 
 const normalizeResponseArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeAlfaItem(item ?? {})) : [];
@@ -106,6 +124,24 @@ export const actualizarCasoAlfa = async (id, datos) => {
       payload?.error ||
         payload?.detalle ||
         `Error al actualizar el caso Seguros Alfa (${response.status})`
+    );
+  }
+  return normalizeAlfaItem(payload?.data ?? payload);
+};
+
+export const crearPredioVinculadoAlfa = async (casoId, datos = {}) => {
+  if (!casoId) throw new Error('Identificador de caso Seguros Alfa no válido');
+  const response = await fetch(`${ALFA_API_URL}/${casoId}/predio-vinculado`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(datos),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(
+      payload?.error ||
+        payload?.detalle ||
+        `Error al crear predio vinculado (${response.status})`
     );
   }
   return normalizeAlfaItem(payload?.data ?? payload);

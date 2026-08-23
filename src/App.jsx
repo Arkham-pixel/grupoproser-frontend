@@ -171,7 +171,10 @@ function RootRedirect() {
 function InicioOrRedirectPorRol() {
   if (esRolVisualizadorLocal()) return <Navigate to="/matrices-riesgo" replace />
   if (esRolPuertosLocal()) return <Navigate to="/puertos/actas" replace />
-  if (esRolContractor()) return <Navigate to={rutaInicioPorRol()} replace />
+  if (esRolContractor()) {
+    const inicio = rutaInicioPorRol()
+    if (inicio && inicio !== '/inicio') return <Navigate to={inicio} replace />
+  }
   return <Inicio />
 }
 
@@ -612,6 +615,7 @@ export default function App() {
 
           <Route path="bbva-cat/carga" element={<FormularioBbvaCat origen="listado" />} />
           <Route path="bbva-cat/listado/reporte" element={<ReporteBbvaCatListado />} />
+          <Route path="bbva-cat/listado/analista" element={<ReporteBbvaCatListado modo="analista" />} />
           <Route path="bbva-cat/listado/dashboard" element={<DashboardBbvaCatListado />} />
           <Route path="bbva-cat/listado/caso" element={<RedirectBbvaCatListadoWorkspace />} />
           <Route path="bbva-cat/reporte" element={<ReporteBbvaCat />} />
@@ -661,6 +665,7 @@ export default function App() {
           <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
           <Route path="sura/editar" element={<FormularioCasoSuraPage />} />
           <Route path="sura/reporte" element={<ReporteSegurosSura />} />
+          <Route path="sura/documentacion" element={<ReporteSegurosSura soloDocumentacion />} />
           <Route path="sura/dashboard" element={<DashboardSegurosSura />} />
           <Route path="sura/boletin" element={<BoletinSemanalSegurosSura />} />
           <Route path="sura/bloques" element={<BloquesCercaniaSegurosSura />} />

@@ -219,6 +219,7 @@ if (!esAdminOSoporte) {
                 <option value="contractor_solo_zurich">{t('roles.contractor_solo_zurich')}</option>
                 <option value="contractor_solo_bbva">{t('roles.contractor_solo_bbva')}</option>
                 <option value="contractor_solo_equidad">{t('roles.contractor_solo_equidad', 'Equidad FDM')}</option>
+                <option value="contractor_solo_previsora">{t('roles.contractor_solo_previsora', 'Previsora')}</option>
                 <option value="soporte">{t('roles.soporte')}</option>
                 <option value="admin">{t('roles.admin')}</option>
               </select>

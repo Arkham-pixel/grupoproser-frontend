@@ -1,6 +1,19 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const BBVA_CAT_REPORTE_PAGE_SIZE = 25;
+export const RADIO_KM_ANALISTA_BBVA_CAT = '5';
+export const RADIO_KM_LISTADO_BBVA_CAT = '0.5';
+export const STORAGE_ORIGEN_LISTADO_BBVA_CAT = 'bbvaCatListadoOrigenReporte';
+
+export function casoTieneArchivosBbvaCat(caso) {
+  return Array.isArray(caso?.archivos) && caso.archivos.length > 0;
+}
+
+export function indiceColorBloqueBbvaCat(bloque, fallback = 0) {
+  const m = String(bloque?.id || '').match(/^bloque-(\d+)$/i);
+  if (m) return Math.max(0, Number(m[1]) - 1);
+  return fallback;
+}
 
 export const ESTADOS_BBVA_CAT = [
   'CASO NUEVO',
@@ -8,8 +21,26 @@ export const ESTADOS_BBVA_CAT = [
   'ANÁLISIS DEL CASO',
   'PENDIENTE DE DOCUMENTO',
   'OBJECIÓN',
+  'OBJETADO',
   'AUTORIZACIÓN ANALISTA',
   'CASO PARA PAGO',
+  'PAGADO',
+];
+
+/** Grupos de la barra de estados del formulario (flujo + rama objeción + pago). */
+export const GRUPOS_BARRA_ESTADOS_BBVA_CAT = [
+  {
+    id: 'inspeccion',
+    estados: ['CASO NUEVO', 'COORDINANDO INSPECCIÓN', 'ANÁLISIS DEL CASO', 'PENDIENTE DE DOCUMENTO'],
+  },
+  {
+    id: 'objecion',
+    estados: ['OBJECIÓN', 'OBJETADO'],
+  },
+  {
+    id: 'pago',
+    estados: ['AUTORIZACIÓN ANALISTA', 'CASO PARA PAGO', 'PAGADO'],
+  },
 ];
 
 export const MODALIDADES_BBVA_CAT = ['CAMPO', 'VIDEOPERITAJE'];
@@ -20,8 +51,10 @@ export const FECHA_ACCION_POR_ESTADO_BBVA_CAT = {
   'ANÁLISIS DEL CASO': 'fechaAnalisisCaso',
   'PENDIENTE DE DOCUMENTO': 'fechaSolicitudDocumento',
   OBJECIÓN: 'fechaObjecion',
+  OBJETADO: 'fechaObjetado',
   'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
   'CASO PARA PAGO': 'fechaCasoParaPago',
+  PAGADO: 'fechaCasoPagado',
 };
 
 export const CAMPOS_FECHA_ACCION_BBVA_CAT = [
@@ -31,9 +64,13 @@ export const CAMPOS_FECHA_ACCION_BBVA_CAT = [
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
   'fechaObjecion',
+  'fechaObjetado',
   'fechaAutorizacionAnalista',
   'fechaCasoParaPago',
+  'fechaCasoPagado',
 ];
+
+export const ETIQUETA_DOCUMENTO_PAGO_BBVA_CAT = 'PAGO';
 
 const ESTADOS_BBVA_CAT_LEGACY = {
   PENDIENTE: 'CASO NUEVO',
@@ -42,6 +79,15 @@ const ESTADOS_BBVA_CAT_LEGACY = {
   LIQUIDADO: 'CASO PARA PAGO',
   'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
   CERRADO: 'CASO PARA PAGO',
+  OBJECTED: 'OBJETADO',
+  'CASO OBJETADO': 'OBJETADO',
+  'OBJECION CERRADA': 'OBJETADO',
+  'OBJECION FINAL': 'OBJETADO',
+  PAGO: 'PAGADO',
+  'CASO PAGADO': 'PAGADO',
+  INDEMNIZADO: 'PAGADO',
+  GIRADO: 'PAGADO',
+  'CASE PAID': 'PAGADO',
 };
 
 const claveEstadoBbvaCat = (valor) =>
@@ -60,6 +106,11 @@ export function homologarEstadoBbvaCat(valor) {
   const exacto = ESTADOS_BBVA_CAT.find((est) => claveEstadoBbvaCat(est) === key);
   if (exacto) return exacto;
   return ESTADOS_BBVA_CAT_LEGACY[key] || raw;
+}
+
+export function muestraZonaDocumentoPagoBbvaCat(estado) {
+  const e = claveEstadoBbvaCat(homologarEstadoBbvaCat(estado));
+  return e === 'PAGADO' || e === 'CASO PARA PAGO';
 }
 
 export function diasEnEstadoBbvaCat(caso = {}) {
@@ -136,6 +187,7 @@ export const ETIQUETAS_ARCHIVO_BBVA_CAT = [
   'POLIZA',
   'INSPECCION',
   'LIQUIDACION',
+  'INFORME',
   'FOTOS',
   /** Manual CAT — evidencia fotográfica/documental */
   'FOTO_GENERAL',
@@ -143,8 +195,32 @@ export const ETIQUETAS_ARCHIVO_BBVA_CAT = [
   'EQUIPOS_CRITICOS',
   'MITIGACION',
   'NO_ACCESO',
+  'PAGO',
   'OTRO',
 ];
+
+export const ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO = [
+  'GENERAL',
+  'POLIZA',
+  'LIQUIDACION',
+  'INFORME',
+  'FOTOS',
+  'PAGO',
+  'OTRO',
+];
+
+/** En BBVA el ZC del listado es el mismo WF/siniestro del CAT. */
+export function zcCasoBbvaCat(caso = {}) {
+  return String(caso.zc || caso.siniestro || '').trim();
+}
+
+export function etiquetaDireccionBloqueBbvaCat(caso = {}) {
+  const zc = zcCasoBbvaCat(caso);
+  const dir = String(caso.direccionPredio || '').trim();
+  if (zc && dir) return `ZC ${zc} · ${dir}`;
+  if (zc) return `ZC ${zc}`;
+  return dir || String(caso.consecutivo || '').trim() || '—';
+}
 
 /** Manual CAT BBVA: severidad 1–6 (reporte de exposición). Textos exactos del Word. */
 export const SEVERIDAD_CAT_BBVA = [
@@ -504,8 +580,10 @@ export const FORM_VACIO_BBVA_CAT = {
   fechaSolicitudDocumento: '',
   fechaRecepcionDocumento: '',
   fechaObjecion: '',
+  fechaObjetado: '',
   fechaAutorizacionAnalista: '',
   fechaCasoParaPago: '',
+  fechaCasoPagado: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',

@@ -22,6 +22,8 @@ import {
   evidenciaAplicaSi,
   normalizeEvidenciaItem,
   esChecklistCatLleno,
+  diasEnEstadoAllianz,
+  ultimaGestionAllianz,
 } from './allianzHelpers.js';
 import {
   expressBadge,
@@ -93,6 +95,18 @@ const COLUMNAS = [
   { clave: 'fechaAceptacionLiquidacion', labelKey: 'fechaAceptacionLiquidacion' },
   { clave: 'fechaEnvioAseguradora', labelKey: 'fechaEnvioAseguradora' },
   { clave: 'estado', labelKey: 'estado' },
+  { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
+  { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
+  { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
+  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
+  { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
+  { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
+  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
+  { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
+  { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
+  { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
+  { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
   { clave: 'observaciones', labelKey: 'observaciones' },
   { clave: 'severidadCat', labelKey: 'severidadCat' },
   { clave: 'accesoPredio', labelKey: 'accesoPredio' },
@@ -115,6 +129,17 @@ const CAMPOS_FECHA = new Set([
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fechaAsignacion',
+  'fechaVisita',
+  'fechaCasoNuevo',
+  'fechaCoordinandoInspeccion',
+  'fechaAnalisisCaso',
+  'fechaSolicitudDocumento',
+  'fechaRecepcionDocumento',
+  'fechaObjecion',
+  'fechaAutorizacionAnalista',
+  'fechaCasoParaPago',
+  'ultimaGestion',
 ]);
 
 /** Encabezados de export en el mismo orden/nombre que la hoja BD */
@@ -165,6 +190,18 @@ const buildExportRow = (caso) => ({
   'FECHA ACEPTACIÓN LIQUIDACIÓN': formatDate(caso.fechaAceptacionLiquidacion),
   'FECHA ENVÍO A LA ASEGURADORA': formatDate(caso.fechaEnvioAseguradora),
   ESTADO: caso.estado ?? '',
+  MODALIDAD: caso.modalidadAtencion ?? '',
+  'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
+  'FECHA COORDINANDO INSPECCIÓN': formatDate(caso.fechaCoordinandoInspeccion),
+  'FECHA ANÁLISIS': formatDate(caso.fechaAnalisisCaso),
+  'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
+  'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
+  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
+  'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
+  'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'DÍAS EN ESTADO': diasEnEstadoAllianz(caso) || '',
+  'ÚLTIMA GESTIÓN': formatDate(ultimaGestionAllianz(caso)),
+  'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
   'SEVERIDAD CAT': caso.severidadCat ?? '',
   'SEVERIDAD CAT DESCRIPCION': labelSeveridadCat(caso.severidadCat),
   'ACCESO PREDIO': caso.accesoPredio ?? '',
@@ -318,6 +355,8 @@ export default function ReporteAllianz() {
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
     }
+    if (clave === 'diasEnEstado') return diasEnEstadoAllianz(item) || '—';
+    if (clave === 'ultimaGestion') return formatDate(ultimaGestionAllianz(item)) || '—';
     if (CAMPOS_FECHA.has(clave)) return formatDate(item[clave]) || '—';
     const valor = item[clave];
     return valor === null || valor === undefined || valor === '' ? '—' : String(valor);

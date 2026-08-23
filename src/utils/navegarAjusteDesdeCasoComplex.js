@@ -1,5 +1,8 @@
 import historialService, { TIPOS_FORMULARIOS } from '../services/historialService.js';
-import { buildPrefillAjusteDesdeCasoComplex } from './prefillAjusteDesdeCasoComplex.js';
+import {
+  buildPrefillAjusteDesdeCasoComplex,
+  buildPrefillAjusteDesdeCasoSura,
+} from './prefillAjusteDesdeCasoComplex.js';
 
 const normalizarClaveCaso = (valor) =>
   String(valor || '')
@@ -38,12 +41,14 @@ export function estadoAjusteDesdeEtapaSubtarea(etapa) {
 export async function navegarAjusteDesdeCasoComplex(navigate, caso, opts = {}) {
   const numeroSiniestro = caso?.nmroSinstro || '';
   const numeroCaso = caso?.nmroAjste || caso?.numero_ajuste || '';
-  const complexId = caso?._id || caso?.casoId || '';
+  const esOrigenSura = opts.origen === 'sura';
+  const complexId = esOrigenSura ? '' : (caso?._id || caso?.casoId || '');
   const numeroCasoNormalizado = normalizarClaveCaso(numeroCaso);
   const returnPath = opts.returnPath || '/complex/mis-subtareas';
 
   const stateRetorno = {
     complexId,
+    suraId: opts.suraId || '',
     numeroSiniestro,
     numeroCaso,
     nmroSinstro: numeroSiniestro,
@@ -51,7 +56,7 @@ export async function navegarAjusteDesdeCasoComplex(navigate, caso, opts = {}) {
     origen: opts.origen || 'subtarea-complex',
     ...(opts.estadoInicial ? { estadoInicial: opts.estadoInicial } : {}),
     returnPath,
-    prefillDesdeCaso: buildPrefillAjusteDesdeCasoComplex(caso),
+    prefillDesdeCaso: opts.prefill || buildPrefillAjusteDesdeCasoComplex(caso),
   };
 
   try {
@@ -110,4 +115,23 @@ export async function navegarAjusteDesdeCasoComplex(navigate, caso, opts = {}) {
   }
 
   navigate('/ajuste', { state: stateRetorno });
+}
+
+/** Abre el informe de Complex (preliminar o final) desde un caso SURA. */
+export async function navegarAjusteDesdeCasoSura(navigate, caso, opts = {}) {
+  const suraId = String(caso?._id || caso?.casoId || '');
+  const numeroCaso = caso?.consecutivo || caso?.nmroAjste || caso?.numero_ajuste || '';
+  const casoParaAjuste = {
+    nmroAjste: numeroCaso,
+    nmroSinstro: caso?.siniestro || caso?.nmroSinstro || '',
+    numero_ajuste: numeroCaso,
+  };
+  return navegarAjusteDesdeCasoComplex(navigate, casoParaAjuste, {
+    origen: 'sura',
+    suraId,
+    estadoInicial: opts.estadoInicial,
+    returnPath:
+      opts.returnPath || (suraId ? `/sura/caso?id=${suraId}&tab=documentos` : '/sura/reporte'),
+    prefill: buildPrefillAjusteDesdeCasoSura(caso),
+  });
 }

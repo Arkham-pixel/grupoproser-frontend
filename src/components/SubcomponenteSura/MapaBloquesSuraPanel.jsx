@@ -99,11 +99,7 @@ export default function MapaBloquesSuraPanel({
         estado: estado || '',
       });
       setData(res);
-      const open = {};
-      (res.bloques || []).forEach((b, i) => {
-        open[b.id] = i < 2;
-      });
-      setAbiertos(open);
+      setAbiertos({});
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosSura.bloques.loadError'));
@@ -265,10 +261,15 @@ export default function MapaBloquesSuraPanel({
     }
     const ids = sinUbicar.map((c) => String(c._id));
     onBloqueChange(SIN_UBICAR_ID, ids);
-    setAbiertos((prev) => ({ ...prev, [SIN_UBICAR_ID]: true }));
+    setAbiertos({ [SIN_UBICAR_ID]: true });
   };
 
-  const toggleLista = (id) => setAbiertos((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleLista = (id) =>
+    setAbiertos((prev) => {
+      const estabaAbierto = Boolean(prev[id]);
+      if (estabaAbierto) return {};
+      return { [id]: true };
+    });
   const sinUbicarActivo = bloqueSeleccionadoId === SIN_UBICAR_ID;
 
   return (

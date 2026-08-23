@@ -3,7 +3,11 @@ import { FaFileExcel, FaSave, FaUndo, FaUpload } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig.js';
-import { crearCasoAlfa, actualizarCasoAlfa } from '../../services/segurosAlfaService.js';
+import {
+  crearCasoAlfa,
+  actualizarCasoAlfa,
+  crearPredioVinculadoAlfa,
+} from '../../services/segurosAlfaService.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -22,17 +26,24 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
   Campo,
+  ExpressModal,
   InputFenix,
   SelectFenix,
   TextareaFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   CAMPOS_NUMERICOS_ALFA,
-  ESTADOS_ALFA,
+  ESTADOS_REQUIEREN_OBS_ALFA,
   FORM_VACIO_ALFA,
+  PLANTILLA_COMUNICACION_BAJO_DEDUCIBLE,
   construirFormDesdeCasoAlfa,
+  estadoGestionDesdeEstadoAlfa,
   formatMilesInput,
+  homologarEstadoAlfa,
+  casoAlfaVenceSla2Dias,
+  casoTieneEvidenciaComunicacionBajoDeducible,
 } from './segurosAlfaHelpers.js';
+import BarraEstadosSegurosAlfa from './BarraEstadosSegurosAlfa.jsx';
 import CampoTomadorAlfa from './CampoTomadorAlfa.jsx';
 import ModalImportarExcelAlfa, {
   esUsuarioAlfaExcelActualizar,
@@ -90,6 +101,14 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   );
   const [guardando, setGuardando] = useState(false);
   const [modalImportOpen, setModalImportOpen] = useState(false);
+  const [modalPredioOpen, setModalPredioOpen] = useState(false);
+  const [predioForm, setPredioForm] = useState({
+    direccionPredio: '',
+    ciudad: '',
+    departamento: '',
+    zonaAsignada: '',
+  });
+  const [guardandoPredio, setGuardandoPredio] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [resumenImport, setResumenImport] = useState(null);
@@ -285,6 +304,13 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     payload.fechaLlamada = form.fechaLlamada ? String(form.fechaLlamada).trim() : '';
     payload.observacionLlamada =
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
+    payload.fueraDeZona = Boolean(form.fueraDeZona);
+    payload.observacionesGestion =
+      form.observacionesGestion != null ? String(form.observacionesGestion) : '';
+    payload.estado = homologarEstadoAlfa(form.estado, form);
+    payload.estadoGestion = estadoGestionDesdeEstadoAlfa(payload.estado);
+    payload.zonaAsignada = form.zonaAsignada || '';
+    payload.noAceptacionOferta = Boolean(form.noAceptacionOferta);
     return payload;
   };
 
@@ -299,6 +325,33 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     }
     if (!form.estado.trim()) {
       setError(t('segurosAlfa.validation.statusRequired'));
+      return;
+    }
+    if (
+      ESTADOS_REQUIEREN_OBS_ALFA.has(homologarEstadoAlfa(form.estado, form)) &&
+      !String(form.observacionesGestion || '').trim()
+    ) {
+      setError(
+        'Observaciones de gestión obligatorias para Sin respuesta / Solicitud de documentos.'
+      );
+      return;
+    }
+    if (form.fueraDeZona && !String(form.observacionesGestion || '').trim()) {
+      setError('Caso fuera de zona: indique en observaciones la reasignación / aviso.');
+      return;
+    }
+    if (form.noAceptacionOferta && !String(form.observacionesGestion || '').trim()) {
+      setError('No aceptación de oferta: las observaciones de gestión son obligatorias.');
+      return;
+    }
+    if (
+      String(form.estado || '').toUpperCase() === 'CERRADO' &&
+      form.fechaComunicacionBajoDeducible &&
+      !casoTieneEvidenciaComunicacionBajoDeducible(esEdicion ? initialData : form)
+    ) {
+      setError(
+        'Cierre bajo deducible: cargue evidencia en archivero (COMUNICACION / OBJECION_DEDUCIBLE) antes de cerrar.'
+      );
       return;
     }
 
@@ -509,8 +562,35 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
               placeholder={t('segurosAlfa.placeholders.estadoPagoPrimas')}
             />
           </Campo>
-          <Campo label={t('segurosAlfa.fields.estado')} required>
-            {selectSimple('estado', ESTADOS_ALFA)}
+          <div className="md:col-span-2 lg:col-span-3">
+            <Campo label={t('segurosAlfa.fields.estado')} required>
+              <BarraEstadosSegurosAlfa
+                valor={form.estado}
+                disabled={!puedeEditarCampoCaso(rolUsuario, 'estado')}
+                onChange={(estado) => {
+                  if (!puedeEditarCampoCaso(rolUsuario, 'estado')) return;
+                  setForm((prev) => ({ ...prev, estado }));
+                }}
+              />
+            </Campo>
+          </div>
+          <Campo label="Zona asignada">
+            <InputFenix
+              value={form.zonaAsignada || ''}
+              onChange={setCampo('zonaAsignada')}
+              placeholder="Ej. Cali / Valle"
+            />
+          </Campo>
+          <Campo label="Fuera de zona">
+            <SelectFenix
+              value={form.fueraDeZona ? '1' : '0'}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, fueraDeZona: e.target.value === '1' }))
+              }
+            >
+              <option value="0">No</option>
+              <option value="1">Sí — informar reasignación</option>
+            </SelectFenix>
           </Campo>
           <CamposAsignacionCaso
             form={form}
@@ -524,6 +604,86 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             ciudadSeleccionada={form.ciudad}
             filtrarPorCiudad
           />
+        </div>
+        <div className="mt-3 grid grid-cols-1 gap-3">
+          <Campo label="Observaciones de gestión">
+            <TextareaFenix
+              value={form.observacionesGestion || ''}
+              onChange={setCampo('observacionesGestion')}
+              rows={3}
+              placeholder="No aceptación, falta de contacto, info pendiente, acceso, inconsistencias…"
+            />
+          </Campo>
+          <Campo label="No aceptación de oferta">
+            <SelectFenix
+              value={form.noAceptacionOferta ? '1' : '0'}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  noAceptacionOferta: e.target.value === '1',
+                }))
+              }
+            >
+              <option value="0">No</option>
+              <option value="1">Sí — exige observación</option>
+            </SelectFenix>
+          </Campo>
+          {esEdicion && casoAlfaVenceSla2Dias(form) ? (
+            <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
+              SLA 2 días: la inspección ya venció sin documentación/estado actualizado.
+            </p>
+          ) : null}
+          {form.fueraDeZona ? (
+            <p className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100">
+              Caso fuera de zona asignada: no atender sin autorización; deje constancia en observaciones.
+            </p>
+          ) : null}
+          {esEdicion ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => {
+                  setPredioForm({
+                    direccionPredio: '',
+                    ciudad: form.ciudad || '',
+                    departamento: form.departamento || '',
+                    zonaAsignada: form.zonaAsignada || '',
+                  });
+                  setModalPredioOpen(true);
+                }}
+              >
+                Crear predio vinculado
+              </button>
+              <Campo label="Comunicación bajo deducible (fecha envío)">
+                <InputFenix
+                  type="date"
+                  value={form.fechaComunicacionBajoDeducible || ''}
+                  onChange={setCampo('fechaComunicacionBajoDeducible')}
+                />
+              </Campo>
+              <button
+                type="button"
+                className={expressBtnGhost}
+                onClick={() => {
+                  setForm((prev) => ({
+                    ...prev,
+                    observacionesGestion: [
+                      String(prev.observacionesGestion || '').trim(),
+                      PLANTILLA_COMUNICACION_BAJO_DEDUCIBLE,
+                    ]
+                      .filter(Boolean)
+                      .join('\n\n'),
+                  }));
+                  setExito(
+                    'Plantilla bajo deducible insertada. Cargue evidencia COMUNICACION/OBJECION_DEDUCIBLE en archivero.'
+                  );
+                }}
+              >
+                Insertar plantilla bajo deducible
+              </button>
+            </div>
+          ) : null}
         </div>
         {soloInspector ? (
           <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
@@ -648,10 +808,105 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     </form>
   );
 
+  const modalPredioVinculado = (
+    <ExpressModal
+      open={modalPredioOpen}
+      onClose={() => {
+        if (guardandoPredio) return;
+        setModalPredioOpen(false);
+      }}
+      title="Crear predio vinculado"
+    >
+      <div className="space-y-4 p-4 sm:p-6">
+        <p className="font-body text-sm text-gray-600 dark:text-gray-300">
+          Se crea un caso independiente (nuevo consecutivo y expediente) con el mismo
+          siniestro/póliza/tomador y la dirección que indiques.
+        </p>
+        <Campo label="Dirección del predio" required>
+          <InputFenix
+            value={predioForm.direccionPredio}
+            onChange={(e) =>
+              setPredioForm((prev) => ({ ...prev, direccionPredio: e.target.value }))
+            }
+            placeholder="Nueva dirección / predio"
+            autoFocus
+          />
+        </Campo>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Campo label={t('segurosAlfa.fields.ciudad')}>
+            <InputFenix
+              value={predioForm.ciudad}
+              onChange={(e) =>
+                setPredioForm((prev) => ({ ...prev, ciudad: e.target.value }))
+              }
+            />
+          </Campo>
+          <Campo label={t('segurosAlfa.fields.departamento')}>
+            <InputFenix
+              value={predioForm.departamento}
+              onChange={(e) =>
+                setPredioForm((prev) => ({ ...prev, departamento: e.target.value }))
+              }
+            />
+          </Campo>
+        </div>
+        <Campo label="Zona asignada">
+          <InputFenix
+            value={predioForm.zonaAsignada}
+            onChange={(e) =>
+              setPredioForm((prev) => ({ ...prev, zonaAsignada: e.target.value }))
+            }
+          />
+        </Campo>
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
+          <button
+            type="button"
+            className={expressBtnGhost}
+            disabled={guardandoPredio}
+            onClick={() => setModalPredioOpen(false)}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className={expressBtnPrimary}
+            disabled={guardandoPredio || !String(predioForm.direccionPredio || '').trim()}
+            onClick={async () => {
+              const dir = String(predioForm.direccionPredio || '').trim();
+              if (!dir || !initialData?._id) return;
+              setGuardandoPredio(true);
+              setError(null);
+              try {
+                const creado = await crearPredioVinculadoAlfa(initialData._id, {
+                  direccionPredio: dir,
+                  ciudad: predioForm.ciudad || form.ciudad,
+                  departamento: predioForm.departamento || form.departamento,
+                  zonaAsignada: predioForm.zonaAsignada || form.zonaAsignada,
+                });
+                setModalPredioOpen(false);
+                setExito(
+                  `Predio vinculado creado: ${creado?.consecutivo || creado?._id || 'OK'}`
+                );
+                if (onSaved) await onSaved(creado);
+              } catch (err) {
+                setError(err.message || 'No se pudo crear el predio vinculado');
+              } finally {
+                setGuardandoPredio(false);
+              }
+            }}
+          >
+            {guardandoPredio ? 'Creando…' : 'Crear predio'}
+          </button>
+        </div>
+      </div>
+    </ExpressModal>
+  );
+
   if (embed) {
     return (
       <div className={`${expressScope}`}>
         {contenidoFormulario}
+        {modalPredioVinculado}
         <ArnaldDraftChrome
           draftStatus={draftStatus}
           lastDraftAt={lastDraftAt}
@@ -710,6 +965,18 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             }}
           />
         )}
+        {esEdicion ? (
+          <div className="flex flex-wrap gap-2 text-sm">
+            <span className="rounded-md border border-gray-200 bg-white px-3 py-1.5 dark:border-gray-700 dark:bg-gray-900">
+              Estado: <strong>{form.estado || '—'}</strong>
+            </span>
+            {form.grupoReclamacion ? (
+              <span className="rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-indigo-900 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-100">
+                Grupo: {form.grupoReclamacion}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {puedeImportarExcel && !esEdicion && (
           <section className={expressCard}>
@@ -770,6 +1037,8 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             if (onSaved) await onSaved(data);
           }}
         />
+
+        {modalPredioVinculado}
 
         <section className={expressCard}>
           <div className={expressCardHeader}>

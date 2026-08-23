@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
@@ -20,6 +20,7 @@ import {
   postUbicacionesPredioBbvaCat,
 } from '../../services/bbvaCatService.js';
 import { googleMapsLoaderOptions } from '../../config/googleMapsLoader.js';
+import { etiquetaDireccionBloqueBbvaCat, indiceColorBloqueBbvaCat, zcCasoBbvaCat } from './bbvaCatHelpers.js';
 import {
   construirQueryGeocodeBbvaCat,
   esDireccionPredioGeocodableBbvaCat,
@@ -117,7 +118,7 @@ function spreadOverlappingMarkers(markers) {
 
 /**
  * Mapa + bloques de cercanía para BBVA CAT.
- * @param {{ ciudad?: string, estado?: string, bloqueSeleccionadoId?: string|null, onBloqueChange?: (bloqueId: string|null, casoIds: string[]) => void, compact?: boolean }} props
+ * @param {{ ciudad?: string, estado?: string, bloqueSeleccionadoId?: string|null, onBloqueChange?: Function, compact?: boolean, radioKmInicial?: string, depurarArchivos?: boolean, incluirConArchivos?: boolean, reloadToken?: number, getCasoHref?: Function }} props
  */
 export default function MapaBloquesBbvaCatPanel({
   ciudad = '',
@@ -125,12 +126,18 @@ export default function MapaBloquesBbvaCatPanel({
   bloqueSeleccionadoId = null,
   onBloqueChange,
   compact = false,
+  radioKmInicial = '0.5',
+  depurarArchivos = false,
+  incluirConArchivos = false,
+  soloConArchivos = false,
+  reloadToken = 0,
+  getCasoHref,
 }) {
   const { t } = useTranslation();
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
   const { isLoaded } = useJsApiLoader(googleMapsLoaderOptions(apiKey));
 
-  const [radioKm, setRadioKm] = useState('0.5');
+  const [radioKm, setRadioKm] = useState(String(radioKmInicial || '0.5'));
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
@@ -140,6 +147,13 @@ export default function MapaBloquesBbvaCatPanel({
   const [infoCaso, setInfoCaso] = useState(null);
   const [map, setMap] = useState(null);
 
+  useEffect(() => {
+    setRadioKm(String(radioKmInicial || '0.5'));
+  }, [radioKmInicial]);
+
+  const hrefCaso = (c) =>
+    typeof getCasoHref === 'function' ? getCasoHref(c) : `/bbva-cat/caso?casoId=${c._id}`;
+
   const cargar = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -148,13 +162,13 @@ export default function MapaBloquesBbvaCatPanel({
         radioKm: Number(radioKm),
         ciudad: ciudad || '',
         estado: estado || '',
+        depurarArchivos,
+        incluirConArchivos,
+        soloConArchivos,
       });
       setData(res);
-      const open = {};
-      (res.bloques || []).forEach((b, i) => {
-        open[b.id] = i < 2;
-      });
-      setAbiertos(open);
+      // Listas cerradas por defecto: solo se abren al hacer clic en el bloque.
+      setAbiertos({});
     } catch (err) {
       console.error(err);
       setError(err.message || t('bbvaCat.bloques.loadError'));
@@ -162,21 +176,13 @@ export default function MapaBloquesBbvaCatPanel({
     } finally {
       setLoading(false);
     }
-  }, [radioKm, ciudad, estado, t]);
+  }, [radioKm, ciudad, estado, depurarArchivos, incluirConArchivos, soloConArchivos, reloadToken, t]);
 
   useEffect(() => {
     cargar();
   }, [cargar]);
 
-  const bloques = useMemo(() => {
-    const list = [...(data?.bloques || [])];
-    list.sort((a, b) => {
-      const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
-      if (d !== 0) return d;
-      return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
-    });
-    return list;
-  }, [data]);
+  const bloques = data?.bloques || [];
   const sinUbicar = data?.sinUbicar || [];
   const sinDireccionCount = data?.sinDireccionCount ?? sinUbicar.filter((c) => c.motivoSinUbicar === 'sin_direccion').length;
   const geocodeFallidoCount =
@@ -185,7 +191,7 @@ export default function MapaBloquesBbvaCatPanel({
   const markers = useMemo(() => {
     const list = [];
     bloques.forEach((b, bi) => {
-      const color = colorBloque(bi);
+      const color = colorBloque(indiceColorBloqueBbvaCat(b, bi));
       (b.casos || []).forEach((c) => {
         if (!Number.isFinite(Number(c.lat)) || !Number.isFinite(Number(c.lng))) return;
         list.push({
@@ -370,10 +376,15 @@ export default function MapaBloquesBbvaCatPanel({
     const ids = sinUbicar.map((c) => String(c._id));
     const siniestros = sinUbicar.map((c) => String(c.siniestro || '')).filter(Boolean);
     onBloqueChange(SIN_UBICAR_ID, ids, { siniestros });
-    setAbiertos((prev) => ({ ...prev, [SIN_UBICAR_ID]: true }));
+    setAbiertos({ [SIN_UBICAR_ID]: true });
   };
 
-  const toggleLista = (id) => setAbiertos((prev) => ({ ...prev, [id]: !prev[id] }));
+  const toggleLista = (id) =>
+    setAbiertos((prev) => {
+      const estabaAbierto = Boolean(prev[id]);
+      if (estabaAbierto) return {};
+      return { [id]: true };
+    });
   const sinUbicarActivo = bloqueSeleccionadoId === SIN_UBICAR_ID;
 
   return (
@@ -398,8 +409,12 @@ export default function MapaBloquesBbvaCatPanel({
                 ))}
               </SelectFenix>
             </Campo>
-            <p className="max-w-[14rem] text-[11px] leading-snug text-gray-500 dark:text-gray-400">
-              Numeración fija por ubicación (N→S). Al cerrar casos el Bloque 1 no cambia de zona.
+            <p className="max-w-[16rem] text-[11px] leading-snug text-gray-500 dark:text-gray-400">
+              {soloConArchivos
+                ? t('bbvaCat.bloques.fixedHintListado')
+                : depurarArchivos
+                  ? t('bbvaCat.bloques.fixedHintAnalista')
+                  : t('bbvaCat.bloques.fixedHint')}
             </p>
           <button
             type="button"
@@ -436,6 +451,12 @@ export default function MapaBloquesBbvaCatPanel({
                   count: data.omitidosInspeccionados,
                 })}`
               : ''}
+            {depurarArchivos && !soloConArchivos
+              ? ` · ${t('bbvaCat.bloques.depuracionSummary', {
+                  pendientes: data.pendientes ?? data.planificar,
+                  conArchivo: data.conArchivoTotal ?? 0,
+                })}`
+              : ''}
           </p>
         )}
         <p className="mb-3 font-body text-xs text-amber-800 dark:text-amber-200">
@@ -446,13 +467,16 @@ export default function MapaBloquesBbvaCatPanel({
         <div className="mb-3 flex flex-wrap gap-2">
           {bloques.map((b, i) => {
             const active = bloqueSeleccionadoId === b.id;
-            const color = colorBloque(i);
+            const color = colorBloque(indiceColorBloqueBbvaCat(b, i));
+            const vacio = Number(b.cantidad) === 0;
             return (
               <button
                 key={b.id}
                 type="button"
                 onClick={() => seleccionarBloque(b)}
                 className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-body text-sm font-semibold transition ${
+                  vacio ? 'opacity-60' : ''
+                } ${
                   active
                     ? 'border-transparent text-white shadow-sm'
                     : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
@@ -465,6 +489,14 @@ export default function MapaBloquesBbvaCatPanel({
                   style={{ backgroundColor: active ? '#fff' : color }}
                 />
                 {b.nombre} ({b.cantidad})
+                {depurarArchivos &&
+                !soloConArchivos &&
+                Number(b.cantidadConArchivo) > 0 &&
+                !incluirConArchivos ? (
+                  <span className={`text-[10px] font-normal ${active ? 'text-white/80' : 'text-gray-500'}`}>
+                    {t('bbvaCat.bloques.cleanedCount', { count: b.cantidadConArchivo })}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -565,8 +597,8 @@ export default function MapaBloquesBbvaCatPanel({
                       }}
                       title={
                         m.stackSize > 1
-                          ? `${m.bloqueNombre}: ${m.stackIndex + 1}/${m.stackSize} · ${m.direccionPredio || m.siniestro || ''}`
-                          : `${m.bloqueNombre}: ${m.direccionPredio || m.siniestro || ''}`
+                          ? `${m.bloqueNombre}: ${m.stackIndex + 1}/${m.stackSize} · ${etiquetaDireccionBloqueBbvaCat(m)}`
+                          : `${m.bloqueNombre}: ${etiquetaDireccionBloqueBbvaCat(m)}`
                       }
                     />
                   ))}
@@ -580,6 +612,11 @@ export default function MapaBloquesBbvaCatPanel({
                 >
                   <div className="max-w-[280px] space-y-1 p-1 font-body text-xs text-gray-800">
                     <p className="font-semibold">{infoCaso.bloqueNombre}</p>
+                    {zcCasoBbvaCat(infoCaso) ? (
+                      <p className="font-semibold text-fenix-primario">
+                        {t('bbvaCat.fields.zc')}: {zcCasoBbvaCat(infoCaso)}
+                      </p>
+                    ) : null}
                     {infoCaso.stackSize > 1 && (
                       <p className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-semibold text-amber-800">
                         Mismo punto: {infoCaso.stackIndex + 1} de {infoCaso.stackSize} casos
@@ -602,17 +639,17 @@ export default function MapaBloquesBbvaCatPanel({
                           .map((p) => (
                             <Link
                               key={p._id}
-                              to={`/bbva-cat/caso?casoId=${p._id}`}
+                              to={hrefCaso(p)}
                               className="block truncate text-fenix-primario underline"
                             >
-                              {p.consecutivo || p.asegurado || p._id}
+                              {etiquetaDireccionBloqueBbvaCat(p)}
                             </Link>
                           ))}
                       </div>
                     )}
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Link
-                        to={`/bbva-cat/caso?casoId=${infoCaso._id}`}
+                        to={hrefCaso(infoCaso)}
                         className="inline-block text-fenix-primario underline"
                       >
                         {t('bbvaCat.bloques.openCase')}
@@ -648,7 +685,7 @@ export default function MapaBloquesBbvaCatPanel({
           {bloques.map((bloque, bi) => {
             const abierto = Boolean(abiertos[bloque.id]);
             const active = bloqueSeleccionadoId === bloque.id;
-            const color = colorBloque(bi);
+            const color = colorBloque(indiceColorBloqueBbvaCat(bloque, bi));
             return (
               <div
                 key={bloque.id}
@@ -692,12 +729,12 @@ export default function MapaBloquesBbvaCatPanel({
                   <ul className="max-h-40 space-y-1 overflow-y-auto border-t border-gray-100 px-3 py-2 text-xs dark:border-gray-800">
                     {(bloque.casos || []).map((c) => (
                       <li key={c._id} className="flex justify-between gap-2">
-                        <span className="truncate">
+                        <span className="truncate" title={etiquetaDireccionBloqueBbvaCat(c)}>
                           {c.distanciaKmCentro != null ? `${c.distanciaKmCentro} km · ` : ''}
-                          {c.direccionPredio || c.siniestro || c.consecutivo}
+                          {etiquetaDireccionBloqueBbvaCat(c)}
                         </span>
                         <Link
-                          to={`/bbva-cat/caso?casoId=${c._id}`}
+                          to={hrefCaso(c)}
                           className="shrink-0 text-fenix-primario hover:underline"
                         >
                           {t('bbvaCat.bloques.openCase')}
@@ -756,7 +793,9 @@ export default function MapaBloquesBbvaCatPanel({
                     <li key={c._id} className="flex justify-between gap-2">
                       <span className="min-w-0 truncate">
                         <span className="font-semibold text-gray-700 dark:text-gray-200">
-                          {c.consecutivo || c.siniestro || '—'}
+                          {zcCasoBbvaCat(c)
+                            ? `${t('bbvaCat.fields.zc')} ${zcCasoBbvaCat(c)}`
+                            : c.consecutivo || '—'}
                         </span>
                         {' · '}
                         <span className="text-amber-700 dark:text-amber-300">
@@ -769,7 +808,7 @@ export default function MapaBloquesBbvaCatPanel({
                         {c.ciudad ? ` · ${c.ciudad}` : ''}
                       </span>
                       <Link
-                        to={`/bbva-cat/caso?casoId=${c._id}`}
+                        to={hrefCaso(c)}
                         className="shrink-0 text-fenix-primario hover:underline"
                       >
                         {t('bbvaCat.bloques.openCase')}

@@ -35,11 +35,11 @@ import {
 import {
   CAMPOS_NUMERICOS_BBVA_CAT,
   CAMPOS_DECIMAL_BBVA_CAT,
-  ESTADOS_BBVA_CAT,
   FECHA_ACCION_POR_ESTADO_BBVA_CAT,
   FORM_VACIO_BBVA_CAT,
   MODALIDADES_BBVA_CAT,
   homologarEstadoBbvaCat,
+  muestraZonaDocumentoPagoBbvaCat,
   fechaParaInput,
   diasEnEstadoBbvaCat,
   ultimaGestionBbvaCat,
@@ -60,7 +60,7 @@ import ModalImportarExcelBbvaCat, {
 } from './ModalImportarExcelBbvaCat.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectBuscable from '../SelectBuscable.jsx';
-import { obtenerRolAlmacenado } from '../../config/roles.js';
+import { esRolSoloBbva, obtenerRolAlmacenado } from '../../config/roles.js';
 import {
   attrsCampoCaso,
   esRolInspector,
@@ -78,6 +78,8 @@ import {
 } from '../../utils/catalogosAsignacionCatastrofico.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import BarraEstadosBbvaCat from './BarraEstadosBbvaCat.jsx';
+import AdjuntoDocumentoPagoBbvaCat from './AdjuntoDocumentoPagoBbvaCat.jsx';
 
 const BbvaCatRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -367,8 +369,10 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
         fechaObjecion: form.fechaObjecion,
+        fechaObjetado: form.fechaObjetado,
         fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
         fechaCasoParaPago: form.fechaCasoParaPago,
+        fechaCasoPagado: form.fechaCasoPagado,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
@@ -620,8 +624,12 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
               buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </Campo>
-          <Campo label={t('bbvaCat.fields.estado')} required>
-            {selectSimple('estado', ESTADOS_BBVA_CAT)}
+          <Campo label={t('bbvaCat.fields.estado')} required className="md:col-span-2 lg:col-span-3">
+            <BarraEstadosBbvaCat
+              valor={form.estado}
+              disabled={Boolean(attrsCampoCaso(rolUsuario, 'estado', ctxPermiso).disabled)}
+              onChange={(estado) => setCampo('estado')(estado)}
+            />
           </Campo>
           <Campo label={t('bbvaCat.fields.modalidadAtencion')}>
             {selectSimple('modalidadAtencion', MODALIDADES_BBVA_CAT)}
@@ -711,6 +719,9 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
           <Campo label={t('bbvaCat.fields.fechaObjecion')}>
             <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
           </Campo>
+          <Campo label={t('bbvaCat.fields.fechaObjetado')}>
+            <InputFenix type="date" value={form.fechaObjetado} onChange={setCampo('fechaObjetado')} />
+          </Campo>
           <Campo label={t('bbvaCat.fields.fechaAutorizacionAnalista')}>
             <InputFenix
               type="date"
@@ -723,6 +734,13 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
               type="date"
               value={form.fechaCasoParaPago}
               onChange={setCampo('fechaCasoParaPago')}
+            />
+          </Campo>
+          <Campo label={t('bbvaCat.fields.fechaCasoPagado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaCasoPagado}
+              onChange={setCampo('fechaCasoPagado')}
             />
           </Campo>
           <Campo label={t('bbvaCat.fields.diasEnEstado')}>
@@ -760,6 +778,21 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
           </Campo>
         </div>
       </section>
+
+      {muestraZonaDocumentoPagoBbvaCat(form.estado) && (
+        <section className={expressFormSection}>
+          <h3 className={expressSectionTitle}>{t('bbvaCat.sections.documentoPago')}</h3>
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('bbvaCat.sections.documentoPagoLead')}
+          </p>
+          <AdjuntoDocumentoPagoBbvaCat
+            casoId={initialData?._id}
+            origen={origen}
+            archivosIniciales={initialData?.archivos}
+            disabled={soloInspector}
+          />
+        </section>
+      )}
 
       <fieldset
         disabled={soloInspector}
@@ -1156,10 +1189,20 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
                 {t('nav.bbvaCatAddCase')}
               </span>
               <Link
-                to={esModuloListado ? '/bbva-cat/listado/reporte' : '/bbva-cat/reporte'}
+                to={
+                  esModuloListado
+                    ? esRolSoloBbva()
+                      ? '/bbva-cat/listado/analista'
+                      : '/bbva-cat/listado/reporte'
+                    : '/bbva-cat/reporte'
+                }
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
               >
-                {esModuloListado ? t('nav.bbvaCatListadoReport') : t('nav.bbvaCatReport')}
+                {esModuloListado
+                  ? esRolSoloBbva()
+                    ? t('nav.bbvaCatListadoAnalista')
+                    : t('nav.bbvaCatListadoReport')
+                  : t('nav.bbvaCatReport')}
               </Link>
             </nav>
           </div>

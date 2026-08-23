@@ -7,6 +7,7 @@ import {
   coincideFiltroTexto,
   fechaEnRango,
   formatCurrency,
+  normalizarEstadoSura,
 } from './segurosSuraHelpers.js';
 
 export default function DashboardSegurosSura() {
@@ -23,6 +24,7 @@ export default function DashboardSegurosSura() {
       i18nNs="segurosSura"
       boletinPath="/sura/boletin"
       extras={{ horas: true }}
+      normalizarEstadoFn={normalizarEstadoSura}
     />
   );
 }

@@ -16,6 +16,7 @@ export const CAMPOS_FECHA_HORA_PROTOCOLO = new Set([
   'fchaInfoFnal',
   'fchaPresentacionCifras',
   'fchaAceptacionCifrasAseguradora',
+  'fchaReconsideracion',
   'fchaEnvioFiniquito',
 ]);
 

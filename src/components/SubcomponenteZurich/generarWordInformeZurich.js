@@ -20,11 +20,14 @@ import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaN
 import {
   calcularLiquidacionZurich,
   defaultInformeUnicoZurich,
+  esInformePreliminarZurich,
   formatearMonto,
   formatDateLarga,
   itemsPlanosZurich,
   mapcasoZurichALiquidador,
   parsearNumero,
+  reservaSugeridaZurich,
+  totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
@@ -212,7 +215,9 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
                     spacing: { after: 60 },
                     children: [
                       new TextRun({
-                        text: 'Informe Único Zurich',
+                        text: esInformePreliminarZurich(informe)
+                          ? 'Informe Preliminar Zurich'
+                          : 'Informe Final Zurich',
                         font: FONT,
                         size: SIZE_12,
                         color: '333333',
@@ -249,8 +254,9 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
   });
 }
 
-/** Título azul con «ÚNICO» subrayado (fórmula Catastrófico). */
-function crearTituloInformeUnico() {
+/** Título azul con PRELIMINAR o FINAL subrayado. */
+function crearTituloInformeZurich(info = {}) {
+  const tipo = esInformePreliminarZurich(info) ? 'PRELIMINAR' : 'FINAL';
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 120, after: 200 },
@@ -263,7 +269,7 @@ function crearTituloInformeUnico() {
         color: '0070C0',
       }),
       new TextRun({
-        text: 'ÚNICO',
+        text: tipo,
         bold: true,
         size: SIZE_12,
         font: FONT,
@@ -310,8 +316,9 @@ const heading = (text) =>
     ],
   });
 
-const cell = (text, opts = {}) =>
-  new TableCell({
+const cell = (text, opts = {}) => {
+  const lines = String(text ?? '').split(/\n/);
+  return new TableCell({
     borders: opts.cuadro ? bordersCuadro : borders,
     width: { size: opts.width || 2300, type: WidthType.DXA },
     columnSpan: opts.columnSpan || 1,
@@ -321,21 +328,24 @@ const cell = (text, opts = {}) =>
       left: opts.compact ? 40 : 100,
       right: opts.compact ? 40 : 100,
     },
-    verticalAlign: VerticalAlign.CENTER,
-    children: [
-      new Paragraph({
-        alignment: opts.alignment || AlignmentType.LEFT,
-        children: [
-          new TextRun({
-            text: String(text ?? ''),
-            font: FONT,
-            size: opts.size || SIZE_12,
-            bold: !!opts.bold,
-          }),
-        ],
-      }),
-    ],
+    verticalAlign: opts.verticalAlign || VerticalAlign.CENTER,
+    children: lines.map(
+      (line) =>
+        new Paragraph({
+          alignment: opts.alignment || AlignmentType.LEFT,
+          spacing: { after: 0 },
+          children: [
+            new TextRun({
+              text: line,
+              font: FONT,
+              size: opts.size || SIZE_12,
+              bold: !!opts.bold,
+            }),
+          ],
+        })
+    ),
   });
+};
 
 /** Fila etiqueta | valor — cuadro formal negro (sin relleno de color) */
 const campoFila = (label, value, opts = {}) =>
@@ -363,8 +373,10 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
       ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
       : '—';
 
+  const esPreliminar = esInformePreliminarZurich(info);
+  const reserva = reservaSugeridaZurich(info);
   const filas = [
-    ['REPORTE No', 'Único — Zurich'],
+    ['REPORTE No', esPreliminar ? 'Preliminar — Zurich' : 'Final — Zurich'],
     ['CONSECUTIVO', txt(caso.consecutivo)],
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
@@ -388,7 +400,12 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
     ['AJUSTADOR', txt(info.ajustadorNombre)],
-    ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
+    ...(esPreliminar
+      ? [['RESERVA SUGERIDA', money(reserva)]]
+      : [
+          ['RESERVA PRELIMINAR', money(reserva)],
+          ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
+        ]),
   ];
 
   return new Table({
@@ -638,12 +655,89 @@ async function construirBloqueDaniosUbicacionZurich({ info = {}, caso = {} } = {
   const mapaDataUrl = await cargarMapaRiesgoDataUrl(info);
 
   bloques.push(heading('2. Descripción de los daños y/o perjuicios'));
-  bloques.push(
-    p(descripcion || 'Pendiente diligenciar la descripción de los daños y/o perjuicios.', {
-      after: 140,
-      alignment: AlignmentType.JUSTIFIED,
-    })
+
+  const filasDanios = Array.isArray(info.filasDanios) ? info.filasDanios : [];
+  const filasDaniosConDato = filasDanios.filter(
+    (f) =>
+      String(f?.zona || '').trim() ||
+      String(f?.condicion || '').trim() ||
+      String(f?.nivel || '').trim()
   );
+  if (filasDaniosConDato.length) {
+    bloques.push(
+      new Table({
+        width: { size: 9360, type: WidthType.DXA },
+        columnWidths: [2200, 5360, 1800],
+        borders: bordersCuadro,
+        rows: [
+          new TableRow({
+            children: [
+              cell('ELEMENTO / ZONA', {
+                bold: true,
+                width: 2200,
+                cuadro: true,
+                alignment: AlignmentType.CENTER,
+              }),
+              cell('CONDICIÓN OBSERVADA', {
+                bold: true,
+                width: 5360,
+                cuadro: true,
+                alignment: AlignmentType.CENTER,
+              }),
+              cell('NIVEL DE AFECTACIÓN', {
+                bold: true,
+                width: 1800,
+                cuadro: true,
+                alignment: AlignmentType.CENTER,
+              }),
+            ],
+          }),
+          ...filasDaniosConDato.map(
+            (f) =>
+              new TableRow({
+                children: [
+                  cell(txt(f.zona), {
+                    bold: true,
+                    width: 2200,
+                    cuadro: true,
+                    verticalAlign: VerticalAlign.TOP,
+                  }),
+                  cell(txt(f.condicion), {
+                    width: 5360,
+                    cuadro: true,
+                    verticalAlign: VerticalAlign.TOP,
+                  }),
+                  cell(txt(f.nivel), {
+                    bold: true,
+                    width: 1800,
+                    cuadro: true,
+                    alignment: AlignmentType.CENTER,
+                    verticalAlign: VerticalAlign.TOP,
+                  }),
+                ],
+              })
+          ),
+        ],
+      })
+    );
+    bloques.push(p('', { after: 80 }));
+  }
+
+  if (descripcion) {
+    bloques.push(
+      p(descripcion, {
+        after: 140,
+        alignment: AlignmentType.JUSTIFIED,
+      })
+    );
+  } else if (!filasDaniosConDato.length) {
+    bloques.push(
+      p('Pendiente diligenciar la descripción de los daños y/o perjuicios.', {
+        after: 140,
+        alignment: AlignmentType.JUSTIFIED,
+      })
+    );
+  }
 
   bloques.push(
     p('Ubicación del riesgo', {
@@ -815,10 +909,189 @@ async function construirZonaFirmasZurich({ info = {} } = {}) {
   ];
 }
 
+function tablaAnalisisPolizaZurich(filas = []) {
+  const lista = (Array.isArray(filas) ? filas : []).filter(
+    (f) =>
+      String(f?.concepto || '').trim() ||
+      String(f?.analisis || '').trim() ||
+      String(f?.conclusion || '').trim()
+  );
+  const rows = [
+    new TableRow({
+      children: [
+        cell('CONCEPTO', {
+          bold: true,
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('ANÁLISIS', {
+          bold: true,
+          width: 5360,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('CONCLUSIÓN', {
+          bold: true,
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+      ],
+    }),
+  ];
+  if (!lista.length) {
+    rows.push(
+      new TableRow({
+        children: [
+          cell('Pendiente diligenciar el análisis de póliza y cobertura.', {
+            width: 9360,
+            columnSpan: 3,
+            cuadro: true,
+            alignment: AlignmentType.CENTER,
+          }),
+        ],
+      })
+    );
+  } else {
+    lista.forEach((f) => {
+      rows.push(
+        new TableRow({
+          children: [
+            cell(txt(f.concepto), {
+              bold: true,
+              width: 2000,
+              cuadro: true,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+            cell(txt(f.analisis), {
+              width: 5360,
+              cuadro: true,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+            cell(txt(f.conclusion), {
+              bold: true,
+              width: 2000,
+              cuadro: true,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+          ],
+        })
+      );
+    });
+  }
+  return new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [2000, 5360, 2000],
+    borders: bordersCuadro,
+    rows,
+  });
+}
+
+function tablaPresupuestoPreliminarZurich(filas = []) {
+  const lista = Array.isArray(filas) ? filas : [];
+  const rows = [
+    new TableRow({
+      children: [
+        cell('Capítulo', {
+          bold: true,
+          width: 2800,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('Descripción del alcance', {
+          bold: true,
+          width: 4560,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('Valor estimado', {
+          bold: true,
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+      ],
+    }),
+  ];
+  const conDato = lista.filter(
+    (f) =>
+      String(f?.capitulo || '').trim() ||
+      String(f?.descripcion || '').trim() ||
+      parsearNumero(f?.valor) > 0
+  );
+  if (!conDato.length) {
+    rows.push(
+      new TableRow({
+        children: [
+          cell('Pendiente diligenciar el presupuesto preliminar.', {
+            width: 9360,
+            columnSpan: 3,
+            cuadro: true,
+            alignment: AlignmentType.CENTER,
+          }),
+        ],
+      })
+    );
+  } else {
+    conDato.forEach((f) => {
+      rows.push(
+        new TableRow({
+          children: [
+            cell(txt(f.capitulo), {
+              bold: true,
+              width: 2800,
+              cuadro: true,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+            cell(txt(f.descripcion), {
+              width: 4560,
+              cuadro: true,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+            cell(money(f.valor), {
+              width: 2000,
+              cuadro: true,
+              alignment: AlignmentType.RIGHT,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+          ],
+        })
+      );
+    });
+  }
+  rows.push(
+    new TableRow({
+      children: [
+        cell('TOTAL RESERVA PRELIMINAR', {
+          bold: true,
+          width: 7360,
+          columnSpan: 2,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+        cell(money(totalPresupuestoPreliminarZurich(lista)), {
+          bold: true,
+          width: 2000,
+          cuadro: true,
+          alignment: AlignmentType.RIGHT,
+        }),
+      ],
+    })
+  );
+  return new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [2800, 4560, 2000],
+    borders: bordersCuadro,
+    rows,
+  });
+}
+
 
 /**
- * Informe único Zurich — misma fórmula visual que Catastrófico/Puertos:
- * encabezado formal, título ÚNICO, cuadro ficha, secciones y cuadros sin relleno.
+ * Informe preliminar o final Zurich.
+ * El preliminar replica la ficha, daños por zona, póliza y reserva.
+ * El final reutiliza ese contenido y añade liquidación NSR-10.
  */
 export async function descargarWordInformeZurich({ caso = {}, informe = null, liquidador = null } = {}) {
   const info = informe || defaultInformeUnicoZurich(caso);
@@ -841,6 +1114,9 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     (totales.presupuesto?.impPct ?? presupuesto.impuestosPorcentaje ?? 0) * 100
   );
   const criterio = totales.criterio || {};
+  const esPreliminar = esInformePreliminarZurich(info);
+  const tipoEtiqueta = esPreliminar ? 'preliminar' : 'final';
+  const seccionFotos = esPreliminar ? 5 : 7;
 
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
@@ -887,7 +1163,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   if (!fotoParrafos.length) {
     fotoParrafos.push(
       p(
-        'Pendiente registro fotográfico. Suba las fotos en la sección 5 del informe (zona de arrastre).',
+        `Pendiente registro fotográfico. Suba las fotos en la sección ${seccionFotos} del informe (zona de arrastre).`,
         { size: SIZE_12 }
       )
     );
@@ -1013,29 +1289,6 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
 
   const header = await crearEncabezadoZurich({ caso, informe: info });
 
-  const polizaRows = [
-    campoFila('Tomador', txt(caso.tomador || enc.tomador)),
-    campoFila('Identificación', txt(caso.identificacion || enc.identificacion)),
-    campoFila('Tipo de identificación', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)),
-    campoFila('N° póliza', txt(caso.numeroPoliza || enc.poliza)),
-    campoFila('Tipo de póliza', txt(caso.tipoPoliza || enc.tipoPoliza)),
-    campoFila('Causa', txt(caso.causa || enc.causa)),
-    campoFila('N° crédito', txt(caso.numeroCredito || enc.credito)),
-    campoFila('Cobertura / evento', txt(caso.cobertura || enc.cobertura || enc.evento)),
-    campoFila('Estado pago primas', txt(caso.estadoPagoPrimas)),
-    campoFila('Fecha inicio póliza (vigencia)', fmtFecha(caso.fechaInicioPoliza)),
-    campoFila('Fecha fin póliza (vigencia)', fmtFecha(caso.fechaFinPoliza)),
-    campoFila('Valor asegurado inmueble', money(caso.valorAseguradoInmueble)),
-    campoFila('Valor asegurado contenidos', money(caso.valorAseguradoContenidos)),
-    campoFila('Dirección predio', txt(caso.direccionPredio || enc.direccion)),
-    campoFila(
-      'Ciudad / Departamento',
-      `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`
-    ),
-    campoFila('Fecha siniestro', fmtFecha(caso.fechaSiniestro || enc.fechaSiniestro)),
-    campoFila('Fecha inspección', fmtFecha(caso.fechaInspeccion)),
-  ];
-
   const liquidacionResumen = [
     ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
       ? []
@@ -1089,6 +1342,21 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
         valueW: 5000,
       }
     ),
+    ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
+      ? [
+          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+          ...totales.otrosAmparos.map((it) =>
+            campoFila(
+              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
+              money(it.valor),
+              { labelW: 5000, valueW: 5000 }
+            )
+          ),
+        ]
+      : []),
     campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
       boldValue: true,
       labelW: 5000,
@@ -1236,142 +1504,165 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     size: { orientation: PageOrientation.LANDSCAPE },
   };
 
+  const seccionConclusiones = [
+    heading('4. Conclusiones y recomendación del ajustador'),
+    p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
+      bold: true,
+      before: 40,
+      after: 120,
+    }),
+    tablaPresupuestoPreliminarZurich(info.filasPresupuestoPreliminar),
+    p('Conclusiones', { bold: true, before: 180, after: 40 }),
+    p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
+      after: 120,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+    p('Recomendación', { bold: true, after: 40 }),
+    p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
+      after: 160,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+  ];
+
+  const seccionFotosFirmas = [
+    heading(`${seccionFotos}. Inspección fotográfica`),
+    p(
+      fotosIncluidas
+        ? `Registro fotográfico del predio (${fotosIncluidas} imagen(es)).`
+        : 'Registro fotográfico del predio.',
+      { after: 80 }
+    ),
+    ...fotoParrafos,
+    p(
+      `Para constancia se firma el presente informe ${tipoEtiqueta} en ${txt(
+        caso.ciudad || enc.ciudad,
+        'Colombia'
+      )}, ${fmtFecha(info.fechaInforme || new Date())}.`,
+      { before: 200, after: 200 }
+    ),
+    ...firmasParrafos,
+  ];
+
+  const sections = [
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        crearTituloInformeZurich(info),
+        p('Zurich S.A.', {
+          alignment: AlignmentType.CENTER,
+          bold: true,
+          size: SIZE_12,
+          after: 160,
+          color: '333333',
+        }),
+        construirCuadroPrincipal({ caso, enc, info, totales }),
+      ],
+    },
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        heading('1. Información general del evento'),
+        ...(infoEventoParrafos.length
+          ? infoEventoParrafos
+          : [p('Sin información del evento.')]),
+        ...mapaEventoParrafos,
+      ],
+    },
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: bloqueDaniosUbicacion,
+    },
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        heading('3. Información de póliza y cobertura'),
+        tablaAnalisisPolizaZurich(info.filasPolizaCobertura),
+      ],
+    },
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: seccionConclusiones,
+    },
+  ];
+
+  if (!esPreliminar) {
+    sections.push({
+      properties: { page: pageLandscape },
+      headers: { default: header },
+      children: [
+        heading('5. Liquidación de pérdidas (liquidador NSR-10)'),
+        p(
+          'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.',
+          { after: 120 }
+        ),
+        tablaLiquidadorCompleto,
+        p('Contenidos del inmueble (bienes muebles)', {
+          bold: true,
+          before: 180,
+          after: 80,
+          size: SIZE_12,
+        }),
+        p(
+          contenidosNsr.tipoInmueble
+            ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
+            : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
+          { after: 100 }
+        ),
+        tablaContenidos,
+        p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
+        new Table({
+          width: { size: 10000, type: WidthType.DXA },
+          columnWidths: [5000, 5000],
+          borders: bordersCuadro,
+          rows: liquidacionResumen,
+        }),
+        ...(liq.observaciones
+          ? [
+              p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
+              p(liq.observaciones, { after: 80 }),
+            ]
+          : []),
+      ],
+    });
+    sections.push({
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        heading('6. Relación de valores reclamados vs. valores indemnizables'),
+        new Table({
+          width: { size: 9000, type: WidthType.DXA },
+          columnWidths: [600, 4000, 2200, 2200],
+          borders: bordersCuadro,
+          rows: filasCuadro,
+        }),
+        p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
+          before: 100,
+          after: 160,
+          size: SIZE_12,
+        }),
+        ...seccionFotosFirmas,
+      ],
+    });
+  } else {
+    sections.push({
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: seccionFotosFirmas,
+    });
+  }
+
   const doc = new Document({
-    sections: [
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          crearTituloInformeUnico(),
-          p('Zurich S.A.', {
-            alignment: AlignmentType.CENTER,
-            bold: true,
-            size: SIZE_12,
-            after: 160,
-            color: '333333',
-          }),
-          construirCuadroPrincipal({ caso, enc, info, totales }),
-        ],
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('1. Información general del evento'),
-          ...(infoEventoParrafos.length
-            ? infoEventoParrafos
-            : [p('Sin información del evento.')]),
-          ...mapaEventoParrafos,
-        ],
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: bloqueDaniosUbicacion,
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('3. Información de póliza y cobertura'),
-          new Table({
-            width: { size: 9360, type: WidthType.DXA },
-            columnWidths: [4200, 5160],
-            borders: bordersCuadro,
-            rows: polizaRows,
-          }),
-        ],
-      },
-      {
-        properties: { page: pageLandscape },
-        headers: { default: header },
-        children: [
-          heading('4. Liquidación de pérdidas (liquidador)'),
-          p(
-            'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.',
-            { after: 120 }
-          ),
-          tablaLiquidadorCompleto,
-          p('Contenidos del inmueble (bienes muebles)', {
-            bold: true,
-            before: 180,
-            after: 80,
-            size: SIZE_12,
-          }),
-          p(
-            contenidosNsr.tipoInmueble
-              ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
-              : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
-            { after: 100 }
-          ),
-          tablaContenidos,
-          p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-          new Table({
-            width: { size: 10000, type: WidthType.DXA },
-            columnWidths: [5000, 5000],
-            borders: bordersCuadro,
-            rows: liquidacionResumen,
-          }),
-          ...(liq.observaciones
-            ? [
-                p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
-                p(liq.observaciones, { after: 80 }),
-              ]
-            : []),
-        ],
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('5. Relación de valores reclamados vs. valores indemnizables'),
-          new Table({
-            width: { size: 9000, type: WidthType.DXA },
-            columnWidths: [600, 4000, 2200, 2200],
-            borders: bordersCuadro,
-            rows: filasCuadro,
-          }),
-          p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
-            before: 100,
-            size: SIZE_12,
-          }),
-
-          heading('6. Inspección fotográfica'),
-          p(
-            fotosIncluidas
-              ? `Registro fotográfico del predio (${fotosIncluidas} imagen(es)).`
-              : 'Registro fotográfico del predio.',
-            { after: 80 }
-          ),
-          ...fotoParrafos,
-
-          heading('7. Conclusiones y recomendación del ajustador'),
-          p('Conclusiones', { bold: true, after: 40 }),
-          p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
-            after: 120,
-            alignment: AlignmentType.JUSTIFIED,
-          }),
-          p('Recomendación', { bold: true, after: 40 }),
-          p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
-            after: 200,
-            alignment: AlignmentType.JUSTIFIED,
-          }),
-
-          p(
-            `Para constancia se firma el presente informe único en ${txt(
-              caso.ciudad || enc.ciudad,
-              'Colombia'
-            )}, ${fmtFecha(info.fechaInforme || new Date())}.`,
-            { after: 200 }
-          ),
-          ...firmasParrafos,
-        ],
-      },
-    ],
+    sections,
   });
 
   const blob = await Packer.toBlob(doc);
-  const nombre = `Informe_Unico_Zurich_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
+  const prefijo = esPreliminar ? 'Informe_Preliminar_Zurich' : 'Informe_Final_Zurich';
+  const nombre = `${prefijo}_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );

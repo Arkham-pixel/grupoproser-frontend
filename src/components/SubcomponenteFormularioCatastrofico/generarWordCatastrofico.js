@@ -1169,6 +1169,7 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
       hospedajeManual: liquidacion.hospedajeManual,
       deducible: liquidacion.deducible,
       deducibleConfig: liquidacion.deducibleConfig,
+      otrosAmparos: fd.otrosAmparos,
     });
 
     children.push(
@@ -1338,6 +1339,14 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
               ? fmtMoney(diagrama.deducibleAplicado || 0)
               : diagrama.deducible || 'No aplica'
           ),
+          ...(diagrama.totalOtrosAmparos > 0
+            ? [
+                filaDos(
+                  'OTROS AMPAROS (SIN DEDUCIBLE)',
+                  fmtMoney(diagrama.totalOtrosAmparos)
+                ),
+              ]
+            : []),
           filaDos('TOTAL A INDEMNIZAR', fmtMoney(diagrama.totalIndemnizar)),
         ],
       })

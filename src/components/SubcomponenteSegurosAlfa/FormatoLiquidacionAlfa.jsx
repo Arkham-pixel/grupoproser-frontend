@@ -1,6 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CampoTomadorAlfa from './CampoTomadorAlfa.jsx';
-import { formatearMonto, parsearNumero, ANIOS_SMMLV, SMMLV_POR_ANIO } from './liquidadorAlfaHelpers.js';
+import {
+  formatearMonto,
+  parsearNumero,
+  ANIOS_SMMLV,
+  SMMLV_POR_ANIO,
+  TIPOS_OTROS_AMPAROS_ALFA,
+  nombreTipoOtroAmparoAlfa,
+  nuevoOtroAmparoAlfa,
+  recalcularValorOtroAmparoAlfa,
+  sumarOtrosAmparosAlfa,
+} from './liquidadorAlfaHelpers.js';
 import {
   formatMilesInputNsr10,
   formatMilesNsr10,
@@ -226,6 +236,8 @@ export default function FormatoLiquidacionAlfa({
   onAceptacionChange,
   onFirmaClienteChange,
   onNombreFirmanteChange,
+  otrosAmparos = [],
+  onOtrosAmparosChange,
 }) {
   const dedCfg =
     liquidacionCatastrofico.deducibleConfigPresupuesto ||
@@ -264,7 +276,41 @@ export default function FormatoLiquidacionAlfa({
   }, [totales.aiu, totales.subtotal, subtotal, aiuPctUi]);
 
   const deducible = parsearNumero(totales.deducibleAplicado);
-  const totalIndemnizar = Math.max(0, Math.round((subtotal + aiuMonto - deducible) * 100) / 100);
+  const totalOtrosAmparos = useMemo(
+    () =>
+      parsearNumero(totales.totalOtrosAmparos) ||
+      sumarOtrosAmparosAlfa(otrosAmparos),
+    [totales.totalOtrosAmparos, otrosAmparos]
+  );
+  const indemnizacionPrincipal = Math.max(
+    0,
+    Math.round((subtotal + aiuMonto - deducible) * 100) / 100
+  );
+  const totalIndemnizar = Math.max(
+    0,
+    Math.round((indemnizacionPrincipal + totalOtrosAmparos) * 100) / 100
+  );
+
+  const patchOtroAmparo = (index, patch = {}) => {
+    const base = (otrosAmparos || []).map((it) => ({ ...it }));
+    if (!base[index]) return;
+    let next = { ...base[index], ...patch };
+    if (Object.prototype.hasOwnProperty.call(patch, 'tipo')) {
+      const cat = TIPOS_OTROS_AMPAROS_ALFA.find((t) => t.id === patch.tipo);
+      next.unidad = cat?.unidadDefault || next.unidad || 'glb';
+      if (patch.tipo !== 'otro') {
+        next.nombre = cat?.nombre || next.nombre;
+      }
+    }
+    const tocaronCantVu =
+      Object.prototype.hasOwnProperty.call(patch, 'cantidad') ||
+      Object.prototype.hasOwnProperty.call(patch, 'valorUnitario');
+    if (tocaronCantVu) {
+      next = recalcularValorOtroAmparoAlfa(next);
+    }
+    base[index] = next;
+    onOtrosAmparosChange?.(base);
+  };
 
   return (
     <div className={alfaCatShell}>
@@ -743,7 +789,7 @@ export default function FormatoLiquidacionAlfa({
           >
             + Agregar ítem
           </button>
-          <div className="grid min-w-[260px] gap-1 text-sm">
+          <div className="grid min-w-[280px] gap-1 text-sm">
             <div className="flex justify-between gap-4 px-2 py-1">
               <span>Sub total ítems</span>
               <span>$ {formatearMonto(subtotal)}</span>
@@ -755,6 +801,173 @@ export default function FormatoLiquidacionAlfa({
             <div className="flex justify-between gap-4 px-2 py-1">
               <span>Deducible aplicable</span>
               <span>$ {formatearMonto(deducible)}</span>
+            </div>
+            <div className="flex justify-between gap-4 px-2 py-1 font-semibold">
+              <span>Subtotal amparo edificio</span>
+              <span>$ {formatearMonto(indemnizacionPrincipal)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-b border-gray-300 dark:border-gray-600">
+        <div className={`${alfaCatHeaderBlue} !py-2 text-sm`}>
+          Otros amparos (sin deducible)
+        </div>
+        <p className="border-b border-gray-200 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
+          Arriendo, retiro de escombros y similares se liquidan por aparte: no se les aplica
+          deducible ni AIU. El valor entra directo al total a indemnizar.
+        </p>
+        <div className="overflow-x-auto">
+          <table className="min-w-[980px] w-full border-collapse text-sm">
+            <thead>
+              <tr>
+                {['Aplica', 'Amparo', 'Observación', 'Und', 'Cant.', 'Vlr. unitario', 'Valor', ''].map(
+                  (h) => (
+                    <th key={h || 'oa-x'} className={alfaCatTableHead}>
+                      {h}
+                    </th>
+                  )
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {(otrosAmparos || []).map((it, idx) => {
+                const nombreMostrar =
+                  it.tipo === 'otro'
+                    ? it.nombre || ''
+                    : nombreTipoOtroAmparoAlfa(it.tipo, it.nombre);
+                return (
+                  <tr key={it.id || idx} className="border-t border-gray-200 dark:border-gray-700">
+                    <td className="px-2 py-1 text-center">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-[#1F4E79]"
+                        checked={it.aplica !== false}
+                        onChange={(e) => patchOtroAmparo(idx, { aplica: e.target.checked })}
+                        title="Incluir en la liquidación"
+                      />
+                    </td>
+                    <td className="px-1 py-1 min-w-[220px]">
+                      <select
+                        className={selectClass}
+                        value={it.tipo || 'otro'}
+                        onChange={(e) => patchOtroAmparo(idx, { tipo: e.target.value })}
+                      >
+                        {TIPOS_OTROS_AMPAROS_ALFA.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      {it.tipo === 'otro' ? (
+                        <input
+                          className={`${alfaCatInput} mt-1 border-t border-gray-100 pt-1 dark:border-gray-800`}
+                          value={it.nombre || ''}
+                          onChange={(e) => patchOtroAmparo(idx, { nombre: e.target.value })}
+                          placeholder="Nombre del amparo"
+                        />
+                      ) : (
+                        <p className="mt-1 px-1 font-body text-[11px] text-gray-500">
+                          {nombreMostrar}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-1 py-1 min-w-[180px]">
+                      <input
+                        className={alfaCatInput}
+                        value={it.observacion || ''}
+                        onChange={(e) => patchOtroAmparo(idx, { observacion: e.target.value })}
+                        placeholder={
+                          it.tipo === 'arriendo'
+                            ? 'Ej. 3 meses de inhabitabilidad'
+                            : 'Soporte / nota'
+                        }
+                      />
+                    </td>
+                    <td className="px-1 py-1 w-16">
+                      <input
+                        className={alfaCatInput}
+                        value={it.unidad || ''}
+                        onChange={(e) => patchOtroAmparo(idx, { unidad: e.target.value })}
+                      />
+                    </td>
+                    <td className="px-1 py-1 w-20">
+                      <input
+                        className={alfaCatInput}
+                        value={it.cantidad ?? ''}
+                        onChange={(e) => patchOtroAmparo(idx, { cantidad: e.target.value })}
+                      />
+                    </td>
+                    <td className="px-1 py-1 w-28">
+                      <input
+                        className={`${alfaCatInput} text-right`}
+                        value={
+                          it.valorUnitario === '' || it.valorUnitario == null
+                            ? ''
+                            : formatMilesNsr10(it.valorUnitario)
+                        }
+                        onChange={(e) =>
+                          patchOtroAmparo(idx, {
+                            valorUnitario: formatMilesInputNsr10(e.target.value),
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-1 py-1 w-32">
+                      <input
+                        className={`${alfaCatInput} text-right`}
+                        value={
+                          it.valor === '' || it.valor == null
+                            ? ''
+                            : formatMilesNsr10(it.valor)
+                        }
+                        onChange={(e) =>
+                          patchOtroAmparo(idx, {
+                            valor: formatMilesInputNsr10(e.target.value),
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-1 py-1 text-center">
+                      <button
+                        type="button"
+                        className="font-body text-xs text-red-600 hover:underline"
+                        onClick={() => {
+                          const next = (otrosAmparos || []).filter((_, i) => i !== idx);
+                          onOtrosAmparosChange?.(next);
+                        }}
+                      >
+                        Quitar
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!(otrosAmparos || []).length && (
+                <tr>
+                  <td colSpan={8} className="px-3 py-6 text-center text-gray-500">
+                    Sin amparos adicionales. Pulse «Agregar amparo».
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-200 px-3 py-2 dark:border-gray-700">
+          <button
+            type="button"
+            className="font-body text-sm font-semibold text-[#1F4E79] hover:underline dark:text-sky-300"
+            onClick={() =>
+              onOtrosAmparosChange?.([...(otrosAmparos || []), nuevoOtroAmparoAlfa()])
+            }
+          >
+            + Agregar amparo
+          </button>
+          <div className="grid min-w-[280px] gap-1 text-sm">
+            <div className="flex justify-between gap-4 px-2 py-1">
+              <span>Subtotal otros amparos</span>
+              <span>$ {formatearMonto(totalOtrosAmparos)}</span>
             </div>
             <div className={`flex justify-between gap-4 ${alfaCatAccentOrange}`}>
               <span>Total a indemnizar</span>

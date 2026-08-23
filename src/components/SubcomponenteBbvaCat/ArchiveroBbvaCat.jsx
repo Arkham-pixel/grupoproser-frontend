@@ -1,12 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaDownload, FaTrash, FaUpload } from 'react-icons/fa';
-import {
-  eliminarArchivoBbvaCat,
-  getCasoBbvaCatById,
-  subirArchivoBbvaCat,
-  urlDescargaArchivoBbvaCat,
-} from '../../services/bbvaCatService.js';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -14,7 +8,12 @@ import {
   expressBtnPrimary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { ETIQUETAS_ARCHIVO_BBVA_CAT, formatDate } from './bbvaCatHelpers.js';
+import {
+  ETIQUETAS_ARCHIVO_BBVA_CAT,
+  ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO,
+  formatDate,
+} from './bbvaCatHelpers.js';
+import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 
 const formatBytes = (n) => {
   const num = Number(n);
@@ -24,17 +23,36 @@ const formatBytes = (n) => {
   return `${(num / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-export default function ArchiveroBbvaCat({ caso, onClose, onChanged }) {
+export default function ArchiveroBbvaCat({
+  caso,
+  onClose,
+  onChanged,
+  origen = 'cat',
+  etiquetas,
+  etiquetaInicial = 'GENERAL',
+}) {
   const { t } = useTranslation();
   const inputRef = useRef(null);
+  const api = useMemo(() => bbvaCatArchivosApi(origen), [origen]);
+  const opcionesEtiqueta =
+    etiquetas ||
+    (origen === 'listado' ? ETIQUETAS_ARCHIVO_BBVA_CAT_LISTADO : ETIQUETAS_ARCHIVO_BBVA_CAT);
   const [archivos, setArchivos] = useState(() => caso?.archivos || []);
-  const [etiqueta, setEtiqueta] = useState('GENERAL');
+  const [etiqueta, setEtiqueta] = useState(etiquetaInicial || 'GENERAL');
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
 
+  useEffect(() => {
+    setArchivos(caso?.archivos || []);
+  }, [caso?._id, caso?.archivos]);
+
+  useEffect(() => {
+    if (etiquetaInicial) setEtiqueta(etiquetaInicial);
+  }, [etiquetaInicial]);
+
   const refrescar = async () => {
-    const actualizado = await getCasoBbvaCatById(caso._id);
+    const actualizado = await api.getById(caso._id);
     setArchivos(actualizado.archivos || []);
     if (onChanged) onChanged(actualizado);
     return actualizado;
@@ -48,7 +66,7 @@ export default function ArchiveroBbvaCat({ caso, onClose, onChanged }) {
     setExito(null);
     setSubiendo(true);
     try {
-      await subirArchivoBbvaCat(caso._id, file, etiqueta);
+      await api.subir(caso._id, file, etiqueta);
       await refrescar();
       setExito(t('bbvaCat.archive.uploadOk'));
     } catch (err) {
@@ -63,7 +81,7 @@ export default function ArchiveroBbvaCat({ caso, onClose, onChanged }) {
     setError(null);
     setExito(null);
     try {
-      await eliminarArchivoBbvaCat(caso._id, archivoId);
+      await api.eliminar(caso._id, archivoId);
       await refrescar();
       setExito(t('bbvaCat.archive.deleteOk'));
     } catch (err) {
@@ -78,13 +96,15 @@ export default function ArchiveroBbvaCat({ caso, onClose, onChanged }) {
           {t('bbvaCat.archive.title')}
         </h3>
         <p className="font-body text-sm text-gray-500 dark:text-gray-400">
-          {t('bbvaCat.archive.subtitle', {
+          {t(origen === 'listado' ? 'bbvaCat.archive.subtitleListado' : 'bbvaCat.archive.subtitle', {
             caseNumber: caso?.consecutivo || caso?.identificacion || '',
           })}
         </p>
+        {origen !== 'listado' && (
         <p className="mt-1 font-body text-xs text-amber-800 dark:text-amber-200">
           {t('bbvaCat.cat.evidenciaHint')}
         </p>
+        )}
       </div>
 
       {error && <div className={expressAlertError}>{error}</div>}
@@ -93,7 +113,7 @@ export default function ArchiveroBbvaCat({ caso, onClose, onChanged }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Campo label={t('bbvaCat.archive.label')}>
           <SelectFenix value={etiqueta} onChange={(e) => setEtiqueta(e.target.value)}>
-            {ETIQUETAS_ARCHIVO_BBVA_CAT.map((op) => (
+            {opcionesEtiqueta.map((op) => (
               <option key={op} value={op}>
                 {t(`bbvaCat.archive.labels.${op}`, { defaultValue: op })}
               </option>
@@ -147,7 +167,7 @@ export default function ArchiveroBbvaCat({ caso, onClose, onChanged }) {
               </tr>
             ) : (
               archivos.map((arch) => {
-                const url = urlDescargaArchivoBbvaCat(arch.ruta);
+                const url = api.url(arch.ruta);
                 return (
                   <tr key={arch._id}>
                     <td className="px-3 py-2 font-body text-sm text-gray-800 dark:text-gray-200">

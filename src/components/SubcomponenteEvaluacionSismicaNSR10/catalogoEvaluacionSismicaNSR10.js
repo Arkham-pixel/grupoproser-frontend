@@ -3,6 +3,11 @@
  * Hojas: Listas | Portada | Evaluación | Dictamen | Presupuesto
  */
 
+import {
+  SMMLV_DEFAULT,
+  resolverSmmlvPorAnio,
+} from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
+
 /** Hoja Listas · Estado → Puntaje */
 export const ESTADOS_DANO_NSR10 = [
   { label: 'Sin daño', puntaje: 0 },
@@ -85,6 +90,7 @@ export const TIPOS_INMUEBLE_CONTENIDOS_NSR10 = [
 ];
 
 export const CATEGORIAS_CONTENIDOS_NSR10 = [
+  'Artículo de póliza',
   'Electrodomésticos',
   'Electrónicos',
   'Muebles',
@@ -98,6 +104,39 @@ export const CATEGORIAS_CONTENIDOS_NSR10 = [
   'Oficina / equipo de cómputo',
   'Otros',
 ];
+
+/** Artículos de póliza (misma tabla de contenidos; no es una tabla nueva). */
+export const ARTICULOS_ASEGURADOS_POLIZA = [
+  { id: 'poliza_eee_fijo', articulo: 'Equipo eléctrico y electrónico fijo' },
+  { id: 'poliza_contenidos', articulo: 'Contenidos' },
+  { id: 'poliza_mercancias', articulo: 'Mercancías' },
+  { id: 'poliza_edificio', articulo: 'Edificio' },
+  { id: 'poliza_maquinaria', articulo: 'Maquinaria y equipo' },
+  { id: 'poliza_dinero', articulo: 'Dinero en efectivo' },
+  { id: 'poliza_lucro', articulo: 'Lucro cesante' },
+];
+
+/**
+ * Coberturas parametrizables. Terremoto aplica 3% del valor asegurable, mínimo 3 SMMLV.
+ * Otras coberturas se pueden agregar aquí sin cambiar la tabla.
+ */
+export const COBERTURAS_ARTICULO_ASEGURADO = [
+  { id: 'terremoto', label: 'Terremoto' },
+  { id: 'incendio', label: 'Incendio' },
+  { id: 'inundacion', label: 'Inundación' },
+  { id: 'amit', label: 'AMIT' },
+  { id: 'huracan', label: 'Huracán / vendaval' },
+  { id: 'otro', label: 'Otra' },
+];
+
+export const REGLAS_DEDUCIBLE_POR_COBERTURA = {
+  terremoto: {
+    porcentaje: 3,
+    cantidadSMMLV: 3,
+    modo: 'max_pct_minimo',
+    tipoMinimo: 'SMMLV',
+  },
+};
 
 export const ESTADOS_CONTENIDO_NSR10 = [
   'Dañado',
@@ -114,6 +153,13 @@ export const UNIDADES_CONTENIDOS_NSR10 = ['und', 'juego', 'par', 'kg', 'm', 'm²
  * El usuario puede elegir uno o agregar un ítem libre si no está en la lista.
  */
 export const CATALOGO_CONTENIDOS_NSR10 = [
+  ...ARTICULOS_ASEGURADOS_POLIZA.map((a) => ({
+    id: a.id,
+    categoria: 'Artículo de póliza',
+    articulo: a.articulo,
+    unidad: 'glb',
+    tipos: TIPOS_INMUEBLE_CONTENIDOS_NSR10,
+  })),
   // Electrodomésticos / casa-apartamento
   { id: 'nevera', categoria: 'Electrodomésticos', articulo: 'Nevera / refrigerador', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Finca / rural'] },
   { id: 'lavadora', categoria: 'Electrodomésticos', articulo: 'Lavadora', unidad: 'und', tipos: ['Casa', 'Apartamento', 'Finca / rural'] },
@@ -579,6 +625,13 @@ export function crearFilaContenidoVacia(extras = {}) {
     valorUnitario: '',
     estado: 'Dañado',
     observacion: '',
+    coberturaAfectar: extras.coberturaAfectar || '',
+    tipoCobertura: extras.tipoCobertura || extras.coberturaAfectar || '',
+    valorAsegurable: extras.valorAsegurable ?? '',
+    porcentajeDeducible: extras.porcentajeDeducible ?? '',
+    cantidadMinimoSMMLV: extras.cantidadMinimoSMMLV ?? '',
+    valorMinimo: extras.valorMinimo ?? '',
+    deducibleCalculado: extras.deducibleCalculado ?? '',
     ...extras,
   };
 }
@@ -587,13 +640,152 @@ export function totalFilaContenido(row) {
   return totalFilaPresupuesto(row);
 }
 
+function normalizarIdCobertura(valor) {
+  const n = String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+  if (!n) return '';
+  const hit = COBERTURAS_ARTICULO_ASEGURADO.find(
+    (c) => c.id === n || c.label.toLowerCase() === n || n.includes(c.id)
+  );
+  return hit?.id || n;
+}
+
+export function etiquetaCoberturaArticulo(valor) {
+  const id = normalizarIdCobertura(valor);
+  return COBERTURAS_ARTICULO_ASEGURADO.find((c) => c.id === id)?.label || String(valor || '').trim();
+}
+
+export function reglaDeduciblePorCobertura(cobertura) {
+  const id = normalizarIdCobertura(cobertura);
+  return REGLAS_DEDUCIBLE_POR_COBERTURA[id] || null;
+}
+
+/** Fila con artículo real y valor asegurable: ahí sí se hereda cobertura y se calcula. */
+export function filaContenidoListaParaDeducible(row = {}) {
+  const articulo = String(row.articulo || '').trim();
+  const catalogoId = String(row.catalogoId || '').trim();
+  const va = parseMontoNsr10(row.valorAsegurable);
+  return Boolean(articulo || catalogoId) && va != null && va > 0;
+}
+
+export function filaContenidoTieneDeducibleArticulo(row = {}) {
+  if (!filaContenidoListaParaDeducible(row)) return false;
+  const cob = String(row.coberturaAfectar || row.tipoCobertura || '').trim();
+  const ded = parseMontoNsr10(row.deducibleCalculado);
+  return Boolean(cob) && ded != null && ded > 0;
+}
+
+/**
+ * Recalcula % / mínimo / deducible de una fila según la cobertura.
+ * Terremoto: MAX(valor asegurable × 3%, 3 SMMLV).
+ * Filas vacías no muestran ni heredan cifras financieras.
+ */
+export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}) {
+  if (!filaContenidoListaParaDeducible(row)) {
+    return {
+      ...row,
+      coberturaAfectar: '',
+      tipoCobertura: '',
+      porcentajeDeducible: '',
+      cantidadMinimoSMMLV: '',
+      valorMinimo: '',
+      deducibleCalculado: '',
+    };
+  }
+
+  const cobertura = row.coberturaAfectar || row.tipoCobertura || '';
+  const idCob = normalizarIdCobertura(cobertura);
+  const regla = reglaDeduciblePorCobertura(idCob);
+  const etiqueta = etiquetaCoberturaArticulo(cobertura);
+  const next = {
+    ...row,
+    coberturaAfectar: cobertura,
+    tipoCobertura: etiqueta || row.tipoCobertura || '',
+  };
+
+  if (!idCob) {
+    return {
+      ...next,
+      porcentajeDeducible: next.porcentajeDeducible ?? '',
+      valorMinimo: next.valorMinimo ?? '',
+      deducibleCalculado: next.deducibleCalculado ?? '',
+    };
+  }
+
+  const anioRef = Number(smmlvCfg.anioSMMLV) || new Date().getFullYear();
+  const smmlv = resolverSmmlvPorAnio(anioRef);
+  const valorSMMLV =
+    parseMontoNsr10(smmlvCfg.valorSMMLV) ||
+    smmlv.valor ||
+    SMMLV_DEFAULT;
+  const va = parseMontoNsr10(next.valorAsegurable);
+
+  if (regla) {
+    const cantidadSMMLV = Number(regla.cantidadSMMLV) || 0;
+    const porcentaje = Number(regla.porcentaje) || 0;
+    const valorMinimo = Math.round(cantidadSMMLV * valorSMMLV * 100) / 100;
+    next.porcentajeDeducible = porcentaje;
+    next.cantidadMinimoSMMLV = cantidadSMMLV;
+    next.valorMinimo = valorMinimo;
+    const porPct = va * (porcentaje / 100);
+    next.deducibleCalculado = Math.round(Math.max(porPct, valorMinimo) * 100) / 100;
+    return next;
+  }
+
+  const porcentaje = Number(next.porcentajeDeducible);
+  const valorMinimo = parseMontoNsr10(next.valorMinimo) || 0;
+  if ((!Number.isFinite(porcentaje) || porcentaje <= 0) && valorMinimo <= 0) {
+    next.deducibleCalculado = '';
+    return next;
+  }
+  if (va == null || va <= 0) {
+    next.deducibleCalculado = '';
+    return next;
+  }
+  const porPct = va * ((Number.isFinite(porcentaje) ? porcentaje : 0) / 100);
+  next.deducibleCalculado = Math.round(Math.max(porPct, valorMinimo) * 100) / 100;
+  return next;
+}
+
+/** Si la fila ya es un artículo real y no tiene cobertura propia, usa la predeterminada. */
+export function prepararFilaDeducibleContenido(
+  row = {},
+  smmlvCfg = {},
+  coberturaPredeterminada = ''
+) {
+  let next = { ...row };
+  const propia = String(next.coberturaAfectar || next.tipoCobertura || '').trim();
+  if (filaContenidoListaParaDeducible(next) && !propia && coberturaPredeterminada) {
+    next = { ...next, coberturaAfectar: coberturaPredeterminada };
+  }
+  return aplicarDeducibleCoberturaFila(next, smmlvCfg);
+}
+
 export function calcularTotalesContenidos(contenidos = {}) {
   const items = Array.isArray(contenidos.items) ? contenidos.items : [];
   const subtotal = items.reduce((acc, row) => {
     const t = totalFilaContenido(row);
     return acc + (t == null ? 0 : t);
   }, 0);
-  return { subtotal, total: subtotal };
+  const filasConDeducible = items.filter(filaContenidoTieneDeducibleArticulo);
+  const deduciblePorArticulos = filasConDeducible.reduce((acc, row) => {
+    const n = parseMontoNsr10(row.deducibleCalculado);
+    return acc + (n == null ? 0 : n);
+  }, 0);
+  const valorAsegurableTotal = items.reduce((acc, row) => {
+    const n = parseMontoNsr10(row.valorAsegurable);
+    return acc + (n == null ? 0 : n);
+  }, 0);
+  return {
+    subtotal,
+    total: subtotal,
+    deduciblePorArticulos: Math.round(deduciblePorArticulos * 100) / 100,
+    usaDeduciblePorArticulo: filasConDeducible.length > 0,
+    valorAsegurableTotal: Math.round(valorAsegurableTotal * 100) / 100,
+  };
 }
 
 /**
@@ -614,6 +806,8 @@ export function calcularResumenTotalesNsr10(evalData = {}) {
     totalPresupuesto,
     totalContenidos,
     sumaCompleta,
+    deduciblePorArticulos: totalesContenidos.deduciblePorArticulos || 0,
+    usaDeduciblePorArticulo: Boolean(totalesContenidos.usaDeduciblePorArticulo),
   };
 }
 

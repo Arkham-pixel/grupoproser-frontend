@@ -743,6 +743,7 @@ return {
           'subtarea-complex',
           'subtarea-formato',
           'subtarea-externa',
+          'sura',
         ];
         const estadoSugeridoTraz = String(location?.state?.estadoInicial || '').trim();
         let estadoCargado = null;
@@ -1274,12 +1275,14 @@ setFormData(prev => {
   useEffect(() => {
     const desdeState = location.state || {};
     const complexIdFromState = String(desdeState?.complexId || desdeState?._id || '').trim();
-    if (complexIdFromState) {
+    const suraIdFromState = String(desdeState?.suraId || '').trim();
+    if (complexIdFromState || suraIdFromState) {
       setFormData((prev) => ({
         ...prev,
         metadata: {
           ...(prev.metadata || {}),
-          complexId: complexIdFromState
+          ...(complexIdFromState ? { complexId: complexIdFromState } : {}),
+          ...(suraIdFromState ? { suraId: suraIdFromState, origen: 'sura' } : {}),
         }
       }));
     }

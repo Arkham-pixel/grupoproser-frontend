@@ -12,6 +12,7 @@ import {
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
+import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
 
 export { sanitizarInformeUnicoFotos as sanitizarInformeUnicoBbvaCat };
@@ -199,6 +200,7 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
     deducibleConfig: liq.deducibleConfig,
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
+    otrosAmparos: liquidador.otrosAmparos,
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -234,6 +236,8 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
     subtotalEdificios: resumen.totalPresupuesto,
     diferencia: 0,
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
+    totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
+    otrosAmparos: diagrama.otrosAmparos || [],
   };
 }
 
@@ -262,6 +266,7 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
     liquidacionCatastrofico: liquidacionCatastroficoDefaultBbvaCat(caso),
+    otrosAmparos: defaultOtrosAmparos(),
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
         ? formatMiles(caso.valorReclamado)
@@ -278,6 +283,9 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
       encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
       observaciones: guardado.observaciones || '',
       valorReclamadoCaso: guardado.valorReclamadoCaso || base.valorReclamadoCaso,
+      otrosAmparos: Array.isArray(guardado.otrosAmparos)
+        ? normalizarOtrosAmparos(guardado.otrosAmparos)
+        : defaultOtrosAmparos(),
     };
   }
 
@@ -295,6 +303,9 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
       ...(guardado.liquidacionCatastrofico || {}),
     },
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
+    otrosAmparos: Array.isArray(guardado.otrosAmparos)
+      ? normalizarOtrosAmparos(guardado.otrosAmparos)
+      : defaultOtrosAmparos(),
   };
 }
 
@@ -306,6 +317,7 @@ export function formDataNsrDesdeLiquidadorBbvaCat(liquidador = {}, caso = {}) {
     evaluacionSismicaNSR10: liquidador.evaluacionSismicaNSR10,
     liquidacionCatastrofico: liquidador.liquidacionCatastrofico,
     indemnizacionSugerida: liquidador.indemnizacionSugerida,
+    otrosAmparos: liquidador.otrosAmparos,
     asegurado: enc.asegurado,
     ciudad: enc.ciudad,
     direccionRiesgo: enc.direccion,

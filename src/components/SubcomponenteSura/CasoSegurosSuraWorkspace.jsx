@@ -33,6 +33,7 @@ import useSuraCasoAutosave from '../../hooks/useSuraCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
+import SelectorTipoInformeSura from './SelectorTipoInformeSura.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
@@ -112,6 +113,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
   const [restoreNonce, setRestoreNonce] = useState(0);
+  const [mostrarInformeUnico, setMostrarInformeUnico] = useState(false);
 
   const casoId = casoSura?._id || casoIdFromQuery || null;
 
@@ -541,19 +543,33 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
                 guardandoCaso={guardando}
               />
             ) : tabActivo === TABS_SURA.DOCUMENTOS ? (
-              <InformeUnicoSegurosSura
-                casoSura={casoSura}
-                fotosAgil={fotosAgilState || casoSura?.fotosAgil || []}
-                liquidadorInicial={liquidadorState}
-                onEstadoChange={setInformeState}
-                onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
-                  setTotalesState(tot);
-                }}
-                onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
-                onCasoChange={setCasoSura}
-                guardandoCaso={guardando}
-              />
+              <div>
+                <SelectorTipoInformeSura
+                  casoSura={casoSura}
+                  modoUnicoActivo={mostrarInformeUnico}
+                  onElegirUnico={() => setMostrarInformeUnico(true)}
+                />
+                {mostrarInformeUnico ? (
+                  <InformeUnicoSegurosSura
+                    casoSura={casoSura}
+                    fotosAgil={fotosAgilState || casoSura?.fotosAgil || []}
+                    liquidadorInicial={liquidadorState}
+                    onEstadoChange={setInformeState}
+                    onLiquidadorChange={(liq, tot) => {
+                      setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
+                      setTotalesState(tot);
+                    }}
+                    onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
+                    onCasoChange={setCasoSura}
+                    guardandoCaso={guardando}
+                  />
+                ) : (
+                  <p className="font-body text-sm text-gray-500 dark:text-gray-400">
+                    Elija preliminar o final para abrir el formato de Complex, o informe único
+                    para diligenciar el Word de SURA aquí.
+                  </p>
+                )}
+              </div>
             ) : tabActivo === TABS_SURA.SALVAMENTO ? (
               <SalvamentoSura
                 casoSura={casoSura}

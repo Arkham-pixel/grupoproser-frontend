@@ -1092,6 +1092,21 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
         valueW: 5000,
       }
     ),
+    ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
+      ? [
+          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+          ...totales.otrosAmparos.map((it) =>
+            campoFila(
+              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
+              money(it.valor),
+              { labelW: 5000, valueW: 5000 }
+            )
+          ),
+        ]
+      : []),
     campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
       boldValue: true,
       labelW: 5000,

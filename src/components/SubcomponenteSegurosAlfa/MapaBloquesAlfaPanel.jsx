@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { FaChevronDown, FaChevronRight, FaMapMarkerAlt, FaSync } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaSync } from 'react-icons/fa';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -136,7 +136,6 @@ export default function MapaBloquesAlfaPanel({
   const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
-  const [abiertos, setAbiertos] = useState({});
   const [infoCaso, setInfoCaso] = useState(null);
   const [map, setMap] = useState(null);
 
@@ -150,11 +149,6 @@ export default function MapaBloquesAlfaPanel({
         estado: estado || '',
       });
       setData(res);
-      const open = {};
-      (res.bloques || []).forEach((b, i) => {
-        open[b.id] = i < 2;
-      });
-      setAbiertos(open);
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.bloques.loadError'));
@@ -347,20 +341,15 @@ export default function MapaBloquesAlfaPanel({
   };
 
   const seleccionarSinUbicar = () => {
-    if (!onBloqueChange) {
-      setAbiertos((prev) => ({ ...prev, [SIN_UBICAR_ID]: !prev[SIN_UBICAR_ID] }));
-      return;
-    }
+    if (!onBloqueChange) return;
     if (bloqueSeleccionadoId === SIN_UBICAR_ID) {
       onBloqueChange(null, []);
       return;
     }
     const ids = sinUbicar.map((c) => String(c._id));
     onBloqueChange(SIN_UBICAR_ID, ids);
-    setAbiertos((prev) => ({ ...prev, [SIN_UBICAR_ID]: true }));
   };
 
-  const toggleLista = (id) => setAbiertos((prev) => ({ ...prev, [id]: !prev[id] }));
   const sinUbicarActivo = bloqueSeleccionadoId === SIN_UBICAR_ID;
 
   return (
@@ -429,8 +418,9 @@ export default function MapaBloquesAlfaPanel({
           {t('segurosAlfa.bloques.precisionHint')}
         </p>
 
-        {/* Chips de bloques */}
-        <div className="mb-3 flex flex-wrap gap-2">
+        {/* Chips de bloques (compactos, con scroll si hay muchos) */}
+        <div className="mb-3 max-h-28 overflow-y-auto rounded-lg border border-gray-100 p-2 dark:border-gray-800">
+          <div className="flex flex-wrap gap-2">
           {bloques.map((b, i) => {
             const active = bloqueSeleccionadoId === b.id;
             const color = colorBloque(i);
@@ -477,6 +467,7 @@ export default function MapaBloquesAlfaPanel({
               </span>
             </button>
           )}
+          </div>
         </div>
 
         {/* Mapa */}
@@ -633,114 +624,62 @@ export default function MapaBloquesAlfaPanel({
           )}
         </div>
 
-        {/* Lista compacta de bloques */}
-        <div className="space-y-2">
-          {bloques.map((bloque, bi) => {
-            const abierto = Boolean(abiertos[bloque.id]);
-            const active = bloqueSeleccionadoId === bloque.id;
-            const color = colorBloque(bi);
+        {/* Lista de casos: solo del bloque seleccionado (no listar todos los bloques) */}
+        {(() => {
+          const bloqueActivo = bloques.find((b) => b.id === bloqueSeleccionadoId);
+          const bi = bloqueActivo
+            ? bloques.findIndex((b) => b.id === bloqueActivo.id)
+            : -1;
+          if (bloqueActivo) {
+            const color = colorBloque(Math.max(0, bi));
             return (
-              <div
-                key={bloque.id}
-                className={`overflow-hidden rounded-xl border ${
-                  active
-                    ? 'border-fenix-primario ring-1 ring-fenix-primario/30'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <div className="flex items-stretch">
-                  <button
-                    type="button"
-                    className="flex flex-1 items-center gap-2 px-3 py-2.5 text-left"
-                    onClick={() => toggleLista(bloque.id)}
-                  >
-                    {abierto ? <FaChevronDown /> : <FaChevronRight />}
-                    <span
-                      className="inline-block h-3 w-3 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="font-heading text-sm font-semibold text-gray-900 dark:text-white">
-                      {bloque.nombre}
-                    </span>
-                    <span className="font-body text-xs text-gray-500">
-                      ({bloque.cantidad} {t('segurosAlfa.bloques.cases')})
-                    </span>
-                  </button>
-                  {onBloqueChange && (
-                    <button
-                      type="button"
-                      className="border-l border-gray-200 px-3 text-xs font-semibold text-fenix-primario hover:bg-red-50 dark:border-gray-700 dark:hover:bg-red-950/20"
-                      onClick={() => seleccionarBloque(bloque)}
-                    >
-                      {active
-                        ? t('segurosAlfa.bloques.filtering')
-                        : t('segurosAlfa.bloques.filterTable')}
-                    </button>
-                  )}
+              <div className="overflow-hidden rounded-xl border border-fenix-primario ring-1 ring-fenix-primario/30">
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <span
+                    className="inline-block h-3 w-3 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="font-heading text-sm font-semibold text-gray-900 dark:text-white">
+                    {bloqueActivo.nombre}
+                  </span>
+                  <span className="font-body text-xs text-gray-500">
+                    ({bloqueActivo.cantidad} {t('segurosAlfa.bloques.cases')})
+                  </span>
+                  <span className="ml-auto font-body text-xs text-gray-500">
+                    {t('segurosAlfa.bloques.filtering')}
+                  </span>
                 </div>
-                {abierto && (
-                  <ul className="max-h-40 space-y-1 overflow-y-auto border-t border-gray-100 px-3 py-2 text-xs dark:border-gray-800">
-                    {(bloque.casos || []).map((c) => (
-                      <li key={c._id} className="flex justify-between gap-2">
-                        <span className="truncate">
-                          {c.distanciaKmCentro != null ? `${c.distanciaKmCentro} km · ` : ''}
-                          {c.direccionPredio || c.siniestro || c.consecutivo}
-                        </span>
-                        <Link
-                          to={`/seguros-alfa/caso?casoId=${c._id}`}
-                          className="shrink-0 text-fenix-primario hover:underline"
-                        >
-                          {t('segurosAlfa.bloques.openCase')}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ul className="max-h-52 space-y-1 overflow-y-auto border-t border-gray-100 px-3 py-2 text-xs dark:border-gray-800">
+                  {(bloqueActivo.casos || []).map((c) => (
+                    <li key={c._id} className="flex justify-between gap-2">
+                      <span className="truncate">
+                        {c.distanciaKmCentro != null ? `${c.distanciaKmCentro} km · ` : ''}
+                        {c.direccionPredio || c.siniestro || c.consecutivo}
+                      </span>
+                      <Link
+                        to={`/seguros-alfa/caso?casoId=${c._id}`}
+                        className="shrink-0 text-fenix-primario hover:underline"
+                      >
+                        {t('segurosAlfa.bloques.openCase')}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
             );
-          })}
-
-          {sinUbicar.length > 0 && (
-            <div
-              className={`overflow-hidden rounded-xl border ${
-                sinUbicarActivo
-                  ? 'border-amber-500 ring-1 ring-amber-400/40'
-                  : 'border-amber-200 dark:border-amber-900/50'
-              }`}
-            >
-              <div className="flex items-stretch">
-                <button
-                  type="button"
-                  className="flex flex-1 items-center gap-2 px-3 py-2.5 text-left"
-                  onClick={() => toggleLista(SIN_UBICAR_ID)}
-                >
-                  {abiertos[SIN_UBICAR_ID] ? <FaChevronDown /> : <FaChevronRight />}
+          }
+          if (sinUbicarActivo && sinUbicar.length > 0) {
+            return (
+              <div className="overflow-hidden rounded-xl border border-amber-500 ring-1 ring-amber-400/40">
+                <div className="flex items-center gap-2 px-3 py-2.5">
                   <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />
                   <span className="font-heading text-sm font-semibold text-gray-900 dark:text-white">
                     {t('segurosAlfa.bloques.unlocated')}
                   </span>
                   <span className="font-body text-xs text-gray-500">
-                    ({sinUbicar.length} {t('segurosAlfa.bloques.cases')} ·{' '}
-                    {t('segurosAlfa.bloques.unlocatedBreakdown', {
-                      sinDir: sinDireccionCount,
-                      fallidos: geocodeFallidoCount,
-                    })}
-                    )
+                    ({sinUbicar.length} {t('segurosAlfa.bloques.cases')})
                   </span>
-                </button>
-                {onBloqueChange && (
-                  <button
-                    type="button"
-                    className="border-l border-amber-200 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-50 dark:border-amber-900/50 dark:text-amber-200 dark:hover:bg-amber-950/30"
-                    onClick={seleccionarSinUbicar}
-                  >
-                    {sinUbicarActivo
-                      ? t('segurosAlfa.bloques.filtering')
-                      : t('segurosAlfa.bloques.filterTable')}
-                  </button>
-                )}
-              </div>
-              {(abiertos[SIN_UBICAR_ID] || sinUbicarActivo) && (
+                </div>
                 <ul className="max-h-52 space-y-1 overflow-y-auto border-t border-amber-100 px-3 py-2 text-xs dark:border-amber-900/40">
                   {sinUbicar.map((c) => (
                     <li key={c._id} className="flex justify-between gap-2">
@@ -767,10 +706,15 @@ export default function MapaBloquesAlfaPanel({
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            );
+          }
+          return (
+            <p className="font-body text-xs text-gray-500 dark:text-gray-400">
+              Selecciona un bloque arriba (chip o mapa) para ver sus casos y filtrar la tabla.
+            </p>
+          );
+        })()}
       </div>
     </section>
   );

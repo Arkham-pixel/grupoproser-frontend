@@ -72,11 +72,17 @@ export function normEstado(estado) {
 
 export function esLiquidadoEstado(estado) {
   const e = normEstado(estado);
-  return e === 'LIQUIDADO' || e === 'ENVIADO ASEGURADORA' || e === 'CERRADO';
+  return (
+    e === 'CASO PARA PAGO' ||
+    e === 'LIQUIDADO' ||
+    e === 'ENVIADO ASEGURADORA' ||
+    e === 'CERRADO'
+  );
 }
 
 export function esActivo(estado) {
-  return normEstado(estado) !== 'CERRADO';
+  const e = normEstado(estado);
+  return e !== 'CERRADO' && e !== 'CASO PARA PAGO';
 }
 
 export function num(v) {
@@ -124,7 +130,7 @@ export function calcularBoletinSemanalAllianz(casos = [], alertasPayload = null,
   let ansLiquidacionTotal = 0;
 
   for (const c of lista) {
-    const est = String(c.estado || 'PENDIENTE');
+    const est = String(c.estado || 'CASO NUEVO');
     porEstado[est] = (porEstado[est] || 0) + 1;
 
     const created = parseFechaCaso(c.createdAt);

@@ -503,7 +503,11 @@ export default function DatosGenerales({
             value={formData.descripcionEstado || ''}
             onChange={handleChange}
             rows={3}
-            placeholder={t("complex.ui.datos_generales.describe_el_estado_del_caso")}
+            placeholder={
+              String(formData.estado || '').includes('ANULADO')
+                ? 'Observaciones de la anulación / dado de baja (obligatorio en SURA)'
+                : t("complex.ui.datos_generales.describe_el_estado_del_caso")
+            }
           />
         </Campo>
 

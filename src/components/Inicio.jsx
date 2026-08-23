@@ -18,6 +18,7 @@ import {
   FaTimes,
 } from 'react-icons/fa';
 import { BASE_URL } from '../config/apiConfig.js';
+import { esRolContractor } from '../config/roles.js';
 
 const API = `${BASE_URL}/api`;
 const MAX_TAREA_CHARS = 20;
@@ -355,7 +356,7 @@ export default function Inicio() {
           </div>
         </header>
 
-        {/* Accesos directos */}
+        {!esRolContractor(usuarioActual.rol) && (
         <section className={`${cardDashboard} p-4 sm:p-6`}>
           <h2 className={sectionTitle}>
             <FaRocket className="text-fenix-primario" />
@@ -382,6 +383,7 @@ export default function Inicio() {
             })}
           </div>
         </section>
+        )}
 
         {/* Grid principal */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:gap-8">

@@ -3,25 +3,45 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 export const ALLIANZ_REPORTE_PAGE_SIZE = 25;
 
 export const ESTADOS_ALLIANZ = [
-  'PENDIENTE',
-  'EN INSPECCIÓN',
-  'DOCUMENTACIÓN',
-  'LIQUIDADO',
-  'ENVIADO ASEGURADORA',
-  'CERRADO',
+  'CASO NUEVO',
+  'COORDINANDO INSPECCIÓN',
+  'ANÁLISIS DEL CASO',
+  'PENDIENTE DE DOCUMENTO',
+  'OBJECIÓN',
+  'AUTORIZACIÓN ANALISTA',
+  'CASO PARA PAGO',
+];
+
+export const MODALIDADES_ALLIANZ = ['CAMPO', 'VIDEOPERITAJE'];
+
+export const FECHA_ACCION_POR_ESTADO_ALLIANZ = {
+  'CASO NUEVO': 'fechaCasoNuevo',
+  'COORDINANDO INSPECCIÓN': 'fechaCoordinandoInspeccion',
+  'ANÁLISIS DEL CASO': 'fechaAnalisisCaso',
+  'PENDIENTE DE DOCUMENTO': 'fechaSolicitudDocumento',
+  OBJECIÓN: 'fechaObjecion',
+  'AUTORIZACIÓN ANALISTA': 'fechaAutorizacionAnalista',
+  'CASO PARA PAGO': 'fechaCasoParaPago',
+};
+
+export const CAMPOS_FECHA_ACCION_ALLIANZ = [
+  'fechaCasoNuevo',
+  'fechaCoordinandoInspeccion',
+  'fechaAnalisisCaso',
+  'fechaSolicitudDocumento',
+  'fechaRecepcionDocumento',
+  'fechaObjecion',
+  'fechaAutorizacionAnalista',
+  'fechaCasoParaPago',
 ];
 
 const ESTADOS_ALLIANZ_LEGACY = {
-  'CASO NUEVO': 'PENDIENTE',
-  PENDIENTE: 'PENDIENTE',
-  'EN INSPECCION': 'EN INSPECCIÓN',
-  'COORDINANDO INSPECCION': 'EN INSPECCIÓN',
-  'ANALISIS DEL CASO': 'EN INSPECCIÓN',
-  DOCUMENTACION: 'DOCUMENTACIÓN',
-  'PENDIENTE DE DOCUMENTO': 'DOCUMENTACIÓN',
-  OBJECION: 'DOCUMENTACIÓN',
-  'AUTORIZACION ANALISTA': 'LIQUIDADO',
-  'CASO PARA PAGO': 'CERRADO',
+  PENDIENTE: 'CASO NUEVO',
+  'EN INSPECCION': 'COORDINANDO INSPECCIÓN',
+  DOCUMENTACION: 'PENDIENTE DE DOCUMENTO',
+  LIQUIDADO: 'CASO PARA PAGO',
+  'ENVIADO ASEGURADORA': 'CASO PARA PAGO',
+  CERRADO: 'CASO PARA PAGO',
 };
 
 const claveEstadoAllianz = (valor) =>
@@ -34,12 +54,41 @@ const claveEstadoAllianz = (valor) =>
 
 export function homologarEstadoAllianz(valor) {
   const raw = String(valor || '').trim();
-  if (!raw) return 'PENDIENTE';
+  if (!raw) return 'CASO NUEVO';
   if (ESTADOS_ALLIANZ.includes(raw)) return raw;
   const key = claveEstadoAllianz(raw);
   const exacto = ESTADOS_ALLIANZ.find((est) => claveEstadoAllianz(est) === key);
   if (exacto) return exacto;
   return ESTADOS_ALLIANZ_LEGACY[key] || raw;
+}
+
+export function diasEnEstadoAllianz(caso = {}) {
+  const estado = homologarEstadoAllianz(caso.estado);
+  const clave = FECHA_ACCION_POR_ESTADO_ALLIANZ[estado];
+  const origen = caso[clave] || caso.updatedAt || caso.createdAt;
+  if (!origen) return '';
+  const d = new Date(origen);
+  if (Number.isNaN(d.getTime())) return '';
+  return String(Math.max(0, Math.floor((Date.now() - d.getTime()) / 86400000)));
+}
+
+export function ultimaGestionAllianz(caso = {}) {
+  const claves = [
+    ...CAMPOS_FECHA_ACCION_ALLIANZ,
+    'fechaAsignacion',
+    'fechaVisita',
+    'fechaInspeccion',
+    'fechaUltimoDocumento',
+    'updatedAt',
+  ];
+  let max = null;
+  for (const clave of claves) {
+    if (!caso[clave]) continue;
+    const d = new Date(caso[clave]);
+    if (Number.isNaN(d.getTime())) continue;
+    if (!max || d > max) max = d;
+  }
+  return max;
 }
 
 /** Mismos tipos de documento que Complex. */
@@ -448,6 +497,19 @@ export const FORM_VACIO_ALLIANZ = {
   inspector: '',
   fechaAsignacion: '',
   fechaVisita: '',
+  modalidadAtencion: '',
+  fechaCasoNuevo: '',
+  fechaCoordinandoInspeccion: '',
+  fechaAnalisisCaso: '',
+  fechaSolicitudDocumento: '',
+  fechaRecepcionDocumento: '',
+  fechaObjecion: '',
+  fechaAutorizacionAnalista: '',
+  fechaCasoParaPago: '',
+  documentoFaltante: '',
+  observacionPendienteDocumento: '',
+  motivoObjecion: '',
+  responsableAporteDocumento: '',
   numeroPoliza: '',
   tipoPoliza: '',
   tipoPolizaOtro: '',
@@ -477,7 +539,7 @@ export const FORM_VACIO_ALLIANZ = {
   fechaLiquidado: '',
   fechaAceptacionLiquidacion: '',
   fechaEnvioAseguradora: '',
-  estado: 'PENDIENTE',
+  estado: 'CASO NUEVO',
   riskId: '',
   distanciaEpicentroKm: '',
   tipoNegocioHomologado: '',
@@ -534,6 +596,7 @@ export const CAMPOS_FECHA_Allianz = [
   'fechaEnvioAseguradora',
   'fechaAsignacion',
   'fechaVisita',
+  ...CAMPOS_FECHA_ACCION_ALLIANZ,
 ];
 
 export const CAMPOS_NUMERICOS_ALLIANZ = [

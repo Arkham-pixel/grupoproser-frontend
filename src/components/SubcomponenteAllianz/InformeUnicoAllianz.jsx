@@ -394,6 +394,10 @@ export default function InformeUnicoAllianz({
             <span>Deducible</span>
             <span>{totales.deducibleTexto || 'No aplica'}</span>
           </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>Otros amparos (sin deducible)</span>
+            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
+          </div>
           <div className="flex justify-between px-4 py-2 text-sm font-bold">
             <span>{t('allianz.settlement.totalPay')}</span>
             <span>$ {formatearMonto(totales.totalIndemnizar)}</span>

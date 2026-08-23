@@ -1,5 +1,4 @@
 import {
-  actualizarArchivoBbvaCat,
   eliminarArchivoBbvaCat,
   getCasoBbvaCatById,
   subirArchivoBbvaCat,
@@ -19,7 +18,6 @@ export function bbvaCatArchivosApi(origen = 'cat') {
       getById: getCasoBbvaCatListadoById,
       subir: subirArchivoBbvaCatListado,
       eliminar: eliminarArchivoBbvaCatListado,
-      actualizar: async () => null,
       url: urlDescargaArchivoBbvaCatListado,
     };
   }
@@ -27,7 +25,6 @@ export function bbvaCatArchivosApi(origen = 'cat') {
     getById: getCasoBbvaCatById,
     subir: subirArchivoBbvaCat,
     eliminar: eliminarArchivoBbvaCat,
-    actualizar: actualizarArchivoBbvaCat,
     url: urlDescargaArchivoBbvaCat,
   };
 }
