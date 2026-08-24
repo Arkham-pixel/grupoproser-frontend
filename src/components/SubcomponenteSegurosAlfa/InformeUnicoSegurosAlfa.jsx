@@ -3,13 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { FaFileExcel } from 'react-icons/fa';
 import {
   Campo,
+  ExpressAvisoModal,
   expressBtnPrimary,
   expressBtnSecondary,
   InputFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
-  expressAlertError,
-  expressAlertSuccess,
   expressFormSection,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
@@ -266,9 +265,6 @@ export default function InformeUnicoSegurosAlfa({
 
   return (
     <div className="space-y-5">
-      {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
-      {error && <p className={expressAlertError}>{error}</p>}
-
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Campo label={t('segurosAlfa.reportUnique.adjuster')}>
           <InputFenix
@@ -348,6 +344,20 @@ export default function InformeUnicoSegurosAlfa({
           </button>
         )}
       </div>
+
+      {(mensaje || error) && (
+        <ExpressAvisoModal
+          open
+          tipo={error ? 'error' : 'success'}
+          titulo={error ? 'Error' : 'Guardado'}
+          mensaje={error || mensaje}
+          botonTexto="Aceptar"
+          onClose={() => {
+            setMensaje('');
+            setError('');
+          }}
+        />
+      )}
     </div>
   );
 }

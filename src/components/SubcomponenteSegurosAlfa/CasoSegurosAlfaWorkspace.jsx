@@ -6,8 +6,6 @@ import LiquidadorSegurosAlfa from './LiquidadorSegurosAlfa.jsx';
 import InformeUnicoSegurosAlfa from './InformeUnicoSegurosAlfa.jsx';
 import AlfaSharePointSyncBanner from './AlfaSharePointSyncBanner.jsx';
 import {
-  expressAlertError,
-  expressAlertSuccess,
   expressBtnGhost,
   expressBtnPrimary,
   expressCard,
@@ -15,6 +13,7 @@ import {
   expressPageWrap,
   expressScope,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+import { ExpressAvisoModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   getCasoAlfaById,
   guardarInformeUnicoEnCasoAlfa,
@@ -23,7 +22,6 @@ import {
 } from '../../services/segurosAlfaService.js';
 import { calcularLiquidacionAlfa, mapCasoAlfaALiquidador } from './liquidadorAlfaHelpers.js';
 import {
-  fusionarLiquidadorSinPerderPresupuestoNsr,
   preferirLiquidadorMasRico,
   scoreContenidoLiquidadorNsr,
 } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
@@ -43,6 +41,81 @@ import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
+
+/** Resumen estable del liquidador para verificar persistencia en Mongo. */
+function normalizarValorHuella(v) {
+  if (v == null || v === '') return 0;
+  if (typeof v === 'number' && Number.isFinite(v)) return Math.round(v * 100) / 100;
+  const raw = String(v).trim();
+  const n = Number(
+    raw.includes(',')
+      ? raw.replace(/\./g, '').replace(',', '.')
+      : raw.replace(/,/g, '')
+  );
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
+
+function resumenLiquidadorAlfa(liq) {
+  if (!liq || typeof liq !== 'object') {
+    return { nDetalle: 0, sumaDetalle: 0, nPresup: 0, sumaPresup: 0, otros: [] };
+  }
+  const detalle = Array.isArray(liq.detalleLiquidacionCat) ? liq.detalleLiquidacionCat : [];
+  const presup = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
+    ? liq.evaluacionSismicaNSR10.presupuesto.items
+    : [];
+  const detalleConValor = detalle.filter(
+    (it) =>
+      String(it?.descripcion || it?.concepto || '').trim() ||
+      normalizarValorHuella(it?.valorPerdida) > 0
+  );
+  const presupConValor = presup.filter(
+    (it) =>
+      String(it?.actividad || it?.componente || '').trim() ||
+      normalizarValorHuella(it?.total) > 0
+  );
+  const sumaDetalle = detalleConValor.reduce(
+    (s, it) => s + normalizarValorHuella(it?.valorPerdida),
+    0
+  );
+  const sumaPresup = presupConValor.reduce((s, it) => s + normalizarValorHuella(it?.total), 0);
+  const otros = (Array.isArray(liq.otrosAmparos) ? liq.otrosAmparos : [])
+    .filter((it) => it?.aplica !== false)
+    .map((it) => ({
+      tipo: String(it?.tipo || ''),
+      valor: normalizarValorHuella(it?.valor),
+    }))
+    .filter((it) => it.valor > 0 || it.tipo)
+    .sort((a, b) => a.tipo.localeCompare(b.tipo));
+  return {
+    nDetalle: detalleConValor.length,
+    sumaDetalle: Math.round(sumaDetalle * 100) / 100,
+    nPresup: presupConValor.length,
+    sumaPresup: Math.round(sumaPresup * 100) / 100,
+    otros,
+  };
+}
+
+/** True si lo de BD refleja lo enviado (tolerante a formato / filas vacías). */
+function liquidadorPersistidoOk(enviado, enDb) {
+  const a = resumenLiquidadorAlfa(enviado);
+  const b = resumenLiquidadorAlfa(enDb);
+  if (a.nDetalle === 0 && a.nPresup === 0 && a.otros.length === 0) return false;
+  if (b.nDetalle === 0 && b.nPresup === 0 && b.otros.length === 0) return false;
+
+  const itemsA = Math.max(a.nDetalle, a.nPresup);
+  const itemsB = Math.max(b.nDetalle, b.nPresup);
+  if (itemsA > 0 && itemsB > 0 && Math.abs(itemsA - itemsB) > 1) return false;
+
+  const sumaA = a.sumaDetalle > 0 ? a.sumaDetalle : a.sumaPresup;
+  const sumaB = b.sumaDetalle > 0 ? b.sumaDetalle : b.sumaPresup;
+  if (sumaA > 0 && sumaB > 0 && Math.abs(sumaA - sumaB) > 1) return false;
+
+  const otrosA = a.otros.map((o) => `${o.tipo}:${o.valor}`).join('|');
+  const otrosB = b.otros.map((o) => `${o.tipo}:${o.valor}`).join('|');
+  if (otrosA && otrosB && otrosA !== otrosB) return false;
+
+  return true;
+}
 
 export const TABS_ALFA = {
   LIQUIDADOR: 'liquidador',
@@ -281,7 +354,6 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
       setError(t('segurosAlfa.settlement.noData'));
       return;
     }
-    // No permitir guardar un cascarón vacío encima de uno con ítems en el caso
     if (
       scoreContenidoLiquidadorNsr(liquidador) === 0 &&
       scoreContenidoLiquidadorNsr(casoAlfa?.liquidador) > 0
@@ -295,50 +367,65 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     setError('');
     setMensaje('');
     try {
-      // Guardado explícito: priorizar lo de pantalla; solo proteger contra cascarón vacío
-      const liquidadorSeguro = fusionarLiquidadorSinPerderPresupuestoNsr(
-        liquidador,
-        casoAlfa?.liquidador
-      );
+      // Guardar EXACTAMENTE lo de pantalla (sin mezclar con el liquidador inicial)
+      const liquidadorAGuardar = liquidador;
+      const totalesAGuardar = calcularLiquidacionAlfa(liquidadorAGuardar);
+
       const actualizado = await guardarLiquidadorEnCasoAlfa({
         casoId,
-        liquidador: liquidadorSeguro,
-        totales,
+        liquidador: liquidadorAGuardar,
+        totales: totalesAGuardar,
         casoBase: {
           ...(casoAlfa || {}),
           informeUnico: informeState || casoAlfa?.informeUnico,
         },
       });
-      setCasoAlfa(actualizado);
-      setLiquidadorState(liquidadorSeguro);
-      // Evitar que un borrador local viejo pise el caso al refrescar
+
+      // Verificar en Mongo: re-leer y comprobar que el contenido quedó
+      const verificado = await getCasoAlfaById(casoId);
+      const liqDb = verificado?.liquidador || actualizado?.liquidador;
+      if (!liquidadorPersistidoOk(liquidadorAGuardar, liqDb)) {
+        console.warn('Verificación liquidador Alfa', {
+          enviado: resumenLiquidadorAlfa(liquidadorAGuardar),
+          enDb: resumenLiquidadorAlfa(liqDb),
+        });
+        throw new Error(
+          'El servidor respondió, pero la base de datos NO tiene el liquidador editado. No se perdió el trabajo en pantalla: vuelva a pulsar Guardar o revise permisos/rol.'
+        );
+      }
+
+      const liqConfirmado = mapCasoAlfaALiquidador(verificado);
+      setCasoAlfa(verificado);
+      setLiquidadorState(liqConfirmado);
+      setTotalesState(calcularLiquidacionAlfa(liqConfirmado));
+
       try {
         const draftKey = `alfa-ws:${casoId}`;
         borrarBorradorLocal(draftKey);
         await eliminarBorradorArnald(draftKey);
       } catch {
-        /* el caso ya quedó en Mongo */
+        /* ok */
       }
+
+      setMensaje(
+        'Liquidador guardado exitosamente en la base de datos (verificado).'
+      );
+
       try {
         await archivarExcelCatTrasGuardar({
-          caso: actualizado,
-          liquidador: liquidadorSeguro,
-          totales,
-          informe: informeState || actualizado?.informeUnico,
+          caso: verificado,
+          liquidador: liqConfirmado,
+          totales: calcularLiquidacionAlfa(liqConfirmado),
+          informe: informeState || verificado?.informeUnico,
           etiqueta: 'LIQUIDACION',
         });
         setMensaje(
-          t('segurosAlfa.settlement.savedAndArchived', {
-            defaultValue:
-              'Liquidador guardado. Excel CAT en archivero: revise y pulse Subir en el banner para SharePoint.',
-          })
+          'Liquidador guardado exitosamente en la base de datos (verificado). Excel CAT en archivero.'
         );
       } catch (errArchivo) {
         console.error('Archivero tras liquidador:', errArchivo);
         setError(
-          `Liquidador guardado, pero NO se archivó el Excel: ${
-            errArchivo?.message || 'error'
-          }`
+          `Guardado en BD OK, pero NO se archivó el Excel: ${errArchivo?.message || 'error'}`
         );
       }
       setAutosaveUiStatus({
@@ -432,7 +519,8 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
   };
 
   const onCasoDesdeAutosave = useCallback((actualizado) => {
-    if (actualizado) setCasoAlfa(actualizado);
+    if (!actualizado) return;
+    setCasoAlfa(actualizado);
   }, []);
 
   useAlfaCasoAutosave({
@@ -513,13 +601,6 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           </p>
         )}
 
-        {mensaje && (
-          <p className={`mb-4 ${expressAlertSuccess}`}>{mensaje}</p>
-        )}
-        {error && (
-          <p className={`mb-4 ${expressAlertError}`}>{error}</p>
-        )}
-
         {casoId && (
           <AlfaSharePointSyncBanner
             summary={spSummary}
@@ -565,10 +646,8 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
-                  // Confiar en lo digitado ahora; solo rellenar huecos desde prev
-                  setLiquidadorState((prev) =>
-                    fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev)
-                  );
+                  // Confiar en lo digitado en pantalla (no mezclar con el liquidador viejo)
+                  setLiquidadorState(liq);
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
@@ -582,9 +661,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
                 casoAlfa={casoAlfa}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
-                  setLiquidadorState((prev) =>
-                    fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev)
-                  );
+                  setLiquidadorState(liq);
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
@@ -622,6 +699,20 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         }}
         onCancel={() => setShowDraftRestore(false)}
       />
+
+      {(mensaje || error) && (
+        <ExpressAvisoModal
+          open
+          tipo={error ? 'error' : 'success'}
+          titulo={error ? 'Error' : 'Guardado'}
+          mensaje={error || mensaje}
+          botonTexto="Aceptar"
+          onClose={() => {
+            setMensaje('');
+            setError('');
+          }}
+        />
+      )}
     </div>
   );
 }

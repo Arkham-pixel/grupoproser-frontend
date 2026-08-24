@@ -2,14 +2,11 @@ import React, { startTransition, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaFileExcel, FaFileWord } from 'react-icons/fa';
 import {
+  ExpressAvisoModal,
   expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import {
-  expressAlertError,
-  expressAlertSuccess,
-} from '../SubcomponenteExpress/expressFenixUi.js';
 import FormatoLiquidacionAlfa from './FormatoLiquidacionAlfa.jsx';
 import {
   calcularLiquidacionAlfa,
@@ -536,22 +533,7 @@ export default function LiquidadorSegurosAlfa({
             })}
           </button>
         </div>
-        {onGuardarEnCaso && (
-          <button
-            type="button"
-            className={expressBtnPrimary}
-            disabled={guardandoCaso}
-            onClick={handleGuardar}
-          >
-            {guardandoCaso
-              ? t('segurosAlfa.settlement.saving')
-              : t('segurosAlfa.settlement.saveToCase')}
-          </button>
-        )}
       </div>
-
-      {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
-      {error && <p className={expressAlertError}>{error}</p>}
 
       <FormatoLiquidacionAlfa
         caso={casoLocal}
@@ -621,6 +603,35 @@ export default function LiquidadorSegurosAlfa({
           }))
         }
       />
+
+      {onGuardarEnCaso && (
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+          <button
+            type="button"
+            className={expressBtnPrimary}
+            disabled={guardandoCaso}
+            onClick={handleGuardar}
+          >
+            {guardandoCaso
+              ? t('segurosAlfa.settlement.saving')
+              : t('segurosAlfa.settlement.saveToCase')}
+          </button>
+        </div>
+      )}
+
+      {(mensaje || error) && (
+        <ExpressAvisoModal
+          open
+          tipo={error ? 'error' : 'success'}
+          titulo={error ? 'Error' : 'Listo'}
+          mensaje={error || mensaje}
+          botonTexto="Aceptar"
+          onClose={() => {
+            setMensaje('');
+            setError('');
+          }}
+        />
+      )}
     </div>
   );
 }

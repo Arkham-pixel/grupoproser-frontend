@@ -1,5 +1,8 @@
 ﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
-import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import {
+  fusionarLiquidadorSinPerderPresupuestoNsr,
+  scoreContenidoLiquidadorNsr,
+} from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import { authFetch } from './authFetch.js';
 
 const ALFA_API_URL = `${BASE_URL}/api/seguros-alfa`;
@@ -441,10 +444,18 @@ export const guardarLiquidadorEnCasoAlfa = async ({
 }) => {
   if (!casoId) throw new Error('El caso Alfa debe estar guardado antes de adjuntar el liquidador.');
 
-  const liquidadorSeguro = fusionarLiquidadorSinPerderPresupuestoNsr(
-    liquidador || {},
-    casoBase?.liquidador
-  );
+  const entrante = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  // Solo bloquear cascarón vacío; no reinyectar el liquidador viejo al editar
+  const liquidadorSeguro =
+    scoreContenidoLiquidadorNsr(entrante) > 0
+      ? entrante
+      : fusionarLiquidadorSinPerderPresupuestoNsr(entrante, casoBase?.liquidador);
+
+  if (scoreContenidoLiquidadorNsr(liquidadorSeguro) === 0) {
+    throw new Error(
+      'El liquidador está vacío: no se puede guardar. Agregue ítems antes de guardar.'
+    );
+  }
 
   const payload = {
     ...casoBase,

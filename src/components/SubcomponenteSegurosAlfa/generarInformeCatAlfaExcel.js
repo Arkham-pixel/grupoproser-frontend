@@ -8,6 +8,7 @@ import {
   mapCasoAlfaALiquidador,
   parsearNumero,
   SMMLV_POR_ANIO,
+  sumarOtrosAmparosAlfa,
   textoResumenOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
 
@@ -559,59 +560,105 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     sumaIndemnizable += sum;
   }
 
-  // Totales alineados a la UI: Sub total ítems → AIU 20% → Deducible → Valor a indemnizar
+  // Totales alineados a la UI:
+  // Preferir suma de valorPerdida del detalle (igual que Formato liquidación)
   const limite = va || 0;
+  const subDesdeDetalle = detalle.reduce(
+    (acc, it) => acc + (parsearNumero(it.valorPerdida) || 0),
+    0
+  );
+  const baseSub = subDesdeDetalle > 0 ? subDesdeDetalle : sumaIndemnizable;
   const subTotalItems =
-    limite > 0 && limite < sumaIndemnizable ? limite : sumaIndemnizable;
+    limite > 0 && limite < baseSub ? limite : baseSub;
   const aiuPctDecimal = Number(totales?.presupuesto?.aiuPct);
   const aiuPctUi = Number.isFinite(aiuPctDecimal)
     ? Math.round(aiuPctDecimal * 10000) / 100
-    : 15;
+    : 20;
   const aiuValStored = parsearNumero(totales?.aiu);
   const aiuVal =
     aiuValStored > 0
       ? aiuValStored
       : Math.round(subTotalItems * (aiuPctUi / 100) * 100) / 100;
-  const deducibleFinal =
-    parsearNumero(totales?.deducibleAplicado) ||
-    dedPesos ||
-    0;
-  const aIndemnizar =
-    totales?.totalIndemnizar != null && totales.totalIndemnizar !== ''
-      ? parsearNumero(totales.totalIndemnizar)
-      : Math.max(0, subTotalItems + aiuVal - deducibleFinal);
 
-  const totalOtrosAmparos = parsearNumero(totales?.totalOtrosAmparos);
+  // Deducible = el mismo de la UI (aplicado), no una fórmula distinta de la plantilla
+  const deducibleFinal = Math.max(
+    0,
+    parsearNumero(totales?.deducibleAplicado) ||
+      parsearNumero(dedCfg.pesosOtro) ||
+      dedPesos ||
+      0
+  );
+
+  const totalOtrosAmparos =
+    parsearNumero(totales?.totalOtrosAmparos) ||
+    sumarOtrosAmparosAlfa(liquidador?.otrosAmparos || []);
+
+  // Siempre recalcular como la UI (no usar totales.totalIndemnizar desfasado ni fórmulas de plantilla)
+  const subtotalEdificio = Math.max(
+    0,
+    Math.round((subTotalItems + aiuVal - deducibleFinal) * 100) / 100
+  );
+  const aIndemnizar = Math.max(
+    0,
+    Math.round((subtotalEdificio + totalOtrosAmparos) * 100) / 100
+  );
+
   const resumenOtros = textoResumenOtrosAmparosAlfa(
     liquidador?.otrosAmparos || totales?.otrosAmparos || []
   );
 
-  setVal(sheet, 25, 12, 'Sub Total ítems');
-  setVal(sheet, 25, 15, subTotalItems || null);
-
-  setVal(sheet, 26, 12, `AIU (${aiuPctUi}%)`);
-  setVal(sheet, 26, 15, aiuVal || 0);
-
-  setVal(sheet, 27, 12, 'Deducible Aplicable');
-  setVal(sheet, 27, 15, deducibleFinal || 0);
-
-  if (totalOtrosAmparos > 0) {
-    setVal(sheet, 28, 12, 'Otros amparos (sin deducible)');
-    setVal(sheet, 28, 15, totalOtrosAmparos);
-    setVal(sheet, 29, 12, 'Valor a Indemnizar');
-    setVal(sheet, 29, 15, aIndemnizar || 0);
+  /** Escribe valor numérico y elimina fórmula de plantilla (evita que Excel “deshaga” la resta). */
+  const setTotalVal = (row, col, value) => {
+    const cell = sheet.getCell(row, col);
+    cell.value = value == null || value === '' ? null : value;
     try {
-      sheet.getCell(29, 12).font = { ...(sheet.getCell(27, 12).font || {}), bold: true };
-      sheet.getCell(29, 15).font = { ...(sheet.getCell(27, 15).font || {}), bold: true };
+      if (cell.formula) cell.formula = undefined;
     } catch {
       /* ok */
     }
+  };
+
+  setVal(sheet, 25, 12, 'Sub Total ítems');
+  setTotalVal(25, 15, subTotalItems || 0);
+
+  setVal(sheet, 26, 12, `AIU (${aiuPctUi}%)`);
+  setTotalVal(26, 15, aiuVal || 0);
+
+  setVal(sheet, 27, 12, 'Deducible Aplicable');
+  setTotalVal(27, 15, deducibleFinal || 0);
+
+  // Reescribir O8 (Pesos/Otro) con el deducible aplicado real
+  setTotalVal(8, 15, deducibleFinal || 0);
+
+  let rowValor = 28;
+  if (totalOtrosAmparos > 0) {
+    setVal(sheet, 28, 12, 'Otros amparos (sin deducible)');
+    setTotalVal(28, 15, totalOtrosAmparos);
+    rowValor = 29;
+  }
+  setVal(sheet, rowValor, 12, 'Valor a Indemnizar');
+  setTotalVal(rowValor, 15, aIndemnizar || 0);
+  try {
+    sheet.getCell(rowValor, 12).font = {
+      ...(sheet.getCell(27, 12).font || {}),
+      bold: true,
+    };
+    sheet.getCell(rowValor, 15).font = {
+      ...(sheet.getCell(27, 15).font || {}),
+      bold: true,
+    };
+  } catch {
+    /* ok */
+  }
+
+  // Por si la plantilla tenía “Valor a Indemnizar” en la otra fila, forzar ambas coherentes
+  if (totalOtrosAmparos > 0) {
+    // fila 28 = otros; ya escrita
   } else {
-    setVal(sheet, 28, 12, 'Valor a Indemnizar');
-    setVal(sheet, 28, 15, aIndemnizar || 0);
+    // limpiar posible fila 29 residual de una generación previa
     try {
-      sheet.getCell(28, 12).font = { ...(sheet.getCell(27, 12).font || {}), bold: true };
-      sheet.getCell(28, 15).font = { ...(sheet.getCell(27, 15).font || {}), bold: true };
+      const c29 = sheet.getCell(29, 15);
+      if (c29.formula) c29.formula = undefined;
     } catch {
       /* ok */
     }

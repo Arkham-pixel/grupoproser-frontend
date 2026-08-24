@@ -6,7 +6,6 @@ import {
   guardarInformeUnicoEnCasoAlfa,
   guardarLiquidadorEnCasoAlfa,
 } from '../services/segurosAlfaService.js';
-import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_INFORME = 'informe';
 
@@ -93,10 +92,7 @@ export default function useAlfaCasoAutosave({
           } else {
             actualizado = await guardarLiquidadorEnCasoAlfa({
               casoId,
-              liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
-                payload.data,
-                base.liquidador
-              ),
+              liquidador: payload.data,
               totales: payload.totales || {},
               casoBase: {
                 ...base,
@@ -172,10 +168,7 @@ export default function useAlfaCasoAutosave({
         } else {
           actualizado = await guardarLiquidadorEnCasoAlfa({
             casoId,
-            liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
-              payload.data,
-              base.liquidador
-            ),
+            liquidador: payload.data,
             totales: payload.totales || {},
             casoBase: {
               ...base,
