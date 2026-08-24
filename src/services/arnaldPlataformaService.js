@@ -1,4 +1,5 @@
 import { BASE_URL } from '../config/apiConfig.js';
+import { refreshToken } from './api.js';
 
 function authHeaders() {
   const token = localStorage.getItem('token');
@@ -32,6 +33,66 @@ function sanitizarPayload(valor, profundidad = 0) {
   return limpio;
 }
 
+function buildDraftBody({ formKey, modulo, recursoId, titulo, payload }) {
+  return {
+    formKey,
+    modulo: modulo || 'plataforma',
+    recursoId: recursoId || '',
+    titulo: titulo || '',
+    nombre: localStorage.getItem('nombre') || '',
+    login: localStorage.getItem('login') || '',
+    payload: sanitizarPayload(payload) || {},
+    token: localStorage.getItem('token') || '',
+  };
+}
+
+/**
+ * fetch con reintento; ante 401/403 intenta renovar JWT una vez (igual que axios api).
+ */
+async function fetchConAuth(url, options = {}, { intentos = 3, renovar = true } = {}) {
+  let ultimo = null;
+  let yaRenovo = false;
+
+  for (let i = 0; i < intentos; i += 1) {
+    try {
+      const res = await fetch(url, {
+        ...options,
+        headers: {
+          ...authHeaders(),
+          ...(options.headers || {}),
+        },
+      });
+      if (res.ok) return res;
+
+      if (
+        renovar &&
+        !yaRenovo &&
+        (res.status === 401 || res.status === 403)
+      ) {
+        yaRenovo = true;
+        const nuevo = await refreshToken(true);
+        if (nuevo) {
+          ultimo = new Error(`Error ${res.status}`);
+          continue;
+        }
+      }
+
+      ultimo = new Error(`Error ${res.status}`);
+      // 4xx (salvo auth ya intentado) no vale reintentar en bucle
+      if (res.status >= 400 && res.status < 500 && res.status !== 401 && res.status !== 403) {
+        break;
+      }
+      if ((res.status === 401 || res.status === 403) && yaRenovo) {
+        break;
+      }
+    } catch (error) {
+      ultimo = error;
+    }
+    await new Promise((r) => setTimeout(r, 400 * (i + 1)));
+  }
+  throw ultimo || new Error('No se pudo completar la petición');
+}
+
 export async function guardarBorradorArnald({
   formKey,
   modulo,
@@ -43,26 +104,24 @@ export async function guardarBorradorArnald({
   const token = localStorage.getItem('token');
   if (!token || !formKey) return null;
 
-  const body = {
-    formKey,
-    modulo: modulo || 'plataforma',
-    recursoId: recursoId || '',
-    titulo: titulo || '',
-    nombre: localStorage.getItem('nombre') || '',
-    login: localStorage.getItem('login') || '',
-    payload: sanitizarPayload(payload) || {},
-    token,
-  };
+  const body = buildDraftBody({ formKey, modulo, recursoId, titulo, payload });
 
   if (keepalive && typeof navigator !== 'undefined') {
     try {
-      await fetch(`${BASE_URL}/api/arnald-drafts`, {
+      const res = await fetch(`${BASE_URL}/api/arnald-drafts`, {
         method: 'PUT',
         headers: authHeaders(),
         body: JSON.stringify(body),
         keepalive: true,
       });
-      return { ok: true };
+      if (res.ok) return { ok: true };
+      // Token vencido al cerrar pestaña: beacon acepta JWT decodificado
+      if (navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(body)], { type: 'application/json' });
+        navigator.sendBeacon(`${BASE_URL}/api/arnald-drafts/beacon`, blob);
+        return { ok: true, beacon: true };
+      }
+      return { ok: false };
     } catch {
       try {
         if (navigator.sendBeacon) {
@@ -77,62 +136,55 @@ export async function guardarBorradorArnald({
     }
   }
 
-  const response = await fetchConReintento(`${BASE_URL}/api/arnald-drafts`, {
+  const response = await fetchConAuth(`${BASE_URL}/api/arnald-drafts`, {
     method: 'PUT',
-    headers: authHeaders(),
     body: JSON.stringify(body),
   });
-  if (!response.ok) {
-    throw new Error(`Error ${response.status} al guardar borrador`);
-  }
   return response.json();
-}
-
-async function fetchConReintento(url, options, intentos = 3) {
-  let ultimo = null;
-  for (let i = 0; i < intentos; i += 1) {
-    try {
-      const res = await fetch(url, options);
-      if (res.ok) return res;
-      ultimo = new Error(`Error ${res.status}`);
-    } catch (error) {
-      ultimo = error;
-    }
-    await new Promise((r) => setTimeout(r, 400 * (i + 1)));
-  }
-  throw ultimo || new Error('No se pudo guardar el borrador');
 }
 
 export async function obtenerBorradorArnald(formKey) {
   const token = localStorage.getItem('token');
   if (!token || !formKey) return null;
-  const response = await fetch(
-    `${BASE_URL}/api/arnald-drafts?formKey=${encodeURIComponent(formKey)}`,
-    { headers: authHeaders() }
-  );
-  if (!response.ok) return null;
-  const data = await response.json();
-  return data?.draft || null;
+  try {
+    const response = await fetchConAuth(
+      `${BASE_URL}/api/arnald-drafts?formKey=${encodeURIComponent(formKey)}`,
+      { method: 'GET' },
+      { intentos: 2 }
+    );
+    const data = await response.json();
+    return data?.draft || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function eliminarBorradorArnald(formKey) {
   const token = localStorage.getItem('token');
   if (!token || !formKey) return;
-  await fetch(`${BASE_URL}/api/arnald-drafts?formKey=${encodeURIComponent(formKey)}`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-  });
+  try {
+    await fetchConAuth(
+      `${BASE_URL}/api/arnald-drafts?formKey=${encodeURIComponent(formKey)}`,
+      { method: 'DELETE' },
+      { intentos: 2 }
+    );
+  } catch {
+    // best-effort
+  }
 }
 
 export async function listarMisBorradoresArnald() {
   const token = localStorage.getItem('token');
   if (!token) return [];
-  const response = await fetch(`${BASE_URL}/api/arnald-drafts/mios`, {
-    headers: authHeaders(),
-  });
-  if (!response.ok) return [];
-  const data = await response.json();
-  return Array.isArray(data?.items) ? data.items : [];
+  try {
+    const response = await fetchConAuth(`${BASE_URL}/api/arnald-drafts/mios`, {
+      method: 'GET',
+    }, { intentos: 2 });
+    const data = await response.json();
+    return Array.isArray(data?.items) ? data.items : [];
+  } catch {
+    return [];
+  }
 }
 
 export async function listarLogsArnald(params = {}) {
@@ -140,13 +192,9 @@ export async function listarLogsArnald(params = {}) {
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') query.set(k, String(v));
   });
-  const response = await fetch(`${BASE_URL}/api/arnald-logs?${query.toString()}`, {
-    headers: authHeaders(),
+  const response = await fetchConAuth(`${BASE_URL}/api/arnald-logs?${query.toString()}`, {
+    method: 'GET',
   });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.message || `Error ${response.status}`);
-  }
   return response.json();
 }
 
@@ -155,13 +203,10 @@ export async function listarBorradoresAdminArnald(params = {}) {
   Object.entries(params).forEach(([k, v]) => {
     if (v !== undefined && v !== null && v !== '') query.set(k, String(v));
   });
-  const response = await fetch(`${BASE_URL}/api/arnald-drafts/admin?${query.toString()}`, {
-    headers: authHeaders(),
-  });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.message || `Error ${response.status}`);
-  }
+  const response = await fetchConAuth(
+    `${BASE_URL}/api/arnald-drafts/admin?${query.toString()}`,
+    { method: 'GET' }
+  );
   return response.json();
 }
 
@@ -169,9 +214,8 @@ export async function registrarNavegacionArnald({ ruta, titulo, modulo } = {}) {
   const token = localStorage.getItem('token');
   if (!token || !ruta) return;
   try {
-    await fetch(`${BASE_URL}/api/arnald-logs/evento`, {
+    await fetchConAuth(`${BASE_URL}/api/arnald-logs/evento`, {
       method: 'POST',
-      headers: authHeaders(),
       body: JSON.stringify({
         accion: 'NAVIGATE',
         ruta,
@@ -180,7 +224,7 @@ export async function registrarNavegacionArnald({ ruta, titulo, modulo } = {}) {
         nombre: localStorage.getItem('nombre') || '',
         resumen: titulo ? `${titulo} (${ruta})` : ruta,
       }),
-    });
+    }, { intentos: 1, renovar: true });
   } catch {
     // La navegación no debe fallar por el log
   }

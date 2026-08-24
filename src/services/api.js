@@ -462,4 +462,5 @@ if (typeof window !== 'undefined') {
   }
 }
 
-export default api; 
+export default api;
+export { refreshToken }; 

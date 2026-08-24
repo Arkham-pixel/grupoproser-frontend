@@ -119,7 +119,17 @@ export default function useArnaldFormDraft({
         escribirBorradorLocal(formKey, data);
         return res;
       } catch (error) {
-        console.error('❌ Error sincronizando borrador Arnald:', error);
+        // El borrador local ya quedó; 401/403 tras refresh se loguea una sola vez por racha
+        if (error?.message && /401|403/.test(error.message)) {
+          if (!persist._authWarned) {
+            persist._authWarned = true;
+            console.warn(
+              '⚠️ Borrador Arnald solo en local (sesión vencida o sin permiso de sync).'
+            );
+          }
+        } else {
+          console.error('❌ Error sincronizando borrador Arnald:', error);
+        }
         setDraftStatus(localOk ? 'saved' : 'error');
         return localOk ? { ok: true, local: true } : null;
       }
