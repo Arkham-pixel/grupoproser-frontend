@@ -197,7 +197,7 @@ export default function DatosGenerales({
             modulo="sura"
             i18nNs="segurosSura"
             ciudadSeleccionada={formData.ciudadSiniestro || formData.ciudad || ''}
-            filtrarPorCiudad
+            filtrarPorCiudad={false}
           />
         ) : (
           <Campo label={t("complex.ui.datos_generales.responsable")}>

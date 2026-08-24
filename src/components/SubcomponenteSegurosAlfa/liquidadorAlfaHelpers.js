@@ -301,6 +301,11 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
       };
     }
     const deduciblePorcentaje = Math.round(danios * (pct / 100) * 100) / 100;
+    const bruto =
+      deducibleSMMLV > 0
+        ? Math.max(deduciblePorcentaje, deducibleSMMLV)
+        : deduciblePorcentaje;
+    const usaMinimo = deducibleSMMLV > 0 && deducibleSMMLV > deduciblePorcentaje;
     return {
       aplica: true,
       requiereValorAsegurado: false,
@@ -312,10 +317,14 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
       valorSMMLV,
       anioSMMLV: anio,
       deduciblePorcentaje,
-      deducibleSMMLV: 0,
-      deducibleAplicado: deduciblePorcentaje,
-      usaMinimo: false,
-      texto: cfg.texto || `${pct}% del valor de la pérdida`,
+      deducibleSMMLV,
+      deducibleAplicado: bruto,
+      usaMinimo,
+      texto:
+        cfg.texto ||
+        (cant > 0
+          ? `${pct}% de la pérdida, mínimo ${cant} SMMLV`
+          : `${pct}% del valor de la pérdida`),
       reglaTomador,
     };
   }

@@ -42,7 +42,7 @@ import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import {
   filtrarLideresPorModulo,
-  filtrarOpcionesPorCiudad,
+  asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   resolverLiderPorModulo,
 } from '../../utils/catalogosAsignacionCatastrofico.js';
@@ -2662,45 +2662,12 @@ setFormData(prev => ({
 
   const ajustadoresCatFiltrados = useMemo(() => {
     if (!esSura) return [];
-    return filtrarOpcionesPorCiudad(
-      ajustadoresCatastrofico,
-      formData.ciudadSiniestro || formData.ciudad || ''
-    );
-  }, [esSura, ajustadoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
+    return asegurarOpcionActual(ajustadoresCatastrofico, formData.ajustador);
+  }, [esSura, ajustadoresCatastrofico, formData.ajustador]);
   const inspectoresCatFiltrados = useMemo(() => {
     if (!esSura) return [];
-    return filtrarOpcionesPorCiudad(
-      inspectoresCatastrofico,
-      formData.ciudadSiniestro || formData.ciudad || ''
-    );
-  }, [esSura, inspectoresCatastrofico, formData.ciudadSiniestro, formData.ciudad]);
-
-  useEffect(() => {
-    if (!esSura) return;
-    setFormData((prev) => {
-      let cambio = false;
-      const next = { ...prev };
-      if (
-        prev.ajustador &&
-        !ajustadoresCatFiltrados.some(
-          (a) => a.value === prev.ajustador || a.codigo === prev.ajustador
-        )
-      ) {
-        next.ajustador = '';
-        cambio = true;
-      }
-      if (
-        prev.inspector &&
-        !inspectoresCatFiltrados.some(
-          (a) => a.value === prev.inspector || a.codigo === prev.inspector
-        )
-      ) {
-        next.inspector = '';
-        cambio = true;
-      }
-      return cambio ? next : prev;
-    });
-  }, [esSura, ajustadoresCatFiltrados, inspectoresCatFiltrados]);
+    return asegurarOpcionActual(inspectoresCatastrofico, formData.inspector);
+  }, [esSura, inspectoresCatastrofico, formData.inspector]);
 
   useEffect(() => {
     if (!responsables.length) {

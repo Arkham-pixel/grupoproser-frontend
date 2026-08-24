@@ -6,7 +6,13 @@ const MIME = {
 };
 
 /** Etiquetas de documentos generados que deben sobrescribirse (no acumular copias). */
-const REPLACE_SLOTS = new Set(['LIQUIDACION', 'INFORME']);
+const REPLACE_SLOTS = new Set([
+  'LIQUIDACION',
+  'INFORME',
+  'FINIQUITO',
+  'OBJECION_DEDUCIBLE',
+  'DESISTIMIENTO',
+]);
 
 /**
  * Sube un blob al archivero del caso (ARNALD → cola SharePoint SINIESTROS).

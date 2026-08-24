@@ -70,7 +70,6 @@ import {
 } from '../../utils/permisosCasoPorRol.js';
 import {
   filtrarLideresPorModulo,
-  filtrarOpcionesPorCiudad,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -259,14 +258,14 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
     return base;
   }, [ciudadesRaw, ciudadesFiltradas, esModuloListado, form.ciudad]);
 
-  const ajustadoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.ajustador);
-  }, [ajustadoresCat, form.ciudad, form.ajustador]);
-  const inspectoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.inspector);
-  }, [inspectoresCat, form.ciudad, form.inspector]);
+  const ajustadoresPorCiudad = useMemo(
+    () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
+    [ajustadoresCat, form.ajustador]
+  );
+  const inspectoresPorCiudad = useMemo(
+    () => asegurarOpcionActual(inspectoresCat, form.inspector),
+    [inspectoresCat, form.inspector]
+  );
   const lideresZurich = useMemo(
     () => filtrarLideresPorModulo(responsables, 'zurich'),
     [responsables]
@@ -636,7 +635,7 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
             modulo="zurich"
             i18nNs="zurich"
             ciudadSeleccionada={form.ciudad}
-            filtrarPorCiudad
+            filtrarPorCiudad={false}
           />
           <Campo label={t('zurich.fields.fechaAsignacion')}>
             <InputFenix

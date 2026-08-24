@@ -26,6 +26,10 @@ import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import { descargarFiniquitoAlfaWord } from './generarFiniquitoAlfaWord.js';
 import {
+  descargarCartaDesistimientoAlfaWord,
+  descargarCartaInferiorDeducibleAlfaWord,
+} from './generarCartasCierreAlfaWord.js';
+import {
   descargarInformeCatAlfaExcel,
   generarInformeCatAlfaExcelBlob,
 } from './generarInformeCatAlfaExcel.js';
@@ -130,13 +134,33 @@ export default function LiquidadorSegurosAlfa({
       if (campo === 'tomador') {
         const liq = prev.liquidacionCatastrofico || {};
         const cfgActual = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
-        const cfg = patchDeducibleDesdeTomadorAlfa(valor, cfgActual);
+        const poliza =
+          prev.encabezado?.poliza || casoLocal.numeroPoliza || casoLocal.numeroPoliza || '';
+        const cfg = patchDeducibleDesdeTomadorAlfa(valor, { ...cfgActual, opcionDeducibleId: '' }, poliza);
         next.liquidacionCatastrofico = {
           ...liq,
           deducibleConfig: cfg,
           deducibleConfigPresupuesto: cfg,
           deducible: cfg.texto,
         };
+      }
+      if (campo === 'poliza') {
+        const liq = prev.liquidacionCatastrofico || {};
+        const cfgActual = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
+        const tomador = prev.encabezado?.tomador || casoLocal.tomador || '';
+        if (tomador) {
+          const cfg = patchDeducibleDesdeTomadorAlfa(
+            tomador,
+            { ...cfgActual, opcionDeducibleId: '' },
+            valor
+          );
+          next.liquidacionCatastrofico = {
+            ...liq,
+            deducibleConfig: cfg,
+            deducibleConfigPresupuesto: cfg,
+            deducible: cfg.texto,
+          };
+        }
       }
       return next;
     });
@@ -173,6 +197,7 @@ export default function LiquidadorSegurosAlfa({
           ...liq,
           deducibleConfig: cfg,
           deducibleConfigPresupuesto: cfg,
+          ...(cfg.texto != null && cfg.texto !== '' ? { deducible: cfg.texto } : {}),
           valorAsegurado:
             Object.prototype.hasOwnProperty.call(patch, 'valorAsegurado')
               ? patch.valorAsegurado
@@ -400,7 +425,7 @@ export default function LiquidadorSegurosAlfa({
     );
   };
 
-  const correrExport = async (tipo, fn, mime) => {
+  const correrExport = async (tipo, fn, mime, etiqueta = 'LIQUIDACION') => {
     setError('');
     setMensaje('');
     setExportando(tipo);
@@ -413,7 +438,7 @@ export default function LiquidadorSegurosAlfa({
       const nombre = resultado?.nombre || resultado?.filename;
       if (blob && nombre) {
         try {
-          const creado = await copiarAlArchivero(blob, nombre, mime, 'LIQUIDACION');
+          const creado = await copiarAlArchivero(blob, nombre, mime, etiqueta);
           setMensaje(mensajeArchivado(creado));
         } catch (errArchivo) {
           console.error('No se pudo guardar en el archivero:', errArchivo);
@@ -465,9 +490,49 @@ export default function LiquidadorSegurosAlfa({
             type="button"
             className={expressBtnGhost}
             disabled={!!exportando}
-            onClick={() => correrExport('finiquito', descargarFiniquitoAlfaWord, MIME.docx)}
+            onClick={() =>
+              correrExport('finiquito', descargarFiniquitoAlfaWord, MIME.docx, 'FINIQUITO')
+            }
           >
             <FaFileWord /> {t('segurosAlfa.settlement.downloadFiniquito')}
+          </button>
+          <button
+            type="button"
+            className={expressBtnGhost}
+            disabled={!!exportando}
+            title="Carta cuando la pérdida es inferior al deducible"
+            onClick={() =>
+              correrExport(
+                'cartaDeducible',
+                descargarCartaInferiorDeducibleAlfaWord,
+                MIME.docx,
+                'OBJECION_DEDUCIBLE'
+              )
+            }
+          >
+            <FaFileWord />{' '}
+            {t('segurosAlfa.settlement.downloadCartaInferiorDeducible', {
+              defaultValue: 'Carta inferior deducible',
+            })}
+          </button>
+          <button
+            type="button"
+            className={expressBtnGhost}
+            disabled={!!exportando}
+            title="Carta / constancia de desistimiento de reclamación"
+            onClick={() =>
+              correrExport(
+                'cartaDesistimiento',
+                descargarCartaDesistimientoAlfaWord,
+                MIME.docx,
+                'DESISTIMIENTO'
+              )
+            }
+          >
+            <FaFileWord />{' '}
+            {t('segurosAlfa.settlement.downloadCartaDesistimiento', {
+              defaultValue: 'Carta desistimiento',
+            })}
           </button>
         </div>
         {onGuardarEnCaso && (

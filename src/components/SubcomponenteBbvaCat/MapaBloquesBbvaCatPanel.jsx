@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { GoogleMap, Marker, InfoWindow, useJsApiLoader } from '@react-google-maps/api';
-import { FaChevronDown, FaChevronRight, FaMapMarkerAlt, FaSync } from 'react-icons/fa';
+import { FaMapMarkerAlt, FaSync } from 'react-icons/fa';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -143,7 +143,6 @@ export default function MapaBloquesBbvaCatPanel({
   const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
-  const [abiertos, setAbiertos] = useState({});
   const [infoCaso, setInfoCaso] = useState(null);
   const [map, setMap] = useState(null);
 
@@ -167,8 +166,6 @@ export default function MapaBloquesBbvaCatPanel({
         soloConArchivos,
       });
       setData(res);
-      // Listas cerradas por defecto: solo se abren al hacer clic en el bloque.
-      setAbiertos({});
     } catch (err) {
       console.error(err);
       setError(err.message || t('bbvaCat.bloques.loadError'));
@@ -365,10 +362,7 @@ export default function MapaBloquesBbvaCatPanel({
   }, [loading, geocoding, data]);
 
   const seleccionarSinUbicar = () => {
-    if (!onBloqueChange) {
-      setAbiertos((prev) => ({ ...prev, [SIN_UBICAR_ID]: !prev[SIN_UBICAR_ID] }));
-      return;
-    }
+    if (!onBloqueChange) return;
     if (bloqueSeleccionadoId === SIN_UBICAR_ID) {
       onBloqueChange(null, []);
       return;
@@ -376,15 +370,8 @@ export default function MapaBloquesBbvaCatPanel({
     const ids = sinUbicar.map((c) => String(c._id));
     const siniestros = sinUbicar.map((c) => String(c.siniestro || '')).filter(Boolean);
     onBloqueChange(SIN_UBICAR_ID, ids, { siniestros });
-    setAbiertos({ [SIN_UBICAR_ID]: true });
   };
 
-  const toggleLista = (id) =>
-    setAbiertos((prev) => {
-      const estabaAbierto = Boolean(prev[id]);
-      if (estabaAbierto) return {};
-      return { [id]: true };
-    });
   const sinUbicarActivo = bloqueSeleccionadoId === SIN_UBICAR_ID;
 
   return (
@@ -463,65 +450,67 @@ export default function MapaBloquesBbvaCatPanel({
           {t('bbvaCat.bloques.precisionHint')}
         </p>
 
-        {/* Chips de bloques */}
-        <div className="mb-3 flex flex-wrap gap-2">
-          {bloques.map((b, i) => {
-            const active = bloqueSeleccionadoId === b.id;
-            const color = colorBloque(indiceColorBloqueBbvaCat(b, i));
-            const vacio = Number(b.cantidad) === 0;
-            return (
+        {/* Chips de bloques (compactos, con scroll si hay muchos) */}
+        <div className="mb-3 max-h-28 overflow-y-auto rounded-lg border border-gray-100 p-2 dark:border-gray-800">
+          <div className="flex flex-wrap gap-2">
+            {bloques.map((b, i) => {
+              const active = bloqueSeleccionadoId === b.id;
+              const color = colorBloque(indiceColorBloqueBbvaCat(b, i));
+              const vacio = Number(b.cantidad) === 0;
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => seleccionarBloque(b)}
+                  className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-body text-sm font-semibold transition ${
+                    vacio ? 'opacity-60' : ''
+                  } ${
+                    active
+                      ? 'border-transparent text-white shadow-sm'
+                      : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+                  }`}
+                  style={active ? { backgroundColor: color } : undefined}
+                  title={t('bbvaCat.bloques.clickToFilter')}
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: active ? '#fff' : color }}
+                  />
+                  {b.nombre} ({b.cantidad})
+                  {depurarArchivos &&
+                  !soloConArchivos &&
+                  Number(b.cantidadConArchivo) > 0 &&
+                  !incluirConArchivos ? (
+                    <span className={`text-[10px] font-normal ${active ? 'text-white/80' : 'text-gray-500'}`}>
+                      {t('bbvaCat.bloques.cleanedCount', { count: b.cantidadConArchivo })}
+                    </span>
+                  ) : null}
+                </button>
+              );
+            })}
+            {sinUbicar.length > 0 && (
               <button
-                key={b.id}
                 type="button"
-                onClick={() => seleccionarBloque(b)}
-                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 font-body text-sm font-semibold transition ${
-                  vacio ? 'opacity-60' : ''
-                } ${
-                  active
-                    ? 'border-transparent text-white shadow-sm'
-                    : 'border-gray-200 bg-white text-gray-800 hover:border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+                onClick={seleccionarSinUbicar}
+                className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 font-body text-sm font-semibold transition ${
+                  sinUbicarActivo
+                    ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
+                    : 'border-amber-200 bg-amber-50 text-amber-900 hover:border-amber-400 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100'
                 }`}
-                style={active ? { backgroundColor: color } : undefined}
-                title={t('bbvaCat.bloques.clickToFilter')}
+                title={t('bbvaCat.bloques.clickUnlocated')}
               >
-                <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: active ? '#fff' : color }}
-                />
-                {b.nombre} ({b.cantidad})
-                {depurarArchivos &&
-                !soloConArchivos &&
-                Number(b.cantidadConArchivo) > 0 &&
-                !incluirConArchivos ? (
-                  <span className={`text-[10px] font-normal ${active ? 'text-white/80' : 'text-gray-500'}`}>
-                    {t('bbvaCat.bloques.cleanedCount', { count: b.cantidadConArchivo })}
-                  </span>
-                ) : null}
+                <span>
+                  {t('bbvaCat.bloques.unlocated')}: {sinUbicar.length}
+                </span>
+                <span className={`text-[11px] font-normal ${sinUbicarActivo ? 'text-amber-50' : 'text-amber-800/90 dark:text-amber-200/90'}`}>
+                  {t('bbvaCat.bloques.unlocatedBreakdown', {
+                    sinDir: sinDireccionCount,
+                    fallidos: geocodeFallidoCount,
+                  })}
+                </span>
               </button>
-            );
-          })}
-          {sinUbicar.length > 0 && (
-            <button
-              type="button"
-              onClick={seleccionarSinUbicar}
-              className={`inline-flex flex-col items-start rounded-lg border px-3 py-1.5 font-body text-sm font-semibold transition ${
-                sinUbicarActivo
-                  ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
-                  : 'border-amber-200 bg-amber-50 text-amber-900 hover:border-amber-400 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100'
-              }`}
-              title={t('bbvaCat.bloques.clickUnlocated')}
-            >
-              <span>
-                {t('bbvaCat.bloques.unlocated')}: {sinUbicar.length}
-              </span>
-              <span className={`text-[11px] font-normal ${sinUbicarActivo ? 'text-amber-50' : 'text-amber-800/90 dark:text-amber-200/90'}`}>
-                {t('bbvaCat.bloques.unlocatedBreakdown', {
-                  sinDir: sinDireccionCount,
-                  fallidos: geocodeFallidoCount,
-                })}
-              </span>
-            </button>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Mapa: siempre se pinta (no se oculta al filtrar «sin ubicar») */}
@@ -680,88 +669,54 @@ export default function MapaBloquesBbvaCatPanel({
           )}
         </div>
 
-        {/* Lista compacta de bloques */}
-        <div className="space-y-2">
-          {bloques.map((bloque, bi) => {
-            const abierto = Boolean(abiertos[bloque.id]);
-            const active = bloqueSeleccionadoId === bloque.id;
-            const color = colorBloque(indiceColorBloqueBbvaCat(bloque, bi));
+        {/* Lista de casos: solo del bloque seleccionado (no listar todos los bloques) */}
+        {(() => {
+          const bloqueActivo = bloques.find((b) => b.id === bloqueSeleccionadoId);
+          const bi = bloqueActivo
+            ? bloques.findIndex((b) => b.id === bloqueActivo.id)
+            : -1;
+          if (bloqueActivo) {
+            const color = colorBloque(indiceColorBloqueBbvaCat(bloqueActivo, Math.max(0, bi)));
             return (
-              <div
-                key={bloque.id}
-                className={`overflow-hidden rounded-xl border ${
-                  active
-                    ? 'border-fenix-primario ring-1 ring-fenix-primario/30'
-                    : 'border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <div className="flex items-stretch">
-                  <button
-                    type="button"
-                    className="flex flex-1 items-center gap-2 px-3 py-2.5 text-left"
-                    onClick={() => toggleLista(bloque.id)}
-                  >
-                    {abierto ? <FaChevronDown /> : <FaChevronRight />}
-                    <span
-                      className="inline-block h-3 w-3 rounded-full"
-                      style={{ backgroundColor: color }}
-                    />
-                    <span className="font-heading text-sm font-semibold text-gray-900 dark:text-white">
-                      {bloque.nombre}
-                    </span>
-                    <span className="font-body text-xs text-gray-500">
-                      ({bloque.cantidad} {t('bbvaCat.bloques.cases')})
-                    </span>
-                  </button>
-                  {onBloqueChange && (
-                    <button
-                      type="button"
-                      className="border-l border-gray-200 px-3 text-xs font-semibold text-fenix-primario hover:bg-red-50 dark:border-gray-700 dark:hover:bg-red-950/20"
-                      onClick={() => seleccionarBloque(bloque)}
-                    >
-                      {active
-                        ? t('bbvaCat.bloques.filtering')
-                        : t('bbvaCat.bloques.filterTable')}
-                    </button>
-                  )}
+              <div className="overflow-hidden rounded-xl border border-fenix-primario ring-1 ring-fenix-primario/30">
+                <div className="flex items-center gap-2 px-3 py-2.5">
+                  <span
+                    className="inline-block h-3 w-3 rounded-full"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="font-heading text-sm font-semibold text-gray-900 dark:text-white">
+                    {bloqueActivo.nombre}
+                  </span>
+                  <span className="font-body text-xs text-gray-500">
+                    ({bloqueActivo.cantidad} {t('bbvaCat.bloques.cases')})
+                  </span>
+                  <span className="ml-auto font-body text-xs text-gray-500">
+                    {t('bbvaCat.bloques.filtering')}
+                  </span>
                 </div>
-                {abierto && (
-                  <ul className="max-h-40 space-y-1 overflow-y-auto border-t border-gray-100 px-3 py-2 text-xs dark:border-gray-800">
-                    {(bloque.casos || []).map((c) => (
-                      <li key={c._id} className="flex justify-between gap-2">
-                        <span className="truncate" title={etiquetaDireccionBloqueBbvaCat(c)}>
-                          {c.distanciaKmCentro != null ? `${c.distanciaKmCentro} km · ` : ''}
-                          {etiquetaDireccionBloqueBbvaCat(c)}
-                        </span>
-                        <Link
-                          to={hrefCaso(c)}
-                          className="shrink-0 text-fenix-primario hover:underline"
-                        >
-                          {t('bbvaCat.bloques.openCase')}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                <ul className="max-h-52 space-y-1 overflow-y-auto border-t border-gray-100 px-3 py-2 text-xs dark:border-gray-800">
+                  {(bloqueActivo.casos || []).map((c) => (
+                    <li key={c._id} className="flex justify-between gap-2">
+                      <span className="truncate" title={etiquetaDireccionBloqueBbvaCat(c)}>
+                        {c.distanciaKmCentro != null ? `${c.distanciaKmCentro} km · ` : ''}
+                        {etiquetaDireccionBloqueBbvaCat(c)}
+                      </span>
+                      <Link
+                        to={hrefCaso(c)}
+                        className="shrink-0 text-fenix-primario hover:underline"
+                      >
+                        {t('bbvaCat.bloques.openCase')}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               </div>
             );
-          })}
-
-          {sinUbicar.length > 0 && (
-            <div
-              className={`overflow-hidden rounded-xl border ${
-                sinUbicarActivo
-                  ? 'border-amber-500 ring-1 ring-amber-400/40'
-                  : 'border-amber-200 dark:border-amber-900/50'
-              }`}
-            >
-              <div className="flex items-stretch">
-                <button
-                  type="button"
-                  className="flex flex-1 items-center gap-2 px-3 py-2.5 text-left"
-                  onClick={() => toggleLista(SIN_UBICAR_ID)}
-                >
-                  {abiertos[SIN_UBICAR_ID] ? <FaChevronDown /> : <FaChevronRight />}
+          }
+          if (sinUbicarActivo && sinUbicar.length > 0) {
+            return (
+              <div className="overflow-hidden rounded-xl border border-amber-500 ring-1 ring-amber-400/40">
+                <div className="flex items-center gap-2 px-3 py-2.5">
                   <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />
                   <span className="font-heading text-sm font-semibold text-gray-900 dark:text-white">
                     {t('bbvaCat.bloques.unlocated')}
@@ -774,20 +729,7 @@ export default function MapaBloquesBbvaCatPanel({
                     })}
                     )
                   </span>
-                </button>
-                {onBloqueChange && (
-                  <button
-                    type="button"
-                    className="border-l border-amber-200 px-3 text-xs font-semibold text-amber-800 hover:bg-amber-50 dark:border-amber-900/50 dark:text-amber-200 dark:hover:bg-amber-950/30"
-                    onClick={seleccionarSinUbicar}
-                  >
-                    {sinUbicarActivo
-                      ? t('bbvaCat.bloques.filtering')
-                      : t('bbvaCat.bloques.filterTable')}
-                  </button>
-                )}
-              </div>
-              {(abiertos[SIN_UBICAR_ID] || sinUbicarActivo) && (
+                </div>
                 <ul className="max-h-52 space-y-1 overflow-y-auto border-t border-amber-100 px-3 py-2 text-xs dark:border-amber-900/40">
                   {sinUbicar.map((c) => (
                     <li key={c._id} className="flex justify-between gap-2">
@@ -816,10 +758,15 @@ export default function MapaBloquesBbvaCatPanel({
                     </li>
                   ))}
                 </ul>
-              )}
-            </div>
-          )}
-        </div>
+              </div>
+            );
+          }
+          return (
+            <p className="font-body text-xs text-gray-500 dark:text-gray-400">
+              {t('bbvaCat.bloques.selectBlockHint')}
+            </p>
+          );
+        })()}
       </div>
     </section>
   );

@@ -1648,6 +1648,11 @@
         "LIQUIDACION": "Liquidación",
         "INFORME": "Informe",
         "FOTOS": "Fotos",
+        "COMUNICACION": "Comunicación",
+        "SOLICITUD_DOCUMENTOS": "Solicitud de documentos",
+        "DESISTIMIENTO": "Desistimiento",
+        "OBJECION_DEDUCIBLE": "Objeción / inferior deducible",
+        "FINIQUITO": "Finiquito",
         "OTRO": "Otro"
       },
       "sharepoint": {
@@ -1726,6 +1731,8 @@
       "totalPay": "Total a indemnizar",
       "notes": "Observaciones",
       "downloadFiniquito": "Descargar finiquito Word",
+      "downloadCartaInferiorDeducible": "Carta inferior deducible",
+      "downloadCartaDesistimiento": "Carta desistimiento",
       "downloadExcel": "Descargar Excel",
       "downloadPdf": "Descargar PDF",
       "finiquitoError": "No se pudo generar el finiquito Word.",
@@ -11670,6 +11677,7 @@
       "mapTitle": "Mapa de bloques cercanos",
       "mapHint": "Haz clic en un bloque para filtrar la tabla y asignar visitas por zona.",
       "clickToFilter": "Clic para filtrar la tabla por este bloque",
+      "selectBlockHint": "Selecciona un bloque arriba (chip o mapa) para ver sus casos y filtrar la tabla.",
       "filterTable": "Filtrar tabla",
       "filtering": "Filtrando…",
       "clearBlockFilter": "Ver todos los bloques",

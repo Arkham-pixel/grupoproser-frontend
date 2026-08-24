@@ -11656,6 +11656,7 @@
       "mapTitle": "Nearby blocks map",
       "mapHint": "Click a block to filter the table and assign visits by zone.",
       "clickToFilter": "Click to filter the table by this block",
+      "selectBlockHint": "Select a block above (chip or map) to see its cases and filter the table.",
       "filterTable": "Filter table",
       "filtering": "Filtering…",
       "clearBlockFilter": "Show all blocks",

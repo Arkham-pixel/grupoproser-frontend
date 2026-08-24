@@ -50,7 +50,6 @@ import {
 } from '../../utils/permisosCasoPorRol.js';
 import {
   filtrarLideresPorModulo,
-  filtrarOpcionesPorCiudad,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -204,14 +203,14 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
     return base;
   }, [ciudadesFiltradas, form.ciudad]);
 
-  const ajustadoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.ajustador);
-  }, [ajustadoresCat, form.ciudad, form.ajustador]);
-  const inspectoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.inspector);
-  }, [inspectoresCat, form.ciudad, form.inspector]);
+  const ajustadoresPorCiudad = useMemo(
+    () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
+    [ajustadoresCat, form.ajustador]
+  );
+  const inspectoresPorCiudad = useMemo(
+    () => asegurarOpcionActual(inspectoresCat, form.inspector),
+    [inspectoresCat, form.inspector]
+  );
   const lideresSoloBernardo = useMemo(
     () => filtrarLideresPorModulo(responsables, 'sura'),
     [responsables]
@@ -505,7 +504,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
             modulo="sura"
             i18nNs="segurosSura"
             ciudadSeleccionada={form.ciudad}
-            filtrarPorCiudad
+            filtrarPorCiudad={false}
           />
         </div>
         {soloInspector ? (

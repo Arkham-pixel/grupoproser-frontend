@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import CampoTomadorAlfa from './CampoTomadorAlfa.jsx';
 import {
+  etiquetaOpcionDeducibleAlfa,
+  listarOpcionesDeduciblePorTomadorAlfa,
+  obtenerOpcionDeducibleAlfaPorId,
+  patchDeducibleDesdeOpcionAlfa,
+} from './tomadoresAlfaCatalogo.js';
+import {
   formatearMonto,
   parsearNumero,
   ANIOS_SMMLV,
@@ -356,6 +362,46 @@ export default function FormatoLiquidacionAlfa({
           </CeldaInput>
         </div>
       </div>
+
+      {(() => {
+        const opcionesDed = listarOpcionesDeduciblePorTomadorAlfa(encabezado.tomador || '');
+        if (!opcionesDed.length) return null;
+        const seleccion = String(dedCfg.opcionDeducibleId || '');
+        return (
+          <div className="grid grid-cols-1 border-b border-gray-300 dark:border-gray-600">
+            <div className="grid grid-cols-[140px_1fr]">
+              <CeldaLabel>Deducible póliza</CeldaLabel>
+              <CeldaInput>
+                <select
+                  className={`${alfaCatInput} cursor-pointer`}
+                  value={seleccion}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (!id) {
+                      onDeducibleChange?.({ opcionDeducibleId: '' });
+                      return;
+                    }
+                    const op = obtenerOpcionDeducibleAlfaPorId(id);
+                    if (!op) return;
+                    onDeducibleChange?.(patchDeducibleDesdeOpcionAlfa(op, dedCfg));
+                  }}
+                >
+                  <option value="">Seleccione deducible según póliza / cartera…</option>
+                  {opcionesDed.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {etiquetaOpcionDeducibleAlfa(o)}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 px-2 pb-1 font-body text-[11px] text-gray-500">
+                  Cada banco tiene deducibles distintos por póliza (informe carteras 2026). Elija la
+                  que corresponda al caso; se aplican % , mínimo SMMLV y base (asegurable o pérdida).
+                </p>
+              </CeldaInput>
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 border-b border-gray-300 dark:border-gray-600 lg:grid-cols-2">
         <div className="grid grid-cols-[140px_1fr] border-b border-gray-200 lg:border-b-0 lg:border-r dark:border-gray-700">
