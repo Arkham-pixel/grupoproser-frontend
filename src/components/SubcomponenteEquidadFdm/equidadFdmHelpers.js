@@ -38,6 +38,98 @@ export const FDM_FILTRO_DESDE = 'desde';
 export const FDM_FILTRO_HASTA = 'hasta';
 export const FDM_FILTRO_CIUDAD = 'ciudad';
 export const FDM_FILTRO_PAGE = 'page';
+/** Filtros por columna vacía/llena (estilo Excel). Formato: municipio:v,cedula:c */
+export const FDM_FILTRO_COLUMNAS = 'colF';
+
+/** Modos de filtro por columna. */
+export const FDM_FILTRO_COL_VACIO = 'vacio';
+export const FDM_FILTRO_COL_LLENO = 'lleno';
+
+/** Atajos de columnas frecuentes para auditoría de datos. */
+export const PRESETS_FILTRO_COLUMNAS_FDM = Object.freeze([
+  { id: 'sinCiudad', columnas: { municipio: FDM_FILTRO_COL_VACIO } },
+  { id: 'sinCedula', columnas: { cedula: FDM_FILTRO_COL_VACIO } },
+  { id: 'sinCaso', columnas: { caso: FDM_FILTRO_COL_VACIO } },
+  { id: 'sinSiniestro', columnas: { siniestro: FDM_FILTRO_COL_VACIO } },
+  { id: 'sinLiquidacion', columnas: { totalLiquidado: FDM_FILTRO_COL_VACIO } },
+  { id: 'sinArchivos', columnas: { archivos: FDM_FILTRO_COL_VACIO } },
+]);
+
+const CAMPOS_FECHA_FDM = new Set([
+  'fechaRegistro',
+  'fechaAviso',
+  'fechaLiquidacion',
+  'fechaGiro',
+  'fechaCausacion',
+  'createdAt',
+  'updatedAt',
+]);
+
+export const parsearFiltrosColumnasFdm = (raw = '') => {
+  const out = {};
+  for (const part of String(raw || '').split(',')) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const sep = trimmed.indexOf(':');
+    if (sep <= 0) continue;
+    const clave = trimmed.slice(0, sep).trim();
+    const codigo = trimmed.slice(sep + 1).trim();
+    if (codigo === 'v') out[clave] = FDM_FILTRO_COL_VACIO;
+    else if (codigo === 'c') out[clave] = FDM_FILTRO_COL_LLENO;
+  }
+  return out;
+};
+
+export const serializarFiltrosColumnasFdm = (filtros = {}) => {
+  const partes = [];
+  for (const [clave, modo] of Object.entries(filtros || {})) {
+    if (modo === FDM_FILTRO_COL_VACIO) partes.push(`${clave}:v`);
+    else if (modo === FDM_FILTRO_COL_LLENO) partes.push(`${clave}:c`);
+  }
+  return partes.join(',');
+};
+
+export const cantidadFiltrosColumnasActivos = (filtros = {}) =>
+  Object.values(filtros || {}).filter(
+    (m) => m === FDM_FILTRO_COL_VACIO || m === FDM_FILTRO_COL_LLENO
+  ).length;
+
+/** ¿La celda está vacía? (misma lógica que «—» en la tabla). */
+export const celdaVaciaFdm = (caso = {}, clave = '') => {
+  if (clave === 'archivos') return !casoTieneArchivosFdm(caso);
+  if (clave === 'esNuevo') return !esCasoNuevoFdm(caso);
+  if (clave === 'checklistHecho') return caso?.checklistHecho !== true;
+
+  const valor = caso?.[clave];
+  if (valor === null || valor === undefined) return true;
+  if (typeof valor === 'boolean') return false;
+  if (typeof valor === 'number') return Number.isNaN(valor);
+  if (Array.isArray(valor)) return valor.length === 0;
+  if (CAMPOS_FECHA_FDM.has(clave)) return !formatDate(valor);
+  if (typeof valor === 'string') return valor.trim() === '';
+  return false;
+};
+
+export const contarCeldasColumnaFdm = (casos = [], clave = '') => {
+  let vacios = 0;
+  for (const item of casos) {
+    if (celdaVaciaFdm(item, clave)) vacios += 1;
+  }
+  return { vacios, llenos: casos.length - vacios, total: casos.length };
+};
+
+export const aplicarFiltrosColumnasFdm = (casos = [], filtrosColumnas = {}) => {
+  const activos = Object.entries(filtrosColumnas || {}).filter(
+    ([, modo]) => modo === FDM_FILTRO_COL_VACIO || modo === FDM_FILTRO_COL_LLENO
+  );
+  if (!activos.length) return casos;
+  return casos.filter((item) =>
+    activos.every(([clave, modo]) => {
+      const vacia = celdaVaciaFdm(item, clave);
+      return modo === FDM_FILTRO_COL_VACIO ? vacia : !vacia;
+    })
+  );
+};
 
 /** Evento por defecto del reporte (lote actual). `evento=` en URL = todos. */
 export const FDM_EVENTO_DEFAULT = 'TERREMOTO 10 AGOSTO 2026';
@@ -58,6 +150,7 @@ export const leerFiltrosReporteFdm = (searchParams) => {
     fechaFin: sp.get(FDM_FILTRO_HASTA) || '',
     ciudad: sp.get(FDM_FILTRO_CIUDAD) || '',
     pagina: Math.max(1, Number(sp.get(FDM_FILTRO_PAGE)) || 1),
+    filtrosColumnas: parsearFiltrosColumnasFdm(sp.get(FDM_FILTRO_COLUMNAS) || ''),
   };
 };
 
@@ -84,6 +177,10 @@ export const patchFiltrosReporteFdm = (setSearchParams, patch = {}, { resetPage 
       if ('fechaInicio' in patch) apply(FDM_FILTRO_DESDE, patch.fechaInicio);
       if ('fechaFin' in patch) apply(FDM_FILTRO_HASTA, patch.fechaFin);
       if ('ciudad' in patch) apply(FDM_FILTRO_CIUDAD, patch.ciudad);
+      if ('filtrosColumnas' in patch) {
+        const serializado = serializarFiltrosColumnasFdm(patch.filtrosColumnas);
+        apply(FDM_FILTRO_COLUMNAS, serializado);
+      }
       if ('pagina' in patch) apply(FDM_FILTRO_PAGE, patch.pagina === 1 ? '' : patch.pagina);
 
       if (resetPage && !('pagina' in patch)) next.delete(FDM_FILTRO_PAGE);
@@ -390,6 +487,7 @@ export const aplicarFiltrosCasosFdm = (
     filtroNuevos = '',
     fechaInicio = '',
     fechaFin = '',
+    filtrosColumnas = {},
   } = {}
 ) => {
   let resultado = [...casos];
@@ -442,5 +540,5 @@ export const aplicarFiltrosCasosFdm = (
       )
     );
   }
-  return resultado;
+  return aplicarFiltrosColumnasFdm(resultado, filtrosColumnas);
 };

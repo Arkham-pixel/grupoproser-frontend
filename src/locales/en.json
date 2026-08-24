@@ -1250,7 +1250,30 @@
       "manageCase": "Manage Equidad FDM case",
       "deleteCase": "Delete Equidad FDM case",
       "deleteConfirm": "Do you want to delete case {{caseNumber}}? This action cannot be undone.",
-      "delete": "Delete"
+      "delete": "Delete",
+      "columnFilters": "Column filters",
+      "columnFiltersTitle": "Column filters (Excel-style)",
+      "columnFiltersHelp": "Filter rows based on whether a column is empty or has a value. You can combine multiple columns (all conditions must match). Counts are based on the batch already filtered above.",
+      "columnFiltersSearch": "Search column…",
+      "columnEmptyCount": "Empty",
+      "columnFilledCount": "Filled",
+      "columnFilterMode": "Show",
+      "columnEmptyOnly": "Empty only",
+      "columnFilledOnly": "Filled only",
+      "columnFiltersApply": "Apply filters",
+      "columnFiltersClear": "Clear column filters",
+      "columnFiltersClearAll": "Clear all",
+      "columnFiltersActive": "{{count}} active column filter(s)",
+      "columnFiltersChips": "Columns:",
+      "columnFilterRemove": "Remove this filter",
+      "columnPresets": {
+        "sinCiudad": "No city",
+        "sinCedula": "No ID",
+        "sinCaso": "No case",
+        "sinSiniestro": "No claim",
+        "sinLiquidacion": "No settlement",
+        "sinArchivos": "No files"
+      }
     },
     "settlement": {
       "title": "Equidad FDM settlement",
@@ -11148,7 +11171,7 @@
       "inspectorCannotCreate": "Inspectors cannot create cases; only update status."
     }
   },
-  "bbvaCat": {
+"bbvaCat": {
     "validation": {
       "identificacionRequired": "Identification is required.",
       "identificacionOrRiskRequired": "Enter identification or Risk ID.",

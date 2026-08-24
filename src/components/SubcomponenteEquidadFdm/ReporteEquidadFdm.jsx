@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaArrowDown, FaArrowUp, FaCog, FaFileExcel, FaUpload, FaTable } from 'react-icons/fa';
+import { FaArrowDown, FaArrowUp, FaCog, FaFileExcel, FaFilter, FaUpload, FaTable } from 'react-icons/fa';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { deleteCasoFdm, fetchAllCasosFdm, importarCasosFdm, toggleChecklistHechoCasoFdm } from '../../services/equidadFdmService.js';
 import FormularioEquidadFdm from './FormularioEquidadFdm.jsx';
@@ -18,6 +18,7 @@ import {
   buildOpcionesFiltro,
   cantidadArchivosFdm,
   cargarChecklistFdm,
+  cantidadFiltrosColumnasActivos,
   ciudadClaveFdm,
   esCasoNuevoFdm,
   esUsuarioFdmSoloConArchivos,
@@ -26,6 +27,7 @@ import {
   leerFiltrosReporteFdm,
   patchFiltrosReporteFdm,
 } from './equidadFdmHelpers.js';
+import FiltrosColumnasFdmModal, { FiltrosColumnasFdmChips } from './FiltrosColumnasFdmModal.jsx';
 import { esRolSoloEquidad } from '../../config/roles.js';
 import {
   expressBtnGhost,
@@ -101,7 +103,10 @@ const todasLasColumnasFdm = [
   { clave: 'ajustador', label: 'Ajustador' },
   { clave: 'createdAt', label: 'Creado el' },
   { clave: 'updatedAt', label: 'Actualizado el' },
+  { clave: 'archivos', label: 'Archivos adjuntos' },
 ];
+
+const columnasParaFiltroFdm = todasLasColumnasFdm;
 
 /** Columnas por defecto = datos del Excel (todos los usuarios). */
 const columnasInicialesFdm = [
@@ -184,6 +189,7 @@ const ReporteEquidadFdm = () => {
     fechaFin,
     ciudad: ciudadUrl,
     pagina: paginaActual,
+    filtrosColumnas,
   } = filtrosUrl;
 
   const setBusqueda = (v) => patchFiltrosReporteFdm(setSearchParams, { busqueda: v });
@@ -193,6 +199,7 @@ const ReporteEquidadFdm = () => {
   const setFiltroNuevos = (v) => patchFiltrosReporteFdm(setSearchParams, { filtroNuevos: v });
   const setFechaInicio = (v) => patchFiltrosReporteFdm(setSearchParams, { fechaInicio: v });
   const setFechaFin = (v) => patchFiltrosReporteFdm(setSearchParams, { fechaFin: v });
+  const setFiltrosColumnas = (v) => patchFiltrosReporteFdm(setSearchParams, { filtrosColumnas: v });
   const setPaginaActual = (v) => {
     const next = typeof v === 'function' ? v(paginaActual) : v;
     patchFiltrosReporteFdm(setSearchParams, { pagina: next }, { resetPage: false });
@@ -210,6 +217,7 @@ const ReporteEquidadFdm = () => {
     return todasLasColumnasFdm.filter((c) => columnasInicialesFdm.includes(c.clave));
   });
   const [modalColumnasOpen, setModalColumnasOpen] = useState(false);
+  const [modalFiltrosColumnasOpen, setModalFiltrosColumnasOpen] = useState(false);
   const [columnasOrdenadas, setColumnasOrdenadas] = useState([]);
   const [seleccionTemporal, setSeleccionTemporal] = useState([]);
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -414,6 +422,7 @@ const ReporteEquidadFdm = () => {
         filtroNuevos,
         fechaInicio,
         fechaFin,
+        filtrosColumnas,
       }),
     [
       casos,
@@ -425,6 +434,7 @@ const ReporteEquidadFdm = () => {
       filtroNuevos,
       fechaInicio,
       fechaFin,
+      filtrosColumnas,
     ]
   );
 
@@ -476,7 +486,8 @@ const ReporteEquidadFdm = () => {
       filtroEvento ||
       filtroNuevos ||
       fechaInicio ||
-      fechaFin
+      fechaFin ||
+      cantidadFiltrosColumnasActivos(filtrosColumnas) > 0
   );
 
   const limpiarFiltros = () => {
@@ -489,6 +500,7 @@ const ReporteEquidadFdm = () => {
       fechaInicio: '',
       fechaFin: '',
       ciudad: '',
+      filtrosColumnas: {},
     });
   };
 
@@ -771,6 +783,20 @@ const ReporteEquidadFdm = () => {
               </button>
               <button
                 type="button"
+                onClick={() => setModalFiltrosColumnasOpen(true)}
+                className={expressBtnSecondary}
+                disabled={loading}
+              >
+                <FaFilter />
+                {t('equidadFdm.report.columnFilters')}
+                {cantidadFiltrosColumnasActivos(filtrosColumnas) > 0 && (
+                  <span className="rounded-full bg-fenix-primario px-2 py-0.5 text-xs text-white">
+                    {cantidadFiltrosColumnasActivos(filtrosColumnas)}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={exportarExcel}
                 className={expressBtnSuccess}
                 disabled={loading || filtrados.length === 0}
@@ -903,6 +929,11 @@ const ReporteEquidadFdm = () => {
               <InputFenix type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </Campo>
           </div>
+          <FiltrosColumnasFdmChips
+            columnas={columnasParaFiltroFdm}
+            filtrosColumnas={filtrosColumnas}
+            onChangeFiltros={setFiltrosColumnas}
+          />
           <p className="mt-4 font-body text-sm text-gray-500 dark:text-gray-400">
             {loading
               ? t('common.loading')
@@ -1329,6 +1360,15 @@ const ReporteEquidadFdm = () => {
           </div>
         </div>
       </ExpressModal>
+
+      <FiltrosColumnasFdmModal
+        open={modalFiltrosColumnasOpen}
+        onClose={() => setModalFiltrosColumnasOpen(false)}
+        columnas={columnasParaFiltroFdm}
+        casosBase={casosBase}
+        filtrosColumnas={filtrosColumnas}
+        onChangeFiltros={setFiltrosColumnas}
+      />
 
       <ExpressModal open={modalAbierto} onClose={cerrarModalEdicion} title={t('equidadFdm.report.manageCase')} wide>
         <div className="p-2 sm:p-4">

@@ -1250,7 +1250,30 @@
       "manageCase": "Gestionar caso Equidad FDM",
       "deleteCase": "Eliminar caso Equidad FDM",
       "deleteConfirm": "¿Confirma eliminar el caso {{caseNumber}}? Esta acción no se puede deshacer.",
-      "delete": "Eliminar"
+      "delete": "Eliminar",
+      "columnFilters": "Filtros por columna",
+      "columnFiltersTitle": "Filtros por columna (estilo Excel)",
+      "columnFiltersHelp": "Filtra filas según si una columna está vacía o tiene dato. Puedes combinar varias columnas a la vez (todas deben cumplirse). Los conteos se calculan sobre el lote ya filtrado arriba.",
+      "columnFiltersSearch": "Buscar columna…",
+      "columnEmptyCount": "Vacías",
+      "columnFilledCount": "Con dato",
+      "columnFilterMode": "Mostrar",
+      "columnEmptyOnly": "Solo vacías",
+      "columnFilledOnly": "Solo con dato",
+      "columnFiltersApply": "Aplicar filtros",
+      "columnFiltersClear": "Quitar filtros de columnas",
+      "columnFiltersClearAll": "Quitar todos",
+      "columnFiltersActive": "{{count}} filtro(s) de columna activo(s)",
+      "columnFiltersChips": "Columnas:",
+      "columnFilterRemove": "Quitar este filtro",
+      "columnPresets": {
+        "sinCiudad": "Sin ciudad",
+        "sinCedula": "Sin cédula",
+        "sinCaso": "Sin caso",
+        "sinSiniestro": "Sin siniestro",
+        "sinLiquidacion": "Sin liquidación",
+        "sinArchivos": "Sin archivos"
+      }
     },
     "settlement": {
       "title": "Liquidador Equidad FDM",
