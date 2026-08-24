@@ -25,9 +25,11 @@ import {
 } from '../liquidacion/otrosAmparosLiquidacion.js';
 
 /** AIU del FORMATO LIQUIDACIÓN Alfa (único recargo; sin imprevistos NSR ocultos). */
-export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.15;
+export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.2;
 export const IMPREVISTOS_PORCENTAJE_DEFAULT_ALFA = 0;
 export const IMPUESTOS_PORCENTAJE_DEFAULT_ALFA = 0;
+/** Default anterior (15%) — se migra automáticamente al nuevo 20%. */
+const AIU_PORCENTAJE_LEGACY_ALFA = 0.15;
 
 export const SMMLV_POR_ANIO = {
   2018: 781242,
@@ -380,8 +382,8 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
 }
 
 /**
- * Presupuesto Alfa: AIU 15% único; imprevistos/impuestos en 0 (el formato CAT no los muestra).
- * Migra el default NSR (5% + 10% imprevistos ≈ 15% efectivo) al AIU único del 15%.
+ * Presupuesto Alfa: AIU 20% único; imprevistos/impuestos en 0 (el formato CAT no los muestra).
+ * Migra defaults previos: NSR 5%+10% imprevistos, o AIU Alfa 15% → 20%.
  */
 export function normalizarPresupuestoAiuAlfa(presupuesto = {}) {
   const p = presupuesto && typeof presupuesto === 'object' ? { ...presupuesto } : {};
@@ -393,13 +395,12 @@ export function normalizarPresupuestoAiuAlfa(presupuesto = {}) {
   const esDefaultNsr =
     (aiuVacio || Math.abs(aiu - 0.05) < 1e-9) &&
     (imprVacio || Math.abs(impr - 0.1) < 1e-9);
-  const aiuYa15ConImprevistos =
-    Number.isFinite(aiu) &&
-    Math.abs(aiu - AIU_PORCENTAJE_DEFAULT_ALFA) < 1e-9 &&
-    Number.isFinite(impr) &&
-    Math.abs(impr - 0.1) < 1e-9;
+  const aiuLegacy15 =
+    Number.isFinite(aiu) && Math.abs(aiu - AIU_PORCENTAJE_LEGACY_ALFA) < 1e-9;
+  const aiuLegacyConImprevistos =
+    aiuLegacy15 && Number.isFinite(impr) && Math.abs(impr - 0.1) < 1e-9;
 
-  if (esDefaultNsr || aiuYa15ConImprevistos) {
+  if (esDefaultNsr || aiuLegacy15 || aiuLegacyConImprevistos) {
     p.aiuPorcentaje = AIU_PORCENTAJE_DEFAULT_ALFA;
     p.imprevistosPorcentaje = IMPREVISTOS_PORCENTAJE_DEFAULT_ALFA;
     p.impuestosPorcentaje = Number.isFinite(imp) ? imp : IMPUESTOS_PORCENTAJE_DEFAULT_ALFA;
@@ -422,7 +423,7 @@ export function aplicarPresupuestoAiuAlfaEnEvaluacion(evalData = {}) {
 }
 
 /**
- * Totales Alfa = ítems (costo directo) + AIU 15% − deducible + otros amparos.
+ * Totales Alfa = ítems (costo directo) + AIU 20% − deducible + otros amparos.
  * Otros amparos (arriendo, retiro de escombros) van por aparte: sin deducible ni AIU.
  * No suma imprevistos/impuestos NSR ni hospedaje duplicado (si va en el detalle, ya está en el subtotal).
  */
@@ -445,12 +446,40 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
       ? cfgDedRaw
       : patchDeducibleDesdeTomadorAlfa(enc.tomador, cfgDedRaw);
 
-  // Base CAT: costo directo + AIU (sin imprevistos/impuestos)
-  const baseCat =
-    Math.round((Number(totalesPres.subtotal || 0) + Number(totalesPres.aiu || 0)) * 100) / 100;
-  const totalContenidos = Number(resumen.totalContenidos) || 0;
-  const totalDaniosCat =
-    Math.round((baseCat + totalContenidos) * 100) / 100;
+  // Detalle CAT (Formato liquidación): misma base que la UI (suma valorPerdida + AIU).
+  // Si solo hay presupuesto NSR, se usa cantidad×VU (o total de fila).
+  const detalle = Array.isArray(liquidador.detalleLiquidacionCat)
+    ? liquidador.detalleLiquidacionCat
+    : null;
+  const subtotalDetalle = detalle
+    ? detalle.reduce((acc, it) => acc + parsearNumero(it.valorPerdida), 0)
+    : 0;
+  const usarDetalle =
+    Boolean(detalle) &&
+    (subtotalDetalle > 0 ||
+      detalle.some((it) => String(it?.descripcion || '').trim() || it?.catalogoId));
+
+  const aiuPctAlfa = Number(presupuesto.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT_ALFA);
+  let subtotal;
+  let aiu;
+  let baseCat;
+  let totalContenidos;
+  let totalDaniosCat;
+
+  if (usarDetalle) {
+    subtotal = Math.round(subtotalDetalle * 100) / 100;
+    aiu = Math.round(subtotal * aiuPctAlfa * 100) / 100;
+    baseCat = Math.round((subtotal + aiu) * 100) / 100;
+    // Contenidos / ítems ya van en el detalle CAT cuando está en modo manual.
+    totalContenidos = 0;
+    totalDaniosCat = baseCat;
+  } else {
+    subtotal = Number(totalesPres.subtotal || 0);
+    aiu = Number(totalesPres.aiu || 0);
+    baseCat = Math.round((subtotal + aiu) * 100) / 100;
+    totalContenidos = Number(resumen.totalContenidos) || 0;
+    totalDaniosCat = Math.round((baseCat + totalContenidos) * 100) / 100;
+  }
 
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado,
@@ -476,9 +505,6 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
   });
 
   // Hospedaje solo si no está ya como ítem del detalle/presupuesto
-  const detalle = Array.isArray(liquidador.detalleLiquidacionCat)
-    ? liquidador.detalleLiquidacionCat
-    : null;
   const hospedajeYaEnItems = (detalle || presupuesto.items || []).some((it) => {
     const id = String(it?.id || '');
     const desc = String(it?.descripcion || it?.actividad || '').toLowerCase();
@@ -505,8 +531,10 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     modelo: 'nsr10',
     presupuesto: {
       ...totalesPres,
+      subtotal,
+      aiu,
       // Alinear aiuPct al % Alfa normalizado (por si el guardado traía 5%)
-      aiuPct: Number(presupuesto.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT_ALFA),
+      aiuPct: aiuPctAlfa,
       imprPct: Number(presupuesto.imprevistosPorcentaje ?? 0),
       impPct: Number(presupuesto.impuestosPorcentaje ?? 0),
     },
@@ -514,8 +542,8 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     totalPresupuesto: baseCat,
     totalContenidos,
     sumaCompleta: totalDaniosCat,
-    subtotal: totalesPres.subtotal,
-    aiu: totalesPres.aiu,
+    subtotal,
+    aiu,
     imprevistos: 0,
     impuestos: Number(totalesPres.impuestos) || 0,
     totalDanios: totalDaniosCat,

@@ -107,8 +107,55 @@ export function plantillaFilasPresupuestoPreliminarZurich() {
   }));
 }
 
+export const TIPOS_INFORME_ZURICH = ['preliminar', 'final', 'unico'];
+
+export function normalizarTipoInformeZurich(valor, fallback = 'preliminar') {
+  const t = String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  if (t === 'preliminar' || t === 'final' || t === 'unico') return t;
+  return fallback;
+}
+
 export function esInformePreliminarZurich(info = {}) {
-  return String(info?.tipoInforme || 'preliminar') !== 'final';
+  return normalizarTipoInformeZurich(info?.tipoInforme, 'preliminar') === 'preliminar';
+}
+
+export function etiquetaArchivoInformeZurich(tipo) {
+  const t = normalizarTipoInformeZurich(tipo, 'unico');
+  if (t === 'preliminar') return 'INFORME_PRELIMINAR';
+  if (t === 'final') return 'INFORME_FINAL';
+  return 'INFORME_UNICO';
+}
+
+export function etiquetaTituloInformeZurich(tipo) {
+  const t = normalizarTipoInformeZurich(tipo, 'preliminar');
+  if (t === 'preliminar') return 'PRELIMINAR';
+  if (t === 'final') return 'FINAL';
+  return 'ÚNICO';
+}
+
+export function etiquetaEncabezadoInformeZurich(tipo) {
+  const t = normalizarTipoInformeZurich(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Informe Preliminar Zurich';
+  if (t === 'final') return 'Informe Final Zurich';
+  return 'Informe Único Zurich';
+}
+
+export function prefijoArchivoInformeZurich(tipo) {
+  const t = normalizarTipoInformeZurich(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Informe_Preliminar_Zurich';
+  if (t === 'final') return 'Informe_Final_Zurich';
+  return 'Informe_Unico_Zurich';
+}
+
+export function etiquetaReporteCuadroZurich(tipo) {
+  const t = normalizarTipoInformeZurich(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Preliminar — Zurich';
+  if (t === 'final') return 'Final — Zurich';
+  return 'Único — Zurich';
 }
 
 export function totalPresupuestoPreliminarZurich(filas = []) {
@@ -520,7 +567,9 @@ export function defaultInformeUnicoZurich(caso = {}) {
   return {
     ...base,
     ...guardado,
-    tipoInforme: guardado.tipoInforme || 'final',
+    tipoInforme: guardado
+      ? normalizarTipoInformeZurich(guardado.tipoInforme, 'unico')
+      : 'preliminar',
     ajustadorNombre: guardado.ajustadorNombre || guardado.actaAjustadorNombre || base.ajustadorNombre,
     actaAjustadorNombre:
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,

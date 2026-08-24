@@ -394,12 +394,8 @@ export const aplicarFiltrosCasosFdm = (
 ) => {
   let resultado = [...casos];
 
-  if (soloConArchivos) {
-    resultado = resultado.filter((item) => casoTieneArchivosFdm(item));
-  }
-
   if (busqueda) {
-    const termino = busqueda.toLowerCase();
+    const termino = busqueda.toLowerCase().trim();
     resultado = resultado.filter((item) =>
       [
         item.consecutivo,
@@ -418,6 +414,10 @@ export const aplicarFiltrosCasosFdm = (
         .filter(Boolean)
         .some((campo) => campo.toString().toLowerCase().includes(termino))
     );
+  } else if (soloConArchivos) {
+    // Vista archivero: sin texto de búsqueda solo casos con documentos.
+    // Con búsqueda se incluye todo el lote (p. ej. recuperar un caso sin archivos).
+    resultado = resultado.filter((item) => casoTieneArchivosFdm(item));
   }
   if (filtroAjustador) {
     resultado = resultado.filter((item) => coincideFiltroTexto(item.ajustador, filtroAjustador));

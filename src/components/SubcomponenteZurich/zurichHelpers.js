@@ -137,6 +137,9 @@ export const ETIQUETAS_ARCHIVO_ZURICH = [
   'INSPECCION',
   'LIQUIDACION',
   'INFORME',
+  'INFORME_PRELIMINAR',
+  'INFORME_FINAL',
+  'INFORME_UNICO',
   'FOTOS',
   /** Manual CAT — evidencia fotográfica/documental */
   'FOTO_GENERAL',
@@ -152,6 +155,9 @@ export const ETIQUETAS_ARCHIVO_ZURICH_LISTADO = [
   'POLIZA',
   'LIQUIDACION',
   'INFORME',
+  'INFORME_PRELIMINAR',
+  'INFORME_FINAL',
+  'INFORME_UNICO',
   'FOTOS',
   'OTRO',
 ];

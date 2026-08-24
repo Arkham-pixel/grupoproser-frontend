@@ -20,6 +20,7 @@ import {
   resolverDetalleLiquidacionCat,
   sincronizarDetalleCatConPresupuestoNsr,
   SMMLV_POR_ANIO,
+  AIU_PORCENTAJE_DEFAULT_ALFA,
   defaultOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
 import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
@@ -79,7 +80,7 @@ export default function LiquidadorSegurosAlfa({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [casoAlfa?._id]);
 
-  // Asegura AIU Alfa 15% (sin imprevistos NSR) aunque el caso traiga el default viejo 5%+10%
+  // Asegura AIU Alfa 20% (sin imprevistos NSR) aunque el caso traiga 15% o el default NSR 5%+10%
   useEffect(() => {
     setLiquidador((prev) => {
       const evalData = prev.evaluacionSismicaNSR10 || {};
@@ -221,7 +222,7 @@ export default function LiquidadorSegurosAlfa({
             aiuPorcentaje:
               Number.isFinite(Number(aiuPorcentaje))
                 ? Number(aiuPorcentaje)
-                : 0.15,
+                : AIU_PORCENTAJE_DEFAULT_ALFA,
             imprevistosPorcentaje: 0,
           },
         },
@@ -562,7 +563,8 @@ export default function LiquidadorSegurosAlfa({
         liquidadoPor={enc.ajustador || casoLocal.ajustador || ''}
         datosBancarios={liquidador.datosBancarios || {}}
         aiuPorcentaje={
-          liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje ?? 0.15
+          liquidador.evaluacionSismicaNSR10?.presupuesto?.aiuPorcentaje ??
+          AIU_PORCENTAJE_DEFAULT_ALFA
         }
         aceptacionIndemnizacion={liquidador.aceptacionIndemnizacion || ''}
         firmaCliente={liquidador.firmaCliente || ''}

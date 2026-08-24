@@ -559,7 +559,7 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     sumaIndemnizable += sum;
   }
 
-  // Totales alineados a la UI: Sub total ítems → AIU 15% → Deducible → Valor a indemnizar
+  // Totales alineados a la UI: Sub total ítems → AIU 20% → Deducible → Valor a indemnizar
   const limite = va || 0;
   const subTotalItems =
     limite > 0 && limite < sumaIndemnizable ? limite : sumaIndemnizable;

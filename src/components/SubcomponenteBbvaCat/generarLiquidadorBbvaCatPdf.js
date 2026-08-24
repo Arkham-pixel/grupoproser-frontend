@@ -12,6 +12,7 @@ import {
   formatearMonto,
   formatDateLarga,
   prefillNsrDesdecasoBbvaCat,
+  normalizarPresupuestoAiuBbvaCat,
 } from './liquidadorBbvaCatHelpers.js';
 
 /** Landscape A4 — compacto, alineado a plantilla Excel / UI NSR-10. */
@@ -133,7 +134,7 @@ export async function generarLiquidadorBbvaCatPdfBlob(liquidador) {
   const portada = resolverPortada(liquidador || {});
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
-  const presupuesto = evalData.presupuesto || {};
+  const presupuesto = normalizarPresupuestoAiuBbvaCat(evalData.presupuesto || {});
   const filasPres = (Array.isArray(presupuesto.items) ? presupuesto.items : []).filter(
     (it) =>
       String(it?.actividad || '').trim() ||
@@ -451,8 +452,6 @@ export async function generarLiquidadorBbvaCatPdfBlob(liquidador) {
   const boxRows = [
     ['Subtotal', money(totalesPres.subtotal), false],
     [`AIU (${pctLabel(totalesPres.aiuPct)})`, money(totalesPres.aiu), false],
-    [`Imprevistos (${pctLabel(totalesPres.imprPct)})`, money(totalesPres.imprevistos), false],
-    [`Impuestos (${pctLabel(totalesPres.impPct)})`, money(totalesPres.impuestos), false],
     ['Total estimado', money(totalesPres.total), true],
   ];
   const boxRowH = 7;

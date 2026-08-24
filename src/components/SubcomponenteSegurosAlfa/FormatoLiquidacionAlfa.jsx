@@ -11,6 +11,7 @@ import {
   parsearNumero,
   ANIOS_SMMLV,
   SMMLV_POR_ANIO,
+  AIU_PORCENTAJE_DEFAULT_ALFA,
   TIPOS_OTROS_AMPAROS_ALFA,
   nombreTipoOtroAmparoAlfa,
   nuevoOtroAmparoAlfa,
@@ -227,7 +228,7 @@ export default function FormatoLiquidacionAlfa({
   aceptacionIndemnizacion = '',
   firmaCliente = '',
   nombreFirmante = '',
-  aiuPorcentaje = 0.15,
+  aiuPorcentaje = AIU_PORCENTAJE_DEFAULT_ALFA,
   onEncabezadoChange,
   onCasoCampoChange,
   onDeducibleChange,
@@ -582,7 +583,7 @@ export default function FormatoLiquidacionAlfa({
                 onChange={(e) => {
                   const pct = Number(e.target.value);
                   onAiuChange?.(
-                    Number.isFinite(pct) ? Math.max(0, pct) / 100 : 0.15
+                    Number.isFinite(pct) ? Math.max(0, pct) / 100 : AIU_PORCENTAJE_DEFAULT_ALFA
                   );
                 }}
                 title="Porcentaje de AIU sobre el subtotal de ítems"

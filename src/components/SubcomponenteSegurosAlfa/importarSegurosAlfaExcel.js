@@ -36,6 +36,9 @@ const HEADER_MAP = {
   MOVIL: 'celular',
   CIUDAD: 'ciudad',
   DEPARTAMENTO: 'departamento',
+  'FECHA AVISO': 'fechaAviso',
+  'FECHA DE AVISO': 'fechaAviso',
+  'FECHA AVISO SINIESTRO': 'fechaAviso',
   'FECHA SINIESTRO': 'fechaSiniestro',
   'FECHA INICIO': 'fechaInicioPoliza',
   'FECHA INICIO POLIZA': 'fechaInicioPoliza',
@@ -47,6 +50,9 @@ const HEADER_MAP = {
   'FECHA FIN DE LA POLIZA': 'fechaFinPoliza',
   'VIGENCIA HASTA': 'fechaFinPoliza',
   'VIGENCIA FIN': 'fechaFinPoliza',
+  'VALOR ASEGURADO SID': 'valorAseguradoSid',
+  'VALOR ASEGURADO S I D': 'valorAseguradoSid',
+  'VA SID': 'valorAseguradoSid',
   'VALOR ASEGURADO INMUEBLE': 'valorAseguradoInmueble',
   'VALOR ASEGURADO CONTENIDOS': 'valorAseguradoContenidos',
   COBERTURA: 'cobertura',
@@ -141,6 +147,7 @@ const parseNumeroCelda = (valor) => {
 
 const CAMPOS_FECHA = new Set([
   'fechaSiniestro',
+  'fechaAviso',
   'fechaInicioPoliza',
   'fechaFinPoliza',
   'fechaInspeccion',
@@ -151,6 +158,7 @@ const CAMPOS_FECHA = new Set([
 ]);
 
 const CAMPOS_NUMERO = new Set([
+  'valorAseguradoSid',
   'valorAseguradoInmueble',
   'valorAseguradoContenidos',
   'valorReservaPreventivaPromedio',

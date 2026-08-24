@@ -702,6 +702,9 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('segurosAlfa.sections.values')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('segurosAlfa.fields.valorAseguradoSid', { defaultValue: 'Valor asegurado SID' })}>
+            {inputMiles('valorAseguradoSid')}
+          </Campo>
           <Campo label={t('segurosAlfa.fields.valorAseguradoInmueble')}>
             {inputMiles('valorAseguradoInmueble')}
           </Campo>
@@ -727,6 +730,9 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('segurosAlfa.sections.dates')}</h3>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('segurosAlfa.fields.fechaAviso', { defaultValue: 'Fecha aviso' })}>
+            <InputFenix type="date" value={form.fechaAviso} onChange={setCampo('fechaAviso')} />
+          </Campo>
           <Campo label={t('segurosAlfa.fields.fechaSiniestro')}>
             <InputFenix type="date" value={form.fechaSiniestro} onChange={setCampo('fechaSiniestro')} />
           </Campo>

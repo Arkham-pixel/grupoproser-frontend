@@ -20,6 +20,10 @@ import {
   formatearMonto,
   formatDateLarga,
 } from './liquidadorBbvaCatHelpers.js';
+import {
+  inferirTipoLiquidadorBbvaCat,
+  textosLetrerosBbvaCat,
+} from './deduciblesBbvaCat.js';
 
 const thin = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
 const borders = { top: thin, bottom: thin, left: thin, right: thin };
@@ -32,7 +36,7 @@ const lineBottom = {
   bottom: { style: BorderStyle.SINGLE, size: 12, color: '000000' },
 };
 
-const ASEGURADORA = 'BbvaCat S.A.';
+const ASEGURADORA = 'BBVA SEGUROS COLOMBIA S.A.';
 
 async function loadLogoBytes(url) {
   try {
@@ -212,8 +216,37 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
   const evento = enc.evento || enc.cobertura || '—';
   const direccion = enc.direccion || '—';
   const fechaSiniestroLarga = formatDateLarga(enc.fechaSiniestro);
-  const fechaImpresoLarga = formatDateLarga(enc.fechaImpreso || new Date());
-  const ciudadFirma = enc.ciudad || enc.ciudadFirma || 'Colombia';
+  const datos = liquidador.datosFiniquito || {};
+  const tipo = inferirTipoLiquidadorBbvaCat({
+    tipoLiquidador: liquidador.tipoLiquidador,
+    encabezado: enc,
+  });
+  const letreros = textosLetrerosBbvaCat(tipo);
+  const meses = [
+    '',
+    'enero',
+    'febrero',
+    'marzo',
+    'abril',
+    'mayo',
+    'junio',
+    'julio',
+    'agosto',
+    'septiembre',
+    'octubre',
+    'noviembre',
+    'diciembre',
+  ];
+  const ciudadFirma =
+    datos.ciudadFirma || enc.ciudad || enc.ciudadFirma || '________________';
+  const diaFirma = datos.diaFirma || '________';
+  const mesFirma = meses[Number(datos.mesFirma)] || datos.mesFirma || '________';
+  const anioFirma = datos.anioFirma || '________';
+  const aceptacion = String(liquidador.aceptacionIndemnizacion || '').toUpperCase();
+  const marcaAcepto = aceptacion === 'ACEPTO' ? 'X' : ' ';
+  const marcaRechazo = aceptacion === 'RECHAZO' ? 'X' : ' ';
+  const observaciones = String(liquidador.observacionesFiniquito || '').trim();
+  const tipoLabel = tipo === 'leasing' ? 'Liquidador leasing' : 'Liquidador deudores';
 
   const totalPerdida = formatearMontoConstancia(
     totales.totalDanios ?? totales.totalPerdida ?? totales.totalIndemnizable
@@ -252,10 +285,12 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
             width: { size: 9360, type: WidthType.DXA },
             columnWidths: [3200, 6160],
             rows: [
+              filaDato('TIPO LIQUIDADOR:', tipoLabel),
               filaDato('TOMADOR:', tomador),
               filaDato('ASEGURADO Y BENEFICIARIO:', asegurado),
               filaDato('COBERTURA / RAMO:', cobertura),
               filaDato('PÓLIZA:', poliza),
+              filaDato('N° CRÉDITO:', enc.credito || '—'),
               filaDato('ORDEN / CONSECUTIVO:', orden),
               filaDato('SINIESTRO:', String(siniestro)),
               filaDato('CIUDAD / AGENCIA:', agencia),
@@ -277,19 +312,25 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
             { after: 140 }
           ),
 
+          p(`Deducibles. ${letreros.avisoDeducible}`, { after: 120 }),
+          p(`Objeto de la póliza. ${letreros.objetoPoliza}`, { after: 140 }),
+          p(letreros.pazYSalvo, { after: 140 }),
+
           p(
-            `TERCERO. - Que en consecuencia de lo anterior declaro a PAZ Y SALVO y libre de posteriores reclamos a ${ASEGURADORA}, por los hechos el ${fechaSiniestroLarga}.`,
+            `ACEPTO INDEMNIZACIÓN  ( ${marcaAcepto} )          RECHAZO INDEMNIZACIÓN  ( ${marcaRechazo} )`,
+            { alignment: AlignmentType.CENTER, after: 140 }
+          ),
+
+          p(
+            `En aceptación de lo anterior, firmamos el presente documento en la ciudad de ${ciudadFirma}, a los ${diaFirma} días del mes de ${mesFirma} de ${anioFirma}.`,
             { after: 140 }
           ),
 
-          p(
-            `CUARTO. - De acuerdo con lo establecido por los artículos 15, 2.483 y concordantes del Código Civil Colombiano, renuncio y desisto de las acciones y derechos que me confieren las leyes civiles y penales, para iniciar en un futuro acción alguna que persiga el pago de perjuicios materiales y morales en contra de ${ASEGURADORA}, en consideración a que los daños fueron indemnizados en su totalidad.`,
-            { after: 180 }
-          ),
+          p(letreros.autorizacionPago, { bold: true, after: 140 }),
 
-          p(`Para constancia de lo anterior se firma en ${ciudadFirma} ${fechaImpresoLarga}.`, {
-            after: 360,
-          }),
+          observaciones
+            ? p(`OBSERVACIONES: ${observaciones}`, { after: 180 })
+            : p('OBSERVACIONES:', { after: 180 }),
 
           p('Firma:', { alignment: AlignmentType.LEFT, after: 280 }),
           p('_________________________________', {

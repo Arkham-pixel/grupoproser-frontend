@@ -204,7 +204,17 @@ function celdaBanco(label) {
  */
 export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) {
   const enc = liquidador.encabezado || {};
-  const totales = totalesInput || calcularLiquidacionAlfa(liquidador);
+  // Recalcular siempre desde el liquidador (detalle CAT) para no quedar en $0
+  // si el objeto totales llegó desfasado respecto al Formato liquidación.
+  const totalesCalc = calcularLiquidacionAlfa(liquidador);
+  const totalInput = Number(totalesInput?.totalIndemnizar);
+  const totalCalc = Number(totalesCalc.totalIndemnizar);
+  const totalIndemnizar =
+    Number.isFinite(totalInput) && totalInput > 0
+      ? totalInput
+      : Number.isFinite(totalCalc)
+        ? totalCalc
+        : 0;
   const banco = liquidador.datosBancarios || liquidador.finiquitoBancario || {};
 
   const tomador = enc.tomador || '—';
@@ -218,8 +228,8 @@ export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) 
     formatDateLarga(enc.fechaSiniestro) || '10 de agosto de 2026';
   const firma = partesFechaFirma(enc.fechaImpreso || new Date());
 
-  const montoNum = formatearMonto(totales.totalIndemnizar, { decimals: 2 });
-  const montoLetras = letrasFiniquito(totales.totalIndemnizar);
+  const montoNum = formatearMonto(totalIndemnizar, { decimals: 2 });
+  const montoLetras = letrasFiniquito(totalIndemnizar);
 
   const logosTable = await buildLogosHeader();
 

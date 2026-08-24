@@ -338,8 +338,10 @@ export const FORM_VACIO_ALFA = {
   ciudad: '',
   departamento: '',
   fechaSiniestro: '',
+  fechaAviso: '',
   fechaInicioPoliza: '',
   fechaFinPoliza: '',
+  valorAseguradoSid: '',
   valorAseguradoInmueble: '',
   valorAseguradoContenidos: '',
   cobertura: '',
@@ -367,6 +369,7 @@ export const FORM_VACIO_ALFA = {
 
 export const CAMPOS_FECHA_ALFA = [
   'fechaSiniestro',
+  'fechaAviso',
   'fechaInicioPoliza',
   'fechaFinPoliza',
   'fechaLlamada',
@@ -379,6 +382,7 @@ export const CAMPOS_FECHA_ALFA = [
 ];
 
 export const CAMPOS_NUMERICOS_ALFA = [
+  'valorAseguradoSid',
   'valorAseguradoInmueble',
   'valorAseguradoContenidos',
   'valorReservaPreventivaPromedio',

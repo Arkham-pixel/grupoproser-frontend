@@ -835,13 +835,7 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
-    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.05) * 100
-  );
-  const imprPct = Math.round(
-    (totales.presupuesto?.imprPct ?? presupuesto.imprevistosPorcentaje ?? 0.1) * 100
-  );
-  const impPct = Math.round(
-    (totales.presupuesto?.impPct ?? presupuesto.impuestosPorcentaje ?? 0) * 100
+    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100
   );
   const criterio = totales.criterio || {};
 
@@ -1055,14 +1049,6 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
       valueW: 5000,
     }),
     campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
     campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
       labelW: 5000,
       valueW: 5000,
@@ -1193,8 +1179,6 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
   const resumenNsrFilas = [
     ['SUBTOTAL (COSTO DIRECTO)', money(totales.subtotal)],
     [`AIU (${aiuPct}%)`, money(totales.aiu)],
-    [`IMPREVISTOS (${imprPct}%)`, money(totales.imprevistos)],
-    [`IMPUESTOS (${impPct}%)`, money(totales.impuestos)],
     ['TOTAL ESTIMADO', money(totales.totalDanios)],
   ];
   resumenNsrFilas.forEach(([lab, val]) => {
@@ -1306,7 +1290,7 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
         children: [
           heading('4. Liquidación de pérdidas (liquidador)'),
           p(
-            'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.',
+            'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (sin imprevistos ni impuestos).',
             { after: 120 }
           ),
           tablaLiquidadorCompleto,

@@ -14,8 +14,42 @@ import {
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
+import {
+  aplicarTipoLiquidadorEnLiquidacionBbvaCat,
+  esObservacionFiniquitoDefaultBbvaCat,
+  inferirTipoLiquidadorBbvaCat,
+  observacionesFiniquitoPorDefectoBbvaCat,
+  TIPO_LIQUIDADOR_DEUDORES,
+} from './deduciblesBbvaCat.js';
 
 export { sanitizarInformeUnicoFotos as sanitizarInformeUnicoBbvaCat };
+
+/** AIU único BBVA (25%). Imprevistos e impuestos no aplican. */
+export const AIU_PORCENTAJE_DEFAULT_BBVA_CAT = 0.25;
+export const IMPREVISTOS_PORCENTAJE_DEFAULT_BBVA_CAT = 0;
+export const IMPUESTOS_PORCENTAJE_DEFAULT_BBVA_CAT = 0;
+
+export const RECARGOS_PRESUPUESTO_BBVA_CAT = {
+  aiuFijo: AIU_PORCENTAJE_DEFAULT_BBVA_CAT,
+  ocultarImprevistos: true,
+  ocultarImpuestos: true,
+};
+
+export function normalizarPresupuestoAiuBbvaCat(presupuesto = {}) {
+  const p = presupuesto && typeof presupuesto === 'object' ? { ...presupuesto } : {};
+  p.aiuPorcentaje = AIU_PORCENTAJE_DEFAULT_BBVA_CAT;
+  p.imprevistosPorcentaje = IMPREVISTOS_PORCENTAJE_DEFAULT_BBVA_CAT;
+  p.impuestosPorcentaje = IMPUESTOS_PORCENTAJE_DEFAULT_BBVA_CAT;
+  return p;
+}
+
+export function aplicarPresupuestoAiuBbvaCatEnEvaluacion(evalData = {}) {
+  const data = evalData && typeof evalData === 'object' ? evalData : {};
+  return {
+    ...data,
+    presupuesto: normalizarPresupuestoAiuBbvaCat(data.presupuesto || {}),
+  };
+}
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -86,20 +120,25 @@ const fechaInput = (value) => {
   return `${y}-${m}-${day}`;
 };
 
-export function liquidacionCatastroficoDefaultBbvaCat(caso = {}) {
+export function liquidacionCatastroficoDefaultBbvaCat(caso = {}, tipoLiquidador = '') {
   const c = caso && typeof caso === 'object' ? caso : {};
   const va =
     c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
       ? Number(c.valorAseguradoInmueble) || ''
       : '';
-  return {
-    valorAsegurado: va,
-    hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
-    hospedajeManual: '',
-    deducible: 'No aplica',
-    deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
-    deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
-  };
+  const tipo = inferirTipoLiquidadorBbvaCat({ tipoLiquidador, caso: c });
+  return aplicarTipoLiquidadorEnLiquidacionBbvaCat(
+    {
+      valorAsegurado: va,
+      hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
+      hospedajeManual: '',
+      deducible: '',
+      deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+      deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+    },
+    tipo,
+    { forzarDeducible: true }
+  );
 }
 
 export function encabezadoDesdecasoBbvaCat(caso = {}) {
@@ -169,6 +208,15 @@ export const DEFAULT_LIQUIDADOR_BbvaCat = {
   liquidacionCatastrofico: liquidacionCatastroficoDefaultBbvaCat(),
   indemnizacionSugerida: '',
   observaciones: '',
+  tipoLiquidador: TIPO_LIQUIDADOR_DEUDORES,
+  aceptacionIndemnizacion: '',
+  observacionesFiniquito: '',
+  datosFiniquito: {
+    ciudadFirma: '',
+    diaFirma: '',
+    mesFirma: '',
+    anioFirma: '',
+  },
 };
 
 export function esLiquidadorNsrBbvaCat(liquidador = {}) {
@@ -184,13 +232,18 @@ export function esLiquidadorNsrBbvaCat(liquidador = {}) {
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionBbvaCat(liquidador = {}) {
-  const evalData = liquidador.evaluacionSismicaNSR10 || {};
+  const evalData = aplicarPresupuestoAiuBbvaCatEnEvaluacion(
+    liquidador.evaluacionSismicaNSR10 || {}
+  );
   const presupuesto = evalData.presupuesto || { items: [] };
   const totalesPres = calcularTotalesPresupuesto(presupuesto);
   const resumen = calcularResumenTotalesNsr10(evalData);
   const liq = liquidador.liquidacionCatastrofico || {};
+  const enc = liquidador.encabezado || {};
+  const valorAsegurado =
+    parsearNumero(liq.valorAsegurado) || parsearNumero(enc.valorAseguradoInmueble) || 0;
   const diagrama = calcularDiagramaLiquidacion({
-    valorAsegurado: liq.valorAsegurado,
+    valorAsegurado,
     totalDanios: resumen.sumaCompleta,
     totalPresupuesto: resumen.totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
@@ -235,9 +288,14 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
     subtotalContenidos: resumen.totalContenidos,
     subtotalEdificios: resumen.totalPresupuesto,
     diferencia: 0,
-    usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
+    usaSMMLV: Boolean(
+      diagrama.deduciblePresupuesto?.usaMinimo ||
+        (diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV')
+    ),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
+    deducibleRequiereValorAsegurado: Boolean(diagrama.requiereValorAsegurado),
+    valorAsegurado,
   };
 }
 
@@ -260,12 +318,25 @@ export function itemsPlanosBbvaCat(liquidador = {}) {
 export function mapcasoBbvaCatALiquidador(caso = {}) {
   const encabezado = encabezadoDesdecasoBbvaCat(caso);
   const prefill = prefillNsrDesdecasoBbvaCat(caso, encabezado);
-  const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill);
+  const evalInicial = aplicarPresupuestoAiuBbvaCatEnEvaluacion(
+    fusionarEvaluacionSismicaNSR10Guardada({}, prefill)
+  );
+  const tipoInicial = inferirTipoLiquidadorBbvaCat({ encabezado, caso });
+  const hoy = new Date();
+  const datosFiniquitoDefault = {
+    ciudadFirma: encabezado.ciudad || caso.ciudad || '',
+    diaFirma: String(hoy.getDate()),
+    mesFirma: String(hoy.getMonth() + 1),
+    anioFirma: String(hoy.getFullYear()),
+  };
   const base = {
     ...DEFAULT_LIQUIDADOR_BbvaCat,
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
-    liquidacionCatastrofico: liquidacionCatastroficoDefaultBbvaCat(caso),
+    liquidacionCatastrofico: liquidacionCatastroficoDefaultBbvaCat(caso, tipoInicial),
+    tipoLiquidador: tipoInicial,
+    observacionesFiniquito: observacionesFiniquitoPorDefectoBbvaCat(tipoInicial),
+    datosFiniquito: datosFiniquitoDefault,
     otrosAmparos: defaultOtrosAmparos(),
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
@@ -289,19 +360,50 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     };
   }
 
+  const encabezadoFusion = { ...base.encabezado, ...(guardado.encabezado || {}) };
+  const tipo = inferirTipoLiquidadorBbvaCat({
+    tipoLiquidador: guardado.tipoLiquidador,
+    encabezado: encabezadoFusion,
+    caso,
+  });
+  const liqFusion = aplicarTipoLiquidadorEnLiquidacionBbvaCat(
+    {
+      ...base.liquidacionCatastrofico,
+      ...(guardado.liquidacionCatastrofico || {}),
+      valorAsegurado:
+        guardado.liquidacionCatastrofico?.valorAsegurado ??
+        encabezadoFusion.valorAseguradoInmueble ??
+        base.liquidacionCatastrofico.valorAsegurado,
+    },
+    tipo
+  );
+  const obsFiniquitoGuardada =
+    guardado.observacionesFiniquito != null && String(guardado.observacionesFiniquito).trim() !== ''
+      ? guardado.observacionesFiniquito
+      : esObservacionFiniquitoDefaultBbvaCat(guardado.observaciones)
+        ? observacionesFiniquitoPorDefectoBbvaCat(tipo)
+        : guardado.observaciones || observacionesFiniquitoPorDefectoBbvaCat(tipo);
+
   return {
     ...base,
     ...guardado,
     modelo: 'nsr10',
-    encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
-    evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
-      guardado.evaluacionSismicaNSR10,
-      prefill
-    ),
-    liquidacionCatastrofico: {
-      ...base.liquidacionCatastrofico,
-      ...(guardado.liquidacionCatastrofico || {}),
+    tipoLiquidador: tipo,
+    aceptacionIndemnizacion: guardado.aceptacionIndemnizacion || '',
+    observacionesFiniquito: obsFiniquitoGuardada,
+    datosFiniquito: {
+      ...datosFiniquitoDefault,
+      ...(guardado.datosFiniquito || {}),
+      ciudadFirma:
+        guardado.datosFiniquito?.ciudadFirma ||
+        encabezadoFusion.ciudad ||
+        datosFiniquitoDefault.ciudadFirma,
     },
+    encabezado: encabezadoFusion,
+    evaluacionSismicaNSR10: aplicarPresupuestoAiuBbvaCatEnEvaluacion(
+      fusionarEvaluacionSismicaNSR10Guardada(guardado.evaluacionSismicaNSR10, prefill)
+    ),
+    liquidacionCatastrofico: liqFusion,
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
@@ -314,8 +416,14 @@ export function formDataNsrDesdeLiquidadorBbvaCat(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
   return {
     ...prefillNsrDesdecasoBbvaCat(caso, enc),
-    evaluacionSismicaNSR10: liquidador.evaluacionSismicaNSR10,
-    liquidacionCatastrofico: liquidador.liquidacionCatastrofico,
+    evaluacionSismicaNSR10: aplicarPresupuestoAiuBbvaCatEnEvaluacion(
+      liquidador.evaluacionSismicaNSR10 || {}
+    ),
+    liquidacionCatastrofico: {
+      ...(liquidador.liquidacionCatastrofico || {}),
+      valorAsegurado:
+        liquidador.liquidacionCatastrofico?.valorAsegurado ?? enc.valorAseguradoInmueble,
+    },
     indemnizacionSugerida: liquidador.indemnizacionSugerida,
     otrosAmparos: liquidador.otrosAmparos,
     asegurado: enc.asegurado,

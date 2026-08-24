@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
+import { FaFileAlt, FaFileSignature, FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -19,11 +19,12 @@ import {
   NIVELES_AFECTACION_ZURICH,
   calcularLiquidacionZurich,
   defaultInformeUnicoZurich,
-  esInformePreliminarZurich,
+  etiquetaArchivoInformeZurich,
   formDataNsrDesdeLiquidadorZurich,
   formatearMonto,
   formatDateLarga,
   mapcasoZurichALiquidador,
+  normalizarTipoInformeZurich,
   reservaSugeridaZurich,
   totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
@@ -169,7 +170,8 @@ export default function InformeUnicoZurich({
 
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
   const criterio = totales.criterio || {};
-  const esPreliminar = esInformePreliminarZurich(informe);
+  const tipoInforme = normalizarTipoInformeZurich(informe.tipoInforme, 'preliminar');
+  const esPreliminar = tipoInforme === 'preliminar';
   const totalPreliminar = useMemo(
     () => totalPresupuestoPreliminarZurich(informe.filasPresupuestoPreliminar),
     [informe.filasPresupuestoPreliminar]
@@ -211,10 +213,23 @@ export default function InformeUnicoZurich({
     });
   };
 
+  const tipoInformeGuardado = casoZurich?.informeUnico
+    ? normalizarTipoInformeZurich(casoZurich.informeUnico.tipoInforme, 'unico')
+    : '';
+
   useEffect(() => {
     setInforme(defaultInformeUnicoZurich(casoZurich || {}));
     setLiquidador(liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}));
   }, [casoZurich?._id]);
+
+  useEffect(() => {
+    if (!tipoInformeGuardado) return;
+    setInforme((prev) => {
+      const actual = normalizarTipoInformeZurich(prev?.tipoInforme, 'preliminar');
+      if (actual === tipoInformeGuardado) return prev;
+      return defaultInformeUnicoZurich(casoZurich || {});
+    });
+  }, [casoZurich?._id, tipoInformeGuardado]);
 
   useEffect(() => {
     onEstadoChange?.(informe);
@@ -235,6 +250,14 @@ export default function InformeUnicoZurich({
       }
       return next;
     });
+  };
+
+  const elegirTipoInforme = (tipo) => {
+    const nextTipo = normalizarTipoInformeZurich(tipo, tipoInforme);
+    if (nextTipo === tipoInforme) return;
+    const next = { ...informe, tipoInforme: nextTipo };
+    setInforme(next);
+    onGuardarEnCaso?.(next);
   };
 
   const setFila = (campo, idx, key, valor) => {
@@ -286,7 +309,11 @@ export default function InformeUnicoZurich({
             nombre,
             { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
           );
-          const creado = await api.subir(casoZurich._id, file, 'INFORME');
+          const creado = await api.subir(
+            casoZurich._id,
+            file,
+            etiquetaArchivoInformeZurich(informe.tipoInforme)
+          );
           onCasoChange?.((prev) => {
             if (!prev) return prev;
             const list = Array.isArray(prev.archivos) ? prev.archivos : [];
@@ -345,12 +372,13 @@ export default function InformeUnicoZurich({
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('zurich.reportUnique.typeHint')}
         </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <button
             type="button"
-            className={`${cardBase} ${esPreliminar ? cardActive : cardIdle}`}
-            onClick={() => setCampo('tipoInforme', 'preliminar')}
+            className={`${cardBase} ${tipoInforme === 'preliminar' ? cardActive : cardIdle}`}
+            onClick={() => elegirTipoInforme('preliminar')}
           >
+            <FaFileAlt className="mb-2 text-fenix-primario" />
             <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
               {t('zurich.reportUnique.typePreliminar')}
             </span>
@@ -360,14 +388,28 @@ export default function InformeUnicoZurich({
           </button>
           <button
             type="button"
-            className={`${cardBase} ${!esPreliminar ? cardActive : cardIdle}`}
-            onClick={() => setCampo('tipoInforme', 'final')}
+            className={`${cardBase} ${tipoInforme === 'final' ? cardActive : cardIdle}`}
+            onClick={() => elegirTipoInforme('final')}
           >
+            <FaFileSignature className="mb-2 text-fenix-primario" />
             <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
               {t('zurich.reportUnique.typeFinal')}
             </span>
             <span className="mt-1 font-body text-xs text-gray-500">
               {t('zurich.reportUnique.typeFinalHint')}
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`${cardBase} ${tipoInforme === 'unico' ? cardActive : cardIdle}`}
+            onClick={() => elegirTipoInforme('unico')}
+          >
+            <FaFileWord className="mb-2 text-fenix-primario" />
+            <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
+              {t('zurich.reportUnique.typeUnico')}
+            </span>
+            <span className="mt-1 font-body text-xs text-gray-500">
+              {t('zurich.reportUnique.typeUnicoHint')}
             </span>
           </button>
         </div>

@@ -7,12 +7,22 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
   InputFenix,
+  InputMonedaExpress,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
   expressFormSection,
+  expressInput,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+import LetrerosBbvaCat from './LetrerosBbvaCat.jsx';
+import {
+  aplicarTipoLiquidadorEnLiquidacionBbvaCat,
+  esObservacionFiniquitoDefaultBbvaCat,
+  inferirTipoLiquidadorBbvaCat,
+  observacionesFiniquitoPorDefectoBbvaCat,
+  TIPOS_LIQUIDADOR_BBVA_CAT,
+} from './deduciblesBbvaCat.js';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import CampoTomadorBbvaCat from './CampoTomadorBbvaCat.jsx';
 import {
@@ -20,6 +30,8 @@ import {
   formDataNsrDesdeLiquidadorBbvaCat,
   formatearMonto,
   mapcasoBbvaCatALiquidador,
+  RECARGOS_PRESUPUESTO_BBVA_CAT,
+  aplicarPresupuestoAiuBbvaCatEnEvaluacion,
 } from './liquidadorBbvaCatHelpers.js';
 import { descargarFiniquitoBbvaCatWord } from './generarFiniquitoBbvaCatWord.js';
 import { descargarLiquidadorBbvaCatExcel } from './generarLiquidadorBbvaCatExcel.js';
@@ -64,10 +76,49 @@ export default function LiquidadorBbvaCat({
     [liquidador, casoBbvaCat]
   );
 
+  const tipoLiquidador = inferirTipoLiquidadorBbvaCat({
+    tipoLiquidador: liquidador.tipoLiquidador,
+    encabezado: enc,
+    caso: casoBbvaCat || {},
+  });
+
   const actualizarEncabezado = (campo, valor) => {
+    setLiquidador((prev) => {
+      const next = {
+        ...prev,
+        encabezado: { ...(prev.encabezado || {}), [campo]: valor },
+      };
+      if (campo === 'valorAseguradoInmueble') {
+        const liq = prev.liquidacionCatastrofico || {};
+        next.liquidacionCatastrofico = { ...liq, valorAsegurado: valor };
+      }
+      return next;
+    });
+  };
+
+  const actualizarTipoLiquidador = (tipo) => {
+    setLiquidador((prev) => {
+      const obsActual = prev.observacionesFiniquito ?? '';
+      const obsSiguiente = esObservacionFiniquitoDefaultBbvaCat(obsActual)
+        ? observacionesFiniquitoPorDefectoBbvaCat(tipo)
+        : obsActual;
+      return {
+        ...prev,
+        tipoLiquidador: tipo,
+        observacionesFiniquito: obsSiguiente,
+        liquidacionCatastrofico: aplicarTipoLiquidadorEnLiquidacionBbvaCat(
+          prev.liquidacionCatastrofico || {},
+          tipo,
+          { forzarDeducible: true }
+        ),
+      };
+    });
+  };
+
+  const actualizarDatosFiniquito = (campo, valor) => {
     setLiquidador((prev) => ({
       ...prev,
-      encabezado: { ...(prev.encabezado || {}), [campo]: valor },
+      datosFiniquito: { ...(prev.datosFiniquito || {}), [campo]: valor },
     }));
   };
 
@@ -76,6 +127,11 @@ export default function LiquidadorBbvaCat({
       const next = { ...prev, ...patch, modelo: 'nsr10' };
       if (patch.indemnizacionSugerida != null) {
         next.indemnizacionSugerida = patch.indemnizacionSugerida;
+      }
+      if (next.evaluacionSismicaNSR10) {
+        next.evaluacionSismicaNSR10 = aplicarPresupuestoAiuBbvaCatEnEvaluacion(
+          next.evaluacionSismicaNSR10
+        );
       }
       return next;
     });
@@ -142,6 +198,19 @@ export default function LiquidadorBbvaCat({
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('bbvaCat.settlement.headerTitle')}</h3>
         <div className={grid3}>
+          <Campo label={t('bbvaCat.settlement.liquidadorType')} className="sm:col-span-3">
+            <select
+              className={expressInput}
+              value={tipoLiquidador}
+              onChange={(e) => actualizarTipoLiquidador(e.target.value)}
+            >
+              {TIPOS_LIQUIDADOR_BBVA_CAT.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {t(`bbvaCat.settlement.liquidadorType_${opt.id}`, { defaultValue: opt.label })}
+                </option>
+              ))}
+            </select>
+          </Campo>
           <CampoTomadorBbvaCat
             className="sm:col-span-3"
             value={enc.tomador}
@@ -202,7 +271,28 @@ export default function LiquidadorBbvaCat({
               onChange={(e) => actualizarEncabezado('direccion', e.target.value)}
             />
           </Campo>
+          <Campo label={t('bbvaCat.fields.numeroCredito')}>
+            <InputFenix
+              value={enc.credito || ''}
+              onChange={(e) => actualizarEncabezado('credito', e.target.value)}
+            />
+          </Campo>
+          <Campo label={t('bbvaCat.fields.valorAseguradoInmueble')}>
+            <InputMonedaExpress
+              value={
+                enc.valorAseguradoInmueble ??
+                liquidador.liquidacionCatastrofico?.valorAsegurado ??
+                ''
+              }
+              onChange={(e) => actualizarEncabezado('valorAseguradoInmueble', e.target.value)}
+            />
+          </Campo>
         </div>
+        {totales.deducibleRequiereValorAsegurado ? (
+          <p className="mt-3 text-sm text-amber-800 dark:text-amber-200">
+            {t('bbvaCat.settlement.needInsuredValue')}
+          </p>
+        ) : null}
         <div className="mt-4">
           <OtrosAmparosLiquidacion
             otrosAmparos={liquidador.otrosAmparos}
@@ -224,7 +314,13 @@ export default function LiquidadorBbvaCat({
             <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible presupuesto</span>
+            <span>
+              {t('bbvaCat.settlement.deductibleBudget')}
+              <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
+                {totales.diagrama?.deduciblePresupuesto?.texto ||
+                  t('bbvaCat.settlement.deductibleCatRule')}
+              </span>
+            </span>
             <span>$ {formatearMonto(totales.diagrama?.deduciblePresupuesto?.aplicado || 0)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
@@ -249,6 +345,20 @@ export default function LiquidadorBbvaCat({
         </div>
       </section>
 
+      <LetrerosBbvaCat
+        tipoLiquidador={tipoLiquidador}
+        aceptacionIndemnizacion={liquidador.aceptacionIndemnizacion || ''}
+        datosFiniquito={liquidador.datosFiniquito || {}}
+        observacionesFiniquito={liquidador.observacionesFiniquito || ''}
+        onAceptacionChange={(v) =>
+          setLiquidador((prev) => ({ ...prev, aceptacionIndemnizacion: v }))
+        }
+        onDatosFiniquitoChange={actualizarDatosFiniquito}
+        onObservacionesChange={(v) =>
+          setLiquidador((prev) => ({ ...prev, observacionesFiniquito: v }))
+        }
+      />
+
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
           {t('bbvaCat.settlement.nsrTitle', { defaultValue: 'Evaluación y liquidador NSR-10' })}
@@ -257,6 +367,7 @@ export default function LiquidadorBbvaCat({
           formData={formDataNsr}
           onInputChange={handleNsrChange}
           modoLiquidador={false}
+          recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
         />
       </section>
     </div>

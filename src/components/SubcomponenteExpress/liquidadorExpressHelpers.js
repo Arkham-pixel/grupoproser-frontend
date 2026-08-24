@@ -226,9 +226,10 @@ export function redondearPesos(valor) {
 }
 
 export function numDeducible(valor, defaultVal) {
-  if (valor === '' || valor === null || valor === undefined) return defaultVal;
-  const n = typeof valor === 'number' ? valor : parseFloat(valor);
-  return isNaN(n) ? defaultVal : n;
+  if (valor === '') return 0;
+  if (valor === null || valor === undefined) return defaultVal;
+  const n = typeof valor === 'number' ? valor : parseFloat(String(valor).replace(',', '.'));
+  return Number.isNaN(n) ? defaultVal : n;
 }
 
 function textoConcepto(valor) {

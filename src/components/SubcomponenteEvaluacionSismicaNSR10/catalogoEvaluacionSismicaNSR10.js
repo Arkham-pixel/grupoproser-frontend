@@ -887,10 +887,20 @@ export function formatMilesInputNsr10(valor) {
 export function totalFilaPresupuesto(row) {
   const cant = parseMontoNsr10(row?.cantidad);
   const vu = parseMontoNsr10(row?.valorUnitario);
-  if (cant == null || vu == null || row?.cantidad === '' || row?.valorUnitario === '') {
-    return null;
+  if (
+    cant != null &&
+    vu != null &&
+    row?.cantidad !== '' &&
+    row?.valorUnitario !== ''
+  ) {
+    return cant * vu;
   }
-  return cant * vu;
+  // Fallback: total explícito (p. ej. liquidador Alfa sincronizado desde valorPerdida)
+  const totalDirecto = parseMontoNsr10(row?.total);
+  if (totalDirecto != null && row?.total !== '' && row?.total != null) {
+    return totalDirecto;
+  }
+  return null;
 }
 
 export function calcularTotalesPresupuesto(presupuesto = {}) {

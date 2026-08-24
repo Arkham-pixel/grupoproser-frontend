@@ -22,6 +22,8 @@ import {
   formatearMonto,
   formatDateLarga,
   mapcasoBbvaCatALiquidador,
+  RECARGOS_PRESUPUESTO_BBVA_CAT,
+  aplicarPresupuestoAiuBbvaCatEnEvaluacion,
 } from './liquidadorBbvaCatHelpers.js';
 import { descargarWordInformeBbvaCat } from './generarWordInformeBbvaCat.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
@@ -130,7 +132,15 @@ export default function InformeUnicoBbvaCat({
   };
 
   const handleNsrChange = (patch) => {
-    setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
+    setLiquidador((prev) => {
+      const next = { ...prev, ...patch, modelo: 'nsr10' };
+      if (next.evaluacionSismicaNSR10) {
+        next.evaluacionSismicaNSR10 = aplicarPresupuestoAiuBbvaCatEnEvaluacion(
+          next.evaluacionSismicaNSR10
+        );
+      }
+      return next;
+    });
   };
 
   const restaurarInfoEvento = () => {
@@ -408,6 +418,7 @@ export default function InformeUnicoBbvaCat({
           formData={formDataNsr}
           onInputChange={handleNsrChange}
           modoLiquidador
+          recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
         />
       </section>
 

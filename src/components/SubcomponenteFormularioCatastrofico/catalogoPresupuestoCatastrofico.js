@@ -346,16 +346,20 @@ export function normalizarDeducibleCatastrofico(liquidacion = {}) {
   };
   const anioRef = Number(base.anioSMMLV) || SMMLV_ANIO_MAS_RECIENTE;
   const smmlvResuelto = resolverSmmlvPorAnio(anioRef);
-  const valorSMMLV = parsearNumero(
-    base.valorSMMLV != null && base.valorSMMLV !== ''
-      ? base.valorSMMLV
-      : smmlvResuelto.valor ?? SMMLV_DEFAULT
-  );
-  const valorSMDLV = parsearNumero(
-    base.valorSMDLV != null && base.valorSMDLV !== ''
-      ? base.valorSMDLV
-      : valorSmdlvDesdeSmmlv(valorSMMLV)
-  );
+  const valorSMMLV =
+    base.valorSMMLV === ''
+      ? 0
+      : parsearNumero(
+          base.valorSMMLV != null ? base.valorSMMLV : smmlvResuelto.valor ?? SMMLV_DEFAULT
+        );
+  const valorSMDLV =
+    base.valorSMDLV === ''
+      ? 0
+      : parsearNumero(
+          base.valorSMDLV != null && base.valorSMDLV !== ''
+            ? base.valorSMDLV
+            : valorSmdlvDesdeSmmlv(valorSMMLV)
+        );
   const textoLegacy =
     typeof liquidacion?.deducible === 'string' ? liquidacion.deducible.trim() : '';
   const modo = ['solo_porcentaje', 'solo_minimo', 'valor_fijo', 'no_aplica'].includes(base.modo)
@@ -477,6 +481,59 @@ export function calcularDeducibleEstiloExpress(base = 0, deducibleConfig = {}) {
   };
 }
 
+function brutoDeducibleSinTope(calc = {}) {
+  if (calc.modo === 'solo_porcentaje') return calc.deduciblePorcentaje || 0;
+  if (calc.modo === 'solo_minimo') {
+    return calc.tipoMinimo === 'SMDLV' ? calc.deducibleSMDLV || 0 : calc.deducibleSMMLV || 0;
+  }
+  if (calc.modo === 'valor_fijo') return calc.valorFijo || 0;
+  const minimo =
+    calc.tipoMinimo === 'SMDLV' ? calc.deducibleSMDLV || 0 : calc.deducibleSMMLV || 0;
+  return Math.max(calc.deduciblePorcentaje || 0, minimo);
+}
+
+/**
+ * Si baseDeducible = valor_asegurable, el % se calcula sobre el VA y se topea con la pérdida.
+ * Sin VA no se aplica (evita caer al % de la pérdida).
+ */
+export function calcularDeducibleSobreBaseConfig(
+  deducibleConfig = {},
+  { perdida = 0, valorAsegurado = 0 } = {}
+) {
+  const cfg =
+    deducibleConfig && typeof deducibleConfig === 'object' ? deducibleConfig : {};
+  const usaVa = String(cfg.baseDeducible || '') === 'valor_asegurable';
+  const perdidaN = Number(perdida) || 0;
+  const va = Number(valorAsegurado) || 0;
+
+  if (!usaVa) {
+    return calcularDeducibleEstiloExpress(perdidaN, cfg);
+  }
+  if (!(va > 0)) {
+    const calc = calcularDeducibleEstiloExpress(0, cfg);
+    return {
+      ...calc,
+      aplica: false,
+      deducibleAplicado: 0,
+      requiereValorAsegurado: true,
+      texto: String(cfg.texto || '').trim() || 'Indique el valor asegurado para calcular el deducible',
+    };
+  }
+
+  const calc = calcularDeducibleEstiloExpress(va, cfg);
+  const bruto = brutoDeducibleSinTope(calc);
+  const deducibleAplicado =
+    perdidaN > 0
+      ? Math.round(Math.min(bruto, perdidaN) * 100) / 100
+      : Math.round(bruto * 100) / 100;
+  return {
+    ...calc,
+    deducibleAplicado,
+    requiereValorAsegurado: false,
+    usaMinimo: bruto > (calc.deduciblePorcentaje || 0),
+  };
+}
+
 export function calcularDiagramaLiquidacion({
   valorAsegurado = 0,
   totalDanios = 0,
@@ -535,8 +592,14 @@ export function calcularDiagramaLiquidacion({
         : 0;
   const basePresupuesto = presupuestoN != null ? presupuestoN : Math.max(0, danios - baseContenidos);
 
-  const calcCont = calcularDeducibleEstiloExpress(baseContenidos, cfgContenidos);
-  const calcPres = calcularDeducibleEstiloExpress(basePresupuesto, cfgPresupuesto);
+  const calcCont = calcularDeducibleSobreBaseConfig(cfgContenidos, {
+    perdida: baseContenidos,
+    valorAsegurado: va,
+  });
+  const calcPres = calcularDeducibleSobreBaseConfig(cfgPresupuesto, {
+    perdida: basePresupuesto,
+    valorAsegurado: va,
+  });
   const deduciblePorArticulosN = Number(deducibleContenidosPorArticulos);
   const usaDeduciblePorArticulo =
     deducibleContenidosPorArticulos != null &&
@@ -593,6 +656,9 @@ export function calcularDiagramaLiquidacion({
       aplicado: deduciblePresupuestoAplicado,
       neto: presupuestoNeto,
     },
+    requiereValorAsegurado: Boolean(
+      calcPres.requiereValorAsegurado || calcCont.requiereValorAsegurado
+    ),
     sumaDeducibles,
     sumaNeta,
     indemnizacionPrincipal,

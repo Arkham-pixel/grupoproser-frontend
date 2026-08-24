@@ -26,6 +26,7 @@ export const ALFA_FIELD_LABELS = Object.freeze({
   observacionesGestion: 'Observaciones de gestión',
   zonaAsignada: 'Zona asignada',
   fechaSiniestro: 'Fecha del siniestro',
+  fechaAviso: 'Fecha aviso',
   fechaInicioPoliza: 'Fecha inicio póliza',
   fechaFinPoliza: 'Fecha fin póliza',
   fechaLlamada: 'Fecha de llamada',
@@ -35,6 +36,7 @@ export const ALFA_FIELD_LABELS = Object.freeze({
   fechaLiquidado: 'Fecha liquidado',
   fechaAceptacionLiquidacion: 'Fecha aceptación liquidación',
   fechaEnvioAseguradora: 'Fecha envío a aseguradora',
+  valorAseguradoSid: 'Valor asegurado SID',
   valorAseguradoInmueble: 'Valor asegurado inmueble',
   valorAseguradoContenidos: 'Valor asegurado contenidos',
   valorReservaPreventivaPromedio: 'Valor reserva preventiva',
@@ -45,6 +47,7 @@ export const ALFA_FIELD_LABELS = Object.freeze({
 });
 
 const MONEY_FIELDS = new Set([
+  'valorAseguradoSid',
   'valorAseguradoInmueble',
   'valorAseguradoContenidos',
   'valorReservaPreventivaPromedio',
@@ -56,6 +59,7 @@ const MONEY_FIELDS = new Set([
 
 const DATE_FIELDS = new Set([
   'fechaSiniestro',
+  'fechaAviso',
   'fechaInicioPoliza',
   'fechaFinPoliza',
   'fechaLlamada',

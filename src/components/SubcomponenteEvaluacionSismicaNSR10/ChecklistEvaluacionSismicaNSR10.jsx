@@ -77,6 +77,13 @@ function displayMiles(valor) {
   return formatMilesNsr10(valor);
 }
 
+/** Vacío se muestra vacío (el cálculo usa 0). Solo el fallback aplica si nunca se digitó. */
+function valorInputDeducible(valor, fallback) {
+  if (valor === '') return '';
+  if (valor === null || valor === undefined) return fallback;
+  return valor;
+}
+
 /** Panel deducible estilo Express (MAX % vs SMMLV/SMDLV). */
 function PanelDeducibleCatastrofico({
   deducibleCfg,
@@ -182,7 +189,7 @@ function PanelDeducibleCatastrofico({
             step="0.1"
             className={`${inputClass} mt-1`}
             style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-            value={deducibleCfg.porcentaje ?? 10}
+            value={valorInputDeducible(deducibleCfg.porcentaje, 10)}
             onChange={(e) =>
               onChangeConfig({
                 porcentaje: e.target.value === '' ? '' : Number(e.target.value),
@@ -198,12 +205,13 @@ function PanelDeducibleCatastrofico({
             className={`${inputClass} mt-1`}
             style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
             value={displayMiles(deducibleCfg.valorFijo)}
-            onChange={(e) =>
+            onChange={(e) => {
+              const digits = String(e.target.value).replace(/\D/g, '');
               onChangeConfig({
                 modo: 'valor_fijo',
-                valorFijo: Number(String(e.target.value).replace(/\D/g, '')) || 0,
-              })
-            }
+                valorFijo: digits === '' ? '' : Number(digits),
+              });
+            }}
           />
         </label>
         <label className="block text-sm" style={{ color: textSecondary }}>
@@ -239,7 +247,7 @@ function PanelDeducibleCatastrofico({
                 step="1"
                 className={`${inputClass} mt-1`}
                 style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                value={deducibleCfg.cantidadSMMLV ?? 4}
+                value={valorInputDeducible(deducibleCfg.cantidadSMMLV, 4)}
                 onChange={(e) =>
                   onChangeConfig({
                     cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
@@ -276,7 +284,7 @@ function PanelDeducibleCatastrofico({
                 step="1"
                 className={`${inputClass} mt-1`}
                 style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                value={deducibleCfg.cantidadSMDLV ?? 10}
+                value={valorInputDeducible(deducibleCfg.cantidadSMDLV, 10)}
                 onChange={(e) =>
                   onChangeConfig({
                     cantidadSMDLV: e.target.value === '' ? '' : Number(e.target.value),
@@ -328,10 +336,22 @@ function PanelDeducibleCatastrofico({
 }
 
 /**
- * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function }} props
+ * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function, recargosPresupuesto?: { aiuFijo?: number, ocultarImprevistos?: boolean, ocultarImpuestos?: boolean }|null }} props
  * modoLiquidador: hojas Presupuesto + Contenidos + diagrama de liquidación (informe único).
  * habilitarUploadFotos: celda Foto/Ref. permite adjuntar imagen (p. ej. Seguros Alfa).
+ * recargosPresupuesto: p. ej. BBVA — AIU fijo y sin imprevistos/impuestos.
  */
+function aplicarRecargosPresupuesto(presupuesto = {}, recargos = null) {
+  if (!recargos) return presupuesto;
+  const next = { ...(presupuesto || {}) };
+  if (recargos.aiuFijo != null && Number.isFinite(Number(recargos.aiuFijo))) {
+    next.aiuPorcentaje = Number(recargos.aiuFijo);
+  }
+  if (recargos.ocultarImprevistos) next.imprevistosPorcentaje = 0;
+  if (recargos.ocultarImpuestos) next.impuestosPorcentaje = 0;
+  return next;
+}
+
 export default function ChecklistEvaluacionSismicaNSR10({
   formData,
   onInputChange,
@@ -339,6 +359,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
   habilitarUploadFotos = false,
   onUploadFotoFila = null,
   onRemoveFotoFila = null,
+  recargosPresupuesto = null,
 }) {
   const { theme } = useTheme();
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -363,7 +384,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
     [evalData.items]
   );
   const criterio = useMemo(() => calcularCriterioFinal(items), [items]);
-  const presupuesto = evalData.presupuesto || { items: [] };
+  const presupuesto = aplicarRecargosPresupuesto(
+    evalData.presupuesto || { items: [] },
+    recargosPresupuesto
+  );
   const filasPresupuesto = Array.isArray(presupuesto.items) ? presupuesto.items : [];
   const totales = useMemo(
     () => calcularTotalesPresupuesto(presupuesto),
@@ -407,6 +431,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
     deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
     deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
   };
+  const deducibleCfgInput =
+    liquidacion.deducibleConfigContenidos || liquidacion.deducibleConfig || {};
+  const deducibleCfgPresupuestoInput = liquidacion.deducibleConfigPresupuesto || {};
   const deducibleCfg = useMemo(
     () =>
       normalizarDeducibleCatastrofico({
@@ -471,9 +498,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
   };
 
   const actualizarDeducibleConfig = (patch) => {
-    const nextModo = patch.modo != null ? patch.modo : deducibleCfg.modo;
+    const base =
+      deducibleCfgInput && typeof deducibleCfgInput === 'object' && Object.keys(deducibleCfgInput).length
+        ? deducibleCfgInput
+        : deducibleCfg;
+    const nextModo = patch.modo != null ? patch.modo : base.modo;
     const nextCfg = {
-      ...deducibleCfg,
+      ...base,
       ...patch,
       aplica: nextModo === 'no_aplica' ? false : patch.aplica !== false,
     };
@@ -485,9 +516,15 @@ export default function ChecklistEvaluacionSismicaNSR10({
   };
 
   const actualizarDeduciblePresupuesto = (patch) => {
-    const nextModo = patch.modo != null ? patch.modo : deducibleCfgPresupuesto.modo;
+    const base =
+      deducibleCfgPresupuestoInput &&
+      typeof deducibleCfgPresupuestoInput === 'object' &&
+      Object.keys(deducibleCfgPresupuestoInput).length
+        ? deducibleCfgPresupuestoInput
+        : deducibleCfgPresupuesto;
+    const nextModo = patch.modo != null ? patch.modo : base.modo;
     const nextCfg = {
-      ...deducibleCfgPresupuesto,
+      ...base,
       ...patch,
       aplica: nextModo === 'no_aplica' ? false : patch.aplica !== false,
     };
@@ -616,7 +653,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
   };
 
   const setPresupuesto = (nextPresupuesto) => {
-    commit({ presupuesto: nextPresupuesto });
+    commit({ presupuesto: aplicarRecargosPresupuesto(nextPresupuesto, recargosPresupuesto) });
   };
 
   const actualizarFilaPresupuesto = (index, patch) => {
@@ -1050,7 +1087,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <p className="text-xs" style={{ color: textSecondary }}>
                 {modoLiquidador
                   ? 'Elija del catálogo de base de precios (951 ítems, de mayor a menor). Puede buscar por nombre. Edite cantidades; el total alimenta la liquidación y el Word.'
-                  : 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; totales con AIU / imprevistos / impuestos.'}
+                  : recargosPresupuesto?.ocultarImprevistos
+                    ? 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; total con AIU fijo.'
+                    : 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; totales con AIU / imprevistos / impuestos.'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -1296,22 +1335,29 @@ export default function ChecklistEvaluacionSismicaNSR10({
             <div className="flex items-center justify-between gap-3">
               <label className="flex items-center gap-2" style={{ color: textSecondary }}>
                 AIU
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-20 rounded border px-2 py-1 text-xs"
-                  style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                  value={presupuesto.aiuPorcentaje ?? 0.05}
-                  onChange={(e) =>
-                    setPresupuesto({
-                      ...presupuesto,
-                      aiuPorcentaje: Number(e.target.value),
-                    })
-                  }
-                />
+                {recargosPresupuesto?.aiuFijo != null ? (
+                  <span className="rounded border px-2 py-1 text-xs font-semibold" style={{ borderColor, color: textPrimary }}>
+                    {Math.round(Number(recargosPresupuesto.aiuFijo) * 100)}%
+                  </span>
+                ) : (
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-20 rounded border px-2 py-1 text-xs"
+                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                    value={presupuesto.aiuPorcentaje ?? 0.05}
+                    onChange={(e) =>
+                      setPresupuesto({
+                        ...presupuesto,
+                        aiuPorcentaje: Number(e.target.value),
+                      })
+                    }
+                  />
+                )}
               </label>
               <strong style={{ color: textPrimary }}>{money(totales.aiu)}</strong>
             </div>
+            {!recargosPresupuesto?.ocultarImprevistos && (
             <div className="flex items-center justify-between gap-3">
               <label className="flex items-center gap-2" style={{ color: textSecondary }}>
                 Imprevistos
@@ -1331,6 +1377,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </label>
               <strong style={{ color: textPrimary }}>{money(totales.imprevistos)}</strong>
             </div>
+            )}
+            {!recargosPresupuesto?.ocultarImpuestos && (
             <div className="flex items-center justify-between gap-3">
               <label className="flex items-center gap-2" style={{ color: textSecondary }}>
                 Impuestos
@@ -1350,6 +1398,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </label>
               <strong style={{ color: textPrimary }}>{money(totales.impuestos)}</strong>
             </div>
+            )}
             <div
               className="flex items-center justify-between gap-3 border-t pt-2"
               style={{ borderColor }}
@@ -1374,13 +1423,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <label className="block text-xs" style={{ color: textSecondary }}>
                 % deducible
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
+                  type="text"
+                  inputMode="decimal"
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                  value={deducibleCfgPresupuesto.porcentaje ?? 10}
+                  value={valorInputDeducible(deducibleCfgPresupuestoInput.porcentaje, 10)}
                   onChange={(e) =>
                     actualizarDeduciblePresupuesto({
                       porcentaje: e.target.value === '' ? '' : Number(e.target.value),
@@ -1391,12 +1438,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <label className="block text-xs" style={{ color: textSecondary }}>
                 Cant. SMMLV
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                  value={deducibleCfgPresupuesto.cantidadSMMLV ?? 4}
+                  value={valorInputDeducible(deducibleCfgPresupuestoInput.cantidadSMMLV, 4)}
                   onChange={(e) =>
                     actualizarDeduciblePresupuesto({
                       cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
@@ -1518,7 +1564,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </div>
 
               <PanelDeducibleCatastrofico
-                deducibleCfg={deducibleCfg}
+                deducibleCfg={deducibleCfgInput}
                 diagrama={diagrama}
                 onChangeConfig={actualizarDeducibleConfig}
                 inputClass={inputClass}
@@ -2026,13 +2072,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <label className="block text-xs" style={{ color: textSecondary }}>
                 % deducible
                 <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.1"
+                  type="text"
+                  inputMode="decimal"
                   className={`${inputClass} mt-1`}
                   style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                  value={deducibleCfg.porcentaje ?? 10}
+                  value={valorInputDeducible(deducibleCfgInput.porcentaje, 10)}
                   onChange={(e) =>
                     actualizarDeducibleConfig({
                       porcentaje: e.target.value === '' ? '' : Number(e.target.value),
@@ -2068,12 +2112,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   <label className="block text-xs" style={{ color: textSecondary }}>
                     Cant. SMMLV
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       className={`${inputClass} mt-1`}
                       style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                      value={deducibleCfg.cantidadSMMLV ?? 4}
+                      value={valorInputDeducible(deducibleCfgInput.cantidadSMMLV, 4)}
                       onChange={(e) =>
                         actualizarDeducibleConfig({
                           cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
@@ -2088,7 +2131,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       inputMode="decimal"
                       className={`${inputClass} mt-1`}
                       style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                      value={displayMiles(deducibleCfg.valorSMMLV)}
+                      value={displayMiles(deducibleCfgInput.valorSMMLV)}
                       onChange={(e) => {
                         const fmt = formatMilesInputNsr10(e.target.value);
                         const n = parseMontoNsr10(fmt);
@@ -2106,12 +2149,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   <label className="block text-xs" style={{ color: textSecondary }}>
                     Cant. SMDLV
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       className={`${inputClass} mt-1`}
                       style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                      value={deducibleCfg.cantidadSMDLV ?? 10}
+                      value={valorInputDeducible(deducibleCfgInput.cantidadSMDLV, 10)}
                       onChange={(e) =>
                         actualizarDeducibleConfig({
                           cantidadSMDLV: e.target.value === '' ? '' : Number(e.target.value),
@@ -2126,7 +2168,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       inputMode="decimal"
                       className={`${inputClass} mt-1`}
                       style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                      value={displayMiles(deducibleCfg.valorSMDLV)}
+                      value={displayMiles(deducibleCfgInput.valorSMDLV)}
                       onChange={(e) =>
                         actualizarDeducibleConfig({
                           valorSMDLV: formatMilesInputNsr10(e.target.value),
@@ -2231,7 +2273,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 {money(resumenTotales.totalPresupuesto)}
               </p>
               <p className="mt-1 text-xs" style={{ color: textSecondary }}>
-                Reparación / intervención NSR-10 (con AIU, imprevistos e impuestos)
+                {recargosPresupuesto?.ocultarImprevistos || recargosPresupuesto?.ocultarImpuestos
+                  ? `Reparación / intervención NSR-10 (con AIU ${
+                      recargosPresupuesto?.aiuFijo != null
+                        ? `${Math.round(Number(recargosPresupuesto.aiuFijo) * 100)}%`
+                        : ''
+                    })`.trim()
+                  : 'Reparación / intervención NSR-10 (con AIU, imprevistos e impuestos)'}
               </p>
             </div>
             <div
@@ -2278,9 +2326,19 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   <td className="px-4 py-2 text-right">{money(totales.subtotal)}</td>
                 </tr>
                 <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2">AIU / imprevistos / impuestos</td>
+                  <td className="px-4 py-2">
+                    {recargosPresupuesto?.ocultarImprevistos || recargosPresupuesto?.ocultarImpuestos
+                      ? recargosPresupuesto?.aiuFijo != null
+                        ? `AIU (${Math.round(Number(recargosPresupuesto.aiuFijo) * 100)}%)`
+                        : 'AIU'
+                      : 'AIU / imprevistos / impuestos'}
+                  </td>
                   <td className="px-4 py-2 text-right">
-                    {money((totales.aiu || 0) + (totales.imprevistos || 0) + (totales.impuestos || 0))}
+                    {money(
+                      recargosPresupuesto?.ocultarImprevistos || recargosPresupuesto?.ocultarImpuestos
+                        ? totales.aiu || 0
+                        : (totales.aiu || 0) + (totales.imprevistos || 0) + (totales.impuestos || 0)
+                    )}
                   </td>
                 </tr>
                 <tr className="border-t" style={{ borderColor }}>
@@ -2388,7 +2446,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     step="0.1"
                     className={`${inputClass} mt-1`}
                     style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={deducibleCfgPresupuesto.porcentaje ?? 10}
+                    value={valorInputDeducible(deducibleCfgPresupuestoInput.porcentaje, 10)}
                     onChange={(e) =>
                       actualizarDeduciblePresupuesto({
                         porcentaje: e.target.value === '' ? '' : Number(e.target.value),
@@ -2404,7 +2462,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     step="0.01"
                     className={`${inputClass} mt-1`}
                     style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={deducibleCfgPresupuesto.cantidadSMMLV ?? 4}
+                    value={valorInputDeducible(deducibleCfgPresupuestoInput.cantidadSMMLV, 4)}
                     onChange={(e) =>
                       actualizarDeduciblePresupuesto({
                         cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
@@ -2428,13 +2486,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 <label className="block text-xs" style={{ color: textSecondary }}>
                   %
                   <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
+                    type="text"
+                    inputMode="decimal"
                     className={`${inputClass} mt-1`}
                     style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={deducibleCfg.porcentaje ?? 10}
+                    value={valorInputDeducible(deducibleCfgInput.porcentaje, 10)}
                     onChange={(e) =>
                       actualizarDeducibleConfig({
                         porcentaje: e.target.value === '' ? '' : Number(e.target.value),
@@ -2445,12 +2501,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 <label className="block text-xs" style={{ color: textSecondary }}>
                   Cant. SMMLV
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     className={`${inputClass} mt-1`}
                     style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={deducibleCfg.cantidadSMMLV ?? 4}
+                    value={valorInputDeducible(deducibleCfgInput.cantidadSMMLV, 4)}
                     onChange={(e) =>
                       actualizarDeducibleConfig({
                         cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),

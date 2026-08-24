@@ -28,7 +28,7 @@ import {
   guardarInformeUnicoEnCasoZurichListado,
   guardarLiquidadorEnCasoZurichListado,
 } from '../../services/zurichListadoService.js';
-import { calcularLiquidacionZurich } from './liquidadorZurichHelpers.js';
+import { calcularLiquidacionZurich, etiquetaArchivoInformeZurich } from './liquidadorZurichHelpers.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import useZurichCasoAutosave from '../../hooks/useZurichCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
@@ -525,7 +525,9 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
             caso={casoZurich}
             etiquetaInicial={
               tabActivo === TABS_ZURICH.INFORME
-                ? 'INFORME'
+                ? etiquetaArchivoInformeZurich(
+                    informeState?.tipoInforme || casoZurich?.informeUnico?.tipoInforme
+                  )
                 : tabActivo === TABS_ZURICH.LIQUIDADOR
                   ? 'LIQUIDACION'
                   : 'GENERAL'

@@ -942,7 +942,7 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
-    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.15) * 100
+    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.2) * 100
   );
   const imprPct = Math.round(
     (totales.presupuesto?.imprPct ?? presupuesto.imprevistosPorcentaje ?? 0) * 100

@@ -20,12 +20,18 @@ import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaN
 import {
   calcularLiquidacionZurich,
   defaultInformeUnicoZurich,
+  etiquetaArchivoInformeZurich,
+  etiquetaEncabezadoInformeZurich,
+  etiquetaReporteCuadroZurich,
+  etiquetaTituloInformeZurich,
   esInformePreliminarZurich,
   formatearMonto,
   formatDateLarga,
   itemsPlanosZurich,
   mapcasoZurichALiquidador,
+  normalizarTipoInformeZurich,
   parsearNumero,
+  prefijoArchivoInformeZurich,
   reservaSugeridaZurich,
   totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
@@ -215,9 +221,7 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
                     spacing: { after: 60 },
                     children: [
                       new TextRun({
-                        text: esInformePreliminarZurich(informe)
-                          ? 'Informe Preliminar Zurich'
-                          : 'Informe Final Zurich',
+                        text: etiquetaEncabezadoInformeZurich(informe.tipoInforme),
                         font: FONT,
                         size: SIZE_12,
                         color: '333333',
@@ -254,9 +258,9 @@ async function crearEncabezadoZurich({ caso = {}, informe = {} } = {}) {
   });
 }
 
-/** Título azul con PRELIMINAR o FINAL subrayado. */
+/** Título azul con PRELIMINAR, FINAL o ÚNICO subrayado. */
 function crearTituloInformeZurich(info = {}) {
-  const tipo = esInformePreliminarZurich(info) ? 'PRELIMINAR' : 'FINAL';
+  const tipo = etiquetaTituloInformeZurich(info.tipoInforme);
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 120, after: 200 },
@@ -376,7 +380,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
   const esPreliminar = esInformePreliminarZurich(info);
   const reserva = reservaSugeridaZurich(info);
   const filas = [
-    ['REPORTE No', esPreliminar ? 'Preliminar — Zurich' : 'Final — Zurich'],
+    ['REPORTE No', etiquetaReporteCuadroZurich(info.tipoInforme)],
     ['CONSECUTIVO', txt(caso.consecutivo)],
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
@@ -1115,7 +1119,9 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   );
   const criterio = totales.criterio || {};
   const esPreliminar = esInformePreliminarZurich(info);
-  const tipoEtiqueta = esPreliminar ? 'preliminar' : 'final';
+  const tipoNorm = normalizarTipoInformeZurich(info.tipoInforme, 'preliminar');
+  const tipoEtiqueta =
+    tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
   const seccionFotos = esPreliminar ? 5 : 7;
 
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
@@ -1661,7 +1667,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   });
 
   const blob = await Packer.toBlob(doc);
-  const prefijo = esPreliminar ? 'Informe_Preliminar_Zurich' : 'Informe_Final_Zurich';
+  const prefijo = prefijoArchivoInformeZurich(info.tipoInforme);
   const nombre = `${prefijo}_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'

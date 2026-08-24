@@ -244,7 +244,7 @@ export async function descargarCartaInferiorDeducibleAlfaWord(liquidador = {}) {
  * Carta / constancia de desistimiento de reclamación por terremoto.
  */
 export async function descargarCartaDesistimientoAlfaWord(liquidador = {}) {
-  const { asegurado, ciudad, fecha, cedula, poliza, siniestro } =
+  const { asegurado, fecha, cedula, poliza, siniestro } =
     datosCartaDesdeLiquidador(liquidador);
   const logosTable = await buildLogosHeader();
 
@@ -253,9 +253,9 @@ export async function descargarCartaDesistimientoAlfaWord(liquidador = {}) {
       alignment: AlignmentType.LEFT,
       after: 240,
     }),
-    p('Estimado:', { alignment: AlignmentType.LEFT, after: 40 }),
-    p(asegurado, { alignment: AlignmentType.LEFT, bold: true, after: 40 }),
-    p(`${ciudad}, Colombia`, { alignment: AlignmentType.LEFT, after: 200 }),
+    p('Señores:', { alignment: AlignmentType.LEFT, after: 40 }),
+    p('SEGUROS ALFA S.A.', { alignment: AlignmentType.LEFT, bold: true, after: 40 }),
+    p('Bogotá D.C., Colombia', { alignment: AlignmentType.LEFT, after: 200 }),
     p(
       [
         { text: 'Asunto: ', bold: true },

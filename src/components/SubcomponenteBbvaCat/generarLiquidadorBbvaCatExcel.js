@@ -7,7 +7,7 @@ import {
   ocultarHojasEvaluacionYDictamenExcel,
   parseMontoNsr10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import { prefillNsrDesdecasoBbvaCat } from './liquidadorBbvaCatHelpers.js';
+import { prefillNsrDesdecasoBbvaCat, normalizarPresupuestoAiuBbvaCat } from './liquidadorBbvaCatHelpers.js';
 
 const PLANTILLA_URL = `${import.meta.env.BASE_URL || '/'}templates/Plantilla_Evaluacion_Sismica_NSR10.xlsx`;
 
@@ -82,7 +82,7 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
     fechaSiniestro: enc.fechaSiniestro,
   });
   const items = normalizarItemsRespuesta(evalData.items);
-  const presupuesto = evalData.presupuesto || {};
+  const presupuesto = normalizarPresupuestoAiuBbvaCat(evalData.presupuesto || {});
   const filasPres = Array.isArray(presupuesto.items) ? presupuesto.items : [];
 
   const hojaEval = workbook.getWorksheet('Evaluación');
@@ -172,14 +172,14 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
     setVal(hojaPres, row, 12, txt(it.fuente) || null);
   }
 
-  // Porcentajes editables (plantilla: G41 AIU, G42 imprevistos, G43 impuestos)
-  const aiu = Number(presupuesto.aiuPorcentaje ?? 0.05);
-  const impr = Number(presupuesto.imprevistosPorcentaje ?? 0.1);
+  // Porcentajes BBVA: AIU 25% fijo; imprevistos e impuestos en 0
+  const aiu = Number(presupuesto.aiuPorcentaje ?? 0.25);
+  const impr = Number(presupuesto.imprevistosPorcentaje ?? 0);
   const imp = Number(presupuesto.impuestosPorcentaje ?? 0);
   setVal(hojaPres, 41, 6, 'AIU');
-  setVal(hojaPres, 41, 7, Number.isFinite(aiu) ? aiu : 0.05);
+  setVal(hojaPres, 41, 7, Number.isFinite(aiu) ? aiu : 0.25);
   setVal(hojaPres, 42, 6, 'Imprevistos');
-  setVal(hojaPres, 42, 7, Number.isFinite(impr) ? impr : 0.1);
+  setVal(hojaPres, 42, 7, Number.isFinite(impr) ? impr : 0);
   setVal(hojaPres, 43, 6, 'Impuestos');
   setVal(hojaPres, 43, 7, Number.isFinite(imp) ? imp : 0);
 }
