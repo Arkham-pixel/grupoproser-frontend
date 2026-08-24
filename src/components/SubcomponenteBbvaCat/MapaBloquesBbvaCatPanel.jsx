@@ -179,7 +179,17 @@ export default function MapaBloquesBbvaCatPanel({
     cargar();
   }, [cargar]);
 
-  const bloques = data?.bloques || [];
+  const bloques = useMemo(() => {
+    const list = [...(data?.bloques || [])];
+    list.sort((a, b) => {
+      const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
+      if (d !== 0) return d;
+      return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', {
+        numeric: true,
+      });
+    });
+    return list;
+  }, [data]);
   const sinUbicar = data?.sinUbicar || [];
   const sinDireccionCount = data?.sinDireccionCount ?? sinUbicar.filter((c) => c.motivoSinUbicar === 'sin_direccion').length;
   const geocodeFallidoCount =
