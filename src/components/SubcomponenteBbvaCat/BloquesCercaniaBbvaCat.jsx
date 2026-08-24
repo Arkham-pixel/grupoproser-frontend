@@ -32,7 +32,11 @@ import {
   geocodeConGooglePrecisoBbvaCat,
   necesitaGeocodeCliente,
 } from './bbvaCatGeocodeHelpers.js';
-import { zcCasoBbvaCat } from './bbvaCatHelpers.js';
+import {
+  ordenarBloquesPorVolumenBbvaCat,
+  RADIO_KM_ANALISTA_BBVA_CAT,
+  zcCasoBbvaCat,
+} from './bbvaCatHelpers.js';
 
 const RADIOS = [
   { value: '0.1', label: '100 m' },
@@ -52,7 +56,7 @@ export default function BloquesCercaniaBbvaCat() {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
   const { isLoaded } = useJsApiLoader(googleMapsLoaderOptions(apiKey));
 
-  const [radioKm, setRadioKm] = useState('0.5');
+  const [radioKm, setRadioKm] = useState(RADIO_KM_ANALISTA_BBVA_CAT);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [geocoding, setGeocoding] = useState(false);
@@ -67,7 +71,7 @@ export default function BloquesCercaniaBbvaCat() {
       const res = await getBloquesCercaniaBbvaCat({ radioKm: Number(radioKm) });
       setData(res);
       const open = {};
-      (res.bloques || []).forEach((b, i) => {
+      ordenarBloquesPorVolumenBbvaCat(res.bloques || []).forEach((b, i) => {
         open[b.id] = i < 3;
       });
       if ((res.sinUbicar || []).length) open.sinUbicar = true;
@@ -200,7 +204,10 @@ export default function BloquesCercaniaBbvaCat() {
     setAbiertos((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const bloques = data?.bloques || [];
+  const bloques = useMemo(
+    () => ordenarBloquesPorVolumenBbvaCat(data?.bloques || []),
+    [data]
+  );
   const sinUbicar = data?.sinUbicar || [];
 
   const resumenTxt = useMemo(() => {

@@ -20,7 +20,12 @@ import {
   postUbicacionesPredioBbvaCat,
 } from '../../services/bbvaCatService.js';
 import { googleMapsLoaderOptions } from '../../config/googleMapsLoader.js';
-import { etiquetaDireccionBloqueBbvaCat, indiceColorBloqueBbvaCat, zcCasoBbvaCat } from './bbvaCatHelpers.js';
+import {
+  etiquetaDireccionBloqueBbvaCat,
+  indiceColorBloqueBbvaCat,
+  ordenarBloquesPorVolumenBbvaCat,
+  zcCasoBbvaCat,
+} from './bbvaCatHelpers.js';
 import {
   construirQueryGeocodeBbvaCat,
   esDireccionPredioGeocodableBbvaCat,
@@ -179,17 +184,10 @@ export default function MapaBloquesBbvaCatPanel({
     cargar();
   }, [cargar]);
 
-  const bloques = useMemo(() => {
-    const list = [...(data?.bloques || [])];
-    list.sort((a, b) => {
-      const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
-      if (d !== 0) return d;
-      return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', {
-        numeric: true,
-      });
-    });
-    return list;
-  }, [data]);
+  const bloques = useMemo(
+    () => ordenarBloquesPorVolumenBbvaCat(data?.bloques || []),
+    [data]
+  );
   const sinUbicar = data?.sinUbicar || [];
   const sinDireccionCount = data?.sinDireccionCount ?? sinUbicar.filter((c) => c.motivoSinUbicar === 'sin_direccion').length;
   const geocodeFallidoCount =
