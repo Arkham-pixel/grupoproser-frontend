@@ -5,15 +5,21 @@ export const RADIO_KM_ANALISTA_BBVA_CAT = '5';
 export const RADIO_KM_LISTADO_BBVA_CAT = '0.5';
 export const STORAGE_ORIGEN_LISTADO_BBVA_CAT = 'bbvaCatListadoOrigenReporte';
 
-/** Chips/lista: mayor volumen primero. El id (Bloque N) sigue siendo geográfico. */
+/** Lista y numeración: Bloque 1 = más casos, luego 2, 3… */
 export function ordenarBloquesPorVolumenBbvaCat(bloques = []) {
-  return [...bloques].sort((a, b) => {
-    const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
-    if (d !== 0) return d;
-    return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', {
-      numeric: true,
-    });
-  });
+  return [...bloques]
+    .sort((a, b) => {
+      const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
+      if (d !== 0) return d;
+      return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es', {
+        numeric: true,
+      });
+    })
+    .map((b, i) => ({
+      ...b,
+      id: `bloque-${i + 1}`,
+      nombre: `Bloque ${i + 1}`,
+    }));
 }
 
 export function casoTieneArchivosBbvaCat(caso) {
