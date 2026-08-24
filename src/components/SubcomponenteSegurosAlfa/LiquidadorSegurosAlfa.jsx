@@ -428,10 +428,16 @@ export default function LiquidadorSegurosAlfa({
     setMensaje('');
     setExportando(tipo);
     try {
-      const resultado = await fn(
-        { ...liquidador, detalleLiquidacionCat: itemsDetalle },
-        totales
-      );
+      const liquidadorExport = {
+        ...liquidador,
+        detalleLiquidacionCat: itemsDetalle,
+        otrosAmparos: Array.isArray(liquidador.otrosAmparos)
+          ? liquidador.otrosAmparos
+          : defaultOtrosAmparosAlfa(),
+      };
+      // Totales frescos desde lo que se ve en pantalla (detalle + otros amparos)
+      const totalesExport = calcularLiquidacionAlfa(liquidadorExport);
+      const resultado = await fn(liquidadorExport, totalesExport);
       const blob = resultado?.blob;
       const nombre = resultado?.nombre || resultado?.filename;
       if (blob && nombre) {

@@ -3,6 +3,7 @@ import {
   fusionarLiquidadorSinPerderPresupuestoNsr,
   scoreContenidoLiquidadorNsr,
 } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { resolverMontoIndemnizarAlfa } from '../components/SubcomponenteSegurosAlfa/liquidadorAlfaHelpers.js';
 import { authFetch } from './authFetch.js';
 
 const ALFA_API_URL = `${BASE_URL}/api/seguros-alfa`;
@@ -457,13 +458,20 @@ export const guardarLiquidadorEnCasoAlfa = async ({
     );
   }
 
+  // valorLiquidado siempre desde el liquidador (nunca un totalIndemnizar/stale del cliente)
+  const { totales: totalesFrescos, totalIndemnizar } = resolverMontoIndemnizarAlfa(
+    liquidadorSeguro,
+    totales
+  );
+
   const payload = {
     ...casoBase,
     liquidador: liquidadorSeguro,
     valorReclamado:
-      totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
-    valorLiquidado:
-      totales.totalIndemnizar != null ? totales.totalIndemnizar : casoBase.valorLiquidado,
+      totalesFrescos.totalReclamado != null
+        ? totalesFrescos.totalReclamado
+        : casoBase.valorReclamado,
+    valorLiquidado: totalIndemnizar,
   };
 
   // Conservar informe: no mandar null/vacío que lo borre

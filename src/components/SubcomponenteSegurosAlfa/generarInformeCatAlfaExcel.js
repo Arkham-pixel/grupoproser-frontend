@@ -8,6 +8,7 @@ import {
   mapCasoAlfaALiquidador,
   parsearNumero,
   SMMLV_POR_ANIO,
+  resolverMontoIndemnizarAlfa,
   sumarOtrosAmparosAlfa,
   textoResumenOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
@@ -593,15 +594,16 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     parsearNumero(totales?.totalOtrosAmparos) ||
     sumarOtrosAmparosAlfa(liquidador?.otrosAmparos || []);
 
-  // Siempre recalcular como la UI (no usar totales.totalIndemnizar desfasado ni fórmulas de plantilla)
+  // Blindaje: mismo monto que Finiquito / UI (ignora totales.totalIndemnizar desfasado)
+  const { totalIndemnizar: aIndemnizarOficial } = resolverMontoIndemnizarAlfa(
+    liquidador,
+    totales
+  );
   const subtotalEdificio = Math.max(
     0,
     Math.round((subTotalItems + aiuVal - deducibleFinal) * 100) / 100
   );
-  const aIndemnizar = Math.max(
-    0,
-    Math.round((subtotalEdificio + totalOtrosAmparos) * 100) / 100
-  );
+  const aIndemnizar = aIndemnizarOficial;
 
   const resumenOtros = textoResumenOtrosAmparosAlfa(
     liquidador?.otrosAmparos || totales?.otrosAmparos || []

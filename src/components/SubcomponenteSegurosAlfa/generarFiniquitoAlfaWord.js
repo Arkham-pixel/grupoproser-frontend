@@ -16,9 +16,9 @@ import {
 import { saveAs } from 'file-saver';
 import { montoALetrasFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
 import {
-  calcularLiquidacionAlfa,
   formatearMonto,
   formatDateLarga,
+  resolverMontoIndemnizarAlfa,
 } from './liquidadorAlfaHelpers.js';
 
 /**
@@ -204,17 +204,8 @@ function celdaBanco(label) {
  */
 export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) {
   const enc = liquidador.encabezado || {};
-  // Recalcular siempre desde el liquidador (detalle CAT) para no quedar en $0
-  // si el objeto totales llegó desfasado respecto al Formato liquidación.
-  const totalesCalc = calcularLiquidacionAlfa(liquidador);
-  const totalInput = Number(totalesInput?.totalIndemnizar);
-  const totalCalc = Number(totalesCalc.totalIndemnizar);
-  const totalIndemnizar =
-    Number.isFinite(totalInput) && totalInput > 0
-      ? totalInput
-      : Number.isFinite(totalCalc)
-        ? totalCalc
-        : 0;
+  // Blindaje: monto = recálculo del liquidador (nunca totalesInput / valorLiquidado viejo)
+  const { totalIndemnizar } = resolverMontoIndemnizarAlfa(liquidador, totalesInput);
   const banco = liquidador.datosBancarios || liquidador.finiquitoBancario || {};
 
   const tomador = enc.tomador || '—';

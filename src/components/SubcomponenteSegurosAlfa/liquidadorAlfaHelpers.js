@@ -504,13 +504,19 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     tomador: enc.tomador || '',
   });
 
-  // Hospedaje solo si no está ya como ítem del detalle/presupuesto
+  // Hospedaje: en Formato CAT Alfa solo cuenta si está como ítem del detalle
+  // o con valor manual. NO aplicar el % automático del diagrama NSR (infla el total).
   const hospedajeYaEnItems = (detalle || presupuesto.items || []).some((it) => {
     const id = String(it?.id || '');
     const desc = String(it?.descripcion || it?.actividad || '').toLowerCase();
     return id === 'hospedaje' || desc.includes('hospedaje');
   });
-  const hospedaje = hospedajeYaEnItems ? 0 : parsearNumero(diagrama.gastosHospedaje);
+  const hospedajeManual = parsearNumero(liq.hospedajeManual);
+  const hospedaje = hospedajeYaEnItems
+    ? 0
+    : usarDetalle
+      ? hospedajeManual
+      : parsearNumero(diagrama.gastosHospedaje);
   const otrosAmparos = Array.isArray(liquidador.otrosAmparos)
     ? liquidador.otrosAmparos
     : [];
@@ -577,6 +583,32 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     indemnizacionPrincipal,
     resumenOtrosAmparos: textoResumenOtrosAmparosAlfa(otrosAmparos),
   };
+}
+
+/**
+ * Monto oficial a indemnizar (UI / Excel CAT / Finiquito / valorLiquidado).
+ * Fórmula: (subtotal ítems + AIU) − deducible + otros amparos.
+ * SIEMPRE recalcula desde el liquidador. Nunca confía en totales.totalIndemnizar
+ * ni en valorLiquidado del caso (pueden quedar desfasados tras editar).
+ */
+export function resolverMontoIndemnizarAlfa(liquidador = {}, totalesDesfasados = null) {
+  const totales = calcularLiquidacionAlfa(liquidador);
+  const totalIndemnizar = Math.max(0, Number(totales.totalIndemnizar) || 0);
+  const stale = Number(
+    totalesDesfasados?.totalIndemnizar ?? totalesDesfasados?.totalIndemnizable
+  );
+  if (
+    typeof console !== 'undefined' &&
+    Number.isFinite(stale) &&
+    stale > 0 &&
+    Math.abs(stale - totalIndemnizar) > 1
+  ) {
+    console.warn('[Alfa] Ignorado totalIndemnizar desfasado; se usó recálculo', {
+      stale,
+      recalculado: totalIndemnizar,
+    });
+  }
+  return { totales, totalIndemnizar };
 }
 
 /** Filas planas del presupuesto NSR (para resúmenes). */
