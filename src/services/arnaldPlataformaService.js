@@ -1,5 +1,5 @@
 import { BASE_URL } from '../config/apiConfig.js';
-import { refreshToken } from './api.js';
+import { isTokenNearExpiry, refreshToken } from './api.js';
 
 function authHeaders() {
   const token = localStorage.getItem('token');
@@ -46,12 +46,25 @@ function buildDraftBody({ formKey, modulo, recursoId, titulo, payload }) {
   };
 }
 
+/** Renueva el JWT antes de llamar si ya venció o está por vencer (evita 403 en consola). */
+async function asegurarTokenValido() {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  if (!isTokenNearExpiry(token, 1)) return token;
+  return (await refreshToken(true)) || localStorage.getItem('token');
+}
+
 /**
- * fetch con reintento; ante 401/403 intenta renovar JWT una vez (igual que axios api).
+ * fetch con renovación preventiva y reintento ante 401/403.
  */
 async function fetchConAuth(url, options = {}, { intentos = 3, renovar = true } = {}) {
   let ultimo = null;
   let yaRenovo = false;
+
+  if (renovar) {
+    const ok = await asegurarTokenValido();
+    if (!ok) throw new Error('Error 401');
+  }
 
   for (let i = 0; i < intentos; i += 1) {
     try {
@@ -78,7 +91,6 @@ async function fetchConAuth(url, options = {}, { intentos = 3, renovar = true } 
       }
 
       ultimo = new Error(`Error ${res.status}`);
-      // 4xx (salvo auth ya intentado) no vale reintentar en bucle
       if (res.status >= 400 && res.status < 500 && res.status !== 401 && res.status !== 403) {
         break;
       }
@@ -103,6 +115,11 @@ export async function guardarBorradorArnald({
 }) {
   const token = localStorage.getItem('token');
   if (!token || !formKey) return null;
+
+  if (!keepalive) {
+    const fresco = await asegurarTokenValido();
+    if (!fresco) return null;
+  }
 
   const body = buildDraftBody({ formKey, modulo, recursoId, titulo, payload });
 
@@ -214,18 +231,26 @@ export async function registrarNavegacionArnald({ ruta, titulo, modulo } = {}) {
   const token = localStorage.getItem('token');
   if (!token || !ruta) return;
   try {
-    await fetchConAuth(`${BASE_URL}/api/arnald-logs/evento`, {
-      method: 'POST',
-      body: JSON.stringify({
-        accion: 'NAVIGATE',
-        ruta,
-        titulo: titulo || '',
-        modulo: modulo || '',
-        nombre: localStorage.getItem('nombre') || '',
-        resumen: titulo ? `${titulo} (${ruta})` : ruta,
-      }),
-    }, { intentos: 1, renovar: true });
+    // Evitar 403 en consola: renovar antes o saltar si la sesión ya murió
+    const fresco = await asegurarTokenValido();
+    if (!fresco) return;
+
+    await fetchConAuth(
+      `${BASE_URL}/api/arnald-logs/evento`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          accion: 'NAVIGATE',
+          ruta,
+          titulo: titulo || '',
+          modulo: modulo || '',
+          nombre: localStorage.getItem('nombre') || '',
+          resumen: titulo ? `${titulo} (${ruta})` : ruta,
+        }),
+      },
+      { intentos: 1, renovar: true }
+    );
   } catch {
-    // La navegación no debe fallar por el log
+    // Telemetría: nunca debe romper la UI ni llenar la consola
   }
 }
