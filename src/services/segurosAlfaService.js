@@ -1,5 +1,6 @@
 ﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { authFetch } from './authFetch.js';
 
 const ALFA_API_URL = `${BASE_URL}/api/seguros-alfa`;
 
@@ -15,6 +16,11 @@ const authHeaders = () => {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
+
+const jsonHeaders = () => ({
+  'Content-Type': 'application/json',
+  ...authHeaders(),
+});
 
 export const normalizeAlfaItem = (item = {}) => {
   const liquidadorObj = item.liquidador && typeof item.liquidador === 'object';
@@ -88,7 +94,7 @@ export const fetchAllCasosAlfa = async (batchSize = 2000) => {
 
 export const getCasoAlfaById = async (id) => {
   if (!id) throw new Error('Identificador de caso Seguros Alfa no válido');
-  const response = await fetch(`${ALFA_API_URL}/${id}`, { headers: authHeaders() });
+  const response = await authFetch(`${ALFA_API_URL}/${id}`, { headers: authHeaders() });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
     throw new Error(payload?.error || `Error al obtener el caso (${response.status})`);
@@ -97,9 +103,9 @@ export const getCasoAlfaById = async (id) => {
 };
 
 export const crearCasoAlfa = async (datos) => {
-  const response = await fetch(ALFA_API_URL, {
+  const response = await authFetch(ALFA_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    headers: jsonHeaders(),
     body: JSON.stringify(datos),
   });
   const payload = await response.json().catch(() => ({}));
@@ -113,17 +119,21 @@ export const crearCasoAlfa = async (datos) => {
 
 export const actualizarCasoAlfa = async (id, datos) => {
   if (!id) throw new Error('Identificador de caso Seguros Alfa no válido');
-  const response = await fetch(`${ALFA_API_URL}/${id}`, {
+  const response = await authFetch(`${ALFA_API_URL}/${id}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    headers: jsonHeaders(),
     body: JSON.stringify(datos),
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || payload?.success === false) {
+    const statusHint =
+      response.status === 401 || response.status === 403
+        ? ' Sesión vencida: cierre sesión y vuelva a entrar, luego guarde de nuevo.'
+        : '';
     throw new Error(
-      payload?.error ||
+      (payload?.error ||
         payload?.detalle ||
-        `Error al actualizar el caso Seguros Alfa (${response.status})`
+        `Error al actualizar el caso Seguros Alfa (${response.status})`) + statusHint
     );
   }
   return normalizeAlfaItem(payload?.data ?? payload);

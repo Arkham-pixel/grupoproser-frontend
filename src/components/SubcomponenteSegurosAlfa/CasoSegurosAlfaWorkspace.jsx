@@ -23,9 +23,12 @@ import {
 } from '../../services/segurosAlfaService.js';
 import { calcularLiquidacionAlfa, mapCasoAlfaALiquidador } from './liquidadorAlfaHelpers.js';
 import {
+  fusionarLiquidadorSinPerderPresupuestoNsr,
   preferirLiquidadorMasRico,
   scoreContenidoLiquidadorNsr,
 } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
+import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
 import {
   generarInformeCatAlfaExcelBlob,
 } from './generarInformeCatAlfaExcel.js';
@@ -292,7 +295,11 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     setError('');
     setMensaje('');
     try {
-      const liquidadorSeguro = preferirLiquidadorMasRico(liquidador, casoAlfa?.liquidador);
+      // Guardado explícito: priorizar lo de pantalla; solo proteger contra cascarón vacío
+      const liquidadorSeguro = fusionarLiquidadorSinPerderPresupuestoNsr(
+        liquidador,
+        casoAlfa?.liquidador
+      );
       const actualizado = await guardarLiquidadorEnCasoAlfa({
         casoId,
         liquidador: liquidadorSeguro,
@@ -303,9 +310,15 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         },
       });
       setCasoAlfa(actualizado);
-      setLiquidadorState(
-        preferirLiquidadorMasRico(liquidadorSeguro, actualizado?.liquidador)
-      );
+      setLiquidadorState(liquidadorSeguro);
+      // Evitar que un borrador local viejo pise el caso al refrescar
+      try {
+        const draftKey = `alfa-ws:${casoId}`;
+        borrarBorradorLocal(draftKey);
+        await eliminarBorradorArnald(draftKey);
+      } catch {
+        /* el caso ya quedó en Mongo */
+      }
       try {
         await archivarExcelCatTrasGuardar({
           caso: actualizado,
@@ -552,7 +565,10 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState((prev) => preferirLiquidadorMasRico(liq, prev));
+                  // Confiar en lo digitado ahora; solo rellenar huecos desde prev
+                  setLiquidadorState((prev) =>
+                    fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev)
+                  );
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
@@ -566,7 +582,9 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
                 casoAlfa={casoAlfa}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
-                  setLiquidadorState((prev) => preferirLiquidadorMasRico(liq, prev));
+                  setLiquidadorState((prev) =>
+                    fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev)
+                  );
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
