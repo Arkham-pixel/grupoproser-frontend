@@ -463,4 +463,4 @@ if (typeof window !== 'undefined') {
 }
 
 export default api;
-export { refreshToken }; 
+export { refreshToken, isTokenNearExpiry }; 
