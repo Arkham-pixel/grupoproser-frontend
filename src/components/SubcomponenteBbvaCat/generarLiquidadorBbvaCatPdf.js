@@ -189,7 +189,9 @@ export async function generarLiquidadorBbvaCatPdfBlob(liquidador, totales) {
   const totX = M + tableW - 90;
   const totRows = [
     ['Sub total', money(excel.subTotal)],
-    ['Deducible aplicable', money(excel.deducibleAplicable)],
+    [`AIU (${Math.round((excel.aiuPct || 0.25) * 100)}%)`, money(excel.aiu)],
+    ['Total', money(excel.totalConAiu)],
+    ['Deducible (el mayor)', money(excel.deduciblePoliza ?? excel.deducibleAplicable)],
     ['Valor a indemnizar', money(excel.valorAIndemnizar)],
   ];
   totRows.forEach(([lab, val], i) => {

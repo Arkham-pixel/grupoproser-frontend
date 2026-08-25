@@ -431,10 +431,12 @@ export const buildOpcionesFiltro = (casos = [], campo) => {
   for (const item of casos) {
     const raw = item?.[campo];
     if (!raw) continue;
-    const norm = normTexto(raw);
+    const label =
+      campo === 'municipio' ? normalizarMunicipioFdm(raw) || String(raw).trim() : String(raw).trim();
+    const norm = normTexto(label);
     if (!norm) continue;
     if (!porNorm.has(norm)) {
-      porNorm.set(norm, { value: norm, label: String(raw).trim() });
+      porNorm.set(norm, { value: label, label });
     }
   }
   return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
@@ -457,10 +459,14 @@ export const buildCiudadesFdm = (casos = []) => {
   const porNorm = new Map();
   for (const item of casos) {
     const value = ciudadClaveFdm(item);
+    const labelCanon =
+      value === SIN_CIUDAD_FDM
+        ? 'Sin ciudad'
+        : normalizarMunicipioFdm(item.municipio) || value;
     if (!porNorm.has(value)) {
       porNorm.set(value, {
         value,
-        label: value === SIN_CIUDAD_FDM ? 'Sin ciudad' : value,
+        label: labelCanon,
         count: 0,
       });
     }

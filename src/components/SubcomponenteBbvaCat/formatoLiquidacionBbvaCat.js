@@ -149,30 +149,33 @@ export function resolverDeducibleFormatoBbvaCat(liquidador = {}) {
   const ramo = enc.ramoAfectado || enc.cobertura || enc.evento || '';
   const base = defaultDeducibleFormatoBbvaCat(tipo, ramo);
   const saved = liquidador.deducibleFormato;
-  if (saved && typeof saved === 'object' && saved.tipo === tipo) {
-    return {
-      ...base,
-      ...saved,
-      tipo,
-      basePct: saved.basePct || base.basePct,
-    };
+  const extras = {};
+  if (saved && typeof saved === 'object') {
+    extras.dolares = saved.dolares ?? 0;
+    extras.pesos = saved.pesos ?? 0;
+    const smmlvSaved = parsearNumero(saved.smmlv);
+    if (smmlvSaved > 0) extras.smmlv = smmlvSaved;
+    const pctSaved = parsearPorcentajeDeducibleBbva(saved.porcentaje);
+    const oficial = parsearPorcentajeDeducibleBbva(base.porcentaje);
+    const esResidualCinco =
+      Math.abs(pctSaved - 0.05) < 1e-6 && Math.abs(oficial - 0.02) < 1e-6;
+    if (pctSaved > 0 && !esResidualCinco) extras.porcentaje = pctSaved;
   }
   const cfg =
     liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto ||
     liquidador.liquidacionCatastrofico?.deducibleConfig ||
     {};
-  const pct = Number(cfg.porcentaje);
-  const cant = Number(cfg.cantidadSMMLV);
+  if (extras.smmlv == null) {
+    const cant = Number(cfg.cantidadSMMLV);
+    if (Number.isFinite(cant) && cant > 0 && cant !== 4) extras.smmlv = cant;
+  }
   return {
     ...base,
-    smmlv: Number.isFinite(cant) && cant > 0 ? cant : base.smmlv,
-    porcentaje:
-      Number.isFinite(pct) && pct > 0
-        ? pct > 1
-          ? pct / 100
-          : pct
-        : base.porcentaje,
+    ...extras,
     tipo,
+    basePct: base.basePct,
+    porcentaje: extras.porcentaje ?? base.porcentaje,
+    smmlv: extras.smmlv ?? base.smmlv,
   };
 }
 
@@ -216,8 +219,23 @@ export function contextoFechasBbvaCat(encabezado = {}, caso = {}) {
   };
 }
 
+/** Cantidad × valor unitario (base de precios). */
+export function totalCantidadPorUnitarioBbvaCat(fila = {}) {
+  if (fila.cantidad === '' || fila.cantidad == null) return 0;
+  if (fila.valorUnitario === '' || fila.valorUnitario == null) return 0;
+  const cant = parsearNumero(fila.cantidad);
+  const vu = parsearNumero(fila.valorUnitario);
+  if (!cant && !vu) return 0;
+  return Math.round(cant * vu * 100) / 100;
+}
+
+function casiIgualMontoBbva(a, b) {
+  return Math.abs(Number(a) - Number(b)) < 1.05;
+}
+
 /**
  * Réplica de fórmulas de fila (H, J, M, N, O) de la plantilla.
+ * Valor real / pérdida se calculan sobre el TOTAL (cantidad × unitario), no sobre el unitario.
  */
 export function calcularFilaDetalleBbvaCat(fila = {}, ctx = {}) {
   const descripcion = String(fila.descripcion || '').trim();
@@ -237,7 +255,16 @@ export function calcularFilaDetalleBbvaCat(fila = {}, ctx = {}) {
     valorAseguradoFecha = redondear(vaNum + extra);
   }
 
-  const valorAsegurable = parsearNumero(fila.valorAsegurable);
+  const totalCatalogo = totalCantidadPorUnitarioBbvaCat(fila);
+  const vu = parsearNumero(fila.valorUnitario);
+  const cant = parsearNumero(fila.cantidad);
+  let valorAsegurable = parsearNumero(fila.valorAsegurable);
+  if (totalCatalogo > 0) {
+    const asegurableEsUnitario =
+      !valorAsegurable || (cant > 1 && casiIgualMontoBbva(valorAsegurable, vu));
+    if (asegurableEsUnitario) valorAsegurable = totalCatalogo;
+  }
+
   let pctResponsabilidad = 1;
   if (global || esValorGlobal(valorAseguradoFecha)) {
     pctResponsabilidad = 1;
@@ -248,10 +275,15 @@ export function calcularFilaDetalleBbvaCat(fila = {}, ctx = {}) {
     pctResponsabilidad = p > 1 ? Math.min(1, p / 100) : Math.min(1, Math.max(0, p));
   }
 
-  const perdidaIn = parsearNumero(fila.valorPerdida);
-  const valorPerdida = perdidaIn || valorAsegurable;
+  let valorPerdida = parsearNumero(fila.valorPerdida);
+  if (totalCatalogo > 0 && (!valorPerdida || (cant > 1 && casiIgualMontoBbva(valorPerdida, vu)))) {
+    valorPerdida = totalCatalogo;
+  }
+  if (!valorPerdida) valorPerdida = valorAsegurable;
+
   const demerito = parsearDemeritoBbva(fila.demerito);
-  const valorReal = valorAsegurable ? redondear(valorAsegurable * (1 - demerito)) : 0;
+  const baseReal = valorAsegurable || valorPerdida;
+  const valorReal = baseReal ? redondear(baseReal * (1 - demerito)) : 0;
   const perdidaBase =
     valorReal && valorPerdida ? redondear(Math.min(valorReal, valorPerdida)) : valorReal || valorPerdida;
   const perdidaIndemnizable = redondear(perdidaBase * pctResponsabilidad);
@@ -262,14 +294,33 @@ export function calcularFilaDetalleBbvaCat(fila = {}, ctx = {}) {
     valorAsegurado: global ? VALOR_GLOBAL : vaRaw,
     indiceVariable: fila.indiceVariable ?? 0,
     valorAseguradoFecha,
-    valorAsegurable: fila.valorAsegurable,
+    valorAsegurable: valorAsegurable || fila.valorAsegurable,
     pctResponsabilidad,
-    valorPerdida: fila.valorPerdida === '' || fila.valorPerdida == null ? valorAsegurable || '' : fila.valorPerdida,
+    valorPerdida:
+      fila.valorPerdida === '' || fila.valorPerdida == null
+        ? valorAsegurable || totalCatalogo || ''
+        : valorPerdida,
     demerito: fila.demerito ?? 0,
     valorReal,
     perdidaBase,
     perdidaIndemnizable: descripcion || valorAsegurable || valorPerdida ? perdidaIndemnizable : 0,
   };
+}
+
+/** Recalcula valor de la pérdida y valor asegurable = cantidad × unitario. */
+export function patchFilaDetalleBbvaCat(fila = {}, patch = {}, ctx = {}) {
+  const next = { ...fila, ...patch };
+  const tocaronCantVu = ['cantidad', 'valorUnitario', 'catalogoId'].some((k) =>
+    Object.prototype.hasOwnProperty.call(patch, k)
+  );
+  if (tocaronCantVu) {
+    const total = totalCantidadPorUnitarioBbvaCat(next);
+    if (total) {
+      next.valorPerdida = total;
+      next.valorAsegurable = total;
+    }
+  }
+  return calcularFilaDetalleBbvaCat(next, ctx);
 }
 
 export function detalleLiquidacionCatDesdePresupuestoBbva(liquidador = {}) {
@@ -330,7 +381,7 @@ export function sincronizarDetalleBbvaConPresupuestoNsr(liquidador = {}, filasDe
       prioridad: 'Medio',
       cubierto: '',
       observacion: '',
-      fuente: it.catalogoId ? 'Base precios general' : '',
+      fuente: it.catalogoId ? 'Base precios Valle del Cauca' : '',
     }));
   return {
     ...liquidador,
@@ -360,11 +411,11 @@ export function calcularTiposDeducibleBbvaCat({
   const valorSmmlv = smmlvPorAnioBbva(anio);
   const montoSmmlv = redondear(smmlvQty * valorSmmlv);
   const basePct = String(deducibleFormato.basePct || 'valor_global');
-  let basePorcentaje = valorGlobal;
+  let basePorcentaje = 0;
   if (basePct === 'subtotal') {
-    basePorcentaje = subTotal || sumaAsegurable || valorGlobal;
+    basePorcentaje = subTotal || sumaAsegurable || 0;
   } else {
-    basePorcentaje = valorGlobal || sumaAsegurable;
+    basePorcentaje = valorGlobal || 0;
   }
   const montoPct = redondear(basePorcentaje * pct);
   const montoUsd = redondear(dolares * parsearNumero(trm));
@@ -400,9 +451,11 @@ export function calcularTiposDeducibleBbvaCat({
 
 /**
  * Totales de plantilla:
- * Sub Total = MIN(suma indemnizable, valor global) si hay valor global.
- * Deducible = MAX(SMMLV, %, USD, pesos).
- * Valor a indemnizar = MAX(0, subtotal − deducible).
+ * Sub total = suma indemnizable de ítems.
+ * AIU = 25% del subtotal.
+ * Total = subtotal + AIU (tope valor global si existe).
+ * Deducible = MAX(SMMLV, %, USD, pesos) sobre la regla (2% del valor global, no de la pérdida).
+ * Valor a indemnizar = MAX(0, total − min(deducible, total)).
  */
 export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
@@ -421,26 +474,38 @@ export function calcularTotalesFormatoExcelBbvaCat(liquidador = {}, caso = {}) {
     parsearNumero(enc.valorAseguradoInmueble) ||
     parsearNumero(liquidador.liquidacionCatastrofico?.valorAsegurado) ||
     0;
-  const subTotal =
-    valorGlobal > 0 ? redondear(Math.min(sumaIndemnizable, valorGlobal)) : sumaIndemnizable;
+  const aiuPct = AIU_PORCENTAJE_FORMATO_BBVA_CAT;
+  const aiu = redondear(sumaIndemnizable * aiuPct);
+  const subTotal = sumaIndemnizable;
+  const totalConAiu = redondear(subTotal + aiu);
+  const baseIndemnizable =
+    valorGlobal > 0 ? redondear(Math.min(totalConAiu, valorGlobal)) : totalConAiu;
   const dedFmt = resolverDeducibleFormatoBbvaCat(liquidador);
   const tipos = calcularTiposDeducibleBbvaCat({
     deducibleFormato: dedFmt,
     anio: ctx.anio,
     valorGlobal,
-    subTotal,
+    subTotal: baseIndemnizable,
     sumaAsegurable,
     trm: enc.trm,
   });
-  const deducibleAplicable = redondear(Math.min(tipos.aplicable, subTotal || tipos.aplicable));
-  const valorAIndemnizar = redondear(Math.max(0, subTotal - deducibleAplicable));
+  const deduciblePoliza = redondear(tipos.aplicable);
+  const deducibleAplicable = redondear(
+    Math.min(deduciblePoliza, baseIndemnizable || deduciblePoliza)
+  );
+  const valorAIndemnizar = redondear(Math.max(0, baseIndemnizable - deducibleAplicable));
   return {
     ctx,
     detalle,
     valorGlobal,
     sumaIndemnizable,
     subTotal,
+    aiuPct,
+    aiu,
+    totalConAiu,
+    baseIndemnizable,
     tiposDeducible: tipos,
+    deduciblePoliza,
     deducibleAplicable,
     valorAIndemnizar,
     deducibleFormato: dedFmt,
@@ -451,3 +516,4 @@ export const LOGO_BBVA_URL = `${import.meta.env.BASE_URL || '/'}templates/logo-b
 export const PLANTILLA_LIQUIDADOR_BBVA_URL = `${
   import.meta.env.BASE_URL || '/'
 }templates/Liquidador_BBVA_CAT.xlsx`;
+export const AIU_PORCENTAJE_FORMATO_BBVA_CAT = 0.25;

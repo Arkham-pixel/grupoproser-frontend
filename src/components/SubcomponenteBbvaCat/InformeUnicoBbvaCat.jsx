@@ -18,19 +18,15 @@ import {
   INFO_EVENTO_DEFAULT_BBVA_CAT,
   calcularLiquidacionBbvaCat,
   defaultInformeUnicoBbvaCat,
-  formDataNsrDesdeLiquidadorBbvaCat,
-  formatearMonto,
   formatDateLarga,
   mapcasoBbvaCatALiquidador,
-  RECARGOS_PRESUPUESTO_BBVA_CAT,
-  aplicarPresupuestoAiuBbvaCatEnEvaluacion,
 } from './liquidadorBbvaCatHelpers.js';
 import FormatoLiquidacionBbvaCat from './FormatoLiquidacionBbvaCat.jsx';
 import {
-  calcularFilaDetalleBbvaCat,
   contextoFechasBbvaCat,
   defaultDeducibleFormatoBbvaCat,
   nuevoItemDetalleBbvaCat,
+  patchFilaDetalleBbvaCat,
   resolverDetalleLiquidacionBbvaCat,
   sincronizarDetalleBbvaConPresupuestoNsr,
 } from './formatoLiquidacionBbvaCat.js';
@@ -43,8 +39,6 @@ import { descargarWordInformeBbvaCat } from './generarWordInformeBbvaCat.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
-import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 
 function extraerLatLng(texto) {
@@ -82,11 +76,6 @@ export default function InformeUnicoBbvaCat({
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
 
   const totales = useMemo(() => calcularLiquidacionBbvaCat(liquidador), [liquidador]);
-  const criterio = totales.criterio || {};
-  const formDataNsr = useMemo(
-    () => formDataNsrDesdeLiquidadorBbvaCat(liquidador, casoBbvaCat || {}),
-    [liquidador, casoBbvaCat]
-  );
   const coordsRiesgo = useMemo(
     () => extraerLatLng(informe.coordenadasRiesgo),
     [informe.coordenadasRiesgo]
@@ -145,22 +134,22 @@ export default function InformeUnicoBbvaCat({
     });
   };
 
-  const handleNsrChange = (patch) => {
-    setLiquidador((prev) => {
-      const next = { ...prev, ...patch, modelo: 'nsr10' };
-      if (next.evaluacionSismicaNSR10) {
-        next.evaluacionSismicaNSR10 = aplicarPresupuestoAiuBbvaCatEnEvaluacion(
-          next.evaluacionSismicaNSR10
-        );
-      }
-      return next;
-    });
-  };
-
   const itemsDetalle = useMemo(
     () => resolverDetalleLiquidacionBbvaCat(liquidador),
     [liquidador]
   );
+
+  const setDetalle = (filas) => {
+    setLiquidador((prev) => sincronizarDetalleBbvaConPresupuestoNsr(prev, filas));
+  };
+
+  const handleItemChange = (index, patch = {}) => {
+    const base = resolverDetalleLiquidacionBbvaCat(liquidador).map((it) => ({ ...it }));
+    if (!base[index]) return;
+    const ctx = contextoFechasBbvaCat(liquidador.encabezado || {}, casoBbvaCat || {});
+    base[index] = patchFilaDetalleBbvaCat(base[index], patch, ctx);
+    setDetalle(base);
+  };
 
   const actualizarEncabezado = (campo, valor) => {
     setLiquidador((prev) => {
@@ -179,18 +168,6 @@ export default function InformeUnicoBbvaCat({
       }
       return next;
     });
-  };
-
-  const setDetalle = (filas) => {
-    setLiquidador((prev) => sincronizarDetalleBbvaConPresupuestoNsr(prev, filas));
-  };
-
-  const handleItemChange = (index, patch = {}) => {
-    const base = resolverDetalleLiquidacionBbvaCat(liquidador).map((it) => ({ ...it }));
-    if (!base[index]) return;
-    const ctx = contextoFechasBbvaCat(liquidador.encabezado || {}, casoBbvaCat || {});
-    base[index] = calcularFilaDetalleBbvaCat({ ...base[index], ...patch }, ctx);
-    setDetalle(base);
   };
 
   const restaurarInfoEvento = () => {
@@ -409,32 +386,11 @@ export default function InformeUnicoBbvaCat({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? '4. Liquidación de indemnización BBVA'
-            : '4. Liquidación de indemnización BBVA'}
-        </h3>
+        <h3 className={expressSectionTitle}>4. Liquidación de indemnización BBVA</h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          El mismo formato Excel (deudores / leasing) del liquidador, con logo BBVA y los
-          cuatro tipos de deducible (SMMLV, porcentaje, dólares y pesos).
+          Formato Excel (deudores / leasing) con logo BBVA, deducibles y base de precios Valle del
+          Cauca.
         </p>
-
-        {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
-        <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-2">
-          <div>
-            <span className="text-gray-500">Categoría</span>
-            <p className="font-medium">{criterio.categoria || '—'}</p>
-          </div>
-          <div>
-            <span className="text-gray-500">Habitabilidad</span>
-            <p className="font-medium">{criterio.habitabilidad || '—'}</p>
-          </div>
-          <div className="sm:col-span-2">
-            <span className="text-gray-500">Dictamen</span>
-            <p className="font-medium whitespace-pre-wrap">{criterio.dictamen || '—'}</p>
-          </div>
-        </div>
-        ) : null}
 
         <FormatoLiquidacionBbvaCat
           caso={casoBbvaCat || {}}
@@ -503,58 +459,10 @@ export default function InformeUnicoBbvaCat({
             setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))
           }
         />
-
-        <div className="mt-4">
-          <ChecklistEvaluacionSismicaNSR10
-            formData={formDataNsr}
-            onInputChange={handleNsrChange}
-            modoLiquidador
-            recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
-          />
-        </div>
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>5. {t('bbvaCat.reportUnique.sectionTable')}</h3>
-        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          Resumen de ítems del presupuesto NSR-10 (apoyo técnico; la liquidación oficial es el formato Excel de arriba).
-        </p>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
-            <thead>
-              <tr className="text-left text-gray-500">
-                <th className="px-2 py-2">#</th>
-                <th className="px-2 py-2">Actividad</th>
-                <th className="px-2 py-2">Cant.</th>
-                <th className="px-2 py-2">V. unitario</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || [])
-                .filter((it) => String(it?.actividad || '').trim())
-                .map((it, idx) => (
-                  <tr key={it.id || idx}>
-                    <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2">{it.actividad || '—'}</td>
-                    <td className="px-2 py-2">{it.cantidad ?? '—'}</td>
-                    <td className="px-2 py-2">$ {formatearMonto(it.valorUnitario)}</td>
-                  </tr>
-                ))}
-              {!(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || []).some((it) =>
-                String(it?.actividad || '').trim()
-              ) && (
-                <tr>
-                  <td colSpan={4} className="px-2 py-4 text-center text-gray-500">
-                    {t('bbvaCat.reportUnique.noSettlementItems')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>6. {t('bbvaCat.reportUnique.sectionPhotos')}</h3>
+        <h3 className={expressSectionTitle}>5. {t('bbvaCat.reportUnique.sectionPhotos')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('bbvaCat.reportUnique.photosUploadHint')}
         </p>
@@ -577,7 +485,7 @@ export default function InformeUnicoBbvaCat({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>7. {t('bbvaCat.reportUnique.sectionConclusions')}</h3>
+        <h3 className={expressSectionTitle}>6. {t('bbvaCat.reportUnique.sectionConclusions')}</h3>
         <Campo label={t('bbvaCat.reportUnique.conclusions')}>
           <textarea
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
@@ -599,7 +507,7 @@ export default function InformeUnicoBbvaCat({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>8. {t('bbvaCat.reportUnique.sectionSignatures')}</h3>
+        <h3 className={expressSectionTitle}>7. {t('bbvaCat.reportUnique.sectionSignatures')}</h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('bbvaCat.reportUnique.signaturesHint')}
         </p>

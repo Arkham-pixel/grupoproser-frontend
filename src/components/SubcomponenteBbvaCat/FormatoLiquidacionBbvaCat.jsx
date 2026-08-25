@@ -3,7 +3,15 @@ import LetrerosBbvaCat from './LetrerosBbvaCat.jsx';
 import {
   formatMilesInputNsr10,
   formatMilesNsr10,
+  CAPITULOS_PRESUPUESTO_NSR10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  BASE_PRECIOS_PRESUPUESTO,
+  CAPITULOS_BASE_PRECIOS,
+  catalogoPresupuestoPorCapitulo,
+  buscarItemBasePrecios,
+} from '../SubcomponenteEvaluacionSismicaNSR10/basePreciosPresupuesto.js';
+import SelectBuscable from '../SelectBuscable.jsx';
 import { formatearMonto, parsearNumero } from './liquidadorBbvaCatHelpers.js';
 import {
   LOGO_BBVA_URL,
@@ -12,6 +20,7 @@ import {
   calcularFilaDetalleBbvaCat,
   calcularTotalesFormatoExcelBbvaCat,
   esValorGlobal,
+  parsearPorcentajeDeducibleBbva,
 } from './formatoLiquidacionBbvaCat.js';
 import { inferirTipoLiquidadorBbvaCat, TIPOS_LIQUIDADOR_BBVA_CAT } from './deduciblesBbvaCat.js';
 import { bbvaCatInput, bbvaCatShell } from './bbvaCatFormUi.js';
@@ -97,7 +106,10 @@ export default function FormatoLiquidacionBbvaCat({
   const pctUi =
     ded.porcentaje == null || ded.porcentaje === ''
       ? ''
-      : String(Number(ded.porcentaje) * 100).replace(/\.0+$/, '');
+      : String(Math.round(parsearPorcentajeDeducibleBbva(ded.porcentaje) * 10000) / 100).replace(
+          /\.0+$/,
+          ''
+        );
 
   const patchEnc = (campo, valor) => {
     if (soloLectura) return;
@@ -110,6 +122,30 @@ export default function FormatoLiquidacionBbvaCat({
         ? ''
         : formatMilesNsr10(encabezado.valorAseguradoInmueble)
       : formatMilesNsr10(encabezado.valorGlobal);
+
+  const capitulos = useMemo(() => {
+    const fromBase = Array.isArray(CAPITULOS_BASE_PRECIOS) ? CAPITULOS_BASE_PRECIOS : [];
+    const fromNsr = Array.isArray(CAPITULOS_PRESUPUESTO_NSR10) ? CAPITULOS_PRESUPUESTO_NSR10 : [];
+    return [...new Set([...fromBase, ...fromNsr])];
+  }, []);
+
+  const elegirCatalogo = (idx, it, val) => {
+    if (soloLectura) return;
+    if (val === '__custom__') {
+      onItemChange?.(idx, { catalogoId: '' });
+      return;
+    }
+    const hit = buscarItemBasePrecios(val);
+    if (!hit) return;
+    onItemChange?.(idx, {
+      catalogoId: hit.id,
+      capitulo: hit.capitulo || it.capitulo || '',
+      descripcion: hit.actividad || '',
+      unidad: hit.unidad || 'und',
+      valorUnitario: hit.valorUnitario,
+      cantidad: it.cantidad === '' || it.cantidad == null ? 1 : it.cantidad,
+    });
+  };
 
   return (
     <div className={`${bbvaCatShell} bg-white`}>
@@ -352,21 +388,34 @@ export default function FormatoLiquidacionBbvaCat({
             }}
           />
         </div>
-        <div className={`${cellGray} text-left`}>
-          {tipos.montoPct ? `$ ${formatearMonto(tipos.montoPct)}` : ''}
+        <div className={`${cellGray} text-left font-body text-xs`}>
+          {excel.valorGlobal
+            ? `2% valor global: $ ${formatearMonto(tipos.montoPct)} · se aplica el mayor: $ ${formatearMonto(
+                tipos.aplicable
+              )} (${tipos.tipoAplicadoLabel})`
+            : 'Indique el valor global para calcular el 2%.'}
         </div>
       </div>
 
       <div className="bg-[#BDD7EE] px-3 py-1.5 text-center font-body text-[11px] font-bold uppercase tracking-wide text-gray-900 dark:bg-[#1E3A5F] dark:text-white">
         Detalle de la liquidación
       </div>
+      <p className="border-b border-gray-200 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:text-gray-400">
+        Base de precios Valle del Cauca ({BASE_PRECIOS_PRESUPUESTO.length} ítems parametrizados).
+        Elija capítulo e ítem; cantidad × valor unitario calcula el valor de la pérdida.
+      </p>
       <div className="overflow-x-auto">
-        <table className="min-w-[1500px] w-full border-collapse">
+        <table className="min-w-[1900px] w-full border-collapse">
           <thead>
             <tr>
               {[
                 'Ítem Nro.',
+                'Capítulo',
+                'Base precios',
                 'Descripción del bien',
+                'Und',
+                'Cant.',
+                'Vlr. unitario',
                 'Valor asegurado',
                 'Porcentaje de índice variable',
                 'Valor asegurado fecha s/tro',
@@ -388,15 +437,88 @@ export default function FormatoLiquidacionBbvaCat({
           <tbody>
             {(itemsDetalle || []).map((it, idx) => {
               const calc = calcularFilaDetalleBbvaCat(it, ctx);
+              const catalogoCap = catalogoPresupuestoPorCapitulo(it.capitulo || '');
+              const esCustom =
+                !it.catalogoId ||
+                !BASE_PRECIOS_PRESUPUESTO.some((c) => c.id === it.catalogoId);
               return (
                 <tr key={it.id || idx}>
                   <td className={`${tdExcel} text-center font-body text-sm`}>{idx + 1}</td>
-                  <td className={`${tdExcel} min-w-[200px]`}>
+                  <td className={`${tdExcel} min-w-[140px]`}>
+                    <select
+                      className={`${bbvaCatInput} cursor-pointer`}
+                      disabled={soloLectura}
+                      value={it.capitulo || ''}
+                      onChange={(e) =>
+                        onItemChange?.(idx, { capitulo: e.target.value, catalogoId: '' })
+                      }
+                    >
+                      <option value="">—</option>
+                      {capitulos.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className={`${tdExcel} min-w-[260px]`}>
+                    {soloLectura ? (
+                      <span className="font-body text-xs">{it.descripcion || '—'}</span>
+                    ) : (
+                      <SelectBuscable
+                        options={catalogoCap.map((c) => ({
+                          value: c.id,
+                          label: `${c.actividad} ($ ${formatearMonto(c.valorUnitario)}/${c.unidad})`,
+                        }))}
+                        value={esCustom ? '__custom__' : it.catalogoId || ''}
+                        onChange={(val) => elegirCatalogo(idx, it, val)}
+                        placeholder="— Elegir de la base —"
+                        searchPlaceholder="Buscar actividad o valor…"
+                        emptyOption
+                        emptyLabel="— Elegir de la base —"
+                        extraOptions={[{ value: '__custom__', label: 'Otro / escribir libre' }]}
+                        buttonClassName={bbvaCatInput}
+                      />
+                    )}
+                  </td>
+                  <td className={`${tdExcel} min-w-[180px]`}>
                     <input
                       className={bbvaCatInput}
                       disabled={soloLectura}
                       value={it.descripcion || ''}
                       onChange={(e) => onItemChange?.(idx, { descripcion: e.target.value })}
+                    />
+                  </td>
+                  <td className={`${tdExcel} w-16`}>
+                    <input
+                      className={bbvaCatInput}
+                      disabled={soloLectura}
+                      value={it.unidad || ''}
+                      onChange={(e) => onItemChange?.(idx, { unidad: e.target.value })}
+                    />
+                  </td>
+                  <td className={`${tdExcel} w-16`}>
+                    <input
+                      className={`${bbvaCatInput} text-center`}
+                      disabled={soloLectura}
+                      value={it.cantidad ?? ''}
+                      onChange={(e) => onItemChange?.(idx, { cantidad: e.target.value })}
+                    />
+                  </td>
+                  <td className={`${tdExcel} w-28`}>
+                    <input
+                      className={`${bbvaCatInput} text-right`}
+                      disabled={soloLectura}
+                      value={
+                        it.valorUnitario === '' || it.valorUnitario == null
+                          ? ''
+                          : formatMilesNsr10(it.valorUnitario)
+                      }
+                      onChange={(e) =>
+                        onItemChange?.(idx, {
+                          valorUnitario: formatMilesInputNsr10(e.target.value),
+                        })
+                      }
                     />
                   </td>
                   <td className={`${tdExcel} w-32`}>
@@ -484,8 +606,8 @@ export default function FormatoLiquidacionBbvaCat({
             })}
             {!(itemsDetalle || []).length && (
               <tr>
-                <td colSpan={13} className="px-3 py-6 text-center font-body text-sm text-gray-500">
-                  Sin ítems. Pulse «Agregar ítem».
+                <td colSpan={18} className="px-3 py-6 text-center font-body text-sm text-gray-500">
+                  Sin ítems. Pulse «Agregar ítem» y elija de la base de precios Valle del Cauca.
                 </td>
               </tr>
             )}
@@ -536,10 +658,22 @@ export default function FormatoLiquidacionBbvaCat({
               $ {formatearMonto(excel.subTotal)}
             </div>
             <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
-              Deducible aplicable
+              AIU (25%)
             </div>
             <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
-              $ {formatearMonto(excel.deducibleAplicable)}
+              $ {formatearMonto(excel.aiu)}
+            </div>
+            <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
+              Total
+            </div>
+            <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
+              $ {formatearMonto(excel.totalConAiu)}
+            </div>
+            <div className={`${labelExcel} justify-end border-b border-gray-300 pr-3`}>
+              Deducible (el mayor)
+            </div>
+            <div className={`${cellExcel} border-b border-gray-300 text-right font-semibold`}>
+              $ {formatearMonto(excel.deduciblePoliza ?? excel.tiposDeducible?.aplicable)}
             </div>
             <div className={`${labelExcel} justify-end pr-3`}>Valor a indemnizar</div>
             <div className={`${cellExcel} text-right font-bold`}>

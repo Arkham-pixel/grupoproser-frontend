@@ -6,32 +6,24 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import {
-  expressAlertError,
-  expressFormSection,
-  expressSectionTitle,
-} from '../SubcomponenteExpress/expressFenixUi.js';
+import { expressAlertError } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
   aplicarTipoLiquidadorEnLiquidacionBbvaCat,
   esObservacionFiniquitoDefaultBbvaCat,
   observacionesFiniquitoPorDefectoBbvaCat,
 } from './deduciblesBbvaCat.js';
-import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import FormatoLiquidacionBbvaCat from './FormatoLiquidacionBbvaCat.jsx';
 import {
-  calcularFilaDetalleBbvaCat,
   contextoFechasBbvaCat,
   defaultDeducibleFormatoBbvaCat,
   nuevoItemDetalleBbvaCat,
+  patchFilaDetalleBbvaCat,
   resolverDetalleLiquidacionBbvaCat,
   sincronizarDetalleBbvaConPresupuestoNsr,
 } from './formatoLiquidacionBbvaCat.js';
 import {
   calcularLiquidacionBbvaCat,
-  formDataNsrDesdeLiquidadorBbvaCat,
   mapcasoBbvaCatALiquidador,
-  RECARGOS_PRESUPUESTO_BBVA_CAT,
-  aplicarPresupuestoAiuBbvaCatEnEvaluacion,
 } from './liquidadorBbvaCatHelpers.js';
 import { descargarFiniquitoBbvaCatWord } from './generarFiniquitoBbvaCatWord.js';
 import { descargarLiquidadorBbvaCatExcel } from './generarLiquidadorBbvaCatExcel.js';
@@ -39,7 +31,7 @@ import { descargarLiquidadorBbvaCatPdf } from './generarLiquidadorBbvaCatPdf.js'
 
 /**
  * Liquidador BBVA CAT = formato Excel LIQUIDACIÓN DE INDEMNIZACION
- * (deudores / leasing) + presupuesto NSR-10 como origen técnico.
+ * (deudores / leasing) con base de precios Valle del Cauca.
  */
 export default function LiquidadorBbvaCat({
   casoBbvaCat = null,
@@ -54,7 +46,6 @@ export default function LiquidadorBbvaCat({
   );
   const [error, setError] = useState('');
   const [exportando, setExportando] = useState('');
-  const [mostrarNsr, setMostrarNsr] = useState(false);
 
   useEffect(() => {
     setLiquidador(liquidadorInicial || mapcasoBbvaCatALiquidador(casoBbvaCat || {}));
@@ -67,11 +58,6 @@ export default function LiquidadorBbvaCat({
     onEstadoChange?.(liquidador, totales);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liquidador, totales]);
-
-  const formDataNsr = useMemo(
-    () => formDataNsrDesdeLiquidadorBbvaCat(liquidador, casoBbvaCat || {}),
-    [liquidador, casoBbvaCat]
-  );
 
   const itemsDetalle = useMemo(
     () => resolverDetalleLiquidacionBbvaCat(liquidador),
@@ -131,7 +117,7 @@ export default function LiquidadorBbvaCat({
     const base = materializarDetalle();
     if (!base[index]) return;
     const ctx = contextoFechasBbvaCat(liquidador.encabezado || {}, casoBbvaCat || {});
-    base[index] = calcularFilaDetalleBbvaCat({ ...base[index], ...patch }, ctx);
+    base[index] = patchFilaDetalleBbvaCat(base[index], patch, ctx);
     setDetalle(base);
   };
 
@@ -143,24 +129,6 @@ export default function LiquidadorBbvaCat({
     const base = materializarDetalle();
     base.splice(index, 1);
     setDetalle(base);
-  };
-
-  const handleNsrChange = (patch) => {
-    setLiquidador((prev) => {
-      const next = { ...prev, ...patch, modelo: 'nsr10' };
-      if (patch.indemnizacionSugerida != null) {
-        next.indemnizacionSugerida = patch.indemnizacionSugerida;
-      }
-      if (next.evaluacionSismicaNSR10) {
-        next.evaluacionSismicaNSR10 = aplicarPresupuestoAiuBbvaCatEnEvaluacion(
-          next.evaluacionSismicaNSR10
-        );
-      }
-      if (!Array.isArray(prev.detalleLiquidacionCat) && next.evaluacionSismicaNSR10) {
-        return next;
-      }
-      return next;
-    });
   };
 
   const liquidadorExport = { ...liquidador, detalleLiquidacionCat: itemsDetalle };
@@ -256,36 +224,6 @@ export default function LiquidadorBbvaCat({
         onFirmaClienteChange={(v) => setLiquidador((prev) => ({ ...prev, firmaCliente: v }))}
         onNombreFirmanteChange={(v) => setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))}
       />
-
-      <section className={expressFormSection}>
-        <button
-          type="button"
-          className={`${expressSectionTitle} mb-0 flex w-full items-center justify-between text-left`}
-          onClick={() => setMostrarNsr((v) => !v)}
-        >
-          <span>
-            {t('bbvaCat.settlement.nsrTitle', {
-              defaultValue: 'Presupuesto NSR-10 (origen técnico de ítems)',
-            })}
-          </span>
-          <span className="text-sm font-normal text-[#004481]">{mostrarNsr ? 'Ocultar' : 'Mostrar'}</span>
-        </button>
-        {mostrarNsr ? (
-          <div className="mt-4">
-            <ChecklistEvaluacionSismicaNSR10
-              formData={formDataNsr}
-              onInputChange={handleNsrChange}
-              modoLiquidador={false}
-              recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
-            />
-          </div>
-        ) : (
-          <p className="mt-2 font-body text-xs text-gray-500">
-            El formato Excel es la liquidación oficial. El NSR-10 queda como apoyo para armar
-            el presupuesto de daños.
-          </p>
-        )}
-      </section>
     </div>
   );
 }

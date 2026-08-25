@@ -425,9 +425,11 @@ function construirTablaFormatoExcelBbva({ liquidador = {}, totales = {} } = {}) 
   }
   const totRows = [
     ['Sub total', money(excel.subTotal)],
+    [`AIU (${Math.round((excel.aiuPct || 0.25) * 100)}%)`, money(excel.aiu)],
+    ['Total', money(excel.totalConAiu)],
     [
-      `Deducible aplicable (${tipos.tipoAplicadoLabel || 'MAX'})`,
-      money(excel.deducibleAplicable),
+      `Deducible (el mayor: ${tipos.tipoAplicadoLabel || 'MAX'})`,
+      money(excel.deduciblePoliza ?? excel.deducibleAplicable),
     ],
     ['Valor a indemnizar', money(excel.valorAIndemnizar)],
   ];
@@ -1191,13 +1193,21 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
             { labelW: 5000, valueW: 5000 }
           ),
         ]),
-    campoFila('Sub total (pérdida indemnizable)', money(excelTot.subTotal ?? totales.subtotal), {
+    campoFila('Sub total (ítems)', money(excelTot.subTotal ?? totales.subtotal), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    campoFila(`AIU (${Math.round((excelTot.aiuPct || 0.25) * 100)}%)`, money(excelTot.aiu), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    campoFila('Total (subtotal + AIU)', money(excelTot.totalConAiu ?? excelTot.subTotal), {
       labelW: 5000,
       valueW: 5000,
     }),
     campoFila(
-      `Deducible aplicable (${txt(tiposDed.tipoAplicadoLabel || totales.deducibleTexto || 'MAX')})`,
-      money(excelTot.deducibleAplicable ?? totales.deducibleAplicado),
+      `Deducible (el mayor: ${txt(tiposDed.tipoAplicadoLabel || totales.deducibleTexto || 'MAX')})`,
+      money(excelTot.deduciblePoliza ?? excelTot.deducibleAplicable ?? totales.deducibleAplicado),
       { labelW: 5000, valueW: 5000 }
     ),
     campoFila('  · SMMLV', money(tiposDed.montoSmmlv), { labelW: 5000, valueW: 5000 }),

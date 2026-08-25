@@ -145,7 +145,7 @@ function rellenarHoja(sheet, liquidador, totales) {
     setVal(sheet, last, 15, prev + sum);
   }
 
-  setVal(sheet, 25, 15, excel.subTotal || 0);
+  setVal(sheet, 25, 15, excel.totalConAiu || excel.subTotal || 0);
   setVal(sheet, 26, 15, excel.deducibleAplicable || 0);
   setVal(sheet, 27, 15, excel.valorAIndemnizar || 0);
 

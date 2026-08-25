@@ -24,6 +24,7 @@ import {
   esCasoNuevoFdm,
   fechaEnRango,
   formatCurrency,
+  normalizarMunicipioFdm,
   parseDate,
 } from './equidadFdmHelpers.js';
 import {
@@ -107,7 +108,12 @@ const DashboardEquidadFdm = () => {
 
   const casosFiltrados = useMemo(() => {
     return casos.filter((item) => {
-      if (filtroMunicipio && !coincideFiltroTexto(item.municipio, filtroMunicipio)) return false;
+      if (filtroMunicipio) {
+        const munItem = normalizarMunicipioFdm(item.municipio) || '';
+        if (!coincideFiltroTexto(munItem, filtroMunicipio) && !coincideFiltroTexto(item.municipio, filtroMunicipio)) {
+          return false;
+        }
+      }
       if (filtroAjustador && !coincideFiltroTexto(item.ajustador, filtroAjustador)) return false;
       if (filtroEstado && !coincideFiltroTexto(item.estado, filtroEstado)) return false;
       if (filtroEvento && !coincideFiltroTexto(item.evento, filtroEvento)) return false;
@@ -146,7 +152,8 @@ const DashboardEquidadFdm = () => {
 
   const casosPorMunicipio = useMemo(() => {
     const agrupado = casosFiltrados.reduce((acc, item) => {
-      const key = String(item.municipio || 'Sin municipio').trim().toUpperCase() || 'SIN MUNICIPIO';
+      const normalizado = normalizarMunicipioFdm(item.municipio);
+      const key = normalizado || 'Sin municipio';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
@@ -167,6 +174,27 @@ const DashboardEquidadFdm = () => {
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 10);
   }, [casosFiltrados]);
+
+  /** onBase: casos con número de caso vs sin número de caso. */
+  const onBaseData = useMemo(() => {
+    let conCaso = 0;
+    let sinCaso = 0;
+    for (const item of casosFiltrados) {
+      const nro = String(item.caso ?? '').trim();
+      if (nro && nro !== '0' && !/^(n\/?a|na|null|-)$/i.test(nro)) conCaso += 1;
+      else sinCaso += 1;
+    }
+    return [
+      { clave: 'conCaso', label: t('equidadFdm.dashboard.onBaseWithCase'), cantidad: conCaso },
+      { clave: 'sinCaso', label: t('equidadFdm.dashboard.onBaseWithoutCase'), cantidad: sinCaso },
+    ].filter((row) => row.cantidad > 0 || casosFiltrados.length === 0);
+  }, [casosFiltrados, t]);
+
+  const onBaseTotales = useMemo(() => {
+    const con = onBaseData.find((r) => r.clave === 'conCaso')?.cantidad || 0;
+    const sin = onBaseData.find((r) => r.clave === 'sinCaso')?.cantidad || 0;
+    return { con, sin, total: con + sin };
+  }, [onBaseData]);
 
   const tendenciaMensual = useMemo(() => {
     const agrupado = casosFiltrados.reduce((acc, item) => {
@@ -331,6 +359,48 @@ const DashboardEquidadFdm = () => {
             </ResponsiveContainer>
           </ChartCard>
 
+          <ChartCard
+            title={t('equidadFdm.dashboard.onBase')}
+            empty={casosFiltrados.length === 0}
+          >
+            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">
+              {t('equidadFdm.dashboard.onBaseHint', {
+                withCase: onBaseTotales.con,
+                withoutCase: onBaseTotales.sin,
+                total: onBaseTotales.total,
+              })}
+            </p>
+            <ResponsiveContainer width="100%" height={320}>
+              <PieChart>
+                <Pie
+                  data={onBaseData}
+                  dataKey="cantidad"
+                  nameKey="label"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={55}
+                  outerRadius={110}
+                  label={({ label, cantidad }) => `${label}: ${cantidad}`}
+                >
+                  {onBaseData.map((entry) => (
+                    <Cell
+                      key={entry.clave}
+                      fill={
+                        entry.clave === 'conCaso'
+                          ? getFenixChartColor(0, isDark)
+                          : getFenixChartColor(3, isDark)
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend wrapperStyle={{ color: tickColor, fontSize: '12px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        </section>
+
+        <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <ChartCard title={t('equidadFdm.dashboard.byMunicipality')} empty={casosPorMunicipio.length === 0}>
             <ResponsiveContainer width="100%" height={Math.max(320, casosPorMunicipio.length * 34)}>
               <BarChart
@@ -351,6 +421,32 @@ const DashboardEquidadFdm = () => {
                 <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]}>
                   {casosPorMunicipio.map((entry, index) => (
                     <Cell key={entry.municipio} fill={getFenixChartColor(index, isDark)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+
+          <ChartCard title={t('equidadFdm.dashboard.byAdjuster')} empty={casosPorAjustador.length === 0}>
+            <ResponsiveContainer width="100%" height={Math.max(320, casosPorAjustador.length * 36)}>
+              <BarChart
+                data={casosPorAjustador}
+                layout="vertical"
+                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
+                <YAxis
+                  type="category"
+                  dataKey="ajustador"
+                  width={160}
+                  tick={{ fill: tickColor, fontSize: 10 }}
+                  tickFormatter={(v) => truncarEtiqueta(v, 28)}
+                />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]}>
+                  {casosPorAjustador.map((entry, index) => (
+                    <Cell key={entry.ajustador} fill={getFenixChartColor(index, isDark)} />
                   ))}
                 </Bar>
               </BarChart>
@@ -414,34 +510,6 @@ const DashboardEquidadFdm = () => {
                   dot={{ fill: lineColors.reserva, r: 3 }}
                 />
               </LineChart>
-            </ResponsiveContainer>
-          </ChartCard>
-        </section>
-
-        <section className="grid w-full min-w-0 grid-cols-1 gap-4">
-          <ChartCard title={t('equidadFdm.dashboard.byAdjuster')} empty={casosPorAjustador.length === 0}>
-            <ResponsiveContainer width="100%" height={Math.max(320, casosPorAjustador.length * 36)}>
-              <BarChart
-                data={casosPorAjustador}
-                layout="vertical"
-                margin={{ top: 4, right: 16, left: 4, bottom: 4 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis type="number" allowDecimals={false} tick={{ fill: tickColor, fontSize: 11 }} />
-                <YAxis
-                  type="category"
-                  dataKey="ajustador"
-                  width={160}
-                  tick={{ fill: tickColor, fontSize: 10 }}
-                  tickFormatter={(v) => truncarEtiqueta(v, 28)}
-                />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]}>
-                  {casosPorAjustador.map((entry, index) => (
-                    <Cell key={entry.ajustador} fill={getFenixChartColor(index, isDark)} />
-                  ))}
-                </Bar>
-              </BarChart>
             </ResponsiveContainer>
           </ChartCard>
         </section>

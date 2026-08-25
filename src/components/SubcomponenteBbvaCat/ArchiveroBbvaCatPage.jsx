@@ -7,11 +7,33 @@ import {
   expressPageWrap,
   expressScope,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import { fetchAllCasosBbvaCat, getCasoBbvaCatById } from '../../services/bbvaCatService.js';
+import { getCasoBbvaCatById } from '../../services/bbvaCatService.js';
+import {
+  fetchAllCasosBbvaCatListado,
+  getCasoBbvaCatListadoById,
+} from '../../services/bbvaCatListadoService.js';
 import ArchiveroBbvaCat from './ArchiveroBbvaCat.jsx';
 import BbvaCatCasoPicker from './BbvaCatCasoPicker.jsx';
+import { casoTieneArchivosBbvaCat } from './bbvaCatHelpers.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
+
+function claveCaso(caso) {
+  return String(caso?.zc || caso?.siniestro || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '');
+}
+
+function encontrarListadoPorCat(lista, casoCat) {
+  const k = claveCaso(casoCat);
+  if (!k) return null;
+  return (
+    lista.find((c) => claveCaso(c) === k) ||
+    lista.find((c) => String(c.siniestro || '').trim() === String(casoCat.siniestro || '').trim()) ||
+    null
+  );
+}
 
 export default function ArchiveroBbvaCatPage() {
   const { t } = useTranslation();
@@ -21,10 +43,30 @@ export default function ArchiveroBbvaCatPage() {
   const [caso, setCaso] = useState(null);
   const [listaCasos, setListaCasos] = useState([]);
   const [busquedaCaso, setBusquedaCaso] = useState('');
+  const [cargandoLista, setCargandoLista] = useState(true);
   const [cargandoCaso, setCargandoCaso] = useState(false);
   const [error, setError] = useState('');
 
-  const casoId = caso?._id || casoIdFromQuery || null;
+  useEffect(() => {
+    let cancelado = false;
+    setCargandoLista(true);
+    fetchAllCasosBbvaCatListado(2000)
+      .then((data) => {
+        if (!cancelado) setListaCasos(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        if (!cancelado) {
+          setListaCasos([]);
+          setError(err.message || t('bbvaCat.report.loadError'));
+        }
+      })
+      .finally(() => {
+        if (!cancelado) setCargandoLista(false);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [t]);
 
   useEffect(() => {
     let cancelado = false;
@@ -33,13 +75,38 @@ export default function ArchiveroBbvaCatPage() {
         setCaso(null);
         return;
       }
+      const enLista = listaCasos.find((c) => String(c._id) === String(casoIdFromQuery));
+      if (enLista) {
+        setCaso(enLista);
+        return;
+      }
+      if (cargandoLista) return;
       setCargandoCaso(true);
       setError('');
       try {
-        const actual = await getCasoBbvaCatById(casoIdFromQuery);
-        if (!cancelado) setCaso(actual);
+        try {
+          const actual = await getCasoBbvaCatListadoById(casoIdFromQuery);
+          if (!cancelado) setCaso(actual);
+          return;
+        } catch {
+          /* id de inspección CAT */
+        }
+        const casoCat = await getCasoBbvaCatById(casoIdFromQuery);
+        const listado = encontrarListadoPorCat(listaCasos, casoCat);
+        if (!listado) {
+          throw new Error(t('bbvaCat.archive.noListadoMatch'));
+        }
+        if (!cancelado) {
+          const next = new URLSearchParams(searchParams);
+          next.set('casoId', listado._id);
+          setSearchParams(next, { replace: true });
+          setCaso(listado);
+        }
       } catch (err) {
-        if (!cancelado) setError(err.message || t('bbvaCat.workspace.loadError'));
+        if (!cancelado) {
+          setCaso(null);
+          setError(err.message || t('bbvaCat.workspace.loadError'));
+        }
       } finally {
         if (!cancelado) setCargandoCaso(false);
       }
@@ -48,26 +115,11 @@ export default function ArchiveroBbvaCatPage() {
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, t]);
-
-  useEffect(() => {
-    if (casoIdFromQuery) return undefined;
-    let cancelado = false;
-    fetchAllCasosBbvaCat()
-      .then((data) => {
-        if (!cancelado) setListaCasos(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelado) setListaCasos([]);
-      });
-    return () => {
-      cancelado = true;
-    };
-  }, [casoIdFromQuery]);
+  }, [casoIdFromQuery, listaCasos, cargandoLista, t]);
 
   const subtitulo = useMemo(() => {
-    if (caso?.tomador || caso?.siniestro || caso?.asegurado) {
-      return [caso.tomador || caso.asegurado, caso.consecutivo, caso.siniestro]
+    if (caso?.tomador || caso?.siniestro || caso?.asegurado || caso?.zc) {
+      return [caso.tomador || caso.asegurado, caso.consecutivo, caso.zc || caso.siniestro]
         .filter(Boolean)
         .join(' · ');
     }
@@ -80,6 +132,8 @@ export default function ArchiveroBbvaCatPage() {
     setSearchParams(next);
     setCaso(item);
   };
+
+  const primerConDocs = listaCasos.find((c) => casoTieneArchivosBbvaCat(c));
 
   return (
     <div className={`${root} ${expressScope}`}>
@@ -94,13 +148,17 @@ export default function ArchiveroBbvaCatPage() {
           <p className="mt-1 font-body text-sm text-gray-600 dark:text-gray-400">{subtitulo}</p>
         </div>
 
-        {!casoId && !cargandoCaso && (
+        {cargandoLista ? (
+          <p className="mb-4 font-body text-sm text-gray-500">{t('bbvaCat.workspace.loading')}</p>
+        ) : (
           <BbvaCatCasoPicker
             casos={listaCasos}
             busqueda={busquedaCaso}
             onBusqueda={setBusquedaCaso}
             onSelect={elegirCaso}
+            casoIdActivo={caso?._id || casoIdFromQuery}
             hint={t('bbvaCat.archive.pickCase')}
+            soloConArchivosInicial
           />
         )}
 
@@ -112,10 +170,21 @@ export default function ArchiveroBbvaCatPage() {
           <div className={expressCardBody}>
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('bbvaCat.workspace.loading')}</p>
-            ) : casoId && caso ? (
-              <ArchiveroBbvaCat caso={caso} onChanged={setCaso} />
+            ) : caso?._id ? (
+              <ArchiveroBbvaCat origen="listado" caso={caso} onChanged={setCaso} />
             ) : (
-              <p className="text-sm text-gray-500">{t('bbvaCat.archive.pickCase')}</p>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500">{t('bbvaCat.archive.pickCase')}</p>
+                {primerConDocs ? (
+                  <button
+                    type="button"
+                    className="font-body text-sm font-semibold text-[#004481] hover:underline"
+                    onClick={() => elegirCaso(primerConDocs)}
+                  >
+                    Abrir el primer caso con documentos ({primerConDocs.zc || primerConDocs.siniestro})
+                  </button>
+                ) : null}
+              </div>
             )}
           </div>
         </div>
