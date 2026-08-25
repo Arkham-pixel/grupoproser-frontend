@@ -31,6 +31,7 @@ export function construirTablaContenidosWord({
   contenidos = {},
   cell,
   size = 16,
+  incluirDeduciblePorArticulo = true,
 } = {}) {
   if (typeof cell !== 'function') {
     throw new Error('construirTablaContenidosWord requiere cell()');
@@ -99,7 +100,7 @@ export function construirTablaContenidosWord({
               [
                 it.estado,
                 it.observacion,
-                ...(filaContenidoListaParaDeducible(it)
+                ...(incluirDeduciblePorArticulo && filaContenidoListaParaDeducible(it)
                   ? [
                       it.tipoCobertura || it.coberturaAfectar
                         ? `Cobertura: ${it.tipoCobertura || it.coberturaAfectar}`

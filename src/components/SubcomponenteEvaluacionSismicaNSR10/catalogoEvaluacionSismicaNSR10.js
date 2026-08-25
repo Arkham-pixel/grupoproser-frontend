@@ -138,6 +138,72 @@ export const REGLAS_DEDUCIBLE_POR_COBERTURA = {
   },
 };
 
+/** Deducible general (SMMLV / % sobre la pérdida) vs por artículo/ítem de cobertura. */
+export const MODO_DEDUCIBLE_NSR10 = {
+  GENERAL: 'general',
+  POR_ARTICULO: 'por_articulo',
+};
+
+/**
+ * AIU único CAT (25%). En Colombia AIU ya incluye Administración, Imprevistos y Utilidad;
+ * imprevistos e impuestos no se muestran aparte. Alfa (20%) y BBVA no usan este objeto.
+ */
+export const AIU_PORCENTAJE_DEFAULT_NSR10_CAT = 0.25;
+export const RECARGOS_PRESUPUESTO_NSR10_CAT = {
+  aiuFijo: AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
+  ocultarImprevistos: true,
+  ocultarImpuestos: true,
+};
+
+export function aplicarRecargosPresupuestoNsr10(presupuesto = {}, recargos = null) {
+  if (!recargos) return presupuesto;
+  const next = { ...(presupuesto || {}) };
+  if (recargos.aiuFijo != null && Number.isFinite(Number(recargos.aiuFijo))) {
+    next.aiuPorcentaje = Number(recargos.aiuFijo);
+  }
+  if (recargos.ocultarImprevistos) next.imprevistosPorcentaje = 0;
+  if (recargos.ocultarImpuestos) next.impuestosPorcentaje = 0;
+  return next;
+}
+
+export function aplicarRecargosEnEvaluacionNsr10(
+  evalData = {},
+  recargos = RECARGOS_PRESUPUESTO_NSR10_CAT
+) {
+  const next = evalData && typeof evalData === 'object' ? { ...evalData } : {};
+  next.presupuesto = aplicarRecargosPresupuestoNsr10(next.presupuesto, recargos);
+  return next;
+}
+
+export function resolverModoDeducibleNsr(liquidacion = {}, resumen = {}) {
+  const modo = String(liquidacion?.modoDeducibleNsr || '').trim();
+  if (modo === MODO_DEDUCIBLE_NSR10.POR_ARTICULO) return MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+  if (modo === MODO_DEDUCIBLE_NSR10.GENERAL) return MODO_DEDUCIBLE_NSR10.GENERAL;
+  if (resumen.usaDeduciblePorArticulo || resumen.usaDeduciblePorArticuloPresupuesto) {
+    return MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+  }
+  return MODO_DEDUCIBLE_NSR10.GENERAL;
+}
+
+export function esModoDeduciblePorArticuloNsr(liquidacion = {}, resumen = {}) {
+  return resolverModoDeducibleNsr(liquidacion, resumen) === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+}
+
+/** Args del diagrama: solo si el caso eligió deducible por artículo. */
+export function argsDeduciblesPorArticuloDiagrama(liquidacion = {}, resumen = {}) {
+  if (!esModoDeduciblePorArticuloNsr(liquidacion, resumen)) {
+    return {
+      deducibleContenidosPorArticulos: null,
+      deduciblePresupuestoPorArticulos: null,
+    };
+  }
+  return {
+    deducibleContenidosPorArticulos:
+      resumen.deduciblePorArticulosContenidos ?? resumen.deduciblePorArticulos ?? 0,
+    deduciblePresupuestoPorArticulos: resumen.deduciblePorArticulosPresupuesto ?? 0,
+  };
+}
+
 export const ESTADOS_CONTENIDO_NSR10 = [
   'Dañado',
   'Destruido',
@@ -588,6 +654,13 @@ export function crearFilaPresupuestoVacia() {
     cubierto: '',
     observacion: '',
     fuente: '',
+    coberturaAfectar: '',
+    tipoCobertura: '',
+    valorAsegurable: '',
+    porcentajeDeducible: '',
+    cantidadMinimoSMMLV: '',
+    valorMinimo: '',
+    deducibleCalculado: '',
   };
 }
 
@@ -680,11 +753,14 @@ export function filaContenidoTieneDeducibleArticulo(row = {}) {
 
 /**
  * Recalcula % / mínimo / deducible de una fila según la cobertura.
- * Terremoto: MAX(valor asegurable × 3%, 3 SMMLV).
+ * Terremoto: MAX(base × 3%, 3 SMMLV).
  * Filas vacías no muestran ni heredan cifras financieras.
+ * opts.lista / opts.baseValor: presupuesto usa total de fila si no hay valor asegurable.
  */
-export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}) {
-  if (!filaContenidoListaParaDeducible(row)) {
+export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}) {
+  const lista =
+    opts.lista != null ? Boolean(opts.lista) : filaContenidoListaParaDeducible(row);
+  if (!lista) {
     return {
       ...row,
       coberturaAfectar: '',
@@ -721,7 +797,13 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}) {
     parseMontoNsr10(smmlvCfg.valorSMMLV) ||
     smmlv.valor ||
     SMMLV_DEFAULT;
-  const va = parseMontoNsr10(next.valorAsegurable);
+  const vaExpl = parseMontoNsr10(next.valorAsegurable);
+  const va =
+    vaExpl != null && vaExpl > 0
+      ? vaExpl
+      : opts.baseValor != null
+        ? Number(opts.baseValor) || 0
+        : 0;
 
   if (regla) {
     const cantidadSMMLV = Number(regla.cantidadSMMLV) || 0;
@@ -730,6 +812,10 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}) {
     next.porcentajeDeducible = porcentaje;
     next.cantidadMinimoSMMLV = cantidadSMMLV;
     next.valorMinimo = valorMinimo;
+    if (va <= 0) {
+      next.deducibleCalculado = '';
+      return next;
+    }
     const porPct = va * (porcentaje / 100);
     next.deducibleCalculado = Math.round(Math.max(porPct, valorMinimo) * 100) / 100;
     return next;
@@ -762,6 +848,44 @@ export function prepararFilaDeducibleContenido(
     next = { ...next, coberturaAfectar: coberturaPredeterminada };
   }
   return aplicarDeducibleCoberturaFila(next, smmlvCfg);
+}
+
+export function baseValorDeduciblePresupuesto(row = {}) {
+  const va = parseMontoNsr10(row.valorAsegurable);
+  if (va != null && va > 0) return va;
+  return totalFilaPresupuesto(row);
+}
+
+export function filaPresupuestoListaParaDeducible(row = {}) {
+  const ident = String(
+    row.actividad || row.capitulo || row.catalogoId || row.componente || ''
+  ).trim();
+  const base = baseValorDeduciblePresupuesto(row);
+  return Boolean(ident) && base != null && base > 0;
+}
+
+export function filaPresupuestoTieneDeducibleArticulo(row = {}) {
+  if (!filaPresupuestoListaParaDeducible(row)) return false;
+  const cob = String(row.coberturaAfectar || row.tipoCobertura || '').trim();
+  const ded = parseMontoNsr10(row.deducibleCalculado);
+  return Boolean(cob) && ded != null && ded > 0;
+}
+
+export function prepararFilaDeduciblePresupuesto(
+  row = {},
+  smmlvCfg = {},
+  coberturaPredeterminada = ''
+) {
+  let next = { ...row };
+  const propia = String(next.coberturaAfectar || next.tipoCobertura || '').trim();
+  const lista = filaPresupuestoListaParaDeducible(next);
+  if (lista && !propia && coberturaPredeterminada) {
+    next = { ...next, coberturaAfectar: coberturaPredeterminada };
+  }
+  return aplicarDeducibleCoberturaFila(next, smmlvCfg, {
+    lista,
+    baseValor: baseValorDeduciblePresupuesto(next) || 0,
+  });
 }
 
 export function calcularTotalesContenidos(contenidos = {}) {
@@ -800,14 +924,19 @@ export function calcularResumenTotalesNsr10(evalData = {}) {
   const totalPresupuesto = Number(totalesPresupuesto.total) || 0;
   const totalContenidos = Number(totalesContenidos.total) || 0;
   const sumaCompleta = Math.round((totalPresupuesto + totalContenidos) * 100) / 100;
+  const deduciblePorArticulosContenidos = totalesContenidos.deduciblePorArticulos || 0;
+  const deduciblePorArticulosPresupuesto = totalesPresupuesto.deduciblePorArticulos || 0;
   return {
     presupuesto: totalesPresupuesto,
     contenidos: totalesContenidos,
     totalPresupuesto,
     totalContenidos,
     sumaCompleta,
-    deduciblePorArticulos: totalesContenidos.deduciblePorArticulos || 0,
+    deduciblePorArticulos: deduciblePorArticulosContenidos,
+    deduciblePorArticulosContenidos,
+    deduciblePorArticulosPresupuesto,
     usaDeduciblePorArticulo: Boolean(totalesContenidos.usaDeduciblePorArticulo),
+    usaDeduciblePorArticuloPresupuesto: Boolean(totalesPresupuesto.usaDeduciblePorArticulo),
   };
 }
 
@@ -893,7 +1022,7 @@ export function totalFilaPresupuesto(row) {
     row?.cantidad !== '' &&
     row?.valorUnitario !== ''
   ) {
-    return cant * vu;
+  return cant * vu;
   }
   // Fallback: total explícito (p. ej. liquidador Alfa sincronizado desde valorPerdida)
   const totalDirecto = parseMontoNsr10(row?.total);
@@ -916,7 +1045,23 @@ export function calcularTotalesPresupuesto(presupuesto = {}) {
   const imprevistos = (subtotal + aiu) * imprPct;
   const impuestos = (subtotal + aiu + imprevistos) * impPct;
   const total = subtotal + aiu + imprevistos + impuestos;
-  return { subtotal, aiu, imprevistos, impuestos, total, aiuPct, imprPct, impPct };
+  const filasConDeducible = items.filter(filaPresupuestoTieneDeducibleArticulo);
+  const deduciblePorArticulos = filasConDeducible.reduce((acc, row) => {
+    const n = parseMontoNsr10(row.deducibleCalculado);
+    return acc + (n == null ? 0 : n);
+  }, 0);
+  return {
+    subtotal,
+    aiu,
+    imprevistos,
+    impuestos,
+    total,
+    aiuPct,
+    imprPct,
+    impPct,
+    deduciblePorArticulos: Math.round(deduciblePorArticulos * 100) / 100,
+    usaDeduciblePorArticulo: filasConDeducible.length > 0,
+  };
 }
 
 /** Traslada ítems con intervención Sí / Según alcance al presupuesto (si aún no están). */
@@ -1010,7 +1155,7 @@ export function crearEvaluacionSismicaNSR10Inicial(prefill = {}) {
 /**
  * Restaura portada, presupuesto y contenidos; Evaluación/Dictamen quedan vacíos mientras estén ocultos.
  */
-export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = {}) {
+export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = {}, opts = {}) {
   const base = crearEvaluacionSismicaNSR10Inicial(prefill);
   const actual = guardada && typeof guardada === 'object' ? guardada : {};
   const fusionada = {
@@ -1033,6 +1178,12 @@ export function fusionarEvaluacionSismicaNSR10Guardada(guardada = {}, prefill = 
         : base.contenidos.items,
     },
   };
+  if (opts.recargosPresupuesto) {
+    fusionada.presupuesto = aplicarRecargosPresupuestoNsr10(
+      fusionada.presupuesto,
+      opts.recargosPresupuesto
+    );
+  }
   if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) return fusionada;
   return {
     ...fusionada,

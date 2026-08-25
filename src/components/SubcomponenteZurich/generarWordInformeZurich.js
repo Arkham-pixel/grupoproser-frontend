@@ -15,7 +15,7 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, esModoDeduciblePorArticuloNsr, filaPresupuestoListaParaDeducible, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionZurich,
@@ -1109,14 +1109,20 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
-    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.05) * 100
+    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100
   );
   const imprPct = Math.round(
-    (totales.presupuesto?.imprPct ?? presupuesto.imprevistosPorcentaje ?? 0.1) * 100
+    (totales.presupuesto?.imprPct ?? presupuesto.imprevistosPorcentaje ?? 0) * 100
   );
   const impPct = Math.round(
     (totales.presupuesto?.impPct ?? presupuesto.impuestosPorcentaje ?? 0) * 100
   );
+  const mostrarImprevistos = imprPct > 0 || Number(totales.imprevistos) > 0;
+  const mostrarImpuestos = impPct > 0 || Number(totales.impuestos) > 0;
+  const usaDeduciblePorArticulo = esModoDeduciblePorArticuloNsr(liq.liquidacionCatastrofico || {}, {
+    usaDeduciblePorArticulo: totales.contenidos?.usaDeduciblePorArticulo,
+    usaDeduciblePorArticuloPresupuesto: totales.presupuesto?.usaDeduciblePorArticulo,
+  });
   const criterio = totales.criterio || {};
   const esPreliminar = esInformePreliminarZurich(info);
   const tipoNorm = normalizarTipoInformeZurich(info.tipoInforme, 'preliminar');
@@ -1311,14 +1317,22 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       valueW: 5000,
     }),
     campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
+    ...(mostrarImprevistos
+      ? [
+          campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+        ]
+      : []),
+    ...(mostrarImpuestos
+      ? [
+          campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+        ]
+      : []),
     campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
       labelW: 5000,
       valueW: 5000,
@@ -1423,7 +1437,24 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
             cellNsr(tot == null ? '—' : money(tot), 6, { alignment: AlignmentType.RIGHT }),
             cellNsr(it.prioridad || '—', 7, { alignment: AlignmentType.CENTER }),
             cellNsr(it.cubierto || '—', 8, { alignment: AlignmentType.CENTER }),
-            cellNsr(it.observacion || '—', 9),
+            cellNsr(
+              [
+                it.observacion,
+                ...(usaDeduciblePorArticulo && filaPresupuestoListaParaDeducible(it)
+                  ? [
+                      it.tipoCobertura || it.coberturaAfectar
+                        ? `Cobertura: ${it.tipoCobertura || it.coberturaAfectar}`
+                        : '',
+                      it.deducibleCalculado
+                        ? `Deducible: ${money(it.deducibleCalculado)}`
+                        : '',
+                    ]
+                  : []),
+              ]
+                .filter(Boolean)
+                .join(' · ') || '—',
+              9
+            ),
             cellNsr(it.fuente || '—', 10),
           ],
         })
@@ -1449,9 +1480,11 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   const resumenNsrFilas = [
     ['SUBTOTAL (COSTO DIRECTO)', money(totales.subtotal)],
     [`AIU (${aiuPct}%)`, money(totales.aiu)],
-    [`IMPREVISTOS (${imprPct}%)`, money(totales.imprevistos)],
-    [`IMPUESTOS (${impPct}%)`, money(totales.impuestos)],
-    ['TOTAL ESTIMADO', money(totales.totalDanios)],
+    ...(mostrarImprevistos
+      ? [[`IMPREVISTOS (${imprPct}%)`, money(totales.imprevistos)]]
+      : []),
+    ...(mostrarImpuestos ? [[`IMPUESTOS (${impPct}%)`, money(totales.impuestos)]] : []),
+    ['TOTAL ESTIMADO', money(totales.totalPresupuesto ?? totales.presupuesto?.total)],
   ];
   resumenNsrFilas.forEach(([lab, val]) => {
     filasNsr.push(
@@ -1496,6 +1529,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     contenidos: contenidosNsr,
     cell,
     size: SIZE_NSR,
+    incluirDeduciblePorArticulo: usaDeduciblePorArticulo,
   });
 
   const firmasParrafos = await construirZonaFirmasZurich({ caso, enc, info });
@@ -1603,7 +1637,9 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       children: [
         heading('5. Liquidación de pérdidas (liquidador NSR-10)'),
         p(
-          'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.',
+          mostrarImprevistos || mostrarImpuestos
+            ? 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.'
+            : 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (único recargo; imprevistos e impuestos van incluidos).',
           { after: 120 }
         ),
         tablaLiquidadorCompleto,

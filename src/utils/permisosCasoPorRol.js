@@ -29,6 +29,13 @@ export const CAMPOS_ASIGNACION_CASO = Object.freeze([
  */
 export const SURA_LOGINS_PERMISO_LIDER = Object.freeze(['72288319']);
 
+/**
+ * Alfa: estos logins ocultan del reporte los casos con fecha de llamada
+ * (cola de contactos). El buscador sí los vuelve a mostrar.
+ * Leyna Lucía Alfonso Rojas.
+ */
+export const ALFA_LOGINS_COLA_FECHA_LLAMADA = Object.freeze(['1098662033']);
+
 export function obtenerContextoPermisoCaso(modulo = '') {
   return {
     modulo: String(modulo || '').toLowerCase(),
@@ -41,11 +48,15 @@ export function obtenerContextoPermisoCaso(modulo = '') {
   };
 }
 
-function normalizarClaveLoginSura(valor) {
+function normalizarClaveDocumentoLogin(valor) {
   const s = String(valor || '').trim();
   if (!s) return '';
   const digits = s.replace(/\D/g, '');
   return digits.length >= 5 ? digits : s.toLowerCase();
+}
+
+function normalizarClaveLoginSura(valor) {
+  return normalizarClaveDocumentoLogin(valor);
 }
 
 export function esLoginConPermisoLiderSura(login, modulo = '') {
@@ -53,6 +64,22 @@ export function esLoginConPermisoLiderSura(login, modulo = '') {
   const clave = normalizarClaveLoginSura(login);
   if (!clave) return false;
   return SURA_LOGINS_PERMISO_LIDER.map(normalizarClaveLoginSura).includes(clave);
+}
+
+export function esLoginColaFechaLlamadaAlfa(login) {
+  const clave = normalizarClaveDocumentoLogin(login);
+  if (!clave) return false;
+  return ALFA_LOGINS_COLA_FECHA_LLAMADA.map(normalizarClaveDocumentoLogin).includes(clave);
+}
+
+export function esIdentidadColaFechaLlamadaAlfa(opts = {}) {
+  return [opts.login, opts.cedula].some((v) => esLoginColaFechaLlamadaAlfa(v));
+}
+
+/** Sesión actual: Leyna (1098662033) ve cola Alfa sin fecha de llamada. */
+export function esSesionColaFechaLlamadaAlfa() {
+  const ctx = obtenerContextoPermisoCaso('alfa');
+  return esIdentidadColaFechaLlamadaAlfa(ctx);
 }
 
 export function esIdentidadConPermisoLiderSura(opts = {}) {

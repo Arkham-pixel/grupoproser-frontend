@@ -70,7 +70,6 @@ const COLUMNAS = [
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
-  { clave: 'inspector', labelKey: 'inspector' },
   { clave: 'fechaAsignacion', labelKey: 'fechaAsignacion' },
   { clave: 'fechaVisita', labelKey: 'fechaVisita' },
   { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
@@ -109,7 +108,6 @@ const buildExportRow = (caso) => ({
   MODALIDAD: caso.modalidadAtencion ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
-  INSPECTOR: caso.inspector ?? '',
   'FECHA ASIGNACIÓN': formatDate(caso.fechaAsignacion),
   'FECHA VISITA': formatDate(caso.fechaVisita),
   'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
@@ -239,7 +237,6 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
         c.estado,
         c.ajustadorLider,
         c.ajustador,
-        c.inspector,
         c.observaciones,
       ]
         .map(normTexto)

@@ -12,10 +12,16 @@ import {
   sumarOtrosAmparosAlfa,
   textoResumenOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
+import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 
 const PLANTILLA_URL = `${import.meta.env.BASE_URL || '/'}templates/Informe_CAT_Seguros_Alfa.xlsx`;
+const LOGO_ALFA_URL = `${import.meta.env.BASE_URL || '/'}templates/logo-seguros-alfa.png`;
+/** Anchos iguales C–F en ANÁLISIS GENERAL (plantilla trae C≈99). */
+const COL_ANEXOS_W = 28;
+/** Aprox. px por unidad de ancho de columna Excel (Calibri). */
+const PX_POR_COL_W = 7;
 
-/** Filas de ítems en hoja LIQUIDADOR (plantilla: 1–7 numerados + 2 libres). */
+/** Filas de ítems en hoja LIQUIDADOR (plantilla: 16–24 = 9 slots). Se insertan filas si hay más. */
 const ITEM_FIRST_ROW = 16;
 const ITEM_LAST_ROW = 24;
 
@@ -188,12 +194,208 @@ function setVal(sheet, row, col, value) {
   sheet.getCell(row, col).value = value === '' ? null : value;
 }
 
+/** Quita merges que intersecten el rango (ExcelJS). */
+function unmergeRangoSeguro(sheet, r1, c1, r2, c2) {
+  try {
+    sheet.unMergeCells(r1, c1, r2, c2);
+  } catch {
+    /* ok */
+  }
+  // Por si quedó un merge de una sola fila
+  for (let r = r1; r <= r2; r += 1) {
+    try {
+      sheet.unMergeCells(r, c1, r, c2);
+    } catch {
+      /* ok */
+    }
+  }
+}
+
+/**
+ * Pie del liquidador: un solo texto en D…O (sin repetición por columna).
+ * La plantilla usa merges D:O; al insertar filas se rompen y Excel muestra el valor en cada celda.
+ */
+function escribirBloquePieCombinado(sheet, rowStart, rowEnd, value, opts = {}) {
+  const c1 = opts.colStart || 4; // D
+  const c2 = opts.colEnd || 15; // O
+  const r1 = rowStart;
+  const r2 = Math.max(rowStart, rowEnd);
+
+  unmergeRangoSeguro(sheet, r1, c1, r2, c2);
+
+  for (let r = r1; r <= r2; r += 1) {
+    for (let c = c1; c <= c2; c += 1) {
+      const cell = sheet.getCell(r, c);
+      cell.value = null;
+      try {
+        if (cell.formula) cell.formula = undefined;
+      } catch {
+        /* ok */
+      }
+    }
+  }
+
+  const master = sheet.getCell(r1, c1);
+  master.value = value == null || value === '' ? null : value;
+  master.alignment = {
+    wrapText: true,
+    vertical: opts.vertical || 'top',
+    horizontal: opts.horizontal || 'left',
+    ...(opts.alignment || {}),
+  };
+  if (opts.font) {
+    master.font = { ...(master.font || {}), ...opts.font };
+  }
+
+  try {
+    sheet.mergeCells(r1, c1, r2, c2);
+  } catch {
+    try {
+      unmergeRangoSeguro(sheet, r1, c1, r2, c2);
+      sheet.mergeCells(r1, c1, r2, c2);
+    } catch {
+      /* si no se puede combinar, al menos queda solo en D */
+    }
+  }
+
+  if (opts.height != null) {
+    const rows = r2 - r1 + 1;
+    const per = Math.max(18, Number(opts.height) / rows);
+    for (let r = r1; r <= r2; r += 1) {
+      sheet.getRow(r).height = Math.max(sheet.getRow(r).height || 0, per);
+    }
+  }
+}
+
+/** Reaplica merges del pie según plantilla (filas 30–38) + desplazamiento por ítems extra. */
+function repararPieLiquidadorMerges(sheet, rowShift, textos = {}) {
+  const s = Number(rowShift) || 0;
+  // Observación: plantilla D30:O31
+  escribirBloquePieCombinado(sheet, 30 + s, 31 + s, textos.observacion ?? 'OBSERVACIÓN:', {
+    height: 48,
+    vertical: 'top',
+  });
+  // Declaración paz y salvo: plantilla D33:O33 (conservar texto plantilla si no viene override)
+  if (textos.declaracion != null) {
+    escribirBloquePieCombinado(sheet, 33 + s, 33 + s, textos.declaracion, {
+      height: 52,
+      vertical: 'middle',
+    });
+  } else {
+    const raw = sheet.getCell(33 + s, 4).value;
+    const txtDecl =
+      typeof raw === 'object' && raw
+        ? raw.text ||
+          (Array.isArray(raw.richText) ? raw.richText.map((p) => p.text || '').join('') : '') ||
+          String(raw.result || '')
+        : String(raw || '');
+    escribirBloquePieCombinado(
+      sheet,
+      33 + s,
+      33 + s,
+      txtDecl ||
+        'Una vez realizado el pago anteriormente solicitado declaramos a COMPAÑÍA., a paz y salvo por cualquier concepto relacionado con la reclamación del presente siniestro.',
+      { height: 52, vertical: 'middle' }
+    );
+  }
+  escribirBloquePieCombinado(sheet, 34 + s, 34 + s, textos.aceptacion ?? '', {
+    height: 26,
+    vertical: 'middle',
+    horizontal: 'center',
+  });
+  escribirBloquePieCombinado(sheet, 36 + s, 36 + s, textos.banco ?? '', {
+    height: 72,
+    vertical: 'top',
+  });
+  // D37:O37 suele ser separador / espacio firma
+  escribirBloquePieCombinado(sheet, 37 + s, 37 + s, null, { height: 15 });
+  escribirBloquePieCombinado(sheet, 38 + s, 38 + s, textos.firma ?? '', {
+    height: 90,
+    vertical: 'bottom',
+  });
+}
+
+/** Copia formato de una fila de ítem (para filas insertadas). */
+function copyItemRowFormat(sheet, fromRow, toRow) {
+  const src = sheet.getRow(fromRow);
+  const dst = sheet.getRow(toRow);
+  dst.height = Math.max(Number(src.height) || 0, 22);
+  for (let c = 4; c <= 15; c += 1) {
+    const sc = src.getCell(c);
+    const dc = dst.getCell(c);
+    try {
+      if (sc.style) dc.style = structuredClone(sc.style);
+    } catch {
+      if (sc.font) dc.font = { ...sc.font };
+      if (sc.alignment) dc.alignment = { ...sc.alignment };
+      if (sc.border) dc.border = sc.border;
+      if (sc.fill) dc.fill = sc.fill;
+      if (sc.numFmt) dc.numFmt = sc.numFmt;
+    }
+    dc.alignment = {
+      ...(dc.alignment || {}),
+      wrapText: true,
+      vertical: 'middle',
+    };
+  }
+}
+
+/**
+ * Si hay más ítems que slots de plantilla (16–24), duplica filas (con alto/estilo)
+ * y desplaza el bloque inferior. Devuelve última fila de ítems y el shift.
+ */
+function ensureItemRowsCapacity(sheet, needed) {
+  const capacity = ITEM_LAST_ROW - ITEM_FIRST_ROW + 1;
+  const forceItemHeights = (from, to) => {
+    for (let r = from; r <= to; r += 1) {
+      const row = sheet.getRow(r);
+      row.height = Math.max(Number(row.height) || 0, 22);
+    }
+  };
+
+  if (needed <= capacity) {
+    forceItemHeights(ITEM_FIRST_ROW, ITEM_LAST_ROW);
+    return { lastItemRow: ITEM_LAST_ROW, rowShift: 0 };
+  }
+
+  const extra = needed - capacity;
+  // duplicateRow conserva alto/estilo mejor que spliceRows([]) vacío
+  if (typeof sheet.duplicateRow === 'function') {
+    sheet.duplicateRow(ITEM_LAST_ROW, extra, true);
+  } else {
+    sheet.spliceRows(
+      ITEM_LAST_ROW + 1,
+      0,
+      ...Array.from({ length: extra }, () => [])
+    );
+    for (let i = 1; i <= extra; i += 1) {
+      copyItemRowFormat(sheet, ITEM_LAST_ROW, ITEM_LAST_ROW + i);
+    }
+  }
+
+  const lastItemRow = ITEM_LAST_ROW + extra;
+  // Limpiar valores clonados; se rellenan después
+  for (let r = ITEM_LAST_ROW + 1; r <= lastItemRow; r += 1) {
+    copyItemRowFormat(sheet, ITEM_LAST_ROW, r);
+    for (let c = 4; c <= 15; c += 1) {
+      sheet.getCell(r, c).value = null;
+    }
+  }
+  forceItemHeights(ITEM_FIRST_ROW, lastItemRow);
+  return { lastItemRow, rowShift: extra };
+}
+
 function fechaCelda(value) {
   if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+    }
+  }
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  d.setHours(12, 0, 0, 0);
-  return d;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
 }
 
 function anioDeFecha(value) {
@@ -486,13 +688,13 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
   const va = parsearNumero(enc.valorAseguradoInmueble || liq.valorAsegurado || caso.valorAseguradoInmueble);
   setVal(sheet, 12, 6, va || null);
 
-  // Detalle ítems
-  // La plantilla calcula O = N * J y J = H/I. Si I (valor asegurable) va vacío → #¡VALOR!.
-  // En plataforma no se pide asegurable/% CIA por ítem → asumir 100% responsabilidad.
+  // Detalle ítems — una fila por partida (sin compactar/sumar el resto)
   const detalle = itemsDetalleDesdeLiquidador(liquidador, totales);
+  const { lastItemRow, rowShift } = ensureItemRowsCapacity(sheet, detalle.length);
   let sumaIndemnizable = 0;
+  const slots = lastItemRow - ITEM_FIRST_ROW + 1;
 
-  for (let i = 0; i <= ITEM_LAST_ROW - ITEM_FIRST_ROW; i += 1) {
+  for (let i = 0; i < slots; i += 1) {
     const row = ITEM_FIRST_ROW + i;
     const it = detalle[i];
     setVal(sheet, row, 4, i + 1);
@@ -529,6 +731,14 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     sumaIndemnizable += indemnizable;
 
     setVal(sheet, row, 5, it.descripcion);
+    const celdaDesc = sheet.getCell(row, 5);
+    celdaDesc.alignment = {
+      ...(celdaDesc.alignment || {}),
+      wrapText: true,
+      vertical: 'middle',
+      horizontal: 'left',
+    };
+    sheet.getRow(row).height = Math.max(sheet.getRow(row).height || 0, 22);
     setVal(sheet, row, 6, baseAseg || null);
     setVal(sheet, row, 7, it.indiceVariable ?? 0);
     setVal(sheet, row, 8, asegFecha || null);
@@ -541,27 +751,13 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     setVal(sheet, row, 15, indemnizable || null); // Pérdida Indemnizable
   }
 
-  if (detalle.length > ITEM_LAST_ROW - ITEM_FIRST_ROW + 1) {
-    const rest = detalle.slice(ITEM_LAST_ROW - ITEM_FIRST_ROW + 1);
-    const sum = rest.reduce((a, it) => a + (parsearNumero(it.valorPerdida) || 0), 0);
-    const last = ITEM_LAST_ROW;
-    const prevDesc = txt(sheet.getCell(last, 5).value);
-    setVal(
-      sheet,
-      last,
-      5,
-      prevDesc ? `${prevDesc} (+ ${rest.length} ítems)` : `Ítems adicionales (${rest.length})`
-    );
-    const prevK = parsearNumero(sheet.getCell(last, 11).value);
-    const nuevo = prevK + sum;
-    setVal(sheet, last, 11, nuevo);
-    setVal(sheet, last, 13, nuevo);
-    setVal(sheet, last, 14, nuevo);
-    setVal(sheet, last, 15, nuevo);
-    sumaIndemnizable += sum;
+  // Blindaje de layout: ninguna fila de ítem queda aplastada
+  for (let r = ITEM_FIRST_ROW; r <= lastItemRow; r += 1) {
+    const row = sheet.getRow(r);
+    row.height = Math.max(Number(row.height) || 0, 22);
   }
 
-  // Totales alineados a la UI:
+  // Totales alineados a la UI (filas plantilla 25+ desplazadas si se insertaron ítems):
   // Preferir suma de valorPerdida del detalle (igual que Formato liquidación)
   const limite = va || 0;
   const subDesdeDetalle = detalle.reduce(
@@ -620,56 +816,54 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     }
   };
 
-  setVal(sheet, 25, 12, 'Sub Total ítems');
-  setTotalVal(25, 15, subTotalItems || 0);
+  const rSub = 25 + rowShift;
+  const rAiu = 26 + rowShift;
+  const rDed = 27 + rowShift;
+  const rOtros = 28 + rowShift;
+  const rValorBase = 28 + rowShift;
+  const rLiqPor = 26 + rowShift;
+  const rObs = 30 + rowShift;
+  const rAcept = 34 + rowShift;
+  const rBanco = 36 + rowShift;
+  const rFirma = 38 + rowShift;
 
-  setVal(sheet, 26, 12, `AIU (${aiuPctUi}%)`);
-  setTotalVal(26, 15, aiuVal || 0);
+  setVal(sheet, rSub, 12, 'Sub Total ítems');
+  setTotalVal(rSub, 15, subTotalItems || 0);
 
-  setVal(sheet, 27, 12, 'Deducible Aplicable');
-  setTotalVal(27, 15, deducibleFinal || 0);
+  setVal(sheet, rAiu, 12, `AIU (${aiuPctUi}%)`);
+  setTotalVal(rAiu, 15, aiuVal || 0);
+
+  setVal(sheet, rDed, 12, 'Deducible Aplicable');
+  setTotalVal(rDed, 15, deducibleFinal || 0);
 
   // Reescribir O8 (Pesos/Otro) con el deducible aplicado real
   setTotalVal(8, 15, deducibleFinal || 0);
 
-  let rowValor = 28;
+  let rowValor = rValorBase;
   if (totalOtrosAmparos > 0) {
-    setVal(sheet, 28, 12, 'Otros amparos (sin deducible)');
-    setTotalVal(28, 15, totalOtrosAmparos);
-    rowValor = 29;
+    setVal(sheet, rOtros, 12, 'Otros amparos (sin deducible)');
+    setTotalVal(rOtros, 15, totalOtrosAmparos);
+    rowValor = rOtros + 1;
   }
   setVal(sheet, rowValor, 12, 'Valor a Indemnizar');
   setTotalVal(rowValor, 15, aIndemnizar || 0);
   try {
     sheet.getCell(rowValor, 12).font = {
-      ...(sheet.getCell(27, 12).font || {}),
+      ...(sheet.getCell(rDed, 12).font || {}),
       bold: true,
     };
     sheet.getCell(rowValor, 15).font = {
-      ...(sheet.getCell(27, 15).font || {}),
+      ...(sheet.getCell(rDed, 15).font || {}),
       bold: true,
     };
   } catch {
     /* ok */
   }
 
-  // Por si la plantilla tenía “Valor a Indemnizar” en la otra fila, forzar ambas coherentes
-  if (totalOtrosAmparos > 0) {
-    // fila 28 = otros; ya escrita
-  } else {
-    // limpiar posible fila 29 residual de una generación previa
-    try {
-      const c29 = sheet.getCell(29, 15);
-      if (c29.formula) c29.formula = undefined;
-    } catch {
-      /* ok */
-    }
-  }
-
   // Liquidado por
   setVal(
     sheet,
-    26,
+    rLiqPor,
     7,
     txt(informe?.actaAjustadorNombre || informe?.ajustadorNombre || enc.ajustador || caso.ajustador) ||
       null
@@ -684,9 +878,8 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     ? `OTROS AMPAROS (sin deducible): ${resumenOtros}`
     : '';
   const obsFinal = [obs, obsOtros].filter(Boolean).join('\n');
-  setVal(sheet, 30, 4, obsFinal ? `OBSERVACIÓN:\n${obsFinal}` : 'OBSERVACIÓN:');
 
-  // Pie: aceptación + datos bancarios (D36) y firma (D38)
+  // Pie: aceptación + datos bancarios
   const banco = liquidador?.datosBancarios || liquidador?.finiquitoBancario || {};
   const ciudadCaso =
     txt(caso.ciudad) ||
@@ -701,25 +894,11 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     ciudad: ciudadCaso,
     fecha: fechaFirma,
   });
-  setVal(sheet, 36, 4, textoBanco);
-  const celdaBanco = sheet.getCell(36, 4);
-  celdaBanco.alignment = {
-    ...(celdaBanco.alignment || {}),
-    wrapText: true,
-    vertical: 'top',
-    horizontal: 'left',
-  };
-  sheet.getRow(36).height = Math.max(sheet.getRow(36).height || 0, 72);
 
   const acepta = String(liquidador?.aceptacionIndemnizacion || '').toUpperCase();
   const marcaAcepto = acepta === 'ACEPTO' ? 'X' : ' ';
   const marcaNoAcepto = acepta === 'NO_ACEPTO' || acepta === 'NO ACEPTO' ? 'X' : ' ';
-  setVal(
-    sheet,
-    34,
-    4,
-    `                    ACEPTO INDEMNIZACIÓN  ( ${marcaAcepto} )          NO ACEPTO INDEMNIZACIÓN  ( ${marcaNoAcepto} )`
-  );
+  const textoAceptacion = `ACEPTO INDEMNIZACIÓN  ( ${marcaAcepto} )          NO ACEPTO INDEMNIZACIÓN  ( ${marcaNoAcepto} )`;
 
   const firmaNombre =
     txt(liquidador?.nombreFirmante) ||
@@ -728,15 +907,24 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
     txt(caso.asegurado) ||
     txt(caso.tomador) ||
     '';
-  setVal(
-    sheet,
-    38,
-    4,
-    firmaNombre
-      ? `FIRMA ${firmaNombre}`
-      : 'FIRMA ______________________________________________'
-  );
-  sheet.getRow(38).height = Math.max(sheet.getRow(38).height || 0, 90);
+  const textoFirma = firmaNombre
+    ? `FIRMA ${firmaNombre}`
+    : 'FIRMA ______________________________________________';
+
+  // Siempre recombinar D:O del pie (evita texto repetido en cada columna tras insertar ítems)
+  if (rowShift > 0) {
+    // Merges “fantasma” de la plantilla que no se desplazaron
+    for (const base of [30, 31, 33, 34, 36, 37, 38]) {
+      unmergeRangoSeguro(sheet, base, 4, base, 15);
+    }
+    unmergeRangoSeguro(sheet, 30, 4, 31, 15);
+  }
+  repararPieLiquidadorMerges(sheet, rowShift, {
+    observacion: obsFinal ? `OBSERVACIÓN:\n${obsFinal}` : 'OBSERVACIÓN:',
+    aceptacion: textoAceptacion,
+    banco: textoBanco,
+    firma: textoFirma,
+  });
 
   const firmaImg = dataUrlABuffer(liquidador?.firmaCliente);
   if (firmaImg?.buffer && workbook) {
@@ -746,7 +934,7 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
         extension: firmaImg.extension || 'png',
       });
       sheet.addImage(imageId, {
-        tl: { col: 3.2, row: 37.15 },
+        tl: { col: 3.2, row: rFirma - 0.85 },
         ext: { width: 280, height: 70 },
         editAs: 'oneCell',
       });
@@ -757,6 +945,11 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
 }
 
 function rellenarAnalisisGeneral(sheet, analisis) {
+  // Columnas C–F iguales → fotos 2×2 alineadas (la plantilla trae C≈99 y D–F mínimas)
+  for (let col = 3; col <= 6; col += 1) {
+    sheet.getColumn(col).width = COL_ANEXOS_W;
+  }
+
   setVal(sheet, 9, 3, txt(analisis.ubicacionEvento) || null);
   setVal(sheet, 10, 3, txt(analisis.coaseguro) || null);
 
@@ -766,14 +959,19 @@ function rellenarAnalisisGeneral(sheet, analisis) {
   celdaDesc.alignment = {
     wrapText: true,
     vertical: 'top',
-    horizontal: 'left',
+    horizontal: 'justify',
   };
+  // C:F ≈ 4×28 → ~90 caracteres útiles por línea
+  const charsPorLineaDesc = Math.max(55, Math.floor(COL_ANEXOS_W * 4 * 0.82));
   const lineasDesc = Math.max(
     5,
-    Math.ceil((descripcion || '').length / 55),
-    String(descripcion || '').split(/\n/).length + 2
+    String(descripcion || '').split(/\n/).reduce((acc, linea) => {
+      const t = String(linea || '').trim();
+      if (!t) return acc + 1;
+      return acc + Math.max(1, Math.ceil(t.length / charsPorLineaDesc));
+    }, 0) + 1
   );
-  sheet.getRow(11).height = Math.min(280, Math.max(80, lineasDesc * 15));
+  sheet.getRow(11).height = Math.min(650, Math.max(90, lineasDesc * 15));
   const labelDesc = sheet.getCell(11, 2);
   labelDesc.alignment = {
     ...(labelDesc.alignment || {}),
@@ -796,14 +994,30 @@ function rellenarAnalisisGeneral(sheet, analisis) {
 
   const obs = txt(analisis.observaciones);
   setVal(sheet, 29, 3, obs || null);
-  if (obs) {
-    const celdaObs = sheet.getCell(29, 3);
-    celdaObs.alignment = {
-      wrapText: true,
-      vertical: 'top',
-    };
-    sheet.getRow(29).height = Math.min(120, Math.max(30, Math.ceil(obs.length / 70) * 14));
-  }
+  const celdaObs = sheet.getCell(29, 3);
+  celdaObs.alignment = {
+    wrapText: true,
+    vertical: 'top',
+    horizontal: 'justify',
+  };
+  // C:F ≈ 4×28 → ~95–100 caracteres útiles por línea (Calibri)
+  const charsPorLineaObs = Math.max(55, Math.floor(COL_ANEXOS_W * 4 * 0.82));
+  const lineasObs = Math.max(
+    3,
+    String(obs || '').split(/\n/).reduce((acc, linea) => {
+      const t = String(linea || '').trim();
+      if (!t) return acc + 1;
+      return acc + Math.max(1, Math.ceil(t.length / charsPorLineaObs));
+    }, 0) + 1
+  );
+  // Sin tope bajo: el texto no debe quedar cortado sobre ANEXOS
+  sheet.getRow(29).height = Math.min(520, Math.max(56, lineasObs * 15));
+  const labelObs = sheet.getCell(29, 2);
+  labelObs.alignment = {
+    ...(labelObs.alignment || {}),
+    vertical: 'top',
+    wrapText: true,
+  };
 
   const colNivel = { BAJO: 4, MEDIO: 5, ALTO: 6 };
   INDICADORES_FRAUDE_ALFA.forEach((ind, idx) => {
@@ -818,12 +1032,51 @@ function rellenarAnalisisGeneral(sheet, analisis) {
     const nivel = String(data.nivel || ind.defaultNivel).toUpperCase();
     const col = colNivel[nivel] || 4;
     setVal(sheet, row, col, data.valor != null ? data.valor : ind.defaultValor);
+
+    // Texto completo del indicador (plantilla a veces trae texto truncado)
+    const celdaInd = sheet.getCell(row, 3);
+    const labelInd = txt(ind.label) || txt(celdaInd.value);
+    setVal(sheet, row, 3, labelInd || null);
+    celdaInd.alignment = {
+      wrapText: true,
+      vertical: 'top',
+      horizontal: 'left',
+    };
+    // Columna C = COL_ANEXOS_W (~28) → ~24 caracteres útiles por línea
+    const charsPorLineaInd = Math.max(22, Math.floor(COL_ANEXOS_W * 0.85));
+    const lineasInd = Math.max(
+      1,
+      String(labelInd || '')
+        .split(/\n/)
+        .reduce((acc, linea) => {
+          const t = String(linea || '').trim();
+          if (!t) return acc + 1;
+          return acc + Math.max(1, Math.ceil(t.length / charsPorLineaInd));
+        }, 0)
+    );
+    sheet.getRow(row).height = Math.min(96, Math.max(28, lineasInd * 15 + 4));
+    for (const nc of [4, 5, 6]) {
+      sheet.getCell(row, nc).alignment = {
+        ...(sheet.getCell(row, nc).alignment || {}),
+        horizontal: 'center',
+        vertical: 'middle',
+      };
+    }
   });
 
   // Un solo valor por fila (C:F) — evita que se vea repetido en 4 columnas
-  [9, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29, 30].forEach((row) => {
+  [9, 10, 11, 12, 13, 14, 15, 16, 17, 28, 29].forEach((row) => {
     remergeValorAnalisis(sheet, row);
   });
+  // ANEXOS (fila 30): no rellenar texto; las fotos viven ahí
+  try {
+    sheet.unMergeCells(30, 3, 30, 6);
+  } catch {
+    /* ok */
+  }
+  for (let col = 3; col <= 6; col += 1) {
+    sheet.getCell(30, col).value = null;
+  }
 }
 
 /** Deja el texto solo en C y recombina C:F (corrige columnas repetidas). */
@@ -831,8 +1084,8 @@ function remergeValorAnalisis(sheet, row) {
   const cellC = sheet.getCell(row, 3);
   const valor = cellC.value;
   const alignment = cellC.alignment
-    ? { ...cellC.alignment }
-    : { wrapText: true, vertical: 'top', horizontal: 'left' };
+    ? { ...cellC.alignment, wrapText: true }
+    : { wrapText: true, vertical: 'top', horizontal: 'justify' };
   for (let col = 4; col <= 6; col += 1) {
     sheet.getCell(row, col).value = null;
   }
@@ -886,10 +1139,11 @@ async function insertarFotoMapaUbicacion(workbook, sheet, informe, mapaBufferIn 
   }
 
   // Dirección arriba + mapa centrado debajo (C:F mergeado; sin spliceRows)
-  const COL_W = 18; // unidades Excel por columna C–F
+  // Mantener C–F iguales (mismo criterio que anexos 2×2)
+  const COL_W = Math.max(28, Number(sheet.getColumn(3).width) || 28);
   const PX_POR_UNIDAD = 7;
   for (let col = 3; col <= 6; col += 1) {
-    sheet.getColumn(col).width = Math.max(sheet.getColumn(col).width || 0, COL_W);
+    sheet.getColumn(col).width = COL_W;
   }
 
   const MAP_W = 420;
@@ -918,116 +1172,541 @@ async function insertarFotoMapaUbicacion(workbook, sheet, informe, mapaBufferIn 
 }
 
 /**
- * Anexos: 2 fotos por fila + descripción debajo. Sin mapa duplicado.
+ * Dimensiones naturales de imagen (para no estirar anexos).
+ */
+async function dimensionesBufferImagen(buffer, extension) {
+  try {
+    const u8 = aUint8(buffer);
+    if (!u8) return { width: 800, height: 600 };
+    const mime = extension === 'png' ? 'image/png' : 'image/jpeg';
+    const blob = new Blob([u8], { type: mime });
+    if (typeof createImageBitmap === 'function') {
+      const bmp = await createImageBitmap(blob);
+      const dims = { width: bmp.width || 800, height: bmp.height || 600 };
+      bmp.close?.();
+      return dims;
+    }
+    const url = URL.createObjectURL(blob);
+    try {
+      return await new Promise((resolve) => {
+        const el = new Image();
+        el.onload = () =>
+          resolve({
+            width: el.naturalWidth || el.width || 800,
+            height: el.naturalHeight || el.height || 600,
+          });
+        el.onerror = () => resolve({ width: 800, height: 600 });
+        el.src = url;
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  } catch {
+    return { width: 800, height: 600 };
+  }
+}
+
+/** object-fit: contain dentro de maxW×maxH (px). */
+function containPx(imgW, imgH, maxW, maxH) {
+  const w = Math.max(1, Number(imgW) || 1);
+  const h = Math.max(1, Number(imgH) || 1);
+  const scale = Math.min(maxW / w, maxH / h);
+  return {
+    width: Math.max(40, Math.round(w * scale)),
+    height: Math.max(40, Math.round(h * scale)),
+  };
+}
+
+/** Quita imágenes ancladas en filas altas (p. ej. logo de cabecera). */
+function quitarImagenesHastaFila(sheet, maxNativeRowExclusive) {
+  if (!sheet?._media?.length) return;
+  sheet._media = sheet._media.filter((m) => {
+    const nr = m?.range?.tl?.nativeRow;
+    if (nr != null && Number.isFinite(Number(nr))) {
+      return Number(nr) >= maxNativeRowExclusive;
+    }
+    const r = Number(m?.range?.tl?.row);
+    return !Number.isFinite(r) || r >= maxNativeRowExclusive;
+  });
+}
+
+async function resolverLogoAlfaBuffer(workbook) {
+  try {
+    const res = await fetch(LOGO_ALFA_URL);
+    if (res.ok) {
+      const buffer = aUint8(await res.arrayBuffer());
+      if (buffer?.length) return { buffer, extension: 'png' };
+    }
+  } catch {
+    /* ok */
+  }
+  const media = workbook?.model?.media?.[0];
+  if (media?.buffer) {
+    return {
+      buffer: aUint8(media.buffer),
+      extension: media.extension || 'png',
+    };
+  }
+  return null;
+}
+
+/**
+ * Al igualar C–F el logo de plantilla (anclado D:F) se estira y se ve pixelado.
+ * Se quita y se reinserta como imagen flotante con tamaño fijo (tl+ext).
+ */
+async function reponerLogoAnalisisGeneral(workbook, sheet) {
+  if (!sheet) return;
+  quitarImagenesHastaFila(sheet, 6);
+  const logo = await resolverLogoAlfaBuffer(workbook);
+  if (!logo?.buffer) return;
+
+  const dims = await dimensionesBufferImagen(logo.buffer, logo.extension);
+  const sized = containPx(dims.width, dims.height, 260, 82);
+  const pxCol = COL_ANEXOS_W * PX_POR_COL_W;
+  const totalPx = pxCol * 4; // C–F
+  const pad = Math.max(0, (totalPx - sized.width) / 2);
+  const id = workbook.addImage({
+    buffer: aUint8(logo.buffer),
+    extension: logo.extension || 'png',
+  });
+  sheet.addImage(id, {
+    tl: { col: 2 + pad / pxCol, row: 0.18 },
+    ext: { width: sized.width, height: sized.height },
+    editAs: 'oneCell',
+  });
+}
+
+/**
+ * Anexos: fotos DENTRO del bloque ANEXOS (fila 30+), de a dos, sin título "Anexos fotográficos (N)".
+ * Imágenes flotantes (tl+ext / oneCell) centradas en C:D y E:F — movibles en Excel.
+ * @returns {number} última fila usada
  */
 async function insertarFotosAnexos(workbook, sheet, fotos = [], rowOffset = 0) {
-  if (!sheet) return;
+  if (!sheet) return 30 + rowOffset;
 
-  const filaTitulo = 30 + rowOffset;
-  const startRow = filaTitulo + 1;
+  const baseRow = 30 + rowOffset; // primera fila del hueco ANEXOS
   const lista = Array.isArray(fotos) ? fotos.filter(Boolean) : [];
 
+  const safeUnmerge = (r1, c1, r2, c2) => {
+    try {
+      sheet.unMergeCells(r1, c1, r2, c2);
+    } catch {
+      try {
+        sheet.unMergeCells(r1, c1, r1, c2);
+      } catch {
+        /* ok */
+      }
+    }
+  };
+
+  // Limpiar celda ANEXOS (sin texto “Anexos fotográficos (7)”)
+  safeUnmerge(baseRow, 3, baseRow, 6);
+  for (let col = 3; col <= 6; col += 1) {
+    sheet.getCell(baseRow, col).value = null;
+  }
+
   if (!lista.length) {
-    setVal(sheet, filaTitulo, 3, 'Sin anexos fotográficos');
-    remergeValorAnalisis(sheet, filaTitulo);
-    sheet.getRow(filaTitulo).height = 28;
-    return;
+    setVal(sheet, baseRow, 3, 'Sin anexos fotográficos');
+    try {
+      sheet.mergeCells(baseRow, 3, baseRow, 6);
+    } catch {
+      /* ok */
+    }
+    sheet.getCell(baseRow, 3).alignment = {
+      horizontal: 'center',
+      vertical: 'middle',
+      wrapText: true,
+    };
+    sheet.getRow(baseRow).height = 36;
+    return baseRow;
   }
 
   const resueltas = [];
   for (let i = 0; i < lista.length; i += 1) {
-    const img = await resolverBufferFoto(lista[i]);
+    const foto = lista[i];
+    const img = await resolverBufferFoto(foto);
     if (!img?.buffer) continue;
-    resueltas.push({
-      img,
-      descripcion: txt(lista[i]?.descripcion) || `Foto ${i + 1}`,
-    });
+    const dims = await dimensionesBufferImagen(img.buffer, img.extension);
+    const desc =
+      txt(foto?.descripcion) ||
+      txt(foto?.caption) ||
+      txt(foto?.leyenda) ||
+      txt(foto?.nombreOriginal) ||
+      txt(foto?.nombre) ||
+      `Foto ${resueltas.length + 1}`;
+    resueltas.push({ img, descripcion: desc, dims });
   }
 
-  setVal(
-    sheet,
-    filaTitulo,
-    3,
-    resueltas.length
-      ? `Anexos fotográficos (${resueltas.length})`
-      : `Anexos: ${lista.length} foto(s) no se pudieron embeber`
-  );
-  remergeValorAnalisis(sheet, filaTitulo);
-  sheet.getRow(filaTitulo).height = 24;
-
-  if (!resueltas.length) return;
+  if (!resueltas.length) {
+    setVal(sheet, baseRow, 3, 'No se pudieron embeber las fotos');
+    try {
+      sheet.mergeCells(baseRow, 3, baseRow, 6);
+    } catch {
+      /* ok */
+    }
+    sheet.getRow(baseRow).height = 28;
+    return baseRow;
+  }
 
   for (let col = 3; col <= 6; col += 1) {
-    sheet.getColumn(col).width = Math.max(sheet.getColumn(col).width || 0, 22);
+    sheet.getColumn(col).width = COL_ANEXOS_W;
   }
 
-  const FOTO_W = 300;
-  const FOTO_H = 200;
+  const PX_COL = COL_ANEXOS_W * PX_POR_COL_W;
+  const SLOT_W = PX_COL * 2 - 16;
+  const MAX_FOTO_W = Math.min(250, Math.max(150, SLOT_W));
+  const MAX_FOTO_H = 148;
+  const ROW_IMG_H = 122;
+  const ROW_DESC_H = 32;
+  const ROWS_PER_PAIR = 2;
+  const borderThin = {
+    top: { style: 'thin', color: { argb: 'FF94A3B8' } },
+    left: { style: 'thin', color: { argb: 'FF94A3B8' } },
+    bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
+    right: { style: 'thin', color: { argb: 'FF94A3B8' } },
+  };
+
   const pares = Math.ceil(resueltas.length / 2);
+  let lastRow = baseRow;
 
   for (let p = 0; p < pares; p += 1) {
-    const rowImg = startRow + p * 2;
+    const rowImg = baseRow + p * ROWS_PER_PAIR;
     const rowDesc = rowImg + 1;
-    sheet.getRow(rowImg).height = 160;
-    sheet.getRow(rowDesc).height = 42;
+    lastRow = rowDesc;
 
     const izq = resueltas[p * 2];
     const der = resueltas[p * 2 + 1];
 
+    sheet.getRow(rowImg).height = ROW_IMG_H;
+    sheet.getRow(rowDesc).height = ROW_DESC_H;
+
+    unmergeRangoSeguro(sheet, rowImg, 3, rowDesc, 6);
     for (let col = 3; col <= 6; col += 1) {
-      sheet.getCell(rowImg, col).value = null;
-      sheet.getCell(rowDesc, col).value = null;
+      const cImg = sheet.getCell(rowImg, col);
+      const cDesc = sheet.getCell(rowDesc, col);
+      cImg.value = null;
+      cDesc.value = null;
+      cImg.border = borderThin;
+      cDesc.border = borderThin;
+      cImg.alignment = { horizontal: 'center', vertical: 'middle' };
+      cDesc.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
     }
+
+    if (p === 0) {
+      setVal(sheet, rowImg, 2, 'ANEXOS');
+      sheet.getCell(rowImg, 2).alignment = {
+        ...(sheet.getCell(rowImg, 2).alignment || {}),
+        vertical: 'top',
+        wrapText: true,
+      };
+    }
+
+    const pintarDesc = (colStart, colEnd, texto) => {
+      try {
+        sheet.mergeCells(rowDesc, colStart, rowDesc, colEnd);
+      } catch {
+        /* ok */
+      }
+      const cell = sheet.getCell(rowDesc, colStart);
+      cell.value = texto;
+      cell.font = { name: 'Calibri', size: 9, bold: true, color: { argb: 'FF111827' } };
+      cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' };
+      cell.border = borderThin;
+    };
+
+    // Flotante tl+ext: se puede mover a gusto en Excel; centrada en el slot de 2 columnas
+    const colocarFoto = (side, col0) => {
+      if (!side) return;
+      const sized = containPx(side.dims.width, side.dims.height, MAX_FOTO_W, MAX_FOTO_H);
+      const padX = Math.max(4, (PX_COL * 2 - sized.width) / 2);
+      const cellHpx = ROW_IMG_H * (96 / 72);
+      const padY = Math.max(4, (cellHpx - sized.height) / 2);
+      const id = workbook.addImage({
+        buffer: aUint8(side.img.buffer),
+        extension: side.img.extension || 'jpeg',
+      });
+      sheet.addImage(id, {
+        tl: {
+          col: col0 + padX / PX_COL,
+          row: rowImg - 1 + padY / cellHpx,
+        },
+        ext: { width: sized.width, height: sized.height },
+        editAs: 'oneCell',
+      });
+    };
 
     if (izq) {
-      try {
-        sheet.mergeCells(rowDesc, 3, rowDesc, 4);
-      } catch {
-        /* ok */
-      }
-      setVal(sheet, rowDesc, 3, izq.descripcion);
-      sheet.getCell(rowDesc, 4).value = null;
-      sheet.getCell(rowDesc, 3).alignment = {
-        wrapText: true,
-        vertical: 'top',
-        horizontal: 'center',
-      };
-
-      const id = workbook.addImage({
-        buffer: aUint8(izq.img.buffer),
-        extension: izq.img.extension || 'jpeg',
-      });
-      sheet.addImage(id, {
-        tl: { col: 2.15, row: rowImg - 1 + 0.05 },
-        ext: { width: FOTO_W, height: FOTO_H },
-        editAs: 'oneCell',
-      });
+      pintarDesc(3, 4, izq.descripcion);
+      colocarFoto(izq, 2);
     }
-
     if (der) {
-      try {
-        sheet.mergeCells(rowDesc, 5, rowDesc, 6);
-      } catch {
-        /* ok */
+      pintarDesc(5, 6, der.descripcion);
+      colocarFoto(der, 4);
+    }
+  }
+
+  return lastRow;
+}
+
+/** Quita todos los merges que toquen las filas indicadas (más agresivo que unMerge puntual). */
+function romperMergesEnFilas(sheet, rowStart, rowEnd) {
+  const merges = sheet?._merges || {};
+  const keys = Object.keys(merges);
+  for (const key of keys) {
+    try {
+      const m = merges[key];
+      const top = Number(m?.top ?? m?.model?.top);
+      const bottom = Number(m?.bottom ?? m?.model?.bottom ?? top);
+      if (!Number.isFinite(top)) continue;
+      if (bottom < rowStart || top > rowEnd) continue;
+      sheet.unMergeCells(key);
+    } catch {
+      /* ok */
+    }
+  }
+  for (let r = rowStart; r <= rowEnd; r += 1) {
+    unmergeRangoSeguro(sheet, r, 1, r, 10);
+  }
+}
+
+/** Ancho de columna Excel → px (fórmula estándar). */
+function excelColToPx(width) {
+  const w = Number(width) || COL_ANEXOS_W;
+  return Math.max(8, Math.floor(((256 * w + Math.floor(128 / 7)) / 256) * 7));
+}
+
+/**
+ * Recorta márgenes transparentes y centra la tinta en un PNG del ancho del bloque C:F.
+ * Así la firma queda visualmente centrada aunque el dataURL original tenga padding raro
+ * o ExcelJS desfase el ancla.
+ */
+async function componerFirmaCentradaEnBloque(firmaBuf, slotW, slotH) {
+  if (!firmaBuf?.buffer || typeof document === 'undefined') return null;
+  try {
+    const blob = new Blob([aUint8(firmaBuf.buffer)], {
+      type: firmaBuf.extension === 'jpeg' ? 'image/jpeg' : 'image/png',
+    });
+    const url = URL.createObjectURL(blob);
+    let img;
+    try {
+      img = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+        el.src = url;
+      });
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+
+    const iw = img.naturalWidth || img.width || 1;
+    const ih = img.naturalHeight || img.height || 1;
+
+    // Detectar bounding box de píxeles no transparentes (la tinta real)
+    const probe = document.createElement('canvas');
+    probe.width = iw;
+    probe.height = ih;
+    const pctx = probe.getContext('2d', { willReadFrequently: true });
+    if (!pctx) return null;
+    pctx.drawImage(img, 0, 0);
+    const { data } = pctx.getImageData(0, 0, iw, ih);
+    let minX = iw;
+    let minY = ih;
+    let maxX = 0;
+    let maxY = 0;
+    for (let y = 0; y < ih; y += 1) {
+      for (let x = 0; x < iw; x += 1) {
+        const a = data[(y * iw + x) * 4 + 3];
+        if (a > 20) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
       }
-      setVal(sheet, rowDesc, 5, der.descripcion);
-      sheet.getCell(rowDesc, 6).value = null;
-      sheet.getCell(rowDesc, 5).alignment = {
-        wrapText: true,
-        vertical: 'top',
-        horizontal: 'center',
-      };
+    }
+    if (maxX < minX || maxY < minY) {
+      minX = 0;
+      minY = 0;
+      maxX = iw - 1;
+      maxY = ih - 1;
+    }
+    // Margen mínimo alrededor de la tinta
+    const pad = 4;
+    minX = Math.max(0, minX - pad);
+    minY = Math.max(0, minY - pad);
+    maxX = Math.min(iw - 1, maxX + pad);
+    maxY = Math.min(ih - 1, maxY + pad);
+    const cropW = Math.max(1, maxX - minX + 1);
+    const cropH = Math.max(1, maxY - minY + 1);
+
+    const outW = Math.max(120, Math.round(slotW));
+    const outH = Math.max(40, Math.round(slotH));
+    const out = document.createElement('canvas');
+    out.width = outW;
+    out.height = outH;
+    const ctx = out.getContext('2d');
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, outW, outH);
+
+    const fitted = containPx(cropW, cropH, outW * 0.72, outH * 0.92);
+    const dx = Math.round((outW - fitted.width) / 2);
+    const dy = Math.round((outH - fitted.height) / 2);
+    ctx.drawImage(
+      img,
+      minX,
+      minY,
+      cropW,
+      cropH,
+      dx,
+      dy,
+      fitted.width,
+      fitted.height
+    );
+
+    const pngBlob = await new Promise((resolve) => out.toBlob(resolve, 'image/png'));
+    if (!pngBlob) return null;
+    return {
+      buffer: aUint8(await pngBlob.arrayBuffer()),
+      extension: 'png',
+      width: outW,
+      height: outH,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Firma del ajustador: título → imagen → nombre, centrados como en la captura de referencia.
+ * La imagen se compone ya centrada en un PNG ancho C:F y se ancla en columna C (sin offsets raros).
+ */
+async function insertarFirmaAjustadorAnalisis(workbook, sheet, informe = {}, rowAfterFotos) {
+  if (!sheet) return;
+
+  const start = Math.max(Number(rowAfterFotos) || 30, 30) + 2;
+  const firmaUrl = informe.firmaAjustador || informe.actaAjustadorFirmaImagen || '';
+  const nombre =
+    txt(informe.actaAjustadorNombre) ||
+    txt(informe.ajustadorNombre) ||
+    '________________________';
+  const cargo =
+    txt(informe.actaAjustadorCargo) || txt(informe.cargoAjustador) || 'Ajustador';
+  const email = txt(informe.actaAjustadorEmail);
+
+  const rowTitulo = start;
+  const rowImg = start + 1;
+  const rowNom = start + 2;
+  const rowCargo = start + 3;
+  const rowEmail = email ? start + 4 : start + 3;
+
+  for (let col = 3; col <= 6; col += 1) {
+    sheet.getColumn(col).width = COL_ANEXOS_W;
+  }
+
+  romperMergesEnFilas(sheet, rowTitulo, rowEmail);
+
+  for (let r = rowTitulo; r <= rowEmail; r += 1) {
+    for (let c = 3; c <= 6; c += 1) {
+      const cell = sheet.getCell(r, c);
+      cell.value = null;
+      cell.border = {};
+    }
+  }
+
+  const mergeCF = (r) => {
+    try {
+      sheet.unMergeCells(r, 3, r, 6);
+    } catch {
+      /* ok */
+    }
+    try {
+      sheet.mergeCells(r, 3, r, 6);
+    } catch {
+      /* ok */
+    }
+  };
+
+  const estiloCentro = {
+    horizontal: 'center',
+    vertical: 'middle',
+    wrapText: true,
+  };
+
+  mergeCF(rowTitulo);
+  setVal(sheet, rowTitulo, 3, 'FIRMA DEL AJUSTADOR');
+  sheet.getCell(rowTitulo, 3).font = { name: 'Calibri', size: 11, bold: true };
+  sheet.getCell(rowTitulo, 3).alignment = estiloCentro;
+  sheet.getRow(rowTitulo).height = 22;
+
+  const ROW_IMG_H = 82;
+  sheet.getRow(rowImg).height = ROW_IMG_H;
+  mergeCF(rowImg);
+
+  const firmaBuf = dataUrlABuffer(firmaUrl);
+  if (firmaBuf?.buffer) {
+    try {
+      const pxCol = excelColToPx(COL_ANEXOS_W);
+      const slotW = pxCol * 4; // ancho visual C–F
+      const slotH = Math.round(ROW_IMG_H * (96 / 72));
+      const compuesta =
+        (await componerFirmaCentradaEnBloque(firmaBuf, slotW, slotH)) || {
+          buffer: aUint8(firmaBuf.buffer),
+          extension: firmaBuf.extension || 'png',
+          width: Math.min(220, slotW),
+          height: 56,
+        };
 
       const id = workbook.addImage({
-        buffer: aUint8(der.img.buffer),
-        extension: der.img.extension || 'jpeg',
+        buffer: aUint8(compuesta.buffer),
+        extension: compuesta.extension || 'png',
       });
+      // Ancla simple en C: la tinta ya va centrada dentro del PNG
       sheet.addImage(id, {
-        tl: { col: 4.15, row: rowImg - 1 + 0.05 },
-        ext: { width: FOTO_W, height: FOTO_H },
+        tl: { col: 2, row: rowImg - 1 },
+        ext: {
+          width: compuesta.width || slotW,
+          height: compuesta.height || slotH,
+        },
         editAs: 'oneCell',
       });
+    } catch {
+      /* ok */
     }
+  } else {
+    setVal(sheet, rowImg, 3, '(Sin firma — cárguela en Informe único)');
+    sheet.getCell(rowImg, 3).font = {
+      name: 'Calibri',
+      size: 8,
+      italic: true,
+      color: { argb: 'FFB45309' },
+    };
+    sheet.getCell(rowImg, 3).alignment = estiloCentro;
+  }
+
+  mergeCF(rowNom);
+  setVal(sheet, rowNom, 3, nombre);
+  sheet.getCell(rowNom, 3).font = { name: 'Calibri', size: 10, bold: true };
+  sheet.getCell(rowNom, 3).alignment = estiloCentro;
+  sheet.getRow(rowNom).height = 18;
+
+  mergeCF(rowCargo);
+  if (email) {
+    setVal(sheet, rowCargo, 3, cargo);
+    sheet.getCell(rowCargo, 3).font = { name: 'Calibri', size: 9 };
+    sheet.getCell(rowCargo, 3).alignment = estiloCentro;
+    sheet.getRow(rowCargo).height = 16;
+
+    mergeCF(rowEmail);
+    setVal(sheet, rowEmail, 3, email);
+    sheet.getCell(rowEmail, 3).font = { name: 'Calibri', size: 9 };
+    sheet.getCell(rowEmail, 3).alignment = estiloCentro;
+    sheet.getRow(rowEmail).height = 16;
+  } else {
+    setVal(sheet, rowCargo, 3, cargo);
+    sheet.getCell(rowCargo, 3).font = { name: 'Calibri', size: 9 };
+    sheet.getCell(rowCargo, 3).alignment = estiloCentro;
+    sheet.getRow(rowCargo).height = 18;
   }
 }
 
@@ -1060,6 +1739,9 @@ export async function generarInformeCatAlfaExcelBlob({
       informe.coordenadasRiesgo = `${lat}, ${lng}`;
     }
   }
+  // Descripciones de fotos: fusionar informe + archivos del caso (no perder texto)
+  informe.fotosInspeccion = fotosInformeDesdeCaso(caso, informe);
+
   const totales = totalesIn || calcularLiquidacionAlfa(liquidador);
 
   const workbook = await cargarPlantilla();
@@ -1074,7 +1756,20 @@ export async function generarInformeCatAlfaExcelBlob({
 
   const mapaBuffer = await resolverBufferMapaUbicacion(informe);
   const filasMapa = await insertarFotoMapaUbicacion(workbook, hojaAg, informe, mapaBuffer);
-  await insertarFotosAnexos(workbook, hojaAg, informe.fotosInspeccion || [], filasMapa || 0);
+  // Reafirmar anchos C–F tras el mapa (para grilla 2×2 limpia)
+  for (let col = 3; col <= 6; col += 1) {
+    hojaAg.getColumn(col).width = COL_ANEXOS_W;
+  }
+  // Logo: al cambiar anchos se estira; reponer flotante con tamaño nítido
+  await reponerLogoAnalisisGeneral(workbook, hojaAg);
+
+  const lastFotoRow = await insertarFotosAnexos(
+    workbook,
+    hojaAg,
+    informe.fotosInspeccion || [],
+    filasMapa || 0
+  );
+  await insertarFirmaAjustadorAnalisis(workbook, hojaAg, informe, lastFotoRow);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const safe = String(caso.siniestro || caso.consecutivo || encSafe(liquidador) || 'caso')

@@ -1,11 +1,13 @@
 ﻿import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import {
+  aplicarRecargosPresupuestoNsr10,
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
   OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
   ocultarHojasEvaluacionYDictamenExcel,
   parseMontoNsr10,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { prefillNsrDesdecasoPrevisora } from './liquidadorPrevisoraHelpers.js';
 
@@ -82,7 +84,11 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
     fechaSiniestro: enc.fechaSiniestro,
   });
   const items = normalizarItemsRespuesta(evalData.items);
-  const presupuesto = evalData.presupuesto || {};
+  const presupuestoRaw = evalData.presupuesto || {};
+  const presupuesto = aplicarRecargosPresupuestoNsr10(
+    presupuestoRaw,
+    RECARGOS_PRESUPUESTO_NSR10_CAT
+  );
   const filasPres = Array.isArray(presupuesto.items) ? presupuesto.items : [];
 
   const hojaEval = workbook.getWorksheet('Evaluación');
@@ -173,11 +179,11 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
   }
 
   // Porcentajes editables (plantilla: G41 AIU, G42 imprevistos, G43 impuestos)
-  const aiu = Number(presupuesto.aiuPorcentaje ?? 0.05);
-  const impr = Number(presupuesto.imprevistosPorcentaje ?? 0.1);
+  const aiu = Number(presupuesto.aiuPorcentaje ?? 0.25);
+  const impr = Number(presupuesto.imprevistosPorcentaje ?? 0);
   const imp = Number(presupuesto.impuestosPorcentaje ?? 0);
   setVal(hojaPres, 41, 6, 'AIU');
-  setVal(hojaPres, 41, 7, Number.isFinite(aiu) ? aiu : 0.05);
+  setVal(hojaPres, 41, 7, Number.isFinite(aiu) ? aiu : 0.25);
   setVal(hojaPres, 42, 6, 'Imprevistos');
   setVal(hojaPres, 42, 7, Number.isFinite(impr) ? impr : 0.1);
   setVal(hojaPres, 43, 6, 'Impuestos');

@@ -29,6 +29,7 @@ import {
 } from './liquidadorAlfaHelpers.js';
 import { urlDescargaArchivoAlfa } from '../../services/segurosAlfaService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -442,7 +443,7 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
     }),
   ];
 
-  lista.slice(0, 10).forEach((it, idx) => {
+  lista.forEach((it, idx) => {
     const monto = parsearNumero(it.valor);
     const has = String(it.item || '').trim() || monto > 0;
     rows.push(
@@ -963,45 +964,24 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
       /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(nombre)
     );
   });
-  const fotosInforme = Array.isArray(info?.fotosInspeccion)
-    ? info.fotosInspeccion
-    : Array.isArray(informe?.fotosInspeccion)
-      ? informe.fotosInspeccion
-      : [];
-  const archivosById = new Map(
-    fotosArchivos.filter((a) => a?._id).map((a) => [String(a._id), a])
-  );
-
-  const fotosParaWord = (
-    fotosInforme.length
-      ? fotosInforme.map((f) => {
-          const arch = f._id ? archivosById.get(String(f._id)) : null;
-          return {
-            ...f,
-            nombreOriginal: f.nombre || f.nombreOriginal || arch?.nombreOriginal,
-            descripcion: f.descripcion || arch?.descripcion || '',
-            ruta: f.ruta || arch?.ruta || '',
-            preview: f.preview || f.base64 || '',
-            file: f.file || null,
-            tipoMime: f.tipoMime || arch?.tipoMime || '',
-          };
-        })
-      : fotosArchivos
-  );
+  const fotosParaWord = fotosInformeDesdeCaso(caso, info || informe);
 
   // Embebidas y layout de dos en dos (mismo patrón que Informe de Ajuste)
   const fotosEmbebidas = [];
-  for (const archivo of fotosParaWord.slice(0, 12)) {
+  for (const archivo of fotosParaWord.slice(0, 40)) {
     const img = await resolverBytesFoto(archivo, fotosArchivos);
     if (!img?.bytes?.length) {
       console.warn('Foto no embebida en Word Alfa:', archivo?.nombreOriginal || archivo?.nombre);
       continue;
     }
+    const leyenda =
+      String(archivo.descripcion || '').trim() ||
+      String(archivo.nombreOriginal || archivo.nombre || '').trim() ||
+      `Foto ${fotosEmbebidas.length + 1}`;
     fotosEmbebidas.push({
       bytes: img.bytes,
       type: img.type === 'png' ? 'png' : 'jpg',
-      leyenda:
-        String(archivo.descripcion || '').trim() || `Foto ${fotosEmbebidas.length + 1}`,
+      leyenda,
     });
   }
   const fotosIncluidas = fotosEmbebidas.length;

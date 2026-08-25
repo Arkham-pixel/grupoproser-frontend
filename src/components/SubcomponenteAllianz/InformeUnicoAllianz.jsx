@@ -28,6 +28,7 @@ import { allianzArchivosApi } from './allianzArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
+import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 
@@ -408,6 +409,7 @@ export default function InformeUnicoAllianz({
           formData={formDataNsr}
           onInputChange={handleNsrChange}
           modoLiquidador
+          recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
         />
       </section>
 

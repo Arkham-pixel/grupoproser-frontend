@@ -185,8 +185,8 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           : Array.isArray(dataIns)
             ? dataIns
             : [];
-        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj));
-        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns));
+        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj, 'alfa'));
+        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns, 'alfa'));
         const lideresOpts = mapResponsablesAOpciones(listaResp);
         if (!esEdicion) {
           const liderDefault = resolverLiderPorModulo(lideresOpts, 'alfa');

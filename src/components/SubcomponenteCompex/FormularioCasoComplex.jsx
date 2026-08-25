@@ -2626,8 +2626,8 @@ setFormData(prev => ({
           : Array.isArray(dataIns)
             ? dataIns
             : [];
-        setAjustadoresCatastrofico(mapCatalogoCatastroficoAOpciones(listaAj));
-        setInspectoresCatastrofico(mapCatalogoCatastroficoAOpciones(listaIns));
+        setAjustadoresCatastrofico(mapCatalogoCatastroficoAOpciones(listaAj, 'sura'));
+        setInspectoresCatastrofico(mapCatalogoCatastroficoAOpciones(listaIns, 'sura'));
       } catch (err) {
         if (!cancelado) {
           console.error('Error cargando catálogos catastróficos SURA:', err);

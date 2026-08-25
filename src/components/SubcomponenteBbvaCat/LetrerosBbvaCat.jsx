@@ -7,6 +7,7 @@ import {
   expressSectionTitle,
   expressTextarea,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+import PadFirmaCliente from '../liquidacion/PadFirmaCliente.jsx';
 import { textosLetrerosBbvaCat } from './deduciblesBbvaCat.js';
 
 const MESES = [
@@ -29,9 +30,13 @@ export default function LetrerosBbvaCat({
   aceptacionIndemnizacion = '',
   datosFiniquito = {},
   observacionesFiniquito = '',
+  firmaCliente = '',
+  nombreFirmante = '',
   onAceptacionChange,
   onDatosFiniquitoChange,
   onObservacionesChange,
+  onFirmaClienteChange,
+  onNombreFirmanteChange,
 }) {
   const { t } = useTranslation();
   const textos = textosLetrerosBbvaCat(tipoLiquidador);
@@ -142,6 +147,21 @@ export default function LetrerosBbvaCat({
             onChange={(e) => onDatosFiniquitoChange?.('anioFirma', e.target.value)}
           />
         </Campo>
+      </div>
+
+      <div className="mt-4 space-y-3 rounded-lg border border-orange-200/80 bg-white/70 p-3 dark:border-orange-900/40 dark:bg-gray-900/30">
+        <Campo label={t('bbvaCat.settlement.signerName')}>
+          <InputFenix
+            value={nombreFirmante || ''}
+            onChange={(e) => onNombreFirmanteChange?.(e.target.value)}
+            placeholder={t('bbvaCat.settlement.signerNamePlaceholder')}
+          />
+        </Campo>
+        <PadFirmaCliente
+          value={firmaCliente || ''}
+          onChange={onFirmaClienteChange}
+          label={t('bbvaCat.settlement.clientSignature')}
+        />
       </div>
 
       <p className="mt-4 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold uppercase leading-relaxed text-gray-800 dark:border-gray-700 dark:bg-gray-900/30 dark:text-gray-100">

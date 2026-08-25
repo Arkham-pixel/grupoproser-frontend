@@ -28,6 +28,8 @@ import {
 } from './liquidadorBbvaCatHelpers.js';
 import { urlDescargaArchivoBbvaCat } from '../../services/bbvaCatService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { calcularTotalesFormatoExcelBbvaCat, esValorGlobal } from './formatoLiquidacionBbvaCat.js';
+import { inferirTipoLiquidadorBbvaCat, textosLetrerosBbvaCat } from './deduciblesBbvaCat.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -339,6 +341,149 @@ const cell = (text, opts = {}) =>
       }),
     ],
   });
+
+function construirTablaFormatoExcelBbva({ liquidador = {}, totales = {} } = {}) {
+  const excel = totales.formatoExcel || calcularTotalesFormatoExcelBbvaCat(liquidador);
+  const detalle = Array.isArray(excel.detalle) ? excel.detalle : [];
+  const tipos = excel.tiposDeducible || {};
+  const labels = [
+    'Ítem',
+    'Descripción del bien',
+    'Valor asegurado',
+    '% Índice',
+    'V. aseg. fecha s/tro',
+    'Valor asegurable',
+    '% CIA',
+    'Valor pérdida',
+    'Demérito',
+    'Valor real',
+    'Pérdida base',
+    'Pérdida indemnizable',
+  ];
+  const widths = [700, 2600, 1300, 800, 1400, 1400, 800, 1300, 800, 1200, 1200, 1500];
+  const tableW = widths.reduce((a, b) => a + b, 0);
+  const cellX = (text, colIdx, opts = {}) =>
+    cell(text, {
+      width: widths[colIdx],
+      size: SIZE_NSR,
+      compact: true,
+      cuadro: true,
+      alignment: opts.alignment || AlignmentType.LEFT,
+      bold: !!opts.bold,
+    });
+  const moneyOrText = (v) => {
+    if (v == null || v === '') return '—';
+    if (esValorGlobal(v)) return 'Valor Global';
+    return money(v);
+  };
+  const rows = [
+    new TableRow({
+      children: labels.map((label, i) =>
+        cellX(label, i, { bold: true, alignment: AlignmentType.CENTER })
+      ),
+    }),
+  ];
+  const filas = detalle.filter((it) => String(it?.descripcion || '').trim());
+  if (!filas.length) {
+    rows.push(
+      new TableRow({
+        children: [
+          cell('Sin ítems en el detalle de liquidación', {
+            width: tableW,
+            columnSpan: 12,
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.CENTER,
+          }),
+        ],
+      })
+    );
+  } else {
+    filas.forEach((it, idx) => {
+      rows.push(
+        new TableRow({
+          children: [
+            cellX(String(idx + 1), 0, { alignment: AlignmentType.CENTER }),
+            cellX(it.descripcion || '—', 1),
+            cellX(moneyOrText(it.valorAsegurado), 2, { alignment: AlignmentType.RIGHT }),
+            cellX(String(it.indiceVariable ?? 0), 3, { alignment: AlignmentType.CENTER }),
+            cellX(moneyOrText(it.valorAseguradoFecha), 4, { alignment: AlignmentType.RIGHT }),
+            cellX(money(it.valorAsegurable), 5, { alignment: AlignmentType.RIGHT }),
+            cellX(`${Math.round((Number(it.pctResponsabilidad) || 0) * 100)} %`, 6, {
+              alignment: AlignmentType.CENTER,
+            }),
+            cellX(money(it.valorPerdida), 7, { alignment: AlignmentType.RIGHT }),
+            cellX(String(it.demerito ?? 0), 8, { alignment: AlignmentType.CENTER }),
+            cellX(money(it.valorReal), 9, { alignment: AlignmentType.RIGHT }),
+            cellX(money(it.perdidaBase), 10, { alignment: AlignmentType.RIGHT }),
+            cellX(money(it.perdidaIndemnizable), 11, { alignment: AlignmentType.RIGHT }),
+          ],
+        })
+      );
+    });
+  }
+  const totRows = [
+    ['Sub total', money(excel.subTotal)],
+    [
+      `Deducible aplicable (${tipos.tipoAplicadoLabel || 'MAX'})`,
+      money(excel.deducibleAplicable),
+    ],
+    ['Valor a indemnizar', money(excel.valorAIndemnizar)],
+  ];
+  totRows.forEach(([lab, val]) => {
+    rows.push(
+      new TableRow({
+        children: [
+          cell(lab, {
+            width: widths.slice(0, 11).reduce((a, b) => a + b, 0),
+            columnSpan: 11,
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            bold: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+          cell(val, {
+            width: widths[11],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            bold: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+        ],
+      })
+    );
+  });
+  return new Table({
+    width: { size: tableW, type: WidthType.DXA },
+    columnWidths: widths,
+    rows,
+  });
+}
+
+function parrafosLetrerosBbvaWord(liquidador = {}) {
+  const tipo = inferirTipoLiquidadorBbvaCat({
+    tipoLiquidador: liquidador.tipoLiquidador,
+    encabezado: liquidador.encabezado,
+  });
+  const textos = textosLetrerosBbvaCat(tipo);
+  const obs = String(liquidador.observacionesFiniquito || '').trim();
+  return [
+    p(textos.avisoDeducible, { after: 80, size: SIZE_META }),
+    p(textos.objetoPoliza, { after: 80, size: SIZE_META }),
+    p(textos.pazYSalvo, { after: 80, size: SIZE_META }),
+    p(
+      liquidador.aceptacionIndemnizacion
+        ? `Decisión: ${liquidador.aceptacionIndemnizacion}`
+        : 'ACEPTO INDEMNIZACIÓN          RECHAZO INDEMNIZACIÓN',
+      { after: 80, bold: true }
+    ),
+    p(textos.autorizacionPago, { after: 80, size: SIZE_META }),
+    ...(obs ? [p(`OBSERVACIONES: ${obs}`, { after: 80, size: SIZE_META })] : []),
+  ];
+}
 
 /** Fila etiqueta | valor — cuadro formal negro (sin relleno de color) */
 const campoFila = (label, value, opts = {}) =>
@@ -1033,6 +1178,8 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
     campoFila('Fecha inspección', fmtFecha(caso.fechaInspeccion)),
   ];
 
+  const excelTot = totales.formatoExcel || {};
+  const tiposDed = excelTot.tiposDeducible || {};
   const liquidacionResumen = [
     ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
       ? []
@@ -1044,56 +1191,28 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
             { labelW: 5000, valueW: 5000 }
           ),
         ]),
-    campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Gastos de hospedaje', money(totales.diagrama?.gastosHospedaje), {
+    campoFila('Sub total (pérdida indemnizable)', money(excelTot.subTotal ?? totales.subtotal), {
       labelW: 5000,
       valueW: 5000,
     }),
     campoFila(
-      totales.deducibleAplicado > 0
-        ? `Deducible (${txt(totales.deducibleTexto || 'aplicado')})`
-        : 'Deducible',
-      totales.deducibleAplicado > 0
-        ? money(totales.deducibleAplicado)
-        : txt(totales.deducibleTexto || 'No aplica'),
-      {
-        labelW: 5000,
-        valueW: 5000,
-      }
+      `Deducible aplicable (${txt(tiposDed.tipoAplicadoLabel || totales.deducibleTexto || 'MAX')})`,
+      money(excelTot.deducibleAplicable ?? totales.deducibleAplicado),
+      { labelW: 5000, valueW: 5000 }
     ),
+    campoFila('  · SMMLV', money(tiposDed.montoSmmlv), { labelW: 5000, valueW: 5000 }),
+    campoFila('  · Porcentaje', money(tiposDed.montoPct), { labelW: 5000, valueW: 5000 }),
+    campoFila('  · Dólares', money(tiposDed.montoUsd), { labelW: 5000, valueW: 5000 }),
+    campoFila('  · Pesos / otro', money(tiposDed.montoPesos), { labelW: 5000, valueW: 5000 }),
     ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
       ? [
           campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
             labelW: 5000,
             valueW: 5000,
           }),
-          ...totales.otrosAmparos.map((it) =>
-            campoFila(
-              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
-              money(it.valor),
-              { labelW: 5000, valueW: 5000 }
-            )
-          ),
         ]
       : []),
-    campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
+    campoFila('VALOR A INDEMNIZAR', money(excelTot.valorAIndemnizar ?? totales.totalIndemnizar), {
       boldValue: true,
       labelW: 5000,
       valueW: 5000,
@@ -1288,11 +1407,19 @@ export async function descargarWordInformeBbvaCat({ caso = {}, informe = null, l
         properties: { page: pageLandscape },
         headers: { default: header },
         children: [
-          heading('4. Liquidación de pérdidas (liquidador)'),
+          heading('4. Liquidación de indemnización (formato BBVA)'),
           p(
-            'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (sin imprevistos ni impuestos).',
+            'Formato oficial LIQUIDACIÓN DE INDEMNIZACION (deudores / leasing): ramos, cuatro tipos de deducible (SMMLV, porcentaje, dólares y pesos; se aplica el mayor) y detalle de bienes.',
             { after: 120 }
           ),
+          construirTablaFormatoExcelBbva({ liquidador: liq, totales }),
+          ...parrafosLetrerosBbvaWord(liq),
+          p('Presupuesto NSR-10 (apoyo técnico)', {
+            bold: true,
+            before: 180,
+            after: 80,
+            size: SIZE_12,
+          }),
           tablaLiquidadorCompleto,
           p('Contenidos del inmueble (bienes muebles)', {
             bold: true,

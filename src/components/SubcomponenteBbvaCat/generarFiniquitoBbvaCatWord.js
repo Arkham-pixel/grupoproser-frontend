@@ -24,6 +24,7 @@ import {
   inferirTipoLiquidadorBbvaCat,
   textosLetrerosBbvaCat,
 } from './deduciblesBbvaCat.js';
+import { parrafosFirmaClienteAlfa } from '../SubcomponenteSegurosAlfa/firmaClienteAlfaWord.js';
 
 const thin = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
 const borders = { top: thin, bottom: thin, left: thin, right: thin };
@@ -138,15 +139,6 @@ const p = (text, opts = {}) =>
     children: [run(text, opts)],
   });
 
-const pMixed = (parts, opts = {}) =>
-  new Paragraph({
-    alignment: opts.alignment || AlignmentType.JUSTIFIED,
-    spacing: { after: opts.after ?? 120, before: opts.before ?? 0 },
-    children: parts.map((part) =>
-      typeof part === 'string' ? run(part, opts) : run(part.text, { ...opts, ...part })
-    ),
-  });
-
 /** Fila etiqueta | valor — estilo constancia FDM, sin colores */
 const filaDato = (label, value) =>
   new TableRow({
@@ -258,6 +250,12 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
   const hospedaje = formatearMontoConstancia(totales.diagrama?.gastosHospedaje || 0);
 
   const logosTable = await buildLogosHeader();
+  const parrafosFirma = await parrafosFirmaClienteAlfa({
+    liquidador,
+    cedula,
+    nombre: liquidador.nombreFirmante || asegurado,
+    etiquetaFirma: 'FIRMA DEL CLIENTE',
+  });
 
   const doc = new Document({
     sections: [
@@ -332,25 +330,7 @@ export async function descargarFiniquitoBbvaCatWord(liquidador = {}, totalesInpu
             ? p(`OBSERVACIONES: ${observaciones}`, { after: 180 })
             : p('OBSERVACIONES:', { after: 180 }),
 
-          p('Firma:', { alignment: AlignmentType.LEFT, after: 280 }),
-          p('_________________________________', {
-            alignment: AlignmentType.LEFT,
-            after: 60,
-          }),
-          pMixed(
-            [
-              { text: 'Asegurado (a): ', bold: true },
-              { text: asegurado },
-            ],
-            { alignment: AlignmentType.LEFT, after: 40 }
-          ),
-          pMixed(
-            [
-              { text: 'Cédula de Ciudadanía No: ', bold: true },
-              { text: cedula },
-            ],
-            { alignment: AlignmentType.LEFT, after: 200 }
-          ),
+          ...parrafosFirma,
         ],
       },
     ],

@@ -1,29 +1,22 @@
 ﻿import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { inferirTipoLiquidadorBbvaCat, TIPO_LIQUIDADOR_LEASING } from './deduciblesBbvaCat.js';
 import {
-  fusionarPortadaConFormData,
-  normalizarItemsRespuesta,
-  OCULTAR_EVALUACION_Y_DICTAMEN_NSR10,
-  ocultarHojasEvaluacionYDictamenExcel,
-  parseMontoNsr10,
-} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import { prefillNsrDesdecasoBbvaCat, normalizarPresupuestoAiuBbvaCat } from './liquidadorBbvaCatHelpers.js';
+  PLANTILLA_LIQUIDADOR_BBVA_URL,
+  calcularFilaDetalleBbvaCat,
+  calcularTotalesFormatoExcelBbvaCat,
+  esValorGlobal,
+} from './formatoLiquidacionBbvaCat.js';
+import { parsearNumero } from './liquidadorBbvaCatHelpers.js';
 
-const PLANTILLA_URL = `${import.meta.env.BASE_URL || '/'}templates/Plantilla_Evaluacion_Sismica_NSR10.xlsx`;
+const ITEM_FIRST = 15;
+const ITEM_LAST = 24;
 
-/** Filas de ítems del checklist en la hoja Evaluación (plantilla). */
-const EVAL_FIRST_ROW = 8;
-const EVAL_LAST_ROW = 26;
-
-/** Filas de presupuesto editables (plantilla: H4:H38 → Subtotal en H40). */
-const PRES_FIRST_ROW = 4;
-const PRES_LAST_ROW = 38;
-
-async function cargarPlantillaNsr10() {
-  const response = await fetch(PLANTILLA_URL);
+async function cargarPlantillaBbva() {
+  const response = await fetch(PLANTILLA_LIQUIDADOR_BBVA_URL);
   if (!response.ok) {
     throw new Error(
-      `No se pudo cargar Plantilla_Evaluacion_Sismica_NSR10.xlsx (${response.status}).`
+      `No se pudo cargar Liquidador_BBVA_CAT.xlsx (${response.status}).`
     );
   }
   const buffer = await response.arrayBuffer();
@@ -51,157 +44,157 @@ function fechaCelda(value) {
   return Number.isNaN(d.getTime()) ? raw : d;
 }
 
-function numeroONull(v) {
-  return parseMontoNsr10(v);
-}
-
 function setVal(sheet, row, col, value) {
   if (value === undefined) return;
-  sheet.getCell(row, col).value = value === '' ? null : value;
+  const cell = sheet.getCell(row, col);
+  cell.value = value === '' ? null : value;
+  try {
+    if (cell.formula) cell.formula = undefined;
+  } catch {
+    /* ok */
+  }
 }
 
-/**
- * Rellena la plantilla oficial NSR-10 (Listas | Portada | Evaluación | Dictamen | Presupuesto)
- * con los datos del liquidador BbvaCat.
- */
-function rellenarPlantillaNsr10(workbook, liquidador) {
-  const evalData = liquidador?.evaluacionSismicaNSR10 || {};
+function rellenarHoja(sheet, liquidador, totales) {
   const enc = liquidador?.encabezado || {};
-  const portada = fusionarPortadaConFormData(evalData.portada || {}, {
-    ...prefillNsrDesdecasoBbvaCat({}, enc),
-    ...enc,
-    asegurado: enc.asegurado,
-    poliza: enc.poliza,
-    municipio: enc.ciudad,
-    ciudad: enc.ciudad,
-    direccion: enc.direccion,
-    direccionRiesgo: enc.direccion,
-    inspector: enc.ajustador,
-    fechaInspeccion: enc.fechaInspeccion,
-    fechaSismo: enc.fechaSiniestro,
-    fechaSiniestro: enc.fechaSiniestro,
-  });
-  const items = normalizarItemsRespuesta(evalData.items);
-  const presupuesto = normalizarPresupuestoAiuBbvaCat(evalData.presupuesto || {});
-  const filasPres = Array.isArray(presupuesto.items) ? presupuesto.items : [];
+  const excel = totales?.formatoExcel || calcularTotalesFormatoExcelBbvaCat(liquidador);
+  const ctx = excel.ctx || {};
+  const tipos = excel.tiposDeducible || {};
+  const ded = excel.deducibleFormato || {};
+  const detalle = (excel.detalle || []).map((it) => calcularFilaDetalleBbvaCat(it, ctx));
 
-  const hojaEval = workbook.getWorksheet('Evaluación');
-  const hojaPortada = workbook.getWorksheet('Portada');
-  const hojaPres = workbook.getWorksheet('Presupuesto');
-  if (!hojaEval || !hojaPres) {
-    throw new Error('La plantilla NSR-10 no tiene las hojas Evaluación / Presupuesto.');
-  }
+  setVal(sheet, 4, 6, txt(enc.poliza) || null);
+  setVal(sheet, 5, 6, fechaCelda(enc.vigenciaDesde || ctx.vigenciaDesde));
+  setVal(sheet, 6, 6, fechaCelda(enc.vigenciaHasta || ctx.vigenciaHasta));
+  setVal(sheet, 7, 6, fechaCelda(enc.fechaSiniestro || ctx.fechaSiniestro));
+  setVal(sheet, 8, 6, ctx.anio || null);
+  setVal(sheet, 9, 6, ctx.diasTranscurridos === '' ? null : ctx.diasTranscurridos);
 
-  // —— Evaluación · fila 4 (cabecera del inmueble; Portada toma fórmulas de aquí) ——
-  setVal(hojaEval, 4, 1, txt(portada.asegurado) || null);
-  setVal(hojaEval, 4, 2, txt(portada.municipio) || null);
-  setVal(hojaEval, 4, 3, txt(portada.direccion) || null);
-  setVal(hojaEval, 4, 4, fechaCelda(portada.fechaInspeccion));
-  setVal(hojaEval, 4, 5, txt(portada.inspector) || null);
-  setVal(hojaEval, 4, 6, txt(portada.tipologiaPrincipal) || null);
-  setVal(hojaEval, 4, 7, txt(portada.entorno) || null);
-  setVal(hojaEval, 4, 8, txt(portada.numeroPisos) || null);
-  setVal(hojaEval, 4, 9, txt(portada.uso) || null);
-  setVal(hojaEval, 4, 10, fechaCelda(portada.fechaSismo));
+  setVal(sheet, 5, 7, txt(enc.siniestro) || null);
+  setVal(sheet, 5, 11, txt(enc.asegurado) || txt(enc.tomador) || null);
+  setVal(sheet, 7, 7, txt(enc.ramoAfectado || enc.cobertura || 'TERREMOTO') || null);
+  setVal(sheet, 9, 7, txt(enc.evento || enc.causa) || null);
 
-  // —— Evaluación · checklist filas 8–26 ——
-  // E=estado, H=observación, I=foto, J=acción (F/G son fórmulas de la plantilla)
-  const porCodigo = new Map(items.map((it) => [String(it.codigo || '').trim(), it]));
-  if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {
-  for (let row = EVAL_FIRST_ROW; row <= EVAL_LAST_ROW; row += 1) {
-    const codigo = txt(hojaEval.getCell(row, 2).value);
-    const it = porCodigo.get(codigo);
-    if (!it) {
-      setVal(hojaEval, row, 5, null);
-      setVal(hojaEval, row, 8, null);
-      setVal(hojaEval, row, 9, null);
-      setVal(hojaEval, row, 10, null);
+  setVal(sheet, 7, 12, parsearNumero(ded.smmlv) || 3);
+  setVal(sheet, 7, 13, Number(ded.porcentaje) || 0.02);
+  setVal(sheet, 7, 14, parsearNumero(ded.dolares) || 0);
+  setVal(sheet, 7, 15, parsearNumero(ded.pesos) || 0);
+
+  setVal(sheet, 8, 12, tipos.montoSmmlv || 0);
+  setVal(sheet, 8, 13, tipos.montoPct || 0);
+  setVal(sheet, 8, 14, tipos.montoUsd || 0);
+  setVal(sheet, 8, 15, tipos.montoPesos || 0);
+
+  const trm = parsearNumero(enc.trm);
+  setVal(sheet, 9, 13, trm || null);
+  setVal(sheet, 11, 6, excel.valorGlobal || null);
+
+  for (let i = 0; i <= ITEM_LAST - ITEM_FIRST; i += 1) {
+    const row = ITEM_FIRST + i;
+    const it = detalle[i];
+    setVal(sheet, row, 4, i + 1);
+    if (!it || (!txt(it.descripcion) && !parsearNumero(it.valorAsegurable))) {
+      setVal(sheet, row, 5, null);
+      setVal(sheet, row, 6, null);
+      setVal(sheet, row, 7, null);
+      setVal(sheet, row, 8, null);
+      setVal(sheet, row, 9, null);
+      setVal(sheet, row, 10, null);
+      setVal(sheet, row, 11, null);
+      setVal(sheet, row, 12, null);
+      setVal(sheet, row, 13, null);
+      setVal(sheet, row, 14, null);
+      setVal(sheet, row, 15, null);
       continue;
     }
-    setVal(hojaEval, row, 5, txt(it.estado) || null);
-    setVal(hojaEval, row, 8, txt(it.observacion) || null);
-    setVal(hojaEval, row, 9, txt(it.fotoRef) || null);
-    setVal(hojaEval, row, 10, txt(it.accionSugerida) || null);
-  }
+    setVal(sheet, row, 5, txt(it.descripcion));
+    setVal(
+      sheet,
+      row,
+      6,
+      esValorGlobal(it.valorAsegurado) ? 'Valor Global' : parsearNumero(it.valorAsegurado) || 'Valor Global'
+    );
+    setVal(sheet, row, 7, parsearNumero(it.indiceVariable) || 0);
+    setVal(
+      sheet,
+      row,
+      8,
+      esValorGlobal(it.valorAseguradoFecha) ? 'Valor Global' : parsearNumero(it.valorAseguradoFecha) || null
+    );
+    setVal(sheet, row, 9, parsearNumero(it.valorAsegurable) || null);
+    setVal(sheet, row, 10, it.pctResponsabilidad ?? 1);
+    setVal(sheet, row, 11, parsearNumero(it.valorPerdida) || parsearNumero(it.valorAsegurable) || null);
+    setVal(sheet, row, 12, parsearNumero(it.demerito) || 0);
+    setVal(sheet, row, 13, parsearNumero(it.valorReal) || null);
+    setVal(sheet, row, 14, parsearNumero(it.perdidaBase) || null);
+    setVal(sheet, row, 15, parsearNumero(it.perdidaIndemnizable) || null);
   }
 
-  // —— Portada · versión (el resto viene por fórmula desde Evaluación) ——
-  if (hojaPortada) {
-    const version = txt(portada.versionInforme) || 'EVALUACIÓN PRELIMINAR';
-    setVal(hojaPortada, 2, 1, `VERSIÓN DEL INFORME: ${version}`);
+  if (detalle.length > ITEM_LAST - ITEM_FIRST + 1) {
+    const extra = detalle.slice(ITEM_LAST - ITEM_FIRST + 1);
+    const last = ITEM_LAST;
+    const sum = extra.reduce((a, it) => a + (parsearNumero(it.perdidaIndemnizable) || 0), 0);
+    const prev = parsearNumero(sheet.getCell(last, 15).value);
+    const prevDesc = txt(sheet.getCell(last, 5).value);
+    setVal(
+      sheet,
+      last,
+      5,
+      prevDesc ? `${prevDesc} (+ ${extra.length} ítems)` : `Ítems adicionales (${extra.length})`
+    );
+    setVal(sheet, last, 15, prev + sum);
   }
 
-  // —— Presupuesto · ítems 4–38 + % AIU / imprevistos / impuestos ——
-  const filasConDatos = filasPres.filter(
-    (it) =>
-      txt(it.actividad) ||
-      txt(it.componente) ||
-      txt(it.capitulo) ||
-      numeroONull(it.cantidad) != null ||
-      numeroONull(it.valorUnitario) != null
+  setVal(sheet, 25, 15, excel.subTotal || 0);
+  setVal(sheet, 26, 15, excel.deducibleAplicable || 0);
+  setVal(sheet, 27, 15, excel.valorAIndemnizar || 0);
+
+  const liquidado =
+    txt(liquidador.liquidadoPor) || txt(enc.ajustador) || null;
+  setVal(sheet, 26, 4, liquidado ? `Liquidado por: ${liquidado}` : 'Liquidado por:');
+  setVal(sheet, 27, 4, liquidado);
+  setVal(
+    sheet,
+    28,
+    4,
+    txt(liquidador.areaLiquidador) || 'Indemnizaciones Seguros Generales'
   );
 
-  for (let i = 0; i <= PRES_LAST_ROW - PRES_FIRST_ROW; i += 1) {
-    const row = PRES_FIRST_ROW + i;
-    const it = filasConDatos[i];
-    if (!it) {
-      setVal(hojaPres, row, 1, null);
-      setVal(hojaPres, row, 2, null);
-      setVal(hojaPres, row, 3, null);
-      setVal(hojaPres, row, 4, null);
-      setVal(hojaPres, row, 5, null);
-      setVal(hojaPres, row, 6, null);
-      setVal(hojaPres, row, 7, null);
-      // H = fórmula de la plantilla (no tocar)
-      setVal(hojaPres, row, 9, null);
-      setVal(hojaPres, row, 10, null);
-      setVal(hojaPres, row, 11, null);
-      setVal(hojaPres, row, 12, null);
-      continue;
-    }
-    setVal(hojaPres, row, 1, txt(it.capitulo) || null);
-    setVal(hojaPres, row, 2, null); // Código eval. ya no se usa
-    setVal(hojaPres, row, 3, txt(it.componente) || null);
-    setVal(hojaPres, row, 4, txt(it.actividad) || null);
-    setVal(hojaPres, row, 5, txt(it.unidad) || null);
-    setVal(hojaPres, row, 6, numeroONull(it.cantidad));
-    setVal(hojaPres, row, 7, numeroONull(it.valorUnitario));
-    setVal(hojaPres, row, 9, txt(it.prioridad) || null);
-    setVal(hojaPres, row, 10, txt(it.cubierto) || null);
-    setVal(hojaPres, row, 11, txt(it.observacion) || null);
-    setVal(hojaPres, row, 12, txt(it.fuente) || null);
-  }
-
-  // Porcentajes BBVA: AIU 25% fijo; imprevistos e impuestos en 0
-  const aiu = Number(presupuesto.aiuPorcentaje ?? 0.25);
-  const impr = Number(presupuesto.imprevistosPorcentaje ?? 0);
-  const imp = Number(presupuesto.impuestosPorcentaje ?? 0);
-  setVal(hojaPres, 41, 6, 'AIU');
-  setVal(hojaPres, 41, 7, Number.isFinite(aiu) ? aiu : 0.25);
-  setVal(hojaPres, 42, 6, 'Imprevistos');
-  setVal(hojaPres, 42, 7, Number.isFinite(impr) ? impr : 0);
-  setVal(hojaPres, 43, 6, 'Impuestos');
-  setVal(hojaPres, 43, 7, Number.isFinite(imp) ? imp : 0);
+  const obs = txt(liquidador.observacionesFiniquito);
+  if (obs) setVal(sheet, 39, 4, `OBSERVACIONES: ${obs}`);
 }
 
 /**
- * Excel liquidador BbvaCat = plantilla oficial Evaluación Sísmica NSR-10 rellenada.
+ * Excel liquidador BBVA CAT = plantilla oficial deudores / leasing.
  */
-export async function generarLiquidadorBbvaCatExcelBlob(liquidador) {
-  const workbook = await cargarPlantillaNsr10();
-  rellenarPlantillaNsr10(workbook, liquidador || {});
-  ocultarHojasEvaluacionYDictamenExcel(workbook);
+export async function generarLiquidadorBbvaCatExcelBlob(liquidador, totales) {
+  const workbook = await cargarPlantillaBbva();
+  const tipo = inferirTipoLiquidadorBbvaCat({
+    tipoLiquidador: liquidador?.tipoLiquidador,
+    encabezado: liquidador?.encabezado,
+  });
+  const nombreHoja =
+    tipo === TIPO_LIQUIDADOR_LEASING ? 'Liquidador leasing' : 'Liquidador Deudores';
+  const hoja = workbook.getWorksheet(nombreHoja);
+  if (!hoja) {
+    throw new Error(`La plantilla no tiene la hoja «${nombreHoja}».`);
+  }
+  rellenarHoja(hoja, liquidador || {}, totales || {});
+  workbook.worksheets.forEach((ws) => {
+    if (ws.name !== nombreHoja) ws.state = 'hidden';
+  });
 
   const enc = liquidador?.encabezado || {};
   const buffer = await workbook.xlsx.writeBuffer();
-  const safe = String(enc.siniestro || enc.consecutivo || enc.poliza || 'NSR10')
+  const safe = String(enc.siniestro || enc.consecutivo || enc.poliza || 'BBVA')
     .replace(/[^\w.-]+/g, '_')
     .slice(0, 40);
+  const etiqueta = tipo === TIPO_LIQUIDADOR_LEASING ? 'Leasing' : 'Deudores';
   return {
     blob: new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     }),
-    filename: `Evaluacion_Sismica_NSR10_BbvaCat_${safe}.xlsx`,
+    filename: `Liquidador_BBVA_CAT_${etiqueta}_${safe}.xlsx`,
   };
 }
 

@@ -14,6 +14,7 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
+import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import CampoTomadorPrevisora from './CampoTomadorPrevisora.jsx';
 import {
   calcularLiquidacionPrevisora,
@@ -257,6 +258,7 @@ export default function LiquidadorPrevisora({
           formData={formDataNsr}
           onInputChange={handleNsrChange}
           modoLiquidador={false}
+          recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
         />
       </section>
     </div>

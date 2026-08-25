@@ -25,6 +25,7 @@ export default function DashboardBbvaCatListado() {
       buildOpcionesFiltro={buildOpcionesFiltro}
       estados={ESTADOS_BBVA_CAT}
       i18nNs="bbvaCat"
+      modulo="bbvaCat"
     />
   );
 }

@@ -2,33 +2,33 @@
 import { useTranslation } from 'react-i18next';
 import { FaFileExcel, FaFilePdf, FaFileWord } from 'react-icons/fa';
 import {
-  Campo,
   expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
-  InputFenix,
-  InputMonedaExpress,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
   expressFormSection,
-  expressInput,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import LetrerosBbvaCat from './LetrerosBbvaCat.jsx';
 import {
   aplicarTipoLiquidadorEnLiquidacionBbvaCat,
   esObservacionFiniquitoDefaultBbvaCat,
-  inferirTipoLiquidadorBbvaCat,
   observacionesFiniquitoPorDefectoBbvaCat,
-  TIPOS_LIQUIDADOR_BBVA_CAT,
 } from './deduciblesBbvaCat.js';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import CampoTomadorBbvaCat from './CampoTomadorBbvaCat.jsx';
+import FormatoLiquidacionBbvaCat from './FormatoLiquidacionBbvaCat.jsx';
+import {
+  calcularFilaDetalleBbvaCat,
+  contextoFechasBbvaCat,
+  defaultDeducibleFormatoBbvaCat,
+  nuevoItemDetalleBbvaCat,
+  resolverDetalleLiquidacionBbvaCat,
+  sincronizarDetalleBbvaConPresupuestoNsr,
+} from './formatoLiquidacionBbvaCat.js';
 import {
   calcularLiquidacionBbvaCat,
   formDataNsrDesdeLiquidadorBbvaCat,
-  formatearMonto,
   mapcasoBbvaCatALiquidador,
   RECARGOS_PRESUPUESTO_BBVA_CAT,
   aplicarPresupuestoAiuBbvaCatEnEvaluacion,
@@ -36,14 +36,10 @@ import {
 import { descargarFiniquitoBbvaCatWord } from './generarFiniquitoBbvaCatWord.js';
 import { descargarLiquidadorBbvaCatExcel } from './generarLiquidadorBbvaCatExcel.js';
 import { descargarLiquidadorBbvaCatPdf } from './generarLiquidadorBbvaCatPdf.js';
-import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
-import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
-
-const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
 /**
- * Liquidador BbvaCat = evaluación NSR-10 completa (portada / eval / dictamen / presupuesto)
- * + diagrama de liquidación, mismo motor que Catastrófico Complex.
+ * Liquidador BBVA CAT = formato Excel LIQUIDACIÓN DE INDEMNIZACION
+ * (deudores / leasing) + presupuesto NSR-10 como origen técnico.
  */
 export default function LiquidadorBbvaCat({
   casoBbvaCat = null,
@@ -58,6 +54,7 @@ export default function LiquidadorBbvaCat({
   );
   const [error, setError] = useState('');
   const [exportando, setExportando] = useState('');
+  const [mostrarNsr, setMostrarNsr] = useState(false);
 
   useEffect(() => {
     setLiquidador(liquidadorInicial || mapcasoBbvaCatALiquidador(casoBbvaCat || {}));
@@ -76,11 +73,10 @@ export default function LiquidadorBbvaCat({
     [liquidador, casoBbvaCat]
   );
 
-  const tipoLiquidador = inferirTipoLiquidadorBbvaCat({
-    tipoLiquidador: liquidador.tipoLiquidador,
-    encabezado: enc,
-    caso: casoBbvaCat || {},
-  });
+  const itemsDetalle = useMemo(
+    () => resolverDetalleLiquidacionBbvaCat(liquidador),
+    [liquidador]
+  );
 
   const actualizarEncabezado = (campo, valor) => {
     setLiquidador((prev) => {
@@ -88,9 +84,14 @@ export default function LiquidadorBbvaCat({
         ...prev,
         encabezado: { ...(prev.encabezado || {}), [campo]: valor },
       };
-      if (campo === 'valorAseguradoInmueble') {
+      if (campo === 'valorAseguradoInmueble' || campo === 'valorGlobal') {
         const liq = prev.liquidacionCatastrofico || {};
         next.liquidacionCatastrofico = { ...liq, valorAsegurado: valor };
+        next.encabezado.valorGlobal = valor;
+        next.encabezado.valorAseguradoInmueble = valor;
+      }
+      if (campo === 'ramoAfectado') {
+        next.deducibleFormato = defaultDeducibleFormatoBbvaCat(prev.tipoLiquidador, valor);
       }
       return next;
     });
@@ -106,6 +107,10 @@ export default function LiquidadorBbvaCat({
         ...prev,
         tipoLiquidador: tipo,
         observacionesFiniquito: obsSiguiente,
+        deducibleFormato: defaultDeducibleFormatoBbvaCat(
+          tipo,
+          prev.encabezado?.ramoAfectado || prev.encabezado?.cobertura
+        ),
         liquidacionCatastrofico: aplicarTipoLiquidadorEnLiquidacionBbvaCat(
           prev.liquidacionCatastrofico || {},
           tipo,
@@ -115,11 +120,29 @@ export default function LiquidadorBbvaCat({
     });
   };
 
-  const actualizarDatosFiniquito = (campo, valor) => {
-    setLiquidador((prev) => ({
-      ...prev,
-      datosFiniquito: { ...(prev.datosFiniquito || {}), [campo]: valor },
-    }));
+  const setDetalle = (filas) => {
+    setLiquidador((prev) => sincronizarDetalleBbvaConPresupuestoNsr(prev, filas));
+  };
+
+  const materializarDetalle = () =>
+    resolverDetalleLiquidacionBbvaCat(liquidador).map((it) => ({ ...it }));
+
+  const handleItemChange = (index, patch = {}) => {
+    const base = materializarDetalle();
+    if (!base[index]) return;
+    const ctx = contextoFechasBbvaCat(liquidador.encabezado || {}, casoBbvaCat || {});
+    base[index] = calcularFilaDetalleBbvaCat({ ...base[index], ...patch }, ctx);
+    setDetalle(base);
+  };
+
+  const handleAddItem = () => {
+    setDetalle([...materializarDetalle(), nuevoItemDetalleBbvaCat()]);
+  };
+
+  const handleRemoveItem = (index) => {
+    const base = materializarDetalle();
+    base.splice(index, 1);
+    setDetalle(base);
   };
 
   const handleNsrChange = (patch) => {
@@ -133,15 +156,20 @@ export default function LiquidadorBbvaCat({
           next.evaluacionSismicaNSR10
         );
       }
+      if (!Array.isArray(prev.detalleLiquidacionCat) && next.evaluacionSismicaNSR10) {
+        return next;
+      }
       return next;
     });
   };
+
+  const liquidadorExport = { ...liquidador, detalleLiquidacionCat: itemsDetalle };
 
   const correrExport = async (tipo, fn) => {
     setError('');
     setExportando(tipo);
     try {
-      await fn(liquidador, totales);
+      await fn(liquidadorExport, calcularLiquidacionBbvaCat(liquidadorExport));
     } catch (err) {
       console.error(err);
       setError(err.message || t('bbvaCat.settlement.exportError'));
@@ -184,7 +212,7 @@ export default function LiquidadorBbvaCat({
             type="button"
             className={expressBtnPrimary}
             disabled={guardandoCaso}
-            onClick={() => onGuardarEnCaso(liquidador, totales)}
+            onClick={() => onGuardarEnCaso(liquidadorExport, totales)}
           >
             {guardandoCaso
               ? t('bbvaCat.settlement.saving')
@@ -195,180 +223,68 @@ export default function LiquidadorBbvaCat({
 
       {error && <p className={expressAlertError}>{error}</p>}
 
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>{t('bbvaCat.settlement.headerTitle')}</h3>
-        <div className={grid3}>
-          <Campo label={t('bbvaCat.settlement.liquidadorType')} className="sm:col-span-3">
-            <select
-              className={expressInput}
-              value={tipoLiquidador}
-              onChange={(e) => actualizarTipoLiquidador(e.target.value)}
-            >
-              {TIPOS_LIQUIDADOR_BBVA_CAT.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {t(`bbvaCat.settlement.liquidadorType_${opt.id}`, { defaultValue: opt.label })}
-                </option>
-              ))}
-            </select>
-          </Campo>
-          <CampoTomadorBbvaCat
-            className="sm:col-span-3"
-            value={enc.tomador}
-            onChange={(valor) => actualizarEncabezado('tomador', valor)}
-            mostrarGestion={false}
-          />
-          <Campo label={t('bbvaCat.settlement.insured')}>
-            <InputFenix
-              value={enc.asegurado || ''}
-              onChange={(e) => actualizarEncabezado('asegurado', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.numeroPoliza')}>
-            <InputFenix
-              value={enc.poliza || ''}
-              onChange={(e) => actualizarEncabezado('poliza', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.tipoPoliza')}>
-            <InputFenix
-              value={enc.tipoPoliza || ''}
-              onChange={(e) => actualizarEncabezado('tipoPoliza', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.siniestro')}>
-            <InputFenix
-              value={enc.siniestro || ''}
-              onChange={(e) => actualizarEncabezado('siniestro', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.tipoIdentificacion')}>
-            <InputFenix
-              value={enc.tipoIdentificacion || ''}
-              onChange={(e) => actualizarEncabezado('tipoIdentificacion', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.identificacion')}>
-            <InputFenix
-              value={enc.identificacion || ''}
-              onChange={(e) => actualizarEncabezado('identificacion', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.causa')}>
-            <InputFenix
-              value={enc.causa || ''}
-              onChange={(e) => actualizarEncabezado('causa', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.cobertura')}>
-            <InputFenix
-              value={enc.cobertura || ''}
-              onChange={(e) => actualizarEncabezado('cobertura', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.direccionPredio')}>
-            <InputFenix
-              value={enc.direccion || ''}
-              onChange={(e) => actualizarEncabezado('direccion', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.numeroCredito')}>
-            <InputFenix
-              value={enc.credito || ''}
-              onChange={(e) => actualizarEncabezado('credito', e.target.value)}
-            />
-          </Campo>
-          <Campo label={t('bbvaCat.fields.valorAseguradoInmueble')}>
-            <InputMonedaExpress
-              value={
-                enc.valorAseguradoInmueble ??
-                liquidador.liquidacionCatastrofico?.valorAsegurado ??
-                ''
-              }
-              onChange={(e) => actualizarEncabezado('valorAseguradoInmueble', e.target.value)}
-            />
-          </Campo>
-        </div>
-        {totales.deducibleRequiereValorAsegurado ? (
-          <p className="mt-3 text-sm text-amber-800 dark:text-amber-200">
-            {t('bbvaCat.settlement.needInsuredValue')}
-          </p>
-        ) : null}
-        <div className="mt-4">
-          <OtrosAmparosLiquidacion
-            otrosAmparos={liquidador.otrosAmparos}
-            onChange={(filas) =>
-              setLiquidador((prev) => ({
-                ...prev,
-                otrosAmparos: Array.isArray(filas) && filas.length ? filas : defaultOtrosAmparos(),
-              }))
-            }
-          />
-        </div>
-        <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>
-              {t('bbvaCat.settlement.deductibleBudget')}
-              <span className="mt-0.5 block text-[11px] font-normal text-gray-500 dark:text-gray-400">
-                {totales.diagrama?.deduciblePresupuesto?.texto ||
-                  t('bbvaCat.settlement.deductibleCatRule')}
-              </span>
-            </span>
-            <span>$ {formatearMonto(totales.diagrama?.deduciblePresupuesto?.aplicado || 0)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible contenidos</span>
-            <span>
-              ${' '}
-              {formatearMonto(
-                totales.diagrama?.deducibleContenidos?.aplicado ||
-                  totales.diagrama?.deducibleAplicado ||
-                  0
-              )}
-            </span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Otros amparos (sin deducible)</span>
-            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('bbvaCat.settlement.totalPay')}</span>
-            <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-          </div>
-        </div>
-      </section>
-
-      <LetrerosBbvaCat
-        tipoLiquidador={tipoLiquidador}
-        aceptacionIndemnizacion={liquidador.aceptacionIndemnizacion || ''}
-        datosFiniquito={liquidador.datosFiniquito || {}}
-        observacionesFiniquito={liquidador.observacionesFiniquito || ''}
-        onAceptacionChange={(v) =>
-          setLiquidador((prev) => ({ ...prev, aceptacionIndemnizacion: v }))
+      <FormatoLiquidacionBbvaCat
+        caso={casoBbvaCat || {}}
+        encabezado={enc}
+        liquidador={liquidador}
+        itemsDetalle={itemsDetalle}
+        onEncabezadoChange={actualizarEncabezado}
+        onTipoLiquidadorChange={actualizarTipoLiquidador}
+        onDeducibleFormatoChange={(patch) =>
+          setLiquidador((prev) => ({
+            ...prev,
+            deducibleFormato: { ...(prev.deducibleFormato || {}), ...patch },
+          }))
         }
-        onDatosFiniquitoChange={actualizarDatosFiniquito}
+        onItemChange={handleItemChange}
+        onAddItem={handleAddItem}
+        onRemoveItem={handleRemoveItem}
+        onLiquidadoPorChange={(v) => setLiquidador((prev) => ({ ...prev, liquidadoPor: v }))}
+        onAreaLiquidadorChange={(v) => setLiquidador((prev) => ({ ...prev, areaLiquidador: v }))}
         onObservacionesChange={(v) =>
           setLiquidador((prev) => ({ ...prev, observacionesFiniquito: v }))
         }
+        onAceptacionChange={(v) =>
+          setLiquidador((prev) => ({ ...prev, aceptacionIndemnizacion: v }))
+        }
+        onDatosFiniquitoChange={(campo, valor) =>
+          setLiquidador((prev) => ({
+            ...prev,
+            datosFiniquito: { ...(prev.datosFiniquito || {}), [campo]: valor },
+          }))
+        }
+        onFirmaClienteChange={(v) => setLiquidador((prev) => ({ ...prev, firmaCliente: v }))}
+        onNombreFirmanteChange={(v) => setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))}
       />
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {t('bbvaCat.settlement.nsrTitle', { defaultValue: 'Evaluación y liquidador NSR-10' })}
-        </h3>
-        <ChecklistEvaluacionSismicaNSR10
-          formData={formDataNsr}
-          onInputChange={handleNsrChange}
-          modoLiquidador={false}
-          recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
-        />
+        <button
+          type="button"
+          className={`${expressSectionTitle} mb-0 flex w-full items-center justify-between text-left`}
+          onClick={() => setMostrarNsr((v) => !v)}
+        >
+          <span>
+            {t('bbvaCat.settlement.nsrTitle', {
+              defaultValue: 'Presupuesto NSR-10 (origen técnico de ítems)',
+            })}
+          </span>
+          <span className="text-sm font-normal text-[#004481]">{mostrarNsr ? 'Ocultar' : 'Mostrar'}</span>
+        </button>
+        {mostrarNsr ? (
+          <div className="mt-4">
+            <ChecklistEvaluacionSismicaNSR10
+              formData={formDataNsr}
+              onInputChange={handleNsrChange}
+              modoLiquidador={false}
+              recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
+            />
+          </div>
+        ) : (
+          <p className="mt-2 font-body text-xs text-gray-500">
+            El formato Excel es la liquidación oficial. El NSR-10 queda como apoyo para armar
+            el presupuesto de daños.
+          </p>
+        )}
       </section>
     </div>
   );

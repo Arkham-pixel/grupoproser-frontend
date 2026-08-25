@@ -236,9 +236,10 @@ export default function FotosInspeccionAlfa({
         idImagen(img, idx) === clave ? { ...img, descripcion } : img
       );
       if (descripcionTimeoutRef.current) clearTimeout(descripcionTimeoutRef.current);
+      // Persistir al padre de inmediato (evita Excel sin texto si descargan antes del debounce)
+      isInternalUpdateRef.current = true;
+      onFotosInformeChange?.(next);
       descripcionTimeoutRef.current = setTimeout(() => {
-        isInternalUpdateRef.current = true;
-        onFotosInformeChange?.(next);
         const foto = next.find((img, idx) => idImagen(img, idx) === clave);
         if (foto?._id && casoId) {
           actualizarArchivoAlfa(casoId, foto._id, { descripcion }).catch(() => {});

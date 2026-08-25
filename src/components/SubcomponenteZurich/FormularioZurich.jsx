@@ -193,8 +193,8 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           : Array.isArray(dataIns)
             ? dataIns
             : [];
-        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj));
-        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns));
+        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj, 'zurich'));
+        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns, 'zurich'));
         const lideresOpts = mapResponsablesAOpciones(listaResp);
         if (!esEdicion) {
           const liderDefault = resolverLiderPorModulo(lideresOpts, 'zurich');

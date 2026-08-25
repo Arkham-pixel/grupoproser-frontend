@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileAlt, FaFileSignature, FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
+import { FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -18,6 +18,7 @@ import {
   INFO_EVENTO_DEFAULT_ZURICH,
   NIVELES_AFECTACION_ZURICH,
   calcularLiquidacionZurich,
+  casoZurichConInforme,
   defaultInformeUnicoZurich,
   etiquetaArchivoInformeZurich,
   formDataNsrDesdeLiquidadorZurich,
@@ -31,17 +32,12 @@ import {
 import { descargarWordInformeZurich } from './generarWordInformeZurich.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
 import FotosInspeccionZurich from './FotosInspeccionZurich.jsx';
+import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
+import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
-
-const cardBase =
-  'flex h-full flex-col rounded-xl border p-4 text-left transition hover:border-fenix-primario/50';
-const cardIdle =
-  'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900';
-const cardActive =
-  'border-fenix-primario bg-fenix-primario/5 dark:border-fenix-primario dark:bg-fenix-primario/10';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -156,10 +152,15 @@ export default function InformeUnicoZurich({
   guardandoCaso = false,
   origen = 'cat',
   liquidadorInicial = null,
+  informeInicial = null,
+  tipoInformeExterno = null,
+  ocultarSelector = false,
 }) {
   const { t } = useTranslation();
   const api = useMemo(() => zurichArchivosApi(origen), [origen]);
-  const [informe, setInforme] = useState(() => defaultInformeUnicoZurich(casoZurich || {}));
+  const [informe, setInforme] = useState(() =>
+    defaultInformeUnicoZurich(casoZurichConInforme(casoZurich || {}, informeInicial))
+  );
   const [liquidador, setLiquidador] = useState(() =>
     liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {})
   );
@@ -213,23 +214,21 @@ export default function InformeUnicoZurich({
     });
   };
 
-  const tipoInformeGuardado = casoZurich?.informeUnico
-    ? normalizarTipoInformeZurich(casoZurich.informeUnico.tipoInforme, 'unico')
-    : '';
-
   useEffect(() => {
-    setInforme(defaultInformeUnicoZurich(casoZurich || {}));
+    setInforme(
+      defaultInformeUnicoZurich(casoZurichConInforme(casoZurich || {}, informeInicial))
+    );
     setLiquidador(liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}));
   }, [casoZurich?._id]);
 
   useEffect(() => {
-    if (!tipoInformeGuardado) return;
+    if (!tipoInformeExterno) return;
     setInforme((prev) => {
       const actual = normalizarTipoInformeZurich(prev?.tipoInforme, 'preliminar');
-      if (actual === tipoInformeGuardado) return prev;
-      return defaultInformeUnicoZurich(casoZurich || {});
+      if (actual === tipoInformeExterno) return prev;
+      return { ...prev, tipoInforme: tipoInformeExterno };
     });
-  }, [casoZurich?._id, tipoInformeGuardado]);
+  }, [tipoInformeExterno]);
 
   useEffect(() => {
     onEstadoChange?.(informe);
@@ -367,53 +366,13 @@ export default function InformeUnicoZurich({
       {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
       {error && <p className={expressAlertError}>{error}</p>}
 
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>{t('zurich.reportUnique.typeLabel')}</h3>
-        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          {t('zurich.reportUnique.typeHint')}
-        </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <button
-            type="button"
-            className={`${cardBase} ${tipoInforme === 'preliminar' ? cardActive : cardIdle}`}
-            onClick={() => elegirTipoInforme('preliminar')}
-          >
-            <FaFileAlt className="mb-2 text-fenix-primario" />
-            <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
-              {t('zurich.reportUnique.typePreliminar')}
-            </span>
-            <span className="mt-1 font-body text-xs text-gray-500">
-              {t('zurich.reportUnique.typePreliminarHint')}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`${cardBase} ${tipoInforme === 'final' ? cardActive : cardIdle}`}
-            onClick={() => elegirTipoInforme('final')}
-          >
-            <FaFileSignature className="mb-2 text-fenix-primario" />
-            <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
-              {t('zurich.reportUnique.typeFinal')}
-            </span>
-            <span className="mt-1 font-body text-xs text-gray-500">
-              {t('zurich.reportUnique.typeFinalHint')}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={`${cardBase} ${tipoInforme === 'unico' ? cardActive : cardIdle}`}
-            onClick={() => elegirTipoInforme('unico')}
-          >
-            <FaFileWord className="mb-2 text-fenix-primario" />
-            <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
-              {t('zurich.reportUnique.typeUnico')}
-            </span>
-            <span className="mt-1 font-body text-xs text-gray-500">
-              {t('zurich.reportUnique.typeUnicoHint')}
-            </span>
-          </button>
-        </div>
-      </section>
+      {!ocultarSelector && (
+        <SelectorTipoInformeZurich
+          tipo={tipoInforme}
+          onElegir={elegirTipoInforme}
+          disabled={guardandoCaso}
+        />
+      )}
 
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -778,6 +737,7 @@ export default function InformeUnicoZurich({
               formData={formDataNsr}
               onInputChange={handleNsrChange}
               modoLiquidador
+              recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
             />
           </section>
 

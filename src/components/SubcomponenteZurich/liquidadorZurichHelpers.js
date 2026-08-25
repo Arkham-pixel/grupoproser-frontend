@@ -1,11 +1,14 @@
 ﻿import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 import { formatMiles } from './zurichHelpers.js';
 import {
+  aplicarRecargosEnEvaluacionNsr10,
+  argsDeduciblesPorArticuloDiagrama,
   calcularCriterioFinal,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
@@ -121,6 +124,26 @@ export function normalizarTipoInformeZurich(valor, fallback = 'preliminar') {
 
 export function esInformePreliminarZurich(info = {}) {
   return normalizarTipoInformeZurich(info?.tipoInforme, 'preliminar') === 'preliminar';
+}
+
+/** Tipo vigente: el del borrador en pantalla, o el guardado en el caso. */
+export function tipoInformeActualZurich(informe = null, caso = null) {
+  if (informe?.tipoInforme) {
+    return normalizarTipoInformeZurich(informe.tipoInforme, 'preliminar');
+  }
+  if (caso?.informeUnico && typeof caso.informeUnico === 'object') {
+    return normalizarTipoInformeZurich(caso.informeUnico.tipoInforme, 'unico');
+  }
+  return 'preliminar';
+}
+
+/** Fusiona un borrador de informe sobre el caso para hidratar al reabrir pestañas. */
+export function casoZurichConInforme(caso = {}, informe = null) {
+  if (!informe || typeof informe !== 'object') return caso || {};
+  return {
+    ...(caso || {}),
+    informeUnico: { ...(caso?.informeUnico || {}), ...informe },
+  };
 }
 
 export function etiquetaArchivoInformeZurich(tipo) {
@@ -330,7 +353,10 @@ export function esLiquidadorNsrZurich(liquidador = {}) {
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionZurich(liquidador = {}) {
-  const evalData = liquidador.evaluacionSismicaNSR10 || {};
+  const evalData = aplicarRecargosEnEvaluacionNsr10(
+    liquidador.evaluacionSismicaNSR10 || {},
+    RECARGOS_PRESUPUESTO_NSR10_CAT
+  );
   const presupuesto = evalData.presupuesto || { items: [] };
   const totalesPres = calcularTotalesPresupuesto(presupuesto);
   const resumen = calcularResumenTotalesNsr10(evalData);
@@ -347,9 +373,7 @@ export function calcularLiquidacionZurich(liquidador = {}) {
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
     otrosAmparos: liquidador.otrosAmparos,
-    deducibleContenidosPorArticulos: resumen.usaDeduciblePorArticulo
-      ? resumen.deduciblePorArticulos
-      : null,
+    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -409,7 +433,9 @@ export function itemsPlanosZurich(liquidador = {}) {
 export function mapcasoZurichALiquidador(caso = {}) {
   const encabezado = encabezadoDesdecasoZurich(caso);
   const prefill = prefillNsrDesdecasoZurich(caso, encabezado);
-  const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill);
+  const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill, {
+    recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT,
+  });
   const base = {
     ...DEFAULT_LIQUIDADOR_Zurich,
     encabezado,
@@ -445,7 +471,8 @@ export function mapcasoZurichALiquidador(caso = {}) {
     encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
     evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
       guardado.evaluacionSismicaNSR10,
-      prefill
+      prefill,
+      { recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT }
     ),
     liquidacionCatastrofico: {
       ...base.liquidacionCatastrofico,
@@ -506,8 +533,12 @@ export function serializarFotosInspeccionZurich(fotos = []) {
 
 export function sanitizarInformeUnicoZurich(informe = {}) {
   if (!informe || typeof informe !== 'object') return {};
+  const tipo = informe.tipoInforme
+    ? normalizarTipoInformeZurich(informe.tipoInforme, 'preliminar')
+    : undefined;
   return {
     ...informe,
+    ...(tipo ? { tipoInforme: tipo } : {}),
     fotosInspeccion: serializarFotosInspeccionZurich(informe.fotosInspeccion),
   };
 }

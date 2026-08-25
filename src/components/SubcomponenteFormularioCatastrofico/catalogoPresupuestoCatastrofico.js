@@ -550,6 +550,8 @@ export function calcularDiagramaLiquidacion({
   otrosAmparos = [],
   /** Suma de deducibles por artículo (tabla contenidos). Si hay, reemplaza el global de contenidos. */
   deducibleContenidosPorArticulos = null,
+  /** Suma de deducibles por ítem (tabla presupuesto). Si hay, reemplaza el global de presupuesto. */
+  deduciblePresupuestoPorArticulos = null,
 } = {}) {
   const va = Number(valorAsegurado) || 0;
   const danios = Number(totalDanios) || 0;
@@ -611,7 +613,17 @@ export function calcularDiagramaLiquidacion({
     deducibleContenidosAplicado =
       Math.round(Math.min(Math.max(0, deduciblePorArticulosN), tope) * 100) / 100;
   }
-  const deduciblePresupuestoAplicado = calcPres.deducibleAplicado || 0;
+  const deduciblePresupuestoPorArticulosN = Number(deduciblePresupuestoPorArticulos);
+  const usaDeduciblePresupuestoPorArticulo =
+    deduciblePresupuestoPorArticulos != null &&
+    deduciblePresupuestoPorArticulos !== '' &&
+    Number.isFinite(deduciblePresupuestoPorArticulosN);
+  let deduciblePresupuestoAplicado = calcPres.deducibleAplicado || 0;
+  if (usaDeduciblePresupuestoPorArticulo) {
+    const tope = basePresupuesto > 0 ? basePresupuesto : deduciblePresupuestoPorArticulosN;
+    deduciblePresupuestoAplicado =
+      Math.round(Math.min(Math.max(0, deduciblePresupuestoPorArticulosN), tope) * 100) / 100;
+  }
   const sumaDeducibles =
     Math.round((deducibleContenidosAplicado + deduciblePresupuestoAplicado) * 100) / 100;
   const presupuestoNeto = Math.max(0, basePresupuesto - deduciblePresupuestoAplicado);
@@ -655,6 +667,10 @@ export function calcularDiagramaLiquidacion({
       ...calcPres,
       aplicado: deduciblePresupuestoAplicado,
       neto: presupuestoNeto,
+      porArticulos: usaDeduciblePresupuestoPorArticulo,
+      texto: usaDeduciblePresupuestoPorArticulo
+        ? 'Suma de deducibles por ítem (cobertura)'
+        : calcPres.texto,
     },
     requiereValorAsegurado: Boolean(
       calcPres.requiereValorAsegurado || calcCont.requiereValorAsegurado

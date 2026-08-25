@@ -1253,19 +1253,19 @@ export async function generarWordCatastrofico(formData = {}, { modo = 'informeUn
         ],
       });
 
-    const aiuPctLabel = Math.round(Number(presupuesto.aiuPorcentaje ?? 0.05) * 100);
-    const imprPctLabel = Math.round(Number(presupuesto.imprevistosPorcentaje ?? 0.1) * 100);
+    const aiuPctLabel = Math.round(Number(presupuesto.aiuPorcentaje ?? 0.25) * 100);
+    const imprPctLabel = Math.round(Number(presupuesto.imprevistosPorcentaje ?? 0) * 100);
     const impPctLabel = Math.round(Number(presupuesto.impuestosPorcentaje ?? 0) * 100);
 
     const filasResumen = [
       filaResumenNsr('SUBTOTAL', resumen.costoDirecto),
       filaResumenNsr(`AIU (${aiuPctLabel}%)`, resumen.aiu),
     ];
-    if (esNsr10) {
-      filasResumen.push(
-        filaResumenNsr(`IMPREVISTOS (${imprPctLabel}%)`, resumen.imprevistos),
-        filaResumenNsr(`IMPUESTOS (${impPctLabel}%)`, resumen.impuestos)
-      );
+    if (esNsr10 && (imprPctLabel > 0 || Number(resumen.imprevistos) > 0)) {
+      filasResumen.push(filaResumenNsr(`IMPREVISTOS (${imprPctLabel}%)`, resumen.imprevistos));
+    }
+    if (esNsr10 && (impPctLabel > 0 || Number(resumen.impuestos) > 0)) {
+      filasResumen.push(filaResumenNsr(`IMPUESTOS (${impPctLabel}%)`, resumen.impuestos));
     }
     filasResumen.push(filaResumenNsr('TOTAL ESTIMADO', resumen.total));
 

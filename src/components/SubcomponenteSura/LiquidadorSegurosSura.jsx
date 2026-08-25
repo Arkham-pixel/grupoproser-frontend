@@ -14,6 +14,7 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
+import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import CampoTomadorSura from './CampoTomadorSura.jsx';
 import {
   calcularLiquidacionSura,
@@ -251,6 +252,7 @@ export default function LiquidadorSegurosSura({
           onInputChange={handleNsrChange}
           modoLiquidador={false}
           habilitarUploadFotos={false}
+          recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
         />
       </section>
     </div>

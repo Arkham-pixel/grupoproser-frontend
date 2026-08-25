@@ -1,11 +1,14 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 import { formatMiles } from './previsoraHelpers.js';
 import {
+  aplicarRecargosEnEvaluacionNsr10,
+  argsDeduciblesPorArticuloDiagrama,
   calcularCriterioFinal,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
@@ -184,7 +187,10 @@ export function esLiquidadorNsrPrevisora(liquidador = {}) {
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionPrevisora(liquidador = {}) {
-  const evalData = liquidador.evaluacionSismicaNSR10 || {};
+  const evalData = aplicarRecargosEnEvaluacionNsr10(
+    liquidador.evaluacionSismicaNSR10 || {},
+    RECARGOS_PRESUPUESTO_NSR10_CAT
+  );
   const presupuesto = evalData.presupuesto || { items: [] };
   const totalesPres = calcularTotalesPresupuesto(presupuesto);
   const resumen = calcularResumenTotalesNsr10(evalData);
@@ -201,9 +207,7 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
     otrosAmparos: liquidador.otrosAmparos,
-    deducibleContenidosPorArticulos: resumen.usaDeduciblePorArticulo
-      ? resumen.deduciblePorArticulos
-      : null,
+    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -263,7 +267,9 @@ export function itemsPlanosPrevisora(liquidador = {}) {
 export function mapcasoPrevisoraALiquidador(caso = {}) {
   const encabezado = encabezadoDesdecasoPrevisora(caso);
   const prefill = prefillNsrDesdecasoPrevisora(caso, encabezado);
-  const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill);
+  const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill, {
+    recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT,
+  });
   const base = {
     ...DEFAULT_LIQUIDADOR_Previsora,
     encabezado,
@@ -299,7 +305,8 @@ export function mapcasoPrevisoraALiquidador(caso = {}) {
     encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
     evaluacionSismicaNSR10: fusionarEvaluacionSismicaNSR10Guardada(
       guardado.evaluacionSismicaNSR10,
-      prefill
+      prefill,
+      { recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT }
     ),
     liquidacionCatastrofico: {
       ...base.liquidacionCatastrofico,

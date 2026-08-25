@@ -210,6 +210,16 @@ export function contarKpisGestionAlfa(casos = []) {
   return base;
 }
 
+/** Fecha de llamada con valor usable (no vacío / no fecha inválida). */
+export function casoAlfaTieneFechaLlamada(caso = {}) {
+  const v = caso?.fechaLlamada;
+  if (v == null || v === '') return false;
+  if (v instanceof Date) return !Number.isNaN(v.getTime());
+  const s = String(v).trim();
+  if (!s || s === 'Invalid Date' || s === 'null' || s === 'undefined') return false;
+  return true;
+}
+
 export const formatCurrency = (value) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) {
     return '—';

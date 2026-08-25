@@ -36,9 +36,6 @@ export function sanitizarInformeUnicoFotos(informe = {}) {
 
 /** Galería del informe: fotosInspeccion + archivos FOTOS del caso. */
 export function fotosInformeDesdeCaso(caso = {}, guardado = null) {
-  const delInforme = Array.isArray(guardado?.fotosInspeccion)
-    ? guardado.fotosInspeccion.filter((f) => f && (f.ruta || f._id || f.preview || f.file))
-    : [];
   const delCaso = (Array.isArray(caso?.archivos) ? caso.archivos : [])
     .filter(esFotoArchivo)
     .sort((a, b) => (Number(a?.orden) || 0) - (Number(b?.orden) || 0))
@@ -52,6 +49,35 @@ export function fotosInformeDesdeCaso(caso = {}, guardado = null) {
       etiqueta: a.etiqueta || 'FOTOS',
       orden: a.orden ?? i,
     }));
+  const byId = new Map(
+    delCaso.filter((a) => a?._id).map((a) => [String(a._id), a])
+  );
+  const byRuta = new Map(
+    delCaso.filter((a) => a?.ruta).map((a) => [String(a.ruta), a])
+  );
+
+  const delInforme = Array.isArray(guardado?.fotosInspeccion)
+    ? guardado.fotosInspeccion
+        .filter((f) => f && (f.ruta || f._id || f.preview || f.file))
+        .map((f) => {
+          const arch =
+            (f._id && byId.get(String(f._id))) ||
+            (f.ruta && byRuta.get(String(f.ruta))) ||
+            null;
+          return {
+            ...f,
+            descripcion:
+              String(f.descripcion || '').trim() ||
+              String(arch?.descripcion || '').trim() ||
+              '',
+            ruta: f.ruta || arch?.ruta || '',
+            nombre: f.nombre || f.nombreOriginal || arch?.nombre || arch?.nombreOriginal,
+            nombreOriginal:
+              f.nombreOriginal || f.nombre || arch?.nombreOriginal || arch?.nombre,
+            tipoMime: f.tipoMime || arch?.tipoMime || '',
+          };
+        })
+    : [];
   if (!delInforme.length) return delCaso;
   const keys = new Set(delInforme.map((f) => String(f._id || f.ruta || '')).filter(Boolean));
   const extra = delCaso.filter((f) => !keys.has(String(f._id || f.ruta || '')));

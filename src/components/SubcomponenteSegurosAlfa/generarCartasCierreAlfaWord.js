@@ -14,6 +14,7 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
+import { parrafoSoloImagenFirmaClienteAlfa } from './firmaClienteAlfaWord.js';
 
 /**
  * Cartas oficiales Seguros Alfa (terremoto):
@@ -247,6 +248,7 @@ export async function descargarCartaDesistimientoAlfaWord(liquidador = {}) {
   const { asegurado, fecha, cedula, poliza, siniestro } =
     datosCartaDesdeLiquidador(liquidador);
   const logosTable = await buildLogosHeader();
+  const firmaClienteParrafo = await parrafoSoloImagenFirmaClienteAlfa(liquidador);
 
   const doc = documentoBase(logosTable, [
     p(`Bogotá D.C., ${fecha.dia} de ${fecha.mes} de ${fecha.anio}`, {
@@ -294,7 +296,7 @@ export async function descargarCartaDesistimientoAlfaWord(liquidador = {}) {
       ],
       { alignment: AlignmentType.LEFT, after: 80 }
     ),
-    p('Firma: _______________________', { alignment: AlignmentType.LEFT, after: 40 }),
+    firmaClienteParrafo,
   ]);
 
   const nombre = `Carta_Desistimiento_Alfa_${safeNombreArchivo(asegurado || siniestro)}.docx`;

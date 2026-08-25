@@ -25,6 +25,7 @@ import {
   coincideFiltroTexto,
   contarKpisGestionAlfa,
   casoAlfaVenceSla2Dias,
+  casoAlfaTieneFechaLlamada,
   fechaEnRango,
   formatCurrency,
   formatDate,
@@ -98,7 +99,7 @@ import {
   InputFenix,
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { filtrarCasosPorAsignacionUsuario, coincidenPersonas } from '../../utils/permisosCasoPorRol.js';
+import { filtrarCasosPorAsignacionUsuario, coincidenPersonas, esSesionColaFechaLlamadaAlfa } from '../../utils/permisosCasoPorRol.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -232,6 +233,8 @@ export default function ReporteSegurosAlfa() {
   const [aviso, setAviso] = useState(null);
   const [bloqueSeleccionadoId, setBloqueSeleccionadoId] = useState(null);
   const [idsBloqueSeleccionado, setIdsBloqueSeleccionado] = useState([]);
+  const [mapaReloadToken, setMapaReloadToken] = useState(0);
+  const colaFechaLlamada = esSesionColaFechaLlamadaAlfa();
 
   const recargar = useCallback(async () => {
     setLoading(true);
@@ -282,7 +285,12 @@ export default function ReporteSegurosAlfa() {
     []
   );
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
-  const kpisGestion = useMemo(() => contarKpisGestionAlfa(casos), [casos]);
+  const kpisGestion = useMemo(() => {
+    const fuente = colaFechaLlamada
+      ? casos.filter((c) => !casoAlfaTieneFechaLlamada(c))
+      : casos;
+    return contarKpisGestionAlfa(fuente);
+  }, [casos, colaFechaLlamada]);
 
   const resumenDocs = useMemo(() => {
     let conLiq = 0;
@@ -343,6 +351,8 @@ export default function ReporteSegurosAlfa() {
         if (!ok) return false;
       }
 
+      if (colaFechaLlamada && !q && casoAlfaTieneFechaLlamada(c)) return false;
+
       if (!q) return true;
       const blob = [
         c.consecutivo,
@@ -380,6 +390,7 @@ export default function ReporteSegurosAlfa() {
     filtroDocumento,
     filtroSla,
     soloMisCasos,
+    colaFechaLlamada,
   ]);
 
   const totalPaginas = Math.max(1, Math.ceil(filtrados.length / ALFA_REPORTE_PAGE_SIZE));
@@ -567,6 +578,11 @@ export default function ReporteSegurosAlfa() {
                 placeholder={t('segurosAlfa.report.searchPlaceholder')}
               />
             </Campo>
+            {colaFechaLlamada ? (
+              <p className="md:col-span-2 lg:col-span-3 font-body text-sm text-amber-800 dark:text-amber-200">
+                {t('segurosAlfa.report.callDateQueueHint')}
+              </p>
+            ) : null}
             <Campo label={t('segurosAlfa.fields.ciudad')}>
               <SelectFenix value={filtroCiudad} onChange={(e) => setFiltroCiudad(e.target.value)}>
                 <option value="">{t('segurosAlfa.report.all')}</option>
@@ -676,6 +692,7 @@ export default function ReporteSegurosAlfa() {
           ciudad={filtroCiudad}
           estado={filtroEstado}
           bloqueSeleccionadoId={bloqueSeleccionadoId}
+          reloadToken={mapaReloadToken}
           onBloqueChange={(bloqueId, casoIds) => {
             setBloqueSeleccionadoId(bloqueId);
             setIdsBloqueSeleccionado(casoIds || []);
@@ -845,6 +862,7 @@ export default function ReporteSegurosAlfa() {
               }
               setCasoEdicion(null);
               await recargar();
+              setMapaReloadToken((n) => n + 1);
             }}
           />
         </ExpressModal>

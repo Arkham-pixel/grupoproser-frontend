@@ -1,6 +1,7 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 import { formatMiles } from './segurosAlfaHelpers.js';
 import {
+  argsDeduciblesPorArticuloDiagrama,
   calcularCriterioFinal,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
@@ -23,6 +24,7 @@ import {
   sumarOtrosAmparos as sumarOtrosAmparosAlfa,
   textoResumenOtrosAmparos as textoResumenOtrosAmparosAlfa,
 } from '../liquidacion/otrosAmparosLiquidacion.js';
+import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
 
 /** AIU del FORMATO LIQUIDACIÓN Alfa (único recargo; sin imprevistos NSR ocultos). */
 export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.2;
@@ -120,12 +122,10 @@ export function migrarItemLegacy(it = {}) {
 const fechaInput = (value) => {
   if (!value) return '';
   if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-  const d = new Date(value);
+  // Fechas ISO UTC (p. ej. 2026-08-10T00:00:00.000Z) → día calendario, sin -1 por zona horaria
+  const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return '';
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return d.toISOString().slice(0, 10);
 };
 
 export function liquidacionCatastroficoDefaultAlfa(caso = {}) {
@@ -492,9 +492,7 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     deducibleConfig: cfgDed,
     deducibleConfigContenidos: liq.deducibleConfigContenidos || cfgDed,
     deducibleConfigPresupuesto: cfgDed,
-    deducibleContenidosPorArticulos: resumen.usaDeduciblePorArticulo
-      ? resumen.deduciblePorArticulos
-      : null,
+    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
   });
 
   const dedAlfa = calcularDeducibleAlfaSobreValorAsegurado({
@@ -954,6 +952,7 @@ export function defaultInformeUnicoAlfa(caso = {}) {
   if (!guardado) {
     return {
       ...base,
+      fotosInspeccion: fotosInformeDesdeCaso(caso, base),
       analisisGeneral: defaultAnalisisGeneralInformeAlfa(caso, base),
     };
   }
@@ -968,19 +967,40 @@ export function defaultInformeUnicoAlfa(caso = {}) {
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo || coordsCaso,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
-    fotosInspeccion: Array.isArray(guardado.fotosInspeccion)
-      ? guardado.fotosInspeccion
-      : base.fotosInspeccion,
+    fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
+    actaAjustadorFirmaImagen:
+      guardado.actaAjustadorFirmaImagen || guardado.firmaAjustador || '',
+    firmaAjustador:
+      guardado.firmaAjustador || guardado.actaAjustadorFirmaImagen || '',
   };
   merged.analisisGeneral = defaultAnalisisGeneralInformeAlfa(caso, merged);
   return merged;
 }
 
+/**
+ * Evita el desfase UTC de `new Date('YYYY-MM-DD')` (en CO suele restar un día).
+ * Fechas solo-día → mediodía local.
+ */
+export function parseFechaLocalAlfa(value) {
+  if (!value) return null;
+  if (typeof value === 'string') {
+    const m = value.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) {
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+    }
+  }
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+}
+
 export function formatDateLarga(value) {
   if (!value) return '—';
   try {
-    return formatDate(value, getAppLocale(), {
-      day: '2-digit',
+    const date = parseFechaLocalAlfa(value);
+    if (!date) return String(value);
+    return formatDate(date, getAppLocale(), {
+      day: 'numeric',
       month: 'long',
       year: 'numeric',
     });
@@ -988,3 +1008,6 @@ export function formatDateLarga(value) {
     return String(value);
   }
 }
+
+/** Fecha del sismo CAT Alfa (texto fijo en Finiquito / cartas). */
+export const FECHA_TERREMOTO_ALFA_LARGA = '10 de agosto de 2026';

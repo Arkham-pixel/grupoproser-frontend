@@ -193,8 +193,8 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
           : Array.isArray(dataIns)
             ? dataIns
             : [];
-        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj));
-        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns));
+        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj, 'previsora'));
+        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns, 'previsora'));
         const lideresOpts = mapResponsablesAOpciones(listaResp);
         if (!esEdicion) {
           const liderDefault = resolverLiderPorModulo(lideresOpts, 'previsora');

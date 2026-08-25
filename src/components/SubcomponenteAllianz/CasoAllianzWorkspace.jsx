@@ -27,7 +27,8 @@ import {
   guardarLiquidadorEnCasoAllianzListado,
 } from '../../services/allianzListadoService.js';
 import { calcularLiquidacionAllianz } from './liquidadorAllianzHelpers.js';
-import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
+import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
 import useAllianzCasoAutosave from '../../hooks/useAllianzCasoAutosave.js';
 import { setAutosaveUiStatus } from '../../services/autosaveOfflineService.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
@@ -294,6 +295,14 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
             },
           });
       setCasoAllianz(actualizado);
+      setLiquidadorState(liquidador);
+      try {
+        const draftKey = `${esModuloListado ? 'allianz-listado-ws' : 'allianz-ws'}:${casoId}`;
+        borrarBorradorLocal(draftKey);
+        await eliminarBorradorArnald(draftKey);
+      } catch {
+        /* el caso ya quedó en Mongo */
+      }
       setMensaje(t('allianz.settlement.savedMessage'));
       setAutosaveUiStatus({
         state: 'synced',
@@ -523,7 +532,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
-                  setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
+                  setLiquidadorState(liq);
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
@@ -536,7 +545,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
                 casoAllianz={casoAllianz}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
-                  setLiquidadorState((prev) => fusionarLiquidadorSinPerderPresupuestoNsr(liq, prev));
+                  setLiquidadorState(liq);
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}

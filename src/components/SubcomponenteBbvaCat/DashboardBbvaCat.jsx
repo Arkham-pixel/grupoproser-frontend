@@ -21,6 +21,7 @@ export default function DashboardBbvaCat() {
       estados={ESTADOS_BBVA_CAT}
       i18nNs="bbvaCat"
       extras={{ severidad: true }}
+      modulo="bbvaCat"
     />
   );
 }

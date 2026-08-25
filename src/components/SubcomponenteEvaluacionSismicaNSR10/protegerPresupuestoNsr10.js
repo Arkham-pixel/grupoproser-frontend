@@ -125,3 +125,17 @@ export function preferirLiquidadorMasRico(a, b) {
   if (sa >= sb) return fusionarLiquidadorSinPerderPresupuestoNsr(a, b);
   return fusionarLiquidadorSinPerderPresupuestoNsr(b, a);
 }
+
+/**
+ * Persistencia: si lo de pantalla tiene contenido, se guarda TAL CUAL
+ * (no reinyectar la copia inicial). Solo se conserva el existente ante cascarón vacío.
+ */
+export function liquidadorParaPersistir(entrante, existente) {
+  if (entrante === undefined) return existente ?? null;
+  if (!entrante || typeof entrante !== 'object') {
+    return scoreContenidoLiquidadorNsr(existente) > 0 ? existente : null;
+  }
+  if (scoreContenidoLiquidadorNsr(entrante) > 0) return entrante;
+  if (scoreContenidoLiquidadorNsr(existente) > 0) return existente;
+  return entrante;
+}

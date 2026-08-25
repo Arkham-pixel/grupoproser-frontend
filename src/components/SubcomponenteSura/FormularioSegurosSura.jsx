@@ -148,8 +148,8 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
           : Array.isArray(dataIns)
             ? dataIns
             : [];
-        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj));
-        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns));
+        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj, 'sura'));
+        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns, 'sura'));
         const lideresOpts = mapResponsablesAOpciones(listaResp);
         if (!esEdicion) {
           const liderDefault = resolverLiderPorModulo(lideresOpts, 'sura');

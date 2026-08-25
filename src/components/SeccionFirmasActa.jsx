@@ -24,7 +24,7 @@ const CARGO_KEYS = [
   'technicalManager',
 ];
 
-function FirmaClienteModal({ open, onClose, onSave }) {
+function FirmaClienteModal({ open, onClose, onSave, titulo }) {
   const { t } = useTranslation();
   const canvasRef = useRef(null);
   const drawing = useRef(false);
@@ -107,7 +107,9 @@ function FirmaClienteModal({ open, onClose, onSave }) {
       onMouseDown={(ev) => ev.target === ev.currentTarget && onClose()}
     >
       <div className="w-full max-w-lg rounded-xl shadow-2xl p-5 sm:p-6 bg-white border-2 border-gray-200" role="dialog" aria-modal="true">
-        <h3 className="text-lg font-bold mb-2 text-gray-900">{t('acta.ui.drawModalTitle')}</h3>
+        <h3 className="text-lg font-bold mb-2 text-gray-900">
+          {titulo || t('acta.ui.drawModalTitle')}
+        </h3>
         <p className="text-sm mb-4 text-gray-600">{t('acta.ui.drawModalHint')}</p>
         <div className="rounded-lg overflow-hidden border-2 border-gray-200 mb-4 touch-none bg-white">
           <canvas
@@ -200,17 +202,23 @@ function ModalNuevoAjustador({ open, onClose, onGuardado, cargos }) {
         email: form.email.trim(),
         firma: form.firma || null,
       });
-      if (creado?._id && form.firma) {
+      if (creado?._id && form.firma && !creado._localOnly) {
         try {
           await FuncionarioService.actualizarFirmaFuncionario(creado._id, form.firma);
         } catch {
           // La firma puede quedar en el documento creado
         }
       }
-      onGuardado(creado);
+      // Si el alta fue local-only, asegurar que la firma viaje en el objeto
+      const conFirma = form.firma && !creado.firma ? { ...creado, firma: form.firma } : creado;
+      onGuardado(conFirma);
       onClose();
-    } catch {
-      alert(t('acta.ui.saveAdjusterError'));
+    } catch (err) {
+      alert(
+        `${t('acta.ui.saveAdjusterError')}${
+          err?.message ? `\n${err.message}` : ''
+        }`
+      );
     } finally {
       setGuardando(false);
     }
@@ -320,6 +328,7 @@ export default function SeccionFirmasActa({
   const tituloAjustadorFinal = tituloAjustador || t('acta.ui.defaultAdjusterTitle');
   const rolCap = nombreRolProfesional.charAt(0).toUpperCase() + nombreRolProfesional.slice(1);
   const [modalFirmaAbierto, setModalFirmaAbierto] = useState(false);
+  const [modalFirmaDestino, setModalFirmaDestino] = useState('cliente'); // 'cliente' | 'ajustador'
   const [modalNuevoAjustador, setModalNuevoAjustador] = useState(false);
   const [funcionarios, setFuncionarios] = useState([]);
   const [cargandoFuncionarios, setCargandoFuncionarios] = useState(true);
@@ -365,6 +374,41 @@ export default function SeccionFirmasActa({
     cargarListaFuncionarios();
   }, [cargarListaFuncionarios]);
 
+  const setFirmaAjustador = (dataUrl) => {
+    onInputChange('actaAjustadorFirmaImagen', dataUrl || '');
+    onInputChange('firmaAjustador', dataUrl || '');
+  };
+
+  const abrirModalFirma = (destino) => {
+    setModalFirmaDestino(destino);
+    setModalFirmaAbierto(true);
+  };
+
+  const handleFirmaModalSave = (dataUrl) => {
+    if (modalFirmaDestino === 'ajustador') {
+      setFirmaAjustador(dataUrl);
+      return;
+    }
+    onInputChange('actaClienteFirma', dataUrl);
+  };
+
+  const handleAjustadorFirmaUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/^image\/(png|jpeg|jpg|webp|gif)$/i.test(file.type)) {
+      alert(t('acta.ui.invalidImage'));
+      e.target.value = '';
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      if (ev.target?.result) setFirmaAjustador(ev.target.result);
+    };
+    reader.onerror = () => alert(t('acta.ui.readImageError'));
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const aplicarFuncionario = async (funcionarioId) => {
     const id = String(funcionarioId || '').trim();
     if (!id) {
@@ -372,7 +416,7 @@ export default function SeccionFirmasActa({
       onInputChange('actaAjustadorNombre', '');
       onInputChange('actaAjustadorCargo', '');
       onInputChange('actaAjustadorEmail', '');
-      onInputChange('actaAjustadorFirmaImagen', '');
+      setFirmaAjustador('');
       return;
     }
     let f = funcionarios.find((x) => idFunc(x) === id);
@@ -385,7 +429,7 @@ export default function SeccionFirmasActa({
     onInputChange('actaAjustadorNombre', f.nombre || '');
     onInputChange('actaAjustadorCargo', f.cargo || '');
     onInputChange('actaAjustadorEmail', f.email || '');
-    onInputChange('actaAjustadorFirmaImagen', f.firma || '');
+    setFirmaAjustador(f.firma || '');
   };
 
   const handleNuevoAjustadorGuardado = async (creado) => {
@@ -419,7 +463,15 @@ export default function SeccionFirmasActa({
       <FirmaClienteModal
         open={modalFirmaAbierto}
         onClose={() => setModalFirmaAbierto(false)}
-        onSave={(dataUrl) => onInputChange('actaClienteFirma', dataUrl)}
+        onSave={handleFirmaModalSave}
+        titulo={
+          modalFirmaDestino === 'ajustador'
+            ? t('acta.ui.drawAdjusterModalTitle', {
+                role: nombreRolProfesional,
+                defaultValue: `Dibujar firma del ${nombreRolProfesional}`,
+              })
+            : t('acta.ui.drawModalTitle')
+        }
       />
       <ModalNuevoAjustador
         open={modalNuevoAjustador}
@@ -480,7 +532,7 @@ export default function SeccionFirmasActa({
           <div className="mb-3 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setModalFirmaAbierto(true)}
+              onClick={() => abrirModalFirma('cliente')}
               className={complexBtnPrimary}
             >
               <FaPen /> {t('acta.ui.drawSignature')}
@@ -588,44 +640,88 @@ export default function SeccionFirmasActa({
             </p>
           )}
           {(() => {
+            const firmaActual =
+              formData.actaAjustadorFirmaImagen || formData.firmaAjustador || '';
             const sel = funcionarios.find(
               (x) => idFunc(x) === String(formData.actaAjustadorFuncionarioId || '')
             );
-            return sel && !formData.actaAjustadorFirmaImagen ? (
+            return sel && !firmaActual ? (
               <p className="mb-3 text-xs" style={{ color: ui.theme === 'dark' ? '#FCD34D' : '#B45309' }}>
                 {t('acta.ui.noSignatureSaved', { role: nombreRolProfesional })}
               </p>
             ) : null;
           })()}
-          <div className="mb-4 space-y-2 text-sm" style={{ color: ui.textPrimary }}>
-            <p>
-              <span className="font-semibold">{t('acta.ui.nameLabel')}</span>{' '}
-              {formData.actaAjustadorNombre || (
-                <span style={{ color: ui.textSecondary }}>{t('acta.ui.chooseRole', { role: nombreRolProfesional })}</span>
-              )}
-            </p>
-            <p>
-              <span className="font-semibold">{t('acta.ui.positionLabel')}</span>{' '}
-              {formData.actaAjustadorCargo || <span style={{ color: ui.textSecondary }}>{t('acta.ui.dash')}</span>}
-            </p>
-            <p>
-              <span className="font-semibold">{t('acta.ui.emailLabel')}</span>{' '}
-              {formData.actaAjustadorEmail || <span style={{ color: ui.textSecondary }}>{t('acta.ui.dash')}</span>}
-            </p>
+          <FieldLabel>{t('acta.ui.name')}</FieldLabel>
+          <ThemedInput
+            type="text"
+            value={formData.actaAjustadorNombre || formData.ajustadorNombre || ''}
+            onChange={(e) => {
+              onInputChange('actaAjustadorNombre', e.target.value);
+              onInputChange('ajustadorNombre', e.target.value);
+            }}
+            placeholder={t('acta.ui.chooseRole', { role: nombreRolProfesional })}
+            className="mb-3"
+          />
+          <FieldLabel>{t('acta.ui.position')}</FieldLabel>
+          <ThemedInput
+            type="text"
+            value={formData.actaAjustadorCargo || ''}
+            onChange={(e) => onInputChange('actaAjustadorCargo', e.target.value)}
+            placeholder={t('acta.ui.clientPositionPlaceholder')}
+            className="mb-3"
+          />
+          <FieldLabel>{t('acta.ui.email')}</FieldLabel>
+          <ThemedInput
+            type="email"
+            value={formData.actaAjustadorEmail || ''}
+            onChange={(e) => onInputChange('actaAjustadorEmail', e.target.value)}
+            placeholder={t('acta.ui.clientEmailPlaceholder')}
+            className="mb-4"
+          />
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => abrirModalFirma('ajustador')}
+              className={complexBtnPrimary}
+            >
+              <FaPen /> {t('acta.ui.drawSignature')}
+            </button>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
+              onChange={handleAjustadorFirmaUpload}
+              className="hidden"
+              id="upload-firma-ajustador-propiedades"
+            />
+            <label
+              htmlFor="upload-firma-ajustador-propiedades"
+              className={`cursor-pointer ${complexBtnSecondary}`}
+            >
+              <FaUpload /> {t('acta.ui.uploadImage')}
+            </label>
+            {(formData.actaAjustadorFirmaImagen || formData.firmaAjustador) && (
+              <button
+                type="button"
+                onClick={() => setFirmaAjustador('')}
+                className={complexBtnGhost}
+              >
+                {t('acta.ui.removeSignature')}
+              </button>
+            )}
           </div>
           <div
             className="flex min-h-[120px] items-center justify-center rounded-lg border-2 p-3"
             style={{ borderColor: ui.borderColor, backgroundColor: ui.cardBg }}
           >
-            {formData.actaAjustadorFirmaImagen ? (
+            {formData.actaAjustadorFirmaImagen || formData.firmaAjustador ? (
               <img
-                src={formData.actaAjustadorFirmaImagen}
+                src={formData.actaAjustadorFirmaImagen || formData.firmaAjustador}
                 alt={t('acta.ui.adjusterSignatureAlt', { role: nombreRolProfesional })}
                 className="max-h-28 object-contain"
               />
             ) : (
               <span className="text-center text-sm" style={{ color: ui.textSecondary }}>
-                {t('acta.ui.chooseOrAddRole', { role: nombreRolProfesional })}
+                {t('acta.ui.noSignatureYet')}
               </span>
             )}
           </div>

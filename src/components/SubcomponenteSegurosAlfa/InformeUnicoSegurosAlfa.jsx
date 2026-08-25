@@ -126,6 +126,9 @@ export default function InformeUnicoSegurosAlfa({
       if (campo === 'ajustadorNombre' && !prev.actaAjustadorNombre) {
         next.actaAjustadorNombre = valor;
       }
+      // Firma del ajustador: mantener ambos campos alineados (UI + Word/Excel)
+      if (campo === 'actaAjustadorFirmaImagen') next.firmaAjustador = valor;
+      if (campo === 'firmaAjustador') next.actaAjustadorFirmaImagen = valor;
       return next;
     });
   };

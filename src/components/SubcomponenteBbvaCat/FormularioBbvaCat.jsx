@@ -70,7 +70,6 @@ import {
 } from '../../utils/permisosCasoPorRol.js';
 import {
   filtrarLideresPorModulo,
-  filtrarOpcionesPorCiudad,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -127,7 +126,6 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
   const [ciudadesRaw, setCiudadesRaw] = useState([]);
   const [responsables, setResponsables] = useState([]);
   const [ajustadoresCat, setAjustadoresCat] = useState([]);
-  const [inspectoresCat, setInspectoresCat] = useState([]);
   const [cargandoCatalogos, setCargandoCatalogos] = useState(false);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
@@ -160,16 +158,14 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
     const cargar = async () => {
       setCargandoCatalogos(true);
       try {
-        const [resCiudades, resResp, resAj, resIns] = await Promise.all([
+        const [resCiudades, resResp, resAj] = await Promise.all([
           fetch(`${BASE_URL}/api/ciudades`),
           fetch(`${BASE_URL}/api/responsables`),
           fetch(`${BASE_URL}/api/ajustadores-catastrofico`),
-          fetch(`${BASE_URL}/api/inspectores-catastrofico`),
         ]);
         const dataCiudades = await resCiudades.json().catch(() => ({}));
         const dataResp = await resResp.json().catch(() => ({}));
         const dataAj = await resAj.json().catch(() => ({}));
-        const dataIns = await resIns.json().catch(() => ({}));
         if (cancelado) return;
         const lista = Array.isArray(dataCiudades?.data)
           ? dataCiudades.data
@@ -191,13 +187,7 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
             : [];
         setResponsables(mapResponsablesAOpciones(listaResp));
         const listaAj = Array.isArray(dataAj?.data) ? dataAj.data : Array.isArray(dataAj) ? dataAj : [];
-        const listaIns = Array.isArray(dataIns?.data)
-          ? dataIns.data
-          : Array.isArray(dataIns)
-            ? dataIns
-            : [];
-        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj));
-        setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns));
+        setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj, 'bbvaCat'));
         const lideresOpts = mapResponsablesAOpciones(listaResp);
         if (!esEdicion) {
           const liderDefault = resolverLiderPorModulo(lideresOpts, 'bbvaCat');
@@ -261,14 +251,10 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
     return base;
   }, [ciudadesRaw, ciudadesFiltradas, esModuloListado, form.ciudad]);
 
-  const ajustadoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.ajustador);
-  }, [ajustadoresCat, form.ciudad, form.ajustador]);
-  const inspectoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.inspector);
-  }, [inspectoresCat, form.ciudad, form.inspector]);
+  const ajustadoresBbvaCat = useMemo(
+    () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
+    [ajustadoresCat, form.ajustador]
+  );
   const lideresBbvaCat = useMemo(
     () => filtrarLideresPorModulo(responsables, 'bbvaCat'),
     [responsables]
@@ -359,7 +345,7 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
         departamento: form.departamento,
         ajustadorLider: form.ajustadorLider,
         ajustador: form.ajustador,
-        inspector: form.inspector,
+        inspector: '',
         fechaAsignacion: form.fechaAsignacion,
         fechaVisita: form.fechaVisita,
         modalidadAtencion: form.modalidadAtencion,
@@ -638,13 +624,12 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
             form={form}
             setCampo={setCampo}
             lideres={lideresBbvaCat}
-            ajustadores={ajustadoresPorCiudad}
-            inspectores={inspectoresPorCiudad}
+            ajustadores={ajustadoresBbvaCat}
             rol={rolUsuario}
             modulo="bbvaCat"
             i18nNs="bbvaCat"
-            ciudadSeleccionada={form.ciudad}
-            filtrarPorCiudad
+            filtrarPorCiudad={false}
+            mostrarInspector={false}
           />
           <Campo label={t('bbvaCat.fields.fechaAsignacion')}>
             <InputFenix

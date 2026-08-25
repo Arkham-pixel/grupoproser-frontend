@@ -25,6 +25,20 @@ import {
   RECARGOS_PRESUPUESTO_BBVA_CAT,
   aplicarPresupuestoAiuBbvaCatEnEvaluacion,
 } from './liquidadorBbvaCatHelpers.js';
+import FormatoLiquidacionBbvaCat from './FormatoLiquidacionBbvaCat.jsx';
+import {
+  calcularFilaDetalleBbvaCat,
+  contextoFechasBbvaCat,
+  defaultDeducibleFormatoBbvaCat,
+  nuevoItemDetalleBbvaCat,
+  resolverDetalleLiquidacionBbvaCat,
+  sincronizarDetalleBbvaConPresupuestoNsr,
+} from './formatoLiquidacionBbvaCat.js';
+import {
+  aplicarTipoLiquidadorEnLiquidacionBbvaCat,
+  esObservacionFiniquitoDefaultBbvaCat,
+  observacionesFiniquitoPorDefectoBbvaCat,
+} from './deduciblesBbvaCat.js';
 import { descargarWordInformeBbvaCat } from './generarWordInformeBbvaCat.js';
 import { bbvaCatArchivosApi } from './bbvaCatArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
@@ -141,6 +155,42 @@ export default function InformeUnicoBbvaCat({
       }
       return next;
     });
+  };
+
+  const itemsDetalle = useMemo(
+    () => resolverDetalleLiquidacionBbvaCat(liquidador),
+    [liquidador]
+  );
+
+  const actualizarEncabezado = (campo, valor) => {
+    setLiquidador((prev) => {
+      const next = {
+        ...prev,
+        encabezado: { ...(prev.encabezado || {}), [campo]: valor },
+      };
+      if (campo === 'valorAseguradoInmueble' || campo === 'valorGlobal') {
+        const liq = prev.liquidacionCatastrofico || {};
+        next.liquidacionCatastrofico = { ...liq, valorAsegurado: valor };
+        next.encabezado.valorGlobal = valor;
+        next.encabezado.valorAseguradoInmueble = valor;
+      }
+      if (campo === 'ramoAfectado') {
+        next.deducibleFormato = defaultDeducibleFormatoBbvaCat(prev.tipoLiquidador, valor);
+      }
+      return next;
+    });
+  };
+
+  const setDetalle = (filas) => {
+    setLiquidador((prev) => sincronizarDetalleBbvaConPresupuestoNsr(prev, filas));
+  };
+
+  const handleItemChange = (index, patch = {}) => {
+    const base = resolverDetalleLiquidacionBbvaCat(liquidador).map((it) => ({ ...it }));
+    if (!base[index]) return;
+    const ctx = contextoFechasBbvaCat(liquidador.encabezado || {}, casoBbvaCat || {});
+    base[index] = calcularFilaDetalleBbvaCat({ ...base[index], ...patch }, ctx);
+    setDetalle(base);
   };
 
   const restaurarInfoEvento = () => {
@@ -361,13 +411,12 @@ export default function InformeUnicoBbvaCat({
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
           {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? '4. Liquidador NSR-10'
-            : '4. Dictamen y liquidador NSR-10'}
+            ? '4. Liquidación de indemnización BBVA'
+            : '4. Liquidación de indemnización BBVA'}
         </h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? 'Cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'
-            : 'Dictamen de la evaluación sísmica y cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'}
+          El mismo formato Excel (deudores / leasing) del liquidador, con logo BBVA y los
+          cuatro tipos de deducible (SMMLV, porcentaje, dólares y pesos).
         </p>
 
         {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
@@ -384,48 +433,91 @@ export default function InformeUnicoBbvaCat({
             <span className="text-gray-500">Dictamen</span>
             <p className="font-medium whitespace-pre-wrap">{criterio.dictamen || '—'}</p>
           </div>
-          <div className="sm:col-span-2">
-            <span className="text-gray-500">Descripción de daños</span>
-            <p className="font-medium whitespace-pre-wrap">{criterio.descripcionDanios || '—'}</p>
-          </div>
         </div>
         ) : null}
 
-        <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible</span>
-            <span>{totales.deducibleTexto || 'No aplica'}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Otros amparos (sin deducible)</span>
-            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('bbvaCat.settlement.totalPay')}</span>
-            <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-          </div>
-        </div>
-
-        <ChecklistEvaluacionSismicaNSR10
-          formData={formDataNsr}
-          onInputChange={handleNsrChange}
-          modoLiquidador
-          recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
+        <FormatoLiquidacionBbvaCat
+          caso={casoBbvaCat || {}}
+          encabezado={liquidador.encabezado || {}}
+          liquidador={liquidador}
+          itemsDetalle={itemsDetalle}
+          onEncabezadoChange={actualizarEncabezado}
+          onTipoLiquidadorChange={(tipo) =>
+            setLiquidador((prev) => {
+              const obsActual = prev.observacionesFiniquito ?? '';
+              const obsSiguiente = esObservacionFiniquitoDefaultBbvaCat(obsActual)
+                ? observacionesFiniquitoPorDefectoBbvaCat(tipo)
+                : obsActual;
+              return {
+                ...prev,
+                tipoLiquidador: tipo,
+                observacionesFiniquito: obsSiguiente,
+                deducibleFormato: defaultDeducibleFormatoBbvaCat(
+                  tipo,
+                  prev.encabezado?.ramoAfectado || prev.encabezado?.cobertura
+                ),
+                liquidacionCatastrofico: aplicarTipoLiquidadorEnLiquidacionBbvaCat(
+                  prev.liquidacionCatastrofico || {},
+                  tipo,
+                  { forzarDeducible: true }
+                ),
+              };
+            })
+          }
+          onDeducibleFormatoChange={(patch) =>
+            setLiquidador((prev) => ({
+              ...prev,
+              deducibleFormato: { ...(prev.deducibleFormato || {}), ...patch },
+            }))
+          }
+          onItemChange={handleItemChange}
+          onAddItem={() =>
+            setDetalle([
+              ...resolverDetalleLiquidacionBbvaCat(liquidador),
+              nuevoItemDetalleBbvaCat(),
+            ])
+          }
+          onRemoveItem={(index) => {
+            const base = resolverDetalleLiquidacionBbvaCat(liquidador).map((it) => ({ ...it }));
+            base.splice(index, 1);
+            setDetalle(base);
+          }}
+          onLiquidadoPorChange={(v) => setLiquidador((prev) => ({ ...prev, liquidadoPor: v }))}
+          onAreaLiquidadorChange={(v) =>
+            setLiquidador((prev) => ({ ...prev, areaLiquidador: v }))
+          }
+          onObservacionesChange={(v) =>
+            setLiquidador((prev) => ({ ...prev, observacionesFiniquito: v }))
+          }
+          onAceptacionChange={(v) =>
+            setLiquidador((prev) => ({ ...prev, aceptacionIndemnizacion: v }))
+          }
+          onDatosFiniquitoChange={(campo, valor) =>
+            setLiquidador((prev) => ({
+              ...prev,
+              datosFiniquito: { ...(prev.datosFiniquito || {}), [campo]: valor },
+            }))
+          }
+          onFirmaClienteChange={(v) => setLiquidador((prev) => ({ ...prev, firmaCliente: v }))}
+          onNombreFirmanteChange={(v) =>
+            setLiquidador((prev) => ({ ...prev, nombreFirmante: v }))
+          }
         />
+
+        <div className="mt-4">
+          <ChecklistEvaluacionSismicaNSR10
+            formData={formDataNsr}
+            onInputChange={handleNsrChange}
+            modoLiquidador
+            recargosPresupuesto={RECARGOS_PRESUPUESTO_BBVA_CAT}
+          />
+        </div>
       </section>
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>5. {t('bbvaCat.reportUnique.sectionTable')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          Resumen de ítems del presupuesto NSR-10.
+          Resumen de ítems del presupuesto NSR-10 (apoyo técnico; la liquidación oficial es el formato Excel de arriba).
         </p>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">

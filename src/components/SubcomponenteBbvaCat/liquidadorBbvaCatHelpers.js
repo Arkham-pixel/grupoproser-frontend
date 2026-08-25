@@ -1,6 +1,7 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 import { formatMiles } from './bbvaCatHelpers.js';
 import {
+  argsDeduciblesPorArticuloDiagrama,
   calcularCriterioFinal,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
@@ -21,6 +22,12 @@ import {
   observacionesFiniquitoPorDefectoBbvaCat,
   TIPO_LIQUIDADOR_DEUDORES,
 } from './deduciblesBbvaCat.js';
+import {
+  calcularTotalesFormatoExcelBbvaCat,
+  defaultDeducibleFormatoBbvaCat,
+  resolverDeducibleFormatoBbvaCat,
+  resolverDetalleLiquidacionBbvaCat,
+} from './formatoLiquidacionBbvaCat.js';
 
 export { sanitizarInformeUnicoFotos as sanitizarInformeUnicoBbvaCat };
 
@@ -51,12 +58,8 @@ export function aplicarPresupuestoAiuBbvaCatEnEvaluacion(evalData = {}) {
   };
 }
 
-export const SMMLV_POR_ANIO = {
-  2024: 1300000,
-  2025: 1423500,
-  2026: 1750905,
-};
-export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
+export { SMMLV_TABLA_BBVA as SMMLV_POR_ANIO } from './formatoLiquidacionBbvaCat.js';
+export const SMMLV_DEFAULT = 1750905;
 
 /** Texto fijo editable: información general del evento (consolidado terremoto BbvaCat). */
 export const INFO_EVENTO_DEFAULT_BBVA_CAT = `El presente informe se elabora en el marco de la atención del evento sísmico / catastrófico reportado ante BBVA Seguros, conforme a la visita de inspección realizada al predio asegurado y a la documentación aportada por el tomador/asegurado.
@@ -159,9 +162,14 @@ export function encabezadoDesdecasoBbvaCat(caso = {}) {
     ciudad: c.ciudad || '',
     departamento: c.departamento || '',
     cobertura: c.cobertura || '',
-    evento: c.cobertura || 'TERREMOTO',
+    evento: c.cobertura || c.causa || 'TERREMOTO',
     ajustador: c.ajustador || '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
+    vigenciaDesde: fechaInput(c.fechaInicioPoliza),
+    vigenciaHasta: fechaInput(c.fechaFinPoliza),
+    ramoAfectado: c.cobertura || 'TERREMOTO',
+    trm: c.trm || '',
+    valorGlobal: c.valorAseguradoInmueble ?? '',
   };
 }
 
@@ -203,6 +211,11 @@ export const DEFAULT_LIQUIDADOR_BbvaCat = {
     evento: 'TERREMOTO',
     ajustador: '',
     valorAseguradoInmueble: '',
+    vigenciaDesde: '',
+    vigenciaHasta: '',
+    ramoAfectado: 'TERREMOTO',
+    trm: '',
+    valorGlobal: '',
   },
   evaluacionSismicaNSR10: null,
   liquidacionCatastrofico: liquidacionCatastroficoDefaultBbvaCat(),
@@ -211,6 +224,12 @@ export const DEFAULT_LIQUIDADOR_BbvaCat = {
   tipoLiquidador: TIPO_LIQUIDADOR_DEUDORES,
   aceptacionIndemnizacion: '',
   observacionesFiniquito: '',
+  firmaCliente: '',
+  nombreFirmante: '',
+  detalleLiquidacionCat: null,
+  deducibleFormato: defaultDeducibleFormatoBbvaCat(TIPO_LIQUIDADOR_DEUDORES),
+  liquidadoPor: '',
+  areaLiquidador: 'Indemnizaciones Seguros Generales',
   datosFiniquito: {
     ciudadFirma: '',
     diaFirma: '',
@@ -228,8 +247,8 @@ export function esLiquidadorNsrBbvaCat(liquidador = {}) {
 }
 
 /**
- * Totales BbvaCat = presupuesto NSR-10 + contenidos + diagrama (suma + hospedaje).
- * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
+ * Totales BBVA CAT = formato Excel (detalle + 4 tipos de deducible).
+ * El presupuesto NSR-10 sigue disponible como origen técnico / dictamen.
  */
 export function calcularLiquidacionBbvaCat(liquidador = {}) {
   const evalData = aplicarPresupuestoAiuBbvaCatEnEvaluacion(
@@ -240,11 +259,15 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
   const resumen = calcularResumenTotalesNsr10(evalData);
   const liq = liquidador.liquidacionCatastrofico || {};
   const enc = liquidador.encabezado || {};
+  const excel = calcularTotalesFormatoExcelBbvaCat(liquidador);
   const valorAsegurado =
-    parsearNumero(liq.valorAsegurado) || parsearNumero(enc.valorAseguradoInmueble) || 0;
+    excel.valorGlobal ||
+    parsearNumero(liq.valorAsegurado) ||
+    parsearNumero(enc.valorAseguradoInmueble) ||
+    0;
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado,
-    totalDanios: resumen.sumaCompleta,
+    totalDanios: excel.sumaIndemnizable || resumen.sumaCompleta,
     totalPresupuesto: resumen.totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
@@ -254,9 +277,16 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
     otrosAmparos: liquidador.otrosAmparos,
+    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
+  const totalOtrosAmparos = diagrama.totalOtrosAmparos || 0;
+  const totalIndemnizar = Math.max(
+    0,
+    Math.round((excel.valorAIndemnizar + totalOtrosAmparos) * 100) / 100
+  );
+  const tipos = excel.tiposDeducible || {};
 
   return {
     modelo: 'nsr10',
@@ -264,37 +294,33 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
     contenidos: resumen.contenidos,
     totalPresupuesto: resumen.totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
-    sumaCompleta: resumen.sumaCompleta,
-    subtotal: totalesPres.subtotal,
+    sumaCompleta: excel.sumaIndemnizable || resumen.sumaCompleta,
+    subtotal: excel.subTotal,
     aiu: totalesPres.aiu,
     imprevistos: totalesPres.imprevistos,
     impuestos: totalesPres.impuestos,
-    totalDanios: resumen.sumaCompleta,
-    diagrama,
+    totalDanios: excel.sumaIndemnizable || resumen.sumaCompleta,
+    diagrama: {
+      ...diagrama,
+      deducibleAplicado: excel.deducibleAplicable,
+      sumaDeducibles: excel.deducibleAplicable,
+      totalIndemnizar,
+    },
     criterio,
-    totalIndemnizar: diagrama.totalIndemnizar,
-    totalIndemnizable: diagrama.totalIndemnizar,
-    totalPerdida: resumen.sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
-    deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
-    deducibleTexto: [
-      diagrama.deduciblePresupuesto?.aplica ? `Presupuesto: ${diagrama.deduciblePresupuesto.texto}` : null,
-      diagrama.deducibleContenidos?.aplica || diagrama.deducibleAplica
-        ? `Contenidos: ${diagrama.deducibleContenidos?.texto || diagrama.deducible}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(' · ') || diagrama.deducible,
+    formatoExcel: excel,
+    totalIndemnizar,
+    totalIndemnizable: totalIndemnizar,
+    totalPerdida: excel.sumaIndemnizable || resumen.sumaCompleta,
+    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || excel.sumaIndemnizable,
+    deducibleAplicado: excel.deducibleAplicable,
+    deducibleTexto: `Aplica el mayor de SMMLV / % / USD / pesos (${tipos.tipoAplicadoLabel || 'SMMLV'})`,
     subtotalContenidos: resumen.totalContenidos,
-    subtotalEdificios: resumen.totalPresupuesto,
+    subtotalEdificios: excel.subTotal,
     diferencia: 0,
-    usaSMMLV: Boolean(
-      diagrama.deduciblePresupuesto?.usaMinimo ||
-        (diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV')
-    ),
-    totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
+    usaSMMLV: tipos.tipoAplicado === 'smmlv',
+    totalOtrosAmparos,
     otrosAmparos: diagrama.otrosAmparos || [],
-    deducibleRequiereValorAsegurado: Boolean(diagrama.requiereValorAsegurado),
+    deducibleRequiereValorAsegurado: !valorAsegurado,
     valorAsegurado,
   };
 }
@@ -336,6 +362,9 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     liquidacionCatastrofico: liquidacionCatastroficoDefaultBbvaCat(caso, tipoInicial),
     tipoLiquidador: tipoInicial,
     observacionesFiniquito: observacionesFiniquitoPorDefectoBbvaCat(tipoInicial),
+    deducibleFormato: defaultDeducibleFormatoBbvaCat(tipoInicial),
+    liquidadoPor: caso.ajustador || '',
+    areaLiquidador: 'Indemnizaciones Seguros Generales',
     datosFiniquito: datosFiniquitoDefault,
     otrosAmparos: defaultOtrosAmparos(),
     valorReclamadoCaso:
@@ -391,6 +420,8 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     tipoLiquidador: tipo,
     aceptacionIndemnizacion: guardado.aceptacionIndemnizacion || '',
     observacionesFiniquito: obsFiniquitoGuardada,
+    firmaCliente: guardado.firmaCliente || '',
+    nombreFirmante: guardado.nombreFirmante || encabezadoFusion.asegurado || '',
     datosFiniquito: {
       ...datosFiniquitoDefault,
       ...(guardado.datosFiniquito || {}),
@@ -408,6 +439,18 @@ export function mapcasoBbvaCatALiquidador(caso = {}) {
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
       : defaultOtrosAmparos(),
+    detalleLiquidacionCat: Array.isArray(guardado.detalleLiquidacionCat)
+      ? guardado.detalleLiquidacionCat
+      : resolverDetalleLiquidacionBbvaCat({
+          ...guardado,
+          encabezado: encabezadoFusion,
+          evaluacionSismicaNSR10: aplicarPresupuestoAiuBbvaCatEnEvaluacion(
+            fusionarEvaluacionSismicaNSR10Guardada(guardado.evaluacionSismicaNSR10, prefill)
+          ),
+        }),
+    deducibleFormato: resolverDeducibleFormatoBbvaCat({ ...guardado, tipoLiquidador: tipo }),
+    liquidadoPor: guardado.liquidadoPor || caso.ajustador || '',
+    areaLiquidador: guardado.areaLiquidador || 'Indemnizaciones Seguros Generales',
   };
 }
 

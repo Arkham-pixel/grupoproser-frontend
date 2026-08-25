@@ -117,17 +117,49 @@ return desdeLocal;
       });
 
       if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        let detalle = `${response.status}: ${response.statusText}`;
+        try {
+          const errBody = await response.json();
+          if (errBody?.error) detalle = errBody.error;
+          else if (errBody?.detalle) detalle = errBody.detalle;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(detalle);
       }
 
-      const nuevoFuncionario = await response.json();
-// También guardar en localStorage como backup
-      this.sincronizarConLocalStorage();
-      
-      return nuevoFuncionario.funcionario;
+      const body = await response.json();
+      const nuevo = body?.funcionario || body;
+      if (!nuevo || (!nuevo._id && !nuevo.id)) {
+        throw new Error('Respuesta inválida al crear funcionario');
+      }
+      try {
+        await this.sincronizarConLocalStorage();
+      } catch {
+        /* ok */
+      }
+      return nuevo;
     } catch (error) {
       console.error('❌ Error al crear funcionario:', error);
-      throw error;
+      // Fallback local para no bloquear el informe si la API falla
+      const local = {
+        _id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        nombre: funcionario?.nombre || '',
+        cargo: funcionario?.cargo || '',
+        telefono: funcionario?.telefono || '',
+        email: funcionario?.email || '',
+        firma: funcionario?.firma || null,
+        activo: true,
+        fechaCreacion: new Date().toISOString(),
+        _localOnly: true,
+      };
+      try {
+        const prev = this.normalizarListaFuncionarios(this.cargarDesdeLocalStorage());
+        this.guardarEnLocalStorage([local, ...prev]);
+      } catch {
+        /* ok */
+      }
+      return local;
     }
   }
 

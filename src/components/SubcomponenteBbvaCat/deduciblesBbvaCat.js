@@ -25,9 +25,31 @@ export const DEDUCIBLE_CAT_BBVA = {
   porcentaje: 2,
   cantidadSMMLV: 3,
   base: 'valor_asegurable',
+  basePct: 'valor_global',
   modo: 'max_pct_minimo',
   texto:
     '2% del valor asegurable sin ser inferior a 3 SMMLV (terremoto, temblor, erupción volcánica, maremoto, tsunami y eventos catastróficos)',
+};
+
+/** Excel «Liquidador Deudores»: 3 SMMLV o 2 % del valor global (el mayor). */
+export const DEDUCIBLE_DEUDORES_BBVA = {
+  ...DEDUCIBLE_CAT_BBVA,
+  cantidadSMMLV: 3,
+  porcentaje: 2,
+  basePct: 'valor_global',
+};
+
+/**
+ * Excel «Liquidador leasing» (incendio): 1,5 SMMLV o 15 % de la pérdida.
+ * Si el ramo es CAT / terremoto, se mantiene 3 SMMLV o 2 % (misma póliza).
+ */
+export const DEDUCIBLE_LEASING_BBVA = {
+  porcentaje: 15,
+  cantidadSMMLV: 1.5,
+  base: 'valor_asegurable',
+  basePct: 'subtotal',
+  modo: 'max_pct_minimo',
+  texto: '1,5 SMMLV o 15% de la pérdida (se aplica el mayor)',
 };
 
 export const TEXTO_DEDUCIBLE_AVISO_BBVA =
@@ -110,12 +132,18 @@ export function textosLetrerosBbvaCat(tipo) {
   };
 }
 
-export function reglaDeduciblePorTipoBbvaCat(tipo) {
+function esRamoCatastroficoBbva(ramo) {
+  return /TERREMOTO|TEMBLOR|ERUPCION|VOLCAN|MAREMOTO|TSUNAMI|CATASTROF/.test(
+    normalizarTexto(ramo)
+  );
+}
+
+export function reglaDeduciblePorTipoBbvaCat(tipo, ramo = '') {
   const t = inferirTipoLiquidadorBbvaCat({ tipoLiquidador: tipo });
-  return {
-    tipo: t,
-    ...DEDUCIBLE_CAT_BBVA,
-  };
+  if (t === TIPO_LIQUIDADOR_LEASING && ramo && !esRamoCatastroficoBbva(ramo)) {
+    return { tipo: t, ...DEDUCIBLE_LEASING_BBVA };
+  }
+  return { tipo: t, ...DEDUCIBLE_DEUDORES_BBVA };
 }
 
 export function pareceDeducibleGenericoCatastrofico(cfg = {}) {
@@ -128,8 +156,8 @@ export function pareceDeducibleGenericoCatastrofico(cfg = {}) {
   return esDiezYCuatro || vacio;
 }
 
-export function patchDeducibleDesdeTipoBbvaCat(tipo, cfgActual = {}) {
-  const regla = reglaDeduciblePorTipoBbvaCat(tipo);
+export function patchDeducibleDesdeTipoBbvaCat(tipo, cfgActual = {}, ramo = '') {
+  const regla = reglaDeduciblePorTipoBbvaCat(tipo, ramo);
   return {
     ...DEFAULT_DEDUCIBLE_CATASTROFICO,
     ...cfgActual,

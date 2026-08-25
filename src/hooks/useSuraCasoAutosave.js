@@ -9,7 +9,7 @@ import {
   guardarLiquidadorEnCasoSura,
   guardarSeccionCasoSura,
 } from '../services/segurosSuraService.js';
-import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { liquidadorParaPersistir } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_DOCUMENTOS = new Set(['informe', 'informe-unico', 'documentos']);
 const TAB_AGIL = new Set(['informe-agil']);
@@ -91,7 +91,7 @@ export default function useSuraCasoAutosave({
       }
       return guardarLiquidadorEnCasoSura({
         casoId,
-        liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+        liquidador: liquidadorParaPersistir(
           payload.data,
           base.liquidador
         ),
@@ -220,7 +220,7 @@ export default function useSuraCasoAutosave({
         } else {
           actualizado = await guardarLiquidadorEnCasoSura({
             casoId,
-            liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+            liquidador: liquidadorParaPersistir(
               payload.data,
               base.liquidador
             ),

@@ -3,6 +3,7 @@
  * al presupuesto / indemnización del informe único catastrófico.
  */
 import {
+  argsDeduciblesPorArticuloDiagrama,
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
   parseMontoNsr10,
@@ -83,9 +84,7 @@ export function sincronizarPresupuestoNsr10AlInforme(formData = {}, { forzar = f
       liquidacion.deducibleConfigContenidos || liquidacion.deducibleConfig,
     deducibleConfigPresupuesto: liquidacion.deducibleConfigPresupuesto,
     otrosAmparos: formData.otrosAmparos,
-    deducibleContenidosPorArticulos: resumen.usaDeduciblePorArticulo
-      ? resumen.deduciblePorArticulos
-      : null,
+    ...argsDeduciblesPorArticuloDiagrama(liquidacion, resumen),
   });
   return {
     totales: {
@@ -106,8 +105,8 @@ export function sincronizarPresupuestoNsr10AlInforme(formData = {}, { forzar = f
       fuente: 'nsr10',
       intro: INTRO_NSR10,
       items,
-      aiuPorcentaje: Number(presupuestoNsr.aiuPorcentaje ?? 0.05),
-      imprevistosPorcentaje: Number(presupuestoNsr.imprevistosPorcentaje ?? 0.1),
+      aiuPorcentaje: Number(presupuestoNsr.aiuPorcentaje ?? 0.25),
+      imprevistosPorcentaje: Number(presupuestoNsr.imprevistosPorcentaje ?? 0),
       impuestosPorcentaje: Number(presupuestoNsr.impuestosPorcentaje ?? 0),
       totalesNsr10: {
         subtotal: totales.subtotal,

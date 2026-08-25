@@ -6,7 +6,7 @@ import {
   guardarInformeUnicoEnCasoBbvaCat,
   guardarLiquidadorEnCasoBbvaCat,
 } from '../services/bbvaCatService.js';
-import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
+import { liquidadorParaPersistir } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_INFORME = 'informe';
 
@@ -92,7 +92,7 @@ export default function useBbvaCatCasoAutosave({
           } else {
             actualizado = await guardarLiquidador({
               casoId,
-              liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+              liquidador: liquidadorParaPersistir(
                 payload.data,
                 base.liquidador
               ),
@@ -167,7 +167,7 @@ export default function useBbvaCatCasoAutosave({
         } else {
           actualizado = await guardarLiquidador({
             casoId,
-            liquidador: fusionarLiquidadorSinPerderPresupuestoNsr(
+            liquidador: liquidadorParaPersistir(
               payload.data,
               base.liquidador
             ),

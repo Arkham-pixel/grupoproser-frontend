@@ -125,6 +125,7 @@ export default function MapaBloquesAlfaPanel({
   bloqueSeleccionadoId = null,
   onBloqueChange,
   compact = false,
+  reloadToken = 0,
 }) {
   const { t } = useTranslation();
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '';
@@ -156,7 +157,7 @@ export default function MapaBloquesAlfaPanel({
     } finally {
       setLoading(false);
     }
-  }, [radioKm, ciudad, estado, t]);
+  }, [radioKm, ciudad, estado, reloadToken, t]);
 
   useEffect(() => {
     cargar();

@@ -17,9 +17,10 @@ import { saveAs } from 'file-saver';
 import { montoALetrasFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
 import {
   formatearMonto,
-  formatDateLarga,
+  FECHA_TERREMOTO_ALFA_LARGA,
   resolverMontoIndemnizarAlfa,
 } from './liquidadorAlfaHelpers.js';
+import { parrafosFirmaClienteAlfa } from './firmaClienteAlfaWord.js';
 
 /**
  * Finiquito oficial Seguros Alfa — plantilla
@@ -215,14 +216,20 @@ export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) 
   const siniestro = String(enc.siniestro || '—');
   const cedula = formatearCedula(enc.identificacion || enc.cedula);
   const ciudad = enc.ciudad || enc.ciudadFirma || '____________';
-  const fechaEventoLarga =
-    formatDateLarga(enc.fechaSiniestro) || '10 de agosto de 2026';
+  // Fecha del terremoto CAT (fija): no usar fechaSiniestro del caso (UTC→9 ago).
+  const fechaEventoLarga = FECHA_TERREMOTO_ALFA_LARGA;
   const firma = partesFechaFirma(enc.fechaImpreso || new Date());
 
   const montoNum = formatearMonto(totalIndemnizar, { decimals: 2 });
   const montoLetras = letrasFiniquito(totalIndemnizar);
 
   const logosTable = await buildLogosHeader();
+  const firmasCliente = await parrafosFirmaClienteAlfa({
+    liquidador,
+    cedula,
+    nombre: asegurado,
+    etiquetaFirma: 'FIRMA',
+  });
 
   const doc = new Document({
     sections: [
@@ -342,28 +349,10 @@ export async function descargarFiniquitoAlfaWord(liquidador = {}, totalesInput) 
 
           p(
             `En constancia de lo anterior, se suscribe el presente FINIQUITO en la Ciudad de ${ciudad} a los ${firma.dia} del mes de ${firma.mes} del año ${firma.anio}.`,
-            { after: 400 }
+            { after: 200 }
           ),
 
-          p('___________________________', {
-            alignment: AlignmentType.LEFT,
-            after: 40,
-          }),
-          p('FIRMA', { alignment: AlignmentType.LEFT, bold: true, after: 40 }),
-          p(
-            [
-              { text: 'CC. ', bold: true },
-              { text: cedula },
-            ],
-            { alignment: AlignmentType.LEFT, after: 40 }
-          ),
-          p(
-            [
-              { text: 'Nombre: ', bold: true },
-              { text: asegurado },
-            ],
-            { alignment: AlignmentType.LEFT, after: 80 }
-          ),
+          ...firmasCliente,
         ],
       },
     ],

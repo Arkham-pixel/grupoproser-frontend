@@ -12,7 +12,9 @@ const optsDe = (lista = [], valorActual, t) => (
       )}
     {lista.map((r) => (
       <option key={`${r.codigo || r.value}-${r.ciudad || ''}`} value={r.value}>
-        {r.ciudad ? `${r.label} (${r.ciudad})` : r.label}
+        {r.ciudad && String(r.ciudad).trim().toUpperCase() !== 'TODAS'
+          ? `${r.label} (${r.ciudad})`
+          : r.label}
       </option>
     ))}
   </>
@@ -20,8 +22,9 @@ const optsDe = (lista = [], valorActual, t) => (
 
 /**
  * Tres selects de asignación con listas independientes.
- * El filtro por ciudad es opcional (`filtrarPorCiudad`): Alfa/BBVA lo mantienen;
- * Previsora, Zurich, Allianz y SURA muestran el catálogo completo.
+ * El filtro por ciudad es opcional (`filtrarPorCiudad`): Alfa lo mantiene;
+ * BBVA, Previsora, Zurich, Allianz y SURA muestran el catálogo completo.
+ * BBVA oculta Inspector (`mostrarInspector={false}`) y solo lista sus 10 ajustadores.
  */
 export default function CamposAsignacionCaso({
   form,
@@ -35,6 +38,7 @@ export default function CamposAsignacionCaso({
   i18nNs = 'segurosSura',
   ciudadSeleccionada = '',
   filtrarPorCiudad = true,
+  mostrarInspector = true,
 }) {
   const { t } = useTranslation();
   const listaLideres = lideres ?? responsables;
@@ -87,6 +91,7 @@ export default function CamposAsignacionCaso({
           )}
         </SelectFenix>
       </Campo>
+      {mostrarInspector ? (
       <Campo label={t(`${i18nNs}.fields.inspector`, { defaultValue: 'Inspector' })}>
         <SelectFenix
           value={form.inspector || ''}
@@ -112,6 +117,7 @@ export default function CamposAsignacionCaso({
           )}
         </SelectFenix>
       </Campo>
+      ) : null}
     </>
   );
 }

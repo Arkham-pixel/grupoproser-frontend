@@ -19,6 +19,7 @@ import { FaChartLine } from 'react-icons/fa';
 import Loader from '../Loader.jsx';
 import { useTheme } from '../../context/ThemeContext';
 import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
+import { filtrarCatalogoPorModulo } from '../../utils/catalogosAsignacionCatastrofico.js';
 import {
   expressBadge,
   expressBtnSecondary,
@@ -103,6 +104,10 @@ export default function DashboardCatastrofico({
   const isDark = theme === 'dark';
   const td = (key, opts) => t(`catastroficoDashboard.${key}`, opts);
   const esListado = variant === 'listado';
+  const esBbvaCat = String(modulo || '')
+    .toLowerCase()
+    .replace(/[-_\s]/g, '')
+    .includes('bbva');
 
   const [casos, setCasos] = useState([]);
   const [mapaNombres, setMapaNombres] = useState(() => new Map());
@@ -136,8 +141,8 @@ export default function DashboardCatastrofico({
         setMapaNombres(
           construirMapaNombresPersona([
             ...listaDesdeApi(jsonResp),
-            ...listaDesdeApi(jsonAj),
-            ...listaDesdeApi(jsonIns),
+            ...filtrarCatalogoPorModulo(listaDesdeApi(jsonAj), modulo),
+            ...filtrarCatalogoPorModulo(listaDesdeApi(jsonIns), modulo),
           ])
         );
       } catch (err) {
@@ -309,6 +314,7 @@ export default function DashboardCatastrofico({
                 ))}
               </SelectFenix>
             </Campo>
+            {!esBbvaCat && (
             <Campo label={t(`${i18nNs}.fields.inspector`)}>
               <SelectFenix value={filtroInspector} onChange={(e) => setFiltroInspector(e.target.value)}>
                 <option value="">{td('all')}</option>
@@ -319,6 +325,7 @@ export default function DashboardCatastrofico({
                 ))}
               </SelectFenix>
             </Campo>
+            )}
             {!esListado && (
             <Campo label={t(`${i18nNs}.fields.tomador`)}>
               <SelectFenix value={filtroTomador} onChange={(e) => setFiltroTomador(e.target.value)}>
@@ -521,6 +528,7 @@ export default function DashboardCatastrofico({
             tooltipStyle={tooltipStyle}
             seriesName={td('kpis.cases')}
           />
+          {!esBbvaCat && (
           <HorizontalBars
             title={td('charts.byInspector')}
             data={stats.porInspector}
@@ -530,6 +538,7 @@ export default function DashboardCatastrofico({
             tooltipStyle={tooltipStyle}
             seriesName={td('kpis.cases')}
           />
+          )}
         </section>
 
         {!esListado && (

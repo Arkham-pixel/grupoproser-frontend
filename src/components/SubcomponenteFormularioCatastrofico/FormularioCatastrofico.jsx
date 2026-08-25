@@ -1,5 +1,8 @@
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
-import { fusionarEvaluacionSismicaNSR10Guardada } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
+import {
+  fusionarEvaluacionSismicaNSR10Guardada,
+  RECARGOS_PRESUPUESTO_NSR10_CAT,
+} from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 import InformeUnicoCatastrofico from './InformeUnicoCatastrofico.jsx';
 import {
@@ -124,7 +127,8 @@ function crearFormDataInicial(prefill = {}) {
       const merged = { ...prefill };
       return fusionarEvaluacionSismicaNSR10Guardada(
         prefill.evaluacionSismicaNSR10 || {},
-        merged
+        merged,
+        { recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT }
       );
     })(),
   };
@@ -284,7 +288,8 @@ export default function FormularioCatastrofico() {
           );
           return fusionarEvaluacionSismicaNSR10Guardada(
             protegido.evaluacionSismicaNSR10 || {},
-            merged
+            merged,
+            { recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT }
           );
         })(),
         presupuestoCatastrofico: {
@@ -790,6 +795,7 @@ export default function FormularioCatastrofico() {
             <ChecklistEvaluacionSismicaNSR10
               formData={formData}
               onInputChange={handleInputChange}
+              recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
             />
           ) : estadoActual === ESTADOS.ACTA ? (
             <>
@@ -812,6 +818,7 @@ export default function FormularioCatastrofico() {
                 formData={formData}
                 onInputChange={handleInputChange}
                 modoLiquidador
+                recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
               />
               <FirmaAjuste formData={formData} onInputChange={handleInputChange} />
             </div>
