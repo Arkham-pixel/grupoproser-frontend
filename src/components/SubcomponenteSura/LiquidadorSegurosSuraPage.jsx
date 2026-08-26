@@ -64,8 +64,8 @@ export default function LiquidadorSegurosSuraPage() {
 
   const subtitulo = useMemo(() => {
     if (casoSura?.tomador || casoSura?.siniestro) {
-      return `${casoSura.tomador || '—'}${casoSura.consecutivo ? ` · ${casoSura.consecutivo}` : ''}${
-        casoSura.siniestro ? ` · ${casoSura.siniestro}` : ''
+      return `${casoSura.tomador || '—'}${casoSura.siniestro ? ` · ${casoSura.siniestro}` : ''}${
+        casoSura.consecutivo ? ` · ${casoSura.consecutivo}` : ''
       }`;
     }
     return t('segurosSura.settlement.subtitle');

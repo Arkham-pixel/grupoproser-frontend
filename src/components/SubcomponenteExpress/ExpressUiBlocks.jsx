@@ -105,7 +105,7 @@ export function ExpressPageHeader({ badge = 'Express', title, subtitle, actions,
 export function ExpressMetricCard({ label, value, hint }) {
   return (
     <div className={expressMetricCard}>
-      <p className="font-body text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
+      <p className="font-body text-sm font-medium leading-snug text-gray-500 dark:text-gray-400">{label}</p>
       <p className="mt-2 font-accent text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
       {hint && <p className="mt-1 font-body text-xs text-gray-500 dark:text-gray-400">{hint}</p>}
     </div>

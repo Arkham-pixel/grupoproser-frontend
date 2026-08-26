@@ -378,8 +378,8 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
   const reserva = reservaSugeridaSura(info);
   const filas = [
     ['REPORTE No', etiquetaReporteCuadroSura(info.tipoInforme)],
-    ['CONSECUTIVO', txt(caso.consecutivo)],
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
+    ['CONSECUTIVO', txt(caso.consecutivo)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
     ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto)],
     ['CORREO ELECTRÓNICO', txt(caso.correo)],

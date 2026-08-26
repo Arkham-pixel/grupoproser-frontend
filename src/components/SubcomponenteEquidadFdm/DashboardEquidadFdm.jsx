@@ -28,6 +28,7 @@ import {
   parseDate,
 } from './equidadFdmHelpers.js';
 import {
+  buildPieLegendPayload,
   expressChartCard,
   expressPageWrap,
   expressScope,
@@ -49,6 +50,31 @@ const truncarEtiqueta = (valor, max = 28) => {
   const texto = String(valor ?? '').trim();
   if (!texto) return 'Sin nombre';
   return texto.length > max ? `${texto.slice(0, max - 3)}...` : texto;
+};
+
+/** Presentación legible en gráficos (evita TODO EN MAYÚSCULAS). */
+const formatearEtiquetaLegible = (valor) => {
+  const texto = String(valor ?? '').trim();
+  if (!texto) return 'Sin nombre';
+  if (/^sin\s/i.test(texto)) {
+    return texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
+  }
+  if (texto === texto.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(texto)) {
+    return texto
+      .toLowerCase()
+      .split(/\s+/)
+      .map((palabra) => palabra.charAt(0).toUpperCase() + palabra.slice(1))
+      .join(' ');
+  }
+  return texto;
+};
+
+const formatoLeyendaPieFdm = (total, labelKey) => (value, entry) => {
+  const item = entry?.payload ?? {};
+  const etiqueta = formatearEtiquetaLegible(item[labelKey] || value || '');
+  const cantidad = item.cantidad ?? 0;
+  const pct = total > 0 ? Math.round((cantidad / total) * 100) : 0;
+  return `${etiqueta}: ${cantidad} (${pct}%)`;
 };
 
 const DashboardEquidadFdm = () => {
@@ -196,6 +222,22 @@ const DashboardEquidadFdm = () => {
     return { con, sin, total: con + sin };
   }, [onBaseData]);
 
+  const leyendaPorEstado = useMemo(
+    () => buildPieLegendPayload(casosPorEstado, 'estado', isDark),
+    [casosPorEstado, isDark]
+  );
+
+  const leyendaOnBase = useMemo(
+    () =>
+      onBaseData.map((item, index) => ({
+        value: item.label,
+        type: 'circle',
+        color: getFenixChartColor(index === 0 ? 0 : 3, isDark),
+        payload: item,
+      })),
+    [onBaseData, isDark]
+  );
+
   const tendenciaMensual = useMemo(() => {
     const agrupado = casosFiltrados.reduce((acc, item) => {
       const fecha =
@@ -231,6 +273,7 @@ const DashboardEquidadFdm = () => {
 
   const tickColor = isDark ? '#B0B0B0' : '#6B6B6B';
   const gridStroke = isDark ? '#2D2D2D' : '#E5E7EB';
+  const pieStroke = isDark ? '#0F0F0F' : '#FFFFFF';
   const lineColors = getFenixLineChartColors(isDark);
 
   if (loading) {
@@ -333,7 +376,11 @@ const DashboardEquidadFdm = () => {
           <ExpressMetricCard
             label={t('equidadFdm.dashboard.settledCasesPercent')}
             value={`${porcentajeLiquidados}%`}
-            hint={t('equidadFdm.dashboard.ofCases', { settled: casosLiquidados, total: totalCasos })}
+            hint={t('equidadFdm.dashboard.ofCases', {
+              settled: casosLiquidados,
+              total: totalCasos,
+              percent: porcentajeLiquidados,
+            })}
           />
         </section>
 
@@ -345,16 +392,34 @@ const DashboardEquidadFdm = () => {
                   data={casosPorEstado}
                   dataKey="cantidad"
                   nameKey="estado"
-                  cx="50%"
+                  cx="42%"
                   cy="50%"
-                  outerRadius={110}
-                  label={({ estado, cantidad }) => `${truncarEtiqueta(estado, 18)} (${cantidad})`}
+                  innerRadius={52}
+                  outerRadius={88}
+                  stroke={pieStroke}
+                  strokeWidth={2}
                 >
                   {casosPorEstado.map((entry, index) => (
                     <Cell key={entry.estado} fill={getFenixChartColor(index, isDark)} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
+                <Tooltip
+                  formatter={(value, _name, props) => {
+                    const cantidad = props.payload?.cantidad || value || 0;
+                    const pct = totalCasos > 0 ? Math.round((cantidad / totalCasos) * 100) : 0;
+                    return [`${cantidad} (${pct}%)`, formatearEtiquetaLegible(props.payload?.estado)];
+                  }}
+                  contentStyle={tooltipStyle}
+                />
+                <Legend
+                  layout="vertical"
+                  align="right"
+                  verticalAlign="middle"
+                  payload={leyendaPorEstado}
+                  formatter={formatoLeyendaPieFdm(totalCasos, 'estado')}
+                  wrapperStyle={{ fontSize: '11px', color: tickColor, paddingLeft: '8px', lineHeight: '1.45' }}
+                  iconType="circle"
+                />
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
@@ -363,24 +428,18 @@ const DashboardEquidadFdm = () => {
             title={t('equidadFdm.dashboard.onBase')}
             empty={casosFiltrados.length === 0}
           >
-            <p className="mb-3 font-body text-sm text-gray-500 dark:text-gray-400">
-              {t('equidadFdm.dashboard.onBaseHint', {
-                withCase: onBaseTotales.con,
-                withoutCase: onBaseTotales.sin,
-                total: onBaseTotales.total,
-              })}
-            </p>
-            <ResponsiveContainer width="100%" height={320}>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
                   data={onBaseData}
                   dataKey="cantidad"
                   nameKey="label"
                   cx="50%"
-                  cy="50%"
-                  innerRadius={55}
-                  outerRadius={110}
-                  label={({ label, cantidad }) => `${label}: ${cantidad}`}
+                  cy="46%"
+                  innerRadius={58}
+                  outerRadius={92}
+                  stroke={pieStroke}
+                  strokeWidth={2}
                 >
                   {onBaseData.map((entry) => (
                     <Cell
@@ -393,10 +452,39 @@ const DashboardEquidadFdm = () => {
                     />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend wrapperStyle={{ color: tickColor, fontSize: '12px' }} />
+                <Tooltip
+                  formatter={(value, _name, props) => {
+                    const cantidad = props.payload?.cantidad || value || 0;
+                    const pct =
+                      onBaseTotales.total > 0 ? Math.round((cantidad / onBaseTotales.total) * 100) : 0;
+                    return [`${cantidad} (${pct}%)`, props.payload?.label || ''];
+                  }}
+                  contentStyle={tooltipStyle}
+                />
+                <Legend
+                  layout="horizontal"
+                  align="center"
+                  verticalAlign="bottom"
+                  payload={leyendaOnBase}
+                  formatter={(value, entry) => {
+                    const cantidad = entry?.payload?.cantidad ?? 0;
+                    const pct =
+                      onBaseTotales.total > 0 ? Math.round((cantidad / onBaseTotales.total) * 100) : 0;
+                    return `${value}: ${cantidad} (${pct}%)`;
+                  }}
+                  wrapperStyle={{
+                    fontSize: '12px',
+                    color: tickColor,
+                    paddingTop: '8px',
+                    lineHeight: '1.5',
+                  }}
+                  iconType="circle"
+                />
               </PieChart>
             </ResponsiveContainer>
+            <p className="mt-2 text-center font-body text-xs text-gray-500 dark:text-gray-400">
+              {t('equidadFdm.dashboard.onBaseTotal', { total: onBaseTotales.total })}
+            </p>
           </ChartCard>
         </section>
 
@@ -413,11 +501,15 @@ const DashboardEquidadFdm = () => {
                 <YAxis
                   type="category"
                   dataKey="municipio"
-                  width={160}
-                  tick={{ fill: tickColor, fontSize: 10 }}
-                  tickFormatter={(v) => truncarEtiqueta(v, 28)}
+                  width={148}
+                  tick={{ fill: tickColor, fontSize: 11 }}
+                  tickFormatter={(v) => truncarEtiqueta(formatearEtiquetaLegible(v), 22)}
                 />
-                <Tooltip contentStyle={tooltipStyle} />
+                <Tooltip
+                  formatter={(value) => [value, t('equidadFdm.dashboard.cases')]}
+                  labelFormatter={(label) => formatearEtiquetaLegible(label)}
+                  contentStyle={tooltipStyle}
+                />
                 <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]}>
                   {casosPorMunicipio.map((entry, index) => (
                     <Cell key={entry.municipio} fill={getFenixChartColor(index, isDark)} />
@@ -439,11 +531,15 @@ const DashboardEquidadFdm = () => {
                 <YAxis
                   type="category"
                   dataKey="ajustador"
-                  width={160}
-                  tick={{ fill: tickColor, fontSize: 10 }}
-                  tickFormatter={(v) => truncarEtiqueta(v, 28)}
+                  width={148}
+                  tick={{ fill: tickColor, fontSize: 11 }}
+                  tickFormatter={(v) => truncarEtiqueta(formatearEtiquetaLegible(v), 22)}
                 />
-                <Tooltip contentStyle={tooltipStyle} />
+                <Tooltip
+                  formatter={(value) => [value, t('equidadFdm.dashboard.cases')]}
+                  labelFormatter={(label) => formatearEtiquetaLegible(label)}
+                  contentStyle={tooltipStyle}
+                />
                 <Bar dataKey="cantidad" name={t('equidadFdm.dashboard.cases')} radius={[0, 4, 4, 0]}>
                   {casosPorAjustador.map((entry, index) => (
                     <Cell key={entry.ajustador} fill={getFenixChartColor(index, isDark)} />

@@ -96,7 +96,7 @@ export default function ModalImportarExcelSura({ open, onClose, onCompleted }) {
               Importar Excel SURA
             </p>
             <p className="mt-1 font-body text-sm text-gray-500">
-              Preferencia hoja BD; si está vacía usa PENDIENTES.
+              Preferencia hoja BD; si está vacía usa PENDIENTES o Casos.
             </p>
           </div>
           <button type="button" className={expressBtnGhost} onClick={handleClose}>

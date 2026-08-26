@@ -5,9 +5,23 @@ export const RADIO_KM_ANALISTA_BBVA_CAT = '5';
 export const RADIO_KM_LISTADO_BBVA_CAT = '0.5';
 export const STORAGE_ORIGEN_LISTADO_BBVA_CAT = 'bbvaCatListadoOrigenReporte';
 
-/** Lista y numeración: Bloque 1 = más casos, luego 2, 3… */
+/** Conserva Bloque N persistido; si no hay número fijo, ordena por volumen. */
 export function ordenarBloquesPorVolumenBbvaCat(bloques = []) {
-  return [...bloques]
+  const lista = Array.isArray(bloques) ? [...bloques] : [];
+  const conNumero = lista.some((b) => Number.isFinite(Number(b?.numero)) && Number(b.numero) > 0);
+  if (conNumero) {
+    return lista
+      .sort((a, b) => (Number(a.numero) || 9999) - (Number(b.numero) || 9999))
+      .map((b) => {
+        const numero = Number(b.numero) || 0;
+        return {
+          ...b,
+          id: numero ? `bloque-${numero}` : b.id,
+          nombre: numero ? `Bloque ${numero}` : b.nombre,
+        };
+      });
+  }
+  return lista
     .sort((a, b) => {
       const d = (Number(b.cantidad) || 0) - (Number(a.cantidad) || 0);
       if (d !== 0) return d;
@@ -19,6 +33,7 @@ export function ordenarBloquesPorVolumenBbvaCat(bloques = []) {
       ...b,
       id: `bloque-${i + 1}`,
       nombre: `Bloque ${i + 1}`,
+      numero: i + 1,
     }));
 }
 

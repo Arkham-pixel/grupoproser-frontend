@@ -11,11 +11,13 @@ const normHeader = (valor) =>
     .replace(/\s+/g, ' ')
     .trim();
 
-/** Mapeo de encabezados hoja BD / PENDIENTES → campos del caso. */
+/** Mapeo de encabezados hoja BD / PENDIENTES / Casos → campos del caso. */
 const HEADER_MAP = {
   SINIESTRO: 'siniestro',
   IDENTIFICACION: 'identificacion',
   CEDULA: 'identificacion',
+  'NUMERO DOCUMENTO': 'identificacion',
+  'N DOCUMENTO': 'identificacion',
   ASEGURADO: 'asegurado',
   NOMBRE: 'asegurado',
   TOMADOR: 'tomador',
@@ -50,6 +52,19 @@ const HEADER_MAP = {
   'VALOR ASEGURADO INMUEBLE': 'valorAseguradoInmueble',
   'VALOR ASEGURADO CONTENIDOS': 'valorAseguradoContenidos',
   COBERTURA: 'cobertura',
+  CAUSA: 'causa_siniestro',
+  'CAUSA SINIESTRO': 'causa_siniestro',
+  'TIPO POLIZA': 'tipoPoliza',
+  'TIPO DE POLIZA': 'tipoPoliza',
+  'TIPO DE DOCUMENTO': 'tipoDucumento',
+  'TIPO DOCUMENTO': 'tipoDucumento',
+  'FUNCIONARIO ASEGURADORA': 'funcAsgrdraNombre',
+  'CODIGO WORKFLOW': 'codWorkflow',
+  INTERMEDIARIO: 'nombIntermediario',
+  'FECHA ASIGNACION': 'fchaAsgncion',
+  'FECHA DE ASIGNACION': 'fchaAsgncion',
+  'DESCRIPCION DEL ESTADO': 'descripcionEstado',
+  'DESCRIPCION DEL SINIESTRO': 'descSinstro',
   'ESTADO PAGO PRIMAS': 'estadoPagoPrimas',
   'CANAL DE RADICACION': 'canalRadicacion',
   CANAL: 'canalRadicacion',
@@ -105,19 +120,19 @@ const parseFechaCelda = (valor) => {
   const texto = String(valor).trim();
   if (!texto) return null;
   if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0, 10);
-  // dd/mm/yyyy o mm/dd/yyyy
-  const mdy = texto.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
-  if (mdy) {
-    let [, a, b, c] = mdy;
-    let year = Number(c);
+  // SURA (Colombia): dd/mm/yyyy. Solo se intercambia si el mes queda inválido.
+  const dmy = texto.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})$/);
+  if (dmy) {
+    let day = Number(dmy[1]);
+    let month = Number(dmy[2]);
+    let year = Number(dmy[3]);
     if (year < 100) year += 2000;
-    let month = Number(a);
-    let day = Number(b);
-    // Si el primero > 12, es dd/mm; si no, en consolidado Sura suele ser m/d/yy (Excel US)
     if (month > 12 && day <= 12) {
-      month = Number(b);
-      day = Number(a);
+      const tmp = day;
+      day = month;
+      month = tmp;
     }
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
     return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
   return null;
@@ -148,6 +163,7 @@ const CAMPOS_FECHA = new Set([
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
+  'fchaAsgncion',
 ]);
 
 const CAMPOS_NUMERO = new Set([
@@ -205,7 +221,9 @@ const parsearHojaACasos = (sheet) => {
     });
     if (!filaTieneDatos(caso)) continue;
     if (!caso.identificacion) continue;
-    if (!caso.estado) caso.estado = 'PENDIENTE';
+    if (!caso.estado) caso.estado = 'CASO NUEVO';
+    if (!caso.cobertura && caso.causa_siniestro) caso.cobertura = caso.causa_siniestro;
+    if (!caso.causa_siniestro && caso.cobertura) caso.causa_siniestro = caso.cobertura;
     casos.push(caso);
   }
 
@@ -217,8 +235,10 @@ const elegirHojasCandidatas = (workbook) => {
   const orden = [];
   const bd = nombres.find((n) => normHeader(n) === 'BD');
   const pendientes = nombres.find((n) => normHeader(n) === 'PENDIENTES');
+  const casosHoja = nombres.find((n) => normHeader(n) === 'CASOS');
   if (bd) orden.push(bd);
   if (pendientes) orden.push(pendientes);
+  if (casosHoja) orden.push(casosHoja);
   nombres.forEach((n) => {
     if (!orden.includes(n)) orden.push(n);
   });
@@ -251,7 +271,7 @@ export const parsearCasosSuraDesdeExcel = async (file) => {
 
   if (!hojaUsada) {
     throw new Error(
-      'No se encontraron filas con IDENTIFICACIÓN/CÉDULA en hojas BD o PENDIENTES'
+      'No se encontraron filas con IDENTIFICACIÓN/CÉDULA en hojas BD, PENDIENTES o Casos'
     );
   }
 

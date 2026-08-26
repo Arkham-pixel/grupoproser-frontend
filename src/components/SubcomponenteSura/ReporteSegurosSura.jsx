@@ -49,8 +49,8 @@ const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
 
 /** Orden exacto hoja BD del consolidado + consecutivo/docs internos */
 const COLUMNAS = [
-  { clave: 'consecutivo', labelKey: 'consecutivo' },
   { clave: 'siniestro', labelKey: 'siniestro' },
+  { clave: 'consecutivo', labelKey: 'consecutivo' },
   { clave: 'identificacion', labelKey: 'identificacion' },
   { clave: 'asegurado', labelKey: 'asegurado' },
   { clave: 'tomador', labelKey: 'tomador' },
@@ -107,8 +107,8 @@ const CAMPOS_FECHA = new Set([
 
 /** Encabezados de export en el mismo orden/nombre que la hoja BD */
 const buildExportRow = (caso) => ({
-  Consecutivo: caso.consecutivo ?? '',
   SINIESTRO: caso.siniestro ?? '',
+  Consecutivo: caso.consecutivo ?? '',
   IDENTIFICACIÓN: caso.identificacion ?? '',
   ASEGURADO: caso.asegurado ?? '',
   TOMADOR: caso.tomador ?? '',
