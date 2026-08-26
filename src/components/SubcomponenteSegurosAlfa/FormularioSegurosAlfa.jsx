@@ -60,7 +60,6 @@ import {
 } from '../../utils/permisosCasoPorRol.js';
 import {
   filtrarLideresPorModulo,
-  filtrarOpcionesPorCiudad,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -240,14 +239,14 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
     return base;
   }, [ciudadesFiltradas, form.ciudad]);
 
-  const ajustadoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(ajustadoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.ajustador);
-  }, [ajustadoresCat, form.ciudad, form.ajustador]);
-  const inspectoresPorCiudad = useMemo(() => {
-    const filtrados = filtrarOpcionesPorCiudad(inspectoresCat, form.ciudad);
-    return asegurarOpcionActual(filtrados, form.inspector);
-  }, [inspectoresCat, form.ciudad, form.inspector]);
+  const ajustadoresAlfa = useMemo(
+    () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
+    [ajustadoresCat, form.ajustador]
+  );
+  const inspectoresAlfa = useMemo(
+    () => asegurarOpcionActual(inspectoresCat, form.inspector),
+    [inspectoresCat, form.inspector]
+  );
   const lideresSoloSilvia = useMemo(
     () => filtrarLideresPorModulo(responsables, 'alfa'),
     [responsables]
@@ -596,13 +595,12 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
             form={form}
             setCampo={setCampo}
             lideres={lideresSoloSilvia}
-            ajustadores={ajustadoresPorCiudad}
-            inspectores={inspectoresPorCiudad}
+            ajustadores={ajustadoresAlfa}
+            inspectores={inspectoresAlfa}
             rol={rolUsuario}
             modulo="alfa"
             i18nNs="segurosAlfa"
-            ciudadSeleccionada={form.ciudad}
-            filtrarPorCiudad
+            filtrarPorCiudad={false}
           />
         </div>
         <div className="mt-3 grid grid-cols-1 gap-3">

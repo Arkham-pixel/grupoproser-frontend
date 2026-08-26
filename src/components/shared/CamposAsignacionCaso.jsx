@@ -22,9 +22,9 @@ const optsDe = (lista = [], valorActual, t) => (
 
 /**
  * Tres selects de asignación con listas independientes.
- * El filtro por ciudad es opcional (`filtrarPorCiudad`): Alfa lo mantiene;
- * BBVA, Previsora, Zurich, Allianz y SURA muestran el catálogo completo.
- * BBVA oculta Inspector (`mostrarInspector={false}`) y solo lista sus 10 ajustadores.
+ * El filtro por ciudad es opcional (`filtrarPorCiudad`).
+ * Alfa y BBVA usan equipos cerrados (sin filtro por ciudad).
+ * BBVA oculta Inspector (`mostrarInspector={false}`).
  */
 export default function CamposAsignacionCaso({
   form,

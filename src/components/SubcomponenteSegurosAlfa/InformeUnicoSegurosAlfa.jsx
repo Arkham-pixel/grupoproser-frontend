@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileExcel } from 'react-icons/fa';
+import { FaFileExcel, FaUpload } from 'react-icons/fa';
 import {
   Campo,
   ExpressAvisoModal,
@@ -9,6 +9,7 @@ import {
   InputFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
+  expressBtnSuccess,
   expressFormSection,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
@@ -25,6 +26,11 @@ import {
   archivarBlobEnCasoAlfa,
   MIME_ARCHIVO_ALFA,
 } from './archivarDocumentoAlfa.js';
+import { esUsuarioAlfaExcelActualizar } from './ModalImportarExcelAlfa.jsx';
+import {
+  extraerConsecutivoAlfaDeNombre,
+  parsearInformeCatAlfaExcel,
+} from './parsearInformeCatAlfaExcel.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import AnalisisCoberturaCriteriaAlfa from './AnalisisCoberturaCriteriaAlfa.jsx';
 
@@ -51,6 +57,8 @@ export default function InformeUnicoSegurosAlfa({
   const [mensaje, setMensaje] = useState('');
   const [descargando, setDescargando] = useState(false);
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
+  const fileExcelCatRef = useRef(null);
+  const puedeSubirExcelTalCual = esUsuarioAlfaExcelActualizar();
 
   const totales = useMemo(() => calcularLiquidacionAlfa(liquidador), [liquidador]);
   const capturaMapaInicial = useMemo(() => {
@@ -199,9 +207,75 @@ export default function InformeUnicoSegurosAlfa({
       } else {
         setMensaje('Excel CAT Alfa descargado (Liquidador + Análisis + anexos).');
       }
+      setLiquidador((prev) => ({ ...prev, excelCatOrigen: 'generado' }));
+      onLiquidadorChange?.({ ...liquidador, excelCatOrigen: 'generado' }, totales);
     } catch (err) {
       console.error(err);
       setError(err.message || 'No se pudo generar el Excel CAT Alfa.');
+    } finally {
+      setDescargando(false);
+    }
+  };
+
+  const handleSubirExcelCatTalCual = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!puedeSubirExcelTalCual) {
+      setError('Solo el usuario autorizado puede subir el Excel CAT tal cual.');
+      return;
+    }
+    const casoId = casoAlfa?._id;
+    if (!casoId) {
+      setError('Guarde el caso antes de copiar al archivero.');
+      return;
+    }
+    setDescargando(true);
+    setError('');
+    setMensaje('');
+    try {
+      const parsed = await parsearInformeCatAlfaExcel(file, {
+        caso: casoAlfa || {},
+        liquidadorActual: liquidador,
+      });
+      const nextLiq = { ...parsed.liquidador, excelCatOrigen: 'manual' };
+      setLiquidador(nextLiq);
+      onLiquidadorChange?.(nextLiq, calcularLiquidacionAlfa(nextLiq));
+      if (parsed.analisisGeneral) {
+        setInforme((prev) => ({
+          ...prev,
+          analisisGeneral: {
+            ...(prev.analisisGeneral || {}),
+            ...parsed.analisisGeneral,
+          },
+          ajustadorNombre: nextLiq.encabezado?.ajustador || prev.ajustadorNombre,
+        }));
+      }
+      const creado = await archivarBlobEnCasoAlfa({
+        casoId,
+        blob: file,
+        nombre: file.name || 'Informe_CAT_Seguros_Alfa.xlsx',
+        mime: MIME_ARCHIVO_ALFA.xlsx,
+        etiqueta: 'INFORME',
+      });
+      appendArchivosAlCaso([creado]);
+      if (typeof onArchivoArchivado === 'function') onArchivoArchivado(creado);
+      const consecArchivo = parsed.consecutivoArchivo || extraerConsecutivoAlfaDeNombre(file.name);
+      const consecCaso = String(casoAlfa?.consecutivo || '').trim();
+      const avisoConsec =
+        consecArchivo && consecCaso && consecArchivo !== consecCaso.toUpperCase()
+          ? ` Atención: el archivo parece de ${consecArchivo} y este caso es ${consecCaso}.`
+          : '';
+      setMensaje(
+        `${
+          creado?.replaced
+            ? 'Excel CAT tal cual actualizado en el archivero.'
+            : 'Excel CAT tal cual guardado en el archivero.'
+        } ${parsed.nItems} ítem(s) cargados.${avisoConsec}`
+      );
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'No se pudo subir el Excel CAT.');
     } finally {
       setDescargando(false);
     }
@@ -334,6 +408,27 @@ export default function InformeUnicoSegurosAlfa({
         >
           <FaFileExcel /> Excel CAT
         </button>
+        {puedeSubirExcelTalCual && (
+          <>
+            <input
+              ref={fileExcelCatRef}
+              type="file"
+              accept=".xlsx,.xlsm"
+              className="hidden"
+              onChange={handleSubirExcelCatTalCual}
+            />
+            <button
+              type="button"
+              className={expressBtnSuccess}
+              disabled={descargando || guardandoCaso}
+              onClick={() => fileExcelCatRef.current?.click()}
+              title="Sube el Informe CAT .xlsx tal cual al archivero, sin regenerarlo. Solo tu usuario."
+            >
+              <FaUpload />
+              {descargando ? 'Subiendo…' : 'Subir Excel CAT'}
+            </button>
+          </>
+        )}
         {onGuardarEnCaso && (
           <button
             type="button"

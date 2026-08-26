@@ -313,10 +313,15 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
     boostPolling();
   }, [boostPolling]);
 
-  /** Excel CAT → archivero ARNALD → cola SharePoint. */
+  /** Excel CAT → archivero ARNALD → cola SharePoint.
+   * Si el Excel se subió tal cual (excelCatOrigen=manual), no se regenera. */
   const archivarExcelCatTrasGuardar = useCallback(
     async ({ caso, liquidador, totales, informe, etiqueta }) => {
       if (!casoId) return null;
+      const liq = liquidador || liquidadorState || {};
+      if (String(liq.excelCatOrigen || '').toLowerCase() === 'manual') {
+        return null;
+      }
       const resultado = await generarInformeCatAlfaExcelBlob({
         caso: caso || casoAlfa || {},
         liquidador: liquidador || liquidadorState || {},
@@ -412,16 +417,22 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
       );
 
       try {
-        await archivarExcelCatTrasGuardar({
+        const archivado = await archivarExcelCatTrasGuardar({
           caso: verificado,
           liquidador: liqConfirmado,
           totales: calcularLiquidacionAlfa(liqConfirmado),
           informe: informeState || verificado?.informeUnico,
           etiqueta: 'LIQUIDACION',
         });
-        setMensaje(
-          'Liquidador guardado exitosamente en la base de datos (verificado). Excel CAT en archivero.'
-        );
+        if (String(liqConfirmado?.excelCatOrigen || '').toLowerCase() === 'manual') {
+          setMensaje(
+            'Liquidador guardado. El Excel CAT tal cual se conservó en el archivero (no se regeneró).'
+          );
+        } else if (archivado) {
+          setMensaje(
+            'Liquidador guardado exitosamente en la base de datos (verificado). Excel CAT en archivero.'
+          );
+        }
       } catch (errArchivo) {
         console.error('Archivero tras liquidador:', errArchivo);
         setError(
@@ -472,7 +483,7 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
         setLiquidadorState((prev) => preferirLiquidadorMasRico(prev, actualizado.liquidador));
       }
       try {
-        await archivarExcelCatTrasGuardar({
+        const archivado = await archivarExcelCatTrasGuardar({
           caso: actualizado,
           liquidador: preferirLiquidadorMasRico(
             liquidadorState,
@@ -482,12 +493,24 @@ export default function CasoSegurosAlfaWorkspace({ tabInicial = null } = {}) {
           informe: actualizado?.informeUnico || informe,
           etiqueta: 'INFORME',
         });
-        setMensaje(
-          t('segurosAlfa.reportUnique.savedAndArchived', {
-            defaultValue:
-              'Informe guardado. Excel CAT en archivero: revise y pulse Subir en el banner para SharePoint.',
-          })
+        const liqOrigen = preferirLiquidadorMasRico(
+          liquidadorState,
+          actualizado?.liquidador
         );
+        if (String(liqOrigen?.excelCatOrigen || '').toLowerCase() === 'manual') {
+          setMensaje(
+            'Informe guardado. El Excel CAT tal cual se conservó en el archivero (no se regeneró).'
+          );
+        } else if (archivado) {
+          setMensaje(
+            t('segurosAlfa.reportUnique.savedAndArchived', {
+              defaultValue:
+                'Informe guardado. Excel CAT en archivero: revise y pulse Subir en el banner para SharePoint.',
+            })
+          );
+        } else {
+          setMensaje(t('segurosAlfa.reportUnique.saved', { defaultValue: 'Informe guardado.' }));
+        }
       } catch (errArchivo) {
         console.error('Archivero tras informe:', errArchivo);
         setError(

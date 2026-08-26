@@ -86,18 +86,31 @@ function esModuloBbvaCat(modulo = '') {
   return c === 'bbvacat' || c === 'bbva' || c === 'bbvacatlistado';
 }
 
+function esModuloAlfa(modulo = '') {
+  const c = claveModuloCatalogo(modulo);
+  return c === 'alfa' || c === 'segurosalfa';
+}
+
 /**
- * Equipo cerrado BBVA: solo personas con modulo bbvaCat.
- * Catálogo general (sin modulos): todos los módulos excepto BBVA.
+ * Equipos cerrados: BBVA y Alfa solo listan a quienes tienen ese módulo.
+ * Catálogo general (sin modulos): Zurich, Sura, Previsora, Allianz.
  */
 export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
   const clave = claveModuloCatalogo(modulo);
   const bbva = esModuloBbvaCat(modulo);
+  const alfa = esModuloAlfa(modulo);
   return opciones.filter((o) => {
-    const mods = (Array.isArray(o.modulos) ? o.modulos : []).map(claveModuloCatalogo).filter(Boolean);
-    if (!mods.length) return !bbva;
-    if (!clave) return !mods.some((m) => m === 'bbvacat' || m === 'bbva');
+    const mods = (Array.isArray(o.modulos) ? o.modulos : [])
+      .map(claveModuloCatalogo)
+      .filter(Boolean);
     if (bbva) return mods.some((m) => m === 'bbvacat' || m === 'bbva');
+    if (alfa) return mods.some((m) => m === 'alfa' || m === 'segurosalfa');
+    if (!mods.length) return true;
+    if (!clave) {
+      return mods.some(
+        (m) => m !== 'bbvacat' && m !== 'bbva' && m !== 'alfa' && m !== 'segurosalfa'
+      );
+    }
     return mods.includes(clave);
   });
 }

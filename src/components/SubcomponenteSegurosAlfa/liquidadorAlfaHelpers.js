@@ -89,10 +89,13 @@ export function formatearMonto(valor, { decimals = 0 } = {}) {
 
 export {
   TIPOS_OTROS_AMPAROS as TIPOS_OTROS_AMPAROS_ALFA,
+  UNIDADES_OTROS_AMPAROS as UNIDADES_OTROS_AMPAROS_ALFA,
   nombreTipoOtroAmparo as nombreTipoOtroAmparoAlfa,
   nuevoOtroAmparo as nuevoOtroAmparoAlfa,
   defaultOtrosAmparos as defaultOtrosAmparosAlfa,
   recalcularValorOtroAmparo as recalcularValorOtroAmparoAlfa,
+  valorMostrarOtroAmparo as valorMostrarOtroAmparoAlfa,
+  normalizarUnidadOtroAmparo as normalizarUnidadOtroAmparoAlfa,
   normalizarOtrosAmparos as normalizarOtrosAmparosAlfa,
   esOtroAmparoActivo as esOtroAmparoActivoAlfa,
   filasOtrosAmparosActivos as filasOtrosAmparosActivosAlfa,
@@ -130,9 +133,10 @@ const fechaInput = (value) => {
 
 export function liquidacionCatastroficoDefaultAlfa(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
+  // Liquidación Alfa: base = VALOR SID (no valor asegurado inmueble).
   const va =
-    c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
-      ? Number(c.valorAseguradoInmueble) || ''
+    c.valorAseguradoSid != null && c.valorAseguradoSid !== ''
+      ? Number(c.valorAseguradoSid) || ''
       : '';
   /** Deducible según tomador (Bogotá/AV Villas/Popular: 2% VA + 2 SMMLV; Occidente: 1% pérdida). */
   const deducibleAlfa = patchDeducibleDesdeTomadorAlfa(c.tomador || '', {
@@ -148,6 +152,21 @@ export function liquidacionCatastroficoDefaultAlfa(caso = {}) {
     deducibleConfig: { ...deducibleAlfa },
     deducibleConfigPresupuesto: { ...deducibleAlfa },
   };
+}
+
+/**
+ * Valor base para deducible / liquidación Alfa = VALOR SID.
+ * No usar valor asegurado del inmueble (regla operativa).
+ */
+export function resolverValorSidParaLiquidacionAlfa(liquidador = {}, caso = {}) {
+  const enc = liquidador.encabezado || {};
+  const liq = liquidador.liquidacionCatastrofico || {};
+  const c = caso && typeof caso === 'object' ? caso : {};
+  const sid =
+    parsearNumero(enc.valorAseguradoSid) || parsearNumero(c.valorAseguradoSid);
+  if (sid > 0) return sid;
+  // Solo si aún no hay SID: copia de trabajo del liquidador (p. ej. mientras se digita).
+  return parsearNumero(liq.valorAsegurado) || 0;
 }
 
 export function encabezadoDesdeCasoAlfa(caso = {}) {
@@ -168,6 +187,7 @@ export function encabezadoDesdeCasoAlfa(caso = {}) {
     evento: c.cobertura || 'TERREMOTO',
     causa: c.cobertura || '',
     ajustador: c.ajustador || '',
+    valorAseguradoSid: c.valorAseguradoSid ?? '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
   };
 }
@@ -207,6 +227,7 @@ export const DEFAULT_LIQUIDADOR_ALFA = {
     evento: 'TERREMOTO',
     causa: '',
     ajustador: '',
+    valorAseguradoSid: '',
     valorAseguradoInmueble: '',
   },
   evaluacionSismicaNSR10: null,
@@ -347,7 +368,7 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
       deducibleSMMLV,
       deducibleAplicado: 0,
       usaMinimo: false,
-      texto: 'Indique el valor asegurado para calcular el deducible',
+      texto: 'Indique el Valor SID para calcular el deducible',
       reglaTomador,
     };
   }
@@ -435,10 +456,8 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
   const resumen = calcularResumenTotalesNsr10(evalData);
   const liq = liquidador.liquidacionCatastrofico || {};
   const enc = liquidador.encabezado || {};
-  const valorAsegurado =
-    parsearNumero(liq.valorAsegurado) ||
-    parsearNumero(enc.valorAseguradoInmueble) ||
-    0;
+  // Regla operativa: liquidar / deducible con VALOR SID (no valor asegurado inmueble).
+  const valorAsegurado = resolverValorSidParaLiquidacionAlfa(liquidador);
   const cfgDedRaw = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
   // Si falta baseDeducible, completar desde el tomador actual
   const cfgDed =
@@ -838,13 +857,18 @@ export function mapCasoAlfaALiquidador(caso = {}) {
         ...(migrarAlfa ? { porcentaje: 2, cantidadSMMLV: 2, aplica: true } : {}),
         aplica: true,
       };
-      // Al cargar, el deducible sigue la regla del tomador (Occidente = % pérdida, resto = % VA + SMMLV)
+      // Al cargar, el deducible sigue la regla del tomador (Occidente = % pérdida, resto = % SID + SMMLV)
       const cfgAlfa = patchDeducibleDesdeTomadorAlfa(tomador, cfgMerged);
+      // Base del deducible = VALOR SID (prioriza SID sobre valorAsegurado histórico del liq).
+      const sid =
+        guardado.encabezado?.valorAseguradoSid ??
+        encabezado.valorAseguradoSid ??
+        caso.valorAseguradoSid;
+      const sidNum = sid != null && sid !== '' ? Number(sid) || sid : '';
       const va =
-        liqG.valorAsegurado ??
-        guardado.encabezado?.valorAseguradoInmueble ??
-        encabezado.valorAseguradoInmueble ??
-        base.liquidacionCatastrofico.valorAsegurado;
+        sidNum !== '' && sidNum != null
+          ? sidNum
+          : liqG.valorAsegurado ?? base.liquidacionCatastrofico.valorAsegurado;
       return {
         ...base.liquidacionCatastrofico,
         ...liqG,

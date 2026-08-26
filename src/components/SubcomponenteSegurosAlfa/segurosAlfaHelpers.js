@@ -437,3 +437,90 @@ export const construirFormDesdeCasoAlfa = (caso = {}) => {
   });
   return base;
 };
+
+/** Persistencia filtros reporte Alfa (sobrevive al entrar/salir de un caso). */
+export const ALFA_REPORTE_FILTROS_STORAGE_KEY = 'alfa-reporte-filtros-v1';
+/** v2: columnas por defecto incluyen valores (reserva, reclamado, liquidado…). */
+export const ALFA_COLUMNAS_STORAGE_KEY = 'alfa-reporte-columnas-v2';
+
+export const FILTROS_REPORTE_ALFA_DEFAULT = {
+  busqueda: '',
+  filtroCiudad: '',
+  filtroDepto: '',
+  filtroEstado: '',
+  filtroSla: '',
+  filtroAjustador: '',
+  filtroInspector: '',
+  filtroTomador: '',
+  filtroCobertura: '',
+  filtroCanal: '',
+  filtroEstadoPago: '',
+  filtroZona: '',
+  filtroDocumento: '',
+  tipoFecha: 'fechaSiniestro',
+  fechaInicio: '',
+  fechaFin: '',
+  soloMisCasos: false,
+  pagina: 1,
+};
+
+export function cargarFiltrosReporteAlfa() {
+  try {
+    const raw = sessionStorage.getItem(ALFA_REPORTE_FILTROS_STORAGE_KEY);
+    if (!raw) return { ...FILTROS_REPORTE_ALFA_DEFAULT };
+    const parsed = JSON.parse(raw);
+    return {
+      ...FILTROS_REPORTE_ALFA_DEFAULT,
+      ...parsed,
+      pagina: Math.max(1, Number(parsed?.pagina) || 1),
+      soloMisCasos: Boolean(parsed?.soloMisCasos),
+    };
+  } catch {
+    return { ...FILTROS_REPORTE_ALFA_DEFAULT };
+  }
+}
+
+export function guardarFiltrosReporteAlfa(filtros = {}) {
+  try {
+    sessionStorage.setItem(
+      ALFA_REPORTE_FILTROS_STORAGE_KEY,
+      JSON.stringify({ ...FILTROS_REPORTE_ALFA_DEFAULT, ...filtros })
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+export function limpiarFiltrosReporteAlfaStorage() {
+  try {
+    sessionStorage.removeItem(ALFA_REPORTE_FILTROS_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function cargarColumnasReporteAlfa(todasLasColumnas = []) {
+  try {
+    const raw = localStorage.getItem(ALFA_COLUMNAS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.claves) || !parsed.claves.length) return null;
+    const ordenadas = parsed.claves
+      .map((clave) => todasLasColumnas.find((c) => c.clave === clave))
+      .filter(Boolean);
+    return ordenadas.length > 0 ? ordenadas : null;
+  } catch {
+    return null;
+  }
+}
+
+export function guardarColumnasReporteAlfa(columnas = []) {
+  try {
+    localStorage.setItem(
+      ALFA_COLUMNAS_STORAGE_KEY,
+      JSON.stringify({ claves: columnas.map((c) => c.clave) })
+    );
+  } catch {
+    /* ignore */
+  }
+}

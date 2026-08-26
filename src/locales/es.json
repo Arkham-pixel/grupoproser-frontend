@@ -1190,6 +1190,10 @@
       "onBaseWithoutCase": "Sin caso",
       "onBaseHint": "Con caso: {{withCase}} · Sin caso: {{withoutCase}} · Total: {{total}}",
       "onBaseTotal": "Total: {{total}} casos",
+      "byClaimNumber": "Número de siniestro",
+      "withClaimNumber": "Con siniestro",
+      "withoutClaimNumber": "Sin siniestro",
+      "claimNumberTotal": "Total: {{total}} casos",
       "monthlyTrend": "Tendencia mensual",
       "byAdjuster": "Casos por ajustador",
       "settled": "Liquidado",
@@ -1508,7 +1512,8 @@
       "ajustadorLider": "Ajustador líder (quien asigna)",
       "inspector": "Inspector",
       "fechaAviso": "Fecha aviso",
-      "valorAseguradoSid": "Valor asegurado SID"
+      "valorAseguradoSid": "Valor asegurado SID",
+      "zonaAsignada": "Zona asignada"
     },
     "placeholders": {
       "siniestro": "Número de siniestro",
@@ -1655,7 +1660,10 @@
       "deleteError": "Error al eliminar",
       "deleteErrorMessage": "No se pudo eliminar el registro.",
       "recordsSummary": "{{count}} casos · página {{page}} de {{totalPages}}",
-      "callDateQueueHint": "Al registrar la fecha de llamada el caso sale de esta cola para llevar orden. Si lo necesita de nuevo, búsquelo por siniestro, póliza o identificación."
+      "callDateQueueHint": "Al registrar la fecha de llamada el caso sale de esta cola para llevar orden. Si lo necesita de nuevo, búsquelo por siniestro, póliza o identificación.",
+      "columns": "Columnas",
+      "customizeColumns": "Personalizar columnas",
+      "columnsHelp": "Arrastra para ordenar. Marca o desmarca para mostrar u ocultar. Se guarda en este navegador."
     },
     "archive": {
       "title": "Archivero del caso",

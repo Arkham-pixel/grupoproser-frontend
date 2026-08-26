@@ -27,7 +27,20 @@ const HEADER_MAP = {
   'TIPO DE DOCUMENTO': 'tipoIdentificacion',
   ASEGURADO: 'asegurado',
   NOMBRE: 'asegurado',
+  'NOMBRE ASEGURADO': 'asegurado',
   'INSURED NAME': 'asegurado',
+  'Z CLAIMS': 'zc',
+  'Z CLAIM': 'zc',
+  ZC: 'zc',
+  STRO: 'siniestro',
+  'VALOR ASEGURADO COP': 'valorAseguradoInmueble',
+  DIRECCION: 'direccionPredio',
+  'DATOS CONTACTO': 'informacionContacto',
+  'FECHA ASIGNACION': 'fechaAsignacion',
+  'FECHA DE INSPECCION': 'fechaInspeccion',
+  'PERDIDA ESTIMADA': 'valorReclamado',
+  'DESCRIPCION DE LOS DANOS': 'observacionesCat',
+  INSPECCION: 'afectacion',
   TOMADOR: 'tomador',
   'N POLIZA': 'numeroPoliza',
   'NUMERO POLIZA': 'numeroPoliza',
@@ -187,6 +200,7 @@ const CAMPOS_FECHA = new Set([
   'fechaInicioPoliza',
   'fechaFinPoliza',
   'fechaInspeccion',
+  'fechaAsignacion',
   'fechaUltimoDocumento',
   'fechaLiquidado',
   'fechaAceptacionLiquidacion',
@@ -253,6 +267,7 @@ const parsearHojaACasos = (sheet) => {
     if (
       campos.has('identificacion') ||
       campos.has('riskId') ||
+      (campos.has('zc') && (campos.has('siniestro') || campos.has('asegurado'))) ||
       (campos.has('siniestro') && campos.has('estado')) ||
       (campos.has('asegurado') && campos.has('riskId'))
     ) {
@@ -301,6 +316,9 @@ const parsearHojaACasos = (sheet) => {
       }
     });
     if (!filaTieneDatos(caso)) continue;
+    if (!caso.identificacion && caso.zc) {
+      caso.identificacion = String(caso.zc);
+    }
     if (!caso.identificacion && caso.riskId) {
       // Identificación única por Risk ID + asegurado (el Excel reutiliza Risk ID)
       const aseg = String(caso.asegurado || '')
@@ -371,6 +389,8 @@ export const parsearCasosZurichDesdeExcel = async (file) => {
 
 const HEADER_MAP_LISTADO = {
   ZC: 'zc',
+  'Z CLAIMS': 'zc',
+  'Z CLAIM': 'zc',
   STRO: 'siniestro',
   SINIESTRO: 'siniestro',
   'N SINIESTRO': 'siniestro',

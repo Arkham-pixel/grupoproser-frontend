@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
-import { FaFileExcel, FaPlus } from 'react-icons/fa';
+import { FaCog, FaFileExcel, FaPlus } from 'react-icons/fa';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   deleteCasoAlfa,
@@ -22,6 +22,8 @@ import {
   ALFA_REPORTE_PAGE_SIZE,
   ESTADOS_ALFA,
   buildOpcionesFiltro,
+  cargarColumnasReporteAlfa,
+  cargarFiltrosReporteAlfa,
   coincideFiltroTexto,
   contarKpisGestionAlfa,
   casoAlfaVenceSla2Dias,
@@ -29,9 +31,18 @@ import {
   fechaEnRango,
   formatCurrency,
   formatDate,
+  guardarColumnasReporteAlfa,
+  guardarFiltrosReporteAlfa,
   homologarEstadoAlfa,
+  limpiarFiltrosReporteAlfaStorage,
   normTexto,
 } from './segurosAlfaHelpers.js';
+
+/**
+ * Mapa de bloques cercanos en el reporte Alfa.
+ * false = oculto en UI (código y panel se conservan para reactivar luego).
+ */
+const MOSTRAR_MAPA_BLOQUES_CERCANOS = false;
 
 /** Liquidador “real”: ítems de presupuesto o detalle CAT (o bandera del listado). */
 function casoTieneLiquidadorConContenido(caso) {
@@ -112,6 +123,7 @@ const COLUMNAS = [
   { clave: 'asegurado', labelKey: 'asegurado' },
   { clave: 'tomador', labelKey: 'tomador' },
   { clave: 'ajustador', labelKey: 'ajustador' },
+  { clave: 'inspector', labelKey: 'inspector' },
   { clave: 'numeroPoliza', labelKey: 'numeroPoliza' },
   { clave: 'direccionPredio', labelKey: 'direccionPredio' },
   { clave: 'numeroCredito', labelKey: 'numeroCredito' },
@@ -140,9 +152,41 @@ const COLUMNAS = [
   { clave: 'fechaLiquidado', labelKey: 'fechaLiquidado' },
   { clave: 'fechaAceptacionLiquidacion', labelKey: 'fechaAceptacionLiquidacion' },
   { clave: 'fechaEnvioAseguradora', labelKey: 'fechaEnvioAseguradora' },
+  { clave: 'zonaAsignada', labelKey: 'zonaAsignada' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'docs', labelKey: 'docs' },
 ];
+
+const COLUMNAS_INICIALES_VISIBLES = [
+  'consecutivo',
+  'siniestro',
+  'identificacion',
+  'asegurado',
+  'tomador',
+  'ajustador',
+  'inspector',
+  'numeroPoliza',
+  'direccionPredio',
+  'ciudad',
+  'departamento',
+  'fechaSiniestro',
+  'cobertura',
+  'valorAseguradoInmueble',
+  'reserva',
+  'valorReclamado',
+  'valorLiquidado',
+  'estado',
+  'docs',
+];
+
+function labelColumnaAlfa(t, col) {
+  if (col.clave === 'docs') return t('segurosAlfa.report.docs');
+  if (col.clave === 'consecutivo') return t('segurosAlfa.report.consecutivo');
+  if (col.clave === 'zonaAsignada') {
+    return t('segurosAlfa.fields.zonaAsignada', { defaultValue: 'Zona' });
+  }
+  return t(`segurosAlfa.fields.${col.labelKey}`);
+}
 
 const CAMPOS_MONEDA = new Set([
   'valorReclamado',
@@ -213,27 +257,45 @@ export default function ReporteSegurosAlfa() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const filtrosIniciales = useMemo(() => cargarFiltrosReporteAlfa(), []);
+  const skipPageResetRef = useRef(true);
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [busqueda, setBusqueda] = useState('');
-  const [filtroCiudad, setFiltroCiudad] = useState('');
-  const [filtroDepto, setFiltroDepto] = useState('');
-  const [filtroEstado, setFiltroEstado] = useState('');
-  const [filtroAjustador, setFiltroAjustador] = useState('');
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
-  /** '' | 'liquidador' | 'informe' | 'alguno' | 'ambos' */
-  const [filtroDocumento, setFiltroDocumento] = useState('');
-  const [filtroSla, setFiltroSla] = useState('');
-  const [soloMisCasos, setSoloMisCasos] = useState(false);
-  const [pagina, setPagina] = useState(1);
+  const [busqueda, setBusqueda] = useState(filtrosIniciales.busqueda);
+  const [filtroCiudad, setFiltroCiudad] = useState(filtrosIniciales.filtroCiudad);
+  const [filtroDepto, setFiltroDepto] = useState(filtrosIniciales.filtroDepto);
+  const [filtroEstado, setFiltroEstado] = useState(filtrosIniciales.filtroEstado);
+  const [filtroAjustador, setFiltroAjustador] = useState(filtrosIniciales.filtroAjustador);
+  const [filtroInspector, setFiltroInspector] = useState(filtrosIniciales.filtroInspector);
+  const [filtroTomador, setFiltroTomador] = useState(filtrosIniciales.filtroTomador);
+  const [filtroCobertura, setFiltroCobertura] = useState(filtrosIniciales.filtroCobertura);
+  const [filtroCanal, setFiltroCanal] = useState(filtrosIniciales.filtroCanal);
+  const [filtroEstadoPago, setFiltroEstadoPago] = useState(filtrosIniciales.filtroEstadoPago);
+  const [filtroZona, setFiltroZona] = useState(filtrosIniciales.filtroZona);
+  const [tipoFecha, setTipoFecha] = useState(filtrosIniciales.tipoFecha || 'fechaSiniestro');
+  const [fechaInicio, setFechaInicio] = useState(filtrosIniciales.fechaInicio);
+  const [fechaFin, setFechaFin] = useState(filtrosIniciales.fechaFin);
+  /** '' | 'liquidador' | 'informe' | 'alguno' | 'ambos' | 'cascaron' */
+  const [filtroDocumento, setFiltroDocumento] = useState(filtrosIniciales.filtroDocumento);
+  const [filtroSla, setFiltroSla] = useState(filtrosIniciales.filtroSla);
+  const [soloMisCasos, setSoloMisCasos] = useState(Boolean(filtrosIniciales.soloMisCasos));
+  const [pagina, setPagina] = useState(filtrosIniciales.pagina || 1);
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [bloqueSeleccionadoId, setBloqueSeleccionadoId] = useState(null);
   const [idsBloqueSeleccionado, setIdsBloqueSeleccionado] = useState([]);
   const [mapaReloadToken, setMapaReloadToken] = useState(0);
+  const [columnasVisibles, setColumnasVisibles] = useState(() => {
+    const guardadas = cargarColumnasReporteAlfa(COLUMNAS);
+    if (guardadas?.length) return guardadas;
+    return COLUMNAS.filter((c) => COLUMNAS_INICIALES_VISIBLES.includes(c.clave));
+  });
+  const [modalColumnasOpen, setModalColumnasOpen] = useState(false);
+  const [columnasOrdenadas, setColumnasOrdenadas] = useState([]);
+  const [seleccionTemporal, setSeleccionTemporal] = useState([]);
+  const [draggedIndex, setDraggedIndex] = useState(null);
   const colaFechaLlamada = esSesionColaFechaLlamadaAlfa();
 
   const recargar = useCallback(async () => {
@@ -285,6 +347,12 @@ export default function ReporteSegurosAlfa() {
     []
   );
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
+  const tomadores = useMemo(() => buildOpcionesFiltro(casos, 'tomador'), [casos]);
+  const coberturas = useMemo(() => buildOpcionesFiltro(casos, 'cobertura'), [casos]);
+  const canales = useMemo(() => buildOpcionesFiltro(casos, 'canalRadicacion'), [casos]);
+  const estadosPago = useMemo(() => buildOpcionesFiltro(casos, 'estadoPagoPrimas'), [casos]);
+  const zonas = useMemo(() => buildOpcionesFiltro(casos, 'zonaAsignada'), [casos]);
   const kpisGestion = useMemo(() => {
     const fuente = colaFechaLlamada
       ? casos.filter((c) => !casoAlfaTieneFechaLlamada(c))
@@ -321,6 +389,12 @@ export default function ReporteSegurosAlfa() {
     const cedula =
       typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '';
     const misClaves = [nombre, login, cedula].filter(Boolean);
+    const campoFecha =
+      tipoFecha === 'fechaAviso' ||
+      tipoFecha === 'fechaInspeccion' ||
+      tipoFecha === 'fechaLlamada'
+        ? tipoFecha
+        : 'fechaSiniestro';
 
     return casos.filter((c) => {
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
@@ -328,16 +402,25 @@ export default function ReporteSegurosAlfa() {
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(homologarEstadoAlfa(c.estado, c), filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
+      if (!coincideFiltroTexto(c.tomador, filtroTomador)) return false;
+      if (!coincideFiltroTexto(c.cobertura, filtroCobertura)) return false;
+      if (!coincideFiltroTexto(c.canalRadicacion, filtroCanal)) return false;
+      if (!coincideFiltroTexto(c.estadoPagoPrimas, filtroEstadoPago)) return false;
+      if (!coincideFiltroTexto(c.zonaAsignada, filtroZona)) return false;
       if (fechaInicio || fechaFin) {
-        if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
+        const fechaRef = c[campoFecha] || c.fechaSiniestro || c.createdAt;
+        if (!fechaEnRango(fechaRef, fechaInicio, fechaFin)) return false;
       }
 
       const tieneLiq = casoTieneLiquidadorConContenido(c);
+      const tieneLiqObj = casoTieneLiquidadorObj(c);
       const tieneInf = casoTieneInforme(c);
       if (filtroDocumento === 'liquidador' && !tieneLiq) return false;
       if (filtroDocumento === 'informe' && !tieneInf) return false;
       if (filtroDocumento === 'alguno' && !tieneLiq && !tieneInf) return false;
       if (filtroDocumento === 'ambos' && !(tieneLiq && tieneInf)) return false;
+      if (filtroDocumento === 'cascaron' && !(tieneLiqObj && !tieneLiq)) return false;
       if (filtroSla === 'vencido' && !casoAlfaVenceSla2Dias(c)) return false;
       if (filtroSla === 'ok' && casoAlfaVenceSla2Dias(c)) return false;
 
@@ -361,6 +444,7 @@ export default function ReporteSegurosAlfa() {
         c.asegurado,
         c.tomador,
         c.ajustador,
+        c.inspector,
         c.numeroPoliza,
         c.numeroCredito,
         c.ciudad,
@@ -372,6 +456,8 @@ export default function ReporteSegurosAlfa() {
         c.canalRadicacion,
         c.direccionPredio,
         c.observacionLlamada,
+        c.cobertura,
+        c.zonaAsignada,
       ]
         .map(normTexto)
         .join(' ');
@@ -384,6 +470,13 @@ export default function ReporteSegurosAlfa() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroInspector,
+    filtroTomador,
+    filtroCobertura,
+    filtroCanal,
+    filtroEstadoPago,
+    filtroZona,
+    tipoFecha,
     fechaInicio,
     fechaFin,
     idsBloqueSeleccionado,
@@ -399,6 +492,10 @@ export default function ReporteSegurosAlfa() {
   const paginaItems = filtrados.slice(desde, desde + ALFA_REPORTE_PAGE_SIZE);
 
   useEffect(() => {
+    if (skipPageResetRef.current) {
+      skipPageResetRef.current = false;
+      return;
+    }
     setPagina(1);
   }, [
     busqueda,
@@ -406,12 +503,61 @@ export default function ReporteSegurosAlfa() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroInspector,
+    filtroTomador,
+    filtroCobertura,
+    filtroCanal,
+    filtroEstadoPago,
+    filtroZona,
+    tipoFecha,
     fechaInicio,
     fechaFin,
     idsBloqueSeleccionado,
     filtroDocumento,
     filtroSla,
     soloMisCasos,
+  ]);
+
+  useEffect(() => {
+    guardarFiltrosReporteAlfa({
+      busqueda,
+      filtroCiudad,
+      filtroDepto,
+      filtroEstado,
+      filtroSla,
+      filtroAjustador,
+      filtroInspector,
+      filtroTomador,
+      filtroCobertura,
+      filtroCanal,
+      filtroEstadoPago,
+      filtroZona,
+      filtroDocumento,
+      tipoFecha,
+      fechaInicio,
+      fechaFin,
+      soloMisCasos,
+      pagina: paginaActual,
+    });
+  }, [
+    busqueda,
+    filtroCiudad,
+    filtroDepto,
+    filtroEstado,
+    filtroSla,
+    filtroAjustador,
+    filtroInspector,
+    filtroTomador,
+    filtroCobertura,
+    filtroCanal,
+    filtroEstadoPago,
+    filtroZona,
+    filtroDocumento,
+    tipoFecha,
+    fechaInicio,
+    fechaFin,
+    soloMisCasos,
+    paginaActual,
   ]);
 
   const limpiarFiltros = () => {
@@ -421,12 +567,55 @@ export default function ReporteSegurosAlfa() {
     setFiltroEstado('');
     setFiltroSla('');
     setFiltroAjustador('');
+    setFiltroInspector('');
+    setFiltroTomador('');
+    setFiltroCobertura('');
+    setFiltroCanal('');
+    setFiltroEstadoPago('');
+    setFiltroZona('');
+    setTipoFecha('fechaSiniestro');
     setFechaInicio('');
     setFechaFin('');
     setFiltroDocumento('');
     setSoloMisCasos(false);
     setBloqueSeleccionadoId(null);
     setIdsBloqueSeleccionado([]);
+    setPagina(1);
+    limpiarFiltrosReporteAlfaStorage();
+  };
+
+  const abrirPersonalizarColumnas = () => {
+    setSeleccionTemporal(columnasVisibles.map((c) => c.clave));
+    const ordenActual = columnasVisibles.map((c) => c.clave);
+    const noVisibles = COLUMNAS.filter((c) => !ordenActual.includes(c.clave));
+    setColumnasOrdenadas([...columnasVisibles, ...noVisibles]);
+    setModalColumnasOpen(true);
+  };
+
+  const guardarColumnasPersonalizadas = () => {
+    const seleccionadas = columnasOrdenadas.filter((c) => seleccionTemporal.includes(c.clave));
+    const finalCols = seleccionadas.length ? seleccionadas : COLUMNAS.slice(0, 8);
+    setColumnasVisibles(finalCols);
+    guardarColumnasReporteAlfa(finalCols);
+    setModalColumnasOpen(false);
+  };
+
+  const handleDragStart = (index) => setDraggedIndex(index);
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    const next = [...columnasOrdenadas];
+    const item = next[draggedIndex];
+    next.splice(draggedIndex, 1);
+    next.splice(index, 0, item);
+    setColumnasOrdenadas(next);
+    setDraggedIndex(index);
+  };
+  const handleDragEnd = () => setDraggedIndex(null);
+  const toggleColumna = (clave) => {
+    setSeleccionTemporal((prev) =>
+      prev.includes(clave) ? prev.filter((c) => c !== clave) : [...prev, clave]
+    );
   };
 
   const obtenerValorCelda = (item, clave) => {
@@ -496,11 +685,18 @@ export default function ReporteSegurosAlfa() {
       filtroEstado ||
       filtroSla ||
       filtroAjustador ||
+      filtroInspector ||
+      filtroTomador ||
+      filtroCobertura ||
+      filtroCanal ||
+      filtroEstadoPago ||
+      filtroZona ||
       fechaInicio ||
       fechaFin ||
       filtroDocumento ||
       soloMisCasos ||
-      bloqueSeleccionadoId
+      bloqueSeleccionadoId ||
+      (tipoFecha && tipoFecha !== 'fechaSiniestro')
   );
 
   return (
@@ -528,6 +724,15 @@ export default function ReporteSegurosAlfa() {
           </div>
           <div className="flex flex-wrap gap-2">
             <AlfaCondicionesMenu />
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              onClick={abrirPersonalizarColumnas}
+              disabled={loading}
+            >
+              <FaCog />
+              {t('segurosAlfa.report.columns', { defaultValue: 'Columnas' })}
+            </button>
             <button type="button" className={expressBtnSecondary} onClick={exportarExcel} disabled={loading}>
               <FaFileExcel />
               {t('segurosAlfa.report.exportExcel')}
@@ -633,6 +838,83 @@ export default function ReporteSegurosAlfa() {
                 ))}
               </SelectFenix>
             </Campo>
+            <Campo label={t('segurosAlfa.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {inspectores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosAlfa.fields.tomador')}>
+              <SelectFenix value={filtroTomador} onChange={(e) => setFiltroTomador(e.target.value)}>
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {tomadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosAlfa.fields.cobertura')}>
+              <SelectFenix
+                value={filtroCobertura}
+                onChange={(e) => setFiltroCobertura(e.target.value)}
+              >
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {coberturas.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosAlfa.fields.canalRadicacion')}>
+              <SelectFenix value={filtroCanal} onChange={(e) => setFiltroCanal(e.target.value)}>
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {canales.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosAlfa.fields.estadoPagoPrimas')}>
+              <SelectFenix
+                value={filtroEstadoPago}
+                onChange={(e) => setFiltroEstadoPago(e.target.value)}
+              >
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {estadosPago.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosAlfa.fields.zonaAsignada', { defaultValue: 'Zona' })}>
+              <SelectFenix value={filtroZona} onChange={(e) => setFiltroZona(e.target.value)}>
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {zonas.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label="Filtrar fechas por">
+              <SelectFenix value={tipoFecha} onChange={(e) => setTipoFecha(e.target.value)}>
+                <option value="fechaSiniestro">Fecha siniestro</option>
+                <option value="fechaAviso">Fecha aviso</option>
+                <option value="fechaInspeccion">Fecha inspección</option>
+                <option value="fechaLlamada">Fecha llamada</option>
+              </SelectFenix>
+            </Campo>
             <Campo label={t('segurosAlfa.report.from')}>
               <InputFenix type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} />
             </Campo>
@@ -649,6 +931,7 @@ export default function ReporteSegurosAlfa() {
                 <option value="liquidador">Solo con liquidador</option>
                 <option value="informe">Solo con informe</option>
                 <option value="ambos">Con liquidador e informe</option>
+                <option value="cascaron">Cascarón vacío (liq. sin ítems)</option>
               </SelectFenix>
             </Campo>
             <Campo label="Asignación">
@@ -688,18 +971,20 @@ export default function ReporteSegurosAlfa() {
           </p>
         </ExpressFilterSection>
 
-        <MapaBloquesAlfaPanel
-          ciudad={filtroCiudad}
-          estado={filtroEstado}
-          bloqueSeleccionadoId={bloqueSeleccionadoId}
-          reloadToken={mapaReloadToken}
-          onBloqueChange={(bloqueId, casoIds) => {
-            setBloqueSeleccionadoId(bloqueId);
-            setIdsBloqueSeleccionado(casoIds || []);
-            setPagina(1);
-          }}
-          compact
-        />
+        {MOSTRAR_MAPA_BLOQUES_CERCANOS ? (
+          <MapaBloquesAlfaPanel
+            ciudad={filtroCiudad}
+            estado={filtroEstado}
+            bloqueSeleccionadoId={bloqueSeleccionadoId}
+            reloadToken={mapaReloadToken}
+            onBloqueChange={(bloqueId, casoIds) => {
+              setBloqueSeleccionadoId(bloqueId);
+              setIdsBloqueSeleccionado(casoIds || []);
+              setPagina(1);
+            }}
+            compact
+          />
+        ) : null}
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
           <div className="overflow-x-auto">
@@ -709,13 +994,9 @@ export default function ReporteSegurosAlfa() {
                   <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
                     {t('segurosAlfa.report.actions')}
                   </th>
-                  {COLUMNAS.map((col) => (
+                  {columnasVisibles.map((col) => (
                     <th key={col.clave} className="px-4 py-3">
-                      {col.clave === 'docs'
-                        ? t('segurosAlfa.report.docs')
-                        : col.clave === 'consecutivo'
-                          ? t('segurosAlfa.report.consecutivo')
-                          : t(`segurosAlfa.fields.${col.labelKey}`)}
+                      {labelColumnaAlfa(t, col)}
                     </th>
                   ))}
                 </tr>
@@ -723,19 +1004,19 @@ export default function ReporteSegurosAlfa() {
               <tbody className="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-[#1A1A1A]">
                 {loading ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={columnasVisibles.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
                       {t('segurosAlfa.report.loadingCases')}
                     </td>
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-red-600">
+                    <td colSpan={columnasVisibles.length + 1} className="px-4 py-8 text-center text-sm text-red-600">
                       {error}
                     </td>
                   </tr>
                 ) : filtrados.length === 0 ? (
                   <tr>
-                    <td colSpan={COLUMNAS.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                    <td colSpan={columnasVisibles.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
                       {t('segurosAlfa.report.noCases')}
                     </td>
                   </tr>
@@ -772,7 +1053,7 @@ export default function ReporteSegurosAlfa() {
                           onEliminar={() => solicitarEliminar(item)}
                         />
                       </td>
-                      {COLUMNAS.map((col) => (
+                      {columnasVisibles.map((col) => (
                         <td
                           key={col.clave}
                           className={
@@ -902,6 +1183,64 @@ export default function ReporteSegurosAlfa() {
           onConfirm={aviso.onConfirm}
         />
       )}
+
+      <ExpressModal
+        open={modalColumnasOpen}
+        onClose={() => setModalColumnasOpen(false)}
+        title={t('segurosAlfa.report.customizeColumns', {
+          defaultValue: 'Personalizar columnas',
+        })}
+      >
+        <div className="p-4 sm:p-6">
+          <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('segurosAlfa.report.columnsHelp', {
+              defaultValue:
+                'Arrastra para ordenar. Marca o desmarca para mostrar u ocultar. Se guarda en este navegador.',
+            })}
+          </p>
+          <div className="mb-4 max-h-60 overflow-y-auto rounded-lg border border-gray-200 p-2 dark:border-gray-700 sm:max-h-80">
+            {columnasOrdenadas.map((campo, index) => (
+              <div
+                key={campo.clave}
+                draggable
+                onDragStart={() => handleDragStart(index)}
+                onDragOver={(e) => handleDragOver(e, index)}
+                onDragEnd={handleDragEnd}
+                className={`mb-1 flex cursor-move items-center gap-3 rounded-md px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 ${
+                  draggedIndex === index ? 'bg-fenix-primario/10' : ''
+                }`}
+              >
+                <span className="text-gray-400">⠿</span>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-fenix-primario"
+                  checked={seleccionTemporal.includes(campo.clave)}
+                  onChange={() => toggleColumna(campo.clave)}
+                />
+                <span className="font-body text-sm text-gray-800 dark:text-gray-200">
+                  {labelColumnaAlfa(t, campo)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              onClick={() => setModalColumnasOpen(false)}
+            >
+              {t('common.cancel', { defaultValue: 'Cancelar' })}
+            </button>
+            <button
+              type="button"
+              className={expressBtnPrimary}
+              onClick={guardarColumnasPersonalizadas}
+            >
+              {t('common.save', { defaultValue: 'Guardar' })}
+            </button>
+          </div>
+        </div>
+      </ExpressModal>
     </div>
   );
 }

@@ -467,6 +467,10 @@ export const guardarLiquidadorEnCasoAlfa = async ({
   const payload = {
     ...casoBase,
     liquidador: liquidadorSeguro,
+    valorAseguradoSid:
+      liquidadorSeguro?.encabezado?.valorAseguradoSid ??
+      liquidadorSeguro?.liquidacionCatastrofico?.valorAsegurado ??
+      casoBase.valorAseguradoSid,
     valorReclamado:
       totalesFrescos.totalReclamado != null
         ? totalesFrescos.totalReclamado

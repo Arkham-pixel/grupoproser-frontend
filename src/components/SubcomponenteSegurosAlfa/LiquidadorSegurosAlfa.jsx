@@ -1,12 +1,13 @@
-import React, { startTransition, useEffect, useMemo, useState } from 'react';
+import React, { startTransition, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileExcel, FaFileWord } from 'react-icons/fa';
+import { FaFileExcel, FaFileWord, FaUpload } from 'react-icons/fa';
 import {
   ExpressAvisoModal,
   expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { expressBtnSuccess } from '../SubcomponenteExpress/expressFenixUi.js';
 import FormatoLiquidacionAlfa from './FormatoLiquidacionAlfa.jsx';
 import {
   calcularLiquidacionAlfa,
@@ -35,6 +36,11 @@ import {
   archivarBlobEnCasoAlfa,
   MIME_ARCHIVO_ALFA,
 } from './archivarDocumentoAlfa.js';
+import { esUsuarioAlfaExcelActualizar } from './ModalImportarExcelAlfa.jsx';
+import {
+  extraerConsecutivoAlfaDeNombre,
+  parsearInformeCatAlfaExcel,
+} from './parsearInformeCatAlfaExcel.js';
 import {
   aplicarCatalogoAFilaPresupuesto,
   formatMilesNsr10,
@@ -64,6 +70,8 @@ export default function LiquidadorSegurosAlfa({
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [exportando, setExportando] = useState('');
+  const fileExcelCatRef = useRef(null);
+  const puedeSubirExcelTalCual = esUsuarioAlfaExcelActualizar();
   const casoId = casoAlfa?._id ? String(casoAlfa._id) : '';
 
   useEffect(() => {
@@ -117,12 +125,18 @@ export default function LiquidadorSegurosAlfa({
       setCasoLocal((c) => ({ ...c, tomador: valor }));
       onCasoChange?.((casoPrev) => (casoPrev ? { ...casoPrev, tomador: valor } : casoPrev));
     }
+    if (campo === 'valorAseguradoSid') {
+      setCasoLocal((c) => ({ ...c, valorAseguradoSid: valor }));
+      onCasoChange?.((casoPrev) =>
+        casoPrev ? { ...casoPrev, valorAseguradoSid: valor } : casoPrev
+      );
+    }
     setLiquidador((prev) => {
       const next = {
         ...prev,
         encabezado: { ...(prev.encabezado || {}), [campo]: valor },
       };
-      if (campo === 'valorAseguradoInmueble') {
+      if (campo === 'valorAseguradoSid') {
         const liq = prev.liquidacionCatastrofico || {};
         next.liquidacionCatastrofico = {
           ...liq,
@@ -199,7 +213,9 @@ export default function LiquidadorSegurosAlfa({
           valorAsegurado:
             Object.prototype.hasOwnProperty.call(patch, 'valorAsegurado')
               ? patch.valorAsegurado
-              : liq.valorAsegurado ?? prev.encabezado?.valorAseguradoInmueble,
+              : liq.valorAsegurado ??
+                prev.encabezado?.valorAseguradoSid ??
+                casoLocal.valorAseguradoSid,
         },
       };
     });
@@ -381,13 +397,18 @@ export default function LiquidadorSegurosAlfa({
           : defaultOtrosAmparosAlfa(),
         encabezado: {
           ...enc,
-          valorAseguradoInmueble:
-            enc.valorAseguradoInmueble ?? liquidador.liquidacionCatastrofico?.valorAsegurado,
+          valorAseguradoSid:
+            enc.valorAseguradoSid ??
+            liquidador.liquidacionCatastrofico?.valorAsegurado ??
+            casoLocal.valorAseguradoSid,
+          valorAseguradoInmueble: enc.valorAseguradoInmueble,
         },
         liquidacionCatastrofico: {
           ...(liquidador.liquidacionCatastrofico || {}),
           valorAsegurado:
-            liquidador.liquidacionCatastrofico?.valorAsegurado ?? enc.valorAseguradoInmueble,
+            liquidador.liquidacionCatastrofico?.valorAsegurado ??
+            enc.valorAseguradoSid ??
+            casoLocal.valorAseguradoSid,
         },
       };
       // El workspace archiva el Excel CAT tras guardar (cola SharePoint)
@@ -467,11 +488,82 @@ export default function LiquidadorSegurosAlfa({
     setMensaje('');
     setExportando('excel');
     try {
+      setLiquidador((prev) => ({ ...prev, excelCatOrigen: 'generado' }));
       const creado = await archivarExcelCatAlfa({ descargar: true });
       setMensaje(mensajeArchivado(creado));
     } catch (err) {
       console.error(err);
       setError(err.message || t('segurosAlfa.settlement.exportError'));
+    } finally {
+      setExportando('');
+    }
+  };
+
+  /** Sube el .xlsx tal cual al archivero (sin regenerar) y carga ítems en el liquidador. */
+  const handleSubirExcelCatTalCual = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!puedeSubirExcelTalCual) {
+      setError('Solo el usuario autorizado puede subir el Excel CAT tal cual.');
+      return;
+    }
+    if (!casoId) {
+      setError(
+        t('segurosAlfa.settlement.archiveNeedsCase', {
+          defaultValue: 'Guarde el caso antes de copiar al archivero.',
+        })
+      );
+      return;
+    }
+    setError('');
+    setMensaje('');
+    setExportando('subirExcel');
+    try {
+      const parsed = await parsearInformeCatAlfaExcel(file, {
+        caso: { ...(casoAlfa || {}), ...casoLocal },
+        liquidadorActual: liquidador,
+      });
+      const next = { ...parsed.liquidador, excelCatOrigen: 'manual' };
+      setLiquidador(next);
+      if (parsed.analisisGeneral) {
+        onCasoChange?.((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            informeUnico: {
+              ...(prev.informeUnico || {}),
+              analisisGeneral: {
+                ...(prev.informeUnico?.analisisGeneral || {}),
+                ...parsed.analisisGeneral,
+              },
+              ajustadorNombre:
+                next.encabezado?.ajustador || prev.informeUnico?.ajustadorNombre,
+            },
+          };
+        });
+      }
+      const creado = await copiarAlArchivero(
+        file,
+        file.name || 'Informe_CAT_Seguros_Alfa.xlsx',
+        MIME.xlsx,
+        'LIQUIDACION'
+      );
+      if (onGuardarEnCaso) {
+        await onGuardarEnCaso(next, calcularLiquidacionAlfa(next));
+      }
+      const consecArchivo = parsed.consecutivoArchivo || extraerConsecutivoAlfaDeNombre(file.name);
+      const consecCaso = String(casoAlfa?.consecutivo || casoLocal?.consecutivo || '').trim();
+      const avisoConsec =
+        consecArchivo && consecCaso && consecArchivo !== consecCaso.toUpperCase()
+          ? ` Atención: el archivo parece de ${consecArchivo} y este caso es ${consecCaso}.`
+          : '';
+      setMensaje(
+        `${mensajeArchivado(creado)} Se cargaron ${parsed.nItems} ítem(s) del Excel tal cual.${avisoConsec}`
+      );
+    } catch (err) {
+      console.error(err);
+      setError(err.message || 'No se pudo subir el Excel CAT.');
     } finally {
       setExportando('');
     }
@@ -490,6 +582,27 @@ export default function LiquidadorSegurosAlfa({
           >
             <FaFileExcel /> Excel CAT
           </button>
+          {puedeSubirExcelTalCual && (
+            <>
+              <input
+                ref={fileExcelCatRef}
+                type="file"
+                accept=".xlsx,.xlsm"
+                className="hidden"
+                onChange={handleSubirExcelCatTalCual}
+              />
+              <button
+                type="button"
+                className={expressBtnSuccess}
+                disabled={!!exportando || guardandoCaso}
+                onClick={() => fileExcelCatRef.current?.click()}
+                title="Sube el Informe CAT .xlsx tal cual al archivero, sin regenerarlo. Solo tu usuario."
+              >
+                <FaUpload />
+                {exportando === 'subirExcel' ? 'Subiendo…' : 'Subir Excel CAT'}
+              </button>
+            </>
+          )}
           <button
             type="button"
             className={expressBtnGhost}

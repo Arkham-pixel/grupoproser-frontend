@@ -9,6 +9,7 @@ import {
   parsearNumero,
   SMMLV_POR_ANIO,
   resolverMontoIndemnizarAlfa,
+  resolverValorSidParaLiquidacionAlfa,
   sumarOtrosAmparosAlfa,
   textoResumenOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
@@ -739,7 +740,7 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
   const pctMonto = parsearNumero(totales?.totalDanios) * ((Number.isFinite(pct) ? pct : 10) / 100);
   setVal(sheet, 9, 13, pctMonto || null);
 
-  const va = parsearNumero(enc.valorAseguradoInmueble || liq.valorAsegurado || caso.valorAseguradoInmueble);
+  const va = resolverValorSidParaLiquidacionAlfa(liquidador, caso);
   setVal(sheet, 12, 6, va || null);
 
   // Detalle ítems — una fila por partida (sin compactar/sumar el resto)

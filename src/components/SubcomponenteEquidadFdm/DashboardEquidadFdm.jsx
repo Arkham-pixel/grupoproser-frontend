@@ -77,6 +77,11 @@ const formatoLeyendaPieFdm = (total, labelKey) => (value, entry) => {
   return `${etiqueta}: ${cantidad} (${pct}%)`;
 };
 
+const tieneNumeroValidoFdm = (valor) => {
+  const nro = String(valor ?? '').trim();
+  return Boolean(nro && nro !== '0' && !/^(n\/?a|na|null|-)$/i.test(nro));
+};
+
 const DashboardEquidadFdm = () => {
   const { t } = useTranslation();
   const { theme } = useTheme();
@@ -206,8 +211,7 @@ const DashboardEquidadFdm = () => {
     let conCaso = 0;
     let sinCaso = 0;
     for (const item of casosFiltrados) {
-      const nro = String(item.caso ?? '').trim();
-      if (nro && nro !== '0' && !/^(n\/?a|na|null|-)$/i.test(nro)) conCaso += 1;
+      if (tieneNumeroValidoFdm(item.caso)) conCaso += 1;
       else sinCaso += 1;
     }
     return [
@@ -236,6 +240,37 @@ const DashboardEquidadFdm = () => {
         payload: item,
       })),
     [onBaseData, isDark]
+  );
+
+  /** Siniestros: casos con número de siniestro vs sin número de siniestro. */
+  const siniestrosData = useMemo(() => {
+    let conSiniestro = 0;
+    let sinSiniestro = 0;
+    for (const item of casosFiltrados) {
+      if (tieneNumeroValidoFdm(item.siniestro)) conSiniestro += 1;
+      else sinSiniestro += 1;
+    }
+    return [
+      { clave: 'conSiniestro', label: t('equidadFdm.dashboard.withClaimNumber'), cantidad: conSiniestro },
+      { clave: 'sinSiniestro', label: t('equidadFdm.dashboard.withoutClaimNumber'), cantidad: sinSiniestro },
+    ].filter((row) => row.cantidad > 0 || casosFiltrados.length === 0);
+  }, [casosFiltrados, t]);
+
+  const siniestrosTotales = useMemo(() => {
+    const con = siniestrosData.find((r) => r.clave === 'conSiniestro')?.cantidad || 0;
+    const sin = siniestrosData.find((r) => r.clave === 'sinSiniestro')?.cantidad || 0;
+    return { con, sin, total: con + sin };
+  }, [siniestrosData]);
+
+  const leyendaSiniestros = useMemo(
+    () =>
+      siniestrosData.map((item, index) => ({
+        value: item.label,
+        type: 'circle',
+        color: getFenixChartColor(index === 0 ? 1 : 4, isDark),
+        payload: item,
+      })),
+    [siniestrosData, isDark]
   );
 
   const tendenciaMensual = useMemo(() => {
@@ -384,7 +419,7 @@ const DashboardEquidadFdm = () => {
           />
         </section>
 
-        <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+        <section className="grid w-full min-w-0 grid-cols-1 gap-4">
           <ChartCard title={t('equidadFdm.dashboard.byStatus')} empty={casosPorEstado.length === 0}>
             <ResponsiveContainer width="100%" height={320}>
               <PieChart>
@@ -423,7 +458,9 @@ const DashboardEquidadFdm = () => {
               </PieChart>
             </ResponsiveContainer>
           </ChartCard>
+        </section>
 
+        <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
           <ChartCard
             title={t('equidadFdm.dashboard.onBase')}
             empty={casosFiltrados.length === 0}
@@ -484,6 +521,73 @@ const DashboardEquidadFdm = () => {
             </ResponsiveContainer>
             <p className="mt-2 text-center font-body text-xs text-gray-500 dark:text-gray-400">
               {t('equidadFdm.dashboard.onBaseTotal', { total: onBaseTotales.total })}
+            </p>
+          </ChartCard>
+
+          <ChartCard
+            title={t('equidadFdm.dashboard.byClaimNumber')}
+            empty={casosFiltrados.length === 0}
+          >
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={siniestrosData}
+                  dataKey="cantidad"
+                  nameKey="label"
+                  cx="50%"
+                  cy="46%"
+                  innerRadius={58}
+                  outerRadius={92}
+                  stroke={pieStroke}
+                  strokeWidth={2}
+                >
+                  {siniestrosData.map((entry) => (
+                    <Cell
+                      key={entry.clave}
+                      fill={
+                        entry.clave === 'conSiniestro'
+                          ? getFenixChartColor(1, isDark)
+                          : getFenixChartColor(4, isDark)
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value, _name, props) => {
+                    const cantidad = props.payload?.cantidad || value || 0;
+                    const pct =
+                      siniestrosTotales.total > 0
+                        ? Math.round((cantidad / siniestrosTotales.total) * 100)
+                        : 0;
+                    return [`${cantidad} (${pct}%)`, props.payload?.label || ''];
+                  }}
+                  contentStyle={tooltipStyle}
+                />
+                <Legend
+                  layout="horizontal"
+                  align="center"
+                  verticalAlign="bottom"
+                  payload={leyendaSiniestros}
+                  formatter={(value, entry) => {
+                    const cantidad = entry?.payload?.cantidad ?? 0;
+                    const pct =
+                      siniestrosTotales.total > 0
+                        ? Math.round((cantidad / siniestrosTotales.total) * 100)
+                        : 0;
+                    return `${value}: ${cantidad} (${pct}%)`;
+                  }}
+                  wrapperStyle={{
+                    fontSize: '12px',
+                    color: tickColor,
+                    paddingTop: '8px',
+                    lineHeight: '1.5',
+                  }}
+                  iconType="circle"
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <p className="mt-2 text-center font-body text-xs text-gray-500 dark:text-gray-400">
+              {t('equidadFdm.dashboard.claimNumberTotal', { total: siniestrosTotales.total })}
             </p>
           </ChartCard>
         </section>

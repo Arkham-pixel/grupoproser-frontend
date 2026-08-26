@@ -35,9 +35,51 @@ function formatearMonto(valor) {
 
 export const TIPOS_OTROS_AMPAROS = [
   { id: 'arriendo', nombre: 'Arriendo / pérdida de rentas', unidadDefault: 'mes' },
-  { id: 'retiro_escombros', nombre: 'Retiro de escombros', unidadDefault: 'glb' },
+  { id: 'retiro_escombros', nombre: 'Retiro de escombros', unidadDefault: 'm³' },
   { id: 'otro', nombre: 'Otro amparo (sin deducible)', unidadDefault: 'glb' },
 ];
+
+/** Unidades frecuentes para cantidad × valor unitario. */
+export const UNIDADES_OTROS_AMPAROS = [
+  'm³',
+  'm²',
+  'ml',
+  'und',
+  'glb',
+  'mes',
+  'día',
+  'kg',
+  'ton',
+];
+
+const ALIAS_UNIDAD = {
+  m3: 'm³',
+  M3: 'm³',
+  'M³': 'm³',
+  mt3: 'm³',
+  mts3: 'm³',
+  m2: 'm²',
+  M2: 'm²',
+  'M²': 'm²',
+  mt2: 'm²',
+  unds: 'und',
+  unidad: 'und',
+  unidades: 'und',
+  global: 'glb',
+  meses: 'mes',
+  dia: 'día',
+  dias: 'día',
+  días: 'día',
+};
+
+export function normalizarUnidadOtroAmparo(unidad) {
+  const raw = String(unidad || '').trim();
+  if (!raw) return '';
+  if (ALIAS_UNIDAD[raw]) return ALIAS_UNIDAD[raw];
+  const lower = raw.toLowerCase();
+  if (ALIAS_UNIDAD[lower]) return ALIAS_UNIDAD[lower];
+  return raw;
+}
 
 export function nombreTipoOtroAmparo(tipo, nombreLibre = '') {
   const cat = TIPOS_OTROS_AMPAROS.find((t) => t.id === tipo);
@@ -52,17 +94,18 @@ export function nuevoOtroAmparo(parcial = {}) {
   const cat =
     TIPOS_OTROS_AMPAROS.find((t) => t.id === tipo) ||
     TIPOS_OTROS_AMPAROS[TIPOS_OTROS_AMPAROS.length - 1];
-  return {
+  const fila = {
     id: parcial.id || `oa-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     tipo,
     nombre: parcial.nombre || cat.nombre,
     aplica: parcial.aplica !== false,
     cantidad: parcial.cantidad ?? 1,
-    unidad: parcial.unidad || cat.unidadDefault || 'glb',
+    unidad: normalizarUnidadOtroAmparo(parcial.unidad || cat.unidadDefault || 'glb'),
     valorUnitario: parcial.valorUnitario ?? '',
     valor: parcial.valor ?? '',
     observacion: parcial.observacion || '',
   };
+  return recalcularValorOtroAmparo(fila);
 }
 
 export function defaultOtrosAmparos() {
@@ -72,22 +115,35 @@ export function defaultOtrosAmparos() {
   ];
 }
 
+/**
+ * Valor = cantidad × valor unitario (cuando ambos están).
+ * Si falta alguno, conserva el valor manual (si lo hay).
+ */
 export function recalcularValorOtroAmparo(fila = {}) {
   const cant = parsearNumero(fila.cantidad);
   const vu = parsearNumero(fila.valorUnitario);
-  const tieneCantVu =
-    fila.cantidad !== '' &&
-    fila.cantidad != null &&
+  const tieneCant =
+    fila.cantidad !== '' && fila.cantidad != null && !Number.isNaN(cant);
+  const tieneVu =
     fila.valorUnitario !== '' &&
-    fila.valorUnitario != null;
-  const valor =
-    tieneCantVu && (cant > 0 || vu > 0)
-      ? Math.round(cant * vu * 100) / 100
-      : parsearNumero(fila.valor);
+    fila.valorUnitario != null &&
+    String(fila.valorUnitario).trim() !== '';
+  if (tieneCant && tieneVu) {
+    return {
+      ...fila,
+      valor: Math.round(cant * vu * 100) / 100,
+    };
+  }
+  const manual = parsearNumero(fila.valor);
   return {
     ...fila,
-    valor: valor || fila.valor || '',
+    valor: manual > 0 ? manual : fila.valor === 0 || fila.valor === '0' ? 0 : fila.valor || '',
   };
+}
+
+/** Valor a mostrar en UI: siempre prioriza cantidad × vlr. unitario. */
+export function valorMostrarOtroAmparo(fila = {}) {
+  return recalcularValorOtroAmparo(fila).valor;
 }
 
 export function normalizarOtrosAmparos(lista) {
@@ -97,7 +153,7 @@ export function normalizarOtrosAmparos(lista) {
 
 export function esOtroAmparoActivo(it = {}) {
   if (!it || it.aplica === false) return false;
-  return parsearNumero(it.valor) > 0;
+  return parsearNumero(valorMostrarOtroAmparo(it)) > 0;
 }
 
 export function filasOtrosAmparosActivos(lista = []) {
@@ -107,7 +163,10 @@ export function filasOtrosAmparosActivos(lista = []) {
 export function sumarOtrosAmparos(lista = []) {
   return (
     Math.round(
-      filasOtrosAmparosActivos(lista).reduce((acc, it) => acc + parsearNumero(it.valor), 0) * 100
+      filasOtrosAmparosActivos(lista).reduce(
+        (acc, it) => acc + parsearNumero(valorMostrarOtroAmparo(it)),
+        0
+      ) * 100
     ) / 100
   );
 }

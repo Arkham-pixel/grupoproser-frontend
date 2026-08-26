@@ -13,9 +13,12 @@ import {
   SMMLV_POR_ANIO,
   AIU_PORCENTAJE_DEFAULT_ALFA,
   TIPOS_OTROS_AMPAROS_ALFA,
+  UNIDADES_OTROS_AMPAROS_ALFA,
   nombreTipoOtroAmparoAlfa,
   nuevoOtroAmparoAlfa,
   recalcularValorOtroAmparoAlfa,
+  valorMostrarOtroAmparoAlfa,
+  normalizarUnidadOtroAmparoAlfa,
   sumarOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
 import {
@@ -283,11 +286,10 @@ export default function FormatoLiquidacionAlfa({
   }, [totales.aiu, totales.subtotal, subtotal, aiuPctUi]);
 
   const deducible = parsearNumero(totales.deducibleAplicado);
+  // Siempre desde las filas en pantalla (evita totales desfasados al editar).
   const totalOtrosAmparos = useMemo(
-    () =>
-      parsearNumero(totales.totalOtrosAmparos) ||
-      sumarOtrosAmparosAlfa(otrosAmparos),
-    [totales.totalOtrosAmparos, otrosAmparos]
+    () => sumarOtrosAmparosAlfa(otrosAmparos),
+    [otrosAmparos]
   );
   const indemnizacionPrincipal = Math.max(
     0,
@@ -308,6 +310,9 @@ export default function FormatoLiquidacionAlfa({
       if (patch.tipo !== 'otro') {
         next.nombre = cat?.nombre || next.nombre;
       }
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'unidad')) {
+      next.unidad = normalizarUnidadOtroAmparoAlfa(patch.unidad);
     }
     const tocaronCantVu =
       Object.prototype.hasOwnProperty.call(patch, 'cantidad') ||
@@ -544,8 +549,9 @@ export default function FormatoLiquidacionAlfa({
               key: 'pesosOtro',
               label: 'Pesos / Otro',
               value: deducible || dedCfg.pesosOtro || 0,
-              type: 'number',
+              type: 'text',
               readOnly: true,
+              formatMiles: true,
             },
           ].map((f) => (
             <div
@@ -560,7 +566,11 @@ export default function FormatoLiquidacionAlfa({
                   type={f.type}
                   className={alfaCatInput}
                   readOnly={f.readOnly}
-                  value={f.value}
+                  value={
+                    f.formatMiles
+                      ? formatearMonto(f.value)
+                      : f.value
+                  }
                   onChange={(e) =>
                     !f.readOnly &&
                     onDeducibleChange?.(f.key, e.target.value === '' ? '' : Number(e.target.value))
@@ -605,15 +615,28 @@ export default function FormatoLiquidacionAlfa({
 
       <div className="grid grid-cols-1 border-b border-gray-300 dark:border-gray-600 lg:grid-cols-2">
         <div className="grid grid-cols-[180px_1fr] border-b border-gray-200 lg:border-b-0 lg:border-r dark:border-gray-700">
-          <CeldaLabel>Valor límite asegurado</CeldaLabel>
+          <CeldaLabel>Valor SID</CeldaLabel>
           <CeldaInput>
             <input
               className={alfaCatInput}
-              value={
-                encabezado.valorAseguradoInmueble ?? liquidacionCatastrofico.valorAsegurado ?? ''
+              inputMode="decimal"
+              value={(() => {
+                const raw =
+                  encabezado.valorAseguradoSid ??
+                  liquidacionCatastrofico.valorAsegurado ??
+                  caso?.valorAseguradoSid ??
+                  '';
+                if (raw === '' || raw == null) return '';
+                return formatMilesNsr10(raw);
+              })()}
+              onChange={(e) =>
+                onEncabezadoChange?.(
+                  'valorAseguradoSid',
+                  formatMilesInputNsr10(e.target.value)
+                )
               }
-              onChange={(e) => onEncabezadoChange?.('valorAseguradoInmueble', e.target.value)}
-              placeholder="Obligatorio para el deducible"
+              placeholder="Obligatorio para liquidar / deducible"
+              title="Se liquida con Valor SID, no con el valor asegurado del inmueble"
             />
           </CeldaInput>
         </div>
@@ -630,8 +653,8 @@ export default function FormatoLiquidacionAlfa({
       </div>
       {totales.deducibleRequiereValorAsegurado ? (
         <p className="border-b border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
-          Según el tomador, el deducible usa el <strong>valor asegurado</strong>. Llene «Valor
-          límite asegurado» para calcularlo.
+          Según el tomador, el deducible usa el <strong>Valor SID</strong>. Llene «Valor SID» para
+          calcularlo (no el valor asegurado del inmueble).
         </p>
       ) : totales.deducibleAlfa?.baseDeducible === 'perdida' ? (
         <p className="border-b border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
@@ -646,7 +669,7 @@ export default function FormatoLiquidacionAlfa({
         <p className="border-b border-gray-200 bg-gray-50 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:bg-gray-900/40 dark:text-gray-300">
           Deducible del tomador = mayor entre{' '}
           <strong>
-            {totales.deducibleAlfa.porcentaje}% del valor asegurado ($
+            {totales.deducibleAlfa.porcentaje}% del Valor SID ($
             {formatearMonto(totales.deducibleAlfa.deduciblePorcentaje)})
           </strong>{' '}
           y{' '}
@@ -863,7 +886,8 @@ export default function FormatoLiquidacionAlfa({
         </div>
         <p className="border-b border-gray-200 px-3 py-2 font-body text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
           Arriendo, retiro de escombros y similares se liquidan por aparte: no se les aplica
-          deducible ni AIU. El valor entra directo al total a indemnizar.
+          deducible ni AIU. Elija la unidad (m³, m², mes…), indique cantidad y valor unitario: el
+          valor se calcula solo (cantidad × valor unitario) y entra directo al total a indemnizar.
         </p>
         <div className="overflow-x-auto">
           <table className="min-w-[980px] w-full border-collapse text-sm">
@@ -884,6 +908,9 @@ export default function FormatoLiquidacionAlfa({
                   it.tipo === 'otro'
                     ? it.nombre || ''
                     : nombreTipoOtroAmparoAlfa(it.tipo, it.nombre);
+                const valorCalc = valorMostrarOtroAmparoAlfa(it);
+                const unidadActual = normalizarUnidadOtroAmparoAlfa(it.unidad || '');
+                const unidadEnLista = UNIDADES_OTROS_AMPAROS_ALFA.includes(unidadActual);
                 return (
                   <tr key={it.id || idx} className="border-t border-gray-200 dark:border-gray-700">
                     <td className="px-2 py-1 text-center">
@@ -932,23 +959,50 @@ export default function FormatoLiquidacionAlfa({
                         }
                       />
                     </td>
-                    <td className="px-1 py-1 w-16">
-                      <input
-                        className={alfaCatInput}
-                        value={it.unidad || ''}
-                        onChange={(e) => patchOtroAmparo(idx, { unidad: e.target.value })}
-                      />
+                    <td className="px-1 py-1 w-24">
+                      <select
+                        className={selectClass}
+                        value={unidadEnLista ? unidadActual : '__otra__'}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__otra__') {
+                            patchOtroAmparo(idx, { unidad: unidadEnLista ? '' : unidadActual });
+                            return;
+                          }
+                          patchOtroAmparo(idx, { unidad: v });
+                        }}
+                        title="Unidad de medida"
+                      >
+                        {UNIDADES_OTROS_AMPAROS_ALFA.map((u) => (
+                          <option key={u} value={u}>
+                            {u}
+                          </option>
+                        ))}
+                        <option value="__otra__">Otra…</option>
+                      </select>
+                      {!unidadEnLista && (
+                        <input
+                          className={`${alfaCatInput} mt-1`}
+                          value={unidadActual}
+                          onChange={(e) => patchOtroAmparo(idx, { unidad: e.target.value })}
+                          placeholder="Und"
+                        />
+                      )}
                     </td>
                     <td className="px-1 py-1 w-20">
                       <input
                         className={alfaCatInput}
+                        inputMode="decimal"
                         value={it.cantidad ?? ''}
                         onChange={(e) => patchOtroAmparo(idx, { cantidad: e.target.value })}
+                        placeholder="0"
+                        title="Cantidad"
                       />
                     </td>
                     <td className="px-1 py-1 w-28">
                       <input
                         className={`${alfaCatInput} text-right`}
+                        inputMode="decimal"
                         value={
                           it.valorUnitario === '' || it.valorUnitario == null
                             ? ''
@@ -959,21 +1013,22 @@ export default function FormatoLiquidacionAlfa({
                             valorUnitario: formatMilesInputNsr10(e.target.value),
                           })
                         }
+                        placeholder="Precio / und"
+                        title="Valor unitario (se multiplica por la cantidad)"
                       />
                     </td>
                     <td className="px-1 py-1 w-32">
                       <input
-                        className={`${alfaCatInput} text-right`}
+                        className={`${alfaCatInput} text-right bg-gray-50 dark:bg-gray-900/40`}
+                        readOnly
+                        tabIndex={-1}
                         value={
-                          it.valor === '' || it.valor == null
+                          valorCalc === '' || valorCalc == null
                             ? ''
-                            : formatMilesNsr10(it.valor)
+                            : formatMilesNsr10(valorCalc)
                         }
-                        onChange={(e) =>
-                          patchOtroAmparo(idx, {
-                            valor: formatMilesInputNsr10(e.target.value),
-                          })
-                        }
+                        title="Cantidad × valor unitario"
+                        placeholder="Cant. × vlr."
                       />
                     </td>
                     <td className="px-1 py-1 text-center">
