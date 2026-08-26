@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import axios from 'axios';
 import { BASE_URL } from '../config/apiConfig.js';
+import { esRolContractor } from '../config/roles.js';
 import { FaPause, FaPlay } from 'react-icons/fa';
 
 const AdminUsuarios = () => {
@@ -191,7 +192,7 @@ const AdminUsuarios = () => {
                       usuario.role === 'admin' ? 'bg-red-100 text-red-800' :
                       usuario.role === 'soporte' ? 'bg-yellow-100 text-yellow-800' :
                       usuario.role === 'puertos' ? 'bg-blue-100 text-blue-800' :
-                      usuario.role === 'contractor_zurich' || usuario.role === 'contractor_alfa' || usuario.role === 'contractor_sura' || usuario.role === 'contractor_solo_zurich' || usuario.role === 'contractor_solo_bbva' || usuario.role === 'contractor_solo_equidad' || usuario.role === 'contractor_solo_previsora' ? 'bg-teal-100 text-teal-800' :
+                      esRolContractor(usuario.role) ? 'bg-teal-100 text-teal-800' :
                       usuario.role === 'visualizador' ? 'bg-purple-100 text-purple-800' :
                       'bg-green-100 text-green-800'
                     }`}>

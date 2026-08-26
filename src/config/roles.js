@@ -14,6 +14,7 @@ export const ROLES_VALIDOS = [
   'contractor_solo_bbva',
   'contractor_solo_equidad',
   'contractor_solo_previsora',
+  'contractor_catastroficos',
 ];
 
 /** Contratista con Zurich + Alfa + Sura + BBVA (Rodrigo y similares). */
@@ -31,12 +32,16 @@ export const ROL_SOLO_EQUIDAD = 'contractor_solo_equidad';
 /** Contratista solo módulo Previsora (Home + Previsora). */
 export const ROL_SOLO_PREVISORA = 'contractor_solo_previsora';
 
+/** Contratista con todos los módulos catastróficos. */
+export const ROL_CATASTROFICOS = 'contractor_catastroficos';
+
 export const ROLES_CONTRACTOR = [
   ...ROLES_CONTRACTOR_TRES,
   ROL_SOLO_ZURICH,
   ROL_SOLO_BBVA,
   ROL_SOLO_EQUIDAD,
   ROL_SOLO_PREVISORA,
+  ROL_CATASTROFICOS,
 ];
 
 export const CONFIG_CONTRACTOR_TRES = {
@@ -87,6 +92,22 @@ export const CONFIG_SOLO_PREVISORA = {
   etiqueta: 'Previsora',
 };
 
+export const CONFIG_CATASTROFICOS = {
+  /** Orden: Previsora, Zurich, BBVA, Alfa, Sura, Allianz. */
+  seccionesMenu: ['previsora', 'zurich', 'bbvaCat', 'alfa', 'sura', 'allianz'],
+  inicio: '/previsora/listado/reporte',
+  prefijosRuta: [
+    '/previsora',
+    '/zurich',
+    '/bbva-cat',
+    '/seguros-alfa',
+    '/sura',
+    '/allianz',
+    '/catastrofico',
+  ],
+  etiqueta: 'Catastróficos',
+};
+
 export function normalizarRol(rol) {
   return String(rol || '').trim().toLowerCase();
 }
@@ -101,6 +122,7 @@ export function obtenerConfigContractor(rol = obtenerRolAlmacenado()) {
   if (r === ROL_SOLO_BBVA) return CONFIG_SOLO_BBVA;
   if (r === ROL_SOLO_EQUIDAD) return CONFIG_SOLO_EQUIDAD;
   if (r === ROL_SOLO_PREVISORA) return CONFIG_SOLO_PREVISORA;
+  if (r === ROL_CATASTROFICOS) return CONFIG_CATASTROFICOS;
   if (ROLES_CONTRACTOR_TRES.includes(r)) return CONFIG_CONTRACTOR_TRES;
   return null;
 }
@@ -131,6 +153,10 @@ export function esRolSoloEquidad(rol = obtenerRolAlmacenado()) {
 
 export function esRolSoloPrevisora(rol = obtenerRolAlmacenado()) {
   return normalizarRol(rol) === ROL_SOLO_PREVISORA;
+}
+
+export function esRolCatastroficos(rol = obtenerRolAlmacenado()) {
+  return normalizarRol(rol) === ROL_CATASTROFICOS;
 }
 
 /** Sesión externa de subtarea Complex (enlace mágico): solo formulario de ajuste. */
