@@ -385,6 +385,60 @@ function ensureItemRowsCapacity(sheet, needed) {
   return { lastItemRow, rowShift: extra };
 }
 
+/**
+ * ExcelJS falla al escribir si duplicateRow/splice desplaza el maestro de una
+ * shared formula (ej. I46:I51 → error en I55). Convierte shared → fórmula normal.
+ */
+function materializarFormulasCompartidas(sheet) {
+  if (!sheet) return;
+
+  const masters = new Map();
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      const v = cell.value;
+      if (v && typeof v === 'object' && v.formula && (v.shareType === 'shared' || v.ref)) {
+        masters.set(cell.address, { formula: v.formula, result: v.result });
+      }
+    });
+  });
+
+  const ajustarFormula = (formula, masterAddr, cloneAddr) => {
+    const masterRow = Number(String(masterAddr).replace(/\D/g, '')) || 0;
+    const cloneRow = Number(String(cloneAddr).replace(/\D/g, '')) || 0;
+    const delta = cloneRow - masterRow;
+    if (!delta) return formula;
+    return String(formula).replace(/([A-Za-z]+)(\d+)/g, (_, col, row) => {
+      return `${col}${Number(row) + delta}`;
+    });
+  };
+
+  sheet.eachRow({ includeEmpty: false }, (row) => {
+    row.eachCell({ includeEmpty: false }, (cell) => {
+      const v = cell.value;
+      if (!v || typeof v !== 'object') return;
+
+      if (v.sharedFormula) {
+        const master = masters.get(v.sharedFormula);
+        let formula = master?.formula
+          ? ajustarFormula(master.formula, v.sharedFormula, cell.address)
+          : null;
+        // SMMLV plantilla Alfa: col I = G{fila}/30
+        if (!formula && cell.col === 9) formula = `G${cell.row}/30`;
+        cell.value = formula
+          ? { formula, result: v.result }
+          : v.result != null
+            ? v.result
+            : null;
+        return;
+      }
+
+      if (v.shareType === 'shared' && v.formula) {
+        cell.value = { formula: v.formula, result: v.result };
+      }
+    });
+  });
+}
+
 function fechaCelda(value) {
   if (!value) return null;
   if (typeof value === 'string') {
@@ -1770,6 +1824,9 @@ export async function generarInformeCatAlfaExcelBlob({
     filasMapa || 0
   );
   await insertarFirmaAjustadorAnalisis(workbook, hojaAg, informe, lastFotoRow);
+
+  // Evita "Shared Formula master must exist... I55" tras expandir ítems
+  materializarFormulasCompartidas(hojaLiq);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const safe = String(caso.siniestro || caso.consecutivo || encSafe(liquidador) || 'caso')
