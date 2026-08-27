@@ -32,6 +32,7 @@ import {
   expressPageTitle,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
@@ -41,8 +42,18 @@ import {
   ExpressModal,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
+import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
+
+function valorOrdenSura(item, clave) {
+  if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+  if (clave === 'zonaAtencion') return zonaAtencionSura(item);
+  if (clave === 'estado') return normalizarEstadoSura(item.estado);
+  if (clave === 'sede') return item.sede || item.sedeRiesgo;
+  return item[clave];
+}
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -54,7 +65,9 @@ const COLUMNAS = [
   { clave: 'identificacion', labelKey: 'identificacion' },
   { clave: 'asegurado', labelKey: 'asegurado' },
   { clave: 'tomador', labelKey: 'tomador' },
+  { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
+  { clave: 'inspector', labelKey: 'inspector' },
   { clave: 'numeroPoliza', labelKey: 'numeroPoliza' },
   { clave: 'direccionPredio', labelKey: 'direccionPredio' },
   { clave: 'numeroCredito', labelKey: 'numeroCredito' },
@@ -63,6 +76,7 @@ const COLUMNAS = [
   { clave: 'celular', labelKey: 'celular' },
   { clave: 'canalRadicacion', labelKey: 'canalRadicacion' },
   { clave: 'ciudad', labelKey: 'ciudad' },
+  { clave: 'sede', labelKey: 'sede' },
   { clave: 'departamento', labelKey: 'departamento' },
   { clave: 'zonaAtencion', labelKey: 'zonaAtencion' },
   { clave: 'fechaSiniestro', labelKey: 'fechaSiniestro' },
@@ -75,6 +89,7 @@ const COLUMNAS = [
   { clave: 'valorReservaPreventivaPromedio', labelKey: 'valorReservaPreventivaPromedio' },
   { clave: 'valorComercialInmueble', labelKey: 'valorComercialInmueble' },
   { clave: 'reserva', labelKey: 'reserva' },
+  { clave: 'observacionReserva', labelKey: 'observacionReserva' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
   { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
   { clave: 'fechaInspeccion', labelKey: 'fechaInspeccion' },
@@ -112,7 +127,9 @@ const buildExportRow = (caso) => ({
   IDENTIFICACIÓN: caso.identificacion ?? '',
   ASEGURADO: caso.asegurado ?? '',
   TOMADOR: caso.tomador ?? '',
+  'AJUSTADOR LÍDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
+  INSPECTOR: caso.inspector ?? '',
   'N° PÓLIZA': caso.numeroPoliza ?? '',
   'DIRECCIÓN PREDIO': caso.direccionPredio ?? '',
   'N CRÉDITO': caso.numeroCredito ?? '',
@@ -121,6 +138,7 @@ const buildExportRow = (caso) => ({
   CELULAR: caso.celular ?? '',
   'CANAL DE RADICACIÓN': caso.canalRadicacion ?? '',
   CIUDAD: caso.ciudad ?? '',
+  'SEDE (RIESGO)': caso.sede ?? caso.sedeRiesgo ?? '',
   DEPARTAMENTO: caso.departamento ?? '',
   'ZONA ATENCIÓN': zonaAtencionSura(caso),
   'FECHA SINIESTRO': formatDate(caso.fechaSiniestro),
@@ -133,6 +151,7 @@ const buildExportRow = (caso) => ({
   'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
   'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
   RESERVA: caso.reserva ?? '',
+  'OBSERVACIÓN RESERVA': caso.observacionReserva ?? '',
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
   'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
   'FECHA INSPECCIÓN': formatDate(caso.fechaInspeccion),
@@ -154,12 +173,15 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
   const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroDepto, setFiltroDepto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
+  const [filtroAjustadorLider, setFiltroAjustadorLider] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [filtroZona, setFiltroZona] = useState('');
   const [filtroDocs, setFiltroDocs] = useState(soloDocumentacion ? 'con' : '');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
+  const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -189,7 +211,9 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
     const set = new Set([...ESTADOS_SURA, ...casos.map((c) => normalizarEstadoSura(c.estado) || c.estado)]);
     return [...set].filter(Boolean).map((v) => ({ value: v, label: v }));
   }, [casos]);
+  const lideres = useMemo(() => buildOpcionesFiltro(casos, 'ajustadorLider'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -200,7 +224,9 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
         const estCaso = normalizarEstadoSura(c.estado);
         if (estCaso !== filtroEstado && String(c.estado || '') !== filtroEstado) return false;
       }
+      if (!coincideFiltroTexto(c.ajustadorLider, filtroAjustadorLider)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (filtroZona && zonaAtencionSura(c) !== filtroZona) return false;
       const conDocs = casoSuraTieneDocumentacion(c);
       if (filtroDocs === 'con' && !conDocs) return false;
@@ -215,10 +241,14 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
         c.identificacion,
         c.asegurado,
         c.tomador,
+        c.ajustadorLider,
         c.ajustador,
+        c.inspector,
         c.numeroPoliza,
         c.numeroCredito,
         c.ciudad,
+        c.sede,
+        c.sedeRiesgo,
         c.departamento,
         c.estado,
         c.informacionContacto,
@@ -227,6 +257,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
         c.canalRadicacion,
         c.direccionPredio,
         c.observacionLlamada,
+        c.observacionReserva,
       ]
         .map(normTexto)
         .join(' ');
@@ -238,17 +269,24 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
     filtroCiudad,
     filtroDepto,
     filtroEstado,
+    filtroAjustadorLider,
     filtroAjustador,
+    filtroInspector,
     filtroZona,
     filtroDocs,
     fechaInicio,
     fechaFin,
   ]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / SURA_REPORTE_PAGE_SIZE));
+  const casosOrdenados = useMemo(
+    () => aplicarOrdenTabla(filtrados, orden, valorOrdenSura),
+    [filtrados, orden]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(casosOrdenados.length / SURA_REPORTE_PAGE_SIZE));
   const paginaActual = Math.min(pagina, totalPaginas);
   const desde = (paginaActual - 1) * SURA_REPORTE_PAGE_SIZE;
-  const paginaItems = filtrados.slice(desde, desde + SURA_REPORTE_PAGE_SIZE);
+  const paginaItems = casosOrdenados.slice(desde, desde + SURA_REPORTE_PAGE_SIZE);
 
   useEffect(() => {
     setPagina(1);
@@ -257,11 +295,15 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
     filtroCiudad,
     filtroDepto,
     filtroEstado,
+    filtroAjustadorLider,
     filtroAjustador,
+    filtroInspector,
     filtroZona,
     filtroDocs,
     fechaInicio,
     fechaFin,
+    orden.campo,
+    orden.asc,
   ]);
 
   const limpiarFiltros = () => {
@@ -269,7 +311,9 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
     setFiltroCiudad('');
     setFiltroDepto('');
     setFiltroEstado('');
+    setFiltroAjustadorLider('');
     setFiltroAjustador('');
+    setFiltroInspector('');
     setFiltroZona('');
     setFiltroDocs(soloDocumentacion ? 'con' : '');
     setFechaInicio('');
@@ -284,17 +328,21 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
     }
     if (CAMPOS_FECHA.has(clave)) return formatDate(item[clave]) || '—';
+    if (clave === 'sede') {
+      const sede = item.sede || item.sedeRiesgo;
+      return sede ? String(sede) : '—';
+    }
     const valor = item[clave];
     return valor === null || valor === undefined || valor === '' ? '—' : String(valor);
   };
 
   const exportarExcel = () => {
-    if (!filtrados.length) {
+    if (!casosOrdenados.length) {
       setAviso({ tipo: 'info', titulo: t('segurosSura.report.noData'), mensaje: t('segurosSura.report.noDataExport') });
       return;
     }
     try {
-      const rows = filtrados.map(buildExportRow);
+      const rows = casosOrdenados.map(buildExportRow);
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Seguros Sura');
@@ -342,7 +390,9 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
       filtroCiudad ||
       filtroDepto ||
       filtroEstado ||
+      filtroAjustadorLider ||
       filtroAjustador ||
+      filtroInspector ||
       filtroZona ||
       (filtroDocs && !soloDocumentacion) ||
       fechaInicio ||
@@ -442,6 +492,19 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
                 ))}
               </SelectFenix>
             </Campo>
+            <Campo label={t('segurosSura.fields.ajustadorLider')}>
+              <SelectFenix
+                value={filtroAjustadorLider}
+                onChange={(e) => setFiltroAjustadorLider(e.target.value)}
+              >
+                <option value="">{t('segurosSura.report.all')}</option>
+                {lideres.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
             <Campo label={t('segurosSura.fields.ajustador')}>
               <SelectFenix
                 value={filtroAjustador}
@@ -449,6 +512,19 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
               >
                 <option value="">{t('segurosSura.report.all')}</option>
                 {ajustadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosSura.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('segurosSura.report.all')}</option>
+                {inspectores.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
@@ -495,15 +571,20 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
         </ExpressFilterSection>
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
-          <div className="overflow-x-auto">
+          <div className={expressTableScroll}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                  <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('segurosSura.report.actions')}
                   </th>
                   {COLUMNAS.map((col) => (
-                    <th key={col.clave} className="px-4 py-3">
+                    <ThOrdenable
+                      key={col.clave}
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={cambiarOrden}
+                    >
                       {col.clave === 'docs'
                         ? t('segurosSura.report.docs')
                         : col.clave === 'consecutivo'
@@ -511,7 +592,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
                           : col.clave === 'zonaAtencion'
                             ? 'Zona'
                             : t(`segurosSura.fields.${col.labelKey}`)}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>
@@ -540,7 +621,7 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
                       key={item._id}
                       className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
                     >
-                      <td className="sticky left-0 z-20 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                      <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesSuraMenu
                           docsCount={item.archivos?.length || 0}
                           tieneLiquidador={!!item.liquidador}
@@ -559,16 +640,20 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
                         <td
                           key={col.clave}
                           className={
-                            col.clave === 'observacionLlamada' || col.clave === 'direccionPredio'
+                            col.clave === 'observacionLlamada' ||
+                            col.clave === 'observacionReserva' ||
+                            col.clave === 'direccionPredio'
                               ? 'max-w-xs whitespace-normal px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
                               : 'whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
                           }
                           title={
                             col.clave === 'observacionLlamada'
                               ? String(item.observacionLlamada || '')
-                              : col.clave === 'direccionPredio'
-                                ? String(item.direccionPredio || '')
-                                : undefined
+                              : col.clave === 'observacionReserva'
+                                ? String(item.observacionReserva || '')
+                                : col.clave === 'direccionPredio'
+                                  ? String(item.direccionPredio || '')
+                                  : undefined
                           }
                         >
                           {obtenerValorCelda(item, col.clave)}

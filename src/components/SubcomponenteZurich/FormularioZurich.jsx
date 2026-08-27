@@ -398,6 +398,11 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
     const sev = String(form.severidadCat || '').trim();
     payload.severidadCat = sev ? Number(sev) : null;
     payload.evidenciaCat = normalizeEvidenciaCat(form.evidenciaCat);
+    payload.fechaLlamada = form.fechaLlamada ? String(form.fechaLlamada).trim() : '';
+    payload.observacionLlamada =
+      form.observacionLlamada != null ? String(form.observacionLlamada) : '';
+    payload.observacionReserva =
+      form.observacionReserva != null ? String(form.observacionReserva) : '';
     if (!String(payload.identificacion || '').trim()) {
       if (payload.zc) payload.identificacion = String(payload.zc).trim();
       else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
@@ -830,6 +835,21 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               onChange={setCampo('fechaInspeccion')}
             />
           </Campo>
+          <Campo label={t('zurich.fields.fechaLlamada')}>
+            <InputFenix
+              type="date"
+              value={form.fechaLlamada || ''}
+              onChange={setCampo('fechaLlamada')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.observacionLlamada')} className="md:col-span-2 lg:col-span-3">
+            <textarea
+              className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              value={form.observacionLlamada || ''}
+              onChange={setCampo('observacionLlamada')}
+              placeholder={t('zurich.placeholders.observacionLlamada')}
+            />
+          </Campo>
           <Campo label={t('zurich.fields.observacionesCat')} className="md:col-span-2 lg:col-span-3">
             <textarea
               className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
@@ -1043,6 +1063,14 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
                 {inputMiles('valorLiquidado')}
               </Campo>
             </div>
+            <Campo label={t('zurich.fields.observacionReserva')} className="mt-4">
+              <textarea
+                className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                value={form.observacionReserva || ''}
+                onChange={setCampo('observacionReserva')}
+                placeholder={t('zurich.placeholders.observacionReserva')}
+              />
+            </Campo>
           </section>
 
           <section>
@@ -1055,6 +1083,13 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
                   type="date"
                   value={form.fechaSiniestro}
                   onChange={setCampo('fechaSiniestro')}
+                />
+              </Campo>
+              <Campo label={t('zurich.fields.fechaLlamada')}>
+                <InputFenix
+                  type="date"
+                  value={form.fechaLlamada || ''}
+                  onChange={setCampo('fechaLlamada')}
                 />
               </Campo>
               <Campo label={t('zurich.fields.fechaUltimoDocumento')}>

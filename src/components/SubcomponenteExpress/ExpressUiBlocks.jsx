@@ -154,6 +154,42 @@ export function Campo({ label, required, children, className = '' }) {
   );
 }
 
+/** Encabezado clicable: primer clic ascendente, segundo descendente. */
+export function ThOrdenable({
+  campo,
+  orden,
+  onOrdenar,
+  children,
+  className = 'px-4 py-3',
+}) {
+  const activo = orden?.campo === campo;
+  return (
+    <th
+      scope="col"
+      className={`sticky top-0 z-20 cursor-pointer select-none whitespace-nowrap bg-gray-50 shadow-[0_1px_0_0_#e5e7eb] transition hover:text-fenix-primario dark:bg-gray-900 dark:shadow-[0_1px_0_0_#1f2937] ${className}`}
+      onClick={() => onOrdenar(campo)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOrdenar(campo);
+        }
+      }}
+      tabIndex={0}
+      title="Clic para ordenar ascendente o descendente"
+      aria-sort={activo ? (orden.asc ? 'ascending' : 'descending') : 'none'}
+    >
+      <span className="inline-flex items-center gap-1">
+        {children}
+        {activo ? (
+          <span className="text-[11px] text-fenix-primario" aria-hidden="true">
+            {orden.asc ? '↑' : '↓'}
+          </span>
+        ) : null}
+      </span>
+    </th>
+  );
+}
+
 export function InputFenix({ className = '', ...props }) {
   return <input className={`${expressInput} ${className}`} {...props} />;
 }

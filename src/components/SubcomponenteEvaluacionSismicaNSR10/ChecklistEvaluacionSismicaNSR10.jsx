@@ -17,6 +17,7 @@ import {
   aplicarCatalogoAFilaContenido,
   aplicarCatalogoAFilaPresupuesto,
   aplicarDeducibleCoberturaFila,
+  aplicarDeduciblesAgrupados,
   aplicarRecargosPresupuestoNsr10,
   argsDeduciblesPorArticuloDiagrama,
   ARTICULOS_ASEGURADOS_POLIZA,
@@ -27,9 +28,14 @@ import {
   etiquetaCoberturaArticulo,
   filaContenidoListaParaDeducible,
   filaPresupuestoListaParaDeducible,
+  GRUPO_DEDUCIBLE_CONTENIDOS,
+  GRUPO_DEDUCIBLE_EDIFICIO,
   MODO_DEDUCIBLE_NSR10,
   prepararFilaDeducibleContenido,
   prepararFilaDeduciblePresupuesto,
+  resolverArticuloPolizaId,
+  resolverModoDeduciblePresupuesto,
+  valoresAsegurablesDesdeFormData,
   formatMilesInputNsr10,
   formatMilesNsr10,
   hojaActivaVisibleNSR10,
@@ -42,7 +48,6 @@ import {
   fusionarPortadaConFormData,
   normalizarItemsRespuesta,
   parseMontoNsr10,
-  resolverModoDeducibleNsr,
   sugerirFilasPresupuestoDesdeEvaluacion,
   totalFilaContenido,
   totalFilaPresupuesto,
@@ -111,8 +116,8 @@ function PanelDeducibleCatastrofico({
             Deducible (estilo Express)
           </h4>
           <p className="text-xs" style={{ color: textSecondary }}>
-            Adaptable a cada caso: elija si aplica el mayor entre % y mínimo SMMLV/SMDLV, solo
-            porcentaje, solo mínimo, un valor fijo en pesos, o no aplica.
+            SMMLV y el porcentaje sobre pérdida o valor asegurable quedan ambos activos. Se
+            aplica el mayor.
           </p>
         </div>
       </div>
@@ -317,8 +322,14 @@ function PanelDeducibleCatastrofico({
 
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
         <div className="flex justify-between gap-2 border-b pb-1" style={{ borderColor }}>
-          <span style={{ color: textSecondary }}>Deducible {diagrama.deduciblePorcentajeCfg ?? 10}%</span>
-          <strong style={{ color: textPrimary }}>{money(diagrama.deduciblePorcentaje)}</strong>
+          <span style={{ color: textSecondary }}>
+            {diagrama.deducibleContenidos?.tieneArticulos
+              ? 'Pérdida o valor asegurable'
+              : `Deducible ${diagrama.deduciblePorcentajeCfg ?? 10}%`}
+          </span>
+          <strong style={{ color: textPrimary }}>
+            {money(diagrama.deducibleContenidos?.montoPctOVa ?? diagrama.deduciblePorcentaje)}
+          </strong>
         </div>
         <div className="flex justify-between gap-2 border-b pb-1" style={{ borderColor }}>
           <span style={{ color: textSecondary }}>
@@ -327,12 +338,18 @@ function PanelDeducibleCatastrofico({
               : `Deducible ${diagrama.deducibleCantidadSMMLV ?? ''} SMMLV`}
           </span>
           <strong style={{ color: textPrimary }}>
-            {money(tipo === 'SMDLV' ? diagrama.deducibleSMDLV : diagrama.deducibleSMMLV)}
+            {money(
+              diagrama.deducibleContenidos?.montoSmmlv ??
+                (tipo === 'SMDLV' ? diagrama.deducibleSMDLV : diagrama.deducibleSMMLV)
+            )}
           </strong>
         </div>
         <div className="flex justify-between gap-2 border-b pb-1" style={{ borderColor }}>
           <span style={{ color: textSecondary }}>
-            Aplicado ({diagrama.deducibleUsaMinimo ? diagrama.deducibleTipoMinimo : '%'})
+            Aplicado (el mayor:{' '}
+            {diagrama.deducibleContenidos?.tipoGanadorLabel ||
+              (diagrama.deducibleUsaMinimo ? diagrama.deducibleTipoMinimo : '%')}
+            )
           </span>
           <strong style={{ color: textPrimary }}>{money(diagrama.deducibleAplicado || 0)}</strong>
         </div>
@@ -341,8 +358,86 @@ function PanelDeducibleCatastrofico({
   );
 }
 
+function ResumenGruposDeducible({
+  grupos,
+  titulo,
+  borderColor,
+  textPrimary,
+  textSecondary,
+  etiquetaIndemnizar = 'Valor a indemnizar',
+}) {
+  if (!Array.isArray(grupos) || !grupos.length) return null;
+  const filas = grupos.map((g) => {
+    const perdida = Number(g.sumaPL) || 0;
+    const deducible = Number(g.deducible) || 0;
+    const total =
+      g.neto != null && g.neto !== ''
+        ? Number(g.neto) || 0
+        : Math.max(0, perdida - deducible);
+    return { ...g, perdida, deducible, total };
+  });
+  const sumaPL = filas.reduce((acc, g) => acc + g.perdida, 0);
+  const sumaDeducible = filas.reduce((acc, g) => acc + g.deducible, 0);
+  const valorAIndemnizar = filas.reduce((acc, g) => acc + g.total, 0);
+  return (
+    <div className="overflow-x-auto rounded-lg border p-3 text-xs" style={{ borderColor }}>
+      <p className="mb-2 font-semibold" style={{ color: textPrimary }}>
+        {titulo}
+      </p>
+      <table className="w-full text-left">
+        <thead>
+          <tr style={{ color: textSecondary }}>
+            <th className="py-1 pr-2">Grupo</th>
+            <th className="py-1 pr-2">Cobertura</th>
+            <th className="py-1 pr-2 text-right">Ítems</th>
+            <th className="py-1 pr-2 text-right">Suma aseg.</th>
+            <th className="py-1 pr-2 text-right">Pérdida</th>
+            <th className="py-1 pr-2 text-right">Deducible</th>
+            <th className="py-1 text-right">Total</th>
+          </tr>
+        </thead>
+        <tbody style={{ color: textPrimary }}>
+          {filas.map((g) => (
+            <tr key={g.clave} className="border-t" style={{ borderColor }}>
+              <td className="py-1 pr-2">{g.grupoLabel}</td>
+              <td className="py-1 pr-2">{g.coberturaLabel}</td>
+              <td className="py-1 pr-2 text-right">{g.filas}</td>
+              <td className="py-1 pr-2 text-right">{money(g.sumaVA)}</td>
+              <td className="py-1 pr-2 text-right">{money(g.perdida)}</td>
+              <td className="py-1 pr-2 text-right font-semibold">{money(g.deducible)}</td>
+              <td className="py-1 text-right font-semibold">{money(g.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t" style={{ borderColor }}>
+            <td colSpan={4} className="py-1 pr-2 text-right" style={{ color: textSecondary }}>
+              Suma
+            </td>
+            <td className="py-1 pr-2 text-right font-semibold">{money(sumaPL)}</td>
+            <td className="py-1 pr-2 text-right font-semibold">{money(sumaDeducible)}</td>
+            <td className="py-1 text-right font-semibold">{money(valorAIndemnizar)}</td>
+          </tr>
+          <tr className="border-t" style={{ borderColor }}>
+            <td colSpan={6} className="py-2 pr-2 text-right font-bold text-emerald-600">
+              {etiquetaIndemnizar}
+            </td>
+            <td className="py-2 text-right font-bold text-emerald-600">
+              {money(valorAIndemnizar)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+      <p className="mt-1" style={{ color: textSecondary }}>
+        Total de cada categoría = pérdida − deducible (mínimo $ 0). El valor a indemnizar es
+        la suma de esos totales.
+      </p>
+    </div>
+  );
+}
+
 function PreguntaModoDeducibleNsr({
-  modo,
+  modoActual,
   onElegir,
   borderColor,
   textPrimary,
@@ -352,42 +447,41 @@ function PreguntaModoDeducibleNsr({
   const opciones = [
     {
       id: MODO_DEDUCIBLE_NSR10.GENERAL,
-      titulo: 'Deducible general (SMMLV)',
+      titulo: 'Deducible general (SMMLV / %)',
       texto:
-        'Un solo deducible sobre el total, con el mayor entre porcentaje y salarios mínimos. Úselo cuando la póliza no discrimina por artículo.',
+        'Se calcula el SMMLV y el porcentaje sobre la pérdida o el valor asegurable. Se resta el mayor de los dos al total del presupuesto.',
     },
     {
       id: MODO_DEDUCIBLE_NSR10.POR_ARTICULO,
-      titulo: 'Deducible por artículo / ítem',
+      titulo: 'Deducible por artículo de póliza',
       texto:
-        'Cada fila de contenidos y de presupuesto lleva su cobertura. Terremoto = mayor entre 3% del valor asegurable (o del total del ítem) y 3 SMMLV.',
+        'Cada cobertura (edificio, terremoto…) calcula su propio deducible. Total = pérdida − deducible por categoría, y se suman esos totales.',
     },
   ];
   return (
     <div className="space-y-2 rounded-lg border p-4" style={{ borderColor, backgroundColor: softBg }}>
       <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
-        ¿Cómo se aplica el deducible en este caso?
+        Cómo se calcula el deducible del presupuesto
       </h4>
       <p className="text-xs" style={{ color: textSecondary }}>
-        No todos los casos son iguales. Elija antes de liquidar: la opción queda guardada en el
-        caso.
+        Elija una metodología. Contenidos no cambia: ahí siempre se usa pérdida − deducible por
+        categoría.
       </p>
       <div className="grid gap-2 sm:grid-cols-2">
         {opciones.map((op) => {
-          const activo = modo === op.id;
+          const activo = modoActual === op.id;
           return (
             <button
               key={op.id}
               type="button"
+              onClick={() => onElegir?.(op.id)}
               className={`rounded-lg border px-3 py-3 text-left ${
                 activo ? 'border-blue-500 ring-1 ring-blue-500' : ''
               }`}
               style={{
-                borderColor: activo ? undefined : borderColor,
-                backgroundColor: activo ? undefined : softBg,
                 color: textPrimary,
+                borderColor: activo ? undefined : borderColor,
               }}
-              onClick={() => onElegir(op.id)}
             >
               <span className="block text-sm font-semibold">{op.titulo}</span>
               <span className="mt-1 block text-[11px]" style={{ color: textSecondary }}>
@@ -444,23 +538,36 @@ export default function ChecklistEvaluacionSismicaNSR10({
     recargosPresupuesto
   );
   const filasPresupuesto = Array.isArray(presupuesto.items) ? presupuesto.items : [];
+  const valoresAsegurablesCaso = useMemo(
+    () => valoresAsegurablesDesdeFormData(formData || {}),
+    [
+      formData?.valorAseguradoInmueble,
+      formData?.valorAseguradoContenidos,
+      formData?.liquidacionCatastrofico?.valorAsegurado,
+      formData?.encabezado?.valorAseguradoInmueble,
+      formData?.encabezado?.valorAseguradoContenidos,
+    ]
+  );
   const totales = useMemo(
-    () => calcularTotalesPresupuesto(presupuesto),
-    [presupuesto]
+    () => calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso),
+    [presupuesto, valoresAsegurablesCaso]
   );
   const contenidos = evalData.contenidos || { items: [], tipoInmueble: '' };
   const filasContenidos = Array.isArray(contenidos.items) ? contenidos.items : [];
   const totalesContenidos = useMemo(
-    () => calcularTotalesContenidos(contenidos),
-    [contenidos]
+    () => calcularTotalesContenidos(contenidos, valoresAsegurablesCaso),
+    [contenidos, valoresAsegurablesCaso]
   );
   const resumenTotales = useMemo(
     () =>
-      calcularResumenTotalesNsr10({
-        presupuesto,
-        contenidos,
-      }),
-    [presupuesto, contenidos]
+      calcularResumenTotalesNsr10(
+        {
+          presupuesto,
+          contenidos,
+        },
+        valoresAsegurablesCaso
+      ),
+    [presupuesto, contenidos, valoresAsegurablesCaso]
   );
   const tipoInmuebleContenidos = String(
     contenidos.tipoInmueble || portada.tipologiaPrincipal || ''
@@ -529,18 +636,42 @@ export default function ChecklistEvaluacionSismicaNSR10({
       formData.otrosAmparos,
     ]
   );
-  const modoDeducibleNsr = resolverModoDeducibleNsr(liquidacion, resumenTotales);
-  const usaPorArticulo = modoDeducibleNsr === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+  const usaPorArticuloContenidos = true;
+  const modoDeduciblePresupuesto = resolverModoDeduciblePresupuesto(
+    liquidacion,
+    resumenTotales
+  );
+  const usaPorArticuloPresupuesto =
+    modoDeduciblePresupuesto === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+  const usaPorArticulo = usaPorArticuloContenidos;
+  const indemnizarPresupuestoVentana =
+    diagrama.deduciblePresupuesto?.neto ??
+    resumenTotales.valorAIndemnizarPresupuesto ??
+    0;
+  const indemnizarContenidosVentana =
+    diagrama.deducibleContenidos?.neto ??
+    resumenTotales.valorAIndemnizarContenidos ??
+    0;
+  const sumaAIndemnizarVentanas =
+    Math.round(
+      (Number(indemnizarPresupuestoVentana) + Number(indemnizarContenidosVentana)) * 100
+    ) / 100;
 
   useEffect(() => {
     if (!modoLiquidador) return;
     const actual = String(formData.indemnizacionSugerida ?? '').trim();
-    const siguiente = String(diagrama.totalIndemnizar || 0);
+    const siguiente = String(
+      Math.round(
+        (Number(diagrama.gastosHospedaje) > 0 || Number(diagrama.totalOtrosAmparos) > 0
+          ? diagrama.totalIndemnizar
+          : sumaAIndemnizarVentanas) || 0
+      )
+    );
     if (actual !== siguiente) {
       onInputChange({ indemnizacionSugerida: siguiente });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modoLiquidador, diagrama.totalIndemnizar]);
+  }, [modoLiquidador, diagrama.totalIndemnizar, sumaAIndemnizarVentanas]);
 
   const actualizarLiquidacion = (patch) => {
     onInputChange({
@@ -600,46 +731,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
     commit({ presupuesto: next });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recargosPresupuesto]);
-
-  const elegirModoDeducible = (modo) => {
-    const nextContenidos =
-      modo === MODO_DEDUCIBLE_NSR10.POR_ARTICULO
-        ? {
-            ...contenidos,
-            items: filasContenidos.map((row) =>
-              prepararFilaDeducibleContenido(
-                row,
-                smmlvFilaContenido,
-                contenidos.coberturaAfectar
-              )
-            ),
-          }
-        : contenidos;
-    const nextPresupuesto =
-      modo === MODO_DEDUCIBLE_NSR10.POR_ARTICULO
-        ? aplicarRecargosPresupuestoNsr10(
-            {
-              ...presupuesto,
-              items: filasPresupuesto.map((row) =>
-                prepararFilaDeduciblePresupuesto(
-                  row,
-                  smmlvFilaContenido,
-                  presupuesto.coberturaAfectar
-                )
-              ),
-            },
-            recargosPresupuesto
-          )
-        : presupuesto;
-    onInputChange({
-      liquidacionCatastrofico: { ...liquidacion, modoDeducibleNsr: modo },
-      evaluacionSismicaNSR10: {
-        ...evalData,
-        contenidos: nextContenidos,
-        presupuesto: nextPresupuesto,
-      },
-    });
-  };
 
   // Persiste portada auto-llenada desde el caso (solo campos vacíos)
   useEffect(() => {
@@ -761,14 +852,53 @@ export default function ChecklistEvaluacionSismicaNSR10({
   };
 
   const setPresupuesto = (nextPresupuesto) => {
-    commit({ presupuesto: aplicarRecargosPresupuestoNsr10(nextPresupuesto, recargosPresupuesto) });
+    const conRecargos = aplicarRecargosPresupuestoNsr10(nextPresupuesto, recargosPresupuesto);
+    if (!usaPorArticuloPresupuesto) {
+      commit({ presupuesto: conRecargos });
+      return;
+    }
+    const smmlvCfg = {
+      anioSMMLV: deducibleCfg.anioSMMLV,
+      valorSMMLV: parseMontoNsr10(deducibleCfg.valorSMMLV) || deducibleCfg.valorSMMLV,
+    };
+    const items = aplicarDeduciblesAgrupados(conRecargos.items || [], smmlvCfg, {
+      tipo: 'presupuesto',
+      grupoDefault: GRUPO_DEDUCIBLE_EDIFICIO,
+      coberturaPredeterminada: conRecargos.coberturaAfectar,
+      valoresAsegurablesCaso,
+    });
+    commit({ presupuesto: { ...conRecargos, items } });
+  };
+
+  const elegirModoDeduciblePresupuesto = (modo) => {
+    const nextLiq = { ...liquidacion, modoDeduciblePresupuesto: modo };
+    if (modo !== MODO_DEDUCIBLE_NSR10.POR_ARTICULO) {
+      onInputChange({ liquidacionCatastrofico: nextLiq });
+      return;
+    }
+    const items = aplicarDeduciblesAgrupados(filasPresupuesto, smmlvFilaContenido, {
+      tipo: 'presupuesto',
+      grupoDefault: GRUPO_DEDUCIBLE_EDIFICIO,
+      coberturaPredeterminada: presupuesto.coberturaAfectar,
+      valoresAsegurablesCaso,
+    });
+    onInputChange({
+      liquidacionCatastrofico: nextLiq,
+      evaluacionSismicaNSR10: {
+        ...evalData,
+        presupuesto: aplicarRecargosPresupuestoNsr10(
+          { ...presupuesto, items },
+          recargosPresupuesto
+        ),
+      },
+    });
   };
 
   const actualizarFilaPresupuesto = (index, patch) => {
     const nextItems = filasPresupuesto.map((row, i) => {
       if (i !== index) return row;
       const mezclado = { ...row, ...patch };
-      if (!usaPorArticulo) return mezclado;
+      if (!usaPorArticuloPresupuesto) return mezclado;
       const tocaDeducible =
         Object.prototype.hasOwnProperty.call(patch, 'coberturaAfectar') ||
         Object.prototype.hasOwnProperty.call(patch, 'tipoCobertura') ||
@@ -809,13 +939,71 @@ export default function ChecklistEvaluacionSismicaNSR10({
   };
 
   const setContenidos = (nextContenidos) => {
-    commit({ contenidos: nextContenidos });
+    const smmlvCfg = {
+      anioSMMLV: deducibleCfg.anioSMMLV,
+      valorSMMLV: parseMontoNsr10(deducibleCfg.valorSMMLV) || deducibleCfg.valorSMMLV,
+    };
+    const items = aplicarDeduciblesAgrupados(nextContenidos.items || [], smmlvCfg, {
+      tipo: 'contenidos',
+      grupoDefault: GRUPO_DEDUCIBLE_CONTENIDOS,
+      coberturaPredeterminada: nextContenidos.coberturaAfectar,
+      valoresAsegurablesCaso,
+    });
+    commit({ contenidos: { ...nextContenidos, items } });
   };
 
   const smmlvFilaContenido = {
     anioSMMLV: deducibleCfg.anioSMMLV,
     valorSMMLV: parseMontoNsr10(deducibleCfg.valorSMMLV) || deducibleCfg.valorSMMLV,
   };
+
+  const hidratoDeducibleAmbosRef = useRef(false);
+  const vaPlatKey = `${valoresAsegurablesCaso.inmueble}|${valoresAsegurablesCaso.contenidos}|${valoresAsegurablesCaso.general}`;
+  useEffect(() => {
+    const nextContenidos = {
+      ...contenidos,
+      items: aplicarDeduciblesAgrupados(filasContenidos, smmlvFilaContenido, {
+        tipo: 'contenidos',
+        grupoDefault: GRUPO_DEDUCIBLE_CONTENIDOS,
+        coberturaPredeterminada: contenidos.coberturaAfectar,
+        valoresAsegurablesCaso,
+      }),
+    };
+    const nextPresupuesto = aplicarRecargosPresupuestoNsr10(
+      {
+        ...presupuesto,
+        items: usaPorArticuloPresupuesto
+          ? aplicarDeduciblesAgrupados(filasPresupuesto, smmlvFilaContenido, {
+              tipo: 'presupuesto',
+              grupoDefault: GRUPO_DEDUCIBLE_EDIFICIO,
+              coberturaPredeterminada: presupuesto.coberturaAfectar,
+              valoresAsegurablesCaso,
+            })
+          : filasPresupuesto,
+      },
+      recargosPresupuesto
+    );
+    const evalPatch = {
+      evaluacionSismicaNSR10: {
+        ...evalData,
+        contenidos: nextContenidos,
+        presupuesto: nextPresupuesto,
+      },
+    };
+    if (!hidratoDeducibleAmbosRef.current) {
+      hidratoDeducibleAmbosRef.current = true;
+      onInputChange({
+        liquidacionCatastrofico: {
+          ...liquidacion,
+          modoDeducibleNsr: MODO_DEDUCIBLE_NSR10.AMBOS,
+        },
+        ...evalPatch,
+      });
+      return;
+    }
+    onInputChange(evalPatch);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaPlatKey]);
 
   const actualizarFilaContenido = (index, patch) => {
     const nextItems = filasContenidos.map((row, i) => {
@@ -830,6 +1018,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
         Object.prototype.hasOwnProperty.call(patch, 'valorMinimo') ||
         Object.prototype.hasOwnProperty.call(patch, 'cantidadMinimoSMMLV') ||
         Object.prototype.hasOwnProperty.call(patch, 'articulo') ||
+        Object.prototype.hasOwnProperty.call(patch, 'articuloPolizaId') ||
         Object.prototype.hasOwnProperty.call(patch, 'catalogoId');
       if (!tocaDeducible) return mezclado;
       return prepararFilaDeducibleContenido(
@@ -1254,15 +1443,15 @@ export default function ChecklistEvaluacionSismicaNSR10({
           </div>
 
           <PreguntaModoDeducibleNsr
-            modo={modoDeducibleNsr}
-            onElegir={elegirModoDeducible}
+            modoActual={modoDeduciblePresupuesto}
+            onElegir={elegirModoDeduciblePresupuesto}
             borderColor={borderColor}
             textPrimary={textPrimary}
             textSecondary={textSecondary}
             softBg={softBg}
           />
 
-          {usaPorArticulo ? (
+          {usaPorArticuloPresupuesto ? (
             <label className="block max-w-sm">
               <span className={labelClass} style={{ color: textSecondary }}>
                 Cobertura a afectar (predeterminada)
@@ -1295,14 +1484,16 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 ))}
               </select>
               <p className="mt-1 text-[11px]" style={{ color: textSecondary }}>
-                Se aplica al diligenciar cada ítem con valor. Terremoto = mayor entre 3% y 3
-                SMMLV. Las filas vacías no heredan cifras.
+                Cada artículo de póliza que elija (Contenidos, Mercancías, Edificio…) lleva su
+                propio cálculo. La suma asegurada es la de la categoría (no se suma ítem a ítem).
+                El deducible (fórmula, no editable) se aplica una sola vez. Terremoto = mayor
+                entre 3% de esa base y 3 SMMLV.
               </p>
             </label>
           ) : null}
 
           <div className="overflow-x-auto rounded-lg border" style={{ borderColor }}>
-            <table className={`${usaPorArticulo ? 'min-w-[1880px]' : 'min-w-[1280px]'} w-full text-left text-xs`}>
+            <table className={`${usaPorArticuloPresupuesto ? 'min-w-[1880px]' : 'min-w-[1280px]'} w-full text-left text-xs`}>
               <thead style={{ backgroundColor: softBg }}>
                 <tr style={{ color: textSecondary }}>
                   <th className="px-2 py-2">Capítulo</th>
@@ -1313,11 +1504,13 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   <th className="px-2 py-2">Cantidad</th>
                   <th className="px-2 py-2">Vlr. unitario</th>
                   <th className="px-2 py-2">Vlr. total</th>
-                  {usaPorArticulo ? (
+                  {usaPorArticuloPresupuesto ? (
                     <>
                       <th className="px-2 py-2">Cobertura a afectar</th>
                       <th className="px-2 py-2">Tipo cobertura</th>
-                      <th className="px-2 py-2">Vlr. asegurable</th>
+                      <th className="px-2 py-2" title="Suma asegurada de la categoría en la póliza. No se suma entre ítems del mismo artículo.">
+                        Suma asegurada
+                      </th>
                       <th className="px-2 py-2">% deducible</th>
                       <th className="px-2 py-2">Mínimo</th>
                       <th className="px-2 py-2">Deducible</th>
@@ -1448,12 +1641,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     <td className="px-2 py-2 whitespace-nowrap" style={{ color: textPrimary }}>
                       {money(totalFilaPresupuesto(row))}
                     </td>
-                    {usaPorArticulo
+                    {usaPorArticuloPresupuesto
                       ? (() => {
                           const listaParaDeducible = filaPresupuestoListaParaDeducible(row);
-                          const coberturaFila = listaParaDeducible
-                            ? row.coberturaAfectar || ''
-                            : '';
+                          const coberturaFila = row.coberturaAfectar || '';
                           const esTerremoto = String(coberturaFila)
                             .toLowerCase()
                             .includes('terremoto');
@@ -1468,7 +1659,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                                     color: textPrimary,
                                   }}
                                   value={coberturaFila}
-                                  disabled={!listaParaDeducible}
                                   onChange={(e) =>
                                     actualizarFilaPresupuesto(index, {
                                       coberturaAfectar: e.target.value,
@@ -1487,37 +1677,48 @@ export default function ChecklistEvaluacionSismicaNSR10({
                                 className="px-1 py-1 min-w-[110px] whitespace-nowrap"
                                 style={{ color: textPrimary }}
                               >
-                                {listaParaDeducible
-                                  ? etiquetaCoberturaArticulo(
-                                      row.tipoCobertura || row.coberturaAfectar
-                                    ) || '—'
-                                  : '—'}
+                                {etiquetaCoberturaArticulo(
+                                  row.tipoCobertura || row.coberturaAfectar
+                                ) || '—'}
                               </td>
                               <td className="px-1 py-1 min-w-[120px]">
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  className={inputClass}
-                                  style={{
-                                    backgroundColor: inputBg,
-                                    borderColor,
-                                    color: textPrimary,
-                                  }}
-                                  value={displayMiles(row.valorAsegurable)}
-                                  placeholder="usa vlr. total"
-                                  disabled={!listaParaDeducible}
-                                  onChange={(e) =>
-                                    actualizarFilaPresupuesto(index, {
-                                      valorAsegurable: formatMilesInputNsr10(e.target.value),
-                                    })
-                                  }
-                                  onBlur={() => {
-                                    const n = parseMontoNsr10(row.valorAsegurable);
-                                    actualizarFilaPresupuesto(index, {
-                                      valorAsegurable: n == null ? '' : formatMilesNsr10(n),
-                                    });
-                                  }}
-                                />
+                                {row.deducibleGrupoIncluido ? (
+                                  <span
+                                    className="block px-2 py-1.5 text-[11px]"
+                                    style={{ color: textSecondary }}
+                                    title="La póliza cubre todos los ítems de esta categoría con una sola suma asegurada"
+                                  >
+                                    Misma categoría
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    className={inputClass}
+                                    style={{
+                                      backgroundColor: inputBg,
+                                      borderColor,
+                                      color: textPrimary,
+                                    }}
+                                    value={displayMiles(row.valorAsegurable)}
+                                    placeholder="0"
+                                    title="Suma asegurada de la categoría en la póliza (no se suma ítem a ítem)"
+                                    onChange={(e) =>
+                                      actualizarFilaPresupuesto(index, {
+                                        valorAsegurable: formatMilesInputNsr10(
+                                          e.target.value
+                                        ),
+                                      })
+                                    }
+                                    onBlur={() => {
+                                      const n = parseMontoNsr10(row.valorAsegurable);
+                                      actualizarFilaPresupuesto(index, {
+                                        valorAsegurable:
+                                          n == null ? '' : formatMilesNsr10(n),
+                                      });
+                                    }}
+                                  />
+                                )}
                               </td>
                               <td className="px-1 py-1 min-w-[70px]">
                                 <input
@@ -1528,11 +1729,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
                                     borderColor,
                                     color: textPrimary,
                                   }}
-                                  value={
-                                    listaParaDeducible ? row.porcentajeDeducible ?? '' : ''
-                                  }
-                                  readOnly={esTerremoto || !listaParaDeducible}
-                                  disabled={!listaParaDeducible}
+                                  value={row.porcentajeDeducible ?? ''}
+                                  readOnly={esTerremoto}
                                   onChange={(e) =>
                                     actualizarFilaPresupuesto(index, {
                                       porcentajeDeducible:
@@ -1554,12 +1752,14 @@ export default function ChecklistEvaluacionSismicaNSR10({
                               <td
                                 className="px-1 py-1 min-w-[110px] whitespace-nowrap"
                                 style={{ color: textPrimary }}
+                                title="Resultado de la fórmula: mayor entre % y mínimo SMMLV"
                               >
-                                {!listaParaDeducible ||
-                                row.deducibleCalculado === '' ||
-                                row.deducibleCalculado == null
-                                  ? '—'
-                                  : money(row.deducibleCalculado)}
+                                {row.deducibleGrupoIncluido
+                                  ? `Incluido (${row.deducibleGrupoFilas} ítems)`
+                                  : row.deducibleCalculado === '' ||
+                                      row.deducibleCalculado == null
+                                    ? '—'
+                                    : money(row.deducibleCalculado)}
                               </td>
                             </>
                           );
@@ -1631,6 +1831,17 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </tbody>
             </table>
           </div>
+
+          {usaPorArticuloPresupuesto ? (
+            <ResumenGruposDeducible
+              grupos={totales.gruposDeducible}
+              titulo="Deducible por artículo de póliza (cada categoría suma por separado)"
+              etiquetaIndemnizar="Valor a indemnizar (presupuesto)"
+              borderColor={borderColor}
+              textPrimary={textPrimary}
+              textSecondary={textSecondary}
+            />
+          ) : null}
 
           <div className="ml-auto max-w-md space-y-2 rounded-lg border p-4 text-sm" style={{ borderColor }}>
             <div className="flex items-center justify-between gap-3">
@@ -1724,43 +1935,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 Liquidación presupuesto
               </h4>
             </div>
-            {usaPorArticulo ? (
-              <>
-              <div className="overflow-hidden rounded border" style={{ borderColor }}>
-                <table className="w-full text-sm">
-                  <tbody style={{ color: textPrimary }}>
-                    <tr className="border-b" style={{ borderColor }}>
-                      <td className="px-3 py-2">TOTAL PRESUPUESTO</td>
-                      <td className="px-3 py-2 text-right font-semibold">
-                        {money(totales.total)}
-                      </td>
-                    </tr>
-                    <tr className="border-b" style={{ borderColor }}>
-                      <td className="px-3 py-2 font-semibold">
-                        DEDUCIBLE POR ÍTEM (cobertura)
-                      </td>
-                      <td className="px-3 py-2 text-right font-semibold">
-                        {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
-                      </td>
-                    </tr>
-                    <tr style={{ backgroundColor: softBg }}>
-                      <td className="px-3 py-2.5 font-bold text-emerald-600">
-                        PRESUPUESTO NETO
-                      </td>
-                      <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
-                        {money(diagrama.deduciblePresupuesto?.neto ?? totales.total)}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="text-xs" style={{ color: textSecondary }}>
-                El deducible del presupuesto es la suma de cada ítem según su cobertura. Terremoto
-                = mayor entre 3% y 3 SMMLV.
-              </p>
-              </>
-            ) : (
-              <>
             <div className="grid gap-2 sm:grid-cols-2">
               <label className="block text-xs" style={{ color: textSecondary }}>
                 % deducible
@@ -1805,25 +1979,35 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2" style={{ color: textSecondary }}>
-                      DEDUCIBLE {diagrama.deduciblePresupuesto?.porcentaje ?? deducibleCfgPresupuesto.porcentaje ?? 10}%
+                      DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {money(diagrama.deduciblePresupuesto?.deduciblePorcentaje || 0)}
+                      {money(diagrama.deduciblePresupuesto?.montoPctOVa || 0)}
                     </td>
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2" style={{ color: textSecondary }}>
                       DEDUCIBLE {diagrama.deduciblePresupuesto?.cantidadSMMLV ?? deducibleCfgPresupuesto.cantidadSMMLV ?? 4} SMMLV
+                      {diagrama.deduciblePresupuesto?.tieneArticulos ? (
+                        <span className="ml-1 text-[11px]">(no aplica)</span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {money(diagrama.deduciblePresupuesto?.deducibleSMMLV || 0)}
+                      {money(
+                        diagrama.deduciblePresupuesto?.tieneArticulos
+                          ? 0
+                          : diagrama.deduciblePresupuesto?.montoSmmlv || 0
+                      )}
                     </td>
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2 font-semibold">
-                      DEDUCIBLE APLICADO (
-                      {diagrama.deduciblePresupuesto?.usaMinimo ? 'SMMLV' : '%'}
-                      )
+                      DEDUCIBLE APLICADO
+                      {diagrama.deduciblePresupuesto?.tieneArticulos
+                        ? ' (por artículo)'
+                        : ` (el mayor: ${
+                            diagrama.deduciblePresupuesto?.tipoGanadorLabel || 'SMMLV'
+                          })`}
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">
                       {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
@@ -1831,11 +2015,14 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </tr>
                   <tr style={{ backgroundColor: softBg }}>
                     <td className="px-3 py-2.5 font-bold text-emerald-600">
-                      PRESUPUESTO NETO
+                      {diagrama.deduciblePresupuesto?.tieneArticulos
+                        ? 'VALOR A INDEMNIZAR'
+                        : 'PRESUPUESTO NETO'}
                     </td>
                     <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
                       {money(
                         diagrama.deduciblePresupuesto?.neto ??
+                          totales.valorAIndemnizar ??
                           Math.max(
                             0,
                             (Number(totales.total) || 0) -
@@ -1848,11 +2035,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </table>
             </div>
             <p className="text-xs" style={{ color: textSecondary }}>
-              El deducible del inmueble es obligatorio: se resta siempre el mayor entre el % y el
-              mínimo SMMLV. Es independiente del deducible de contenidos.
+              {diagrama.deduciblePresupuesto?.tieneArticulos
+                ? 'El valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
+                : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
-              </>
-            )}
           </div>
 
           {modoLiquidador ? (
@@ -1907,7 +2093,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 </label>
               </div>
 
-              {!usaPorArticulo ? (
               <PanelDeducibleCatastrofico
                 deducibleCfg={deducibleCfgInput}
                 diagrama={diagrama}
@@ -1919,12 +2104,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 textSecondary={textSecondary}
                 softBg={softBg}
               />
-              ) : (
-                <p className="text-xs rounded-lg border p-3" style={{ borderColor, color: textSecondary }}>
-                  El deducible de contenidos y presupuesto sale de cada fila (cobertura). No se
-                  aplica el deducible general de salarios mínimos.
-                </p>
-              )}
 
               <OtrosAmparosLiquidacion
                 otrosAmparos={formData.otrosAmparos}
@@ -1942,61 +2121,59 @@ export default function ChecklistEvaluacionSismicaNSR10({
               >
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Total presupuesto
+                    Valor a indemnizar presupuesto
                   </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(resumenTotales.totalPresupuesto)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Total contenidos
-                  </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(resumenTotales.totalContenidos)}
+                  <p className="text-lg font-bold text-emerald-600">
+                    {money(indemnizarPresupuestoVentana)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Suma completa
+                    Valor a indemnizar contenidos
                   </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(resumenTotales.sumaCompleta)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Hospedaje
-                  </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.gastosHospedaje)}
+                  <p className="text-lg font-bold text-emerald-600">
+                    {money(indemnizarContenidosVentana)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Deducible aplicado
+                    Suma completa a indemnizar
                   </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.deducibleAplicado || 0)}
-                  </p>
-                  <p className="text-xs" style={{ color: textSecondary }}>
-                    {diagrama.deducible || 'No aplica'}
+                  <p className="text-lg font-bold text-emerald-600">
+                    {money(sumaAIndemnizarVentanas)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Otros amparos (sin deducible)
-                  </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.totalOtrosAmparos || 0)}
-                  </p>
-                </div>
+                {Number(diagrama.gastosHospedaje) > 0 ? (
+                  <div>
+                    <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                      Hospedaje
+                    </p>
+                    <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                      {money(diagrama.gastosHospedaje)}
+                    </p>
+                  </div>
+                ) : null}
+                {Number(diagrama.totalOtrosAmparos) > 0 ? (
+                  <div>
+                    <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                      Otros amparos (sin deducible)
+                    </p>
+                    <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                      {money(diagrama.totalOtrosAmparos || 0)}
+                    </p>
+                  </div>
+                ) : null}
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
                     Total a indemnizar
                   </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.totalIndemnizar)}
+                  <p className="text-lg font-bold text-emerald-600">
+                    {money(
+                      Number(diagrama.gastosHospedaje) > 0 ||
+                        Number(diagrama.totalOtrosAmparos) > 0
+                        ? diagrama.totalIndemnizar
+                        : sumaAIndemnizarVentanas
+                    )}
                   </p>
                 </div>
               </div>
@@ -2036,14 +2213,19 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </button>
           </div>
 
-          <PreguntaModoDeducibleNsr
-            modo={modoDeducibleNsr}
-            onElegir={elegirModoDeducible}
-            borderColor={borderColor}
-            textPrimary={textPrimary}
-            textSecondary={textSecondary}
-            softBg={softBg}
-          />
+          <div
+            className="space-y-1 rounded-lg border p-4"
+            style={{ borderColor, backgroundColor: softBg }}
+          >
+            <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
+              Metodología de contenidos
+            </h4>
+            <p className="text-xs" style={{ color: textSecondary }}>
+              Contenidos usa siempre pérdida − deducible por categoría. El valor a indemnizar es
+              la suma de esos totales. La elección de metodología (SMMLV / % o por artículo) solo
+              aplica en Presupuesto.
+            </p>
+          </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <label className="block">
@@ -2076,7 +2258,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 onChange={(e) => {
                   const coberturaAfectar = e.target.value;
                   const nextItems = filasContenidos.map((row) => {
-                    if (!filaContenidoListaParaDeducible(row)) return row;
+                    if (!filaContenidoListaParaDeducible(
+                      row,
+                      valoresAsegurablesCaso,
+                      GRUPO_DEDUCIBLE_CONTENIDOS
+                    )) return row;
                     if (String(row.coberturaAfectar || row.tipoCobertura || '').trim()) {
                       return row;
                     }
@@ -2096,9 +2282,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 ))}
               </select>
               <p className="mt-1 text-[11px]" style={{ color: textSecondary }}>
-                Se aplica al diligenciar cada artículo con valor asegurable. Terremoto =
-                mayor entre 3% del valor asegurable y 3 SMMLV. Las filas vacías no heredan
-                cifras.
+                Cada artículo de póliza que elija (Contenidos, Mercancías, Edificio…) lleva su
+                propio cálculo. La suma asegurada es la de la categoría (no se suma ítem a ítem).
+                El deducible (fórmula, no editable) se aplica una sola vez. Terremoto = mayor
+                entre 3% de esa base y 3 SMMLV.
               </p>
             </label>
             ) : null}
@@ -2115,7 +2302,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
                     <>
                   <th className="px-2 py-2">Cobertura a afectar</th>
                   <th className="px-2 py-2">Tipo cobertura</th>
-                  <th className="px-2 py-2">Vlr. asegurable</th>
+                  <th className="px-2 py-2" title="Suma asegurada de la categoría en la póliza. No se suma entre ítems del mismo artículo.">
+                    Suma asegurada
+                  </th>
                   <th className="px-2 py-2">% deducible</th>
                   <th className="px-2 py-2">Mínimo</th>
                   <th className="px-2 py-2">Deducible</th>
@@ -2136,10 +2325,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   const esCustom =
                     !row.catalogoId ||
                     !catalogoFiltrado.some((c) => c.id === row.catalogoId);
-                  const listaParaDeducible = filaContenidoListaParaDeducible(row);
-                  const coberturaFila = listaParaDeducible
-                    ? row.coberturaAfectar || ''
-                    : '';
+                  const listaParaDeducible = filaContenidoListaParaDeducible(
+                    row,
+                    valoresAsegurablesCaso,
+                    GRUPO_DEDUCIBLE_CONTENIDOS
+                  );
+                  const coberturaFila = row.coberturaAfectar || '';
                   const esTerremoto = String(coberturaFila)
                     .toLowerCase()
                     .includes('terremoto');
@@ -2165,22 +2356,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         <select
                           className={inputClass}
                           style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                          value={
-                            ARTICULOS_ASEGURADOS_POLIZA.find(
-                              (a) => a.id === row.catalogoId || a.articulo === row.articulo
-                            )?.id || ''
-                          }
+                          value={resolverArticuloPolizaId(row) || ''}
                           onChange={(e) => {
-                            const id = e.target.value;
-                            if (!id) {
-                              actualizarFilaContenido(index, {
-                                catalogoId: row.catalogoId?.startsWith?.('poliza_')
-                                  ? ''
-                                  : row.catalogoId,
-                              });
-                              return;
-                            }
-                            aplicarCatalogoEnFila(index, id);
+                            actualizarFilaContenido(index, {
+                              articuloPolizaId: e.target.value,
+                            });
                           }}
                         >
                           <option value="">—</option>
@@ -2212,7 +2392,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           className={inputClass}
                           style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
                           value={coberturaFila}
-                          disabled={!listaParaDeducible}
                           onChange={(e) =>
                             actualizarFilaContenido(index, {
                               coberturaAfectar: e.target.value,
@@ -2228,41 +2407,53 @@ export default function ChecklistEvaluacionSismicaNSR10({
                         </select>
                       </td>
                       <td className="px-1 py-1 min-w-[110px] whitespace-nowrap" style={{ color: textPrimary }}>
-                        {listaParaDeducible
-                          ? etiquetaCoberturaArticulo(
-                              row.tipoCobertura || row.coberturaAfectar
-                            ) || '—'
-                          : '—'}
+                        {etiquetaCoberturaArticulo(
+                          row.tipoCobertura || row.coberturaAfectar
+                        ) || '—'}
                       </td>
                       <td className="px-1 py-1 min-w-[120px]">
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          className={inputClass}
-                          style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                          value={displayMiles(row.valorAsegurable)}
-                          placeholder="0"
-                          onChange={(e) =>
-                            actualizarFilaContenido(index, {
-                              valorAsegurable: formatMilesInputNsr10(e.target.value),
-                            })
-                          }
-                          onBlur={() => {
-                            const n = parseMontoNsr10(row.valorAsegurable);
-                            actualizarFilaContenido(index, {
-                              valorAsegurable: n == null ? '' : formatMilesNsr10(n),
-                            });
-                          }}
-                        />
+                        {row.deducibleGrupoIncluido ? (
+                          <span
+                            className="block px-2 py-1.5 text-[11px]"
+                            style={{ color: textSecondary }}
+                            title="La póliza cubre todos los ítems de esta categoría con una sola suma asegurada"
+                          >
+                            Misma categoría
+                          </span>
+                        ) : (
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            className={inputClass}
+                            style={{
+                              backgroundColor: inputBg,
+                              borderColor,
+                              color: textPrimary,
+                            }}
+                            value={displayMiles(row.valorAsegurable)}
+                            placeholder="0"
+                            title="Suma asegurada de la categoría en la póliza (no se suma ítem a ítem)"
+                            onChange={(e) =>
+                              actualizarFilaContenido(index, {
+                                valorAsegurable: formatMilesInputNsr10(e.target.value),
+                              })
+                            }
+                            onBlur={() => {
+                              const n = parseMontoNsr10(row.valorAsegurable);
+                              actualizarFilaContenido(index, {
+                                valorAsegurable: n == null ? '' : formatMilesNsr10(n),
+                              });
+                            }}
+                          />
+                        )}
                       </td>
                       <td className="px-1 py-1 min-w-[70px]">
                         <input
                           type="number"
                           className={`${inputClass} text-right`}
                           style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                          value={listaParaDeducible ? row.porcentajeDeducible ?? '' : ''}
-                          readOnly={esTerremoto || !listaParaDeducible}
-                          disabled={!listaParaDeducible}
+                          value={row.porcentajeDeducible ?? ''}
+                          readOnly={esTerremoto}
                           onChange={(e) =>
                             actualizarFilaContenido(index, {
                               porcentajeDeducible:
@@ -2278,12 +2469,17 @@ export default function ChecklistEvaluacionSismicaNSR10({
                           ? '—'
                           : money(row.valorMinimo)}
                       </td>
-                      <td className="px-1 py-1 min-w-[110px] whitespace-nowrap" style={{ color: textPrimary }}>
-                        {!listaParaDeducible ||
-                        row.deducibleCalculado === '' ||
-                        row.deducibleCalculado == null
-                          ? '—'
-                          : money(row.deducibleCalculado)}
+                      <td
+                        className="px-1 py-1 min-w-[110px] whitespace-nowrap"
+                        style={{ color: textPrimary }}
+                        title="Resultado de la fórmula: mayor entre % y mínimo SMMLV"
+                      >
+                        {row.deducibleGrupoIncluido
+                          ? `Incluido (${row.deducibleGrupoFilas} ítems)`
+                          : row.deducibleCalculado === '' ||
+                              row.deducibleCalculado == null
+                            ? '—'
+                            : money(row.deducibleCalculado)}
                       </td>
                         </>
                       ) : null}
@@ -2395,6 +2591,15 @@ export default function ChecklistEvaluacionSismicaNSR10({
             </table>
           </div>
 
+          <ResumenGruposDeducible
+            grupos={totalesContenidos.gruposDeducible}
+            titulo="Deducible por artículo de póliza (cada categoría suma por separado)"
+            etiquetaIndemnizar="Valor a indemnizar (contenidos)"
+            borderColor={borderColor}
+            textPrimary={textPrimary}
+            textSecondary={textSecondary}
+          />
+
           <div
             className="ml-auto w-full max-w-lg space-y-3 rounded-lg border p-4 text-sm"
             style={{ borderColor, backgroundColor: softBg }}
@@ -2405,54 +2610,6 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </h4>
             </div>
 
-            {usaPorArticulo ? (
-              <>
-                <div className="overflow-hidden rounded border" style={{ borderColor }}>
-                  <table className="w-full text-sm">
-                    <tbody style={{ color: textPrimary }}>
-                      <tr className="border-b" style={{ borderColor }}>
-                        <td className="px-3 py-2">TOTAL CONTENIDOS</td>
-                        <td className="px-3 py-2 text-right font-semibold">
-                          {money(totalesContenidos.total)}
-                        </td>
-                      </tr>
-                      <tr className="border-b" style={{ borderColor }}>
-                        <td className="px-3 py-2 font-semibold">
-                          DEDUCIBLE POR ARTÍCULO (cobertura)
-                        </td>
-                        <td className="px-3 py-2 text-right font-semibold">
-                          {money(
-                            diagrama.deducibleContenidos?.aplicado ||
-                              diagrama.deducibleAplicado ||
-                              0
-                          )}
-                        </td>
-                      </tr>
-                      <tr style={{ backgroundColor: softBg }}>
-                        <td className="px-3 py-2.5 font-bold text-emerald-600">
-                          CONTENIDOS NETO
-                        </td>
-                        <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
-                          {money(
-                            diagrama.deducibleContenidos?.neto ??
-                              Math.max(
-                                0,
-                                (Number(totalesContenidos.total) || 0) -
-                                  (diagrama.deducibleAplicado || 0)
-                              )
-                          )}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <p className="text-xs" style={{ color: textSecondary }}>
-                  El deducible de contenidos es la suma de cada artículo (según cobertura).
-                  Terremoto = mayor entre 3% del valor asegurable y 3 SMMLV.
-                </p>
-              </>
-            ) : (
-              <>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -2609,10 +2766,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2" style={{ color: textSecondary }}>
-                      DEDUCIBLE {diagrama.deduciblePorcentajeCfg ?? deducibleCfg.porcentaje ?? 10}%
+                      DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {money(diagrama.deduciblePorcentaje || 0)}
+                      {money(diagrama.deducibleContenidos?.montoPctOVa || diagrama.deduciblePorcentaje || 0)}
                     </td>
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>
@@ -2620,22 +2777,32 @@ export default function ChecklistEvaluacionSismicaNSR10({
                       {(deducibleCfg.tipoMinimo || 'SMMLV') === 'SMDLV'
                         ? `DEDUCIBLE ${diagrama.deducibleCantidadSMDLV ?? deducibleCfg.cantidadSMDLV ?? ''} SMDLV`
                         : `DEDUCIBLE ${diagrama.deducibleCantidadSMMLV ?? deducibleCfg.cantidadSMMLV ?? ''} SMMLV`}
+                      {diagrama.deducibleContenidos?.tieneArticulos ? (
+                        <span className="ml-1 text-[11px]">(no aplica)</span>
+                      ) : null}
                     </td>
                     <td className="px-3 py-2 text-right">
                       {money(
-                        (deducibleCfg.tipoMinimo || 'SMMLV') === 'SMDLV'
-                          ? diagrama.deducibleSMDLV || 0
-                          : diagrama.deducibleSMMLV || 0
+                        diagrama.deducibleContenidos?.tieneArticulos
+                          ? 0
+                          : diagrama.deducibleContenidos?.montoSmmlv ||
+                            ((deducibleCfg.tipoMinimo || 'SMMLV') === 'SMDLV'
+                              ? diagrama.deducibleSMDLV || 0
+                              : diagrama.deducibleSMMLV || 0)
                       )}
                     </td>
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>
                     <td className="px-3 py-2 font-semibold">
-                      DEDUCIBLE APLICADO (
-                      {diagrama.deducibleUsaMinimo
-                        ? diagrama.deducibleTipoMinimo
-                        : '%'}
-                      )
+                      DEDUCIBLE APLICADO
+                      {diagrama.deducibleContenidos?.tieneArticulos
+                        ? ' (por artículo)'
+                        : ` (el mayor: ${
+                            diagrama.deducibleContenidos?.tipoGanadorLabel ||
+                            (diagrama.deducibleUsaMinimo
+                              ? diagrama.deducibleTipoMinimo
+                              : '%')
+                          })`}
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">
                       {money(diagrama.deducibleAplicado || 0)}
@@ -2643,15 +2810,19 @@ export default function ChecklistEvaluacionSismicaNSR10({
                   </tr>
                   <tr style={{ backgroundColor: softBg }}>
                     <td className="px-3 py-2.5 font-bold text-emerald-600">
-                      CONTENIDOS NETO
+                      {diagrama.deducibleContenidos?.tieneArticulos
+                        ? 'VALOR A INDEMNIZAR'
+                        : 'CONTENIDOS NETO'}
                     </td>
                     <td className="px-3 py-2.5 text-right font-bold text-emerald-600">
                       {money(
-                        Math.max(
-                          0,
-                          (Number(totalesContenidos.total) || 0) -
-                            (diagrama.deducibleAplicado || 0)
-                        )
+                        diagrama.deducibleContenidos?.neto ??
+                          totalesContenidos.valorAIndemnizar ??
+                          Math.max(
+                            0,
+                            (Number(totalesContenidos.total) || 0) -
+                              (diagrama.deducibleAplicado || 0)
+                          )
                       )}
                     </td>
                   </tr>
@@ -2659,11 +2830,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </table>
             </div>
             <p className="text-xs" style={{ color: textSecondary }}>
-              El deducible se calcula sobre el total de contenidos (MAX % vs mínimo). La suma
-              con presupuesto e hospedaje está en Totales.
+              {diagrama.deducibleContenidos?.tieneArticulos
+                ? 'El valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
+                : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
-              </>
-            )}
           </div>
         </section>
       )}
@@ -2675,30 +2845,24 @@ export default function ChecklistEvaluacionSismicaNSR10({
               Totales del liquidador
             </h3>
             <p className="text-xs" style={{ color: textSecondary }}>
-              Resumen de presupuesto (inmueble), contenidos (bienes muebles) y suma completa
-              para el informe único.
+              Esta hoja trae los valores a indemnizar ya liquidados en Presupuesto y en
+              Contenidos. No vuelve a calcular ni a restar deducible.
             </p>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <div
               className="rounded-xl border p-5"
-                style={{ borderColor, backgroundColor: softBg }}
-              >
+              style={{ borderColor, backgroundColor: softBg }}
+            >
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: textSecondary }}>
-                Total presupuesto
+                Valor a indemnizar presupuesto
               </p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: textPrimary }}>
-                {money(resumenTotales.totalPresupuesto)}
+              <p className="mt-2 text-2xl font-bold text-emerald-600">
+                {money(indemnizarPresupuestoVentana)}
               </p>
               <p className="mt-1 text-xs" style={{ color: textSecondary }}>
-                {recargosPresupuesto?.ocultarImprevistos || recargosPresupuesto?.ocultarImpuestos
-                  ? `Reparación / intervención NSR-10 (con AIU ${
-                      recargosPresupuesto?.aiuFijo != null
-                        ? `${Math.round(Number(recargosPresupuesto.aiuFijo) * 100)}%`
-                        : ''
-                    })`.trim()
-                  : 'Reparación / intervención NSR-10 (con AIU, imprevistos e impuestos)'}
+                Desde la ventana Presupuesto
               </p>
             </div>
             <div
@@ -2706,27 +2870,27 @@ export default function ChecklistEvaluacionSismicaNSR10({
               style={{ borderColor, backgroundColor: softBg }}
             >
               <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: textSecondary }}>
-                Total contenidos
+                Valor a indemnizar contenidos
               </p>
-              <p className="mt-2 text-2xl font-bold" style={{ color: textPrimary }}>
-                {money(resumenTotales.totalContenidos)}
+              <p className="mt-2 text-2xl font-bold text-emerald-600">
+                {money(indemnizarContenidosVentana)}
               </p>
               <p className="mt-1 text-xs" style={{ color: textSecondary }}>
-                Bienes muebles del inmueble
+                Desde la ventana Contenidos
               </p>
             </div>
             <div
-              className="rounded-xl border-2 border-blue-500 p-5"
+              className="rounded-xl border-2 border-emerald-500 p-5"
               style={{ backgroundColor: softBg }}
             >
-              <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">
-                Suma completa
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-300">
+                Suma completa a indemnizar
               </p>
-              <p className="mt-2 text-2xl font-bold text-blue-600">
-                {money(resumenTotales.sumaCompleta)}
+              <p className="mt-2 text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                {money(sumaAIndemnizarVentanas)}
               </p>
               <p className="mt-1 text-xs" style={{ color: textSecondary }}>
-                Presupuesto + contenidos
+                Presupuesto + contenidos (ya liquidados)
               </p>
             </div>
           </div>
@@ -2741,206 +2905,53 @@ export default function ChecklistEvaluacionSismicaNSR10({
               </thead>
               <tbody style={{ color: textPrimary }}>
                 <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2">Subtotal presupuesto (costo directo)</td>
-                  <td className="px-4 py-2 text-right">{money(totales.subtotal)}</td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2">
-                    {recargosPresupuesto?.ocultarImprevistos || recargosPresupuesto?.ocultarImpuestos
-                      ? recargosPresupuesto?.aiuFijo != null
-                        ? `AIU (${Math.round(Number(recargosPresupuesto.aiuFijo) * 100)}%)`
-                        : 'AIU'
-                      : 'AIU / imprevistos / impuestos'}
+                  <td className="px-4 py-2 font-semibold">
+                    Valor a indemnizar (presupuesto)
                   </td>
-                  <td className="px-4 py-2 text-right">
-                    {money(
-                      recargosPresupuesto?.ocultarImprevistos || recargosPresupuesto?.ocultarImpuestos
-                        ? totales.aiu || 0
-                        : (totales.aiu || 0) + (totales.imprevistos || 0) + (totales.impuestos || 0)
-                    )}
+                  <td className="px-4 py-2 text-right font-semibold text-emerald-600">
+                    {money(indemnizarPresupuestoVentana)}
                   </td>
                 </tr>
                 <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2 font-semibold">Total presupuesto</td>
-                  <td className="px-4 py-2 text-right font-semibold">
-                    {money(resumenTotales.totalPresupuesto)}
+                  <td className="px-4 py-2 font-semibold">
+                    Valor a indemnizar (contenidos)
+                  </td>
+                  <td className="px-4 py-2 text-right font-semibold text-emerald-600">
+                    {money(indemnizarContenidosVentana)}
                   </td>
                 </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2" style={{ color: textSecondary }}>
-                    (−) Deducible presupuesto
-                    {diagrama.deduciblePresupuesto?.texto
-                      ? ` (${diagrama.deduciblePresupuesto.texto})`
-                      : usaPorArticulo
-                        ? ' (por ítem)'
-                        : ''}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
-                  </td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2">Presupuesto neto</td>
-                  <td className="px-4 py-2 text-right">
-                    {money(diagrama.deduciblePresupuesto?.neto ?? resumenTotales.totalPresupuesto)}
-                  </td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2 font-semibold">Total contenidos</td>
-                  <td className="px-4 py-2 text-right font-semibold">
-                    {money(resumenTotales.totalContenidos)}
-                  </td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2" style={{ color: textSecondary }}>
-                    (−) Deducible contenidos
-                    {diagrama.deducibleContenidos?.texto
-                      ? ` (${diagrama.deducibleContenidos.texto})`
-                      : ''}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    {money(diagrama.deducibleContenidos?.aplicado || diagrama.deducibleAplicado || 0)}
-                  </td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2">Contenidos neto</td>
-                  <td className="px-4 py-2 text-right">
-                    {money(
-                      diagrama.deducibleContenidos?.neto ??
-                        Math.max(
-                          0,
-                          (resumenTotales.totalContenidos || 0) - (diagrama.deducibleAplicado || 0)
-                        )
-                    )}
-                  </td>
-                </tr>
-                <tr className="border-t bg-blue-50/50 dark:bg-blue-950/20" style={{ borderColor }}>
-                  <td className="px-4 py-3 font-bold text-blue-700 dark:text-blue-300">
-                    SUMA COMPLETA (bruta)
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold text-blue-700 dark:text-blue-300">
-                    {money(resumenTotales.sumaCompleta)}
-                  </td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2">(+) Hospedaje</td>
-                  <td className="px-4 py-2 text-right">{money(diagrama.gastosHospedaje || 0)}</td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2 font-semibold">(−) Suma deducibles</td>
-                  <td className="px-4 py-2 text-right font-semibold">
-                    {money(diagrama.sumaDeducibles || 0)}
-                  </td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
-                  <td className="px-4 py-2">Suma neta (presupuesto + contenidos)</td>
-                  <td className="px-4 py-2 text-right">
-                    {money(diagrama.sumaNeta ?? resumenTotales.sumaCompleta)}
-                  </td>
-                </tr>
-                <tr className="border-t" style={{ borderColor }}>
+                <tr className="border-t bg-emerald-50/60 dark:bg-emerald-950/20" style={{ borderColor }}>
                   <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
-                    TOTAL A INDEMNIZAR
+                    SUMA COMPLETA A INDEMNIZAR
                   </td>
                   <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-300">
-                    {money(diagrama.totalIndemnizar)}
+                    {money(sumaAIndemnizarVentanas)}
                   </td>
                 </tr>
+                {Number(diagrama.gastosHospedaje) > 0 ? (
+                  <tr className="border-t" style={{ borderColor }}>
+                    <td className="px-4 py-2">(+) Hospedaje</td>
+                    <td className="px-4 py-2 text-right">{money(diagrama.gastosHospedaje || 0)}</td>
+                  </tr>
+                ) : null}
+                {Number(diagrama.totalOtrosAmparos) > 0 ? (
+                  <tr className="border-t" style={{ borderColor }}>
+                    <td className="px-4 py-2">(+) Otros amparos (sin deducible)</td>
+                    <td className="px-4 py-2 text-right">{money(diagrama.totalOtrosAmparos || 0)}</td>
+                  </tr>
+                ) : null}
+                {Number(diagrama.gastosHospedaje) > 0 || Number(diagrama.totalOtrosAmparos) > 0 ? (
+                  <tr className="border-t" style={{ borderColor }}>
+                    <td className="px-4 py-3 font-bold text-emerald-700 dark:text-emerald-300">
+                      TOTAL A INDEMNIZAR
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700 dark:text-emerald-300">
+                      {money(diagrama.totalIndemnizar)}
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-2">
-            <div className="space-y-2 rounded-lg border p-4" style={{ borderColor, backgroundColor: softBg }}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
-                  Deducible presupuesto
-                </h4>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="block text-xs" style={{ color: textSecondary }}>
-                  %
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    className={`${inputClass} mt-1`}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={valorInputDeducible(deducibleCfgPresupuestoInput.porcentaje, 10)}
-                    onChange={(e) =>
-                      actualizarDeduciblePresupuesto({
-                        porcentaje: e.target.value === '' ? '' : Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label className="block text-xs" style={{ color: textSecondary }}>
-                  Cant. SMMLV
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    className={`${inputClass} mt-1`}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={valorInputDeducible(deducibleCfgPresupuestoInput.cantidadSMMLV, 4)}
-                    onChange={(e) =>
-                      actualizarDeduciblePresupuesto({
-                        cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
-                        tipoMinimo: 'SMMLV',
-                      })
-                    }
-                  />
-                </label>
-              </div>
-              <p className="text-xs" style={{ color: textSecondary }}>
-                Aplicado: {money(diagrama.deduciblePresupuesto?.aplicado || 0)}
-              </p>
-            </div>
-            <div className="space-y-2 rounded-lg border p-4" style={{ borderColor, backgroundColor: softBg }}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
-                  Deducible contenidos
-                </h4>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label className="block text-xs" style={{ color: textSecondary }}>
-                  %
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className={`${inputClass} mt-1`}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={valorInputDeducible(deducibleCfgInput.porcentaje, 10)}
-                    onChange={(e) =>
-                      actualizarDeducibleConfig({
-                        porcentaje: e.target.value === '' ? '' : Number(e.target.value),
-                      })
-                    }
-                  />
-                </label>
-                <label className="block text-xs" style={{ color: textSecondary }}>
-                  Cant. SMMLV
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className={`${inputClass} mt-1`}
-                    style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
-                    value={valorInputDeducible(deducibleCfgInput.cantidadSMMLV, 4)}
-                    onChange={(e) =>
-                      actualizarDeducibleConfig({
-                        cantidadSMMLV: e.target.value === '' ? '' : Number(e.target.value),
-                        tipoMinimo: 'SMMLV',
-                      })
-                    }
-                  />
-                </label>
-              </div>
-              <p className="text-xs" style={{ color: textSecondary }}>
-                Aplicado: {money(diagrama.deducibleContenidos?.aplicado || 0)} · Detalle completo en
-                pestaña Contenidos
-              </p>
-            </div>
           </div>
 
           {modoLiquidador ? (
@@ -2948,45 +2959,58 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <h4 className="text-sm font-semibold" style={{ color: textPrimary }}>
                 Liquidación del informe único
               </h4>
+              <p className="text-xs" style={{ color: textSecondary }}>
+                El informe toma la suma completa a indemnizar de las ventanas. El deducible
+                ya quedó aplicado en Presupuesto y en Contenidos.
+              </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Suma neta
+                    Presupuesto
                   </p>
                   <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.sumaNeta)}
+                    {money(indemnizarPresupuestoVentana)}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Hospedaje
+                    Contenidos
                   </p>
                   <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.gastosHospedaje)}
+                    {money(indemnizarContenidosVentana)}
                   </p>
                 </div>
-                <div>
-                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Suma deducibles
-                  </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.sumaDeducibles || 0)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs uppercase" style={{ color: textSecondary }}>
-                    Otros amparos (sin deducible)
-                  </p>
-                  <p className="text-lg font-bold" style={{ color: textPrimary }}>
-                    {money(diagrama.totalOtrosAmparos || 0)}
-                  </p>
-                </div>
+                {Number(diagrama.gastosHospedaje) > 0 ? (
+                  <div>
+                    <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                      Hospedaje
+                    </p>
+                    <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                      {money(diagrama.gastosHospedaje)}
+                    </p>
+                  </div>
+                ) : null}
+                {Number(diagrama.totalOtrosAmparos) > 0 ? (
+                  <div>
+                    <p className="text-xs uppercase" style={{ color: textSecondary }}>
+                      Otros amparos
+                    </p>
+                    <p className="text-lg font-bold" style={{ color: textPrimary }}>
+                      {money(diagrama.totalOtrosAmparos || 0)}
+                    </p>
+                  </div>
+                ) : null}
                 <div>
                   <p className="text-xs uppercase" style={{ color: textSecondary }}>
                     Total a indemnizar
                   </p>
                   <p className="text-lg font-bold text-emerald-600">
-                    {money(diagrama.totalIndemnizar)}
+                    {money(
+                      Number(diagrama.gastosHospedaje) > 0 ||
+                        Number(diagrama.totalOtrosAmparos) > 0
+                        ? diagrama.totalIndemnizar
+                        : sumaAIndemnizarVentanas
+                    )}
                   </p>
                 </div>
               </div>

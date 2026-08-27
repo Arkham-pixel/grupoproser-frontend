@@ -492,6 +492,74 @@ function brutoDeducibleSinTope(calc = {}) {
   return Math.max(calc.deduciblePorcentaje || 0, minimo);
 }
 
+function redondearCopDeducible(n) {
+  return Math.round((Number(n) || 0) * 100) / 100;
+}
+
+function montoMinimoDeducible(calc = {}) {
+  return calc.tipoMinimo === 'SMDLV' ? calc.deducibleSMDLV || 0 : calc.deducibleSMMLV || 0;
+}
+
+/**
+ * SMMLV/SMDLV y % sobre pérdida o valor asegurable.
+ * Si hay cálculo por artículo, no se cuenta el deducible general: solo esa suma, con tope en la pérdida.
+ */
+export function aplicarMayorEntreSmmlvYPctOVa({
+  calcGeneral = {},
+  porArticulos = null,
+  topePerdida = 0,
+  forzarPorArticulo = false,
+} = {}) {
+  const noAplica = calcGeneral.modo === 'no_aplica' || calcGeneral.aplica === false;
+  const artN = Number(porArticulos);
+  const tieneArticulos =
+    Boolean(forzarPorArticulo) ||
+    (porArticulos != null &&
+      porArticulos !== '' &&
+      Number.isFinite(artN) &&
+      artN > 0);
+  const smmlv =
+    noAplica || tieneArticulos ? 0 : montoMinimoDeducible(calcGeneral);
+  const pctGeneral =
+    noAplica || tieneArticulos ? 0 : calcGeneral.deduciblePorcentaje || 0;
+  const montoPctOVa = tieneArticulos
+    ? Number.isFinite(artN)
+      ? artN
+      : 0
+    : pctGeneral;
+  const bruto = Math.max(smmlv, montoPctOVa);
+  const tope = Math.max(0, Number(topePerdida) || 0);
+  const aplicado = redondearCopDeducible(Math.min(bruto, tope));
+  const ganaSmmlv = !tieneArticulos && smmlv > montoPctOVa;
+  const tipoMinimo = calcGeneral.tipoMinimo || 'SMMLV';
+  const tipoGanador = tieneArticulos
+    ? 'pct_va'
+    : ganaSmmlv
+      ? tipoMinimo
+      : '%';
+  const texto = tieneArticulos
+    ? 'Cálculo por artículo: no se resta el deducible general (SMMLV / %)'
+    : ganaSmmlv
+      ? `Se aplica el mayor: ${tipoMinimo}`
+      : 'Se aplica el mayor: % sobre pérdida o valor asegurable';
+  return {
+    montoSmmlv: redondearCopDeducible(smmlv),
+    montoPctOVa: redondearCopDeducible(montoPctOVa),
+    porArticulosMonto: tieneArticulos ? redondearCopDeducible(Number.isFinite(artN) ? artN : 0) : 0,
+    tieneArticulos,
+    aplicado,
+    ganaSmmlv,
+    tipoGanador,
+    tipoGanadorLabel: tieneArticulos
+      ? 'por artículo'
+      : ganaSmmlv
+        ? tipoMinimo
+        : '%',
+    texto,
+    aplica: aplicado > 0,
+  };
+}
+
 /**
  * Si baseDeducible = valor_asegurable, el % se calcula sobre el VA y se topea con la pérdida.
  * Sin VA no se aplica (evita caer al % de la pérdida).
@@ -548,10 +616,15 @@ export function calcularDiagramaLiquidacion({
   deducibleConfigContenidos = null,
   deducibleConfigPresupuesto = null,
   otrosAmparos = [],
-  /** Suma de deducibles por artículo (tabla contenidos). Si hay, reemplaza el global de contenidos. */
+  /** Suma por artículo (contenidos). Compite con SMMLV; se aplica el mayor. */
   deducibleContenidosPorArticulos = null,
-  /** Suma de deducibles por ítem (tabla presupuesto). Si hay, reemplaza el global de presupuesto. */
+  /** Suma por ítem (presupuesto). Compite con SMMLV; se aplica el mayor. */
   deduciblePresupuestoPorArticulos = null,
+  usaDeduciblePorArticuloContenidos = false,
+  usaDeduciblePorArticuloPresupuesto = false,
+  /** Suma de (pérdida − deducible) por categoría. Si viene, sustituye total − deducible global. */
+  contenidosNetoPorArticulo = null,
+  presupuestoNetoPorArticulo = null,
 } = {}) {
   const va = Number(valorAsegurado) || 0;
   const danios = Number(totalDanios) || 0;
@@ -602,32 +675,46 @@ export function calcularDiagramaLiquidacion({
     perdida: basePresupuesto,
     valorAsegurado: va,
   });
-  const deduciblePorArticulosN = Number(deducibleContenidosPorArticulos);
-  const usaDeduciblePorArticulo =
-    deducibleContenidosPorArticulos != null &&
-    deducibleContenidosPorArticulos !== '' &&
-    Number.isFinite(deduciblePorArticulosN);
-  let deducibleContenidosAplicado = calcCont.deducibleAplicado || 0;
-  if (usaDeduciblePorArticulo) {
-    const tope = baseContenidos > 0 ? baseContenidos : deduciblePorArticulosN;
-    deducibleContenidosAplicado =
-      Math.round(Math.min(Math.max(0, deduciblePorArticulosN), tope) * 100) / 100;
-  }
-  const deduciblePresupuestoPorArticulosN = Number(deduciblePresupuestoPorArticulos);
-  const usaDeduciblePresupuestoPorArticulo =
-    deduciblePresupuestoPorArticulos != null &&
-    deduciblePresupuestoPorArticulos !== '' &&
-    Number.isFinite(deduciblePresupuestoPorArticulosN);
-  let deduciblePresupuestoAplicado = calcPres.deducibleAplicado || 0;
-  if (usaDeduciblePresupuestoPorArticulo) {
-    const tope = basePresupuesto > 0 ? basePresupuesto : deduciblePresupuestoPorArticulosN;
-    deduciblePresupuestoAplicado =
-      Math.round(Math.min(Math.max(0, deduciblePresupuestoPorArticulosN), tope) * 100) / 100;
-  }
+  const mayorCont = aplicarMayorEntreSmmlvYPctOVa({
+    calcGeneral: calcCont,
+    porArticulos: deducibleContenidosPorArticulos,
+    topePerdida: baseContenidos,
+    forzarPorArticulo: Boolean(usaDeduciblePorArticuloContenidos),
+  });
+  const mayorPres = aplicarMayorEntreSmmlvYPctOVa({
+    calcGeneral: calcPres,
+    porArticulos: deduciblePresupuestoPorArticulos,
+    topePerdida: basePresupuesto,
+    forzarPorArticulo: Boolean(usaDeduciblePorArticuloPresupuesto),
+  });
+  const usaDeduciblePorArticulo = mayorCont.tieneArticulos;
+  const usaDeduciblePresupuestoPorArticulo = mayorPres.tieneArticulos;
+  const netoArticuloCont = Number(contenidosNetoPorArticulo);
+  const usarNetoArticuloCont =
+    Boolean(usaDeduciblePorArticulo) &&
+    contenidosNetoPorArticulo != null &&
+    contenidosNetoPorArticulo !== '' &&
+    Number.isFinite(netoArticuloCont);
+  const netoArticuloPres = Number(presupuestoNetoPorArticulo);
+  const usarNetoArticuloPres =
+    Boolean(usaDeduciblePresupuestoPorArticulo) &&
+    presupuestoNetoPorArticulo != null &&
+    presupuestoNetoPorArticulo !== '' &&
+    Number.isFinite(netoArticuloPres);
+  const contenidosNeto = usarNetoArticuloCont
+    ? Math.max(0, Math.round(netoArticuloCont * 100) / 100)
+    : Math.max(0, baseContenidos - mayorCont.aplicado);
+  const presupuestoNeto = usarNetoArticuloPres
+    ? Math.max(0, Math.round(netoArticuloPres * 100) / 100)
+    : Math.max(0, basePresupuesto - mayorPres.aplicado);
+  const deducibleContenidosAplicado = usarNetoArticuloCont
+    ? Math.round(Math.max(0, baseContenidos - contenidosNeto) * 100) / 100
+    : mayorCont.aplicado;
+  const deduciblePresupuestoAplicado = usarNetoArticuloPres
+    ? Math.round(Math.max(0, basePresupuesto - presupuestoNeto) * 100) / 100
+    : mayorPres.aplicado;
   const sumaDeducibles =
     Math.round((deducibleContenidosAplicado + deduciblePresupuestoAplicado) * 100) / 100;
-  const presupuestoNeto = Math.max(0, basePresupuesto - deduciblePresupuestoAplicado);
-  const contenidosNeto = Math.max(0, baseContenidos - deducibleContenidosAplicado);
   const sumaNeta = Math.round((presupuestoNeto + contenidosNeto) * 100) / 100;
   const totalOtrosAmparos = sumarOtrosAmparos(otrosAmparos);
   const indemnizacionPrincipal = Math.round((sumaNeta + hospedaje) * 100) / 100;
@@ -643,34 +730,34 @@ export function calcularDiagramaLiquidacion({
     baseDeducible: baseContenidos,
     baseDeduciblePresupuesto: basePresupuesto,
     gastosHospedaje: hospedaje,
-    deducible: calcCont.texto,
+    deducible: mayorCont.texto,
     deducibleAplicado: deducibleContenidosAplicado,
-    deduciblePorcentaje: calcCont.deduciblePorcentaje,
-    deducibleSMMLV: calcCont.deducibleSMMLV,
+    deduciblePorcentaje: mayorCont.montoPctOVa,
+    deducibleSMMLV: mayorCont.montoSmmlv,
     deducibleSMDLV: calcCont.deducibleSMDLV,
-    deducibleUsaMinimo: calcCont.usaMinimo,
+    deducibleUsaMinimo: mayorCont.ganaSmmlv,
     deducibleTipoMinimo: calcCont.tipoMinimo,
-    deducibleAplica: calcCont.aplica,
+    deducibleAplica: mayorCont.aplica,
     deduciblePorcentajeCfg: calcCont.porcentaje,
     deducibleCantidadSMMLV: calcCont.cantidadSMMLV,
     deducibleCantidadSMDLV: calcCont.cantidadSMDLV,
     deducibleContenidos: {
       ...calcCont,
+      ...mayorCont,
       aplicado: deducibleContenidosAplicado,
       neto: contenidosNeto,
       porArticulos: usaDeduciblePorArticulo,
-      texto: usaDeduciblePorArticulo
-        ? 'Suma de deducibles por artículo (cobertura)'
-        : calcCont.texto,
+      usaMinimo: mayorCont.ganaSmmlv,
+      texto: mayorCont.texto,
     },
     deduciblePresupuesto: {
       ...calcPres,
+      ...mayorPres,
       aplicado: deduciblePresupuestoAplicado,
       neto: presupuestoNeto,
       porArticulos: usaDeduciblePresupuestoPorArticulo,
-      texto: usaDeduciblePresupuestoPorArticulo
-        ? 'Suma de deducibles por ítem (cobertura)'
-        : calcPres.texto,
+      usaMinimo: mayorPres.ganaSmmlv,
+      texto: mayorPres.texto,
     },
     requiereValorAsegurado: Boolean(
       calcPres.requiereValorAsegurado || calcCont.requiereValorAsegurado

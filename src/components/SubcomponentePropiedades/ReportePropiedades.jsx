@@ -25,6 +25,7 @@ import {
   expressBtnSuccess,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
@@ -34,9 +35,11 @@ import {
   ExpressModal,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { PropiedadesPageHeader } from './PropiedadesUiBlocks.jsx';
 import { FilterSheet, ResponsiveDataList } from '../responsive';
+import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 
 const reportRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const pageWrapWide = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -127,6 +130,11 @@ const celdaValor = (item, clave) => {
   return item[clave] == null ? '' : String(item[clave]);
 };
 
+function valorOrdenPropiedades(item, clave) {
+  if (clave === 'inspeccion') return etiquetaInspeccion(item);
+  return item[clave];
+}
+
 const ReportePropiedades = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -154,6 +162,11 @@ const ReportePropiedades = () => {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [paginaActual, setPaginaActual] = useState(1);
+  const { orden, cambiarOrden } = useOrdenTabla();
+  const onOrdenar = (campo) => {
+    cambiarOrden(campo);
+    setPaginaActual(1);
+  };
   const [filtrosSheetOpen, setFiltrosSheetOpen] = useState(false);
   const [confirmEliminar, setConfirmEliminar] = useState({ open: false, registro: null });
   const [eliminando, setEliminando] = useState(false);
@@ -327,10 +340,15 @@ const ReportePropiedades = () => {
     if (paginaActual > totalPaginas) setPaginaActual(totalPaginas);
   }, [paginaActual, totalPaginas]);
 
+  const casosOrdenados = useMemo(
+    () => aplicarOrdenTabla(filtrados, orden, valorOrdenPropiedades),
+    [filtrados, orden]
+  );
+
   const filtradosPagina = useMemo(() => {
     const inicio = (paginaActual - 1) * PROPIEDADES_REPORTE_PAGE_SIZE;
-    return filtrados.slice(inicio, inicio + PROPIEDADES_REPORTE_PAGE_SIZE);
-  }, [filtrados, paginaActual]);
+    return casosOrdenados.slice(inicio, inicio + PROPIEDADES_REPORTE_PAGE_SIZE);
+  }, [casosOrdenados, paginaActual]);
 
   const indiceDesde =
     filtrados.length === 0 ? 0 : (paginaActual - 1) * PROPIEDADES_REPORTE_PAGE_SIZE + 1;
@@ -348,7 +366,7 @@ const ReportePropiedades = () => {
     }
 
     try {
-      const rows = filtrados.map((item) => buildExportRow(item));
+      const rows = casosOrdenados.map((item) => buildExportRow(item));
       const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true });
       const encabezados = rows.length > 0 ? Object.keys(rows[0]) : [];
       const indicesColumnasFecha = COLUMNAS_FECHA_EXCEL.map((nombre) =>
@@ -544,19 +562,22 @@ const ReportePropiedades = () => {
               items={filtradosPagina}
               emptyLabel={t('properties.report.noCases')}
               table={
-                <div className="overflow-x-auto">
+                <div className={expressTableScroll}>
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead className={expressTableHead}>
                       <tr>
                         {columnasVisibles.map((col) => (
-                          <th
+                          <ThOrdenable
                             key={col.clave}
+                            campo={col.clave}
+                            orden={orden}
+                            onOrdenar={onOrdenar}
                             className="whitespace-nowrap px-3 py-2 text-left font-body text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300"
                           >
                             {col.label}
-                          </th>
+                          </ThOrdenable>
                         ))}
-                        <th className="whitespace-nowrap px-3 py-2 text-right font-body text-xs font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
+                        <th className="sticky top-0 z-20 whitespace-nowrap bg-gray-50 px-3 py-2 text-right font-body text-xs font-semibold uppercase tracking-wide text-gray-600 dark:bg-gray-900 dark:text-gray-300">
                           {t('properties.report.actions')}
                         </th>
                       </tr>

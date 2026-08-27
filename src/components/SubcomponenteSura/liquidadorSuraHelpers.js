@@ -9,6 +9,8 @@ import {
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
+  camposValorAseguradoParaNsr,
+  valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
@@ -255,22 +257,23 @@ export function encabezadoDesdeCasoSura(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
   return {
     tomador: c.tomador || '',
-    asegurado: c.asegurado || c.informacionContacto || '',
-    poliza: c.numeroPoliza || '',
+    asegurado: c.asegurado || c.asgrBenfcro || c.informacionContacto || '',
+    poliza: c.numeroPoliza || c.nmroPolza || '',
     credito: c.numeroCredito || '',
-    siniestro: c.siniestro || '',
+    siniestro: c.siniestro || c.nmroSinstro || '',
     consecutivo: c.consecutivo || '',
-    identificacion: c.identificacion || '',
+    identificacion: c.identificacion || c.numDocumento || '',
     correo: c.correo || '',
     celular: c.celular || '',
-    fechaSiniestro: fechaInput(c.fechaSiniestro),
-    direccion: c.direccionPredio || '',
-    ciudad: c.ciudad || '',
-    departamento: c.departamento || '',
-    cobertura: c.cobertura || '',
-    evento: c.cobertura || 'TERREMOTO',
-    ajustador: c.ajustador || '',
+    fechaSiniestro: fechaInput(c.fechaSiniestro || c.fchaSinstro),
+    direccion: c.direccionPredio || c.direccion || '',
+    ciudad: c.ciudad || c.ciudadSiniestro || '',
+    departamento: c.departamento || c.departamentoCiudad || '',
+    cobertura: c.cobertura || c.causa_siniestro || '',
+    evento: c.cobertura || c.causa_siniestro || 'TERREMOTO',
+    ajustador: c.ajustador || c.nombreResponsable || '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
+    valorAseguradoContenidos: c.valorAseguradoContenidos ?? '',
   };
 }
 
@@ -288,6 +291,7 @@ export function prefillNsrDesdeCasoSura(caso = {}, encabezado = {}) {
     fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
     inspector: caso.ajustador || '',
     tipoEvento: encabezado.evento || caso.cobertura || 'TERREMOTO',
+    ...camposValorAseguradoParaNsr(caso, encabezado),
   };
 }
 
@@ -311,6 +315,7 @@ export const DEFAULT_LIQUIDADOR_SURA = {
     evento: 'TERREMOTO',
     ajustador: '',
     valorAseguradoInmueble: '',
+    valorAseguradoContenidos: '',
   },
   evaluacionSismicaNSR10: null,
   liquidacionCatastrofico: liquidacionCatastroficoDefaultSura(),
@@ -336,8 +341,9 @@ export function calcularLiquidacionSura(liquidador = {}) {
     RECARGOS_PRESUPUESTO_NSR10_CAT
   );
   const presupuesto = evalData.presupuesto || { items: [] };
-  const totalesPres = calcularTotalesPresupuesto(presupuesto);
-  const resumen = calcularResumenTotalesNsr10(evalData);
+  const valoresAsegurablesCaso = valoresAsegurablesDesdeLiquidador(liquidador);
+  const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
+  const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: liq.valorAsegurado,
@@ -469,6 +475,7 @@ export function formDataNsrDesdeLiquidadorSura(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
   return {
     ...prefillNsrDesdeCasoSura(caso, enc),
+    ...camposValorAseguradoParaNsr(caso, enc),
     evaluacionSismicaNSR10: liquidador.evaluacionSismicaNSR10,
     liquidacionCatastrofico: liquidador.liquidacionCatastrofico,
     indemnizacionSugerida: liquidador.indemnizacionSugerida,

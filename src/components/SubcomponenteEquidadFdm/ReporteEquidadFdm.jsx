@@ -39,6 +39,7 @@ import {
   expressCardHeader,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
@@ -48,8 +49,16 @@ import {
   ExpressModal,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 import { FdmPageHeader } from './EquidadFdmUiBlocks.jsx';
+
+function valorOrdenFdm(item, clave) {
+  if (clave === 'esNuevo') return esCasoNuevoFdm(item) ? 1 : 0;
+  if (clave === 'checklistHecho') return item.checklistHecho === true ? 1 : 0;
+  return item[clave];
+}
 
 const fdmReportRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const fdmPageWrapWide = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -230,6 +239,12 @@ const ReporteEquidadFdm = () => {
   const [busquedaCompleto, setBusquedaCompleto] = useState('');
   const [eventoCompleto, setEventoCompleto] = useState('TERREMOTO 10 AGOSTO 2026');
   const [paginaCompleto, setPaginaCompleto] = useState(1);
+  const { orden, cambiarOrden } = useOrdenTabla();
+  const onOrdenar = (campo) => {
+    cambiarOrden(campo);
+    setPaginaActual(1);
+    setPaginaCompleto(1);
+  };
   const [checklistGuardandoId, setChecklistGuardandoId] = useState(null);
   const checklistMigradoRef = useRef(false);
   const fileInputRef = useRef(null);
@@ -452,13 +467,14 @@ const ReporteEquidadFdm = () => {
         fechaFin: '',
       });
       // Sin check «Hecho» arriba; finalizados abajo.
-      return [...lista].sort((a, b) => {
+      const conChecklist = [...lista].sort((a, b) => {
         const ha = a?.checklistHecho === true ? 1 : 0;
         const hb = b?.checklistHecho === true ? 1 : 0;
         return ha - hb;
       });
+      return aplicarOrdenTabla(conChecklist, orden, valorOrdenFdm);
     },
-    [casos, busquedaCompleto, eventoCompleto]
+    [casos, busquedaCompleto, eventoCompleto, orden]
   );
   const ciudades = useMemo(() => buildCiudadesFdm(casosBase), [casosBase]);
   const ciudadActiva = useMemo(
@@ -471,12 +487,13 @@ const ReporteEquidadFdm = () => {
       ? casosBase
       : casosBase.filter((item) => ciudadClaveFdm(item) === filtroMunicipio);
     // Pendientes (sin check) arriba; hechos/finalizados abajo.
-    return [...base].sort((a, b) => {
+    const conChecklist = [...base].sort((a, b) => {
       const ha = a?.checklistHecho === true ? 1 : 0;
       const hb = b?.checklistHecho === true ? 1 : 0;
       return ha - hb;
     });
-  }, [casosBase, filtroMunicipio]);
+    return aplicarOrdenTabla(conChecklist, orden, valorOrdenFdm);
+  }, [casosBase, filtroMunicipio, orden]);
 
   const filtrosActivos = Boolean(
     busqueda ||
@@ -944,17 +961,22 @@ const ReporteEquidadFdm = () => {
         </ExpressFilterSection>
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
-          <div className="overflow-x-auto">
+          <div className={expressTableScroll}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
-                  <th scope="col" className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                  <th scope="col" className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('equidadFdm.report.actions')}
                   </th>
                   {columnasVisibles.map((col) => (
-                    <th key={col.clave} scope="col" className="px-4 py-3">
+                    <ThOrdenable
+                      key={col.clave}
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={onOrdenar}
+                    >
                       {col.label}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>
@@ -994,7 +1016,7 @@ const ReporteEquidadFdm = () => {
                         esCasoNuevoFdm(item) ? 'bg-red-50/40 dark:bg-red-950/20' : ''
                       }`}
                     >
-                      <td className="sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                      <td className="sticky left-0 z-10 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <div className="flex items-center gap-2">
                           {soloConArchivos && (
                             <label
@@ -1145,13 +1167,15 @@ const ReporteEquidadFdm = () => {
                     {t('equidadFdm.report.actions')}
                   </th>
                   {columnasVisibles.map((col) => (
-                    <th
+                    <ThOrdenable
                       key={col.clave}
-                      scope="col"
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={onOrdenar}
                       className="sticky top-0 z-10 bg-gray-50 px-3 py-2 dark:bg-gray-900/80"
                     >
                       {col.label}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>

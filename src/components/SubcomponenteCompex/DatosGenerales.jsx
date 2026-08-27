@@ -21,6 +21,7 @@ import {
 import { InputFechaHoraProtocolo } from './ComplexUiBlocks.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import { obtenerRolAlmacenado } from '../../config/roles.js';
+import CampoTomadorSura from '../SubcomponenteSura/CampoTomadorSura.jsx';
 
 function resolverEstadoSelect(formData, estados = []) {
   const seleccionUsuario = String(formData?.estado ?? '').trim();
@@ -356,6 +357,20 @@ export default function DatosGenerales({
           <InputFenix type="text" name="nmroPolza" value={formData.nmroPolza || ''} onChange={handleChange} />
         </Campo>
 
+        {mostrarAsignacionCatastrofico ? (
+          <Campo
+            label={t('segurosSura.fields.numeroCredito', { defaultValue: 'N° crédito' })}
+          >
+            <InputFenix
+              type="text"
+              name="numeroCredito"
+              value={formData.numeroCredito || ''}
+              onChange={handleChange}
+              autoComplete="off"
+            />
+          </Campo>
+        ) : null}
+
         <Campo label={t("complex.ui.datos_generales.asegurado_o_beneficiario")}>
           <InputFenix
             type="text"
@@ -365,6 +380,14 @@ export default function DatosGenerales({
             required
           />
         </Campo>
+
+        {mostrarAsignacionCatastrofico ? (
+          <CampoTomadorSura
+            className="md:col-span-2"
+            value={formData.tomador || ''}
+            onChange={(valor) => handleChange({ target: { name: 'tomador', value: valor } })}
+          />
+        ) : null}
 
         <Campo label={t("complex.ui.datos_generales.tipo_de_documento")}>
           <SelectFenix
@@ -448,7 +471,79 @@ export default function DatosGenerales({
           />
         </Campo>
 
-        <Campo label={t("complex.ui.datos_generales.ciudad_del_siniestro")} className="md:col-span-2">
+        {mostrarAsignacionCatastrofico ? (
+          <>
+            <Campo
+              label={t('segurosSura.fields.fechaInicioPoliza', {
+                defaultValue: 'Fecha inicio póliza (vigencia)',
+              })}
+            >
+              <InputFenix
+                type="date"
+                name="fechaInicioPoliza"
+                value={formData.fechaInicioPoliza || ''}
+                onChange={handleChange}
+              />
+            </Campo>
+            <Campo
+              label={t('segurosSura.fields.fechaFinPoliza', {
+                defaultValue: 'Fecha fin póliza (vigencia)',
+              })}
+            >
+              <InputFenix
+                type="date"
+                name="fechaFinPoliza"
+                value={formData.fechaFinPoliza || ''}
+                onChange={handleChange}
+              />
+            </Campo>
+          </>
+        ) : null}
+
+        {mostrarAsignacionCatastrofico ? (
+          <>
+            <Campo
+              label={t('complex.ui.datos_generales.sede', {
+                defaultValue: 'SEDE (Riesgo)',
+              })}
+            >
+              <InputFenix
+                type="text"
+                name="sede"
+                value={formData.sede || ''}
+                onChange={handleChange}
+                inputMode="text"
+                autoComplete="off"
+                placeholder={t('complex.ui.datos_generales.sede_placeholder', {
+                  defaultValue: 'Escriba la sede (letras y números)',
+                })}
+              />
+            </Campo>
+            <Campo
+              label={t('complex.ui.datos_generales.direccion', {
+                defaultValue: 'Dirección',
+              })}
+              className="md:col-span-2"
+            >
+              <InputFenix
+                type="text"
+                name="direccionPredio"
+                value={formData.direccionPredio || ''}
+                onChange={handleChange}
+                inputMode="text"
+                autoComplete="off"
+                placeholder={t('complex.ui.datos_generales.direccion_placeholder', {
+                  defaultValue: 'Escriba la dirección del riesgo',
+                })}
+              />
+            </Campo>
+          </>
+        ) : null}
+
+        <Campo
+          label={t("complex.ui.datos_generales.ciudad_del_siniestro")}
+          className={mostrarAsignacionCatastrofico ? '' : 'md:col-span-2'}
+        >
           <Select
             options={municipios}
             value={resolverCiudadSelect(formData, municipios)}
@@ -468,6 +563,23 @@ export default function DatosGenerales({
           )}
         </Campo>
 
+        {mostrarAsignacionCatastrofico ? (
+          <Campo
+            label={t('segurosSura.fields.departamento', { defaultValue: 'Departamento' })}
+          >
+            <InputFenix
+              type="text"
+              name="departamento"
+              value={formData.departamento || formData.departamentoCiudad || ''}
+              onChange={handleChange}
+              autoComplete="off"
+              placeholder={t('segurosSura.placeholders.departamentoAuto', {
+                defaultValue: 'Se completa al elegir la ciudad',
+              })}
+            />
+          </Campo>
+        ) : null}
+
         <Campo label={t("complex.ui.datos_generales.tipo_de_poliza")}>
           <InputFenix type="text" name="tipoPoliza" value={formData.tipoPoliza || ''} onChange={handleChange} />
         </Campo>
@@ -480,6 +592,25 @@ export default function DatosGenerales({
             onChange={handleChange}
           />
         </Campo>
+
+        {mostrarAsignacionCatastrofico ? (
+          <Campo
+            label={t('segurosSura.fields.estadoPagoPrimas', {
+              defaultValue: 'Estado pago primas',
+            })}
+          >
+            <InputFenix
+              type="text"
+              name="estadoPagoPrimas"
+              value={formData.estadoPagoPrimas || ''}
+              onChange={handleChange}
+              autoComplete="off"
+              placeholder={t('segurosSura.placeholders.estadoPagoPrimas', {
+                defaultValue: 'Ej: AL DÍA',
+              })}
+            />
+          </Campo>
+        ) : null}
 
         <Campo label={t("complex.ui.datos_generales.estado")}>
           <SelectFenix name="estado" value={valorEstadoSelect} onChange={handleChange} required>

@@ -258,7 +258,7 @@ export function computarInformeAgilDesdeCaso({
     siniestroAjustador: texto(enc.consecutivo, casoSafe.nmroAjste, casoSafe.consecutivo),
     poliza: texto(enc.poliza, casoSafe.numeroPoliza, casoSafe.nmroPolza),
     vigenciaPoliza: vigenciaDesdeCaso(casoSafe),
-    sucursal: texto(enc.ciudad, casoSafe.ciudad, casoSafe.ciudadSiniestro),
+    sucursal: texto(casoSafe.sede, casoSafe.sedeRiesgo, enc.ciudad, casoSafe.ciudad, casoSafe.ciudadSiniestro),
     intermediario: texto(casoSafe.nombIntermediario, casoSafe.intermediario),
     coaseguro: '',
     fechaOcurrencia: fechaInput(casoSafe.fechaSiniestro || casoSafe.fchaSinstro || enc.fechaSiniestro),

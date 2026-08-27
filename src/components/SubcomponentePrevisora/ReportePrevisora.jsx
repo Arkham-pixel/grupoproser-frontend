@@ -31,6 +31,7 @@ import {
   expressPageTitle,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
@@ -40,7 +41,9 @@ import {
   ExpressModal,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -61,12 +64,16 @@ const COLUMNAS = [
   { clave: 'gradoAfectacion', labelKey: 'gradoAfectacion' },
   { clave: 'lucroCesante', labelKey: 'lucroCesante' },
   { clave: 'fechaInspeccion', labelKey: 'fechaInspeccion' },
+  { clave: 'fechaLlamada', labelKey: 'fechaLlamada' },
+  { clave: 'observacionLlamada', labelKey: 'observacionLlamada' },
   { clave: 'observacionesCat', labelKey: 'observacionesCat' },
   { clave: 'siniestro', labelKey: 'siniestro' },
   { clave: 'tipoIdentificacion', labelKey: 'tipoIdentificacion' },
   { clave: 'identificacion', labelKey: 'identificacion' },
   { clave: 'tomador', labelKey: 'tomador' },
+  { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
+  { clave: 'inspector', labelKey: 'inspector' },
   { clave: 'numeroPoliza', labelKey: 'numeroPoliza' },
   { clave: 'tipoPoliza', labelKey: 'tipoPoliza' },
   { clave: 'causa', labelKey: 'causa' },
@@ -86,6 +93,7 @@ const COLUMNAS = [
   { clave: 'valorReservaPreventivaPromedio', labelKey: 'valorReservaPreventivaPromedio' },
   { clave: 'valorComercialInmueble', labelKey: 'valorComercialInmueble' },
   { clave: 'reserva', labelKey: 'reserva' },
+  { clave: 'observacionReserva', labelKey: 'observacionReserva' },
   { clave: 'valorReclamado', labelKey: 'valorReclamado' },
   { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
   { clave: 'fechaUltimoDocumento', labelKey: 'fechaUltimoDocumento' },
@@ -122,6 +130,7 @@ const CAMPOS_MONEDA = new Set([
 ]);
 const CAMPOS_FECHA = new Set([
   'fechaSiniestro',
+  'fechaLlamada',
   'fechaInspeccion',
   'fechaUltimoDocumento',
   'fechaLiquidado',
@@ -156,12 +165,16 @@ const buildExportRow = (caso) => ({
   'Grado afetación': caso.gradoAfectacion ?? '',
   'Lucro cesante': caso.lucroCesante ?? '',
   'Fecha inspección': formatDate(caso.fechaInspeccion),
+  'FECHA DE LLAMADA': formatDate(caso.fechaLlamada),
+  'OBSERVACIÓN LLAMADA': caso.observacionLlamada ?? '',
   observaciones: caso.observacionesCat ?? '',
   SINIESTRO: caso.siniestro ?? '',
   'TIPO IDENTIFICACIÓN': caso.tipoIdentificacion ?? '',
   IDENTIFICACIÓN: caso.identificacion ?? '',
   TOMADOR: caso.tomador ?? '',
+  'AJUSTADOR LÍDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
+  INSPECTOR: caso.inspector ?? '',
   'N° PÓLIZA': caso.numeroPoliza ?? '',
   'TIPO PÓLIZA': caso.tipoPoliza ?? '',
   CAUSA: caso.causa ?? '',
@@ -181,6 +194,7 @@ const buildExportRow = (caso) => ({
   'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
   'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
   RESERVA: caso.reserva ?? '',
+  'OBSERVACIÓN RESERVA': caso.observacionReserva ?? '',
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
   'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
   'FECHA ULTIMO DOCUMENTO': formatDate(caso.fechaUltimoDocumento),
@@ -232,6 +246,7 @@ export default function ReportePrevisora() {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
+  const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -299,7 +314,9 @@ export default function ReportePrevisora() {
         c.identificacion,
         c.asegurado,
         c.tomador,
+        c.ajustadorLider,
         c.ajustador,
+        c.inspector,
         c.numeroPoliza,
         c.tipoPoliza,
         c.causa,
@@ -312,6 +329,8 @@ export default function ReportePrevisora() {
         c.celular,
         c.canalRadicacion,
         c.observaciones,
+        c.observacionLlamada,
+        c.observacionReserva,
       ]
         .map(normTexto)
         .join(' ');
@@ -328,14 +347,19 @@ export default function ReportePrevisora() {
     fechaFin,
   ]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PREVISORA_REPORTE_PAGE_SIZE));
+  const casosOrdenados = useMemo(
+    () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
+    [filtrados, orden]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(casosOrdenados.length / PREVISORA_REPORTE_PAGE_SIZE));
   const paginaActual = Math.min(pagina, totalPaginas);
   const desde = (paginaActual - 1) * PREVISORA_REPORTE_PAGE_SIZE;
-  const paginaItems = filtrados.slice(desde, desde + PREVISORA_REPORTE_PAGE_SIZE);
+  const paginaItems = casosOrdenados.slice(desde, desde + PREVISORA_REPORTE_PAGE_SIZE);
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -359,12 +383,12 @@ export default function ReportePrevisora() {
   };
 
   const exportarExcel = () => {
-    if (!filtrados.length) {
+    if (!casosOrdenados.length) {
       setAviso({ tipo: 'info', titulo: t('previsora.report.noData'), mensaje: t('previsora.report.noDataExport') });
       return;
     }
     try {
-      const rows = filtrados.map(buildExportRow);
+      const rows = casosOrdenados.map(buildExportRow);
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Previsora');
@@ -526,21 +550,26 @@ export default function ReportePrevisora() {
         </ExpressFilterSection>
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
-          <div className="overflow-x-auto">
+          <div className={expressTableScroll}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                  <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('previsora.report.actions')}
                   </th>
                   {COLUMNAS.map((col) => (
-                    <th key={col.clave} className="px-4 py-3">
+                    <ThOrdenable
+                      key={col.clave}
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={cambiarOrden}
+                    >
                       {col.clave === 'docs'
                         ? t('previsora.report.docs')
                         : col.clave === 'consecutivo'
                           ? t('previsora.report.consecutivo')
                           : t(`previsora.fields.${col.labelKey}`)}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>
@@ -568,7 +597,7 @@ export default function ReportePrevisora() {
                 ) : (
                   paginaItems.map((item) => (
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
-                      <td className="sticky left-0 z-20 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                      <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesPrevisoraMenu
                           docsCount={item.archivos?.length || 0}
                           tieneLiquidador={!!item.liquidador}
@@ -596,7 +625,22 @@ export default function ReportePrevisora() {
                       {COLUMNAS.map((col) => (
                         <td
                           key={col.clave}
-                          className="whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200"
+                          className={
+                            col.clave === 'observacionLlamada' ||
+                            col.clave === 'observacionReserva' ||
+                            col.clave === 'observacionesCat'
+                              ? 'max-w-xs whitespace-normal px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
+                              : 'whitespace-nowrap px-4 py-3 font-body text-sm text-gray-800 dark:text-gray-200'
+                          }
+                          title={
+                            col.clave === 'observacionLlamada'
+                              ? String(item.observacionLlamada || '')
+                              : col.clave === 'observacionReserva'
+                                ? String(item.observacionReserva || '')
+                                : col.clave === 'observacionesCat'
+                                  ? String(item.observacionesCat || '')
+                                  : undefined
+                          }
                         >
                           {col.clave === 'linkGoogleMaps' && item.linkGoogleMaps ? (
                             <a

@@ -9,6 +9,8 @@ import {
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
+  camposValorAseguradoParaNsr,
+  valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
@@ -126,6 +128,7 @@ export function encabezadoDesdecasoPrevisora(caso = {}) {
     evento: c.cobertura || 'TERREMOTO',
     ajustador: c.ajustador || '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
+    valorAseguradoContenidos: c.valorAseguradoContenidos ?? '',
   };
 }
 
@@ -143,6 +146,7 @@ export function prefillNsrDesdecasoPrevisora(caso = {}, encabezado = {}) {
     fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
     inspector: caso.ajustador || '',
     tipoEvento: encabezado.evento || caso.cobertura || 'TERREMOTO',
+    ...camposValorAseguradoParaNsr(caso, encabezado),
   };
 }
 
@@ -167,6 +171,7 @@ export const DEFAULT_LIQUIDADOR_Previsora = {
     evento: 'TERREMOTO',
     ajustador: '',
     valorAseguradoInmueble: '',
+    valorAseguradoContenidos: '',
   },
   evaluacionSismicaNSR10: null,
   liquidacionCatastrofico: liquidacionCatastroficoDefaultPrevisora(),
@@ -192,8 +197,9 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
     RECARGOS_PRESUPUESTO_NSR10_CAT
   );
   const presupuesto = evalData.presupuesto || { items: [] };
-  const totalesPres = calcularTotalesPresupuesto(presupuesto);
-  const resumen = calcularResumenTotalesNsr10(evalData);
+  const valoresAsegurablesCaso = valoresAsegurablesDesdeLiquidador(liquidador);
+  const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
+  const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: liq.valorAsegurado,
@@ -324,6 +330,7 @@ export function formDataNsrDesdeLiquidadorPrevisora(liquidador = {}, caso = {}) 
   const enc = liquidador.encabezado || {};
   return {
     ...prefillNsrDesdecasoPrevisora(caso, enc),
+    ...camposValorAseguradoParaNsr(caso, enc),
     evaluacionSismicaNSR10: liquidador.evaluacionSismicaNSR10,
     liquidacionCatastrofico: liquidador.liquidacionCatastrofico,
     indemnizacionSugerida: liquidador.indemnizacionSugerida,

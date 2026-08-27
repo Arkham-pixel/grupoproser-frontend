@@ -24,6 +24,7 @@ export const normalizeSuraItem = (item = {}) => ({
   estado: item.estado ?? '',
   fechaLlamada: item.fechaLlamada ?? null,
   observacionLlamada: item.observacionLlamada ?? '',
+  observacionReserva: item.observacionReserva ?? '',
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
 });
 

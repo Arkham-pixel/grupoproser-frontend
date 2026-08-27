@@ -397,6 +397,11 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     const sev = String(form.severidadCat || '').trim();
     payload.severidadCat = sev ? Number(sev) : null;
     payload.evidenciaCat = normalizeEvidenciaCat(form.evidenciaCat);
+    payload.fechaLlamada = form.fechaLlamada ? String(form.fechaLlamada).trim() : '';
+    payload.observacionLlamada =
+      form.observacionLlamada != null ? String(form.observacionLlamada) : '';
+    payload.observacionReserva =
+      form.observacionReserva != null ? String(form.observacionReserva) : '';
     if (!String(payload.identificacion || '').trim()) {
       if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       else if (payload.riskId) payload.identificacion = String(payload.riskId).trim();
@@ -832,6 +837,21 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
               onChange={setCampo('fechaInspeccion')}
             />
           </Campo>
+          <Campo label={t('previsora.fields.fechaLlamada')}>
+            <InputFenix
+              type="date"
+              value={form.fechaLlamada || ''}
+              onChange={setCampo('fechaLlamada')}
+            />
+          </Campo>
+          <Campo label={t('previsora.fields.observacionLlamada')} className="md:col-span-2 lg:col-span-3">
+            <textarea
+              className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+              value={form.observacionLlamada || ''}
+              onChange={setCampo('observacionLlamada')}
+              placeholder={t('previsora.placeholders.observacionLlamada')}
+            />
+          </Campo>
           <Campo label={t('previsora.fields.observacionesCat')} className="md:col-span-2 lg:col-span-3">
             <textarea
               className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
@@ -1045,6 +1065,14 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
                 {inputMiles('valorLiquidado')}
               </Campo>
             </div>
+            <Campo label={t('previsora.fields.observacionReserva')} className="mt-4">
+              <textarea
+                className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                value={form.observacionReserva || ''}
+                onChange={setCampo('observacionReserva')}
+                placeholder={t('previsora.placeholders.observacionReserva')}
+              />
+            </Campo>
           </section>
 
           <section>
@@ -1057,6 +1085,13 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
                   type="date"
                   value={form.fechaSiniestro}
                   onChange={setCampo('fechaSiniestro')}
+                />
+              </Campo>
+              <Campo label={t('previsora.fields.fechaLlamada')}>
+                <InputFenix
+                  type="date"
+                  value={form.fechaLlamada || ''}
+                  onChange={setCampo('fechaLlamada')}
                 />
               </Campo>
               <Campo label={t('previsora.fields.fechaUltimoDocumento')}>

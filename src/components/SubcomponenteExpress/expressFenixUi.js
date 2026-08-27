@@ -130,14 +130,14 @@ export const expressMetricCard =
 
 
 export const expressTableWrap =
-
   'overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-gray-800 dark:bg-[#1A1A1A]';
 
-
+/** Scroll de la tabla: títulos sticky (top) y columna Acciones sticky (left). */
+export const expressTableScroll =
+  'max-h-[calc(100dvh-14rem)] overflow-auto overscroll-contain';
 
 export const expressTableHead =
-
-  'bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900/50 dark:text-gray-400';
+  'bg-gray-50 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:bg-gray-900 dark:text-gray-400';
 
 
 

@@ -7,6 +7,8 @@ import {
   calcularTotalesPresupuesto,
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
+  camposValorAseguradoParaNsr,
+  valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
@@ -189,6 +191,7 @@ export function encabezadoDesdeCasoAlfa(caso = {}) {
     ajustador: c.ajustador || '',
     valorAseguradoSid: c.valorAseguradoSid ?? '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
+    valorAseguradoContenidos: c.valorAseguradoContenidos ?? '',
   };
 }
 
@@ -206,6 +209,7 @@ export function prefillNsrDesdeCasoAlfa(caso = {}, encabezado = {}) {
     fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
     inspector: caso.ajustador || '',
     tipoEvento: encabezado.evento || caso.cobertura || 'TERREMOTO',
+    ...camposValorAseguradoParaNsr(caso, encabezado),
   };
 }
 
@@ -229,6 +233,7 @@ export const DEFAULT_LIQUIDADOR_ALFA = {
     ajustador: '',
     valorAseguradoSid: '',
     valorAseguradoInmueble: '',
+    valorAseguradoContenidos: '',
   },
   evaluacionSismicaNSR10: null,
   liquidacionCatastrofico: liquidacionCatastroficoDefaultAlfa(),
@@ -451,8 +456,9 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
   const evalDataRaw = liquidador.evaluacionSismicaNSR10 || {};
   const evalData = aplicarPresupuestoAiuAlfaEnEvaluacion(evalDataRaw);
   const presupuesto = evalData.presupuesto || { items: [] };
-  const totalesPres = calcularTotalesPresupuesto(presupuesto);
-  const resumen = calcularResumenTotalesNsr10(evalData);
+  const valoresAsegurablesCaso = valoresAsegurablesDesdeLiquidador(liquidador);
+  const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
+  const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
   const enc = liquidador.encabezado || {};
   // Regla operativa: liquidar / deducible con VALOR SID (no valor asegurado inmueble).
@@ -896,6 +902,7 @@ export function formDataNsrDesdeLiquidadorAlfa(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
   return {
     ...prefillNsrDesdeCasoAlfa(caso, enc),
+    ...camposValorAseguradoParaNsr(caso, enc),
     evaluacionSismicaNSR10: liquidador.evaluacionSismicaNSR10,
     liquidacionCatastrofico: liquidador.liquidacionCatastrofico,
     indemnizacionSugerida: liquidador.indemnizacionSugerida,

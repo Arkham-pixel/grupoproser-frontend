@@ -403,7 +403,9 @@ export default function FormatoLiquidacionAlfa({
                 </select>
                 <p className="mt-1 px-2 pb-1 font-body text-[11px] text-gray-500">
                   Cada banco tiene deducibles distintos por póliza (informe carteras 2026). Elija la
-                  que corresponda al caso; se aplican % , mínimo SMMLV y base (asegurable o pérdida).
+                  que corresponda al caso; se aplican %, mínimo SMMLV y base (asegurable o pérdida).
+                  En Occidente, si el riesgo tiene más de 30 años de antigüedad use la opción
+                  «ESPECIAL · TERREMOTO» (3% asegurable / mín. 5 SMMLV).
                 </p>
               </CeldaInput>
             </div>

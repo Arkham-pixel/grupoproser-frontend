@@ -191,6 +191,32 @@ export const OPCIONES_DEDUCIBLE_ALFA = [
     cantidadSMMLV: 1,
     texto: '2% sobre valor de la pérdida, mínimo 1 SMMLV',
   },
+  /**
+   * Condición especial Occidente: riesgos con antigüedad / vetustez > 30 años.
+   * Caso p.ej. INDUSTRIAS TREBOL (821001749) · ALFA-2026-08-1647 · TRDM-2210.
+   */
+  {
+    id: 'occ-vetustez-30-terremoto',
+    tomadorKey: 'BANCO OCCIDENTE',
+    tomadorLabel: 'BANCO OCCIDENTE',
+    poliza: 'VETUSTEZ >30 AÑOS',
+    tipoCartera: 'ESPECIAL · TERREMOTO (antigüedad >30 años)',
+    base: 'valor_asegurable',
+    porcentaje: 3,
+    cantidadSMMLV: 5,
+    texto: '3% del valor asegurable, mínimo 5 SMMLV (riesgos >30 años · terremoto)',
+  },
+  {
+    id: 'occ-vetustez-30-demas',
+    tomadorKey: 'BANCO OCCIDENTE',
+    tomadorLabel: 'BANCO OCCIDENTE',
+    poliza: 'VETUSTEZ >30 AÑOS',
+    tipoCartera: 'ESPECIAL · DEMÁS EVENTOS (antigüedad >30 años)',
+    base: 'perdida',
+    porcentaje: 10,
+    cantidadSMMLV: 2,
+    texto: '10% del valor de la pérdida, mínimo 2 SMMLV (riesgos >30 años · demás eventos)',
+  },
   // BANCO POPULAR
   {
     id: 'pop-27405',
@@ -343,9 +369,14 @@ export function obtenerOpcionDeducibleAlfaPorId(id) {
 export function resolverOpcionDeduciblePorPolizaAlfa(tomador = '', numeroPoliza = '') {
   const opciones = listarOpcionesDeduciblePorTomadorAlfa(tomador);
   if (!opciones.length) return null;
+  // No auto-elegir condiciones especiales (vetustez / excepciones): el usuario las marca.
+  const opcionesNormales = opciones.filter(
+    (o) => !String(o.id || '').includes('vetustez') && !String(o.tipoCartera || '').includes('ESPECIAL')
+  );
+  const pool = opcionesNormales.length ? opcionesNormales : opciones;
   const pol = normPoliza(numeroPoliza);
-  if (!pol) return opciones[0];
-  const hit = opciones.find((o) => {
+  if (!pol) return pool[0];
+  const hit = pool.find((o) => {
     const p = normPoliza(o.poliza);
     if (!p) return false;
     if (p === pol) return true;
@@ -354,7 +385,7 @@ export function resolverOpcionDeduciblePorPolizaAlfa(tomador = '', numeroPoliza 
     const tokens = String(o.poliza).match(/\d{3,}/g) || [];
     return tokens.some((t) => pol.includes(t) || t.includes(pol));
   });
-  return hit || opciones[0];
+  return hit || pool[0];
 }
 
 export function resolverReglaDeducibleTomadorAlfa(tomador = '') {

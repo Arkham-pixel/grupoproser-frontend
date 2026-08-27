@@ -1,7 +1,7 @@
 // src/components/Layout.jsx
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FaBars,
@@ -114,6 +114,36 @@ function formatNombreCorto(nombre, login) {
 
 function formatRol(rol, t) {
   return etiquetaRol(rol, t);
+}
+
+function seccionMenuDesdeRuta(path) {
+  if (path === '/inicio' || path === '/') return 'principal';
+  if (path.startsWith('/complex')) return 'complex';
+  if (path.startsWith('/riesgos')) return 'riesgos';
+  if (path.startsWith('/express')) return 'express';
+  if (path.startsWith('/equidad-fdm')) return 'equidadFdm';
+  if (path.startsWith('/seguros-alfa')) return 'alfa';
+  if (path.startsWith('/zurich')) return 'zurich';
+  if (path.startsWith('/bbva-cat')) return 'bbvaCat';
+  if (path.startsWith('/previsora')) return 'previsora';
+  if (path.startsWith('/allianz') || path.startsWith('/allias')) return 'allianz';
+  if (path.startsWith('/sura')) return 'sura';
+  if (path.startsWith('/propiedades')) return 'propiedades';
+  if (path.startsWith('/puertos')) return 'puertos';
+  if (
+    path.startsWith('/formulario') ||
+    path.startsWith('/ajuste') ||
+    path.startsWith('/reporte-pol') ||
+    path.startsWith('/historial')
+  ) {
+    return 'formularios';
+  }
+  if (path.includes('matriz') || path.includes('matrices')) return 'matrices';
+  if (path.startsWith('/admin') || path.startsWith('/editar-perfil')) return 'admin';
+  if (path.startsWith('/cuenta') || path.startsWith('/micuenta') || path.startsWith('/informacion-completa')) {
+    return 'cuenta';
+  }
+  return null;
 }
 
 /** Timer de sesión en pie del sidebar + aviso modal 30 min antes del cierre */
@@ -352,6 +382,10 @@ export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
+  const navRef = useRef(null);
+  const mainRef = useRef(null);
+  const scrollLockRef = useRef(null);
+  const navScrollPosRef = useRef(0);
 
   // En shell móvil el menú siempre se muestra expandido (drawer); sin flyouts.
   const menuCollapsed = isMobileShell ? false : sidebarCollapsed;
@@ -569,31 +603,9 @@ export default function Layout() {
   }, [location.pathname, routeTitles]);
 
   useEffect(() => {
-    const path = location.pathname;
-    if (path === '/inicio' || path === '/') setExpandedSection('principal');
-    else if (path.startsWith('/complex')) setExpandedSection('complex');
-    else if (path.startsWith('/riesgos')) setExpandedSection('riesgos');
-    else if (path.startsWith('/express')) setExpandedSection('express');
-    else if (path.startsWith('/equidad-fdm')) setExpandedSection('equidadFdm');
-    else if (path.startsWith('/seguros-alfa')) setExpandedSection('alfa');
-    else if (path.startsWith('/zurich')) setExpandedSection('zurich');
-    else if (path.startsWith('/bbva-cat')) setExpandedSection('bbvaCat');
-    else if (path.startsWith('/previsora')) setExpandedSection('previsora');
-    else if (path.startsWith('/allianz') || path.startsWith('/allias')) setExpandedSection('allianz');
-    else if (path.startsWith('/sura')) setExpandedSection('sura');
-    else if (path.startsWith('/propiedades')) setExpandedSection('propiedades');
-    else if (path.startsWith('/puertos')) setExpandedSection('puertos');
-    else if (
-      path.startsWith('/formulario') ||
-      path.startsWith('/ajuste') ||
-      path.startsWith('/reporte-pol') ||
-      path.startsWith('/historial')
-    )
-      setExpandedSection('formularios');
-    else if (path.includes('matriz') || path.includes('matrices')) setExpandedSection('matrices');
-    else if (path.startsWith('/admin') || path.startsWith('/editar-perfil')) setExpandedSection('admin');
-    else if (path.startsWith('/cuenta') || path.startsWith('/micuenta') || path.startsWith('/informacion-completa'))
-      setExpandedSection('cuenta');
+    const next = seccionMenuDesdeRuta(location.pathname);
+    if (!next) return;
+    setExpandedSection((prev) => (prev === next ? prev : next));
   }, [location.pathname]);
 
   // Cerrar drawer al navegar o al pasar a desktop.
@@ -604,6 +616,20 @@ export default function Layout() {
   useEffect(() => {
     if (!isMobileShell) setMobileNavOpen(false);
   }, [isMobileShell]);
+
+  useEffect(() => {
+    const html = document.documentElement;
+    const { overflow: prevHtmlOverflow, height: prevHtmlHeight } = html.style;
+    const { overflow: prevBodyOverflow } = document.body.style;
+    html.style.overflow = 'hidden';
+    html.style.height = '100%';
+    document.body.style.overflow = 'hidden';
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      html.style.height = prevHtmlHeight;
+      document.body.style.overflow = prevBodyOverflow;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isMobileShell || !mobileNavOpen) return undefined;
@@ -677,9 +703,65 @@ export default function Layout() {
     return `${path}?casoId=${encodeURIComponent(casoId)}&tab=${tab}`;
   };
 
-  const toggleSection = (section) => {
+  const rememberNavScroll = () => {
+    if (navRef.current) navScrollPosRef.current = navRef.current.scrollTop;
+  };
+
+  const restoreNavScroll = (button) => {
+    const nav = navRef.current;
+    if (!nav) return;
+    nav.scrollTop = navScrollPosRef.current;
+
+    if (button && nav.contains(button)) {
+      const navRect = nav.getBoundingClientRect();
+      const btnRect = button.getBoundingClientRect();
+      const pad = 8;
+      if (btnRect.top < navRect.top + pad) {
+        nav.scrollTop -= navRect.top + pad - btnRect.top;
+      } else if (btnRect.bottom > navRect.bottom - pad) {
+        nav.scrollTop += btnRect.bottom - (navRect.bottom - pad);
+      }
+    }
+    navScrollPosRef.current = nav.scrollTop;
+  };
+
+  const toggleSection = (section, event) => {
+    rememberNavScroll();
+    scrollLockRef.current = event?.currentTarget ?? null;
     setExpandedSection((prev) => (prev === section ? null : section));
   };
+
+  const onSectionToggle = (section, event) => {
+    if (event.type === 'mousedown') {
+      if (event.button !== 0) return;
+      event.preventDefault();
+    } else if (event.type === 'click') {
+      if (event.detail !== 0) {
+        event.preventDefault();
+        return;
+      }
+    }
+    toggleSection(section, event);
+    const btn = event.currentTarget;
+    if (typeof btn.focus === 'function') {
+      try {
+        btn.focus({ preventScroll: true });
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  useLayoutEffect(() => {
+    const button = scrollLockRef.current;
+    scrollLockRef.current = null;
+    restoreNavScroll(button);
+  }, [expandedSection]);
+
+  useLayoutEffect(() => {
+    restoreNavScroll();
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [location.pathname]);
 
   const menuItems = {
     principal:
@@ -973,6 +1055,7 @@ export default function Layout() {
     const onItemClick = (item) => {
       item.onClick?.();
       closeMobileNav();
+      navScrollPosRef.current = navRef.current?.scrollTop ?? navScrollPosRef.current;
     };
 
     if (menuCollapsed) {
@@ -981,7 +1064,8 @@ export default function Layout() {
           <button
             type="button"
             title={title}
-            onClick={() => toggleSection(key)}
+            onMouseDown={(e) => onSectionToggle(key, e)}
+            onClick={(e) => onSectionToggle(key, e)}
             className={`rounded-lg p-2.5 transition-all ${
               active ? activeClasses : inactiveClasses
             }`}
@@ -1015,7 +1099,7 @@ export default function Layout() {
     }
 
     return (
-      <div className="mb-1">
+      <div className="mb-1 [overflow-anchor:none]">
         {singleItem ? (
           <Link
             to={destinoMenu(items[0].path)}
@@ -1031,7 +1115,8 @@ export default function Layout() {
           <>
             <button
               type="button"
-              onClick={() => toggleSection(key)}
+              onMouseDown={(e) => onSectionToggle(key, e)}
+              onClick={(e) => onSectionToggle(key, e)}
               className={`flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold tracking-wide transition-all ${
                 active && !expanded ? activeClasses : inactiveClasses
               } ${active && expanded ? 'text-red-400' : ''}`}
@@ -1042,11 +1127,7 @@ export default function Layout() {
                 className={`text-xs opacity-60 transition-transform ${expanded ? 'rotate-180' : ''}`}
               />
             </button>
-            <div
-              className={`overflow-hidden transition-all duration-200 ${
-                expanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'
-              }`}
-            >
+            {expanded && (
               <div className="mt-1 space-y-0.5 border-l border-gray-700/60 ml-5 pl-2">
                 {items.map((item, idx) => (
                   <Link
@@ -1064,7 +1145,7 @@ export default function Layout() {
                   </Link>
                 ))}
               </div>
-            </div>
+            )}
           </>
         )}
       </div>
@@ -1073,6 +1154,12 @@ export default function Layout() {
 
   const mainBg = theme === 'dark' ? 'bg-[#121212]' : 'bg-[#F5F5F7]';
   const topBarBg = theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100';
+  const sidebarWidthClass = isMobileShell
+    ? 'w-72 max-w-[85vw]'
+    : menuCollapsed
+      ? 'w-[72px]'
+      : 'w-64 lg:w-72';
+  const mainOffsetClass = isMobileShell ? '' : menuCollapsed ? 'ml-[72px]' : 'ml-64 lg:ml-72';
 
   // Sesión externa (enlace de subtarea): sin menú de la plataforma, solo el
   // formulario asignado y un enlace para volver a su tarea.
@@ -1110,9 +1197,7 @@ export default function Layout() {
   }
 
   return (
-    <div
-      className={`flex ${contenidoExpandido ? 'h-screen min-h-0 overflow-hidden' : 'min-h-screen'} ${mainBg}`}
-    >
+    <div className={`app-shell relative h-screen max-h-screen overflow-hidden ${mainBg}`}>
       {/* Backdrop drawer móvil */}
       {isMobileShell && mobileNavOpen && (
         <button
@@ -1123,18 +1208,20 @@ export default function Layout() {
         />
       )}
 
-      {/* Sidebar: drawer off-canvas < lg; fijo en flujo lg+ */}
+      {/* Menú fijo: no comparte scroll con las páginas */}
       <aside
-        className={`flex flex-col border-r border-gray-800 bg-[#141414] text-white transition-transform duration-300 lg:transition-[width] ${
+        className={`fixed inset-y-0 left-0 z-50 flex min-h-0 flex-col border-r border-gray-800 bg-[#141414] text-white [color-scheme:dark] ${sidebarWidthClass} ${
+          menuCollapsed ? 'overflow-visible' : 'overflow-hidden'
+        } ${
           isMobileShell
-            ? `fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] ${
+            ? `transition-transform duration-300 ${
                 mobileNavOpen ? 'translate-x-0' : '-translate-x-full'
               }`
-            : `relative shrink-0 ${menuCollapsed ? 'w-[72px]' : 'w-64 lg:w-72'}`
+            : 'transition-[width] duration-300'
         }`}
       >
         {/* Logo */}
-        <div className={`border-b border-gray-800 px-3 py-4 ${menuCollapsed ? 'flex justify-center' : ''}`}>
+        <div className={`shrink-0 border-b border-gray-800 px-3 py-4 ${menuCollapsed ? 'flex justify-center' : ''}`}>
           {menuCollapsed ? (
             <button
               type="button"
@@ -1198,14 +1285,20 @@ export default function Layout() {
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 overflow-y-auto px-2 py-3">
+        <nav
+          ref={navRef}
+          onScroll={() => {
+            navScrollPosRef.current = navRef.current?.scrollTop ?? 0;
+          }}
+          className="sidebar-scroll min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-2 py-3"
+        >
           {sections.map((section) => (
             <NavSection key={section.key} section={section} />
           ))}
         </nav>
 
         {/* Pie: versión, sesión y logout */}
-        <div className="border-t border-gray-800 p-3 space-y-3">
+        <div className="shrink-0 border-t border-gray-800 p-3 space-y-3">
           {!menuCollapsed && (
             <div className="flex items-center gap-2 rounded-lg border border-gray-800 bg-gray-900/80 px-3 py-2 text-[11px] text-gray-500">
               <FaShieldAlt className="shrink-0 text-fenix-primario" />
@@ -1230,11 +1323,13 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Área principal */}
-      <div className={`flex min-w-0 flex-1 flex-col ${contenidoExpandido ? 'min-h-0' : ''}`}>
+      {/* Área principal: único scroll de las páginas */}
+      <div
+        className={`flex h-full min-h-0 min-w-0 flex-col overflow-hidden transition-[margin] duration-300 ${mainOffsetClass}`}
+      >
         {/* Top bar — estilo dashboard */}
         <header
-          className={`sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b px-3 shadow-sm sm:gap-3 sm:px-6 ${topBarBg}`}
+          className={`sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-2 border-b px-3 shadow-sm sm:gap-3 sm:px-6 ${topBarBg}`}
         >
           <div className="flex min-w-0 items-center gap-2">
             <button
@@ -1422,8 +1517,9 @@ export default function Layout() {
         </header>
 
         <main
-          className={`flex-1 min-h-0 ${
-            contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-auto'
+          ref={mainRef}
+          className={`app-shell-main flex-1 min-h-0 ${
+            contenidoExpandido ? 'overflow-hidden p-0' : 'overflow-y-auto overflow-x-hidden overscroll-contain'
           }`}
         >
           <Aviso2FAPrompt />

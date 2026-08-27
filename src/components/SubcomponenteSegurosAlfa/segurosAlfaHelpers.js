@@ -449,6 +449,7 @@ export const FILTROS_REPORTE_ALFA_DEFAULT = {
   filtroDepto: '',
   filtroEstado: '',
   filtroSla: '',
+  filtroAjustadorLider: '',
   filtroAjustador: '',
   filtroInspector: '',
   filtroTomador: '',
@@ -469,9 +470,17 @@ export function cargarFiltrosReporteAlfa() {
     const raw = sessionStorage.getItem(ALFA_REPORTE_FILTROS_STORAGE_KEY);
     if (!raw) return { ...FILTROS_REPORTE_ALFA_DEFAULT };
     const parsed = JSON.parse(raw);
+    const filtroEstadoRaw = String(parsed?.filtroEstado || '').trim();
+    // Migrar valores legacy (PENDIENTE, EN TRÁMITE…) al catálogo unificado.
+    const filtroEstado = filtroEstadoRaw
+      ? ESTADOS_ALFA_SET.has(filtroEstadoRaw)
+        ? filtroEstadoRaw
+        : homologarEstadoAlfa(filtroEstadoRaw)
+      : '';
     return {
       ...FILTROS_REPORTE_ALFA_DEFAULT,
       ...parsed,
+      filtroEstado: ESTADOS_ALFA_SET.has(filtroEstado) ? filtroEstado : '',
       pagina: Math.max(1, Number(parsed?.pagina) || 1),
       soloMisCasos: Boolean(parsed?.soloMisCasos),
     };

@@ -214,6 +214,7 @@ export const FORM_VACIO_SURA = {
   celular: '',
   canalRadicacion: '',
   ciudad: '',
+  sede: '',
   departamento: '',
   fechaSiniestro: '',
   fechaInicioPoliza: '',
@@ -225,6 +226,7 @@ export const FORM_VACIO_SURA = {
   valorReservaPreventivaPromedio: '',
   valorComercialInmueble: '',
   reserva: '',
+  observacionReserva: '',
   valorReclamado: '',
   valorLiquidado: '',
   fechaLlamada: '',
@@ -282,4 +284,5 @@ export const construirFormDesdeCasoSura = (caso = {}) => ({
       return [clave, String(valor)];
     })
   ),
+  sede: caso.sede || caso.sedeRiesgo || '',
 });

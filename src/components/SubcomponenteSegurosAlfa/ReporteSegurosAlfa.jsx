@@ -14,6 +14,7 @@ import AccionesAlfaMenu from './AccionesAlfaMenu.jsx';
 import AlfaControlSeguimientoBanner from './AlfaControlSeguimientoBanner.jsx';
 import MapaBloquesAlfaPanel from './MapaBloquesAlfaPanel.jsx';
 import AlfaCondicionesMenu from './AlfaCondicionesMenu.jsx';
+import SelectBuscable from '../SelectBuscable.jsx';
 import {
   coordsUbicacionPredio,
   urlGoogleMaps,
@@ -100,6 +101,7 @@ import {
   expressPageTitle,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
@@ -109,8 +111,16 @@ import {
   ExpressModal,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { filtrarCasosPorAsignacionUsuario, coincidenPersonas, esSesionColaFechaLlamadaAlfa } from '../../utils/permisosCasoPorRol.js';
+import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
+
+function valorOrdenAlfa(item, clave) {
+  if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+  if (clave === 'estado') return homologarEstadoAlfa(item.estado, item);
+  return item[clave];
+}
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -122,6 +132,7 @@ const COLUMNAS = [
   { clave: 'identificacion', labelKey: 'identificacion' },
   { clave: 'asegurado', labelKey: 'asegurado' },
   { clave: 'tomador', labelKey: 'tomador' },
+  { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
   { clave: 'inspector', labelKey: 'inspector' },
   { clave: 'numeroPoliza', labelKey: 'numeroPoliza' },
@@ -163,6 +174,7 @@ const COLUMNAS_INICIALES_VISIBLES = [
   'identificacion',
   'asegurado',
   'tomador',
+  'ajustadorLider',
   'ajustador',
   'inspector',
   'numeroPoliza',
@@ -216,7 +228,9 @@ const buildExportRow = (caso) => ({
   IDENTIFICACIÓN: caso.identificacion ?? '',
   ASEGURADO: caso.asegurado ?? '',
   TOMADOR: caso.tomador ?? '',
+  'AJUSTADOR LÍDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
+  INSPECTOR: caso.inspector ?? '',
   'N° PÓLIZA': caso.numeroPoliza ?? '',
   'DIRECCIÓN PREDIO': caso.direccionPredio ?? '',
   'N CRÉDITO': caso.numeroCredito ?? '',
@@ -266,6 +280,9 @@ export default function ReporteSegurosAlfa() {
   const [filtroCiudad, setFiltroCiudad] = useState(filtrosIniciales.filtroCiudad);
   const [filtroDepto, setFiltroDepto] = useState(filtrosIniciales.filtroDepto);
   const [filtroEstado, setFiltroEstado] = useState(filtrosIniciales.filtroEstado);
+  const [filtroAjustadorLider, setFiltroAjustadorLider] = useState(
+    filtrosIniciales.filtroAjustadorLider
+  );
   const [filtroAjustador, setFiltroAjustador] = useState(filtrosIniciales.filtroAjustador);
   const [filtroInspector, setFiltroInspector] = useState(filtrosIniciales.filtroInspector);
   const [filtroTomador, setFiltroTomador] = useState(filtrosIniciales.filtroTomador);
@@ -281,6 +298,7 @@ export default function ReporteSegurosAlfa() {
   const [filtroSla, setFiltroSla] = useState(filtrosIniciales.filtroSla);
   const [soloMisCasos, setSoloMisCasos] = useState(Boolean(filtrosIniciales.soloMisCasos));
   const [pagina, setPagina] = useState(filtrosIniciales.pagina || 1);
+  const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -342,10 +360,23 @@ export default function ReporteSegurosAlfa() {
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
-  const estados = useMemo(
-    () => ESTADOS_ALFA.map((e) => ({ value: e, label: e })),
-    []
-  );
+  const estados = useMemo(() => {
+    const porNorm = new Map();
+    for (const e of ESTADOS_ALFA) {
+      porNorm.set(normTexto(e), { value: e, label: e, n: 0 });
+    }
+    for (const c of casos) {
+      const h = homologarEstadoAlfa(c.estado, c);
+      const k = normTexto(h);
+      if (!porNorm.has(k)) porNorm.set(k, { value: h, label: h, n: 0 });
+      porNorm.get(k).n += 1;
+    }
+    return [...porNorm.values()].map((o) => ({
+      value: o.value,
+      label: `${o.label} (${o.n})`,
+    }));
+  }, [casos]);
+  const lideres = useMemo(() => buildOpcionesFiltro(casos, 'ajustadorLider'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
   const tomadores = useMemo(() => buildOpcionesFiltro(casos, 'tomador'), [casos]);
@@ -401,6 +432,7 @@ export default function ReporteSegurosAlfa() {
       if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(homologarEstadoAlfa(c.estado, c), filtroEstado)) return false;
+      if (!coincideFiltroTexto(c.ajustadorLider, filtroAjustadorLider)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (!coincideFiltroTexto(c.tomador, filtroTomador)) return false;
@@ -443,6 +475,7 @@ export default function ReporteSegurosAlfa() {
         c.identificacion,
         c.asegurado,
         c.tomador,
+        c.ajustadorLider,
         c.ajustador,
         c.inspector,
         c.numeroPoliza,
@@ -469,6 +502,7 @@ export default function ReporteSegurosAlfa() {
     filtroCiudad,
     filtroDepto,
     filtroEstado,
+    filtroAjustadorLider,
     filtroAjustador,
     filtroInspector,
     filtroTomador,
@@ -486,10 +520,15 @@ export default function ReporteSegurosAlfa() {
     colaFechaLlamada,
   ]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / ALFA_REPORTE_PAGE_SIZE));
+  const casosOrdenados = useMemo(
+    () => aplicarOrdenTabla(filtrados, orden, valorOrdenAlfa),
+    [filtrados, orden]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(casosOrdenados.length / ALFA_REPORTE_PAGE_SIZE));
   const paginaActual = Math.min(pagina, totalPaginas);
   const desde = (paginaActual - 1) * ALFA_REPORTE_PAGE_SIZE;
-  const paginaItems = filtrados.slice(desde, desde + ALFA_REPORTE_PAGE_SIZE);
+  const paginaItems = casosOrdenados.slice(desde, desde + ALFA_REPORTE_PAGE_SIZE);
 
   useEffect(() => {
     if (skipPageResetRef.current) {
@@ -502,6 +541,7 @@ export default function ReporteSegurosAlfa() {
     filtroCiudad,
     filtroDepto,
     filtroEstado,
+    filtroAjustadorLider,
     filtroAjustador,
     filtroInspector,
     filtroTomador,
@@ -516,6 +556,8 @@ export default function ReporteSegurosAlfa() {
     filtroDocumento,
     filtroSla,
     soloMisCasos,
+    orden.campo,
+    orden.asc,
   ]);
 
   useEffect(() => {
@@ -525,6 +567,7 @@ export default function ReporteSegurosAlfa() {
       filtroDepto,
       filtroEstado,
       filtroSla,
+      filtroAjustadorLider,
       filtroAjustador,
       filtroInspector,
       filtroTomador,
@@ -545,6 +588,7 @@ export default function ReporteSegurosAlfa() {
     filtroDepto,
     filtroEstado,
     filtroSla,
+    filtroAjustadorLider,
     filtroAjustador,
     filtroInspector,
     filtroTomador,
@@ -566,6 +610,7 @@ export default function ReporteSegurosAlfa() {
     setFiltroDepto('');
     setFiltroEstado('');
     setFiltroSla('');
+    setFiltroAjustadorLider('');
     setFiltroAjustador('');
     setFiltroInspector('');
     setFiltroTomador('');
@@ -630,12 +675,12 @@ export default function ReporteSegurosAlfa() {
   };
 
   const exportarExcel = () => {
-    if (!filtrados.length) {
+    if (!casosOrdenados.length) {
       setAviso({ tipo: 'info', titulo: t('segurosAlfa.report.noData'), mensaje: t('segurosAlfa.report.noDataExport') });
       return;
     }
     try {
-      const rows = filtrados.map(buildExportRow);
+      const rows = casosOrdenados.map(buildExportRow);
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Seguros Alfa');
@@ -684,6 +729,7 @@ export default function ReporteSegurosAlfa() {
       filtroDepto ||
       filtroEstado ||
       filtroSla ||
+      filtroAjustadorLider ||
       filtroAjustador ||
       filtroInspector ||
       filtroTomador ||
@@ -809,20 +855,34 @@ export default function ReporteSegurosAlfa() {
               </SelectFenix>
             </Campo>
             <Campo label={t('segurosAlfa.fields.estado')}>
-              <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
-                <option value="">{t('segurosAlfa.report.all')}</option>
-                {estados.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </SelectFenix>
+              <SelectBuscable
+                options={estados}
+                value={filtroEstado}
+                onChange={(v) => setFiltroEstado(v || '')}
+                placeholder={t('segurosAlfa.report.all')}
+                emptyLabel={t('segurosAlfa.report.all')}
+                searchPlaceholder="Buscar estado…"
+                noResultsText="Sin estados"
+              />
             </Campo>
             <Campo label="SLA 2 días">
               <SelectFenix value={filtroSla} onChange={(e) => setFiltroSla(e.target.value)}>
                 <option value="">Todos</option>
                 <option value="vencido">Vencidos post-inspección</option>
                 <option value="ok">Dentro de plazo</option>
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('segurosAlfa.fields.ajustadorLider')}>
+              <SelectFenix
+                value={filtroAjustadorLider}
+                onChange={(e) => setFiltroAjustadorLider(e.target.value)}
+              >
+                <option value="">{t('segurosAlfa.report.all')}</option>
+                {lideres.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </SelectFenix>
             </Campo>
             <Campo label={t('segurosAlfa.fields.ajustador')}>
@@ -987,17 +1047,22 @@ export default function ReporteSegurosAlfa() {
         ) : null}
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
-          <div className="overflow-x-auto">
+          <div className={expressTableScroll}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                  <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('segurosAlfa.report.actions')}
                   </th>
                   {columnasVisibles.map((col) => (
-                    <th key={col.clave} className="px-4 py-3">
+                    <ThOrdenable
+                      key={col.clave}
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={cambiarOrden}
+                    >
                       {labelColumnaAlfa(t, col)}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>
@@ -1035,7 +1100,7 @@ export default function ReporteSegurosAlfa() {
                       }`}
                     >
                       <td
-                        className={`sticky left-0 z-20 whitespace-nowrap px-4 py-3 ${
+                        className={`sticky left-0 z-10 whitespace-nowrap px-4 py-3 ${
                           resaltado
                             ? 'bg-amber-50/80 dark:bg-amber-950/20'
                             : 'bg-white dark:bg-[#1A1A1A]'

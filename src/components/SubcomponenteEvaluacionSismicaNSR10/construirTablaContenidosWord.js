@@ -108,9 +108,15 @@ export function construirTablaContenidosWord({
                       it.porcentajeDeducible !== '' && it.porcentajeDeducible != null
                         ? `${it.porcentajeDeducible}%`
                         : '',
-                      it.deducibleCalculado
-                        ? `Deducible: ${money(it.deducibleCalculado)}`
-                        : '',
+                      it.deducibleCalculado && !it.deducibleGrupoIncluido
+                        ? `Deducible${
+                            it.deducibleGrupoFilas > 1
+                              ? ` grupo (${it.deducibleGrupoFilas} ítems)`
+                              : ''
+                          }: ${money(it.deducibleCalculado)}`
+                        : it.deducibleGrupoIncluido
+                          ? 'Deducible incluido en el grupo'
+                          : '',
                     ]
                   : []),
               ]

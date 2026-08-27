@@ -139,6 +139,15 @@ export default function FormularioCasoComplex({ initialData, onSave, onAutoSave,
     inspector: '',
     correo: '',
     celular: '',
+    sede: '',
+    direccionPredio: '',
+    tomador: '',
+    numeroCredito: '',
+    fechaInicioPoliza: '',
+    fechaFinPoliza: '',
+    estadoPagoPrimas: '',
+    departamento: '',
+    departamentoCiudad: '',
     asgrBenfcro: '',
     tipoDucumento: '',
     numDocumento: '',
@@ -302,6 +311,8 @@ if (initialData && initialData._id) {
       const normalizados = { ...initialData };
       const equivalencias = {
         ciudadSiniestro: ['ciudadSiniestro', 'ciudad_siniestro'],
+        sede: ['sede', 'sedeRiesgo'],
+        direccionPredio: ['direccionPredio', 'direccion', 'codDireccion'],
         causa_siniestro: ['causa_siniestro', 'causa'],
         fchaUltSegui: ['fchaUltSegui', 'fcha_ult_segui'],
         fchaActSegui: ['fchaActSegui', 'fcha_act_segui'],
@@ -501,9 +512,39 @@ const nuevoFormData = {
           nuevoFormData.inspector = nuevoFormData.inspector || initialData.inspector || '';
           nuevoFormData.correo = nuevoFormData.correo || initialData.correo || '';
           nuevoFormData.celular = nuevoFormData.celular || initialData.celular || '';
-          nuevoFormData.nombIntermediario = nuevoFormData.nombIntermediario || initialData.tomador || '';
+          nuevoFormData.sede =
+            nuevoFormData.sede || initialData.sede || initialData.sedeRiesgo || '';
+          nuevoFormData.direccionPredio =
+            nuevoFormData.direccionPredio ||
+            initialData.direccionPredio ||
+            initialData.direccion ||
+            '';
+          nuevoFormData.tomador = nuevoFormData.tomador || initialData.tomador || '';
+          nuevoFormData.numeroCredito =
+            nuevoFormData.numeroCredito || initialData.numeroCredito || '';
+          nuevoFormData.fechaInicioPoliza =
+            nuevoFormData.fechaInicioPoliza ||
+            formatearFechaParaInput(initialData.fechaInicioPoliza) ||
+            '';
+          nuevoFormData.fechaFinPoliza =
+            nuevoFormData.fechaFinPoliza ||
+            formatearFechaParaInput(initialData.fechaFinPoliza) ||
+            '';
+          nuevoFormData.estadoPagoPrimas =
+            nuevoFormData.estadoPagoPrimas || initialData.estadoPagoPrimas || '';
+          nuevoFormData.nombIntermediario =
+            nuevoFormData.nombIntermediario || initialData.nombIntermediario || '';
           nuevoFormData.ciudadSiniestro = nuevoFormData.ciudadSiniestro || initialData.ciudad || '';
-          nuevoFormData.departamentoCiudad = nuevoFormData.departamentoCiudad || initialData.departamento || '';
+          nuevoFormData.departamento =
+            nuevoFormData.departamento ||
+            initialData.departamento ||
+            initialData.departamentoCiudad ||
+            '';
+          nuevoFormData.departamentoCiudad =
+            nuevoFormData.departamentoCiudad ||
+            initialData.departamento ||
+            initialData.departamentoCiudad ||
+            '';
           nuevoFormData.nombreCliente =
             nuevoFormData.nombreCliente || initialData.nombreCliente || 'SEGUROS GENERALES SURAMERICANA S.A.';
           nuevoFormData.nombreAseguradora =
@@ -621,9 +662,20 @@ if (casoData && casoData._id) {
               normalizados.codiRespnsble = casoData.codiRespnsble || casoData.ajustador || '';
               normalizados.correo = casoData.correo || '';
               normalizados.celular = casoData.celular || '';
-              normalizados.nombIntermediario = casoData.nombIntermediario || casoData.tomador || '';
+              normalizados.sede = casoData.sede || casoData.sedeRiesgo || '';
+              normalizados.direccionPredio =
+                casoData.direccionPredio || casoData.direccion || '';
+              normalizados.tomador = casoData.tomador || '';
+              normalizados.numeroCredito = casoData.numeroCredito || '';
+              normalizados.fechaInicioPoliza = casoData.fechaInicioPoliza || '';
+              normalizados.fechaFinPoliza = casoData.fechaFinPoliza || '';
+              normalizados.estadoPagoPrimas = casoData.estadoPagoPrimas || '';
+              normalizados.nombIntermediario = casoData.nombIntermediario || '';
               normalizados.ciudadSiniestro = casoData.ciudadSiniestro || casoData.ciudad || '';
-              normalizados.departamentoCiudad = casoData.departamentoCiudad || casoData.departamento || '';
+              normalizados.departamento =
+                casoData.departamento || casoData.departamentoCiudad || '';
+              normalizados.departamentoCiudad =
+                casoData.departamentoCiudad || casoData.departamento || '';
               normalizados.fchaSinstro = casoData.fchaSinstro || casoData.fechaSiniestro || '';
               normalizados.fchaInspccion = casoData.fchaInspccion || casoData.fechaInspeccion || '';
               normalizados.vlorResrva = casoData.vlorResrva ?? casoData.reserva;
@@ -633,6 +685,8 @@ if (casoData && casoData._id) {
             // Aplicar las mismas normalizaciones que se hacen con initialData
             const equivalencias = {
               ciudadSiniestro: ['ciudadSiniestro', 'ciudad_siniestro'],
+              sede: ['sede', 'sedeRiesgo'],
+              direccionPredio: ['direccionPredio', 'direccion', 'codDireccion'],
               causa_siniestro: ['causa_siniestro', 'causa'],
               fchaUltSegui: ['fchaUltSegui', 'fcha_ult_segui'],
               fchaActSegui: ['fchaActSegui', 'fcha_act_segui'],
@@ -710,7 +764,13 @@ if (casoData && casoData._id) {
               _id: casoData._id || casoData.id || prev._id, // Asegurar que _id se incluya
               historialDocs: normalizarHistorialDocs(casoData.historialDocs),
               fchaAsgncion: formatearCampoParaInput('fchaAsgncion', casoData.fchaAsgncion),
-              fchaSinstro: formatearFechaParaInput(casoData.fchaSinstro),
+              fchaSinstro: formatearFechaParaInput(casoData.fchaSinstro || casoData.fechaSiniestro),
+              fechaInicioPoliza: formatearFechaParaInput(
+                casoData.fechaInicioPoliza || normalizados.fechaInicioPoliza
+              ),
+              fechaFinPoliza: formatearFechaParaInput(
+                casoData.fechaFinPoliza || normalizados.fechaFinPoliza
+              ),
               fchaInspccion: formatearCampoParaInput('fchaInspccion', casoData.fchaInspccion),
               fchaContIni: formatearCampoParaInput('fchaContIni', casoData.fchaContIni),
               fchaSoliDocu: fchaSoliDocuFormateada,
@@ -942,6 +1002,13 @@ localStorage.removeItem(storageKey);
           descripcionEstado: opcion?.label || prev.descripcionEstado,
         };
       }
+      if (name === 'departamento') {
+        return {
+          ...prev,
+          departamento: nuevoValor,
+          departamentoCiudad: nuevoValor,
+        };
+      }
       return {
         ...prev,
         [name]: nuevoValor
@@ -961,7 +1028,16 @@ localStorage.removeItem(storageKey);
 
   // Handler para selects especiales (ejemplo: ciudad)
   const handleCiudadChange = (selectedOption) => {
-    setFormData(prev => ({ ...prev, ciudadSiniestro: selectedOption?.value || '' }));
+    const ciudad = selectedOption?.value || '';
+    const depto = selectedOption?.departamento || '';
+    setFormData((prev) => ({
+      ...prev,
+      ciudadSiniestro: ciudad,
+      ciudad,
+      nombreCiudad: selectedOption?.label || ciudad,
+      departamento: depto || prev.departamento || '',
+      departamentoCiudad: depto || prev.departamentoCiudad || '',
+    }));
   };
 
   // Handler para aseguradora
@@ -2471,7 +2547,7 @@ return;
 
   useEffect(() => {
     let cancelado = false;
-    const cached = sessionStorage.getItem('ciudades-options');
+    const cached = sessionStorage.getItem('ciudades-options-v2');
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
@@ -2494,13 +2570,23 @@ return;
           const lista = data?.success && Array.isArray(data.data)
             ? data.data
             : Array.isArray(data) ? data : [];
-          const opciones = lista.map(c => ({
-            value: c.descMunicipio || c.label || c.value || c,
-            label: c.descMunicipio || c.label || c.value || c
-          }));
+          const opciones = lista
+            .map((c) => {
+              const municipio = String(
+                c.descMunicipio || c.label || c.nombre || c.value || ''
+              ).trim();
+              const depto = String(c.descDepto || c.departamento || '').trim();
+              if (!municipio) return null;
+              return {
+                value: municipio,
+                label: municipio,
+                departamento: depto,
+              };
+            })
+            .filter(Boolean);
           const ordenadas = ordenarPorLabel(opciones);
           setCiudades(ordenadas);
-          sessionStorage.setItem('ciudades-options', JSON.stringify(ordenadas));
+          sessionStorage.setItem('ciudades-options-v2', JSON.stringify(ordenadas));
         })
         .catch(err => {
           if (!cancelado) {
@@ -2555,12 +2641,20 @@ return;
     if (ciudadEncontrada && formData.ciudadSiniestro !== ciudadEncontrada.value) {
 setFormData(prev => ({
         ...prev,
-        ciudadSiniestro: ciudadEncontrada.value
+        ciudadSiniestro: ciudadEncontrada.value,
+        departamento: prev.departamento || ciudadEncontrada.departamento || '',
+        departamentoCiudad: prev.departamentoCiudad || ciudadEncontrada.departamento || '',
+      }));
+    } else if (ciudadEncontrada?.departamento && esSura && !formData.departamento) {
+      setFormData((prev) => ({
+        ...prev,
+        departamento: ciudadEncontrada.departamento,
+        departamentoCiudad: prev.departamentoCiudad || ciudadEncontrada.departamento,
       }));
     } else if (!ciudadEncontrada && ciudadGuardada) {
       // Si no se encuentra pero hay un valor, mantenerlo (puede ser un valor válido que no está en la lista)
 }
-  }, [ciudades, initialData, formData.ciudadSiniestro]);
+  }, [ciudades, initialData, formData.ciudadSiniestro, formData.departamento, esSura]);
 
   useEffect(() => {
     fetch(`${BASE_URL}/api/responsables`)
@@ -2810,6 +2904,23 @@ setFormData(prev => ({
       inspector: formData.inspector || '',
       correo: formData.correo || '',
       celular: formData.celular || '',
+      ...(esSura
+        ? {
+            sede: formData.sede || '',
+            sedeRiesgo: formData.sede || '',
+            direccionPredio: formData.direccionPredio || '',
+            direccion: formData.direccionPredio || '',
+            tomador: formData.tomador || '',
+            numeroCredito: formData.numeroCredito || '',
+            fechaInicioPoliza: formData.fechaInicioPoliza || '',
+            fechaFinPoliza: formData.fechaFinPoliza || '',
+            estadoPagoPrimas: formData.estadoPagoPrimas || '',
+            ciudad: formData.ciudadSiniestro || formData.ciudad || '',
+            departamento: formData.departamento || formData.departamentoCiudad || '',
+            departamentoCiudad: formData.departamento || formData.departamentoCiudad || '',
+            cobertura: formData.cobertura || formData.causa_siniestro || '',
+          }
+        : {}),
       codiAsgrdra: formData.codiAsgrdra,
       funcAsgrdra: formData.funcAsgrdra,
       funcAsgrdraNombre: formData.funcAsgrdraNombre || '',

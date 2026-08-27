@@ -7,6 +7,7 @@ import {
   calcularResumenTotalesNsr10,
   calcularTotalesPresupuesto,
   parseMontoNsr10,
+  valoresAsegurablesDesdeFormData,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
@@ -61,8 +62,9 @@ export function sincronizarPresupuestoNsr10AlInforme(formData = {}, { forzar = f
   const evalData = formData.evaluacionSismicaNSR10 || {};
   const presupuestoNsr = evalData.presupuesto || {};
   const filas = Array.isArray(presupuestoNsr.items) ? presupuestoNsr.items : [];
-  const totales = calcularTotalesPresupuesto(presupuestoNsr);
-  const resumen = calcularResumenTotalesNsr10(evalData);
+  const valoresAsegurablesCaso = valoresAsegurablesDesdeFormData(formData);
+  const totales = calcularTotalesPresupuesto(presupuestoNsr, valoresAsegurablesCaso);
+  const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const items = mapearItemsNsr10APresupuestoInforme(filas);
 
   if (!forzar && !items.length && !(resumen.sumaCompleta > 0)) {

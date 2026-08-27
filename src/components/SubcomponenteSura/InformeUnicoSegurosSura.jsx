@@ -606,7 +606,7 @@ export default function InformeUnicoSegurosSura({
           </div>
           <div>
             <dt className="text-gray-500">{t('segurosSura.fields.numeroPoliza')}</dt>
-            <dd className="font-medium">{casoSura?.numeroPoliza || '—'}</dd>
+            <dd className="font-medium">{casoSura?.numeroPoliza || casoSura?.nmroPolza || '—'}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('segurosSura.fields.fechaInicioPoliza')}</dt>
@@ -622,7 +622,7 @@ export default function InformeUnicoSegurosSura({
           </div>
           <div>
             <dt className="text-gray-500">{t('segurosSura.fields.cobertura')}</dt>
-            <dd className="font-medium">{casoSura?.cobertura || '—'}</dd>
+            <dd className="font-medium">{casoSura?.cobertura || casoSura?.causa_siniestro || '—'}</dd>
           </div>
           <div>
             <dt className="text-gray-500">{t('segurosSura.fields.estadoPagoPrimas')}</dt>
@@ -637,8 +637,12 @@ export default function InformeUnicoSegurosSura({
               {t('segurosSura.fields.ciudad')} / {t('segurosSura.fields.departamento')}
             </dt>
             <dd className="font-medium">
-              {casoSura?.ciudad || '—'} / {casoSura?.departamento || '—'}
+              {casoSura?.ciudad || casoSura?.ciudadSiniestro || '—'} / {casoSura?.departamento || casoSura?.departamentoCiudad || '—'}
             </dd>
+          </div>
+          <div>
+            <dt className="text-gray-500">{t('segurosSura.fields.sede')}</dt>
+            <dd className="font-medium">{casoSura?.sede || casoSura?.sedeRiesgo || '—'}</dd>
           </div>
         </dl>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">

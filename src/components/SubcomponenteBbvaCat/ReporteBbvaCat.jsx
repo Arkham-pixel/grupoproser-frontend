@@ -33,6 +33,7 @@ import {
   expressPageTitle,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
@@ -42,7 +43,9 @@ import {
   ExpressModal,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -68,6 +71,7 @@ const COLUMNAS = [
   { clave: 'tipoIdentificacion', labelKey: 'tipoIdentificacion' },
   { clave: 'identificacion', labelKey: 'identificacion' },
   { clave: 'tomador', labelKey: 'tomador' },
+  { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
   { clave: 'ajustador', labelKey: 'ajustador' },
   { clave: 'numeroPoliza', labelKey: 'numeroPoliza' },
   { clave: 'tipoPoliza', labelKey: 'tipoPoliza' },
@@ -167,6 +171,7 @@ const buildExportRow = (caso) => ({
   'TIPO IDENTIFICACIÓN': caso.tipoIdentificacion ?? '',
   IDENTIFICACIÓN: caso.identificacion ?? '',
   TOMADOR: caso.tomador ?? '',
+  'AJUSTADOR LÍDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
   'N° PÓLIZA': caso.numeroPoliza ?? '',
   'TIPO PÓLIZA': caso.tipoPoliza ?? '',
@@ -240,6 +245,7 @@ export default function ReporteBbvaCat() {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
+  const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
   const [aviso, setAviso] = useState(null);
@@ -311,6 +317,7 @@ export default function ReporteBbvaCat() {
         c.identificacion,
         c.asegurado,
         c.tomador,
+        c.ajustadorLider,
         c.ajustador,
         c.numeroPoliza,
         c.tipoPoliza,
@@ -342,10 +349,15 @@ export default function ReporteBbvaCat() {
     idsBloqueSeleccionado,
   ]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / BBVA_CAT_REPORTE_PAGE_SIZE));
+  const casosOrdenados = useMemo(
+    () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
+    [filtrados, orden]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(casosOrdenados.length / BBVA_CAT_REPORTE_PAGE_SIZE));
   const paginaActual = Math.min(pagina, totalPaginas);
   const desde = (paginaActual - 1) * BBVA_CAT_REPORTE_PAGE_SIZE;
-  const paginaItems = filtrados.slice(desde, desde + BBVA_CAT_REPORTE_PAGE_SIZE);
+  const paginaItems = casosOrdenados.slice(desde, desde + BBVA_CAT_REPORTE_PAGE_SIZE);
 
   useEffect(() => {
     setPagina(1);
@@ -358,6 +370,8 @@ export default function ReporteBbvaCat() {
     fechaInicio,
     fechaFin,
     idsBloqueSeleccionado,
+    orden.campo,
+    orden.asc,
   ]);
 
   const limpiarFiltros = () => {
@@ -384,12 +398,12 @@ export default function ReporteBbvaCat() {
   };
 
   const exportarExcel = () => {
-    if (!filtrados.length) {
+    if (!casosOrdenados.length) {
       setAviso({ tipo: 'info', titulo: t('bbvaCat.report.noData'), mensaje: t('bbvaCat.report.noDataExport') });
       return;
     }
     try {
-      const rows = filtrados.map(buildExportRow);
+      const rows = casosOrdenados.map(buildExportRow);
       const ws = XLSX.utils.json_to_sheet(rows);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'BBVA CAT');
@@ -564,21 +578,26 @@ export default function ReporteBbvaCat() {
         />
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
-          <div className="overflow-x-auto">
+          <div className={expressTableScroll}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                  <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('bbvaCat.report.actions')}
                   </th>
                   {COLUMNAS.map((col) => (
-                    <th key={col.clave} className="px-4 py-3">
+                    <ThOrdenable
+                      key={col.clave}
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={cambiarOrden}
+                    >
                       {col.clave === 'docs'
                         ? t('bbvaCat.report.docs')
                         : col.clave === 'consecutivo'
                           ? t('bbvaCat.report.consecutivo')
                           : t(`bbvaCat.fields.${col.labelKey}`)}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>
@@ -618,7 +637,7 @@ export default function ReporteBbvaCat() {
                       }`}
                     >
                       <td
-                        className={`sticky left-0 z-20 whitespace-nowrap px-4 py-3 ${
+                        className={`sticky left-0 z-10 whitespace-nowrap px-4 py-3 ${
                           resaltado
                             ? 'bg-amber-50/80 dark:bg-amber-950/20'
                             : 'bg-white dark:bg-[#1A1A1A]'

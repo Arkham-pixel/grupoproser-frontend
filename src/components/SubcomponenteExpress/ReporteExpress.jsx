@@ -33,6 +33,7 @@ import {
   expressBtnSuccess,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from './expressFenixUi.js';
 import {
@@ -43,8 +44,10 @@ import {
   ExpressPageHeader,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from './ExpressUiBlocks.jsx';
 import { FilterSheet, ResponsiveDataList } from '../responsive';
+import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
 
 const formatDateForExcel = (value) => convertirFechaParaExcelDate(value);
 const expressReportRoot = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
@@ -205,6 +208,11 @@ const ReporteExpress = () => {
   const [fechaFin, setFechaFin] = useState(filtrosIniciales.fechaFin);
   const [catalogoAmparos, setCatalogoAmparos] = useState([]);
   const [paginaActual, setPaginaActual] = useState(filtrosIniciales.paginaActual);
+  const { orden, cambiarOrden } = useOrdenTabla();
+  const onOrdenar = (campo) => {
+    cambiarOrden(campo);
+    setPaginaActual(1);
+  };
   const [filtrosSheetOpen, setFiltrosSheetOpen] = useState(false);
   const [confirmEliminar, setConfirmEliminar] = useState({ open: false, registro: null });
   const [eliminando, setEliminando] = useState(false);
@@ -516,10 +524,15 @@ const ReporteExpress = () => {
     }
   }, [paginaActual, totalPaginas]);
 
+  const casosOrdenados = useMemo(
+    () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
+    [filtrados, orden]
+  );
+
   const filtradosPagina = useMemo(() => {
     const inicio = (paginaActual - 1) * EXPRESS_REPORTE_PAGE_SIZE;
-    return filtrados.slice(inicio, inicio + EXPRESS_REPORTE_PAGE_SIZE);
-  }, [filtrados, paginaActual]);
+    return casosOrdenados.slice(inicio, inicio + EXPRESS_REPORTE_PAGE_SIZE);
+  }, [casosOrdenados, paginaActual]);
 
   const indiceDesde =
     filtrados.length === 0 ? 0 : (paginaActual - 1) * EXPRESS_REPORTE_PAGE_SIZE + 1;
@@ -532,7 +545,7 @@ const ReporteExpress = () => {
     }
 
     try {
-      const rows = filtrados.map((item) =>
+      const rows = casosOrdenados.map((item) =>
         buildExportRow(item, {
           getNombreResponsable: obtenerNombreResponsable,
           getNombreAseguradora: obtenerNombreAseguradora,
@@ -820,17 +833,22 @@ const ReporteExpress = () => {
                 : error || t('express.report.noClaims')
             }
             table={
-            <div className="overflow-x-auto">
+            <div className={expressTableScroll}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
-                  <th scope="col" className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                  <th scope="col" className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('express.menu.actions')}
                   </th>
                   {columnasVisibles.map((col) => (
-                    <th key={col.clave} scope="col" className="px-4 py-3">
+                    <ThOrdenable
+                      key={col.clave}
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={onOrdenar}
+                    >
                       {col.label}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>
@@ -868,7 +886,7 @@ const ReporteExpress = () => {
                       key={item._id ?? `${item.numeroSiniestro}-${item.consecutivo}`}
                       className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30"
                     >
-                      <td className="sticky left-0 z-20 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                      <td className="sticky left-0 z-10 overflow-visible whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesExpressMenu
                           onGestionar={() => abrirModalEdicion(item)}
                           onLiquidador={() =>

@@ -29,6 +29,7 @@ import {
   expressPageTitle,
   expressScope,
   expressTableHead,
+  expressTableScroll,
   expressTableWrap,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
@@ -38,7 +39,9 @@ import {
   ExpressModal,
   InputFenix,
   SelectFenix,
+  ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
+import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -133,6 +136,7 @@ export default function ReportePrevisoraListado() {
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
+  const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [aviso, setAviso] = useState(null);
   const [modalImportOpen, setModalImportOpen] = useState(false);
@@ -197,14 +201,19 @@ export default function ReportePrevisoraListado() {
     });
   }, [casos, busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin]);
 
-  const totalPaginas = Math.max(1, Math.ceil(filtrados.length / PREVISORA_REPORTE_PAGE_SIZE));
+  const casosOrdenados = useMemo(
+    () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
+    [filtrados, orden]
+  );
+
+  const totalPaginas = Math.max(1, Math.ceil(casosOrdenados.length / PREVISORA_REPORTE_PAGE_SIZE));
   const paginaActual = Math.min(pagina, totalPaginas);
   const desde = (paginaActual - 1) * PREVISORA_REPORTE_PAGE_SIZE;
-  const paginaItems = filtrados.slice(desde, desde + PREVISORA_REPORTE_PAGE_SIZE);
+  const paginaItems = casosOrdenados.slice(desde, desde + PREVISORA_REPORTE_PAGE_SIZE);
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -238,7 +247,7 @@ export default function ReportePrevisoraListado() {
   };
 
   const exportarExcel = () => {
-    if (!filtrados.length) {
+    if (!casosOrdenados.length) {
       setAviso({
         tipo: 'error',
         titulo: t('previsora.report.noData'),
@@ -247,7 +256,7 @@ export default function ReportePrevisoraListado() {
       return;
     }
     const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(filtrados.map(buildExportRow));
+    const ws = XLSX.utils.json_to_sheet(casosOrdenados.map(buildExportRow));
     XLSX.utils.book_append_sheet(wb, ws, 'Listado Previsora');
     XLSX.writeFile(wb, `previsora-listado-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
@@ -398,19 +407,24 @@ export default function ReportePrevisoraListado() {
         </ExpressFilterSection>
 
         <div className={`${expressTableWrap} w-full min-w-0`}>
-          <div className="overflow-x-auto">
+          <div className={expressTableScroll}>
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
               <thead className={expressTableHead}>
                 <tr>
-                  <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 dark:bg-gray-900/50">
+                  <th className="sticky left-0 top-0 z-30 bg-gray-50 px-4 py-3 dark:bg-gray-900">
                     {t('previsora.report.actions')}
                   </th>
                   {COLUMNAS.map((col) => (
-                    <th key={col.clave} className="px-4 py-3">
+                    <ThOrdenable
+                      key={col.clave}
+                      campo={col.clave}
+                      orden={orden}
+                      onOrdenar={cambiarOrden}
+                    >
                       {col.clave === 'consecutivo'
                         ? t('previsora.report.consecutivo')
                         : t(`previsora.fields.${col.labelKey}`)}
-                    </th>
+                    </ThOrdenable>
                   ))}
                 </tr>
               </thead>
@@ -436,7 +450,7 @@ export default function ReportePrevisoraListado() {
                 ) : (
                   paginaItems.map((item) => (
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
-                      <td className="sticky left-0 z-20 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
+                      <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesPrevisoraMenu
                           tieneLiquidador={!!item.liquidador}
                           tieneInforme={!!item.informeUnico}

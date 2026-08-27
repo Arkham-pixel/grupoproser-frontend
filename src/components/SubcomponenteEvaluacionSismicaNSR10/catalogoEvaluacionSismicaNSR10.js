@@ -138,10 +138,11 @@ export const REGLAS_DEDUCIBLE_POR_COBERTURA = {
   },
 };
 
-/** Deducible general (SMMLV / % sobre la pérdida) vs por artículo/ítem de cobertura. */
+/** Ambas vías quedan activas; se aplica el mayor. Los valores viejos se leen por compat. */
 export const MODO_DEDUCIBLE_NSR10 = {
   GENERAL: 'general',
   POR_ARTICULO: 'por_articulo',
+  AMBOS: 'ambos',
 };
 
 /**
@@ -175,32 +176,49 @@ export function aplicarRecargosEnEvaluacionNsr10(
   return next;
 }
 
-export function resolverModoDeducibleNsr(liquidacion = {}, resumen = {}) {
-  const modo = String(liquidacion?.modoDeducibleNsr || '').trim();
-  if (modo === MODO_DEDUCIBLE_NSR10.POR_ARTICULO) return MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
-  if (modo === MODO_DEDUCIBLE_NSR10.GENERAL) return MODO_DEDUCIBLE_NSR10.GENERAL;
-  if (resumen.usaDeduciblePorArticulo || resumen.usaDeduciblePorArticuloPresupuesto) {
-    return MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
-  }
+export function resolverModoDeducibleNsr() {
+  return MODO_DEDUCIBLE_NSR10.AMBOS;
+}
+
+/** Presupuesto: el usuario elige metodología. Contenidos siempre va por artículo. */
+export function resolverModoDeduciblePresupuesto(liquidacion = {}, resumen = {}) {
+  const raw = String(liquidacion?.modoDeduciblePresupuesto || '').trim();
+  if (raw === MODO_DEDUCIBLE_NSR10.GENERAL) return MODO_DEDUCIBLE_NSR10.GENERAL;
+  if (raw === MODO_DEDUCIBLE_NSR10.POR_ARTICULO) return MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+  if (resumen?.usaDeduciblePorArticuloPresupuesto) return MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
   return MODO_DEDUCIBLE_NSR10.GENERAL;
 }
 
-export function esModoDeduciblePorArticuloNsr(liquidacion = {}, resumen = {}) {
-  return resolverModoDeducibleNsr(liquidacion, resumen) === MODO_DEDUCIBLE_NSR10.POR_ARTICULO;
+export function esModoDeduciblePorArticuloPresupuesto(liquidacion = {}, resumen = {}) {
+  return (
+    resolverModoDeduciblePresupuesto(liquidacion, resumen) ===
+    MODO_DEDUCIBLE_NSR10.POR_ARTICULO
+  );
 }
 
-/** Args del diagrama: solo si el caso eligió deducible por artículo. */
+/** Columnas y suma por ítem siempre disponibles en contenidos. */
+export function esModoDeduciblePorArticuloNsr() {
+  return true;
+}
+
+/** Si hay cálculo por artículo, no se mezcla el SMMLV/% general: solo se suma esa vía. */
 export function argsDeduciblesPorArticuloDiagrama(liquidacion = {}, resumen = {}) {
-  if (!esModoDeduciblePorArticuloNsr(liquidacion, resumen)) {
-    return {
-      deducibleContenidosPorArticulos: null,
-      deduciblePresupuestoPorArticulos: null,
-    };
-  }
+  const usaPresPorArticulo = esModoDeduciblePorArticuloPresupuesto(liquidacion, resumen);
   return {
     deducibleContenidosPorArticulos:
       resumen.deduciblePorArticulosContenidos ?? resumen.deduciblePorArticulos ?? 0,
-    deduciblePresupuestoPorArticulos: resumen.deduciblePorArticulosPresupuesto ?? 0,
+    deduciblePresupuestoPorArticulos: usaPresPorArticulo
+      ? resumen.deduciblePorArticulosPresupuesto ?? 0
+      : 0,
+    usaDeduciblePorArticuloContenidos: Boolean(resumen.usaDeduciblePorArticulo),
+    usaDeduciblePorArticuloPresupuesto: usaPresPorArticulo,
+    contenidosNetoPorArticulo: resumen.contenidos?.valorAIndemnizar,
+    presupuestoNetoPorArticulo: usaPresPorArticulo
+      ? resumen.presupuesto?.valorAIndemnizar != null &&
+        resumen.presupuesto?.valorAIndemnizar !== ''
+        ? resumen.presupuesto.valorAIndemnizar
+        : resumen.totalPresupuesto
+      : null,
   };
 }
 
@@ -661,6 +679,7 @@ export function crearFilaPresupuestoVacia() {
     cantidadMinimoSMMLV: '',
     valorMinimo: '',
     deducibleCalculado: '',
+    deducibleManual: false,
   };
 }
 
@@ -700,11 +719,13 @@ export function crearFilaContenidoVacia(extras = {}) {
     observacion: '',
     coberturaAfectar: extras.coberturaAfectar || '',
     tipoCobertura: extras.tipoCobertura || extras.coberturaAfectar || '',
+    articuloPolizaId: extras.articuloPolizaId || '',
     valorAsegurable: extras.valorAsegurable ?? '',
     porcentajeDeducible: extras.porcentajeDeducible ?? '',
     cantidadMinimoSMMLV: extras.cantidadMinimoSMMLV ?? '',
     valorMinimo: extras.valorMinimo ?? '',
     deducibleCalculado: extras.deducibleCalculado ?? '',
+    deducibleManual: extras.deducibleManual ?? false,
     ...extras,
   };
 }
@@ -731,17 +752,239 @@ export function etiquetaCoberturaArticulo(valor) {
   return COBERTURAS_ARTICULO_ASEGURADO.find((c) => c.id === id)?.label || String(valor || '').trim();
 }
 
+export const GRUPO_DEDUCIBLE_EDIFICIO = 'poliza_edificio';
+export const GRUPO_DEDUCIBLE_CONTENIDOS = 'poliza_contenidos';
+
+export function etiquetaGrupoDeducible(id) {
+  const hit = ARTICULOS_ASEGURADOS_POLIZA.find((a) => a.id === id);
+  if (hit) return hit.articulo;
+  if (id === 'edificio') return 'Edificio';
+  if (id === 'contenidos') return 'Contenidos';
+  return 'Grupo';
+}
+
+/** Artículo de póliza de la fila (independiente del ítem de catálogo). */
+export function resolverArticuloPolizaId(row = {}) {
+  const explicit = String(row.articuloPolizaId || '').trim();
+  if (explicit) return explicit;
+  const cat = String(row.catalogoId || '').trim();
+  if (cat.startsWith('poliza_')) return cat;
+  const hit = ARTICULOS_ASEGURADOS_POLIZA.find(
+    (a) => a.id === cat || a.articulo === row.articulo
+  );
+  return hit?.id || '';
+}
+
+/**
+ * Cada artículo de póliza (Contenidos, Mercancías, Edificio…) es un grupo aparte.
+ * Los ítems de catálogo de esa misma categoría se suman y el deducible va una vez.
+ */
+export function resolverGrupoDeducibleId(row = {}, grupoDefault = GRUPO_DEDUCIBLE_CONTENIDOS) {
+  const artId = resolverArticuloPolizaId(row);
+  if (artId) return artId;
+  if (grupoDefault === 'edificio' || grupoDefault === GRUPO_DEDUCIBLE_EDIFICIO) {
+    return GRUPO_DEDUCIBLE_EDIFICIO;
+  }
+  if (grupoDefault === 'contenidos' || grupoDefault === GRUPO_DEDUCIBLE_CONTENIDOS) {
+    return GRUPO_DEDUCIBLE_CONTENIDOS;
+  }
+  return grupoDefault || GRUPO_DEDUCIBLE_CONTENIDOS;
+}
+
+function parseValorAsegurableCaso(valor) {
+  if (valor == null || valor === '') return 0;
+  if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
+  return parseMontoNsr10(valor) || 0;
+}
+
+/** Campos de póliza para el liquidador NSR (inmueble vs contenidos). */
+export function camposValorAseguradoParaNsr(caso = {}, encabezado = {}) {
+  const c = caso && typeof caso === 'object' ? caso : {};
+  const enc = encabezado && typeof encabezado === 'object' ? encabezado : {};
+  return {
+    valorAseguradoInmueble:
+      enc.valorAseguradoInmueble ?? c.valorAseguradoInmueble ?? '',
+    valorAseguradoContenidos:
+      enc.valorAseguradoContenidos ?? c.valorAseguradoContenidos ?? '',
+  };
+}
+
+/** Valor asegurado de la póliza/caso: inmueble vs contenidos. */
+export function valoresAsegurablesDesdeFormData(formData = {}) {
+  const fd = formData && typeof formData === 'object' ? formData : {};
+  const enc = fd.encabezado && typeof fd.encabezado === 'object' ? fd.encabezado : {};
+  const liq = fd.liquidacionCatastrofico && typeof fd.liquidacionCatastrofico === 'object'
+    ? fd.liquidacionCatastrofico
+    : {};
+  const inmuebleExplicito = parseValorAsegurableCaso(
+    fd.valorAseguradoInmueble ?? enc.valorAseguradoInmueble
+  );
+  const contenidos = parseValorAsegurableCaso(
+    fd.valorAseguradoContenidos ?? enc.valorAseguradoContenidos
+  );
+  const general = parseValorAsegurableCaso(liq.valorAsegurado);
+  const inmueble = inmuebleExplicito || general;
+  return { inmueble, contenidos, general, inmuebleExplicito };
+}
+
+export function valoresAsegurablesDesdeLiquidador(liquidador = {}) {
+  const liq = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  return valoresAsegurablesDesdeFormData({
+    valorAseguradoInmueble: liq.encabezado?.valorAseguradoInmueble,
+    valorAseguradoContenidos: liq.encabezado?.valorAseguradoContenidos,
+    liquidacionCatastrofico: liq.liquidacionCatastrofico,
+  });
+}
+
+export function valorAsegurablePlataformaDeGrupo(grupoId, valores = {}) {
+  const id = String(grupoId || '');
+  const esEdificio =
+    id === GRUPO_DEDUCIBLE_EDIFICIO || id === 'edificio' || id === 'poliza_edificio';
+  const inmueble = Number(valores.inmueble) || 0;
+  const contenidos = Number(valores.contenidos) || 0;
+  const general = Number(valores.general) || 0;
+  const inmuebleExplicito = Number(valores.inmuebleExplicito) || 0;
+  if (esEdificio) return inmueble || general || 0;
+  if (contenidos > 0) return contenidos;
+  // Formulario CAT genérico: un solo VA de liquidación, sin campos inmueble/contenidos.
+  if (!inmuebleExplicito && general > 0) return general;
+  return 0;
+}
+
+export function claveGrupoDeducible(row = {}, grupoDefault = GRUPO_DEDUCIBLE_CONTENIDOS) {
+  const cob = normalizarIdCobertura(row.coberturaAfectar || row.tipoCobertura || '');
+  if (!cob) return '';
+  return `${resolverGrupoDeducibleId(row, grupoDefault)}::${cob}`;
+}
+
+export function montosDeducibleGrupo(filas = [], { valorAsegurablePlataforma = 0 } = {}) {
+  let vaCategoria = 0;
+  let sumaPL = 0;
+  let porcentaje = 0;
+  let cantidadSMMLV = 0;
+  let valorMinimo = 0;
+  const lista = Array.isArray(filas) ? filas : [];
+  const vaPrimera = lista.length ? parseMontoNsr10(lista[0].valorAsegurable) : null;
+  if (vaPrimera != null && vaPrimera > 0) vaCategoria = vaPrimera;
+  for (const row of lista) {
+    const pl = totalFilaContenido(row);
+    if (pl != null && pl > 0) sumaPL += pl;
+    const pct = Number(row.porcentajeDeducible);
+    if (Number.isFinite(pct) && pct > 0) porcentaje = pct;
+    const cant = Number(row.cantidadMinimoSMMLV);
+    if (Number.isFinite(cant) && cant > 0) cantidadSMMLV = cant;
+    const vmin = parseMontoNsr10(row.valorMinimo);
+    if (vmin != null && vmin > 0) valorMinimo = vmin;
+  }
+  const vaPlataforma = Number(valorAsegurablePlataforma) || 0;
+  const sumaVA = vaCategoria > 0 ? vaCategoria : vaPlataforma;
+  const porVA = sumaVA > 0 && porcentaje > 0 ? sumaVA * (porcentaje / 100) : 0;
+  const porPL = sumaPL > 0 && porcentaje > 0 ? sumaPL * (porcentaje / 100) : 0;
+  const montoPct = Math.max(porVA, porPL);
+  const aplicado = Math.round(Math.max(montoPct, valorMinimo || 0) * 100) / 100;
+  const sumaPLR = Math.round(sumaPL * 100) / 100;
+  const neto = Math.round(Math.max(0, sumaPLR - aplicado) * 100) / 100;
+  return {
+    sumaVA: Math.round(sumaVA * 100) / 100,
+    sumaPL: sumaPLR,
+    vaDesdePlataforma: vaCategoria <= 0 && vaPlataforma > 0,
+    porcentaje,
+    cantidadSMMLV,
+    valorMinimo,
+    montoPct: Math.round(montoPct * 100) / 100,
+    aplicado,
+    neto,
+  };
+}
+
+/** Suma (pérdida − deducible) de cada categoría. Si no hay grupos, null. */
+export function valorAIndemnizarDesdeGrupos(grupos = []) {
+  if (!Array.isArray(grupos) || !grupos.length) return null;
+  const suma = grupos.reduce((acc, g) => {
+    const pl = Number(g.sumaPL) || 0;
+    const d = Number(g.deducible ?? g.aplicado) || 0;
+    const neto =
+      g.neto != null && g.neto !== ''
+        ? Number(g.neto)
+        : Math.max(0, pl - d);
+    return acc + (Number.isFinite(neto) ? neto : 0);
+  }, 0);
+  return Math.round(suma * 100) / 100;
+}
+
+/** Usa el neto de la ventana (grupos) o, si no hay, el total bruto. */
+export function resolverValorAIndemnizar(valorAIndemnizar, totalBruto) {
+  if (valorAIndemnizar != null && valorAIndemnizar !== '') {
+    const n = Number(valorAIndemnizar);
+    if (Number.isFinite(n)) return Math.round(n * 100) / 100;
+  }
+  return Math.round((Number(totalBruto) || 0) * 100) / 100;
+}
+
+export function calcularGruposDeducibleDeItems(
+  items = [],
+  {
+    grupoDefault = GRUPO_DEDUCIBLE_CONTENIDOS,
+    tipo = 'contenidos',
+    valoresAsegurablesCaso = null,
+  } = {}
+) {
+  const buckets = new Map();
+  (Array.isArray(items) ? items : []).forEach((row) => {
+    const lista =
+      tipo === 'presupuesto'
+        ? filaPresupuestoListaParaDeducible(row)
+        : filaContenidoListaParaDeducible(row, valoresAsegurablesCaso, grupoDefault);
+    const cob = String(row.coberturaAfectar || row.tipoCobertura || '').trim();
+    if (!lista || !cob) return;
+    const clave = claveGrupoDeducible(row, grupoDefault);
+    if (!clave) return;
+    if (!buckets.has(clave)) buckets.set(clave, []);
+    buckets.get(clave).push(row);
+  });
+  return [...buckets.entries()].map(([clave, filas]) => {
+    const [grupoId, cobId] = String(clave).split('::');
+    const vaPlat = valorAsegurablePlataformaDeGrupo(grupoId, valoresAsegurablesCaso || {});
+    const montos = montosDeducibleGrupo(filas, { valorAsegurablePlataforma: vaPlat });
+    return {
+      clave,
+      grupoId,
+      grupoLabel: etiquetaGrupoDeducible(grupoId),
+      coberturaId: cobId,
+      coberturaLabel: etiquetaCoberturaArticulo(cobId),
+      filas: filas.length,
+      ...montos,
+      deducible: montos.aplicado,
+      total: montos.neto,
+    };
+  });
+}
+
 export function reglaDeduciblePorCobertura(cobertura) {
   const id = normalizarIdCobertura(cobertura);
   return REGLAS_DEDUCIBLE_POR_COBERTURA[id] || null;
 }
 
-/** Fila con artículo real y valor asegurable: ahí sí se hereda cobertura y se calcula. */
-export function filaContenidoListaParaDeducible(row = {}) {
+/** Fila con artículo o catálogo: ya puede elegir cobertura y deducible. */
+export function filaContenidoListaParaDeducible(
+  row = {},
+  valoresAsegurablesCaso = null,
+  grupoDefault = GRUPO_DEDUCIBLE_CONTENIDOS
+) {
   const articulo = String(row.articulo || '').trim();
   const catalogoId = String(row.catalogoId || '').trim();
+  const artPoliza = String(row.articuloPolizaId || '').trim();
+  const cob = String(row.coberturaAfectar || row.tipoCobertura || '').trim();
   const va = parseMontoNsr10(row.valorAsegurable);
-  return Boolean(articulo || catalogoId) && va != null && va > 0;
+  const pl = totalFilaContenido(row);
+  const vaPlat = valorAsegurablePlataformaDeGrupo(
+    resolverGrupoDeducibleId(row, grupoDefault),
+    valoresAsegurablesCaso || {}
+  );
+  const tieneBase =
+    (va != null && va > 0) || (pl != null && pl > 0) || vaPlat > 0;
+  const tieneIdentidad = Boolean(articulo || catalogoId || artPoliza);
+  return tieneIdentidad || Boolean(cob) || tieneBase;
 }
 
 export function filaContenidoTieneDeducibleArticulo(row = {}) {
@@ -753,28 +996,12 @@ export function filaContenidoTieneDeducibleArticulo(row = {}) {
 
 /**
  * Recalcula % / mínimo / deducible de una fila según la cobertura.
- * Terremoto: MAX(base × 3%, 3 SMMLV).
- * Filas vacías no muestran ni heredan cifras financieras.
- * opts.lista / opts.baseValor: presupuesto usa total de fila si no hay valor asegurable.
+ * Terremoto: MAX(base × 3%, 3 SMMLV). El deducible no es editable.
+ * opts.baseValor: presupuesto usa total de fila si no hay suma asegurada.
  */
 export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}) {
-  const lista =
-    opts.lista != null ? Boolean(opts.lista) : filaContenidoListaParaDeducible(row);
-  if (!lista) {
-    return {
-      ...row,
-      coberturaAfectar: '',
-      tipoCobertura: '',
-      porcentajeDeducible: '',
-      cantidadMinimoSMMLV: '',
-      valorMinimo: '',
-      deducibleCalculado: '',
-    };
-  }
-
   const cobertura = row.coberturaAfectar || row.tipoCobertura || '';
   const idCob = normalizarIdCobertura(cobertura);
-  const regla = reglaDeduciblePorCobertura(idCob);
   const etiqueta = etiquetaCoberturaArticulo(cobertura);
   const next = {
     ...row,
@@ -783,12 +1010,7 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}
   };
 
   if (!idCob) {
-    return {
-      ...next,
-      porcentajeDeducible: next.porcentajeDeducible ?? '',
-      valorMinimo: next.valorMinimo ?? '',
-      deducibleCalculado: next.deducibleCalculado ?? '',
-    };
+    return next;
   }
 
   const anioRef = Number(smmlvCfg.anioSMMLV) || new Date().getFullYear();
@@ -797,6 +1019,16 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}
     parseMontoNsr10(smmlvCfg.valorSMMLV) ||
     smmlv.valor ||
     SMMLV_DEFAULT;
+  const regla = reglaDeduciblePorCobertura(idCob);
+
+  if (regla) {
+    const cantidadSMMLV = Number(regla.cantidadSMMLV) || 0;
+    const porcentaje = Number(regla.porcentaje) || 0;
+    next.porcentajeDeducible = porcentaje;
+    next.cantidadMinimoSMMLV = cantidadSMMLV;
+    next.valorMinimo = Math.round(cantidadSMMLV * valorSMMLV * 100) / 100;
+  }
+
   const vaExpl = parseMontoNsr10(next.valorAsegurable);
   const va =
     vaExpl != null && vaExpl > 0
@@ -806,31 +1038,18 @@ export function aplicarDeducibleCoberturaFila(row = {}, smmlvCfg = {}, opts = {}
         : 0;
 
   if (regla) {
-    const cantidadSMMLV = Number(regla.cantidadSMMLV) || 0;
-    const porcentaje = Number(regla.porcentaje) || 0;
-    const valorMinimo = Math.round(cantidadSMMLV * valorSMMLV * 100) / 100;
-    next.porcentajeDeducible = porcentaje;
-    next.cantidadMinimoSMMLV = cantidadSMMLV;
-    next.valorMinimo = valorMinimo;
-    if (va <= 0) {
-      next.deducibleCalculado = '';
-      return next;
-    }
-    const porPct = va * (porcentaje / 100);
-    next.deducibleCalculado = Math.round(Math.max(porPct, valorMinimo) * 100) / 100;
+    if (va <= 0) return next;
+    const porPct = va * (Number(next.porcentajeDeducible) / 100);
+    next.deducibleCalculado = Math.round(Math.max(porPct, next.valorMinimo || 0) * 100) / 100;
     return next;
   }
 
   const porcentaje = Number(next.porcentajeDeducible);
   const valorMinimo = parseMontoNsr10(next.valorMinimo) || 0;
   if ((!Number.isFinite(porcentaje) || porcentaje <= 0) && valorMinimo <= 0) {
-    next.deducibleCalculado = '';
     return next;
   }
-  if (va == null || va <= 0) {
-    next.deducibleCalculado = '';
-    return next;
-  }
+  if (va == null || va <= 0) return next;
   const porPct = va * ((Number.isFinite(porcentaje) ? porcentaje : 0) / 100);
   next.deducibleCalculado = Math.round(Math.max(porPct, valorMinimo) * 100) / 100;
   return next;
@@ -860,8 +1079,9 @@ export function filaPresupuestoListaParaDeducible(row = {}) {
   const ident = String(
     row.actividad || row.capitulo || row.catalogoId || row.componente || ''
   ).trim();
+  const cob = String(row.coberturaAfectar || row.tipoCobertura || '').trim();
   const base = baseValorDeduciblePresupuesto(row);
-  return Boolean(ident) && base != null && base > 0;
+  return Boolean(ident) || Boolean(cob) || (base != null && base > 0);
 }
 
 export function filaPresupuestoTieneDeducibleArticulo(row = {}) {
@@ -888,44 +1108,138 @@ export function prepararFilaDeduciblePresupuesto(
   });
 }
 
-export function calcularTotalesContenidos(contenidos = {}) {
+/**
+ * Agrupa filas por artículo de póliza + cobertura, suma V.A. y pérdida,
+ * y aplica un solo deducible al total del grupo (no uno por fila).
+ */
+export function aplicarDeduciblesAgrupados(items = [], smmlvCfg = {}, opts = {}) {
+  const grupoDefault = opts.grupoDefault || GRUPO_DEDUCIBLE_CONTENIDOS;
+  const tipo = opts.tipo || 'contenidos';
+  const coberturaPredeterminada = opts.coberturaPredeterminada || '';
+  const preparar =
+    tipo === 'presupuesto'
+      ? (row) =>
+          prepararFilaDeduciblePresupuesto(row, smmlvCfg, coberturaPredeterminada)
+      : (row) =>
+          prepararFilaDeducibleContenido(row, smmlvCfg, coberturaPredeterminada);
+
+  const conRegla = (Array.isArray(items) ? items : []).map((row) => {
+    const next = preparar(row);
+    return {
+      ...next,
+      articuloPolizaId: resolverArticuloPolizaId(next) || next.articuloPolizaId || '',
+      deducibleGrupoClave: '',
+      deducibleGrupoRepresentante: false,
+      deducibleGrupoFilas: 0,
+      deducibleGrupoSumaVA: '',
+      deducibleGrupoSumaPL: '',
+      deducibleGrupoIncluido: false,
+    };
+  });
+
+  const valoresAsegurablesCaso = opts.valoresAsegurablesCaso || null;
+  const grupos = calcularGruposDeducibleDeItems(conRegla, {
+    grupoDefault,
+    tipo,
+    valoresAsegurablesCaso,
+  });
+  const porClave = new Map(grupos.map((g) => [g.clave, g]));
+  const visto = new Set();
+
+  return conRegla.map((row) => {
+    const lista =
+      tipo === 'presupuesto'
+        ? filaPresupuestoListaParaDeducible(row)
+        : filaContenidoListaParaDeducible(row, valoresAsegurablesCaso, grupoDefault);
+    const cob = String(row.coberturaAfectar || row.tipoCobertura || '').trim();
+    const clave = lista && cob ? claveGrupoDeducible(row, grupoDefault) : '';
+    const grupo = clave ? porClave.get(clave) : null;
+    if (!grupo) return row;
+    const esPrimero = !visto.has(clave);
+    if (esPrimero) visto.add(clave);
+    return {
+      ...row,
+      deducibleGrupoClave: clave,
+      deducibleGrupoRepresentante: esPrimero,
+      deducibleGrupoFilas: grupo.filas,
+      deducibleGrupoSumaVA: grupo.sumaVA,
+      deducibleGrupoSumaPL: grupo.sumaPL,
+      deducibleGrupoIncluido: !esPrimero,
+      deducibleCalculado: esPrimero ? grupo.aplicado : '',
+      valorAsegurable: esPrimero ? row.valorAsegurable : '',
+    };
+  });
+}
+
+function valorAsegurableTotalDeGrupos(grupos = []) {
+  const porGrupo = new Map();
+  (Array.isArray(grupos) ? grupos : []).forEach((g) => {
+    if (!porGrupo.has(g.grupoId)) porGrupo.set(g.grupoId, Number(g.sumaVA) || 0);
+  });
+  return [...porGrupo.values()].reduce((acc, n) => acc + n, 0);
+}
+
+function sumarDeduciblesFilas(items = []) {
+  return (Array.isArray(items) ? items : []).reduce((acc, row) => {
+    if (row.deducibleGrupoIncluido && !row.deducibleManual) return acc;
+    const n = parseMontoNsr10(row.deducibleCalculado);
+    return acc + (n == null || n < 0 ? 0 : n);
+  }, 0);
+}
+
+export function calcularTotalesContenidos(contenidos = {}, valoresAsegurablesCaso = null) {
   const items = Array.isArray(contenidos.items) ? contenidos.items : [];
   const subtotal = items.reduce((acc, row) => {
     const t = totalFilaContenido(row);
     return acc + (t == null ? 0 : t);
   }, 0);
-  const filasConDeducible = items.filter(filaContenidoTieneDeducibleArticulo);
-  const deduciblePorArticulos = filasConDeducible.reduce((acc, row) => {
-    const n = parseMontoNsr10(row.deducibleCalculado);
-    return acc + (n == null ? 0 : n);
-  }, 0);
-  const valorAsegurableTotal = items.reduce((acc, row) => {
-    const n = parseMontoNsr10(row.valorAsegurable);
-    return acc + (n == null ? 0 : n);
-  }, 0);
+  const gruposDeducible = calcularGruposDeducibleDeItems(items, {
+    grupoDefault: GRUPO_DEDUCIBLE_CONTENIDOS,
+    tipo: 'contenidos',
+    valoresAsegurablesCaso,
+  });
+  const deduciblePorArticulos = sumarDeduciblesFilas(items);
+  const valorAsegurableTotal = valorAsegurableTotalDeGrupos(gruposDeducible);
+  const valorAIndemnizar = valorAIndemnizarDesdeGrupos(gruposDeducible);
   return {
     subtotal,
     total: subtotal,
     deduciblePorArticulos: Math.round(deduciblePorArticulos * 100) / 100,
-    usaDeduciblePorArticulo: filasConDeducible.length > 0,
+    usaDeduciblePorArticulo: gruposDeducible.length > 0 || deduciblePorArticulos > 0,
     valorAsegurableTotal: Math.round(valorAsegurableTotal * 100) / 100,
+    valorAIndemnizar,
+    gruposDeducible,
   };
 }
 
 /**
  * Resumen unificado para la ventana Totales y el informe único.
- * sumaCompleta = total presupuesto NSR-10 + total contenidos.
+ * sumaCompleta = totales brutos (pérdida).
+ * sumaAIndemnizar = netos ya liquidados en presupuesto + contenidos (sin volver a restar deducible).
  */
-export function calcularResumenTotalesNsr10(evalData = {}) {
+export function calcularResumenTotalesNsr10(evalData = {}, valoresAsegurablesCaso = null) {
   const presupuesto = evalData.presupuesto || {};
   const contenidos = evalData.contenidos || {};
-  const totalesPresupuesto = calcularTotalesPresupuesto(presupuesto);
-  const totalesContenidos = calcularTotalesContenidos(contenidos);
+  const totalesPresupuesto = calcularTotalesPresupuesto(
+    presupuesto,
+    valoresAsegurablesCaso
+  );
+  const totalesContenidos = calcularTotalesContenidos(contenidos, valoresAsegurablesCaso);
   const totalPresupuesto = Number(totalesPresupuesto.total) || 0;
   const totalContenidos = Number(totalesContenidos.total) || 0;
   const sumaCompleta = Math.round((totalPresupuesto + totalContenidos) * 100) / 100;
   const deduciblePorArticulosContenidos = totalesContenidos.deduciblePorArticulos || 0;
   const deduciblePorArticulosPresupuesto = totalesPresupuesto.deduciblePorArticulos || 0;
+  const valorAIndemnizarPresupuesto = resolverValorAIndemnizar(
+    totalesPresupuesto.valorAIndemnizar,
+    totalPresupuesto
+  );
+  const valorAIndemnizarContenidos = resolverValorAIndemnizar(
+    totalesContenidos.valorAIndemnizar,
+    totalContenidos
+  );
+  const sumaAIndemnizar =
+    Math.round((valorAIndemnizarPresupuesto + valorAIndemnizarContenidos) * 100) / 100;
   return {
     presupuesto: totalesPresupuesto,
     contenidos: totalesContenidos,
@@ -937,6 +1251,9 @@ export function calcularResumenTotalesNsr10(evalData = {}) {
     deduciblePorArticulosPresupuesto,
     usaDeduciblePorArticulo: Boolean(totalesContenidos.usaDeduciblePorArticulo),
     usaDeduciblePorArticuloPresupuesto: Boolean(totalesPresupuesto.usaDeduciblePorArticulo),
+    valorAIndemnizarContenidos,
+    valorAIndemnizarPresupuesto,
+    sumaAIndemnizar,
   };
 }
 
@@ -954,6 +1271,9 @@ export function aplicarCatalogoAFilaContenido(row = {}, catalogoItem = null) {
     categoria: catalogoItem.categoria || row.categoria || '',
     articulo: catalogoItem.articulo || row.articulo || '',
     unidad: catalogoItem.unidad || row.unidad || 'und',
+    articuloPolizaId: String(catalogoItem.id || '').startsWith('poliza_')
+      ? catalogoItem.id
+      : row.articuloPolizaId || '',
   };
 }
 
@@ -1032,7 +1352,7 @@ export function totalFilaPresupuesto(row) {
   return null;
 }
 
-export function calcularTotalesPresupuesto(presupuesto = {}) {
+export function calcularTotalesPresupuesto(presupuesto = {}, valoresAsegurablesCaso = null) {
   const items = Array.isArray(presupuesto.items) ? presupuesto.items : [];
   const subtotal = items.reduce((acc, row) => {
     const t = totalFilaPresupuesto(row);
@@ -1045,11 +1365,12 @@ export function calcularTotalesPresupuesto(presupuesto = {}) {
   const imprevistos = (subtotal + aiu) * imprPct;
   const impuestos = (subtotal + aiu + imprevistos) * impPct;
   const total = subtotal + aiu + imprevistos + impuestos;
-  const filasConDeducible = items.filter(filaPresupuestoTieneDeducibleArticulo);
-  const deduciblePorArticulos = filasConDeducible.reduce((acc, row) => {
-    const n = parseMontoNsr10(row.deducibleCalculado);
-    return acc + (n == null ? 0 : n);
-  }, 0);
+  const gruposDeducible = calcularGruposDeducibleDeItems(items, {
+    grupoDefault: GRUPO_DEDUCIBLE_EDIFICIO,
+    tipo: 'presupuesto',
+    valoresAsegurablesCaso,
+  });
+  const deduciblePorArticulos = sumarDeduciblesFilas(items);
   return {
     subtotal,
     aiu,
@@ -1060,7 +1381,9 @@ export function calcularTotalesPresupuesto(presupuesto = {}) {
     imprPct,
     impPct,
     deduciblePorArticulos: Math.round(deduciblePorArticulos * 100) / 100,
-    usaDeduciblePorArticulo: filasConDeducible.length > 0,
+    usaDeduciblePorArticulo: gruposDeducible.length > 0 || deduciblePorArticulos > 0,
+    valorAIndemnizar: valorAIndemnizarDesdeGrupos(gruposDeducible),
+    gruposDeducible,
   };
 }
 

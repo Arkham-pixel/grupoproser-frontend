@@ -40,8 +40,8 @@
   html {
     /* Prevent zoom on iOS when focusing inputs */
     -webkit-text-size-adjust: 100%;
-    /* Smooth scrolling */
-    scroll-behavior: smooth;
+    /* auto: smooth en html hace que el menú “suba” al expandir secciones */
+    scroll-behavior: auto;
     /* Tipografía base Arnald DataFlow */
     font-family: 'Inter', sans-serif;
   }
@@ -289,5 +289,44 @@
     fill: #FFFFFF !important;
     color: #FFFFFF !important;
   }
+}
+
+/* Scrollbar del menú lateral: fino y oscuro (evita la barra blanca clásica de Windows) */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.45) transparent;
+  overflow-anchor: none;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.45);
+  border-radius: 999px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.sidebar-scroll::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Las páginas con min-h-screen no deben empujar el menú ni el viewport */
+.app-shell-main {
+  overflow-anchor: none;
+}
+
+.app-shell-main .min-h-screen {
+  min-height: 100%;
 }
 

@@ -381,7 +381,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
     ['CONSECUTIVO', txt(caso.consecutivo)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
-    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto)],
+    ['ASEGURADO / CONTACTO', txt(caso.asegurado || enc.asegurado || caso.informacionContacto || caso.asgrBenfcro)],
     ['CORREO ELECTRÓNICO', txt(caso.correo)],
     ['CELULAR', txt(caso.celular)],
     ['IDENTIFICACIÓN', txt(caso.identificacion || enc.identificacion)],
@@ -390,6 +390,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['VIGENCIA', vigencia],
     ['COBERTURA / EVENTO', txt(caso.cobertura || enc.cobertura || enc.evento)],
     ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion)],
+    ['SEDE (RIESGO)', txt(caso.sede || caso.sedeRiesgo)],
     [
       'CIUDAD / DEPARTAMENTO',
       `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`,
@@ -397,7 +398,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['FECHA DE OCURRENCIA', fmtFechaCorta(caso.fechaSiniestro || enc.fechaSiniestro)],
     ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
-    ['AJUSTADOR', txt(info.ajustadorNombre)],
+    ['AJUSTADOR', txt(info.ajustadorNombre || caso.ajustador || caso.nombreResponsable)],
     ...(esPreliminar
       ? [['RESERVA SUGERIDA', money(reserva)]]
       : [

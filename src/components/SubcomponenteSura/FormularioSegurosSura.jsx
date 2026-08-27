@@ -267,6 +267,8 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
     payload.fechaLlamada = form.fechaLlamada ? String(form.fechaLlamada).trim() : '';
     payload.observacionLlamada =
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
+    payload.observacionReserva =
+      form.observacionReserva != null ? String(form.observacionReserva) : '';
     return payload;
   };
 
@@ -430,7 +432,7 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
             </SelectFenix>
           </Campo>
           <Campo label={t('segurosSura.fields.ciudad')}>
-            <SelectBuscable
+              <SelectBuscable
               options={opcionesCiudad}
               value={form.ciudad || ''}
               onChange={(val) => setCampo('ciudad')({ target: { value: val } })}
@@ -445,6 +447,14 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
               }
               searchPlaceholder={t('common.searchEllipsis', { defaultValue: 'Buscar ciudad…' })}
               buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </Campo>
+          <Campo label={t('segurosSura.fields.sede')} className="md:col-span-2 lg:col-span-3">
+            <InputFenix
+              value={form.sede || ''}
+              onChange={setCampo('sede')}
+              placeholder={t('segurosSura.placeholders.sede')}
+              autoComplete="off"
             />
           </Campo>
         </div>
@@ -544,6 +554,14 @@ const FormularioSegurosSura = ({ initialData = null, embed = false, onClose, onS
             {inputMiles('valorLiquidado')}
           </Campo>
         </div>
+        <Campo label={t('segurosSura.fields.observacionReserva')} className="mt-4">
+          <TextareaFenix
+            rows={3}
+            value={form.observacionReserva || ''}
+            onChange={setCampo('observacionReserva')}
+            placeholder={t('segurosSura.placeholders.observacionReserva')}
+          />
+        </Campo>
       </section>
 
       <section className={expressFormSection}>

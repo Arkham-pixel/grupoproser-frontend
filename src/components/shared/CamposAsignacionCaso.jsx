@@ -52,7 +52,7 @@ export default function CamposAsignacionCaso({
   };
 
   return (
-    <>
+    <div className="col-span-full grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Campo
         label={t(`${i18nNs}.fields.ajustadorLider`, {
           defaultValue: 'Ajustador líder (quien asigna)',
@@ -118,6 +118,6 @@ export default function CamposAsignacionCaso({
         </SelectFenix>
       </Campo>
       ) : null}
-    </>
+    </div>
   );
 }

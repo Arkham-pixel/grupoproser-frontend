@@ -7,6 +7,8 @@ import {
   calcularTotalesPresupuesto,
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
+  camposValorAseguradoParaNsr,
+  valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
   calcularDiagramaLiquidacion,
@@ -165,6 +167,7 @@ export function encabezadoDesdecasoBbvaCat(caso = {}) {
     evento: c.cobertura || c.causa || 'TERREMOTO',
     ajustador: c.ajustador || '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
+    valorAseguradoContenidos: c.valorAseguradoContenidos ?? '',
     vigenciaDesde: fechaInput(c.fechaInicioPoliza),
     vigenciaHasta: fechaInput(c.fechaFinPoliza),
     ramoAfectado: c.cobertura || 'TERREMOTO',
@@ -187,6 +190,7 @@ export function prefillNsrDesdecasoBbvaCat(caso = {}, encabezado = {}) {
     fechaOcurrencia: encabezado.fechaSiniestro || fechaInput(caso.fechaSiniestro),
     inspector: caso.ajustador || '',
     tipoEvento: encabezado.evento || caso.cobertura || 'TERREMOTO',
+    ...camposValorAseguradoParaNsr(caso, encabezado),
   };
 }
 
@@ -211,6 +215,7 @@ export const DEFAULT_LIQUIDADOR_BbvaCat = {
     evento: 'TERREMOTO',
     ajustador: '',
     valorAseguradoInmueble: '',
+    valorAseguradoContenidos: '',
     vigenciaDesde: '',
     vigenciaHasta: '',
     ramoAfectado: 'TERREMOTO',
@@ -255,8 +260,9 @@ export function calcularLiquidacionBbvaCat(liquidador = {}) {
     liquidador.evaluacionSismicaNSR10 || {}
   );
   const presupuesto = evalData.presupuesto || { items: [] };
-  const totalesPres = calcularTotalesPresupuesto(presupuesto);
-  const resumen = calcularResumenTotalesNsr10(evalData);
+  const valoresAsegurablesCaso = valoresAsegurablesDesdeLiquidador(liquidador);
+  const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
+  const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
   const enc = liquidador.encabezado || {};
   const excel = calcularTotalesFormatoExcelBbvaCat(liquidador);
@@ -459,6 +465,7 @@ export function formDataNsrDesdeLiquidadorBbvaCat(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
   return {
     ...prefillNsrDesdecasoBbvaCat(caso, enc),
+    ...camposValorAseguradoParaNsr(caso, enc),
     evaluacionSismicaNSR10: aplicarPresupuestoAiuBbvaCatEnEvaluacion(
       liquidador.evaluacionSismicaNSR10 || {}
     ),
