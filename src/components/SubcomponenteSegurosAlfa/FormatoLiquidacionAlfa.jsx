@@ -285,7 +285,9 @@ export default function FormatoLiquidacionAlfa({
     return Math.round(subtotal * (aiuPctUi / 100) * 100) / 100;
   }, [totales.aiu, totales.subtotal, subtotal, aiuPctUi]);
 
-  const deducible = parsearNumero(totales.deducibleAplicado);
+  const deducible =
+    parsearNumero(totales.deducibleAlfa?.deducibleAplicado) ||
+    parsearNumero(totales.deducibleAplicado);
   // Siempre desde las filas en pantalla (evita totales desfasados al editar).
   const totalOtrosAmparos = useMemo(
     () => sumarOtrosAmparosAlfa(otrosAmparos),
@@ -548,7 +550,11 @@ export default function FormatoLiquidacionAlfa({
             {
               key: 'pesosOtro',
               label: 'Pesos / Otro',
-              value: deducible || dedCfg.pesosOtro || 0,
+              value:
+                parsearNumero(totales.deducibleAlfa?.deducibleAplicado) ||
+                deducible ||
+                dedCfg.pesosOtro ||
+                0,
               type: 'text',
               readOnly: true,
               formatMiles: true,

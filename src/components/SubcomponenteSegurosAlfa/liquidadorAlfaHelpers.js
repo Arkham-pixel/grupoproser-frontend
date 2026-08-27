@@ -376,10 +376,9 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
   const deduciblePorcentaje = Math.round(va * (pct / 100) * 100) / 100;
   const bruto = Math.max(deduciblePorcentaje, deducibleSMMLV);
   const usaMinimo = deducibleSMMLV > deduciblePorcentaje;
-  const deducibleAplicado =
-    danios > 0
-      ? Math.round(Math.min(bruto, danios) * 100) / 100
-      : Math.round(bruto * 100) / 100;
+  // Mostrar siempre el deducible de póliza (mayor entre % SID y SMMLV).
+  // No topear a la pérdida: si el deducible > daños, la indemnización queda en 0.
+  const deducibleAplicado = Math.round(bruto * 100) / 100;
 
   return {
     aplica: true,
@@ -397,7 +396,7 @@ export function calcularDeducibleAlfaSobreValorAsegurado({
     usaMinimo,
     texto:
       cfg.texto ||
-      `${pct}% del valor asegurado · Mínimo ${cant} SMMLV (se aplica el mayor)`,
+      `${pct}% del Valor SID · Mínimo ${cant} SMMLV (se aplica el mayor)`,
     reglaTomador,
   };
 }
