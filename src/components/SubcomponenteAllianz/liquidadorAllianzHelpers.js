@@ -18,8 +18,6 @@ import {
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
 
-export { sanitizarInformeUnicoFotos as sanitizarInformeUnicoAllianz };
-
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
   2025: 1423500,
@@ -31,6 +29,187 @@ export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
 export const INFO_EVENTO_DEFAULT_ALLIANZ = `El presente informe se elabora en el marco de la atención del evento sísmico / catastrófico reportado ante Allianz Seguros, conforme a la visita de inspección realizada al predio asegurado y a la documentación aportada por el tomador/asegurado.
 
 La evaluación técnica tiene por objeto verificar la existencia y alcance de los daños, confrontarlos con las coberturas de la póliza vigente y cuantificar las pérdidas indemnizables de acuerdo con las condiciones particulares del contrato de seguro.`;
+
+export const NIVELES_AFECTACION_ALLIANZ = [
+  'CRÍTICO',
+  'ALTO',
+  'MEDIO–ALTO',
+  'MEDIO',
+  'POR DEFINIR',
+];
+
+/** Zonas de la tabla de daños del informe preliminar Allianz. */
+export const ZONAS_DANIOS_PRELIMINAR_ALLIANZ = [
+  'Fachadas',
+  'Zona de acceso',
+  'Muros de mampostería',
+  'Muros con grietas abiertas',
+  'Encuentros muro–estructura',
+  'Núcleo de escaleras',
+  'Cielos rasos',
+  'Cubiertas y elementos livianos',
+  'Aulas, oficinas y archivos',
+  'Pasillos y zonas comunes',
+  'Pañetes, estucos y pintura',
+  'Puertas, ventanería y elementos metálicos',
+  'Instalaciones y equipos adosados',
+  'Columnas, vigas y sistema aporticado visible',
+];
+
+export const CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ = [
+  'Vigencia',
+  'Ubicación del riesgo',
+  'Evento',
+  'Interés afectado',
+  'Deducible',
+  'Infraseguro',
+  'Remoción de escombros',
+  'Honorarios profesionales',
+  'Exclusiones',
+  'Reserva preliminar',
+  'Concepto preliminar',
+];
+
+export const CAPITULOS_PRESUPUESTO_PRELIMINAR_ALLIANZ = [
+  '1. Preliminares, seguridad y protecciones',
+  '2. Fachada – desmonte y reconstrucción de los dos últimos niveles',
+  '3. Demolición y reconstrucción de mampostería interior',
+  '4. Reparación de fisuras y grietas menores',
+  '5. Pañetes, estucos y acabados de muros',
+  '6. Pintura interior y exterior',
+  '7. Cielos rasos y elementos suspendidos',
+  '8. Cubiertas y estructura liviana asociada',
+  '9. Carpintería metálica, ventanería, puertas y divisiones',
+  '10. Instalaciones eléctricas e iluminación',
+  '11. Aires acondicionados y redes complementarias',
+  '12. Escaleras, circulaciones y zonas comunes',
+  '13. Retiro y disposición de escombros',
+  '14. Estudios, evaluación especializada y contingencias técnicas',
+];
+
+export function plantillaFilasDaniosAllianz() {
+  return ZONAS_DANIOS_PRELIMINAR_ALLIANZ.map((zona) => ({
+    zona,
+    condicion: '',
+    nivel: '',
+  }));
+}
+
+export function plantillaFilasPolizaAllianz() {
+  return CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ.map((concepto) => ({
+    concepto,
+    analisis: '',
+    conclusion: '',
+  }));
+}
+
+export function plantillaFilasPresupuestoPreliminarAllianz() {
+  return CAPITULOS_PRESUPUESTO_PRELIMINAR_ALLIANZ.map((capitulo) => ({
+    capitulo,
+    descripcion: '',
+    valor: '',
+  }));
+}
+
+export const TIPOS_INFORME_ALLIANZ = ['preliminar', 'final', 'unico'];
+
+export function normalizarTipoInformeAllianz(valor, fallback = 'preliminar') {
+  const t = String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  if (t === 'preliminar' || t === 'final' || t === 'unico') return t;
+  return fallback;
+}
+
+export function esInformePreliminarAllianz(info = {}) {
+  return normalizarTipoInformeAllianz(info?.tipoInforme, 'preliminar') === 'preliminar';
+}
+
+/** Tipo vigente: el del borrador en pantalla, o el guardado en el caso. */
+export function tipoInformeActualAllianz(informe = null, caso = null) {
+  if (informe?.tipoInforme) {
+    return normalizarTipoInformeAllianz(informe.tipoInforme, 'preliminar');
+  }
+  if (caso?.informeUnico && typeof caso.informeUnico === 'object') {
+    return normalizarTipoInformeAllianz(caso.informeUnico.tipoInforme, 'unico');
+  }
+  return 'preliminar';
+}
+
+/** Fusiona un borrador de informe sobre el caso para hidratar al reabrir pestañas. */
+export function casoAllianzConInforme(caso = {}, informe = null) {
+  if (!informe || typeof informe !== 'object') return caso || {};
+  return {
+    ...(caso || {}),
+    informeUnico: { ...(caso?.informeUnico || {}), ...informe },
+  };
+}
+
+export function etiquetaArchivoInformeAllianz(tipo) {
+  const t = normalizarTipoInformeAllianz(tipo, 'unico');
+  if (t === 'preliminar') return 'INFORME_PRELIMINAR';
+  if (t === 'final') return 'INFORME_FINAL';
+  return 'INFORME_UNICO';
+}
+
+export function etiquetaTituloInformeAllianz(tipo) {
+  const t = normalizarTipoInformeAllianz(tipo, 'preliminar');
+  if (t === 'preliminar') return 'PRELIMINAR';
+  if (t === 'final') return 'FINAL';
+  return 'ÚNICO';
+}
+
+export function etiquetaEncabezadoInformeAllianz(tipo) {
+  const t = normalizarTipoInformeAllianz(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Informe Preliminar Allianz';
+  if (t === 'final') return 'Informe Final Allianz';
+  return 'Informe Único Allianz';
+}
+
+export function prefijoArchivoInformeAllianz(tipo) {
+  const t = normalizarTipoInformeAllianz(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Informe_Preliminar_Allianz';
+  if (t === 'final') return 'Informe_Final_Allianz';
+  return 'Informe_Unico_Allianz';
+}
+
+export function etiquetaReporteCuadroAllianz(tipo) {
+  const t = normalizarTipoInformeAllianz(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Preliminar — Allianz';
+  if (t === 'final') return 'Final — Allianz';
+  return 'Único — Allianz';
+}
+
+export function totalPresupuestoPreliminarAllianz(filas = []) {
+  return (Array.isArray(filas) ? filas : []).reduce(
+    (acc, fila) => acc + parsearNumero(fila?.valor),
+    0
+  );
+}
+
+export function reservaSugeridaAllianz(info = {}) {
+  const directa = parsearNumero(info?.reservaSugerida);
+  if (directa > 0) return directa;
+  return totalPresupuestoPreliminarAllianz(info?.filasPresupuestoPreliminar);
+}
+
+function usarPlantillaSiVacio(filas, plantilla) {
+  return Array.isArray(filas) && filas.length ? filas : plantilla;
+}
+
+export function sanitizarInformeUnicoAllianz(informe = {}) {
+  if (!informe || typeof informe !== 'object') return {};
+  const base = sanitizarInformeUnicoFotos(informe);
+  const tipo = informe.tipoInforme
+    ? normalizarTipoInformeAllianz(informe.tipoInforme, 'preliminar')
+    : undefined;
+  return {
+    ...base,
+    ...(tipo ? { tipoInforme: tipo } : {}),
+  };
+}
 
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
@@ -341,6 +520,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
   const guardado =
     caso.informeUnico && typeof caso.informeUnico === 'object' ? caso.informeUnico : null;
   const base = {
+    tipoInforme: 'preliminar',
     fechaInforme: fechaInput(new Date()),
     ajustadorNombre: caso.ajustador || '',
     infoEvento: INFO_EVENTO_DEFAULT_ALLIANZ,
@@ -349,6 +529,10 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     imagenMapa: '',
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
+    reservaSugerida: '',
+    filasDanios: plantillaFilasDaniosAllianz(),
+    filasPolizaCobertura: plantillaFilasPolizaAllianz(),
+    filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarAllianz(),
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
@@ -363,6 +547,9 @@ export function defaultInformeUnicoAllianz(caso = {}) {
   return {
     ...base,
     ...guardado,
+    tipoInforme: guardado
+      ? normalizarTipoInformeAllianz(guardado.tipoInforme, 'unico')
+      : 'preliminar',
     ajustadorNombre: guardado.ajustadorNombre || guardado.actaAjustadorNombre || base.ajustadorNombre,
     actaAjustadorNombre:
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,
@@ -371,6 +558,16 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
+    reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
+    filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
+    filasPolizaCobertura: usarPlantillaSiVacio(
+      guardado.filasPolizaCobertura,
+      base.filasPolizaCobertura
+    ),
+    filasPresupuestoPreliminar: usarPlantillaSiVacio(
+      guardado.filasPresupuestoPreliminar,
+      base.filasPresupuestoPreliminar
+    ),
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
   };
 }

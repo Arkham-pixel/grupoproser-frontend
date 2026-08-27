@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileWord, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
+import { FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -16,16 +16,23 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
   INFO_EVENTO_DEFAULT_ALLIANZ,
+  NIVELES_AFECTACION_ALLIANZ,
   calcularLiquidacionAllianz,
+  casoAllianzConInforme,
   defaultInformeUnicoAllianz,
+  etiquetaArchivoInformeAllianz,
   formDataNsrDesdeLiquidadorAllianz,
   formatearMonto,
   formatDateLarga,
   mapcasoAllianzALiquidador,
+  normalizarTipoInformeAllianz,
+  reservaSugeridaAllianz,
+  totalPresupuestoPreliminarAllianz,
 } from './liquidadorAllianzHelpers.js';
 import { descargarWordInformeAllianz } from './generarWordInformeAllianz.js';
 import { allianzArchivosApi } from './allianzArchivosApi.js';
 import FotosInspeccionZurich from '../SubcomponenteZurich/FotosInspeccionZurich.jsx';
+import SelectorTipoInformeAllianz from './SelectorTipoInformeAllianz.jsx';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -45,6 +52,97 @@ function extraerLatLng(texto) {
   return { latitud: '', longitud: '' };
 }
 
+function TablaFilasAllianz({
+  columnas,
+  filas,
+  onChangeFila,
+  onAdd,
+  onRemove,
+  addLabel,
+  emptyLabel,
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
+          <thead className="bg-gray-50 dark:bg-gray-800/60">
+            <tr className="text-left text-gray-500">
+              {columnas.map((col) => (
+                <th key={col.key} className="px-2 py-2 font-semibold">
+                  {col.label}
+                </th>
+              ))}
+              <th className="w-10 px-2 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {(filas || []).map((fila, idx) => (
+              <tr key={`${idx}-${fila.zona || fila.concepto || fila.capitulo || 'fila'}`}>
+                {columnas.map((col) => (
+                  <td key={col.key} className="align-top px-2 py-2">
+                    {col.type === 'select' ? (
+                      <select
+                        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+                        value={fila[col.key] || ''}
+                        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {(col.options || []).map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : col.type === 'textarea' ? (
+                      <textarea
+                        className="min-h-[72px] w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+                        rows={col.rows || 3}
+                        value={fila[col.key] || ''}
+                        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                        placeholder={col.placeholder || ''}
+                      />
+                    ) : (
+                      <InputFenix
+                        className={col.mono ? 'font-mono' : ''}
+                        value={fila[col.key] || ''}
+                        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                        placeholder={col.placeholder || ''}
+                      />
+                    )}
+                  </td>
+                ))}
+                <td className="align-top px-2 py-2">
+                  <button
+                    type="button"
+                    className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                    onClick={() => onRemove(idx)}
+                    title="Quitar"
+                  >
+                    <FaTrash className="h-3.5 w-3.5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {!(filas || []).length && (
+              <tr>
+                <td
+                  colSpan={columnas.length + 1}
+                  className="px-2 py-4 text-center text-gray-500"
+                >
+                  {emptyLabel}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <button type="button" className={expressBtnGhost} onClick={onAdd}>
+        <FaPlus /> {addLabel}
+      </button>
+    </div>
+  );
+}
+
 export default function InformeUnicoAllianz({
   casoAllianz = null,
   onEstadoChange,
@@ -54,10 +152,15 @@ export default function InformeUnicoAllianz({
   guardandoCaso = false,
   origen = 'cat',
   liquidadorInicial = null,
+  informeInicial = null,
+  tipoInformeExterno = null,
+  ocultarSelector = false,
 }) {
   const { t } = useTranslation();
   const api = useMemo(() => allianzArchivosApi(origen), [origen]);
-  const [informe, setInforme] = useState(() => defaultInformeUnicoAllianz(casoAllianz || {}));
+  const [informe, setInforme] = useState(() =>
+    defaultInformeUnicoAllianz(casoAllianzConInforme(casoAllianz || {}, informeInicial))
+  );
   const [liquidador, setLiquidador] = useState(() =>
     liquidadorInicial || mapcasoAllianzALiquidador(casoAllianz || {})
   );
@@ -68,6 +171,13 @@ export default function InformeUnicoAllianz({
 
   const totales = useMemo(() => calcularLiquidacionAllianz(liquidador), [liquidador]);
   const criterio = totales.criterio || {};
+  const tipoInforme = normalizarTipoInformeAllianz(informe.tipoInforme, 'preliminar');
+  const esPreliminar = tipoInforme === 'preliminar';
+  const totalPreliminar = useMemo(
+    () => totalPresupuestoPreliminarAllianz(informe.filasPresupuestoPreliminar),
+    [informe.filasPresupuestoPreliminar]
+  );
+  const reservaMostrada = useMemo(() => reservaSugeridaAllianz(informe), [informe]);
   const formDataNsr = useMemo(
     () => formDataNsrDesdeLiquidadorAllianz(liquidador, casoAllianz || {}),
     [liquidador, casoAllianz]
@@ -105,9 +215,20 @@ export default function InformeUnicoAllianz({
   };
 
   useEffect(() => {
-    setInforme(defaultInformeUnicoAllianz(casoAllianz || {}));
+    setInforme(
+      defaultInformeUnicoAllianz(casoAllianzConInforme(casoAllianz || {}, informeInicial))
+    );
     setLiquidador(liquidadorInicial || mapcasoAllianzALiquidador(casoAllianz || {}));
   }, [casoAllianz?._id]);
+
+  useEffect(() => {
+    if (!tipoInformeExterno) return;
+    setInforme((prev) => {
+      const actual = normalizarTipoInformeAllianz(prev?.tipoInforme, 'preliminar');
+      if (actual === tipoInformeExterno) return prev;
+      return { ...prev, tipoInforme: tipoInformeExterno };
+    });
+  }, [tipoInformeExterno]);
 
   useEffect(() => {
     onEstadoChange?.(informe);
@@ -130,6 +251,36 @@ export default function InformeUnicoAllianz({
     });
   };
 
+  const elegirTipoInforme = (tipo) => {
+    const nextTipo = normalizarTipoInformeAllianz(tipo, tipoInforme);
+    if (nextTipo === tipoInforme) return;
+    const next = { ...informe, tipoInforme: nextTipo };
+    setInforme(next);
+    onGuardarEnCaso?.(next);
+  };
+
+  const setFila = (campo, idx, key, valor) => {
+    setInforme((prev) => {
+      const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
+      list[idx] = { ...(list[idx] || {}), [key]: valor };
+      return { ...prev, [campo]: list };
+    });
+  };
+
+  const addFila = (campo, vacia) => {
+    setInforme((prev) => ({
+      ...prev,
+      [campo]: [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia],
+    }));
+  };
+
+  const removeFila = (campo, idx) => {
+    setInforme((prev) => ({
+      ...prev,
+      [campo]: (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx),
+    }));
+  };
+
   const handleNsrChange = (patch) => {
     setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
   };
@@ -141,12 +292,38 @@ export default function InformeUnicoAllianz({
   const handleWord = async () => {
     setDescargando(true);
     setError('');
+    setMensaje('');
     try {
-      await descargarWordInformeAllianz({
+      const resultado = await descargarWordInformeAllianz({
         caso: casoAllianz || {},
         informe,
         liquidador,
       });
+      const blob = resultado?.blob;
+      const nombre = resultado?.filename || resultado?.nombre;
+      if (blob && nombre && casoAllianz?._id) {
+        try {
+          const file = new File(
+            [blob],
+            nombre,
+            { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
+          );
+          const creado = await api.subir(
+            casoAllianz._id,
+            file,
+            etiquetaArchivoInformeAllianz(informe.tipoInforme)
+          );
+          onCasoChange?.((prev) => {
+            if (!prev) return prev;
+            const list = Array.isArray(prev.archivos) ? prev.archivos : [];
+            return { ...prev, archivos: [...list, creado] };
+          });
+          setMensaje(t('allianz.reportUnique.wordSavedArchive'));
+        } catch (errArchivo) {
+          console.warn('No se pudo guardar el informe en el archivero Allianz:', errArchivo);
+          setError(t('allianz.reportUnique.wordArchiveError'));
+        }
+      }
     } catch (err) {
       console.error(err);
       setError(t('allianz.reportUnique.wordError'));
@@ -180,10 +357,22 @@ export default function InformeUnicoAllianz({
     });
   };
 
+  const nFotos = esPreliminar ? 5 : 7;
+  const nConclusiones = esPreliminar ? 4 : 4;
+  const nFirmas = esPreliminar ? 6 : 8;
+
   return (
     <div className="space-y-5">
       {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
       {error && <p className={expressAlertError}>{error}</p>}
+
+      {!ocultarSelector && (
+        <SelectorTipoInformeAllianz
+          tipo={tipoInforme}
+          onElegir={elegirTipoInforme}
+          disabled={guardandoCaso}
+        />
+      )}
 
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -213,7 +402,7 @@ export default function InformeUnicoAllianz({
             {t('allianz.reportUnique.eventMapCaption')}
           </figcaption>
         </figure>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Campo label={t('allianz.reportUnique.adjuster')}>
             <InputFenix
               value={informe.ajustadorNombre || ''}
@@ -227,20 +416,63 @@ export default function InformeUnicoAllianz({
               onChange={(e) => setCampo('fechaInforme', e.target.value)}
             />
           </Campo>
+          <Campo label={t('allianz.reportUnique.suggestedReserve')}>
+            <InputFenix
+              className="font-mono"
+              value={informe.reservaSugerida || ''}
+              onChange={(e) => setCampo('reservaSugerida', e.target.value)}
+              placeholder={formatearMonto(totalPreliminar) || '1.000.000.000'}
+            />
+          </Campo>
         </div>
+        <p className="mt-2 font-body text-xs text-gray-500">
+          {t('allianz.reportUnique.suggestedReserveHint', {
+            valor: formatearMonto(reservaMostrada),
+          })}
+        </p>
       </section>
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
           2. {t('allianz.reportUnique.sectionDamages')}
         </h3>
-        <textarea
-          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-          rows={5}
-          value={informe.descripcionDanios || ''}
-          onChange={(e) => setCampo('descripcionDanios', e.target.value)}
-          placeholder={t('allianz.reportUnique.sectionDamagesHint')}
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('allianz.reportUnique.sectionDamagesTableHint')}
+        </p>
+        <TablaFilasAllianz
+          columnas={[
+            { key: 'zona', label: t('allianz.reportUnique.colZona'), type: 'textarea', rows: 2 },
+            {
+              key: 'condicion',
+              label: t('allianz.reportUnique.colCondicion'),
+              type: 'textarea',
+              rows: 3,
+            },
+            {
+              key: 'nivel',
+              label: t('allianz.reportUnique.colNivel'),
+              type: 'select',
+              options: NIVELES_AFECTACION_ALLIANZ,
+            },
+          ]}
+          filas={informe.filasDanios}
+          onChangeFila={(idx, key, valor) => setFila('filasDanios', idx, key, valor)}
+          onAdd={() => addFila('filasDanios', { zona: '', condicion: '', nivel: '' })}
+          onRemove={(idx) => removeFila('filasDanios', idx)}
+          addLabel={t('allianz.reportUnique.addDamageRow')}
+          emptyLabel={t('allianz.reportUnique.emptyDamageRows')}
         />
+        <div className="mt-4">
+          <Campo label={t('allianz.reportUnique.sectionDamagesNarrative')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={5}
+              value={informe.descripcionDanios || ''}
+              onChange={(e) => setCampo('descripcionDanios', e.target.value)}
+              placeholder={t('allianz.reportUnique.sectionDamagesHint')}
+            />
+          </Campo>
+        </div>
 
         <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -305,7 +537,7 @@ export default function InformeUnicoAllianz({
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>3. {t('allianz.reportUnique.sectionPolicy')}</h3>
-        <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+        <dl className="mb-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-gray-500">{t('allianz.fields.tomador')}</dt>
             <dd className="font-medium">{casoAllianz?.tomador || '—'}</dd>
@@ -347,113 +579,214 @@ export default function InformeUnicoAllianz({
             </dd>
           </div>
         </dl>
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? '4. Liquidador NSR-10'
-            : '4. Dictamen y liquidador NSR-10'}
-        </h3>
-        <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? 'Cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'
-            : 'Dictamen de la evaluación sísmica y cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'}
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('allianz.reportUnique.sectionPolicyTableHint')}
         </p>
-
-        {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
-        <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-2">
-          <div>
-            <span className="text-gray-500">Categoría</span>
-            <p className="font-medium">{criterio.categoria || '—'}</p>
-          </div>
-          <div>
-            <span className="text-gray-500">Habitabilidad</span>
-            <p className="font-medium">{criterio.habitabilidad || '—'}</p>
-          </div>
-          <div className="sm:col-span-2">
-            <span className="text-gray-500">Dictamen</span>
-            <p className="font-medium whitespace-pre-wrap">{criterio.dictamen || '—'}</p>
-          </div>
-          <div className="sm:col-span-2">
-            <span className="text-gray-500">Descripción de daños</span>
-            <p className="font-medium whitespace-pre-wrap">{criterio.descripcionDanios || '—'}</p>
-          </div>
-        </div>
-        ) : null}
-
-        <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible</span>
-            <span>{totales.deducibleTexto || 'No aplica'}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Otros amparos (sin deducible)</span>
-            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('allianz.settlement.totalPay')}</span>
-            <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-          </div>
-        </div>
-
-        <ChecklistEvaluacionSismicaNSR10
-          formData={formDataNsr}
-          onInputChange={handleNsrChange}
-          modoLiquidador
-          recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+        <TablaFilasAllianz
+          columnas={[
+            { key: 'concepto', label: t('allianz.reportUnique.colConcepto'), type: 'textarea', rows: 2 },
+            {
+              key: 'analisis',
+              label: t('allianz.reportUnique.colAnalisis'),
+              type: 'textarea',
+              rows: 3,
+            },
+            {
+              key: 'conclusion',
+              label: t('allianz.reportUnique.colConclusion'),
+              type: 'textarea',
+              rows: 2,
+            },
+          ]}
+          filas={informe.filasPolizaCobertura}
+          onChangeFila={(idx, key, valor) => setFila('filasPolizaCobertura', idx, key, valor)}
+          onAdd={() =>
+            addFila('filasPolizaCobertura', { concepto: '', analisis: '', conclusion: '' })
+          }
+          onRemove={(idx) => removeFila('filasPolizaCobertura', idx)}
+          addLabel={t('allianz.reportUnique.addPolicyRow')}
+          emptyLabel={t('allianz.reportUnique.emptyPolicyRows')}
         />
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>5. {t('allianz.reportUnique.sectionTable')}</h3>
-        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          Resumen de ítems del presupuesto NSR-10.
+        <h3 className={expressSectionTitle}>
+          {nConclusiones}. {t('allianz.reportUnique.sectionConclusions')}
+        </h3>
+        <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
+          {t('allianz.reportUnique.sectionPreliminaryBudget')}
         </p>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
-            <thead>
-              <tr className="text-left text-gray-500">
-                <th className="px-2 py-2">#</th>
-                <th className="px-2 py-2">Actividad</th>
-                <th className="px-2 py-2">Cant.</th>
-                <th className="px-2 py-2">V. unitario</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || [])
-                .filter((it) => String(it?.actividad || '').trim())
-                .map((it, idx) => (
-                  <tr key={it.id || idx}>
-                    <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2">{it.actividad || '—'}</td>
-                    <td className="px-2 py-2">{it.cantidad ?? '—'}</td>
-                    <td className="px-2 py-2">$ {formatearMonto(it.valorUnitario)}</td>
-                  </tr>
-                ))}
-              {!(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || []).some((it) =>
-                String(it?.actividad || '').trim()
-              ) && (
-                <tr>
-                  <td colSpan={4} className="px-2 py-4 text-center text-gray-500">
-                    {t('allianz.reportUnique.noSettlementItems')}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <TablaFilasAllianz
+          columnas={[
+            {
+              key: 'capitulo',
+              label: t('allianz.reportUnique.colCapitulo'),
+              type: 'textarea',
+              rows: 2,
+            },
+            {
+              key: 'descripcion',
+              label: t('allianz.reportUnique.colDescripcionAlcance'),
+              type: 'textarea',
+              rows: 3,
+            },
+            {
+              key: 'valor',
+              label: t('allianz.reportUnique.colValorEstimado'),
+              mono: true,
+              placeholder: '0',
+            },
+          ]}
+          filas={informe.filasPresupuestoPreliminar}
+          onChangeFila={(idx, key, valor) =>
+            setFila('filasPresupuestoPreliminar', idx, key, valor)
+          }
+          onAdd={() =>
+            addFila('filasPresupuestoPreliminar', { capitulo: '', descripcion: '', valor: '' })
+          }
+          onRemove={(idx) => removeFila('filasPresupuestoPreliminar', idx)}
+          addLabel={t('allianz.reportUnique.addBudgetRow')}
+          emptyLabel={t('allianz.reportUnique.emptyBudgetRows')}
+        />
+        <div className="mt-3 flex max-w-xl justify-between rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold dark:border-gray-700">
+          <span>{t('allianz.reportUnique.totalPreliminaryReserve')}</span>
+          <span>$ {formatearMonto(totalPreliminar)}</span>
+        </div>
+
+        <div className="mt-5">
+          <Campo label={t('allianz.reportUnique.conclusions')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={4}
+              value={informe.conclusiones || ''}
+              onChange={(e) => setCampo('conclusiones', e.target.value)}
+            />
+          </Campo>
+        </div>
+        <div className="mt-3">
+          <Campo label={t('allianz.reportUnique.recommendation')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={4}
+              value={informe.recomendacion || ''}
+              onChange={(e) => setCampo('recomendacion', e.target.value)}
+            />
+          </Campo>
         </div>
       </section>
+
+      {!esPreliminar && (
+        <>
+          <section className={expressFormSection}>
+            <h3 className={expressSectionTitle}>
+              {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+                ? '5. Liquidador NSR-10'
+                : '5. Dictamen y liquidador NSR-10'}
+            </h3>
+            <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
+              {t('allianz.reportUnique.finalAddsSettlement')}
+            </p>
+
+            {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
+              <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-2">
+                <div>
+                  <span className="text-gray-500">Categoría</span>
+                  <p className="font-medium">{criterio.categoria || '—'}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Habitabilidad</span>
+                  <p className="font-medium">{criterio.habitabilidad || '—'}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500">Dictamen</span>
+                  <p className="font-medium whitespace-pre-wrap">{criterio.dictamen || '—'}</p>
+                </div>
+                <div className="sm:col-span-2">
+                  <span className="text-gray-500">Descripción de daños</span>
+                  <p className="font-medium whitespace-pre-wrap">
+                    {criterio.descripcionDanios || '—'}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
+              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+                <span>Total daños (NSR-10)</span>
+                <span>$ {formatearMonto(totales.totalDanios)}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+                <span>Hospedaje</span>
+                <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+                <span>Deducible</span>
+                <span>{totales.deducibleTexto || 'No aplica'}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+                <span>Otros amparos (sin deducible)</span>
+                <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
+              </div>
+              <div className="flex justify-between px-4 py-2 text-sm font-bold">
+                <span>{t('allianz.settlement.totalPay')}</span>
+                <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
+              </div>
+            </div>
+
+            <ChecklistEvaluacionSismicaNSR10
+              formData={formDataNsr}
+              onInputChange={handleNsrChange}
+              modoLiquidador
+              recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+            />
+          </section>
+
+          <section className={expressFormSection}>
+            <h3 className={expressSectionTitle}>6. {t('allianz.reportUnique.sectionTable')}</h3>
+            <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+              Resumen de ítems del presupuesto NSR-10.
+            </p>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
+                <thead>
+                  <tr className="text-left text-gray-500">
+                    <th className="px-2 py-2">#</th>
+                    <th className="px-2 py-2">Actividad</th>
+                    <th className="px-2 py-2">Cant.</th>
+                    <th className="px-2 py-2">V. unitario</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || [])
+                    .filter((it) => String(it?.actividad || '').trim())
+                    .map((it, idx) => (
+                      <tr key={it.id || idx}>
+                        <td className="px-2 py-2">{idx + 1}</td>
+                        <td className="px-2 py-2">{it.actividad || '—'}</td>
+                        <td className="px-2 py-2">{it.cantidad ?? '—'}</td>
+                        <td className="px-2 py-2">$ {formatearMonto(it.valorUnitario)}</td>
+                      </tr>
+                    ))}
+                  {!(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || []).some((it) =>
+                    String(it?.actividad || '').trim()
+                  ) && (
+                    <tr>
+                      <td colSpan={4} className="px-2 py-4 text-center text-gray-500">
+                        {t('allianz.reportUnique.noSettlementItems')}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
+      )}
+
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>6. {t('allianz.reportUnique.sectionPhotos')}</h3>
+        <h3 className={expressSectionTitle}>
+          {nFotos}. {t('allianz.reportUnique.sectionPhotos')}
+        </h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('allianz.reportUnique.photosUploadHint')}
         </p>
@@ -476,29 +809,9 @@ export default function InformeUnicoAllianz({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>7. {t('allianz.reportUnique.sectionConclusions')}</h3>
-        <Campo label={t('allianz.reportUnique.conclusions')}>
-          <textarea
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-            rows={4}
-            value={informe.conclusiones || ''}
-            onChange={(e) => setCampo('conclusiones', e.target.value)}
-          />
-        </Campo>
-        <div className="mt-3">
-          <Campo label={t('allianz.reportUnique.recommendation')}>
-            <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-              rows={4}
-              value={informe.recomendacion || ''}
-              onChange={(e) => setCampo('recomendacion', e.target.value)}
-            />
-          </Campo>
-        </div>
-      </section>
-
-      <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>8. {t('allianz.reportUnique.sectionSignatures')}</h3>
+        <h3 className={expressSectionTitle}>
+          {nFirmas}. {t('allianz.reportUnique.sectionSignatures')}
+        </h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('allianz.reportUnique.signaturesHint')}
         </p>

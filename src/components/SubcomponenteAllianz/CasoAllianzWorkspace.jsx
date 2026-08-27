@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-r
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import LiquidadorAllianz from './LiquidadorAllianz.jsx';
 import InformeUnicoAllianz from './InformeUnicoAllianz.jsx';
+import SelectorTipoInformeAllianz from './SelectorTipoInformeAllianz.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -26,7 +27,12 @@ import {
   guardarInformeUnicoEnCasoAllianzListado,
   guardarLiquidadorEnCasoAllianzListado,
 } from '../../services/allianzListadoService.js';
-import { calcularLiquidacionAllianz } from './liquidadorAllianzHelpers.js';
+import {
+  calcularLiquidacionAllianz,
+  defaultInformeUnicoAllianz,
+  normalizarTipoInformeAllianz,
+  tipoInformeActualAllianz,
+} from './liquidadorAllianzHelpers.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
 import useAllianzCasoAutosave from '../../hooks/useAllianzCasoAutosave.js';
@@ -89,7 +95,7 @@ const pillClass = (activo) =>
   }`;
 
 /**
- * Workspace Allianz: Liquidador | Informe único
+ * Workspace Allianz: Liquidador | Informe (preliminar, final o único)
  * Mismo expediente (datos compartidos) con pestañas y menú separados.
  */
 export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat' } = {}) {
@@ -371,6 +377,24 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
     }
   };
 
+  const tipoInformeActual = tipoInformeActualAllianz(informeState, casoAllianz);
+
+  const elegirTipoInformeWorkspace = (tipo) => {
+    const nextTipo = normalizarTipoInformeAllianz(tipo, tipoInformeActual);
+    if (nextTipo === tipoInformeActual) return;
+    const base = informeState || defaultInformeUnicoAllianz(casoAllianz || {});
+    const next = { ...base, tipoInforme: nextTipo };
+    setInformeState(next);
+    if (casoId) handleGuardarInforme(next);
+  };
+
+  const etiquetaTabInforme =
+    tipoInformeActual === 'preliminar'
+      ? t('allianz.reportUnique.typePreliminar')
+      : tipoInformeActual === 'final'
+        ? t('allianz.reportUnique.typeFinal')
+        : t('allianz.reportUnique.typeUnico');
+
   const handleGuardarActual = () => {
     if (tabActivo === TABS_ALLIANZ.INFORME) return handleGuardarInforme();
     return handleGuardarLiquidador();
@@ -503,6 +527,15 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         {mensaje && <p className={`mb-4 ${expressAlertSuccess}`}>{mensaje}</p>}
         {error && <p className={`mb-4 ${expressAlertError}`}>{error}</p>}
 
+        {casoId && !cargandoCaso && (
+          <SelectorTipoInformeAllianz
+            tipo={tipoInformeActual}
+            onElegir={elegirTipoInformeWorkspace}
+            disabled={guardando}
+            compacto
+          />
+        )}
+
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
@@ -516,7 +549,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
             className={pillClass(tabActivo === TABS_ALLIANZ.INFORME)}
             onClick={() => setTab(TABS_ALLIANZ.INFORME)}
           >
-            2. {t('allianz.workspace.tabUniqueReport')}
+            2. {etiquetaTabInforme}
           </button>
         </div>
 
@@ -529,6 +562,9 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
                 key={`inf-${casoId}-${restoreNonce}`}
                 origen={esModuloListado ? 'listado' : 'cat'}
                 casoAllianz={casoAllianz}
+                informeInicial={informeState}
+                tipoInformeExterno={tipoInformeActual}
+                ocultarSelector
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {

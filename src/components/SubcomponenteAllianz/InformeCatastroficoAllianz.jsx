@@ -36,7 +36,7 @@ const normalizarClaveCaso = (valor) =>
 /**
  * Pestaña Informe Allianz:
  * 1) Formulario CAT (severidad / acceso / evidencias / observaciones)
- * 2) Informe único completo (como Alfa)
+ * 2) Informe (preliminar, final o único — mismo modelo Zurich)
  * 3) Acceso opcional al informe catastrófico de Complex
  */
 export default function InformeCatastroficoAllianz({
