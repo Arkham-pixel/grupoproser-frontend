@@ -53,9 +53,17 @@ export const CONFIG_CONTRACTOR_TRES = {
 
 export const CONFIG_SOLO_ZURICH = {
   seccionesMenu: ['zurich'],
-  inicio: '/zurich/reporte',
+  inicio: '/zurich/listado/dashboard',
   prefijosRuta: ['/zurich'],
-  rutasExcluidas: ['/zurich/carga', '/zurich/listado'],
+  rutasExcluidas: [
+    '/zurich/carga',
+    '/zurich/caso',
+    '/zurich/dashboard',
+    '/zurich/reporte',
+    '/zurich/boletin',
+    '/zurich/liquidador',
+    '/zurich/informe-unico',
+  ],
   etiqueta: 'Zurich',
 };
 

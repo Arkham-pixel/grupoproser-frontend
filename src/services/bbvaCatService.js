@@ -1,6 +1,7 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import {
   diasEnEstadoBbvaCat,
+  homologarCiudadBbvaCat,
   homologarEstadoBbvaCat,
   ultimaGestionBbvaCat,
 } from '../components/SubcomponenteBbvaCat/bbvaCatHelpers.js';
@@ -39,6 +40,7 @@ export const normalizeBbvaCatItem = (item = {}) => {
     correoAsegurado: item.correoAsegurado ?? '',
     contactoAsegurado: item.contactoAsegurado ?? '',
     observaciones: item.observaciones ?? '',
+    ciudad: homologarCiudadBbvaCat(item.ciudad) || item.ciudad || '',
     tomador: item.tomador ?? '',
     numeroPoliza: item.numeroPoliza ?? '',
     tipoPoliza: item.tipoPoliza ?? '',

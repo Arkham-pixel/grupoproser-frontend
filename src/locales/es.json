@@ -10985,7 +10985,50 @@
     },
     "listadoDashboard": {
       "title": "Dashboard listado Zurich",
-      "subtitle": "Seguimiento operativo del listado cliente. No incluye inspección CAT ni valores de siniestro."
+      "subtitle": "Seguimiento de cartera del listado cliente: estados, tiempos y pendientes de gestión. No incluye inspección CAT, valores de siniestro ni asignación interna.",
+      "badge": "Zurich · Cartera",
+      "filters": "Filtros",
+      "all": "Todos",
+      "from": "Desde",
+      "to": "Hasta",
+      "loadError": "No fue posible cargar el dashboard.",
+      "noData": "No hay datos para mostrar con los filtros actuales.",
+      "kpis": {
+        "cases": "Casos",
+        "open": "Cartera abierta",
+        "openHint": "{{stalled}} con más de {{days}} días en el mismo estado · {{total}} casos en la vista",
+        "inProgress": "En trámite",
+        "inProgressHint": "Nuevo, coordinación e análisis",
+        "pendingDocs": "Pendiente de documento",
+        "pendingDocsHint": "El caso no avanza por documentación",
+        "objection": "En objeción",
+        "objectionHint": "Casos en objeción",
+        "readyPay": "Autorización analista",
+        "readyPayHint": "Pendientes de autorización para pago",
+        "paid": "Para pago",
+        "paidHint": "{{pct}}% de la cartera visible",
+        "medianDays": "mediana {{days}} d en estado actual"
+      },
+      "charts": {
+        "byStatus": "Embudo por estado",
+        "byStatusHint": "Los 7 estados del flujo Zurich, aunque aún no haya casos en algunos.",
+        "byCity": "Casos por ciudad",
+        "monthlyTrend": "Tendencia mensual · altas y casos para pago",
+        "newCases": "Altas",
+        "paidCases": "Para pago",
+        "byPolicyType": "Casos por tipo de póliza",
+        "byCause": "Casos por causa",
+        "byIntermediary": "Casos por intermediario",
+        "aging": "Antigüedad de la cartera abierta"
+      },
+      "stalled": {
+        "title": "Casos estancados ({{days}}+ días en el mismo estado)",
+        "hint": "Cartera abierta con más tiempo en el estado actual, para priorizar seguimiento.",
+        "empty": "No hay casos estancados con los filtros actuales.",
+        "days": "Días",
+        "reason": "Pendiente / motivo",
+        "openCase": "Ver caso"
+      }
     },
     "bulk": {
       "title": "Importar listado Excel",
@@ -11512,7 +11555,50 @@
     },
     "listadoDashboard": {
       "title": "Dashboard listado BBVA CAT",
-      "subtitle": "Seguimiento operativo del listado cliente. No incluye inspección CAT ni valores de siniestro."
+      "subtitle": "Seguimiento de cartera del listado cliente: estados, tiempos y pendientes de gestión. No incluye inspección CAT, valores de siniestro ni asignación interna.",
+      "badge": "BBVA CAT · Cartera",
+      "filters": "Filtros",
+      "all": "Todos",
+      "from": "Desde",
+      "to": "Hasta",
+      "loadError": "No fue posible cargar el dashboard.",
+      "noData": "No hay datos para mostrar con los filtros actuales.",
+      "kpis": {
+        "cases": "Casos",
+        "open": "Cartera abierta",
+        "openHint": "{{stalled}} con más de {{days}} días en el mismo estado · {{total}} casos en la vista",
+        "inProgress": "En trámite",
+        "inProgressHint": "Nuevo, coordinación e análisis",
+        "pendingDocs": "Pendiente de documento",
+        "pendingDocsHint": "El caso no avanza por documentación",
+        "objection": "En objeción",
+        "objectionHint": "{{closed}} objetados (cerrados)",
+        "readyPay": "Listos para pago",
+        "readyPayHint": "Autorización analista y caso para pago",
+        "paid": "Pagados",
+        "paidHint": "{{pct}}% de la cartera visible",
+        "medianDays": "mediana {{days}} d en estado actual"
+      },
+      "charts": {
+        "byStatus": "Embudo por estado",
+        "byStatusHint": "Los 9 estados del flujo CAT, aunque aún no haya casos en algunos.",
+        "byCity": "Casos por ciudad",
+        "monthlyTrend": "Tendencia mensual · altas y pagados",
+        "newCases": "Altas",
+        "paidCases": "Pagados",
+        "byPolicyType": "Casos por tipo de póliza",
+        "byCause": "Casos por causa",
+        "byIntermediary": "Casos por intermediario",
+        "aging": "Antigüedad de la cartera abierta"
+      },
+      "stalled": {
+        "title": "Casos estancados ({{days}}+ días en el mismo estado)",
+        "hint": "Cartera abierta con más tiempo en el estado actual, para priorizar seguimiento.",
+        "empty": "No hay casos estancados con los filtros actuales.",
+        "days": "Días",
+        "reason": "Pendiente / motivo",
+        "openCase": "Ver caso"
+      }
     },
     "bulk": {
       "title": "Importar listado Excel",

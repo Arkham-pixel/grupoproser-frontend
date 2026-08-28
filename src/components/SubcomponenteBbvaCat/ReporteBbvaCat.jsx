@@ -15,6 +15,7 @@ import { coordsUbicacionPredio, urlGoogleMaps } from './bbvaCatGeocodeHelpers.js
 import {
   BBVA_CAT_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
+  coincideFiltroCiudadBbvaCat,
   coincideFiltroTexto,
   fechaEnRango,
   formatCurrency,
@@ -302,7 +303,7 @@ export default function ReporteBbvaCat() {
     const idsBloque = new Set((idsBloqueSeleccionado || []).map(String));
     return casos.filter((c) => {
       if (idsBloque.size > 0 && !idsBloque.has(String(c._id))) return false;
-      if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
+      if (!coincideFiltroCiudadBbvaCat(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;

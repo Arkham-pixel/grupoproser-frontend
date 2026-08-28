@@ -13,6 +13,7 @@ import AccionesZurichMenu from './AccionesZurichMenu.jsx';
 import {
   ZURICH_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
+  coincideFiltroCiudadZurich,
   coincideFiltroTexto,
   fechaEnRango,
   formatCurrency,
@@ -300,7 +301,7 @@ export default function ReporteZurich() {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
-      if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
+      if (!coincideFiltroCiudadZurich(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;

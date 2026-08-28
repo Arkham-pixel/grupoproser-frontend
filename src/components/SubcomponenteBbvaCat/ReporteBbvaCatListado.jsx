@@ -22,6 +22,7 @@ import {
   STORAGE_ORIGEN_LISTADO_BBVA_CAT,
   buildOpcionesFiltro,
   casoTieneArchivosBbvaCat,
+  coincideFiltroCiudadBbvaCat,
   coincideFiltroTexto,
   etiquetaTipoPolizaBbvaCat,
   fechaEnRango,
@@ -214,7 +215,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
         const keys = [c.siniestro, c.zc].map((v) => String(v || '').trim()).filter(Boolean);
         if (!keys.some((k) => siniestrosBloque.has(k))) return false;
       }
-      if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
+      if (!coincideFiltroCiudadBbvaCat(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (fechaInicio || fechaFin) {

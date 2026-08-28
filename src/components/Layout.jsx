@@ -865,18 +865,19 @@ export default function Layout() {
         ]
       : [],
     zurich: !accesoRestringido || configContractor?.seccionesMenu?.includes('zurich')
-      ? [
-          ...(!esRolContractorZurich(rolNorm)
-            ? [
-                { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
-                { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
-                { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
-              ]
-            : []),
-          { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
-          { path: '/zurich/dashboard', icon: FaChartBar, label: t('nav.zurichDashboard') },
-          { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
-        ]
+      ? esRolContractorZurich(rolNorm)
+        ? [
+            { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
+            { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
+          ]
+        : [
+            { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
+            { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
+            { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
+            { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
+            { path: '/zurich/dashboard', icon: FaChartBar, label: t('nav.zurichDashboard') },
+            { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
+          ]
       : [],
     bbvaCat: !accesoRestringido || configContractor?.seccionesMenu?.includes('bbvaCat')
       ? [

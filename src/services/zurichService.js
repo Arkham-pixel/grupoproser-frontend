@@ -1,6 +1,7 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import {
   diasEnEstadoZurich,
+  homologarCiudadZurich,
   homologarEstadoZurich,
   ultimaGestionZurich,
 } from '../components/SubcomponenteZurich/zurichHelpers.js';
@@ -39,6 +40,7 @@ export const normalizeZurichItem = (item = {}) => {
     correoAsegurado: item.correoAsegurado ?? '',
     contactoAsegurado: item.contactoAsegurado ?? '',
     observaciones: item.observaciones ?? '',
+    ciudad: homologarCiudadZurich(item.ciudad) || item.ciudad || '',
     tomador: item.tomador ?? '',
     numeroPoliza: item.numeroPoliza ?? '',
     tipoPoliza: item.tipoPoliza ?? '',

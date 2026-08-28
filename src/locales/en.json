@@ -10958,7 +10958,50 @@
     },
     "listadoDashboard": {
       "title": "Zurich list dashboard",
-      "subtitle": "Operational follow-up of the client list. CAT inspection and claim amounts are not included."
+      "subtitle": "Client-list portfolio follow-up: statuses, aging and pending actions. CAT inspection, claim amounts and internal staffing are not included.",
+      "badge": "Zurich · Portfolio",
+      "filters": "Filters",
+      "all": "All",
+      "from": "From",
+      "to": "To",
+      "loadError": "The dashboard could not be loaded.",
+      "noData": "No data to show with the current filters.",
+      "kpis": {
+        "cases": "Cases",
+        "open": "Open portfolio",
+        "openHint": "{{stalled}} over {{days}} days in the same status · {{total}} cases in view",
+        "inProgress": "In progress",
+        "inProgressHint": "New, coordination and analysis",
+        "pendingDocs": "Pending documents",
+        "pendingDocsHint": "The case is waiting on documentation",
+        "objection": "In objection",
+        "objectionHint": "Cases in objection",
+        "readyPay": "Analyst authorization",
+        "readyPayHint": "Pending authorization for payment",
+        "paid": "Ready to pay",
+        "paidHint": "{{pct}}% of the visible portfolio",
+        "medianDays": "median {{days}} d in current status"
+      },
+      "charts": {
+        "byStatus": "Status funnel",
+        "byStatusHint": "All 7 Zurich workflow statuses, even when some still have no cases.",
+        "byCity": "Cases by city",
+        "monthlyTrend": "Monthly trend · new vs ready-to-pay",
+        "newCases": "New cases",
+        "paidCases": "Ready to pay",
+        "byPolicyType": "Cases by policy type",
+        "byCause": "Cases by cause",
+        "byIntermediary": "Cases by intermediary",
+        "aging": "Open-portfolio aging"
+      },
+      "stalled": {
+        "title": "Stalled cases ({{days}}+ days in the same status)",
+        "hint": "Open portfolio spending the longest in the current status, to prioritize follow-up.",
+        "empty": "There are no stalled cases with the current filters.",
+        "days": "Days",
+        "reason": "Pending / reason",
+        "openCase": "Open case"
+      }
     },
     "bulk": {
       "title": "Import Excel list",
@@ -11485,7 +11528,50 @@
     },
     "listadoDashboard": {
       "title": "BBVA CAT list dashboard",
-      "subtitle": "Operational follow-up of the client list. CAT inspection and claim amounts are not included."
+      "subtitle": "Client-list portfolio follow-up: statuses, aging and pending actions. CAT inspection, claim amounts and internal staffing are not included.",
+      "badge": "BBVA CAT · Portfolio",
+      "filters": "Filters",
+      "all": "All",
+      "from": "From",
+      "to": "To",
+      "loadError": "The dashboard could not be loaded.",
+      "noData": "No data to show with the current filters.",
+      "kpis": {
+        "cases": "Cases",
+        "open": "Open portfolio",
+        "openHint": "{{stalled}} over {{days}} days in the same status · {{total}} cases in view",
+        "inProgress": "In progress",
+        "inProgressHint": "New, coordination and analysis",
+        "pendingDocs": "Pending documents",
+        "pendingDocsHint": "The case is waiting on documentation",
+        "objection": "In objection",
+        "objectionHint": "{{closed}} objected (closed)",
+        "readyPay": "Ready for payment",
+        "readyPayHint": "Analyst authorization and ready-to-pay",
+        "paid": "Paid",
+        "paidHint": "{{pct}}% of the visible portfolio",
+        "medianDays": "median {{days}} d in current status"
+      },
+      "charts": {
+        "byStatus": "Status funnel",
+        "byStatusHint": "All 9 CAT workflow statuses, even when some still have no cases.",
+        "byCity": "Cases by city",
+        "monthlyTrend": "Monthly trend · new vs paid",
+        "newCases": "New cases",
+        "paidCases": "Paid",
+        "byPolicyType": "Cases by policy type",
+        "byCause": "Cases by cause",
+        "byIntermediary": "Cases by intermediary",
+        "aging": "Open-portfolio aging"
+      },
+      "stalled": {
+        "title": "Stalled cases ({{days}}+ days in the same status)",
+        "hint": "Open portfolio spending the longest in the current status, to prioritize follow-up.",
+        "empty": "There are no stalled cases with the current filters.",
+        "days": "Days",
+        "reason": "Pending / reason",
+        "openCase": "Open case"
+      }
     },
     "bulk": {
       "title": "Import Excel list",

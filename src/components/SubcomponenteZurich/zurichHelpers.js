@@ -472,15 +472,34 @@ export const normTexto = (value) =>
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
+/** Unifica Cali / Santiago de Cali → CALI para listados y dashboard. */
+export const homologarCiudadZurich = (valor) => {
+  const texto = String(valor ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!texto) return '';
+  const clave = normTexto(texto);
+  if (
+    clave === 'CALI' ||
+    clave === 'CALI VALLE' ||
+    clave === 'CALI VALLE DEL CAUCA' ||
+    /^SANTIAGO DE CALI\b/.test(clave)
+  ) {
+    return 'CALI';
+  }
+  return texto;
+};
+
 export const buildOpcionesFiltro = (casos = [], campo) => {
   const porNorm = new Map();
   for (const item of casos) {
     const raw = item?.[campo];
     if (!raw) continue;
-    const norm = normTexto(raw);
+    const label = campo === 'ciudad' ? homologarCiudadZurich(raw) || String(raw).trim() : String(raw).trim();
+    const norm = normTexto(label);
     if (!norm) continue;
     if (!porNorm.has(norm)) {
-      porNorm.set(norm, { value: norm, label: String(raw).trim() });
+      porNorm.set(norm, { value: norm, label });
     }
   }
   return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
@@ -489,6 +508,11 @@ export const buildOpcionesFiltro = (casos = [], campo) => {
 export const coincideFiltroTexto = (valorCaso, filtro) => {
   if (!filtro) return true;
   return normTexto(valorCaso) === normTexto(filtro);
+};
+
+export const coincideFiltroCiudadZurich = (valorCaso, filtro) => {
+  if (!filtro) return true;
+  return coincideFiltroTexto(homologarCiudadZurich(valorCaso), filtro);
 };
 
 /** Fecha ISO (YYYY-MM-DD) para inputs date desde valores de la API */
