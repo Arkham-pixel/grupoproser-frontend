@@ -125,15 +125,6 @@ export default function LiquidadorAllianz({
           };
         }
       }
-      if (campo === 'valorAseguradoContenidos') {
-        const vaCont = parsearNumero(encabezado.valorAseguradoContenidos);
-        if (vaCont > 0) {
-          liq.deducibleConfigContenidos = {
-            ...(liq.deducibleConfigContenidos || liq.deducibleConfig || {}),
-            baseDeducible: 'valor_asegurable',
-          };
-        }
-      }
       return { ...prev, encabezado, liquidacionCatastrofico: liq };
     });
   };
@@ -321,13 +312,6 @@ export default function LiquidadorAllianz({
               onChange={(e) => actualizarValorAsegurable('valorAseguradoInmueble', e.target.value)}
             />
           </Campo>
-          <Campo label={t('allianz.settlement.insuredValueContents')}>
-            <InputFenix
-              inputMode="numeric"
-              value={enc.valorAseguradoContenidos || ''}
-              onChange={(e) => actualizarValorAsegurable('valorAseguradoContenidos', e.target.value)}
-            />
-          </Campo>
         </div>
         <div className="mt-4">
           <OtrosAmparosLiquidacion
@@ -433,11 +417,6 @@ export default function LiquidadorAllianz({
         <p className="mt-2 text-xs text-gray-500">
           {cuadroAgil.deducibleTexto || totales.deducibleTexto || desgloseDed.texto}
         </p>
-        {totales.origenPresupuesto === 'cotizacion' ? (
-          <p className="mt-1 text-xs text-gray-500">{t('allianz.settlement.quoteDeductibleNote')}</p>
-        ) : (
-          <p className="mt-1 text-xs text-gray-500">{t('allianz.settlement.nsrDeductibleNote')}</p>
-        )}
       </section>
 
       <section className={expressFormSection}>

@@ -11000,6 +11000,7 @@
     "listadoDashboard": {
       "title": "Dashboard listado Zurich",
       "subtitle": "Seguimiento de cartera del listado cliente: estados, tiempos y pendientes de gestión. No incluye inspección CAT, valores de siniestro ni asignación interna.",
+      "subtitleStaff": "Seguimiento de cartera del listado: estados, tiempos, asignación (ajustador e inspector) y pendientes de gestión.",
       "badge": "Zurich · Cartera",
       "filters": "Filtros",
       "all": "Todos",
@@ -11033,6 +11034,8 @@
         "byPolicyType": "Casos por tipo de póliza",
         "byCause": "Casos por causa",
         "byIntermediary": "Casos por intermediario",
+        "byAdjuster": "Carga por ajustador",
+        "byInspector": "Carga por inspector",
         "aging": "Antigüedad de la cartera abierta"
       },
       "stalled": {
@@ -12347,7 +12350,6 @@
       "pickCase": "Selecciona un caso para trabajar el liquidador.",
       "headerTitle": "Datos del siniestro",
       "insuredValueBuilding": "Valor asegurable (inmueble)",
-      "insuredValueContents": "Valor asegurable (contenidos)",
       "itemsTitle": "Ítems de liquidación",
       "contentsTitle": "Contenidos",
       "buildingsTitle": "Edificios / inmueble",

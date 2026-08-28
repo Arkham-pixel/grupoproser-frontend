@@ -156,6 +156,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const [filtroCiudad, setFiltroCiudad] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -186,6 +187,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -193,6 +195,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
       if (!coincideFiltroCiudadZurich(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!esClienteZurich && !coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!esClienteZurich && !coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.createdAt, fechaInicio, fechaFin)) return false;
       }
@@ -223,7 +226,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
         .join(' ');
       return blob.includes(q);
     });
-  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin]);
+  }, [casos, busqueda, esClienteZurich, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin]);
 
   const casosOrdenados = useMemo(
     () => aplicarOrdenTabla(filtrados, orden, valorOrdenPorDefecto),
@@ -237,13 +240,14 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, orden.campo, orden.asc]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
     setFiltroCiudad('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInspector('');
     setFechaInicio('');
     setFechaFin('');
   };
@@ -335,7 +339,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   };
 
   const filtrosActivos = Boolean(
-    busqueda || filtroCiudad || filtroEstado || filtroAjustador || fechaInicio || fechaFin
+    busqueda || filtroCiudad || filtroEstado || filtroAjustador || filtroInspector || fechaInicio || fechaFin
   );
 
   return (
@@ -458,6 +462,21 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
               >
                 <option value="">{t('zurich.report.all')}</option>
                 {ajustadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            )}
+            {!esClienteZurich && (
+            <Campo label={t('zurich.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('zurich.report.all')}</option>
+                {inspectores.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>

@@ -37,6 +37,7 @@ import {
   SelectFenix,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { fetchAllCasosZurichListado } from '../../services/zurichListadoService.js';
+import { esRolContractorZurich } from '../../config/roles.js';
 import {
   ESTADOS_ZURICH,
   buildOpcionesFiltro,
@@ -69,6 +70,7 @@ export default function DashboardZurichListado() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const td = (key, opts) => t(`zurich.listadoDashboard.${key}`, opts);
+  const esInterno = !esRolContractorZurich();
 
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +81,8 @@ export default function DashboardZurichListado() {
   const [filtroCausa, setFiltroCausa] = useState('');
   const [filtroModalidad, setFiltroModalidad] = useState('');
   const [filtroIntermediario, setFiltroIntermediario] = useState('');
+  const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
@@ -112,6 +116,7 @@ export default function DashboardZurichListado() {
       filtroCausa ||
       filtroModalidad ||
       filtroIntermediario ||
+      (esInterno && (filtroAjustador || filtroInspector)) ||
       fechaDesde ||
       fechaHasta
   );
@@ -123,6 +128,8 @@ export default function DashboardZurichListado() {
     setFiltroCausa('');
     setFiltroModalidad('');
     setFiltroIntermediario('');
+    setFiltroAjustador('');
+    setFiltroInspector('');
     setFechaDesde('');
     setFechaHasta('');
   };
@@ -140,6 +147,12 @@ export default function DashboardZurichListado() {
         if (filtroIntermediario && !coincideFiltroTexto(item.intermediario, filtroIntermediario)) {
           return false;
         }
+        if (esInterno && filtroAjustador && !coincideFiltroTexto(item.ajustador, filtroAjustador)) {
+          return false;
+        }
+        if (esInterno && filtroInspector && !coincideFiltroTexto(item.inspector, filtroInspector)) {
+          return false;
+        }
         if (fechaDesde || fechaHasta) {
           return fechaEnRango(fechaAltaListadoZurich(item), fechaDesde, fechaHasta);
         }
@@ -147,12 +160,15 @@ export default function DashboardZurichListado() {
       }),
     [
       casos,
+      esInterno,
       filtroCiudad,
       filtroEstado,
       filtroTipoPoliza,
       filtroCausa,
       filtroModalidad,
       filtroIntermediario,
+      filtroAjustador,
+      filtroInspector,
       fechaDesde,
       fechaHasta,
     ]
@@ -168,6 +184,8 @@ export default function DashboardZurichListado() {
   const causas = useMemo(() => buildOpcionesFiltro(casos, 'causa'), [casos]);
   const modalidades = useMemo(() => buildOpcionesFiltro(casos, 'modalidadAtencion'), [casos]);
   const intermediarios = useMemo(() => buildOpcionesFiltro(casos, 'intermediario'), [casos]);
+  const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
 
   const tooltipStyle = {
     backgroundColor: isDark ? '#1F1F1F' : '#FFFFFF',
@@ -204,7 +222,7 @@ export default function DashboardZurichListado() {
           <span className={expressBadge}>{td('badge')}</span>
           <div>
             <h1 className={expressPageTitle}>{td('title')}</h1>
-            <p className={expressPageSubtitle}>{td('subtitle')}</p>
+            <p className={expressPageSubtitle}>{esInterno ? td('subtitleStaff') : td('subtitle')}</p>
           </div>
         </header>
 
@@ -273,6 +291,36 @@ export default function DashboardZurichListado() {
                 ))}
               </SelectFenix>
             </Campo>
+            {esInterno && (
+              <>
+                <Campo label={t('zurich.fields.ajustador')}>
+                  <SelectFenix
+                    value={filtroAjustador}
+                    onChange={(e) => setFiltroAjustador(e.target.value)}
+                  >
+                    <option value="">{td('all')}</option>
+                    {ajustadores.map((op) => (
+                      <option key={op.value} value={op.value}>
+                        {op.label}
+                      </option>
+                    ))}
+                  </SelectFenix>
+                </Campo>
+                <Campo label={t('zurich.fields.inspector')}>
+                  <SelectFenix
+                    value={filtroInspector}
+                    onChange={(e) => setFiltroInspector(e.target.value)}
+                  >
+                    <option value="">{td('all')}</option>
+                    {inspectores.map((op) => (
+                      <option key={op.value} value={op.value}>
+                        {op.label}
+                      </option>
+                    ))}
+                  </SelectFenix>
+                </Campo>
+              </>
+            )}
             <Campo label={td('from')}>
               <InputFenix type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} />
             </Campo>
@@ -379,6 +427,29 @@ export default function DashboardZurichListado() {
             seriesName={t('zurich.fields.tipoPoliza')}
           />
         </section>
+
+        {esInterno && (
+          <section className="grid w-full min-w-0 grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+            <HorizontalBars
+              title={td('charts.byAdjuster')}
+              data={stats.porAjustador}
+              isDark={isDark}
+              tickColor={tickColor}
+              gridStroke={gridStroke}
+              tooltipStyle={tooltipStyle}
+              seriesName={td('kpis.cases')}
+            />
+            <HorizontalBars
+              title={td('charts.byInspector')}
+              data={stats.porInspector}
+              isDark={isDark}
+              tickColor={tickColor}
+              gridStroke={gridStroke}
+              tooltipStyle={tooltipStyle}
+              seriesName={td('kpis.cases')}
+            />
+          </section>
+        )}
 
         <ChartCard title={td('charts.monthlyTrend')} empty={stats.tendenciaMensual.length === 0}>
           <ExpressChartPlot height={360}>

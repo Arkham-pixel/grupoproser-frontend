@@ -146,12 +146,13 @@ export const MODO_DEDUCIBLE_NSR10 = {
 };
 
 /**
- * AIU único CAT (25%). En Colombia AIU ya incluye Administración, Imprevistos y Utilidad;
- * imprevistos e impuestos no se muestran aparte. Alfa (20%) y BBVA no usan este objeto.
+ * CAT NSR-10: AIU por defecto 25% (editable). En Colombia AIU ya incluye
+ * Administración, Imprevistos y Utilidad; imprevistos e impuestos no se muestran aparte.
+ * Alfa (20%) y BBVA (AIU fijo) no usan este objeto.
  */
 export const AIU_PORCENTAJE_DEFAULT_NSR10_CAT = 0.25;
 export const RECARGOS_PRESUPUESTO_NSR10_CAT = {
-  aiuFijo: AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
+  aiuDefault: AIU_PORCENTAJE_DEFAULT_NSR10_CAT,
   ocultarImprevistos: true,
   ocultarImpuestos: true,
 };
@@ -161,6 +162,12 @@ export function aplicarRecargosPresupuestoNsr10(presupuesto = {}, recargos = nul
   const next = { ...(presupuesto || {}) };
   if (recargos.aiuFijo != null && Number.isFinite(Number(recargos.aiuFijo))) {
     next.aiuPorcentaje = Number(recargos.aiuFijo);
+  } else if (
+    recargos.aiuDefault != null &&
+    Number.isFinite(Number(recargos.aiuDefault)) &&
+    (next.aiuPorcentaje == null || next.aiuPorcentaje === '')
+  ) {
+    next.aiuPorcentaje = Number(recargos.aiuDefault);
   }
   if (recargos.ocultarImprevistos) next.imprevistosPorcentaje = 0;
   if (recargos.ocultarImpuestos) next.impuestosPorcentaje = 0;

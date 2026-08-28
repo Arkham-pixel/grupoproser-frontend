@@ -496,10 +496,10 @@ function PreguntaModoDeducibleNsr({
 }
 
 /**
- * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function, recargosPresupuesto?: { aiuFijo?: number, ocultarImprevistos?: boolean, ocultarImpuestos?: boolean }|null, ocultarPresupuestoEscrito?: boolean }} props
+ * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function, recargosPresupuesto?: { aiuFijo?: number, aiuDefault?: number, ocultarImprevistos?: boolean, ocultarImpuestos?: boolean }|null, ocultarPresupuestoEscrito?: boolean }} props
  * modoLiquidador: hojas Presupuesto + Contenidos + diagrama de liquidación (informe único).
  * habilitarUploadFotos: celda Foto/Ref. permite adjuntar imagen (p. ej. Seguros Alfa).
- * recargosPresupuesto: p. ej. CAT NSR-10 o BBVA — AIU fijo y sin imprevistos/impuestos.
+ * recargosPresupuesto: p. ej. CAT NSR-10 (AIU editable, default 25%) o BBVA (AIU fijo).
  * ocultarPresupuestoEscrito: si hay cotización PDF, no mostrar la hoja de presupuesto digitado.
  * totalPresupuestoOverride: monto de cotización PDF como base del diagrama (en lugar del NSR-10).
  */
@@ -1446,7 +1446,7 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 {modoLiquidador
                   ? 'Elija del catálogo de base de precios (951 ítems, de mayor a menor). Puede buscar por nombre. Edite cantidades; el total alimenta la liquidación y el Word.'
                   : recargosPresupuesto?.ocultarImprevistos
-                    ? 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; total con AIU fijo.'
+                    ? 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; total con AIU (porcentaje editable).'
                     : 'Elija del catálogo de base de precios o escriba libre. Código del hallazgo, actividad, unidad, cantidad y valor unitario; totales con AIU / imprevistos / impuestos.'}
               </p>
             </div>
@@ -1893,6 +1893,33 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 {recargosPresupuesto?.aiuFijo != null ? (
                   <span className="rounded border px-2 py-1 text-xs font-semibold" style={{ borderColor, color: textPrimary }}>
                     {Math.round(Number(recargosPresupuesto.aiuFijo) * 100)}%
+                  </span>
+                ) : recargosPresupuesto?.aiuDefault != null ? (
+                  <span className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="w-20 rounded border px-2 py-1 text-xs"
+                      style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                      value={
+                        presupuesto.aiuPorcentaje === ''
+                          ? ''
+                          : Math.round(
+                              Number(
+                                presupuesto.aiuPorcentaje ?? recargosPresupuesto.aiuDefault
+                              ) * 10000
+                            ) / 100
+                      }
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setPresupuesto({
+                          ...presupuesto,
+                          aiuPorcentaje: raw === '' ? '' : Number(raw) / 100,
+                        });
+                      }}
+                    />
+                    <span className="text-xs font-semibold">%</span>
                   </span>
                 ) : (
                 <input

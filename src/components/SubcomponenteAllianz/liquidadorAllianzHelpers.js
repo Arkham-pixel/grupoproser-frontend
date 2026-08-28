@@ -31,7 +31,6 @@ import {
   configDeducibleTerremotoCat,
   desgloseDeducibleTerremoto,
   TEXTO_DEDUCIBLE_TERREMOTO_CAT,
-  valorAseguradoContenidosCat,
   valorAseguradoPresupuestoCat,
 } from '../liquidacion/deducibleTerremotoCat.js';
 
@@ -451,14 +450,8 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
   const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
   const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
   const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
-  const vaContenidos = valorAseguradoContenidosCat(liquidador);
-  const cfgContenidos = {
-    ...(liq.deducibleConfigContenidos || liq.deducibleConfig || {}),
-  };
-  if (vaContenidos > 0) cfgContenidos.baseDeducible = 'valor_asegurable';
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: valorAseguradoPresupuestoCat(liquidador),
-    valorAseguradoContenidos: vaContenidos > 0 ? vaContenidos : null,
     totalDanios: sumaCompleta,
     totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
@@ -466,7 +459,7 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     hospedajeManual: liq.hospedajeManual,
     deducible: liq.deducible,
     deducibleConfig: liq.deducibleConfig,
-    deducibleConfigContenidos: cfgContenidos,
+    deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: configDeduciblePresupuestoParaCalculoAllianz(liquidador),
     otrosAmparos: liquidador.otrosAmparos,
     ...(() => {

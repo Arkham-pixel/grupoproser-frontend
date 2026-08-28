@@ -90,8 +90,9 @@ function motivoEstancado(caso = {}) {
 }
 
 /**
- * KPIs y series del dashboard de cartera (vista cliente Zurich).
- * No incluye ajustador, inspector ni valores de siniestro.
+ * KPIs y series del dashboard de cartera (listado Zurich).
+ * porAjustador / porInspector son para usuarios internos; la UI de la
+ * cuenta cliente Zurich no los muestra.
  */
 export function construirDashboardZurichListado(casos = []) {
   const lista = Array.isArray(casos) ? casos : [];
@@ -184,6 +185,8 @@ export function construirDashboardZurichListado(casos = []) {
     },
     porEstado,
     porCiudad: agruparConteo(lista, (c) => homologarCiudadZurich(c.ciudad), { vacio: 'Sin ciudad' }),
+    porAjustador: agruparConteo(lista, (c) => c.ajustador, { vacio: 'Sin ajustador' }),
+    porInspector: agruparConteo(lista, (c) => c.inspector, { vacio: 'Sin inspector' }),
     porTipoPoliza: agruparConteo(lista, (c) => etiquetaTipoPolizaZurich(c), { vacio: 'Sin tipo de póliza' }),
     porCausa: agruparConteo(lista, (c) => c.causa, { vacio: 'Sin causa' }),
     porIntermediario: agruparConteo(lista, (c) => c.intermediario, { vacio: 'Sin intermediario' }),

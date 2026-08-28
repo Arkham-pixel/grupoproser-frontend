@@ -10973,6 +10973,7 @@
     "listadoDashboard": {
       "title": "Zurich list dashboard",
       "subtitle": "Client-list portfolio follow-up: statuses, aging and pending actions. CAT inspection, claim amounts and internal staffing are not included.",
+      "subtitleStaff": "List portfolio follow-up: statuses, aging, staffing (adjuster and inspector) and pending actions.",
       "badge": "Zurich · Portfolio",
       "filters": "Filters",
       "all": "All",
@@ -11006,6 +11007,8 @@
         "byPolicyType": "Cases by policy type",
         "byCause": "Cases by cause",
         "byIntermediary": "Cases by intermediary",
+        "byAdjuster": "Load by adjuster",
+        "byInspector": "Load by inspector",
         "aging": "Open-portfolio aging"
       },
       "stalled": {
@@ -12320,7 +12323,6 @@
       "pickCase": "Select a case to work on the settlement.",
       "headerTitle": "Claim details",
       "insuredValueBuilding": "Insured value (building)",
-      "insuredValueContents": "Insured value (contents)",
       "itemsTitle": "Settlement items",
       "contentsTitle": "Contents",
       "buildingsTitle": "Buildings / property",

@@ -247,6 +247,7 @@ export default function ReporteZurich() {
   const [filtroDepto, setFiltroDepto] = useState('');
   const [filtroEstado, setFiltroEstado] = useState('');
   const [filtroAjustador, setFiltroAjustador] = useState('');
+  const [filtroInspector, setFiltroInspector] = useState('');
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
   const [pagina, setPagina] = useState(1);
@@ -299,6 +300,7 @@ export default function ReporteZurich() {
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
   const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
+  const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
 
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
@@ -307,6 +309,7 @@ export default function ReporteZurich() {
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
+      if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (fechaInicio || fechaFin) {
         if (!fechaEnRango(c.fechaSiniestro || c.createdAt, fechaInicio, fechaFin)) return false;
       }
@@ -347,6 +350,7 @@ export default function ReporteZurich() {
     filtroDepto,
     filtroEstado,
     filtroAjustador,
+    filtroInspector,
     fechaInicio,
     fechaFin,
   ]);
@@ -363,7 +367,7 @@ export default function ReporteZurich() {
 
   useEffect(() => {
     setPagina(1);
-  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, fechaInicio, fechaFin, orden.campo, orden.asc]);
+  }, [busqueda, filtroCiudad, filtroDepto, filtroEstado, filtroAjustador, filtroInspector, fechaInicio, fechaFin, orden.campo, orden.asc]);
 
   const limpiarFiltros = () => {
     setBusqueda('');
@@ -371,6 +375,7 @@ export default function ReporteZurich() {
     setFiltroDepto('');
     setFiltroEstado('');
     setFiltroAjustador('');
+    setFiltroInspector('');
     setFechaInicio('');
     setFechaFin('');
   };
@@ -442,6 +447,7 @@ export default function ReporteZurich() {
       filtroDepto ||
       filtroEstado ||
       filtroAjustador ||
+      filtroInspector ||
       fechaInicio ||
       fechaFin
   );
@@ -530,6 +536,19 @@ export default function ReporteZurich() {
               >
                 <option value="">{t('zurich.report.all')}</option>
                 {ajustadores.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </SelectFenix>
+            </Campo>
+            <Campo label={t('zurich.fields.inspector')}>
+              <SelectFenix
+                value={filtroInspector}
+                onChange={(e) => setFiltroInspector(e.target.value)}
+              >
+                <option value="">{t('zurich.report.all')}</option>
+                {inspectores.map((o) => (
                   <option key={o.value} value={o.value}>
                     {o.label}
                   </option>
