@@ -8,6 +8,7 @@ import {
   FaEllipsisV,
   FaFileAlt,
   FaFolderOpen,
+  FaListOl,
   FaTrash,
   FaEdit,
 } from 'react-icons/fa';
@@ -20,6 +21,7 @@ export default function AccionesAllianzMenu({
   onArchivero,
   onAbrirCaso,
   onLiquidador,
+  onInformeAgil,
   onInformeUnico,
   onEliminar,
   docsCount = 0,
@@ -35,7 +37,7 @@ export default function AccionesAllianzMenu({
   useLayoutEffect(() => {
     if (!abierto || !btnRef.current) return;
     const rect = btnRef.current.getBoundingClientRect();
-    const menuAltoApprox = 280;
+    const menuAltoApprox = 330;
     const espacioAbajo = window.innerHeight - rect.bottom;
     const abrirArriba = espacioAbajo < menuAltoApprox && rect.top > menuAltoApprox;
     setCoords({
@@ -131,6 +133,17 @@ export default function AccionesAllianzMenu({
             <FaCalculator className="text-fenix-primario" />
             {t('allianz.report.settlement')}
             {tieneLiquidador ? ' ✓' : ''}
+          </button>
+          )}
+          {typeof onInformeAgil === 'function' && (
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full items-center gap-2 px-3 py-2 text-left font-body text-sm text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-800"
+            onClick={() => elegir(onInformeAgil)}
+          >
+            <FaListOl className="text-fenix-primario" />
+            {t('allianz.report.agileReport')}
           </button>
           )}
           {typeof onInformeUnico === 'function' && (

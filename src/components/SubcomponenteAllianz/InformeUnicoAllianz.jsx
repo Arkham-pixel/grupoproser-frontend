@@ -20,12 +20,15 @@ import {
   calcularLiquidacionAllianz,
   casoAllianzConInforme,
   defaultInformeUnicoAllianz,
+  desgloseDeducibleTerremotoAllianz,
   etiquetaArchivoInformeAllianz,
   formDataNsrDesdeLiquidadorAllianz,
   formatearMonto,
   formatDateLarga,
+  itemsPlanosAllianz,
   mapcasoAllianzALiquidador,
   normalizarTipoInformeAllianz,
+  patchDeduciblePresupuestoAllianz,
   reservaSugeridaAllianz,
   totalPresupuestoPreliminarAllianz,
 } from './liquidadorAllianzHelpers.js';
@@ -38,6 +41,13 @@ import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNS
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
+import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import {
+  serializarPaginasCotizacion,
+  montoCotizacionPdf,
+  usaCotizacionComoBasePresupuesto,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
+import EditorDeducibleLibreAllianz from './EditorDeducibleLibreAllianz.jsx';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -170,6 +180,15 @@ export default function InformeUnicoAllianz({
   const [forzarCapturaMapa, setForzarCapturaMapa] = useState(0);
 
   const totales = useMemo(() => calcularLiquidacionAllianz(liquidador), [liquidador]);
+  const desgloseDed = useMemo(
+    () => desgloseDeducibleTerremotoAllianz(liquidador, totales.diagrama),
+    [liquidador, totales.diagrama]
+  );
+  const tieneCotizacionPdf = Boolean(
+    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+      liquidador.cotizacionPdf?.archivoPdf
+  );
+  const itemsResumen = useMemo(() => itemsPlanosAllianz(liquidador), [liquidador]);
   const criterio = totales.criterio || {};
   const tipoInforme = normalizarTipoInformeAllianz(informe.tipoInforme, 'preliminar');
   const esPreliminar = tipoInforme === 'preliminar';
@@ -283,6 +302,18 @@ export default function InformeUnicoAllianz({
 
   const handleNsrChange = (patch) => {
     setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
+  };
+
+  const handleCotizacionChange = (cotizacionPdf) => {
+    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+    setInforme((prev) => ({
+      ...prev,
+      fotosCotizacion: serializarPaginasCotizacion(cotizacionPdf?.paginas),
+    }));
+  };
+
+  const actualizarDeduciblePresupuesto = (patch) => {
+    setLiquidador((prev) => patchDeduciblePresupuestoAllianz(prev, patch));
   };
 
   const restaurarInfoEvento = () => {
@@ -613,6 +644,12 @@ export default function InformeUnicoAllianz({
         <h3 className={expressSectionTitle}>
           {nConclusiones}. {t('allianz.reportUnique.sectionConclusions')}
         </h3>
+        {tieneCotizacionPdf ? (
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('allianz.reportUnique.preliminaryBudgetHiddenQuote')}
+          </p>
+        ) : (
+          <>
         <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
           {t('allianz.reportUnique.sectionPreliminaryBudget')}
         </p>
@@ -652,6 +689,8 @@ export default function InformeUnicoAllianz({
           <span>{t('allianz.reportUnique.totalPreliminaryReserve')}</span>
           <span>$ {formatearMonto(totalPreliminar)}</span>
         </div>
+          </>
+        )}
 
         <div className="mt-5">
           <Campo label={t('allianz.reportUnique.conclusions')}>
@@ -710,18 +749,69 @@ export default function InformeUnicoAllianz({
               </div>
             ) : null}
 
+            <div className="mb-4">
+              <CotizacionPdfLiquidacion
+                i18nPrefix="allianz.settlement"
+                value={liquidador.cotizacionPdf}
+                onChange={handleCotizacionChange}
+                casoId={casoAllianz?._id}
+                api={api}
+                archivosCaso={casoAllianz?.archivos || []}
+                onArchivosCreados={appendArchivosAlCaso}
+                onArchivosEliminados={(ids) => {
+                  const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+                  if (!setIds.size) return;
+                  onCasoChange?.((prev) => {
+                    if (!prev) return prev;
+                    const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+                    return {
+                      ...prev,
+                      archivos: actuales.filter((a) => !setIds.has(String(a?._id))),
+                    };
+                  });
+                }}
+                disabled={guardandoCaso}
+              />
+            </div>
+
+            <div className="mb-4 max-w-xl">
+              <EditorDeducibleLibreAllianz
+                cfg={liquidador.liquidacionCatastrofico?.deducibleConfigPresupuesto || {}}
+                onChange={actualizarDeduciblePresupuesto}
+                disabled={guardandoCaso}
+              />
+            </div>
+
             <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
               <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Total daños (NSR-10)</span>
+                <span>
+                  {totales.origenPresupuesto === 'cotizacion'
+                    ? t('allianz.settlement.totalDamagesQuote')
+                    : t('allianz.settlement.totalDamagesNsr')}
+                </span>
                 <span>$ {formatearMonto(totales.totalDanios)}</span>
               </div>
+              {totales.origenPresupuesto === 'cotizacion' && (
+                <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+                  <span>{t('allianz.settlement.totalQuote')}</span>
+                  <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
+                </div>
+              )}
               <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
                 <span>Hospedaje</span>
                 <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Deducible</span>
-                <span>{totales.deducibleTexto || 'No aplica'}</span>
+                <span>{desgloseDed.etiquetaPct}</span>
+                <span>$ {formatearMonto(desgloseDed.montoPct)}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+                <span>{desgloseDed.etiquetaSmmlv}</span>
+                <span>$ {formatearMonto(desgloseDed.montoSmmlv)}</span>
+              </div>
+              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+                <span>{desgloseDed.etiquetaAplicado}</span>
+                <span>$ {formatearMonto(desgloseDed.aplicado)}</span>
               </div>
               <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
                 <span>Otros amparos (sin deducible)</span>
@@ -732,44 +822,51 @@ export default function InformeUnicoAllianz({
                 <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
               </div>
             </div>
+            <p className="mb-4 mt-2 text-xs text-gray-500">
+              {totales.deducibleTexto || desgloseDed.texto}
+            </p>
 
             <ChecklistEvaluacionSismicaNSR10
               formData={formDataNsr}
               onInputChange={handleNsrChange}
               modoLiquidador
               recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+              ocultarPresupuestoEscrito={tieneCotizacionPdf}
+              totalPresupuestoOverride={
+                usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+                  ? montoCotizacionPdf(liquidador.cotizacionPdf)
+                  : null
+              }
             />
           </section>
 
           <section className={expressFormSection}>
             <h3 className={expressSectionTitle}>6. {t('allianz.reportUnique.sectionTable')}</h3>
             <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-              Resumen de ítems del presupuesto NSR-10.
+              {tieneCotizacionPdf
+                ? 'Resumen de la cotización de reparación usada como base de liquidación.'
+                : 'Resumen de ítems del presupuesto NSR-10.'}
             </p>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
                 <thead>
                   <tr className="text-left text-gray-500">
                     <th className="px-2 py-2">#</th>
-                    <th className="px-2 py-2">Actividad</th>
-                    <th className="px-2 py-2">Cant.</th>
-                    <th className="px-2 py-2">V. unitario</th>
+                    <th className="px-2 py-2">Concepto</th>
+                    <th className="px-2 py-2">Reclamado</th>
+                    <th className="px-2 py-2">Indemnizable</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || [])
-                    .filter((it) => String(it?.actividad || '').trim())
-                    .map((it, idx) => (
-                      <tr key={it.id || idx}>
-                        <td className="px-2 py-2">{idx + 1}</td>
-                        <td className="px-2 py-2">{it.actividad || '—'}</td>
-                        <td className="px-2 py-2">{it.cantidad ?? '—'}</td>
-                        <td className="px-2 py-2">$ {formatearMonto(it.valorUnitario)}</td>
-                      </tr>
-                    ))}
-                  {!(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || []).some((it) =>
-                    String(it?.actividad || '').trim()
-                  ) && (
+                  {itemsResumen.map((it, idx) => (
+                    <tr key={it.id || idx}>
+                      <td className="px-2 py-2">{idx + 1}</td>
+                      <td className="px-2 py-2">{it.concepto || '—'}</td>
+                      <td className="px-2 py-2">$ {formatearMonto(it.valorReclamado)}</td>
+                      <td className="px-2 py-2">$ {formatearMonto(it.valorIndemnizable)}</td>
+                    </tr>
+                  ))}
+                  {!itemsResumen.length && (
                     <tr>
                       <td colSpan={4} className="px-2 py-4 text-center text-gray-500">
                         {t('allianz.reportUnique.noSettlementItems')}

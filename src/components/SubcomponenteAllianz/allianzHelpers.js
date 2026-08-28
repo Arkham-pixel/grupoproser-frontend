@@ -138,6 +138,7 @@ export const ETIQUETAS_ARCHIVO_ALLIANZ = [
   'INSPECCION',
   'LIQUIDACION',
   'FOTOS',
+  'COTIZACION',
   /** Manual CAT — evidencia fotográfica/documental */
   'FOTO_GENERAL',
   'FOTO_DANOS',

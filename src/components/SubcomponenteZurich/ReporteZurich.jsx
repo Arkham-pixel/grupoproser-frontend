@@ -18,6 +18,7 @@ import {
   fechaEnRango,
   formatCurrency,
   formatDate,
+  diasEnEstadoZurich,
   labelSeveridadCat,
   normTexto,
   evidenciaAplicaSi,
@@ -91,7 +92,6 @@ const COLUMNAS = [
   { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
   { clave: 'valorAseguradoContenidos', labelKey: 'valorAseguradoContenidos' },
   { clave: 'cobertura', labelKey: 'cobertura' },
-  { clave: 'estadoPagoPrimas', labelKey: 'estadoPagoPrimas' },
   { clave: 'valorReservaPreventivaPromedio', labelKey: 'valorReservaPreventivaPromedio' },
   { clave: 'valorComercialInmueble', labelKey: 'valorComercialInmueble' },
   { clave: 'reserva', labelKey: 'reserva' },
@@ -106,12 +106,12 @@ const COLUMNAS = [
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
   { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
-  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
+  { clave: 'fechaInspeccionado', labelKey: 'fechaInspeccionado' },
   { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
   { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
   { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
-  { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
-  { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'fechaInformePreliminar', labelKey: 'fechaInformePreliminar' },
+  { clave: 'fechaInformeFinal', labelKey: 'fechaInformeFinal' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -142,11 +142,13 @@ const CAMPOS_FECHA = new Set([
   'fechaVisita',
   'fechaCasoNuevo',
   'fechaCoordinandoInspeccion',
-  'fechaAnalisisCaso',
+  'fechaInspeccionado',
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
   'fechaObjecion',
-  'fechaAutorizacionAnalista',
+  'fechaLiquidado',
+  'fechaInformePreliminar',
+  'fechaInformeFinal',
   'fechaCasoParaPago',
   'ultimaGestion',
 ]);
@@ -192,7 +194,6 @@ const buildExportRow = (caso) => ({
   'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
   'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
   COBERTURA: caso.cobertura ?? '',
-  'ESTADO PAGO PRIMAS': caso.estadoPagoPrimas ?? '',
   'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
   'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
   RESERVA: caso.reserva ?? '',
@@ -206,13 +207,14 @@ const buildExportRow = (caso) => ({
   ESTADO: caso.estado ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
   'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
-  'FECHA COORDINANDO INSPECCIÓN': formatDate(caso.fechaCoordinandoInspeccion),
-  'FECHA ANÁLISIS': formatDate(caso.fechaAnalisisCaso),
+  'FECHA INSPECCIÓN COORDINADA': formatDate(caso.fechaCoordinandoInspeccion),
+  'FECHA INSPECCIONADO': formatDate(caso.fechaInspeccionado),
   'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
   'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
-  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
-  'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
-  'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'FECHA OBJETADO': formatDate(caso.fechaObjecion),
+  'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
+  'FECHA INFORME PRELIMINAR': formatDate(caso.fechaInformePreliminar),
+  'FECHA INFORME FINAL': formatDate(caso.fechaInformeFinal),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -375,6 +377,7 @@ export default function ReporteZurich() {
 
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'docs') return Array.isArray(item.archivos) ? item.archivos.length : 0;
+    if (clave === 'diasEnEstado') return diasEnEstadoZurich(item) || '—';
     if (clave === 'severidadCat') return labelSeveridadCat(item.severidadCat);
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
@@ -608,6 +611,16 @@ export default function ReporteZurich() {
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
                             navigate(`/zurich/caso?casoId=${item._id}&tab=cat`, {
+                              state: { casoZurich: item },
+                            })
+                          }
+                          onLiquidador={() =>
+                            navigate(`/zurich/caso?casoId=${item._id}&tab=presupuesto`, {
+                              state: { casoZurich: item },
+                            })
+                          }
+                          onInformeUnico={() =>
+                            navigate(`/zurich/caso?casoId=${item._id}&tab=informe`, {
                               state: { casoZurich: item },
                             })
                           }

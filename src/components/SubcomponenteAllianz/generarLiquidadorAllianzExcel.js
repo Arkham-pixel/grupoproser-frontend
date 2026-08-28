@@ -214,4 +214,5 @@ export async function generarLiquidadorAllianzExcelBlob(liquidador) {
 export async function descargarLiquidadorAllianzExcel(liquidador, totales) {
   const { blob, filename } = await generarLiquidadorAllianzExcelBlob(liquidador, totales);
   saveAs(blob, filename);
+  return { blob, filename };
 }

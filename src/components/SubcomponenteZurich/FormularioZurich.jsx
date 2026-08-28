@@ -36,7 +36,6 @@ import {
   CAMPOS_NUMERICOS_ZURICH,
   CAMPOS_DECIMAL_ZURICH,
   ESTADOS_ZURICH,
-  FECHA_ACCION_POR_ESTADO_ZURICH,
   FORM_VACIO_ZURICH,
   MODALIDADES_ZURICH,
   TIPOS_IDENTIFICACION_ZURICH,
@@ -46,11 +45,13 @@ import {
   OPCIONES_SI_NO_ZURICH,
   TIPOS_NEGOCIO_HOMOLOGADO_ZURICH,
   construirFormDesdecasoZurich,
+  campoFechaPorEstadoZurich,
   diasEnEstadoZurich,
   fechaParaInput,
   formatDate,
   formatMilesInput,
   homologarEstadoZurich,
+  departamentoPorCiudadZurich,
   normalizeEvidenciaCat,
   ultimaGestionZurich,
 } from './zurichHelpers.js';
@@ -145,12 +146,15 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
     onRestoreAvailable: onDraftRestoreAvailable,
   });
 
+  const casoIdInicial = initialData?._id || '';
   useEffect(() => {
     setForm(initialData ? construirFormDesdecasoZurich(initialData) : formNuevoZurich());
     setError(null);
     setExito(null);
     setResumenImport(null);
-  }, [initialData]);
+    // Solo al cambiar de caso: si el padre re-crea el objeto, no se borra lo escrito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [casoIdInicial]);
 
   useEffect(() => {
     let cancelado = false;
@@ -216,6 +220,13 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
     };
   }, []);
 
+  useEffect(() => {
+    if (!form.ciudad || String(form.departamento || '').trim()) return;
+    const depto = departamentoPorCiudadZurich(form.ciudad, ciudadesRaw);
+    if (!depto) return;
+    setForm((prev) => (prev.departamento ? prev : { ...prev, departamento: depto }));
+  }, [ciudadesRaw, form.ciudad, form.departamento]);
+
   const departamentos = useMemo(() => {
     const map = new Map();
     for (const c of ciudadesRaw) {
@@ -279,10 +290,14 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
       if (clave === 'tipoPoliza' && !esTipoPolizaOtroZurich(valor)) {
         siguiente.tipoPolizaOtro = '';
       }
+      if (clave === 'ciudad') {
+        const depto = departamentoPorCiudadZurich(valor, ciudadesRaw);
+        if (depto) siguiente.departamento = depto;
+      }
       if (clave === 'estado') {
         siguiente.estado = homologarEstadoZurich(valor);
-        const campoFecha = FECHA_ACCION_POR_ESTADO_ZURICH[siguiente.estado];
-        if (campoFecha && !siguiente[campoFecha]) {
+        const campoFecha = campoFechaPorEstadoZurich(siguiente.estado);
+        if (campoFecha && !String(siguiente[campoFecha] || '').trim()) {
           siguiente[campoFecha] = fechaParaInput(new Date());
         }
       }
@@ -352,8 +367,15 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           .filter(Boolean)
           .join(' | '),
         observaciones: form.observaciones,
+        observacionesCat: form.observacionesCat,
+        reserva: aNumero(form.reserva),
         ciudad: form.ciudad,
         departamento: form.departamento,
+        tomador: form.tomador ?? '',
+        direccionPredio: form.direccionPredio ?? form.direccion ?? '',
+        fechaInicioPoliza: form.fechaInicioPoliza || null,
+        fechaFinPoliza: form.fechaFinPoliza || null,
+        cobertura: form.cobertura ?? '',
         ajustadorLider: form.ajustadorLider,
         ajustador: form.ajustador,
         inspector: form.inspector,
@@ -362,12 +384,14 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
         fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
-        fechaAnalisisCaso: form.fechaAnalisisCaso,
+        fechaInspeccionado: form.fechaInspeccionado,
+        fechaVerificado: form.fechaVerificado,
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
         fechaObjecion: form.fechaObjecion,
-        fechaAutorizacionAnalista: form.fechaAutorizacionAnalista,
-        fechaCasoParaPago: form.fechaCasoParaPago,
+        fechaLiquidado: form.fechaLiquidado,
+        fechaInformePreliminar: form.fechaInformePreliminar,
+        fechaInformeFinal: form.fechaInformeFinal,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
@@ -403,6 +427,9 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
       form.observacionLlamada != null ? String(form.observacionLlamada) : '';
     payload.observacionReserva =
       form.observacionReserva != null ? String(form.observacionReserva) : '';
+    delete payload.createdAt;
+    delete payload.updatedAt;
+    delete payload.__v;
     if (!String(payload.identificacion || '').trim()) {
       if (payload.zc) payload.identificacion = String(payload.zc).trim();
       else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
@@ -624,6 +651,68 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               buttonClassName="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </Campo>
+          <Campo label={t('zurich.fields.departamento')}>
+            <SelectFenix
+              value={form.departamento}
+              onChange={setDepartamento}
+              disabled={
+                (cargandoCatalogos && departamentos.length === 0) ||
+                attrsCampoCaso(rolUsuario, 'departamento', ctxPermiso).disabled
+              }
+            >
+              <option value="">{t('common.select')}</option>
+              {opcionHuerfana(form.departamento, departamentos) && (
+                <option value={form.departamento}>{form.departamento}</option>
+              )}
+              {departamentos.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </SelectFenix>
+          </Campo>
+          <Campo label={t('zurich.fields.direccionPredio')} className="md:col-span-2 lg:col-span-3">
+            <InputFenix
+              value={form.direccionPredio}
+              onChange={setCampo('direccionPredio')}
+              placeholder={t('zurich.placeholders.direccionPredio', {
+                defaultValue: 'Dirección del predio asegurado',
+              })}
+              {...attrsCampoCaso(rolUsuario, 'direccionPredio', ctxPermiso)}
+            />
+          </Campo>
+          <CampoTomadorZurich
+            value={form.tomador}
+            disabled={attrsCampoCaso(rolUsuario, 'tomador', ctxPermiso).disabled}
+            onChange={(valor) => {
+              if (!puedeEditarCampoCaso(rolUsuario, 'tomador', ctxPermiso)) return;
+              setForm((prev) => ({ ...prev, tomador: valor }));
+            }}
+          />
+          <Campo label={t('zurich.fields.fechaInicioPoliza')}>
+            <InputFenix
+              type="date"
+              value={form.fechaInicioPoliza}
+              onChange={setCampo('fechaInicioPoliza')}
+              {...attrsCampoCaso(rolUsuario, 'fechaInicioPoliza', ctxPermiso)}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaFinPoliza')}>
+            <InputFenix
+              type="date"
+              value={form.fechaFinPoliza}
+              onChange={setCampo('fechaFinPoliza')}
+              {...attrsCampoCaso(rolUsuario, 'fechaFinPoliza', ctxPermiso)}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.cobertura')}>
+            <InputFenix
+              value={form.cobertura}
+              onChange={setCampo('cobertura')}
+              placeholder={t('zurich.placeholders.cobertura')}
+              {...attrsCampoCaso(rolUsuario, 'cobertura', ctxPermiso)}
+            />
+          </Campo>
           <Campo label={t('zurich.fields.estado')} required>
             {selectSimple('estado', ESTADOS_ZURICH)}
           </Campo>
@@ -664,6 +753,9 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               placeholder={t('zurich.placeholders.observaciones')}
             />
           </Campo>
+          {esModuloListado ? (
+            <Campo label={t('zurich.fields.reserva')}>{inputMiles('reserva')}</Campo>
+          ) : null}
         </div>
         {soloInspector ? (
           <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
@@ -691,17 +783,24 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               onChange={setCampo('fechaCoordinandoInspeccion')}
             />
           </Campo>
-          <Campo label={t('zurich.fields.fechaAnalisisCaso')}>
+          <Campo label={t('zurich.fields.fechaInspeccionado')}>
             <InputFenix
               type="date"
-              value={form.fechaAnalisisCaso}
-              onChange={setCampo('fechaAnalisisCaso')}
+              value={form.fechaInspeccionado}
+              onChange={setCampo('fechaInspeccionado')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaVerificado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaVerificado}
+              onChange={setCampo('fechaVerificado')}
             />
           </Campo>
           <Campo label={t('zurich.fields.fechaSolicitudDocumento')}>
             <InputFenix
               type="date"
-              value={form.fechaSolicitudDocumento}
+              value={form.fechaSolicitudDocumento || ''}
               onChange={setCampo('fechaSolicitudDocumento')}
             />
           </Campo>
@@ -715,22 +814,25 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
           <Campo label={t('zurich.fields.fechaObjecion')}>
             <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
           </Campo>
-          <Campo label={t('zurich.fields.fechaAutorizacionAnalista')}>
+          <Campo label={t('zurich.fields.fechaLiquidado')}>
+            <InputFenix type="date" value={form.fechaLiquidado} onChange={setCampo('fechaLiquidado')} />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaInformePreliminar')}>
             <InputFenix
               type="date"
-              value={form.fechaAutorizacionAnalista}
-              onChange={setCampo('fechaAutorizacionAnalista')}
+              value={form.fechaInformePreliminar}
+              onChange={setCampo('fechaInformePreliminar')}
             />
           </Campo>
-          <Campo label={t('zurich.fields.fechaCasoParaPago')}>
+          <Campo label={t('zurich.fields.fechaInformeFinal')}>
             <InputFenix
               type="date"
-              value={form.fechaCasoParaPago}
-              onChange={setCampo('fechaCasoParaPago')}
+              value={form.fechaInformeFinal}
+              onChange={setCampo('fechaInformeFinal')}
             />
           </Campo>
           <Campo label={t('zurich.fields.diasEnEstado')}>
-            <InputFenix value={diasEnEstadoZurich(form)} readOnly />
+            <InputFenix type="text" value={diasEnEstadoZurich(form)} readOnly tabIndex={-1} />
           </Campo>
           <Campo label={t('zurich.fields.ultimaGestion')}>
             <InputFenix value={formatDate(ultimaGestionZurich(form)) || '—'} readOnly />
@@ -903,13 +1005,6 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
                   placeholder={t('zurich.placeholders.causa')}
                 />
               </Campo>
-              <CampoTomadorZurich
-                value={form.tomador}
-                onChange={(valor) => setForm((prev) => ({ ...prev, tomador: valor }))}
-              />
-              <Campo label={t('zurich.fields.direccionPredio')}>
-                <InputFenix value={form.direccionPredio} onChange={setCampo('direccionPredio')} />
-              </Campo>
               <Campo label={t('zurich.fields.informacionContacto')}>
                 <InputFenix
                   value={form.informacionContacto}
@@ -939,44 +1034,6 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
                   placeholder="Ej: Zurich"
                 />
               </Campo>
-              <Campo label={t('zurich.fields.departamento')}>
-                <SelectFenix
-                  value={form.departamento}
-                  onChange={setDepartamento}
-                  disabled={cargandoCatalogos && departamentos.length === 0}
-                >
-                  <option value="">{t('common.select')}</option>
-                  {opcionHuerfana(form.departamento, departamentos) && (
-                    <option value={form.departamento}>{form.departamento}</option>
-                  )}
-                  {departamentos.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </SelectFenix>
-              </Campo>
-              <Campo label={t('zurich.fields.ciudad')}>
-                <SelectFenix
-                  value={form.ciudad}
-                  onChange={setCampo('ciudad')}
-                  disabled={cargandoCatalogos && ciudadesFiltradas.length === 0}
-                >
-                  <option value="">
-                    {form.departamento
-                      ? t('zurich.placeholders.selectCity')
-                      : t('zurich.placeholders.selectDepartmentFirst')}
-                  </option>
-                  {opcionHuerfana(form.ciudad, ciudadesFiltradas) && (
-                    <option value={form.ciudad}>{form.ciudad}</option>
-                  )}
-                  {ciudadesFiltradas.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </SelectFenix>
-              </Campo>
             </div>
           </section>
 
@@ -1004,36 +1061,8 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
                   />
                 </Campo>
               )}
-              <Campo label={t('zurich.fields.fechaInicioPoliza')}>
-                <InputFenix
-                  type="date"
-                  value={form.fechaInicioPoliza}
-                  onChange={setCampo('fechaInicioPoliza')}
-                />
-              </Campo>
-              <Campo label={t('zurich.fields.fechaFinPoliza')}>
-                <InputFenix
-                  type="date"
-                  value={form.fechaFinPoliza}
-                  onChange={setCampo('fechaFinPoliza')}
-                />
-              </Campo>
               <Campo label={t('zurich.fields.numeroCredito')}>
                 <InputFenix value={form.numeroCredito} onChange={setCampo('numeroCredito')} />
-              </Campo>
-              <Campo label={t('zurich.fields.cobertura')}>
-                <InputFenix
-                  value={form.cobertura}
-                  onChange={setCampo('cobertura')}
-                  placeholder={t('zurich.placeholders.cobertura')}
-                />
-              </Campo>
-              <Campo label={t('zurich.fields.estadoPagoPrimas')}>
-                <InputFenix
-                  value={form.estadoPagoPrimas}
-                  onChange={setCampo('estadoPagoPrimas')}
-                  placeholder={t('zurich.placeholders.estadoPagoPrimas')}
-                />
               </Campo>
             </div>
           </section>

@@ -171,6 +171,7 @@ export default function InformeUnicoAllianzPage() {
             ) : (
               <InformeUnicoAllianz
                 casoAllianz={casoAllianz}
+                origen="cat"
                 onEstadoChange={setInformeState}
                 onGuardarEnCaso={casoId ? handleGuardar : undefined}
                 onCasoChange={setcasoAllianz}

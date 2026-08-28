@@ -496,10 +496,12 @@ function PreguntaModoDeducibleNsr({
 }
 
 /**
- * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function, recargosPresupuesto?: { aiuFijo?: number, ocultarImprevistos?: boolean, ocultarImpuestos?: boolean }|null }} props
+ * @param {{ formData: object, onInputChange: Function, modoLiquidador?: boolean, habilitarUploadFotos?: boolean, onUploadFotoFila?: Function, onRemoveFotoFila?: Function, recargosPresupuesto?: { aiuFijo?: number, ocultarImprevistos?: boolean, ocultarImpuestos?: boolean }|null, ocultarPresupuestoEscrito?: boolean }} props
  * modoLiquidador: hojas Presupuesto + Contenidos + diagrama de liquidación (informe único).
  * habilitarUploadFotos: celda Foto/Ref. permite adjuntar imagen (p. ej. Seguros Alfa).
  * recargosPresupuesto: p. ej. CAT NSR-10 o BBVA — AIU fijo y sin imprevistos/impuestos.
+ * ocultarPresupuestoEscrito: si hay cotización PDF, no mostrar la hoja de presupuesto digitado.
+ * totalPresupuestoOverride: monto de cotización PDF como base del diagrama (en lugar del NSR-10).
  */
 export default function ChecklistEvaluacionSismicaNSR10({
   formData,
@@ -509,6 +511,8 @@ export default function ChecklistEvaluacionSismicaNSR10({
   onUploadFotoFila = null,
   onRemoveFotoFila = null,
   recargosPresupuesto = null,
+  ocultarPresupuestoEscrito = false,
+  totalPresupuestoOverride = null,
 }) {
   const { theme } = useTheme();
   const textPrimary = theme === 'dark' ? '#F5F5F5' : '#1E1E1E';
@@ -577,12 +581,15 @@ export default function ChecklistEvaluacionSismicaNSR10({
     [tipoInmuebleContenidos]
   );
   const hojaRaw = evalData.hojaActiva || 'portada';
-  const hoja = modoLiquidador
-    ? HOJAS_LIQUIDADOR_NSR10.some((h) => h.id === hojaRaw)
-      ? hojaRaw
+  const hojasMenu = (modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10).filter(
+    (h) => !(ocultarPresupuestoEscrito && h.id === 'presupuesto')
+  );
+  const hojaFallback = modoLiquidador
+    ? ocultarPresupuestoEscrito
+      ? 'totales'
       : 'presupuesto'
     : hojaActivaVisibleNSR10(hojaRaw);
-  const hojasMenu = modoLiquidador ? HOJAS_LIQUIDADOR_NSR10 : HOJAS_VISIBLES_NSR10;
+  const hoja = hojasMenu.some((h) => h.id === hojaRaw) ? hojaRaw : hojaFallback;
   const portadaSyncRef = useRef('');
 
   const liquidacion = formData.liquidacionCatastrofico || {
@@ -611,12 +618,28 @@ export default function ChecklistEvaluacionSismicaNSR10({
       }),
     [liquidacion]
   );
+  const usaTotalPresupuestoOverride =
+    totalPresupuestoOverride != null &&
+    totalPresupuestoOverride !== '' &&
+    Number.isFinite(Number(totalPresupuestoOverride));
+  const totalPresupuestoDiagrama = usaTotalPresupuestoOverride
+    ? Number(totalPresupuestoOverride) || 0
+    : resumenTotales.totalPresupuesto;
+  const totalDaniosDiagrama = usaTotalPresupuestoOverride
+    ? Math.round(
+        ((Number(totalPresupuestoOverride) || 0) + (Number(resumenTotales.totalContenidos) || 0)) *
+          100
+      ) / 100
+    : resumenTotales.sumaCompleta;
   const diagrama = useMemo(
     () =>
       calcularDiagramaLiquidacion({
-        valorAsegurado: liquidacion.valorAsegurado,
-        totalDanios: resumenTotales.sumaCompleta,
-        totalPresupuesto: resumenTotales.totalPresupuesto,
+        valorAsegurado:
+          liquidacion.valorAsegurado ||
+          formData?.valorAseguradoInmueble ||
+          formData?.encabezado?.valorAseguradoInmueble,
+        totalDanios: totalDaniosDiagrama,
+        totalPresupuesto: totalPresupuestoDiagrama,
         totalContenidos: resumenTotales.totalContenidos,
         hospedajePorcentaje: liquidacion.hospedajePorcentaje,
         hospedajeManual: liquidacion.hospedajeManual,
@@ -626,7 +649,16 @@ export default function ChecklistEvaluacionSismicaNSR10({
         deducibleConfigPresupuesto:
           liquidacion.deducibleConfigPresupuesto || deducibleCfgPresupuesto,
         otrosAmparos: formData.otrosAmparos,
-        ...argsDeduciblesPorArticuloDiagrama(liquidacion, resumenTotales),
+        ...(() => {
+          const args = argsDeduciblesPorArticuloDiagrama(liquidacion, resumenTotales);
+          if (!usaTotalPresupuestoOverride) return args;
+          return {
+            ...args,
+            usaDeduciblePorArticuloPresupuesto: false,
+            deduciblePresupuestoPorArticulos: 0,
+            presupuestoNetoPorArticulo: null,
+          };
+        })(),
       }),
     [
       liquidacion,
@@ -634,6 +666,9 @@ export default function ChecklistEvaluacionSismicaNSR10({
       deducibleCfg,
       deducibleCfgPresupuesto,
       formData.otrosAmparos,
+      usaTotalPresupuestoOverride,
+      totalDaniosDiagrama,
+      totalPresupuestoDiagrama,
     ]
   );
   const usaPorArticuloContenidos = true;
@@ -1077,12 +1112,16 @@ export default function ChecklistEvaluacionSismicaNSR10({
           <div>
             <h2 className="text-base font-semibold" style={{ color: textPrimary }}>
           {modoLiquidador
-            ? 'Liquidador · Presupuesto y Contenidos NSR-10'
+            ? ocultarPresupuestoEscrito
+              ? 'Liquidador · Cotización PDF, contenidos y totales'
+              : 'Liquidador · Presupuesto y Contenidos NSR-10'
             : 'Plantilla evaluación sísmica NSR-10'}
             </h2>
             <p className="mt-1 text-sm" style={{ color: textSecondary }}>
           {modoLiquidador
-            ? 'Presupuesto (edificio), Contenidos y Totales. La suma completa alimenta el diagrama de liquidación del informe único.'
+            ? ocultarPresupuestoEscrito
+              ? 'La cotización PDF sustituye el presupuesto escrito. Contenidos y totales siguen alimentando el deducible.'
+              : 'Presupuesto (edificio), Contenidos y Totales. La suma completa alimenta el diagrama de liquidación del informe único.'
             : OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
               ? 'Portada, Presupuesto, Contenidos y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'
               : 'Portada, Evaluación, Dictamen, Presupuesto, Contenidos y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'}
@@ -1972,9 +2011,12 @@ export default function ChecklistEvaluacionSismicaNSR10({
               <table className="w-full text-sm">
                 <tbody style={{ color: textPrimary }}>
                   <tr className="border-b" style={{ borderColor }}>
-                    <td className="px-3 py-2">TOTAL PRESUPUESTO</td>
+                    <td className="px-3 py-2">
+                      TOTAL PRESUPUESTO
+                      {usaTotalPresupuestoOverride ? ' (cotización)' : ''}
+                    </td>
                     <td className="px-3 py-2 text-right font-semibold">
-                      {money(totales.total)}
+                      {money(usaTotalPresupuestoOverride ? totalPresupuestoDiagrama : totales.total)}
                     </td>
                   </tr>
                   <tr className="border-b" style={{ borderColor }}>

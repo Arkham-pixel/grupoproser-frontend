@@ -2,10 +2,16 @@ import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import {
   diasEnEstadoZurich,
   homologarCiudadZurich,
-  homologarEstadoZurich,
+  migrarFechasEstadoZurich,
   ultimaGestionZurich,
 } from '../components/SubcomponenteZurich/zurichHelpers.js';
-import { sanitizarInformeUnicoZurich } from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
+import {
+  fechasInformeParaCasoZurich,
+  reservaSugeridaZurich,
+  sanitizarInformeUnicoZurich,
+  sanitizarLiquidadorZurich,
+  camposPolizaParaCasoZurich,
+} from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
 
 const API_URL = `${BASE_URL}/api/zurich-listado`;
 
@@ -15,8 +21,8 @@ const authHeaders = () => {
 };
 
 export const normalizeZurichListadoItem = (item = {}) => {
-  const estado = homologarEstadoZurich(item.estado);
-  const caso = { ...item, estado };
+  const caso = migrarFechasEstadoZurich(item);
+  const estado = caso.estado;
   return {
     ...caso,
     zc: item.zc ?? '',
@@ -36,8 +42,14 @@ export const normalizeZurichListadoItem = (item = {}) => {
     correoAsegurado: item.correoAsegurado ?? '',
     contactoAsegurado: item.contactoAsegurado ?? '',
     observaciones: item.observaciones ?? '',
+    reserva: item.reserva ?? null,
     ciudad: homologarCiudadZurich(item.ciudad) || item.ciudad || '',
-    departamento: item.departamento ?? '',
+    departamento: item.departamento ?? caso.departamento ?? '',
+    tomador: item.tomador ?? caso.tomador ?? '',
+    direccionPredio: item.direccionPredio ?? caso.direccionPredio ?? '',
+    fechaInicioPoliza: item.fechaInicioPoliza ?? caso.fechaInicioPoliza ?? null,
+    fechaFinPoliza: item.fechaFinPoliza ?? caso.fechaFinPoliza ?? null,
+    cobertura: item.cobertura ?? caso.cobertura ?? '',
     ajustadorLider: item.ajustadorLider ?? '',
     ajustador: item.ajustador ?? '',
     inspector: item.inspector ?? '',
@@ -142,7 +154,8 @@ export const guardarLiquidadorEnCasoZurichListado = async ({
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
   return actualizarCasoZurichListado(casoId, {
     ...omitirMeta(casoBase),
-    liquidador: liquidador || {},
+    ...camposPolizaParaCasoZurich(liquidador || {}, casoBase),
+    liquidador: sanitizarLiquidadorZurich(liquidador || {}),
   });
 };
 
@@ -152,10 +165,16 @@ export const guardarInformeUnicoEnCasoZurichListado = async ({
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
-  return actualizarCasoZurichListado(casoId, {
+  const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
+  const reservaPerito = reservaSugeridaZurich(sanitizado);
+  const payload = {
     ...omitirMeta(casoBase),
-    informeUnico: sanitizarInformeUnicoZurich(informeUnico || {}),
-  });
+    ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),
+    informeUnico: sanitizado,
+    ...fechasInformeParaCasoZurich(sanitizado, casoBase),
+  };
+  if (reservaPerito > 0) payload.reserva = reservaPerito;
+  return actualizarCasoZurichListado(casoId, payload);
 };
 
 export const deleteCasoZurichListado = async (id) => {

@@ -20,6 +20,7 @@ import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaN
 import {
   calcularLiquidacionZurich,
   defaultInformeUnicoZurich,
+  desgloseDeducibleTerremotoZurich,
   etiquetaArchivoInformeZurich,
   etiquetaEncabezadoInformeZurich,
   etiquetaReporteCuadroZurich,
@@ -29,6 +30,7 @@ import {
   formatDateLarga,
   itemsPlanosZurich,
   mapcasoZurichALiquidador,
+  migrarLiquidadorDeducibleTerremotoZurich,
   normalizarTipoInformeZurich,
   parsearNumero,
   prefijoArchivoInformeZurich,
@@ -281,7 +283,7 @@ function crearTituloInformeZurich(info = {}) {
         underline: {},
       }),
       new TextRun({
-        text: '  DE SINIESTRO',
+        text: ' DE SINIESTRO',
         bold: true,
         size: SIZE_12,
         font: FONT,
@@ -1093,13 +1095,18 @@ function tablaPresupuestoPreliminarZurich(filas = []) {
 
 
 /**
- * Informe preliminar o final Zurich.
- * El preliminar replica la ficha, daños por zona, póliza y reserva.
- * El final reutiliza ese contenido y añade liquidación NSR-10.
+ * Informe preliminar, final o único Zurich.
+ * El preliminar replica la ficha, daños, póliza y reserva.
+ * El final reutiliza ese contenido y añade el liquidador del presupuesto.
+ * El único es el expediente completo con liquidador.
  */
 export async function descargarWordInformeZurich({ caso = {}, informe = null, liquidador = null } = {}) {
   const info = informe || defaultInformeUnicoZurich(caso);
-  const liq = liquidador || mapcasoZurichALiquidador(caso);
+  const liq = migrarLiquidadorDeducibleTerremotoZurich(
+    liquidador || mapcasoZurichALiquidador(caso),
+    caso,
+    { forzar: true }
+  );
   const totales = calcularLiquidacionZurich(liq);
   const enc = liq.encabezado || {};
   const items = itemsPlanosZurich(liq);
@@ -1107,6 +1114,12 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     ? liq.evaluacionSismicaNSR10.presupuesto.items
     : [];
   const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
+  const tieneContenidosDiligenciados = (Array.isArray(contenidosNsr.items) ? contenidosNsr.items : []).some(
+    (it) =>
+      String(it?.articulo || '').trim() ||
+      String(it?.categoria || '').trim() ||
+      Number(it?.cantidad) > 0
+  );
   const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
   const aiuPct = Math.round(
     (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100
@@ -1133,6 +1146,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
     const nombre = String(a.nombreOriginal || a.nombre || '').toLowerCase();
+    if (et === 'COTIZACION') return false;
     return et === 'FOTOS' || et === 'INSPECCION' || /\.(jpe?g|png|gif|webp)$/i.test(nombre);
   });
   const fotosInforme = Array.isArray(info?.fotosInspeccion)
@@ -1180,6 +1194,72 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       )
     );
   }
+
+  const fotosCotizacionRaw = [
+    ...(Array.isArray(info?.fotosCotizacion) ? info.fotosCotizacion : []),
+    ...(Array.isArray(liq?.cotizacionPdf?.paginas) ? liq.cotizacionPdf.paginas : []),
+  ].filter((f) => f && (f.ruta || f.file || f.preview || f._id));
+  const vistosCotiz = new Set();
+  const fotosCotizacion = [];
+  for (const f of fotosCotizacionRaw) {
+    const key = String(f._id || f.ruta || f.preview || '');
+    if (key && vistosCotiz.has(key)) continue;
+    if (key) vistosCotiz.add(key);
+    fotosCotizacion.push(f);
+  }
+  const cotizacionParrafos = [];
+  let cotizacionesIncluidas = 0;
+  for (const archivo of fotosCotizacion.slice(0, 12)) {
+    const img = await bytesDesdeFoto(archivo);
+    if (!img) continue;
+    cotizacionesIncluidas += 1;
+    const natW = Number(archivo.width) || 0;
+    const natH = Number(archivo.height) || 0;
+    let width = 500;
+    let height = 680;
+    if (natW > 0 && natH > 0) {
+      const scale = Math.min(500 / natW, 680 / natH, 1);
+      width = Math.max(120, Math.round(natW * scale));
+      height = Math.max(160, Math.round(natH * scale));
+    }
+    cotizacionParrafos.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 40 },
+        children: [
+          new ImageRun({
+            data: img.bytes,
+            transformation: { width, height },
+            type: img.type,
+          }),
+        ],
+      }),
+      p(
+        archivo.descripcion ||
+          archivo.nombreOriginal ||
+          archivo.nombre ||
+          `Cotización · página ${cotizacionesIncluidas}`,
+        {
+          alignment: AlignmentType.CENTER,
+          size: SIZE_12,
+          after: 120,
+        }
+      )
+    );
+  }
+  const montoCotizTxt = money(totales.cotizacionMonto || liq?.cotizacionPdf?.montoFinal);
+  const seccionCotizacion = cotizacionParrafos.length
+    ? [
+        heading('Cotización de reparación'),
+        p(
+          totales.origenPresupuesto === 'cotizacion'
+            ? `Soporte de la cotización usada como base de liquidación. Monto final: ${montoCotizTxt}. El deducible de terremoto es el mayor entre 3% del valor asegurable y 3 SMMLV; el tope es este monto.`
+            : `Captura de la cotización adjunta (${cotizacionesIncluidas} página(s)).`,
+          { after: 120, size: SIZE_12 }
+        ),
+        ...cotizacionParrafos,
+      ]
+    : [];
 
   const filasCuadro = [
     new TableRow({
@@ -1240,6 +1320,69 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     );
   }
 
+  const desgloseDed = desgloseDeducibleTerremotoZurich(liq, totales.diagrama);
+  if (desgloseDed.aplicado > 0) {
+    filasCuadro.push(
+      new TableRow({
+        children: [
+          cell('', { width: 600, cuadro: true }),
+          cell(desgloseDed.etiquetaPct, { width: 4000, cuadro: true }),
+          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
+          cell(money(desgloseDed.montoPct), {
+            width: 2200,
+            alignment: AlignmentType.RIGHT,
+            cuadro: true,
+          }),
+        ],
+      })
+    );
+    filasCuadro.push(
+      new TableRow({
+        children: [
+          cell('', { width: 600, cuadro: true }),
+          cell(desgloseDed.etiquetaSmmlv, { width: 4000, cuadro: true }),
+          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
+          cell(money(desgloseDed.montoSmmlv), {
+            width: 2200,
+            alignment: AlignmentType.RIGHT,
+            cuadro: true,
+          }),
+        ],
+      })
+    );
+    filasCuadro.push(
+      new TableRow({
+        children: [
+          cell('', { width: 600, cuadro: true }),
+          cell('Deducible terremoto (se resta el mayor)', { width: 4000, cuadro: true }),
+          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
+          cell(`− ${money(desgloseDed.aplicado)}`, {
+            width: 2200,
+            alignment: AlignmentType.RIGHT,
+            cuadro: true,
+          }),
+        ],
+      })
+    );
+  }
+  const deducibleContenidos = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
+  if (deducibleContenidos > 0) {
+    filasCuadro.push(
+      new TableRow({
+        children: [
+          cell('', { width: 600, cuadro: true }),
+          cell('Deducible contenidos', { width: 4000, cuadro: true }),
+          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
+          cell(`− ${money(deducibleContenidos)}`, {
+            width: 2200,
+            alignment: AlignmentType.RIGHT,
+            cuadro: true,
+          }),
+        ],
+      })
+    );
+  }
+
   filasCuadro.push(
     new TableRow({
       children: [
@@ -1272,35 +1415,13 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       })
     );
 
-  const baseUrl = import.meta.env.BASE_URL || '/';
-  const mapaEvento = await loadLogoBytes(
-    `${baseUrl}templates/mapa-evento-siniestro-Zurich.png`
-  );
-  const mapaEventoParrafos = [];
-  if (mapaEvento) {
-    mapaEventoParrafos.push(
-      new Paragraph({
-        alignment: AlignmentType.CENTER,
-        spacing: { before: 160, after: 80 },
-        children: [
-          new ImageRun({
-            data: mapaEvento.bytes,
-            transformation: { width: 480, height: 342 },
-            type: mapaEvento.type,
-          }),
-        ],
-      }),
-      p('Mapa del evento — impacto del sismo en Colombia', {
-        alignment: AlignmentType.CENTER,
-        size: SIZE_META,
-        after: 120,
-        color: '555555',
-      })
-    );
-  }
-
   const header = await crearEncabezadoZurich({ caso, informe: info });
 
+  const usaCotizacion = totales.origenPresupuesto === 'cotizacion';
+  const tieneCotizacionPdf =
+    usaCotizacion ||
+    (Array.isArray(liq?.cotizacionPdf?.paginas) && liq.cotizacionPdf.paginas.length > 0) ||
+    Boolean(liq?.cotizacionPdf?.archivoPdf);
   const liquidacionResumen = [
     ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
       ? []
@@ -1312,31 +1433,45 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
             { labelW: 5000, valueW: 5000 }
           ),
         ]),
-    campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    ...(mostrarImprevistos
+    ...(usaCotizacion
       ? [
-          campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
+          campoFila('Total cotización de reparación (base de deducible)', money(totales.cotizacionMonto), {
+            boldValue: true,
             labelW: 5000,
             valueW: 5000,
           }),
         ]
-      : []),
-    ...(mostrarImpuestos
-      ? [
-          campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
+      : [
+          campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
             labelW: 5000,
             valueW: 5000,
           }),
-        ]
-      : []),
-    campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
+          campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
+          ...(mostrarImprevistos
+            ? [
+                campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
+                  labelW: 5000,
+                  valueW: 5000,
+                }),
+              ]
+            : []),
+          ...(mostrarImpuestos
+            ? [
+                campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
+                  labelW: 5000,
+                  valueW: 5000,
+                }),
+              ]
+            : []),
+          campoFila(
+            'Total presupuesto de reparación',
+            money(totales.totalPresupuesto ?? totales.presupuesto?.total),
+            {
+              labelW: 5000,
+              valueW: 5000,
+            }
+          ),
+        ]),
     campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
       labelW: 5000,
       valueW: 5000,
@@ -1350,18 +1485,27 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       labelW: 5000,
       valueW: 5000,
     }),
-    campoFila(
-      totales.deducibleAplicado > 0
-        ? `Deducible (${txt(totales.deducibleTexto || 'aplicado')})`
-        : 'Deducible',
-      totales.deducibleAplicado > 0
-        ? money(totales.deducibleAplicado)
-        : txt(totales.deducibleTexto || 'No aplica'),
-      {
-        labelW: 5000,
-        valueW: 5000,
-      }
-    ),
+    campoFila(desgloseDed.etiquetaPct, money(desgloseDed.montoPct), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    campoFila(desgloseDed.etiquetaSmmlv, money(desgloseDed.montoSmmlv), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    campoFila(desgloseDed.etiquetaAplicado, money(desgloseDed.aplicado), {
+      boldValue: true,
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    ...(deducibleContenidos > 0
+      ? [
+          campoFila('Deducible contenidos', money(deducibleContenidos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+        ]
+      : []),
     ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
       ? [
           campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
@@ -1464,7 +1608,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
     filasNsr.push(
       new TableRow({
         children: [
-          cell('Sin ítems en el presupuesto NSR-10', {
+          cell('Sin ítems en el presupuesto', {
             width: NSR_TABLE_W,
             columnSpan: 11,
             size: SIZE_NSR,
@@ -1546,12 +1690,21 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
 
   const seccionConclusiones = [
     heading('4. Conclusiones y recomendación del ajustador'),
-    p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
-      bold: true,
-      before: 40,
-      after: 120,
-    }),
-    tablaPresupuestoPreliminarZurich(info.filasPresupuestoPreliminar),
+    ...(tieneCotizacionPdf
+      ? [
+          p(
+            'No se incluye presupuesto preliminar escrito: la cotización PDF es el soporte de reparación.',
+            { after: 120 }
+          ),
+        ]
+      : [
+          p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
+            bold: true,
+            before: 40,
+            after: 120,
+          }),
+          tablaPresupuestoPreliminarZurich(info.filasPresupuestoPreliminar),
+        ]),
     p('Conclusiones', { bold: true, before: 180, after: 40 }),
     p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
       after: 120,
@@ -1607,7 +1760,6 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
         ...(infoEventoParrafos.length
           ? infoEventoParrafos
           : [p('Sin información del evento.')]),
-        ...mapaEventoParrafos,
       ],
     },
     {
@@ -1635,27 +1787,35 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       properties: { page: pageLandscape },
       headers: { default: header },
       children: [
-        heading('5. Liquidación de pérdidas (liquidador NSR-10)'),
-        p(
-          mostrarImprevistos || mostrarImpuestos
-            ? 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.'
-            : 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (único recargo; imprevistos e impuestos van incluidos).',
-          { after: 120 }
-        ),
-        tablaLiquidadorCompleto,
-        p('Contenidos del inmueble (bienes muebles)', {
-          bold: true,
-          before: 180,
-          after: 80,
-          size: SIZE_12,
-        }),
-        p(
-          contenidosNsr.tipoInmueble
-            ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
-            : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
-          { after: 100 }
-        ),
-        tablaContenidos,
+        heading('5. Liquidador (presupuesto de reparación)'),
+        ...(tieneCotizacionPdf
+          ? []
+          : [
+              p(
+                mostrarImprevistos || mostrarImpuestos
+                  ? 'Presupuesto de reparación — columnas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos. Los valores salen de la pestaña Presupuesto.'
+                  : 'Presupuesto de reparación — columnas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (único recargo). Los valores salen de la pestaña Presupuesto.',
+                { after: 120 }
+              ),
+              tablaLiquidadorCompleto,
+            ]),
+        ...(tieneContenidosDiligenciados
+          ? [
+              p('Contenidos del inmueble (bienes muebles)', {
+                bold: true,
+                before: 180,
+                after: 80,
+                size: SIZE_12,
+              }),
+              p(
+                contenidosNsr.tipoInmueble
+                  ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
+                  : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
+                { after: 100 }
+              ),
+              tablaContenidos,
+            ]
+          : []),
         p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
         new Table({
           width: { size: 10000, type: WidthType.DXA },
@@ -1671,6 +1831,13 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           : []),
       ],
     });
+    if (seccionCotizacion.length) {
+      sections.push({
+        properties: { page: pagePortrait },
+        headers: { default: header },
+        children: seccionCotizacion,
+      });
+    }
     sections.push({
       properties: { page: pagePortrait },
       headers: { default: header },

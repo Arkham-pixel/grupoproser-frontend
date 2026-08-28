@@ -321,4 +321,5 @@ export async function descargarFiniquitoAllianzWord(liquidador = {}, totalesInpu
     .slice(0, 50);
   const nombre = `Finiquito_Constancia_Allianz_${safe}.docx`;
   saveAs(blob, nombre);
+  return { blob, filename: nombre };
 }

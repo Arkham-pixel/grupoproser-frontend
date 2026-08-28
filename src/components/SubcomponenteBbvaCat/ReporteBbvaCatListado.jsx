@@ -50,6 +50,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
+import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -131,11 +132,12 @@ const buildExportRow = (caso) => ({
   'Fecha creación': formatDate(caso.createdAt),
 });
 
-export default function ReporteBbvaCatListado({ modo = 'listado' }) {
+export default function ReporteBbvaCatListado({ modo = 'listado', modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const esAnalista = modo === 'analista';
   const esBbvaSolo = esRolSoloBbva();
+  const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -161,13 +163,14 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
     setLoading(true);
     setError(null);
     try {
-      setCasos(await fetchAllCasosBbvaCatListado(2000));
+      const data = await fetchAllCasosBbvaCatListado(2000);
+      setCasos(modoAsignados ? filtrarCasosAsignadosASesion(data) : data);
     } catch (err) {
       setError(err.message || t('bbvaCat.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, modoAsignados]);
 
   useEffect(() => {
     recargar();
@@ -204,11 +207,13 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
     );
     return casos.filter((c) => {
       const conArchivo = casoTieneArchivosBbvaCat(c);
-      if (esAnalista) {
-        const buscarDocumentados = Boolean(q) || incluirConArchivos;
-        if (!buscarDocumentados && conArchivo) return false;
-      } else if (!conArchivo) {
-        return false;
+      if (!modoAsignados) {
+        if (esAnalista) {
+          const buscarDocumentados = Boolean(q) || incluirConArchivos;
+          if (!buscarDocumentados && conArchivo) return false;
+        } else if (!conArchivo) {
+          return false;
+        }
       }
       if (bloqueSeleccionadoId) {
         if (siniestrosBloque.size === 0) return false;
@@ -260,6 +265,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
     siniestrosBloqueSeleccionado,
     esAnalista,
     incluirConArchivos,
+    modoAsignados,
   ]);
 
   const casosOrdenados = useMemo(
@@ -412,16 +418,22 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
         <header className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             <span className={expressBadge}>
-              {esAnalista ? 'BBVA CAT · Analista' : 'BBVA CAT · Listado'}
+              {esAnalista && !modoAsignados ? 'BBVA CAT · Analista' : 'BBVA CAT · Listado'}
             </span>
             <div>
               <h1 className={expressPageTitle}>
-                {esAnalista ? t('bbvaCat.listadoReport.analistaTitle') : t('bbvaCat.listadoReport.title')}
+                {modoAsignados
+                  ? `${t('bbvaCat.listadoReport.title')} — ${t('nav.assignedCases')}`
+                  : esAnalista
+                    ? t('bbvaCat.listadoReport.analistaTitle')
+                    : t('bbvaCat.listadoReport.title')}
               </h1>
               <p className={expressPageSubtitle}>
-                {esAnalista
-                  ? t('bbvaCat.listadoReport.analistaSubtitle')
-                  : t('bbvaCat.listadoReport.subtitleDocumented')}
+                {modoAsignados
+                  ? t('common.assignedCasesHint', { name: nombreSesion || '—' })
+                  : esAnalista
+                    ? t('bbvaCat.listadoReport.analistaSubtitle')
+                    : t('bbvaCat.listadoReport.subtitleDocumented')}
               </p>
             </div>
             <nav className="flex flex-wrap gap-2">
@@ -438,7 +450,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
               >
                 {t('nav.bbvaCatListadoDashboard')}
               </Link>
-              {esAnalista ? (
+              {esAnalista && !modoAsignados ? (
                 <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
                   {t('nav.bbvaCatListadoAnalista')}
                 </span>
@@ -451,7 +463,7 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
                 </Link>
               )}
               {!esBbvaSolo &&
-                (esAnalista ? (
+                (esAnalista || modoAsignados ? (
                   <Link
                     to="/bbva-cat/listado/reporte"
                     className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
@@ -463,10 +475,22 @@ export default function ReporteBbvaCatListado({ modo = 'listado' }) {
                     {t('nav.bbvaCatListadoReport')}
                   </span>
                 ))}
+              {modoAsignados ? (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.assignedCases')}
+                </span>
+              ) : (
+                <Link
+                  to="/bbva-cat/listado/mis-casos"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.assignedCases')}
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
-            {puedeImportarExcel && (
+            {puedeImportarExcel && !modoAsignados && (
               <button
                 type="button"
                 className={expressBtnPrimary}

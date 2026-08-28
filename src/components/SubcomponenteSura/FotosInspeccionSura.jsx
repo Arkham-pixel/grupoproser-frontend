@@ -235,15 +235,17 @@ export default function FotosInspeccionSura({
       const next = prev.map((img, idx) =>
         idImagen(img, idx) === clave ? { ...img, descripcion } : img
       );
-      if (descripcionTimeoutRef.current) clearTimeout(descripcionTimeoutRef.current);
-      descripcionTimeoutRef.current = setTimeout(() => {
+      queueMicrotask(() => {
         isInternalUpdateRef.current = true;
         onFotosInformeChange?.(next);
+      });
+      if (descripcionTimeoutRef.current) clearTimeout(descripcionTimeoutRef.current);
+      descripcionTimeoutRef.current = setTimeout(() => {
         const foto = next.find((img, idx) => idImagen(img, idx) === clave);
         if (foto?._id && casoId) {
           actualizarArchivoSura(casoId, foto._id, { descripcion }).catch(() => {});
         }
-      }, 300);
+      }, 400);
       return next;
     });
   };

@@ -493,6 +493,7 @@ export default function Layout() {
     '/equidad-fdm/dashboard': t('nav.pageTitles.fdmDashboard'),
     '/seguros-alfa/carga': t('nav.pageTitles.alfaAdd'),
     '/seguros-alfa/reporte': t('nav.pageTitles.alfaReport'),
+    '/seguros-alfa/mis-casos': t('nav.pageTitles.alfaMyCases'),
     '/seguros-alfa/dashboard': t('nav.pageTitles.alfaDashboard'),
     '/seguros-alfa/boletin': t('nav.pageTitles.alfaBulletin'),
     '/seguros-alfa/bloques': t('nav.pageTitles.alfaBlocks'),
@@ -501,6 +502,7 @@ export default function Layout() {
     '/seguros-alfa/informe-unico': t('nav.pageTitles.alfaCase'),
     '/zurich/carga': t('nav.pageTitles.zurichAdd'),
     '/zurich/listado/reporte': t('nav.pageTitles.zurichListadoReport'),
+    '/zurich/listado/mis-casos': t('nav.pageTitles.zurichMyCases'),
     '/zurich/listado/dashboard': t('nav.pageTitles.zurichListadoDashboard'),
     '/zurich/listado/caso': t('nav.pageTitles.zurichCase'),
     '/zurich/reporte': t('nav.pageTitles.zurichReport'),
@@ -511,6 +513,7 @@ export default function Layout() {
     '/zurich/informe-unico': t('nav.pageTitles.zurichCase'),
     '/bbva-cat/carga': t('nav.pageTitles.bbvaCatAdd'),
     '/bbva-cat/listado/reporte': t('nav.pageTitles.bbvaCatListadoReport'),
+    '/bbva-cat/listado/mis-casos': t('nav.pageTitles.bbvaCatMyCases'),
     '/bbva-cat/listado/analista': t('nav.pageTitles.bbvaCatListadoAnalista'),
     '/bbva-cat/listado/dashboard': t('nav.pageTitles.bbvaCatListadoDashboard'),
     '/bbva-cat/listado/caso': t('nav.pageTitles.bbvaCatCase'),
@@ -524,6 +527,7 @@ export default function Layout() {
     '/bbva-cat/bloques': t('nav.pageTitles.bbvaCatBlocks'),
     '/previsora/carga': t('nav.pageTitles.previsoraAdd'),
     '/previsora/listado/reporte': t('nav.pageTitles.previsoraListadoReport'),
+    '/previsora/listado/mis-casos': t('nav.pageTitles.previsoraMyCases'),
     '/previsora/listado/dashboard': t('nav.pageTitles.previsoraListadoDashboard'),
     '/previsora/listado/caso': t('nav.pageTitles.previsoraCase'),
     '/previsora/reporte': t('nav.pageTitles.previsoraReport'),
@@ -535,6 +539,7 @@ export default function Layout() {
     '/previsora/archivero': t('nav.pageTitles.previsoraArchive'),
     '/allianz/carga': t('nav.pageTitles.allianzAdd'),
     '/allianz/listado/reporte': t('nav.pageTitles.allianzListadoReport'),
+    '/allianz/listado/mis-casos': t('nav.pageTitles.allianzMyCases'),
     '/allianz/listado/dashboard': t('nav.pageTitles.allianzListadoDashboard'),
     '/allianz/listado/caso': t('nav.pageTitles.allianzCase'),
     '/allianz/reporte': t('nav.pageTitles.allianzReport'),
@@ -542,11 +547,13 @@ export default function Layout() {
     '/allianz/boletin': t('nav.pageTitles.allianzBulletin'),
     '/allianz/caso': t('nav.pageTitles.allianzCase'),
     '/allianz/liquidador': t('nav.pageTitles.allianzCase'),
+    '/allianz/informe-agil': t('nav.pageTitles.allianzCase'),
     '/allianz/informe-unico': t('nav.pageTitles.allianzCase'),
     '/allianz/archivero': t('nav.pageTitles.allianzArchive'),
     '/sura/carga': t('nav.pageTitles.suraAdd'),
     '/sura/editar': t('nav.pageTitles.suraAdd'),
     '/sura/reporte': t('nav.pageTitles.suraReport'),
+    '/sura/mis-casos': t('nav.pageTitles.suraMyCases'),
     '/sura/documentacion': 'Documentación SURA',
     '/sura/dashboard': t('nav.pageTitles.suraDashboard'),
     '/sura/boletin': t('nav.pageTitles.suraBulletin'),
@@ -679,6 +686,7 @@ export default function Layout() {
       path === '/previsora/liquidador' ||
       path === '/previsora/informe-unico' ||
       path === '/allianz/liquidador' ||
+      path === '/allianz/informe-agil' ||
       path === '/allianz/informe-unico';
     if (!esLiquidadorOInforme) return path;
     const q = new URLSearchParams(location.search);
@@ -699,7 +707,11 @@ export default function Layout() {
     }
     const casoId = casoUrl || casoGuardado;
     if (!casoId) return path;
-    const tab = path.endsWith('informe-unico') ? 'informe' : 'liquidador';
+    const tab = path.endsWith('informe-unico')
+      ? 'informe'
+      : path.endsWith('informe-agil')
+        ? 'informe-agil'
+        : 'liquidador';
     return `${path}?casoId=${encodeURIComponent(casoId)}&tab=${tab}`;
   };
 
@@ -860,6 +872,7 @@ export default function Layout() {
           { path: '/seguros-alfa/caso', icon: FaFileAlt, label: t('nav.alfaCase') },
           { path: '/seguros-alfa/dashboard', icon: FaChartBar, label: t('nav.alfaDashboard') },
           { path: '/seguros-alfa/reporte', icon: FaTable, label: t('nav.alfaReport') },
+          { path: '/seguros-alfa/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/seguros-alfa/boletin', icon: FaChartLine, label: t('nav.alfaBulletin') },
           { path: '/seguros-alfa/bloques', icon: FaMapMarkerAlt, label: t('nav.alfaBlocks') },
         ]
@@ -869,11 +882,13 @@ export default function Layout() {
         ? [
             { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
             { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
+            { path: '/zurich/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           ]
         : [
             { path: '/zurich/carga', icon: FaPlus, label: t('nav.zurichAddCase') },
             { path: '/zurich/listado/dashboard', icon: FaChartBar, label: t('nav.zurichListadoDashboard') },
             { path: '/zurich/listado/reporte', icon: FaTable, label: t('nav.zurichListadoReport') },
+            { path: '/zurich/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
             { path: '/zurich/caso', icon: FaFileAlt, label: t('nav.zurichCase') },
             { path: '/zurich/dashboard', icon: FaChartBar, label: t('nav.zurichDashboard') },
             { path: '/zurich/reporte', icon: FaTable, label: t('nav.zurichReport') },
@@ -887,6 +902,7 @@ export default function Layout() {
           ...(!esRolSoloBbva(rolNorm)
             ? [{ path: '/bbva-cat/listado/reporte', icon: FaTable, label: t('nav.bbvaCatListadoReport') }]
             : []),
+          { path: '/bbva-cat/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/bbva-cat/bloques', icon: FaMapMarkerAlt, label: t('nav.bbvaCatBlocks') },
           { path: '/bbva-cat/archivero', icon: FaFolderOpen, label: t('nav.bbvaCatArchive') },
         ]
@@ -896,6 +912,7 @@ export default function Layout() {
           { path: '/previsora/carga', icon: FaPlus, label: t('nav.previsoraAddCase') },
           { path: '/previsora/listado/dashboard', icon: FaChartBar, label: t('nav.previsoraListadoDashboard') },
           { path: '/previsora/listado/reporte', icon: FaTable, label: t('nav.previsoraListadoReport') },
+          { path: '/previsora/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/previsora/archivero', icon: FaFolderOpen, label: t('nav.previsoraArchive') },
         ]
       : [],
@@ -904,6 +921,7 @@ export default function Layout() {
           { path: '/allianz/carga', icon: FaPlus, label: t('nav.allianzAddCase') },
           { path: '/allianz/listado/dashboard', icon: FaChartBar, label: t('nav.allianzListadoDashboard') },
           { path: '/allianz/listado/reporte', icon: FaTable, label: t('nav.allianzListadoReport') },
+          { path: '/allianz/listado/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/allianz/archivero', icon: FaFolderOpen, label: t('nav.allianzArchive') },
         ]
       : [],
@@ -913,6 +931,7 @@ export default function Layout() {
           { path: '/sura/caso', icon: FaFileAlt, label: t('nav.suraCase') },
           { path: '/sura/dashboard', icon: FaChartBar, label: t('nav.suraDashboard') },
           { path: '/sura/reporte', icon: FaTable, label: t('nav.suraReport') },
+          { path: '/sura/mis-casos', icon: FaList, label: t('nav.assignedCases') },
           { path: '/sura/documentacion', icon: FaFolderOpen, label: 'Documentación' },
           { path: '/sura/boletin', icon: FaChartLine, label: t('nav.suraBulletin') },
           { path: '/sura/bloques', icon: FaMapMarkerAlt, label: t('nav.suraBlocks') },

@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { AUTOSAVE_DEBOUNCE_MS } from '../config/autoSaveConfig.js';
 import { checkConnectivity } from '../services/connectivityService.js';
 import { setAutosaveUiStatus } from '../services/autosaveOfflineService.js';
@@ -11,9 +11,9 @@ import { liquidadorParaPersistir } from '../components/SubcomponenteEvaluacionSi
 const TAB_INFORME = 'informe';
 
 /**
- * Autoguardado del workspace Zurich (liquidador / informe)
+ * Autoguardado del workspace Zurich (presupuesto / informe)
  * hacia la API, actualizando el indicador de sincronización.
- * El liquidador NSR también se guarda si se edita desde el informe único.
+ * El presupuesto también se guarda si se edita desde el informe final o único.
  */
 export default function useZurichCasoAutosave({
   casoId,

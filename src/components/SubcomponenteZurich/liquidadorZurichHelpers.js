@@ -1,5 +1,6 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
 import { formatMiles } from './zurichHelpers.js';
+import { parsearNumero } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
   argsDeduciblesPorArticuloDiagrama,
@@ -9,6 +10,7 @@ import {
   fusionarEvaluacionSismicaNSR10Guardada,
   normalizarItemsRespuesta,
   RECARGOS_PRESUPUESTO_NSR10_CAT,
+  REGLAS_DEDUCIBLE_POR_COBERTURA,
   camposValorAseguradoParaNsr,
   valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
@@ -18,6 +20,15 @@ import {
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import {
+  fotosCotizacionDesdeLiquidador,
+  serializarCotizacionPdf,
+  serializarPaginasCotizacion,
+  usaCotizacionComoBasePresupuesto,
+  montoCotizacionPdf,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
+
+export { parsearNumero };
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -26,10 +37,136 @@ export const SMMLV_POR_ANIO = {
 };
 export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
 
-/** Texto fijo editable: información general del evento (informe preliminar Zurich). */
-export const INFO_EVENTO_DEFAULT_ZURICH = `El presente informe se emite con base en la atención del evento sísmico reportado ante Zurich S.A., la visita de inspección realizada al predio asegurado y la documentación aportada por el tomador/asegurado.
+const REGLA_TERREMOTO = REGLAS_DEDUCIBLE_POR_COBERTURA.terremoto;
 
-La evaluación técnica busca verificar la existencia y alcance de los daños, contrastarlos con las coberturas de la póliza vigente y establecer, de manera preliminar, las pérdidas indemnizables conforme a las condiciones particulares del contrato de seguro.`;
+/** Zurich CAT = terremoto: mayor entre 3% del valor asegurable y 3 SMMLV. */
+export const TEXTO_DEDUCIBLE_TERREMOTO_ZURICH =
+  '3% del valor asegurable, mínimo 3 SMMLV (terremoto)';
+
+export function pareceDeducibleGenericoCatZurich(cfg = {}) {
+  if (!cfg || typeof cfg !== 'object') return true;
+  const pct = Number(cfg.porcentaje);
+  const cant = Number(cfg.cantidadSMMLV);
+  if (!Number.isFinite(pct) || !Number.isFinite(cant)) return true;
+  if (cant === 4) return true;
+  if (pct === 10) return true;
+  return cfg.porcentaje == null && cfg.cantidadSMMLV == null;
+}
+
+export function valorAseguradoPresupuestoZurich(liquidador = {}) {
+  const liq = liquidador.liquidacionCatastrofico || {};
+  const enc = liquidador.encabezado || {};
+  return (
+    parsearNumero(liq.valorAsegurado) ||
+    parsearNumero(enc.valorAseguradoInmueble) ||
+    0
+  );
+}
+
+/**
+ * Si hay valor asegurable, el 3% va sobre ese valor (tope: la pérdida).
+ * Sin VA, el % se calcula sobre la pérdida para que el mínimo de 3 SMMLV sí aplique.
+ */
+export function configDeducibleTerremotoZurich(cfgActual = {}, { valorAsegurado = 0 } = {}) {
+  const va = Number(valorAsegurado) || 0;
+  return {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    ...(cfgActual && typeof cfgActual === 'object' ? cfgActual : {}),
+    aplica: true,
+    modo: REGLA_TERREMOTO.modo,
+    porcentaje: REGLA_TERREMOTO.porcentaje,
+    cantidadSMMLV: REGLA_TERREMOTO.cantidadSMMLV,
+    tipoMinimo: REGLA_TERREMOTO.tipoMinimo,
+    baseDeducible: va > 0 ? 'valor_asegurable' : 'perdida',
+    texto: TEXTO_DEDUCIBLE_TERREMOTO_ZURICH,
+  };
+}
+
+export function aplicarDeducibleTerremotoEnLiquidacionZurich(
+  liquidacion = {},
+  { valorAseguradoInmueble = 0, forzar = false } = {}
+) {
+  const liq = liquidacion && typeof liquidacion === 'object' ? { ...liquidacion } : {};
+  const vaGuardado = parsearNumero(liq.valorAsegurado);
+  const vaCaso = parsearNumero(valorAseguradoInmueble);
+  const va = vaGuardado || vaCaso;
+  if (!(vaGuardado > 0) && vaCaso > 0) {
+    liq.valorAsegurado = vaCaso;
+  }
+  const cfgActual = liq.deducibleConfigPresupuesto || {};
+  const yaEsTerremoto =
+    Number(cfgActual.porcentaje) === REGLA_TERREMOTO.porcentaje &&
+    Number(cfgActual.cantidadSMMLV) === REGLA_TERREMOTO.cantidadSMMLV;
+  if (!forzar && !pareceDeducibleGenericoCatZurich(cfgActual) && !yaEsTerremoto) {
+    return liq;
+  }
+  const cfgPres = configDeducibleTerremotoZurich(cfgActual, { valorAsegurado: va });
+  return {
+    ...liq,
+    deducibleConfigPresupuesto: cfgPres,
+    deducible: cfgPres.texto,
+  };
+}
+
+export function migrarLiquidadorDeducibleTerremotoZurich(
+  liquidador = {},
+  caso = {},
+  { forzar = false } = {}
+) {
+  const liq = liquidador && typeof liquidador === 'object' ? liquidador : {};
+  return {
+    ...liq,
+    liquidacionCatastrofico: aplicarDeducibleTerremotoEnLiquidacionZurich(
+      liq.liquidacionCatastrofico || {},
+      {
+        valorAseguradoInmueble:
+          caso.valorAseguradoInmueble ?? liq.encabezado?.valorAseguradoInmueble,
+        forzar,
+      }
+    ),
+  };
+}
+
+export function configDeduciblePresupuestoParaCalculoZurich(liquidador = {}) {
+  const liq = liquidador.liquidacionCatastrofico || {};
+  const va = valorAseguradoPresupuestoZurich(liquidador);
+  return configDeducibleTerremotoZurich(liq.deducibleConfigPresupuesto || {}, {
+    valorAsegurado: va,
+  });
+}
+
+/** Desglose visible: 3% VA vs 3 SMMLV, y el mayor aplicado. */
+export function desgloseDeducibleTerremotoZurich(liquidador = {}, diagrama = null) {
+  const diag = diagrama || {};
+  const pres = diag.deduciblePresupuesto || {};
+  const va = valorAseguradoPresupuestoZurich(liquidador);
+  const pct = Number(pres.porcentaje) || REGLA_TERREMOTO.porcentaje;
+  const cant = Number(pres.cantidadSMMLV) || REGLA_TERREMOTO.cantidadSMMLV;
+  const montoPct = Number(pres.montoPctOVa) || 0;
+  const montoSmmlv = Number(pres.montoSmmlv) || 0;
+  const aplicado = Number(pres.aplicado) || 0;
+  const etiquetaPct = va > 0
+    ? `${pct}% del valor asegurable`
+    : `${pct}% (falta valor asegurable; se compara el mínimo)`;
+  return {
+    porcentaje: pct,
+    cantidadSMMLV: cant,
+    valorAsegurado: va,
+    montoPct,
+    montoSmmlv,
+    aplicado,
+    etiquetaPct,
+    etiquetaSmmlv: `${cant} SMMLV`,
+    etiquetaAplicado: 'Deducible terremoto aplicado (el mayor)',
+    texto:
+      `Terremoto: mayor entre ${etiquetaPct} ($${formatearMonto(montoPct)}) y ${cant} SMMLV ($${formatearMonto(montoSmmlv)}). Aplicado: $${formatearMonto(aplicado)}.`,
+  };
+}
+
+/** Texto fijo editable: información general del evento (informe preliminar Zurich). */
+export const INFO_EVENTO_DEFAULT_ZURICH = `El presente informe se emite con base en la atención del siniestro reportado ante Zurich, la visita de inspección realizada al predio asegurado y la documentación aportada por el tomador/asegurado.
+
+La evaluación busca verificar la existencia y alcance de los daños, contrastarlos con las coberturas de la póliza vigente y establecer, de manera preliminar, las pérdidas indemnizables conforme a las condiciones particulares del contrato de seguro.`;
 
 export const NIVELES_AFECTACION_ZURICH = [
   'CRÍTICO',
@@ -89,27 +226,15 @@ export const CAPITULOS_PRESUPUESTO_PRELIMINAR_ZURICH = [
 ];
 
 export function plantillaFilasDaniosZurich() {
-  return ZONAS_DANIOS_PRELIMINAR_ZURICH.map((zona) => ({
-    zona,
-    condicion: '',
-    nivel: '',
-  }));
+  return [{ id: 'danio-0', zona: '', condicion: '', nivel: '' }];
 }
 
 export function plantillaFilasPolizaZurich() {
-  return CONCEPTOS_POLIZA_PRELIMINAR_ZURICH.map((concepto) => ({
-    concepto,
-    analisis: '',
-    conclusion: '',
-  }));
+  return [{ id: 'poliza-0', concepto: '', analisis: '', conclusion: '' }];
 }
 
 export function plantillaFilasPresupuestoPreliminarZurich() {
-  return CAPITULOS_PRESUPUESTO_PRELIMINAR_ZURICH.map((capitulo) => ({
-    capitulo,
-    descripcion: '',
-    valor: '',
-  }));
+  return [{ id: 'cap-0', capitulo: '', descripcion: '', valor: '' }];
 }
 
 export const TIPOS_INFORME_ZURICH = ['preliminar', 'final', 'unico'];
@@ -126,6 +251,12 @@ export function normalizarTipoInformeZurich(valor, fallback = 'preliminar') {
 
 export function esInformePreliminarZurich(info = {}) {
   return normalizarTipoInformeZurich(info?.tipoInforme, 'preliminar') === 'preliminar';
+}
+
+/** Final y único incluyen liquidador; el preliminar no. */
+export function esInformeConLiquidadorZurich(info = {}) {
+  const t = normalizarTipoInformeZurich(info?.tipoInforme, 'preliminar');
+  return t === 'final' || t === 'unico';
 }
 
 /** Tipo vigente: el del borrador en pantalla, o el guardado en el caso. */
@@ -200,24 +331,6 @@ function usarPlantillaSiVacio(filas, plantilla) {
   return Array.isArray(filas) && filas.length ? filas : plantilla;
 }
 
-export function parsearNumero(valor) {
-  if (valor === '' || valor === null || valor === undefined) return 0;
-  if (typeof valor === 'number') return Number.isNaN(valor) ? 0 : valor;
-  let numero = String(valor).replace(/[^\d.,-]/g, '');
-  if (numero.includes(',') && numero.includes('.')) {
-    numero = numero.replace(/\./g, '').replace(',', '.');
-  } else if (numero.includes('.') && !numero.includes(',')) {
-    const partes = numero.split('.');
-    if (partes.length > 2 || (partes[1] && partes[1].length === 3)) {
-      numero = numero.replace(/\./g, '');
-    }
-  } else if (numero.includes(',')) {
-    numero = numero.replace(',', '.');
-  }
-  const n = parseFloat(numero);
-  return Number.isNaN(n) ? 0 : n;
-}
-
 export function formatearMonto(valor, { decimals = 0 } = {}) {
   const n = typeof valor === 'number' ? valor : parsearNumero(valor);
   if (Number.isNaN(n)) return '0';
@@ -257,19 +370,62 @@ const fechaInput = (value) => {
   return `${y}-${m}-${day}`;
 };
 
+/**
+ * Completa fechaInformePreliminar o fechaInformeFinal si aún están vacías.
+ * El informe único usa la fecha de informe final.
+ */
+export function fechasInformeParaCasoZurich(informe = {}, casoBase = {}) {
+  const tipo = normalizarTipoInformeZurich(informe?.tipoInforme, 'preliminar');
+  const fechaFuente = fechaInput(informe?.fechaInforme) || fechaInput(new Date());
+  const patch = {};
+  if (tipo === 'preliminar') {
+    if (!casoBase.fechaInformePreliminar) patch.fechaInformePreliminar = fechaFuente;
+  } else if (!casoBase.fechaInformeFinal) {
+    patch.fechaInformeFinal = fechaFuente;
+  }
+  return patch;
+}
+
+/** Copia tomador/dirección/vigencia/cobertura del encabezado al caso (sin borrar lo ya guardado). */
+export function camposPolizaParaCasoZurich(fuente = {}, casoBase = {}) {
+  const enc =
+    fuente?.encabezado && typeof fuente.encabezado === 'object' ? fuente.encabezado : fuente || {};
+  const pick = (a, b) => {
+    const ta = String(a ?? '').trim();
+    if (ta) return ta;
+    const tb = String(b ?? '').trim();
+    return tb || null;
+  };
+  return {
+    tomador: pick(enc.tomador, casoBase.tomador),
+    direccionPredio: pick(
+      enc.direccion || enc.direccionRiesgo || enc.direccionPredio,
+      casoBase.direccionPredio
+    ),
+    cobertura: pick(enc.cobertura || enc.evento, casoBase.cobertura),
+    departamento: pick(enc.departamento, casoBase.departamento),
+    fechaInicioPoliza: enc.fechaInicioPoliza || casoBase.fechaInicioPoliza || null,
+    fechaFinPoliza: enc.fechaFinPoliza || casoBase.fechaFinPoliza || null,
+  };
+}
+
 export function liquidacionCatastroficoDefaultZurich(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
   const va =
     c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
       ? Number(c.valorAseguradoInmueble) || ''
       : '';
+  const cfgPres = configDeducibleTerremotoZurich(
+    {},
+    { valorAsegurado: Number(va) || 0 }
+  );
   return {
     valorAsegurado: va,
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
     hospedajeManual: '',
-    deducible: 'No aplica',
+    deducible: TEXTO_DEDUCIBLE_TERREMOTO_ZURICH,
     deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
-    deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+    deducibleConfigPresupuesto: cfgPres,
   };
 }
 
@@ -292,6 +448,8 @@ export function encabezadoDesdecasoZurich(caso = {}) {
     departamento: c.departamento || '',
     cobertura: c.cobertura || '',
     evento: c.cobertura || 'TERREMOTO',
+    fechaInicioPoliza: fechaInput(c.fechaInicioPoliza),
+    fechaFinPoliza: fechaInput(c.fechaFinPoliza),
     ajustador: c.ajustador || '',
     valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
     valorAseguradoContenidos: c.valorAseguradoContenidos ?? '',
@@ -335,6 +493,8 @@ export const DEFAULT_LIQUIDADOR_Zurich = {
     departamento: '',
     cobertura: '',
     evento: 'TERREMOTO',
+    fechaInicioPoliza: '',
+    fechaFinPoliza: '',
     ajustador: '',
     valorAseguradoInmueble: '',
     valorAseguradoContenidos: '',
@@ -343,6 +503,7 @@ export const DEFAULT_LIQUIDADOR_Zurich = {
   liquidacionCatastrofico: liquidacionCatastroficoDefaultZurich(),
   indemnizacionSugerida: '',
   observaciones: '',
+  cotizacionPdf: null,
 };
 
 export function esLiquidadorNsrZurich(liquidador = {}) {
@@ -367,19 +528,32 @@ export function calcularLiquidacionZurich(liquidador = {}) {
   const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
+  const usaCotiz = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
+  const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
+  const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
+  const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
   const diagrama = calcularDiagramaLiquidacion({
-    valorAsegurado: liq.valorAsegurado,
-    totalDanios: resumen.sumaCompleta,
-    totalPresupuesto: resumen.totalPresupuesto,
+    valorAsegurado: valorAseguradoPresupuestoZurich(liquidador),
+    totalDanios: sumaCompleta,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
     hospedajeManual: liq.hospedajeManual,
     deducible: liq.deducible,
     deducibleConfig: liq.deducibleConfig,
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
-    deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
+    deducibleConfigPresupuesto: configDeduciblePresupuestoParaCalculoZurich(liquidador),
     otrosAmparos: liquidador.otrosAmparos,
-    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
+    ...(() => {
+      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
+      if (!usaCotiz) return args;
+      return {
+        ...args,
+        usaDeduciblePorArticuloPresupuesto: false,
+        deduciblePresupuestoPorArticulos: 0,
+        presupuestoNetoPorArticulo: null,
+      };
+    })(),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -388,32 +562,31 @@ export function calcularLiquidacionZurich(liquidador = {}) {
     modelo: 'nsr10',
     presupuesto: totalesPres,
     contenidos: resumen.contenidos,
-    totalPresupuesto: resumen.totalPresupuesto,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
-    sumaCompleta: resumen.sumaCompleta,
-    subtotal: totalesPres.subtotal,
-    aiu: totalesPres.aiu,
-    imprevistos: totalesPres.imprevistos,
-    impuestos: totalesPres.impuestos,
-    totalDanios: resumen.sumaCompleta,
+    sumaCompleta,
+    subtotal: usaCotiz ? montoCotiz : totalesPres.subtotal,
+    aiu: usaCotiz ? 0 : totalesPres.aiu,
+    imprevistos: usaCotiz ? 0 : totalesPres.imprevistos,
+    impuestos: usaCotiz ? 0 : totalesPres.impuestos,
+    totalDanios: sumaCompleta,
+    origenPresupuesto: usaCotiz ? 'cotizacion' : 'nsr10',
+    cotizacionMonto: montoCotiz,
     diagrama,
     criterio,
     totalIndemnizar: diagrama.totalIndemnizar,
     totalIndemnizable: diagrama.totalIndemnizar,
-    totalPerdida: resumen.sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
+    totalPerdida: sumaCompleta,
+    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta,
     deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
-    deducibleTexto: [
-      diagrama.deduciblePresupuesto?.aplica ? `Presupuesto: ${diagrama.deduciblePresupuesto.texto}` : null,
-      diagrama.deducibleContenidos?.aplica || diagrama.deducibleAplica
-        ? `Contenidos: ${diagrama.deducibleContenidos?.texto || diagrama.deducible}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(' · ') || diagrama.deducible,
+    deducibleTexto: desgloseDeducibleTerremotoZurich(liquidador, diagrama).texto,
     subtotalContenidos: resumen.totalContenidos,
-    subtotalEdificios: resumen.totalPresupuesto,
-    diferencia: 0,
+    subtotalEdificios: totalPresupuesto,
+    diferencia: Math.round(
+      ((parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta) -
+        (diagrama.totalIndemnizar || 0)) *
+        100
+    ) / 100,
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
@@ -422,6 +595,18 @@ export function calcularLiquidacionZurich(liquidador = {}) {
 
 /** Filas planas del presupuesto NSR (para resúmenes). */
 export function itemsPlanosZurich(liquidador = {}) {
+  if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
+    const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
+    const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
+    return [
+      {
+        id: 'cotizacion-pdf',
+        concepto: nombre ? `Cotización de reparación (${nombre})` : 'Cotización de reparación',
+        valorReclamado: monto,
+        valorIndemnizable: monto,
+      },
+    ];
+  }
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   if (!Array.isArray(items) || !items.length) return [];
   return items
@@ -446,7 +631,10 @@ export function mapcasoZurichALiquidador(caso = {}) {
     ...DEFAULT_LIQUIDADOR_Zurich,
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
-    liquidacionCatastrofico: liquidacionCatastroficoDefaultZurich(caso),
+    liquidacionCatastrofico: aplicarDeducibleTerremotoEnLiquidacionZurich(
+      liquidacionCatastroficoDefaultZurich(caso),
+      { valorAseguradoInmueble: caso.valorAseguradoInmueble }
+    ),
     otrosAmparos: defaultOtrosAmparos(),
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
@@ -480,14 +668,21 @@ export function mapcasoZurichALiquidador(caso = {}) {
       prefill,
       { recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT }
     ),
-    liquidacionCatastrofico: {
-      ...base.liquidacionCatastrofico,
-      ...(guardado.liquidacionCatastrofico || {}),
-    },
+    liquidacionCatastrofico: aplicarDeducibleTerremotoEnLiquidacionZurich(
+      {
+        ...base.liquidacionCatastrofico,
+        ...(guardado.liquidacionCatastrofico || {}),
+      },
+      {
+        valorAseguradoInmueble:
+          encabezado.valorAseguradoInmueble ?? caso.valorAseguradoInmueble,
+      }
+    ),
     indemnizacionSugerida: guardado.indemnizacionSugerida || '',
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
       : defaultOtrosAmparos(),
+    cotizacionPdf: guardado.cotizacionPdf || null,
   };
 }
 
@@ -513,6 +708,7 @@ export function formDataNsrDesdeLiquidadorZurich(liquidador = {}, caso = {}) {
 function esFotoArchivoZurich(a) {
   const et = String(a?.etiqueta || '').toUpperCase();
   const nombre = String(a?.nombreOriginal || a?.nombreArchivo || a?.nombre || '');
+  if (et === 'COTIZACION') return false;
   return (
     et === 'FOTOS' ||
     et === 'INSPECCION' ||
@@ -547,6 +743,16 @@ export function sanitizarInformeUnicoZurich(informe = {}) {
     ...informe,
     ...(tipo ? { tipoInforme: tipo } : {}),
     fotosInspeccion: serializarFotosInspeccionZurich(informe.fotosInspeccion),
+    fotosCotizacion: serializarPaginasCotizacion(informe.fotosCotizacion),
+  };
+}
+
+/** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
+export function sanitizarLiquidadorZurich(liquidador = {}) {
+  if (!liquidador || typeof liquidador !== 'object') return liquidador;
+  return {
+    ...liquidador,
+    cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
   };
 }
 
@@ -587,7 +793,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     imagenMapa: '',
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
-    reservaSugerida: '',
+    reservaSugerida: caso.reserva != null && caso.reserva !== '' ? String(caso.reserva) : '',
     filasDanios: plantillaFilasDaniosZurich(),
     filasPolizaCobertura: plantillaFilasPolizaZurich(),
     filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarZurich(),
@@ -595,6 +801,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     recomendacion: '',
     fotosSeleccionadas: [],
     fotosInspeccion: fotosInformeDesdeCasoZurich(caso, guardado),
+    fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
     actaAjustadorNombre: caso.ajustador || '',
     actaAjustadorCargo: '',
     actaAjustadorEmail: '',
@@ -627,6 +834,8 @@ export function defaultInformeUnicoZurich(caso = {}) {
       base.filasPresupuestoPreliminar
     ),
     fotosInspeccion: fotosInformeDesdeCasoZurich(caso, guardado),
+    fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
+    reservaSugerida: guardado.reservaSugerida || base.reservaSugerida,
   };
 }
 

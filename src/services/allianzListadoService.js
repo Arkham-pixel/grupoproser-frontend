@@ -1,5 +1,5 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
-import { sanitizarInformeUnicoAllianz } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
+import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
 
 const API_URL = `${BASE_URL}/api/allianz-listado`;
 
@@ -130,7 +130,13 @@ export const guardarLiquidadorEnCasoAllianzListado = async ({
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
   return actualizarCasoAllianzListado(casoId, {
     ...omitirMeta(casoBase),
-    liquidador: liquidador || {},
+    liquidador: sanitizarLiquidadorAllianz(liquidador || {}),
+    valorAseguradoInmueble:
+      parsearNumero(liquidador?.encabezado?.valorAseguradoInmueble) ||
+      casoBase.valorAseguradoInmueble,
+    valorAseguradoContenidos:
+      parsearNumero(liquidador?.encabezado?.valorAseguradoContenidos) ||
+      casoBase.valorAseguradoContenidos,
   });
 };
 
@@ -143,6 +149,20 @@ export const guardarInformeUnicoEnCasoAllianzListado = async ({
   return actualizarCasoAllianzListado(casoId, {
     ...omitirMeta(casoBase),
     informeUnico: sanitizarInformeUnicoAllianz(informeUnico || {}),
+  });
+};
+
+export const guardarInformeAgilEnCasoAllianzListado = async ({
+  casoId,
+  informeAgil,
+  casoBase = {},
+}) => {
+  if (!casoId) {
+    throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe ágil.');
+  }
+  return actualizarCasoAllianzListado(casoId, {
+    ...omitirMeta(casoBase),
+    informeAgil: informeAgil && typeof informeAgil === 'object' ? informeAgil : {},
   });
 };
 

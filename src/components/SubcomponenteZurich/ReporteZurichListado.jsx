@@ -21,7 +21,9 @@ import {
   coincideFiltroTexto,
   etiquetaTipoPolizaZurich,
   fechaEnRango,
+  formatCurrency,
   formatDate,
+  diasEnEstadoZurich,
   normTexto,
 } from './zurichHelpers.js';
 import {
@@ -45,6 +47,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
+import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -65,8 +68,15 @@ const COLUMNAS = [
   { clave: 'telefonoAsegurado', labelKey: 'telefonoAsegurado' },
   { clave: 'correoAsegurado', labelKey: 'correoAsegurado' },
   { clave: 'ciudad', labelKey: 'ciudad' },
+  { clave: 'departamento', labelKey: 'departamento' },
+  { clave: 'direccionPredio', labelKey: 'direccionPredio' },
+  { clave: 'tomador', labelKey: 'tomador' },
+  { clave: 'cobertura', labelKey: 'cobertura' },
+  { clave: 'fechaInicioPoliza', labelKey: 'fechaInicioPoliza' },
+  { clave: 'fechaFinPoliza', labelKey: 'fechaFinPoliza' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
+  { clave: 'reserva', labelKey: 'reserva' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider', interno: true },
   { clave: 'ajustador', labelKey: 'ajustador', interno: true },
   { clave: 'inspector', labelKey: 'inspector', interno: true },
@@ -74,12 +84,13 @@ const COLUMNAS = [
   { clave: 'fechaVisita', labelKey: 'fechaVisita' },
   { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
   { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
-  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
+  { clave: 'fechaInspeccionado', labelKey: 'fechaInspeccionado' },
   { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
   { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
   { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
-  { clave: 'fechaAutorizacionAnalista', labelKey: 'fechaAutorizacionAnalista' },
-  { clave: 'fechaCasoParaPago', labelKey: 'fechaCasoParaPago' },
+  { clave: 'fechaLiquidado', labelKey: 'fechaLiquidado' },
+  { clave: 'fechaInformePreliminar', labelKey: 'fechaInformePreliminar' },
+  { clave: 'fechaInformeFinal', labelKey: 'fechaInformeFinal' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -102,21 +113,29 @@ const buildExportRow = (caso) => ({
   'TELEFONO ASEGURADO': caso.telefonoAsegurado ?? '',
   'CORREO ASEGURADO': caso.correoAsegurado ?? '',
   CIUDAD: caso.ciudad ?? '',
+  DEPARTAMENTO: caso.departamento ?? '',
+  'DIRECCIÓN PREDIO': caso.direccionPredio ?? '',
+  TOMADOR: caso.tomador ?? '',
+  COBERTURA: caso.cobertura ?? '',
+  'FECHA INICIO PÓLIZA': formatDate(caso.fechaInicioPoliza),
+  'FECHA FIN PÓLIZA': formatDate(caso.fechaFinPoliza),
   ESTADO: caso.estado ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
+  RESERVA: caso.reserva ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
   INSPECTOR: caso.inspector ?? '',
   'FECHA ASIGNACIÓN': formatDate(caso.fechaAsignacion),
   'FECHA VISITA': formatDate(caso.fechaVisita),
   'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
-  'FECHA COORDINANDO INSPECCIÓN': formatDate(caso.fechaCoordinandoInspeccion),
-  'FECHA ANÁLISIS': formatDate(caso.fechaAnalisisCaso),
+  'FECHA INSPECCIÓN COORDINADA': formatDate(caso.fechaCoordinandoInspeccion),
+  'FECHA INSPECCIONADO': formatDate(caso.fechaInspeccionado),
   'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
   'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
-  'FECHA OBJECIÓN': formatDate(caso.fechaObjecion),
-  'FECHA AUTORIZACIÓN ANALISTA': formatDate(caso.fechaAutorizacionAnalista),
-  'FECHA CASO PARA PAGO': formatDate(caso.fechaCasoParaPago),
+  'FECHA OBJETADO': formatDate(caso.fechaObjecion),
+  'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
+  'FECHA INFORME PRELIMINAR': formatDate(caso.fechaInformePreliminar),
+  'FECHA INFORME FINAL': formatDate(caso.fechaInformeFinal),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -124,10 +143,11 @@ const buildExportRow = (caso) => ({
   'Fecha creación': formatDate(caso.createdAt),
 });
 
-export default function ReporteZurichListado() {
+export default function ReporteZurichListado({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const esClienteZurich = esRolContractorZurich();
+  const nombreSesion = etiquetaSesionPersona();
   const columnas = esClienteZurich ? COLUMNAS.filter((col) => !col.interno) : COLUMNAS;
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -150,13 +170,14 @@ export default function ReporteZurichListado() {
     setLoading(true);
     setError(null);
     try {
-      setCasos(await fetchAllCasosZurichListado(2000));
+      const data = await fetchAllCasosZurichListado(2000);
+      setCasos(modoAsignados ? filtrarCasosAsignadosASesion(data) : data);
     } catch (err) {
       setError(err.message || t('zurich.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, modoAsignados]);
 
   useEffect(() => {
     recargar();
@@ -194,6 +215,7 @@ export default function ReporteZurichListado() {
         c.correoAsegurado,
         c.ciudad,
         c.estado,
+        c.reserva,
         ...(esClienteZurich ? [] : [c.ajustadorLider, c.ajustador, c.inspector]),
         c.observaciones,
       ]
@@ -229,19 +251,28 @@ export default function ReporteZurichListado() {
   const FECHAS_LISTADO = new Set([
     'fechaAsignacion',
     'fechaVisita',
+    'fechaInicioPoliza',
+    'fechaFinPoliza',
     'fechaCasoNuevo',
     'fechaCoordinandoInspeccion',
-    'fechaAnalisisCaso',
+    'fechaInspeccionado',
     'fechaSolicitudDocumento',
     'fechaRecepcionDocumento',
     'fechaObjecion',
-    'fechaAutorizacionAnalista',
-    'fechaCasoParaPago',
+    'fechaLiquidado',
+    'fechaInformePreliminar',
+    'fechaInformeFinal',
     'ultimaGestion',
   ]);
 
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'tipoPoliza') return etiquetaTipoPolizaZurich(item) || '—';
+    if (clave === 'diasEnEstado') return diasEnEstadoZurich(item) || '—';
+    if (clave === 'reserva') {
+      const n = Number(item.reserva);
+      if (!Number.isFinite(n) || n === 0) return item.reserva ? String(item.reserva) : '—';
+      return formatCurrency(n);
+    }
     const valor = item[clave];
     if (valor === null || valor === undefined || valor === '') return '—';
     if (FECHAS_LISTADO.has(clave)) return formatDate(valor) || '—';
@@ -314,8 +345,16 @@ export default function ReporteZurichListado() {
           <div className="space-y-3">
             <span className={expressBadge}>Zurich · Listado</span>
             <div>
-              <h1 className={expressPageTitle}>{t('zurich.listadoReport.title')}</h1>
-              <p className={expressPageSubtitle}>{t('zurich.listadoReport.subtitle')}</p>
+              <h1 className={expressPageTitle}>
+                {modoAsignados
+                  ? `${t('zurich.listadoReport.title')} — ${t('nav.assignedCases')}`
+                  : t('zurich.listadoReport.title')}
+              </h1>
+              <p className={expressPageSubtitle}>
+                {modoAsignados
+                  ? t('common.assignedCasesHint', { name: nombreSesion || '—' })
+                  : t('zurich.listadoReport.subtitle')}
+              </p>
             </div>
             <nav className="flex flex-wrap gap-2">
               {!esClienteZurich && (
@@ -333,13 +372,34 @@ export default function ReporteZurichListado() {
               >
                 {t('nav.zurichListadoDashboard')}
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.zurichListadoReport')}
-              </span>
+              {modoAsignados ? (
+                <Link
+                  to="/zurich/listado/reporte"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.zurichListadoReport')}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.zurichListadoReport')}
+                </span>
+              )}
+              {modoAsignados ? (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.assignedCases')}
+                </span>
+              ) : (
+                <Link
+                  to="/zurich/listado/mis-casos"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.assignedCases')}
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
-            {puedeImportarExcel && (
+            {puedeImportarExcel && !modoAsignados && (
               <button
                 type="button"
                 className={expressBtnPrimary}
@@ -475,7 +535,17 @@ export default function ReporteZurichListado() {
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
-                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=liquidador`, {
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`, {
+                              state: { casoZurich: item },
+                            })
+                          }
+                          onLiquidador={() =>
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=presupuesto`, {
+                              state: { casoZurich: item },
+                            })
+                          }
+                          onInformeUnico={() =>
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`, {
                               state: { casoZurich: item },
                             })
                           }

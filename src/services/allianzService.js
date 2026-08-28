@@ -1,5 +1,5 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
-import { sanitizarInformeUnicoAllianz } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
+import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
 
 const ALLIANZ_API_URL = `${BASE_URL}/api/allianz`;
 
@@ -315,11 +315,17 @@ export const guardarLiquidadorEnCasoAllianz = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
-    liquidador: liquidador || {},
+    liquidador: sanitizarLiquidadorAllianz(liquidador || {}),
     valorReclamado:
       totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
     valorLiquidado:
       totales.totalIndemnizar != null ? totales.totalIndemnizar : casoBase.valorLiquidado,
+    valorAseguradoInmueble:
+      parsearNumero(liquidador?.encabezado?.valorAseguradoInmueble) ||
+      casoBase.valorAseguradoInmueble,
+    valorAseguradoContenidos:
+      parsearNumero(liquidador?.encabezado?.valorAseguradoContenidos) ||
+      casoBase.valorAseguradoContenidos,
   };
 
   delete payload._id;
@@ -342,6 +348,28 @@ export const guardarInformeUnicoEnCasoAllianz = async ({
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
     informeUnico: sanitizarInformeUnicoAllianz(informeUnico || {}),
+  };
+
+  delete payload._id;
+  delete payload.__v;
+  delete payload.createdAt;
+  delete payload.updatedAt;
+  delete payload.archivos;
+
+  return actualizarCasoAllianz(casoId, payload);
+};
+
+/** Guarda el informe ágil (valores, deducible e indemnización sugerida) en el caso. */
+export const guardarInformeAgilEnCasoAllianz = async ({
+  casoId,
+  informeAgil,
+  casoBase = {},
+}) => {
+  if (!casoId) throw new Error('El caso Allianz debe estar guardado antes de adjuntar el informe ágil.');
+
+  const payload = {
+    ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
+    informeAgil: informeAgil && typeof informeAgil === 'object' ? informeAgil : {},
   };
 
   delete payload._id;

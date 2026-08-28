@@ -189,6 +189,38 @@ export function coincidenPersonas(a, b) {
   return na === nb || na.includes(nb) || nb.includes(na);
 }
 
+/** Nombre o documento de la sesión (para textos de “mis casos”). */
+export function etiquetaSesionPersona(ctx = obtenerContextoPermisoCaso()) {
+  return String(ctx.nombre || ctx.login || ctx.cedula || '').trim();
+}
+
+export function clavesSesionPersona(ctx = obtenerContextoPermisoCaso()) {
+  return [ctx.nombre, ctx.login, ctx.cedula]
+    .map((s) => String(s || '').trim())
+    .filter(Boolean);
+}
+
+/**
+ * Caso CAT asignado a la sesión: ajustador, inspector o ajustador líder.
+ * Aplica a todos los roles (como Mis casos de Complex).
+ */
+export function casoAsignadoASesionActual(caso, ctx = obtenerContextoPermisoCaso()) {
+  const claves = clavesSesionPersona(ctx);
+  if (!claves.length) return false;
+  return claves.some(
+    (k) =>
+      coincidenPersonas(caso?.ajustador, k) ||
+      coincidenPersonas(caso?.inspector, k) ||
+      coincidenPersonas(caso?.ajustadorLider, k)
+  );
+}
+
+export function filtrarCasosAsignadosASesion(casos = [], ctx = obtenerContextoPermisoCaso()) {
+  return (Array.isArray(casos) ? casos : []).filter((caso) =>
+    casoAsignadoASesionActual(caso, ctx)
+  );
+}
+
 /**
  * Ajustador e inspector: solo casos que el líder les asignó.
  * En SURA, Mario (72288319) ve todos como el líder.

@@ -113,7 +113,7 @@ import {
   SelectFenix,
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { filtrarCasosPorAsignacionUsuario, coincidenPersonas, esSesionColaFechaLlamadaAlfa } from '../../utils/permisosCasoPorRol.js';
+import { filtrarCasosPorAsignacionUsuario, coincidenPersonas, esSesionColaFechaLlamadaAlfa, etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 
 function valorOrdenAlfa(item, clave) {
@@ -267,12 +267,13 @@ const buildExportRow = (caso) => ({
   Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
 });
 
-export default function ReporteSegurosAlfa() {
+export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const filtrosIniciales = useMemo(() => cargarFiltrosReporteAlfa(), []);
   const skipPageResetRef = useRef(true);
+  const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -296,8 +297,10 @@ export default function ReporteSegurosAlfa() {
   /** '' | 'liquidador' | 'informe' | 'alguno' | 'ambos' | 'cascaron' */
   const [filtroDocumento, setFiltroDocumento] = useState(filtrosIniciales.filtroDocumento);
   const [filtroSla, setFiltroSla] = useState(filtrosIniciales.filtroSla);
-  const [soloMisCasos, setSoloMisCasos] = useState(Boolean(filtrosIniciales.soloMisCasos));
-  const [pagina, setPagina] = useState(filtrosIniciales.pagina || 1);
+  const [soloMisCasos, setSoloMisCasos] = useState(
+    modoAsignados ? false : Boolean(filtrosIniciales.soloMisCasos)
+  );
+  const [pagina, setPagina] = useState(modoAsignados ? 1 : filtrosIniciales.pagina || 1);
   const { orden, cambiarOrden } = useOrdenTabla();
   const [casoEdicion, setCasoEdicion] = useState(null);
   const [casoArchivero, setCasoArchivero] = useState(null);
@@ -321,13 +324,17 @@ export default function ReporteSegurosAlfa() {
     setError(null);
     try {
       const data = await fetchAllCasosAlfa();
-      setCasos(filtrarCasosPorAsignacionUsuario(data));
+      setCasos(
+        modoAsignados
+          ? filtrarCasosAsignadosASesion(data)
+          : filtrarCasosPorAsignacionUsuario(data)
+      );
     } catch (err) {
       setError(err.message || t('segurosAlfa.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, modoAsignados]);
 
   useEffect(() => {
     recargar();
@@ -456,7 +463,7 @@ export default function ReporteSegurosAlfa() {
       if (filtroSla === 'vencido' && !casoAlfaVenceSla2Dias(c)) return false;
       if (filtroSla === 'ok' && casoAlfaVenceSla2Dias(c)) return false;
 
-      if (soloMisCasos && misClaves.length) {
+      if ((modoAsignados || soloMisCasos) && misClaves.length) {
         const ok = misClaves.some(
           (k) =>
             coincidenPersonas(c.ajustador, k) ||
@@ -465,6 +472,7 @@ export default function ReporteSegurosAlfa() {
         );
         if (!ok) return false;
       }
+      if ((modoAsignados || soloMisCasos) && !misClaves.length) return false;
 
       if (colaFechaLlamada && !q && casoAlfaTieneFechaLlamada(c)) return false;
 
@@ -518,6 +526,7 @@ export default function ReporteSegurosAlfa() {
     filtroSla,
     soloMisCasos,
     colaFechaLlamada,
+    modoAsignados,
   ]);
 
   const casosOrdenados = useMemo(
@@ -561,6 +570,7 @@ export default function ReporteSegurosAlfa() {
   ]);
 
   useEffect(() => {
+    if (modoAsignados) return;
     guardarFiltrosReporteAlfa({
       busqueda,
       filtroCiudad,
@@ -602,6 +612,7 @@ export default function ReporteSegurosAlfa() {
     fechaFin,
     soloMisCasos,
     paginaActual,
+    modoAsignados,
   ]);
 
   const limpiarFiltros = () => {
@@ -622,11 +633,13 @@ export default function ReporteSegurosAlfa() {
     setFechaInicio('');
     setFechaFin('');
     setFiltroDocumento('');
-    setSoloMisCasos(false);
+    if (!modoAsignados) {
+      setSoloMisCasos(false);
+      limpiarFiltrosReporteAlfaStorage();
+    }
     setBloqueSeleccionadoId(null);
     setIdsBloqueSeleccionado([]);
     setPagina(1);
-    limpiarFiltrosReporteAlfaStorage();
   };
 
   const abrirPersonalizarColumnas = () => {
@@ -740,7 +753,7 @@ export default function ReporteSegurosAlfa() {
       fechaInicio ||
       fechaFin ||
       filtroDocumento ||
-      soloMisCasos ||
+      (!modoAsignados && soloMisCasos) ||
       bloqueSeleccionadoId ||
       (tipoFecha && tipoFecha !== 'fechaSiniestro')
   );
@@ -752,8 +765,16 @@ export default function ReporteSegurosAlfa() {
           <div className="space-y-3">
             <span className={expressBadge}>Seguros Alfa</span>
             <div>
-              <h1 className={expressPageTitle}>{t('segurosAlfa.report.title')}</h1>
-              <p className={expressPageSubtitle}>{t('segurosAlfa.report.subtitle')}</p>
+              <h1 className={expressPageTitle}>
+                {modoAsignados
+                  ? `${t('segurosAlfa.report.title')} — ${t('nav.assignedCases')}`
+                  : t('segurosAlfa.report.title')}
+              </h1>
+              <p className={expressPageSubtitle}>
+                {modoAsignados
+                  ? t('common.assignedCasesHint', { name: nombreSesion || '—' })
+                  : t('segurosAlfa.report.subtitle')}
+              </p>
             </div>
             <nav className="flex flex-wrap gap-2">
               <Link
@@ -763,9 +784,30 @@ export default function ReporteSegurosAlfa() {
                 <FaPlus />
                 {t('nav.alfaAddCase')}
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.alfaReport')}
-              </span>
+              {modoAsignados ? (
+                <Link
+                  to="/seguros-alfa/reporte"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.alfaReport')}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.alfaReport')}
+                </span>
+              )}
+              {modoAsignados ? (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.assignedCases')}
+                </span>
+              ) : (
+                <Link
+                  to="/seguros-alfa/mis-casos"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.assignedCases')}
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -994,6 +1036,7 @@ export default function ReporteSegurosAlfa() {
                 <option value="cascaron">Cascarón vacío (liq. sin ítems)</option>
               </SelectFenix>
             </Campo>
+            {!modoAsignados && (
             <Campo label="Asignación">
               <label className="flex h-10 cursor-pointer items-center gap-2 font-body text-sm text-gray-700 dark:text-gray-200">
                 <input
@@ -1005,6 +1048,7 @@ export default function ReporteSegurosAlfa() {
                 Solo mis casos (mi usuario)
               </label>
             </Campo>
+            )}
           </div>
           {!loading && (
             <p className="mt-3 font-body text-sm text-gray-600 dark:text-gray-300">

@@ -28,6 +28,20 @@ const COL_FOTO = 9;
 const PRES_FIRST_ROW = 4;
 const PRES_LAST_ROW = 38;
 
+/** Manual de marca SURA: Azul 286 C y Aqua 3125 C. */
+const SURA_NAVY = 'FF0033A0';
+const SURA_AQUA = 'FF00AEC7';
+const SURA_HEADER = 'FF0033A0';
+const SURA_WHITE = 'FFFFFFFF';
+const SURA_INK = 'FF1A2744';
+const SURA_LINE = 'FFC5D5E8';
+const THIN_SURA = { style: 'thin', color: { argb: SURA_LINE } };
+const BORDER_SURA = { top: THIN_SURA, left: THIN_SURA, bottom: THIN_SURA, right: THIN_SURA };
+
+function fillArgb(cell, argb) {
+  cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb } };
+}
+
 /** Celda de foto más alta/ancha para que la miniatura se vea bien. */
 const FOTO_COL_WIDTH = 34;
 const FOTO_ROW_HEIGHT = 120;
@@ -337,7 +351,7 @@ function colocarLogosEnHoja(sheet, logoIds, layout) {
     colSura = 8.15,
     anchoProser = 220,
     altoProser = 70,
-    anchoSura = 200,
+    anchoSura = 210,
     altoSura = 78,
   } = layout || {};
 
@@ -364,7 +378,9 @@ function colocarLogosEnHoja(sheet, logoIds, layout) {
 async function registrarLogosSuraProser(workbook) {
   let proser = await cargarLogoBuffer(`${BASE_PUBLIC}templates/logo-grupoproser.png`);
   if (!proser) proser = await cargarLogoBuffer(`${BASE_PUBLIC}templates/logo-grupoproser.jpg`);
-  const sura = await cargarLogoBuffer(`${BASE_PUBLIC}templates/logo-sura.png`);
+  const sura =
+    (await cargarLogoBuffer(`${BASE_PUBLIC}templates/logo-sura.png`)) ||
+    (await cargarLogoBuffer(`${BASE_PUBLIC}templates/logo-sura.jpg`));
 
   const logoIds = {};
   if (proser) {
@@ -554,14 +570,193 @@ function rellenarPlantillaNsr10(workbook, liquidador) {
   const aiu = Number(presupuesto.aiuPorcentaje ?? 0.25);
   const impr = Number(presupuesto.imprevistosPorcentaje ?? 0);
   const imp = Number(presupuesto.impuestosPorcentaje ?? 0);
+  setVal(hojaPres, 40, 6, 'Subtotal');
   setVal(hojaPres, 41, 6, 'AIU');
   setVal(hojaPres, 41, 7, Number.isFinite(aiu) ? aiu : 0.25);
   setVal(hojaPres, 42, 6, 'Imprevistos');
-  setVal(hojaPres, 42, 7, Number.isFinite(impr) ? impr : 0.1);
+  setVal(hojaPres, 42, 7, Number.isFinite(impr) ? impr : 0);
   setVal(hojaPres, 43, 6, 'Impuestos');
   setVal(hojaPres, 43, 7, Number.isFinite(imp) ? imp : 0);
+  setVal(hojaPres, 44, 6, 'TOTAL ESTIMADO');
 
   return { hojaEval, hojaPortada, hojaPres, itemsPorFila };
+}
+
+function quitarNotaAmarillaPresupuesto(sheet) {
+  if (!sheet) return;
+  try {
+    sheet.unMergeCells('A47:L48');
+  } catch {
+    /* ya descombinado */
+  }
+  for (let r = 47; r <= 48; r += 1) {
+    for (let c = 1; c <= 12; c += 1) {
+      const cell = sheet.getCell(r, c);
+      cell.value = null;
+      cell.fill = { type: 'pattern', pattern: 'none' };
+      cell.font = { name: 'Calibri', size: 10, color: { argb: SURA_INK } };
+      cell.border = undefined;
+    }
+  }
+}
+
+/** Paleta SURA, filas alternas y bloque de totales alineado a la derecha. */
+export function estilizarHojaPresupuestoSura(sheet) {
+  if (!sheet) return;
+  quitarNotaAmarillaPresupuesto(sheet);
+
+  for (let c = 1; c <= 12; c += 1) {
+    const cell = sheet.getCell(1, c);
+    fillArgb(cell, SURA_NAVY);
+    cell.font = {
+      name: 'Calibri',
+      size: 14,
+      bold: true,
+      color: { argb: SURA_WHITE },
+    };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = {
+      ...BORDER_SURA,
+      bottom: { style: 'medium', color: { argb: SURA_AQUA } },
+    };
+  }
+  // El wordmark oficial (azul + aqua) solo se lee sobre blanco.
+  [1, 2, 11, 12].forEach((c) => {
+    fillArgb(sheet.getCell(1, c), SURA_WHITE);
+  });
+  sheet.getRow(1).height = Math.max(sheet.getRow(1).height || 0, 78);
+
+  for (let c = 1; c <= 12; c += 1) {
+    fillArgb(sheet.getCell(2, c), SURA_WHITE);
+  }
+
+  for (let c = 1; c <= 12; c += 1) {
+    const cell = sheet.getCell(3, c);
+    fillArgb(cell, SURA_HEADER);
+    cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: SURA_WHITE } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+    cell.border = BORDER_SURA;
+  }
+
+  for (let r = PRES_FIRST_ROW; r <= PRES_LAST_ROW; r += 1) {
+    for (let c = 1; c <= 12; c += 1) {
+      const cell = sheet.getCell(r, c);
+      fillArgb(cell, SURA_WHITE);
+      cell.font = { name: 'Calibri', size: 10, color: { argb: SURA_INK } };
+      cell.border = BORDER_SURA;
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: c >= 6 && c <= 8 ? 'right' : 'center',
+        wrapText: true,
+      };
+    }
+  }
+
+  const g40 = sheet.getCell(40, 7);
+  if (String(g40.value || '').trim().toUpperCase() === 'SUBTOTAL') {
+    g40.value = null;
+  }
+  const g44 = sheet.getCell(44, 7);
+  if (String(g44.value || '').trim().toUpperCase() === 'TOTAL ESTIMADO') {
+    g44.value = null;
+  }
+
+  const labelRows = [
+    [40, 'Subtotal', false],
+    [41, 'AIU', false],
+    [42, 'Imprevistos', false],
+    [43, 'Impuestos', false],
+    [44, 'TOTAL ESTIMADO', true],
+  ];
+  labelRows.forEach(([r, label, destacado]) => {
+    for (let c = 6; c <= 8; c += 1) {
+      const cell = sheet.getCell(r, c);
+      fillArgb(cell, SURA_WHITE);
+      cell.border = BORDER_SURA;
+      cell.font = {
+        name: 'Calibri',
+        size: destacado ? 11 : 10,
+        bold: true,
+        color: { argb: destacado ? SURA_NAVY : SURA_INK },
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: c === 8 ? 'right' : 'left',
+      };
+    }
+    const lab = sheet.getCell(r, 6);
+    if (!lab.value) lab.value = label;
+    sheet.getRow(r).height = destacado ? 20 : 18;
+  });
+  try {
+    sheet.mergeCells(40, 6, 40, 7);
+  } catch {
+    /* ok */
+  }
+  try {
+    sheet.mergeCells(44, 6, 44, 7);
+  } catch {
+    /* ok */
+  }
+  [41, 42, 43].forEach((r) => {
+    sheet.getCell(r, 7).numFmt = '0%';
+    sheet.getCell(r, 7).alignment = { vertical: 'middle', horizontal: 'right' };
+  });
+  [40, 41, 42, 43, 44].forEach((r) => {
+    sheet.getCell(r, 8).numFmt = '"$" #,##0';
+  });
+}
+
+/** Caja de indemnización bajo el total estimado (sin la nota amarilla de la plantilla). */
+export function pintarResumenIndemnizacionSura(sheet, totales) {
+  if (!sheet || !totales) return;
+  quitarNotaAmarillaPresupuesto(sheet);
+
+  const filaTitulo = 46;
+  try {
+    sheet.mergeCells(filaTitulo, 6, filaTitulo, 8);
+  } catch {
+    /* ok */
+  }
+  const titulo = sheet.getCell(filaTitulo, 6);
+  titulo.value = 'RESUMEN DE INDEMNIZACIÓN';
+  fillArgb(titulo, SURA_NAVY);
+  titulo.font = { name: 'Calibri', size: 10, bold: true, color: { argb: SURA_WHITE } };
+  titulo.alignment = { vertical: 'middle', horizontal: 'center' };
+  sheet.getCell(filaTitulo, 7).fill = titulo.fill;
+  sheet.getCell(filaTitulo, 8).fill = titulo.fill;
+  sheet.getRow(filaTitulo).height = 18;
+
+  const hospedaje = Number(totales.diagrama?.gastosHospedaje) || 0;
+  const deducible = Number(totales.deducibleAplicado) || 0;
+  const indemnizar = Number(totales.totalIndemnizar) || 0;
+  const filas = [
+    ['Hospedaje', hospedaje, false],
+    ['Deducible', deducible, false],
+    ['TOTAL A INDEMNIZAR', indemnizar, true],
+  ];
+  filas.forEach(([label, valor, destacado], i) => {
+    const r = filaTitulo + 1 + i;
+    for (let c = 6; c <= 8; c += 1) {
+      const cell = sheet.getCell(r, c);
+      fillArgb(cell, SURA_WHITE);
+      cell.border = BORDER_SURA;
+      cell.font = {
+        name: 'Calibri',
+        size: destacado ? 11 : 10,
+        bold: true,
+        color: { argb: destacado ? SURA_NAVY : SURA_INK },
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: c === 8 ? 'right' : 'left',
+      };
+    }
+    sheet.getCell(r, 6).value = label;
+    sheet.getCell(r, 8).value = valor;
+    sheet.getCell(r, 8).numFmt = '"$" #,##0';
+    sheet.getRow(r).height = destacado ? 20 : 18;
+  });
 }
 
 /**
@@ -587,7 +782,7 @@ export async function generarWorkbookLiquidadorSuraNsr(liquidador) {
     anchoProser: 230,
     altoProser: 72,
     anchoSura: 210,
-    altoSura: 82,
+    altoSura: 78,
   });
   colocarLogosEnHoja(hojaEval, logoIds, layoutEval);
   }
@@ -605,7 +800,7 @@ export async function generarWorkbookLiquidadorSuraNsr(liquidador) {
     if (logoIds.suraId != null) {
       hojaPortada.addImage(logoIds.suraId, {
         tl: { col: 2.4, row: 2.05 },
-        ext: { width: 180, height: 70 },
+        ext: { width: 180, height: 67 },
         editAs: 'oneCell',
       });
     }
@@ -617,13 +812,20 @@ export async function generarWorkbookLiquidadorSuraNsr(liquidador) {
       tituloMerge: 'C1:J1',
       colTitulo: 3,
       colLogoDer: 11,
-      colSura: 10.1,
+      colSura: 10.05,
       anchoProser: 220,
       altoProser: 70,
-      anchoSura: 200,
+      anchoSura: 210,
       altoSura: 78,
     });
     colocarLogosEnHoja(hojaPres, logoIds, layoutPres);
+    estilizarHojaPresupuestoSura(hojaPres);
+    if (logoIds.suraId == null) {
+      const fallback = hojaPres.getCell(1, 11);
+      fallback.value = 'sura';
+      fallback.font = { name: 'Calibri', size: 14, bold: true, color: { argb: SURA_NAVY } };
+      fallback.alignment = { vertical: 'middle', horizontal: 'right' };
+    }
   }
 
   if (!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10) {

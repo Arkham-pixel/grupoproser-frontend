@@ -1,6 +1,7 @@
 function esFotoArchivo(a) {
   const et = String(a?.etiqueta || '').toUpperCase();
   const nombre = String(a?.nombreOriginal || a?.nombreArchivo || a?.nombre || '');
+  if (et === 'COTIZACION') return false;
   return (
     et === 'FOTOS' ||
     et === 'INSPECCION' ||

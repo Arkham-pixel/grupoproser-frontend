@@ -44,6 +44,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
+import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 
 function valorOrdenAllianzListado(item, clave) {
   if (clave === 'tipoPoliza') return etiquetaTipoPolizaAllianz(item);
@@ -128,9 +129,10 @@ const buildExportRow = (caso) => ({
   'Fecha creación': formatDate(caso.createdAt),
 });
 
-export default function ReporteAllianzListado() {
+export default function ReporteAllianzListado({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -151,13 +153,14 @@ export default function ReporteAllianzListado() {
     setLoading(true);
     setError(null);
     try {
-      setCasos(await fetchAllCasosAllianzListado(2000));
+      const data = await fetchAllCasosAllianzListado(2000);
+      setCasos(modoAsignados ? filtrarCasosAsignadosASesion(data) : data);
     } catch (err) {
       setError(err.message || t('allianz.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, modoAsignados]);
 
   useEffect(() => {
     recargar();
@@ -307,8 +310,16 @@ export default function ReporteAllianzListado() {
           <div className="space-y-3">
             <span className={expressBadge}>Allianz · Listado</span>
             <div>
-              <h1 className={expressPageTitle}>{t('allianz.listadoReport.title')}</h1>
-              <p className={expressPageSubtitle}>{t('allianz.listadoReport.subtitle')}</p>
+              <h1 className={expressPageTitle}>
+                {modoAsignados
+                  ? `${t('allianz.listadoReport.title')} — ${t('nav.assignedCases')}`
+                  : t('allianz.listadoReport.title')}
+              </h1>
+              <p className={expressPageSubtitle}>
+                {modoAsignados
+                  ? t('common.assignedCasesHint', { name: nombreSesion || '—' })
+                  : t('allianz.listadoReport.subtitle')}
+              </p>
             </div>
             <nav className="flex flex-wrap gap-2">
               <Link
@@ -324,13 +335,34 @@ export default function ReporteAllianzListado() {
               >
                 {t('nav.allianzListadoDashboard')}
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.allianzListadoReport')}
-              </span>
+              {modoAsignados ? (
+                <Link
+                  to="/allianz/listado/reporte"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.allianzListadoReport')}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.allianzListadoReport')}
+                </span>
+              )}
+              {modoAsignados ? (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.assignedCases')}
+                </span>
+              ) : (
+                <Link
+                  to="/allianz/listado/mis-casos"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.assignedCases')}
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
-            {puedeImportarExcel && (
+            {puedeImportarExcel && !modoAsignados && (
               <button
                 type="button"
                 className={expressBtnPrimary}
@@ -463,6 +495,11 @@ export default function ReporteAllianzListado() {
                           onGestionar={() => setCasoEdicion(item)}
                           onLiquidador={() =>
                             navigate(`/allianz/listado/caso?casoId=${item._id}&tab=liquidador`, {
+                              state: { casoAllianz: item },
+                            })
+                          }
+                          onInformeAgil={() =>
+                            navigate(`/allianz/listado/caso?casoId=${item._id}&tab=informe-agil`, {
                               state: { casoAllianz: item },
                             })
                           }

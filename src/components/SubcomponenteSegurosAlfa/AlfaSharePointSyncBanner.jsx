@@ -69,7 +69,7 @@ export default function AlfaSharePointSyncBanner({
           <p className="min-w-0 flex-1 font-body text-sm">
             {t('segurosAlfa.archive.sharepoint.syncedToast', {
               name: item.nombre,
-              defaultValue: '«{{name}}» ya está en SharePoint (SINIESTROS).',
+              defaultValue: '«{{name}}» ya está en SharePoint (CASOS ENVIADOS A LA ASEGURADORA).',
             })}
           </p>
           <div className="flex flex-wrap items-center gap-2">
@@ -213,7 +213,7 @@ export default function AlfaSharePointSyncBanner({
                           onClick={() => handleToggle(id, true)}
                           className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-900 hover:bg-emerald-100 disabled:opacity-50 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100"
                           title={t('segurosAlfa.archive.sharepoint.doUploadHint', {
-                            defaultValue: 'Encolar copia a SharePoint SINIESTROS',
+                            defaultValue: 'Encolar copia a SharePoint (CASOS ENVIADOS A LA ASEGURADORA)',
                           })}
                         >
                           <FaCloudUploadAlt />

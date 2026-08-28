@@ -19,9 +19,11 @@ import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismic
 import CampoTomadorZurich from './CampoTomadorZurich.jsx';
 import {
   calcularLiquidacionZurich,
+  desgloseDeducibleTerremotoZurich,
   formDataNsrDesdeLiquidadorZurich,
   formatearMonto,
   mapcasoZurichALiquidador,
+  migrarLiquidadorDeducibleTerremotoZurich,
 } from './liquidadorZurichHelpers.js';
 import { descargarFiniquitoZurichWord } from './generarFiniquitoZurichWord.js';
 import { descargarLiquidadorZurichExcel } from './generarLiquidadorZurichExcel.js';
@@ -29,6 +31,8 @@ import { descargarLiquidadorZurichPdf } from './generarLiquidadorZurichPdf.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
 import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import { serializarPaginasCotizacion, montoCotizacionPdf, usaCotizacionComoBasePresupuesto } from '../liquidacion/cotizacionPdfLiquidacion.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -39,8 +43,8 @@ const MIME = {
 };
 
 /**
- * Liquidador Zurich = evaluación NSR-10 completa (portada / eval / dictamen / presupuesto)
- * + diagrama de liquidación, mismo motor que Catastrófico Complex.
+ * Liquidador Zurich = mismo motor que Sura (encabezado, otros amparos, presupuesto NSR-10
+ * y diagrama de liquidación). En el informe se embebe con embeberEnInforme.
  */
 export default function LiquidadorZurich({
   casoZurich = null,
@@ -50,22 +54,40 @@ export default function LiquidadorZurich({
   onCasoChange,
   origen = 'cat',
   liquidadorInicial = null,
+  embeberEnInforme = false,
+  onInformePatch,
 }) {
   const { t } = useTranslation();
   const api = useMemo(() => zurichArchivosApi(origen), [origen]);
   const [liquidador, setLiquidador] = useState(() =>
-    liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {})
+    migrarLiquidadorDeducibleTerremotoZurich(
+      liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}),
+      casoZurich || {}
+    )
   );
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [exportando, setExportando] = useState('');
 
   useEffect(() => {
-    setLiquidador(liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}));
+    setLiquidador(
+      migrarLiquidadorDeducibleTerremotoZurich(
+        liquidadorInicial || mapcasoZurichALiquidador(casoZurich || {}),
+        casoZurich || {}
+      )
+    );
   }, [casoZurich?._id]);
 
   const totales = useMemo(() => calcularLiquidacionZurich(liquidador), [liquidador]);
+  const desgloseDed = useMemo(
+    () => desgloseDeducibleTerremotoZurich(liquidador, totales.diagrama),
+    [liquidador, totales.diagrama]
+  );
   const enc = liquidador.encabezado || {};
+  const tieneCotizacionPdf = Boolean(
+    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+      liquidador.cotizacionPdf?.archivoPdf
+  );
 
   useEffect(() => {
     onEstadoChange?.(liquidador, totales);
@@ -76,6 +98,20 @@ export default function LiquidadorZurich({
     () => formDataNsrDesdeLiquidadorZurich(liquidador, casoZurich || {}),
     [liquidador, casoZurich]
   );
+
+  const pctPresupuesto = Number(
+    liquidador?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.porcentaje
+  );
+  const smmlvPresupuesto = Number(
+    liquidador?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.cantidadSMMLV
+  );
+  useEffect(() => {
+    if (pctPresupuesto === 3 && smmlvPresupuesto === 3) return;
+    if (pctPresupuesto !== 10 && smmlvPresupuesto !== 4) return;
+    setLiquidador((prev) =>
+      migrarLiquidadorDeducibleTerremotoZurich(prev, casoZurich || {}, { forzar: true })
+    );
+  }, [pctPresupuesto, smmlvPresupuesto, casoZurich?._id]);
 
   const actualizarEncabezado = (campo, valor) => {
     setLiquidador((prev) => ({
@@ -94,16 +130,34 @@ export default function LiquidadorZurich({
     });
   };
 
+  const appendArchivosAlCaso = (creados = []) => {
+    const lista = (Array.isArray(creados) ? creados : [creados]).filter(Boolean);
+    if (!lista.length) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
+      if (!extra.length) return prev;
+      return { ...prev, archivos: [...actuales, ...extra] };
+    });
+  };
+
+  const handleCotizacionChange = (cotizacionPdf) => {
+    setLiquidador((prev) =>
+      migrarLiquidadorDeducibleTerremotoZurich({ ...prev, cotizacionPdf }, casoZurich || {})
+    );
+    onInformePatch?.({
+      fotosCotizacion: serializarPaginasCotizacion(cotizacionPdf?.paginas),
+    });
+  };
+
   const copiarAlArchivero = async (blob, nombre, mime) => {
     const casoId = casoZurich?._id;
     if (!casoId || !blob || !nombre) return;
     const file = new File([blob], nombre, { type: mime });
     const creado = await api.subir(casoId, file, 'LIQUIDACION');
-    onCasoChange?.((prev) => {
-      if (!prev) return prev;
-      const list = Array.isArray(prev.archivos) ? prev.archivos : [];
-      return { ...prev, archivos: [...list, creado] };
-    });
+    appendArchivosAlCaso([creado]);
     setMensaje(t('zurich.settlement.archiveSaved'));
   };
 
@@ -252,18 +306,59 @@ export default function LiquidadorZurich({
             }
           />
         </div>
+        <div className="mt-4">
+          <CotizacionPdfLiquidacion
+            value={liquidador.cotizacionPdf}
+            onChange={handleCotizacionChange}
+            casoId={casoZurich?._id}
+            api={api}
+            archivosCaso={casoZurich?.archivos || []}
+            onArchivosCreados={appendArchivosAlCaso}
+            onArchivosEliminados={(ids) => {
+              const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+              if (!setIds.size) return;
+              onCasoChange?.((prev) => {
+                if (!prev) return prev;
+                const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+                return {
+                  ...prev,
+                  archivos: actuales.filter((a) => !setIds.has(String(a?._id))),
+                };
+              });
+            }}
+            disabled={!!exportando || guardandoCaso}
+          />
+        </div>
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
+            <span>
+              {totales.origenPresupuesto === 'cotizacion'
+                ? t('zurich.settlement.totalDamagesQuote')
+                : t('zurich.settlement.totalDamagesNsr')}
+            </span>
             <span>$ {formatearMonto(totales.totalDanios)}</span>
           </div>
+          {totales.origenPresupuesto === 'cotizacion' && (
+            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <span>{t('zurich.settlement.totalQuote')}</span>
+              <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>Hospedaje</span>
             <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible presupuesto</span>
-            <span>$ {formatearMonto(totales.diagrama?.deduciblePresupuesto?.aplicado || 0)}</span>
+            <span>{desgloseDed.etiquetaPct}</span>
+            <span>$ {formatearMonto(desgloseDed.montoPct)}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>{desgloseDed.etiquetaSmmlv}</span>
+            <span>$ {formatearMonto(desgloseDed.montoSmmlv)}</span>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>{desgloseDed.etiquetaAplicado}</span>
+            <span>$ {formatearMonto(desgloseDed.aplicado)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>Deducible contenidos</span>
@@ -285,17 +380,31 @@ export default function LiquidadorZurich({
             <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
           </div>
         </div>
+        <p className="mt-2 text-xs text-gray-500">{desgloseDed.texto}</p>
+        {totales.origenPresupuesto === 'cotizacion' && (
+          <p className="mt-1 text-xs text-gray-500">{t('zurich.settlement.quoteDeductibleNote')}</p>
+        )}
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {t('zurich.settlement.nsrTitle', { defaultValue: 'Evaluación y liquidador NSR-10' })}
-        </h3>
+        {!embeberEnInforme && (
+          <h3 className={expressSectionTitle}>
+            {tieneCotizacionPdf
+              ? t('zurich.settlement.nsrTitleQuote')
+              : t('zurich.settlement.nsrTitle')}
+          </h3>
+        )}
         <ChecklistEvaluacionSismicaNSR10
           formData={formDataNsr}
           onInputChange={handleNsrChange}
-          modoLiquidador={false}
+          modoLiquidador={embeberEnInforme}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+          ocultarPresupuestoEscrito={tieneCotizacionPdf}
+          totalPresupuestoOverride={
+            usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+              ? montoCotizacionPdf(liquidador.cotizacionPdf)
+              : null
+          }
         />
       </section>
     </div>

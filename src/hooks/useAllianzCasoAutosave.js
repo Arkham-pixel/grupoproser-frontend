@@ -3,17 +3,53 @@ import { AUTOSAVE_DEBOUNCE_MS } from '../config/autoSaveConfig.js';
 import { checkConnectivity } from '../services/connectivityService.js';
 import { setAutosaveUiStatus } from '../services/autosaveOfflineService.js';
 import {
+  guardarInformeAgilEnCasoAllianz,
   guardarInformeUnicoEnCasoAllianz,
   guardarLiquidadorEnCasoAllianz,
 } from '../services/allianzService.js';
 import { liquidadorParaPersistir } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
 
 const TAB_INFORME = 'informe';
+const TAB_AGIL = 'informe-agil';
+
+async function persistirPayload({
+  casoId,
+  payload,
+  casoBase,
+  guardarLiquidador,
+  guardarInforme,
+  guardarInformeAgil,
+}) {
+  if (payload.tipo === 'informe') {
+    return guardarInforme({
+      casoId,
+      informeUnico: payload.data,
+      casoBase,
+    });
+  }
+  if (payload.tipo === 'agil') {
+    return guardarInformeAgil({
+      casoId,
+      informeAgil: payload.data,
+      casoBase,
+    });
+  }
+  return guardarLiquidador({
+    casoId,
+    liquidador: liquidadorParaPersistir(payload.data, casoBase.liquidador),
+    totales: payload.totales || {},
+    casoBase,
+  });
+}
+
+function snapKey(tipo) {
+  if (tipo === 'informe') return 'informe';
+  if (tipo === 'agil') return 'agil';
+  return 'liquidador';
+}
 
 /**
- * Autoguardado del workspace Allianz (liquidador / informe)
- * hacia la API, actualizando el indicador de sincronización.
- * El liquidador NSR también se guarda si se edita desde el informe único.
+ * Autoguardado del workspace Allianz (liquidador / informe / informe ágil).
  */
 export default function useAllianzCasoAutosave({
   casoId,
@@ -22,24 +58,24 @@ export default function useAllianzCasoAutosave({
   liquidadorState,
   totalesState,
   informeState,
+  informeAgilState,
   onCasoActualizado,
   enabled = true,
   guardarLiquidador = guardarLiquidadorEnCasoAllianz,
   guardarInforme = guardarInformeUnicoEnCasoAllianz,
+  guardarInformeAgil = guardarInformeAgilEnCasoAllianz,
 } = {}) {
   const casoRef = useRef(casoAllianz);
   const savingRef = useRef(false);
   const pendingFlushRef = useRef(null);
-  const lastLiqSnap = useRef('');
-  const lastInfSnap = useRef('');
+  const lastSnap = useRef({ liquidador: '', informe: '', agil: '' });
   const readyRef = useRef(false);
 
   casoRef.current = casoAllianz;
 
   useEffect(() => {
     readyRef.current = false;
-    lastLiqSnap.current = '';
-    lastInfSnap.current = '';
+    lastSnap.current = { liquidador: '', informe: '', agil: '' };
   }, [casoId]);
 
   useEffect(() => {
@@ -49,16 +85,15 @@ export default function useAllianzCasoAutosave({
 
     const scheduleSave = (payload) => {
       if (!payload?.data) return;
+      const key = snapKey(payload.tipo);
       const snap = JSON.stringify(payload.data);
-      const isInf = payload.tipo === 'informe';
-      const prevSnap = isInf ? lastInfSnap.current : lastLiqSnap.current;
+      const prevSnap = lastSnap.current[key];
 
       if (!readyRef.current) {
         readyRef.current = true;
       }
       if (!prevSnap) {
-        if (isInf) lastInfSnap.current = snap;
-        else lastLiqSnap.current = snap;
+        lastSnap.current[key] = snap;
         return;
       }
       if (snap === prevSnap) return;
@@ -80,27 +115,15 @@ export default function useAllianzCasoAutosave({
         savingRef.current = true;
         setAutosaveUiStatus({ state: 'saving', message: 'Guardando…' });
         try {
-          const base = casoRef.current || {};
-          let actualizado;
-          if (payload.tipo === 'informe') {
-            actualizado = await guardarInforme({
-              casoId,
-              informeUnico: payload.data,
-              casoBase: base,
-            });
-            lastInfSnap.current = JSON.stringify(payload.data);
-          } else {
-            actualizado = await guardarLiquidador({
-              casoId,
-              liquidador: liquidadorParaPersistir(
-                payload.data,
-                base.liquidador
-              ),
-              totales: payload.totales || {},
-              casoBase: base,
-            });
-            lastLiqSnap.current = JSON.stringify(payload.data);
-          }
+          const actualizado = await persistirPayload({
+            casoId,
+            payload,
+            casoBase: casoRef.current || {},
+            guardarLiquidador,
+            guardarInforme,
+            guardarInformeAgil,
+          });
+          lastSnap.current[key] = JSON.stringify(payload.data);
           onCasoActualizado?.(actualizado);
           setAutosaveUiStatus({
             state: 'synced',
@@ -120,7 +143,6 @@ export default function useAllianzCasoAutosave({
       timers.push(timer);
     };
 
-    // Siempre vigilar liquidador (también desde tab informe con modoLiquidador)
     if (liquidadorState) {
       scheduleSave({
         tipo: 'liquidador',
@@ -131,6 +153,9 @@ export default function useAllianzCasoAutosave({
     if (tabActivo === TAB_INFORME && informeState) {
       scheduleSave({ tipo: 'informe', data: informeState });
     }
+    if (tabActivo === TAB_AGIL && informeAgilState) {
+      scheduleSave({ tipo: 'agil', data: informeAgilState });
+    }
 
     return () => timers.forEach((t) => clearTimeout(t));
   }, [
@@ -140,9 +165,11 @@ export default function useAllianzCasoAutosave({
     liquidadorState,
     totalesState,
     informeState,
+    informeAgilState,
     onCasoActualizado,
     guardarLiquidador,
     guardarInforme,
+    guardarInformeAgil,
   ]);
 
   useEffect(() => {
@@ -155,27 +182,15 @@ export default function useAllianzCasoAutosave({
       savingRef.current = true;
       setAutosaveUiStatus({ state: 'syncing', message: 'Sincronizando…' });
       try {
-        const base = casoRef.current || {};
-        let actualizado;
-        if (payload.tipo === 'informe') {
-          actualizado = await guardarInforme({
-            casoId,
-            informeUnico: payload.data,
-            casoBase: base,
-          });
-          lastInfSnap.current = JSON.stringify(payload.data);
-        } else {
-          actualizado = await guardarLiquidador({
-            casoId,
-            liquidador: liquidadorParaPersistir(
-              payload.data,
-              base.liquidador
-            ),
-            totales: payload.totales || {},
-            casoBase: base,
-          });
-          lastLiqSnap.current = JSON.stringify(payload.data);
-        }
+        const actualizado = await persistirPayload({
+          casoId,
+          payload,
+          casoBase: casoRef.current || {},
+          guardarLiquidador,
+          guardarInforme,
+          guardarInformeAgil,
+        });
+        lastSnap.current[snapKey(payload.tipo)] = JSON.stringify(payload.data);
         onCasoActualizado?.(actualizado);
         setAutosaveUiStatus({
           state: 'synced',
@@ -193,5 +208,5 @@ export default function useAllianzCasoAutosave({
     };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
-  }, [casoId, enabled, onCasoActualizado, guardarLiquidador, guardarInforme]);
+  }, [casoId, enabled, onCasoActualizado, guardarLiquidador, guardarInforme, guardarInformeAgil]);
 }

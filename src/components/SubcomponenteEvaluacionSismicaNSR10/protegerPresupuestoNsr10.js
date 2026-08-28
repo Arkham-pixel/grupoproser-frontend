@@ -35,6 +35,16 @@ export function contarItemsDetalleCat(liquidador) {
   return items.filter((it) => textoItem(it)).length;
 }
 
+function scoreCotizacionPdf(liquidador) {
+  const c = liquidador?.cotizacionPdf;
+  if (!c || typeof c !== 'object') return 0;
+  const paginas = Array.isArray(c.paginas)
+    ? c.paginas.filter((p) => p?.ruta || p?._id || p?.preview || p?.file).length
+    : 0;
+  const monto = String(c.montoFinal ?? '').replace(/[^\d]/g, '');
+  return paginas + (monto.length ? 2 : 0);
+}
+
 export function contarOtrosAmparosAlfa(liquidador) {
   const items = liquidador?.otrosAmparos;
   if (!Array.isArray(items)) return 0;
@@ -52,7 +62,8 @@ export function scoreContenidoLiquidadorNsr(liquidador) {
     contarItemsPresupuestoNsr(liquidador) +
     contarItemsContenidosNsr(liquidador) +
     contarItemsDetalleCat(liquidador) +
-    contarOtrosAmparosAlfa(liquidador)
+    contarOtrosAmparosAlfa(liquidador) +
+    scoreCotizacionPdf(liquidador)
   );
 }
 
@@ -100,6 +111,10 @@ export function fusionarLiquidadorSinPerderPresupuestoNsr(propuesto, actual) {
     Array.isArray(actual.otrosAmparos)
   ) {
     next = { ...next, otrosAmparos: actual.otrosAmparos };
+  }
+
+  if (actual.cotizacionPdf && !next.cotizacionPdf) {
+    next = { ...next, cotizacionPdf: actual.cotizacionPdf };
   }
 
   if (scoreOld >= scoreNew) {

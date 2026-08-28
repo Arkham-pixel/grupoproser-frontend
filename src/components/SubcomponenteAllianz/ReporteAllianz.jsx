@@ -621,6 +621,11 @@ export default function ReporteAllianz() {
                               state: { casoAllianz: item },
                             })
                           }
+                          onInformeAgil={() =>
+                            navigate(`/allianz/informe-agil?casoId=${item._id}&tab=informe-agil`, {
+                              state: { casoAllianz: item },
+                            })
+                          }
                           onInformeUnico={() =>
                             navigate(`/allianz/informe-unico?casoId=${item._id}&tab=informe`, {
                               state: { casoAllianz: item },

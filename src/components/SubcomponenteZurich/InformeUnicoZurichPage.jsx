@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
@@ -16,6 +16,7 @@ import {
 import {
   getCasoZurichById,
   guardarInformeUnicoEnCasoZurich,
+  guardarLiquidadorEnCasoZurich,
 } from '../../services/zurichService.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
@@ -28,6 +29,7 @@ export default function InformeUnicoZurichPage() {
 
   const [casoZurich, setcasoZurich] = useState(location.state?.casoZurich ?? null);
   const [informeState, setInformeState] = useState(null);
+  const [liquidadorState, setLiquidadorState] = useState(null);
   const [cargandoCaso, setCargandoCaso] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
@@ -83,11 +85,22 @@ export default function InformeUnicoZurichPage() {
     setError('');
     setMensaje('');
     try {
-      const actualizado = await guardarInformeUnicoEnCasoZurich({
+      const actualizadoInforme = await guardarInformeUnicoEnCasoZurich({
         casoId,
         informeUnico: informe,
-        casoBase: casoZurich || {},
+        casoBase: {
+          ...(casoZurich || {}),
+          liquidador: liquidadorState || casoZurich?.liquidador,
+        },
       });
+      let actualizado = actualizadoInforme;
+      if (liquidadorState) {
+        actualizado = await guardarLiquidadorEnCasoZurich({
+          casoId,
+          liquidador: liquidadorState,
+          casoBase: actualizadoInforme || casoZurich || {},
+        });
+      }
       setcasoZurich(actualizado);
       setMensaje(t('zurich.reportUnique.savedMessage'));
     } catch (err) {
@@ -148,6 +161,8 @@ export default function InformeUnicoZurichPage() {
               <InformeUnicoZurich
                 casoZurich={casoZurich}
                 onEstadoChange={setInformeState}
+                onLiquidadorChange={(liq) => setLiquidadorState(liq)}
+                liquidadorInicial={liquidadorState || casoZurich?.liquidador}
                 onGuardarEnCaso={casoId ? handleGuardar : undefined}
                 onCasoChange={setcasoZurich}
                 guardandoCaso={guardando}

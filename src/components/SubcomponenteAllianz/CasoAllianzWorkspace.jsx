@@ -4,6 +4,7 @@ import { Link, Outlet, useLocation, useNavigate, useSearchParams } from 'react-r
 import { FaArrowLeft, FaSave } from 'react-icons/fa';
 import LiquidadorAllianz from './LiquidadorAllianz.jsx';
 import InformeUnicoAllianz from './InformeUnicoAllianz.jsx';
+import InformeAgilAllianz from './InformeAgilAllianz.jsx';
 import SelectorTipoInformeAllianz from './SelectorTipoInformeAllianz.jsx';
 import {
   expressAlertError,
@@ -18,12 +19,14 @@ import {
 import {
   fetchAllCasosAllianz,
   getCasoAllianzById,
+  guardarInformeAgilEnCasoAllianz,
   guardarInformeUnicoEnCasoAllianz,
   guardarLiquidadorEnCasoAllianz,
 } from '../../services/allianzService.js';
 import {
   fetchAllCasosAllianzListado,
   getCasoAllianzListadoById,
+  guardarInformeAgilEnCasoAllianzListado,
   guardarInformeUnicoEnCasoAllianzListado,
   guardarLiquidadorEnCasoAllianzListado,
 } from '../../services/allianzListadoService.js';
@@ -33,6 +36,7 @@ import {
   normalizarTipoInformeAllianz,
   tipoInformeActualAllianz,
 } from './liquidadorAllianzHelpers.js';
+import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
 import useAllianzCasoAutosave from '../../hooks/useAllianzCasoAutosave.js';
@@ -43,6 +47,7 @@ import ArnaldDraftChrome from '../ArnaldDraftChrome.jsx';
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
 export const TABS_ALLIANZ = {
+  INFORME_AGIL: 'informe-agil',
   LIQUIDADOR: 'liquidador',
   INFORME: 'informe',
 };
@@ -52,6 +57,7 @@ const STORAGE_CASO_LISTADO = 'allianzListadoCasoId';
 
 function tabDesdePathname(pathname) {
   const p = String(pathname || '');
+  if (p.includes('/informe-agil')) return TABS_ALLIANZ.INFORME_AGIL;
   if (p.includes('/informe-unico')) return TABS_ALLIANZ.INFORME;
   if (p.includes('/liquidador') || p.includes('/caso')) return TABS_ALLIANZ.LIQUIDADOR;
   return null;
@@ -84,6 +90,7 @@ function guardarCasoIdSesion(esListado, id) {
 function rutaPublicaTabAllianz(tab, esListado) {
   if (esListado) return '/allianz/listado/caso';
   if (tab === TABS_ALLIANZ.INFORME) return '/allianz/informe-unico';
+  if (tab === TABS_ALLIANZ.INFORME_AGIL) return '/allianz/informe-agil';
   return '/allianz/liquidador';
 }
 
@@ -95,7 +102,7 @@ const pillClass = (activo) =>
   }`;
 
 /**
- * Workspace Allianz: Liquidador | Informe (preliminar, final o único)
+ * Workspace Allianz: Informe ágil | Liquidador | Informe (preliminar, final o único)
  * Mismo expediente (datos compartidos) con pestañas y menú separados.
  */
 export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat' } = {}) {
@@ -117,6 +124,9 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
     const raw = tabFromQuery || tabDesdeRuta || TABS_ALLIANZ.LIQUIDADOR;
     if (raw === TABS_ALLIANZ.INFORME || raw === 'informe-unico') {
       return TABS_ALLIANZ.INFORME;
+    }
+    if (raw === TABS_ALLIANZ.INFORME_AGIL || raw === 'informe-agil') {
+      return TABS_ALLIANZ.INFORME_AGIL;
     }
     return TABS_ALLIANZ.LIQUIDADOR;
   }, [tabFromQuery, tabDesdeRuta]);
@@ -144,6 +154,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
   const [liquidadorState, setLiquidadorState] = useState(null);
   const [totalesState, setTotalesState] = useState(null);
   const [informeState, setInformeState] = useState(null);
+  const [informeAgilState, setInformeAgilState] = useState(null);
   const [cargandoCaso, setCargandoCaso] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
@@ -163,6 +174,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
   useEffect(() => {
     setLiquidadorState(null);
     setInformeState(null);
+    setInformeAgilState(null);
     setTotalesState(null);
   }, [casoIdFromQuery]);
 
@@ -174,6 +186,10 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         setCasoAllianz(caso);
         setLiquidadorState((prev) => prev || caso?.liquidador || null);
         setInformeState((prev) => prev || caso?.informeUnico || null);
+        setInformeAgilState((prev) => prev || caso?.informeAgil || null);
+        if (caso?.liquidador) {
+          setTotalesState((prev) => prev || calcularLiquidacionAllianz(caso.liquidador));
+        }
         return;
       }
       if (!casoIdFromQuery) return;
@@ -187,6 +203,10 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
           setCasoAllianz(caso);
           setLiquidadorState((prev) => prev || caso?.liquidador || null);
           setInformeState((prev) => prev || caso?.informeUnico || null);
+          setInformeAgilState((prev) => prev || caso?.informeAgil || null);
+          if (caso?.liquidador) {
+            setTotalesState((prev) => prev || calcularLiquidacionAllianz(caso.liquidador));
+          }
         }
       } catch (err) {
         if (!cancelado) setError(err.message || t('allianz.workspace.loadError'));
@@ -267,6 +287,16 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
     });
   }, [listaCasos, busquedaCaso]);
 
+  const casoConSecciones = useCallback(
+    () => ({
+      ...(casoAllianz || {}),
+      liquidador: liquidadorState || casoAllianz?.liquidador,
+      informeUnico: informeState || casoAllianz?.informeUnico,
+      informeAgil: informeAgilState || casoAllianz?.informeAgil,
+    }),
+    [casoAllianz, liquidadorState, informeState, informeAgilState]
+  );
+
   const handleGuardarLiquidador = async (liqArg, totArg) => {
     if (!casoId) {
       setError(t('allianz.settlement.savedCaseRequired'));
@@ -286,19 +316,13 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         ? await guardarLiquidadorEnCasoAllianzListado({
             casoId,
             liquidador,
-            casoBase: {
-              ...(casoAllianz || {}),
-              informeUnico: informeState || casoAllianz?.informeUnico,
-            },
+            casoBase: casoConSecciones(),
           })
         : await guardarLiquidadorEnCasoAllianz({
             casoId,
             liquidador,
             totales,
-            casoBase: {
-              ...(casoAllianz || {}),
-              informeUnico: informeState || casoAllianz?.informeUnico,
-            },
+            casoBase: casoConSecciones(),
           });
       setCasoAllianz(actualizado);
       setLiquidadorState(liquidador);
@@ -345,18 +369,12 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         ? await guardarInformeUnicoEnCasoAllianzListado({
             casoId,
             informeUnico: informe,
-            casoBase: {
-              ...(casoAllianz || {}),
-              liquidador: liquidadorState || casoAllianz?.liquidador,
-            },
+            casoBase: casoConSecciones(),
           })
         : await guardarInformeUnicoEnCasoAllianz({
             casoId,
             informeUnico: informe,
-            casoBase: {
-              ...(casoAllianz || {}),
-              liquidador: liquidadorState || casoAllianz?.liquidador,
-            },
+            casoBase: casoConSecciones(),
           });
       setCasoAllianz(actualizado);
       setMensaje(t('allianz.reportUnique.savedMessage'));
@@ -368,6 +386,51 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
     } catch (err) {
       console.error(err);
       setError(err.message || t('allianz.reportUnique.saveError'));
+      setAutosaveUiStatus({
+        state: 'error',
+        message: err.message || 'Error al sincronizar',
+      });
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const handleGuardarInformeAgil = async (agilArg) => {
+    if (!casoId) {
+      setError(t('allianz.informeAgil.savedCaseRequired'));
+      return;
+    }
+    const informeAgil = agilArg || informeAgilState;
+    if (!informeAgil) {
+      setError(t('allianz.informeAgil.noData'));
+      return;
+    }
+    setGuardando(true);
+    setError('');
+    setMensaje('');
+    try {
+      const actualizado = esModuloListado
+        ? await guardarInformeAgilEnCasoAllianzListado({
+            casoId,
+            informeAgil,
+            casoBase: casoConSecciones(),
+          })
+        : await guardarInformeAgilEnCasoAllianz({
+            casoId,
+            informeAgil,
+            casoBase: casoConSecciones(),
+          });
+      setCasoAllianz(actualizado);
+      setInformeAgilState(informeAgil);
+      setMensaje(t('allianz.informeAgil.savedMessage'));
+      setAutosaveUiStatus({
+        state: 'synced',
+        pendingCount: 0,
+        message: 'Sincronizado',
+      });
+    } catch (err) {
+      console.error(err);
+      setError(err.message || t('allianz.informeAgil.saveError'));
       setAutosaveUiStatus({
         state: 'error',
         message: err.message || 'Error al sincronizar',
@@ -397,6 +460,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
 
   const handleGuardarActual = () => {
     if (tabActivo === TABS_ALLIANZ.INFORME) return handleGuardarInforme();
+    if (tabActivo === TABS_ALLIANZ.INFORME_AGIL) return handleGuardarInformeAgil();
     return handleGuardarLiquidador();
   };
 
@@ -411,6 +475,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
     liquidadorState,
     totalesState,
     informeState,
+    informeAgilState,
     onCasoActualizado: onCasoDesdeAutosave,
     enabled: Boolean(casoId) && !cargandoCaso,
     guardarLiquidador: esModuloListado
@@ -419,11 +484,19 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
     guardarInforme: esModuloListado
       ? guardarInformeUnicoEnCasoAllianzListado
       : guardarInformeUnicoEnCasoAllianz,
+    guardarInformeAgil: esModuloListado
+      ? guardarInformeAgilEnCasoAllianzListado
+      : guardarInformeAgilEnCasoAllianz,
   });
 
   const draftPayload = useMemo(
-    () => ({ liquidador: liquidadorState, totales: totalesState, informe: informeState }),
-    [liquidadorState, totalesState, informeState]
+    () => ({
+      liquidador: liquidadorState,
+      totales: totalesState,
+      informe: informeState,
+      informeAgil: informeAgilState,
+    }),
+    [liquidadorState, totalesState, informeState, informeAgilState]
   );
   const onDraftRestoreAvailable = useCallback((info) => {
     setDraftToRestore(info);
@@ -461,7 +534,11 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
                 className={expressBtnPrimary}
                 disabled={
                   guardando ||
-                  (tabActivo === TABS_ALLIANZ.INFORME ? !informeState : !liquidadorState)
+                  (tabActivo === TABS_ALLIANZ.INFORME
+                    ? !informeState
+                    : tabActivo === TABS_ALLIANZ.INFORME_AGIL
+                      ? !informeAgilState
+                      : !liquidadorState)
                 }
                 onClick={handleGuardarActual}
               >
@@ -527,7 +604,7 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         {mensaje && <p className={`mb-4 ${expressAlertSuccess}`}>{mensaje}</p>}
         {error && <p className={`mb-4 ${expressAlertError}`}>{error}</p>}
 
-        {casoId && !cargandoCaso && (
+        {casoId && !cargandoCaso && tabActivo === TABS_ALLIANZ.INFORME && (
           <SelectorTipoInformeAllianz
             tipo={tipoInformeActual}
             onElegir={elegirTipoInformeWorkspace}
@@ -539,17 +616,24 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
         <div className="mb-4 flex flex-wrap gap-2">
           <button
             type="button"
+            className={pillClass(tabActivo === TABS_ALLIANZ.INFORME_AGIL)}
+            onClick={() => setTab(TABS_ALLIANZ.INFORME_AGIL)}
+          >
+            1. {t('allianz.workspace.tabAgileReport')}
+          </button>
+          <button
+            type="button"
             className={pillClass(tabActivo === TABS_ALLIANZ.LIQUIDADOR)}
             onClick={() => setTab(TABS_ALLIANZ.LIQUIDADOR)}
           >
-            1. {t('allianz.workspace.tabSettlement')}
+            2. {t('allianz.workspace.tabSettlement')}
           </button>
           <button
             type="button"
             className={pillClass(tabActivo === TABS_ALLIANZ.INFORME)}
             onClick={() => setTab(TABS_ALLIANZ.INFORME)}
           >
-            2. {etiquetaTabInforme}
+            3. {etiquetaTabInforme}
           </button>
         </div>
 
@@ -557,6 +641,16 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
           <div className={expressCardBody}>
             {cargandoCaso ? (
               <p className="text-sm text-gray-500">{t('allianz.workspace.loading')}</p>
+            ) : tabActivo === TABS_ALLIANZ.INFORME_AGIL ? (
+              <InformeAgilAllianz
+                key={`agil-${casoId}-${restoreNonce}`}
+                casoAllianz={casoAllianz}
+                liquidador={liquidadorState}
+                totales={totalesState || (liquidadorState ? calcularLiquidacionAllianz(liquidadorState) : null)}
+                onEstadoChange={setInformeAgilState}
+                onGuardarEnCaso={casoId ? handleGuardarInformeAgil : undefined}
+                guardandoCaso={guardando}
+              />
             ) : tabActivo === TABS_ALLIANZ.INFORME ? (
               <InformeUnicoAllianz
                 key={`inf-${casoId}-${restoreNonce}`}
@@ -579,12 +673,24 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
               <LiquidadorAllianz
                 key={`liq-${casoId}-${restoreNonce}`}
                 casoAllianz={casoAllianz}
+                origen={esModuloListado ? 'listado' : 'cat'}
                 liquidadorInicial={liquidadorState}
                 onEstadoChange={(liq, tot) => {
                   setLiquidadorState(liq);
                   setTotalesState(tot);
+                  if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
+                    setInformeState((prev) => {
+                      if (!prev) return prev;
+                      const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
+                      const prevKey = JSON.stringify(prev.fotosCotizacion || []);
+                      const nextKey = JSON.stringify(nextFotos);
+                      if (prevKey === nextKey) return prev;
+                      return { ...prev, fotosCotizacion: nextFotos };
+                    });
+                  }
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onCasoChange={setCasoAllianz}
                 guardandoCaso={guardando}
               />
             )}
@@ -603,10 +709,12 @@ export default function CasoAllianzWorkspace({ tabInicial = null, origen = 'cat'
             ...(prev || {}),
             liquidador: data.liquidador || prev?.liquidador,
             informeUnico: data.informe || prev?.informeUnico,
+            informeAgil: data.informeAgil || prev?.informeAgil,
           }));
           if (data.liquidador) setLiquidadorState(data.liquidador);
           if (data.totales) setTotalesState(data.totales);
           if (data.informe) setInformeState(data.informe);
+          if (data.informeAgil) setInformeAgilState(data.informeAgil);
           setRestoreNonce((n) => n + 1);
           setShowDraftRestore(false);
         }}
@@ -628,6 +736,10 @@ export function RedirectAllianzLiquidador() {
 
 export function RedirectAllianzInforme() {
   return <CasoAllianzWorkspace tabInicial={TABS_ALLIANZ.INFORME} />;
+}
+
+export function RedirectAllianzInformeAgil() {
+  return <CasoAllianzWorkspace tabInicial={TABS_ALLIANZ.INFORME_AGIL} />;
 }
 
 export function RedirectAllianzListadoWorkspace() {

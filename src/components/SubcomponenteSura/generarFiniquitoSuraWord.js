@@ -75,7 +75,7 @@ async function buildLogosHeader() {
       ? [
           new ImageRun({
             data: sura.bytes,
-            transformation: { width: 150, height: 66 },
+            transformation: { width: 150, height: 56 },
             type: sura.type,
           }),
         ]

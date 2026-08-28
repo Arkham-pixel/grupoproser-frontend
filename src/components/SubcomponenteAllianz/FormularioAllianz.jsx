@@ -353,6 +353,14 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         observaciones: form.observaciones,
         ciudad: form.ciudad,
         departamento: form.departamento,
+        valorAseguradoInmueble: aNumero(form.valorAseguradoInmueble),
+        valorAseguradoContenidos: aNumero(form.valorAseguradoContenidos),
+        valorReservaPreventivaPromedio: aNumero(form.valorReservaPreventivaPromedio),
+        valorComercialInmueble: aNumero(form.valorComercialInmueble),
+        reserva: aNumero(form.reserva),
+        observacionReserva: form.observacionReserva,
+        valorReclamado: aNumero(form.valorReclamado),
+        valorLiquidado: aNumero(form.valorLiquidado),
         ajustadorLider: form.ajustadorLider,
         ajustador: form.ajustador,
         inspector: form.inspector,
@@ -665,6 +673,42 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
             })}
           </p>
         ) : null}
+      </section>
+
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>{t('allianz.sections.values')}</h3>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('allianz.sections.valuesHint')}
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('allianz.fields.valorAseguradoInmueble')}>
+            {inputMiles('valorAseguradoInmueble')}
+          </Campo>
+          <Campo label={t('allianz.fields.valorAseguradoContenidos')}>
+            {inputMiles('valorAseguradoContenidos')}
+          </Campo>
+          <Campo label={t('allianz.fields.valorReservaPreventivaPromedio')}>
+            {inputMiles('valorReservaPreventivaPromedio')}
+          </Campo>
+          <Campo label={t('allianz.fields.valorComercialInmueble')}>
+            {inputMiles('valorComercialInmueble')}
+          </Campo>
+          <Campo label={t('allianz.fields.reserva')}>{inputMiles('reserva')}</Campo>
+          <Campo label={t('allianz.fields.valorReclamado')}>
+            {inputMiles('valorReclamado')}
+          </Campo>
+          <Campo label={t('allianz.fields.valorLiquidado')}>
+            {inputMiles('valorLiquidado')}
+          </Campo>
+        </div>
+        <Campo label={t('allianz.fields.observacionReserva')} className="mt-4">
+          <textarea
+            className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+            value={form.observacionReserva || ''}
+            onChange={setCampo('observacionReserva')}
+            placeholder={t('allianz.placeholders.observacionReserva')}
+          />
+        </Campo>
       </section>
 
       <section className={expressFormSection}>
@@ -1028,41 +1072,6 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
                 />
               </Campo>
             </div>
-          </section>
-
-          <section>
-            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-              {t('allianz.sections.values')}
-            </h4>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Campo label={t('allianz.fields.valorAseguradoInmueble')}>
-                {inputMiles('valorAseguradoInmueble')}
-              </Campo>
-              <Campo label={t('allianz.fields.valorAseguradoContenidos')}>
-                {inputMiles('valorAseguradoContenidos')}
-              </Campo>
-              <Campo label={t('allianz.fields.valorReservaPreventivaPromedio')}>
-                {inputMiles('valorReservaPreventivaPromedio')}
-              </Campo>
-              <Campo label={t('allianz.fields.valorComercialInmueble')}>
-                {inputMiles('valorComercialInmueble')}
-              </Campo>
-              <Campo label={t('allianz.fields.reserva')}>{inputMiles('reserva')}</Campo>
-              <Campo label={t('allianz.fields.valorReclamado')}>
-                {inputMiles('valorReclamado')}
-              </Campo>
-              <Campo label={t('allianz.fields.valorLiquidado')}>
-                {inputMiles('valorLiquidado')}
-              </Campo>
-            </div>
-            <Campo label={t('allianz.fields.observacionReserva')} className="mt-4">
-              <textarea
-                className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                value={form.observacionReserva || ''}
-                onChange={setCampo('observacionReserva')}
-                placeholder={t('allianz.placeholders.observacionReserva')}
-              />
-            </Campo>
           </section>
 
           <section>

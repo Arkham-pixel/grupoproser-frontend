@@ -491,4 +491,5 @@ export async function descargarLiquidadorAllianzPdf(liquidador, totales) {
     .replace(/[^\w.-]+/g, '_')
     .slice(0, 40);
   saveAs(blob, `Evaluacion_Sismica_NSR10_Allianz_${safe}.pdf`);
+  return { blob, filename: `Evaluacion_Sismica_NSR10_Allianz_${safe}.pdf` };
 }

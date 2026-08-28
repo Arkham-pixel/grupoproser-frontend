@@ -595,6 +595,7 @@ export default function App() {
 
           <Route path="seguros-alfa/carga" element={<FormularioSegurosAlfa />} />
           <Route path="seguros-alfa/reporte" element={<ReporteSegurosAlfa />} />
+          <Route path="seguros-alfa/mis-casos" element={<ReporteSegurosAlfa modoAsignados />} />
           <Route path="seguros-alfa/dashboard" element={<DashboardSegurosAlfa />} />
           <Route path="seguros-alfa/boletin" element={<BoletinSemanalSegurosAlfa />} />
           <Route path="seguros-alfa/bloques" element={<BloquesCercaniaSegurosAlfa />} />
@@ -604,6 +605,7 @@ export default function App() {
 
           <Route path="zurich/carga" element={<FormularioZurich origen="listado" />} />
           <Route path="zurich/listado/reporte" element={<ReporteZurichListado />} />
+          <Route path="zurich/listado/mis-casos" element={<ReporteZurichListado modoAsignados />} />
           <Route path="zurich/listado/dashboard" element={<DashboardZurichListado />} />
           <Route path="zurich/listado/caso" element={<RedirectZurichListadoWorkspace />} />
           <Route path="zurich/reporte" element={<ReporteZurich />} />
@@ -615,6 +617,7 @@ export default function App() {
 
           <Route path="bbva-cat/carga" element={<FormularioBbvaCat origen="listado" />} />
           <Route path="bbva-cat/listado/reporte" element={<ReporteBbvaCatListado />} />
+          <Route path="bbva-cat/listado/mis-casos" element={<ReporteBbvaCatListado modoAsignados />} />
           <Route path="bbva-cat/listado/analista" element={<ReporteBbvaCatListado modo="analista" />} />
           <Route path="bbva-cat/listado/dashboard" element={<DashboardBbvaCatListado />} />
           <Route path="bbva-cat/listado/caso" element={<RedirectBbvaCatListadoWorkspace />} />
@@ -632,6 +635,7 @@ export default function App() {
 
           <Route path="previsora/carga" element={<FormularioPrevisora origen="listado" />} />
           <Route path="previsora/listado/reporte" element={<ReportePrevisoraListado />} />
+          <Route path="previsora/listado/mis-casos" element={<ReportePrevisoraListado modoAsignados />} />
           <Route path="previsora/listado/dashboard" element={<DashboardPrevisoraListado />} />
           <Route path="previsora/listado/caso" element={<RedirectPrevisoraListadoWorkspace />} />
           <Route path="previsora/reporte" element={<ReportePrevisora />} />
@@ -647,6 +651,7 @@ export default function App() {
 
           <Route path="allianz/carga" element={<FormularioAllianz origen="listado" />} />
           <Route path="allianz/listado/reporte" element={<ReporteAllianzListado />} />
+          <Route path="allianz/listado/mis-casos" element={<ReporteAllianzListado modoAsignados />} />
           <Route path="allianz/listado/dashboard" element={<DashboardAllianzListado />} />
           <Route path="allianz/listado/caso" element={<RedirectAllianzListadoWorkspace />} />
           <Route path="allianz/reporte" element={<ReporteAllianz />} />
@@ -655,6 +660,7 @@ export default function App() {
           <Route element={<CasoAllianzWorkspace />}>
             <Route path="allianz/caso" element={<></>} />
             <Route path="allianz/liquidador" element={<></>} />
+            <Route path="allianz/informe-agil" element={<></>} />
             <Route path="allianz/informe-unico" element={<></>} />
           </Route>
           <Route path="allianz/archivero" element={<ArchiveroAllianzPage />} />
@@ -665,6 +671,7 @@ export default function App() {
           <Route path="sura/carga" element={<FormularioCasoSuraPage />} />
           <Route path="sura/editar" element={<FormularioCasoSuraPage />} />
           <Route path="sura/reporte" element={<ReporteSegurosSura />} />
+          <Route path="sura/mis-casos" element={<ReporteSegurosSura modoAsignados />} />
           <Route path="sura/documentacion" element={<ReporteSegurosSura soloDocumentacion />} />
           <Route path="sura/dashboard" element={<DashboardSegurosSura />} />
           <Route path="sura/boletin" element={<BoletinSemanalSegurosSura />} />

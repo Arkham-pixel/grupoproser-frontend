@@ -12,57 +12,57 @@ import {
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
-  CAMPOS_INFORME_AGIL,
-  defaultInformeAgilSura,
-  fusionarVaciosInformeAgil,
-  computarInformeAgilDesdeCaso,
-  esOpcionOtros,
   esAplicaInformeAgil,
-} from './informeAgilSuraHelpers.js';
+  esOpcionOtros,
+} from '../SubcomponenteSura/informeAgilSuraHelpers.js';
+import {
+  CAMPOS_INFORME_AGIL,
+  computarInformeAgilDesdeCasoAllianz,
+  defaultInformeAgilAllianz,
+  fusionarInformeAgilAllianz,
+} from './informeAgilAllianzHelpers.js';
 
-export default function InformeAgilSura({
-  casoSura = null,
+export default function InformeAgilAllianz({
+  casoAllianz = null,
   liquidador = null,
   totales = null,
-  salvamento = null,
   onEstadoChange,
   onGuardarEnCaso,
   guardandoCaso = false,
 }) {
   const { t } = useTranslation();
   const [form, setForm] = useState(() =>
-    defaultInformeAgilSura({ caso: casoSura, liquidador, totales, salvamento })
+    defaultInformeAgilAllianz({ caso: casoAllianz, liquidador, totales })
   );
   const [error, setError] = useState('');
 
   useEffect(() => {
-    setForm(defaultInformeAgilSura({ caso: casoSura, liquidador, totales, salvamento }));
-  }, [casoSura?._id]);
+    setForm(defaultInformeAgilAllianz({ caso: casoAllianz, liquidador, totales }));
+  }, [casoAllianz?._id]);
 
   useEffect(() => {
-    const computed = computarInformeAgilDesdeCaso({
-      caso: casoSura,
+    const computed = computarInformeAgilDesdeCasoAllianz({
+      caso: casoAllianz,
       liquidador,
       totales,
-      salvamento,
     });
-    setForm((prev) => fusionarVaciosInformeAgil(prev, computed));
+    setForm((prev) => fusionarInformeAgilAllianz(prev, computed));
   }, [
     totales?.totalIndemnizar,
     totales?.totalDanios,
+    totales?.deducibleAplicado,
+    totales?.deducibleTexto,
+    totales?.diagrama?.sumaDeducibles,
     liquidador?.liquidacionCatastrofico?.hospedajeManual,
-    salvamento?.aplica,
-    salvamento?.descripcion,
-    casoSura?.correo,
-    casoSura?.celular,
-    casoSura?.identificacion,
-    casoSura?.tomador,
-    casoSura?.asegurado,
-    casoSura?.nombIntermediario,
-    casoSura?.intermediario,
-    casoSura?.nitTomador,
-    casoSura?.coaseguro,
-    casoSura?.fechaLlamada,
+    liquidador?.liquidacionCatastrofico?.deducible,
+    liquidador?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.texto,
+    liquidador?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.modo,
+    casoAllianz?.correo,
+    casoAllianz?.celular,
+    casoAllianz?.identificacion,
+    casoAllianz?.tomador,
+    casoAllianz?.asegurado,
+    casoAllianz?.intermediario,
   ]);
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export default function InformeAgilSura({
     try {
       await onGuardarEnCaso(form);
     } catch (err) {
-      setError(err.message || t('segurosSura.informeAgil.saveError'));
+      setError(err.message || t('allianz.informeAgil.saveError'));
     }
   };
 
@@ -88,9 +88,7 @@ export default function InformeAgilSura({
       {error && <p className={expressAlertError}>{error}</p>}
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h3 className={`${expressSectionTitle} mb-0`}>
-            {t('segurosSura.informeAgil.title')}
-          </h3>
+          <h3 className={`${expressSectionTitle} mb-0`}>{t('allianz.informeAgil.title')}</h3>
           {onGuardarEnCaso && (
             <button
               type="button"
@@ -98,14 +96,12 @@ export default function InformeAgilSura({
               disabled={guardandoCaso}
               onClick={handleGuardar}
             >
-              {guardandoCaso
-                ? t('segurosSura.workspace.saving')
-                : t('segurosSura.informeAgil.save')}
+              {guardandoCaso ? t('allianz.workspace.saving') : t('allianz.informeAgil.save')}
             </button>
           )}
         </div>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          {t('segurosSura.informeAgil.hint')}
+          {t('allianz.informeAgil.hint')}
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           {CAMPOS_INFORME_AGIL.map((campo) => {
@@ -163,16 +159,14 @@ export default function InformeAgilSura({
                           {op}
                         </option>
                       ))}
-                      {valor &&
-                        !opciones.includes(valor) &&
-                        !esOpcionOtros(valor) && (
-                          <option value={valor}>{valor}</option>
-                        )}
+                      {valor && !opciones.includes(valor) && !esOpcionOtros(valor) && (
+                        <option value={valor}>{valor}</option>
+                      )}
                     </SelectFenix>
                     {mostrarOtros && (
                       <InputFenix
                         className="mt-2"
-                        placeholder={t('segurosSura.informeAgil.actividadOtroPlaceholder')}
+                        placeholder={t('allianz.informeAgil.actividadOtroPlaceholder')}
                         value={form.actividadOtro || ''}
                         onChange={(e) => setCampo('actividadOtro', e.target.value)}
                       />
@@ -181,7 +175,7 @@ export default function InformeAgilSura({
                       <textarea
                         className="mt-2 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
                         rows={3}
-                        placeholder={t('segurosSura.informeAgil.solicitudDocumentosDetallePlaceholder')}
+                        placeholder={t('allianz.informeAgil.solicitudDocumentosDetallePlaceholder')}
                         value={form[campo.detalleKey] || ''}
                         onChange={(e) => setCampo(campo.detalleKey, e.target.value)}
                       />

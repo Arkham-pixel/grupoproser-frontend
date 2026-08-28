@@ -305,8 +305,9 @@ export default function DashboardZurichListado() {
             value={kpis.enTramite}
             hint={td('kpis.inProgressHint', {
               nuevo: cantidadEstado('CASO NUEVO'),
-              coord: cantidadEstado('COORDINANDO INSPECCIÓN'),
-              analisis: cantidadEstado('ANÁLISIS DEL CASO'),
+              coord: cantidadEstado('INSPECCIÓN COORDINADA'),
+              inspeccion: cantidadEstado('INSPECCIONADO'),
+              verificado: cantidadEstado('VERIFICADO'),
             })}
           />
           <ExpressMetricCard

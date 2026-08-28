@@ -8,9 +8,12 @@ import {
 } from './liquidadorSuraHelpers.js';
 
 export const VALOR_OTROS_INFORME_AGIL = 'Otros';
+export const VALOR_APLICA_INFORME_AGIL = 'Aplica';
+export const VALOR_NO_APLICA_INFORME_AGIL = 'No aplica';
 
 export const OPCIONES_PAGO_INFORME_AGIL = ['Caja', 'Transferencia'];
 export const OPCIONES_SI_NO_INFORME_AGIL = ['Sí', 'No'];
+export const OPCIONES_APLICA_INFORME_AGIL = [VALOR_APLICA_INFORME_AGIL, VALOR_NO_APLICA_INFORME_AGIL];
 export const OPCIONES_ARTICULO_INFORME_AGIL = ['Edificio', 'Contenido', 'Edificio y contenido'];
 
 const normTxt = (valor) =>
@@ -22,6 +25,15 @@ const normTxt = (valor) =>
 
 export function esOpcionOtros(valor) {
   return /^OTROS?$/.test(normTxt(valor));
+}
+
+export function esAplicaInformeAgil(valor) {
+  return normTxt(valor) === 'APLICA';
+}
+
+export function esNoAplicaInformeAgil(valor) {
+  const n = normTxt(valor);
+  return n === 'NO APLICA' || n === 'N/A' || n === 'NA';
 }
 
 /** Ocupaciones ya usadas en Sura (NSR-10) + Otros. */
@@ -56,6 +68,40 @@ export function valorActividadInformeAgil(informe = {}) {
   return String(informe.actividad || '').trim();
 }
 
+function normalizarAplicaONoAplica(valor, { textoLibreEsAplica = false } = {}) {
+  if (esVacio(valor)) return '';
+  if (esNoAplicaInformeAgil(valor)) return VALOR_NO_APLICA_INFORME_AGIL;
+  const aplica = matchOpcion(valor, OPCIONES_APLICA_INFORME_AGIL);
+  if (aplica) return aplica;
+  if (textoLibreEsAplica) return VALOR_APLICA_INFORME_AGIL;
+  return String(valor).trim();
+}
+
+export function valorSolicitudDocumentosInformeAgil(informe = {}) {
+  const v = informe.solicitudDocumentos;
+  if (esVacio(v) || esNoAplicaInformeAgil(v)) return VALOR_NO_APLICA_INFORME_AGIL;
+  const detalle = String(informe.solicitudDocumentosDetalle || '').trim();
+  if (detalle) return detalle;
+  if (esAplicaInformeAgil(v)) return VALOR_APLICA_INFORME_AGIL;
+  return String(v).trim();
+}
+
+export function valorAuxilioInterrupcionInformeAgil(informe = {}) {
+  const v = informe.auxilioInterrupcion;
+  if (esVacio(v) || esNoAplicaInformeAgil(v)) return VALOR_NO_APLICA_INFORME_AGIL;
+  if (esAplicaInformeAgil(v)) return VALOR_APLICA_INFORME_AGIL;
+  return String(v).trim();
+}
+
+/** Valor de la celda C en el Excel del formato ágil. */
+export function valorCeldaInformeAgil(campo, informe = {}) {
+  if (!campo) return '';
+  if (campo.key === 'actividad') return valorActividadInformeAgil(informe);
+  if (campo.key === 'solicitudDocumentos') return valorSolicitudDocumentosInformeAgil(informe);
+  if (campo.key === 'auxilioInterrupcion') return valorAuxilioInterrupcionInformeAgil(informe);
+  return String(informe?.[campo.key] ?? '').trim();
+}
+
 export function normalizarCamposSelectInformeAgil(form = {}) {
   const next = { ...form };
   const pago = matchOpcion(form.pagoTransferenciaOCaja, OPCIONES_PAGO_INFORME_AGIL);
@@ -64,6 +110,26 @@ export function normalizarCamposSelectInformeAgil(form = {}) {
   if (siNo) next.cuentaEmbargada = siNo;
   const articulo = matchArticulo(form.articulo);
   if (articulo) next.articulo = articulo;
+
+  const solicitud = String(form.solicitudDocumentos || '').trim();
+  if (solicitud) {
+    const aplica = matchOpcion(solicitud, OPCIONES_APLICA_INFORME_AGIL);
+    if (aplica) {
+      next.solicitudDocumentos = aplica;
+    } else if (esNoAplicaInformeAgil(solicitud)) {
+      next.solicitudDocumentos = VALOR_NO_APLICA_INFORME_AGIL;
+    } else {
+      next.solicitudDocumentos = VALOR_APLICA_INFORME_AGIL;
+      if (esVacio(next.solicitudDocumentosDetalle)) {
+        next.solicitudDocumentosDetalle = solicitud;
+      }
+    }
+  }
+
+  const auxilio = String(form.auxilioInterrupcion || '').trim();
+  if (auxilio) {
+    next.auxilioInterrupcion = normalizarAplicaONoAplica(auxilio, { textoLibreEsAplica: true });
+  }
 
   const act = String(form.actividad || '').trim();
   if (act) {
@@ -80,6 +146,9 @@ export function normalizarCamposSelectInformeAgil(form = {}) {
   }
   if (!esVacio(form.actividadOtro) && esVacio(next.actividadOtro)) {
     next.actividadOtro = form.actividadOtro;
+  }
+  if (!esVacio(form.solicitudDocumentosDetalle) && esVacio(next.solicitudDocumentosDetalle)) {
+    next.solicitudDocumentosDetalle = form.solicitudDocumentosDetalle;
   }
   return next;
 }
@@ -172,37 +241,50 @@ export const CAMPOS_INFORME_AGIL = [
   { key: 'fechaAtencion', label: 'FECHA DE ATENCIÓN DEL SINIESTRO', row: 22, tipo: 'date' },
   { key: 'fechaCierreEnvio', label: 'FECHA DE CIERRE Y ENVÍO DE INFORME', row: 23, tipo: 'date' },
   { key: 'fechaUltimoDocumento', label: 'FECHA ÚLTIMO DOCUMENTO', row: 24, tipo: 'date' },
-  { key: 'envioInformacionAnalista', label: 'ENVÍO INFORMACIÓN POR ANALISTA', row: 25, tipo: 'text' },
-  { key: 'lugarHechos', label: 'LUGAR DE LOS HECHOS (dirección/ciudad)', row: 26, tipo: 'textarea' },
+  { key: 'lugarHechos', label: 'LUGAR DE LOS HECHOS (dirección/ciudad)', row: 25, tipo: 'textarea' },
   {
     key: 'actividad',
     label: 'ACTIVIDAD',
-    row: 27,
+    row: 26,
     tipo: 'select',
     opciones: ACTIVIDADES_INFORME_AGIL,
     conOtros: true,
   },
-  { key: 'causaSiniestro', label: 'CAUSA DEL SINIESTRO', row: 28, tipo: 'textarea' },
-  { key: 'conceptoPerdida', label: 'CONCEPTO DE LA PÉRDIDA', row: 29, tipo: 'textarea' },
-  { key: 'amparoAfectado', label: 'AMPARO AFECTADO', row: 30, tipo: 'text' },
+  { key: 'causaSiniestro', label: 'CAUSA DEL SINIESTRO', row: 27, tipo: 'textarea' },
+  { key: 'conceptoPerdida', label: 'CONCEPTO DE LA PÉRDIDA', row: 28, tipo: 'textarea' },
+  { key: 'amparoAfectado', label: 'AMPARO AFECTADO', row: 29, tipo: 'text' },
   {
     key: 'articulo',
     label: 'ARTÍCULO (EDIFICIO, CONTENIDOS)',
-    row: 31,
+    row: 30,
     tipo: 'select',
     opciones: OPCIONES_ARTICULO_INFORME_AGIL,
   },
-  { key: 'valorReclamado', label: 'VALOR RECLAMADO', row: 32, tipo: 'text' },
-  { key: 'valorAsegurado', label: 'VALOR ASEGURADO', row: 33, tipo: 'text' },
-  { key: 'solicitudDocumentos', label: 'SOLICITUD DOCUMENTOS (SI APLICA)', row: 34, tipo: 'textarea' },
-  { key: 'valorSugeridoIndemnizar', label: 'VALOR SUGERIDO INDEMNIZAR', row: 35, tipo: 'text' },
-  { key: 'deducibleAplicar', label: 'DEDUCIBLE A APLICAR', row: 36, tipo: 'text' },
-  { key: 'valorSugeridoLuegoDeducible', label: 'VALOR SUGERIDO LUEGO DE DEDUCIBLE', row: 37, tipo: 'text' },
-  { key: 'auxilioInterrupcion', label: 'AUXILIO POR INTERRUPCIÓN (Si aplica)', row: 38, tipo: 'text' },
-  { key: 'valorFinalEstimadoPerdida', label: 'VALOR FINAL ESTIMADO DE LA PÉRDIDA', row: 39, tipo: 'text' },
-  { key: 'salvamento', label: 'SALVAMENTO', row: 40, tipo: 'text' },
-  { key: 'subrogacion', label: 'SUBROGACIÓN', row: 41, tipo: 'text' },
-  { key: 'analista', label: 'ANALISTA', row: 42, tipo: 'text' },
+  { key: 'valorReclamado', label: 'VALOR RECLAMADO', row: 31, tipo: 'text' },
+  { key: 'valorAsegurado', label: 'VALOR ASEGURADO', row: 32, tipo: 'text' },
+  {
+    key: 'solicitudDocumentos',
+    label: 'SOLICITUD DOCUMENTOS (SI APLICA)',
+    row: 33,
+    tipo: 'select',
+    opciones: OPCIONES_APLICA_INFORME_AGIL,
+    conDetalle: true,
+    detalleKey: 'solicitudDocumentosDetalle',
+  },
+  { key: 'valorSugeridoIndemnizar', label: 'VALOR SUGERIDO INDEMNIZAR', row: 34, tipo: 'text' },
+  { key: 'deducibleAplicar', label: 'DEDUCIBLE A APLICAR', row: 35, tipo: 'text' },
+  { key: 'valorSugeridoLuegoDeducible', label: 'VALOR SUGERIDO LUEGO DE DEDUCIBLE', row: 36, tipo: 'text' },
+  {
+    key: 'auxilioInterrupcion',
+    label: 'AUXILIO POR INTERRUPCIÓN (Si aplica)',
+    row: 37,
+    tipo: 'select',
+    opciones: OPCIONES_APLICA_INFORME_AGIL,
+  },
+  { key: 'valorFinalEstimadoPerdida', label: 'VALOR FINAL ESTIMADO DE LA PÉRDIDA', row: 38, tipo: 'text' },
+  { key: 'salvamento', label: 'SALVAMENTO', row: 39, tipo: 'text' },
+  { key: 'subrogacion', label: 'SUBROGACIÓN', row: 40, tipo: 'text' },
+  { key: 'analista', label: 'ANALISTA', row: 41, tipo: 'text' },
 ];
 
 export function defaultSalvamentoSura(caso = {}) {
@@ -233,43 +315,45 @@ export function computarInformeAgilDesdeCaso({
   const tot = totales || calcularLiquidacionSura(liq);
   const sal = salvamento || defaultSalvamentoSura(casoSafe);
   const ident = texto(enc.identificacion, casoSafe.identificacion, casoSafe.numDocumento);
+  const tomador = texto(enc.tomador, casoSafe.tomador);
+  const asegurado = texto(enc.asegurado, casoSafe.asegurado, casoSafe.asgrBenfcro);
+  const mismoTomadorAsegurado = Boolean(tomador && asegurado && normTxt(tomador) === normTxt(asegurado));
   const valorSug = tot.totalIndemnizar ? formatearMonto(tot.totalIndemnizar) : '';
-  const hospedaje = tot.diagrama?.gastosHospedaje
-    ? formatearMonto(tot.diagrama.gastosHospedaje)
-    : '';
+  const hospedajeManual = Number(liq.liquidacionCatastrofico?.hospedajeManual);
+  const auxilioAplica = Number.isFinite(hospedajeManual) && hospedajeManual > 0;
   const salvamentoTxt =
     sal.aplica === 'aplica'
-      ? texto(sal.descripcion, 'Aplica')
+      ? texto(sal.descripcion, VALOR_APLICA_INFORME_AGIL)
       : sal.aplica === 'no_aplica'
-        ? 'No aplica'
+        ? VALOR_NO_APLICA_INFORME_AGIL
         : '';
 
   return {
     siniestroNro: texto(enc.siniestro, casoSafe.siniestro, casoSafe.nmroSinstro),
-    tomador: texto(enc.tomador, casoSafe.tomador),
-    nitTomador: '',
-    asegurado: texto(enc.asegurado, casoSafe.asegurado, casoSafe.asgrBenfcro),
+    tomador,
+    nitTomador: texto(casoSafe.nitTomador, mismoTomadorAsegurado ? ident : ''),
+    asegurado,
     nitAsegurado: ident,
     correo: texto(casoSafe.correo, enc.correo),
     celular: texto(casoSafe.celular, enc.celular),
-    pagoTransferenciaOCaja: '',
-    cuentaBancaria: '',
-    cuentaEmbargada: '',
+    pagoTransferenciaOCaja: texto(casoSafe.pagoTransferenciaOCaja),
+    cuentaBancaria: texto(casoSafe.cuentaBancaria),
+    cuentaEmbargada: texto(casoSafe.cuentaEmbargada) || 'No',
     siniestroAjustador: texto(enc.consecutivo, casoSafe.nmroAjste, casoSafe.consecutivo),
     poliza: texto(enc.poliza, casoSafe.numeroPoliza, casoSafe.nmroPolza),
     vigenciaPoliza: vigenciaDesdeCaso(casoSafe),
     sucursal: texto(casoSafe.sede, casoSafe.sedeRiesgo, enc.ciudad, casoSafe.ciudad, casoSafe.ciudadSiniestro),
-    intermediario: texto(casoSafe.nombIntermediario, casoSafe.intermediario),
-    coaseguro: '',
+    intermediario:
+      texto(casoSafe.nombIntermediario, casoSafe.intermediario) || VALOR_NO_APLICA_INFORME_AGIL,
+    coaseguro: texto(casoSafe.coaseguro) || VALOR_NO_APLICA_INFORME_AGIL,
     fechaOcurrencia: fechaInput(casoSafe.fechaSiniestro || casoSafe.fchaSinstro || enc.fechaSiniestro),
-    fechaAviso: '',
+    fechaAviso: fechaInput(casoSafe.fechaAviso || casoSafe.fechaLlamada),
     fechaAsignacion: fechaInput(casoSafe.fchaAsgncion),
     fechaAtencion: fechaInput(casoSafe.fechaInspeccion || casoSafe.fchaInspccion),
     fechaCierreEnvio: fechaInput(
       casoSafe.fechaEnvioAseguradora || casoSafe.fechaLiquidado || casoSafe.informeUnico?.fechaInforme
     ),
     fechaUltimoDocumento: fechaInput(casoSafe.fechaUltimoDocumento),
-    envioInformacionAnalista: '',
     lugarHechos: lugarHechos(casoSafe, enc),
     actividad: '',
     causaSiniestro: texto(casoSafe.causa_siniestro, casoSafe.cobertura, enc.evento, 'TERREMOTO'),
@@ -283,14 +367,14 @@ export function computarInformeAgilDesdeCaso({
           ? formatearMonto(tot.totalReclamado)
           : '',
     valorAsegurado: valorAseguradoDesdeCaso(casoSafe),
-    solicitudDocumentos: '',
+    solicitudDocumentos: VALOR_NO_APLICA_INFORME_AGIL,
     valorSugeridoIndemnizar: valorSug,
-    deducibleAplicar: texto(tot.deducibleTexto, tot.diagrama?.deducible, 'No aplica'),
+    deducibleAplicar: texto(tot.deducibleTexto, tot.diagrama?.deducible, VALOR_NO_APLICA_INFORME_AGIL),
     valorSugeridoLuegoDeducible: valorSug,
-    auxilioInterrupcion: hospedaje,
+    auxilioInterrupcion: auxilioAplica ? VALOR_APLICA_INFORME_AGIL : VALOR_NO_APLICA_INFORME_AGIL,
     valorFinalEstimadoPerdida: tot.totalDanios ? formatearMonto(tot.totalDanios) : '',
     salvamento: salvamentoTxt,
-    subrogacion: '',
+    subrogacion: VALOR_NO_APLICA_INFORME_AGIL,
     analista: texto(
       casoSafe.funcAsgrdraNombre,
       casoSafe.ajustador,
@@ -314,6 +398,9 @@ export function defaultInformeAgilSura(opts = {}) {
     if (!esVacio(guardado[campo.key])) merged[campo.key] = guardado[campo.key];
   }
   if (!esVacio(guardado.actividadOtro)) merged.actividadOtro = guardado.actividadOtro;
+  if (!esVacio(guardado.solicitudDocumentosDetalle)) {
+    merged.solicitudDocumentosDetalle = guardado.solicitudDocumentosDetalle;
+  }
   return normalizarCamposSelectInformeAgil(merged);
 }
 
@@ -326,6 +413,9 @@ export function fusionarVaciosInformeAgil(actual = {}, computed = {}) {
   }
   if (esVacio(next.actividadOtro) && !esVacio(computed.actividadOtro)) {
     next.actividadOtro = computed.actividadOtro;
+  }
+  if (esVacio(next.solicitudDocumentosDetalle) && !esVacio(computed.solicitudDocumentosDetalle)) {
+    next.solicitudDocumentosDetalle = computed.solicitudDocumentosDetalle;
   }
   return normalizarCamposSelectInformeAgil(next);
 }
@@ -357,9 +447,28 @@ export function fotosAgilDesdeNsr(liquidador = {}) {
  * Si el caso ya tiene `fotosAgil` (aunque esté vacío), se respeta.
  * Si no, se migran las fotos NSR-10 históricas.
  */
+export function descripcionFotoDesdeArchivosCaso(foto = {}, archivos = []) {
+  const id = String(foto?._id || '');
+  if (!id || !Array.isArray(archivos)) return '';
+  const arch = archivos.find((a) => String(a?._id) === id);
+  return String(arch?.descripcion || '').trim();
+}
+
+/** Completa la leyenda desde archivos del caso si la galería no la trae. */
+export function enriquecerFotosConDescripcion(fotos = [], caso = {}) {
+  const archivos = Array.isArray(caso?.archivos) ? caso.archivos : [];
+  return (Array.isArray(fotos) ? fotos : []).map((f) => {
+    const propia = String(f?.descripcion || '').trim();
+    const deArchivo = descripcionFotoDesdeArchivosCaso(f, archivos);
+    return { ...f, descripcion: propia || deArchivo };
+  });
+}
+
 export function defaultFotosAgilSura(caso = {}, liquidador = null) {
-  if (Array.isArray(caso?.fotosAgil)) return caso.fotosAgil;
-  return fotosAgilDesdeNsr(liquidador || caso?.liquidador || {});
+  const base = Array.isArray(caso?.fotosAgil)
+    ? caso.fotosAgil
+    : fotosAgilDesdeNsr(liquidador || caso?.liquidador || {});
+  return enriquecerFotosConDescripcion(base, caso);
 }
 
 /** Quita File/blob antes de persistir el caso. */

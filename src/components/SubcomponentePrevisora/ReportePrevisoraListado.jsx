@@ -42,6 +42,7 @@ import {
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { aplicarOrdenTabla, useOrdenTabla, valorOrdenPorDefecto } from '../../hooks/useOrdenTabla.js';
+import { etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo p-2 dark:bg-[#0F0F0F] sm:p-4';
 const wrap = 'w-full min-w-0 space-y-4 sm:space-y-6';
@@ -123,9 +124,10 @@ const buildExportRow = (caso) => ({
   'Fecha creación': formatDate(caso.createdAt),
 });
 
-export default function ReportePrevisoraListado() {
+export default function ReportePrevisoraListado({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -146,13 +148,14 @@ export default function ReportePrevisoraListado() {
     setLoading(true);
     setError(null);
     try {
-      setCasos(await fetchAllCasosPrevisoraListado(2000));
+      const data = await fetchAllCasosPrevisoraListado(2000);
+      setCasos(modoAsignados ? filtrarCasosAsignadosASesion(data) : data);
     } catch (err) {
       setError(err.message || t('previsora.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, modoAsignados]);
 
   useEffect(() => {
     recargar();
@@ -301,8 +304,16 @@ export default function ReportePrevisoraListado() {
           <div className="space-y-3">
             <span className={expressBadge}>Previsora · Listado</span>
             <div>
-              <h1 className={expressPageTitle}>{t('previsora.listadoReport.title')}</h1>
-              <p className={expressPageSubtitle}>{t('previsora.listadoReport.subtitle')}</p>
+              <h1 className={expressPageTitle}>
+                {modoAsignados
+                  ? `${t('previsora.listadoReport.title')} — ${t('nav.assignedCases')}`
+                  : t('previsora.listadoReport.title')}
+              </h1>
+              <p className={expressPageSubtitle}>
+                {modoAsignados
+                  ? t('common.assignedCasesHint', { name: nombreSesion || '—' })
+                  : t('previsora.listadoReport.subtitle')}
+              </p>
             </div>
             <nav className="flex flex-wrap gap-2">
               <Link
@@ -318,13 +329,34 @@ export default function ReportePrevisoraListado() {
               >
                 {t('nav.previsoraListadoDashboard')}
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.previsoraListadoReport')}
-              </span>
+              {modoAsignados ? (
+                <Link
+                  to="/previsora/listado/reporte"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.previsoraListadoReport')}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.previsoraListadoReport')}
+                </span>
+              )}
+              {modoAsignados ? (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.assignedCases')}
+                </span>
+              ) : (
+                <Link
+                  to="/previsora/listado/mis-casos"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.assignedCases')}
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
-            {puedeImportarExcel && (
+            {puedeImportarExcel && !modoAsignados && (
               <button
                 type="button"
                 className={expressBtnPrimary}

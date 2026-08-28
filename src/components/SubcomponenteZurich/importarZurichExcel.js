@@ -97,6 +97,20 @@ const HEADER_MAP = {
   'FECHA INSPECCION': 'fechaInspeccion',
   'FECHA ULTIMO DOCUMENTO': 'fechaUltimoDocumento',
   'FECHA LIQUIDADO': 'fechaLiquidado',
+  'FECHA CASO NUEVO': 'fechaCasoNuevo',
+  'FECHA INSPECCION COORDINADA': 'fechaCoordinandoInspeccion',
+  'FECHA COORDINANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA INSPECCIONADO': 'fechaInspeccionado',
+  'FECHA SOLICITUD DOCUMENTO': 'fechaSolicitudDocumento',
+  'FECHA SOLICITUD DE DOCUMENTO': 'fechaSolicitudDocumento',
+  'FECHA SOLICITUD DE DOCUMENTOS': 'fechaSolicitudDocumento',
+  'FECHA PENDIENTE DOCUMENTOS': 'fechaSolicitudDocumento',
+  'FECHA PENDIENTE DE DOCUMENTO': 'fechaSolicitudDocumento',
+  'FECHA RECEPCION DOCUMENTO': 'fechaRecepcionDocumento',
+  'FECHA OBJETADO': 'fechaObjecion',
+  'FECHA OBJECION': 'fechaObjecion',
+  'FECHA INFORME PRELIMINAR': 'fechaInformePreliminar',
+  'FECHA INFORME FINAL': 'fechaInformeFinal',
   'FECHA ACEPTACION LIQUIDACION': 'fechaAceptacionLiquidacion',
   'FECHA ENVIO A LA ASEGURADORA': 'fechaEnvioAseguradora',
   ESTADO: 'estado',
@@ -208,8 +222,17 @@ const CAMPOS_FECHA = new Set([
   'fechaLlamada',
   'fechaInspeccion',
   'fechaAsignacion',
+  'fechaVisita',
   'fechaUltimoDocumento',
   'fechaLiquidado',
+  'fechaCasoNuevo',
+  'fechaCoordinandoInspeccion',
+  'fechaInspeccionado',
+  'fechaSolicitudDocumento',
+  'fechaRecepcionDocumento',
+  'fechaObjecion',
+  'fechaInformePreliminar',
+  'fechaInformeFinal',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
 ]);
@@ -432,6 +455,15 @@ const HEADER_MAP_LISTADO = {
   'EMAIL ASEGURADO': 'correoAsegurado',
   'MAIL ASEGURADO': 'correoAsegurado',
   CIUDAD: 'ciudad',
+  DEPARTAMENTO: 'departamento',
+  TOMADOR: 'tomador',
+  DIRECCION: 'direccionPredio',
+  'DIRECCION PREDIO': 'direccionPredio',
+  'FECHA INICIO POLIZA': 'fechaInicioPoliza',
+  'VIGENCIA DESDE': 'fechaInicioPoliza',
+  'FECHA FIN POLIZA': 'fechaFinPoliza',
+  'VIGENCIA HASTA': 'fechaFinPoliza',
+  COBERTURA: 'cobertura',
   'FECHA ASIGNACION': 'fechaAsignacion',
   'FECHA VISITA': 'fechaVisita',
   INSPECTOR: 'inspector',
@@ -440,6 +472,17 @@ const HEADER_MAP_LISTADO = {
   OBSERVACIONES: 'observaciones',
   OBSERVACION: 'observaciones',
   NOTAS: 'observaciones',
+  'FECHA CASO NUEVO': 'fechaCasoNuevo',
+  'FECHA INSPECCION COORDINADA': 'fechaCoordinandoInspeccion',
+  'FECHA INSPECCIONADO': 'fechaInspeccionado',
+  'FECHA SOLICITUD DOCUMENTO': 'fechaSolicitudDocumento',
+  'FECHA SOLICITUD DE DOCUMENTOS': 'fechaSolicitudDocumento',
+  'FECHA PENDIENTE DOCUMENTOS': 'fechaSolicitudDocumento',
+  'FECHA RECEPCION DOCUMENTO': 'fechaRecepcionDocumento',
+  'FECHA OBJETADO': 'fechaObjecion',
+  'FECHA LIQUIDADO': 'fechaLiquidado',
+  'FECHA INFORME PRELIMINAR': 'fechaInformePreliminar',
+  'FECHA INFORME FINAL': 'fechaInformeFinal',
 };
 
 const limpiarTextoListado = (raw) => {
@@ -509,7 +552,21 @@ const parsearHojaListadoCliente = (sheet) => {
     };
     Object.entries(colMap).forEach(([colStr, campo]) => {
       const raw = row[Number(colStr)];
-      if (campo === 'fechaAsignacion' || campo === 'fechaVisita') {
+      if (
+        campo === 'fechaAsignacion' ||
+        campo === 'fechaVisita' ||
+        campo === 'fechaInicioPoliza' ||
+        campo === 'fechaFinPoliza' ||
+        campo === 'fechaCasoNuevo' ||
+        campo === 'fechaCoordinandoInspeccion' ||
+        campo === 'fechaInspeccionado' ||
+        campo === 'fechaSolicitudDocumento' ||
+        campo === 'fechaRecepcionDocumento' ||
+        campo === 'fechaObjecion' ||
+        campo === 'fechaLiquidado' ||
+        campo === 'fechaInformePreliminar' ||
+        campo === 'fechaInformeFinal'
+      ) {
         caso[campo] = parseFechaCelda(raw) || '';
         return;
       }

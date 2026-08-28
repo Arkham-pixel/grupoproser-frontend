@@ -181,8 +181,10 @@ export default function LiquidadorAllianzPage() {
             ) : (
               <LiquidadorAllianz
                 casoAllianz={casoAllianz}
+                origen="cat"
                 onEstadoChange={handleEstadoChange}
                 onGuardarEnCaso={casoId ? handleGuardarEnCaso : undefined}
+                onCasoChange={setcasoAllianz}
                 guardandoCaso={guardando}
               />
             )}

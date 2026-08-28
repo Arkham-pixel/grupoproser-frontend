@@ -10,9 +10,14 @@ import {
 export const DIAS_ESTANCADO_ZURICH = 15;
 export const LIMITE_ESTANCADOS_ZURICH = 20;
 
-/** En el listado Zurich el estado terminal es CASO PARA PAGO (no hay PAGADO). */
-const ESTADOS_CERRADOS = new Set(['CASO PARA PAGO']);
-const ESTADOS_TRAMITE = new Set(['CASO NUEVO', 'COORDINANDO INSPECCIÓN', 'ANÁLISIS DEL CASO']);
+/** En el listado Zurich cierran LIQUIDADO y OBJETADO. */
+const ESTADOS_CERRADOS = new Set(['LIQUIDADO', 'OBJETADO']);
+const ESTADOS_TRAMITE = new Set([
+  'CASO NUEVO',
+  'INSPECCIÓN COORDINADA',
+  'INSPECCIONADO',
+  'VERIFICADO',
+]);
 
 const CUBETAS_ANTIGUEDAD = ['0-7 d', '8-15 d', '16-30 d', '31-45 d', '46+ d'];
 
@@ -75,10 +80,10 @@ function agruparConteo(casos, getter, { vacio = 'Sin dato', limite = 10 } = {}) 
 
 function motivoEstancado(caso = {}) {
   const estado = claveEstado(caso.estado);
-  if (estado === 'PENDIENTE DE DOCUMENTO') {
+  if (estado === 'PENDIENTE DOCUMENTOS') {
     return String(caso.documentoFaltante || caso.observacionPendienteDocumento || '').trim();
   }
-  if (estado === 'OBJECIÓN') {
+  if (estado === 'OBJETADO') {
     return String(caso.motivoObjecion || '').trim();
   }
   return String(caso.observaciones || '').trim();
@@ -112,10 +117,10 @@ export function construirDashboardZurichListado(casos = []) {
     const abierto = esCarteraAbiertaZurich(estado);
     if (abierto) carteraAbierta += 1;
     if (ESTADOS_TRAMITE.has(estado)) enTramite += 1;
-    if (estado === 'PENDIENTE DE DOCUMENTO') pendienteDocumento += 1;
-    if (estado === 'OBJECIÓN') enObjecion += 1;
-    if (estado === 'AUTORIZACIÓN ANALISTA') listosPago += 1;
-    if (estado === 'CASO PARA PAGO') paraPago += 1;
+    if (estado === 'PENDIENTE DOCUMENTOS') pendienteDocumento += 1;
+    if (estado === 'OBJETADO') enObjecion += 1;
+    if (estado === 'INSPECCIONADO') listosPago += 1;
+    if (estado === 'LIQUIDADO') paraPago += 1;
 
     const dias = diasEnEstadoNumeroZurich(caso);
     if (abierto && dias != null) {
@@ -144,7 +149,7 @@ export function construirDashboardZurichListado(casos = []) {
       }
       mensual.get(clave).altas += 1;
     }
-    const fPago = parseFecha(caso.fechaCasoParaPago);
+    const fPago = parseFecha(caso.fechaLiquidado || caso.fechaCasoParaPago);
     if (fPago) {
       const clave = claveMes(fPago);
       if (!mensual.has(clave)) {

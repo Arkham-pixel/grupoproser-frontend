@@ -114,4 +114,10 @@ export default defineConfig({
   define: {
     global: "window",
   },
+  optimizeDeps: {
+    include: ["pdfjs-dist"],
+  },
+  worker: {
+    format: "es",
+  },
 });

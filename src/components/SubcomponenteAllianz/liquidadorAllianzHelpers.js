@@ -19,6 +19,23 @@ import {
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
+import {
+  fotosCotizacionDesdeLiquidador,
+  serializarCotizacionPdf,
+  serializarPaginasCotizacion,
+  usaCotizacionComoBasePresupuesto,
+  montoCotizacionPdf,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
+import {
+  configDeduciblePresupuestoParaCalculoAllianz,
+  configDeducibleTerremotoCat,
+  desgloseDeducibleTerremoto,
+  TEXTO_DEDUCIBLE_TERREMOTO_CAT,
+  valorAseguradoContenidosCat,
+  valorAseguradoPresupuestoCat,
+} from '../liquidacion/deducibleTerremotoCat.js';
+
+export const TEXTO_DEDUCIBLE_TERREMOTO_ALLIANZ = TEXTO_DEDUCIBLE_TERREMOTO_CAT;
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -210,6 +227,46 @@ export function sanitizarInformeUnicoAllianz(informe = {}) {
   return {
     ...base,
     ...(tipo ? { tipoInforme: tipo } : {}),
+    fotosCotizacion: serializarPaginasCotizacion(informe.fotosCotizacion),
+  };
+}
+
+/** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
+export function sanitizarLiquidadorAllianz(liquidador = {}) {
+  if (!liquidador || typeof liquidador !== 'object') return liquidador;
+  return {
+    ...liquidador,
+    cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
+  };
+}
+
+export function desgloseDeducibleTerremotoAllianz(liquidador = {}, diagrama = null) {
+  return desgloseDeducibleTerremoto(liquidador, diagrama, formatearMonto);
+}
+
+export function patchDeduciblePresupuestoAllianz(liquidador = {}, patch = {}) {
+  const liq = liquidador.liquidacionCatastrofico || {};
+  const cfg = {
+    ...configDeducibleTerremotoCat({}, {
+      valorAsegurado: valorAseguradoPresupuestoCat(liquidador),
+    }),
+    ...(liq.deducibleConfigPresupuesto && typeof liq.deducibleConfigPresupuesto === 'object'
+      ? liq.deducibleConfigPresupuesto
+      : {}),
+    ...patch,
+  };
+  if (patch.modo === 'no_aplica') cfg.aplica = false;
+  else if (patch.modo) cfg.aplica = true;
+  if (valorAseguradoPresupuestoCat(liquidador) > 0) {
+    cfg.baseDeducible = 'valor_asegurable';
+  }
+  return {
+    ...liquidador,
+    liquidacionCatastrofico: {
+      ...liq,
+      deducibleConfigPresupuesto: cfg,
+      deducible: cfg.texto != null ? cfg.texto : liq.deducible,
+    },
   };
 }
 
@@ -280,9 +337,12 @@ export function liquidacionCatastroficoDefaultAllianz(caso = {}) {
     valorAsegurado: va,
     hospedajePorcentaje: HOSPEDAJE_PORCENTAJE_DEFAULT,
     hospedajeManual: '',
-    deducible: 'No aplica',
+    deducible: TEXTO_DEDUCIBLE_TERREMOTO_CAT,
     deducibleConfig: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
-    deducibleConfigPresupuesto: { ...DEFAULT_DEDUCIBLE_CATASTROFICO },
+    deducibleConfigPresupuesto: configDeducibleTerremotoCat(
+      {},
+      { valorAsegurado: Number(va) || 0 }
+    ),
   };
 }
 
@@ -306,8 +366,14 @@ export function encabezadoDesdecasoAllianz(caso = {}) {
     cobertura: c.cobertura || '',
     evento: c.cobertura || 'TERREMOTO',
     ajustador: c.ajustador || '',
-    valorAseguradoInmueble: c.valorAseguradoInmueble ?? '',
-    valorAseguradoContenidos: c.valorAseguradoContenidos ?? '',
+    valorAseguradoInmueble:
+      c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
+        ? formatMiles(c.valorAseguradoInmueble)
+        : '',
+    valorAseguradoContenidos:
+      c.valorAseguradoContenidos != null && c.valorAseguradoContenidos !== ''
+        ? formatMiles(c.valorAseguradoContenidos)
+        : '',
   };
 }
 
@@ -356,6 +422,7 @@ export const DEFAULT_LIQUIDADOR_Allianz = {
   liquidacionCatastrofico: liquidacionCatastroficoDefaultAllianz(),
   indemnizacionSugerida: '',
   observaciones: '',
+  cotizacionPdf: null,
 };
 
 export function esLiquidadorNsrAllianz(liquidador = {}) {
@@ -367,7 +434,7 @@ export function esLiquidadorNsrAllianz(liquidador = {}) {
 }
 
 /**
- * Totales Allianz = presupuesto NSR-10 + contenidos + diagrama (suma + hospedaje).
+ * Totales Allianz = presupuesto NSR-10 o cotización PDF + contenidos + diagrama.
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionAllianz(liquidador = {}) {
@@ -380,19 +447,38 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
   const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
+  const usaCotiz = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
+  const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
+  const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
+  const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
+  const vaContenidos = valorAseguradoContenidosCat(liquidador);
+  const cfgContenidos = {
+    ...(liq.deducibleConfigContenidos || liq.deducibleConfig || {}),
+  };
+  if (vaContenidos > 0) cfgContenidos.baseDeducible = 'valor_asegurable';
   const diagrama = calcularDiagramaLiquidacion({
-    valorAsegurado: liq.valorAsegurado,
-    totalDanios: resumen.sumaCompleta,
-    totalPresupuesto: resumen.totalPresupuesto,
+    valorAsegurado: valorAseguradoPresupuestoCat(liquidador),
+    valorAseguradoContenidos: vaContenidos > 0 ? vaContenidos : null,
+    totalDanios: sumaCompleta,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
     hospedajeManual: liq.hospedajeManual,
     deducible: liq.deducible,
     deducibleConfig: liq.deducibleConfig,
-    deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
-    deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
+    deducibleConfigContenidos: cfgContenidos,
+    deducibleConfigPresupuesto: configDeduciblePresupuestoParaCalculoAllianz(liquidador),
     otrosAmparos: liquidador.otrosAmparos,
-    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
+    ...(() => {
+      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
+      if (!usaCotiz) return args;
+      return {
+        ...args,
+        usaDeduciblePorArticuloPresupuesto: false,
+        deduciblePresupuestoPorArticulos: 0,
+        presupuestoNetoPorArticulo: null,
+      };
+    })(),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -401,40 +487,95 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     modelo: 'nsr10',
     presupuesto: totalesPres,
     contenidos: resumen.contenidos,
-    totalPresupuesto: resumen.totalPresupuesto,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
-    sumaCompleta: resumen.sumaCompleta,
-    subtotal: totalesPres.subtotal,
-    aiu: totalesPres.aiu,
-    imprevistos: totalesPres.imprevistos,
-    impuestos: totalesPres.impuestos,
-    totalDanios: resumen.sumaCompleta,
+    sumaCompleta,
+    subtotal: usaCotiz ? montoCotiz : totalesPres.subtotal,
+    aiu: usaCotiz ? 0 : totalesPres.aiu,
+    imprevistos: usaCotiz ? 0 : totalesPres.imprevistos,
+    impuestos: usaCotiz ? 0 : totalesPres.impuestos,
+    totalDanios: sumaCompleta,
+    origenPresupuesto: usaCotiz ? 'cotizacion' : 'nsr10',
+    cotizacionMonto: montoCotiz,
     diagrama,
     criterio,
     totalIndemnizar: diagrama.totalIndemnizar,
     totalIndemnizable: diagrama.totalIndemnizar,
-    totalPerdida: resumen.sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
+    totalPerdida: sumaCompleta,
+    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta,
     deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
-    deducibleTexto: [
-      diagrama.deduciblePresupuesto?.aplica ? `Presupuesto: ${diagrama.deduciblePresupuesto.texto}` : null,
-      diagrama.deducibleContenidos?.aplica || diagrama.deducibleAplica
-        ? `Contenidos: ${diagrama.deducibleContenidos?.texto || diagrama.deducible}`
-        : null,
-    ]
-      .filter(Boolean)
-      .join(' · ') || diagrama.deducible,
+    deducibleTexto:
+      String(liq.deducible || liq.deducibleConfigPresupuesto?.texto || '').trim() ||
+      desgloseDeducibleTerremotoAllianz(liquidador, diagrama).texto,
     subtotalContenidos: resumen.totalContenidos,
-    subtotalEdificios: resumen.totalPresupuesto,
-    diferencia: 0,
+    subtotalEdificios: totalPresupuesto,
+    diferencia: Math.round(
+      ((parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta) -
+        (diagrama.totalIndemnizar || 0)) *
+        100
+    ) / 100,
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
   };
 }
 
-/** Filas planas del presupuesto NSR (para resúmenes). */
+/**
+ * Cuadro 32 / 33 / 34 del formato ágil Allianz.
+ * 32 = indemnización antes de deducible; 34 = 32 − deducible aplicado.
+ */
+export function cuadroLiquidacionAllianz(totales = {}, liquidador = {}) {
+  const tot = totales && typeof totales === 'object' ? totales : {};
+  const diag = tot.diagrama || {};
+  const liq = liquidador?.liquidacionCatastrofico || {};
+  const cfg = liq.deducibleConfigPresupuesto && typeof liq.deducibleConfigPresupuesto === 'object'
+    ? liq.deducibleConfigPresupuesto
+    : {};
+  const deducibleMonto = Number(diag.sumaDeducibles || tot.deducibleAplicado || 0) || 0;
+  const luego = Number(tot.totalIndemnizar) || 0;
+  const sugerido = Math.round((luego + deducibleMonto) * 100) / 100;
+  const modo = String(cfg.modo || '').trim();
+  const textoLibre = String(
+    cfg.texto || liq.deducible || tot.deducibleTexto || ''
+  ).trim();
+  const noAplica =
+    modo === 'no_aplica' ||
+    /^no\s*aplica$/i.test(textoLibre);
+  let deducibleTexto = textoLibre;
+  if (noAplica && !(deducibleMonto > 0)) {
+    deducibleTexto = 'No aplica';
+  } else if (textoLibre && deducibleMonto > 0 && !textoLibre.includes(formatearMonto(deducibleMonto))) {
+    deducibleTexto = `${textoLibre} (${formatearMonto(deducibleMonto)})`;
+  } else if (!textoLibre && deducibleMonto > 0) {
+    deducibleTexto = formatearMonto(deducibleMonto);
+  } else if (!deducibleTexto) {
+    deducibleTexto = 'No aplica';
+  }
+  return {
+    valorReclamado: Number(tot.totalReclamado) || Number(tot.totalDanios) || 0,
+    valorAsegurado: Number(diag.valorAsegurado) || 0,
+    valorSugeridoIndemnizar: sugerido,
+    deducibleMonto,
+    deducibleTexto,
+    valorSugeridoLuegoDeducible: luego,
+    valorFinalEstimadoPerdida: Number(tot.totalDanios) || 0,
+  };
+}
+
+/** Filas planas del presupuesto NSR o de la cotización PDF (para resúmenes). */
 export function itemsPlanosAllianz(liquidador = {}) {
+  if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
+    const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
+    const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
+    return [
+      {
+        id: 'cotizacion-pdf',
+        concepto: nombre ? `Cotización de reparación (${nombre})` : 'Cotización de reparación',
+        valorReclamado: monto,
+        valorIndemnizable: monto,
+      },
+    ];
+  }
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   if (!Array.isArray(items) || !items.length) return [];
   return items
@@ -501,6 +642,7 @@ export function mapcasoAllianzALiquidador(caso = {}) {
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
       : defaultOtrosAmparos(),
+    cotizacionPdf: guardado.cotizacionPdf || null,
   };
 }
 
@@ -544,6 +686,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     recomendacion: '',
     fotosSeleccionadas: [],
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
+    fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
     actaAjustadorNombre: caso.ajustador || '',
     actaAjustadorCargo: '',
     actaAjustadorEmail: '',
@@ -576,6 +719,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
       base.filasPresupuestoPreliminar
     ),
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
+    fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
   };
 }
 

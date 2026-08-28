@@ -604,6 +604,8 @@ export function calcularDeducibleSobreBaseConfig(
 
 export function calcularDiagramaLiquidacion({
   valorAsegurado = 0,
+  /** Si viene y es > 0, el % de contenidos va sobre este VA (no el del inmueble). */
+  valorAseguradoContenidos = null,
   totalDanios = 0,
   totalPresupuesto = null,
   totalContenidos = null,
@@ -627,6 +629,8 @@ export function calcularDiagramaLiquidacion({
   presupuestoNetoPorArticulo = null,
 } = {}) {
   const va = Number(valorAsegurado) || 0;
+  const vaContN = Number(valorAseguradoContenidos);
+  const vaCont = vaContN > 0 ? vaContN : va;
   const danios = Number(totalDanios) || 0;
   const presupuestoN =
     totalPresupuesto === null || totalPresupuesto === undefined || totalPresupuesto === ''
@@ -669,7 +673,7 @@ export function calcularDiagramaLiquidacion({
 
   const calcCont = calcularDeducibleSobreBaseConfig(cfgContenidos, {
     perdida: baseContenidos,
-    valorAsegurado: va,
+    valorAsegurado: vaCont,
   });
   const calcPres = calcularDeducibleSobreBaseConfig(cfgPresupuesto, {
     perdida: basePresupuesto,

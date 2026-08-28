@@ -1,11 +1,18 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import {
+  derivarCuadroDesdeInspeccionZurich,
   diasEnEstadoZurich,
   homologarCiudadZurich,
-  homologarEstadoZurich,
+  migrarFechasEstadoZurich,
   ultimaGestionZurich,
 } from '../components/SubcomponenteZurich/zurichHelpers.js';
-import { sanitizarInformeUnicoZurich } from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
+import {
+  fechasInformeParaCasoZurich,
+  reservaSugeridaZurich,
+  sanitizarInformeUnicoZurich,
+  sanitizarLiquidadorZurich,
+  camposPolizaParaCasoZurich,
+} from '../components/SubcomponenteZurich/liquidadorZurichHelpers.js';
 
 const ZURICH_API_URL = `${BASE_URL}/api/zurich`;
 
@@ -23,8 +30,8 @@ const authHeaders = () => {
 };
 
 export const normalizeZurichItem = (item = {}) => {
-  const estado = homologarEstadoZurich(item.estado);
-  const caso = { ...item, estado };
+  const caso = migrarFechasEstadoZurich(item);
+  const estado = caso.estado;
   return {
     ...caso,
     siniestro: item.siniestro ?? '',
@@ -41,7 +48,12 @@ export const normalizeZurichItem = (item = {}) => {
     contactoAsegurado: item.contactoAsegurado ?? '',
     observaciones: item.observaciones ?? '',
     ciudad: homologarCiudadZurich(item.ciudad) || item.ciudad || '',
+    departamento: item.departamento ?? caso.departamento ?? '',
     tomador: item.tomador ?? '',
+    direccionPredio: item.direccionPredio ?? caso.direccionPredio ?? '',
+    fechaInicioPoliza: item.fechaInicioPoliza ?? caso.fechaInicioPoliza ?? null,
+    fechaFinPoliza: item.fechaFinPoliza ?? caso.fechaFinPoliza ?? null,
+    cobertura: item.cobertura ?? caso.cobertura ?? '',
     numeroPoliza: item.numeroPoliza ?? '',
     tipoPoliza: item.tipoPoliza ?? '',
     tipoPolizaOtro: item.tipoPolizaOtro ?? '',
@@ -290,6 +302,9 @@ const CAMPOS_CAT_NO_PISAR = [
   'observacionesCat',
   'accesoPredio',
   'fechaInspeccion',
+  'fechaInspeccionado',
+  'afectacion',
+  'gradoAfectacion',
   'checklistCatCompleto',
 ];
 
@@ -301,19 +316,31 @@ const omitirCampos = (obj, claves) => {
   return out;
 };
 
-/** Guarda solo inspección CAT (no envía el resto del caso, para no pisar el checklist). */
-export const guardarCatEnCasoZurich = async ({ casoId, cat = {}, casoBase = {} }) => {
+/** Guarda inspección CAT y alimenta el cuadro de datos (afectación, grado, reserva, estado). */
+export const guardarCatEnCasoZurich = async ({
+  casoId,
+  cat = {},
+  casoBase = {},
+  marcarInspeccionado = false,
+}) => {
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de registrar la inspección CAT.');
+  const cuadro = derivarCuadroDesdeInspeccionZurich({ caso: casoBase, cat, marcarInspeccionado });
   const payload = {
     identificacion: casoBase.identificacion,
-    estado: casoBase.estado || 'CASO NUEVO',
+    estado: cuadro.estado || casoBase.estado || 'CASO NUEVO',
     severidadCat: cat.severidadCat ?? null,
     severidadCatNiveles: cat.severidadCatNiveles || {},
     evidenciaCat: cat.evidenciaCat || {},
     observacionesCat: cat.observacionesCat ?? null,
     accesoPredio: cat.accesoPredio ?? null,
-    fechaInspeccion: cat.fechaInspeccion ?? null,
+    fechaInspeccion: cuadro.fechaInspeccion ?? cat.fechaInspeccion ?? null,
   };
+  if (cuadro.afectacion) payload.afectacion = cuadro.afectacion;
+  if (cuadro.gradoAfectacion) payload.gradoAfectacion = cuadro.gradoAfectacion;
+  if (cuadro.observaciones != null) payload.observaciones = cuadro.observaciones;
+  if (cuadro.fechaInspeccionado) payload.fechaInspeccionado = cuadro.fechaInspeccionado;
+  if (cuadro.reserva != null) payload.reserva = cuadro.reserva;
+  if (cuadro.observacionReserva != null) payload.observacionReserva = cuadro.observacionReserva;
   return actualizarCasoZurich(casoId, payload);
 };
 
@@ -328,7 +355,8 @@ export const guardarLiquidadorEnCasoZurich = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
-    liquidador: liquidador || {},
+    ...camposPolizaParaCasoZurich(liquidador || {}, casoBase),
+    liquidador: sanitizarLiquidadorZurich(liquidador || {}),
     valorReclamado:
       totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
     valorLiquidado:
@@ -351,11 +379,15 @@ export const guardarInformeUnicoEnCasoZurich = async ({
   casoBase = {},
 }) => {
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el informe.');
-
+  const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
+  const reservaPerito = reservaSugeridaZurich(sanitizado);
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
-    informeUnico: sanitizarInformeUnicoZurich(informeUnico || {}),
+    ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),
+    informeUnico: sanitizado,
+    ...fechasInformeParaCasoZurich(sanitizado, casoBase),
   };
+  if (reservaPerito > 0) payload.reserva = reservaPerito;
 
   delete payload._id;
   delete payload.__v;

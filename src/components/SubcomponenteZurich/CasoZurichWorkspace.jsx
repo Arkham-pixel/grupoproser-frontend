@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { FaArrowLeft, FaFolderOpen, FaSave } from 'react-icons/fa';
-import LiquidadorZurich from './LiquidadorZurich.jsx';
 import InspeccionCatZurich from './InspeccionCatZurich.jsx';
 import InformeUnicoZurich from './InformeUnicoZurich.jsx';
+import LiquidadorZurich from './LiquidadorZurich.jsx';
 import ArchiveroZurich from './ArchiveroZurich.jsx';
 import {
   expressAlertError,
@@ -28,7 +28,8 @@ import {
   guardarInformeUnicoEnCasoZurichListado,
   guardarLiquidadorEnCasoZurichListado,
 } from '../../services/zurichListadoService.js';
-import { calcularLiquidacionZurich, defaultInformeUnicoZurich, etiquetaArchivoInformeZurich, normalizarTipoInformeZurich, tipoInformeActualZurich } from './liquidadorZurichHelpers.js';
+import { calcularLiquidacionZurich, defaultInformeUnicoZurich, etiquetaArchivoInformeZurich, mapcasoZurichALiquidador, normalizarTipoInformeZurich, tipoInformeActualZurich } from './liquidadorZurichHelpers.js';
+import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
@@ -41,9 +42,10 @@ import { ExpressModal } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 const root = 'min-h-full w-full min-w-0 bg-fenix-fondo dark:bg-[#0F0F0F] p-4 sm:p-6';
 
 export const TABS_ZURICH = {
-  LIQUIDADOR: 'liquidador',
   CAT: 'cat',
+  PRESUPUESTO: 'presupuesto',
   INFORME: 'informe',
+  LIQUIDADOR: 'presupuesto',
 };
 
 const pillClass = (activo) =>
@@ -54,8 +56,8 @@ const pillClass = (activo) =>
   }`;
 
 /**
- * Workspace Zurich: Inspección CAT | Liquidador | Informe único
- * (CAT e informe único son independientes)
+ * Workspace Zurich: Encuesta ágil | Presupuesto | Informe
+ * El presupuesto alimenta el liquidador del informe final y del único.
  */
 export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' } = {}) {
   const { t } = useTranslation();
@@ -68,18 +70,29 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   const rutaReporte = esModuloListado ? '/zurich/listado/reporte' : '/zurich/reporte';
 
   const tabActivo = useMemo(() => {
-    const raw = tabFromQuery || tabInicial || (esModuloListado ? TABS_ZURICH.LIQUIDADOR : TABS_ZURICH.CAT);
+    const raw = tabFromQuery || tabInicial || (esModuloListado ? TABS_ZURICH.INFORME : TABS_ZURICH.CAT);
     if (raw === TABS_ZURICH.INFORME || raw === 'informe-unico') {
       return TABS_ZURICH.INFORME;
     }
-    if (raw === TABS_ZURICH.LIQUIDADOR || raw === 'settlement') {
-      return TABS_ZURICH.LIQUIDADOR;
+    if (
+      raw === TABS_ZURICH.PRESUPUESTO ||
+      raw === 'liquidador' ||
+      raw === 'settlement' ||
+      raw === 'presupuesto'
+    ) {
+      return TABS_ZURICH.PRESUPUESTO;
     }
-    if (esModuloListado) return TABS_ZURICH.LIQUIDADOR;
-    if (raw === TABS_ZURICH.CAT || raw === 'inspeccion-cat' || raw === 'catastrofico') {
+    if (
+      !esModuloListado &&
+      (raw === TABS_ZURICH.CAT ||
+        raw === 'inspeccion-cat' ||
+        raw === 'catastrofico' ||
+        raw === 'encuesta' ||
+        raw === 'encuesta-agil')
+    ) {
       return TABS_ZURICH.CAT;
     }
-    return TABS_ZURICH.CAT;
+    return esModuloListado ? TABS_ZURICH.INFORME : TABS_ZURICH.CAT;
   }, [tabInicial, tabFromQuery, esModuloListado]);
 
   useEffect(() => {
@@ -137,9 +150,14 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   useEffect(() => {
     if (!casoZurich?._id) {
       setInformeState(null);
+      setLiquidadorState(null);
+      setTotalesState(null);
       return;
     }
     setInformeState(defaultInformeUnicoZurich(casoZurich));
+    const liq = mapcasoZurichALiquidador(casoZurich);
+    setLiquidadorState(liq);
+    setTotalesState(calcularLiquidacionZurich(liq));
   }, [casoZurich?._id]);
 
   useEffect(() => {
@@ -338,8 +356,8 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
 
   const handleGuardarActual = () => {
     if (tabActivo === TABS_ZURICH.INFORME) return handleGuardarInforme();
-    if (tabActivo === TABS_ZURICH.CAT) return undefined; // CAT guarda en su propio botón
-    return handleGuardarLiquidador();
+    if (tabActivo === TABS_ZURICH.PRESUPUESTO) return handleGuardarLiquidador();
+    return undefined;
   };
 
   const onCasoDesdeAutosave = useCallback((actualizado) => {
@@ -412,10 +430,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
               <button
                 type="button"
                 className={expressBtnPrimary}
-                disabled={
-                  guardando ||
-                  (tabActivo === TABS_ZURICH.INFORME ? !informeState : !liquidadorState)
-                }
+                disabled={guardando || !informeState}
                 onClick={handleGuardarActual}
               >
                 <FaSave />{' '}
@@ -462,7 +477,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                       onClick={() => {
                         const next = new URLSearchParams(searchParams);
                         next.set('casoId', c._id);
-                        next.set('tab', tabActivo || (esModuloListado ? TABS_ZURICH.LIQUIDADOR : TABS_ZURICH.CAT));
+                        next.set('tab', tabActivo || (esModuloListado ? TABS_ZURICH.INFORME : TABS_ZURICH.CAT));
                         setSearchParams(next);
                       }}
                     >
@@ -501,17 +516,17 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
           )}
           <button
             type="button"
-            className={pillClass(tabActivo === TABS_ZURICH.LIQUIDADOR)}
-            onClick={() => setTab(TABS_ZURICH.LIQUIDADOR)}
+            className={pillClass(tabActivo === TABS_ZURICH.PRESUPUESTO)}
+            onClick={() => setTab(TABS_ZURICH.PRESUPUESTO)}
           >
-            2. {t('zurich.workspace.tabSettlement')}
+            {esModuloListado ? '1.' : '2.'} {t('zurich.workspace.tabPresupuesto')}
           </button>
           <button
             type="button"
             className={pillClass(tabActivo === TABS_ZURICH.INFORME)}
             onClick={() => setTab(TABS_ZURICH.INFORME)}
           >
-            3. {etiquetaTabInforme}
+            {esModuloListado ? '2.' : '3.'} {etiquetaTabInforme}
           </button>
         </div>
 
@@ -525,7 +540,31 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                 casoZurich={casoZurich}
                 onCasoChange={setCasoZurich}
               />
-            ) : tabActivo === TABS_ZURICH.INFORME ? (
+            ) : tabActivo === TABS_ZURICH.PRESUPUESTO ? (
+              <LiquidadorZurich
+                key={`pre-${casoId}-${restoreNonce}`}
+                casoZurich={casoZurich}
+                origen={esModuloListado ? 'listado' : 'cat'}
+                liquidadorInicial={liquidadorState}
+                onEstadoChange={(liq, tot) => {
+                  setLiquidadorState(liq);
+                  setTotalesState(tot);
+                  if (liq && Object.prototype.hasOwnProperty.call(liq, 'cotizacionPdf')) {
+                    setInformeState((prev) => {
+                      if (!prev) return prev;
+                      const nextFotos = serializarPaginasCotizacion(liq.cotizacionPdf?.paginas);
+                      const prevKey = JSON.stringify(prev.fotosCotizacion || []);
+                      const nextKey = JSON.stringify(nextFotos);
+                      if (prevKey === nextKey) return prev;
+                      return { ...prev, fotosCotizacion: nextFotos };
+                    });
+                  }
+                }}
+                onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onCasoChange={setCasoZurich}
+                guardandoCaso={guardando}
+              />
+            ) : (
               <InformeUnicoZurich
                 key={`inf-${casoId}-${restoreNonce}`}
                 origen={esModuloListado ? 'listado' : 'cat'}
@@ -540,20 +579,8 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                   setTotalesState(tot);
                 }}
                 onGuardarEnCaso={casoId ? handleGuardarInforme : undefined}
-                onCasoChange={setCasoZurich}
-                guardandoCaso={guardando}
-              />
-            ) : (
-              <LiquidadorZurich
-                key={`liq-${casoId}-${restoreNonce}`}
-                origen={esModuloListado ? 'listado' : 'cat'}
-                casoZurich={casoZurich}
-                liquidadorInicial={liquidadorState}
-                onEstadoChange={(liq, tot) => {
-                  setLiquidadorState(liq);
-                  setTotalesState(tot);
-                }}
-                onGuardarEnCaso={casoId ? handleGuardarLiquidador : undefined}
+                onGuardarLiquidador={casoId ? handleGuardarLiquidador : undefined}
+                onAbrirPresupuesto={() => setTab(TABS_ZURICH.PRESUPUESTO)}
                 onCasoChange={setCasoZurich}
                 guardandoCaso={guardando}
               />
@@ -576,9 +603,9 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
                 ? etiquetaArchivoInformeZurich(
                     informeState?.tipoInforme || casoZurich?.informeUnico?.tipoInforme
                   )
-                : tabActivo === TABS_ZURICH.LIQUIDADOR
+                : tabActivo === TABS_ZURICH.PRESUPUESTO
                   ? 'LIQUIDACION'
-                  : 'GENERAL'
+                  : 'INSPECCION'
             }
             onClose={() => setArchiveroAbierto(false)}
             onChanged={(actualizado) => setCasoZurich(actualizado)}
@@ -616,7 +643,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
 }
 
 export function RedirectZurichLiquidador() {
-  return <CasoZurichWorkspace tabInicial={TABS_ZURICH.LIQUIDADOR} />;
+  return <CasoZurichWorkspace tabInicial={TABS_ZURICH.PRESUPUESTO} />;
 }
 
 export function RedirectZurichInforme() {
@@ -624,5 +651,5 @@ export function RedirectZurichInforme() {
 }
 
 export function RedirectZurichListadoWorkspace() {
-  return <CasoZurichWorkspace origen="listado" tabInicial={TABS_ZURICH.LIQUIDADOR} />;
+  return <CasoZurichWorkspace origen="listado" tabInicial={TABS_ZURICH.INFORME} />;
 }

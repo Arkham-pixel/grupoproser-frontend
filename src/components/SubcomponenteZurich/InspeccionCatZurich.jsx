@@ -27,6 +27,7 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
 } from '../SubcomponenteExpress/expressFenixUi.js';
+import { Campo, InputFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   EVIDENCIA_CAT_VACIA,
   SEVERIDAD_CAT_ZURICH,
@@ -35,6 +36,8 @@ import {
   finalizarSeveridadCatNiveles,
   derivarSeveridadCatDesdeNiveles,
   formatDateIso,
+  formatMilesInput,
+  parseNumeroZurich,
 } from './zurichHelpers.js';
 import { descargarDesprendibleCatZurich } from './generarDesprendibleCatZurich.js';
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
@@ -106,6 +109,15 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
   const [observacionesCat, setObservacionesCat] = useState(
     () => casoZurich?.observacionesCat || ''
   );
+  const [fechaInspeccion, setFechaInspeccion] = useState(
+    () => formatDateIso(casoZurich?.fechaInspeccion) || formatDateIso(new Date())
+  );
+  const [reservaPerito, setReservaPerito] = useState(
+    () => formatMilesInput(casoZurich?.reserva ?? '')
+  );
+  const [observacionReserva, setObservacionReserva] = useState(
+    () => casoZurich?.observacionReserva || ''
+  );
 
   const [severidadNiveles, setSeveridadNiveles] = useState(() =>
     normalizeSeveridadCatNiveles(casoZurich?.severidadCatNiveles, casoZurich?.severidadCat)
@@ -124,6 +136,11 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     setEvidenciaCat(normalizeEvidenciaCat(casoZurich?.evidenciaCat));
     setArchivos(casoZurich?.archivos || []);
     setObservacionesCat(casoZurich?.observacionesCat || '');
+    setFechaInspeccion(
+      formatDateIso(casoZurich?.fechaInspeccion) || formatDateIso(new Date())
+    );
+    setReservaPerito(formatMilesInput(casoZurich?.reserva ?? ''));
+    setObservacionReserva(casoZurich?.observacionReserva || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [casoZurich?._id]);
 
@@ -311,8 +328,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     const evidencia = normalizeEvidenciaCat(evidenciaCat);
     const severidadCat = derivarSeveridadCatDesdeNiveles(niveles);
     const accesoPredio = evidencia.noAcceso?.aplica === 'SI' ? 'NO' : 'SI';
-    const fechaVisita =
-      formatDateIso(casoZurich?.fechaInspeccion) || formatDateIso(new Date());
+    const fechaVisita = fechaInspeccion || formatDateIso(new Date());
     const cat = {
       severidadCat,
       severidadCatNiveles: niveles,
@@ -320,6 +336,8 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
       evidenciaCat: { ...EVIDENCIA_CAT_VACIA, ...evidencia },
       observacionesCat: observacionesCat || null,
       fechaInspeccion: fechaVisita,
+      reserva: parseNumeroZurich(reservaPerito),
+      observacionReserva: observacionReserva || null,
     };
     return { cat, niveles, evidencia, severidadCat };
   };
@@ -340,6 +358,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
         casoId: casoZurich._id,
         cat,
         casoBase: casoZurich,
+        marcarInspeccionado: !silencioso,
       });
       if (!silencioso) {
         setSeveridadNiveles(
@@ -371,7 +390,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
     }, AUTOSAVE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [severidadNiveles, observacionesCat, evidenciaCat, casoZurich?._id]);
+  }, [severidadNiveles, observacionesCat, evidenciaCat, fechaInspeccion, reservaPerito, observacionReserva, casoZurich?._id]);
 
   const guardarCat = async () => persistirCat({ silencioso: false });
 
@@ -389,6 +408,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
         casoId: casoZurich._id,
         cat,
         casoBase: casoZurich,
+        marcarInspeccionado: true,
       });
       onCasoChange?.(guardado);
       const base = {
@@ -484,7 +504,7 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
         <div className="space-y-1">
           <p className="font-heading text-sm font-bold tracking-widest text-[#002060]">ZURICH</p>
           <h2 className="font-heading text-xl font-bold text-gray-900 dark:text-white">
-            Manual para Inspecciones.
+            Encuesta ágil de inspección
           </h2>
           <p className="font-body text-base font-semibold text-gray-800 dark:text-gray-200">
             Inspecciones visuales y reporte de exposición por Evento CAT
@@ -544,6 +564,33 @@ export default function InspeccionCatZurich({ casoZurich = null, onCasoChange })
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <Campo label={t('zurich.fields.fechaInspeccion')}>
+          <InputFenix
+            type="date"
+            value={fechaInspeccion}
+            onChange={(e) => setFechaInspeccion(e.target.value)}
+          />
+        </Campo>
+        <Campo label={t('zurich.fields.reservaPerito')}>
+          <InputFenix
+            className="font-mono"
+            inputMode="numeric"
+            value={reservaPerito}
+            onChange={(e) => setReservaPerito(formatMilesInput(e.target.value))}
+            placeholder="0"
+          />
+        </Campo>
+        <Campo label={t('zurich.fields.observacionReserva')} className="sm:col-span-2">
+          <textarea
+            className="min-h-[72px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+            value={observacionReserva}
+            onChange={(e) => setObservacionReserva(e.target.value)}
+            placeholder={t('zurich.placeholders.observacionReserva')}
+          />
+        </Campo>
       </section>
 
       <section>

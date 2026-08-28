@@ -173,7 +173,7 @@ async function crearEncabezadoSura({ caso = {}, informe = {} } = {}) {
                   data: logo.bytes,
                   transformation:
                     logo === sura
-                      ? { width: 118, height: 52 }
+                      ? { width: 132, height: 49 }
                       : { width: 130, height: 42 },
                   type: logo.type,
                 }),
@@ -214,7 +214,7 @@ async function crearEncabezadoSura({ caso = {}, informe = {} } = {}) {
                         font: FONT,
                         size: SIZE_12,
                         bold: true,
-                        color: '0066CC',
+                        color: '0033A0',
                       }),
                     ],
                   }),
@@ -1002,7 +1002,7 @@ async function construirZonaFirmasSura({ info = {} } = {}) {
         text: emailAjustador,
         font: FONT,
         size: SIZE_12,
-        color: '0066CC',
+        color: '0033A0',
       }),
     ]),
     pLeft(

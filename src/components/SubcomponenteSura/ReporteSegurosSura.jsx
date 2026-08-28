@@ -44,7 +44,7 @@ import {
   SelectFenix,
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { filtrarCasosPorAsignacionUsuario } from '../../utils/permisosCasoPorRol.js';
+import { filtrarCasosPorAsignacionUsuario, etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 
 function valorOrdenSura(item, clave) {
@@ -163,9 +163,10 @@ const buildExportRow = (caso) => ({
   Documentos: Array.isArray(caso.archivos) ? caso.archivos.length : 0,
 });
 
-export default function ReporteSegurosSura({ soloDocumentacion = false }) {
+export default function ReporteSegurosSura({ soloDocumentacion = false, modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -193,13 +194,17 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
     setError(null);
     try {
       const data = await fetchAllCasosSura();
-      setCasos(filtrarCasosPorAsignacionUsuario(data, { modulo: 'sura' }));
+      setCasos(
+        modoAsignados
+          ? filtrarCasosAsignadosASesion(data)
+          : filtrarCasosPorAsignacionUsuario(data, { modulo: 'sura' })
+      );
     } catch (err) {
       setError(err.message || t('segurosSura.report.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, modoAsignados]);
 
   useEffect(() => {
     recargar();
@@ -407,14 +412,18 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
             <span className={expressBadge}>Seguros Sura</span>
             <div>
               <h1 className={expressPageTitle}>
-                {soloDocumentacion
-                  ? 'Casos SURA con documentación'
-                  : t('segurosSura.report.title')}
+                {modoAsignados
+                  ? `${t('segurosSura.report.title')} — ${t('nav.assignedCases')}`
+                  : soloDocumentacion
+                    ? 'Casos SURA con documentación'
+                    : t('segurosSura.report.title')}
               </h1>
               <p className={expressPageSubtitle}>
-                {soloDocumentacion
-                  ? 'Solo aparecen casos con archivos, fotos, informe o presupuesto almacenado.'
-                  : t('segurosSura.report.subtitle')}
+                {modoAsignados
+                  ? t('common.assignedCasesHint', { name: nombreSesion || '—' })
+                  : soloDocumentacion
+                    ? 'Solo aparecen casos con archivos, fotos, informe o presupuesto almacenado.'
+                    : t('segurosSura.report.subtitle')}
               </p>
             </div>
             <nav className="flex flex-wrap gap-2">
@@ -425,13 +434,35 @@ export default function ReporteSegurosSura({ soloDocumentacion = false }) {
                 <FaPlus />
                 {t('nav.suraAddCase')}
               </Link>
-              <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
-                {t('nav.suraReport')}
-              </span>
+              {modoAsignados ? (
+                <Link
+                  to="/sura/reporte"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                >
+                  {t('nav.suraReport')}
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                  {t('nav.suraReport')}
+                </span>
+              )}
+              {!soloDocumentacion &&
+                (modoAsignados ? (
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-fenix-primario px-3 py-2 font-body text-sm font-semibold text-white shadow-sm">
+                    {t('nav.assignedCases')}
+                  </span>
+                ) : (
+                  <Link
+                    to="/sura/mis-casos"
+                    className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm font-semibold text-gray-700 hover:border-fenix-primario/40 hover:text-fenix-primario dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200"
+                  >
+                    {t('nav.assignedCases')}
+                  </Link>
+                ))}
             </nav>
           </div>
           <div className="flex flex-wrap gap-2">
-            {puedeImportarExcel && (
+            {puedeImportarExcel && !modoAsignados && (
               <button
                 type="button"
                 className={expressBtnPrimary}

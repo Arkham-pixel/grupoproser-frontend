@@ -1,4 +1,4 @@
-﻿import { homologarEstadoZurich } from './zurichHelpers.js';
+import { homologarEstadoZurich } from './zurichHelpers.js';
 
 /**
  * Helpers del boletín semanal Zurich (semana lun–dom, America/Bogota).
@@ -74,11 +74,17 @@ export function normEstado(estado) {
 
 export function esLiquidadoEstado(estado) {
   const e = normEstado(estado);
-  return e === 'LIQUIDADO' || e === 'ENVIADO ASEGURADORA' || e === 'CERRADO';
+  return (
+    e === 'LIQUIDADO' ||
+    e === 'CASO PARA PAGO' ||
+    e === 'ENVIADO ASEGURADORA' ||
+    e === 'CERRADO'
+  );
 }
 
 export function esActivo(estado) {
-  return normEstado(estado) !== 'CERRADO';
+  const e = normEstado(estado);
+  return e !== 'CERRADO' && e !== 'LIQUIDADO' && e !== 'OBJETADO';
 }
 
 export function num(v) {
