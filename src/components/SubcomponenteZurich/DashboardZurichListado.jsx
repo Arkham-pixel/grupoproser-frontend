@@ -160,6 +160,8 @@ export default function DashboardZurichListado() {
 
   const stats = useMemo(() => construirDashboardZurichListado(casosFiltrados), [casosFiltrados]);
   const { kpis } = stats;
+  const cantidadEstado = (nombre) =>
+    stats.porEstado.find((fila) => fila.estado === nombre)?.cantidad ?? 0;
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const tiposPoliza = useMemo(() => opcionesDesdeGetter(casos, etiquetaTipoPolizaZurich), [casos]);
@@ -301,7 +303,11 @@ export default function DashboardZurichListado() {
           <ExpressMetricCard
             label={td('kpis.inProgress')}
             value={kpis.enTramite}
-            hint={td('kpis.inProgressHint')}
+            hint={td('kpis.inProgressHint', {
+              nuevo: cantidadEstado('CASO NUEVO'),
+              coord: cantidadEstado('COORDINANDO INSPECCIÓN'),
+              analisis: cantidadEstado('ANÁLISIS DEL CASO'),
+            })}
           />
           <ExpressMetricCard
             label={td('kpis.pendingDocs')}

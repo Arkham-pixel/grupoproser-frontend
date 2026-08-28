@@ -10969,9 +10969,9 @@
       "kpis": {
         "cases": "Cases",
         "open": "Open portfolio",
-        "openHint": "{{stalled}} over {{days}} days in the same status · {{total}} cases in view",
+        "openHint": "{{stalled}} over {{days}} days in the same status · {{total}} in view · open = all except ready-to-pay",
         "inProgress": "In progress",
-        "inProgressHint": "New, coordination and analysis",
+        "inProgressHint": "{{nuevo}} new + {{coord}} coordination + {{analisis}} analysis",
         "pendingDocs": "Pending documents",
         "pendingDocsHint": "The case is waiting on documentation",
         "objection": "In objection",
@@ -10983,8 +10983,8 @@
         "medianDays": "median {{days}} d in current status"
       },
       "charts": {
-        "byStatus": "Status funnel",
-        "byStatusHint": "All 7 Zurich workflow statuses, even when some still have no cases.",
+        "byStatus": "Cases by status",
+        "byStatusHint": "How many cases sit in each status today. This is not a conversion funnel: a later status can have more cases than an earlier one. The bars add up to the cases in view.",
         "byCity": "Cases by city",
         "monthlyTrend": "Monthly trend · new vs ready-to-pay",
         "newCases": "New cases",

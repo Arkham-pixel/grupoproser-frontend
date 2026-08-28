@@ -10996,9 +10996,9 @@
       "kpis": {
         "cases": "Casos",
         "open": "Cartera abierta",
-        "openHint": "{{stalled}} con más de {{days}} días en el mismo estado · {{total}} casos en la vista",
+        "openHint": "{{stalled}} con más de {{days}} días en el mismo estado · {{total}} en la vista · abierta = todo menos para pago",
         "inProgress": "En trámite",
-        "inProgressHint": "Nuevo, coordinación e análisis",
+        "inProgressHint": "{{nuevo}} nuevo + {{coord}} coordinación + {{analisis}} análisis",
         "pendingDocs": "Pendiente de documento",
         "pendingDocsHint": "El caso no avanza por documentación",
         "objection": "En objeción",
@@ -11010,8 +11010,8 @@
         "medianDays": "mediana {{days}} d en estado actual"
       },
       "charts": {
-        "byStatus": "Embudo por estado",
-        "byStatusHint": "Los 7 estados del flujo Zurich, aunque aún no haya casos en algunos.",
+        "byStatus": "Casos por estado",
+        "byStatusHint": "Cuántos casos están hoy en cada estado. No es un embudo de conversión: un estado posterior puede tener más casos que el anterior. La suma de las barras es el total de la vista.",
         "byCity": "Casos por ciudad",
         "monthlyTrend": "Tendencia mensual · altas y casos para pago",
         "newCases": "Altas",
