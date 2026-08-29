@@ -15,28 +15,20 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
-import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
-  calcularLiquidacionAllianz,
-  defaultInformeUnicoAllianz,
-  desgloseDeducibleTerremotoAllianz,
-  etiquetaEncabezadoInformeAllianz,
-  etiquetaReporteCuadroAllianz,
-  etiquetaTituloInformeAllianz,
-  esInformePreliminarAllianz,
-  esInformeUnicoAllianz,
+  defaultInformeUnicoEquidadCat,
   formatearMonto,
   formatDateLarga,
-  itemsPlanosAllianz,
-  mapcasoAllianzALiquidador,
-  normalizarTipoInformeAllianz,
   parsearNumero,
-  prefijoArchivoInformeAllianz,
-  reservaSugeridaAllianz,
-  totalPresupuestoPreliminarAllianz,
-} from './liquidadorAllianzHelpers.js';
-import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
+} from './liquidadorEquidadCatHelpers.js';
+import { mapCasoEquidadCatALiquidadorFdm } from './equidadCatLiquidadorAdapter.js';
+import {
+  capturarPaginasLiquidadorFdm,
+  itemsPlanosLiquidadorFdm,
+  normalizarLiquidadorFdm,
+} from './capturarLiquidadorFdmInforme.js';
+import { calcularLiquidacionFdm } from '../SubcomponenteEquidadFdm/liquidadorEquidadFdmHelpers.js';
+import { urlDescargaArchivoEquidadCat } from '../../services/equidadCatService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
@@ -66,26 +58,6 @@ const FONT = 'Arial';
 /** Tamaño Word: half-points → 24 = 12 pt */
 const SIZE_12 = 24;
 const SIZE_META = 20;
-const SIZE_NSR = 14; // 7 pt — tabla presupuesto completa en landscape
-
-/** Anchos DXA del presupuesto NSR-10 completo (landscape ≈ 15.200 útil). */
-const NSR_COLS = {
-  widths: [1500, 1500, 2800, 550, 700, 1050, 1050, 850, 850, 1550, 1100],
-  labels: [
-    'CAPÍTULO',
-    'COMPONENTE',
-    'ACTIVIDAD / REPARACIÓN',
-    'UND',
-    'CANT.',
-    'VLR. UNITARIO',
-    'VLR. TOTAL',
-    'PRIORIDAD',
-    '¿CUBIERTO?',
-    'OBSERVACIÓN',
-    'FUENTE',
-  ],
-};
-const NSR_TABLE_W = NSR_COLS.widths.reduce((a, b) => a + b, 0);
 
 const txt = (v, fallback = '—') => {
   const s = String(v ?? '').trim();
@@ -132,16 +104,18 @@ async function loadLogoBytes(url) {
 }
 
 /**
- * Encabezado formal (fórmula Catastrófico / Motorysa):
- * Logo Proser | Título + subtítulo + código/versión/fecha | Logo Allianz
+ * Encabezado formal (fórmula Catastrófico):
+ * Logo Proser Puertos | Título + subtítulo + siniestro/fecha | Logo Equidad Seguros
  */
-async function crearEncabezadoAllianz({ caso = {}, informe = {} } = {}) {
+async function crearEncabezadoEquidadCat({ caso = {}, informe = {} } = {}) {
   const base = import.meta.env.BASE_URL || '/';
-  let proser = await loadLogoBytes(`${base}templates/logo-grupoproser.png`);
+  let proser = await loadLogoBytes(`${base}templates/logo-proserpuertos.jpg`);
+  if (!proser) proser = await loadLogoBytes(`${base}templates/logo-proserpuertos.png`);
+  if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.png`);
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
-  const Allianz =
-    (await loadLogoBytes(`${base}templates/logo-allianz.jpg`)) ||
-    (await loadLogoBytes(`${base}templates/logo-allianz.png`));
+  const logoEquidad =
+    (await loadLogoBytes(`${base}templates/logo-equidad.png`)) ||
+    (await loadLogoBytes(`${base}templates/logo-equidad-small.jpg`));
 
   const siniestro = txt(caso.siniestro || caso.consecutivo, '—');
   const fecha = fmtFechaCorta(informe.fechaInforme || new Date());
@@ -174,9 +148,9 @@ async function crearEncabezadoAllianz({ caso = {}, informe = {} } = {}) {
                 new ImageRun({
                   data: logo.bytes,
                   transformation:
-                    logo === Allianz
-                      ? { width: 140, height: 41 }
-                      : { width: 130, height: 42 },
+                    logo === logoEquidad
+                      ? { width: 118, height: 52 }
+                      : { width: 148, height: 48 },
                   type: logo.type,
                 }),
               ]
@@ -201,7 +175,7 @@ async function crearEncabezadoAllianz({ caso = {}, informe = {} } = {}) {
         rows: [
           new TableRow({
             children: [
-              logoCell(proser, 'GRUPO PROSER', AlignmentType.LEFT),
+              logoCell(proser, 'PROSER PUERTOS', AlignmentType.LEFT),
               new TableCell({
                 borders: bordesEncabezado,
                 width: { size: 4960, type: WidthType.DXA },
@@ -212,7 +186,7 @@ async function crearEncabezadoAllianz({ caso = {}, informe = {} } = {}) {
                     spacing: { after: 40 },
                     children: [
                       new TextRun({
-                        text: 'Allianz',
+                        text: 'EquidadCat',
                         font: FONT,
                         size: SIZE_12,
                         bold: true,
@@ -224,7 +198,7 @@ async function crearEncabezadoAllianz({ caso = {}, informe = {} } = {}) {
                     spacing: { after: 60 },
                     children: [
                       new TextRun({
-                        text: etiquetaEncabezadoInformeAllianz(informe.tipoInforme),
+                        text: 'Informe Único Equidad CAT',
                         font: FONT,
                         size: SIZE_12,
                         color: '333333',
@@ -245,7 +219,7 @@ async function crearEncabezadoAllianz({ caso = {}, informe = {} } = {}) {
                   }),
                 ],
               }),
-              logoCell(Allianz, 'Allianz', AlignmentType.RIGHT),
+              logoCell(logoEquidad, 'Equidad Seguros', AlignmentType.RIGHT),
             ],
           }),
         ],
@@ -261,9 +235,8 @@ async function crearEncabezadoAllianz({ caso = {}, informe = {} } = {}) {
   });
 }
 
-/** Título azul con PRELIMINAR, FINAL o ÚNICO subrayado. */
-function crearTituloInformeAllianz(info = {}) {
-  const tipo = etiquetaTituloInformeAllianz(info.tipoInforme);
+/** Título azul con «ÚNICO» subrayado (fórmula Previsora / Catastrófico). */
+function crearTituloInformeEquidadCat() {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 120, after: 200 },
@@ -276,7 +249,7 @@ function crearTituloInformeAllianz(info = {}) {
         color: '0070C0',
       }),
       new TextRun({
-        text: tipo,
+        text: 'ÚNICO',
         bold: true,
         size: SIZE_12,
         font: FONT,
@@ -373,37 +346,6 @@ const campoFila = (label, value, opts = {}) =>
     ],
   });
 
-function construirTablaPolizaCasoAllianz({ caso = {}, enc = {} } = {}) {
-  const polizaRows = [
-    campoFila('Tomador', txt(caso.tomador || enc.tomador)),
-    campoFila('Identificación', txt(caso.identificacion || enc.identificacion)),
-    campoFila('Tipo de identificación', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)),
-    campoFila('N° póliza', txt(caso.numeroPoliza || enc.poliza)),
-    campoFila('Tipo de póliza', txt(caso.tipoPoliza || enc.tipoPoliza)),
-    campoFila('Causa', txt(caso.causa || enc.causa)),
-    campoFila('N° crédito', txt(caso.numeroCredito || enc.credito)),
-    campoFila('Cobertura / evento', txt(caso.cobertura || enc.cobertura || enc.evento)),
-    campoFila('Estado pago primas', txt(caso.estadoPagoPrimas)),
-    campoFila('Fecha inicio póliza (vigencia)', fmtFecha(caso.fechaInicioPoliza)),
-    campoFila('Fecha fin póliza (vigencia)', fmtFecha(caso.fechaFinPoliza)),
-    campoFila('Valor asegurado inmueble', money(caso.valorAseguradoInmueble)),
-    campoFila('Valor asegurado contenidos', money(caso.valorAseguradoContenidos)),
-    campoFila('Dirección predio', txt(caso.direccionPredio || enc.direccion)),
-    campoFila(
-      'Ciudad / Departamento',
-      `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`
-    ),
-    campoFila('Fecha siniestro', fmtFecha(caso.fechaSiniestro || enc.fechaSiniestro)),
-    campoFila('Fecha inspección', fmtFecha(caso.fechaInspeccion)),
-  ];
-  return new Table({
-    width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [4200, 5160],
-    borders: bordersCuadro,
-    rows: polizaRows,
-  });
-}
-
 /** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
 function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {} } = {}) {
   const vigencia =
@@ -411,11 +353,8 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
       ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
       : '—';
 
-  const esPreliminar = esInformePreliminarAllianz(info);
-  const esUnico = esInformeUnicoAllianz(info);
-  const reserva = reservaSugeridaAllianz(info);
   const filas = [
-    ['REPORTE No', etiquetaReporteCuadroAllianz(info.tipoInforme)],
+    ['REPORTE No', 'Único — Equidad CAT'],
     ['CONSECUTIVO', txt(caso.consecutivo)],
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
@@ -429,7 +368,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['CAUSA', txt(caso.causa || enc.causa)],
     ['N° CRÉDITO', txt(caso.numeroCredito || enc.credito)],
     ['VIGENCIA', vigencia],
-    ['COBERTURA / EVENTO', txt(caso.cobertura || enc.cobertura || enc.evento)],
+    ['COBERTURA / EVENTO', txt(caso.cobertura || caso.producto || enc.cobertura || enc.evento)],
     ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion)],
     [
       'CIUDAD / DEPARTAMENTO',
@@ -439,14 +378,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
     ['AJUSTADOR', txt(info.ajustadorNombre)],
-    ...(esPreliminar
-      ? [['RESERVA SUGERIDA', money(reserva)]]
-      : esUnico
-        ? [['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)]]
-        : [
-            ['RESERVA PRELIMINAR', money(reserva)],
-            ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
-          ]),
+    ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
   ];
 
   return new Table({
@@ -545,6 +477,60 @@ function tablaItemsLiquidador(titulo, items = [], subtotal = 0) {
     borders: bordersCuadro,
     rows,
   });
+}
+
+function imagenDesdeCapturaFdm(pagina) {
+  const dataUrl = pagina?.dataUrl;
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const idx = dataUrl.indexOf('base64,');
+  if (idx === -1) return null;
+  const raw = dataUrl.slice(idx + 7);
+  if (!raw) return null;
+  try {
+    const data = Uint8Array.from(atob(raw), (c) => c.charCodeAt(0));
+    const natW = Number(pagina.width) || 1852;
+    const natH = Number(pagina.height) || 1310;
+    const scale = Math.min(720 / natW, 500 / natH);
+    return {
+      data,
+      type: 'jpg',
+      width: Math.max(240, Math.round(natW * scale)),
+      height: Math.max(160, Math.round(natH * scale)),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function parrafosCapturaLiquidadorFdm(paginas = []) {
+  const out = [];
+  paginas.forEach((pag, i) => {
+    const img = imagenDesdeCapturaFdm(pag);
+    if (!img) {
+      out.push(p(`Liquidador FDM · página ${i + 1} (no embebida)`, { after: 80 }));
+      return;
+    }
+    out.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 40 },
+        children: [
+          new ImageRun({
+            data: img.data,
+            transformation: { width: img.width, height: img.height },
+            type: img.type,
+          }),
+        ],
+      }),
+      p(pag.nombre || `Liquidador FDM · página ${i + 1}`, {
+        alignment: AlignmentType.CENTER,
+        size: SIZE_META,
+        after: 80,
+        color: '555555',
+      })
+    );
+  });
+  return out;
 }
 
 async function fetchImageBytes(url) {
@@ -687,11 +673,7 @@ function extraerLatLngTexto(texto) {
 }
 
 /** Página: descripción de daños + mapa de ubicación + coordenadas. */
-async function construirBloqueDaniosUbicacionAllianz({
-  info = {},
-  caso = {},
-  omitirTablaDanios = false,
-} = {}) {
+async function construirBloqueDaniosUbicacionEquidadCat({ info = {}, caso = {} } = {}) {
   const bloques = [];
   const descripcion = txt(info.descripcionDanios, '');
   const coordenadas = txt(info.coordenadasRiesgo, '');
@@ -700,93 +682,12 @@ async function construirBloqueDaniosUbicacionAllianz({
   const mapaDataUrl = await cargarMapaRiesgoDataUrl(info);
 
   bloques.push(heading('2. Descripción de los daños y/o perjuicios'));
-
-  const filasDanios = omitirTablaDanios
-    ? []
-    : Array.isArray(info.filasDanios)
-      ? info.filasDanios
-      : [];
-  const filasDaniosConDato = filasDanios.filter(
-    (f) =>
-      String(f?.zona || '').trim() ||
-      String(f?.condicion || '').trim() ||
-      String(f?.nivel || '').trim()
+  bloques.push(
+    p(descripcion || 'Pendiente diligenciar la descripción de los daños y/o perjuicios.', {
+      after: 140,
+      alignment: AlignmentType.JUSTIFIED,
+    })
   );
-  if (filasDaniosConDato.length) {
-    bloques.push(
-      new Table({
-        width: { size: 9360, type: WidthType.DXA },
-        columnWidths: [2200, 5360, 1800],
-        borders: bordersCuadro,
-        rows: [
-          new TableRow({
-            children: [
-              cell('ELEMENTO / ZONA', {
-                bold: true,
-                width: 2200,
-                cuadro: true,
-                alignment: AlignmentType.CENTER,
-              }),
-              cell('CONDICIÓN OBSERVADA', {
-                bold: true,
-                width: 5360,
-                cuadro: true,
-                alignment: AlignmentType.CENTER,
-              }),
-              cell('NIVEL DE AFECTACIÓN', {
-                bold: true,
-                width: 1800,
-                cuadro: true,
-                alignment: AlignmentType.CENTER,
-              }),
-            ],
-          }),
-          ...filasDaniosConDato.map(
-            (f) =>
-              new TableRow({
-                children: [
-                  cell(txt(f.zona), {
-                    bold: true,
-                    width: 2200,
-                    cuadro: true,
-                    verticalAlign: VerticalAlign.TOP,
-                  }),
-                  cell(txt(f.condicion), {
-                    width: 5360,
-                    cuadro: true,
-                    verticalAlign: VerticalAlign.TOP,
-                  }),
-                  cell(txt(f.nivel), {
-                    bold: true,
-                    width: 1800,
-                    cuadro: true,
-                    alignment: AlignmentType.CENTER,
-                    verticalAlign: VerticalAlign.TOP,
-                  }),
-                ],
-              })
-          ),
-        ],
-      })
-    );
-    bloques.push(p('', { after: 80 }));
-  }
-
-  if (descripcion) {
-    bloques.push(
-      p(descripcion, {
-        after: 140,
-        alignment: AlignmentType.JUSTIFIED,
-      })
-    );
-  } else if (!filasDaniosConDato.length) {
-    bloques.push(
-      p('Pendiente diligenciar la descripción de los daños y/o perjuicios.', {
-        after: 140,
-        alignment: AlignmentType.JUSTIFIED,
-      })
-    );
-  }
 
   bloques.push(
     p('Ubicación del riesgo', {
@@ -855,9 +756,9 @@ async function construirBloqueDaniosUbicacionAllianz({
 }
 
 /**
- * Zona de firmas Allianz: solo ajustador, sin tabla/bordes, abajo a la izquierda.
+ * Zona de firmas EquidadCat: solo ajustador, sin tabla/bordes, abajo a la izquierda.
  */
-async function construirZonaFirmasAllianz({ info = {} } = {}) {
+async function construirZonaFirmasEquidadCat({ info = {} } = {}) {
   const imgAjustador = await imagenDesdeDataUrl(
     info.firmaAjustador || info.actaAjustadorFirmaImagen || ''
   );
@@ -959,7 +860,7 @@ async function construirZonaFirmasAllianz({ info = {} } = {}) {
 }
 
 
-function tablaAnalisisPolizaAllianz(filas = []) {
+function tablaAnalisisPolizaEquidadCat(filas = []) {
   const lista = (Array.isArray(filas) ? filas : []).filter(
     (f) =>
       String(f?.concepto || '').trim() ||
@@ -1038,7 +939,7 @@ function tablaAnalisisPolizaAllianz(filas = []) {
   });
 }
 
-function tablaPresupuestoPreliminarAllianz(filas = []) {
+function tablaPresupuestoPreliminarEquidadCat(filas = []) {
   const lista = Array.isArray(filas) ? filas : [];
   const rows = [
     new TableRow({
@@ -1120,7 +1021,7 @@ function tablaPresupuestoPreliminarAllianz(filas = []) {
           cuadro: true,
           alignment: AlignmentType.RIGHT,
         }),
-        cell(money(totalPresupuestoPreliminarAllianz(lista)), {
+        cell(money(totalPresupuestoPreliminarEquidadCat(lista)), {
           bold: true,
           width: 2000,
           cuadro: true,
@@ -1138,43 +1039,40 @@ function tablaPresupuestoPreliminarAllianz(filas = []) {
 }
 
 /**
- * Informe preliminar, final o único Allianz — misma fórmula visual que Zurich/Catastrófico.
+ * Informe único Equidad CAT — misma fórmula visual que Previsora:
+ * encabezado formal, título ÚNICO, cuadro ficha, secciones fijas y cuadros sin relleno.
  */
-export async function descargarWordInformeAllianz({ caso = {}, informe = null, liquidador = null } = {}) {
-  const info = informe || defaultInformeUnicoAllianz(caso);
-  const liq = liquidador || mapcasoAllianzALiquidador(caso);
-  const totales = calcularLiquidacionAllianz(liq);
+export async function descargarWordInformeEquidadCat({
+  caso = {},
+  informe = null,
+  liquidador = null,
+  paginasLiquidador = null,
+} = {}) {
+  const info = informe || defaultInformeUnicoEquidadCat(caso);
+  const liq = normalizarLiquidadorFdm(
+    mapCasoEquidadCatALiquidadorFdm({
+      ...caso,
+      liquidador: liquidador || caso.liquidador,
+    })
+  );
+  const totales = calcularLiquidacionFdm(liq);
   const enc = liq.encabezado || {};
-  const items = itemsPlanosAllianz(liq);
-  const filasPresupuesto = Array.isArray(liq?.evaluacionSismicaNSR10?.presupuesto?.items)
-    ? liq.evaluacionSismicaNSR10.presupuesto.items
-    : [];
-  const contenidosNsr = liq?.evaluacionSismicaNSR10?.contenidos || {};
-  const tieneContenidosDiligenciados = (Array.isArray(contenidosNsr.items) ? contenidosNsr.items : []).some(
-    (it) =>
-      String(it?.articulo || '').trim() ||
-      String(it?.categoria || '').trim() ||
-      Number(it?.cantidad) > 0
-  );
-  const presupuesto = liq?.evaluacionSismicaNSR10?.presupuesto || {};
-  const aiuPct = Math.round(
-    (totales.presupuesto?.aiuPct ?? presupuesto.aiuPorcentaje ?? 0.25) * 100
-  );
-  const imprPct = Math.round(
-    (totales.presupuesto?.imprPct ?? presupuesto.imprevistosPorcentaje ?? 0) * 100
-  );
-  const impPct = Math.round(
-    (totales.presupuesto?.impPct ?? presupuesto.impuestosPorcentaje ?? 0) * 100
-  );
-  const mostrarImprevistos = imprPct > 0 || Number(totales.imprevistos) > 0;
-  const mostrarImpuestos = impPct > 0 || Number(totales.impuestos) > 0;
-  const criterio = totales.criterio || {};
-  const esPreliminar = esInformePreliminarAllianz(info);
-  const esUnico = esInformeUnicoAllianz(info);
-  const tipoNorm = normalizarTipoInformeAllianz(info.tipoInforme, 'unico');
-  const tipoEtiqueta =
-    tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
-  const seccionFotos = esPreliminar ? 5 : esUnico ? 5 : 7;
+  const items = itemsPlanosLiquidadorFdm(liq);
+  let paginasFdm = Array.isArray(paginasLiquidador) ? paginasLiquidador.filter((p) => p?.dataUrl) : [];
+  if (!paginasFdm.length) {
+    try {
+      paginasFdm = await capturarPaginasLiquidadorFdm(liq, totales);
+    } catch (err) {
+      console.warn('No se pudo capturar el liquidador FDM para el Word:', err);
+      paginasFdm = [];
+    }
+  }
+  const capturaParrafos = parrafosCapturaLiquidadorFdm(paginasFdm);
+  const etiquetaDed = totales.usaSMMLV
+    ? `Deducible aplicado (${totales.cantidadSMMLV} SMMLV)`
+    : `Deducible aplicado (${totales.porcentaje}% de la pérdida)`;
+  const diferenciaFdm =
+    (Number(totales.totalPerdida) || 0) - (Number(totales.totalIndemnizar) || 0);
 
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
@@ -1190,7 +1088,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const fotoParrafos = [];
   let fotosIncluidas = 0;
   for (const archivo of fotosParaWord.slice(0, 24)) {
-    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoAllianz);
+    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoEquidadCat);
     if (!img) {
       fotoParrafos.push(
         p(`• ${archivo.nombreOriginal || archivo.nombre || 'Foto'} (no embebida)`, {
@@ -1222,7 +1120,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   if (!fotoParrafos.length) {
     fotoParrafos.push(
       p(
-        `Pendiente registro fotográfico. Suba las fotos en la sección ${seccionFotos} del informe (zona de arrastre).`,
+        'Pendiente registro fotográfico. Suba las fotos en la sección 6 del informe (zona de arrastre).',
         { size: SIZE_12 }
       )
     );
@@ -1243,7 +1141,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
   const cotizacionParrafos = [];
   let cotizacionesIncluidas = 0;
   for (const archivo of fotosCotizacion.slice(0, 12)) {
-    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoAllianz);
+    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoEquidadCat);
     if (!img) continue;
     cotizacionesIncluidas += 1;
     const natW = Number(archivo.width) || 0;
@@ -1325,7 +1223,10 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
               alignment: AlignmentType.CENTER,
               cuadro: true,
             }),
-            cell(it.concepto || '—', { width: 4000, cuadro: true }),
+            cell(
+              it.grupo ? `${it.grupo} — ${it.concepto || '—'}` : it.concepto || '—',
+              { width: 4000, cuadro: true }
+            ),
             cell(money(it.valorReclamado), {
               width: 2200,
               alignment: AlignmentType.RIGHT,
@@ -1353,43 +1254,14 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     );
   }
 
-  const desgloseDed = desgloseDeducibleTerremotoAllianz(liq, totales.diagrama);
-  if (desgloseDed.aplicado > 0) {
+  if (Number(totales.deducibleAplicado) > 0) {
     filasCuadro.push(
       new TableRow({
         children: [
           cell('', { width: 600, cuadro: true }),
-          cell(desgloseDed.etiquetaPct, { width: 4000, cuadro: true }),
+          cell(etiquetaDed, { width: 4000, cuadro: true }),
           cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(money(desgloseDed.montoPct), {
-            width: 2200,
-            alignment: AlignmentType.RIGHT,
-            cuadro: true,
-          }),
-        ],
-      })
-    );
-    filasCuadro.push(
-      new TableRow({
-        children: [
-          cell('', { width: 600, cuadro: true }),
-          cell(desgloseDed.etiquetaSmmlv, { width: 4000, cuadro: true }),
-          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(money(desgloseDed.montoSmmlv), {
-            width: 2200,
-            alignment: AlignmentType.RIGHT,
-            cuadro: true,
-          }),
-        ],
-      })
-    );
-    filasCuadro.push(
-      new TableRow({
-        children: [
-          cell('', { width: 600, cuadro: true }),
-          cell('Deducible terremoto (se resta el mayor)', { width: 4000, cuadro: true }),
-          cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(`− ${money(desgloseDed.aplicado)}`, {
+          cell(`− ${money(totales.deducibleAplicado)}`, {
             width: 2200,
             alignment: AlignmentType.RIGHT,
             cuadro: true,
@@ -1398,15 +1270,14 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
       })
     );
   }
-  const deducibleContenidos = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
-  if (deducibleContenidos > 0) {
+  if (Number(totales.subsidio) > 0) {
     filasCuadro.push(
       new TableRow({
         children: [
           cell('', { width: 600, cuadro: true }),
-          cell('Deducible contenidos', { width: 4000, cuadro: true }),
+          cell('Subsidio', { width: 4000, cuadro: true }),
           cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
-          cell(`− ${money(deducibleContenidos)}`, {
+          cell(`+ ${money(totales.subsidio)}`, {
             width: 2200,
             alignment: AlignmentType.RIGHT,
             cuadro: true,
@@ -1421,13 +1292,13 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
       children: [
         cell('', { width: 600, cuadro: true }),
         cell('TOTALES', { bold: true, width: 4000, cuadro: true }),
-        cell(money(totales.totalReclamado), {
+        cell(money(totales.totalPerdida), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
           cuadro: true,
         }),
-        cell(money(totales.totalIndemnizable), {
+        cell(money(totales.totalIndemnizar), {
           bold: true,
           width: 2200,
           alignment: AlignmentType.RIGHT,
@@ -1475,117 +1346,53 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     );
   }
 
-  const header = await crearEncabezadoAllianz({ caso, informe: info });
+  const header = await crearEncabezadoEquidadCat({ caso, informe: info });
 
-  const usaCotizacion = totales.origenPresupuesto === 'cotizacion';
-  const tieneCotizacionPdf =
-    usaCotizacion ||
-    (Array.isArray(liq?.cotizacionPdf?.paginas) && liq.cotizacionPdf.paginas.length > 0) ||
-    Boolean(liq?.cotizacionPdf?.archivoPdf);
-  const liquidacionResumen = [
-    ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-      ? []
-      : [
-          campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
-          campoFila(
-            'Categoría / Habitabilidad',
-            `${txt(criterio.categoria)} / ${txt(criterio.habitabilidad)}`,
-            { labelW: 5000, valueW: 5000 }
-          ),
-        ]),
-    ...(usaCotizacion
-      ? [
-          campoFila('Total cotización de reparación (base de deducible)', money(totales.cotizacionMonto), {
-            boldValue: true,
-            labelW: 5000,
-            valueW: 5000,
-          }),
-        ]
-      : [
-          campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-          campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-          ...(mostrarImprevistos
-            ? [
-                campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
-                  labelW: 5000,
-                  valueW: 5000,
-                }),
-              ]
-            : []),
-          ...(mostrarImpuestos
-            ? [
-                campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
-                  labelW: 5000,
-                  valueW: 5000,
-                }),
-              ]
-            : []),
-          campoFila(
-            'Total presupuesto NSR-10',
-            money(totales.totalPresupuesto ?? totales.presupuesto?.total),
-            {
-              labelW: 5000,
-              valueW: 5000,
-            }
-          ),
-        ]),
-    campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Gastos de hospedaje', money(totales.diagrama?.gastosHospedaje), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
+  const polizaRows = [
+    campoFila('Tomador', txt(caso.tomador || enc.tomador)),
+    campoFila('Identificación', txt(caso.identificacion || enc.identificacion)),
+    campoFila('Tipo de identificación', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)),
+    campoFila('N° póliza', txt(caso.numeroPoliza || enc.poliza)),
+    campoFila('Tipo de póliza', txt(caso.tipoPoliza || enc.tipoPoliza)),
+    campoFila('Producto', txt(caso.producto)),
+    campoFila('Causa', txt(caso.causa || enc.causa)),
+    campoFila('N° crédito', txt(caso.numeroCredito || enc.credito)),
+    campoFila('Cobertura / evento', txt(caso.cobertura || caso.producto || enc.cobertura || enc.evento)),
+    campoFila('Estado pago primas', txt(caso.estadoPagoPrimas)),
+    campoFila('Fecha inicio póliza (vigencia)', fmtFecha(caso.fechaInicioPoliza)),
+    campoFila('Fecha fin póliza (vigencia)', fmtFecha(caso.fechaFinPoliza)),
+    campoFila('Valor asegurado', money(caso.valorAsegurado || caso.valorAseguradoInmueble)),
+    campoFila('Dirección predio', txt(caso.direccionPredio || enc.direccion)),
     campoFila(
-      'Deducible (póliza)',
-      txt(totales.deducibleTexto || liq.deducible || liq.deducibleConfigPresupuesto?.texto),
-      { labelW: 5000, valueW: 5000 }
+      'Ciudad / Departamento',
+      `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`
     ),
-    campoFila(desgloseDed.etiquetaPct, money(desgloseDed.montoPct), {
+    campoFila('Fecha siniestro', fmtFecha(caso.fechaSiniestro || enc.fechaSiniestro)),
+    campoFila('Fecha inspección', fmtFecha(caso.fechaInspeccion)),
+  ];
+
+  const liquidacionResumen = [
+    campoFila('Subtotal contenidos', money(totales.subtotalContenidos), {
       labelW: 5000,
       valueW: 5000,
     }),
-    campoFila(desgloseDed.etiquetaSmmlv, money(desgloseDed.montoSmmlv), {
+    campoFila('Subtotal edificios', money(totales.subtotalEdificios), {
       labelW: 5000,
       valueW: 5000,
     }),
-    campoFila(desgloseDed.etiquetaAplicado, money(desgloseDed.aplicado), {
+    campoFila('Pérdida establecida', money(totales.totalPerdida), {
       boldValue: true,
       labelW: 5000,
       valueW: 5000,
     }),
-    ...(deducibleContenidos > 0
-      ? [
-          campoFila('Deducible contenidos', money(deducibleContenidos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-        ]
-      : []),
-    ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
-      ? [
-          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-          ...totales.otrosAmparos.map((it) =>
-            campoFila(
-              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
-              money(it.valor),
-              { labelW: 5000, valueW: 5000 }
-            )
-          ),
-        ]
-      : []),
+    campoFila(etiquetaDed, money(totales.deducibleAplicado), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
+    campoFila('Subsidio', money(totales.subsidio), {
+      labelW: 5000,
+      valueW: 5000,
+    }),
     campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
       boldValue: true,
       labelW: 5000,
@@ -1593,142 +1400,19 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     }),
   ];
 
-  const w = NSR_COLS.widths;
-  const cellNsr = (text, colIdx, opts = {}) =>
-    cell(text, {
-      width: w[colIdx],
-      size: SIZE_NSR,
-      compact: true,
-      cuadro: true,
-      alignment: opts.alignment || AlignmentType.LEFT,
-      bold: !!opts.bold,
-      columnSpan: opts.columnSpan || 1,
-    });
+  const fallbackTablasFdm = !capturaParrafos.length
+    ? [
+        p('No se pudo embeber la captura; se incluye el desglose de ítems FDM.', {
+          after: 100,
+        }),
+        tablaItemsLiquidador('CONTENIDOS', liq.contenidos || [], totales.subtotalContenidos),
+        p('', { after: 80 }),
+        tablaItemsLiquidador('EDIFICIOS', liq.edificios || [], totales.subtotalEdificios),
+      ]
+    : [];
 
-  const filasNsr = [
-    new TableRow({
-      children: NSR_COLS.labels.map((label, i) =>
-        cellNsr(label, i, { bold: true, alignment: AlignmentType.CENTER })
-      ),
-    }),
-  ];
-
-  const filasConDatos = filasPresupuesto.filter(
-    (it) =>
-      String(it?.actividad || '').trim() ||
-      String(it?.componente || '').trim() ||
-      String(it?.capitulo || '').trim() ||
-      Number(it?.cantidad) > 0
-  );
-
-  if (filasConDatos.length) {
-    filasConDatos.forEach((it) => {
-      const tot = totalFilaPresupuesto(it);
-      filasNsr.push(
-        new TableRow({
-          children: [
-            cellNsr(it.capitulo || '—', 0),
-            cellNsr(it.componente || '—', 1),
-            cellNsr(it.actividad || '—', 2),
-            cellNsr(it.unidad || '—', 3, { alignment: AlignmentType.CENTER }),
-            cellNsr(
-              it.cantidad === '' || it.cantidad == null ? '—' : String(it.cantidad),
-              4,
-              { alignment: AlignmentType.RIGHT }
-            ),
-            cellNsr(
-              it.valorUnitario === '' || it.valorUnitario == null
-                ? '—'
-                : money(it.valorUnitario),
-              5,
-              { alignment: AlignmentType.RIGHT }
-            ),
-            cellNsr(tot == null ? '—' : money(tot), 6, { alignment: AlignmentType.RIGHT }),
-            cellNsr(it.prioridad || '—', 7, { alignment: AlignmentType.CENTER }),
-            cellNsr(it.cubierto || '—', 8, { alignment: AlignmentType.CENTER }),
-            cellNsr(it.observacion || '—', 9),
-            cellNsr(it.fuente || '—', 10),
-          ],
-        })
-      );
-    });
-  } else {
-    filasNsr.push(
-      new TableRow({
-        children: [
-          cell('Sin ítems en el presupuesto NSR-10', {
-            width: NSR_TABLE_W,
-            columnSpan: 11,
-            size: SIZE_NSR,
-            compact: true,
-            cuadro: true,
-            alignment: AlignmentType.CENTER,
-          }),
-        ],
-      })
-    );
-  }
-
-  const resumenNsrFilas = [
-    ['SUBTOTAL (COSTO DIRECTO)', money(totales.subtotal)],
-    [`AIU (${aiuPct}%)`, money(totales.aiu)],
-    ...(mostrarImprevistos
-      ? [[`IMPREVISTOS (${imprPct}%)`, money(totales.imprevistos)]]
-      : []),
-    ...(mostrarImpuestos ? [[`IMPUESTOS (${impPct}%)`, money(totales.impuestos)]] : []),
-    ['TOTAL ESTIMADO', money(totales.totalPresupuesto ?? totales.presupuesto?.total)],
-  ];
-  resumenNsrFilas.forEach(([lab, val]) => {
-    filasNsr.push(
-      new TableRow({
-        children: [
-          cell(lab, {
-            width: w.slice(0, 7).reduce((a, b) => a + b, 0),
-            columnSpan: 7,
-            size: SIZE_NSR,
-            compact: true,
-            cuadro: true,
-            bold: true,
-            alignment: AlignmentType.RIGHT,
-          }),
-          cell(val, {
-            width: w[7],
-            size: SIZE_NSR,
-            compact: true,
-            cuadro: true,
-            bold: true,
-            alignment: AlignmentType.RIGHT,
-          }),
-          cell('', {
-            width: w.slice(8).reduce((a, b) => a + b, 0),
-            columnSpan: 4,
-            size: SIZE_NSR,
-            compact: true,
-            cuadro: true,
-          }),
-        ],
-      })
-    );
-  });
-
-  const tablaLiquidadorCompleto = new Table({
-    width: { size: NSR_TABLE_W, type: WidthType.DXA },
-    columnWidths: w,
-    rows: filasNsr,
-  });
-
-  const { tabla: tablaContenidos } = construirTablaContenidosWord({
-    contenidos: contenidosNsr,
-    cell,
-    size: SIZE_NSR,
-  });
-
-  const firmasParrafos = await construirZonaFirmasAllianz({ caso, enc, info });
-  const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionAllianz({
-    info,
-    caso,
-    omitirTablaDanios: esUnico,
-  });
+  const firmasParrafos = await construirZonaFirmasEquidadCat({ caso, enc, info });
+  const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionEquidadCat({ info, caso });
 
   const pagePortrait = {
     margin: { top: 1400, bottom: 900, left: 900, right: 900 },
@@ -1739,164 +1423,94 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
     size: { orientation: PageOrientation.LANDSCAPE },
   };
 
-  const seccionConclusiones = [
-    heading('4. Conclusiones y recomendación del ajustador'),
-    ...(tieneCotizacionPdf
-      ? [
-          p(
-            'No se incluye presupuesto preliminar escrito: la cotización PDF es el soporte de reparación.',
-            { after: 120 }
-          ),
-        ]
-      : [
-          p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
+  const doc = new Document({
+    sections: [
+      {
+        properties: { page: pagePortrait },
+        headers: { default: header },
+        children: [
+          crearTituloInformeEquidadCat(),
+          p('Seguros La Equidad', {
+            alignment: AlignmentType.CENTER,
             bold: true,
-            before: 40,
-            after: 120,
-          }),
-          tablaPresupuestoPreliminarAllianz(info.filasPresupuestoPreliminar),
-        ]),
-    p('Conclusiones', { bold: true, before: 180, after: 40 }),
-    p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
-      after: 120,
-      alignment: AlignmentType.JUSTIFIED,
-    }),
-    p('Recomendación', { bold: true, after: 40 }),
-    p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
-      after: 160,
-      alignment: AlignmentType.JUSTIFIED,
-    }),
-  ];
-
-  const seccionFotosFirmas = [
-    heading(`${seccionFotos}. Inspección fotográfica`),
-    p(
-      fotosIncluidas
-        ? `Registro fotográfico del predio (${fotosIncluidas} imagen(es)).`
-        : 'Registro fotográfico del predio.',
-      { after: 80 }
-    ),
-    ...fotoParrafos,
-    p(
-      `Para constancia se firma el presente informe ${tipoEtiqueta} en ${txt(
-        caso.ciudad || enc.ciudad,
-        'Colombia'
-      )}, ${fmtFecha(info.fechaInforme || new Date())}.`,
-      { before: 200, after: 200 }
-    ),
-    ...firmasParrafos,
-  ];
-
-  const childrenNsr = [
-    heading(esUnico ? '4. Liquidación de pérdidas (liquidador)' : '5. Liquidación de pérdidas'),
-    ...(tieneCotizacionPdf
-      ? []
-      : [
-          p(
-            mostrarImprevistos || mostrarImpuestos
-              ? 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.'
-              : 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU 25% (único recargo; imprevistos e impuestos van incluidos).',
-            { after: 120 }
-          ),
-          tablaLiquidadorCompleto,
-        ]),
-    ...(tieneContenidosDiligenciados
-      ? [
-          p('Contenidos del inmueble (bienes muebles)', {
-            bold: true,
-            before: 180,
-            after: 80,
             size: SIZE_12,
+            after: 160,
+            color: '333333',
           }),
-          p(
-            contenidosNsr.tipoInmueble
-              ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
-              : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
-            { after: 100 }
-          ),
-          tablaContenidos,
-        ]
-      : []),
-    p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-    new Table({
-      width: { size: 10000, type: WidthType.DXA },
-      columnWidths: [5000, 5000],
-      borders: bordersCuadro,
-      rows: liquidacionResumen,
-    }),
-    ...(liq.observaciones
-      ? [
-          p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
-          p(liq.observaciones, { after: 80 }),
-        ]
-      : []),
-  ];
-
-  const portadaEventoDanios = [
-    {
-      properties: { page: pagePortrait },
-      headers: { default: header },
-      children: [
-        crearTituloInformeAllianz(info),
-        p('Allianz Seguros', {
-          alignment: AlignmentType.CENTER,
-          bold: true,
-          size: SIZE_12,
-          after: 160,
-          color: '333333',
-        }),
-        construirCuadroPrincipal({ caso, enc, info, totales }),
-      ],
-    },
-    {
-      properties: { page: pagePortrait },
-      headers: { default: header },
-      children: [
-        heading('1. Información general del evento'),
-        ...(infoEventoParrafos.length
-          ? infoEventoParrafos
-          : [p('Sin información del evento.')]),
-        ...mapaEventoParrafos,
-      ],
-    },
-    {
-      properties: { page: pagePortrait },
-      headers: { default: header },
-      children: bloqueDaniosUbicacion,
-    },
-  ];
-
-  let sections;
-  if (esUnico) {
-    sections = [
-      ...portadaEventoDanios,
+          construirCuadroPrincipal({ caso, enc, info, totales }),
+        ],
+      },
+      {
+        properties: { page: pagePortrait },
+        headers: { default: header },
+        children: [
+          heading('1. Información general del evento'),
+          ...(infoEventoParrafos.length
+            ? infoEventoParrafos
+            : [p('Sin información del evento.')]),
+          ...mapaEventoParrafos,
+        ],
+      },
+      {
+        properties: { page: pagePortrait },
+        headers: { default: header },
+        children: bloqueDaniosUbicacion,
+      },
       {
         properties: { page: pagePortrait },
         headers: { default: header },
         children: [
           heading('3. Información de póliza y cobertura'),
-          construirTablaPolizaCasoAllianz({ caso, enc }),
+          new Table({
+            width: { size: 9360, type: WidthType.DXA },
+            columnWidths: [4200, 5160],
+            borders: bordersCuadro,
+            rows: polizaRows,
+          }),
         ],
       },
       {
         properties: { page: pageLandscape },
         headers: { default: header },
-        children: childrenNsr,
+        children: [
+          heading('4. Liquidación de pérdidas (liquidador FDM)'),
+          p(
+            'Captura del liquidador FDM diligenciado en la pestaña Liquidador (modelo Excel / PDF oficial). Equidad CAT no usa el liquidador NSR-10.',
+            { after: 120 }
+          ),
+          ...(capturaParrafos.length ? capturaParrafos : fallbackTablasFdm),
+          p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
+          new Table({
+            width: { size: 10000, type: WidthType.DXA },
+            columnWidths: [5000, 5000],
+            borders: bordersCuadro,
+            rows: liquidacionResumen,
+          }),
+          ...(liq.observaciones
+            ? [
+                p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
+                p(liq.observaciones, { after: 80 }),
+              ]
+            : []),
+        ],
       },
-      ...(seccionCotizacion.length
-        ? [
-            {
-              properties: { page: pagePortrait },
-              headers: { default: header },
-              children: seccionCotizacion,
-            },
-          ]
-        : []),
       {
         properties: { page: pagePortrait },
         headers: { default: header },
         children: [
-          heading('5. Inspección fotográfica'),
+          heading('5. Relación de valores reclamados vs. valores indemnizables'),
+          new Table({
+            width: { size: 9000, type: WidthType.DXA },
+            columnWidths: [600, 4000, 2200, 2200],
+            borders: bordersCuadro,
+            rows: filasCuadro,
+          }),
+          p(`Diferencia reclamado − indemnizable: ${money(diferenciaFdm)}`, {
+            before: 100,
+            size: SIZE_12,
+          }),
+
+          heading('6. Inspección fotográfica'),
           p(
             fotosIncluidas
               ? `Registro fotográfico del predio (${fotosIncluidas} imagen(es)).`
@@ -1904,7 +1518,8 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
             { after: 80 }
           ),
           ...fotoParrafos,
-          heading('6. Conclusiones y recomendación del ajustador'),
+
+          heading('7. Conclusiones y recomendación del ajustador'),
           p('Conclusiones', { bold: true, after: 40 }),
           p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
             after: 120,
@@ -1915,6 +1530,7 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
             after: 200,
             alignment: AlignmentType.JUSTIFIED,
           }),
+
           p(
             `Para constancia se firma el presente informe único en ${txt(
               caso.ciudad || enc.ciudad,
@@ -1925,74 +1541,11 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
           ...firmasParrafos,
         ],
       },
-    ];
-  } else {
-    sections = [
-      ...portadaEventoDanios,
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('3. Información de póliza y cobertura'),
-          tablaAnalisisPolizaAllianz(info.filasPolizaCobertura),
-        ],
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: seccionConclusiones,
-      },
-    ];
-
-    if (!esPreliminar) {
-      sections.push({
-        properties: { page: pageLandscape },
-        headers: { default: header },
-        children: childrenNsr,
-      });
-      if (seccionCotizacion.length) {
-        sections.push({
-          properties: { page: pagePortrait },
-          headers: { default: header },
-          children: seccionCotizacion,
-        });
-      }
-      sections.push({
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('6. Relación de valores reclamados vs. valores indemnizables'),
-          new Table({
-            width: { size: 9000, type: WidthType.DXA },
-            columnWidths: [600, 4000, 2200, 2200],
-            borders: bordersCuadro,
-            rows: filasCuadro,
-          }),
-          p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
-            before: 100,
-            after: 160,
-            size: SIZE_12,
-          }),
-          ...seccionFotosFirmas,
-        ],
-      });
-    } else {
-      sections.push({
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: seccionFotosFirmas,
-      });
-    }
-  }
-
-
-  const doc = new Document({
-    sections,
+    ],
   });
 
   const blob = await Packer.toBlob(doc);
-  const prefijo = prefijoArchivoInformeAllianz(info.tipoInforme);
-  const nombre = `${prefijo}_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
+  const nombre = `Informe_Unico_EQUIDAD_CAT_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );

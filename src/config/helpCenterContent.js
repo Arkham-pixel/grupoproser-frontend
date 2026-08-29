@@ -4,7 +4,7 @@ import {
   RESUMEN_PLAZOS_PROTOCOLO_EXPRESS,
 } from './protocoloExpressDefaults.js';
 import { PASOS_INICIO_RAPIDO } from '../components/MatrizRiesgoAvanzada/matrizContenidoShared.js';
-import { normalizarRol, ROLES_CONTRACTOR, ROL_SOLO_EQUIDAD } from './roles.js';
+import { normalizarRol, ROLES_CONTRACTOR, ROL_CATASTROFICOS, ROL_SOLO_EQUIDAD } from './roles.js';
 
 const EXCLUIR_CONTRACTOR = [...ROLES_CONTRACTOR];
 const EXCLUIR_CONTRACTOR_SIN_EQUIDAD = ROLES_CONTRACTOR.filter((r) => r !== ROL_SOLO_EQUIDAD);
@@ -154,6 +154,42 @@ export const HELP_MODULES = [
         descripcion: 'Consulte el reporte/bandeja de casos Equidad FDM y filtre por ciudad o estado.',
         ruta: '/equidad-fdm/reporte',
         pasos: ['Abra Bandeja Equidad FDM.', 'Use filtros y ventanas por ciudad.', 'Exporte Excel si lo necesita.'],
+      },
+    ],
+  },
+  {
+    id: 'equidad-cat',
+    titulo: 'Equidad CAT',
+    descripcion: 'Agregue casos, consulte el dashboard y el reporte, liquide con el modelo FDM y genere el informe único.',
+    icono: 'balance',
+    ruta: '/equidad-cat/reporte',
+    palabrasClave: ['equidad', 'cat', 'carga', 'liquidador', 'fdm', 'informe', 'dashboard', 'reporte', 'archivero'],
+    excluirRoles: [
+      'visualizador',
+      'puertos',
+      'externo',
+      ...ROLES_CONTRACTOR.filter((r) => r !== ROL_CATASTROFICOS),
+    ],
+    articulos: [
+      {
+        titulo: 'Agregar y reportar casos',
+        descripcion: 'Cree o importe casos del listado y consulte el reporte, mis casos y el dashboard.',
+        ruta: '/equidad-cat/carga',
+        pasos: [
+          'Abra Equidad CAT > Agregar caso.',
+          'Registre siniestro, asegurado, identificación y ciudad, o importe un Excel si es admin/soporte.',
+          'Consulte Reporte, Mis casos y Dashboard para el seguimiento.',
+        ],
+      },
+      {
+        titulo: 'Liquidador FDM e informe único',
+        descripcion: 'El liquidador es el mismo de Equidad FDM. El informe único se genera desde el workspace del caso.',
+        ruta: '/equidad-cat/liquidador',
+        pasos: [
+          'Desde el reporte, abra Liquidador o Informe único del caso.',
+          'Complete contenidos, edificios y deducible en el liquidador FDM y guarde; el Excel queda en el archivero.',
+          'En la pestaña Informe único complete el documento y descargue el Word.',
+        ],
       },
     ],
   },

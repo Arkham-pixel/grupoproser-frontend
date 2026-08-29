@@ -109,7 +109,7 @@ function esExcluidoCatalogoZurich(opcion = {}) {
 
 /**
  * Equipos cerrados: BBVA y Alfa solo listan a quienes tienen ese módulo.
- * Catálogo general (sin modulos): Zurich, Sura, Previsora, Allianz.
+ * Catálogo general (sin modulos): Zurich, Sura, Previsora, Allianz, Equidad CAT.
  */
 export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
   const clave = claveModuloCatalogo(modulo);

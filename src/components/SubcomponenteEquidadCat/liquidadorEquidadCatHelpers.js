@@ -1,5 +1,5 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
-import { formatMiles } from './allianzHelpers.js';
+import { formatMiles } from './equidadCatHelpers.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
   argsDeduciblesPorArticuloDiagrama,
@@ -27,14 +27,14 @@ import {
   montoCotizacionPdf,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import {
-  configDeduciblePresupuestoParaCalculoAllianz,
+  configDeduciblePresupuestoParaCalculoEquidadCat,
   configDeducibleTerremotoCat,
   desgloseDeducibleTerremoto,
   TEXTO_DEDUCIBLE_TERREMOTO_CAT,
   valorAseguradoPresupuestoCat,
 } from '../liquidacion/deducibleTerremotoCat.js';
 
-export const TEXTO_DEDUCIBLE_TERREMOTO_ALLIANZ = TEXTO_DEDUCIBLE_TERREMOTO_CAT;
+export const TEXTO_DEDUCIBLE_TERREMOTO_EQUIDAD_CAT = TEXTO_DEDUCIBLE_TERREMOTO_CAT;
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -43,12 +43,12 @@ export const SMMLV_POR_ANIO = {
 };
 export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
 
-/** Texto fijo editable: información general del evento (consolidado terremoto Allianz). */
-export const INFO_EVENTO_DEFAULT_ALLIANZ = `El presente informe se elabora en el marco de la atención del evento sísmico / catastrófico reportado ante Allianz Seguros, conforme a la visita de inspección realizada al predio asegurado y a la documentación aportada por el tomador/asegurado.
+/** Texto fijo editable: información general del evento (consolidado terremoto EquidadCat). */
+export const INFO_EVENTO_DEFAULT_EQUIDAD_CAT = `El presente informe se elabora en el marco de la atención del evento sísmico / catastrófico reportado ante Seguros La Equidad, conforme a la visita de inspección realizada al predio asegurado y a la documentación aportada por el tomador/asegurado.
 
 La evaluación técnica tiene por objeto verificar la existencia y alcance de los daños, confrontarlos con las coberturas de la póliza vigente y cuantificar las pérdidas indemnizables de acuerdo con las condiciones particulares del contrato de seguro.`;
 
-export const NIVELES_AFECTACION_ALLIANZ = [
+export const NIVELES_AFECTACION_EQUIDAD_CAT = [
   'CRÍTICO',
   'ALTO',
   'MEDIO–ALTO',
@@ -56,8 +56,8 @@ export const NIVELES_AFECTACION_ALLIANZ = [
   'POR DEFINIR',
 ];
 
-/** Zonas de la tabla de daños del informe preliminar Allianz. */
-export const ZONAS_DANIOS_PRELIMINAR_ALLIANZ = [
+/** Zonas de la tabla de daños del informe preliminar EquidadCat. */
+export const ZONAS_DANIOS_PRELIMINAR_EQUIDAD_CAT = [
   'Fachadas',
   'Zona de acceso',
   'Muros de mampostería',
@@ -74,7 +74,7 @@ export const ZONAS_DANIOS_PRELIMINAR_ALLIANZ = [
   'Columnas, vigas y sistema aporticado visible',
 ];
 
-export const CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ = [
+export const CONCEPTOS_POLIZA_PRELIMINAR_EQUIDAD_CAT = [
   'Vigencia',
   'Ubicación del riesgo',
   'Evento',
@@ -88,7 +88,7 @@ export const CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ = [
   'Concepto preliminar',
 ];
 
-export const CAPITULOS_PRESUPUESTO_PRELIMINAR_ALLIANZ = [
+export const CAPITULOS_PRESUPUESTO_PRELIMINAR_EQUIDAD_CAT = [
   '1. Preliminares, seguridad y protecciones',
   '2. Fachada – desmonte y reconstrucción de los dos últimos niveles',
   '3. Demolición y reconstrucción de mampostería interior',
@@ -105,33 +105,33 @@ export const CAPITULOS_PRESUPUESTO_PRELIMINAR_ALLIANZ = [
   '14. Estudios, evaluación especializada y contingencias técnicas',
 ];
 
-export function plantillaFilasDaniosAllianz() {
-  return ZONAS_DANIOS_PRELIMINAR_ALLIANZ.map((zona) => ({
+export function plantillaFilasDaniosEquidadCat() {
+  return ZONAS_DANIOS_PRELIMINAR_EQUIDAD_CAT.map((zona) => ({
     zona,
     condicion: '',
     nivel: '',
   }));
 }
 
-export function plantillaFilasPolizaAllianz() {
-  return CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ.map((concepto) => ({
+export function plantillaFilasPolizaEquidadCat() {
+  return CONCEPTOS_POLIZA_PRELIMINAR_EQUIDAD_CAT.map((concepto) => ({
     concepto,
     analisis: '',
     conclusion: '',
   }));
 }
 
-export function plantillaFilasPresupuestoPreliminarAllianz() {
-  return CAPITULOS_PRESUPUESTO_PRELIMINAR_ALLIANZ.map((capitulo) => ({
+export function plantillaFilasPresupuestoPreliminarEquidadCat() {
+  return CAPITULOS_PRESUPUESTO_PRELIMINAR_EQUIDAD_CAT.map((capitulo) => ({
     capitulo,
     descripcion: '',
     valor: '',
   }));
 }
 
-export const TIPOS_INFORME_ALLIANZ = ['preliminar', 'final', 'unico'];
+export const TIPOS_INFORME_EQUIDAD_CAT = ['preliminar', 'final', 'unico'];
 
-export function normalizarTipoInformeAllianz(valor, fallback = 'unico') {
+export function normalizarTipoInformeEquidadCat(valor, fallback = 'preliminar') {
   const t = String(valor || '')
     .toLowerCase()
     .normalize('NFD')
@@ -141,27 +141,23 @@ export function normalizarTipoInformeAllianz(valor, fallback = 'unico') {
   return fallback;
 }
 
-export function esInformePreliminarAllianz(info = {}) {
-  return normalizarTipoInformeAllianz(info?.tipoInforme, 'unico') === 'preliminar';
-}
-
-export function esInformeUnicoAllianz(info = {}) {
-  return normalizarTipoInformeAllianz(info?.tipoInforme, 'unico') === 'unico';
+export function esInformePreliminarEquidadCat(info = {}) {
+  return normalizarTipoInformeEquidadCat(info?.tipoInforme, 'preliminar') === 'preliminar';
 }
 
 /** Tipo vigente: el del borrador en pantalla, o el guardado en el caso. */
-export function tipoInformeActualAllianz(informe = null, caso = null) {
+export function tipoInformeActualEquidadCat(informe = null, caso = null) {
   if (informe?.tipoInforme) {
-    return normalizarTipoInformeAllianz(informe.tipoInforme, 'unico');
+    return normalizarTipoInformeEquidadCat(informe.tipoInforme, 'unico');
   }
   if (caso?.informeUnico && typeof caso.informeUnico === 'object') {
-    return normalizarTipoInformeAllianz(caso.informeUnico.tipoInforme, 'unico');
+    return normalizarTipoInformeEquidadCat(caso.informeUnico.tipoInforme, 'unico');
   }
   return 'unico';
 }
 
 /** Fusiona un borrador de informe sobre el caso para hidratar al reabrir pestañas. */
-export function casoAllianzConInforme(caso = {}, informe = null) {
+export function casoEquidadCatConInforme(caso = {}, informe = null) {
   if (!informe || typeof informe !== 'object') return caso || {};
   return {
     ...(caso || {}),
@@ -169,64 +165,64 @@ export function casoAllianzConInforme(caso = {}, informe = null) {
   };
 }
 
-export function etiquetaArchivoInformeAllianz(tipo) {
-  const t = normalizarTipoInformeAllianz(tipo, 'unico');
+export function etiquetaArchivoInformeEquidadCat(tipo) {
+  const t = normalizarTipoInformeEquidadCat(tipo, 'unico');
   if (t === 'preliminar') return 'INFORME_PRELIMINAR';
   if (t === 'final') return 'INFORME_FINAL';
   return 'INFORME_UNICO';
 }
 
-export function etiquetaTituloInformeAllianz(tipo) {
-  const t = normalizarTipoInformeAllianz(tipo, 'unico');
+export function etiquetaTituloInformeEquidadCat(tipo) {
+  const t = normalizarTipoInformeEquidadCat(tipo, 'preliminar');
   if (t === 'preliminar') return 'PRELIMINAR';
   if (t === 'final') return 'FINAL';
   return 'ÚNICO';
 }
 
-export function etiquetaEncabezadoInformeAllianz(tipo) {
-  const t = normalizarTipoInformeAllianz(tipo, 'unico');
-  if (t === 'preliminar') return 'Informe Preliminar Allianz';
-  if (t === 'final') return 'Informe Final Allianz';
-  return 'Informe Único Allianz';
+export function etiquetaEncabezadoInformeEquidadCat(tipo) {
+  const t = normalizarTipoInformeEquidadCat(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Informe Preliminar EquidadCat';
+  if (t === 'final') return 'Informe Final EquidadCat';
+  return 'Informe Único EquidadCat';
 }
 
-export function prefijoArchivoInformeAllianz(tipo) {
-  const t = normalizarTipoInformeAllianz(tipo, 'unico');
-  if (t === 'preliminar') return 'Informe_Preliminar_Allianz';
-  if (t === 'final') return 'Informe_Final_Allianz';
-  return 'Informe_Unico_Allianz';
+export function prefijoArchivoInformeEquidadCat(tipo) {
+  const t = normalizarTipoInformeEquidadCat(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Informe_Preliminar_EquidadCat';
+  if (t === 'final') return 'Informe_Final_EquidadCat';
+  return 'Informe_Unico_EquidadCat';
 }
 
-export function etiquetaReporteCuadroAllianz(tipo) {
-  const t = normalizarTipoInformeAllianz(tipo, 'unico');
-  if (t === 'preliminar') return 'Preliminar — Allianz';
-  if (t === 'final') return 'Final — Allianz';
-  return 'Único — Allianz';
+export function etiquetaReporteCuadroEquidadCat(tipo) {
+  const t = normalizarTipoInformeEquidadCat(tipo, 'preliminar');
+  if (t === 'preliminar') return 'Preliminar — EquidadCat';
+  if (t === 'final') return 'Final — EquidadCat';
+  return 'Único — EquidadCat';
 }
 
-export function totalPresupuestoPreliminarAllianz(filas = []) {
+export function totalPresupuestoPreliminarEquidadCat(filas = []) {
   return (Array.isArray(filas) ? filas : []).reduce(
     (acc, fila) => acc + parsearNumero(fila?.valor),
     0
   );
 }
 
-export function reservaSugeridaAllianz(info = {}) {
+export function reservaSugeridaEquidadCat(info = {}) {
   const directa = parsearNumero(info?.reservaSugerida);
   if (directa > 0) return directa;
-  return totalPresupuestoPreliminarAllianz(info?.filasPresupuestoPreliminar);
+  return totalPresupuestoPreliminarEquidadCat(info?.filasPresupuestoPreliminar);
 }
 
 function usarPlantillaSiVacio(filas, plantilla) {
   return Array.isArray(filas) && filas.length ? filas : plantilla;
 }
 
-export function sanitizarInformeUnicoAllianz(informe = {}) {
+export function sanitizarInformeUnicoEquidadCat(informe = {}) {
   if (!informe || typeof informe !== 'object') return {};
   const base = sanitizarInformeUnicoFotos(informe);
   const tipo = informe.tipoInforme
-    ? normalizarTipoInformeAllianz(informe.tipoInforme, 'unico')
-    : undefined;
+    ? normalizarTipoInformeEquidadCat(informe.tipoInforme, 'unico')
+    : 'unico';
   return {
     ...base,
     ...(tipo ? { tipoInforme: tipo } : {}),
@@ -235,7 +231,7 @@ export function sanitizarInformeUnicoAllianz(informe = {}) {
 }
 
 /** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
-export function sanitizarLiquidadorAllianz(liquidador = {}) {
+export function sanitizarLiquidadorEquidadCat(liquidador = {}) {
   if (!liquidador || typeof liquidador !== 'object') return liquidador;
   return {
     ...liquidador,
@@ -243,11 +239,11 @@ export function sanitizarLiquidadorAllianz(liquidador = {}) {
   };
 }
 
-export function desgloseDeducibleTerremotoAllianz(liquidador = {}, diagrama = null) {
+export function desgloseDeducibleTerremotoEquidadCat(liquidador = {}, diagrama = null) {
   return desgloseDeducibleTerremoto(liquidador, diagrama, formatearMonto);
 }
 
-export function patchDeduciblePresupuestoAllianz(liquidador = {}, patch = {}) {
+export function patchDeduciblePresupuestoEquidadCat(liquidador = {}, patch = {}) {
   const liq = liquidador.liquidacionCatastrofico || {};
   const cfg = {
     ...configDeducibleTerremotoCat({}, {
@@ -301,7 +297,7 @@ export function formatearMonto(valor, { decimals = 0 } = {}) {
 }
 
 /** @deprecated compat — ítems FDM ya no se usan en el flujo activo */
-export function crearItemAllianz(item = '', valor = '', id) {
+export function crearItemEquidadCat(item = '', valor = '', id) {
   return {
     id: id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     item: item || '',
@@ -313,10 +309,10 @@ export function crearItemAllianz(item = '', valor = '', id) {
 /** @deprecated */
 export function migrarItemLegacy(it = {}) {
   if (it.item != null || (it.valor != null && it.concepto == null)) {
-    return crearItemAllianz(it.item || '', it.valor ?? '', it.id);
+    return crearItemEquidadCat(it.item || '', it.valor ?? '', it.id);
   }
   const valor = it.valorIndemnizable || it.valorReclamado || '';
-  return crearItemAllianz(it.concepto || '', valor, it.id);
+  return crearItemEquidadCat(it.concepto || '', valor, it.id);
 }
 
 const fechaInput = (value) => {
@@ -330,7 +326,7 @@ const fechaInput = (value) => {
   return `${y}-${m}-${day}`;
 };
 
-export function liquidacionCatastroficoDefaultAllianz(caso = {}) {
+export function liquidacionCatastroficoDefaultEquidadCat(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
   const va =
     c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
@@ -349,7 +345,7 @@ export function liquidacionCatastroficoDefaultAllianz(caso = {}) {
   };
 }
 
-export function encabezadoDesdecasoAllianz(caso = {}) {
+export function encabezadoDesdecasoEquidadCat(caso = {}) {
   const c = caso && typeof caso === 'object' ? caso : {};
   return {
     tomador: c.tomador || '',
@@ -369,8 +365,6 @@ export function encabezadoDesdecasoAllianz(caso = {}) {
     cobertura: c.cobertura || '',
     evento: c.cobertura || 'TERREMOTO',
     ajustador: c.ajustador || '',
-    telefono: c.telefonoAsegurado || c.celular || '',
-    correo: c.correoAsegurado || c.correo || '',
     valorAseguradoInmueble:
       c.valorAseguradoInmueble != null && c.valorAseguradoInmueble !== ''
         ? formatMiles(c.valorAseguradoInmueble)
@@ -382,8 +376,8 @@ export function encabezadoDesdecasoAllianz(caso = {}) {
   };
 }
 
-/** Prefill portada NSR desde caso Allianz */
-export function prefillNsrDesdecasoAllianz(caso = {}, encabezado = {}) {
+/** Prefill portada NSR desde caso Equidad CAT */
+export function prefillNsrDesdecasoEquidadCat(caso = {}, encabezado = {}) {
   return {
     fechaInspeccion: fechaInput(caso.fechaInspeccion),
     asegurado: encabezado.asegurado || caso.asegurado || caso.informacionContacto || '',
@@ -400,7 +394,7 @@ export function prefillNsrDesdecasoAllianz(caso = {}, encabezado = {}) {
   };
 }
 
-export const DEFAULT_LIQUIDADOR_Allianz = {
+export const DEFAULT_LIQUIDADOR_EquidadCat = {
   modelo: 'nsr10',
   encabezado: {
     tomador: '',
@@ -420,19 +414,17 @@ export const DEFAULT_LIQUIDADOR_Allianz = {
     cobertura: '',
     evento: 'TERREMOTO',
     ajustador: '',
-    telefono: '',
-    correo: '',
     valorAseguradoInmueble: '',
     valorAseguradoContenidos: '',
   },
   evaluacionSismicaNSR10: null,
-  liquidacionCatastrofico: liquidacionCatastroficoDefaultAllianz(),
+  liquidacionCatastrofico: liquidacionCatastroficoDefaultEquidadCat(),
   indemnizacionSugerida: '',
   observaciones: '',
   cotizacionPdf: null,
 };
 
-export function esLiquidadorNsrAllianz(liquidador = {}) {
+export function esLiquidadorNsrEquidadCat(liquidador = {}) {
   if (!liquidador || typeof liquidador !== 'object') return false;
   if (liquidador.modelo === 'nsr10') return true;
   if (liquidador.evaluacionSismicaNSR10) return true;
@@ -441,10 +433,10 @@ export function esLiquidadorNsrAllianz(liquidador = {}) {
 }
 
 /**
- * Totales Allianz = presupuesto NSR-10 o cotización PDF + contenidos + diagrama.
+ * Totales EquidadCat = presupuesto NSR-10 o cotización PDF + contenidos + diagrama.
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
-export function calcularLiquidacionAllianz(liquidador = {}) {
+export function calcularLiquidacionEquidadCat(liquidador = {}) {
   const evalData = aplicarRecargosEnEvaluacionNsr10(
     liquidador.evaluacionSismicaNSR10 || {},
     RECARGOS_PRESUPUESTO_NSR10_CAT
@@ -468,7 +460,7 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     deducible: liq.deducible,
     deducibleConfig: liq.deducibleConfig,
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
-    deducibleConfigPresupuesto: configDeduciblePresupuestoParaCalculoAllianz(liquidador),
+    deducibleConfigPresupuesto: configDeduciblePresupuestoParaCalculoEquidadCat(liquidador),
     otrosAmparos: liquidador.otrosAmparos,
     ...(() => {
       const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
@@ -507,7 +499,7 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
     deducibleTexto:
       String(liq.deducible || liq.deducibleConfigPresupuesto?.texto || '').trim() ||
-      desgloseDeducibleTerremotoAllianz(liquidador, diagrama).texto,
+      desgloseDeducibleTerremotoEquidadCat(liquidador, diagrama).texto,
     subtotalContenidos: resumen.totalContenidos,
     subtotalEdificios: totalPresupuesto,
     diferencia: Math.round(
@@ -522,10 +514,10 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
 }
 
 /**
- * Cuadro 32 / 33 / 34 del formato ágil Allianz.
+ * Cuadro 32 / 33 / 34 del formato ágil EquidadCat.
  * 32 = indemnización antes de deducible; 34 = 32 − deducible aplicado.
  */
-export function cuadroLiquidacionAllianz(totales = {}, liquidador = {}) {
+export function cuadroLiquidacionEquidadCat(totales = {}, liquidador = {}) {
   const tot = totales && typeof totales === 'object' ? totales : {};
   const diag = tot.diagrama || {};
   const liq = liquidador?.liquidacionCatastrofico || {};
@@ -563,55 +555,8 @@ export function cuadroLiquidacionAllianz(totales = {}, liquidador = {}) {
   };
 }
 
-function bienAfectadoAllianz(enc = {}) {
-  const causa = String(enc.causa || enc.evento || enc.cobertura || 'terremoto').trim();
-  if (!causa) return 'Daños por terremoto';
-  if (/dañ/i.test(causa)) return causa;
-  return `Daños por ${causa}`;
-}
-
-/**
- * Datos del Informe Liquidación Allianz (misma estructura del PDF de la aseguradora).
- */
-export function armarInformeLiquidacionAllianz(liquidador = {}, totales = null, caso = {}) {
-  const tot = totales && typeof totales === 'object'
-    ? totales
-    : calcularLiquidacionAllianz(liquidador);
-  const cuadro = cuadroLiquidacionAllianz(tot, liquidador);
-  const enc = liquidador.encabezado || {};
-  const c = caso && typeof caso === 'object' ? caso : {};
-  const observaciones = String(liquidador.observaciones || '').trim()
-    || String(cuadro.deducibleTexto || tot.deducibleTexto || '').trim();
-  return {
-    siniestro: String(enc.siniestro || c.siniestro || '').trim(),
-    fechaCreacion: new Date(),
-    asegurado: String(enc.asegurado || c.asegurado || '').trim(),
-    identificacion: String(enc.identificacion || c.identificacion || '').trim(),
-    telefono: String(
-      enc.telefono || enc.telefonoAsegurado || c.telefonoAsegurado || c.celular || ''
-    ).trim(),
-    email: String(
-      enc.correo || enc.correoAsegurado || c.correoAsegurado || c.correo || ''
-    ).trim(),
-    valorTotalReclamado: cuadro.valorReclamado,
-    valorTotalLiquidacion: cuadro.valorSugeridoIndemnizar,
-    deducible: cuadro.deducibleMonto,
-    valorAIndemnizar: cuadro.valorSugeridoLuegoDeducible,
-    filas: [
-      {
-        n: 1,
-        bienAfectado: bienAfectadoAllianz(enc),
-        valorReclamado: cuadro.valorReclamado,
-        valorLiquidacion: cuadro.valorSugeridoIndemnizar,
-        cobertura: String(enc.cobertura || enc.evento || '1').trim() || '1',
-      },
-    ],
-    observaciones,
-  };
-}
-
 /** Filas planas del presupuesto NSR o de la cotización PDF (para resúmenes). */
-export function itemsPlanosAllianz(liquidador = {}) {
+export function itemsPlanosEquidadCat(liquidador = {}) {
   if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
     const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
     const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
@@ -638,17 +583,17 @@ export function itemsPlanosAllianz(liquidador = {}) {
     }));
 }
 
-export function mapcasoAllianzALiquidador(caso = {}) {
-  const encabezado = encabezadoDesdecasoAllianz(caso);
-  const prefill = prefillNsrDesdecasoAllianz(caso, encabezado);
+export function mapcasoEquidadCatALiquidador(caso = {}) {
+  const encabezado = encabezadoDesdecasoEquidadCat(caso);
+  const prefill = prefillNsrDesdecasoEquidadCat(caso, encabezado);
   const evalInicial = fusionarEvaluacionSismicaNSR10Guardada({}, prefill, {
     recargosPresupuesto: RECARGOS_PRESUPUESTO_NSR10_CAT,
   });
   const base = {
-    ...DEFAULT_LIQUIDADOR_Allianz,
+    ...DEFAULT_LIQUIDADOR_EquidadCat,
     encabezado,
     evaluacionSismicaNSR10: evalInicial,
-    liquidacionCatastrofico: liquidacionCatastroficoDefaultAllianz(caso),
+    liquidacionCatastrofico: liquidacionCatastroficoDefaultEquidadCat(caso),
     otrosAmparos: defaultOtrosAmparos(),
     valorReclamadoCaso:
       caso.valorReclamado != null && caso.valorReclamado !== ''
@@ -660,7 +605,7 @@ export function mapcasoAllianzALiquidador(caso = {}) {
   if (!guardado) return base;
 
   // Liquidador FDM antiguo: no migrar ítems; abrir NSR fresco conservando encabezado
-  if (!esLiquidadorNsrAllianz(guardado)) {
+  if (!esLiquidadorNsrEquidadCat(guardado)) {
     return {
       ...base,
       encabezado: { ...base.encabezado, ...(guardado.encabezado || {}) },
@@ -695,10 +640,10 @@ export function mapcasoAllianzALiquidador(caso = {}) {
 }
 
 /** formData mínimo para ChecklistEvaluacionSismicaNSR10 */
-export function formDataNsrDesdeLiquidadorAllianz(liquidador = {}, caso = {}) {
+export function formDataNsrDesdeLiquidadorEquidadCat(liquidador = {}, caso = {}) {
   const enc = liquidador.encabezado || {};
   return {
-    ...prefillNsrDesdecasoAllianz(caso, enc),
+    ...prefillNsrDesdecasoEquidadCat(caso, enc),
     ...camposValorAseguradoParaNsr(caso, enc),
     evaluacionSismicaNSR10: liquidador.evaluacionSismicaNSR10,
     liquidacionCatastrofico: liquidador.liquidacionCatastrofico,
@@ -713,23 +658,23 @@ export function formDataNsrDesdeLiquidadorAllianz(liquidador = {}, caso = {}) {
   };
 }
 
-export function defaultInformeUnicoAllianz(caso = {}) {
+export function defaultInformeUnicoEquidadCat(caso = {}) {
   const guardado =
     caso.informeUnico && typeof caso.informeUnico === 'object' ? caso.informeUnico : null;
   const base = {
     tipoInforme: 'unico',
     fechaInforme: fechaInput(new Date()),
     ajustadorNombre: caso.ajustador || '',
-    infoEvento: INFO_EVENTO_DEFAULT_ALLIANZ,
+    infoEvento: INFO_EVENTO_DEFAULT_EQUIDAD_CAT,
     descripcionDanios: '',
     coordenadasRiesgo: '',
     imagenMapa: '',
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
     reservaSugerida: '',
-    filasDanios: plantillaFilasDaniosAllianz(),
-    filasPolizaCobertura: plantillaFilasPolizaAllianz(),
-    filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarAllianz(),
+    filasDanios: plantillaFilasDaniosEquidadCat(),
+    filasPolizaCobertura: plantillaFilasPolizaEquidadCat(),
+    filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarEquidadCat(),
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
@@ -745,9 +690,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
   return {
     ...base,
     ...guardado,
-    tipoInforme: guardado
-      ? normalizarTipoInformeAllianz(guardado.tipoInforme, 'unico')
-      : 'unico',
+    tipoInforme: 'unico',
     ajustadorNombre: guardado.ajustadorNombre || guardado.actaAjustadorNombre || base.ajustadorNombre,
     actaAjustadorNombre:
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,

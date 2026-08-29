@@ -198,7 +198,11 @@ export default function DashboardCatastrofico({
         }
         if (filtroTomador && !coincideFiltroTexto(item.tomador, filtroTomador)) return false;
         if (fechaDesde || fechaHasta) {
-          return fechaEnRango(item.fechaSiniestro || item.createdAt, fechaDesde, fechaHasta);
+          return fechaEnRango(
+            item.fechaAviso || item.fechaSiniestro || item.createdAt,
+            fechaDesde,
+            fechaHasta
+          );
         }
         return true;
       }),

@@ -64,6 +64,10 @@ export function configDeduciblePresupuestoParaCalculoAllianz(liquidador = {}) {
   };
 }
 
+/** Equidad CAT reutiliza la misma fórmula CAT (2% / 3 SMMLV) del informe único. */
+export const configDeduciblePresupuestoParaCalculoEquidadCat =
+  configDeduciblePresupuestoParaCalculoAllianz;
+
 export function configDeducibleTerremotoCat(cfgActual = {}, { valorAsegurado = 0 } = {}) {
   const va = Number(valorAsegurado) || 0;
   return {

@@ -101,8 +101,8 @@ export const CONFIG_SOLO_PREVISORA = {
 };
 
 export const CONFIG_CATASTROFICOS = {
-  /** Orden: Previsora, Zurich, BBVA, Alfa, Sura, Allianz. */
-  seccionesMenu: ['previsora', 'zurich', 'bbvaCat', 'alfa', 'sura', 'allianz'],
+  /** Orden: Previsora, Zurich, BBVA, Alfa, Sura, Allianz, Equidad CAT. */
+  seccionesMenu: ['previsora', 'zurich', 'bbvaCat', 'alfa', 'sura', 'allianz', 'equidadCat'],
   inicio: '/previsora/listado/reporte',
   prefijosRuta: [
     '/previsora',
@@ -111,6 +111,7 @@ export const CONFIG_CATASTROFICOS = {
     '/seguros-alfa',
     '/sura',
     '/allianz',
+    '/equidad-cat',
     '/catastrofico',
   ],
   etiqueta: 'Catastróficos',

@@ -63,6 +63,13 @@ import FormularioEquidadFdm from './components/SubcomponenteEquidadFdm/Formulari
 import ReporteEquidadFdm from './components/SubcomponenteEquidadFdm/ReporteEquidadFdm';
 import DashboardEquidadFdm from './components/SubcomponenteEquidadFdm/DashboardEquidadFdm';
 import LiquidadorEquidadFdmPage from './components/SubcomponenteEquidadFdm/LiquidadorEquidadFdmPage';
+import FormularioEquidadCat from './components/SubcomponenteEquidadCat/FormularioEquidadCat';
+import ReporteEquidadCat from './components/SubcomponenteEquidadCat/ReporteEquidadCat';
+import DashboardEquidadCat from './components/SubcomponenteEquidadCat/DashboardEquidadCat';
+import ArchiveroEquidadCatPage from './components/SubcomponenteEquidadCat/ArchiveroEquidadCatPage';
+import CasoEquidadCatWorkspace, {
+  RedirectEquidadCatWorkspace,
+} from './components/SubcomponenteEquidadCat/CasoEquidadCatWorkspace';
 import FormularioSegurosAlfa from './components/SubcomponenteSegurosAlfa/FormularioSegurosAlfa';
 import ReporteSegurosAlfa from './components/SubcomponenteSegurosAlfa/ReporteSegurosAlfa';
 import BoletinSemanalSegurosAlfa from './components/SubcomponenteSegurosAlfa/BoletinSemanalSegurosAlfa';
@@ -592,6 +599,18 @@ export default function App() {
           <Route path="equidad-fdm/liquidador" element={<LiquidadorEquidadFdmPage />} />
           <Route path="equidad-fdm/reporte" element={<ReporteEquidadFdm />} />
           <Route path="equidad-fdm/dashboard" element={<DashboardEquidadFdm />} />
+
+          <Route path="equidad-cat/carga" element={<FormularioEquidadCat origen="listado" />} />
+          <Route path="equidad-cat/reporte" element={<ReporteEquidadCat />} />
+          <Route path="equidad-cat/mis-casos" element={<ReporteEquidadCat modoAsignados />} />
+          <Route path="equidad-cat/dashboard" element={<DashboardEquidadCat />} />
+          <Route path="equidad-cat/caso" element={<RedirectEquidadCatWorkspace />} />
+          <Route element={<CasoEquidadCatWorkspace />}>
+            <Route path="equidad-cat/liquidador" element={<></>} />
+            <Route path="equidad-cat/informe-unico" element={<></>} />
+          </Route>
+          <Route path="equidad-cat/archivero" element={<ArchiveroEquidadCatPage />} />
+          <Route path="equidad-cat" element={<Navigate to="/equidad-cat/reporte" replace />} />
 
           <Route path="seguros-alfa/carga" element={<FormularioSegurosAlfa />} />
           <Route path="seguros-alfa/reporte" element={<ReporteSegurosAlfa />} />

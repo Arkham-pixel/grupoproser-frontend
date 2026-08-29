@@ -10,7 +10,7 @@ import {
   FaTimes,
   FaTrash,
 } from 'react-icons/fa';
-import logoAllianz from '../../assets/zurich-logo.png';
+import logoAllianz from '../../assets/logo-allianz.jpg';
 import {
   actualizarArchivoAllianz,
   eliminarArchivoAllianz,

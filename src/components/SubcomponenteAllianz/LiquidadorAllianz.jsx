@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaFileExcel, FaFilePdf, FaFileWord } from 'react-icons/fa';
 import {
@@ -212,9 +212,13 @@ export default function LiquidadorAllianz({
             type="button"
             className={expressBtnSecondary}
             disabled={!!exportando}
-            onClick={() => correrExport('pdf', descargarLiquidadorAllianzPdf)}
+            onClick={() =>
+              correrExport('pdf', (liq, tot) =>
+                descargarLiquidadorAllianzPdf(liq, tot, casoAllianz)
+              )
+            }
           >
-            <FaFilePdf /> PDF
+            <FaFilePdf /> {t('allianz.settlement.downloadInformeLiquidacion')}
           </button>
           <button
             type="button"
@@ -285,6 +289,19 @@ export default function LiquidadorAllianz({
             <InputFenix
               value={enc.identificacion || ''}
               onChange={(e) => actualizarEncabezado('identificacion', e.target.value)}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.telefonoAsegurado')}>
+            <InputFenix
+              value={enc.telefono || ''}
+              onChange={(e) => actualizarEncabezado('telefono', e.target.value)}
+            />
+          </Campo>
+          <Campo label={t('allianz.fields.correoAsegurado')}>
+            <InputFenix
+              type="email"
+              value={enc.correo || ''}
+              onChange={(e) => actualizarEncabezado('correo', e.target.value)}
             />
           </Campo>
           <Campo label={t('allianz.fields.causa')}>
@@ -417,6 +434,19 @@ export default function LiquidadorAllianz({
         <p className="mt-2 text-xs text-gray-500">
           {cuadroAgil.deducibleTexto || totales.deducibleTexto || desgloseDed.texto}
         </p>
+        <div className="mt-4">
+          <Campo label={t('allianz.settlement.notes')}>
+            <textarea
+              className="min-h-[72px] w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={3}
+              value={liquidador.observaciones || ''}
+              placeholder={t('allianz.settlement.notesPlaceholder')}
+              onChange={(e) =>
+                setLiquidador((prev) => ({ ...prev, observaciones: e.target.value }))
+              }
+            />
+          </Campo>
+        </div>
       </section>
 
       <section className={expressFormSection}>

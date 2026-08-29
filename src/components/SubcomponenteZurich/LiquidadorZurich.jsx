@@ -26,6 +26,7 @@ import {
   migrarLiquidadorDeducibleTerremotoZurich,
 } from './liquidadorZurichHelpers.js';
 import { descargarFiniquitoZurichWord } from './generarFiniquitoZurichWord.js';
+import { descargarReciboIndemnizacionZurichWord } from './generarReciboIndemnizacionZurichWord.js';
 import { descargarLiquidadorZurichExcel } from './generarLiquidadorZurichExcel.js';
 import { descargarLiquidadorZurichPdf } from './generarLiquidadorZurichPdf.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
@@ -40,6 +41,7 @@ const MIME = {
   excel: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
   pdf: 'application/pdf',
   finiquito: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  recibo: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 };
 
 /**
@@ -212,6 +214,14 @@ export default function LiquidadorZurich({
             onClick={() => correrExport('finiquito', descargarFiniquitoZurichWord)}
           >
             <FaFileWord /> {t('zurich.settlement.downloadFiniquito')}
+          </button>
+          <button
+            type="button"
+            className={expressBtnGhost}
+            disabled={!!exportando}
+            onClick={() => correrExport('recibo', descargarReciboIndemnizacionZurichWord)}
+          >
+            <FaFileWord /> {t('zurich.settlement.downloadRecibo')}
           </button>
         </div>
         {onGuardarEnCaso && (

@@ -54,9 +54,8 @@ async function buildLogosHeader() {
   let proser = await loadLogoBytes(`${base}templates/logo-grupoproser.png`);
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
   const Allianz =
-    (await loadLogoBytes(`${base}templates/logo-bbva.png`)) ||
-    (await loadLogoBytes(`${base}templates/logo-allianz.png`)) ||
-    (await loadLogoBytes(`${base}templates/logo-zurich.png`));
+    (await loadLogoBytes(`${base}templates/logo-allianz.jpg`)) ||
+    (await loadLogoBytes(`${base}templates/logo-allianz.png`));
 
   const left = new Paragraph({
     spacing: { after: 0 },
@@ -78,7 +77,7 @@ async function buildLogosHeader() {
       ? [
           new ImageRun({
             data: Allianz.bytes,
-            transformation: { width: 150, height: 66 },
+            transformation: { width: 140, height: 41 },
             type: Allianz.type,
           }),
         ]

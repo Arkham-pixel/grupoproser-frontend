@@ -53,6 +53,7 @@ import {
   FaEye,
   FaLink,
   FaGlobeAmericas,
+  FaBalanceScale,
 } from 'react-icons/fa';
 import { esUsuarioGerenteFacturacion } from '../config/gerentesFacturacion';
 import { obtenerMisSubtareas } from '../services/complexSubtareasService.js';
@@ -86,6 +87,7 @@ const ICONOS_ASEGURADORA = {
   bbvaCat: FaUniversity,
   previsora: FaEye,
   allianz: FaLink,
+  equidadCat: FaBalanceScale,
   sura: FaGlobeAmericas,
 };
 
@@ -122,6 +124,7 @@ function seccionMenuDesdeRuta(path) {
   if (path.startsWith('/riesgos')) return 'riesgos';
   if (path.startsWith('/express')) return 'express';
   if (path.startsWith('/equidad-fdm')) return 'equidadFdm';
+  if (path.startsWith('/equidad-cat')) return 'equidadCat';
   if (path.startsWith('/seguros-alfa')) return 'alfa';
   if (path.startsWith('/zurich')) return 'zurich';
   if (path.startsWith('/bbva-cat')) return 'bbvaCat';
@@ -491,6 +494,14 @@ export default function Layout() {
     '/equidad-fdm/liquidador': t('nav.pageTitles.fdmSettlement'),
     '/equidad-fdm/reporte': t('nav.pageTitles.fdmReport'),
     '/equidad-fdm/dashboard': t('nav.pageTitles.fdmDashboard'),
+    '/equidad-cat/carga': t('nav.pageTitles.equidadCatAdd'),
+    '/equidad-cat/liquidador': t('nav.pageTitles.equidadCatSettlement'),
+    '/equidad-cat/informe-unico': t('nav.pageTitles.equidadCatUniqueReport'),
+    '/equidad-cat/reporte': t('nav.pageTitles.equidadCatReport'),
+    '/equidad-cat/mis-casos': t('nav.pageTitles.equidadCatMyCases'),
+    '/equidad-cat/dashboard': t('nav.pageTitles.equidadCatDashboard'),
+    '/equidad-cat/caso': t('nav.pageTitles.equidadCatCase'),
+    '/equidad-cat/archivero': t('nav.pageTitles.equidadCatArchive'),
     '/seguros-alfa/carga': t('nav.pageTitles.alfaAdd'),
     '/seguros-alfa/reporte': t('nav.pageTitles.alfaReport'),
     '/seguros-alfa/mis-casos': t('nav.pageTitles.alfaMyCases'),
@@ -815,6 +826,7 @@ export default function Layout() {
           { path: '/formulario-maquinaria', icon: FaTools, label: t('nav.machineryForm') },
           { path: '/express/carga', icon: FaBolt, label: t('nav.expressForm') },
           { path: '/equidad-fdm/carga', icon: FaHandHoldingHeart, label: t('nav.equidadFdmForm') },
+          { path: '/equidad-cat/carga', icon: FaBalanceScale, label: t('nav.equidadCatAddCase') },
           { path: '/propiedades/carga', icon: FaBuilding, label: t('nav.propertiesForm') },
           { path: '/puertos/formulario', icon: FaShip, label: t('nav.portsInstallationsForm') },
           {
@@ -866,6 +878,16 @@ export default function Layout() {
               };
             })
           : [],
+    equidadCat:
+      !accesoRestringido || configContractor?.seccionesMenu?.includes('equidadCat')
+        ? [
+            { path: '/equidad-cat/carga', icon: FaPlus, label: t('nav.equidadCatAddCase') },
+            { path: '/equidad-cat/dashboard', icon: FaChartBar, label: t('nav.equidadCatDashboard') },
+            { path: '/equidad-cat/reporte', icon: FaTable, label: t('nav.equidadCatReport') },
+            { path: '/equidad-cat/mis-casos', icon: FaList, label: t('nav.assignedCases') },
+            { path: '/equidad-cat/archivero', icon: FaFolderOpen, label: t('nav.equidadCatArchive') },
+          ]
+        : [],
     alfa: !accesoRestringido || configContractor?.seccionesMenu?.includes('alfa')
       ? [
           { path: '/seguros-alfa/carga', icon: FaPlus, label: t('nav.alfaAddCase') },
@@ -1026,7 +1048,7 @@ export default function Layout() {
         ? (configContractor.seccionesMenu || []).map((key) => ({
             key,
             title: t(`nav.sections.${key}`),
-            icon: ICONOS_ASEGURADORA[key] || (key === 'equidadFdm' ? FaHandHoldingHeart : FaFileAlt),
+            icon: ICONOS_ASEGURADORA[key] || (key === 'equidadFdm' || key === 'equidadCat' ? FaHandHoldingHeart : FaFileAlt),
             items: menuItems[key],
           }))
       : !esVisualizador
@@ -1035,6 +1057,7 @@ export default function Layout() {
             { key: 'riesgos', title: t('nav.sections.riesgos'), icon: FaChartBar, items: menuItems.riesgos },
             { key: 'express', title: t('nav.sections.express'), icon: FaBolt, items: menuItems.express },
             { key: 'equidadFdm', title: t('nav.sections.equidadFdm'), icon: FaHandHoldingHeart, items: menuItems.equidadFdm },
+            { key: 'equidadCat', title: t('nav.sections.equidadCat'), icon: ICONOS_ASEGURADORA.equidadCat, items: menuItems.equidadCat },
             { key: 'alfa', title: t('nav.sections.alfa'), icon: ICONOS_ASEGURADORA.alfa, items: menuItems.alfa },
             { key: 'zurich', title: t('nav.sections.zurich'), icon: ICONOS_ASEGURADORA.zurich, items: menuItems.zurich },
             { key: 'bbvaCat', title: t('nav.sections.bbvaCat'), icon: ICONOS_ASEGURADORA.bbvaCat, items: menuItems.bbvaCat },

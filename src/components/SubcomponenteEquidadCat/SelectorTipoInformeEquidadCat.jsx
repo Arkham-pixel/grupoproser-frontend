@@ -5,7 +5,7 @@ import {
   expressFormSection,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
-import { normalizarTipoInformeAllianz } from './liquidadorAllianzHelpers.js';
+import { normalizarTipoInformeEquidadCat } from './liquidadorEquidadCatHelpers.js';
 
 const cardBase =
   'flex h-full flex-col rounded-xl border p-4 text-left transition hover:border-fenix-primario/50 disabled:cursor-not-allowed disabled:opacity-60';
@@ -15,23 +15,23 @@ const cardActive =
   'border-fenix-primario bg-fenix-primario/5 dark:border-fenix-primario dark:bg-fenix-primario/10';
 
 /**
- * Selector persistente de informe preliminar / final / único (Allianz).
+ * Selector persistente de informe preliminar / final / único (EquidadCat).
  * La elección se guarda en el caso y se restaura al reabrir o al cambiar de pestaña.
  */
-export default function SelectorTipoInformeAllianz({
-  tipo = 'unico',
+export default function SelectorTipoInformeEquidadCat({
+  tipo = 'preliminar',
   onElegir,
   disabled = false,
   compacto = false,
 }) {
   const { t } = useTranslation();
-  const actual = normalizarTipoInformeAllianz(tipo, 'unico');
+  const actual = normalizarTipoInformeEquidadCat(tipo, 'preliminar');
 
   return (
     <section className={compacto ? 'mb-4' : expressFormSection}>
-      <h3 className={expressSectionTitle}>{t('allianz.reportUnique.typeLabel')}</h3>
+      <h3 className={expressSectionTitle}>{t('equidadCat.reportUnique.typeLabel')}</h3>
       <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-        {t('allianz.reportUnique.typeHintWorkspace')}
+        {t('equidadCat.reportUnique.typeHintWorkspace')}
       </p>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <button
@@ -42,10 +42,10 @@ export default function SelectorTipoInformeAllianz({
         >
           <FaFileAlt className="mb-2 text-fenix-primario" />
           <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
-            {t('allianz.reportUnique.typePreliminar')}
+            {t('equidadCat.reportUnique.typePreliminar')}
           </span>
           <span className="mt-1 font-body text-xs text-gray-500">
-            {t('allianz.reportUnique.typePreliminarHint')}
+            {t('equidadCat.reportUnique.typePreliminarHint')}
           </span>
         </button>
         <button
@@ -56,10 +56,10 @@ export default function SelectorTipoInformeAllianz({
         >
           <FaFileSignature className="mb-2 text-fenix-primario" />
           <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
-            {t('allianz.reportUnique.typeFinal')}
+            {t('equidadCat.reportUnique.typeFinal')}
           </span>
           <span className="mt-1 font-body text-xs text-gray-500">
-            {t('allianz.reportUnique.typeFinalHint')}
+            {t('equidadCat.reportUnique.typeFinalHint')}
           </span>
         </button>
         <button
@@ -70,10 +70,10 @@ export default function SelectorTipoInformeAllianz({
         >
           <FaFileWord className="mb-2 text-fenix-primario" />
           <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
-            {t('allianz.reportUnique.typeUnico')}
+            {t('equidadCat.reportUnique.typeUnico')}
           </span>
           <span className="mt-1 font-body text-xs text-gray-500">
-            {t('allianz.reportUnique.typeUnicoHint')}
+            {t('equidadCat.reportUnique.typeUnicoHint')}
           </span>
         </button>
       </div>

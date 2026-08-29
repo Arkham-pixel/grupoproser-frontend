@@ -20,7 +20,7 @@ import {
   WidthType,
 } from 'docx';
 import { saveAs } from 'file-saver';
-import logoAllianzUrl from '../../assets/zurich-logo.png';
+import logoAllianzUrl from '../../assets/logo-allianz.jpg';
 import { urlDescargaArchivoAllianz } from '../../services/allianzService.js';
 import { nombreUsuarioPlataforma } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
@@ -363,7 +363,7 @@ export async function generarDesprendibleCatAllianz(caso = {}) {
                   ? [
                       new ImageRun({
                         data: logoAllianz.bytes,
-                        transformation: { width: 110, height: 44 },
+                        transformation: { width: 140, height: 41 },
                         type: logoAllianz.type,
                       }),
                     ]

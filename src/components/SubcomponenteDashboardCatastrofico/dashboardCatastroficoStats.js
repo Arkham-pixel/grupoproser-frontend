@@ -236,7 +236,7 @@ export function construirDashboardCatastrofico(
     const estado = estadoDe(c);
     porEstadoMap.set(estado, (porEstadoMap.get(estado) || 0) + 1);
 
-    const fSin = parseFecha(c.fechaSiniestro);
+    const fSin = parseFecha(c.fechaSiniestro) || parseFecha(c.fechaAviso);
     const fInsp = parseFecha(c.fechaInspeccion);
     const fLiq = parseFecha(c.fechaLiquidado);
     const fRef = fSin || parseFecha(c.createdAt);

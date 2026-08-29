@@ -242,7 +242,7 @@ export function mapCasoFdmALiquidador(caso = {}) {
     ...DEFAULT_LIQUIDADOR_FDM,
     encabezado: {
       ...DEFAULT_LIQUIDADOR_FDM.encabezado,
-      tomador: 'FUNDACION DE LA MUJER',
+      tomador: caso.tomadorLiquidador || 'FUNDACION DE LA MUJER',
       asegurado: caso.nombre || '',
       poliza: caso.polizaAfectar || '',
       orden: caso.orden || '',
