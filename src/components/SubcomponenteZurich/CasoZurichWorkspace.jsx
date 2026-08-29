@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { FaArrowLeft, FaFolderOpen, FaSave } from 'react-icons/fa';
+import { FaArrowLeft, FaEdit, FaFolderOpen, FaSave } from 'react-icons/fa';
 import InspeccionCatZurich from './InspeccionCatZurich.jsx';
 import InformeUnicoZurich from './InformeUnicoZurich.jsx';
 import LiquidadorZurich from './LiquidadorZurich.jsx';
 import ArchiveroZurich from './ArchiveroZurich.jsx';
+import FormularioZurich from './FormularioZurich.jsx';
 import {
   expressAlertError,
   expressAlertSuccess,
@@ -117,6 +118,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   const [busquedaCaso, setBusquedaCaso] = useState('');
   const [listaCasos, setListaCasos] = useState([]);
   const [archiveroAbierto, setArchiveroAbierto] = useState(false);
+  const [gestionarAbierto, setGestionarAbierto] = useState(false);
 
   const casoId = casoZurich?._id || casoIdFromQuery || null;
 
@@ -420,6 +422,15 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
               <button
                 type="button"
                 className={expressBtnGhost}
+                onClick={() => setGestionarAbierto(true)}
+              >
+                <FaEdit /> {t('zurich.report.manage')}
+              </button>
+            )}
+            {casoId && (
+              <button
+                type="button"
+                className={expressBtnGhost}
                 onClick={() => setArchiveroAbierto(true)}
               >
                 <FaFolderOpen /> {t('zurich.report.archive')}
@@ -588,6 +599,39 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
           </div>
         </div>
       </div>
+      {gestionarAbierto && casoZurich && (
+        <ExpressModal
+          open
+          onClose={() => setGestionarAbierto(false)}
+          title={t('zurich.page.editCase', { caseNumber: casoZurich.consecutivo || '' })}
+          wide
+        >
+          <div className="p-4 sm:p-6">
+            <FormularioZurich
+              embed
+              origen={esModuloListado ? 'listado' : 'cat'}
+              initialData={casoZurich}
+              mostrarVolverInforme
+              onClose={() => setGestionarAbierto(false)}
+              onVolverInforme={() => {
+                setGestionarAbierto(false);
+                setTab(TABS_ZURICH.INFORME);
+              }}
+              onSaved={(guardado) => {
+                setCasoZurich((prev) => ({
+                  ...(prev || {}),
+                  ...(guardado || {}),
+                  liquidador: guardado?.liquidador || prev?.liquidador,
+                  informeUnico: guardado?.informeUnico || prev?.informeUnico,
+                  archivos: Array.isArray(guardado?.archivos)
+                    ? guardado.archivos
+                    : prev?.archivos,
+                }));
+              }}
+            />
+          </div>
+        </ExpressModal>
+      )}
       {archiveroAbierto && casoZurich && (
         <ExpressModal
           open

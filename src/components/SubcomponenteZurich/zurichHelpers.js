@@ -2,59 +2,92 @@ import { crearFechaLocal } from '../../utils/fechaUtils.js';
 
 export const ZURICH_REPORTE_PAGE_SIZE = 25;
 
+export const ESTADO_ZURICH_DEFAULT = 'CASO NUEVO';
+export const ESTADO_ZURICH_ASIGNADO = 'ASIGNADO';
+export const ESTADO_ZURICH_INSPECCION_COORDINADA = 'INSPECCIÓN COORDINADA';
+export const ESTADO_ZURICH_ANALISIS = 'ANALISIS DEL CASO';
+export const ESTADO_ZURICH_PENDIENTE_DOCS = 'PENDIENTE DOCUMENTOS (INFORME PRELIMINAR)';
+export const ESTADO_ZURICH_LIQUIDAR = 'LIQUIDAR (INFORME UNICO / FINAL)';
+export const ESTADO_ZURICH_AUTORIDAD_DELEGADA = 'AUTORIDAD DELEGADA';
+export const ESTADO_ZURICH_ACEPTACION_CLIENTE = 'ACEPTACIÓN CLIENTE';
+export const ESTADO_ZURICH_FINALIZADO = 'FINALIZADO';
+
 export const ESTADOS_ZURICH = [
-  'CASO NUEVO',
-  'INSPECCIÓN COORDINADA',
-  'INSPECCIONADO',
-  'VERIFICADO',
-  'PENDIENTE DOCUMENTOS',
-  'LIQUIDADO',
-  'OBJETADO',
+  ESTADO_ZURICH_DEFAULT,
+  ESTADO_ZURICH_ASIGNADO,
+  ESTADO_ZURICH_INSPECCION_COORDINADA,
+  ESTADO_ZURICH_ANALISIS,
+  ESTADO_ZURICH_PENDIENTE_DOCS,
+  ESTADO_ZURICH_LIQUIDAR,
+  ESTADO_ZURICH_AUTORIDAD_DELEGADA,
+  ESTADO_ZURICH_ACEPTACION_CLIENTE,
+  ESTADO_ZURICH_FINALIZADO,
 ];
 
 export const MODALIDADES_ZURICH = ['CAMPO', 'VIDEOPERITAJE'];
 
 export const FECHA_ACCION_POR_ESTADO_ZURICH = {
-  'CASO NUEVO': 'fechaCasoNuevo',
-  'INSPECCIÓN COORDINADA': 'fechaCoordinandoInspeccion',
-  INSPECCIONADO: 'fechaInspeccionado',
-  VERIFICADO: 'fechaVerificado',
-  'PENDIENTE DOCUMENTOS': 'fechaSolicitudDocumento',
-  LIQUIDADO: 'fechaLiquidado',
-  OBJETADO: 'fechaObjecion',
+  [ESTADO_ZURICH_DEFAULT]: 'fechaCasoNuevo',
+  [ESTADO_ZURICH_ASIGNADO]: 'fechaAsignacion',
+  [ESTADO_ZURICH_INSPECCION_COORDINADA]: 'fechaCoordinandoInspeccion',
+  [ESTADO_ZURICH_ANALISIS]: 'fechaAnalisisCaso',
+  [ESTADO_ZURICH_PENDIENTE_DOCS]: 'fechaInformePreliminar',
+  [ESTADO_ZURICH_LIQUIDAR]: 'fechaInformeFinal',
+  [ESTADO_ZURICH_AUTORIDAD_DELEGADA]: 'fechaAutoridadDelegada',
+  [ESTADO_ZURICH_ACEPTACION_CLIENTE]: 'fechaAceptacionCliente',
+  [ESTADO_ZURICH_FINALIZADO]: 'fechaFinalizado',
 };
 
 export const CAMPOS_FECHA_ACCION_ZURICH = [
   'fechaCasoNuevo',
+  'fechaAsignacion',
   'fechaCoordinandoInspeccion',
+  'fechaAnalisisCaso',
   'fechaInspeccionado',
   'fechaVerificado',
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
-  'fechaObjecion',
-  'fechaLiquidado',
   'fechaInformePreliminar',
   'fechaInformeFinal',
+  'fechaAutoridadDelegada',
+  'fechaAceptacionCliente',
+  'fechaObjecion',
+  'fechaLiquidado',
+  'fechaFinalizado',
 ];
 
 const ESTADOS_ZURICH_LEGACY = {
-  PENDIENTE: 'CASO NUEVO',
-  'EN INSPECCION': 'INSPECCIÓN COORDINADA',
-  'COORDINANDO INSPECCION': 'INSPECCIÓN COORDINADA',
-  'INSPCCION COODINADA': 'INSPECCIÓN COORDINADA',
-  'ANALISIS DEL CASO': 'INSPECCIONADO',
-  DOCUMENTACION: 'PENDIENTE DOCUMENTOS',
-  'PENDIENTE DE DOCUMENTO': 'PENDIENTE DOCUMENTOS',
-  'PENDIENTE DE DOCUMENTOS': 'PENDIENTE DOCUMENTOS',
-  OBJECION: 'OBJETADO',
-  'CASO OBJETADO': 'OBJETADO',
-  'AUTORIZACION ANALISTA': 'LIQUIDADO',
-  'CASO PARA PAGO': 'LIQUIDADO',
-  'ENVIADO ASEGURADORA': 'LIQUIDADO',
-  CERRADO: 'LIQUIDADO',
+  PENDIENTE: ESTADO_ZURICH_DEFAULT,
+  'EN INSPECCION': ESTADO_ZURICH_INSPECCION_COORDINADA,
+  'COORDINANDO INSPECCION': ESTADO_ZURICH_INSPECCION_COORDINADA,
+  'INSPCCION COODINADA': ESTADO_ZURICH_INSPECCION_COORDINADA,
+  'INSPCION COORDINADA': ESTADO_ZURICH_INSPECCION_COORDINADA,
+  INSPECCIONADO: ESTADO_ZURICH_ANALISIS,
+  VERIFICADO: ESTADO_ZURICH_ANALISIS,
+  DOCUMENTACION: ESTADO_ZURICH_PENDIENTE_DOCS,
+  'PENDIENTE DE DOCUMENTO': ESTADO_ZURICH_PENDIENTE_DOCS,
+  'PENDIENTE DE DOCUMENTOS': ESTADO_ZURICH_PENDIENTE_DOCS,
+  'INFORME PRELIMINAR': ESTADO_ZURICH_PENDIENTE_DOCS,
+  'INFORME UNICO': ESTADO_ZURICH_LIQUIDAR,
+  'INFORME FINAL': ESTADO_ZURICH_LIQUIDAR,
+  LIQUIDADO: ESTADO_ZURICH_FINALIZADO,
+  OBJECION: ESTADO_ZURICH_FINALIZADO,
+  OBJETADO: ESTADO_ZURICH_FINALIZADO,
+  'CASO OBJETADO': ESTADO_ZURICH_FINALIZADO,
+  'CASO PARA PAGO': ESTADO_ZURICH_FINALIZADO,
+  'ENVIADO ASEGURADORA': ESTADO_ZURICH_FINALIZADO,
+  'AUTORIZACION ANALISTA': ESTADO_ZURICH_AUTORIDAD_DELEGADA,
+  'AUTORIDAD DELEGADA': ESTADO_ZURICH_AUTORIDAD_DELEGADA,
+  'ACEPTACION CLIENTE': ESTADO_ZURICH_ACEPTACION_CLIENTE,
+  'ACEPTACION LIQUIDACION': ESTADO_ZURICH_ACEPTACION_CLIENTE,
+  CERRADO: ESTADO_ZURICH_FINALIZADO,
 };
 
-export const ESTADOS_TEMPRANOS_ZURICH = new Set(['CASO NUEVO', 'INSPECCIÓN COORDINADA']);
+export const ESTADOS_TEMPRANOS_ZURICH = new Set([
+  ESTADO_ZURICH_DEFAULT,
+  ESTADO_ZURICH_ASIGNADO,
+  ESTADO_ZURICH_INSPECCION_COORDINADA,
+]);
 
 const claveEstadoZurich = (valor) =>
   String(valor ?? '')
@@ -64,14 +97,31 @@ const claveEstadoZurich = (valor) =>
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
+const claveBaseEstadoZurich = (valor) =>
+  claveEstadoZurich(valor)
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 export function homologarEstadoZurich(valor) {
   const raw = String(valor || '').trim();
-  if (!raw) return 'CASO NUEVO';
+  if (!raw) return ESTADO_ZURICH_DEFAULT;
   if (ESTADOS_ZURICH.includes(raw)) return raw;
   const key = claveEstadoZurich(raw);
   const exacto = ESTADOS_ZURICH.find((est) => claveEstadoZurich(est) === key);
   if (exacto) return exacto;
-  return ESTADOS_ZURICH_LEGACY[key] || raw;
+  const base = claveBaseEstadoZurich(raw);
+  const porBase = ESTADOS_ZURICH.find((est) => claveBaseEstadoZurich(est) === base);
+  if (porBase) return porBase;
+  return ESTADOS_ZURICH_LEGACY[key] || ESTADOS_ZURICH_LEGACY[base] || raw;
+}
+
+export function esEstadoCerradoZurich(estado) {
+  return homologarEstadoZurich(estado) === ESTADO_ZURICH_FINALIZADO;
+}
+
+export function esEstadoPendienteDocsZurich(estado) {
+  return homologarEstadoZurich(estado) === ESTADO_ZURICH_PENDIENTE_DOCS;
 }
 
 export function campoFechaPorEstadoZurich(estado) {
@@ -90,12 +140,25 @@ const fechaEstadoVacia = (valor) =>
 /** Pasa fechas del catálogo viejo (análisis / pago / autorización) a los campos vigentes. */
 export function migrarFechasEstadoZurich(caso = {}) {
   const out = { ...caso, estado: homologarEstadoZurich(caso.estado) };
-  if (fechaEstadoVacia(out.fechaInspeccionado)) {
-    out.fechaInspeccionado = caso.fechaAnalisisCaso || caso.fechaInspeccion || out.fechaInspeccionado;
+  if (fechaEstadoVacia(out.fechaAnalisisCaso)) {
+    out.fechaAnalisisCaso =
+      caso.fechaInspeccionado || caso.fechaInspeccion || caso.fechaVerificado || out.fechaAnalisisCaso;
   }
-  if (fechaEstadoVacia(out.fechaLiquidado)) {
-    out.fechaLiquidado =
-      caso.fechaCasoParaPago || caso.fechaAutorizacionAnalista || out.fechaLiquidado;
+  if (fechaEstadoVacia(out.fechaInformePreliminar)) {
+    out.fechaInformePreliminar = caso.fechaSolicitudDocumento || out.fechaInformePreliminar;
+  }
+  if (fechaEstadoVacia(out.fechaFinalizado) && out.estado === ESTADO_ZURICH_FINALIZADO) {
+    out.fechaFinalizado =
+      caso.fechaLiquidado || caso.fechaObjecion || caso.fechaCasoParaPago || out.fechaFinalizado;
+  }
+  if (fechaEstadoVacia(out.fechaInformeFinal) && out.estado === ESTADO_ZURICH_LIQUIDAR) {
+    out.fechaInformeFinal = caso.fechaLiquidado || out.fechaInformeFinal;
+  }
+  if (fechaEstadoVacia(out.fechaAutoridadDelegada) && out.estado === ESTADO_ZURICH_AUTORIDAD_DELEGADA) {
+    out.fechaAutoridadDelegada = caso.fechaAutorizacionAnalista || out.fechaAutoridadDelegada;
+  }
+  if (fechaEstadoVacia(out.fechaAceptacionCliente) && out.estado === ESTADO_ZURICH_ACEPTACION_CLIENTE) {
+    out.fechaAceptacionCliente = caso.fechaAceptacionLiquidacion || out.fechaAceptacionCliente;
   }
   return out;
 }
@@ -380,9 +443,10 @@ export function derivarCuadroDesdeInspeccionZurich({
 
   const estadoActual = homologarEstadoZurich(caso.estado);
   if (marcarInspeccionado && ESTADOS_TEMPRANOS_ZURICH.has(estadoActual)) {
-    out.estado = 'INSPECCIONADO';
-    out.fechaInspeccionado = fechaInspeccion || new Date().toISOString().slice(0, 10);
-    if (!out.fechaInspeccion) out.fechaInspeccion = out.fechaInspeccionado;
+    out.estado = ESTADO_ZURICH_ANALISIS;
+    out.fechaAnalisisCaso = fechaInspeccion || new Date().toISOString().slice(0, 10);
+    out.fechaInspeccionado = out.fechaAnalisisCaso;
+    if (!out.fechaInspeccion) out.fechaInspeccion = out.fechaAnalisisCaso;
   }
   return out;
 }
@@ -629,6 +693,30 @@ export function departamentoPorCiudadZurich(ciudad, catalogo = []) {
   return '';
 }
 
+/** Departamento del caso, o inferido por ciudad/dirección (p. ej. CALI → Valle del Cauca). */
+export function resolverDepartamentoZurich(caso = {}, catalogo = []) {
+  const directo = String(caso?.departamento || '').trim();
+  if (directo && directo !== '—' && directo !== '-') return directo;
+  const ciudad = caso?.ciudad || '';
+  const direccion = caso?.direccionPredio || caso?.direccion || '';
+  const texto = `${ciudad} ${direccion}`;
+  return (
+    departamentoPorCiudadZurich(ciudad, catalogo) ||
+    departamentoPorCiudadZurich(direccion, catalogo) ||
+    (/valle\s+del\s+cauca/i.test(texto) ? 'VALLE DEL CAUCA' : '')
+  );
+}
+
+export function primeraFechaNoVaciaZurich(...valores) {
+  for (const v of valores) {
+    if (v == null || v === '') continue;
+    const s = String(v).trim();
+    if (!s || s === '—' || s === '-' || s === 'null' || s === 'undefined') continue;
+    return v;
+  }
+  return '';
+}
+
 export const buildOpcionesFiltro = (casos = [], campo) => {
   const porNorm = new Map();
   for (const item of casos) {
@@ -691,6 +779,9 @@ export const FORM_VACIO_ZURICH = {
   fechaLiquidado: '',
   fechaInformePreliminar: '',
   fechaInformeFinal: '',
+  fechaAutoridadDelegada: '',
+  fechaAceptacionCliente: '',
+  fechaFinalizado: '',
   documentoFaltante: '',
   observacionPendienteDocumento: '',
   motivoObjecion: '',
@@ -868,12 +959,29 @@ export const construirFormDesdecasoZurich = (caso = {}) => {
     base.tipoPoliza = 'OTRO';
   }
   base.estado = homologarEstadoZurich(base.estado);
-  if (!base.fechaInspeccionado) {
-    base.fechaInspeccionado = fechaParaInput(caso.fechaAnalisisCaso || caso.fechaInspeccion || '');
+  if (!base.fechaAnalisisCaso) {
+    base.fechaAnalisisCaso = fechaParaInput(
+      caso.fechaAnalisisCaso || caso.fechaInspeccionado || caso.fechaInspeccion || ''
+    );
   }
-  if (!base.fechaLiquidado) {
-    base.fechaLiquidado = fechaParaInput(
-      caso.fechaCasoParaPago || caso.fechaAutorizacionAnalista || ''
+  if (!base.fechaFinalizado) {
+    base.fechaFinalizado = fechaParaInput(
+      caso.fechaFinalizado || caso.fechaLiquidado || caso.fechaObjecion || caso.fechaCasoParaPago || ''
+    );
+  }
+  if (!base.fechaInformePreliminar) {
+    base.fechaInformePreliminar = fechaParaInput(
+      caso.fechaInformePreliminar || caso.fechaSolicitudDocumento || ''
+    );
+  }
+  if (!base.fechaAutoridadDelegada) {
+    base.fechaAutoridadDelegada = fechaParaInput(
+      caso.fechaAutoridadDelegada || caso.fechaAutorizacionAnalista || ''
+    );
+  }
+  if (!base.fechaAceptacionCliente) {
+    base.fechaAceptacionCliente = fechaParaInput(
+      caso.fechaAceptacionCliente || caso.fechaAceptacionLiquidacion || ''
     );
   }
   base.createdAt = caso.createdAt || '';

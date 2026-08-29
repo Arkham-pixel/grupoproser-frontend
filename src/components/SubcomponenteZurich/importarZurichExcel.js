@@ -4,6 +4,7 @@ import {
   normalizarSiNoZurich,
   homologarEstadoZurich,
 } from './zurichHelpers.js';
+import { LIDER_ZURICH } from '../../utils/catalogosAsignacionCatastrofico.js';
 
 const normHeader = (valor) =>
   String(valor ?? '')
@@ -100,6 +101,8 @@ const HEADER_MAP = {
   'FECHA CASO NUEVO': 'fechaCasoNuevo',
   'FECHA INSPECCION COORDINADA': 'fechaCoordinandoInspeccion',
   'FECHA COORDINANDO INSPECCION': 'fechaCoordinandoInspeccion',
+  'FECHA ASIGNACION': 'fechaAsignacion',
+  'FECHA ANALISIS DEL CASO': 'fechaAnalisisCaso',
   'FECHA INSPECCIONADO': 'fechaInspeccionado',
   'FECHA SOLICITUD DOCUMENTO': 'fechaSolicitudDocumento',
   'FECHA SOLICITUD DE DOCUMENTO': 'fechaSolicitudDocumento',
@@ -111,6 +114,9 @@ const HEADER_MAP = {
   'FECHA OBJECION': 'fechaObjecion',
   'FECHA INFORME PRELIMINAR': 'fechaInformePreliminar',
   'FECHA INFORME FINAL': 'fechaInformeFinal',
+  'FECHA AUTORIDAD DELEGADA': 'fechaAutoridadDelegada',
+  'FECHA ACEPTACION CLIENTE': 'fechaAceptacionCliente',
+  'FECHA FINALIZADO': 'fechaFinalizado',
   'FECHA ACEPTACION LIQUIDACION': 'fechaAceptacionLiquidacion',
   'FECHA ENVIO A LA ASEGURADORA': 'fechaEnvioAseguradora',
   ESTADO: 'estado',
@@ -233,6 +239,10 @@ const CAMPOS_FECHA = new Set([
   'fechaObjecion',
   'fechaInformePreliminar',
   'fechaInformeFinal',
+  'fechaAutoridadDelegada',
+  'fechaAceptacionCliente',
+  'fechaFinalizado',
+  'fechaAnalisisCaso',
   'fechaAceptacionLiquidacion',
   'fechaEnvioAseguradora',
 ]);
@@ -346,6 +356,7 @@ const parsearHojaACasos = (sheet) => {
       }
     });
     if (!filaTieneDatos(caso)) continue;
+    if (!String(caso.ajustadorLider || '').trim()) caso.ajustadorLider = LIDER_ZURICH;
     if (!caso.identificacion && caso.zc) {
       caso.identificacion = String(caso.zc);
     }
@@ -474,6 +485,7 @@ const HEADER_MAP_LISTADO = {
   NOTAS: 'observaciones',
   'FECHA CASO NUEVO': 'fechaCasoNuevo',
   'FECHA INSPECCION COORDINADA': 'fechaCoordinandoInspeccion',
+  'FECHA ANALISIS DEL CASO': 'fechaAnalisisCaso',
   'FECHA INSPECCIONADO': 'fechaInspeccionado',
   'FECHA SOLICITUD DOCUMENTO': 'fechaSolicitudDocumento',
   'FECHA SOLICITUD DE DOCUMENTOS': 'fechaSolicitudDocumento',
@@ -483,6 +495,9 @@ const HEADER_MAP_LISTADO = {
   'FECHA LIQUIDADO': 'fechaLiquidado',
   'FECHA INFORME PRELIMINAR': 'fechaInformePreliminar',
   'FECHA INFORME FINAL': 'fechaInformeFinal',
+  'FECHA AUTORIDAD DELEGADA': 'fechaAutoridadDelegada',
+  'FECHA ACEPTACION CLIENTE': 'fechaAceptacionCliente',
+  'FECHA FINALIZADO': 'fechaFinalizado',
 };
 
 const limpiarTextoListado = (raw) => {
@@ -546,6 +561,7 @@ const parsearHojaListadoCliente = (sheet) => {
       observaciones: '',
       inspector: '',
       ajustador: '',
+      ajustadorLider: LIDER_ZURICH,
       fechaAsignacion: '',
       fechaVisita: '',
       estado: '',
@@ -565,7 +581,11 @@ const parsearHojaListadoCliente = (sheet) => {
         campo === 'fechaObjecion' ||
         campo === 'fechaLiquidado' ||
         campo === 'fechaInformePreliminar' ||
-        campo === 'fechaInformeFinal'
+        campo === 'fechaInformeFinal' ||
+        campo === 'fechaAutoridadDelegada' ||
+        campo === 'fechaAceptacionCliente' ||
+        campo === 'fechaFinalizado' ||
+        campo === 'fechaAnalisisCaso'
       ) {
         caso[campo] = parseFechaCelda(raw) || '';
         return;
@@ -610,6 +630,7 @@ const parsearHojaListadoCliente = (sheet) => {
     }
     if (!caso.estado || caso.estado === '0') caso.estado = '';
     caso.estado = homologarEstadoZurich(caso.estado);
+    if (!String(caso.ajustadorLider || '').trim()) caso.ajustadorLider = LIDER_ZURICH;
     casos.push(caso);
   }
 

@@ -1,8 +1,19 @@
 import { parseFecha } from '../SubcomponenteDashboardCatastrofico/dashboardCatastroficoStats.js';
 import {
   ESTADOS_ZURICH,
+  ESTADO_ZURICH_DEFAULT,
+  ESTADO_ZURICH_ASIGNADO,
+  ESTADO_ZURICH_INSPECCION_COORDINADA,
+  ESTADO_ZURICH_ANALISIS,
+  ESTADO_ZURICH_PENDIENTE_DOCS,
+  ESTADO_ZURICH_LIQUIDAR,
+  ESTADO_ZURICH_AUTORIDAD_DELEGADA,
+  ESTADO_ZURICH_ACEPTACION_CLIENTE,
+  ESTADO_ZURICH_FINALIZADO,
   diasEnEstadoZurich,
   etiquetaTipoPolizaZurich,
+  esEstadoCerradoZurich,
+  esEstadoPendienteDocsZurich,
   homologarCiudadZurich,
   homologarEstadoZurich,
 } from './zurichHelpers.js';
@@ -10,13 +21,11 @@ import {
 export const DIAS_ESTANCADO_ZURICH = 15;
 export const LIMITE_ESTANCADOS_ZURICH = 20;
 
-/** En el listado Zurich cierran LIQUIDADO y OBJETADO. */
-const ESTADOS_CERRADOS = new Set(['LIQUIDADO', 'OBJETADO']);
+/** En el listado Zurich solo cierra FINALIZADO. */
 const ESTADOS_TRAMITE = new Set([
-  'CASO NUEVO',
-  'INSPECCIÓN COORDINADA',
-  'INSPECCIONADO',
-  'VERIFICADO',
+  ESTADO_ZURICH_DEFAULT,
+  ESTADO_ZURICH_ASIGNADO,
+  ESTADO_ZURICH_INSPECCION_COORDINADA,
 ]);
 
 const CUBETAS_ANTIGUEDAD = ['0-7 d', '8-15 d', '16-30 d', '31-45 d', '46+ d'];
@@ -26,7 +35,7 @@ function claveEstado(valor) {
 }
 
 export function esCarteraAbiertaZurich(estado) {
-  return !ESTADOS_CERRADOS.has(claveEstado(estado));
+  return !esEstadoCerradoZurich(estado);
 }
 
 export function fechaAltaListadoZurich(caso = {}) {
@@ -80,11 +89,8 @@ function agruparConteo(casos, getter, { vacio = 'Sin dato', limite = 10 } = {}) 
 
 function motivoEstancado(caso = {}) {
   const estado = claveEstado(caso.estado);
-  if (estado === 'PENDIENTE DOCUMENTOS') {
+  if (esEstadoPendienteDocsZurich(estado)) {
     return String(caso.documentoFaltante || caso.observacionPendienteDocumento || '').trim();
-  }
-  if (estado === 'OBJETADO') {
-    return String(caso.motivoObjecion || '').trim();
   }
   return String(caso.observaciones || '').trim();
 }
@@ -107,9 +113,11 @@ export function construirDashboardZurichListado(casos = []) {
   let carteraAbierta = 0;
   let enTramite = 0;
   let pendienteDocumento = 0;
-  let enObjecion = 0;
-  let listosPago = 0;
-  let paraPago = 0;
+  let enLiquidar = 0;
+  let enAutoridadDelegada = 0;
+  let enAceptacionCliente = 0;
+  let enAnalisis = 0;
+  let finalizados = 0;
 
   for (const caso of lista) {
     const estado = claveEstado(caso.estado);
@@ -118,10 +126,12 @@ export function construirDashboardZurichListado(casos = []) {
     const abierto = esCarteraAbiertaZurich(estado);
     if (abierto) carteraAbierta += 1;
     if (ESTADOS_TRAMITE.has(estado)) enTramite += 1;
-    if (estado === 'PENDIENTE DOCUMENTOS') pendienteDocumento += 1;
-    if (estado === 'OBJETADO') enObjecion += 1;
-    if (estado === 'INSPECCIONADO') listosPago += 1;
-    if (estado === 'LIQUIDADO') paraPago += 1;
+    if (esEstadoPendienteDocsZurich(estado)) pendienteDocumento += 1;
+    if (estado === ESTADO_ZURICH_LIQUIDAR) enLiquidar += 1;
+    if (estado === ESTADO_ZURICH_AUTORIDAD_DELEGADA) enAutoridadDelegada += 1;
+    if (estado === ESTADO_ZURICH_ACEPTACION_CLIENTE) enAceptacionCliente += 1;
+    if (estado === ESTADO_ZURICH_ANALISIS) enAnalisis += 1;
+    if (estado === ESTADO_ZURICH_FINALIZADO) finalizados += 1;
 
     const dias = diasEnEstadoNumeroZurich(caso);
     if (abierto && dias != null) {
@@ -150,7 +160,7 @@ export function construirDashboardZurichListado(casos = []) {
       }
       mensual.get(clave).altas += 1;
     }
-    const fPago = parseFecha(caso.fechaLiquidado || caso.fechaCasoParaPago);
+    const fPago = parseFecha(caso.fechaFinalizado || caso.fechaLiquidado || caso.fechaCasoParaPago);
     if (fPago) {
       const clave = claveMes(fPago);
       if (!mensual.has(clave)) {
@@ -175,13 +185,17 @@ export function construirDashboardZurichListado(casos = []) {
       carteraAbierta,
       enTramite,
       pendienteDocumento,
-      enObjecion,
+      enObjecion: 0,
       objetados: 0,
-      listosPago,
-      pagados: paraPago,
+      listosPago: enAnalisis,
+      pagados: finalizados,
+      enLiquidar,
+      enAutoridadDelegada,
+      enAceptacionCliente,
+      finalizados,
       estancados: estancados.length,
       medianaDias: mediana(diasAbiertos),
-      porcentajePagados: totalCasos === 0 ? 0 : Math.round((paraPago / totalCasos) * 100),
+      porcentajePagados: totalCasos === 0 ? 0 : Math.round((finalizados / totalCasos) * 100),
     },
     porEstado,
     porCiudad: agruparConteo(lista, (c) => homologarCiudadZurich(c.ciudad), { vacio: 'Sin ciudad' }),

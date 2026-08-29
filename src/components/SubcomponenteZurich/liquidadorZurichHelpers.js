@@ -1,5 +1,5 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
-import { formatMiles } from './zurichHelpers.js';
+import { formatMiles, primeraFechaNoVaciaZurich, resolverDepartamentoZurich } from './zurichHelpers.js';
 import { parsearNumero } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
@@ -445,7 +445,7 @@ export function encabezadoDesdecasoZurich(caso = {}) {
     fechaSiniestro: fechaInput(c.fechaSiniestro),
     direccion: c.direccionPredio || '',
     ciudad: c.ciudad || '',
-    departamento: c.departamento || '',
+    departamento: resolverDepartamentoZurich(c),
     cobertura: c.cobertura || '',
     evento: c.cobertura || 'TERREMOTO',
     fechaInicioPoliza: fechaInput(c.fechaInicioPoliza),
@@ -459,7 +459,14 @@ export function encabezadoDesdecasoZurich(caso = {}) {
 /** Prefill portada NSR desde caso Zurich */
 export function prefillNsrDesdecasoZurich(caso = {}, encabezado = {}) {
   return {
-    fechaInspeccion: fechaInput(caso.fechaInspeccion),
+    fechaInspeccion: fechaInput(
+      primeraFechaNoVaciaZurich(
+        caso.fechaInspeccion,
+        caso.fechaVisita,
+        caso.fechaInspeccionado,
+        caso.fechaCoordinandoInspeccion
+      )
+    ),
     asegurado: encabezado.asegurado || caso.asegurado || caso.informacionContacto || '',
     poliza: encabezado.poliza || caso.numeroPoliza || '',
     municipio: encabezado.ciudad || caso.ciudad || '',

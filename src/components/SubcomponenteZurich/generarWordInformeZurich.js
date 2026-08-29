@@ -39,6 +39,7 @@ import {
 } from './liquidadorZurichHelpers.js';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { primeraFechaNoVaciaZurich, resolverDepartamentoZurich } from './zurichHelpers.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -373,7 +374,7 @@ const campoFila = (label, value, opts = {}) =>
   });
 
 /** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
-function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {} } = {}) {
+function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}, portada = {} } = {}) {
   const vigencia =
     caso.fechaInicioPoliza || caso.fechaFinPoliza
       ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
@@ -381,29 +382,44 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
 
   const esPreliminar = esInformePreliminarZurich(info);
   const reserva = reservaSugeridaZurich(info);
+  const ciudad = caso.ciudad || enc.ciudad || portada.municipio || '';
+  const departamento = resolverDepartamentoZurich({
+    ciudad,
+    departamento: caso.departamento || enc.departamento,
+    direccionPredio: caso.direccionPredio || enc.direccion || portada.direccion,
+  });
+  const fechaOcurrencia = primeraFechaNoVaciaZurich(
+    portada.fechaSismo,
+    portada.fechaOcurrencia,
+    caso.fechaSiniestro,
+    enc.fechaSiniestro,
+    enc.fechaOcurrencia
+  );
+  const fechaInspeccion = primeraFechaNoVaciaZurich(
+    portada.fechaInspeccion,
+    caso.fechaInspeccion,
+    caso.fechaVisita,
+    caso.fechaInspeccionado,
+    caso.fechaCoordinandoInspeccion,
+    enc.fechaInspeccion
+  );
   const filas = [
     ['REPORTE No', etiquetaReporteCuadroZurich(info.tipoInforme)],
     ['CONSECUTIVO', txt(caso.consecutivo)],
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
-    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto)],
-    ['CORREO ELECTRÓNICO', txt(caso.correo)],
-    ['CELULAR', txt(caso.celular)],
+    ['ASEGURADO / CONTACTO', txt(caso.asegurado || enc.asegurado || caso.informacionContacto)],
     ['IDENTIFICACIÓN', txt(caso.identificacion || enc.identificacion)],
     ['TIPO IDENTIFICACIÓN', txt(caso.tipoIdentificacion || enc.tipoIdentificacion)],
     ['N° PÓLIZA', txt(caso.numeroPoliza || enc.poliza)],
     ['TIPO PÓLIZA', txt(caso.tipoPoliza || enc.tipoPoliza)],
     ['CAUSA', txt(caso.causa || enc.causa)],
-    ['N° CRÉDITO', txt(caso.numeroCredito || enc.credito)],
     ['VIGENCIA', vigencia],
     ['COBERTURA / EVENTO', txt(caso.cobertura || enc.cobertura || enc.evento)],
-    ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion)],
-    [
-      'CIUDAD / DEPARTAMENTO',
-      `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`,
-    ],
-    ['FECHA DE OCURRENCIA', fmtFechaCorta(caso.fechaSiniestro || enc.fechaSiniestro)],
-    ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
+    ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion || portada.direccion)],
+    ['CIUDAD / DEPARTAMENTO', `${txt(ciudad)} / ${txt(departamento)}`],
+    ['FECHA DE OCURRENCIA', fmtFechaCorta(fechaOcurrencia)],
+    ['FECHA DE INSPECCIÓN', fmtFechaCorta(fechaInspeccion)],
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
     ['AJUSTADOR', txt(info.ajustadorNombre)],
     ...(esPreliminar
@@ -1415,6 +1431,34 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       })
     );
 
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  let mapaEvento = await loadLogoBytes(`${baseUrl}templates/mapa-evento-siniestro-Zurich.png`);
+  if (!mapaEvento) {
+    mapaEvento = await loadLogoBytes(`${baseUrl}templates/mapa-evento-siniestro.png`);
+  }
+  const mapaEventoParrafos = [];
+  if (mapaEvento) {
+    mapaEventoParrafos.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 160, after: 80 },
+        children: [
+          new ImageRun({
+            data: mapaEvento.bytes,
+            transformation: { width: 480, height: 342 },
+            type: mapaEvento.type,
+          }),
+        ],
+      }),
+      p('Mapa del evento — impacto del sismo en Colombia', {
+        alignment: AlignmentType.CENTER,
+        size: SIZE_META,
+        after: 120,
+        color: '555555',
+      })
+    );
+  }
+
   const header = await crearEncabezadoZurich({ caso, informe: info });
 
   const usaCotizacion = totales.origenPresupuesto === 'cotizacion';
@@ -1749,7 +1793,13 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           after: 160,
           color: '333333',
         }),
-        construirCuadroPrincipal({ caso, enc, info, totales }),
+        construirCuadroPrincipal({
+          caso,
+          enc,
+          info,
+          totales,
+          portada: liq?.evaluacionSismicaNSR10?.portada || {},
+        }),
       ],
     },
     {
@@ -1760,6 +1810,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
         ...(infoEventoParrafos.length
           ? infoEventoParrafos
           : [p('Sin información del evento.')]),
+        ...mapaEventoParrafos,
       ],
     },
     {

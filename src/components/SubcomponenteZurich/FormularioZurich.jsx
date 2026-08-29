@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FaFileExcel, FaSave, FaUndo, FaUpload } from 'react-icons/fa';
+import { FaClipboardList, FaFileExcel, FaSave, FaUndo, FaUpload } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { BASE_URL } from '../../config/apiConfig.js';
@@ -100,7 +100,15 @@ const opcionHuerfana = (valor, opciones = []) => {
   return !opciones.some((op) => normTxt(op) === normTxt(v));
 };
 
-const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', onClose, onSaved }) => {
+const FormularioZurich = ({
+  initialData = null,
+  embed = false,
+  origen = 'cat',
+  onClose,
+  onSaved,
+  onVolverInforme,
+  mostrarVolverInforme = false,
+}) => {
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('zurich'), []);
@@ -200,13 +208,11 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         setAjustadoresCat(mapCatalogoCatastroficoAOpciones(listaAj, 'zurich'));
         setInspectoresCat(mapCatalogoCatastroficoAOpciones(listaIns, 'zurich'));
         const lideresOpts = mapResponsablesAOpciones(listaResp);
-        if (!esEdicion) {
-          const liderDefault = resolverLiderPorModulo(lideresOpts, 'zurich');
-          if (liderDefault) {
-            setForm((prev) =>
-              prev.ajustadorLider ? prev : { ...prev, ajustadorLider: liderDefault }
-            );
-          }
+        const liderDefault = resolverLiderPorModulo(lideresOpts, 'zurich');
+        if (liderDefault) {
+          setForm((prev) =>
+            prev.ajustadorLider ? prev : { ...prev, ajustadorLider: liderDefault }
+          );
         }
       } catch (err) {
         if (!cancelado) console.error('Error cargando catálogos Zurich:', err);
@@ -342,6 +348,12 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
   );
 
   const construirPayload = () => {
+    const conLiderZurich = (payload) => {
+      if (!String(payload.ajustadorLider || '').trim()) {
+        payload.ajustadorLider = resolverLiderPorModulo(lideresZurich, 'zurich');
+      }
+      return payload;
+    };
     if (esModuloListado) {
       const payload = {
         zc: form.zc,
@@ -381,17 +393,22 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         inspector: form.inspector,
         fechaAsignacion: form.fechaAsignacion,
         fechaVisita: form.fechaVisita,
+        fechaSiniestro: form.fechaSiniestro,
         modalidadAtencion: form.modalidadAtencion,
         fechaCasoNuevo: form.fechaCasoNuevo,
         fechaCoordinandoInspeccion: form.fechaCoordinandoInspeccion,
+        fechaAnalisisCaso: form.fechaAnalisisCaso,
         fechaInspeccionado: form.fechaInspeccionado,
         fechaVerificado: form.fechaVerificado,
         fechaSolicitudDocumento: form.fechaSolicitudDocumento,
         fechaRecepcionDocumento: form.fechaRecepcionDocumento,
-        fechaObjecion: form.fechaObjecion,
-        fechaLiquidado: form.fechaLiquidado,
         fechaInformePreliminar: form.fechaInformePreliminar,
         fechaInformeFinal: form.fechaInformeFinal,
+        fechaAutoridadDelegada: form.fechaAutoridadDelegada,
+        fechaAceptacionCliente: form.fechaAceptacionCliente,
+        fechaFinalizado: form.fechaFinalizado,
+        fechaObjecion: form.fechaObjecion,
+        fechaLiquidado: form.fechaLiquidado,
         documentoFaltante: form.documentoFaltante,
         observacionPendienteDocumento: form.observacionPendienteDocumento,
         motivoObjecion: form.motivoObjecion,
@@ -402,7 +419,7 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
         if (payload.zc) payload.identificacion = String(payload.zc).trim();
         else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       }
-      return payload;
+      return conLiderZurich(payload);
     }
     const payload = { ...form };
     payload.estado = homologarEstadoZurich(payload.estado);
@@ -435,7 +452,7 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
       else if (payload.siniestro) payload.identificacion = String(payload.siniestro).trim();
       else if (payload.riskId) payload.identificacion = String(payload.riskId).trim();
     }
-    return payload;
+    return conLiderZurich(payload);
   };
 
   const handleSubmit = async (e) => {
@@ -533,6 +550,21 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
     <form onSubmit={handleSubmit} className="space-y-5">
       {error && <div className={expressAlertError}>{error}</div>}
       {exito && <div className={expressAlertSuccess}>{exito}</div>}
+      {embed && mostrarVolverInforme && (onVolverInforme || onClose) && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-gray-700 dark:bg-gray-900">
+          <p className="font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('zurich.workspace.manageHint')}
+          </p>
+          <button
+            type="button"
+            className={expressBtnPrimary}
+            onClick={onVolverInforme || onClose}
+            disabled={guardando}
+          >
+            <FaClipboardList /> {t('zurich.workspace.backToInforme')}
+          </button>
+        </div>
+      )}
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.sections.listadoCliente')}</h3>
@@ -745,6 +777,15 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               onChange={setCampo('fechaVisita')}
             />
           </Campo>
+          {esModuloListado ? (
+            <Campo label={t('zurich.fields.fechaSiniestro')}>
+              <InputFenix
+                type="date"
+                value={form.fechaSiniestro}
+                onChange={setCampo('fechaSiniestro')}
+              />
+            </Campo>
+          ) : null}
           <Campo label={t('zurich.fields.observaciones')} className="md:col-span-2 lg:col-span-3">
             <textarea
               className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
@@ -783,18 +824,11 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               onChange={setCampo('fechaCoordinandoInspeccion')}
             />
           </Campo>
-          <Campo label={t('zurich.fields.fechaInspeccionado')}>
+          <Campo label={t('zurich.fields.fechaAnalisisCaso')}>
             <InputFenix
               type="date"
-              value={form.fechaInspeccionado}
-              onChange={setCampo('fechaInspeccionado')}
-            />
-          </Campo>
-          <Campo label={t('zurich.fields.fechaVerificado')}>
-            <InputFenix
-              type="date"
-              value={form.fechaVerificado}
-              onChange={setCampo('fechaVerificado')}
+              value={form.fechaAnalisisCaso || ''}
+              onChange={setCampo('fechaAnalisisCaso')}
             />
           </Campo>
           <Campo label={t('zurich.fields.fechaSolicitudDocumento')}>
@@ -811,12 +845,6 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               onChange={setCampo('fechaRecepcionDocumento')}
             />
           </Campo>
-          <Campo label={t('zurich.fields.fechaObjecion')}>
-            <InputFenix type="date" value={form.fechaObjecion} onChange={setCampo('fechaObjecion')} />
-          </Campo>
-          <Campo label={t('zurich.fields.fechaLiquidado')}>
-            <InputFenix type="date" value={form.fechaLiquidado} onChange={setCampo('fechaLiquidado')} />
-          </Campo>
           <Campo label={t('zurich.fields.fechaInformePreliminar')}>
             <InputFenix
               type="date"
@@ -829,6 +857,27 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
               type="date"
               value={form.fechaInformeFinal}
               onChange={setCampo('fechaInformeFinal')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaAutoridadDelegada')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAutoridadDelegada || ''}
+              onChange={setCampo('fechaAutoridadDelegada')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaAceptacionCliente')}>
+            <InputFenix
+              type="date"
+              value={form.fechaAceptacionCliente || ''}
+              onChange={setCampo('fechaAceptacionCliente')}
+            />
+          </Campo>
+          <Campo label={t('zurich.fields.fechaFinalizado')}>
+            <InputFenix
+              type="date"
+              value={form.fechaFinalizado || ''}
+              onChange={setCampo('fechaFinalizado')}
             />
           </Campo>
           <Campo label={t('zurich.fields.diasEnEstado')}>
@@ -1158,7 +1207,18 @@ const FormularioZurich = ({ initialData = null, embed = false, origen = 'cat', o
       </fieldset>
 
       <div className="flex flex-col justify-end gap-2 sm:flex-row">
-        {embed && onClose && (
+        {embed && mostrarVolverInforme && (onVolverInforme || onClose) && (
+          <button
+            type="button"
+            className={expressBtnGhost}
+            onClick={onVolverInforme || onClose}
+            disabled={guardando}
+          >
+            <FaClipboardList />
+            {t('zurich.workspace.backToInforme')}
+          </button>
+        )}
+        {embed && onClose && !mostrarVolverInforme && (
           <button type="button" className={expressBtnGhost} onClick={onClose} disabled={guardando}>
             {t('common.close')}
           </button>

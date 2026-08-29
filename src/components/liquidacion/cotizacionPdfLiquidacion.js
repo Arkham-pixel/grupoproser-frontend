@@ -14,15 +14,26 @@ export const MAX_PAGINAS_COTIZACION_PDF = 12;
 export const ETIQUETA_ARCHIVO_COTIZACION = 'COTIZACION';
 
 const TOTAL_FUERTE =
-  /gran\s*total|total\s*(general|cotizaci[oó]n|presupuesto|factura|a\s*pagar|neto|final)|valor\s*total|importe\s*total|neto\s*a\s*pagar|total\s*a\s*cobrar/i;
+  /gran\s*total|total\s*(general|cotizaci[oó]n|presupuesto|factura|a\s*pagar|neto|final|costos?)|valor\s*total|importe\s*total|neto\s*a\s*pagar|total\s*a\s*cobrar|costo\s*total/i;
 const TOTAL_SUAVE = /\btotal\b/i;
 const DESCARTAR =
   /sub\s*total|subtotal|\biva\b|descuento|anticipo|retenci[oó]n|reteica|retefuente|cantidad|p[aá]gina|nit\b|tel[eé]fono|fecha/i;
 
+/** 21'568.750 (Colombia: apóstrofo = millones) → 21.568.750 para el regex. */
+function compactarMontosEnLinea(linea = '') {
+  return String(linea)
+    .replace(/[\u2019\u2018\u00B4\u2032]/g, "'")
+    .replace(/(\d)\s*'\s*(\d)/g, '$1.$2')
+    .replace(/(\d)\s+\.\s+(\d{3})\b/g, '$1.$2');
+}
+
 function parsearMontoCotizacion(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
   if (typeof valor === 'number') return Number.isFinite(valor) ? valor : 0;
-  let numero = String(valor).replace(/[^\d.,-]/g, '');
+  let numero = String(valor)
+    .replace(/[\u2019\u2018\u00B4\u2032]/g, "'")
+    .replace(/(\d)'(\d)/g, '$1$2')
+    .replace(/[^\d.,-]/g, '');
   if (!numero) return 0;
   if (numero.includes(',') && numero.includes('.')) {
     numero = numero.replace(/\./g, '').replace(',', '.');
@@ -76,7 +87,7 @@ function reconstruirLineasPdf(items = []) {
 }
 
 const RE_MONTO =
-  /\$\s*\d{1,3}(?:[.\s]\d{3})+(?:,\d{1,2})?|\$\s*\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\$\s*\d+(?:[.,]\d{2})?|\d{1,3}(?:\.\d{3}){1,4}(?:,\d{1,2})?|\d{1,3}(?:,\d{3}){1,4}(?:\.\d{2})?|\d{4,}(?:[.,]\d{2})?/g;
+  /\$\s*\d{1,3}(?:[.'\s]\d{3})+(?:,\d{1,2})?|\$\s*\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\$\s*\d+(?:[.,]\d{2})?|\d{1,3}(?:[.'']\d{3}){1,4}(?:,\d{1,2})?|\d{1,3}(?:,\d{3}){1,4}(?:\.\d{2})?|\d{4,}(?:[.,]\d{2})?/g;
 
 export function extraerMontoFinalCotizacion(texto = '', { lineas = null } = {}) {
   const rows = Array.isArray(lineas) && lineas.length
@@ -86,7 +97,9 @@ export function extraerMontoFinalCotizacion(texto = '', { lineas = null } = {}) 
         .map((l) => l.trim())
         .filter(Boolean);
   const candidatos = [];
-  rows.forEach((linea, idx) => {
+  rows.forEach((lineaCruda, idx) => {
+    const linea = compactarMontosEnLinea(lineaCruda);
+    RE_MONTO.lastIndex = 0;
     const matches = String(linea).match(RE_MONTO) || [];
     for (const crudo of matches) {
       const monto = parsearMontoCotizacion(crudo);

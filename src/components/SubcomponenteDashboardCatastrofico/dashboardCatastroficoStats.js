@@ -46,19 +46,20 @@ export function normEstado(estado) {
 
 export function esLiquidadoEstado(estado) {
   const e = normEstado(estado);
+  if (e.startsWith('LIQUIDAR')) return false;
   return (
     e === 'LIQUIDADO' ||
+    e === 'FINALIZADO' ||
     e === 'ENVIADO ASEGURADORA' ||
     e === 'CERRADO' ||
-    e.includes('INFORME UNICO') ||
-    e.includes('INFORME ÚNICO') ||
+    e === 'INFORME UNICO O FINAL' ||
     e === 'ANULADO'
   );
 }
 
 export function esActivo(estado) {
   const e = normEstado(estado);
-  return e !== 'CERRADO' && e !== 'ANULADO';
+  return e !== 'CERRADO' && e !== 'ANULADO' && e !== 'FINALIZADO';
 }
 
 function diasEntre(a, b) {

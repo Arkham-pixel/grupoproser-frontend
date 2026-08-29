@@ -16,6 +16,7 @@ import ModalImportarExcelZurich, {
 import { esRolContractorZurich } from '../../config/roles.js';
 import {
   ZURICH_REPORTE_PAGE_SIZE,
+  ESTADOS_ZURICH,
   buildOpcionesFiltro,
   coincideFiltroCiudadZurich,
   coincideFiltroTexto,
@@ -24,6 +25,7 @@ import {
   formatCurrency,
   formatDate,
   diasEnEstadoZurich,
+  homologarEstadoZurich,
   normTexto,
 } from './zurichHelpers.js';
 import {
@@ -84,13 +86,14 @@ const COLUMNAS = [
   { clave: 'fechaVisita', labelKey: 'fechaVisita' },
   { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
   { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
-  { clave: 'fechaInspeccionado', labelKey: 'fechaInspeccionado' },
+  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
   { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
   { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
-  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
-  { clave: 'fechaLiquidado', labelKey: 'fechaLiquidado' },
   { clave: 'fechaInformePreliminar', labelKey: 'fechaInformePreliminar' },
   { clave: 'fechaInformeFinal', labelKey: 'fechaInformeFinal' },
+  { clave: 'fechaAutoridadDelegada', labelKey: 'fechaAutoridadDelegada' },
+  { clave: 'fechaAceptacionCliente', labelKey: 'fechaAceptacionCliente' },
+  { clave: 'fechaFinalizado', labelKey: 'fechaFinalizado' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -129,13 +132,14 @@ const buildExportRow = (caso) => ({
   'FECHA VISITA': formatDate(caso.fechaVisita),
   'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
   'FECHA INSPECCIÓN COORDINADA': formatDate(caso.fechaCoordinandoInspeccion),
-  'FECHA INSPECCIONADO': formatDate(caso.fechaInspeccionado),
+  'FECHA ANÁLISIS DEL CASO': formatDate(caso.fechaAnalisisCaso),
   'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
   'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
-  'FECHA OBJETADO': formatDate(caso.fechaObjecion),
-  'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
   'FECHA INFORME PRELIMINAR': formatDate(caso.fechaInformePreliminar),
   'FECHA INFORME FINAL': formatDate(caso.fechaInformeFinal),
+  'FECHA AUTORIDAD DELEGADA': formatDate(caso.fechaAutoridadDelegada),
+  'FECHA ACEPTACIÓN CLIENTE': formatDate(caso.fechaAceptacionCliente),
+  'FECHA FINALIZADO': formatDate(caso.fechaFinalizado),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -185,7 +189,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   }, [recargar]);
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
-  const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const estados = ESTADOS_ZURICH;
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
 
@@ -193,7 +197,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
       if (!coincideFiltroCiudadZurich(c.ciudad, filtroCiudad)) return false;
-      if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
+      if (filtroEstado && homologarEstadoZurich(c.estado) !== filtroEstado) return false;
       if (!esClienteZurich && !coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!esClienteZurich && !coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (fechaInicio || fechaFin) {
@@ -259,6 +263,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
     'fechaFinPoliza',
     'fechaCasoNuevo',
     'fechaCoordinandoInspeccion',
+    'fechaAnalisisCaso',
     'fechaInspeccionado',
     'fechaSolicitudDocumento',
     'fechaRecepcionDocumento',
@@ -266,6 +271,9 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
     'fechaLiquidado',
     'fechaInformePreliminar',
     'fechaInformeFinal',
+    'fechaAutoridadDelegada',
+    'fechaAceptacionCliente',
+    'fechaFinalizado',
     'ultimaGestion',
   ]);
 
@@ -276,6 +284,12 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
       const n = Number(item.reserva);
       if (!Number.isFinite(n) || n === 0) return item.reserva ? String(item.reserva) : '—';
       return formatCurrency(n);
+    }
+    if (clave === 'fechaAnalisisCaso') {
+      return formatDate(item.fechaAnalisisCaso || item.fechaInspeccionado || item.fechaVerificado) || '—';
+    }
+    if (clave === 'fechaFinalizado') {
+      return formatDate(item.fechaFinalizado || item.fechaLiquidado) || '—';
     }
     const valor = item[clave];
     if (valor === null || valor === undefined || valor === '') return '—';
@@ -447,9 +461,9 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
             <Campo label={t('zurich.fields.estado')}>
               <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                 <option value="">{t('zurich.report.all')}</option>
-                {estados.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
+                {estados.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
                   </option>
                 ))}
               </SelectFenix>

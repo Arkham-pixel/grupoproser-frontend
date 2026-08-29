@@ -40,11 +40,15 @@ import { fetchAllCasosZurichListado } from '../../services/zurichListadoService.
 import { esRolContractorZurich } from '../../config/roles.js';
 import {
   ESTADOS_ZURICH,
+  ESTADO_ZURICH_DEFAULT,
+  ESTADO_ZURICH_ASIGNADO,
+  ESTADO_ZURICH_INSPECCION_COORDINADA,
   buildOpcionesFiltro,
   coincideFiltroCiudadZurich,
   coincideFiltroTexto,
   etiquetaTipoPolizaZurich,
   fechaEnRango,
+  homologarEstadoZurich,
 } from './zurichHelpers.js';
 import {
   DIAS_ESTANCADO_ZURICH,
@@ -138,7 +142,7 @@ export default function DashboardZurichListado() {
     () =>
       casos.filter((item) => {
         if (filtroCiudad && !coincideFiltroCiudadZurich(item.ciudad, filtroCiudad)) return false;
-        if (filtroEstado && !coincideFiltroTexto(item.estado, filtroEstado)) return false;
+        if (filtroEstado && homologarEstadoZurich(item.estado) !== filtroEstado) return false;
         if (filtroTipoPoliza && !coincideFiltroTexto(etiquetaTipoPolizaZurich(item), filtroTipoPoliza)) {
           return false;
         }
@@ -339,12 +343,12 @@ export default function DashboardZurichListado() {
                 ? td('kpis.openHint', {
                     stalled: kpis.estancados,
                     days: DIAS_ESTANCADO_ZURICH,
-                    total: kpis.totalCasos,
+                    open: kpis.carteraAbierta,
                   })
                 : `${td('kpis.openHint', {
                     stalled: kpis.estancados,
                     days: DIAS_ESTANCADO_ZURICH,
-                    total: kpis.totalCasos,
+                    open: kpis.carteraAbierta,
                   })} · ${td('kpis.medianDays', { days: kpis.medianaDias })}`
             }
           />
@@ -352,10 +356,9 @@ export default function DashboardZurichListado() {
             label={td('kpis.inProgress')}
             value={kpis.enTramite}
             hint={td('kpis.inProgressHint', {
-              nuevo: cantidadEstado('CASO NUEVO'),
-              coord: cantidadEstado('INSPECCIÓN COORDINADA'),
-              inspeccion: cantidadEstado('INSPECCIONADO'),
-              verificado: cantidadEstado('VERIFICADO'),
+              nuevo: cantidadEstado(ESTADO_ZURICH_DEFAULT),
+              asignado: cantidadEstado(ESTADO_ZURICH_ASIGNADO),
+              coord: cantidadEstado(ESTADO_ZURICH_INSPECCION_COORDINADA),
             })}
           />
           <ExpressMetricCard
@@ -364,19 +367,29 @@ export default function DashboardZurichListado() {
             hint={td('kpis.pendingDocsHint')}
           />
           <ExpressMetricCard
-            label={td('kpis.objection')}
-            value={kpis.enObjecion}
-            hint={td('kpis.objectionHint')}
+            label={td('kpis.liquidar')}
+            value={kpis.enLiquidar}
+            hint={td('kpis.liquidarHint')}
           />
           <ExpressMetricCard
-            label={td('kpis.readyPay')}
+            label={td('kpis.autoridadDelegada')}
+            value={kpis.enAutoridadDelegada}
+            hint={td('kpis.autoridadDelegadaHint')}
+          />
+          <ExpressMetricCard
+            label={td('kpis.aceptacionCliente')}
+            value={kpis.enAceptacionCliente}
+            hint={td('kpis.aceptacionClienteHint')}
+          />
+          <ExpressMetricCard
+            label={td('kpis.analysis')}
             value={kpis.listosPago}
-            hint={td('kpis.readyPayHint')}
+            hint={td('kpis.analysisHint')}
           />
           <ExpressMetricCard
-            label={td('kpis.paid')}
+            label={td('kpis.closed')}
             value={kpis.pagados}
-            hint={td('kpis.paidHint', { pct: kpis.porcentajePagados })}
+            hint={td('kpis.closedHint', { pct: kpis.porcentajePagados })}
           />
         </section>
 
@@ -392,7 +405,7 @@ export default function DashboardZurichListado() {
               <YAxis
                 type="category"
                 dataKey="estado"
-                width={188}
+                width={220}
                 interval={0}
                 tick={{ fill: tickColor, fontSize: 10 }}
               />

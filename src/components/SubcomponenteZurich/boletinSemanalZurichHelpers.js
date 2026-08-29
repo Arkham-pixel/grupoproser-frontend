@@ -1,4 +1,8 @@
-import { homologarEstadoZurich } from './zurichHelpers.js';
+import {
+  ESTADO_ZURICH_FINALIZADO,
+  esEstadoCerradoZurich,
+  homologarEstadoZurich,
+} from './zurichHelpers.js';
 
 /**
  * Helpers del boletín semanal Zurich (semana lun–dom, America/Bogota).
@@ -73,18 +77,11 @@ export function normEstado(estado) {
 }
 
 export function esLiquidadoEstado(estado) {
-  const e = normEstado(estado);
-  return (
-    e === 'LIQUIDADO' ||
-    e === 'CASO PARA PAGO' ||
-    e === 'ENVIADO ASEGURADORA' ||
-    e === 'CERRADO'
-  );
+  return homologarEstadoZurich(estado) === ESTADO_ZURICH_FINALIZADO;
 }
 
 export function esActivo(estado) {
-  const e = normEstado(estado);
-  return e !== 'CERRADO' && e !== 'LIQUIDADO' && e !== 'OBJETADO';
+  return !esEstadoCerradoZurich(estado);
 }
 
 export function num(v) {
@@ -136,8 +133,10 @@ export function calcularBoletinSemanalZurich(casos = [], alertasPayload = null, 
     porEstado[est] = (porEstado[est] || 0) + 1;
 
     const created = parseFechaCaso(c.createdAt);
-    const fInsp = parseFechaCaso(c.fechaInspeccion);
-    const fLiq = parseFechaCaso(c.fechaLiquidado);
+    const fInsp = parseFechaCaso(
+      c.fechaAnalisisCaso || c.fechaInspeccion || c.fechaInspeccionado
+    );
+    const fLiq = parseFechaCaso(c.fechaFinalizado || c.fechaLiquidado);
     const fSin = parseFechaCaso(c.fechaSiniestro);
     const fDoc = parseFechaCaso(c.fechaUltimoDocumento);
     const fUpd = parseFechaCaso(c.updatedAt);

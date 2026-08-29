@@ -186,7 +186,12 @@ export function coincidenPersonas(a, b) {
   const na = normalizarClavePersona(a);
   const nb = normalizarClavePersona(b);
   if (!na || !nb) return false;
-  return na === nb || na.includes(nb) || nb.includes(na);
+  if (na === nb || na.includes(nb) || nb.includes(na)) return true;
+  const tokA = na.split(' ').filter((t) => t.length >= 4);
+  const tokB = nb.split(' ').filter((t) => t.length >= 4);
+  if (!tokA.length || !tokB.length) return false;
+  const setB = new Set(tokB);
+  return tokA.filter((t) => setB.has(t)).length >= 2;
 }
 
 /** Nombre o documento de la sesión (para textos de “mis casos”). */
@@ -201,17 +206,16 @@ export function clavesSesionPersona(ctx = obtenerContextoPermisoCaso()) {
 }
 
 /**
- * Caso CAT asignado a la sesión: ajustador, inspector o ajustador líder.
- * Aplica a todos los roles (como Mis casos de Complex).
+ * Caso asignado a la sesión para trabajarlo: ajustador o inspector.
+ * No usa ajustadorLider: ese campo es «quién asigna» (p. ej. Ladys en todo Zurich)
+ * y no sustituye los casos que el líder también lleva como ajustador de campo.
  */
 export function casoAsignadoASesionActual(caso, ctx = obtenerContextoPermisoCaso()) {
   const claves = clavesSesionPersona(ctx);
   if (!claves.length) return false;
   return claves.some(
     (k) =>
-      coincidenPersonas(caso?.ajustador, k) ||
-      coincidenPersonas(caso?.inspector, k) ||
-      coincidenPersonas(caso?.ajustadorLider, k)
+      coincidenPersonas(caso?.ajustador, k) || coincidenPersonas(caso?.inspector, k)
   );
 }
 

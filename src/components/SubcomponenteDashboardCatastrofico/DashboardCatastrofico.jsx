@@ -178,7 +178,12 @@ export default function DashboardCatastrofico({
     () =>
       casos.filter((item) => {
         if (filtroCiudad && !coincideFiltroTexto(item.ciudad, filtroCiudad)) return false;
-        if (filtroEstado && !coincideFiltroTexto(item.estado, filtroEstado)) return false;
+        if (filtroEstado) {
+          const estado = typeof normalizarEstadoFn === 'function'
+            ? normalizarEstadoFn(item.estado)
+            : item.estado;
+          if (!coincideFiltroTexto(estado, filtroEstado)) return false;
+        }
         if (
           filtroAjustador &&
           !coincideFiltroTexto(etiquetaAjustadorCaso(item, mapaNombres), filtroAjustador)
@@ -209,6 +214,7 @@ export default function DashboardCatastrofico({
       coincideFiltroTexto,
       fechaEnRango,
       mapaNombres,
+      normalizarEstadoFn,
     ]
   );
 

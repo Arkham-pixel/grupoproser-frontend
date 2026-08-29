@@ -64,11 +64,15 @@ export function asegurarOpcionActual(opciones = [], valorActual = '') {
   return [{ value: v, label: `${v} (asignado)`, codigo: '', ciudad: '' }, ...opciones];
 }
 
+/** Ajustadora líder de Zurich (quien asigna). No sustituye su rol de ajustadora de campo. */
+export const LIDER_ZURICH = 'Ladys Andrea Escalante';
+
 /** Needle de nombre para el líder fijo por módulo. */
 export function needleLiderPorModulo(modulo = '') {
   const m = String(modulo || '').toLowerCase();
   if (m === 'alfa') return 'SILVIA';
   if (m === 'sura') return 'BERNARDO';
+  if (m === 'zurich' || m === 'zurich-listado' || m === 'zurichlistado') return 'LADYS';
   if (m === 'bbvacat' || m === 'bbva' || m === 'bbva-cat' || m === 'bbva-cat-listado') {
     return 'BAEZ';
   }
@@ -91,6 +95,18 @@ function esModuloAlfa(modulo = '') {
   return c === 'alfa' || c === 'segurosalfa';
 }
 
+function esModuloZurich(modulo = '') {
+  const c = claveModuloCatalogo(modulo);
+  return c === 'zurich' || c === 'zurichlistado';
+}
+
+function esExcluidoCatalogoZurich(opcion = {}) {
+  const n = normCiudadCatastrofico(
+    `${opcion.label || ''} ${opcion.value || ''} ${opcion.nombre || ''}`
+  );
+  return n.includes('ARNALDO') && n.includes('TAPIA');
+}
+
 /**
  * Equipos cerrados: BBVA y Alfa solo listan a quienes tienen ese módulo.
  * Catálogo general (sin modulos): Zurich, Sura, Previsora, Allianz.
@@ -105,6 +121,7 @@ export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
       .filter(Boolean);
     if (bbva) return mods.some((m) => m === 'bbvacat' || m === 'bbva');
     if (alfa) return mods.some((m) => m === 'alfa' || m === 'segurosalfa');
+    if (esModuloZurich(modulo) && esExcluidoCatalogoZurich(o)) return false;
     if (!mods.length) return true;
     if (!clave) {
       return mods.some(
@@ -117,7 +134,7 @@ export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
 
 /**
  * Solo el líder permitido en el select:
- * Alfa → Silvia; Sura → Bernardo y Mario Pinilla; BBVA → Miguel Báez.
+ * Alfa → Silvia; Sura → Bernardo y Mario Pinilla; BBVA → Miguel Báez; Zurich → Ladys.
  */
 export function filtrarLideresPorModulo(lideres = [], modulo = '') {
   const m = String(modulo || '').toLowerCase();
@@ -141,6 +158,11 @@ export function filtrarLideresPorModulo(lideres = [], modulo = '') {
       return blob.includes('BAEZ') || blob.includes('BAES');
     });
   }
+  if (esModuloZurich(modulo)) {
+    return lideres.filter((l) =>
+      normCiudadCatastrofico(`${l.label || ''} ${l.value || ''}`).includes('LADYS')
+    );
+  }
   const needle = needleLiderPorModulo(modulo);
   if (!needle) return lideres;
   return lideres.filter((l) =>
@@ -150,7 +172,7 @@ export function filtrarLideresPorModulo(lideres = [], modulo = '') {
 
 /**
  * Resuelve el ajustador líder por módulo.
- * Alfa → Silvia; Sura → Bernardo; BBVA → Miguel Báez.
+ * Alfa → Silvia; Sura → Bernardo; BBVA → Miguel Báez; Zurich → Ladys.
  */
 export function resolverLiderPorModulo(lideres = [], modulo = '') {
   const filtrados = filtrarLideresPorModulo(lideres, modulo);
@@ -165,6 +187,12 @@ export function resolverLiderPorModulo(lideres = [], modulo = '') {
       normCiudadCatastrofico(l.label || l.value).includes('MIGUEL')
     );
     if (miguel) return miguel.value || '';
+  }
+  if (esModuloZurich(modulo)) {
+    const ladys = filtrados.find((l) =>
+      normCiudadCatastrofico(l.label || l.value).includes('LADYS')
+    );
+    return ladys?.value || LIDER_ZURICH;
   }
   return filtrados[0]?.value || '';
 }

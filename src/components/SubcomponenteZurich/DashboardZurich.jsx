@@ -7,6 +7,7 @@ import {
   coincideFiltroTexto,
   fechaEnRango,
   formatCurrency,
+  homologarEstadoZurich,
 } from './zurichHelpers.js';
 
 export default function DashboardZurich() {
@@ -19,6 +20,7 @@ export default function DashboardZurich() {
       coincideFiltroTexto={coincideFiltroTexto}
       buildOpcionesFiltro={buildOpcionesFiltro}
       estados={ESTADOS_ZURICH}
+      normalizarEstadoFn={homologarEstadoZurich}
       i18nNs="zurich"
       extras={{ severidad: true }}
     />

@@ -12,6 +12,7 @@ import ArchiveroZurich from './ArchiveroZurich.jsx';
 import AccionesZurichMenu from './AccionesZurichMenu.jsx';
 import {
   ZURICH_REPORTE_PAGE_SIZE,
+  ESTADOS_ZURICH,
   buildOpcionesFiltro,
   coincideFiltroCiudadZurich,
   coincideFiltroTexto,
@@ -19,6 +20,7 @@ import {
   formatCurrency,
   formatDate,
   diasEnEstadoZurich,
+  homologarEstadoZurich,
   labelSeveridadCat,
   normTexto,
   evidenciaAplicaSi,
@@ -105,13 +107,16 @@ const COLUMNAS = [
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'fechaCasoNuevo', labelKey: 'fechaCasoNuevo' },
+  { clave: 'fechaAsignacion', labelKey: 'fechaAsignacion' },
   { clave: 'fechaCoordinandoInspeccion', labelKey: 'fechaCoordinandoInspeccion' },
-  { clave: 'fechaInspeccionado', labelKey: 'fechaInspeccionado' },
+  { clave: 'fechaAnalisisCaso', labelKey: 'fechaAnalisisCaso' },
   { clave: 'fechaSolicitudDocumento', labelKey: 'fechaSolicitudDocumento' },
   { clave: 'fechaRecepcionDocumento', labelKey: 'fechaRecepcionDocumento' },
-  { clave: 'fechaObjecion', labelKey: 'fechaObjecion' },
   { clave: 'fechaInformePreliminar', labelKey: 'fechaInformePreliminar' },
   { clave: 'fechaInformeFinal', labelKey: 'fechaInformeFinal' },
+  { clave: 'fechaAutoridadDelegada', labelKey: 'fechaAutoridadDelegada' },
+  { clave: 'fechaAceptacionCliente', labelKey: 'fechaAceptacionCliente' },
+  { clave: 'fechaFinalizado', labelKey: 'fechaFinalizado' },
   { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
@@ -142,6 +147,7 @@ const CAMPOS_FECHA = new Set([
   'fechaVisita',
   'fechaCasoNuevo',
   'fechaCoordinandoInspeccion',
+  'fechaAnalisisCaso',
   'fechaInspeccionado',
   'fechaSolicitudDocumento',
   'fechaRecepcionDocumento',
@@ -149,6 +155,9 @@ const CAMPOS_FECHA = new Set([
   'fechaLiquidado',
   'fechaInformePreliminar',
   'fechaInformeFinal',
+  'fechaAutoridadDelegada',
+  'fechaAceptacionCliente',
+  'fechaFinalizado',
   'fechaCasoParaPago',
   'ultimaGestion',
 ]);
@@ -201,20 +210,23 @@ const buildExportRow = (caso) => ({
   'VALOR RECLAMADO': caso.valorReclamado ?? '',
   'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
   'FECHA ULTIMO DOCUMENTO': formatDate(caso.fechaUltimoDocumento),
-  'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
   'FECHA ACEPTACIÓN LIQUIDACIÓN': formatDate(caso.fechaAceptacionLiquidacion),
   'FECHA ENVÍO A LA ASEGURADORA': formatDate(caso.fechaEnvioAseguradora),
   ESTADO: caso.estado ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
   'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
+  'FECHA ASIGNACIÓN': formatDate(caso.fechaAsignacion),
   'FECHA INSPECCIÓN COORDINADA': formatDate(caso.fechaCoordinandoInspeccion),
-  'FECHA INSPECCIONADO': formatDate(caso.fechaInspeccionado),
+  'FECHA ANÁLISIS DEL CASO': formatDate(caso.fechaAnalisisCaso || caso.fechaInspeccionado),
   'FECHA SOLICITUD DOCUMENTO': formatDate(caso.fechaSolicitudDocumento),
   'FECHA RECEPCIÓN DOCUMENTO': formatDate(caso.fechaRecepcionDocumento),
-  'FECHA OBJETADO': formatDate(caso.fechaObjecion),
-  'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
   'FECHA INFORME PRELIMINAR': formatDate(caso.fechaInformePreliminar),
   'FECHA INFORME FINAL': formatDate(caso.fechaInformeFinal),
+  'FECHA AUTORIDAD DELEGADA': formatDate(caso.fechaAutoridadDelegada),
+  'FECHA ACEPTACIÓN CLIENTE': formatDate(caso.fechaAceptacionCliente),
+  'FECHA FINALIZADO': formatDate(caso.fechaFinalizado),
+  'FECHA OBJETADO': formatDate(caso.fechaObjecion),
+  'FECHA LIQUIDADO': formatDate(caso.fechaLiquidado),
   'DÍAS EN ESTADO': caso.diasEnEstado ?? '',
   'ÚLTIMA GESTIÓN': formatDate(caso.ultimaGestion),
   'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
@@ -298,7 +310,7 @@ export default function ReporteZurich() {
 
   const ciudades = useMemo(() => buildOpcionesFiltro(casos, 'ciudad'), [casos]);
   const departamentos = useMemo(() => buildOpcionesFiltro(casos, 'departamento'), [casos]);
-  const estados = useMemo(() => buildOpcionesFiltro(casos, 'estado'), [casos]);
+  const estados = ESTADOS_ZURICH;
   const ajustadores = useMemo(() => buildOpcionesFiltro(casos, 'ajustador'), [casos]);
   const inspectores = useMemo(() => buildOpcionesFiltro(casos, 'inspector'), [casos]);
 
@@ -307,7 +319,7 @@ export default function ReporteZurich() {
     return casos.filter((c) => {
       if (!coincideFiltroCiudadZurich(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.departamento, filtroDepto)) return false;
-      if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
+      if (filtroEstado && homologarEstadoZurich(c.estado) !== filtroEstado) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (!coincideFiltroTexto(c.inspector, filtroInspector)) return false;
       if (fechaInicio || fechaFin) {
@@ -386,6 +398,12 @@ export default function ReporteZurich() {
     if (clave === 'severidadCat') return labelSeveridadCat(item.severidadCat);
     if (CAMPOS_MONEDA.has(clave)) {
       return item[clave] === null || item[clave] === undefined ? '—' : formatCurrency(item[clave]);
+    }
+    if (clave === 'fechaAnalisisCaso') {
+      return formatDate(item.fechaAnalisisCaso || item.fechaInspeccionado) || '—';
+    }
+    if (clave === 'fechaFinalizado') {
+      return formatDate(item.fechaFinalizado || item.fechaLiquidado) || '—';
     }
     if (CAMPOS_FECHA.has(clave)) return formatDate(item[clave]) || '—';
     const valor = item[clave];
@@ -522,9 +540,9 @@ export default function ReporteZurich() {
             <Campo label={t('zurich.fields.estado')}>
               <SelectFenix value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)}>
                 <option value="">{t('zurich.report.all')}</option>
-                {estados.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
+                {estados.map((estado) => (
+                  <option key={estado} value={estado}>
+                    {estado}
                   </option>
                 ))}
               </SelectFenix>

@@ -32,7 +32,7 @@ import {
   totalPresupuestoPreliminarZurich,
 } from './liquidadorZurichHelpers.js';
 import { descargarWordInformeZurich } from './generarWordInformeZurich.js';
-import { departamentoPorCiudadZurich } from './zurichHelpers.js';
+import { resolverDepartamentoZurich } from './zurichHelpers.js';
 import { zurichArchivosApi } from './zurichArchivosApi.js';
 import FotosInspeccionZurich from './FotosInspeccionZurich.jsx';
 import SelectorTipoInformeZurich from './SelectorTipoInformeZurich.jsx';
@@ -452,6 +452,16 @@ export default function InformeUnicoZurich({
           value={informe.infoEvento || ''}
           onChange={(e) => setCampo('infoEvento', e.target.value)}
         />
+        <figure className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+          <img
+            src={`${import.meta.env.BASE_URL || '/'}templates/mapa-evento-siniestro-Zurich.png`}
+            alt={t('zurich.reportUnique.seismicEventMapAlt')}
+            className="mx-auto max-h-[420px] w-full object-contain bg-white p-2"
+          />
+          <figcaption className="border-t border-gray-100 px-3 py-2 text-center font-body text-xs text-gray-500 dark:border-gray-800">
+            {t('zurich.reportUnique.seismicEventMapCaption')}
+          </figcaption>
+        </figure>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Campo label={t('zurich.reportUnique.adjuster')}>
             <InputFenix
@@ -636,7 +646,12 @@ export default function InformeUnicoZurich({
             <dd className="font-medium">
               {datoPoliza('ciudad') || '—'} /{' '}
               {datoPoliza('departamento') ||
-                departamentoPorCiudadZurich(casoZurich?.ciudad || encPoliza.ciudad) ||
+                resolverDepartamentoZurich({
+                  ciudad: casoZurich?.ciudad || encPoliza.ciudad,
+                  departamento: casoZurich?.departamento || encPoliza.departamento,
+                  direccionPredio:
+                    casoZurich?.direccionPredio || encPoliza.direccion || informe.direccionRiesgo,
+                }) ||
                 '—'}
             </dd>
           </div>
