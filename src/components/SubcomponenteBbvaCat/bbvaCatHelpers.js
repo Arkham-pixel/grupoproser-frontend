@@ -563,7 +563,7 @@ export const normTexto = (value) =>
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
-/** Unifica Cali / Santiago de Cali → CALI para listados y dashboard. */
+/** Unifica Cali / Pereira y variantes de Excel para listados y dashboard. */
 export const homologarCiudadBbvaCat = (valor) => {
   const texto = String(valor ?? '')
     .replace(/\s+/g, ' ')
@@ -577,6 +577,9 @@ export const homologarCiudadBbvaCat = (valor) => {
     /^SANTIAGO DE CALI\b/.test(clave)
   ) {
     return 'CALI';
+  }
+  if (clave === 'PEREIRA' || clave === 'PEREIRA RISARALDA') {
+    return 'PEREIRA';
   }
   return texto;
 };

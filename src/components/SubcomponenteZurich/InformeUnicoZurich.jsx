@@ -217,6 +217,11 @@ export default function InformeUnicoZurich({
     [informe.filasPresupuestoPreliminar]
   );
   const reservaMostrada = useMemo(() => reservaSugeridaZurich(informe), [informe]);
+  useEffect(() => {
+    if (!esPreliminar || totalPreliminar <= 0) return;
+    if (String(informe.reservaSugerida || '') === String(totalPreliminar)) return;
+    setInforme((prev) => ({ ...prev, reservaSugerida: String(totalPreliminar) }));
+  }, [esPreliminar, totalPreliminar, informe.reservaSugerida]);
   const coordsRiesgo = useMemo(
     () => extraerLatLng(informe.coordenadasRiesgo),
     [informe.coordenadasRiesgo]
@@ -299,26 +304,36 @@ export default function InformeUnicoZurich({
     onGuardarEnCaso?.(next);
   };
 
+  const conReservaDesdePresupuesto = (prev, filasPpto) => {
+    const next = { ...prev, filasPresupuestoPreliminar: filasPpto };
+    const suma = totalPresupuestoPreliminarZurich(filasPpto);
+    if (suma > 0) next.reservaSugerida = String(suma);
+    return next;
+  };
+
   const setFila = (campo, idx, key, valor) => {
     setInforme((prev) => {
       const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
       list[idx] = { ...(list[idx] || {}), [key]: valor };
+      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
   };
 
   const addFila = (campo, vacia) => {
-    setInforme((prev) => ({
-      ...prev,
-      [campo]: [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia],
-    }));
+    setInforme((prev) => {
+      const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia];
+      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
+      return { ...prev, [campo]: list };
+    });
   };
 
   const removeFila = (campo, idx) => {
-    setInforme((prev) => ({
-      ...prev,
-      [campo]: (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx),
-    }));
+    setInforme((prev) => {
+      const list = (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx);
+      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
+      return { ...prev, [campo]: list };
+    });
   };
 
   const restaurarInfoEvento = () => {

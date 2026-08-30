@@ -88,6 +88,7 @@ export default function DashboardCatastrofico({
   formatCurrency,
   fechaEnRango,
   coincideFiltroTexto,
+  coincideFiltroCiudad,
   buildOpcionesFiltro,
   estados = ESTADOS_EMBUDO_CATASTROFICO,
   i18nNs,
@@ -120,6 +121,7 @@ export default function DashboardCatastrofico({
   const [filtroTomador, setFiltroTomador] = useState('');
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
+  const coincideCiudad = coincideFiltroCiudad || coincideFiltroTexto;
 
   useEffect(() => {
     let cancelado = false;
@@ -177,7 +179,7 @@ export default function DashboardCatastrofico({
   const casosFiltrados = useMemo(
     () =>
       casos.filter((item) => {
-        if (filtroCiudad && !coincideFiltroTexto(item.ciudad, filtroCiudad)) return false;
+        if (filtroCiudad && !coincideCiudad(item.ciudad, filtroCiudad)) return false;
         if (filtroEstado) {
           const estado = typeof normalizarEstadoFn === 'function'
             ? normalizarEstadoFn(item.estado)
@@ -216,6 +218,7 @@ export default function DashboardCatastrofico({
       fechaDesde,
       fechaHasta,
       coincideFiltroTexto,
+      coincideCiudad,
       fechaEnRango,
       mapaNombres,
       normalizarEstadoFn,

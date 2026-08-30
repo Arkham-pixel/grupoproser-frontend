@@ -381,6 +381,7 @@ export const guardarInformeUnicoEnCasoZurich = async ({
   if (!casoId) throw new Error('El caso Zurich debe estar guardado antes de adjuntar el informe.');
   const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
   const reservaPerito = reservaSugeridaZurich(sanitizado);
+  if (reservaPerito > 0) sanitizado.reservaSugerida = String(reservaPerito);
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
     ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),

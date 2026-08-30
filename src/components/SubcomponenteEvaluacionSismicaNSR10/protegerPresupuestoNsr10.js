@@ -35,14 +35,25 @@ export function contarItemsDetalleCat(liquidador) {
   return items.filter((it) => textoItem(it)).length;
 }
 
-function scoreCotizacionPdf(liquidador) {
-  const c = liquidador?.cotizacionPdf;
+function scoreUnSlotCotizacion(c) {
   if (!c || typeof c !== 'object') return 0;
   const paginas = Array.isArray(c.paginas)
     ? c.paginas.filter((p) => p?.ruta || p?._id || p?.preview || p?.file).length
     : 0;
   const monto = String(c.montoFinal ?? '').replace(/[^\d]/g, '');
   return paginas + (monto.length ? 2 : 0);
+}
+
+function scoreCotizacionPdf(liquidador) {
+  const slots = liquidador?.cotizacionesPdf;
+  if (slots && typeof slots === 'object') {
+    return (
+      scoreUnSlotCotizacion(slots.materiales) +
+      scoreUnSlotCotizacion(slots.manoObra) +
+      scoreUnSlotCotizacion(slots.completo || liquidador?.cotizacionPdf)
+    );
+  }
+  return scoreUnSlotCotizacion(liquidador?.cotizacionPdf);
 }
 
 export function contarOtrosAmparosAlfa(liquidador) {
@@ -113,8 +124,17 @@ export function fusionarLiquidadorSinPerderPresupuestoNsr(propuesto, actual) {
     next = { ...next, otrosAmparos: actual.otrosAmparos };
   }
 
-  if (actual.cotizacionPdf && !next.cotizacionPdf) {
-    next = { ...next, cotizacionPdf: actual.cotizacionPdf };
+  if (actual.liquidacionCotizacionPdf && !next.liquidacionCotizacionPdf) {
+    next = { ...next, liquidacionCotizacionPdf: actual.liquidacionCotizacionPdf };
+  }
+  if (actual.cotizacionesPdf && !next.cotizacionesPdf) {
+    next = { ...next, cotizacionesPdf: actual.cotizacionesPdf };
+  } else if (scoreCotizacionPdf(actual) > scoreCotizacionPdf(next) && actual.cotizacionesPdf) {
+    next = {
+      ...next,
+      cotizacionesPdf: actual.cotizacionesPdf,
+      cotizacionPdf: actual.cotizacionPdf || actual.cotizacionesPdf?.completo || next.cotizacionPdf,
+    };
   }
 
   if (scoreOld >= scoreNew) {

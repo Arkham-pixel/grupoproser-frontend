@@ -27,6 +27,11 @@ import {
   textoResumenOtrosAmparos as textoResumenOtrosAmparosAlfa,
 } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
+import {
+  normalizarCotizacionesPdfAlfa,
+  resumenCotizacionesPdfAlfa,
+  serializarCotizacionesPdfAlfa,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
 
 /** AIU del FORMATO LIQUIDACIÓN Alfa (único recargo; sin imprevistos NSR ocultos). */
 export const AIU_PORCENTAJE_DEFAULT_ALFA = 0.2;
@@ -259,6 +264,15 @@ export const DEFAULT_LIQUIDADOR_ALFA = {
    * Se liquidan aparte: sin deducible ni AIU. null = hidratar defaults al mapear.
    */
   otrosAmparos: null,
+  /**
+   * Cotizaciones PDF (materiales / mano de obra / completo).
+   * Bloque independiente del formato NSR: tiene su propio tomador, deducible, SID y AIU.
+   */
+  cotizacionesPdf: { materiales: null, manoObra: null, completo: null },
+  /** Alias del slot «completo» (compat con Zurich/Allianz). */
+  cotizacionPdf: null,
+  /** Encabezado / deducible / AIU solo de las cotizaciones PDF (no toca el formato NSR). */
+  liquidacionCotizacionPdf: null,
 };
 
 export function esLiquidadorNsrAlfa(liquidador = {}) {
@@ -447,12 +461,59 @@ export function aplicarPresupuestoAiuAlfaEnEvaluacion(evalData = {}) {
   };
 }
 
+export function defaultLiquidacionCotizacionPdfAlfa() {
+  const deducibleAlfa = patchDeducibleDesdeTomadorAlfa('', {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    aplica: true,
+    tipoMinimo: 'SMMLV',
+  });
+  return {
+    tomador: '',
+    asegurado: '',
+    poliza: '',
+    valorAseguradoSid: '',
+    aiuPorcentaje: AIU_PORCENTAJE_DEFAULT_ALFA,
+    deducibleConfig: { ...deducibleAlfa },
+  };
+}
+
+export function normalizarLiquidacionCotizacionPdfAlfa(guardado = {}) {
+  const raw =
+    guardado?.liquidacionCotizacionPdf && typeof guardado.liquidacionCotizacionPdf === 'object'
+      ? guardado.liquidacionCotizacionPdf
+      : {};
+  const base = defaultLiquidacionCotizacionPdfAlfa();
+  const cfg = {
+    ...base.deducibleConfig,
+    ...(raw.deducibleConfig && typeof raw.deducibleConfig === 'object' ? raw.deducibleConfig : {}),
+    aplica: true,
+  };
+  const tomador = raw.tomador || '';
+  return {
+    ...base,
+    ...raw,
+    tomador,
+    asegurado: raw.asegurado || '',
+    poliza: raw.poliza || '',
+    valorAseguradoSid: raw.valorAseguradoSid ?? '',
+    aiuPorcentaje:
+      Number.isFinite(Number(raw.aiuPorcentaje))
+        ? Number(raw.aiuPorcentaje)
+        : AIU_PORCENTAJE_DEFAULT_ALFA,
+    deducibleConfig: tomador ? patchDeducibleDesdeTomadorAlfa(tomador, cfg, raw.poliza || '') : cfg,
+  };
+}
+
 /**
  * Totales Alfa = ítems (costo directo) + AIU 20% − deducible + otros amparos.
  * Otros amparos (arriendo, retiro de escombros) van por aparte: sin deducible ni AIU.
  * No suma imprevistos/impuestos NSR ni hospedaje duplicado (si va en el detalle, ya está en el subtotal).
+ *
+ * opciones.forzarNsr: ignora cotizaciones PDF y liquida solo el formato de ítems.
  */
-export function calcularLiquidacionAlfa(liquidador = {}) {
+export function calcularLiquidacionAlfa(liquidador = {}, opciones = {}) {
+  const forzarNsr = Boolean(opciones.forzarNsr) || opciones.modo === 'nsr';
+  const forzarCotiz = opciones.modo === 'cotizacion';
   const evalDataRaw = liquidador.evaluacionSismicaNSR10 || {};
   const evalData = aplicarPresupuestoAiuAlfaEnEvaluacion(evalDataRaw);
   const presupuesto = evalData.presupuesto || { items: [] };
@@ -461,14 +522,24 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
   const enc = liquidador.encabezado || {};
-  // Regla operativa: liquidar / deducible con VALOR SID (no valor asegurado inmueble).
-  const valorAsegurado = resolverValorSidParaLiquidacionAlfa(liquidador);
-  const cfgDedRaw = liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
-  // Si falta baseDeducible, completar desde el tomador actual
+  const cotizLiq = normalizarLiquidacionCotizacionPdfAlfa(liquidador);
+  const resumenCotiz = resumenCotizacionesPdfAlfa(liquidador);
+  const usaCotiz = forzarCotiz || (!forzarNsr && resumenCotiz.usaComoBase);
+  const tomadorCalculo = usaCotiz ? cotizLiq.tomador || '' : enc.tomador || '';
+  const valorAsegurado = usaCotiz
+    ? parsearNumero(cotizLiq.valorAseguradoSid)
+    : resolverValorSidParaLiquidacionAlfa(liquidador);
+  const cfgDedRaw = usaCotiz
+    ? cotizLiq.deducibleConfig || {}
+    : liq.deducibleConfigPresupuesto || liq.deducibleConfig || {};
   const cfgDed =
-    cfgDedRaw.baseDeducible || !enc.tomador
+    cfgDedRaw.baseDeducible || !tomadorCalculo
       ? cfgDedRaw
-      : patchDeducibleDesdeTomadorAlfa(enc.tomador, cfgDedRaw);
+      : patchDeducibleDesdeTomadorAlfa(
+          tomadorCalculo,
+          cfgDedRaw,
+          usaCotiz ? cotizLiq.poliza : enc.poliza
+        );
 
   // Detalle CAT (Formato liquidación): misma base que la UI (suma valorPerdida + AIU).
   // Si solo hay presupuesto NSR, se usa cantidad×VU (o total de fila).
@@ -483,14 +554,23 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     (subtotalDetalle > 0 ||
       detalle.some((it) => String(it?.descripcion || '').trim() || it?.catalogoId));
 
-  const aiuPctAlfa = Number(presupuesto.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT_ALFA);
+  const aiuPctAlfa = usaCotiz
+    ? Number(cotizLiq.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT_ALFA)
+    : Number(presupuesto.aiuPorcentaje ?? AIU_PORCENTAJE_DEFAULT_ALFA);
+  const montoCotiz = resumenCotiz.total;
   let subtotal;
   let aiu;
   let baseCat;
   let totalContenidos;
   let totalDaniosCat;
 
-  if (usarDetalle) {
+  if (usaCotiz) {
+    subtotal = Math.round(montoCotiz * 100) / 100;
+    aiu = Math.round(subtotal * aiuPctAlfa * 100) / 100;
+    baseCat = Math.round((subtotal + aiu) * 100) / 100;
+    totalContenidos = 0;
+    totalDaniosCat = baseCat;
+  } else if (usarDetalle) {
     subtotal = Math.round(subtotalDetalle * 100) / 100;
     aiu = Math.round(subtotal * aiuPctAlfa * 100) / 100;
     baseCat = Math.round((subtotal + aiu) * 100) / 100;
@@ -523,7 +603,7 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     valorAsegurado,
     totalDanios: totalDaniosCat,
     deducibleConfig: cfgDed,
-    tomador: enc.tomador || '',
+    tomador: tomadorCalculo,
   });
 
   // Hospedaje: en Formato CAT Alfa solo cuenta si está como ítem del detalle
@@ -534,11 +614,13 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     return id === 'hospedaje' || desc.includes('hospedaje');
   });
   const hospedajeManual = parsearNumero(liq.hospedajeManual);
-  const hospedaje = hospedajeYaEnItems
+  const hospedaje = usaCotiz
     ? 0
-    : usarDetalle
-      ? hospedajeManual
-      : parsearNumero(diagrama.gastosHospedaje);
+    : hospedajeYaEnItems
+      ? 0
+      : usarDetalle
+        ? hospedajeManual
+        : parsearNumero(diagrama.gastosHospedaje);
   const otrosAmparos = Array.isArray(liquidador.otrosAmparos)
     ? liquidador.otrosAmparos
     : [];
@@ -604,6 +686,10 @@ export function calcularLiquidacionAlfa(liquidador = {}) {
     totalOtrosAmparos,
     indemnizacionPrincipal,
     resumenOtrosAmparos: textoResumenOtrosAmparosAlfa(otrosAmparos),
+    origenPresupuesto: usaCotiz ? 'cotizacion' : 'nsr10',
+    cotizacionMonto: montoCotiz,
+    cotizacionFilas: resumenCotiz.filas,
+    cotizacionNUsadas: resumenCotiz.nUsadas,
   };
 }
 
@@ -830,6 +916,9 @@ export function mapCasoAlfaALiquidador(caso = {}) {
       otrosAmparos: Array.isArray(guardado.otrosAmparos)
         ? normalizarOtrosAmparosAlfa(guardado.otrosAmparos)
         : defaultOtrosAmparosAlfa(),
+      cotizacionesPdf: normalizarCotizacionesPdfAlfa(guardado),
+      cotizacionPdf: normalizarCotizacionesPdfAlfa(guardado).completo,
+      liquidacionCotizacionPdf: normalizarLiquidacionCotizacionPdfAlfa(guardado),
     };
   }
 
@@ -894,6 +983,22 @@ export function mapCasoAlfaALiquidador(caso = {}) {
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparosAlfa(guardado.otrosAmparos)
       : defaultOtrosAmparosAlfa(),
+    cotizacionesPdf: normalizarCotizacionesPdfAlfa(guardado),
+    cotizacionPdf: normalizarCotizacionesPdfAlfa(guardado).completo,
+    liquidacionCotizacionPdf: normalizarLiquidacionCotizacionPdfAlfa(guardado),
+  };
+}
+
+/** Quita File/blob de las cotizaciones PDF antes de guardar en Mongo. */
+export function liquidadorAlfaParaPersistir(liquidador = {}) {
+  const serializadas = serializarCotizacionesPdfAlfa(
+    liquidador?.cotizacionesPdf,
+    liquidador
+  );
+  return {
+    ...liquidador,
+    cotizacionesPdf: serializadas,
+    cotizacionPdf: serializadas.completo,
   };
 }
 

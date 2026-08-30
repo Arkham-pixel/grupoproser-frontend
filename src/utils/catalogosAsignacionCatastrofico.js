@@ -4,7 +4,90 @@ export function normCiudadCatastrofico(valor) {
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .trim()
-    .toUpperCase();
+    .toUpperCase()
+    .replace(/[.,]/g, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+const CAPITAL_POR_DEPTO = {
+  'VALLE DEL CAUCA': { depto: 'VALLE DEL CAUCA', capital: 'CALI' },
+  QUINDIO: { depto: 'QUINDIO', capital: 'ARMENIA' },
+  RISARALDA: { depto: 'RISARALDA', capital: 'PEREIRA' },
+  CALDAS: { depto: 'CALDAS', capital: 'MANIZALES' },
+  CAUCA: { depto: 'CAUCA', capital: 'POPAYAN' },
+  CHOCO: { depto: 'CHOCO', capital: 'QUIBDO' },
+  TOLIMA: { depto: 'TOLIMA', capital: 'IBAGUE' },
+  HUILA: { depto: 'HUILA', capital: 'NEIVA' },
+  CAQUETA: { depto: 'CAQUETA', capital: 'FLORENCIA' },
+  SANTANDER: { depto: 'SANTANDER', capital: 'BUCARAMANGA' },
+  ANTIOQUIA: { depto: 'ANTIOQUIA', capital: 'MEDELLIN' },
+  'BOGOTA D C': { depto: 'BOGOTA, D.C.', capital: 'BOGOTA, D.C.' },
+  BOGOTA: { depto: 'BOGOTA, D.C.', capital: 'BOGOTA, D.C.' },
+};
+
+const DEPTO_POR_MUNICIPIO = {
+  CALI: 'VALLE DEL CAUCA',
+  BUGA: 'VALLE DEL CAUCA',
+  PEREIRA: 'RISARALDA',
+  DOSQUEBRADAS: 'RISARALDA',
+  'SANTA ROSA DE CABAL': 'RISARALDA',
+  ARMENIA: 'QUINDIO',
+  MANIZALES: 'CALDAS',
+  POPAYAN: 'CAUCA',
+  QUIBDO: 'CHOCO',
+  IBAGUE: 'TOLIMA',
+  NEIVA: 'HUILA',
+  FLORENCIA: 'CAQUETA',
+  BUCARAMANGA: 'SANTANDER',
+  MEDELLIN: 'ANTIOQUIA',
+  'BOGOTA D C': 'BOGOTA, D.C.',
+  BOGOTA: 'BOGOTA, D.C.',
+  FACATATIVA: 'CUNDINAMARCA',
+};
+
+/** Unifica Cali / Pereira / Bogotá y, si vino un departamento, deja la capital. */
+export function homologarCiudadCatastrofico(valor) {
+  const texto = String(valor ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!texto) return '';
+  const clave = normCiudadCatastrofico(texto);
+  if (
+    clave === 'CALI' ||
+    clave === 'CALI VALLE' ||
+    clave === 'CALI VALLE DEL CAUCA' ||
+    /^SANTIAGO DE CALI\b/.test(clave)
+  ) {
+    return 'CALI';
+  }
+  if (clave === 'PEREIRA' || clave === 'PEREIRA RISARALDA') {
+    return 'PEREIRA';
+  }
+  if (clave === 'BOGOTA' || clave === 'BOGOTA D C' || clave === 'SANTAFE DE BOGOTA') {
+    return 'BOGOTA, D.C.';
+  }
+  const deptoHit = CAPITAL_POR_DEPTO[clave];
+  if (deptoHit?.capital) return deptoHit.capital;
+  return texto;
+}
+
+/** Separa departamento vs ciudad. Valle del Cauca en ciudad → depto + CALI. */
+export function resolverUbicacionCatastrofico(ciudad, departamento = '') {
+  const deptoIn = String(departamento ?? '').trim();
+  const ciudadHom = homologarCiudadCatastrofico(ciudad);
+  const claveOrig = normCiudadCatastrofico(ciudad);
+  const deptoHit = CAPITAL_POR_DEPTO[claveOrig];
+  if (deptoHit) {
+    return {
+      ciudad: deptoHit.capital || '',
+      departamento: deptoIn || deptoHit.depto,
+    };
+  }
+  const claveMun = normCiudadCatastrofico(ciudadHom);
+  return {
+    ciudad: ciudadHom,
+    departamento: deptoIn || DEPTO_POR_MUNICIPIO[claveMun] || '',
+  };
 }
 
 /** Mapea filas de /api/responsables a opciones de select. */

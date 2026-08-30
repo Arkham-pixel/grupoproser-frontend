@@ -44,6 +44,9 @@ export default function CotizacionPdfLiquidacion({
   onArchivosEliminados,
   disabled = false,
   i18nPrefix = 'zurich.settlement',
+  titulo = null,
+  hint = null,
+  descripcionUpload = '',
 } = {}) {
   const { t } = useTranslation();
   const tq = (key, opts) => t(`${i18nPrefix}.${key}`, opts);
@@ -111,7 +114,7 @@ export default function CotizacionPdfLiquidacion({
     let archivoPdf = null;
     try {
       archivoPdf = await api.subir(casoId, filePdf, ETIQUETA_ARCHIVO_COTIZACION, {
-        descripcion: 'Cotización de reparación (PDF original)',
+        descripcion: descripcionUpload || 'Cotización de reparación (PDF original)',
       });
       if (archivoPdf) creados.push(archivoPdf);
     } catch (err) {
@@ -339,10 +342,10 @@ export default function CotizacionPdfLiquidacion({
     <div className="space-y-3">
       <div>
         <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-          {tq('quoteTitle')}
+          {titulo || tq('quoteTitle')}
         </h3>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {tq('quoteHint')}
+          {hint || tq('quoteHint')}
         </p>
       </div>
 

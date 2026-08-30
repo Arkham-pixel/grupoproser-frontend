@@ -20,6 +20,7 @@ import {
   SMMLV_POR_ANIO,
   AIU_PORCENTAJE_DEFAULT_ALFA,
   defaultOtrosAmparosAlfa,
+  defaultLiquidacionCotizacionPdfAlfa,
 } from './liquidadorAlfaHelpers.js';
 import { patchDeducibleDesdeTomadorAlfa } from './tomadoresAlfaCatalogo.js';
 import { fusionarLiquidadorSinPerderPresupuestoNsr } from '../SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
@@ -46,6 +47,12 @@ import {
   formatMilesNsr10,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { buscarItemBasePrecios } from '../SubcomponenteEvaluacionSismicaNSR10/basePreciosPresupuesto.js';
+import CotizacionesPdfAlfa from './CotizacionesPdfAlfa.jsx';
+import {
+  eliminarArchivoAlfa,
+  subirArchivoAlfa,
+  urlDescargaArchivoAlfa,
+} from '../../services/segurosAlfaService.js';
 
 /**
  * Liquidador Alfa = FORMATO LIQUIDACIÓN (Excel CAT).
@@ -109,10 +116,18 @@ export default function LiquidadorSegurosAlfa({
   }, [casoId]);
 
   const totales = useMemo(() => calcularLiquidacionAlfa(liquidador), [liquidador]);
+  const totalesNsr = useMemo(
+    () => calcularLiquidacionAlfa(liquidador, { forzarNsr: true }),
+    [liquidador]
+  );
+  const totalesCotizacionPdf = useMemo(
+    () => calcularLiquidacionAlfa(liquidador, { modo: 'cotizacion' }),
+    [liquidador]
+  );
   const enc = liquidador.encabezado || {};
   const itemsDetalle = useMemo(
-    () => resolverDetalleLiquidacionCat(liquidador, totales),
-    [liquidador, totales]
+    () => resolverDetalleLiquidacionCat(liquidador, totalesNsr),
+    [liquidador, totalesNsr]
   );
 
   useEffect(() => {
@@ -243,12 +258,82 @@ export default function LiquidadorSegurosAlfa({
     });
   };
 
+  const actualizarEncabezadoCotizacionPdf = (campo, valor) => {
+    setLiquidador((prev) => {
+      const actual = {
+        ...defaultLiquidacionCotizacionPdfAlfa(),
+        ...(prev.liquidacionCotizacionPdf || {}),
+      };
+      const next = { ...actual, [campo]: valor };
+      if (campo === 'tomador' || campo === 'poliza') {
+        const tomador = campo === 'tomador' ? valor : next.tomador;
+        const poliza = campo === 'poliza' ? valor : next.poliza;
+        next.deducibleConfig = patchDeducibleDesdeTomadorAlfa(
+          tomador,
+          { ...(next.deducibleConfig || {}), opcionDeducibleId: '' },
+          poliza
+        );
+      }
+      return { ...prev, liquidacionCotizacionPdf: next };
+    });
+  };
+
+  const actualizarDeducibleCotizacionPdf = (campoOPatch, valor) => {
+    setLiquidador((prev) => {
+      const actual = {
+        ...defaultLiquidacionCotizacionPdfAlfa(),
+        ...(prev.liquidacionCotizacionPdf || {}),
+      };
+      const patch =
+        campoOPatch && typeof campoOPatch === 'object'
+          ? { ...campoOPatch }
+          : { [campoOPatch]: valor };
+      if (patch.anioSMMLV != null && patch.valorSMMLV == null) {
+        const anioSel = Number(patch.anioSMMLV);
+        const vSmmlv = SMMLV_POR_ANIO[anioSel];
+        if (vSmmlv != null) {
+          patch.valorSMMLV = vSmmlv;
+          patch.valorSMDLV = Math.round(vSmmlv / 30);
+        }
+      }
+      return {
+        ...prev,
+        liquidacionCotizacionPdf: {
+          ...actual,
+          deducibleConfig: {
+            ...(actual.deducibleConfig || {}),
+            ...patch,
+            aplica: true,
+          },
+        },
+      };
+    });
+  };
+
+  const actualizarAiuCotizacionPdf = (aiuPorcentaje) => {
+    setLiquidador((prev) => {
+      const actual = {
+        ...defaultLiquidacionCotizacionPdfAlfa(),
+        ...(prev.liquidacionCotizacionPdf || {}),
+      };
+      return {
+        ...prev,
+        liquidacionCotizacionPdf: {
+          ...actual,
+          aiuPorcentaje: Number.isFinite(Number(aiuPorcentaje))
+            ? Number(aiuPorcentaje)
+            : AIU_PORCENTAJE_DEFAULT_ALFA,
+        },
+      };
+    });
+  };
+
   const setDetalle = (filas) => {
     setLiquidador((prev) => sincronizarDetalleCatConPresupuestoNsr(prev, filas));
   };
 
   const materializarDetalle = () =>
-    resolverDetalleLiquidacionCat(liquidador, totales).map((it) => ({ ...it }));
+    resolverDetalleLiquidacionCat(liquidador, totalesNsr).map((it) => ({ ...it }));
 
   const handleItemChange = (index, patch = {}) => {
     const base = materializarDetalle();
@@ -318,6 +403,31 @@ export default function LiquidadorSegurosAlfa({
   };
 
   const MIME = MIME_ARCHIVO_ALFA;
+  const apiAlfa = useMemo(
+    () => ({
+      subir: subirArchivoAlfa,
+      eliminar: eliminarArchivoAlfa,
+      url: urlDescargaArchivoAlfa,
+    }),
+    []
+  );
+
+  const handleCotizacionSlot = (slotId, cotizacionPdf) => {
+    setLiquidador((prev) => {
+      const nextSlots = {
+        materiales: null,
+        manoObra: null,
+        completo: null,
+        ...(prev.cotizacionesPdf || {}),
+        [slotId]: cotizacionPdf,
+      };
+      return {
+        ...prev,
+        cotizacionesPdf: nextSlots,
+        cotizacionPdf: nextSlots.completo,
+      };
+    });
+  };
 
   const appendArchivoAlCaso = (creado) => {
     if (!creado || !onCasoChange) return;
@@ -654,12 +764,40 @@ export default function LiquidadorSegurosAlfa({
         </div>
       </div>
 
+      <CotizacionesPdfAlfa
+        liquidador={liquidador}
+        totales={totalesCotizacionPdf}
+        onEncabezadoChange={actualizarEncabezadoCotizacionPdf}
+        onDeducibleChange={actualizarDeducibleCotizacionPdf}
+        onAiuChange={actualizarAiuCotizacionPdf}
+        onChangeSlot={handleCotizacionSlot}
+        casoId={casoId}
+        api={apiAlfa}
+        archivosCaso={casoAlfa?.archivos || casoLocal?.archivos || []}
+        onArchivosCreados={(creados) => {
+          (Array.isArray(creados) ? creados : [creados]).forEach((a) => appendArchivoAlCaso(a));
+          if (typeof onArchivoArchivado === 'function') {
+            (Array.isArray(creados) ? creados : [creados]).forEach((a) => onArchivoArchivado(a));
+          }
+        }}
+        onArchivosEliminados={(ids) => {
+          const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+          if (!setIds.size) return;
+          onCasoChange?.((prev) => {
+            if (!prev) return prev;
+            const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+            return { ...prev, archivos: actuales.filter((a) => !setIds.has(String(a?._id))) };
+          });
+        }}
+        disabled={!!exportando || guardandoCaso}
+      />
+
       <FormatoLiquidacionAlfa
         caso={casoLocal}
         encabezado={enc}
         liquidacionCatastrofico={liquidador.liquidacionCatastrofico || {}}
         itemsDetalle={itemsDetalle}
-        totales={totales}
+        totales={totalesNsr}
         observaciones={liquidador.observaciones || ''}
         liquidadoPor={enc.ajustador || casoLocal.ajustador || ''}
         datosBancarios={liquidador.datosBancarios || {}}
@@ -702,7 +840,6 @@ export default function LiquidadorSegurosAlfa({
           setLiquidador((prev) => ({ ...prev, aceptacionIndemnizacion: v }))
         }
         onFirmaClienteChange={(v) => {
-          // Transición: el data URL no debe bloquear el hilo al firmar
           startTransition(() => {
             setLiquidador((prev) => ({ ...prev, firmaCliente: v }));
           });

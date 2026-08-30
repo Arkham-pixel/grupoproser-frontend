@@ -5,6 +5,7 @@ import { fetchAllCasosAllianzListado } from '../../services/allianzListadoServic
 import {
   ESTADOS_ALLIANZ,
   buildOpcionesFiltro,
+  coincideFiltroCiudadAllianz,
   coincideFiltroTexto,
   fechaEnRango,
   formatCurrency,
@@ -22,6 +23,7 @@ export default function DashboardAllianzListado() {
       formatCurrency={formatCurrency}
       fechaEnRango={fechaEnRango}
       coincideFiltroTexto={coincideFiltroTexto}
+      coincideFiltroCiudad={coincideFiltroCiudadAllianz}
       buildOpcionesFiltro={buildOpcionesFiltro}
       estados={ESTADOS_ALLIANZ}
       i18nNs="allianz"

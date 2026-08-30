@@ -333,3 +333,95 @@ export function revocarPreviewsCotizacion(paginas = []) {
     }
   });
 }
+
+/** Ventanas de cotización PDF en Alfa: materiales, mano de obra y completo. */
+export const SLOTS_COTIZACION_PDF_ALFA = [
+  { id: 'materiales', label: 'Materiales' },
+  { id: 'manoObra', label: 'Mano de obra' },
+  { id: 'completo', label: 'Completo' },
+];
+
+export function defaultCotizacionesPdfAlfa() {
+  return { materiales: null, manoObra: null, completo: null };
+}
+
+export function normalizarCotizacionesPdfAlfa(liquidador = {}) {
+  const raw =
+    liquidador?.cotizacionesPdf && typeof liquidador.cotizacionesPdf === 'object'
+      ? liquidador.cotizacionesPdf
+      : {};
+  return {
+    materiales: raw.materiales && typeof raw.materiales === 'object' ? raw.materiales : null,
+    manoObra: raw.manoObra && typeof raw.manoObra === 'object' ? raw.manoObra : null,
+    completo:
+      (raw.completo && typeof raw.completo === 'object' ? raw.completo : null) ||
+      (liquidador?.cotizacionPdf && typeof liquidador.cotizacionPdf === 'object'
+        ? liquidador.cotizacionPdf
+        : null),
+  };
+}
+
+export function serializarCotizacionesPdfAlfa(cotizaciones = null, liquidador = {}) {
+  const norm = normalizarCotizacionesPdfAlfa({
+    cotizacionesPdf: cotizaciones,
+    cotizacionPdf: liquidador?.cotizacionPdf,
+  });
+  return {
+    materiales: serializarCotizacionPdf(norm.materiales),
+    manoObra: serializarCotizacionPdf(norm.manoObra),
+    completo: serializarCotizacionPdf(norm.completo),
+  };
+}
+
+export function resumenCotizacionesPdfAlfa(liquidador = {}) {
+  const slots = normalizarCotizacionesPdfAlfa(liquidador);
+  const filas = SLOTS_COTIZACION_PDF_ALFA.map((slot) => {
+    const cot = slots[slot.id];
+    const monto = montoCotizacionPdf(cot);
+    const usada = usaCotizacionComoBasePresupuesto(cot);
+    const tieneArchivo = Boolean(
+      (Array.isArray(cot?.paginas) && cot.paginas.length) || cot?.archivoPdf || cot?.nombreOriginal
+    );
+    return {
+      id: slot.id,
+      label: slot.label,
+      cotizacion: cot,
+      monto,
+      usada,
+      tieneArchivo,
+    };
+  });
+  const usadas = filas.filter((f) => f.usada);
+  const total = usadas.reduce((acc, f) => acc + (Number(f.monto) || 0), 0);
+  return {
+    slots,
+    filas,
+    usadas,
+    total: Math.round(total * 100) / 100,
+    nUsadas: usadas.length,
+    usaComoBase: usadas.length > 0 && total > 0,
+  };
+}
+
+export function paginasTodasCotizacionesPdfAlfa(liquidador = {}, informe = null) {
+  const delInforme = Array.isArray(informe?.fotosCotizacion)
+    ? informe.fotosCotizacion.filter((f) => f && (f.ruta || f._id || f.preview || f.file))
+    : [];
+  const resumen = resumenCotizacionesPdfAlfa(liquidador);
+  const delLiq = [];
+  resumen.filas.forEach((fila) => {
+    const pags = Array.isArray(fila.cotizacion?.paginas) ? fila.cotizacion.paginas : [];
+    pags.forEach((p) => {
+      if (!p || !(p.ruta || p._id || p.preview || p.file)) return;
+      delLiq.push({
+        ...p,
+        descripcion:
+          p.descripcion || `Cotización ${fila.label} · página ${p.pagina || ''}`.trim(),
+      });
+    });
+  });
+  if (!delInforme.length) return delLiq;
+  const keys = new Set(delInforme.map((f) => String(f._id || f.ruta || '')).filter(Boolean));
+  const extra = delLiq.filter((f) => !keys.has(String(f._id || f.ruta || '')));
+  return [...delInforme, ...extra];
+}

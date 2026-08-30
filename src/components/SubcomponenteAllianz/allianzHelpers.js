@@ -1,4 +1,5 @@
 import { crearFechaLocal } from '../../utils/fechaUtils.js';
+import { homologarCiudadCatastrofico, resolverUbicacionCatastrofico } from '../../utils/catalogosAsignacionCatastrofico.js';
 
 export const ALLIANZ_REPORTE_PAGE_SIZE = 25;
 
@@ -457,15 +458,22 @@ export const normTexto = (value) =>
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
+export const homologarCiudadAllianz = (valor) =>
+  resolverUbicacionCatastrofico(valor).ciudad || homologarCiudadCatastrofico(valor);
+
+export const resolverUbicacionAllianz = resolverUbicacionCatastrofico;
+
 export const buildOpcionesFiltro = (casos = [], campo) => {
   const porNorm = new Map();
   for (const item of casos) {
     const raw = item?.[campo];
     if (!raw) continue;
-    const norm = normTexto(raw);
+    const label =
+      campo === 'ciudad' ? homologarCiudadAllianz(raw) || String(raw).trim() : String(raw).trim();
+    const norm = normTexto(label);
     if (!norm) continue;
     if (!porNorm.has(norm)) {
-      porNorm.set(norm, { value: norm, label: String(raw).trim() });
+      porNorm.set(norm, { value: norm, label });
     }
   }
   return [...porNorm.values()].sort((a, b) => a.label.localeCompare(b.label, 'es'));
@@ -474,6 +482,11 @@ export const buildOpcionesFiltro = (casos = [], campo) => {
 export const coincideFiltroTexto = (valorCaso, filtro) => {
   if (!filtro) return true;
   return normTexto(valorCaso) === normTexto(filtro);
+};
+
+export const coincideFiltroCiudadAllianz = (valorCaso, filtro) => {
+  if (!filtro) return true;
+  return coincideFiltroTexto(homologarCiudadAllianz(valorCaso), filtro);
 };
 
 /** Fecha ISO (YYYY-MM-DD) para inputs date desde valores de la API */
@@ -685,5 +698,8 @@ export const construirFormDesdecasoAllianz = (caso = {}) => {
     base.tipoPoliza = 'OTRO';
   }
   base.estado = homologarEstadoAllianz(base.estado);
+  const ub = resolverUbicacionAllianz(base.ciudad, base.departamento);
+  if (ub.ciudad) base.ciudad = ub.ciudad;
+  if (ub.departamento) base.departamento = ub.departamento;
   return base;
 };

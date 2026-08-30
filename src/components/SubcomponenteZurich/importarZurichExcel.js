@@ -475,6 +475,13 @@ const HEADER_MAP_LISTADO = {
   'FECHA FIN POLIZA': 'fechaFinPoliza',
   'VIGENCIA HASTA': 'fechaFinPoliza',
   COBERTURA: 'cobertura',
+  'VALOR ASEGURADO INMUEBLE': 'valorAseguradoInmueble',
+  'VALOR ASEGURADO': 'valorAseguradoInmueble',
+  'VALOR RECLAMADO': 'valorReclamado',
+  RECLAMADO: 'valorReclamado',
+  'VALOR LIQUIDADO': 'valorLiquidado',
+  LIQUIDADO: 'valorLiquidado',
+  RESERVA: 'reserva',
   'FECHA ASIGNACION': 'fechaAsignacion',
   'FECHA VISITA': 'fechaVisita',
   INSPECTOR: 'inspector',
@@ -548,7 +555,7 @@ const parsearHojaListadoCliente = (sheet) => {
       tipoIdentificacion: '',
       numeroPoliza: '',
       tipoPoliza: '',
-      causa: '',
+      causa: 'TERREMOTO',
       asegurado: '',
       intermediario: '',
       correoIntermediario: '',
@@ -588,6 +595,10 @@ const parsearHojaListadoCliente = (sheet) => {
         campo === 'fechaAnalisisCaso'
       ) {
         caso[campo] = parseFechaCelda(raw) || '';
+        return;
+      }
+      if (CAMPOS_NUMERO.has(campo)) {
+        caso[campo] = parseNumeroCelda(raw);
         return;
       }
       caso[campo] = limpiarTextoListado(raw);

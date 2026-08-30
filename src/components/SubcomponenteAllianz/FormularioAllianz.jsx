@@ -40,6 +40,7 @@ import {
   FORM_VACIO_ALLIANZ,
   MODALIDADES_ALLIANZ,
   homologarEstadoAllianz,
+  resolverUbicacionAllianz,
   fechaParaInput,
   diasEnEstadoAllianz,
   ultimaGestionAllianz,
@@ -285,6 +286,11 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
         if (campoFecha && !siguiente[campoFecha]) {
           siguiente[campoFecha] = fechaParaInput(new Date());
         }
+      }
+      if (clave === 'ciudad') {
+        const ub = resolverUbicacionAllianz(valor, siguiente.departamento);
+        if (ub.ciudad) siguiente.ciudad = ub.ciudad;
+        if (ub.departamento) siguiente.departamento = ub.departamento;
       }
       return siguiente;
     });
@@ -609,6 +615,26 @@ const FormularioAllianz = ({ initialData = null, embed = false, origen = 'cat', 
               onChange={setCampo('telefonoIntermediario')}
               placeholder={t('allianz.placeholders.telefonoIntermediario')}
             />
+          </Campo>
+          <Campo label={t('allianz.fields.departamento')}>
+            <SelectFenix
+              value={form.departamento || ''}
+              onChange={setDepartamento}
+              disabled={
+                attrsCampoCaso(rolUsuario, 'departamento', ctxPermiso).disabled ||
+                (cargandoCatalogos && departamentos.length === 0)
+              }
+            >
+              <option value="">{t('common.select')}</option>
+              {opcionHuerfana(form.departamento, departamentos) && (
+                <option value={form.departamento}>{form.departamento}</option>
+              )}
+              {departamentos.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </SelectFenix>
           </Campo>
           <Campo label={t('allianz.fields.ciudad')}>
             <SelectBuscable

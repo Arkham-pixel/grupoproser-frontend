@@ -3,7 +3,7 @@ import {
   fusionarLiquidadorSinPerderPresupuestoNsr,
   scoreContenidoLiquidadorNsr,
 } from '../components/SubcomponenteEvaluacionSismicaNSR10/protegerPresupuestoNsr10.js';
-import { resolverMontoIndemnizarAlfa } from '../components/SubcomponenteSegurosAlfa/liquidadorAlfaHelpers.js';
+import { resolverMontoIndemnizarAlfa, liquidadorAlfaParaPersistir } from '../components/SubcomponenteSegurosAlfa/liquidadorAlfaHelpers.js';
 import { authFetch } from './authFetch.js';
 
 const ALFA_API_URL = `${BASE_URL}/api/seguros-alfa`;
@@ -314,6 +314,9 @@ export const subirArchivoAlfa = async (casoId, file, etiqueta = 'GENERAL', optio
   if (options.replaceSameSlot) {
     formData.append('replaceSameSlot', 'true');
   }
+  if (options.descripcion) {
+    formData.append('descripcion', String(options.descripcion));
+  }
   const response = await fetch(`${ALFA_API_URL}/${casoId}/archivos`, {
     method: 'POST',
     headers: { ...authHeaders() },
@@ -460,16 +463,18 @@ export const guardarLiquidadorEnCasoAlfa = async ({
 
   const entrante = liquidador && typeof liquidador === 'object' ? liquidador : {};
   // Solo bloquear cascarón vacío; no reinyectar el liquidador viejo al editar
-  const liquidadorSeguro =
+  const liquidadorSeguroRaw =
     scoreContenidoLiquidadorNsr(entrante) > 0
       ? entrante
       : fusionarLiquidadorSinPerderPresupuestoNsr(entrante, casoBase?.liquidador);
 
-  if (scoreContenidoLiquidadorNsr(liquidadorSeguro) === 0) {
+  if (scoreContenidoLiquidadorNsr(liquidadorSeguroRaw) === 0) {
     throw new Error(
-      'El liquidador está vacío: no se puede guardar. Agregue ítems antes de guardar.'
+      'El liquidador está vacío: no se puede guardar. Agregue ítems o una cotización PDF antes de guardar.'
     );
   }
+
+  const liquidadorSeguro = liquidadorAlfaParaPersistir(liquidadorSeguroRaw);
 
   // valorLiquidado siempre desde el liquidador (nunca un totalIndemnizar/stale del cliente)
   const { totales: totalesFrescos, totalIndemnizar } = resolverMontoIndemnizarAlfa(

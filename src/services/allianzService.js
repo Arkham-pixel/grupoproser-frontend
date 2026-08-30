@@ -1,5 +1,6 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
+import { homologarCiudadAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
 
 const ALLIANZ_API_URL = `${BASE_URL}/api/allianz`;
 
@@ -16,8 +17,12 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const normalizeAllianzItem = (item = {}) => ({
+export const normalizeAllianzItem = (item = {}) => {
+  const ub = resolverUbicacionAllianz(item.ciudad, item.departamento);
+  return {
   ...item,
+  ciudad: ub.ciudad || homologarCiudadAllianz(item.ciudad) || item.ciudad || '',
+  departamento: ub.departamento || item.departamento || '',
   siniestro: item.siniestro ?? '',
   zc: item.zc ?? '',
   identificacion: item.identificacion ?? '',
@@ -38,7 +43,8 @@ export const normalizeAllianzItem = (item = {}) => ({
   causa: item.causa ?? '',
   estado: item.estado ?? '',
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
-});
+  };
+};
 
 const normalizeResponseArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeAllianzItem(item ?? {})) : [];

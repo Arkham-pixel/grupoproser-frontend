@@ -14,6 +14,7 @@ import {
   textoResumenOtrosAmparosAlfa,
 } from './liquidadorAlfaHelpers.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
+import { resumenCotizacionesPdfAlfa } from '../liquidacion/cotizacionPdfLiquidacion.js';
 
 const PLANTILLA_URL = `${import.meta.env.BASE_URL || '/'}templates/Informe_CAT_Seguros_Alfa.xlsx`;
 const LOGO_ALFA_URL = `${import.meta.env.BASE_URL || '/'}templates/logo-seguros-alfa.png`;
@@ -638,6 +639,19 @@ async function cargarPlantilla() {
 }
 
 function itemsDetalleDesdeLiquidador(liquidador, totales) {
+  const resumenCotiz = resumenCotizacionesPdfAlfa(liquidador);
+  if (resumenCotiz.usaComoBase) {
+    return resumenCotiz.usadas.map((f) => ({
+      descripcion: `Cotización PDF · ${f.label}`,
+      valorAsegurado: '',
+      indiceVariable: 0,
+      valorAseguradoFecha: '',
+      valorAsegurable: '',
+      valorPerdida: f.monto,
+      demerito: 0,
+      valorReal: f.monto,
+    }));
+  }
   // Preferir filas editadas en la UI FORMATO LIQUIDACIÓN
   const guardado = liquidador?.detalleLiquidacionCat;
   if (Array.isArray(guardado)) {
@@ -815,13 +829,20 @@ function rellenarLiquidador(sheet, { caso, liquidador, totales, informe, workboo
   // Totales alineados a la UI (filas plantilla 25+ desplazadas si se insertaron ítems):
   // Preferir suma de valorPerdida del detalle (igual que Formato liquidación)
   const limite = va || 0;
+  const usaCotizExcel = totales?.origenPresupuesto === 'cotizacion';
   const subDesdeDetalle = detalle.reduce(
     (acc, it) => acc + (parsearNumero(it.valorPerdida) || 0),
     0
   );
-  const baseSub = subDesdeDetalle > 0 ? subDesdeDetalle : sumaIndemnizable;
+  const baseSub = usaCotizExcel
+    ? parsearNumero(totales?.cotizacionMonto) || subDesdeDetalle || sumaIndemnizable
+    : subDesdeDetalle > 0
+      ? subDesdeDetalle
+      : sumaIndemnizable;
+  // Con cotización PDF la pérdida es el monto de las ventanas, no se recorta al SID.
+  // El SID solo sirve de base al deducible Alfa (% asegurable + mínimo SMMLV).
   const subTotalItems =
-    limite > 0 && limite < baseSub ? limite : baseSub;
+    !usaCotizExcel && limite > 0 && limite < baseSub ? limite : baseSub;
   const aiuPctDecimal = Number(totales?.presupuesto?.aiuPct);
   const aiuPctUi = Number.isFinite(aiuPctDecimal)
     ? Math.round(aiuPctDecimal * 10000) / 100

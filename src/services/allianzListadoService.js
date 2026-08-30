@@ -1,5 +1,6 @@
 import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { sanitizarInformeUnicoAllianz, sanitizarLiquidadorAllianz, parsearNumero } from '../components/SubcomponenteAllianz/liquidadorAllianzHelpers.js';
+import { homologarCiudadAllianz, resolverUbicacionAllianz } from '../components/SubcomponenteAllianz/allianzHelpers.js';
 
 const API_URL = `${BASE_URL}/api/allianz-listado`;
 
@@ -8,7 +9,9 @@ const authHeaders = () => {
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
-export const normalizeAllianzListadoItem = (item = {}) => ({
+export const normalizeAllianzListadoItem = (item = {}) => {
+  const ub = resolverUbicacionAllianz(item.ciudad, item.departamento);
+  return {
   ...item,
   zc: item.zc ?? '',
   siniestro: item.siniestro ?? '',
@@ -27,8 +30,8 @@ export const normalizeAllianzListadoItem = (item = {}) => ({
   correoAsegurado: item.correoAsegurado ?? '',
   contactoAsegurado: item.contactoAsegurado ?? '',
   observaciones: item.observaciones ?? '',
-  ciudad: item.ciudad ?? '',
-  departamento: item.departamento ?? '',
+  ciudad: ub.ciudad || homologarCiudadAllianz(item.ciudad) || item.ciudad || '',
+  departamento: ub.departamento || item.departamento || '',
   ajustadorLider: item.ajustadorLider ?? '',
   ajustador: item.ajustador ?? '',
   inspector: item.inspector ?? '',
@@ -36,7 +39,8 @@ export const normalizeAllianzListadoItem = (item = {}) => ({
   liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
   informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
   archivos: Array.isArray(item.archivos) ? item.archivos : [],
-});
+  };
+};
 
 const normalizeArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeAllianzListadoItem(item ?? {})) : [];

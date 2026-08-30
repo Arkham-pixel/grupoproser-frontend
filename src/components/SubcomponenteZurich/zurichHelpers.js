@@ -581,6 +581,33 @@ export const formatCurrency = (value) => {
   }).format(Number(value));
 };
 
+/** Cifra corta para frisos: $ 5.105 M en lugar de $ 5.105.100.000. */
+export const formatCurrencyCompact = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  if (n === 0) return formatCurrency(0);
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '−' : '';
+  if (abs >= 1_000_000) {
+    const millones = abs / 1_000_000;
+    const cifra =
+      millones >= 100
+        ? Math.round(millones).toLocaleString('es-CO')
+        : millones.toLocaleString('es-CO', { maximumFractionDigits: 1 });
+    return `${sign}$ ${cifra} MM`;
+  }
+  return formatCurrency(n);
+};
+
+/** Compacto de torre: $ 5.105 MM; vacío distinto de cero. */
+export const formatCurrencyMm = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return formatCurrencyCompact(n);
+};
+
 export const formatDate = (value) => {
   const date = crearFechaLocal(value);
   if (!date) return '';
@@ -658,7 +685,7 @@ export const normTexto = (value) =>
     .toUpperCase()
     .replace(/\s+/g, ' ');
 
-/** Unifica Cali / Santiago de Cali → CALI para listados y dashboard. */
+/** Unifica Cali / Pereira y variantes de Excel para listados y dashboard. */
 export const homologarCiudadZurich = (valor) => {
   const texto = String(valor ?? '')
     .replace(/\s+/g, ' ')
@@ -672,6 +699,37 @@ export const homologarCiudadZurich = (valor) => {
     /^SANTIAGO DE CALI\b/.test(clave)
   ) {
     return 'CALI';
+  }
+  if (clave === 'PEREIRA' || clave === 'PEREIRA RISARALDA') {
+    return 'PEREIRA';
+  }
+  return texto;
+};
+
+export const CAUSA_ZURICH_DEFAULT = 'TERREMOTO';
+
+/**
+ * Unifica vacíos y variantes (Terremoto / TERREMOTO / sismo) en TERREMOTO.
+ * Esta cartera Zurich es el evento CAT; si no hay causa, es terremoto.
+ */
+export const homologarCausaZurich = (valor) => {
+  const texto = String(valor ?? '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const clave = normTexto(texto);
+  if (!clave) return CAUSA_ZURICH_DEFAULT;
+  if (
+    clave === 'TERREMOTO' ||
+    clave === 'SISMO' ||
+    clave === 'SEISMO' ||
+    clave === 'EARTHQUAKE' ||
+    clave === 'TEMBLOR' ||
+    /\bTERREMOTO\b/.test(clave) ||
+    /\bSISMO\b/.test(clave) ||
+    clave.includes('MOVIMIENTO TELURICO') ||
+    clave.includes('MOVIMIENTO SISMICO')
+  ) {
+    return CAUSA_ZURICH_DEFAULT;
   }
   return texto;
 };
@@ -721,8 +779,13 @@ export const buildOpcionesFiltro = (casos = [], campo) => {
   const porNorm = new Map();
   for (const item of casos) {
     const raw = item?.[campo];
-    if (!raw) continue;
-    const label = campo === 'ciudad' ? homologarCiudadZurich(raw) || String(raw).trim() : String(raw).trim();
+    if (campo !== 'causa' && !raw) continue;
+    const label =
+      campo === 'ciudad'
+        ? homologarCiudadZurich(raw) || String(raw).trim()
+        : campo === 'causa'
+          ? homologarCausaZurich(raw)
+          : String(raw).trim();
     const norm = normTexto(label);
     if (!norm) continue;
     if (!porNorm.has(norm)) {
@@ -740,6 +803,11 @@ export const coincideFiltroTexto = (valorCaso, filtro) => {
 export const coincideFiltroCiudadZurich = (valorCaso, filtro) => {
   if (!filtro) return true;
   return coincideFiltroTexto(homologarCiudadZurich(valorCaso), filtro);
+};
+
+export const coincideFiltroCausaZurich = (valorCaso, filtro) => {
+  if (!filtro) return true;
+  return coincideFiltroTexto(homologarCausaZurich(valorCaso), filtro);
 };
 
 /** Fecha ISO (YYYY-MM-DD) para inputs date desde valores de la API */
@@ -789,7 +857,7 @@ export const FORM_VACIO_ZURICH = {
   numeroPoliza: '',
   tipoPoliza: '',
   tipoPolizaOtro: '',
-  causa: '',
+  causa: 'TERREMOTO',
   direccionPredio: '',
   numeroCredito: '',
   informacionContacto: '',

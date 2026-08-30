@@ -322,9 +322,9 @@ export function totalPresupuestoPreliminarZurich(filas = []) {
 }
 
 export function reservaSugeridaZurich(info = {}) {
-  const directa = parsearNumero(info?.reservaSugerida);
-  if (directa > 0) return directa;
-  return totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar);
+  const delPresupuesto = totalPresupuestoPreliminarZurich(info?.filasPresupuestoPreliminar);
+  if (delPresupuesto > 0) return delPresupuesto;
+  return parsearNumero(info?.reservaSugerida);
 }
 
 function usarPlantillaSiVacio(filas, plantilla) {

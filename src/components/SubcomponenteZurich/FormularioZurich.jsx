@@ -381,6 +381,9 @@ const FormularioZurich = ({
         observaciones: form.observaciones,
         observacionesCat: form.observacionesCat,
         reserva: aNumero(form.reserva),
+        valorAseguradoInmueble: aNumero(form.valorAseguradoInmueble),
+        valorReclamado: aNumero(form.valorReclamado),
+        valorLiquidado: aNumero(form.valorLiquidado),
         ciudad: form.ciudad,
         departamento: form.departamento,
         tomador: form.tomador ?? '',
@@ -794,9 +797,6 @@ const FormularioZurich = ({
               placeholder={t('zurich.placeholders.observaciones')}
             />
           </Campo>
-          {esModuloListado ? (
-            <Campo label={t('zurich.fields.reserva')}>{inputMiles('reserva')}</Campo>
-          ) : null}
         </div>
         {soloInspector ? (
           <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
@@ -807,6 +807,27 @@ const FormularioZurich = ({
           </p>
         ) : null}
       </section>
+
+      {esModuloListado ? (
+        <section className={expressFormSection}>
+          <h3 className={expressSectionTitle}>{t('zurich.sections.values')}</h3>
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('zurich.sections.valuesHint')}
+          </p>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Campo label={t('zurich.fields.valorAseguradoInmueble')}>
+              {inputMiles('valorAseguradoInmueble')}
+            </Campo>
+            <Campo label={t('zurich.fields.valorReclamado')}>
+              {inputMiles('valorReclamado')}
+            </Campo>
+            <Campo label={t('zurich.fields.valorLiquidado')}>
+              {inputMiles('valorLiquidado')}
+            </Campo>
+            <Campo label={t('zurich.fields.reserva')}>{inputMiles('reserva')}</Campo>
+          </div>
+        </section>
+      ) : null}
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('zurich.sections.actionDates')}</h3>

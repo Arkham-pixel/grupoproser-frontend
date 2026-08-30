@@ -149,17 +149,31 @@ export function etiquetaInspectorCaso(caso = {}, mapa = new Map()) {
   return resolverNombrePersona(codigo, mapa);
 }
 
+function claveAgrupacion(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, ' ');
+}
+
 function agruparConteo(casos, campoOGetter, { vacio = 'Sin dato', limite = 10 } = {}) {
   const getValor =
     typeof campoOGetter === 'function' ? campoOGetter : (caso) => caso?.[campoOGetter];
   const map = new Map();
   for (const caso of casos) {
     const raw = String(getValor(caso) ?? '').trim();
-    const key = raw || vacio;
-    map.set(key, (map.get(key) || 0) + 1);
+    const label = raw || vacio;
+    const key = raw ? claveAgrupacion(raw) : vacio;
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, { nombre: label, cantidad: 1 });
+    } else {
+      prev.cantidad += 1;
+    }
   }
-  return [...map.entries()]
-    .map(([nombre, cantidad]) => ({ nombre, cantidad }))
+  return [...map.values()]
     .sort((a, b) => b.cantidad - a.cantidad || a.nombre.localeCompare(b.nombre, 'es'))
     .slice(0, limite);
 }

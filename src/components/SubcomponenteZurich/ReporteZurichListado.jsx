@@ -78,6 +78,9 @@ const COLUMNAS = [
   { clave: 'fechaFinPoliza', labelKey: 'fechaFinPoliza' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
+  { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
+  { clave: 'valorReclamado', labelKey: 'valorReclamado' },
+  { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
   { clave: 'reserva', labelKey: 'reserva' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider', interno: true },
   { clave: 'ajustador', labelKey: 'ajustador', interno: true },
@@ -124,6 +127,9 @@ const buildExportRow = (caso) => ({
   'FECHA FIN PÓLIZA': formatDate(caso.fechaFinPoliza),
   ESTADO: caso.estado ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
+  'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
+  'VALOR RECLAMADO': caso.valorReclamado ?? '',
+  'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
   RESERVA: caso.reserva ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
   AJUSTADOR: caso.ajustador ?? '',
@@ -280,9 +286,9 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'tipoPoliza') return etiquetaTipoPolizaZurich(item) || '—';
     if (clave === 'diasEnEstado') return diasEnEstadoZurich(item) || '—';
-    if (clave === 'reserva') {
-      const n = Number(item.reserva);
-      if (!Number.isFinite(n) || n === 0) return item.reserva ? String(item.reserva) : '—';
+    if (clave === 'reserva' || clave === 'valorAseguradoInmueble' || clave === 'valorReclamado' || clave === 'valorLiquidado') {
+      const n = Number(item[clave]);
+      if (!Number.isFinite(n) || n === 0) return item[clave] ? String(item[clave]) : '—';
       return formatCurrency(n);
     }
     if (clave === 'fechaAnalisisCaso') {

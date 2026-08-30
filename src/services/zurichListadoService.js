@@ -50,6 +50,9 @@ export const normalizeZurichListadoItem = (item = {}) => {
     fechaInicioPoliza: item.fechaInicioPoliza ?? caso.fechaInicioPoliza ?? null,
     fechaFinPoliza: item.fechaFinPoliza ?? caso.fechaFinPoliza ?? null,
     cobertura: item.cobertura ?? caso.cobertura ?? '',
+    valorAseguradoInmueble: item.valorAseguradoInmueble ?? caso.valorAseguradoInmueble ?? null,
+    valorReclamado: item.valorReclamado ?? caso.valorReclamado ?? null,
+    valorLiquidado: item.valorLiquidado ?? caso.valorLiquidado ?? null,
     ajustadorLider: item.ajustadorLider ?? '',
     ajustador: item.ajustador ?? '',
     inspector: item.inspector ?? '',
@@ -67,21 +70,37 @@ const normalizeArray = (raw) =>
 
 export const getCasosZurichListadoPaginado = async ({ page = 1, limit = 100 } = {}) => {
   const qs = new URLSearchParams({ page, limit, _t: Date.now() });
-  const response = await fetch(`${API_URL}?${qs}`, { headers: authHeaders() });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.success === false) {
-    throw new Error(payload?.error || `Error al obtener los casos del listado Zurich (${response.status})`);
+  let ultimoError = null;
+  for (let intento = 1; intento <= 3; intento += 1) {
+    try {
+      const response = await fetch(`${API_URL}?${qs}`, { headers: authHeaders() });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || payload?.success === false) {
+        throw new Error(payload?.error || payload?.mensaje || `Error al obtener los casos del listado Zurich (${response.status})`);
+      }
+      if (payload?.data && Array.isArray(payload.data)) {
+        return { ...payload, data: normalizeArray(payload.data) };
+      }
+      if (Array.isArray(payload)) {
+        return { data: normalizeArray(payload), total: payload.length };
+      }
+      return payload;
+    } catch (error) {
+      ultimoError = error;
+      const red =
+        error?.name === 'TypeError' ||
+        /failed to fetch|networkerror|load failed/i.test(String(error?.message || ''));
+      if (!red || intento === 3) break;
+      await new Promise((r) => setTimeout(r, 400 * intento));
+    }
   }
-  if (payload?.data && Array.isArray(payload.data)) {
-    return { ...payload, data: normalizeArray(payload.data) };
+  if (ultimoError && /failed to fetch|networkerror|load failed/i.test(String(ultimoError.message || ''))) {
+    throw new Error('No se pudo conectar con el servidor. Confirme que el backend está en el puerto 3000 y recargue.');
   }
-  if (Array.isArray(payload)) {
-    return { data: normalizeArray(payload), total: payload.length };
-  }
-  return payload;
+  throw ultimoError;
 };
 
-export const fetchAllCasosZurichListado = async (batchSize = 2000) => {
+export const fetchAllCasosZurichListado = async (batchSize = 250) => {
   const acumulado = [];
   let page = 1;
   let total = null;
@@ -92,10 +111,20 @@ export const fetchAllCasosZurichListado = async (batchSize = 2000) => {
     if (!lote.length) break;
     acumulado.push(...lote);
     if (total != null && acumulado.length >= total) break;
-    if (lote.length < batchSize) break;
+    const tamanoPagina = Number(respuesta?.limit) || batchSize;
+    if (lote.length < tamanoPagina) break;
     page += 1;
   }
   return acumulado;
+};
+
+export const fetchTorreConfigZurich = async () => {
+  const response = await fetch(`${API_URL}/torre-config`, { headers: authHeaders() });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload?.success === false) {
+    throw new Error(payload?.error || payload?.mensaje || `Error al obtener la config de la torre (${response.status})`);
+  }
+  return payload?.data ?? payload;
 };
 
 export const crearCasoZurichListado = async (datos) => {
@@ -167,6 +196,7 @@ export const guardarInformeUnicoEnCasoZurichListado = async ({
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el informe.');
   const sanitizado = sanitizarInformeUnicoZurich(informeUnico || {});
   const reservaPerito = reservaSugeridaZurich(sanitizado);
+  if (reservaPerito > 0) sanitizado.reservaSugerida = String(reservaPerito);
   const payload = {
     ...omitirMeta(casoBase),
     ...camposPolizaParaCasoZurich(casoBase?.liquidador || {}, casoBase),

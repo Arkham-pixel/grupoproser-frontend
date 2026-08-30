@@ -30,6 +30,7 @@ import {
 import { urlDescargaArchivoAlfa } from '../../services/segurosAlfaService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { fotosInformeDesdeCaso } from '../fotosInformeUnicoHelpers.js';
+import { paginasTodasCotizacionesPdfAlfa } from '../liquidacion/cotizacionPdfLiquidacion.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
 const borderCuadro = { style: BorderStyle.SINGLE, size: 8, color: '000000' };
@@ -952,6 +953,7 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
     (totales.presupuesto?.impPct ?? presupuesto.impuestosPorcentaje ?? 0) * 100
   );
   const criterio = totales.criterio || {};
+  const usaCotiz = totales.origenPresupuesto === 'cotizacion';
 
   const fotosArchivos = (Array.isArray(caso.archivos) ? caso.archivos : []).filter((a) => {
     const et = String(a.etiqueta || '').toUpperCase();
@@ -1061,6 +1063,60 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
       })
     );
   }
+
+  const fotosCotizacion = paginasTodasCotizacionesPdfAlfa(liq, info);
+  const cotizacionParrafos = [];
+  let cotizacionesIncluidas = 0;
+  for (const archivo of fotosCotizacion.slice(0, 12)) {
+    const img = await resolverBytesFoto(archivo, caso.archivos || []);
+    if (!img) continue;
+    cotizacionesIncluidas += 1;
+    const natW = Number(archivo.width) || 0;
+    const natH = Number(archivo.height) || 0;
+    let width = 500;
+    let height = 680;
+    if (natW > 0 && natH > 0) {
+      const scale = Math.min(500 / natW, 680 / natH, 1);
+      width = Math.max(120, Math.round(natW * scale));
+      height = Math.max(160, Math.round(natH * scale));
+    }
+    cotizacionParrafos.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 40 },
+        children: [
+          new ImageRun({
+            data: img.bytes,
+            transformation: { width, height },
+            type: img.type === 'png' ? 'png' : 'jpg',
+          }),
+        ],
+      }),
+      p(
+        archivo.descripcion ||
+          archivo.nombreOriginal ||
+          archivo.nombre ||
+          `Cotización · página ${cotizacionesIncluidas}`,
+        {
+          alignment: AlignmentType.CENTER,
+          size: SIZE_12,
+          after: 120,
+        }
+      )
+    );
+  }
+  const seccionCotizacion = cotizacionParrafos.length
+    ? [
+        p('Cotizaciones de reparación (PDF)', { bold: true, before: 180, after: 80, size: SIZE_12 }),
+        p(
+          usaCotiz
+            ? `Soporte de las cotizaciones usadas como cuenta final. Total: ${money(totales.cotizacionMonto)}. Se calcula AIU (${aiuPct}%) y luego el deducible Alfa.`
+            : `Captura de las cotizaciones adjuntas (${cotizacionesIncluidas} página(s)).`,
+          { after: 120, size: SIZE_12 }
+        ),
+        ...cotizacionParrafos,
+      ]
+    : [];
 
   const filasCuadro = [
     new TableRow({
@@ -1203,7 +1259,24 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
   ];
 
   const liquidacionResumen = [
-    ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+    ...(usaCotiz
+      ? [
+          ...((totales.cotizacionFilas || [])
+            .filter((f) => f.usada)
+            .map((f) =>
+              campoFila(`Cotización PDF · ${f.label}`, money(f.monto), {
+                labelW: 5000,
+                valueW: 5000,
+              })
+            )),
+          campoFila('Total cotizaciones PDF (cuenta final)', money(totales.cotizacionMonto), {
+            boldValue: true,
+            labelW: 5000,
+            valueW: 5000,
+          }),
+        ]
+      : []),
+    ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 || usaCotiz
       ? []
       : [
           campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
@@ -1217,32 +1290,62 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
       labelW: 5000,
       valueW: 5000,
     }),
-    campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
+    ...(usaCotiz
+      ? [
+          campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+          campoFila(
+            'Subtotal cotizaciones + AIU',
+            money(totales.totalPresupuesto ?? totales.sumaCompleta),
+            {
+              boldValue: true,
+              labelW: 5000,
+              valueW: 5000,
+            }
+          ),
+        ]
+      : [
+          campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
+          campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+          campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+          campoFila(
+            'Total presupuesto NSR-10',
+            money(totales.totalPresupuesto ?? totales.presupuesto?.total),
+            {
+              labelW: 5000,
+              valueW: 5000,
+            }
+          ),
+        ]),
+    campoFila('Total contenidos', money(usaCotiz ? 0 : totales.totalContenidos ?? 0), {
       labelW: 5000,
       valueW: 5000,
     }),
-    campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Gastos de hospedaje', money(totales.diagrama?.gastosHospedaje), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
+    campoFila(
+      usaCotiz ? 'Cuenta final cotizaciones PDF' : 'SUMA COMPLETA (presupuesto + contenidos)',
+      money(totales.sumaCompleta ?? totales.totalDanios),
+      {
+        boldValue: true,
+        labelW: 5000,
+        valueW: 5000,
+      }
+    ),
+    ...(usaCotiz
+      ? []
+      : [
+          campoFila('Gastos de hospedaje', money(totales.diagrama?.gastosHospedaje), {
+            labelW: 5000,
+            valueW: 5000,
+          }),
+        ]),
     campoFila(
       totales.deducibleAplicado > 0
         ? `Deducible (${txt(totales.deducibleTexto || 'aplicado')})`
@@ -1470,10 +1573,12 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
         children: [
           heading('4. Liquidación de pérdidas (liquidador)'),
           p(
-            'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.',
+            usaCotiz
+              ? 'La pérdida se liquida con las cotizaciones PDF (materiales, mano de obra y/o completo). Sobre la cuenta final se calcula el AIU y luego el deducible Alfa.'
+              : 'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.',
             { after: 120 }
           ),
-          tablaLiquidadorCompleto,
+          ...(usaCotiz ? seccionCotizacion : [tablaLiquidadorCompleto]),
           p('Contenidos del inmueble (bienes muebles)', {
             bold: true,
             before: 180,
@@ -1500,6 +1605,7 @@ export async function descargarWordInformeAlfa({ caso = {}, informe = null, liqu
                 p(liq.observaciones, { after: 80 }),
               ]
             : []),
+          ...(usaCotiz ? [] : seccionCotizacion),
         ],
       },
       {

@@ -265,7 +265,7 @@ export default function FormatoLiquidacionAlfa({
   const aiuPctNum = Number(aiuPorcentaje);
   const aiuPctUi = Number.isFinite(aiuPctNum)
     ? Math.round(aiuPctNum * 10000) / 100
-    : 15;
+    : Math.round(AIU_PORCENTAJE_DEFAULT_ALFA * 10000) / 100;
 
   const capitulos = useMemo(() => {
     const fromNsr = Array.isArray(CAPITULOS_PRESUPUESTO_NSR10) ? CAPITULOS_PRESUPUESTO_NSR10 : [];

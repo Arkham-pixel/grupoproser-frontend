@@ -15,6 +15,7 @@ import ModalImportarExcelAllianz, {
 import {
   ALLIANZ_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
+  coincideFiltroCiudadAllianz,
   coincideFiltroTexto,
   etiquetaTipoPolizaAllianz,
   fechaEnRango,
@@ -173,7 +174,7 @@ export default function ReporteAllianzListado({ modoAsignados = false }) {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     return casos.filter((c) => {
-      if (!coincideFiltroTexto(c.ciudad, filtroCiudad)) return false;
+      if (!coincideFiltroCiudadAllianz(c.ciudad, filtroCiudad)) return false;
       if (!coincideFiltroTexto(c.estado, filtroEstado)) return false;
       if (!coincideFiltroTexto(c.ajustador, filtroAjustador)) return false;
       if (fechaInicio || fechaFin) {

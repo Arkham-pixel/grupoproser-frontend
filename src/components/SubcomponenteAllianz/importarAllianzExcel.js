@@ -1,6 +1,8 @@
 import * as XLSX from 'xlsx';
 import {
+  homologarCiudadAllianz,
   homologarEstadoAllianz,
+  resolverUbicacionAllianz,
   normalizarGradoAfectacionAllianz,
   normalizarSiNoAllianz,
 } from './allianzHelpers.js';
@@ -393,6 +395,11 @@ const parsearHojaACasos = (sheet) => {
     if (!caso.ciudad && caso.catUbicacionReferencia) {
       caso.ciudad = caso.catUbicacionReferencia;
     }
+    if (caso.ciudad) {
+      const ub = resolverUbicacionAllianz(caso.ciudad, caso.departamento);
+      caso.ciudad = ub.ciudad || homologarCiudadAllianz(caso.ciudad) || caso.ciudad;
+      if (ub.departamento) caso.departamento = ub.departamento;
+    }
     if (!caso.direccionPredio && caso.addressNumber && /[A-Za-z#]/.test(String(caso.addressNumber))) {
       caso.direccionPredio = caso.addressNumber;
     }
@@ -628,6 +635,11 @@ const parsearHojaListadoCliente = (sheet) => {
     }
     if (!caso.estado || caso.estado === '0') caso.estado = 'CASO NUEVO';
     caso.estado = homologarEstadoAllianz(caso.estado);
+    if (caso.ciudad) {
+      const ub = resolverUbicacionAllianz(caso.ciudad, caso.departamento);
+      caso.ciudad = ub.ciudad || homologarCiudadAllianz(caso.ciudad) || caso.ciudad;
+      if (ub.departamento) caso.departamento = ub.departamento;
+    }
     casos.push(caso);
   }
 
