@@ -192,6 +192,9 @@ const refreshToken = async (force = false) => {
               if (response.data.usuario.login) {
                 localStorage.setItem('login', response.data.usuario.login);
               }
+              if (response.data.usuario.cedula) {
+                localStorage.setItem('cedula', String(response.data.usuario.cedula));
+              }
             }
             
             // Log detallado de la renovación

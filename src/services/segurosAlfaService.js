@@ -59,8 +59,17 @@ export const normalizeAlfaItem = (item = {}) => {
 const normalizeResponseArray = (raw) =>
   Array.isArray(raw) ? raw.map((item) => normalizeAlfaItem(item ?? {})) : [];
 
-export const getCasosAlfaPaginado = async ({ page = 1, limit = 100 } = {}) => {
-  const queryString = buildQueryString({ page, limit, _t: Date.now() });
+export const getCasosAlfaPaginado = async ({
+  page = 1,
+  limit = 100,
+  incluirExcluidos = false,
+} = {}) => {
+  const queryString = buildQueryString({
+    page,
+    limit,
+    _t: Date.now(),
+    ...(incluirExcluidos ? { incluirExcluidos: '1' } : {}),
+  });
   const response = await fetch(`${ALFA_API_URL}${queryString}`, { headers: authHeaders() });
   if (!response.ok) {
     throw new Error('Error al obtener los casos Seguros Alfa');
@@ -75,13 +84,17 @@ export const getCasosAlfaPaginado = async ({ page = 1, limit = 100 } = {}) => {
   return payload;
 };
 
-export const fetchAllCasosAlfa = async (batchSize = 2000) => {
+export const fetchAllCasosAlfa = async (batchSize = 2000, { incluirExcluidos = false } = {}) => {
   const acumulado = [];
   let page = 1;
   let total = null;
 
   while (true) {
-    const respuesta = await getCasosAlfaPaginado({ page, limit: batchSize });
+    const respuesta = await getCasosAlfaPaginado({
+      page,
+      limit: batchSize,
+      incluirExcluidos,
+    });
     const lote = Array.isArray(respuesta?.data) ? respuesta.data : [];
     if (total == null && typeof respuesta?.total === 'number') {
       total = respuesta.total;

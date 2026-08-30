@@ -175,6 +175,7 @@ export function filtrarPayloadCasoPorRol(rol, payload = {}, base = {}, opts = {}
 /** Normaliza nombre/login para comparar asignación. */
 export function normalizarClavePersona(valor) {
   return String(valor ?? '')
+    .replace(/\s*\([^)]*\)/g, ' ')
     .normalize('NFD')
     .replace(/\p{M}/gu, '')
     .trim()
@@ -182,13 +183,19 @@ export function normalizarClavePersona(valor) {
     .replace(/\s+/g, ' ');
 }
 
+export function tokensPersona(valor) {
+  return normalizarClavePersona(valor)
+    .split(/[^A-Z0-9]+/)
+    .filter((t) => t.length >= 4);
+}
+
 export function coincidenPersonas(a, b) {
   const na = normalizarClavePersona(a);
   const nb = normalizarClavePersona(b);
   if (!na || !nb) return false;
   if (na === nb || na.includes(nb) || nb.includes(na)) return true;
-  const tokA = na.split(' ').filter((t) => t.length >= 4);
-  const tokB = nb.split(' ').filter((t) => t.length >= 4);
+  const tokA = tokensPersona(na);
+  const tokB = tokensPersona(nb);
   if (!tokA.length || !tokB.length) return false;
   const setB = new Set(tokB);
   return tokA.filter((t) => setB.has(t)).length >= 2;

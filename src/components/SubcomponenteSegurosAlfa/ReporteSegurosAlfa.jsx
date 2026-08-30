@@ -24,6 +24,7 @@ import {
   ESTADOS_ALFA,
   buildOpcionesFiltro,
   cargarColumnasReporteAlfa,
+  FILTROS_REPORTE_ALFA_DEFAULT,
   cargarFiltrosReporteAlfa,
   coincideFiltroTexto,
   contarKpisGestionAlfa,
@@ -113,7 +114,7 @@ import {
   SelectFenix,
   ThOrdenable,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
-import { filtrarCasosPorAsignacionUsuario, coincidenPersonas, esSesionColaFechaLlamadaAlfa, etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
+import { filtrarCasosPorAsignacionUsuario, casoAsignadoASesionActual, esSesionColaFechaLlamadaAlfa, etiquetaSesionPersona, filtrarCasosAsignadosASesion } from '../../utils/permisosCasoPorRol.js';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
 
 function valorOrdenAlfa(item, clave) {
@@ -271,7 +272,10 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const filtrosIniciales = useMemo(() => cargarFiltrosReporteAlfa(), []);
+  const filtrosIniciales = useMemo(
+    () => (modoAsignados ? { ...FILTROS_REPORTE_ALFA_DEFAULT } : cargarFiltrosReporteAlfa()),
+    [modoAsignados]
+  );
   const skipPageResetRef = useRef(true);
   const nombreSesion = etiquetaSesionPersona();
   const [casos, setCasos] = useState([]);
@@ -323,7 +327,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchAllCasosAlfa();
+      const data = await fetchAllCasosAlfa(2000, { incluirExcluidos: modoAsignados });
       setCasos(
         modoAsignados
           ? filtrarCasosAsignadosASesion(data)
@@ -420,13 +424,6 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
   const filtrados = useMemo(() => {
     const q = normTexto(busqueda);
     const idsBloque = new Set((idsBloqueSeleccionado || []).map(String));
-    const login =
-      typeof localStorage !== 'undefined' ? localStorage.getItem('login') || '' : '';
-    const nombre =
-      typeof localStorage !== 'undefined' ? localStorage.getItem('nombre') || '' : '';
-    const cedula =
-      typeof localStorage !== 'undefined' ? localStorage.getItem('cedula') || '' : '';
-    const misClaves = [nombre, login, cedula].filter(Boolean);
     const campoFecha =
       tipoFecha === 'fechaAviso' ||
       tipoFecha === 'fechaInspeccion' ||
@@ -463,16 +460,7 @@ export default function ReporteSegurosAlfa({ modoAsignados = false }) {
       if (filtroSla === 'vencido' && !casoAlfaVenceSla2Dias(c)) return false;
       if (filtroSla === 'ok' && casoAlfaVenceSla2Dias(c)) return false;
 
-      if ((modoAsignados || soloMisCasos) && misClaves.length) {
-        const ok = misClaves.some(
-          (k) =>
-            coincidenPersonas(c.ajustador, k) ||
-            coincidenPersonas(c.inspector, k) ||
-            coincidenPersonas(c.ajustadorLider, k)
-        );
-        if (!ok) return false;
-      }
-      if ((modoAsignados || soloMisCasos) && !misClaves.length) return false;
+      if ((modoAsignados || soloMisCasos) && !casoAsignadoASesionActual(c)) return false;
 
       if (colaFechaLlamada && !q && casoAlfaTieneFechaLlamada(c)) return false;
 

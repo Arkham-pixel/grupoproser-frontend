@@ -20,6 +20,18 @@ async function applyUserLocale(locale?: string) {
   document.documentElement.lang = normalized;
 }
 
+function persistirSesionUsuario(usuario: {
+  role?: string;
+  login?: string;
+  name?: string;
+  cedula?: string | null;
+}) {
+  if (usuario.role) localStorage.setItem('rol', usuario.role);
+  if (usuario.login) localStorage.setItem('login', usuario.login);
+  if (usuario.name) localStorage.setItem('nombre', usuario.name);
+  if (usuario.cedula) localStorage.setItem('cedula', String(usuario.cedula));
+}
+
 export default function Login() {
   const { t } = useTranslation();
   const { theme, toggleTheme } = useTheme();
@@ -69,9 +81,7 @@ if (res.data.token && res.data.usuario) {
          const currentTime = Date.now();
          localStorage.setItem('token', res.data.token);
          localStorage.setItem('tipoUsuario', 'secur');
-         localStorage.setItem('rol', res.data.usuario.role);
-         localStorage.setItem('login', res.data.usuario.login);
-         localStorage.setItem('nombre', res.data.usuario.name);
+         persistirSesionUsuario(res.data.usuario);
          await applyUserLocale(res.data.usuario.locale);
          localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
          sessionStorage.removeItem('sessionWarning30Dismissed');
@@ -117,9 +127,7 @@ if (res.data.token && res.data.usuario && res.data.usuario.role) {
         const currentTime = Date.now();
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('tipoUsuario', 'secur');
-        localStorage.setItem('rol', res.data.usuario.role);
-        localStorage.setItem('login', res.data.usuario.login);
-        localStorage.setItem('nombre', res.data.usuario.name);
+        persistirSesionUsuario(res.data.usuario);
         await applyUserLocale(res.data.usuario.locale);
         localStorage.setItem('sessionStartTime', currentTime.toString()); // Guardar timestamp de inicio de sesión
         localStorage.setItem('sessionStart', currentTime.toString());
