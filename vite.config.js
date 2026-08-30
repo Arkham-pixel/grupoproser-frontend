@@ -36,7 +36,7 @@ export default defineConfig({
         navigateFallback: "/index.html",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff}"],
         globIgnores: ["**/error404-arnald.png", "**/Captura de pantalla*"],
-        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 20 * 1024 * 1024,
         runtimeCaching: [
           {
             // App shell / estáticos — stale-while-revalidate
