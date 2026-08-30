@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaFileAlt, FaFileSignature, FaFileWord } from 'react-icons/fa';
+import { FaFileAlt, FaFileExcel, FaFileSignature } from 'react-icons/fa';
 import { navegarAjusteDesdeCasoSura } from '../../utils/navegarAjusteDesdeCasoComplex.js';
 
 const cardBase =
@@ -12,7 +12,7 @@ const cardActive =
 
 /**
  * En Documentos del caso SURA: preliminar/final usan el informe de Complex;
- * el único queda en el Word CAT de SURA.
+ * el único queda en el Excel CAT de SURA.
  */
 export default function SelectorTipoInformeSura({
   casoSura,
@@ -85,12 +85,12 @@ export default function SelectorTipoInformeSura({
           className={`${cardBase} ${modoUnicoActivo ? cardActive : cardIdle}`}
           onClick={onElegirUnico}
         >
-          <FaFileWord className="mb-2 text-fenix-primario" />
+          <FaFileExcel className="mb-2 text-fenix-primario" />
           <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
             Informe único
           </span>
           <span className="mt-1 font-body text-xs text-gray-500">
-            Informe CAT de SURA (Word del caso).
+            Informe CAT de SURA (Excel del caso).
           </span>
         </button>
       </div>

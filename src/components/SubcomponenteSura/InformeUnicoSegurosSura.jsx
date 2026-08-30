@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileAlt, FaFileSignature, FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
+import { FaFileAlt, FaFileExcel, FaFileSignature, FaFileWord, FaInfoCircle, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -18,6 +18,7 @@ import {
   INFO_EVENTO_DEFAULT_SURA,
   NIVELES_AFECTACION_SURA,
   calcularLiquidacionSura,
+  camposFaltantesInformeUnicoSura,
   etiquetaArchivoInformeSura,
   formDataNsrDesdeLiquidadorSura,
   formatearMonto,
@@ -29,6 +30,7 @@ import {
 } from './liquidadorSuraHelpers.js';
 import { fusionarFotosAgilEnInforme, informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
 import { descargarWordInformeSura } from './generarWordInformeSura.js';
+import { descargarInformeUnicoSuraExcel } from './generarFormatoAgilSuraExcel.js';
 import { subirArchivoSura } from '../../services/segurosSuraService.js';
 import SeccionFirmasActa from '../SeccionFirmasActa.jsx';
 import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNSR10/ChecklistEvaluacionSismicaNSR10.jsx';
@@ -157,6 +159,7 @@ export default function InformeUnicoSegurosSura({
   onCasoChange,
   guardandoCaso = false,
   liquidadorInicial = null,
+  forzarTipoUnico = false,
 }) {
   const { t } = useTranslation();
   const [informe, setInforme] = useState(() =>
@@ -174,6 +177,12 @@ export default function InformeUnicoSegurosSura({
   const criterio = totales.criterio || {};
   const tipoInforme = normalizarTipoInformeSura(informe.tipoInforme, 'preliminar');
   const esPreliminar = tipoInforme === 'preliminar';
+  const esUnico = tipoInforme === 'unico';
+
+  const etiquetaCamposUnico = (faltantes) =>
+    (faltantes || [])
+      .map((campo) => t(`segurosSura.reportUnique.${campo.labelKey}`))
+      .join(', ');
   const totalPreliminar = useMemo(
     () => totalPresupuestoPreliminarSura(informe.filasPresupuestoPreliminar),
     [informe.filasPresupuestoPreliminar]
@@ -232,6 +241,24 @@ export default function InformeUnicoSegurosSura({
       return informeUnicoConFotosAgil(casoSura || {}, fotosAgil);
     });
   }, [casoSura?._id, tipoInformeGuardado]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!forzarTipoUnico) return;
+    setInforme((prev) => {
+      if (normalizarTipoInformeSura(prev?.tipoInforme, 'preliminar') === 'unico') return prev;
+      return { ...prev, tipoInforme: 'unico' };
+    });
+  }, [forzarTipoUnico]);
+
+  useEffect(() => {
+    if (!esUnico) return;
+    const coords = String(informe.coordenadasRiesgo || '').trim();
+    const tieneMapa = Boolean(String(informe.imagenMapa || '').trim());
+    if (coords && !tieneMapa) {
+      setForzarCapturaMapa((n) => (n === 0 ? 1 : n));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [esUnico, casoSura?._id, informe.coordenadasRiesgo]);
 
   useEffect(() => {
     if (!Array.isArray(fotosAgil) || !fotosAgil.length) return;
@@ -307,33 +334,63 @@ export default function InformeUnicoSegurosSura({
     setCampo('infoEvento', INFO_EVENTO_DEFAULT_SURA);
   };
 
-  const handleWord = async () => {
+  const handleDescargar = async () => {
+    if (esUnico) {
+      const faltantes = camposFaltantesInformeUnicoSura(informe, casoSura || {});
+      if (faltantes.length) {
+        setMensaje('');
+        setError(
+          t('segurosSura.reportUnique.unicoMissingFields', {
+            campos: etiquetaCamposUnico(faltantes),
+          })
+        );
+        return;
+      }
+    }
     setDescargando(true);
     setError('');
     setMensaje('');
+    const mimeExcel = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    const mimeWord =
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     try {
-      const resultado = await descargarWordInformeSura({
-        caso: casoSura || {},
-        informe,
-        liquidador,
-      });
+      const resultado = esUnico
+        ? await descargarInformeUnicoSuraExcel({
+            caso: casoSura || {},
+            informe,
+          })
+        : await descargarWordInformeSura({
+            caso: casoSura || {},
+            informe,
+            liquidador,
+          });
       const casoId = casoSura?._id;
       if (!casoId) {
-        setMensaje(t('segurosSura.reportUnique.wordNeedsCase'));
+        setMensaje(
+          esUnico
+            ? t('segurosSura.reportUnique.excelNeedsCase')
+            : t('segurosSura.reportUnique.wordNeedsCase')
+        );
         return;
       }
       const blob = resultado?.blob;
       const nombre =
         resultado?.nombre ||
         resultado?.filename ||
-        `Informe_Sura_${casoSura.siniestro || casoSura.consecutivo || 'caso'}.docx`;
+        (esUnico
+          ? `Informe_Unico_Sura_${casoSura.siniestro || casoSura.consecutivo || 'caso'}.xlsx`
+          : `Informe_Sura_${casoSura.siniestro || casoSura.consecutivo || 'caso'}.docx`);
       if (!blob) {
-        setMensaje(t('segurosSura.reportUnique.wordNeedsCase'));
+        setMensaje(
+          esUnico
+            ? t('segurosSura.reportUnique.excelNeedsCase')
+            : t('segurosSura.reportUnique.wordNeedsCase')
+        );
         return;
       }
       try {
         const file = new File([blob], nombre, {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          type: esUnico ? mimeExcel : mimeWord,
         });
         const creado = await subirArchivoSura(
           casoId,
@@ -341,14 +398,26 @@ export default function InformeUnicoSegurosSura({
           etiquetaArchivoInformeSura(informe.tipoInforme)
         );
         appendArchivosAlCaso([creado]);
-        setMensaje(t('segurosSura.reportUnique.wordSavedArchive'));
+        setMensaje(
+          esUnico
+            ? t('segurosSura.reportUnique.excelSavedArchive')
+            : t('segurosSura.reportUnique.wordSavedArchive')
+        );
       } catch (errArchivo) {
         console.warn('No se pudo guardar el informe en el archivero:', errArchivo);
-        setError(t('segurosSura.reportUnique.wordArchiveError'));
+        setError(
+          esUnico
+            ? t('segurosSura.reportUnique.excelArchiveError')
+            : t('segurosSura.reportUnique.wordArchiveError')
+        );
       }
     } catch (err) {
       console.error(err);
-      setError(t('segurosSura.reportUnique.wordError'));
+      setError(
+        esUnico
+          ? t('segurosSura.reportUnique.excelError')
+          : t('segurosSura.reportUnique.wordError')
+      );
     } finally {
       setDescargando(false);
     }
@@ -425,7 +494,7 @@ export default function InformeUnicoSegurosSura({
             className={`${cardBase} ${tipoInforme === 'unico' ? cardActive : cardIdle}`}
             onClick={() => elegirTipoInforme('unico')}
           >
-            <FaFileWord className="mb-2 text-fenix-primario" />
+            <FaFileExcel className="mb-2 text-fenix-primario" />
             <span className="font-body text-sm font-semibold text-gray-900 dark:text-white">
               {t('segurosSura.reportUnique.typeUnico')}
             </span>
@@ -436,6 +505,187 @@ export default function InformeUnicoSegurosSura({
         </div>
       </section>
 
+      {esUnico && (
+        <div
+          className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/40 dark:text-sky-100"
+          role="status"
+        >
+          <div className="flex items-start gap-3">
+            <FaInfoCircle
+              className="mt-0.5 h-4 w-4 shrink-0 text-sky-600 dark:text-sky-300"
+              aria-hidden
+            />
+            <div className="min-w-0">
+              <p className="font-body font-semibold">
+                {t('segurosSura.reportUnique.unicoNoticeTitle')}
+              </p>
+              <p className="mt-1 font-body text-sky-900/90 dark:text-sky-100/90">
+                {t('segurosSura.reportUnique.unicoNoticeBody')}
+              </p>
+              <ol className="mt-2 list-decimal space-y-0.5 pl-5 font-body text-sky-900 dark:text-sky-50">
+                <li>{t('segurosSura.reportUnique.unicoNoticeSheet1')}</li>
+                <li>{t('segurosSura.reportUnique.unicoNoticeSheet2')}</li>
+                <li>{t('segurosSura.reportUnique.unicoNoticeSheet3')}</li>
+                <li>{t('segurosSura.reportUnique.unicoNoticeSheet4')}</li>
+                <li>{t('segurosSura.reportUnique.unicoNoticeSheet5')}</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {esUnico ? (
+      <section className={expressFormSection}>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className={`${expressSectionTitle} mb-0`}>
+            {t('segurosSura.reportUnique.unicoSectionTitle')}
+          </h3>
+          <button type="button" className={expressBtnGhost} onClick={restaurarInfoEvento}>
+            <FaRedo /> {t('segurosSura.reportUnique.resetEvent')}
+          </button>
+        </div>
+        <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('segurosSura.reportUnique.unicoRequiredHint')}
+        </p>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Campo label={t('segurosSura.reportUnique.adjuster')} required>
+            <InputFenix
+              value={informe.ajustadorNombre || ''}
+              onChange={(e) => setCampo('ajustadorNombre', e.target.value)}
+            />
+          </Campo>
+          <Campo label={t('segurosSura.reportUnique.reportDate')} required>
+            <InputFenix
+              type="date"
+              value={informe.fechaInforme || ''}
+              onChange={(e) => setCampo('fechaInforme', e.target.value)}
+            />
+          </Campo>
+        </div>
+        <div className="mt-4">
+          <Campo label={t('segurosSura.reportUnique.riskAddress')} required>
+            <InputFenix
+              value={informe.direccionRiesgo || casoSura?.direccionPredio || ''}
+              onChange={(e) => setCampo('direccionRiesgo', e.target.value)}
+              placeholder={casoSura?.direccionPredio || ''}
+            />
+          </Campo>
+        </div>
+        <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h4 className="inline-flex items-center gap-2 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
+              <FaMapMarkerAlt className="text-blue-600" />
+              {t('segurosSura.reportUnique.riskMap')}
+              <span className="text-fenix-primario">*</span>
+            </h4>
+            <button
+              type="button"
+              className={expressBtnSecondary}
+              onClick={() => setForzarCapturaMapa((n) => n + 1)}
+            >
+              {t('segurosSura.reportUnique.updateMapCapture')}
+            </button>
+          </div>
+          <div className="mb-3 grid gap-3 sm:grid-cols-2">
+            <Campo label={t('segurosSura.reportUnique.latitude')}>
+              <InputFenix
+                readOnly
+                className="font-mono"
+                value={coordsRiesgo.latitud}
+                placeholder="Se llena desde el mapa"
+              />
+            </Campo>
+            <Campo label={t('segurosSura.reportUnique.longitude')}>
+              <InputFenix
+                readOnly
+                className="font-mono"
+                value={coordsRiesgo.longitud}
+                placeholder="Se llena desde el mapa"
+              />
+            </Campo>
+          </div>
+          <Campo label={t('segurosSura.reportUnique.coordinates')} required>
+            <InputFenix
+              className="font-mono"
+              value={informe.coordenadasRiesgo || ''}
+              onChange={(e) => setCampo('coordenadasRiesgo', e.target.value)}
+              placeholder="4.531450, -75.673575"
+            />
+          </Campo>
+          <div className="mt-3 min-h-[320px] overflow-hidden rounded-lg">
+            <MapaGoogleEarth
+              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+              coordenadasIniciales={informe.coordenadasRiesgo}
+              direccionInicial={informe.direccionRiesgo || casoSura?.direccionPredio || ''}
+              capturaInicial={capturaMapaInicial || undefined}
+              forzarCaptura={forzarCapturaMapa}
+              onMapaChange={handleMapaChange}
+            />
+          </div>
+          <p className="mt-2 font-body text-xs text-gray-500">
+            {capturaMapaInicial
+              ? t('segurosSura.reportUnique.mapCaptureReady')
+              : t('segurosSura.reportUnique.mapCaptureHint')}
+          </p>
+        </div>
+        <div className="mt-4">
+          <Campo label={t('segurosSura.reportUnique.eventInfo')} required>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={6}
+              value={informe.infoEvento || ''}
+              onChange={(e) => setCampo('infoEvento', e.target.value)}
+              placeholder={t('segurosSura.reportUnique.eventInfoPlaceholder')}
+            />
+          </Campo>
+        </div>
+        <div className="mt-4">
+          <Campo label={t('segurosSura.reportUnique.damageDescription')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={5}
+              value={informe.descripcionDanios || ''}
+              onChange={(e) => setCampo('descripcionDanios', e.target.value)}
+              placeholder={t('segurosSura.reportUnique.damageDescriptionPlaceholder')}
+            />
+          </Campo>
+        </div>
+        <div className="mt-4">
+          <Campo label={t('segurosSura.reportUnique.coverageAnalysis')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={5}
+              value={informe.analisisCobertura || ''}
+              onChange={(e) => setCampo('analisisCobertura', e.target.value)}
+              placeholder={t('segurosSura.reportUnique.coverageAnalysisPlaceholder')}
+            />
+          </Campo>
+        </div>
+        <div className="mt-4">
+          <Campo label={t('segurosSura.reportUnique.conclusions')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={4}
+              value={informe.conclusiones || ''}
+              onChange={(e) => setCampo('conclusiones', e.target.value)}
+              placeholder={t('segurosSura.reportUnique.conclusionsPlaceholder')}
+            />
+          </Campo>
+        </div>
+        <div className="mt-4">
+          <Campo label={t('segurosSura.reportUnique.recommendation')}>
+            <textarea
+              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+              rows={4}
+              value={informe.recomendacion || ''}
+              onChange={(e) => setCampo('recomendacion', e.target.value)}
+              placeholder={t('segurosSura.reportUnique.recommendationPlaceholder')}
+            />
+          </Campo>
+        </div>
+      </section>
+      ) : (
+      <>
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className={`${expressSectionTitle} mb-0`}>
@@ -887,15 +1137,20 @@ export default function InformeUnicoSegurosSura({
           soloAjustador
         />
       </section>
+      </>
+      )}
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
         <button
           type="button"
           className={expressBtnSecondary}
           disabled={descargando}
-          onClick={handleWord}
+          onClick={handleDescargar}
         >
-          <FaFileWord /> {t('segurosSura.reportUnique.downloadWord')}
+          {esUnico ? <FaFileExcel /> : <FaFileWord />}{' '}
+          {esUnico
+            ? t('segurosSura.reportUnique.downloadExcel')
+            : t('segurosSura.reportUnique.downloadWord')}
         </button>
         {onGuardarEnCaso && (
           <button

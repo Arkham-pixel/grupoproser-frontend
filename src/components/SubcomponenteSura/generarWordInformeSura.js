@@ -1200,8 +1200,9 @@ function tablaPresupuestoPreliminarSura(filas = []) {
 }
 
 /**
- * Informe preliminar, final o único Seguros Sura — misma fórmula visual que Catastrófico/Puertos:
+ * Informe preliminar o final Seguros Sura — misma fórmula visual que Catastrófico/Puertos:
  * encabezado formal, título según tipo, cuadro ficha, secciones y cuadros sin relleno.
+ * El informe único se descarga como Excel (descargarInformeUnicoSuraExcel).
  */
 export async function descargarWordInformeSura({ caso = {}, informe = null, liquidador = null } = {}) {
   const info = informe || defaultInformeUnicoSura(caso);

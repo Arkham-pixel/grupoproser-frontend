@@ -1,4 +1,5 @@
 import { saveAs } from 'file-saver';
+import ExcelJS from 'exceljs';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { descripcionFotoNsr } from './syncFotosNsrAlInformeSura.js';
@@ -244,8 +245,7 @@ async function resolverBufferMapaInforme(informe = {}) {
       }
     }
   }
-  const base = import.meta.env.BASE_URL || '/';
-  return fetchImageBuffer(`${base}templates/mapa-evento-siniestro-sura.png`);
+  return null;
 }
 
 function rellenarInformeAgil(sheet, informe) {
@@ -412,8 +412,8 @@ function pintarFilaMapaRiesgo(workbook, sheet, fila, mapa) {
   });
 }
 
-async function rellenarDocumentos(workbook, sheet, informe, caso) {
-  sheet.name = 'DOCUMENTOS';
+async function rellenarDocumentos(workbook, sheet, informe, caso, { nombreHoja = 'DOCUMENTOS' } = {}) {
+  sheet.name = nombreHoja;
   sheet.getColumn(1).width = 28;
   sheet.getColumn(2).width = 36;
   sheet.getColumn(3).width = 24;
@@ -550,4 +550,23 @@ export async function descargarFormatoAgilSuraExcel({
   });
   const nro = casoSura.siniestro || casoSura.consecutivo || 'SURA';
   saveAs(blob, `Formato_Agil_SURA_${String(nro).replace(/[^\w.-]+/g, '_')}.xlsx`);
+}
+
+const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/** Excel del informe único (ficha INFORME ÚNICO: ajustador, mapa, daños, cobertura, conclusiones). */
+export async function descargarInformeUnicoSuraExcel({ caso = {}, informe = null } = {}) {
+  const info = informe || defaultInformeUnicoSura(caso);
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Grupo Proser';
+  workbook.created = new Date();
+  await rellenarDocumentos(workbook, workbook.addWorksheet('INFORME ÚNICO'), info, caso, {
+    nombreHoja: 'INFORME ÚNICO',
+  });
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: MIME_XLSX });
+  const nro = caso.siniestro || caso.consecutivo || 'caso';
+  const nombre = `Informe_Unico_Sura_${String(nro).replace(/[^\w.-]+/g, '_')}.xlsx`;
+  saveAs(blob, nombre);
+  return { blob, nombre, filename: nombre };
 }

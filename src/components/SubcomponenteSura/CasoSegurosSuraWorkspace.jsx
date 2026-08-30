@@ -24,7 +24,7 @@ import {
   guardarLiquidadorEnCasoSura,
   guardarSeccionCasoSura,
 } from '../../services/segurosSuraService.js';
-import { calcularLiquidacionSura, itemsPlanosSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
+import { calcularLiquidacionSura, camposFaltantesInformeUnicoSura, defaultInformeUnicoSura, itemsPlanosSura, mapCasoSuraALiquidador } from './liquidadorSuraHelpers.js';
 import { eliminarBorradorArnald } from '../../services/arnaldPlataformaService.js';
 import { borrarBorradorLocal } from '../../services/arnaldDraftLocalStore.js';
 import { descargarFormatoAgilSuraExcel } from './generarFormatoAgilSuraExcel.js';
@@ -110,6 +110,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   const [exportando, setExportando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
+  const [forzarTipoUnico, setForzarTipoUnico] = useState(false);
   const [showDraftRestore, setShowDraftRestore] = useState(false);
   const [draftToRestore, setDraftToRestore] = useState(null);
   const [restoreNonce, setRestoreNonce] = useState(0);
@@ -361,6 +362,17 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
 
   const handleExcelAgil = async () => {
     setError('');
+    const informe = informeState || defaultInformeUnicoSura(casoSura || {});
+    const faltantes = camposFaltantesInformeUnicoSura(informe, casoSura || {});
+    if (faltantes.length) {
+      const campos = faltantes
+        .map((campo) => t(`segurosSura.reportUnique.${campo.labelKey}`))
+        .join(', ');
+      setError(t('segurosSura.reportUnique.unicoMissingFields', { campos }));
+      setForzarTipoUnico(true);
+      setTab(TABS_SURA.DOCUMENTOS);
+      return;
+    }
     setExportando(true);
     try {
       await descargarFormatoAgilSuraExcel({
@@ -552,6 +564,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
                 casoSura={casoSura}
                 fotosAgil={fotosAgilState || casoSura?.fotosAgil || []}
                 liquidadorInicial={liquidadorState}
+                forzarTipoUnico={forzarTipoUnico}
                 onEstadoChange={setInformeState}
                 onLiquidadorChange={(liq, tot) => {
                   setLiquidadorState(liq);

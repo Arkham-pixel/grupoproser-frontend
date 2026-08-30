@@ -128,6 +128,56 @@ export function esInformePreliminarSura(info = {}) {
   return normalizarTipoInformeSura(info?.tipoInforme, 'preliminar') === 'preliminar';
 }
 
+export function esInformeUnicoSura(info = {}) {
+  return normalizarTipoInformeSura(info?.tipoInforme, 'preliminar') === 'unico';
+}
+
+function textoInformeUnicoSura(valor) {
+  return String(valor ?? '').trim();
+}
+
+/** Valores que salen en la hoja INFORME ÚNICO del Excel. */
+export function valorCamposInformeUnicoSura(informe = {}, caso = {}) {
+  const coordsCaso =
+    caso?.ubicacionPredio?.lat != null && caso?.ubicacionPredio?.lng != null
+      ? `${caso.ubicacionPredio.lat}, ${caso.ubicacionPredio.lng}`
+      : '';
+  const mapa = informe.imagenMapa;
+  const imagenMapa =
+    typeof mapa === 'string'
+      ? mapa
+      : textoInformeUnicoSura(mapa?.preview || mapa?.ruta || mapa?.imagen || '');
+  return {
+    ajustadorNombre: textoInformeUnicoSura(
+      informe.ajustadorNombre || informe.actaAjustadorNombre || caso.ajustador
+    ),
+    fechaInforme: textoInformeUnicoSura(informe.fechaInforme),
+    direccionRiesgo: textoInformeUnicoSura(informe.direccionRiesgo || caso.direccionPredio),
+    coordenadasRiesgo: textoInformeUnicoSura(informe.coordenadasRiesgo || coordsCaso),
+    imagenMapa: textoInformeUnicoSura(imagenMapa),
+    infoEvento: textoInformeUnicoSura(informe.infoEvento),
+    descripcionDanios: textoInformeUnicoSura(informe.descripcionDanios),
+    analisisCobertura: textoInformeUnicoSura(informe.analisisCobertura),
+    conclusiones: textoInformeUnicoSura(informe.conclusiones),
+    recomendacion: textoInformeUnicoSura(informe.recomendacion),
+  };
+}
+
+/** Claves i18n en segurosSura.reportUnique — campos obligatorios para enviar el único. */
+export const CAMPOS_OBLIGATORIOS_INFORME_UNICO_SURA = [
+  { key: 'ajustadorNombre', labelKey: 'adjuster' },
+  { key: 'fechaInforme', labelKey: 'reportDate' },
+  { key: 'direccionRiesgo', labelKey: 'riskAddress' },
+  { key: 'coordenadasRiesgo', labelKey: 'coordinates' },
+  { key: 'imagenMapa', labelKey: 'riskMap' },
+  { key: 'infoEvento', labelKey: 'eventInfo' },
+];
+
+export function camposFaltantesInformeUnicoSura(informe = {}, caso = {}) {
+  const valores = valorCamposInformeUnicoSura(informe, caso);
+  return CAMPOS_OBLIGATORIOS_INFORME_UNICO_SURA.filter((campo) => !valores[campo.key]);
+}
+
 export function etiquetaArchivoInformeSura(tipo) {
   const t = normalizarTipoInformeSura(tipo, 'unico');
   if (t === 'preliminar') return 'INFORME_PRELIMINAR';
