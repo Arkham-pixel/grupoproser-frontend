@@ -1,5 +1,10 @@
 /** Utilidades del liquidador Express (equivalente FORMATO_LIQUIDACION + export Word) */
 
+import {
+  esXmlWordOoXml,
+  parsearMontoInformeSeguro,
+} from '../../utils/limpiarTextoInformeWord.js';
+
 /** SMMLV Colombia por año (actualizar cada enero cuando salga el decreto). */
 export const SMMLV_POR_ANIO = {
   2018: 781242,
@@ -139,8 +144,16 @@ export const DEFAULT_LIQUIDADOR_EXPRESS = {
 
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
-  if (typeof valor === 'number') return isNaN(valor) ? 0 : valor;
-  let numero = String(valor).replace(/[^\d.,-]/g, '');
+  if (typeof valor === 'number') {
+    if (isNaN(valor)) return 0;
+    if (Math.abs(valor) > 1e15) return 0;
+    return valor;
+  }
+  const str = String(valor);
+  if (esXmlWordOoXml(str) || str.replace(/[^\d]/g, '').length > 14) {
+    return parsearMontoInformeSeguro(str);
+  }
+  let numero = str.replace(/[^\d.,-]/g, '');
   if (numero.includes(',') && numero.includes('.')) {
     numero = numero.replace(/\./g, '').replace(',', '.');
   } else if (numero.includes('.') && !numero.includes(',')) {
@@ -186,7 +199,12 @@ export function formatearMontoConPeso(valor) {
  */
 export function formatearInputMoneda(raw) {
   if (raw === null || raw === undefined) return '';
-  const str = String(raw);
+  let str = String(raw);
+  if (esXmlWordOoXml(str) || str.replace(/[^\d]/g, '').length > 14) {
+    const n = parsearMontoInformeSeguro(str);
+    if (!(n > 0)) return '';
+    str = String(Math.round(n));
+  }
   const negativo = /^-/.test(str.replace(/[$\s]/g, '')) || str.trim().startsWith('-$');
   let cleaned = str.replace(/[^\d,]/g, '');
   if (!cleaned) return '';

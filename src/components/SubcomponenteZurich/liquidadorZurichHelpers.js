@@ -6,6 +6,7 @@ import {
   resolverDepartamentoZurich,
 } from './zurichHelpers.js';
 import { parsearNumero } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
+import { sanitizarInformeUnicoCamposWord } from '../../utils/limpiarTextoInformeWord.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
   argsDeduciblesPorArticuloDiagrama,
@@ -750,14 +751,15 @@ export function serializarFotosInspeccionZurich(fotos = []) {
 
 export function sanitizarInformeUnicoZurich(informe = {}) {
   if (!informe || typeof informe !== 'object') return {};
-  const tipo = informe.tipoInforme
-    ? normalizarTipoInformeZurich(informe.tipoInforme, 'preliminar')
+  const limpio = sanitizarInformeUnicoCamposWord(informe);
+  const tipo = limpio.tipoInforme
+    ? normalizarTipoInformeZurich(limpio.tipoInforme, 'preliminar')
     : undefined;
   return {
-    ...informe,
+    ...limpio,
     ...(tipo ? { tipoInforme: tipo } : {}),
-    fotosInspeccion: serializarFotosInspeccionZurich(informe.fotosInspeccion),
-    fotosCotizacion: serializarPaginasCotizacion(informe.fotosCotizacion),
+    fotosInspeccion: serializarFotosInspeccionZurich(limpio.fotosInspeccion),
+    fotosCotizacion: serializarPaginasCotizacion(limpio.fotosCotizacion),
   };
 }
 
@@ -823,7 +825,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     firmaAjustador: '',
   };
   if (!guardado) return base;
-  return {
+  return sanitizarInformeUnicoCamposWord({
     ...base,
     ...guardado,
     tipoInforme: guardado
@@ -849,8 +851,7 @@ export function defaultInformeUnicoZurich(caso = {}) {
     ),
     fotosInspeccion: fotosInformeDesdeCasoZurich(caso, guardado),
     fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
-    reservaSugerida: guardado.reservaSugerida || base.reservaSugerida,
-  };
+  });
 }
 
 export function formatDateLarga(value) {

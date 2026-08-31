@@ -18,6 +18,11 @@ import {
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import {
+  esXmlWordOoXml,
+  parsearMontoInformeSeguro,
+  sanitizarInformeUnicoCamposWord,
+} from '../../utils/limpiarTextoInformeWord.js';
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -232,8 +237,16 @@ function usarPlantillaSiVacio(filas, plantilla) {
 
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
-  if (typeof valor === 'number') return Number.isNaN(valor) ? 0 : valor;
-  let numero = String(valor).replace(/[^\d.,-]/g, '');
+  if (typeof valor === 'number') {
+    if (Number.isNaN(valor)) return 0;
+    if (Math.abs(valor) > 1e15) return 0;
+    return valor;
+  }
+  const str = String(valor);
+  if (esXmlWordOoXml(str) || str.replace(/[^\d]/g, '').length > 14) {
+    return parsearMontoInformeSeguro(str);
+  }
+  let numero = str.replace(/[^\d.,-]/g, '');
   if (numero.includes(',') && numero.includes('.')) {
     numero = numero.replace(/\./g, '').replace(',', '.');
   } else if (numero.includes('.') && !numero.includes(',')) {
@@ -569,7 +582,7 @@ export function defaultInformeUnicoSura(caso = {}) {
     firmaAjustador: '',
   };
   if (!guardado) return base;
-  return {
+  return sanitizarInformeUnicoCamposWord({
     ...base,
     ...guardado,
     tipoInforme: guardado
@@ -596,7 +609,7 @@ export function defaultInformeUnicoSura(caso = {}) {
     fotosInspeccion: Array.isArray(guardado.fotosInspeccion)
       ? guardado.fotosInspeccion
       : base.fotosInspeccion,
-  };
+  });
 }
 
 export function formatDateLarga(value) {

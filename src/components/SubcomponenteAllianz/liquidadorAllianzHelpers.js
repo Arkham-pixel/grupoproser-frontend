@@ -18,6 +18,11 @@ import {
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import {
+  esXmlWordOoXml,
+  parsearMontoInformeSeguro,
+  sanitizarInformeUnicoCamposWord,
+} from '../../utils/limpiarTextoInformeWord.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
 import {
   fotosCotizacionDesdeLiquidador,
@@ -223,14 +228,15 @@ function usarPlantillaSiVacio(filas, plantilla) {
 
 export function sanitizarInformeUnicoAllianz(informe = {}) {
   if (!informe || typeof informe !== 'object') return {};
-  const base = sanitizarInformeUnicoFotos(informe);
-  const tipo = informe.tipoInforme
-    ? normalizarTipoInformeAllianz(informe.tipoInforme, 'unico')
+  const limpio = sanitizarInformeUnicoCamposWord(informe);
+  const base = sanitizarInformeUnicoFotos(limpio);
+  const tipo = limpio.tipoInforme
+    ? normalizarTipoInformeAllianz(limpio.tipoInforme, 'unico')
     : undefined;
   return {
     ...base,
     ...(tipo ? { tipoInforme: tipo } : {}),
-    fotosCotizacion: serializarPaginasCotizacion(informe.fotosCotizacion),
+    fotosCotizacion: serializarPaginasCotizacion(limpio.fotosCotizacion),
   };
 }
 
@@ -275,8 +281,16 @@ export function patchDeduciblePresupuestoAllianz(liquidador = {}, patch = {}) {
 
 export function parsearNumero(valor) {
   if (valor === '' || valor === null || valor === undefined) return 0;
-  if (typeof valor === 'number') return Number.isNaN(valor) ? 0 : valor;
-  let numero = String(valor).replace(/[^\d.,-]/g, '');
+  if (typeof valor === 'number') {
+    if (Number.isNaN(valor)) return 0;
+    if (Math.abs(valor) > 1e15) return 0;
+    return valor;
+  }
+  const str = String(valor);
+  if (esXmlWordOoXml(str) || str.replace(/[^\d]/g, '').length > 14) {
+    return parsearMontoInformeSeguro(str);
+  }
+  let numero = str.replace(/[^\d.,-]/g, '');
   if (numero.includes(',') && numero.includes('.')) {
     numero = numero.replace(/\./g, '').replace(',', '.');
   } else if (numero.includes('.') && !numero.includes(',')) {
@@ -742,7 +756,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     firmaAjustador: '',
   };
   if (!guardado) return base;
-  return {
+  return sanitizarInformeUnicoCamposWord({
     ...base,
     ...guardado,
     tipoInforme: guardado
@@ -768,7 +782,7 @@ export function defaultInformeUnicoAllianz(caso = {}) {
     ),
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
     fotosCotizacion: fotosCotizacionDesdeLiquidador(caso.liquidador || {}, guardado),
-  };
+  });
 }
 
 export function formatDateLarga(value) {

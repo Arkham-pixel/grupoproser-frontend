@@ -1,5 +1,6 @@
 ﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
 import { estadoSuraPorTipoInforme } from '../components/SubcomponenteSura/segurosSuraHelpers.js';
+import { sanitizarInformeUnicoCamposWord } from '../utils/limpiarTextoInformeWord.js';
 
 const SURA_API_URL = `${BASE_URL}/api/sura`;
 
@@ -390,7 +391,7 @@ export const guardarInformeUnicoEnCasoSura = async ({
 
   const payload = {
     ...casoBase,
-    informeUnico: informeUnico || {},
+    informeUnico: sanitizarInformeUnicoCamposWord(informeUnico || {}),
     estado: estadoSuraPorTipoInforme(informeUnico?.tipoInforme, casoBase.estado),
   };
 
