@@ -280,11 +280,12 @@ export function construirDashboardCatastrofico(
     porEstadoMap.set(estado, (porEstadoMap.get(estado) || 0) + 1);
 
     const fSin = parseFecha(c.fechaSiniestro) || parseFecha(c.fechaAviso);
-    const fInsp = parseFecha(c.fechaInspeccion);
+    const fInsp = parseFecha(c.fechaInspeccion) || parseFecha(c.fechaVisita);
     const fLiq =
       parseFecha(c.fechaLiquidado) ||
       parseFecha(c.fechaFinalizado) ||
-      parseFecha(c.fechaInformeFinal);
+      parseFecha(c.fechaInformeFinal) ||
+      parseFecha(c.fechaCasoParaPago);
     const fRef = fSin || parseFecha(c.createdAt);
     if (fRef) {
       const clave = `${fRef.getFullYear()}-${String(fRef.getMonth() + 1).padStart(2, '0')}`;

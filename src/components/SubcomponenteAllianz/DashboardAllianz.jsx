@@ -8,6 +8,7 @@ import {
   coincideFiltroTexto,
   fechaEnRango,
   formatCurrency,
+  homologarEstadoAllianz,
 } from './allianzHelpers.js';
 
 export default function DashboardAllianz() {
@@ -21,6 +22,7 @@ export default function DashboardAllianz() {
       coincideFiltroCiudad={coincideFiltroCiudadAllianz}
       buildOpcionesFiltro={buildOpcionesFiltro}
       estados={ESTADOS_ALLIANZ}
+      normalizarEstadoFn={homologarEstadoAllianz}
       i18nNs="allianz"
       extras={{ severidad: true }}
     />

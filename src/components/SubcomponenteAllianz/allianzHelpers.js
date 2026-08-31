@@ -3,15 +3,28 @@ import { homologarCiudadCatastrofico, resolverUbicacionCatastrofico } from '../.
 
 export const ALLIANZ_REPORTE_PAGE_SIZE = 25;
 
+export const ESTADO_ALLIANZ_DEFAULT = 'CASO NUEVO';
+export const ESTADO_ALLIANZ_INSPECCION = 'COORDINANDO INSPECCIÓN';
+export const ESTADO_ALLIANZ_ANALISIS = 'ANÁLISIS DEL CASO';
+export const ESTADO_ALLIANZ_PENDIENTE_DOCS = 'PENDIENTE DE DOCUMENTO';
+export const ESTADO_ALLIANZ_OBJECION = 'OBJECIÓN';
+export const ESTADO_ALLIANZ_AUTORIZACION = 'AUTORIZACIÓN ANALISTA';
+export const ESTADO_ALLIANZ_PAGO = 'CASO PARA PAGO';
+
 export const ESTADOS_ALLIANZ = [
-  'CASO NUEVO',
-  'COORDINANDO INSPECCIÓN',
-  'ANÁLISIS DEL CASO',
-  'PENDIENTE DE DOCUMENTO',
-  'OBJECIÓN',
-  'AUTORIZACIÓN ANALISTA',
-  'CASO PARA PAGO',
+  ESTADO_ALLIANZ_DEFAULT,
+  ESTADO_ALLIANZ_INSPECCION,
+  ESTADO_ALLIANZ_ANALISIS,
+  ESTADO_ALLIANZ_PENDIENTE_DOCS,
+  ESTADO_ALLIANZ_OBJECION,
+  ESTADO_ALLIANZ_AUTORIZACION,
+  ESTADO_ALLIANZ_PAGO,
 ];
+
+export const ESTADOS_TEMPRANOS_ALLIANZ = new Set([
+  ESTADO_ALLIANZ_DEFAULT,
+  ESTADO_ALLIANZ_INSPECCION,
+]);
 
 export const MODALIDADES_ALLIANZ = ['CAMPO', 'VIDEOPERITAJE'];
 
@@ -55,12 +68,34 @@ const claveEstadoAllianz = (valor) =>
 
 export function homologarEstadoAllianz(valor) {
   const raw = String(valor || '').trim();
-  if (!raw) return 'CASO NUEVO';
+  if (!raw) return ESTADO_ALLIANZ_DEFAULT;
   if (ESTADOS_ALLIANZ.includes(raw)) return raw;
   const key = claveEstadoAllianz(raw);
   const exacto = ESTADOS_ALLIANZ.find((est) => claveEstadoAllianz(est) === key);
   if (exacto) return exacto;
   return ESTADOS_ALLIANZ_LEGACY[key] || raw;
+}
+
+export function esEstadoCerradoAllianz(estado) {
+  return homologarEstadoAllianz(estado) === ESTADO_ALLIANZ_PAGO;
+}
+
+export function esEstadoPendienteDocsAllianz(estado) {
+  return homologarEstadoAllianz(estado) === ESTADO_ALLIANZ_PENDIENTE_DOCS;
+}
+
+/** Ya salió de CASO NUEVO: hay gestión. */
+export function casoAtendidoAllianz(caso = {}) {
+  return homologarEstadoAllianz(caso.estado) !== ESTADO_ALLIANZ_DEFAULT;
+}
+
+/** Visita cargada o el expediente ya superó la coordinación de inspección. */
+export function casoInspeccionadoAllianz(caso = {}) {
+  if (caso.fechaVisita || caso.fechaInspeccion) return true;
+  const estado = homologarEstadoAllianz(caso.estado);
+  const idx = ESTADOS_ALLIANZ.indexOf(estado);
+  const idxInsp = ESTADOS_ALLIANZ.indexOf(ESTADO_ALLIANZ_INSPECCION);
+  return idx > idxInsp;
 }
 
 export function diasEnEstadoAllianz(caso = {}) {
@@ -381,6 +416,32 @@ export const formatCurrency = (value) => {
   }).format(Number(value));
 };
 
+/** Cifra corta para frisos: $ 5.105 MM en lugar de $ 5.105.100.000. */
+export const formatCurrencyCompact = (value) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  if (n === 0) return formatCurrency(0);
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '−' : '';
+  if (abs >= 1_000_000) {
+    const millones = abs / 1_000_000;
+    const cifra =
+      millones >= 100
+        ? Math.round(millones).toLocaleString('es-CO')
+        : millones.toLocaleString('es-CO', { maximumFractionDigits: 1 });
+    return `${sign}$ ${cifra} MM`;
+  }
+  return formatCurrency(n);
+};
+
+export const formatCurrencyMm = (value) => {
+  if (value === null || value === undefined || value === '') return '—';
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '—';
+  return formatCurrencyCompact(n);
+};
+
 export const formatDate = (value) => {
   const date = crearFechaLocal(value);
   if (!date) return '';
@@ -462,6 +523,12 @@ export const homologarCiudadAllianz = (valor) =>
   resolverUbicacionCatastrofico(valor).ciudad || homologarCiudadCatastrofico(valor);
 
 export const resolverUbicacionAllianz = resolverUbicacionCatastrofico;
+
+export function resolverDepartamentoAllianz(caso = {}) {
+  const directo = String(caso?.departamento || '').trim();
+  if (directo && directo !== '—' && directo !== '-') return directo;
+  return resolverUbicacionAllianz(caso.ciudad, caso.departamento).departamento || '';
+}
 
 export const buildOpcionesFiltro = (casos = [], campo) => {
   const porNorm = new Map();
