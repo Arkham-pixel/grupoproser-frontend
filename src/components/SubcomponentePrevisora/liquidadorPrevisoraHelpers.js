@@ -19,8 +19,29 @@ import {
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
 import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import { fotosInformeDesdeCaso, sanitizarInformeUnicoFotos } from '../fotosInformeUnicoHelpers.js';
+import {
+  serializarCotizacionPdf,
+  serializarPaginasCotizacion,
+  montoCotizacionPdf,
+  usaCotizacionComoBasePresupuesto,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
 
-export { sanitizarInformeUnicoFotos as sanitizarInformeUnicoPrevisora };
+export function sanitizarInformeUnicoPrevisora(informe = {}) {
+  const base = sanitizarInformeUnicoFotos(informe);
+  return {
+    ...base,
+    fotosCotizacion: serializarPaginasCotizacion(informe?.fotosCotizacion),
+  };
+}
+
+/** Quita File/blob/preview del liquidador antes de guardar en Mongo. */
+export function sanitizarLiquidadorPrevisora(liquidador = {}) {
+  if (!liquidador || typeof liquidador !== 'object') return liquidador;
+  return {
+    ...liquidador,
+    cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
+  };
+}
 
 export const SMMLV_POR_ANIO = {
   2024: 1300000,
@@ -177,6 +198,7 @@ export const DEFAULT_LIQUIDADOR_Previsora = {
   liquidacionCatastrofico: liquidacionCatastroficoDefaultPrevisora(),
   indemnizacionSugerida: '',
   observaciones: '',
+  cotizacionPdf: null,
 };
 
 export function esLiquidadorNsrPrevisora(liquidador = {}) {
@@ -188,7 +210,7 @@ export function esLiquidadorNsrPrevisora(liquidador = {}) {
 }
 
 /**
- * Totales Previsora = presupuesto NSR-10 + contenidos + diagrama (suma + hospedaje).
+ * Totales Previsora = presupuesto NSR-10 o cotización PDF + contenidos + diagrama.
  * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
  */
 export function calcularLiquidacionPrevisora(liquidador = {}) {
@@ -201,10 +223,14 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
   const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
+  const usaCotiz = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
+  const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
+  const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
+  const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: liq.valorAsegurado,
-    totalDanios: resumen.sumaCompleta,
-    totalPresupuesto: resumen.totalPresupuesto,
+    totalDanios: sumaCompleta,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     hospedajePorcentaje: liq.hospedajePorcentaje,
     hospedajeManual: liq.hospedajeManual,
@@ -213,7 +239,16 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: liq.deducibleConfigPresupuesto,
     otrosAmparos: liquidador.otrosAmparos,
-    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
+    ...(() => {
+      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
+      if (!usaCotiz) return args;
+      return {
+        ...args,
+        usaDeduciblePorArticuloPresupuesto: false,
+        deduciblePresupuestoPorArticulos: 0,
+        presupuestoNetoPorArticulo: null,
+      };
+    })(),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
@@ -222,20 +257,22 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
     modelo: 'nsr10',
     presupuesto: totalesPres,
     contenidos: resumen.contenidos,
-    totalPresupuesto: resumen.totalPresupuesto,
+    totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
-    sumaCompleta: resumen.sumaCompleta,
-    subtotal: totalesPres.subtotal,
-    aiu: totalesPres.aiu,
-    imprevistos: totalesPres.imprevistos,
-    impuestos: totalesPres.impuestos,
-    totalDanios: resumen.sumaCompleta,
+    sumaCompleta,
+    subtotal: usaCotiz ? montoCotiz : totalesPres.subtotal,
+    aiu: usaCotiz ? 0 : totalesPres.aiu,
+    imprevistos: usaCotiz ? 0 : totalesPres.imprevistos,
+    impuestos: usaCotiz ? 0 : totalesPres.impuestos,
+    totalDanios: sumaCompleta,
+    origenPresupuesto: usaCotiz ? 'cotizacion' : 'nsr10',
+    cotizacionMonto: montoCotiz,
     diagrama,
     criterio,
     totalIndemnizar: diagrama.totalIndemnizar,
     totalIndemnizable: diagrama.totalIndemnizar,
-    totalPerdida: resumen.sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || resumen.sumaCompleta,
+    totalPerdida: sumaCompleta,
+    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta,
     deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
     deducibleTexto: [
       diagrama.deduciblePresupuesto?.aplica ? `Presupuesto: ${diagrama.deduciblePresupuesto.texto}` : null,
@@ -246,7 +283,7 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
       .filter(Boolean)
       .join(' · ') || diagrama.deducible,
     subtotalContenidos: resumen.totalContenidos,
-    subtotalEdificios: resumen.totalPresupuesto,
+    subtotalEdificios: totalPresupuesto,
     diferencia: 0,
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
@@ -254,8 +291,20 @@ export function calcularLiquidacionPrevisora(liquidador = {}) {
   };
 }
 
-/** Filas planas del presupuesto NSR (para resúmenes). */
+/** Filas planas del presupuesto NSR o de la cotización PDF (para resúmenes). */
 export function itemsPlanosPrevisora(liquidador = {}) {
+  if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
+    const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
+    const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
+    return [
+      {
+        id: 'cotizacion-pdf',
+        concepto: nombre ? `Cotización de reparación (${nombre})` : 'Cotización de reparación',
+        valorReclamado: monto,
+        valorIndemnizable: monto,
+      },
+    ];
+  }
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
   if (!Array.isArray(items) || !items.length) return [];
   return items
@@ -322,6 +371,7 @@ export function mapcasoPrevisoraALiquidador(caso = {}) {
     otrosAmparos: Array.isArray(guardado.otrosAmparos)
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
       : defaultOtrosAmparos(),
+    cotizacionPdf: guardado.cotizacionPdf || null,
   };
 }
 
@@ -461,6 +511,7 @@ export function defaultInformeUnicoPrevisora(caso = {}) {
     recomendacion: '',
     fotosSeleccionadas: [],
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
+    fotosCotizacion: serializarPaginasCotizacion(guardado?.fotosCotizacion),
     actaAjustadorNombre: caso.ajustador || '',
     actaAjustadorCargo: '',
     actaAjustadorEmail: '',
@@ -486,6 +537,7 @@ export function defaultInformeUnicoPrevisora(caso = {}) {
       base.filasPolizaCobertura
     ),
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
+    fotosCotizacion: serializarPaginasCotizacion(guardado.fotosCotizacion),
   };
 }
 

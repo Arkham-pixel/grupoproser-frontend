@@ -1003,6 +1003,78 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
     );
   }
 
+  const fotosCotizacionRaw = [
+    ...(Array.isArray(info?.fotosCotizacion) ? info.fotosCotizacion : []),
+    ...(Array.isArray(liq?.cotizacionPdf?.paginas) ? liq.cotizacionPdf.paginas : []),
+  ].filter((f) => f && (f.ruta || f.file || f.preview || f._id));
+  const vistosCotiz = new Set();
+  const fotosCotizacion = [];
+  for (const f of fotosCotizacionRaw) {
+    const key = String(f._id || f.ruta || f.preview || '');
+    if (key && vistosCotiz.has(key)) continue;
+    if (key) vistosCotiz.add(key);
+    fotosCotizacion.push(f);
+  }
+  const cotizacionParrafos = [];
+  let cotizacionesIncluidas = 0;
+  for (const archivo of fotosCotizacion.slice(0, 12)) {
+    const img = await bytesDesdeFoto(archivo, urlDescargaArchivoPrevisora);
+    if (!img) continue;
+    cotizacionesIncluidas += 1;
+    const natW = Number(archivo.width) || 0;
+    const natH = Number(archivo.height) || 0;
+    let width = 500;
+    let height = 680;
+    if (natW > 0 && natH > 0) {
+      const scale = Math.min(500 / natW, 680 / natH, 1);
+      width = Math.max(120, Math.round(natW * scale));
+      height = Math.max(160, Math.round(natH * scale));
+    }
+    cotizacionParrafos.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 80, after: 40 },
+        children: [
+          new ImageRun({
+            data: img.bytes,
+            transformation: { width, height },
+            type: img.type,
+          }),
+        ],
+      }),
+      p(
+        archivo.descripcion ||
+          archivo.nombreOriginal ||
+          archivo.nombre ||
+          `Cotización · página ${cotizacionesIncluidas}`,
+        {
+          alignment: AlignmentType.CENTER,
+          size: SIZE_12,
+          after: 120,
+        }
+      )
+    );
+  }
+  const montoCotizTxt = money(totales.cotizacionMonto || liq?.cotizacionPdf?.montoFinal);
+  const seccionCotizacion = cotizacionParrafos.length
+    ? [
+        heading('Cotización de reparación'),
+        p(
+          totales.origenPresupuesto === 'cotizacion'
+            ? `Soporte de la cotización usada como base de liquidación. Monto final: ${montoCotizTxt}.`
+            : `Captura de la cotización adjunta (${cotizacionesIncluidas} página(s)).`,
+          { after: 120, size: SIZE_12 }
+        ),
+        ...cotizacionParrafos,
+      ]
+    : [];
+
+  const usaCotizacion = totales.origenPresupuesto === 'cotizacion';
+  const tieneCotizacionPdf =
+    usaCotizacion ||
+    (Array.isArray(liq?.cotizacionPdf?.paginas) && liq.cotizacionPdf.paginas.length > 0) ||
+    Boolean(liq?.cotizacionPdf?.archivoPdf);
+
   const filasCuadro = [
     new TableRow({
       children: [
@@ -1157,31 +1229,45 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
             { labelW: 5000, valueW: 5000 }
           ),
         ]),
-    campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    ...(mostrarImprevistos
+    ...(usaCotizacion
       ? [
-          campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
+          campoFila('Total cotización de reparación', money(totales.cotizacionMonto), {
+            boldValue: true,
             labelW: 5000,
             valueW: 5000,
           }),
         ]
-      : []),
-    ...(mostrarImpuestos
-      ? [
-          campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
+      : [
+          campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
             labelW: 5000,
             valueW: 5000,
           }),
-        ]
-      : []),
-    campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
+          campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
+          ...(mostrarImprevistos
+            ? [
+                campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
+                  labelW: 5000,
+                  valueW: 5000,
+                }),
+              ]
+            : []),
+          ...(mostrarImpuestos
+            ? [
+                campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
+                  labelW: 5000,
+                  valueW: 5000,
+                }),
+              ]
+            : []),
+          campoFila(
+            'Total presupuesto NSR-10',
+            money(totales.totalPresupuesto ?? totales.presupuesto?.total),
+            {
+              labelW: 5000,
+              valueW: 5000,
+            }
+          ),
+        ]),
     campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
       labelW: 5000,
       valueW: 5000,
@@ -1461,11 +1547,15 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
       headers: { default: header },
       children: [
         heading('4. Liquidación de pérdidas (liquidador)'),
-        p(
-          'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos. Valores tomados de la pestaña Liquidador.',
-          { after: 120 }
-        ),
-        tablaLiquidadorCompleto,
+        ...(tieneCotizacionPdf
+          ? []
+          : [
+              p(
+                'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos. Valores tomados de la pestaña Liquidador.',
+                { after: 120 }
+              ),
+              tablaLiquidadorCompleto,
+            ]),
         p('Contenidos del inmueble (bienes muebles)', {
           bold: true,
           before: 180,
@@ -1494,6 +1584,13 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
           : []),
       ],
     });
+    if (seccionCotizacion.length) {
+      sections.push({
+        properties: { page: pagePortrait },
+        headers: { default: header },
+        children: seccionCotizacion,
+      });
+    }
     sections.push({
       properties: { page: pagePortrait },
       headers: { default: header },

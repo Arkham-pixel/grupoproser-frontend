@@ -10,6 +10,7 @@ import {
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
+  expressAlertSuccess,
   expressFormSection,
   expressSectionTitle,
 } from '../SubcomponenteExpress/expressFenixUi.js';
@@ -25,27 +26,37 @@ import {
 import { descargarFiniquitoPrevisoraWord } from './generarFiniquitoPrevisoraWord.js';
 import { descargarLiquidadorPrevisoraExcel } from './generarLiquidadorPrevisoraExcel.js';
 import { descargarLiquidadorPrevisoraPdf } from './generarLiquidadorPrevisoraPdf.js';
+import { previsoraArchivosApi } from './previsoraArchivosApi.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
 import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import {
+  montoCotizacionPdf,
+  usaCotizacionComoBasePresupuesto,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
 /**
- * Liquidador Previsora = evaluación NSR-10 completa (portada / eval / dictamen / presupuesto)
- * + diagrama de liquidación, mismo motor que Catastrófico Complex.
+ * Liquidador Previsora = evaluación NSR-10 (o cotización PDF) + diagrama de liquidación.
  */
 export default function LiquidadorPrevisora({
   casoPrevisora = null,
   onGuardarEnCaso,
   guardandoCaso = false,
   onEstadoChange,
+  onCasoChange,
+  origen = 'cat',
   liquidadorInicial = null,
+  embeberEnInforme = false,
 }) {
   const { t } = useTranslation();
+  const api = useMemo(() => previsoraArchivosApi(origen), [origen]);
   const [liquidador, setLiquidador] = useState(() =>
     liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {})
   );
   const [error, setError] = useState('');
+  const [mensaje, setMensaje] = useState('');
   const [exportando, setExportando] = useState('');
 
   useEffect(() => {
@@ -54,6 +65,10 @@ export default function LiquidadorPrevisora({
 
   const totales = useMemo(() => calcularLiquidacionPrevisora(liquidador), [liquidador]);
   const enc = liquidador.encabezado || {};
+  const tieneCotizacionPdf = Boolean(
+    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+      liquidador.cotizacionPdf?.archivoPdf
+  );
 
   useEffect(() => {
     onEstadoChange?.(liquidador, totales);
@@ -82,8 +97,26 @@ export default function LiquidadorPrevisora({
     });
   };
 
+  const appendArchivosAlCaso = (creados = []) => {
+    const lista = (Array.isArray(creados) ? creados : [creados]).filter(Boolean);
+    if (!lista.length) return;
+    onCasoChange?.((prev) => {
+      if (!prev) return prev;
+      const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+      const ids = new Set(actuales.map((a) => String(a?._id || '')).filter(Boolean));
+      const extra = lista.filter((a) => a?._id && !ids.has(String(a._id)));
+      if (!extra.length) return prev;
+      return { ...prev, archivos: [...actuales, ...extra] };
+    });
+  };
+
+  const handleCotizacionChange = (cotizacionPdf) => {
+    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+  };
+
   const correrExport = async (tipo, fn) => {
     setError('');
+    setMensaje('');
     setExportando(tipo);
     try {
       await fn(liquidador, totales);
@@ -139,6 +172,7 @@ export default function LiquidadorPrevisora({
       </div>
 
       {error && <p className={expressAlertError}>{error}</p>}
+      {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>{t('previsora.settlement.headerTitle')}</h3>
@@ -215,11 +249,45 @@ export default function LiquidadorPrevisora({
             }
           />
         </div>
+        <div className="mt-4">
+          <CotizacionPdfLiquidacion
+            i18nPrefix="previsora.settlement"
+            value={liquidador.cotizacionPdf}
+            onChange={handleCotizacionChange}
+            casoId={casoPrevisora?._id}
+            api={api}
+            archivosCaso={casoPrevisora?.archivos || []}
+            onArchivosCreados={appendArchivosAlCaso}
+            onArchivosEliminados={(ids) => {
+              const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+              if (!setIds.size) return;
+              onCasoChange?.((prev) => {
+                if (!prev) return prev;
+                const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+                return {
+                  ...prev,
+                  archivos: actuales.filter((a) => !setIds.has(String(a?._id))),
+                };
+              });
+            }}
+            disabled={!!exportando || guardandoCaso}
+          />
+        </div>
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
+            <span>
+              {totales.origenPresupuesto === 'cotizacion'
+                ? t('previsora.settlement.totalDamagesQuote')
+                : t('previsora.settlement.totalDamagesNsr')}
+            </span>
             <span>$ {formatearMonto(totales.totalDanios)}</span>
           </div>
+          {totales.origenPresupuesto === 'cotizacion' && (
+            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+              <span>{t('previsora.settlement.totalQuote')}</span>
+              <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
+            </div>
+          )}
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>Hospedaje</span>
             <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
@@ -248,17 +316,32 @@ export default function LiquidadorPrevisora({
             <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
           </div>
         </div>
+        {totales.origenPresupuesto === 'cotizacion' && (
+          <p className="mt-2 text-xs text-gray-500">{t('previsora.settlement.quoteDeductibleNote')}</p>
+        )}
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>
-          {t('previsora.settlement.nsrTitle', { defaultValue: 'Evaluación y liquidador NSR-10' })}
-        </h3>
+        {!embeberEnInforme && (
+          <h3 className={expressSectionTitle}>
+            {tieneCotizacionPdf
+              ? t('previsora.settlement.nsrTitleQuote')
+              : t('previsora.settlement.nsrTitle', {
+                  defaultValue: 'Evaluación y liquidador NSR-10',
+                })}
+          </h3>
+        )}
         <ChecklistEvaluacionSismicaNSR10
           formData={formDataNsr}
           onInputChange={handleNsrChange}
-          modoLiquidador={false}
+          modoLiquidador={embeberEnInforme}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+          ocultarPresupuestoEscrito={tieneCotizacionPdf}
+          totalPresupuestoOverride={
+            usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+              ? montoCotizacionPdf(liquidador.cotizacionPdf)
+              : null
+          }
         />
       </section>
     </div>

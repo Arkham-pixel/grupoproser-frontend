@@ -4,7 +4,7 @@ import {
   homologarEstadoPrevisora,
   ultimaGestionPrevisora,
 } from '../components/SubcomponentePrevisora/previsoraHelpers.js';
-import { sanitizarInformeUnicoPrevisora } from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
+import { sanitizarInformeUnicoPrevisora, sanitizarLiquidadorPrevisora } from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
 
 const API_URL = `${BASE_URL}/api/previsora-listado`;
 
@@ -141,7 +141,7 @@ export const guardarLiquidadorEnCasoPrevisoraListado = async ({
   if (!casoId) throw new Error('El caso del listado debe estar guardado antes de adjuntar el liquidador.');
   return actualizarCasoPrevisoraListado(casoId, {
     ...omitirMeta(casoBase),
-    liquidador: liquidador || {},
+    liquidador: sanitizarLiquidadorPrevisora(liquidador || {}),
   });
 };
 

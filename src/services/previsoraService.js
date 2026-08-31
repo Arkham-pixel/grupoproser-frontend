@@ -4,7 +4,7 @@ import {
   homologarEstadoPrevisora,
   ultimaGestionPrevisora,
 } from '../components/SubcomponentePrevisora/previsoraHelpers.js';
-import { sanitizarInformeUnicoPrevisora } from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
+import { sanitizarInformeUnicoPrevisora, sanitizarLiquidadorPrevisora } from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
 
 const PREVISORA_API_URL = `${BASE_URL}/api/previsora`;
 
@@ -326,7 +326,7 @@ export const guardarLiquidadorEnCasoPrevisora = async ({
 
   const payload = {
     ...omitirCampos(casoBase, CAMPOS_CAT_NO_PISAR),
-    liquidador: liquidador || {},
+    liquidador: sanitizarLiquidadorPrevisora(liquidador || {}),
     valorReclamado:
       totales.totalReclamado != null ? totales.totalReclamado : casoBase.valorReclamado,
     valorLiquidado:

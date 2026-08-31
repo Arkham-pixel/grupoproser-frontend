@@ -27,6 +27,7 @@ import {
   mapcasoPrevisoraALiquidador,
   normalizarTipoInformePrevisora,
   reservaSugeridaPrevisora,
+  itemsPlanosPrevisora,
 } from './liquidadorPrevisoraHelpers.js';
 import { descargarWordInformePrevisora } from './generarWordInformePrevisora.js';
 import { previsoraArchivosApi } from './previsoraArchivosApi.js';
@@ -37,6 +38,12 @@ import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismic
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import SelectorTipoInformePrevisora from './SelectorTipoInformePrevisora.jsx';
+import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
+import {
+  serializarPaginasCotizacion,
+  montoCotizacionPdf,
+  usaCotizacionComoBasePresupuesto,
+} from '../liquidacion/cotizacionPdfLiquidacion.js';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -154,6 +161,10 @@ export default function InformeUnicoPrevisora({
   const tipoInforme = normalizarTipoInformePrevisora(informe.tipoInforme, 'unico');
   const esPreliminar = tipoInforme === 'preliminar';
   const esFinal = tipoInforme === 'final';
+  const tieneCotizacionPdf = Boolean(
+    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
+      liquidador.cotizacionPdf?.archivoPdf
+  );
   const nFotos = esPreliminar ? 4 : 6;
   const nConclusiones = esPreliminar ? 5 : 7;
   const nFirmas = esPreliminar ? 6 : 8;
@@ -263,6 +274,11 @@ export default function InformeUnicoPrevisora({
 
   const handleNsrChange = (patch) => {
     setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
+  };
+
+  const handleCotizacionChange = (cotizacionPdf) => {
+    setLiquidador((prev) => ({ ...prev, cotizacionPdf }));
+    setCampo('fotosCotizacion', serializarPaginasCotizacion(cotizacionPdf?.paginas));
   };
 
   const restaurarInfoEvento = () => {
@@ -573,6 +589,31 @@ export default function InformeUnicoPrevisora({
           {t('previsora.reportUnique.finalAddsSettlement')}
         </p>
 
+        <div className="mb-4">
+          <CotizacionPdfLiquidacion
+            i18nPrefix="previsora.settlement"
+            value={liquidador.cotizacionPdf}
+            onChange={handleCotizacionChange}
+            casoId={casoPrevisora?._id}
+            api={api}
+            archivosCaso={casoPrevisora?.archivos || []}
+            onArchivosCreados={appendArchivosAlCaso}
+            onArchivosEliminados={(ids) => {
+              const setIds = new Set((ids || []).map((id) => String(id || '')).filter(Boolean));
+              if (!setIds.size) return;
+              onCasoChange?.((prev) => {
+                if (!prev) return prev;
+                const actuales = Array.isArray(prev.archivos) ? prev.archivos : [];
+                return {
+                  ...prev,
+                  archivos: actuales.filter((a) => !setIds.has(String(a?._id))),
+                };
+              });
+            }}
+            disabled={guardandoCaso}
+          />
+        </div>
+
         {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
         <div className="mb-4 grid grid-cols-1 gap-2 rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-700 sm:grid-cols-2">
           <div>
@@ -596,7 +637,11 @@ export default function InformeUnicoPrevisora({
 
         <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Total daños (NSR-10)</span>
+            <span>
+              {totales.origenPresupuesto === 'cotizacion'
+                ? t('previsora.settlement.totalDamagesQuote')
+                : t('previsora.settlement.totalDamagesNsr')}
+            </span>
             <span>$ {formatearMonto(totales.totalDanios)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
@@ -622,13 +667,21 @@ export default function InformeUnicoPrevisora({
           onInputChange={handleNsrChange}
           modoLiquidador
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
+          ocultarPresupuestoEscrito={tieneCotizacionPdf}
+          totalPresupuestoOverride={
+            usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
+              ? montoCotizacionPdf(liquidador.cotizacionPdf)
+              : null
+          }
         />
       </section>
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>5. {t('previsora.reportUnique.sectionTable')}</h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          Resumen de ítems del presupuesto NSR-10.
+          {tieneCotizacionPdf
+            ? t('previsora.settlement.nsrTitleQuote')
+            : 'Resumen de ítems del presupuesto NSR-10.'}
         </p>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
@@ -641,19 +694,15 @@ export default function InformeUnicoPrevisora({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || [])
-                .filter((it) => String(it?.actividad || '').trim())
-                .map((it, idx) => (
-                  <tr key={it.id || idx}>
-                    <td className="px-2 py-2">{idx + 1}</td>
-                    <td className="px-2 py-2">{it.actividad || '—'}</td>
-                    <td className="px-2 py-2">{it.cantidad ?? '—'}</td>
-                    <td className="px-2 py-2">$ {formatearMonto(it.valorUnitario)}</td>
-                  </tr>
-                ))}
-              {!(liquidador?.evaluacionSismicaNSR10?.presupuesto?.items || []).some((it) =>
-                String(it?.actividad || '').trim()
-              ) && (
+              {itemsPlanosPrevisora(liquidador).map((it, idx) => (
+                <tr key={it.id || idx}>
+                  <td className="px-2 py-2">{idx + 1}</td>
+                  <td className="px-2 py-2">{it.concepto || '—'}</td>
+                  <td className="px-2 py-2">{it.cantidad ?? '—'}</td>
+                  <td className="px-2 py-2">$ {formatearMonto(it.valorUnitario ?? it.valorIndemnizable)}</td>
+                </tr>
+              ))}
+              {!itemsPlanosPrevisora(liquidador).length && (
                 <tr>
                   <td colSpan={4} className="px-2 py-4 text-center text-gray-500">
                     {t('previsora.reportUnique.noSettlementItems')}
