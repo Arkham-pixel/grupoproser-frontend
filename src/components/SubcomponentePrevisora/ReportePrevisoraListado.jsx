@@ -18,6 +18,7 @@ import {
   coincideFiltroTexto,
   etiquetaTipoPolizaPrevisora,
   fechaEnRango,
+  formatCurrency,
   formatDate,
   normTexto,
 } from './previsoraHelpers.js';
@@ -64,6 +65,14 @@ const COLUMNAS = [
   { clave: 'correoAsegurado', labelKey: 'correoAsegurado' },
   { clave: 'ciudad', labelKey: 'ciudad' },
   { clave: 'departamento', labelKey: 'departamento' },
+  { clave: 'valorAseguradoInmueble', labelKey: 'valorAseguradoInmueble' },
+  { clave: 'valorAseguradoContenidos', labelKey: 'valorAseguradoContenidos' },
+  { clave: 'valorReservaPreventivaPromedio', labelKey: 'valorReservaPreventivaPromedio' },
+  { clave: 'valorComercialInmueble', labelKey: 'valorComercialInmueble' },
+  { clave: 'reserva', labelKey: 'reserva' },
+  { clave: 'observacionReserva', labelKey: 'observacionReserva' },
+  { clave: 'valorReclamado', labelKey: 'valorReclamado' },
+  { clave: 'valorLiquidado', labelKey: 'valorLiquidado' },
   { clave: 'estado', labelKey: 'estado' },
   { clave: 'modalidadAtencion', labelKey: 'modalidadAtencion' },
   { clave: 'ajustadorLider', labelKey: 'ajustadorLider' },
@@ -102,6 +111,14 @@ const buildExportRow = (caso) => ({
   'CORREO ASEGURADO': caso.correoAsegurado ?? '',
   CIUDAD: caso.ciudad ?? '',
   DEPARTAMENTO: caso.departamento ?? '',
+  'VALOR ASEGURADO INMUEBLE': caso.valorAseguradoInmueble ?? '',
+  'VALOR ASEGURADO CONTENIDOS': caso.valorAseguradoContenidos ?? '',
+  'VALOR RESERVA PREVENTIVA PROMEDIO': caso.valorReservaPreventivaPromedio ?? '',
+  'VALOR COMERCIAL INMUEBLE': caso.valorComercialInmueble ?? '',
+  RESERVA: caso.reserva ?? '',
+  'OBSERVACIÓN RESERVA': caso.observacionReserva ?? '',
+  'VALOR RECLAMADO': caso.valorReclamado ?? '',
+  'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
   ESTADO: caso.estado ?? '',
   MODALIDAD: caso.modalidadAtencion ?? '',
   'AJUSTADOR LIDER': caso.ajustadorLider ?? '',
@@ -192,6 +209,7 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
         c.telefonoAsegurado,
         c.correoAsegurado,
         c.ciudad,
+        c.observacionReserva,
         c.estado,
         c.ajustadorLider,
         c.ajustador,
@@ -241,8 +259,23 @@ export default function ReportePrevisoraListado({ modoAsignados = false }) {
     'ultimaGestion',
   ]);
 
+  const CAMPOS_MONEDA = new Set([
+    'valorAseguradoInmueble',
+    'valorAseguradoContenidos',
+    'valorReservaPreventivaPromedio',
+    'valorComercialInmueble',
+    'reserva',
+    'valorReclamado',
+    'valorLiquidado',
+  ]);
+
   const obtenerValorCelda = (item, clave) => {
     if (clave === 'tipoPoliza') return etiquetaTipoPolizaPrevisora(item) || '—';
+    if (CAMPOS_MONEDA.has(clave)) {
+      return item[clave] === null || item[clave] === undefined || item[clave] === ''
+        ? '—'
+        : formatCurrency(item[clave]);
+    }
     const valor = item[clave];
     if (valor === null || valor === undefined || valor === '') return '—';
     if (FECHAS_LISTADO.has(clave)) return formatDate(valor) || '—';
