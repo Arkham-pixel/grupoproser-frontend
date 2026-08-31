@@ -141,6 +141,9 @@ export const ETIQUETAS_ARCHIVO_PREVISORA = [
   'POLIZA',
   'INSPECCION',
   'LIQUIDACION',
+  'INFORME_PRELIMINAR',
+  'INFORME_UNICO',
+  'INFORME_FINAL',
   'FOTOS',
   /** Manual CAT — evidencia fotográfica/documental */
   'FOTO_GENERAL',

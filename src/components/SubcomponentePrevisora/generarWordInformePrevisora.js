@@ -19,12 +19,20 @@ import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../Su
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionPrevisora,
+  completarFilasPolizaCoberturaPrevisora,
   defaultInformeUnicoPrevisora,
+  esInformePreliminarPrevisora,
+  etiquetaEncabezadoInformePrevisora,
+  etiquetaReporteCuadroPrevisora,
+  etiquetaTituloInformePrevisora,
   formatearMonto,
   formatDateLarga,
   itemsPlanosPrevisora,
   mapcasoPrevisoraALiquidador,
+  normalizarTipoInformePrevisora,
   parsearNumero,
+  prefijoArchivoInformePrevisora,
+  reservaSugeridaPrevisora,
 } from './liquidadorPrevisoraHelpers.js';
 import { urlDescargaArchivoPrevisora } from '../../services/previsoraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
@@ -214,7 +222,7 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
                     spacing: { after: 60 },
                     children: [
                       new TextRun({
-                        text: 'Informe Único Previsora',
+                        text: etiquetaEncabezadoInformePrevisora(informe.tipoInforme),
                         font: FONT,
                         size: SIZE_12,
                         color: '333333',
@@ -251,8 +259,9 @@ async function crearEncabezadoPrevisora({ caso = {}, informe = {} } = {}) {
   });
 }
 
-/** Título azul con «ÚNICO» subrayado (fórmula Catastrófico). */
-function crearTituloInformeUnico() {
+/** Título azul con ÚNICO o FINAL subrayado (fórmula SURA / Catastrófico). */
+function crearTituloInformeUnico(info = {}) {
+  const tipo = etiquetaTituloInformePrevisora(info.tipoInforme);
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { before: 120, after: 200 },
@@ -265,7 +274,7 @@ function crearTituloInformeUnico() {
         color: '0070C0',
       }),
       new TextRun({
-        text: 'ÚNICO',
+        text: tipo,
         bold: true,
         size: SIZE_12,
         font: FONT,
@@ -323,7 +332,7 @@ const cell = (text, opts = {}) =>
       left: opts.compact ? 40 : 100,
       right: opts.compact ? 40 : 100,
     },
-    verticalAlign: VerticalAlign.CENTER,
+    verticalAlign: opts.verticalAlign || VerticalAlign.CENTER,
     children: [
       new Paragraph({
         alignment: opts.alignment || AlignmentType.LEFT,
@@ -365,12 +374,14 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
       ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
       : '—';
 
+  const reserva = reservaSugeridaPrevisora(info);
+  const esPreliminar = esInformePreliminarPrevisora(info);
   const filas = [
-    ['REPORTE No', 'Único — Previsora'],
+    ['REPORTE No', etiquetaReporteCuadroPrevisora(info.tipoInforme)],
     ['CONSECUTIVO', txt(caso.consecutivo)],
     ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
     ['TOMADOR', txt(caso.tomador || enc.tomador)],
-    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto)],
+    ['ASEGURADO / CONTACTO', txt(enc.asegurado || caso.informacionContacto || caso.asegurado)],
     ['CORREO ELECTRÓNICO', txt(caso.correo)],
     ['CELULAR', txt(caso.celular)],
     ['IDENTIFICACIÓN', txt(caso.identificacion || enc.identificacion)],
@@ -381,7 +392,7 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['N° CRÉDITO', txt(caso.numeroCredito || enc.credito)],
     ['VIGENCIA', vigencia],
     ['COBERTURA / EVENTO', txt(caso.cobertura || enc.cobertura || enc.evento)],
-    ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion)],
+    ['DIRECCIÓN RIESGO ASEGURADO', txt(info.direccionRiesgo || caso.direccionPredio || enc.direccion)],
     [
       'CIUDAD / DEPARTAMENTO',
       `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`,
@@ -389,8 +400,13 @@ function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {}
     ['FECHA DE OCURRENCIA', fmtFechaCorta(caso.fechaSiniestro || enc.fechaSiniestro)],
     ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
     ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
-    ['AJUSTADOR', txt(info.ajustadorNombre)],
-    ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
+    ['AJUSTADOR', txt(info.ajustadorNombre || caso.ajustador || enc.ajustador)],
+    ...(esPreliminar
+      ? [['RESERVA SUGERIDA', money(reserva || caso.reserva || caso.valorReservaPreventivaPromedio)]]
+      : [
+          ['RESERVA PRELIMINAR', money(reserva || caso.reserva || caso.valorReservaPreventivaPromedio)],
+          ['INDEMNIZACIÓN SUGERIDA', money(totales.totalIndemnizar)],
+        ]),
   ];
 
   return new Table({
@@ -817,13 +833,103 @@ async function construirZonaFirmasPrevisora({ info = {} } = {}) {
   ];
 }
 
+function tablaAnalisisPolizaPrevisora(filas = []) {
+  const lista = (Array.isArray(filas) ? filas : []).filter(
+    (f) =>
+      String(f?.concepto || '').trim() ||
+      String(f?.analisis || '').trim() ||
+      String(f?.conclusion || '').trim()
+  );
+  const wConcepto = 2200;
+  const wAnalisis = 4360;
+  const wConclusion = 2800;
+  const rows = [
+    new TableRow({
+      children: [
+        cell('CONCEPTO', {
+          bold: true,
+          width: wConcepto,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('ANÁLISIS', {
+          bold: true,
+          width: wAnalisis,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+        cell('CONCLUSIÓN', {
+          bold: true,
+          width: wConclusion,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        }),
+      ],
+    }),
+  ];
+  if (!lista.length) {
+    rows.push(
+      new TableRow({
+        children: [
+          cell('Pendiente diligenciar el análisis de póliza y cobertura.', {
+            width: 9360,
+            columnSpan: 3,
+            cuadro: true,
+            alignment: AlignmentType.CENTER,
+          }),
+        ],
+      })
+    );
+  } else {
+    lista.forEach((f) => {
+      rows.push(
+        new TableRow({
+          children: [
+            cell(txt(f.concepto), {
+              bold: true,
+              width: wConcepto,
+              cuadro: true,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+            cell(txt(f.analisis), {
+              width: wAnalisis,
+              cuadro: true,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+            cell(txt(f.conclusion), {
+              bold: true,
+              width: wConclusion,
+              cuadro: true,
+              alignment: AlignmentType.CENTER,
+              verticalAlign: VerticalAlign.TOP,
+            }),
+          ],
+        })
+      );
+    });
+  }
+  return new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [wConcepto, wAnalisis, wConclusion],
+    borders: bordersCuadro,
+    rows,
+  });
+}
 
 /**
- * Informe único Previsora — misma fórmula visual que Catastrófico/Puertos:
- * encabezado formal, título ÚNICO, cuadro ficha, secciones y cuadros sin relleno.
+ * Informe preliminar, final o único Previsora — misma fórmula visual que SURA:
+ * encabezado formal, título según tipo, cuadro ficha, análisis de póliza.
+ * Preliminar y final se complementan; el único va aparte.
+ * Final y único incluyen el liquidador NSR-10 (pestaña Liquidador / presupuesto).
  */
 export async function descargarWordInformePrevisora({ caso = {}, informe = null, liquidador = null } = {}) {
   const info = informe || defaultInformeUnicoPrevisora(caso);
+  const esPreliminar = esInformePreliminarPrevisora(info);
+  const tipoNorm = normalizarTipoInformePrevisora(info.tipoInforme, 'unico');
+  const tipoEtiqueta =
+    tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
+  const seccionFotos = esPreliminar ? 4 : 6;
+  const seccionConclusiones = esPreliminar ? 5 : 7;
   const liq = liquidador || mapcasoPrevisoraALiquidador(caso);
   const totales = calcularLiquidacionPrevisora(liq);
   const enc = liq.encabezado || {};
@@ -1265,144 +1371,165 @@ export async function descargarWordInformePrevisora({ caso = {}, informe = null,
     size: { orientation: PageOrientation.LANDSCAPE },
   };
 
+  const seccionFotosFirmas = [
+    heading(`${seccionFotos}. Inspección fotográfica`),
+    p(
+      fotosIncluidas
+        ? `Registro fotográfico del predio (${fotosIncluidas} imagen(es)).`
+        : 'Registro fotográfico del predio.',
+      { after: 80 }
+    ),
+    ...fotoParrafos,
+    heading(`${seccionConclusiones}. Conclusiones y recomendación del ajustador`),
+    p('Conclusiones', { bold: true, after: 40 }),
+    p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
+      after: 120,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+    p('Recomendación', { bold: true, after: 40 }),
+    p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
+      after: 200,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
+    p(
+      `Para constancia se firma el presente informe ${tipoEtiqueta} en ${txt(
+        caso.ciudad || enc.ciudad,
+        'Colombia'
+      )}, ${fmtFecha(info.fechaInforme || new Date())}.`,
+      { after: 200 }
+    ),
+    ...firmasParrafos,
+  ];
+
+  const sections = [
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        crearTituloInformeUnico(info),
+        p('Previsora', {
+          alignment: AlignmentType.CENTER,
+          bold: true,
+          size: SIZE_12,
+          after: 160,
+          color: '333333',
+        }),
+        construirCuadroPrincipal({ caso, enc, info, totales }),
+      ],
+    },
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        heading('1. Información general del evento'),
+        ...(infoEventoParrafos.length ? infoEventoParrafos : [p('Sin información del evento.')]),
+        ...mapaEventoParrafos,
+      ],
+    },
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: bloqueDaniosUbicacion,
+    },
+    {
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        heading('3. Información de póliza y cobertura'),
+        new Table({
+          width: { size: 9360, type: WidthType.DXA },
+          columnWidths: [4200, 5160],
+          borders: bordersCuadro,
+          rows: polizaRows,
+        }),
+        p('Análisis de póliza y cobertura', { bold: true, before: 200, after: 80, size: SIZE_12 }),
+        tablaAnalisisPolizaPrevisora(
+          completarFilasPolizaCoberturaPrevisora(info.filasPolizaCobertura, {
+            caso,
+            encabezado: enc,
+            informe: info,
+            liquidador: liq,
+          })
+        ),
+      ],
+    },
+  ];
+
+  if (!esPreliminar) {
+    sections.push({
+      properties: { page: pageLandscape },
+      headers: { default: header },
+      children: [
+        heading('4. Liquidación de pérdidas (liquidador)'),
+        p(
+          'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos. Valores tomados de la pestaña Liquidador.',
+          { after: 120 }
+        ),
+        tablaLiquidadorCompleto,
+        p('Contenidos del inmueble (bienes muebles)', {
+          bold: true,
+          before: 180,
+          after: 80,
+          size: SIZE_12,
+        }),
+        p(
+          contenidosNsr.tipoInmueble
+            ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
+            : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
+          { after: 100 }
+        ),
+        tablaContenidos,
+        p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
+        new Table({
+          width: { size: 10000, type: WidthType.DXA },
+          columnWidths: [5000, 5000],
+          borders: bordersCuadro,
+          rows: liquidacionResumen,
+        }),
+        ...(liq.observaciones
+          ? [
+              p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
+              p(liq.observaciones, { after: 80 }),
+            ]
+          : []),
+      ],
+    });
+    sections.push({
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: [
+        heading('5. Relación de valores reclamados vs. valores indemnizables'),
+        new Table({
+          width: { size: 9000, type: WidthType.DXA },
+          columnWidths: [600, 4000, 2200, 2200],
+          borders: bordersCuadro,
+          rows: filasCuadro,
+        }),
+        p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
+          before: 100,
+          size: SIZE_12,
+        }),
+        ...seccionFotosFirmas,
+      ],
+    });
+  } else {
+    sections.push({
+      properties: { page: pagePortrait },
+      headers: { default: header },
+      children: seccionFotosFirmas,
+    });
+  }
+
   const doc = new Document({
-    sections: [
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          crearTituloInformeUnico(),
-          p('Previsora', {
-            alignment: AlignmentType.CENTER,
-            bold: true,
-            size: SIZE_12,
-            after: 160,
-            color: '333333',
-          }),
-          construirCuadroPrincipal({ caso, enc, info, totales }),
-        ],
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('1. Información general del evento'),
-          ...(infoEventoParrafos.length
-            ? infoEventoParrafos
-            : [p('Sin información del evento.')]),
-          ...mapaEventoParrafos,
-        ],
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: bloqueDaniosUbicacion,
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('3. Información de póliza y cobertura'),
-          new Table({
-            width: { size: 9360, type: WidthType.DXA },
-            columnWidths: [4200, 5160],
-            borders: bordersCuadro,
-            rows: polizaRows,
-          }),
-        ],
-      },
-      {
-        properties: { page: pageLandscape },
-        headers: { default: header },
-        children: [
-          heading('4. Liquidación de pérdidas (liquidador)'),
-          p(
-            'Presupuesto de intervención / reparación post-sismo (NSR-10) — columnas completas: capítulo, código, componente, actividad, unidad, cantidad, valores, prioridad, cobertura, observación y fuente; con AIU, imprevistos e impuestos.',
-            { after: 120 }
-          ),
-          tablaLiquidadorCompleto,
-          p('Contenidos del inmueble (bienes muebles)', {
-            bold: true,
-            before: 180,
-            after: 80,
-            size: SIZE_12,
-          }),
-          p(
-            contenidosNsr.tipoInmueble
-              ? `Tipo de inmueble / riesgo: ${contenidosNsr.tipoInmueble}.`
-              : 'Catálogo de contenidos (casa, apartamento, industria, etc.) o ítems libres.',
-            { after: 100 }
-          ),
-          tablaContenidos,
-          p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-          new Table({
-            width: { size: 10000, type: WidthType.DXA },
-            columnWidths: [5000, 5000],
-            borders: bordersCuadro,
-            rows: liquidacionResumen,
-          }),
-          ...(liq.observaciones
-            ? [
-                p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),
-                p(liq.observaciones, { after: 80 }),
-              ]
-            : []),
-        ],
-      },
-      {
-        properties: { page: pagePortrait },
-        headers: { default: header },
-        children: [
-          heading('5. Relación de valores reclamados vs. valores indemnizables'),
-          new Table({
-            width: { size: 9000, type: WidthType.DXA },
-            columnWidths: [600, 4000, 2200, 2200],
-            borders: bordersCuadro,
-            rows: filasCuadro,
-          }),
-          p(`Diferencia reclamado − indemnizable: ${money(totales.diferencia)}`, {
-            before: 100,
-            size: SIZE_12,
-          }),
-
-          heading('6. Inspección fotográfica'),
-          p(
-            fotosIncluidas
-              ? `Registro fotográfico del predio (${fotosIncluidas} imagen(es)).`
-              : 'Registro fotográfico del predio.',
-            { after: 80 }
-          ),
-          ...fotoParrafos,
-
-          heading('7. Conclusiones y recomendación del ajustador'),
-          p('Conclusiones', { bold: true, after: 40 }),
-          p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
-            after: 120,
-            alignment: AlignmentType.JUSTIFIED,
-          }),
-          p('Recomendación', { bold: true, after: 40 }),
-          p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
-            after: 200,
-            alignment: AlignmentType.JUSTIFIED,
-          }),
-
-          p(
-            `Para constancia se firma el presente informe único en ${txt(
-              caso.ciudad || enc.ciudad,
-              'Colombia'
-            )}, ${fmtFecha(info.fechaInforme || new Date())}.`,
-            { after: 200 }
-          ),
-          ...firmasParrafos,
-        ],
-      },
-    ],
+    sections,
   });
 
   const blob = await Packer.toBlob(doc);
-  const nombre = `Informe_Unico_PREVISORA_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
+  const prefijo = prefijoArchivoInformePrevisora(info.tipoInforme);
+  const nombre = `${prefijo}_${caso.siniestro || caso.consecutivo || 'caso'}.docx`.replace(
     /[^\w.\-áéíóúÁÉÍÓÚñÑ]+/gi,
     '_'
   );
   saveAs(blob, nombre);
+  return { blob, nombre, filename: nombre };
 }

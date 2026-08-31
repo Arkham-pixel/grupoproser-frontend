@@ -18,6 +18,9 @@ import {
   RECARGOS_PRESUPUESTO_NSR10_CAT,
   REGLAS_DEDUCIBLE_POR_COBERTURA,
   camposValorAseguradoParaNsr,
+  parseMontoNsr10,
+  resolverArticuloPolizaId,
+  totalFilaPresupuesto,
   valoresAsegurablesDesdeLiquidador,
 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import {
@@ -133,27 +136,54 @@ export function migrarLiquidadorDeducibleTerremotoZurich(
   };
 }
 
+/**
+ * Zurich: el informe usa la misma fórmula que la plataforma (Liquidación presupuesto).
+ * No se pisa % / SMMLV / base con la regla 3% / 3 SMMLV si el ajustador ya la cambió.
+ */
 export function configDeduciblePresupuestoParaCalculoZurich(liquidador = {}) {
   const liq = liquidador.liquidacionCatastrofico || {};
   const va = valorAseguradoPresupuestoZurich(liquidador);
-  return configDeducibleTerremotoZurich(liq.deducibleConfigPresupuesto || {}, {
-    valorAsegurado: va,
-  });
+  const guardado =
+    liq.deducibleConfigPresupuesto && typeof liq.deducibleConfigPresupuesto === 'object'
+      ? liq.deducibleConfigPresupuesto
+      : null;
+  if (!guardado) {
+    return configDeducibleTerremotoZurich({}, { valorAsegurado: va });
+  }
+  return {
+    ...DEFAULT_DEDUCIBLE_CATASTROFICO,
+    ...guardado,
+    aplica: guardado.modo === 'no_aplica' ? false : guardado.aplica !== false,
+  };
 }
 
-/** Desglose visible: 3% VA vs 3 SMMLV, y el mayor aplicado. */
+/** Desglose igual a «Liquidación presupuesto» en plataforma. */
 export function desgloseDeducibleTerremotoZurich(liquidador = {}, diagrama = null) {
   const diag = diagrama || {};
   const pres = diag.deduciblePresupuesto || {};
+  const cfg = configDeduciblePresupuestoParaCalculoZurich(liquidador);
   const va = valorAseguradoPresupuestoZurich(liquidador);
-  const pct = Number(pres.porcentaje) || REGLA_TERREMOTO.porcentaje;
-  const cant = Number(pres.cantidadSMMLV) || REGLA_TERREMOTO.cantidadSMMLV;
+  const pctRaw = Number(pres.porcentaje);
+  const cantRaw = Number(pres.cantidadSMMLV);
+  const pct = Number.isFinite(pctRaw) && pctRaw > 0 ? pctRaw : Number(cfg.porcentaje) || REGLA_TERREMOTO.porcentaje;
+  const cant =
+    Number.isFinite(cantRaw) && cantRaw > 0
+      ? cantRaw
+      : Number(cfg.cantidadSMMLV) || REGLA_TERREMOTO.cantidadSMMLV;
   const montoPct = Number(pres.montoPctOVa) || 0;
   const montoSmmlv = Number(pres.montoSmmlv) || 0;
   const aplicado = Number(pres.aplicado) || 0;
-  const etiquetaPct = va > 0
-    ? `${pct}% del valor asegurable`
-    : `${pct}% (falta valor asegurable; se compara el mínimo)`;
+  const neto = Number(pres.neto);
+  const tipoGanador = pres.tipoGanadorLabel || (pres.ganaSmmlv ? 'SMMLV' : '%');
+  const tieneArticulos = Boolean(pres.tieneArticulos);
+  const etiquetaPct = 'DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE';
+  const etiquetaSmmlv = tieneArticulos
+    ? `DEDUCIBLE ${cant} SMMLV (no aplica)`
+    : `DEDUCIBLE ${cant} SMMLV`;
+  const etiquetaAplicado = tieneArticulos
+    ? 'DEDUCIBLE APLICADO (por artículo)'
+    : `DEDUCIBLE APLICADO (el mayor: ${tipoGanador})`;
+  const etiquetaNeto = tieneArticulos ? 'VALOR A INDEMNIZAR' : 'PRESUPUESTO NETO';
   return {
     porcentaje: pct,
     cantidadSMMLV: cant,
@@ -161,12 +191,134 @@ export function desgloseDeducibleTerremotoZurich(liquidador = {}, diagrama = nul
     montoPct,
     montoSmmlv,
     aplicado,
+    neto: Number.isFinite(neto) ? neto : 0,
+    tipoGanador,
+    tieneArticulos,
     etiquetaPct,
-    etiquetaSmmlv: `${cant} SMMLV`,
-    etiquetaAplicado: 'Deducible terremoto aplicado (el mayor)',
+    etiquetaSmmlv,
+    etiquetaAplicado,
+    etiquetaNeto,
     texto:
-      `Terremoto: mayor entre ${etiquetaPct} ($${formatearMonto(montoPct)}) y ${cant} SMMLV ($${formatearMonto(montoSmmlv)}). Aplicado: $${formatearMonto(aplicado)}.`,
+      tieneArticulos
+        ? 'El valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
+        : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.',
   };
+}
+
+/** Montos del resumen como en plataforma (decimales solo si existen). */
+export function formatearMontoPlataformaZurich(valor) {
+  const n = typeof valor === 'number' ? valor : parsearNumero(valor);
+  if (Number.isNaN(n)) return '0';
+  const hasDecimals = Math.abs(n % 1) > 1e-9;
+  return formatNumber(n, getAppLocale(), {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+/**
+ * Filas del resumen de liquidación Zurich: mismas etiquetas y orden que
+ * Subtotal / AIU + Liquidación presupuesto en la plataforma.
+ */
+export function filasResumenLiquidacionZurich(liquidador = {}, totales = {}) {
+  const desglose = desgloseDeducibleTerremotoZurich(liquidador, totales.diagrama);
+  const pres = liquidador?.evaluacionSismicaNSR10?.presupuesto || {};
+  const aiuPct = Math.round((totales.presupuesto?.aiuPct ?? pres.aiuPorcentaje ?? 0.25) * 100);
+  const imprPct = Math.round((totales.presupuesto?.imprPct ?? pres.imprevistosPorcentaje ?? 0) * 100);
+  const impPct = Math.round((totales.presupuesto?.impPct ?? pres.impuestosPorcentaje ?? 0) * 100);
+  const mostrarImprevistos = imprPct > 0 || Number(totales.imprevistos) > 0;
+  const mostrarImpuestos = impPct > 0 || Number(totales.impuestos) > 0;
+  const usaCotiz = totales.origenPresupuesto === 'cotizacion';
+  const filas = [];
+
+  if (usaCotiz) {
+    filas.push({
+      label: 'Total cotización de reparación (base de deducible)',
+      value: totales.cotizacionMonto,
+      bold: true,
+    });
+  } else {
+    filas.push({
+      label: 'Subtotal presupuesto (costo directo)',
+      value: totales.subtotal,
+    });
+    filas.push({
+      label: `AIU (${aiuPct}%)`,
+      value: totales.aiu,
+    });
+    if (mostrarImprevistos) {
+      filas.push({ label: `Imprevistos (${imprPct}%)`, value: totales.imprevistos });
+    }
+    if (mostrarImpuestos) {
+      filas.push({ label: `Impuestos (${impPct}%)`, value: totales.impuestos });
+    }
+    filas.push({
+      label: 'TOTAL PRESUPUESTO',
+      value: totales.totalPresupuesto ?? totales.presupuesto?.total,
+      bold: true,
+    });
+  }
+
+  const contenidos = Number(totales.totalContenidos) || 0;
+  if (contenidos > 0) {
+    filas.push({ label: 'Total contenidos', value: contenidos });
+    filas.push({
+      label: 'SUMA COMPLETA (presupuesto + contenidos)',
+      value: totales.sumaCompleta ?? totales.totalDanios,
+      bold: true,
+    });
+  }
+
+  filas.push({ label: desglose.etiquetaPct, value: desglose.montoPct });
+  filas.push({ label: desglose.etiquetaSmmlv, value: desglose.montoSmmlv });
+  filas.push({
+    label: desglose.etiquetaAplicado,
+    value: desglose.aplicado,
+    bold: true,
+  });
+  filas.push({
+    label: desglose.etiquetaNeto,
+    value: desglose.neto,
+    bold: true,
+    destacado: true,
+  });
+
+  const hosp = Number(totales.diagrama?.gastosHospedaje) || 0;
+  if (hosp > 0) {
+    filas.push({ label: 'Gastos de hospedaje', value: hosp });
+  }
+
+  const deducibleContenidos = Number(totales.diagrama?.deducibleContenidos?.aplicado) || 0;
+  if (deducibleContenidos > 0) {
+    filas.push({ label: 'Deducible contenidos', value: deducibleContenidos });
+  }
+
+  if (Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length) {
+    filas.push({
+      label: 'Otros amparos (sin deducible)',
+      value: totales.totalOtrosAmparos,
+    });
+    totales.otrosAmparos.forEach((it) => {
+      const nom = String(it.nombre || it.tipo || '').trim() || 'Amparo';
+      const obs = String(it.observacion || '').trim();
+      filas.push({
+        label: obs ? `${nom} — ${obs}` : nom,
+        value: it.valor,
+      });
+    });
+  }
+
+  const totalInd = Number(totales.totalIndemnizar) || 0;
+  const neto = Number(desglose.neto) || 0;
+  if (Math.abs(totalInd - neto) > 0.05) {
+    filas.push({
+      label: 'TOTAL A INDEMNIZAR',
+      value: totalInd,
+      bold: true,
+    });
+  }
+
+  return filas;
 }
 
 /** Texto fijo editable: información general del evento (informe preliminar Zurich). */
@@ -202,16 +354,14 @@ export const ZONAS_DANIOS_PRELIMINAR_ZURICH = [
 
 export const CONCEPTOS_POLIZA_PRELIMINAR_ZURICH = [
   'Vigencia',
-  'Ubicación del riesgo',
+  'Modalidad de aseguramiento',
   'Evento',
-  'Interés afectado',
-  'Deducible',
-  'Infraseguro',
-  'Remoción de escombros',
-  'Honorarios profesionales',
-  'Exclusiones',
+  'Áreas comunes',
+  'Áreas privadas',
+  'Maquinaria y equipo',
+  'Equipo electrónico',
+  'Deducible terremoto',
   'Reserva preliminar',
-  'Concepto preliminar',
 ];
 
 export const CAPITULOS_PRESUPUESTO_PRELIMINAR_ZURICH = [
@@ -236,7 +386,272 @@ export function plantillaFilasDaniosZurich() {
 }
 
 export function plantillaFilasPolizaZurich() {
-  return [{ id: 'poliza-0', concepto: '', analisis: '', conclusion: '' }];
+  return CONCEPTOS_POLIZA_PRELIMINAR_ZURICH.map((concepto, i) => ({
+    id: `poliza-${i}`,
+    concepto,
+    analisis: '',
+    conclusion: '',
+  }));
+}
+
+function textoInforme(v) {
+  return String(v ?? '').trim();
+}
+
+function claveConceptoPolizaZurich(valor) {
+  return textoInforme(valor)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function conceptoPolizaCoincide(fila, ...needles) {
+  const k = claveConceptoPolizaZurich(fila?.concepto);
+  if (!k) return false;
+  return needles.some((n) => k.includes(claveConceptoPolizaZurich(n)));
+}
+
+function filasPolizaSinAnalisisZurich(filas) {
+  if (!Array.isArray(filas) || !filas.length) return true;
+  return filas.every(
+    (f) => !textoInforme(f?.analisis) && !textoInforme(f?.conclusion)
+  );
+}
+
+function itemsPolizaDesdeLiquidadorZurich(liquidador = {}) {
+  const nsr = liquidador?.evaluacionSismicaNSR10 || {};
+  return [
+    ...(Array.isArray(nsr.contenidos?.items) ? nsr.contenidos.items : []),
+    ...(Array.isArray(nsr.presupuesto?.items) ? nsr.presupuesto.items : []),
+  ];
+}
+
+function resumenItemsPolizaZurich(items, pred) {
+  const hits = (Array.isArray(items) ? items : []).filter(pred);
+  if (!hits.length) return null;
+  let valorAsegurable = 0;
+  let perdida = 0;
+  const nombres = [];
+  hits.forEach((it) => {
+    valorAsegurable += parseMontoNsr10(it?.valorAsegurable) || 0;
+    perdida += Number(totalFilaPresupuesto(it)) || 0;
+    const nom = textoInforme(it?.articulo || it?.actividad || it?.categoria);
+    if (nom && !nombres.includes(nom)) nombres.push(nom);
+  });
+  return { valorAsegurable, perdida, n: hits.length, nombres };
+}
+
+function textoResumenArticuloZurich(resumen, etiqueta) {
+  if (!resumen) return { analisis: '', conclusion: '' };
+  const partes = [];
+  if (resumen.valorAsegurable > 0) {
+    partes.push(
+      `Valor asegurable registrado en Presupuesto / contenidos: $ ${formatearMonto(resumen.valorAsegurable)}.`
+    );
+  }
+  if (resumen.perdida > 0) {
+    partes.push(`Pérdida identificada en ítems: $ ${formatearMonto(resumen.perdida)}.`);
+  }
+  if (resumen.nombres.length) {
+    partes.push(`Ítems: ${resumen.nombres.slice(0, 6).join('; ')}.`);
+  }
+  if (!partes.length) {
+    partes.push(
+      `En Gestionar / Presupuesto hay ${resumen.n} ítem(s) asociados a ${etiqueta}.`
+    );
+  }
+  return {
+    analisis: partes.join(' '),
+    conclusion: resumen.valorAsegurable > 0 || resumen.perdida > 0 ? 'AMPARADO' : 'REVISAR',
+  };
+}
+
+function autoAnalisisConceptoZurich(fila, ctx) {
+  const caso = ctx.caso || {};
+  const enc = ctx.encabezado || {};
+  const info = ctx.informe || {};
+  const liq = ctx.liquidador || {};
+  const poliza = textoInforme(caso.numeroPoliza || enc.poliza);
+  const tomador = textoInforme(caso.tomador || enc.tomador);
+  const cobertura = textoInforme(caso.cobertura || enc.cobertura || enc.evento);
+  const direccion = textoInforme(caso.direccionPredio || enc.direccion || info.direccionRiesgo);
+  const ciudad = textoInforme(caso.ciudad || enc.ciudad);
+  const depto = textoInforme(
+    caso.departamento || enc.departamento || resolverDepartamentoZurich(caso)
+  );
+  const ini = caso.fechaInicioPoliza || enc.fechaInicioPoliza;
+  const fin = caso.fechaFinPoliza || enc.fechaFinPoliza;
+  const items = itemsPolizaDesdeLiquidadorZurich(liq);
+
+  if (conceptoPolizaCoincide(fila, 'vigencia')) {
+    if (ini || fin) {
+      const periodo = `del ${formatDateLarga(ini)} al ${formatDateLarga(fin)}`;
+      return {
+        analisis: `${poliza ? `Póliza ${poliza}. ` : ''}${tomador ? `Tomador: ${tomador}. ` : ''}Vigencia ${periodo}, según ficha de Gestionar.`,
+        conclusion: 'EN VIGENCIA',
+      };
+    }
+    if (poliza) {
+      return {
+        analisis: `Póliza ${poliza}${tomador ? `, tomador ${tomador}` : ''}. Las fechas de vigencia no constan en Gestionar.`,
+        conclusion: 'PENDIENTE VIGENCIA',
+      };
+    }
+    return { analisis: '', conclusion: '' };
+  }
+
+  if (conceptoPolizaCoincide(fila, 'modalidad')) {
+    const vaInm = parsearNumero(caso.valorAseguradoInmueble || enc.valorAseguradoInmueble);
+    const vaCont = parsearNumero(caso.valorAseguradoContenidos || enc.valorAseguradoContenidos);
+    const partes = [];
+    if (vaInm > 0) partes.push(`valor asegurado inmueble $ ${formatearMonto(vaInm)}`);
+    if (vaCont > 0) partes.push(`contenidos $ ${formatearMonto(vaCont)}`);
+    if (!partes.length) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `Según Gestionar se registra ${partes.join(' y ')}.`,
+      conclusion: 'SEGÚN PÓLIZA / GESTIONAR',
+    };
+  }
+
+  if (conceptoPolizaCoincide(fila, 'evento')) {
+    if (!cobertura) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `El expediente (Gestionar) registra cobertura / evento ${cobertura}.`,
+      conclusion: 'EVENTO AMPARADO',
+    };
+  }
+
+  if (conceptoPolizaCoincide(fila, 'ubicacion')) {
+    const lugar = [direccion, [ciudad, depto].filter(Boolean).join(' / ')].filter(Boolean).join('. ');
+    if (!lugar) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `Ubicación del riesgo según Gestionar: ${lugar}.`,
+      conclusion: 'RIESGO IDENTIFICADO',
+    };
+  }
+
+  if (conceptoPolizaCoincide(fila, 'areas comunes', 'area comun')) {
+    return textoResumenArticuloZurich(
+      resumenItemsPolizaZurich(
+        items,
+        (it) => /comun/i.test(`${it?.articulo || ''} ${it?.categoria || ''} ${it?.actividad || ''} ${it?.capitulo || ''}`)
+      ),
+      'áreas comunes'
+    );
+  }
+
+  if (conceptoPolizaCoincide(fila, 'areas privadas', 'area privada')) {
+    return textoResumenArticuloZurich(
+      resumenItemsPolizaZurich(
+        items,
+        (it) =>
+          /privat|apartamento|\bapto\.?\b/i.test(
+            `${it?.articulo || ''} ${it?.categoria || ''} ${it?.actividad || ''} ${it?.observacion || ''}`
+          )
+      ),
+      'áreas privadas'
+    );
+  }
+
+  if (conceptoPolizaCoincide(fila, 'maquinaria')) {
+    return textoResumenArticuloZurich(
+      resumenItemsPolizaZurich(
+        items,
+        (it) =>
+          resolverArticuloPolizaId(it) === 'poliza_maquinaria' ||
+          /maquinaria/i.test(`${it?.articulo || ''} ${it?.categoria || ''}`)
+      ),
+      'maquinaria y equipo'
+    );
+  }
+
+  if (conceptoPolizaCoincide(fila, 'equipo electronico', 'electronico', 'electrico y electronico')) {
+    return textoResumenArticuloZurich(
+      resumenItemsPolizaZurich(
+        items,
+        (it) =>
+          resolverArticuloPolizaId(it) === 'poliza_eee_fijo' ||
+          /electr[oó]nico/i.test(`${it?.articulo || ''} ${it?.categoria || ''}`)
+      ),
+      'equipo electrónico'
+    );
+  }
+
+  if (conceptoPolizaCoincide(fila, 'deducible')) {
+    const textoCfg =
+      textoInforme(liq?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.texto) ||
+      textoInforme(liq?.deducible) ||
+      TEXTO_DEDUCIBLE_TERREMOTO_ZURICH;
+    return {
+      analisis: `Condición de deducible tomada de Gestionar / liquidador: ${textoCfg}.`,
+      conclusion: textoCfg,
+    };
+  }
+
+  if (conceptoPolizaCoincide(fila, 'reserva')) {
+    const reserva = reservaSugeridaZurich(info) || parsearNumero(caso.reserva);
+    if (!(reserva > 0)) return { analisis: '', conclusion: '' };
+    return {
+      analisis: `Reserva preliminar según presupuesto / ficha de Gestionar: $ ${formatearMonto(reserva)}.`,
+      conclusion: `$ ${formatearMonto(reserva)}`,
+    };
+  }
+
+  return { analisis: '', conclusion: '' };
+}
+
+/**
+ * Completa filas de análisis de póliza con datos de Gestionar (ficha + Presupuesto)
+ * sin pisar texto que el ajustador ya haya escrito.
+ */
+export function completarFilasPolizaCoberturaZurich(filas, ctx = {}) {
+  const origen = filasPolizaSinAnalisisZurich(filas) ? plantillaFilasPolizaZurich() : [...filas];
+  const vistos = new Set(origen.map((f) => claveConceptoPolizaZurich(f?.concepto)).filter(Boolean));
+  CONCEPTOS_POLIZA_PRELIMINAR_ZURICH.forEach((concepto) => {
+    const k = claveConceptoPolizaZurich(concepto);
+    if (!vistos.has(k)) {
+      origen.push({
+        id: `poliza-${k.replace(/\s+/g, '-')}`,
+        concepto,
+        analisis: '',
+        conclusion: '',
+      });
+      vistos.add(k);
+    }
+  });
+
+  const items = itemsPolizaDesdeLiquidadorZurich(ctx.liquidador || ctx.caso?.liquidador || {});
+  const extraElectronico = resumenItemsPolizaZurich(
+    items,
+    (it) =>
+      resolverArticuloPolizaId(it) === 'poliza_eee_fijo' ||
+      /electr[oó]nico/i.test(`${it?.articulo || ''} ${it?.categoria || ''}`)
+  );
+  if (extraElectronico && !vistos.has(claveConceptoPolizaZurich('Equipo electrónico'))) {
+    origen.push({
+      id: 'poliza-equipo-electronico',
+      concepto: 'Equipo electrónico',
+      analisis: '',
+      conclusion: '',
+    });
+  }
+
+  return origen.map((fila) => {
+    const auto = autoAnalisisConceptoZurich(fila, {
+      caso: ctx.caso || {},
+      encabezado: ctx.encabezado || {},
+      informe: ctx.informe || {},
+      liquidador: ctx.liquidador || ctx.caso?.liquidador || {},
+    });
+    return {
+      ...fila,
+      concepto: textoInforme(fila?.concepto) || auto.concepto || '',
+      analisis: textoInforme(fila?.analisis) || auto.analisis,
+      conclusion: textoInforme(fila?.conclusion) || auto.conclusion,
+    };
+  });
 }
 
 export function plantillaFilasPresupuestoPreliminarZurich() {
@@ -811,7 +1226,12 @@ export function defaultInformeUnicoZurich(caso = {}) {
     analisisCobertura: '',
     reservaSugerida: caso.reserva != null && caso.reserva !== '' ? String(caso.reserva) : '',
     filasDanios: plantillaFilasDaniosZurich(),
-    filasPolizaCobertura: plantillaFilasPolizaZurich(),
+    filasPolizaCobertura: completarFilasPolizaCoberturaZurich(plantillaFilasPolizaZurich(), {
+      caso,
+      encabezado: encabezadoDesdecasoZurich(caso),
+      informe: {},
+      liquidador: caso.liquidador,
+    }),
     filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarZurich(),
     conclusiones: '',
     recomendacion: '',
@@ -841,9 +1261,14 @@ export function defaultInformeUnicoZurich(caso = {}) {
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
     reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
     filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
-    filasPolizaCobertura: usarPlantillaSiVacio(
-      guardado.filasPolizaCobertura,
-      base.filasPolizaCobertura
+    filasPolizaCobertura: completarFilasPolizaCoberturaZurich(
+      usarPlantillaSiVacio(guardado.filasPolizaCobertura, base.filasPolizaCobertura),
+      {
+        caso,
+        encabezado: encabezadoDesdecasoZurich(caso),
+        informe: guardado,
+        liquidador: caso.liquidador,
+      }
     ),
     filasPresupuestoPreliminar: usarPlantillaSiVacio(
       guardado.filasPresupuestoPreliminar,

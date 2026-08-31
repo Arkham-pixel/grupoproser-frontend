@@ -462,7 +462,7 @@ export default function CasoSegurosSuraWorkspace({ tabInicial = null } = {}) {
   };
 
   return (
-    <div className={`${root} ${expressScope}`}>
+    <div className={`${root} ${expressScope} pb-16`}>
       <div className={expressPageWrap}>
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>

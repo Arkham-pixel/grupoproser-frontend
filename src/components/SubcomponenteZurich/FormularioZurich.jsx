@@ -61,7 +61,7 @@ import ModalImportarExcelZurich, {
 } from './ModalImportarExcelZurich.jsx';
 import CamposAsignacionCaso from '../shared/CamposAsignacionCaso.jsx';
 import SelectBuscable from '../SelectBuscable.jsx';
-import { obtenerRolAlmacenado } from '../../config/roles.js';
+import { obtenerRolAlmacenado, esRolContractorZurich } from '../../config/roles.js';
 import {
   attrsCampoCaso,
   esRolInspector,
@@ -111,6 +111,7 @@ const FormularioZurich = ({
 }) => {
   const { t } = useTranslation();
   const rolUsuario = obtenerRolAlmacenado();
+  const esClienteZurich = esRolContractorZurich(rolUsuario);
   const ctxPermiso = useMemo(() => obtenerContextoPermisoCaso('zurich'), []);
   const soloInspector = esRolInspector(rolUsuario);
   const esEdicion = Boolean(initialData?._id);
@@ -901,9 +902,11 @@ const FormularioZurich = ({
               onChange={setCampo('fechaFinalizado')}
             />
           </Campo>
+          {!esClienteZurich && (
           <Campo label={t('zurich.fields.diasEnEstado')}>
             <InputFenix type="text" value={diasEnEstadoZurich(form)} readOnly tabIndex={-1} />
           </Campo>
+          )}
           <Campo label={t('zurich.fields.ultimaGestion')}>
             <InputFenix value={formatDate(ultimaGestionZurich(form)) || '—'} readOnly />
           </Campo>

@@ -19,8 +19,11 @@ import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, esModoDeduciblePorArticuloNsr, fil
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionZurich,
+  completarFilasPolizaCoberturaZurich,
   defaultInformeUnicoZurich,
   desgloseDeducibleTerremotoZurich,
+  filasResumenLiquidacionZurich,
+  formatearMontoPlataformaZurich,
   etiquetaArchivoInformeZurich,
   etiquetaEncabezadoInformeZurich,
   etiquetaReporteCuadroZurich,
@@ -117,6 +120,33 @@ const fmtFecha = (value) => {
 };
 
 const money = (v) => `$ ${formatearMonto(v)}`;
+const moneyPlataforma = (v) => `$ ${formatearMontoPlataformaZurich(v)}`;
+
+function construirTablaPolizaCasoZurich({ caso = {}, enc = {}, info = {} } = {}) {
+  const departamento = resolverDepartamentoZurich({
+    ciudad: caso.ciudad || enc.ciudad,
+    departamento: caso.departamento || enc.departamento,
+    direccionPredio: caso.direccionPredio || enc.direccion || info.direccionRiesgo,
+  });
+  const polizaRows = [
+    campoFila('Tomador', txt(caso.tomador || enc.tomador)),
+    campoFila('Póliza', txt(caso.numeroPoliza || enc.poliza)),
+    campoFila('Fecha inicio póliza (vigencia)', fmtFecha(caso.fechaInicioPoliza || enc.fechaInicioPoliza)),
+    campoFila('Fecha fin póliza (vigencia)', fmtFecha(caso.fechaFinPoliza || enc.fechaFinPoliza)),
+    campoFila('Cobertura', txt(caso.cobertura || enc.cobertura || enc.evento)),
+    campoFila('Dirección predio', txt(caso.direccionPredio || enc.direccion || info.direccionRiesgo)),
+    campoFila(
+      'Ciudad / Departamento',
+      `${txt(caso.ciudad || enc.ciudad)} / ${txt(departamento || caso.departamento || enc.departamento)}`
+    ),
+  ];
+  return new Table({
+    width: { size: 9360, type: WidthType.DXA },
+    columnWidths: [4200, 5160],
+    borders: bordersCuadro,
+    rows: polizaRows,
+  });
+}
 
 async function loadLogoBytes(url) {
   try {
@@ -1120,8 +1150,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
   const info = informe || defaultInformeUnicoZurich(caso);
   const liq = migrarLiquidadorDeducibleTerremotoZurich(
     liquidador || mapcasoZurichALiquidador(caso),
-    caso,
-    { forzar: true }
+    caso
   );
   const totales = calcularLiquidacionZurich(liq);
   const enc = liq.encabezado || {};
@@ -1370,7 +1399,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       new TableRow({
         children: [
           cell('', { width: 600, cuadro: true }),
-          cell('Deducible terremoto (se resta el mayor)', { width: 4000, cuadro: true }),
+          cell(desgloseDed.etiquetaAplicado, { width: 4000, cuadro: true }),
           cell('—', { width: 2200, alignment: AlignmentType.RIGHT, cuadro: true }),
           cell(`− ${money(desgloseDed.aplicado)}`, {
             width: 2200,
@@ -1477,99 +1506,13 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
             { labelW: 5000, valueW: 5000 }
           ),
         ]),
-    ...(usaCotizacion
-      ? [
-          campoFila('Total cotización de reparación (base de deducible)', money(totales.cotizacionMonto), {
-            boldValue: true,
-            labelW: 5000,
-            valueW: 5000,
-          }),
-        ]
-      : [
-          campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-          campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-          ...(mostrarImprevistos
-            ? [
-                campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
-                  labelW: 5000,
-                  valueW: 5000,
-                }),
-              ]
-            : []),
-          ...(mostrarImpuestos
-            ? [
-                campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
-                  labelW: 5000,
-                  valueW: 5000,
-                }),
-              ]
-            : []),
-          campoFila(
-            'Total presupuesto de reparación',
-            money(totales.totalPresupuesto ?? totales.presupuesto?.total),
-            {
-              labelW: 5000,
-              valueW: 5000,
-            }
-          ),
-        ]),
-    campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Gastos de hospedaje', money(totales.diagrama?.gastosHospedaje), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(desgloseDed.etiquetaPct, money(desgloseDed.montoPct), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(desgloseDed.etiquetaSmmlv, money(desgloseDed.montoSmmlv), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(desgloseDed.etiquetaAplicado, money(desgloseDed.aplicado), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    ...(deducibleContenidos > 0
-      ? [
-          campoFila('Deducible contenidos', money(deducibleContenidos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-        ]
-      : []),
-    ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
-      ? [
-          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-          ...totales.otrosAmparos.map((it) =>
-            campoFila(
-              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
-              money(it.valor),
-              { labelW: 5000, valueW: 5000 }
-            )
-          ),
-        ]
-      : []),
-    campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
+    ...filasResumenLiquidacionZurich(liq, totales).map((fila) =>
+      campoFila(fila.label, moneyPlataforma(fila.value), {
+        boldValue: !!(fila.bold || fila.destacado),
+        labelW: 5000,
+        valueW: 5000,
+      })
+    ),
   ];
 
   const w = NSR_COLS.widths;
@@ -1823,7 +1766,22 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
       headers: { default: header },
       children: [
         heading('3. Información de póliza y cobertura'),
-        tablaAnalisisPolizaZurich(info.filasPolizaCobertura),
+        p('Datos de la ficha del caso (Gestionar).', { after: 80, size: SIZE_META, color: '555555' }),
+        construirTablaPolizaCasoZurich({ caso, enc, info }),
+        p('Análisis de póliza y cobertura', {
+          bold: true,
+          before: 180,
+          after: 80,
+          size: SIZE_12,
+        }),
+        tablaAnalisisPolizaZurich(
+          completarFilasPolizaCoberturaZurich(info.filasPolizaCobertura, {
+            caso,
+            encabezado: enc,
+            informe: info,
+            liquidador: liq,
+          })
+        ),
       ],
     },
     {
@@ -1874,6 +1832,7 @@ export async function descargarWordInformeZurich({ caso = {}, informe = null, li
           borders: bordersCuadro,
           rows: liquidacionResumen,
         }),
+        p(desgloseDed.texto, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
         ...(liq.observaciones
           ? [
               p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),

@@ -1875,7 +1875,15 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
         headers: { default: header },
         children: [
           heading('3. Información de póliza y cobertura'),
+          p('Datos de la ficha del caso (Gestionar).', { after: 80, size: SIZE_META, color: '555555' }),
           construirTablaPolizaCasoAllianz({ caso, enc }),
+          p('Análisis de póliza y cobertura', {
+            bold: true,
+            before: 180,
+            after: 80,
+            size: SIZE_12,
+          }),
+          tablaAnalisisPolizaAllianz(info.filasPolizaCobertura),
         ],
       },
       {
@@ -1934,6 +1942,14 @@ export async function descargarWordInformeAllianz({ caso = {}, informe = null, l
         headers: { default: header },
         children: [
           heading('3. Información de póliza y cobertura'),
+          p('Datos de la ficha del caso (Gestionar).', { after: 80, size: SIZE_META, color: '555555' }),
+          construirTablaPolizaCasoAllianz({ caso, enc }),
+          p('Análisis de póliza y cobertura', {
+            bold: true,
+            before: 180,
+            after: 80,
+            size: SIZE_12,
+          }),
           tablaAnalisisPolizaAllianz(info.filasPolizaCobertura),
         ],
       },

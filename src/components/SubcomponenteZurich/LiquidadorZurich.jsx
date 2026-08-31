@@ -20,8 +20,9 @@ import CampoTomadorZurich from './CampoTomadorZurich.jsx';
 import {
   calcularLiquidacionZurich,
   desgloseDeducibleTerremotoZurich,
+  filasResumenLiquidacionZurich,
+  formatearMontoPlataformaZurich,
   formDataNsrDesdeLiquidadorZurich,
-  formatearMonto,
   mapcasoZurichALiquidador,
   migrarLiquidadorDeducibleTerremotoZurich,
 } from './liquidadorZurichHelpers.js';
@@ -84,6 +85,10 @@ export default function LiquidadorZurich({
   const desgloseDed = useMemo(
     () => desgloseDeducibleTerremotoZurich(liquidador, totales.diagrama),
     [liquidador, totales.diagrama]
+  );
+  const filasResumenLiq = useMemo(
+    () => filasResumenLiquidacionZurich(liquidador, totales),
+    [liquidador, totales]
   );
   const enc = liquidador.encabezado || {};
   const tieneCotizacionPdf = Boolean(
@@ -340,55 +345,17 @@ export default function LiquidadorZurich({
           />
         </div>
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>
-              {totales.origenPresupuesto === 'cotizacion'
-                ? t('zurich.settlement.totalDamagesQuote')
-                : t('zurich.settlement.totalDamagesNsr')}
-            </span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          {totales.origenPresupuesto === 'cotizacion' && (
-            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-              <span>{t('zurich.settlement.totalQuote')}</span>
-              <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
+          {filasResumenLiq.map((fila, idx) => (
+            <div
+              key={`${fila.label}-${idx}`}
+              className={`flex justify-between px-4 py-2 text-sm ${
+                idx < filasResumenLiq.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
+              } ${fila.destacado ? 'font-bold text-emerald-600' : fila.bold ? 'font-bold' : ''}`}
+            >
+              <span>{fila.label}</span>
+              <span>$ {formatearMontoPlataformaZurich(fila.value)}</span>
             </div>
-          )}
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaPct}</span>
-            <span>$ {formatearMonto(desgloseDed.montoPct)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaSmmlv}</span>
-            <span>$ {formatearMonto(desgloseDed.montoSmmlv)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaAplicado}</span>
-            <span>$ {formatearMonto(desgloseDed.aplicado)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Deducible contenidos</span>
-            <span>
-              ${' '}
-              {formatearMonto(
-                totales.diagrama?.deducibleContenidos?.aplicado ||
-                  totales.diagrama?.deducibleAplicado ||
-                  0
-              )}
-            </span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Otros amparos (sin deducible)</span>
-            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('zurich.settlement.totalPay')}</span>
-            <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-          </div>
+          ))}
         </div>
         <p className="mt-2 text-xs text-gray-500">{desgloseDed.texto}</p>
         {totales.origenPresupuesto === 'cotizacion' && (

@@ -97,7 +97,7 @@ const COLUMNAS = [
   { clave: 'fechaAutoridadDelegada', labelKey: 'fechaAutoridadDelegada' },
   { clave: 'fechaAceptacionCliente', labelKey: 'fechaAceptacionCliente' },
   { clave: 'fechaFinalizado', labelKey: 'fechaFinalizado' },
-  { clave: 'diasEnEstado', labelKey: 'diasEnEstado' },
+  { clave: 'diasEnEstado', labelKey: 'diasEnEstado', interno: true },
   { clave: 'ultimaGestion', labelKey: 'ultimaGestion' },
   { clave: 'documentoFaltante', labelKey: 'documentoFaltante' },
   { clave: 'observaciones', labelKey: 'observaciones' },
@@ -319,6 +319,7 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
         'AJUSTADOR LIDER': _lider,
         AJUSTADOR: _ajustador,
         INSPECTOR: _inspector,
+        'DÍAS EN ESTADO': _dias,
         ...publico
       } = row;
       return publico;

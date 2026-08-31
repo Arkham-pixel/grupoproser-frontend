@@ -219,6 +219,29 @@ export function clasificarAlertaZurich(caso = {}, config = TORRE_CONFIG_ZURICH_D
   };
 }
 
+/** Motivos que sí puede ver la aseguradora: estado o documentos, no atraso ni reserva. */
+export const TIPOS_MOTIVO_PUBLICOS_ZURICH = [
+  'documento',
+  'pendienteDocs',
+  'liquidar',
+  'autoridad',
+  'aceptacion',
+];
+
+export function motivosPublicosZurich(tipos = []) {
+  return (tipos || []).filter((tipo) => TIPOS_MOTIVO_PUBLICOS_ZURICH.includes(tipo));
+}
+
+export function filasIntervencionPublicasZurich(filas = []) {
+  return (filas || [])
+    .map((row) => {
+      const tipos = motivosPublicosZurich(row.tipos);
+      if (!tipos.length) return null;
+      return { ...row, tipos, nivel: null, diasEstado: null };
+    })
+    .filter(Boolean);
+}
+
 function coincideRangoReserva(caso, rangoId, config) {
   if (!rangoId) return true;
   const rango = (config.rangosReserva || []).find((r) => r.id === rangoId);

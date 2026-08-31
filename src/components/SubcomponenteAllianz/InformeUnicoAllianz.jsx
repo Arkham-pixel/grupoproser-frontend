@@ -665,38 +665,34 @@ export default function InformeUnicoAllianz({
             </dd>
           </div>
         </dl>
-        {!esUnico && (
-          <>
-            <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-              {t('allianz.reportUnique.sectionPolicyTableHint')}
-            </p>
-            <TablaFilasAllianz
-              columnas={[
-                { key: 'concepto', label: t('allianz.reportUnique.colConcepto'), type: 'textarea', rows: 2 },
-                {
-                  key: 'analisis',
-                  label: t('allianz.reportUnique.colAnalisis'),
-                  type: 'textarea',
-                  rows: 3,
-                },
-                {
-                  key: 'conclusion',
-                  label: t('allianz.reportUnique.colConclusion'),
-                  type: 'textarea',
-                  rows: 2,
-                },
-              ]}
-              filas={informe.filasPolizaCobertura}
-              onChangeFila={(idx, key, valor) => setFila('filasPolizaCobertura', idx, key, valor)}
-              onAdd={() =>
-                addFila('filasPolizaCobertura', { concepto: '', analisis: '', conclusion: '' })
-              }
-              onRemove={(idx) => removeFila('filasPolizaCobertura', idx)}
-              addLabel={t('allianz.reportUnique.addPolicyRow')}
-              emptyLabel={t('allianz.reportUnique.emptyPolicyRows')}
-            />
-          </>
-        )}
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('allianz.reportUnique.sectionPolicyTableHint')}
+        </p>
+        <TablaFilasAllianz
+          columnas={[
+            { key: 'concepto', label: t('allianz.reportUnique.colConcepto'), type: 'textarea', rows: 2 },
+            {
+              key: 'analisis',
+              label: t('allianz.reportUnique.colAnalisis'),
+              type: 'textarea',
+              rows: 3,
+            },
+            {
+              key: 'conclusion',
+              label: t('allianz.reportUnique.colConclusion'),
+              type: 'textarea',
+              rows: 2,
+            },
+          ]}
+          filas={informe.filasPolizaCobertura}
+          onChangeFila={(idx, key, valor) => setFila('filasPolizaCobertura', idx, key, valor)}
+          onAdd={() =>
+            addFila('filasPolizaCobertura', { concepto: '', analisis: '', conclusion: '' })
+          }
+          onRemove={(idx) => removeFila('filasPolizaCobertura', idx)}
+          addLabel={t('allianz.reportUnique.addPolicyRow')}
+          emptyLabel={t('allianz.reportUnique.emptyPolicyRows')}
+        />
       </section>
 
       {!esUnico && (

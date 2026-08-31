@@ -72,6 +72,8 @@ export const TORRE_CONFIG_ZURICH_DEFAULT = {
 };
 
 export const TABS_TORRE_ZURICH = ['resumen', 'operacion', 'economico', 'detalle'];
+/** Zurich (cuenta cliente) no ve ANS, días ni criticidad. */
+export const TABS_TORRE_ZURICH_CLIENTE = ['resumen', 'economico', 'detalle'];
 
 export const FILTROS_TORRE_VACIOS = {
   fechaDesde: '',

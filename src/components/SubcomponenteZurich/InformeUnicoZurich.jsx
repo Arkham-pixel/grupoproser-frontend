@@ -22,6 +22,8 @@ import {
   casoZurichConInforme,
   defaultInformeUnicoZurich,
   desgloseDeducibleTerremotoZurich,
+  filasResumenLiquidacionZurich,
+  formatearMontoPlataformaZurich,
   etiquetaArchivoInformeZurich,
   formDataNsrDesdeLiquidadorZurich,
   formatearMonto,
@@ -65,6 +67,7 @@ function TablaFilasZurich({
   onRemove,
   addLabel,
   emptyLabel,
+  asTable = false,
 }) {
   const nCols = Math.min(Math.max(columnas.length, 1), 3);
   const gridClass =
@@ -73,6 +76,109 @@ function TablaFilasZurich({
       : nCols === 2
         ? 'grid grid-cols-1 gap-3 sm:grid-cols-2'
         : 'grid grid-cols-1 gap-3 lg:grid-cols-3';
+
+  const campoFila = (col, fila, idx) => {
+    if (col.type === 'select') {
+      return (
+        <select
+          className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          value={fila[col.key] || ''}
+          onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+        >
+          <option value="">—</option>
+          {(col.options || []).map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      );
+    }
+    if (col.type === 'textarea') {
+      return (
+        <textarea
+          className="min-h-[72px] w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={col.rows || 3}
+          value={fila[col.key] || ''}
+          onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+          placeholder={col.placeholder || ''}
+        />
+      );
+    }
+    if (col.type === 'money') {
+      return (
+        <InputMonedaExpress
+          className="font-mono tabular-nums"
+          value={fila[col.key] || ''}
+          onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+          placeholder={col.placeholder || '$ 0'}
+        />
+      );
+    }
+    return (
+      <InputFenix
+        className={col.mono ? 'font-mono' : ''}
+        value={fila[col.key] || ''}
+        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+        placeholder={col.placeholder || ''}
+      />
+    );
+  };
+
+  if (asTable) {
+    return (
+      <div className="space-y-2">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+          <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
+            <thead className="bg-gray-50 dark:bg-gray-800/60">
+              <tr className="text-left text-gray-500">
+                {columnas.map((col) => (
+                  <th key={col.key} className="px-2 py-2 font-semibold uppercase">
+                    {col.label}
+                  </th>
+                ))}
+                <th className="w-10 px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              {(filas || []).map((fila, idx) => (
+                <tr key={fila.id || `${idx}-${fila.concepto || 'fila'}`}>
+                  {columnas.map((col) => (
+                    <td key={col.key} className="align-top px-2 py-2">
+                      {campoFila(col, fila, idx)}
+                    </td>
+                  ))}
+                  <td className="align-top px-2 py-2">
+                    <button
+                      type="button"
+                      className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                      onClick={() => onRemove(idx)}
+                      title="Quitar"
+                    >
+                      <FaTrash className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {!(filas || []).length && (
+                <tr>
+                  <td
+                    colSpan={columnas.length + 1}
+                    className="px-2 py-4 text-center text-gray-500"
+                  >
+                    {emptyLabel}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        <button type="button" className={expressBtnGhost} onClick={onAdd}>
+          <FaPlus className="h-3.5 w-3.5" /> {addLabel}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -88,42 +194,7 @@ function TablaFilasZurich({
                 label={col.label}
                 className={col.span === 2 ? 'lg:col-span-2' : col.span === 3 ? 'lg:col-span-3' : ''}
               >
-                {col.type === 'select' ? (
-                  <select
-                    className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-                    value={fila[col.key] || ''}
-                    onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
-                  >
-                    <option value="">—</option>
-                    {(col.options || []).map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                ) : col.type === 'textarea' ? (
-                  <textarea
-                    className="min-h-[88px] w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-                    rows={col.rows || 3}
-                    value={fila[col.key] || ''}
-                    onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
-                    placeholder={col.placeholder || ''}
-                  />
-                ) : col.type === 'money' ? (
-                  <InputMonedaExpress
-                    className="font-mono tabular-nums"
-                    value={fila[col.key] || ''}
-                    onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
-                    placeholder={col.placeholder || '$ 0'}
-                  />
-                ) : (
-                  <InputFenix
-                    className={col.mono ? 'font-mono' : ''}
-                    value={fila[col.key] || ''}
-                    onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
-                    placeholder={col.placeholder || ''}
-                  />
-                )}
+                {campoFila(col, fila, idx)}
               </Campo>
             ))}
           </div>
@@ -185,6 +256,10 @@ export default function InformeUnicoZurich({
   const desgloseDed = useMemo(
     () => desgloseDeducibleTerremotoZurich(liquidador, totales.diagrama),
     [liquidador, totales.diagrama]
+  );
+  const filasResumenLiq = useMemo(
+    () => filasResumenLiquidacionZurich(liquidador, totales),
+    [liquidador, totales]
   );
   const tieneCotizacionPdf = Boolean(
     (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
@@ -679,6 +754,35 @@ export default function InformeUnicoZurich({
             </dd>
           </div>
         </dl>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('zurich.reportUnique.sectionPolicyTableHint')}
+        </p>
+        <TablaFilasZurich
+          asTable
+          columnas={[
+            { key: 'concepto', label: t('zurich.reportUnique.colConcepto'), type: 'textarea', rows: 2 },
+            {
+              key: 'analisis',
+              label: t('zurich.reportUnique.colAnalisis'),
+              type: 'textarea',
+              rows: 3,
+            },
+            {
+              key: 'conclusion',
+              label: t('zurich.reportUnique.colConclusion'),
+              type: 'textarea',
+              rows: 2,
+            },
+          ]}
+          filas={informe.filasPolizaCobertura}
+          onChangeFila={(idx, key, valor) => setFila('filasPolizaCobertura', idx, key, valor)}
+          onAdd={() =>
+            addFila('filasPolizaCobertura', { concepto: '', analisis: '', conclusion: '' })
+          }
+          onRemove={(idx) => removeFila('filasPolizaCobertura', idx)}
+          addLabel={t('zurich.reportUnique.addPolicyRow')}
+          emptyLabel={t('zurich.reportUnique.emptyPolicyRows')}
+        />
       </section>
 
       <section className={expressFormSection}>
@@ -800,44 +904,17 @@ export default function InformeUnicoZurich({
           />
         </div>
         <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>
-              {totales.origenPresupuesto === 'cotizacion'
-                ? t('zurich.settlement.totalDamagesQuote')
-                : t('zurich.reportUnique.totalDamages')}
-            </span>
-            <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          {totales.origenPresupuesto === 'cotizacion' && (
-            <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-              <span>{t('zurich.settlement.totalQuote')}</span>
-              <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
+          {filasResumenLiq.map((fila, idx) => (
+            <div
+              key={`${fila.label}-${idx}`}
+              className={`flex justify-between px-4 py-2 text-sm ${
+                idx < filasResumenLiq.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
+              } ${fila.destacado ? 'font-bold text-emerald-600' : fila.bold ? 'font-bold' : ''}`}
+            >
+              <span>{fila.label}</span>
+              <span>$ {formatearMontoPlataformaZurich(fila.value)}</span>
             </div>
-          )}
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{t('zurich.reportUnique.lodging')}</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaPct}</span>
-            <span>$ {formatearMonto(desgloseDed.montoPct)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaSmmlv}</span>
-            <span>$ {formatearMonto(desgloseDed.montoSmmlv)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{desgloseDed.etiquetaAplicado}</span>
-            <span>$ {formatearMonto(desgloseDed.aplicado)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>{t('zurich.reportUnique.otherCovers')}</span>
-            <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-          </div>
-          <div className="flex justify-between px-4 py-2 text-sm font-bold">
-            <span>{t('zurich.settlement.totalPay')}</span>
-            <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
-          </div>
+          ))}
         </div>
         <p className="mb-4 mt-2 text-xs text-gray-500">{desgloseDed.texto}</p>
         <ChecklistEvaluacionSismicaNSR10

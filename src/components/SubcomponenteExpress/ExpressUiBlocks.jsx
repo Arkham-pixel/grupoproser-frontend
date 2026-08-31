@@ -392,7 +392,11 @@ export function ExpressModal({ open, onClose, title, children, wide = false, ext
   const { t } = useTranslation();
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => e.preventDefault()}
+    >
       <div
         className={`relative flex max-h-[95vh] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-[#1A1A1A] ${
           extraWide ? 'max-w-[96vw]' : wide ? 'max-w-6xl' : 'max-w-lg'

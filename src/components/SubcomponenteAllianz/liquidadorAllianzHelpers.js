@@ -81,16 +81,14 @@ export const ZONAS_DANIOS_PRELIMINAR_ALLIANZ = [
 
 export const CONCEPTOS_POLIZA_PRELIMINAR_ALLIANZ = [
   'Vigencia',
-  'Ubicación del riesgo',
+  'Modalidad de aseguramiento',
   'Evento',
-  'Interés afectado',
-  'Deducible',
-  'Infraseguro',
-  'Remoción de escombros',
-  'Honorarios profesionales',
-  'Exclusiones',
+  'Áreas comunes',
+  'Áreas privadas',
+  'Maquinaria y equipo',
+  'Equipo electrónico',
+  'Deducible terremoto',
   'Reserva preliminar',
-  'Concepto preliminar',
 ];
 
 export const CAPITULOS_PRESUPUESTO_PRELIMINAR_ALLIANZ = [

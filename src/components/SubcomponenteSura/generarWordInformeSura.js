@@ -20,6 +20,7 @@ import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10, totalFilaPresupuesto } from '../Su
 import { construirTablaContenidosWord } from '../SubcomponenteEvaluacionSismicaNSR10/construirTablaContenidosWord.js';
 import {
   calcularLiquidacionSura,
+  completarFilasPolizaCoberturaSura,
   defaultInformeUnicoSura,
   etiquetaEncabezadoInformeSura,
   etiquetaReporteCuadroSura,
@@ -32,8 +33,9 @@ import {
   normalizarTipoInformeSura,
   parsearNumero,
   prefijoArchivoInformeSura,
+  RAZON_SOCIAL_SURA,
   reservaSugeridaSura,
-  totalPresupuestoPreliminarSura,
+  textoDescripcionDaniosSura,
 } from './liquidadorSuraHelpers.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
@@ -93,17 +95,42 @@ const txt = (v, fallback = '—') => {
   return s;
 };
 
+const firstTxt = (...vals) => {
+  for (const v of vals) {
+    const s = String(v ?? '').trim();
+    if (s && s !== 'null' && s !== 'undefined' && s !== '—') return s;
+  }
+  return '';
+};
+
+const ciudadDepartamentoTxt = (caso = {}, enc = {}) => {
+  const ciudad = firstTxt(caso.ciudad, caso.ciudadSiniestro, caso.nombreCiudad, enc.ciudad);
+  const depto = firstTxt(caso.departamento, caso.departamentoCiudad, enc.departamento);
+  if (ciudad && depto) return `${ciudad} / ${depto}`;
+  return txt(ciudad || depto);
+};
+
 const fmtFechaCorta = (value) => {
   if (value == null || value === '') return '—';
   try {
-    const raw = String(value).trim();
-    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    if (typeof value === 'string') {
+      const raw = value.trim();
+      const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+    }
     const d = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(d.getTime())) return raw;
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    return `${dd}/${mm}/${d.getFullYear()}`;
+    if (Number.isNaN(d.getTime())) return String(value);
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Bogota',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(d);
+    const y = parts.find((p) => p.type === 'year')?.value;
+    const mm = parts.find((p) => p.type === 'month')?.value;
+    const dd = parts.find((p) => p.type === 'day')?.value;
+    if (y && mm && dd) return `${dd}/${mm}/${y}`;
+    return String(value);
   } catch {
     return String(value);
   }
@@ -133,16 +160,17 @@ async function loadLogoBytes(url) {
 
 /**
  * Encabezado formal (fórmula Catastrófico / Motorysa):
- * Logo Proser | Título + subtítulo + código/versión/fecha | Logo Sura
+ * Logo Proser | Razón social + tipo de informe | Logo Sura
+ * FECHA = día en que se genera el Word (no fecha de asignación).
  */
-async function crearEncabezadoSura({ caso = {}, informe = {} } = {}) {
+async function crearEncabezadoSura({ caso = {}, informe = {}, fechaGeneracion = new Date() } = {}) {
   const base = import.meta.env.BASE_URL || '/';
   let proser = await loadLogoBytes(`${base}templates/logo-grupoproser.png`);
   if (!proser) proser = await loadLogoBytes(`${base}templates/logo-grupoproser.jpg`);
   const sura = await loadLogoBytes(`${base}templates/logo-sura.png`);
 
-  const siniestro = txt(caso.siniestro || caso.consecutivo, '—');
-  const fecha = fmtFechaCorta(informe.fechaInforme || new Date());
+  const siniestro = txt(caso.siniestro || caso.nmroSinstro || caso.consecutivo, '—');
+  const fecha = fmtFechaCorta(fechaGeneracion);
 
   const celdaMeta = (texto) =>
     new TableCell({
@@ -207,10 +235,22 @@ async function crearEncabezadoSura({ caso = {}, informe = {} } = {}) {
                 margins: { top: 80, bottom: 80, left: 120, right: 120 },
                 children: [
                   new Paragraph({
+                    spacing: { after: 0 },
+                    children: [
+                      new TextRun({
+                        text: 'SEGUROS GENERALES',
+                        font: FONT,
+                        size: SIZE_12,
+                        bold: true,
+                        color: '0033A0',
+                      }),
+                    ],
+                  }),
+                  new Paragraph({
                     spacing: { after: 40 },
                     children: [
                       new TextRun({
-                        text: 'SEGUROS SURA',
+                        text: 'SURAMERICANA S.A.',
                         font: FONT,
                         size: SIZE_12,
                         bold: true,
@@ -243,7 +283,7 @@ async function crearEncabezadoSura({ caso = {}, informe = {} } = {}) {
                   }),
                 ],
               }),
-              logoCell(sura, 'SEGUROS SURA', AlignmentType.RIGHT),
+              logoCell(sura, 'SURA', AlignmentType.RIGHT),
             ],
           }),
         ],
@@ -332,7 +372,7 @@ const cell = (text, opts = {}) =>
       left: opts.compact ? 40 : 100,
       right: opts.compact ? 40 : 100,
     },
-    verticalAlign: VerticalAlign.CENTER,
+    verticalAlign: opts.verticalAlign || VerticalAlign.CENTER,
     children: [
       new Paragraph({
         alignment: opts.alignment || AlignmentType.LEFT,
@@ -368,37 +408,60 @@ const campoFila = (label, value, opts = {}) =>
   });
 
 /** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
-function construirCuadroPrincipal({ caso = {}, enc = {}, info = {}, totales = {} } = {}) {
+function construirCuadroPrincipal({
+  caso = {},
+  enc = {},
+  info = {},
+  totales = {},
+  fechaGeneracion = new Date(),
+} = {}) {
+  const vigenciaInicio = caso.fechaInicioPoliza || enc.fechaInicioPoliza;
+  const vigenciaFin = caso.fechaFinPoliza || enc.fechaFinPoliza;
   const vigencia =
-    caso.fechaInicioPoliza || caso.fechaFinPoliza
-      ? `${fmtFechaCorta(caso.fechaInicioPoliza)} – ${fmtFechaCorta(caso.fechaFinPoliza)}`
+    vigenciaInicio || vigenciaFin
+      ? `${fmtFechaCorta(vigenciaInicio)} – ${fmtFechaCorta(vigenciaFin)}`
       : '—';
 
   const esPreliminar = esInformePreliminarSura(info);
   const reserva = reservaSugeridaSura(info);
   const filas = [
     ['REPORTE No', etiquetaReporteCuadroSura(info.tipoInforme)],
-    ['SINIESTRO No', txt(caso.siniestro || enc.siniestro)],
-    ['CONSECUTIVO', txt(caso.consecutivo)],
-    ['TOMADOR', txt(caso.tomador || enc.tomador)],
-    ['ASEGURADO / CONTACTO', txt(caso.asegurado || enc.asegurado || caso.informacionContacto || caso.asgrBenfcro)],
-    ['CORREO ELECTRÓNICO', txt(caso.correo)],
-    ['CELULAR', txt(caso.celular)],
-    ['IDENTIFICACIÓN', txt(caso.identificacion || enc.identificacion)],
-    ['N° PÓLIZA', txt(caso.numeroPoliza || enc.poliza)],
-    ['N° CRÉDITO', txt(caso.numeroCredito || enc.credito)],
-    ['VIGENCIA', vigencia],
-    ['COBERTURA / EVENTO', txt(caso.cobertura || enc.cobertura || enc.evento)],
-    ['DIRECCIÓN RIESGO ASEGURADO', txt(caso.direccionPredio || enc.direccion)],
-    ['SEDE (RIESGO)', txt(caso.sede || caso.sedeRiesgo)],
+    ['SINIESTRO No', txt(firstTxt(caso.siniestro, enc.siniestro, caso.nmroSinstro))],
+    ['CONSECUTIVO', txt(firstTxt(caso.consecutivo, enc.consecutivo))],
+    ['TOMADOR', txt(firstTxt(caso.tomador, enc.tomador))],
     [
-      'CIUDAD / DEPARTAMENTO',
-      `${txt(caso.ciudad || enc.ciudad)} / ${txt(caso.departamento || enc.departamento)}`,
+      'ASEGURADO / CONTACTO',
+      txt(firstTxt(caso.asegurado, enc.asegurado, caso.informacionContacto, caso.asgrBenfcro)),
     ],
-    ['FECHA DE OCURRENCIA', fmtFechaCorta(caso.fechaSiniestro || enc.fechaSiniestro)],
-    ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion)],
-    ['FECHA DEL INFORME', fmtFechaCorta(info.fechaInforme || new Date())],
-    ['AJUSTADOR', txt(info.ajustadorNombre || caso.ajustador || caso.nombreResponsable)],
+    ['CORREO ELECTRÓNICO', txt(firstTxt(caso.correo, enc.correo))],
+    ['CELULAR', txt(firstTxt(caso.celular, enc.celular))],
+    [
+      'IDENTIFICACIÓN',
+      txt(firstTxt(caso.identificacion, caso.numDocumento, enc.identificacion)),
+    ],
+    ['N° PÓLIZA', txt(firstTxt(caso.numeroPoliza, caso.nmroPolza, enc.poliza))],
+    ['N° CRÉDITO', txt(firstTxt(caso.numeroCredito, enc.credito))],
+    ['VIGENCIA', vigencia],
+    [
+      'COBERTURA / EVENTO',
+      txt(firstTxt(caso.cobertura, caso.causa_siniestro, caso.amprAfctdo, enc.cobertura, enc.evento)),
+    ],
+    [
+      'DIRECCIÓN RIESGO ASEGURADO',
+      txt(firstTxt(info.direccionRiesgo, caso.direccionPredio, caso.direccion, enc.direccion)),
+    ],
+    ['SEDE (RIESGO)', txt(firstTxt(caso.sede, caso.sedeRiesgo))],
+    ['CIUDAD / DEPARTAMENTO', ciudadDepartamentoTxt(caso, enc)],
+    [
+      'FECHA DE OCURRENCIA',
+      fmtFechaCorta(caso.fechaSiniestro || caso.fchaSinstro || enc.fechaSiniestro),
+    ],
+    ['FECHA DE INSPECCIÓN', fmtFechaCorta(caso.fechaInspeccion || caso.fchaInspccion)],
+    ['FECHA DEL INFORME', fmtFechaCorta(fechaGeneracion)],
+    [
+      'AJUSTADOR',
+      txt(firstTxt(info.ajustadorNombre, caso.ajustador, caso.nombreResponsable, enc.ajustador)),
+    ],
     ...(esPreliminar
       ? [['RESERVA SUGERIDA', money(reserva)]]
       : [
@@ -746,102 +809,28 @@ async function cargarMapaRiesgoDataUrl(info = {}) {
   return null;
 }
 
-function extraerLatLngTexto(texto) {
-  const parts = String(texto || '')
-    .split(',')
-    .map((c) => parseFloat(String(c).trim()));
-  if (parts.length >= 2 && Number.isFinite(parts[0]) && Number.isFinite(parts[1])) {
-    return { latitud: parts[0].toFixed(6), longitud: parts[1].toFixed(6) };
-  }
-  return { latitud: '', longitud: '' };
-}
-
-/** Página: descripción de daños + mapa de ubicación + coordenadas. */
+/** Página: descripción de daños (texto libre) + mapa de ubicación del predio. */
 async function construirBloqueDaniosUbicacionSura({ info = {}, caso = {} } = {}) {
   const bloques = [];
-  const descripcion = txt(info.descripcionDanios, '');
-  const coordenadas = txt(info.coordenadasRiesgo, '');
-  const direccion = txt(info.direccionRiesgo || caso.direccionPredio, '');
-  const coords = extraerLatLngTexto(coordenadas);
+  const descripcion = txt(textoDescripcionDaniosSura(info), '');
   const mapaDataUrl = await cargarMapaRiesgoDataUrl(info);
 
   bloques.push(heading('2. Descripción de los daños y/o perjuicios'));
 
-  const filasDanios = Array.isArray(info.filasDanios) ? info.filasDanios : [];
-  const filasDaniosConDato = filasDanios.filter(
-    (f) =>
-      String(f?.zona || '').trim() ||
-      String(f?.condicion || '').trim() ||
-      String(f?.nivel || '').trim()
-  );
-  if (filasDaniosConDato.length) {
-    bloques.push(
-      new Table({
-        width: { size: 9360, type: WidthType.DXA },
-        columnWidths: [2200, 5360, 1800],
-        borders: bordersCuadro,
-        rows: [
-          new TableRow({
-            children: [
-              cell('ELEMENTO / ZONA', {
-                bold: true,
-                width: 2200,
-                cuadro: true,
-                alignment: AlignmentType.CENTER,
-              }),
-              cell('CONDICIÓN OBSERVADA', {
-                bold: true,
-                width: 5360,
-                cuadro: true,
-                alignment: AlignmentType.CENTER,
-              }),
-              cell('NIVEL DE AFECTACIÓN', {
-                bold: true,
-                width: 1800,
-                cuadro: true,
-                alignment: AlignmentType.CENTER,
-              }),
-            ],
-          }),
-          ...filasDaniosConDato.map(
-            (f) =>
-              new TableRow({
-                children: [
-                  cell(txt(f.zona), {
-                    bold: true,
-                    width: 2200,
-                    cuadro: true,
-                    verticalAlign: VerticalAlign.TOP,
-                  }),
-                  cell(txt(f.condicion), {
-                    width: 5360,
-                    cuadro: true,
-                    verticalAlign: VerticalAlign.TOP,
-                  }),
-                  cell(txt(f.nivel), {
-                    bold: true,
-                    width: 1800,
-                    cuadro: true,
-                    alignment: AlignmentType.CENTER,
-                    verticalAlign: VerticalAlign.TOP,
-                  }),
-                ],
-              })
-          ),
-        ],
-      })
-    );
-    bloques.push(p('', { after: 80 }));
-  }
-
   if (descripcion) {
-    bloques.push(
-      p(descripcion, {
-        after: 140,
-        alignment: AlignmentType.JUSTIFIED,
-      })
-    );
-  } else if (!filasDaniosConDato.length) {
+    const paras = String(descripcion)
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter(Boolean);
+    paras.forEach((l, i) => {
+      bloques.push(
+        p(l, {
+          after: i === paras.length - 1 ? 140 : 80,
+          alignment: AlignmentType.JUSTIFIED,
+        })
+      );
+    });
+  } else {
     bloques.push(
       p('Pendiente diligenciar la descripción de los daños y/o perjuicios.', {
         after: 140,
@@ -882,33 +871,6 @@ async function construirBloqueDaniosUbicacionSura({ info = {}, caso = {} } = {})
         alignment: AlignmentType.CENTER,
         after: 100,
         color: '666666',
-      })
-    );
-  }
-
-  if (coordenadas) {
-    bloques.push(
-      p(`Coordenadas: ${coordenadas}`, {
-        alignment: AlignmentType.CENTER,
-        after: 60,
-        color: '0070C0',
-      })
-    );
-  }
-  if (coords.latitud && coords.longitud) {
-    bloques.push(
-      p(`Latitud: ${coords.latitud}    Longitud: ${coords.longitud}`, {
-        alignment: AlignmentType.CENTER,
-        after: 80,
-        size: SIZE_META,
-      })
-    );
-  }
-  if (direccion) {
-    bloques.push(
-      p(`Dirección del riesgo: ${direccion}`, {
-        alignment: AlignmentType.CENTER,
-        after: 80,
       })
     );
   }
@@ -1028,24 +990,27 @@ function tablaAnalisisPolizaSura(filas = []) {
       String(f?.analisis || '').trim() ||
       String(f?.conclusion || '').trim()
   );
+  const wConcepto = 2200;
+  const wAnalisis = 4360;
+  const wConclusion = 2800;
   const rows = [
     new TableRow({
       children: [
         cell('CONCEPTO', {
           bold: true,
-          width: 2000,
+          width: wConcepto,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('ANÁLISIS', {
           bold: true,
-          width: 5360,
+          width: wAnalisis,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
         cell('CONCLUSIÓN', {
           bold: true,
-          width: 2000,
+          width: wConclusion,
           cuadro: true,
           alignment: AlignmentType.CENTER,
         }),
@@ -1072,19 +1037,20 @@ function tablaAnalisisPolizaSura(filas = []) {
           children: [
             cell(txt(f.concepto), {
               bold: true,
-              width: 2000,
+              width: wConcepto,
               cuadro: true,
               verticalAlign: VerticalAlign.TOP,
             }),
             cell(txt(f.analisis), {
-              width: 5360,
+              width: wAnalisis,
               cuadro: true,
               verticalAlign: VerticalAlign.TOP,
             }),
             cell(txt(f.conclusion), {
               bold: true,
-              width: 2000,
+              width: wConclusion,
               cuadro: true,
+              alignment: AlignmentType.CENTER,
               verticalAlign: VerticalAlign.TOP,
             }),
           ],
@@ -1094,106 +1060,7 @@ function tablaAnalisisPolizaSura(filas = []) {
   }
   return new Table({
     width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [2000, 5360, 2000],
-    borders: bordersCuadro,
-    rows,
-  });
-}
-
-function tablaPresupuestoPreliminarSura(filas = []) {
-  const lista = Array.isArray(filas) ? filas : [];
-  const rows = [
-    new TableRow({
-      children: [
-        cell('Capítulo', {
-          bold: true,
-          width: 2800,
-          cuadro: true,
-          alignment: AlignmentType.CENTER,
-        }),
-        cell('Descripción del alcance', {
-          bold: true,
-          width: 4560,
-          cuadro: true,
-          alignment: AlignmentType.CENTER,
-        }),
-        cell('Valor estimado', {
-          bold: true,
-          width: 2000,
-          cuadro: true,
-          alignment: AlignmentType.CENTER,
-        }),
-      ],
-    }),
-  ];
-  const conDato = lista.filter(
-    (f) =>
-      String(f?.capitulo || '').trim() ||
-      String(f?.descripcion || '').trim() ||
-      parsearNumero(f?.valor) > 0
-  );
-  if (!conDato.length) {
-    rows.push(
-      new TableRow({
-        children: [
-          cell('Pendiente diligenciar el presupuesto preliminar.', {
-            width: 9360,
-            columnSpan: 3,
-            cuadro: true,
-            alignment: AlignmentType.CENTER,
-          }),
-        ],
-      })
-    );
-  } else {
-    conDato.forEach((f) => {
-      rows.push(
-        new TableRow({
-          children: [
-            cell(txt(f.capitulo), {
-              bold: true,
-              width: 2800,
-              cuadro: true,
-              verticalAlign: VerticalAlign.TOP,
-            }),
-            cell(txt(f.descripcion), {
-              width: 4560,
-              cuadro: true,
-              verticalAlign: VerticalAlign.TOP,
-            }),
-            cell(money(f.valor), {
-              width: 2000,
-              cuadro: true,
-              alignment: AlignmentType.RIGHT,
-              verticalAlign: VerticalAlign.TOP,
-            }),
-          ],
-        })
-      );
-    });
-  }
-  rows.push(
-    new TableRow({
-      children: [
-        cell('TOTAL RESERVA PRELIMINAR', {
-          bold: true,
-          width: 7360,
-          columnSpan: 2,
-          cuadro: true,
-          alignment: AlignmentType.RIGHT,
-        }),
-        cell(money(totalPresupuestoPreliminarSura(lista)), {
-          bold: true,
-          width: 2000,
-          cuadro: true,
-          alignment: AlignmentType.RIGHT,
-        }),
-      ],
-    })
-  );
-  return new Table({
-    width: { size: 9360, type: WidthType.DXA },
-    columnWidths: [2800, 4560, 2000],
+    columnWidths: [wConcepto, wAnalisis, wConclusion],
     borders: bordersCuadro,
     rows,
   });
@@ -1206,11 +1073,13 @@ function tablaPresupuestoPreliminarSura(filas = []) {
  */
 export async function descargarWordInformeSura({ caso = {}, informe = null, liquidador = null } = {}) {
   const info = informe || defaultInformeUnicoSura(caso);
+  const fechaGeneracion = new Date();
   const esPreliminar = esInformePreliminarSura(info);
   const tipoNorm = normalizarTipoInformeSura(info.tipoInforme, 'preliminar');
   const tipoEtiqueta =
     tipoNorm === 'preliminar' ? 'preliminar' : tipoNorm === 'final' ? 'final' : 'único';
   const seccionFotos = esPreliminar ? 5 : 7;
+  const seccionRecomendacion = esPreliminar ? 6 : 8;
   const liq = liquidador || mapCasoSuraALiquidador(caso);
   const totales = calcularLiquidacionSura(liq);
   const enc = liq.encabezado || {};
@@ -1484,7 +1353,7 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
     );
   }
 
-  const header = await crearEncabezadoSura({ caso, informe: info });
+  const header = await crearEncabezadoSura({ caso, informe: info, fechaGeneracion });
 
   const liquidacionResumen = [
     ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
@@ -1703,7 +1572,7 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
   const bloqueDaniosUbicacion = await construirBloqueDaniosUbicacionSura({ info, caso });
 
   const pagePortrait = {
-    margin: { top: 1400, bottom: 900, left: 900, right: 900 },
+    margin: { top: 1580, bottom: 900, left: 900, right: 900 },
     size: { orientation: PageOrientation.PORTRAIT },
   };
   const pageLandscape = {
@@ -1712,20 +1581,8 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
   };
 
   const seccionConclusiones = [
-    heading('4. Conclusiones y recomendación del ajustador'),
-    p('PRESUPUESTO PRELIMINAR DE REPARACIÓN', {
-      bold: true,
-      before: 40,
-      after: 120,
-    }),
-    tablaPresupuestoPreliminarSura(info.filasPresupuestoPreliminar),
-    p('Conclusiones', { bold: true, before: 180, after: 40 }),
+    heading('4. Conclusiones'),
     p(txt(info.conclusiones, 'Pendiente diligenciar conclusiones.'), {
-      after: 120,
-      alignment: AlignmentType.JUSTIFIED,
-    }),
-    p('Recomendación', { bold: true, after: 40 }),
-    p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
       after: 160,
       alignment: AlignmentType.JUSTIFIED,
     }),
@@ -1740,11 +1597,16 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
       { after: 80 }
     ),
     ...fotoParrafos,
+    heading(`${seccionRecomendacion}. Recomendación del ajustador`),
+    p(txt(info.recomendacion, 'Pendiente diligenciar recomendación.'), {
+      after: 160,
+      alignment: AlignmentType.JUSTIFIED,
+    }),
     p(
       `Para constancia se firma el presente informe ${tipoEtiqueta} en ${txt(
         caso.ciudad || enc.ciudad,
         'Colombia'
-      )}, ${fmtFecha(info.fechaInforme || new Date())}.`,
+      )}, ${fmtFecha(fechaGeneracion)}.`,
       { before: 200, after: 200 }
     ),
     ...firmasParrafos,
@@ -1756,14 +1618,14 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
       headers: { default: header },
       children: [
         crearTituloInformeUnico(info),
-        p('SEGUROS SURA S.A.', {
+        p(RAZON_SOCIAL_SURA, {
           alignment: AlignmentType.CENTER,
           bold: true,
           size: SIZE_12,
           after: 160,
           color: '333333',
         }),
-        construirCuadroPrincipal({ caso, enc, info, totales }),
+        construirCuadroPrincipal({ caso, enc, info, totales, fechaGeneracion }),
       ],
     },
     {
@@ -1787,7 +1649,14 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
       headers: { default: header },
       children: [
         heading('3. Información de póliza y cobertura'),
-        tablaAnalisisPolizaSura(info.filasPolizaCobertura),
+        tablaAnalisisPolizaSura(
+          completarFilasPolizaCoberturaSura(info.filasPolizaCobertura, {
+            caso,
+            encabezado: enc,
+            informe: info,
+            liquidador: liq,
+          })
+        ),
       ],
     },
     {

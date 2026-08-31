@@ -43,6 +43,7 @@ import {
 import { esRolContractorZurich } from '../../config/roles.js';
 import {
   ESTADOS_ZURICH,
+  ESTADO_ZURICH_PENDIENTE_DOCS,
   ZURICH_REPORTE_PAGE_SIZE,
   buildOpcionesFiltro,
   etiquetaTipoPolizaZurich,
@@ -55,6 +56,7 @@ import {
 import {
   FILTROS_TORRE_VACIOS,
   TABS_TORRE_ZURICH,
+  TABS_TORRE_ZURICH_CLIENTE,
   TORRE_CONFIG_ZURICH_DEFAULT,
   fusionarConfigTorreZurich,
 } from './dashboardZurichTorreConfig.js';
@@ -64,6 +66,7 @@ import {
   construirTorreZurich,
   diasAntiguedadTotalZurich,
   diasEnEstadoNumeroZurich,
+  filasIntervencionPublicasZurich,
   filtrosTorreActivos,
 } from './dashboardZurichTorreStats.js';
 import { aplicarOrdenTabla, useOrdenTabla } from '../../hooks/useOrdenTabla.js';
@@ -121,7 +124,8 @@ export default function DashboardZurichListado() {
   const esInterno = !esClienteZurich;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const tab = TABS_TORRE_ZURICH.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'resumen';
+  const tabsVisibles = esInterno ? TABS_TORRE_ZURICH : TABS_TORRE_ZURICH_CLIENTE;
+  const tab = tabsVisibles.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'resumen';
   const setTab = (next) => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set('tab', next);
@@ -294,9 +298,6 @@ export default function DashboardZurichListado() {
       RESERVA: caso.reserva ?? '',
       'VALOR RECLAMADO': caso.valorReclamado ?? '',
       'VALOR LIQUIDADO': caso.valorLiquidado ?? '',
-      'DÍAS ESTADO': caso.diasEstado ?? '',
-      'DÍAS TOTAL': caso.diasTotal ?? '',
-      ALERTA: caso.alertaNivel ? td(`alert.${caso.alertaNivel}`) : '',
       'DOCUMENTO FALTANTE': caso.documentoFaltante ?? '',
       'FECHA CASO NUEVO': formatDate(caso.fechaCasoNuevo),
       'FECHA FINALIZADO': formatDate(caso.fechaFinalizado),
@@ -344,7 +345,7 @@ export default function DashboardZurichListado() {
         </header>
 
         <nav className="flex flex-wrap gap-2" aria-label={td('title')}>
-          {TABS_TORRE_ZURICH.map((id) => (
+          {tabsVisibles.map((id) => (
             <button
               key={id}
               type="button"
@@ -603,17 +604,8 @@ export default function DashboardZurichListado() {
                         <ThOrdenable campo="estado" orden={orden} onOrdenar={cambiarOrden}>
                           {t('zurich.fields.estado')}
                         </ThOrdenable>
-                        <ThOrdenable campo="diasEstado" orden={orden} onOrdenar={cambiarOrden}>
-                          {td('detail.daysState')}
-                        </ThOrdenable>
-                        <ThOrdenable campo="diasTotal" orden={orden} onOrdenar={cambiarOrden}>
-                          {td('detail.daysTotal')}
-                        </ThOrdenable>
                         <ThOrdenable campo="reserva" orden={orden} onOrdenar={cambiarOrden}>
                           {t('zurich.fields.reserva')}
-                        </ThOrdenable>
-                        <ThOrdenable campo="alertaNivel" orden={orden} onOrdenar={cambiarOrden}>
-                          {td('detail.alert')}
                         </ThOrdenable>
                       </tr>
                     </thead>
@@ -639,13 +631,8 @@ export default function DashboardZurichListado() {
                           <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{truncar(row.asegurado, 32)}</td>
                           <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{row.ciudad || '—'}</td>
                           <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{row.estado}</td>
-                          <td className="px-4 py-3 tabular-nums">{row.diasEstado ?? '—'}</td>
-                          <td className="px-4 py-3 tabular-nums">{row.diasTotal ?? '—'}</td>
                           <td className="whitespace-nowrap px-4 py-3 tabular-nums">
                             {row.reserva == null || row.reserva === '' ? td('pendingLoad') : formatCurrency(row.reserva)}
-                          </td>
-                          <td className={`px-4 py-3 font-semibold ${claseNivelAlerta(row.alertaNivel)}`}>
-                            {row.alertaNivel ? td(`alert.${row.alertaNivel}`) : '—'}
                           </td>
                         </tr>
                       ))}
@@ -712,7 +699,7 @@ function ResumenPanel({
           <HeroKpi
             label={td('kpis.open')}
             value={kpis.carteraAbierta}
-            hint={td('kpis.openHint', { open: kpis.carteraAbierta, critical: kpis.criticos })}
+            hint={td('kpis.openHint', { open: kpis.carteraAbierta })}
           />
           <HeroKpi
             label={td('kpis.new')}
@@ -725,10 +712,9 @@ function ResumenPanel({
             hint={td('kpis.closedHint', { pct: kpis.porcentajeFinalizados })}
           />
           <HeroKpi
-            label={td('kpis.critical')}
-            value={kpis.criticos}
-            hint={td('kpis.criticalHint', { high: kpis.altos, medium: kpis.medios })}
-            tone={kpis.criticos > 0 ? 'danger' : undefined}
+            label={td('kpis.pendingDocs')}
+            value={stats.porEstado.find((f) => f.estado === ESTADO_ZURICH_PENDIENTE_DOCS)?.cantidad || 0}
+            hint={td('kpis.pendingDocsHint')}
           />
         </div>
         <div className="grid grid-cols-1 divide-y divide-gray-100 border-t border-gray-100 sm:grid-cols-2 lg:grid-cols-4 sm:divide-x sm:divide-y-0 dark:divide-gray-800 dark:border-gray-800">
@@ -769,7 +755,6 @@ function ResumenPanel({
         <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-gray-100 bg-gray-100 sm:grid-cols-5 xl:grid-cols-9 dark:border-gray-800 dark:bg-gray-800">
           {stats.porEstado.map((fila) => {
             const activo = filtros.estado === fila.estado;
-            const valorClase = fila.alerta ? 'text-fenix-primario' : 'text-gray-900 dark:text-white';
             return (
               <button
                 key={fila.estado}
@@ -782,7 +767,7 @@ function ResumenPanel({
                   activo ? 'ring-2 ring-inset ring-fenix-primario' : ''
                 }`}
               >
-                <p className={`font-accent text-xl font-semibold tabular-nums tracking-tight ${valorClase}`}>
+                <p className="font-accent text-xl font-semibold tabular-nums tracking-tight text-gray-900 dark:text-white">
                   {fila.cantidad}
                 </p>
                 <p className="mt-1 font-body text-[10px] font-semibold uppercase leading-tight tracking-wide text-gray-500 dark:text-gray-400">
@@ -891,7 +876,7 @@ function ResumenPanel({
         </ChartCard>
       </section>
 
-      <TablaIntervencion td={td} t={t} filas={stats.intervencion} />
+      <TablaIntervencion td={td} t={t} filas={filasIntervencionPublicasZurich(stats.intervencion)} />
     </>
   );
 }
@@ -1048,6 +1033,8 @@ function OperacionPanel({
           if (fila) toggleFiltro('documentoCategoria', fila.id);
         }}
       />
+
+      <TablaIntervencion td={td} t={t} filas={stats.intervencion} completa />
     </>
   );
 }
@@ -1186,7 +1173,6 @@ function EconomicoPanel({
                   <th className="px-4 py-3">{t('zurich.fields.estado')}</th>
                   <th className="px-4 py-3">{td('largeLosses.reserve')}</th>
                   <th className="px-4 py-3">{td('largeLosses.share')}</th>
-                  <th className="px-4 py-3">{td('detail.alert')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1208,9 +1194,6 @@ function EconomicoPanel({
                       {formatCurrency(row.reserva)}
                     </td>
                     <td className="px-4 py-3 tabular-nums">{row.pct}%</td>
-                    <td className={`px-4 py-3 font-semibold ${claseNivelAlerta(row.alerta)}`}>
-                      {row.alerta ? td(`alert.${row.alerta}`) : '—'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1268,15 +1251,21 @@ function TablaDimension({ td, titulo, filas, onRow }) {
   );
 }
 
-function TablaIntervencion({ td, t, filas }) {
+function TablaIntervencion({ td, t, filas, completa = false }) {
   return (
     <section className={`${expressTableWrap} min-w-0`}>
       <div className="border-b border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-5">
-        <h3 className="font-heading text-lg font-semibold text-gray-900 dark:text-white">{td('intervention.title')}</h3>
-        <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">{td('intervention.hint')}</p>
+        <h3 className="font-heading text-lg font-semibold text-gray-900 dark:text-white">
+          {td(completa ? 'intervention.titleStaff' : 'intervention.title')}
+        </h3>
+        <p className="mt-1 font-body text-sm text-gray-500 dark:text-gray-400">
+          {td(completa ? 'intervention.hintStaff' : 'intervention.hint')}
+        </p>
       </div>
       {filas.length === 0 ? (
-        <p className="px-4 py-6 font-body text-sm text-gray-500 sm:px-5">{td('intervention.empty')}</p>
+        <p className="px-4 py-6 font-body text-sm text-gray-500 sm:px-5">
+          {td(completa ? 'intervention.empty' : 'intervention.emptyPublic')}
+        </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
@@ -1286,9 +1275,9 @@ function TablaIntervencion({ td, t, filas }) {
                 <th className="px-4 py-3">{t('zurich.fields.asegurado')}</th>
                 <th className="px-4 py-3">{t('zurich.fields.ciudad')}</th>
                 <th className="px-4 py-3">{t('zurich.fields.estado')}</th>
-                <th className="px-4 py-3">{td('intervention.daysState')}</th>
+                {completa && <th className="px-4 py-3">{td('intervention.daysState')}</th>}
                 <th className="px-4 py-3">{td('largeLosses.reserve')}</th>
-                <th className="px-4 py-3">{td('intervention.level')}</th>
+                {completa && <th className="px-4 py-3">{td('intervention.level')}</th>}
                 <th className="px-4 py-3">{td('intervention.reason')}</th>
               </tr>
             </thead>
@@ -1307,15 +1296,21 @@ function TablaIntervencion({ td, t, filas }) {
                   <td className="px-4 py-3">{truncar(row.asegurado, 28)}</td>
                   <td className="px-4 py-3">{row.ciudad || '—'}</td>
                   <td className="px-4 py-3">{row.estado}</td>
-                  <td className={`px-4 py-3 font-semibold tabular-nums ${claseNivelAlerta(row.nivel)}`}>
-                    {row.diasEstado ?? '—'}
-                  </td>
+                  {completa && (
+                    <td className={`px-4 py-3 font-semibold tabular-nums ${claseNivelAlerta(row.nivel)}`}>
+                      {row.diasEstado ?? '—'}
+                    </td>
+                  )}
                   <td className="whitespace-nowrap px-4 py-3 tabular-nums">
                     {row.reserva ? formatCurrency(row.reserva) : '—'}
                   </td>
-                  <td className={`px-4 py-3 font-semibold ${claseNivelAlerta(row.nivel)}`}>{td(`alert.${row.nivel}`)}</td>
+                  {completa && (
+                    <td className={`px-4 py-3 font-semibold ${claseNivelAlerta(row.nivel)}`}>
+                      {row.nivel ? td(`alert.${row.nivel}`) : '—'}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
-                    {(row.tipos || []).map((tipo) => td(`alert.${tipo}`)).join(' · ')}
+                    {(row.tipos || []).map((tipo) => td(`alert.${tipo}`)).join(' · ') || '—'}
                   </td>
                 </tr>
               ))}

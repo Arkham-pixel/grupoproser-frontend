@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileAlt, FaFileExcel, FaFileSignature, FaFileWord, FaInfoCircle, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
+import { FaFileAlt, FaFileExcel, FaFileSignature, FaFileWord, FaInfoCircle, FaMapMarkerAlt, FaPlus, FaRedo, FaSave, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
@@ -17,7 +17,6 @@ import {
 } from '../SubcomponenteExpress/expressFenixUi.js';
 import {
   INFO_EVENTO_DEFAULT_SURA,
-  NIVELES_AFECTACION_SURA,
   calcularLiquidacionSura,
   camposFaltantesInformeUnicoSura,
   etiquetaArchivoInformeSura,
@@ -27,7 +26,6 @@ import {
   mapCasoSuraALiquidador,
   normalizarTipoInformeSura,
   reservaSugeridaSura,
-  totalPresupuestoPreliminarSura,
 } from './liquidadorSuraHelpers.js';
 import { fusionarFotosAgilEnInforme, informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
 import { descargarWordInformeSura } from './generarWordInformeSura.js';
@@ -191,16 +189,7 @@ export default function InformeUnicoSegurosSura({
     (faltantes || [])
       .map((campo) => t(`segurosSura.reportUnique.${campo.labelKey}`))
       .join(', ');
-  const totalPreliminar = useMemo(
-    () => totalPresupuestoPreliminarSura(informe.filasPresupuestoPreliminar),
-    [informe.filasPresupuestoPreliminar]
-  );
   const reservaMostrada = useMemo(() => reservaSugeridaSura(informe), [informe]);
-  useEffect(() => {
-    if (!esPreliminar || totalPreliminar <= 0) return;
-    if (String(informe.reservaSugerida || '') === String(totalPreliminar)) return;
-    setInforme((prev) => ({ ...prev, reservaSugerida: String(totalPreliminar) }));
-  }, [esPreliminar, totalPreliminar, informe.reservaSugerida]);
   const formDataNsr = useMemo(
     () => formDataNsrDesdeLiquidadorSura(liquidador, casoSura || {}),
     [liquidador, casoSura]
@@ -317,18 +306,10 @@ export default function InformeUnicoSegurosSura({
     onGuardarEnCaso?.(next);
   };
 
-  const conReservaDesdePresupuesto = (prev, filasPpto) => {
-    const next = { ...prev, filasPresupuestoPreliminar: filasPpto };
-    const suma = totalPresupuestoPreliminarSura(filasPpto);
-    if (suma > 0) next.reservaSugerida = String(suma);
-    return next;
-  };
-
   const setFila = (campo, idx, key, valor) => {
     setInforme((prev) => {
       const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
       list[idx] = { ...(list[idx] || {}), [key]: valor };
-      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
   };
@@ -336,7 +317,6 @@ export default function InformeUnicoSegurosSura({
   const addFila = (campo, vacia) => {
     setInforme((prev) => {
       const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia];
-      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
   };
@@ -344,7 +324,6 @@ export default function InformeUnicoSegurosSura({
   const removeFila = (campo, idx) => {
     setInforme((prev) => {
       const list = (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx);
-      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
   };
@@ -473,7 +452,8 @@ export default function InformeUnicoSegurosSura({
 
   const nFotos = esPreliminar ? 5 : 7;
   const nConclusiones = 4;
-  const nFirmas = esPreliminar ? 6 : 8;
+  const nRecomendacion = esPreliminar ? 6 : 8;
+  const nFirmas = esPreliminar ? 7 : 9;
 
   return (
     <div className="space-y-5">
@@ -752,9 +732,12 @@ export default function InformeUnicoSegurosSura({
             />
           </Campo>
           <Campo label={t('segurosSura.reportUnique.suggestedReserve')}>
-            <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-mono text-sm font-semibold tabular-nums text-gray-900 dark:border-gray-700 dark:bg-[#1A1A1A] dark:text-gray-100">
-              $ {formatearMonto(reservaMostrada)}
-            </div>
+            <InputMonedaExpress
+              className="font-mono tabular-nums"
+              value={informe.reservaSugerida || ''}
+              onChange={(e) => setCampo('reservaSugerida', e.target.value)}
+              placeholder="$ 0"
+            />
           </Campo>
         </div>
         <p className="mt-2 font-body text-xs text-gray-500">
@@ -769,42 +752,15 @@ export default function InformeUnicoSegurosSura({
           2. {t('segurosSura.reportUnique.sectionDamages')}
         </h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-          {t('segurosSura.reportUnique.sectionDamagesTableHint')}
+          {t('segurosSura.reportUnique.sectionDamagesHint')}
         </p>
-        <TablaFilasSura
-          columnas={[
-            { key: 'zona', label: t('segurosSura.reportUnique.colZona'), type: 'textarea', rows: 2 },
-            {
-              key: 'condicion',
-              label: t('segurosSura.reportUnique.colCondicion'),
-              type: 'textarea',
-              rows: 3,
-            },
-            {
-              key: 'nivel',
-              label: t('segurosSura.reportUnique.colNivel'),
-              type: 'select',
-              options: NIVELES_AFECTACION_SURA,
-            },
-          ]}
-          filas={informe.filasDanios}
-          onChangeFila={(idx, key, valor) => setFila('filasDanios', idx, key, valor)}
-          onAdd={() => addFila('filasDanios', { zona: '', condicion: '', nivel: '' })}
-          onRemove={(idx) => removeFila('filasDanios', idx)}
-          addLabel={t('segurosSura.reportUnique.addDamageRow')}
-          emptyLabel={t('segurosSura.reportUnique.emptyDamageRows')}
+        <textarea
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={12}
+          value={informe.descripcionDanios || ''}
+          onChange={(e) => setCampo('descripcionDanios', e.target.value)}
+          placeholder={t('segurosSura.reportUnique.damageDescriptionPlaceholder')}
         />
-        <div className="mt-4">
-          <Campo label={t('segurosSura.reportUnique.sectionDamagesNarrative')}>
-            <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-              rows={5}
-              value={informe.descripcionDanios || ''}
-              onChange={(e) => setCampo('descripcionDanios', e.target.value)}
-              placeholder={t('segurosSura.reportUnique.sectionDamagesHint')}
-            />
-          </Campo>
-        </div>
 
         <div className="mt-4 rounded-xl border border-gray-200 p-3 dark:border-gray-700">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -947,68 +903,15 @@ export default function InformeUnicoSegurosSura({
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
-          {nConclusiones}. {t('segurosSura.reportUnique.sectionConclusions')}
+          {nConclusiones}. {t('segurosSura.reportUnique.conclusions')}
         </h3>
-        <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
-          {t('segurosSura.reportUnique.sectionPreliminaryBudget')}
-        </p>
-        <TablaFilasSura
-          columnas={[
-            {
-              key: 'capitulo',
-              label: t('segurosSura.reportUnique.colCapitulo'),
-              type: 'textarea',
-              rows: 2,
-            },
-            {
-              key: 'descripcion',
-              label: t('segurosSura.reportUnique.colDescripcionAlcance'),
-              type: 'textarea',
-              rows: 3,
-            },
-            {
-              key: 'valor',
-              label: t('segurosSura.reportUnique.colValorEstimado'),
-              type: 'money',
-              placeholder: '$ 0',
-            },
-          ]}
-          filas={informe.filasPresupuestoPreliminar}
-          onChangeFila={(idx, key, valor) =>
-            setFila('filasPresupuestoPreliminar', idx, key, valor)
-          }
-          onAdd={() =>
-            addFila('filasPresupuestoPreliminar', { capitulo: '', descripcion: '', valor: '' })
-          }
-          onRemove={(idx) => removeFila('filasPresupuestoPreliminar', idx)}
-          addLabel={t('segurosSura.reportUnique.addBudgetRow')}
-          emptyLabel={t('segurosSura.reportUnique.emptyBudgetRows')}
+        <textarea
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={6}
+          value={informe.conclusiones || ''}
+          onChange={(e) => setCampo('conclusiones', e.target.value)}
+          placeholder={t('segurosSura.reportUnique.conclusionsPlaceholder')}
         />
-        <div className="mt-3 flex max-w-xl justify-between rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold dark:border-gray-700">
-          <span>{t('segurosSura.reportUnique.totalPreliminaryReserve')}</span>
-          <span>$ {formatearMonto(totalPreliminar)}</span>
-        </div>
-
-        <div className="mt-5">
-          <Campo label={t('segurosSura.reportUnique.conclusions')}>
-            <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-              rows={4}
-              value={informe.conclusiones || ''}
-              onChange={(e) => setCampo('conclusiones', e.target.value)}
-            />
-          </Campo>
-        </div>
-        <div className="mt-3">
-          <Campo label={t('segurosSura.reportUnique.recommendation')}>
-            <textarea
-              className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
-              rows={4}
-              value={informe.recomendacion || ''}
-              onChange={(e) => setCampo('recomendacion', e.target.value)}
-            />
-          </Campo>
-        </div>
       </section>
 
       {!esPreliminar && (
@@ -1142,6 +1045,19 @@ export default function InformeUnicoSegurosSura({
 
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
+          {nRecomendacion}. {t('segurosSura.reportUnique.recommendation')}
+        </h3>
+        <textarea
+          className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+          rows={6}
+          value={informe.recomendacion || ''}
+          onChange={(e) => setCampo('recomendacion', e.target.value)}
+          placeholder={t('segurosSura.reportUnique.recommendationPlaceholder')}
+        />
+      </section>
+
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>
           {nFirmas}. {t('segurosSura.reportUnique.sectionSignatures')}
         </h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
@@ -1160,7 +1076,24 @@ export default function InformeUnicoSegurosSura({
       </>
       )}
 
-      <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+      <div className="flex flex-wrap items-center justify-start gap-3 border-t border-gray-100 pb-16 pt-4 dark:border-gray-800">
+        <button
+          type="button"
+          className={expressBtnPrimary}
+          disabled={guardandoCaso}
+          onClick={() => {
+            if (!onGuardarEnCaso) {
+              setError(t('segurosSura.reportUnique.savedCaseRequired'));
+              return;
+            }
+            onGuardarEnCaso(informe);
+          }}
+        >
+          <FaSave />{' '}
+          {guardandoCaso
+            ? t('segurosSura.reportUnique.saving')
+            : t('common.save')}
+        </button>
         <button
           type="button"
           className={expressBtnSecondary}
@@ -1172,18 +1105,6 @@ export default function InformeUnicoSegurosSura({
             ? t('segurosSura.reportUnique.downloadExcel')
             : t('segurosSura.reportUnique.downloadWord')}
         </button>
-        {onGuardarEnCaso && (
-          <button
-            type="button"
-            className={expressBtnPrimary}
-            disabled={guardandoCaso}
-            onClick={() => onGuardarEnCaso(informe)}
-          >
-            {guardandoCaso
-              ? t('segurosSura.reportUnique.saving')
-              : t('segurosSura.reportUnique.saveDraft')}
-          </button>
-        )}
       </div>
     </div>
   );

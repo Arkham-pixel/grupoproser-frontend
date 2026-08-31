@@ -85,7 +85,7 @@ const pillClass = (activo) =>
   }`;
 
 /**
- * Workspace Previsora: Inspección CAT | Liquidador | Informe único
+ * Workspace Previsora: Inspección CAT | Liquidador | Informe (preliminar, final o único)
  * Mismo expediente (datos compartidos) con pestañas y menú separados, como Zurich.
  */
 export default function CasoPrevisoraWorkspace({ tabInicial = null, origen = 'cat' } = {}) {

@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaFileWord, FaMapMarkerAlt, FaRedo } from 'react-icons/fa';
+import { FaFileWord, FaMapMarkerAlt, FaPlus, FaRedo, FaTrash } from 'react-icons/fa';
 import {
   Campo,
   expressBtnGhost,
   expressBtnPrimary,
   expressBtnSecondary,
   InputFenix,
+  InputMonedaExpress,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
@@ -17,11 +18,15 @@ import {
 import {
   INFO_EVENTO_DEFAULT_PREVISORA,
   calcularLiquidacionPrevisora,
+  completarFilasPolizaCoberturaPrevisora,
   defaultInformeUnicoPrevisora,
+  etiquetaArchivoInformePrevisora,
   formDataNsrDesdeLiquidadorPrevisora,
   formatearMonto,
   formatDateLarga,
   mapcasoPrevisoraALiquidador,
+  normalizarTipoInformePrevisora,
+  reservaSugeridaPrevisora,
 } from './liquidadorPrevisoraHelpers.js';
 import { descargarWordInformePrevisora } from './generarWordInformePrevisora.js';
 import { previsoraArchivosApi } from './previsoraArchivosApi.js';
@@ -31,6 +36,7 @@ import ChecklistEvaluacionSismicaNSR10 from '../SubcomponenteEvaluacionSismicaNS
 import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
+import SelectorTipoInformePrevisora from './SelectorTipoInformePrevisora.jsx';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -43,6 +49,83 @@ function extraerLatLng(texto) {
     };
   }
   return { latitud: '', longitud: '' };
+}
+
+function TablaFilasPrevisora({
+  columnas,
+  filas,
+  onChangeFila,
+  onAdd,
+  onRemove,
+  addLabel,
+  emptyLabel,
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+        <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">
+          <thead className="bg-gray-50 dark:bg-gray-800/60">
+            <tr className="text-left text-gray-500">
+              {columnas.map((col) => (
+                <th key={col.key} className="px-2 py-2 font-semibold">
+                  {col.label}
+                </th>
+              ))}
+              <th className="w-10 px-2 py-2" />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            {(filas || []).map((fila, idx) => (
+              <tr key={`${idx}-${fila.concepto || 'fila'}`}>
+                {columnas.map((col) => (
+                  <td key={col.key} className="align-top px-2 py-2">
+                    {col.type === 'textarea' ? (
+                      <textarea
+                        className="min-h-[72px] w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
+                        rows={col.rows || 3}
+                        value={fila[col.key] || ''}
+                        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                        placeholder={col.placeholder || ''}
+                      />
+                    ) : (
+                      <InputFenix
+                        value={fila[col.key] || ''}
+                        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                        placeholder={col.placeholder || ''}
+                      />
+                    )}
+                  </td>
+                ))}
+                <td className="align-top px-2 py-2">
+                  <button
+                    type="button"
+                    className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+                    onClick={() => onRemove(idx)}
+                    title="Quitar"
+                  >
+                    <FaTrash className="h-3.5 w-3.5" />
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {!(filas || []).length && (
+              <tr>
+                <td
+                  colSpan={columnas.length + 1}
+                  className="px-2 py-4 text-center text-gray-500"
+                >
+                  {emptyLabel}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <button type="button" className={expressBtnGhost} onClick={onAdd}>
+        <FaPlus /> {addLabel}
+      </button>
+    </div>
+  );
 }
 
 export default function InformeUnicoPrevisora({
@@ -68,6 +151,13 @@ export default function InformeUnicoPrevisora({
 
   const totales = useMemo(() => calcularLiquidacionPrevisora(liquidador), [liquidador]);
   const criterio = totales.criterio || {};
+  const tipoInforme = normalizarTipoInformePrevisora(informe.tipoInforme, 'unico');
+  const esPreliminar = tipoInforme === 'preliminar';
+  const esFinal = tipoInforme === 'final';
+  const nFotos = esPreliminar ? 4 : 6;
+  const nConclusiones = esPreliminar ? 5 : 7;
+  const nFirmas = esPreliminar ? 6 : 8;
+  const reservaMostrada = useMemo(() => reservaSugeridaPrevisora(informe), [informe]);
   const formDataNsr = useMemo(
     () => formDataNsrDesdeLiquidadorPrevisora(liquidador, casoPrevisora || {}),
     [liquidador, casoPrevisora]
@@ -105,8 +195,19 @@ export default function InformeUnicoPrevisora({
   };
 
   useEffect(() => {
-    setInforme(defaultInformeUnicoPrevisora(casoPrevisora || {}));
-    setLiquidador(liquidadorInicial || mapcasoPrevisoraALiquidador(casoPrevisora || {}));
+    const caso = casoPrevisora || {};
+    const liq = liquidadorInicial || mapcasoPrevisoraALiquidador(caso);
+    const base = defaultInformeUnicoPrevisora(caso);
+    setInforme({
+      ...base,
+      filasPolizaCobertura: completarFilasPolizaCoberturaPrevisora(base.filasPolizaCobertura, {
+        caso,
+        encabezado: liq.encabezado,
+        informe: base,
+        liquidador: liq,
+      }),
+    });
+    setLiquidador(liq);
   }, [casoPrevisora?._id]);
 
   useEffect(() => {
@@ -130,6 +231,36 @@ export default function InformeUnicoPrevisora({
     });
   };
 
+  const elegirTipoInforme = (tipo) => {
+    const nextTipo = normalizarTipoInformePrevisora(tipo, tipoInforme);
+    if (nextTipo === tipoInforme) return;
+    const next = { ...informe, tipoInforme: nextTipo };
+    setInforme(next);
+    onGuardarEnCaso?.(next);
+  };
+
+  const setFila = (campo, idx, key, valor) => {
+    setInforme((prev) => {
+      const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
+      list[idx] = { ...(list[idx] || {}), [key]: valor };
+      return { ...prev, [campo]: list };
+    });
+  };
+
+  const addFila = (campo, vacia) => {
+    setInforme((prev) => {
+      const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia];
+      return { ...prev, [campo]: list };
+    });
+  };
+
+  const removeFila = (campo, idx) => {
+    setInforme((prev) => {
+      const list = (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx);
+      return { ...prev, [campo]: list };
+    });
+  };
+
   const handleNsrChange = (patch) => {
     setLiquidador((prev) => ({ ...prev, ...patch, modelo: 'nsr10' }));
   };
@@ -141,12 +272,38 @@ export default function InformeUnicoPrevisora({
   const handleWord = async () => {
     setDescargando(true);
     setError('');
+    setMensaje('');
+    const mimeWord =
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     try {
-      await descargarWordInformePrevisora({
+      const resultado = await descargarWordInformePrevisora({
         caso: casoPrevisora || {},
         informe,
         liquidador,
       });
+      const casoId = casoPrevisora?._id;
+      const blob = resultado?.blob;
+      const nombre =
+        resultado?.nombre ||
+        resultado?.filename ||
+        `Informe_Previsora_${casoPrevisora?.siniestro || casoPrevisora?.consecutivo || 'caso'}.docx`;
+      if (!casoId || !blob) {
+        setMensaje(t('previsora.reportUnique.wordNeedsCase'));
+        return;
+      }
+      try {
+        const file = new File([blob], nombre, { type: mimeWord });
+        const creado = await api.subir(
+          casoId,
+          file,
+          etiquetaArchivoInformePrevisora(informe.tipoInforme)
+        );
+        appendArchivosAlCaso([creado]);
+        setMensaje(t('previsora.reportUnique.wordSavedArchive'));
+      } catch (errArchivo) {
+        console.warn('No se pudo guardar el informe en el archivero:', errArchivo);
+        setError(t('previsora.reportUnique.wordArchiveError'));
+      }
     } catch (err) {
       console.error(err);
       setError(t('previsora.reportUnique.wordError'));
@@ -185,6 +342,20 @@ export default function InformeUnicoPrevisora({
       {mensaje && <p className={expressAlertSuccess}>{mensaje}</p>}
       {error && <p className={expressAlertError}>{error}</p>}
 
+      <SelectorTipoInformePrevisora
+        tipo={tipoInforme}
+        onElegir={elegirTipoInforme}
+        disabled={guardandoCaso}
+      />
+
+      <p className="font-body text-sm text-gray-600 dark:text-gray-400">
+        {tipoInforme === 'preliminar'
+          ? t('previsora.reportUnique.complementPreliminar')
+          : tipoInforme === 'final'
+            ? t('previsora.reportUnique.complementFinal')
+            : t('previsora.reportUnique.complementUnico')}
+      </p>
+
       <section className={expressFormSection}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className={`${expressSectionTitle} mb-0`}>
@@ -213,7 +384,7 @@ export default function InformeUnicoPrevisora({
             {t('previsora.reportUnique.eventMapCaption')}
           </figcaption>
         </figure>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Campo label={t('previsora.reportUnique.adjuster')}>
             <InputFenix
               value={informe.ajustadorNombre || ''}
@@ -227,7 +398,20 @@ export default function InformeUnicoPrevisora({
               onChange={(e) => setCampo('fechaInforme', e.target.value)}
             />
           </Campo>
+          <Campo label={t('previsora.reportUnique.suggestedReserve')}>
+            <InputMonedaExpress
+              className="font-mono tabular-nums"
+              value={informe.reservaSugerida || ''}
+              onChange={(e) => setCampo('reservaSugerida', e.target.value)}
+              placeholder="$ 0"
+            />
+          </Campo>
         </div>
+        <p className="mt-2 font-body text-xs text-gray-500">
+          {t('previsora.reportUnique.suggestedReserveHint', {
+            valor: formatearMonto(reservaMostrada),
+          })}
+        </p>
       </section>
 
       <section className={expressFormSection}>
@@ -347,8 +531,38 @@ export default function InformeUnicoPrevisora({
             </dd>
           </div>
         </dl>
+        <p className="mb-3 mt-4 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('previsora.reportUnique.sectionPolicyTableHint')}
+        </p>
+        <TablaFilasPrevisora
+          columnas={[
+            { key: 'concepto', label: t('previsora.reportUnique.colConcepto'), type: 'textarea', rows: 2 },
+            {
+              key: 'analisis',
+              label: t('previsora.reportUnique.colAnalisis'),
+              type: 'textarea',
+              rows: 3,
+            },
+            {
+              key: 'conclusion',
+              label: t('previsora.reportUnique.colConclusion'),
+              type: 'textarea',
+              rows: 2,
+            },
+          ]}
+          filas={informe.filasPolizaCobertura}
+          onChangeFila={(idx, key, valor) => setFila('filasPolizaCobertura', idx, key, valor)}
+          onAdd={() =>
+            addFila('filasPolizaCobertura', { concepto: '', analisis: '', conclusion: '' })
+          }
+          onRemove={(idx) => removeFila('filasPolizaCobertura', idx)}
+          addLabel={t('previsora.reportUnique.addPolicyRow')}
+          emptyLabel={t('previsora.reportUnique.emptyPolicyRows')}
+        />
       </section>
 
+      {!esPreliminar && (
+      <>
       <section className={expressFormSection}>
         <h3 className={expressSectionTitle}>
           {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
@@ -356,9 +570,7 @@ export default function InformeUnicoPrevisora({
             : '4. Dictamen y liquidador NSR-10'}
         </h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
-          {OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-            ? 'Cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'
-            : 'Dictamen de la evaluación sísmica y cuadro de precios / diagrama de liquidación (mismo modelo Catastrófico Complex).'}
+          {t('previsora.reportUnique.finalAddsSettlement')}
         </p>
 
         {!OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 ? (
@@ -452,8 +664,12 @@ export default function InformeUnicoPrevisora({
           </table>
         </div>
       </section>
+      </>
+      )}
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>6. {t('previsora.reportUnique.sectionPhotos')}</h3>
+        <h3 className={expressSectionTitle}>
+          {nFotos}. {t('previsora.reportUnique.sectionPhotos')}
+        </h3>
         <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('previsora.reportUnique.photosUploadHint')}
         </p>
@@ -476,7 +692,9 @@ export default function InformeUnicoPrevisora({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>7. {t('previsora.reportUnique.sectionConclusions')}</h3>
+        <h3 className={expressSectionTitle}>
+          {nConclusiones}. {t('previsora.reportUnique.sectionConclusions')}
+        </h3>
         <Campo label={t('previsora.reportUnique.conclusions')}>
           <textarea
             className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-body text-sm dark:border-gray-700 dark:bg-gray-900"
@@ -498,7 +716,9 @@ export default function InformeUnicoPrevisora({
       </section>
 
       <section className={expressFormSection}>
-        <h3 className={expressSectionTitle}>8. {t('previsora.reportUnique.sectionSignatures')}</h3>
+        <h3 className={expressSectionTitle}>
+          {nFirmas}. {t('previsora.reportUnique.sectionSignatures')}
+        </h3>
         <p className="mb-4 font-body text-sm text-gray-600 dark:text-gray-400">
           {t('previsora.reportUnique.signaturesHint')}
         </p>
@@ -520,7 +740,12 @@ export default function InformeUnicoPrevisora({
           disabled={descargando}
           onClick={handleWord}
         >
-          <FaFileWord /> {t('previsora.reportUnique.downloadWord')}
+          <FaFileWord />{' '}
+          {esPreliminar
+            ? t('previsora.reportUnique.downloadPreliminar')
+            : esFinal
+              ? t('previsora.reportUnique.downloadFinal')
+              : t('previsora.reportUnique.downloadUnico')}
         </button>
         {onGuardarEnCaso && (
           <button

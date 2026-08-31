@@ -344,10 +344,109 @@ export function formDataNsrDesdeLiquidadorPrevisora(liquidador = {}, caso = {}) 
   };
 }
 
+/** Conceptos de la tabla CONCEPTO / ANÁLISIS / CONCLUSIÓN (misma fórmula SURA). */
+export const CONCEPTOS_POLIZA_PREVISORA = [
+  'Vigencia',
+  'Ubicación del riesgo',
+  'Evento',
+  'Interés afectado',
+  'Deducible',
+  'Infraseguro',
+  'Reserva preliminar',
+  'Concepto preliminar',
+];
+
+export const TIPOS_INFORME_PREVISORA = ['preliminar', 'final', 'unico'];
+
+export function normalizarTipoInformePrevisora(valor, fallback = 'unico') {
+  const t = String(valor || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+  if (t === 'preliminar' || t === 'final' || t === 'unico') return t;
+  return fallback;
+}
+
+export function esInformePreliminarPrevisora(info = {}) {
+  return normalizarTipoInformePrevisora(info?.tipoInforme, 'unico') === 'preliminar';
+}
+
+export function esInformeFinalPrevisora(info = {}) {
+  return normalizarTipoInformePrevisora(info?.tipoInforme, 'unico') === 'final';
+}
+
+export function esInformeUnicoPrevisora(info = {}) {
+  return normalizarTipoInformePrevisora(info?.tipoInforme, 'unico') === 'unico';
+}
+
+export function tipoInformeActualPrevisora(informe = null, caso = null) {
+  if (informe?.tipoInforme) {
+    return normalizarTipoInformePrevisora(informe.tipoInforme, 'unico');
+  }
+  if (caso?.informeUnico && typeof caso.informeUnico === 'object') {
+    return normalizarTipoInformePrevisora(caso.informeUnico.tipoInforme, 'unico');
+  }
+  return 'unico';
+}
+
+export function etiquetaArchivoInformePrevisora(tipo) {
+  const t = normalizarTipoInformePrevisora(tipo, 'unico');
+  if (t === 'preliminar') return 'INFORME_PRELIMINAR';
+  if (t === 'final') return 'INFORME_FINAL';
+  return 'INFORME_UNICO';
+}
+
+export function etiquetaTituloInformePrevisora(tipo) {
+  const t = normalizarTipoInformePrevisora(tipo, 'unico');
+  if (t === 'preliminar') return 'PRELIMINAR';
+  if (t === 'final') return 'FINAL';
+  return 'ÚNICO';
+}
+
+export function etiquetaEncabezadoInformePrevisora(tipo) {
+  const t = normalizarTipoInformePrevisora(tipo, 'unico');
+  if (t === 'preliminar') return 'Informe Preliminar Previsora';
+  if (t === 'final') return 'Informe Final Previsora';
+  return 'Informe Único Previsora';
+}
+
+export function prefijoArchivoInformePrevisora(tipo) {
+  const t = normalizarTipoInformePrevisora(tipo, 'unico');
+  if (t === 'preliminar') return 'Informe_Preliminar_PREVISORA';
+  if (t === 'final') return 'Informe_Final_PREVISORA';
+  return 'Informe_Unico_PREVISORA';
+}
+
+export function etiquetaReporteCuadroPrevisora(tipo) {
+  const t = normalizarTipoInformePrevisora(tipo, 'unico');
+  if (t === 'preliminar') return 'Preliminar — Previsora';
+  if (t === 'final') return 'Final — Previsora';
+  return 'Único — Previsora';
+}
+
+export function reservaSugeridaPrevisora(info = {}) {
+  return parsearNumero(info?.reservaSugerida);
+}
+
+export function plantillaFilasPolizaPrevisora() {
+  return CONCEPTOS_POLIZA_PREVISORA.map((concepto, i) => ({
+    id: `poliza-previsora-${i}`,
+    concepto,
+    analisis: '',
+    conclusion: '',
+  }));
+}
+
+function usarPlantillaSiVacio(filas, plantilla) {
+  return Array.isArray(filas) && filas.length ? filas : plantilla;
+}
+
 export function defaultInformeUnicoPrevisora(caso = {}) {
   const guardado =
     caso.informeUnico && typeof caso.informeUnico === 'object' ? caso.informeUnico : null;
   const base = {
+    tipoInforme: 'unico',
     fechaInforme: fechaInput(new Date()),
     ajustadorNombre: caso.ajustador || '',
     infoEvento: INFO_EVENTO_DEFAULT_PREVISORA,
@@ -356,6 +455,8 @@ export function defaultInformeUnicoPrevisora(caso = {}) {
     imagenMapa: '',
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
+    reservaSugerida: caso.reserva || caso.valorReservaPreventivaPromedio || '',
+    filasPolizaCobertura: plantillaFilasPolizaPrevisora(),
     conclusiones: '',
     recomendacion: '',
     fotosSeleccionadas: [],
@@ -370,6 +471,7 @@ export function defaultInformeUnicoPrevisora(caso = {}) {
   return {
     ...base,
     ...guardado,
+    tipoInforme: normalizarTipoInformePrevisora(guardado.tipoInforme, 'unico'),
     ajustadorNombre: guardado.ajustadorNombre || guardado.actaAjustadorNombre || base.ajustadorNombre,
     actaAjustadorNombre:
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,
@@ -378,6 +480,11 @@ export function defaultInformeUnicoPrevisora(caso = {}) {
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
+    reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
+    filasPolizaCobertura: usarPlantillaSiVacio(
+      guardado.filasPolizaCobertura,
+      base.filasPolizaCobertura
+    ),
     fotosInspeccion: fotosInformeDesdeCaso(caso, guardado),
   };
 }
@@ -393,4 +500,185 @@ export function formatDateLarga(value) {
   } catch {
     return String(value);
   }
+}
+
+function claveConceptoPolizaPrevisora(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function conceptoPolizaCoincidePrevisora(fila, ...needles) {
+  const k = claveConceptoPolizaPrevisora(fila?.concepto);
+  return needles.some((n) => k.includes(claveConceptoPolizaPrevisora(n)));
+}
+
+function filasPolizaSinTextoPrevisora(filas) {
+  const arr = Array.isArray(filas) ? filas : [];
+  if (!arr.length) return true;
+  return arr.every(
+    (f) => !String(f?.analisis || '').trim() && !String(f?.conclusion || '').trim()
+  );
+}
+
+function fechaMsPrevisora(valor) {
+  if (valor == null || valor === '') return null;
+  const raw =
+    typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}/.test(valor) ? valor.slice(0, 10) : valor;
+  const d = raw instanceof Date ? raw : new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function textoAutoFilaPolizaPrevisora(fila, ctx = {}) {
+  const caso = ctx.caso || {};
+  const enc = ctx.encabezado || ctx.enc || {};
+  const info = ctx.informe || {};
+  const cobertura = String(
+    caso.cobertura || caso.causa || enc.cobertura || enc.evento || 'TERREMOTO'
+  ).trim();
+  const direccion = String(info.direccionRiesgo || caso.direccionPredio || enc.direccion || '').trim();
+  const ciudad = String(caso.ciudad || enc.ciudad || '').trim();
+  const ini = caso.fechaInicioPoliza || enc.fechaInicioPoliza;
+  const fin = caso.fechaFinPoliza || enc.fechaFinPoliza;
+  const ocurrencia = caso.fechaSiniestro || enc.fechaSiniestro;
+  const reserva =
+    reservaSugeridaPrevisora(info) || parsearNumero(caso.reserva || caso.valorReservaPreventivaPromedio);
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'vigencia')) {
+    if (ini || fin) {
+      const periodo = `del ${formatDateLarga(ini)} al ${formatDateLarga(fin)}`;
+      const ocMs = fechaMsPrevisora(ocurrencia);
+      const iniMs = fechaMsPrevisora(ini);
+      const finMs = fechaMsPrevisora(fin);
+      const dentro =
+        ocMs != null &&
+        (iniMs == null || ocMs >= iniMs) &&
+        (finMs == null || ocMs <= finMs + 24 * 60 * 60 * 1000);
+      return {
+        analisis: ocurrencia
+          ? `El evento reclamado (${formatDateLarga(ocurrencia)}) se analiza frente a la vigencia de la póliza ${periodo}.`
+          : `Vigencia de la póliza ${periodo}.`,
+        conclusion: dentro || !ocurrencia ? 'Evento con cobertura.' : 'Verificar vigencia.',
+      };
+    }
+    return {
+      analisis: 'Pendiente confirmar las fechas de vigencia de la póliza.',
+      conclusion: 'Por verificar.',
+    };
+  }
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'ubicacion')) {
+    const lugar = [direccion, ciudad].filter(Boolean).join(', ');
+    return {
+      analisis: lugar
+        ? `La inspección se realizó en el predio radicado en la póliza (${lugar}).`
+        : 'La inspección se realizó en el predio radicado en la póliza.',
+      conclusion: 'Evento con cobertura.',
+    };
+  }
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'evento')) {
+    const fechaTxt = ocurrencia ? ` de fecha ${formatDateLarga(ocurrencia)}` : '';
+    return {
+      analisis: `${cobertura}${fechaTxt}.`,
+      conclusion: `El asegurado tiene contratado el amparo de ${cobertura}.`,
+    };
+  }
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'interes')) {
+    return {
+      analisis:
+        'El asegurado deberá aportar los documentos que demuestren la propiedad de los bienes afectados.',
+      conclusion: 'Por verificar.',
+    };
+  }
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'deducible')) {
+    const liq = ctx.liquidador || caso.liquidador || {};
+    const textoCfg = String(
+      liq?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.texto ||
+        liq?.liquidacionCatastrofico?.deducible ||
+        liq?.deducible ||
+        ''
+    ).trim();
+    return {
+      analisis: textoCfg
+        ? `Deducible según condiciones de la póliza / liquidador: ${textoCfg}.`
+        : 'Se aplicará el deducible pactado en la póliza al momento de liquidar la pérdida.',
+      conclusion: 'Se aplicará al momento de liquidar la pérdida.',
+    };
+  }
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'infraseguro')) {
+    return {
+      analisis:
+        'Se solicitarán inventarios y soportes de los bienes antes del evento para verificar posible infraseguro.',
+      conclusion: 'A verificar.',
+    };
+  }
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'reserva')) {
+    if (reserva > 0) {
+      return {
+        analisis: `Se recomendó $ ${formatearMonto(reserva)}, valoración inicial de la pérdida.`,
+        conclusion: 'Podría ser modificada una vez se reciban los documentos solicitados.',
+      };
+    }
+    return {
+      analisis: 'Pendiente cuantificar la reserva preliminar.',
+      conclusion: 'Por definir.',
+    };
+  }
+
+  if (conceptoPolizaCoincidePrevisora(fila, 'concepto preliminar')) {
+    return {
+      analisis: 'Reclamo con cobertura.',
+      conclusion: 'Esperar documentos solicitados.',
+    };
+  }
+
+  return { analisis: '', conclusion: '' };
+}
+
+/**
+ * Completa CONCEPTO / ANÁLISIS / CONCLUSIÓN con datos del caso,
+ * sin pisar lo que el ajustador ya escribió.
+ */
+export function completarFilasPolizaCoberturaPrevisora(filas, ctx = {}) {
+  const origen = filasPolizaSinTextoPrevisora(filas)
+    ? plantillaFilasPolizaPrevisora()
+    : [...(filas || [])];
+  const porClave = new Map();
+  origen.forEach((f) => {
+    const k = claveConceptoPolizaPrevisora(f?.concepto);
+    if (k && !porClave.has(k)) porClave.set(k, f);
+  });
+
+  const oficiales = CONCEPTOS_POLIZA_PREVISORA.map((concepto, i) => {
+    const prev = porClave.get(claveConceptoPolizaPrevisora(concepto)) || {
+      id: `poliza-previsora-${i}`,
+      concepto,
+      analisis: '',
+      conclusion: '',
+    };
+    porClave.delete(claveConceptoPolizaPrevisora(concepto));
+    const auto = textoAutoFilaPolizaPrevisora({ ...prev, concepto }, ctx);
+    return {
+      ...prev,
+      concepto,
+      analisis: String(prev.analisis || '').trim() || auto.analisis,
+      conclusion: String(prev.conclusion || '').trim() || auto.conclusion,
+    };
+  });
+
+  const extras = origen.filter((f) => {
+    const k = claveConceptoPolizaPrevisora(f?.concepto);
+    if (!k || !porClave.has(k)) return false;
+    return String(f.analisis || '').trim() || String(f.conclusion || '').trim();
+  });
+
+  return [...oficiales, ...extras];
 }

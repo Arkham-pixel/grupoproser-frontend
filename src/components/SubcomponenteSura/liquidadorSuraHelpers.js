@@ -31,8 +31,11 @@ export const SMMLV_POR_ANIO = {
 };
 export const SMMLV_DEFAULT = SMMLV_POR_ANIO[2026];
 
+/** Razón social oficial (encabezado, título y ficha del informe Word). */
+export const RAZON_SOCIAL_SURA = 'SEGUROS GENERALES SURAMERICANA S.A.';
+
 /** Texto fijo editable: información general del evento (informe preliminar Sura). */
-export const INFO_EVENTO_DEFAULT_SURA = `El presente informe se emite con base en la atención del evento sísmico reportado ante Seguros Sura S.A., la visita de inspección realizada al predio asegurado y la documentación aportada por el tomador/asegurado.
+export const INFO_EVENTO_DEFAULT_SURA = `El presente informe se emite con base en la atención del evento sísmico reportado ante SEGUROS GENERALES SURAMERICANA S.A., la visita de inspección realizada al predio asegurado y la documentación aportada por el tomador/asegurado.
 
 La evaluación técnica busca verificar la existencia y alcance de los daños, contrastarlos con las coberturas de la póliza vigente y establecer, de manera preliminar, las pérdidas indemnizables conforme a las condiciones particulares del contrato de seguro.`;
 
@@ -69,9 +72,6 @@ export const CONCEPTOS_POLIZA_PRELIMINAR_SURA = [
   'Interés afectado',
   'Deducible',
   'Infraseguro',
-  'Remoción de escombros',
-  'Honorarios profesionales',
-  'Exclusiones',
   'Reserva preliminar',
   'Concepto preliminar',
 ];
@@ -101,12 +101,233 @@ export function plantillaFilasDaniosSura() {
   }));
 }
 
+function lineasTextoDaniosSura(texto) {
+  return String(texto || '')
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+}
+
+/** True si el texto es solo los títulos de la plantilla de zonas (sin observaciones). */
+export function esListadoZonasPlantillaDaniosSura(texto) {
+  const lineas = lineasTextoDaniosSura(texto);
+  if (!lineas.length) return false;
+  const plantilla = new Set(ZONAS_DANIOS_PRELIMINAR_SURA);
+  return lineas.every((l) => plantilla.has(l));
+}
+
+/** Convierte filas de zona (legado) en texto corrido. Ignora títulos vacíos de plantilla. */
+export function sintetizarTextoDaniosSura(filas = []) {
+  return (Array.isArray(filas) ? filas : [])
+    .map((f) => {
+      const zona = String(f?.zona || '').trim();
+      const cond = String(f?.condicion || '').trim();
+      const nivel = String(f?.nivel || '').trim();
+      if (!cond && !nivel) return '';
+      if (zona && cond) {
+        return nivel ? `${zona}: ${cond} (${nivel})` : `${zona}: ${cond}`;
+      }
+      if (zona && nivel) return `${zona} (${nivel})`;
+      return cond || nivel;
+    })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+export function textoDescripcionDaniosSura(informe = {}) {
+  const narr = String(informe?.descripcionDanios || '').trim();
+  if (narr && !esListadoZonasPlantillaDaniosSura(narr)) return narr;
+  return sintetizarTextoDaniosSura(informe?.filasDanios);
+}
+
 export function plantillaFilasPolizaSura() {
-  return CONCEPTOS_POLIZA_PRELIMINAR_SURA.map((concepto) => ({
+  return CONCEPTOS_POLIZA_PRELIMINAR_SURA.map((concepto, i) => ({
+    id: `poliza-sura-${i}`,
     concepto,
     analisis: '',
     conclusion: '',
   }));
+}
+
+function claveConceptoPolizaSura(valor) {
+  return String(valor ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function conceptoPolizaCoincideSura(fila, ...needles) {
+  const k = claveConceptoPolizaSura(fila?.concepto);
+  return needles.some((n) => k.includes(claveConceptoPolizaSura(n)));
+}
+
+function filasPolizaSinTextoSura(filas) {
+  const arr = Array.isArray(filas) ? filas : [];
+  if (!arr.length) return true;
+  return arr.every(
+    (f) => !String(f?.analisis || '').trim() && !String(f?.conclusion || '').trim()
+  );
+}
+
+function fechaMsSura(valor) {
+  if (valor == null || valor === '') return null;
+  const raw = typeof valor === 'string' && /^\d{4}-\d{2}-\d{2}/.test(valor)
+    ? valor.slice(0, 10)
+    : valor;
+  const d = raw instanceof Date ? raw : new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d.getTime();
+}
+
+function textoAutoFilaPolizaSura(fila, ctx = {}) {
+  const caso = ctx.caso || {};
+  const enc = ctx.encabezado || ctx.enc || {};
+  const info = ctx.informe || {};
+  const cobertura = String(
+    caso.cobertura || caso.causa_siniestro || caso.amprAfctdo || enc.cobertura || enc.evento || 'TERREMOTO'
+  ).trim();
+  const direccion = String(info.direccionRiesgo || caso.direccionPredio || enc.direccion || '').trim();
+  const ciudad = String(caso.ciudad || caso.ciudadSiniestro || enc.ciudad || '').trim();
+  const ini = caso.fechaInicioPoliza || enc.fechaInicioPoliza;
+  const fin = caso.fechaFinPoliza || enc.fechaFinPoliza;
+  const ocurrencia = caso.fechaSiniestro || caso.fchaSinstro || enc.fechaSiniestro;
+  const reserva =
+    reservaSugeridaSura(info) || parsearNumero(caso.reserva || caso.valorReservaPreventivaPromedio);
+
+  if (conceptoPolizaCoincideSura(fila, 'vigencia')) {
+    if (ini || fin) {
+      const periodo = `del ${formatDateLarga(ini)} al ${formatDateLarga(fin)}`;
+      const ocMs = fechaMsSura(ocurrencia);
+      const iniMs = fechaMsSura(ini);
+      const finMs = fechaMsSura(fin);
+      const dentro =
+        ocMs != null &&
+        (iniMs == null || ocMs >= iniMs) &&
+        (finMs == null || ocMs <= finMs + 24 * 60 * 60 * 1000);
+      return {
+        analisis: ocurrencia
+          ? `El evento reclamado (${formatDateLarga(ocurrencia)}) se analiza frente a la vigencia de la póliza ${periodo}.`
+          : `Vigencia de la póliza ${periodo}.`,
+        conclusion: dentro || !ocurrencia ? 'Evento con cobertura.' : 'Verificar vigencia.',
+      };
+    }
+    return {
+      analisis: 'Pendiente confirmar las fechas de vigencia de la póliza.',
+      conclusion: 'Por verificar.',
+    };
+  }
+
+  if (conceptoPolizaCoincideSura(fila, 'ubicacion')) {
+    const lugar = [direccion, ciudad].filter(Boolean).join(', ');
+    return {
+      analisis: lugar
+        ? `La inspección se realizó en el predio radicado en la póliza (${lugar}).`
+        : 'La inspección se realizó en el predio radicado en la póliza.',
+      conclusion: 'Evento con cobertura.',
+    };
+  }
+
+  if (conceptoPolizaCoincideSura(fila, 'evento')) {
+    const fechaTxt = ocurrencia ? ` de fecha ${formatDateLarga(ocurrencia)}` : '';
+    return {
+      analisis: `${cobertura}${fechaTxt}.`,
+      conclusion: `El asegurado tiene contratado el amparo de ${cobertura}.`,
+    };
+  }
+
+  if (conceptoPolizaCoincideSura(fila, 'interes')) {
+    return {
+      analisis:
+        'El asegurado deberá aportar los documentos que demuestren la propiedad de los bienes afectados.',
+      conclusion: 'Por verificar.',
+    };
+  }
+
+  if (conceptoPolizaCoincideSura(fila, 'deducible')) {
+    const liq = ctx.liquidador || caso.liquidador || {};
+    const textoCfg = String(
+      liq?.liquidacionCatastrofico?.deducibleConfigPresupuesto?.texto ||
+        liq?.liquidacionCatastrofico?.deducible ||
+        liq?.deducible ||
+        ''
+    ).trim();
+    return {
+      analisis: textoCfg
+        ? `Deducible según condiciones de la póliza / liquidador: ${textoCfg}.`
+        : 'Se aplicará el deducible pactado en la póliza al momento de liquidar la pérdida.',
+      conclusion: 'Se aplicará al momento de liquidar la pérdida.',
+    };
+  }
+
+  if (conceptoPolizaCoincideSura(fila, 'infraseguro')) {
+    return {
+      analisis:
+        'Se solicitarán inventarios y soportes de los bienes antes del evento para verificar posible infraseguro.',
+      conclusion: 'A verificar.',
+    };
+  }
+
+  if (conceptoPolizaCoincideSura(fila, 'reserva')) {
+    if (reserva > 0) {
+      return {
+        analisis: `Se recomendó $ ${formatearMonto(reserva)}, valoración inicial de la pérdida.`,
+        conclusion:
+          'Podría ser modificada una vez se reciban los documentos solicitados.',
+      };
+    }
+    return {
+      analisis: 'Pendiente cuantificar la reserva preliminar.',
+      conclusion: 'Por definir.',
+    };
+  }
+
+  if (conceptoPolizaCoincideSura(fila, 'concepto preliminar')) {
+    return {
+      analisis: 'Reclamo con cobertura.',
+      conclusion: 'Esperar documentos solicitados.',
+    };
+  }
+
+  return { analisis: '', conclusion: '' };
+}
+
+/**
+ * Completa CONCEPTO / ANÁLISIS / CONCLUSIÓN con datos del caso,
+ * sin pisar lo que el ajustador ya escribió.
+ */
+export function completarFilasPolizaCoberturaSura(filas, ctx = {}) {
+  const origen = filasPolizaSinTextoSura(filas) ? plantillaFilasPolizaSura() : [...(filas || [])];
+  const porClave = new Map();
+  origen.forEach((f) => {
+    const k = claveConceptoPolizaSura(f?.concepto);
+    if (k && !porClave.has(k)) porClave.set(k, f);
+  });
+
+  const oficiales = CONCEPTOS_POLIZA_PRELIMINAR_SURA.map((concepto, i) => {
+    const prev = porClave.get(claveConceptoPolizaSura(concepto)) || {
+      id: `poliza-sura-${i}`,
+      concepto,
+      analisis: '',
+      conclusion: '',
+    };
+    porClave.delete(claveConceptoPolizaSura(concepto));
+    const auto = textoAutoFilaPolizaSura({ ...prev, concepto }, ctx);
+    return {
+      ...prev,
+      concepto,
+      analisis: String(prev.analisis || '').trim() || auto.analisis,
+      conclusion: String(prev.conclusion || '').trim() || auto.conclusion,
+    };
+  });
+
+  const extras = origen.filter((f) => {
+    const k = claveConceptoPolizaSura(f?.concepto);
+    if (!k || !porClave.has(k)) return false;
+    return String(f.analisis || '').trim() || String(f.conclusion || '').trim();
+  });
+
+  return [...oficiales, ...extras];
 }
 
 export function plantillaFilasPresupuestoPreliminarSura() {
@@ -213,9 +434,9 @@ export function prefijoArchivoInformeSura(tipo) {
 
 export function etiquetaReporteCuadroSura(tipo) {
   const t = normalizarTipoInformeSura(tipo, 'preliminar');
-  if (t === 'preliminar') return 'Preliminar — Seguros Sura';
-  if (t === 'final') return 'Final — Seguros Sura';
-  return 'Único — Seguros Sura';
+  if (t === 'preliminar') return `Preliminar — ${RAZON_SOCIAL_SURA}`;
+  if (t === 'final') return `Final — ${RAZON_SOCIAL_SURA}`;
+  return `Único — ${RAZON_SOCIAL_SURA}`;
 }
 
 export function totalPresupuestoPreliminarSura(filas = []) {
@@ -226,8 +447,6 @@ export function totalPresupuestoPreliminarSura(filas = []) {
 }
 
 export function reservaSugeridaSura(info = {}) {
-  const delPresupuesto = totalPresupuestoPreliminarSura(info?.filasPresupuestoPreliminar);
-  if (delPresupuesto > 0) return delPresupuesto;
   return parsearNumero(info?.reservaSugerida);
 }
 
@@ -561,13 +780,21 @@ export function defaultInformeUnicoSura(caso = {}) {
     ajustadorNombre: caso.ajustador || '',
     infoEvento: INFO_EVENTO_DEFAULT_SURA,
     descripcionDanios: '',
-    coordenadasRiesgo: '',
+    coordenadasRiesgo:
+      caso?.ubicacionPredio?.lat != null && caso?.ubicacionPredio?.lng != null
+        ? `${caso.ubicacionPredio.lat}, ${caso.ubicacionPredio.lng}`
+        : '',
     imagenMapa: '',
     direccionRiesgo: caso.direccionPredio || '',
     analisisCobertura: '',
     reservaSugerida: '',
     filasDanios: plantillaFilasDaniosSura(),
-    filasPolizaCobertura: plantillaFilasPolizaSura(),
+    filasPolizaCobertura: completarFilasPolizaCoberturaSura(plantillaFilasPolizaSura(), {
+      caso,
+      encabezado: encabezadoDesdeCasoSura(caso),
+      informe: {},
+      liquidador: caso.liquidador,
+    }),
     filasPresupuestoPreliminar: plantillaFilasPresupuestoPreliminarSura(),
     conclusiones: '',
     recomendacion: '',
@@ -592,15 +819,23 @@ export function defaultInformeUnicoSura(caso = {}) {
     actaAjustadorNombre:
       guardado.actaAjustadorNombre || guardado.ajustadorNombre || base.actaAjustadorNombre,
     infoEvento: guardado.infoEvento || base.infoEvento,
-    descripcionDanios: guardado.descripcionDanios || base.descripcionDanios,
+    descripcionDanios: textoDescripcionDaniosSura({
+      descripcionDanios: guardado.descripcionDanios,
+      filasDanios: guardado.filasDanios,
+    }),
     coordenadasRiesgo: guardado.coordenadasRiesgo || base.coordenadasRiesgo,
     imagenMapa: guardado.imagenMapa || base.imagenMapa,
     direccionRiesgo: guardado.direccionRiesgo || base.direccionRiesgo,
     reservaSugerida: guardado.reservaSugerida ?? base.reservaSugerida,
     filasDanios: usarPlantillaSiVacio(guardado.filasDanios, base.filasDanios),
-    filasPolizaCobertura: usarPlantillaSiVacio(
-      guardado.filasPolizaCobertura,
-      base.filasPolizaCobertura
+    filasPolizaCobertura: completarFilasPolizaCoberturaSura(
+      usarPlantillaSiVacio(guardado.filasPolizaCobertura, base.filasPolizaCobertura),
+      {
+        caso,
+        encabezado: encabezadoDesdeCasoSura(caso),
+        informe: guardado,
+        liquidador: caso.liquidador,
+      }
     ),
     filasPresupuestoPreliminar: usarPlantillaSiVacio(
       guardado.filasPresupuestoPreliminar,
