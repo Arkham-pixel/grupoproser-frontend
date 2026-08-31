@@ -27,10 +27,12 @@ export default function InformeUnicoZurichPage() {
   const [searchParams] = useSearchParams();
   const casoIdFromQuery = searchParams.get('casoId') || searchParams.get('id');
 
-  const [casoZurich, setcasoZurich] = useState(location.state?.casoZurich ?? null);
+  const [casoZurich, setcasoZurich] = useState(null);
   const [informeState, setInformeState] = useState(null);
   const [liquidadorState, setLiquidadorState] = useState(null);
-  const [cargandoCaso, setCargandoCaso] = useState(false);
+  const [cargandoCaso, setCargandoCaso] = useState(
+    () => Boolean(casoIdFromQuery || location.state?.casoZurich?._id)
+  );
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -40,15 +42,12 @@ export default function InformeUnicoZurichPage() {
   useEffect(() => {
     let cancelado = false;
     async function cargar() {
-      if (!casoIdFromQuery && location.state?.casoZurich) {
-        setcasoZurich(location.state.casoZurich);
-        return;
-      }
-      if (!casoIdFromQuery) return;
+      const id = casoIdFromQuery || location.state?.casoZurich?._id;
+      if (!id) return;
       setCargandoCaso(true);
       setError('');
       try {
-        const caso = await getCasoZurichById(casoIdFromQuery);
+        const caso = await getCasoZurichById(id);
         if (!cancelado) setcasoZurich(caso);
       } catch (err) {
         if (!cancelado) setError(err.message || t('zurich.reportUnique.loadError'));
@@ -60,7 +59,7 @@ export default function InformeUnicoZurichPage() {
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, location.state, t]);
+  }, [casoIdFromQuery, location.state?.casoZurich?._id, t]);
 
   const subtitulo = useMemo(() => {
     if (casoZurich?.tomador || casoZurich?.siniestro) {

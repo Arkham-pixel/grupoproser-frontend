@@ -574,19 +574,13 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>
-                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`, {
-                              state: { casoZurich: item },
-                            })
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`)
                           }
                           onLiquidador={() =>
-                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=presupuesto`, {
-                              state: { casoZurich: item },
-                            })
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=presupuesto`)
                           }
                           onInformeUnico={() =>
-                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`, {
-                              state: { casoZurich: item },
-                            })
+                            navigate(`/zurich/listado/caso?casoId=${item._id}&tab=informe`)
                           }
                           onEliminar={() => solicitarEliminar(item)}
                         />

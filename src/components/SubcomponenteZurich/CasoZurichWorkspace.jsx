@@ -104,11 +104,13 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [casoZurich, setCasoZurich] = useState(location.state?.casoZurich ?? null);
+  const [casoZurich, setCasoZurich] = useState(null);
   const [liquidadorState, setLiquidadorState] = useState(null);
   const [totalesState, setTotalesState] = useState(null);
   const [informeState, setInformeState] = useState(null);
-  const [cargandoCaso, setCargandoCaso] = useState(false);
+  const [cargandoCaso, setCargandoCaso] = useState(
+    () => Boolean(casoIdFromQuery || location.state?.casoZurich?._id)
+  );
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState('');
   const [error, setError] = useState('');
@@ -125,17 +127,14 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
   useEffect(() => {
     let cancelado = false;
     async function cargar() {
-      if (!casoIdFromQuery && location.state?.casoZurich) {
-        setCasoZurich(location.state.casoZurich);
-        return;
-      }
-      if (!casoIdFromQuery) return;
+      const id = casoIdFromQuery || location.state?.casoZurich?._id;
+      if (!id) return;
       setCargandoCaso(true);
       setError('');
       try {
         const caso = esModuloListado
-          ? await getCasoZurichListadoById(casoIdFromQuery)
-          : await getCasoZurichById(casoIdFromQuery);
+          ? await getCasoZurichListadoById(id)
+          : await getCasoZurichById(id);
         if (!cancelado) setCasoZurich(caso);
       } catch (err) {
         if (!cancelado) setError(err.message || t('zurich.workspace.loadError'));
@@ -147,7 +146,7 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
     return () => {
       cancelado = true;
     };
-  }, [casoIdFromQuery, location.state, t, esModuloListado]);
+  }, [casoIdFromQuery, t, esModuloListado, location.state?.casoZurich?._id]);
 
   useEffect(() => {
     if (!casoZurich?._id) {
@@ -374,7 +373,11 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
     totalesState,
     informeState,
     onCasoActualizado: onCasoDesdeAutosave,
-    enabled: Boolean(casoId) && !cargandoCaso && tabActivo !== TABS_ZURICH.CAT,
+    enabled:
+      Boolean(casoId) &&
+      !cargandoCaso &&
+      Boolean(informeState) &&
+      tabActivo !== TABS_ZURICH.CAT,
     guardarLiquidador: esModuloListado
       ? guardarLiquidadorEnCasoZurichListado
       : guardarLiquidadorEnCasoZurich,

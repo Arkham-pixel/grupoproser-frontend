@@ -29,50 +29,23 @@ export async function cargarMapeoFuncionarios() {
   // Iniciar nueva carga
   cargaEnProgreso = (async () => {
     try {
-// Obtener todas las aseguradoras primero
-      const clientesResponse = await fetch(`${BASE_URL}/api/clientes`);
-      if (!clientesResponse.ok) {
-        throw new Error(`Error obteniendo clientes: ${clientesResponse.status}`);
+      const funcionariosResponse = await fetch(`${BASE_URL}/api/funcionarios-aseguradora`);
+      if (!funcionariosResponse.ok) {
+        throw new Error(`Error obteniendo funcionarios: ${funcionariosResponse.status}`);
       }
-      
-      const clientesData = await clientesResponse.json();
-      const clientes = Array.isArray(clientesData) ? clientesData : (clientesData.success && clientesData.data ? clientesData.data : []);
-      
-// Cargar funcionarios de cada aseguradora
-      const promesasFuncionarios = clientes.map(async (cliente) => {
-        try {
-          const codigoCliente = cliente.codiAsgrdra || cliente.cod1Asgrdra;
-          if (!codigoCliente) {
-            return [];
-          }
 
-          const funcionariosResponse = await fetch(`${BASE_URL}/api/funcionarios-aseguradora?codiAsgrdra=${codigoCliente}`);
-          if (!funcionariosResponse.ok) {
-            console.warn(`⚠️ [FuncionarioMapper] Error obteniendo funcionarios para ${codigoCliente}: ${funcionariosResponse.status}`);
-            return [];
-          }
+      const funcionariosData = await funcionariosResponse.json();
+      const funcionarios = funcionariosData.success && funcionariosData.data
+        ? funcionariosData.data
+        : (Array.isArray(funcionariosData) ? funcionariosData : []);
 
-          const funcionariosData = await funcionariosResponse.json();
-          const funcionarios = funcionariosData.success && funcionariosData.data 
-            ? funcionariosData.data 
-            : (Array.isArray(funcionariosData) ? funcionariosData : []);
-
-          return funcionarios.map(f => ({
-            codigo: f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? '',
-            nombre: f.nmbrContcto || f.nombre || f.label || '',
-            codigoCliente: codigoCliente
-          }));
-        } catch (error) {
-          console.error(`❌ [FuncionarioMapper] Error cargando funcionarios para cliente ${cliente.codiAsgrdra}:`, error);
-          return [];
-        }
-      });
-
-      const resultados = await Promise.allSettled(promesasFuncionarios);
-      const todosLosFuncionarios = resultados
-        .filter(r => r.status === 'fulfilled')
-        .flatMap(r => r.value)
-        .filter(f => f.codigo && f.nombre);
+      const todosLosFuncionarios = funcionarios
+        .map((f) => ({
+          codigo: f.id ?? f.codiContacto ?? f.codigo ?? f._id ?? f.codiFuncionario ?? '',
+          nombre: f.nmbrContcto || f.nombre || f.label || '',
+          codigoCliente: f.codiAsgrdra || '',
+        }))
+        .filter((f) => f.codigo && f.nombre);
 
       // Crear el mapeo
       funcionariosMap.clear();
