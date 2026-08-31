@@ -1,4 +1,4 @@
-import { parseFecha } from '../SubcomponenteDashboardCatastrofico/dashboardCatastroficoStats.js';
+import { esCasoLiquidado, parseFecha } from '../SubcomponenteDashboardCatastrofico/dashboardCatastroficoStats.js';
 import {
   ESTADOS_ZURICH,
   ESTADO_ZURICH_DEFAULT,
@@ -507,7 +507,8 @@ export function construirTorreZurich(
     }
     const bucketEstado = porEstadoMap.get(estado);
     bucketEstado.cantidad += 1;
-    if (abierto && reserva > 0) bucketEstado.reserva += reserva;
+    const cuentaReserva = abierto && reserva > 0 && !esCasoLiquidado(caso, estado);
+    if (cuentaReserva) bucketEstado.reserva += reserva;
     if (alerta) {
       bucketEstado.alertas += 1;
       if (alerta.nivel === 'critico') bucketEstado.criticos += 1;
@@ -515,7 +516,7 @@ export function construirTorreZurich(
 
     if (abierto) {
       carteraAbierta += 1;
-      if (reserva > 0) {
+      if (cuentaReserva) {
         reservaAbierta += reserva;
         abiertosConReserva += 1;
         casosConReserva += 1;

@@ -1,5 +1,10 @@
 import { formatDate, formatNumber, getAppLocale } from '../../utils/locale.js';
-import { formatMiles, primeraFechaNoVaciaZurich, resolverDepartamentoZurich } from './zurichHelpers.js';
+import {
+  estadoZurichPorTipoInforme,
+  formatMiles,
+  primeraFechaNoVaciaZurich,
+  resolverDepartamentoZurich,
+} from './zurichHelpers.js';
 import { parsearNumero } from '../SubcomponenteExpress/liquidadorExpressHelpers.js';
 import {
   aplicarRecargosEnEvaluacionNsr10,
@@ -372,7 +377,7 @@ const fechaInput = (value) => {
 
 /**
  * Completa fechaInformePreliminar o fechaInformeFinal si aún están vacías.
- * El informe único usa la fecha de informe final.
+ * El informe único/final usa la fecha de informe final y avanza el estado a LIQUIDAR.
  */
 export function fechasInformeParaCasoZurich(informe = {}, casoBase = {}) {
   const tipo = normalizarTipoInformeZurich(informe?.tipoInforme, 'preliminar');
@@ -383,6 +388,8 @@ export function fechasInformeParaCasoZurich(informe = {}, casoBase = {}) {
   } else if (!casoBase.fechaInformeFinal) {
     patch.fechaInformeFinal = fechaFuente;
   }
+  const estado = estadoZurichPorTipoInforme(informe?.tipoInforme, casoBase.estado);
+  if (estado && estado !== casoBase.estado) patch.estado = estado;
   return patch;
 }
 

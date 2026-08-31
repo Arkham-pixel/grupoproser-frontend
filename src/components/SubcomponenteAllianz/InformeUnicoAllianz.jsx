@@ -7,6 +7,7 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
   InputFenix,
+  InputMonedaExpress,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
@@ -111,6 +112,13 @@ function TablaFilasAllianz({
                         onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
                         placeholder={col.placeholder || ''}
                       />
+                    ) : col.type === 'money' ? (
+                      <InputMonedaExpress
+                        className="font-mono tabular-nums"
+                        value={fila[col.key] || ''}
+                        onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                        placeholder={col.placeholder || '$ 0'}
+                      />
                     ) : (
                       <InputFenix
                         className={col.mono ? 'font-mono' : ''}
@@ -198,6 +206,11 @@ export default function InformeUnicoAllianz({
     [informe.filasPresupuestoPreliminar]
   );
   const reservaMostrada = useMemo(() => reservaSugeridaAllianz(informe), [informe]);
+  useEffect(() => {
+    if (!esPreliminar || totalPreliminar <= 0) return;
+    if (String(informe.reservaSugerida || '') === String(totalPreliminar)) return;
+    setInforme((prev) => ({ ...prev, reservaSugerida: String(totalPreliminar) }));
+  }, [esPreliminar, totalPreliminar, informe.reservaSugerida]);
   const formDataNsr = useMemo(
     () => formDataNsrDesdeLiquidadorAllianz(liquidador, casoAllianz || {}),
     [liquidador, casoAllianz]
@@ -279,26 +292,36 @@ export default function InformeUnicoAllianz({
     onGuardarEnCaso?.(next);
   };
 
+  const conReservaDesdePresupuesto = (prev, filasPpto) => {
+    const next = { ...prev, filasPresupuestoPreliminar: filasPpto };
+    const suma = totalPresupuestoPreliminarAllianz(filasPpto);
+    if (suma > 0) next.reservaSugerida = String(suma);
+    return next;
+  };
+
   const setFila = (campo, idx, key, valor) => {
     setInforme((prev) => {
       const list = Array.isArray(prev[campo]) ? [...prev[campo]] : [];
       list[idx] = { ...(list[idx] || {}), [key]: valor };
+      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
       return { ...prev, [campo]: list };
     });
   };
 
   const addFila = (campo, vacia) => {
-    setInforme((prev) => ({
-      ...prev,
-      [campo]: [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia],
-    }));
+    setInforme((prev) => {
+      const list = [...(Array.isArray(prev[campo]) ? prev[campo] : []), vacia];
+      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
+      return { ...prev, [campo]: list };
+    });
   };
 
   const removeFila = (campo, idx) => {
-    setInforme((prev) => ({
-      ...prev,
-      [campo]: (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx),
-    }));
+    setInforme((prev) => {
+      const list = (Array.isArray(prev[campo]) ? prev[campo] : []).filter((_, i) => i !== idx);
+      if (campo === 'filasPresupuestoPreliminar') return conReservaDesdePresupuesto(prev, list);
+      return { ...prev, [campo]: list };
+    });
   };
 
   const handleNsrChange = (patch) => {
@@ -452,12 +475,9 @@ export default function InformeUnicoAllianz({
           </Campo>
           {!esUnico && (
             <Campo label={t('allianz.reportUnique.suggestedReserve')}>
-              <InputFenix
-                className="font-mono"
-                value={informe.reservaSugerida || ''}
-                onChange={(e) => setCampo('reservaSugerida', e.target.value)}
-                placeholder={formatearMonto(totalPreliminar) || '1.000.000.000'}
-              />
+              <div className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 font-mono text-sm font-semibold tabular-nums text-gray-900 dark:border-gray-700 dark:bg-[#1A1A1A] dark:text-gray-100">
+                $ {formatearMonto(reservaMostrada)}
+              </div>
             </Campo>
           )}
         </div>
@@ -710,8 +730,8 @@ export default function InformeUnicoAllianz({
             {
               key: 'valor',
               label: t('allianz.reportUnique.colValorEstimado'),
-              mono: true,
-              placeholder: '0',
+              type: 'money',
+              placeholder: '$ 0',
             },
           ]}
           filas={informe.filasPresupuestoPreliminar}

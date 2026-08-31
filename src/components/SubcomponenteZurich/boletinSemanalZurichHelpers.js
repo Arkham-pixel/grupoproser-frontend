@@ -1,8 +1,5 @@
-import {
-  ESTADO_ZURICH_FINALIZADO,
-  esEstadoCerradoZurich,
-  homologarEstadoZurich,
-} from './zurichHelpers.js';
+import { homologarEstadoZurich } from './zurichHelpers.js';
+import { esCasoActivo, esCasoLiquidado } from '../SubcomponenteDashboardCatastrofico/dashboardCatastroficoStats.js';
 
 /**
  * Helpers del boletín semanal Zurich (semana lun–dom, America/Bogota).
@@ -76,12 +73,12 @@ export function normEstado(estado) {
     .toUpperCase();
 }
 
-export function esLiquidadoEstado(estado) {
-  return homologarEstadoZurich(estado) === ESTADO_ZURICH_FINALIZADO;
+export function esLiquidadoEstado(estado, caso = {}) {
+  return esCasoLiquidado(caso, homologarEstadoZurich(estado));
 }
 
-export function esActivo(estado) {
-  return !esEstadoCerradoZurich(estado);
+export function esActivo(estado, caso = {}) {
+  return esCasoActivo(caso, homologarEstadoZurich(estado));
 }
 
 export function num(v) {
@@ -136,7 +133,7 @@ export function calcularBoletinSemanalZurich(casos = [], alertasPayload = null, 
     const fInsp = parseFechaCaso(
       c.fechaAnalisisCaso || c.fechaInspeccion || c.fechaInspeccionado
     );
-    const fLiq = parseFechaCaso(c.fechaFinalizado || c.fechaLiquidado);
+    const fLiq = parseFechaCaso(c.fechaFinalizado || c.fechaLiquidado || c.fechaInformeFinal);
     const fSin = parseFechaCaso(c.fechaSiniestro);
     const fDoc = parseFechaCaso(c.fechaUltimoDocumento);
     const fUpd = parseFechaCaso(c.updatedAt);
@@ -157,7 +154,7 @@ export function calcularBoletinSemanalZurich(casos = [], alertasPayload = null, 
         texto: `Inspección ${c.consecutivo || c.identificacion || ''} — ${c.asegurado || c.tomador || 'sin nombre'}`,
       });
     }
-    if (enRangoInclusive(fLiq, desde, hasta) || (esLiquidadoEstado(est) && enRangoInclusive(fUpd, desde, hasta) && !fLiq)) {
+    if (enRangoInclusive(fLiq, desde, hasta) || (esLiquidadoEstado(est, c) && enRangoInclusive(fUpd, desde, hasta) && !fLiq)) {
       liquidados.push(c);
       sumaLiquidadoSemana += num(c.valorLiquidado);
       sumaReclamadoSemana += num(c.valorReclamado);
@@ -168,7 +165,7 @@ export function calcularBoletinSemanalZurich(casos = [], alertasPayload = null, 
       });
     }
 
-    if (esActivo(est)) {
+    if (esActivo(est, c)) {
       sumaReservaActivos += num(c.reserva) || num(c.valorReservaPreventivaPromedio);
       sumaReclamadoActivos += num(c.valorReclamado);
     }
@@ -239,7 +236,7 @@ export function calcularBoletinSemanalZurich(casos = [], alertasPayload = null, 
       valorReclamadoSemana: sumaReclamadoSemana,
       valorAjustadoSemana: sumaLiquidadoSemana,
       totalCasos: lista.length,
-      casosActivos: lista.filter((c) => esActivo(c.estado)).length,
+      casosActivos: lista.filter((c) => esActivo(c.estado, c)).length,
     },
     embudo: Object.entries(porEstado)
       .map(([estado, cantidad]) => ({ estado, cantidad }))

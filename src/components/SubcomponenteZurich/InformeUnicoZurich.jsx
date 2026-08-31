@@ -7,6 +7,7 @@ import {
   expressBtnPrimary,
   expressBtnSecondary,
   InputFenix,
+  InputMonedaExpress,
 } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import {
   expressAlertError,
@@ -107,6 +108,13 @@ function TablaFilasZurich({
                     value={fila[col.key] || ''}
                     onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
                     placeholder={col.placeholder || ''}
+                  />
+                ) : col.type === 'money' ? (
+                  <InputMonedaExpress
+                    className="font-mono tabular-nums"
+                    value={fila[col.key] || ''}
+                    onChange={(e) => onChangeFila(idx, col.key, e.target.value)}
+                    placeholder={col.placeholder || '$ 0'}
                   />
                 ) : (
                   <InputFenix
@@ -704,8 +712,8 @@ export default function InformeUnicoZurich({
             {
               key: 'valor',
               label: t('zurich.reportUnique.colValorEstimado'),
-              mono: true,
-              placeholder: '0',
+              type: 'money',
+              placeholder: '$ 0',
             },
           ]}
           filas={informe.filasPresupuestoPreliminar}

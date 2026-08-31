@@ -221,9 +221,9 @@ export function totalPresupuestoPreliminarSura(filas = []) {
 }
 
 export function reservaSugeridaSura(info = {}) {
-  const directa = parsearNumero(info?.reservaSugerida);
-  if (directa > 0) return directa;
-  return totalPresupuestoPreliminarSura(info?.filasPresupuestoPreliminar);
+  const delPresupuesto = totalPresupuestoPreliminarSura(info?.filasPresupuestoPreliminar);
+  if (delPresupuesto > 0) return delPresupuesto;
+  return parsearNumero(info?.reservaSugerida);
 }
 
 function usarPlantillaSiVacio(filas, plantilla) {

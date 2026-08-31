@@ -1,4 +1,4 @@
-import { parseFecha } from '../SubcomponenteDashboardCatastrofico/dashboardCatastroficoStats.js';
+import { esCasoLiquidado, parseFecha } from '../SubcomponenteDashboardCatastrofico/dashboardCatastroficoStats.js';
 import {
   ESTADOS_ZURICH,
   ESTADO_ZURICH_DEFAULT,
@@ -195,7 +195,7 @@ export function construirDashboardZurichListado(casos = []) {
     const reserva = reservaNumero(caso);
     if (abierto) {
       carteraAbierta += 1;
-      if (reserva > 0) {
+      if (reserva > 0 && !esCasoLiquidado(caso, estado)) {
         reservaAbierta += reserva;
         casosConReserva += 1;
       }
@@ -203,7 +203,7 @@ export function construirDashboardZurichListado(casos = []) {
       const bucket = corteMap.get(corte);
       if (bucket) {
         bucket.cantidad += 1;
-        bucket.reserva += reserva;
+        if (reserva > 0 && !esCasoLiquidado(caso, estado)) bucket.reserva += reserva;
       }
     }
     if (ESTADOS_TRAMITE.has(estado)) enTramite += 1;
@@ -235,7 +235,9 @@ export function construirDashboardZurichListado(casos = []) {
       const cubeta = cubetaDias(dias);
       diasAbiertos.push(dias);
       cubetas.set(cubeta, (cubetas.get(cubeta) || 0) + 1);
-      if (reserva > 0) cubetasReserva.set(cubeta, (cubetasReserva.get(cubeta) || 0) + reserva);
+      if (reserva > 0 && !esCasoLiquidado(caso, estado)) {
+        cubetasReserva.set(cubeta, (cubetasReserva.get(cubeta) || 0) + reserva);
+      }
       const corte = corteCarteraZurich(estado);
       const bucket = corteMap.get(corte);
       if (bucket) bucket.dias.push(dias);
@@ -254,7 +256,7 @@ export function construirDashboardZurichListado(casos = []) {
       }
     }
 
-    if (abierto && reserva > 0) {
+    if (abierto && reserva > 0 && !esCasoLiquidado(caso, estado)) {
       grandesPerdidas.push({
         id: caso._id,
         zc: caso.zc || '',

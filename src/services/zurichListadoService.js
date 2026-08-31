@@ -73,6 +73,7 @@ export const normalizeZurichListadoItem = (item = {}) => {
       : Array.isArray(item.archivos)
         ? item.archivos.length
         : 0,
+    tipoInforme: item.tipoInforme || item.informeUnico?.tipoInforme || '',
   };
 };
 

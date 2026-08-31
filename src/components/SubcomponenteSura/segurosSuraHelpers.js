@@ -51,6 +51,27 @@ export function esEstadoSuraCerrado(valor) {
   return ESTADOS_SURA_CERRADOS.includes(n) || normEstadoClave(valor) === 'CERRADO';
 }
 
+export const ESTADO_SURA_INFORME_UNICO = 'INFORME ÚNICO O FINAL';
+
+function tipoInformeSuraClave(valor) {
+  const t = String(valor ?? '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim();
+  if (t === 'preliminar' || t === 'final' || t === 'unico') return t;
+  return '';
+}
+
+/** Único/final pasan el caso a INFORME ÚNICO O FINAL (equivalente a liquidado). */
+export function estadoSuraPorTipoInforme(tipoInforme, estadoActual) {
+  const tipo = tipoInformeSuraClave(tipoInforme);
+  const actual = normalizarEstadoSura(estadoActual);
+  if (actual === 'ANULADO') return actual;
+  if (tipo !== 'unico' && tipo !== 'final') return actual;
+  return ESTADO_SURA_INFORME_UNICO;
+}
+
 export function casoSuraTieneDocumentacion(caso = {}) {
   if (Array.isArray(caso.archivos) && caso.archivos.length > 0) return true;
   if (Array.isArray(caso.fotosAgil?.imagenes) && caso.fotosAgil.imagenes.length > 0) return true;

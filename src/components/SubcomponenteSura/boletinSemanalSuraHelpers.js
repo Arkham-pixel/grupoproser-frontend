@@ -1,6 +1,7 @@
 /**
  * Helpers del boletín semanal Seguros Sura (semana lun–dom, America/Bogota).
  */
+import { esCasoActivo, esCasoLiquidado } from '../SubcomponenteDashboardCatastrofico/dashboardCatastroficoStats.js';
 
 const TZ = 'America/Bogota';
 
@@ -70,13 +71,12 @@ export function normEstado(estado) {
     .toUpperCase();
 }
 
-export function esLiquidadoEstado(estado) {
-  const e = normEstado(estado);
-  return e === 'LIQUIDADO' || e === 'ENVIADO ASEGURADORA' || e === 'CERRADO';
+export function esLiquidadoEstado(estado, caso = {}) {
+  return esCasoLiquidado(caso, estado);
 }
 
-export function esActivo(estado) {
-  return normEstado(estado) !== 'CERRADO';
+export function esActivo(estado, caso = {}) {
+  return esCasoActivo(caso, estado);
 }
 
 export function num(v) {
@@ -204,7 +204,7 @@ export function calcularBoletinSemanalSura(casos = [], alertasPayload = null, ra
         texto: `Inspección ${c.consecutivo || c.identificacion || ''} — ${c.asegurado || c.tomador || 'sin nombre'}`,
       });
     }
-    if (enRangoInclusive(fLiq, desde, hasta) || (esLiquidadoEstado(est) && enRangoInclusive(fUpd, desde, hasta) && !fLiq)) {
+    if (enRangoInclusive(fLiq, desde, hasta) || (esLiquidadoEstado(est, c) && enRangoInclusive(fUpd, desde, hasta) && !fLiq)) {
       liquidados.push(c);
       sumaLiquidadoSemana += num(c.valorLiquidado);
       sumaReclamadoSemana += num(c.valorReclamado);
@@ -215,7 +215,7 @@ export function calcularBoletinSemanalSura(casos = [], alertasPayload = null, ra
       });
     }
 
-    if (esActivo(est)) {
+    if (esActivo(est, c)) {
       sumaReservaActivos += num(c.reserva) || num(c.valorReservaPreventivaPromedio);
       sumaReclamadoActivos += num(c.valorReclamado);
     }
@@ -286,7 +286,7 @@ export function calcularBoletinSemanalSura(casos = [], alertasPayload = null, ra
       valorReclamadoSemana: sumaReclamadoSemana,
       valorAjustadoSemana: sumaLiquidadoSemana,
       totalCasos: lista.length,
-      casosActivos: lista.filter((c) => esActivo(c.estado)).length,
+      casosActivos: lista.filter((c) => esActivo(c.estado, c)).length,
     },
     embudo: Object.entries(porEstado)
       .map(([estado, cantidad]) => ({ estado, cantidad }))

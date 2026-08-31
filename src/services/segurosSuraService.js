@@ -1,4 +1,5 @@
 ﻿import { BASE_URL, resolveUploadsUrl } from '../config/apiConfig.js';
+import { estadoSuraPorTipoInforme } from '../components/SubcomponenteSura/segurosSuraHelpers.js';
 
 const SURA_API_URL = `${BASE_URL}/api/sura`;
 
@@ -390,6 +391,7 @@ export const guardarInformeUnicoEnCasoSura = async ({
   const payload = {
     ...casoBase,
     informeUnico: informeUnico || {},
+    estado: estadoSuraPorTipoInforme(informeUnico?.tipoInforme, casoBase.estado),
   };
 
   delete payload._id;

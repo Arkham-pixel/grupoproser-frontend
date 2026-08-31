@@ -212,9 +212,9 @@ export function totalPresupuestoPreliminarAllianz(filas = []) {
 }
 
 export function reservaSugeridaAllianz(info = {}) {
-  const directa = parsearNumero(info?.reservaSugerida);
-  if (directa > 0) return directa;
-  return totalPresupuestoPreliminarAllianz(info?.filasPresupuestoPreliminar);
+  const delPresupuesto = totalPresupuestoPreliminarAllianz(info?.filasPresupuestoPreliminar);
+  if (delPresupuesto > 0) return delPresupuesto;
+  return parsearNumero(info?.reservaSugerida);
 }
 
 function usarPlantillaSiVacio(filas, plantilla) {
