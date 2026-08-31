@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { FaCamera, FaCheckCircle, FaCompress, FaImages } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { ImageCompression } from '../../utils/imageCompression';
+import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA } from '../../utils/heicToJpeg.js';
 import { queueOfflinePhoto } from '../../services/photoService.js';
 import { OFFLINE_FIRST_ENABLED } from '../../config/autoSaveConfig.js';
 import { checkConnectivity } from '../../services/connectivityService.js';
@@ -117,7 +118,7 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
         <input
           ref={inputCamaraRef}
           type="file"
-          accept="image/*"
+          accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
           capture="environment"
           className="hidden"
           onChange={cargarFotos}
@@ -127,7 +128,7 @@ export default function FotosPreliminarFlotante({ formData, onInputChange }) {
         <input
           ref={inputGaleriaRef}
           type="file"
-          accept="image/*"
+          accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
           multiple
           className="hidden"
           onChange={cargarFotos}

@@ -50,6 +50,18 @@ export default defineConfig({
             },
           },
           {
+            urlPattern: ({ url }) => url.pathname.includes("/api/storage/file"),
+            handler: "NetworkFirst",
+            options: {
+              cacheName: "storage-files",
+              networkTimeoutSeconds: 20,
+              expiration: {
+                maxEntries: 60,
+                maxAgeSeconds: 60 * 60 * 24,
+              },
+            },
+          },
+          {
             urlPattern: ({ request }) => request.destination === "image",
             handler: "CacheFirst",
             options: {
@@ -128,6 +140,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ["pdfjs-dist"],
+    exclude: ["heic-to", "heic-to/csp"],
   },
   worker: {
     format: "es",

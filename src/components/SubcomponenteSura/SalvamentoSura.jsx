@@ -14,6 +14,7 @@ import {
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { subirArchivoSura } from '../../services/segurosSuraService.js';
 import { defaultSalvamentoSura } from './informeAgilSuraHelpers.js';
+import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA, asegurarJpeg, esArchivoImagen } from '../../utils/heicToJpeg.js';
 
 export default function SalvamentoSura({
   casoSura = null,
@@ -64,13 +65,14 @@ export default function SalvamentoSura({
       setError(t('segurosSura.salvamento.savedCaseRequired'));
       return;
     }
-    const lista = Array.from(files || []).filter((f) => f.type?.startsWith('image/'));
+    const lista = Array.from(files || []).filter((f) => esArchivoImagen(f));
     if (!lista.length) return;
     setSubiendo(true);
     setError('');
     try {
       const creados = [];
-      for (const file of lista) {
+      for (const original of lista) {
+        const file = await asegurarJpeg(original);
         const creado = await subirArchivoSura(casoId, file, 'SALVAMENTO');
         if (creado) {
           creados.push({
@@ -221,7 +223,7 @@ export default function SalvamentoSura({
               </label>
               <input
                 type="file"
-                accept="image/*"
+                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
                 multiple
                 disabled={!casoId || subiendo}
                 onChange={(e) => {

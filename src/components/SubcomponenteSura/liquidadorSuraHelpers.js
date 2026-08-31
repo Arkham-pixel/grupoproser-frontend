@@ -17,7 +17,7 @@ import {
   DEFAULT_DEDUCIBLE_CATASTROFICO,
   HOSPEDAJE_PORCENTAJE_DEFAULT,
 } from '../SubcomponenteFormularioCatastrofico/catalogoPresupuestoCatastrofico.js';
-import { defaultOtrosAmparos, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
+import { defaultOtrosAmparos, nombreTipoOtroAmparo, normalizarOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import {
   esXmlWordOoXml,
   parsearMontoInformeSeguro,
@@ -677,6 +677,182 @@ export function calcularLiquidacionSura(liquidador = {}) {
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
+  };
+}
+
+function pctRecargoSura(totales = {}, liquidador = {}, clavePct, claveAbs, fallback = 0) {
+  const pres = liquidador?.evaluacionSismicaNSR10?.presupuesto || {};
+  const fromTot = totales.presupuesto?.[clavePct];
+  const fromPres = pres[claveAbs];
+  const n = Number(fromTot ?? fromPres ?? fallback);
+  return Math.round((Number.isFinite(n) ? n : fallback) * 100);
+}
+
+function etiquetaSmmlvDeducibleSura(bloque = {}, cfg = {}) {
+  const cant =
+    Number(bloque.cantidadSMMLV) > 0
+      ? bloque.cantidadSMMLV
+      : Number(cfg.cantidadSMMLV) > 0
+        ? cfg.cantidadSMMLV
+        : 1;
+  if (bloque.tieneArticulos) return `DEDUCIBLE ${cant} SMMLV (no aplica)`;
+  return `DEDUCIBLE ${cant} SMMLV`;
+}
+
+/**
+ * Resumen de liquidación Sura: edificio (presupuesto) y contenidos van por separado.
+ * Contenidos se divide por artículo de póliza (misma lógica del liquidador NSR-10).
+ */
+export function resumenLiquidacionIndependienteSura(liquidador = {}, totales = {}) {
+  const diagrama = totales.diagrama || {};
+  const presDed = diagrama.deduciblePresupuesto || {};
+  const contDed = diagrama.deducibleContenidos || {};
+  const cfgPres = liquidador?.liquidacionCatastrofico?.deducibleConfigPresupuesto || {};
+  const cfgCont =
+    liquidador?.liquidacionCatastrofico?.deducibleConfigContenidos ||
+    liquidador?.liquidacionCatastrofico?.deducibleConfig ||
+    {};
+  const aiuPct = pctRecargoSura(totales, liquidador, 'aiuPct', 'aiuPorcentaje', 0.25);
+  const imprPct = pctRecargoSura(totales, liquidador, 'imprPct', 'imprevistosPorcentaje', 0);
+  const impPct = pctRecargoSura(totales, liquidador, 'impPct', 'impuestosPorcentaje', 0);
+  const mostrarImprevistos = imprPct > 0 || Number(totales.imprevistos) > 0;
+  const mostrarImpuestos = impPct > 0 || Number(totales.impuestos) > 0;
+  const grupos = Array.isArray(totales.contenidos?.gruposDeducible)
+    ? totales.contenidos.gruposDeducible
+    : [];
+  const contenidosPorArticulo = Boolean(contDed.tieneArticulos || grupos.length);
+
+  const edificio = [
+    { label: 'Subtotal presupuesto (costo directo)', value: totales.subtotal },
+    { label: `AIU (${aiuPct}%)`, value: totales.aiu },
+    ...(mostrarImprevistos
+      ? [{ label: `Imprevistos (${imprPct}%)`, value: totales.imprevistos }]
+      : []),
+    ...(mostrarImpuestos
+      ? [{ label: `Impuestos (${impPct}%)`, value: totales.impuestos }]
+      : []),
+    {
+      label: 'TOTAL PRESUPUESTO',
+      value: totales.totalPresupuesto ?? totales.presupuesto?.total,
+      bold: true,
+    },
+    {
+      label: 'DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE',
+      value: presDed.montoPctOVa || 0,
+    },
+    {
+      label: etiquetaSmmlvDeducibleSura(presDed, cfgPres),
+      value: presDed.tieneArticulos ? 0 : presDed.montoSmmlv || 0,
+    },
+    {
+      label: presDed.tieneArticulos
+        ? 'DEDUCIBLE APLICADO EDIFICIO (por artículo)'
+        : `DEDUCIBLE APLICADO EDIFICIO (el mayor: ${presDed.tipoGanadorLabel || '%'})`,
+      value: presDed.aplicado || 0,
+      bold: true,
+    },
+    {
+      label: presDed.tieneArticulos ? 'VALOR A INDEMNIZAR EDIFICIO' : 'PRESUPUESTO NETO',
+      value: presDed.neto,
+      bold: true,
+      destacado: true,
+    },
+  ];
+
+  const contenidos = [
+    { label: 'TOTAL CONTENIDOS', value: totales.totalContenidos || 0, bold: true },
+  ];
+  if (!contenidosPorArticulo) {
+    contenidos.push(
+      {
+        label: 'DEDUCIBLE SOBRE PÉRDIDA O VALOR ASEGURABLE',
+        value: contDed.montoPctOVa || 0,
+      },
+      {
+        label: etiquetaSmmlvDeducibleSura(contDed, cfgCont),
+        value: contDed.montoSmmlv || 0,
+      },
+      {
+        label: `DEDUCIBLE APLICADO CONTENIDOS (el mayor: ${contDed.tipoGanadorLabel || '%'})`,
+        value: contDed.aplicado || 0,
+        bold: true,
+      }
+    );
+  } else {
+    contenidos.push({
+      label: 'DEDUCIBLE APLICADO CONTENIDOS (suma por artículo)',
+      value: contDed.aplicado || 0,
+      bold: true,
+    });
+  }
+  contenidos.push({
+    label: contenidosPorArticulo ? 'VALOR A INDEMNIZAR CONTENIDOS' : 'CONTENIDOS NETO',
+    value: contDed.neto,
+    bold: true,
+    destacado: true,
+  });
+
+  const netoEdificio = Number(presDed.neto) || 0;
+  const netoContenidos = Number(contDed.neto) || 0;
+  const sumaNeta = Math.round((netoEdificio + netoContenidos) * 100) / 100;
+  const hosp = Number(diagrama.gastosHospedaje) || 0;
+  const filasGastos = Array.isArray(totales.otrosAmparos) ? totales.otrosAmparos : [];
+  const totalOtros = Number(totales.totalOtrosAmparos) || 0;
+  const totalGastosSinDeducible = Math.round((hosp + totalOtros) * 100) / 100;
+  const totalIndemnizar =
+    Number(totales.totalIndemnizar) ||
+    Math.round((sumaNeta + totalGastosSinDeducible) * 100) / 100;
+
+  const gastosSinDeducible = [
+    { label: 'Gastos de hospedaje', value: hosp },
+    ...filasGastos.map((it) => {
+      const nom = nombreTipoOtroAmparo(it.tipo, it.nombre);
+      const obs = String(it.observacion || '').trim();
+      return {
+        label: obs ? `${nom} — ${obs}` : nom,
+        value: it.valor,
+      };
+    }),
+    {
+      label: 'TOTAL GASTOS SIN DEDUCIBLE',
+      value: totalGastosSinDeducible,
+      bold: true,
+    },
+  ];
+
+  const consolidado = [
+    {
+      label: 'SUMA NETA (edificio + contenidos)',
+      value: sumaNeta,
+      bold: true,
+    },
+    {
+      label: 'TOTAL GASTOS SIN DEDUCIBLE',
+      value: totalGastosSinDeducible,
+    },
+    {
+      label: 'TOTAL A INDEMNIZAR',
+      value: totalIndemnizar,
+      bold: true,
+      destacado: true,
+    },
+  ];
+
+  return {
+    edificio,
+    contenidos,
+    grupos,
+    gastosSinDeducible,
+    consolidado,
+    contenidosPorArticulo,
+    notaEdificio: presDed.tieneArticulos
+      ? 'Edificio: el valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
+      : 'Edificio: las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.',
+    notaContenidos: contenidosPorArticulo
+      ? 'Contenidos: en SURA el deducible se divide por artículo de póliza. Cada categoría (contenidos, mercancías, etc.) aplica su propio deducible; no se mezcla con el SMMLV/% del edificio.'
+      : 'Contenidos: las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.',
+    notaGastos:
+      'Los gastos y amparos adicionales (hospedaje, arriendo, retiro de escombros, etc.) no llevan deducible: se suman al neto de edificio y contenidos para obtener el total a indemnizar.',
   };
 }
 

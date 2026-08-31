@@ -5,6 +5,7 @@ import { FaTimes, FaSearchPlus, FaUpload, FaCompress } from 'react-icons/fa';
 import { getUploadsUrlCandidates } from '../config/apiConfig';
 import { getImageUrl, createImageErrorHandler } from '../utils/imageUtils';
 import { ImageCompression } from '../utils/imageCompression';
+import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA, esArchivoImagen } from '../utils/heicToJpeg.js';
 
 export default function RegistroFotografico({
   onChange,
@@ -243,7 +244,7 @@ setImagenes(imagenesProcesadas);
   };
 
   const handleFilesSelected = async (fileList) => {
-    const files = Array.from(fileList || []).filter((f) => f.type.startsWith('image/'));
+    const files = Array.from(fileList || []).filter((f) => esArchivoImagen(f));
     if (files.length === 0) {
       alert('Por favor selecciona archivos de imagen válidos.');
       return;
@@ -452,7 +453,7 @@ setImagenes(imagenesProcesadas);
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
                 id={inputId}
                 className="hidden"
                 disabled={comprimiendo}

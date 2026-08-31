@@ -69,7 +69,6 @@ import {
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
 import {
-  filtrarLideresPorModulo,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -150,7 +149,9 @@ const FormularioEquidadCat = ({ initialData = null, embed = false, origen = 'lis
     setError(null);
     setExito(null);
     setResumenImport(null);
-  }, [initialData]);
+    // Solo al cambiar de caso: si el padre re-crea el objeto, no se borra lo escrito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?._id]);
 
   useEffect(() => {
     let cancelado = false;
@@ -265,10 +266,6 @@ const FormularioEquidadCat = ({ initialData = null, embed = false, origen = 'lis
   const inspectoresPorCiudad = useMemo(
     () => asegurarOpcionActual(inspectoresCat, form.inspector),
     [inspectoresCat, form.inspector]
-  );
-  const lideresEquidadCat = useMemo(
-    () => filtrarLideresPorModulo(responsables, 'equidadCat'),
-    [responsables]
   );
 
   const setCampo = (clave) => (e) => {
@@ -634,7 +631,7 @@ const FormularioEquidadCat = ({ initialData = null, embed = false, origen = 'lis
           <CamposAsignacionCaso
             form={form}
             setCampo={setCampo}
-            lideres={lideresEquidadCat}
+            lideres={responsables}
             ajustadores={ajustadoresPorCiudad}
             inspectores={inspectoresPorCiudad}
             rol={rolUsuario}

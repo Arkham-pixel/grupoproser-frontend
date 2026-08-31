@@ -12,6 +12,7 @@ import {
 import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { ImageCompression } from '../../utils/imageCompression.js';
+import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA } from '../../utils/heicToJpeg.js';
 import {
   actualizarArchivoSura,
   eliminarArchivoSura,
@@ -304,7 +305,7 @@ export default function FotosInspeccionSura({
               <input
                 id={`${inputIdPrefix}-camara`}
                 type="file"
-                accept="image/*"
+                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
                 capture="environment"
                 className="hidden"
                 disabled={comprimiendo}
@@ -313,7 +314,7 @@ export default function FotosInspeccionSura({
               <input
                 id={`${inputIdPrefix}-galeria`}
                 type="file"
-                accept="image/*"
+                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
                 multiple
                 className="hidden"
                 disabled={comprimiendo}

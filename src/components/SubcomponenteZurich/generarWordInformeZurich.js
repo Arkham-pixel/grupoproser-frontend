@@ -42,6 +42,7 @@ import {
 } from './liquidadorZurichHelpers.js';
 import { urlDescargaArchivoZurich } from '../../services/zurichService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { primeraFechaNoVaciaZurich, resolverDepartamentoZurich } from './zurichHelpers.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
@@ -568,7 +569,7 @@ async function fetchImageBytes(url) {
     const blob = await response.blob();
     if (!blob.type.startsWith('image/') && blob.type !== 'application/octet-stream') return null;
     const buf = await blob.arrayBuffer();
-    const u8 = new Uint8Array(buf);
+    const u8 = await jpegDesdeBytesImagen(new Uint8Array(buf));
     const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
     return { bytes: u8, type: isPng || blob.type.includes('png') ? 'png' : 'jpg' };
   } catch {
@@ -580,7 +581,7 @@ async function bytesDesdeFoto(foto = {}) {
   try {
     if (foto?.file instanceof Blob) {
       const buf = await foto.file.arrayBuffer();
-      const u8 = new Uint8Array(buf);
+      const u8 = await jpegDesdeBytesImagen(new Uint8Array(buf));
       const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
       return { bytes: u8, type: isPng ? 'png' : 'jpg' };
     }
@@ -589,7 +590,7 @@ async function bytesDesdeFoto(foto = {}) {
       if (resp.ok) {
         const blob = await resp.blob();
         const buf = await blob.arrayBuffer();
-        const u8 = new Uint8Array(buf);
+        const u8 = await jpegDesdeBytesImagen(new Uint8Array(buf));
         const isPng = u8.length > 8 && u8[0] === 0x89 && u8[1] === 0x50;
         return { bytes: u8, type: isPng ? 'png' : 'jpg' };
       }

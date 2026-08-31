@@ -69,7 +69,6 @@ import {
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
 import {
-  filtrarLideresPorModulo,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -151,7 +150,9 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
     setError(null);
     setExito(null);
     setResumenImport(null);
-  }, [initialData]);
+    // Solo al cambiar de caso: si el padre re-crea el objeto, no se borra lo escrito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?._id]);
 
   useEffect(() => {
     let cancelado = false;
@@ -254,10 +255,6 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
   const ajustadoresBbvaCat = useMemo(
     () => asegurarOpcionActual(ajustadoresCat, form.ajustador),
     [ajustadoresCat, form.ajustador]
-  );
-  const lideresBbvaCat = useMemo(
-    () => filtrarLideresPorModulo(responsables, 'bbvaCat'),
-    [responsables]
   );
 
   const setCampo = (clave) => (e) => {
@@ -623,7 +620,7 @@ const FormularioBbvaCat = ({ initialData = null, embed = false, origen = 'cat', 
           <CamposAsignacionCaso
             form={form}
             setCampo={setCampo}
-            lideres={lideresBbvaCat}
+            lideres={responsables}
             ajustadores={ajustadoresBbvaCat}
             rol={rolUsuario}
             modulo="bbvaCat"

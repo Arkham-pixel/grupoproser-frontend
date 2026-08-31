@@ -115,7 +115,9 @@ const FormularioCasoPropiedades = ({ initialData = null, embed = false, onClose,
     setForm(initialData ? construirFormDesdeCaso(initialData) : { ...FORM_VACIO });
     setError(null);
     setExito(null);
-  }, [initialData]);
+    // Solo al cambiar de caso: si el padre re-crea el objeto, no se borra lo escrito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?._id]);
 
   useEffect(() => {
     let cancelado = false;

@@ -561,6 +561,15 @@ const HEADER_MAP_LISTADO = {
   NOTAS: 'observaciones',
   SUCURSAL: 'sucursal',
   JEFATURA: 'jefatura',
+  'VALOR ASEGURADO INMUEBLE': 'valorAseguradoInmueble',
+  'VALOR ASEGURADO CONTENIDOS': 'valorAseguradoContenidos',
+  'VALOR RESERVA PREVENTIVA PROMEDIO': 'valorReservaPreventivaPromedio',
+  'VALOR COMERCIAL INMUEBLE': 'valorComercialInmueble',
+  RESERVA: 'reserva',
+  'OBSERVACION RESERVA': 'observacionReserva',
+  'OBSERVACION DE RESERVA': 'observacionReserva',
+  'VALOR RECLAMADO': 'valorReclamado',
+  'VALOR LIQUIDADO': 'valorLiquidado',
 };
 
 const COLUMNAS_IGNORAR_EXTRAS = new Set([

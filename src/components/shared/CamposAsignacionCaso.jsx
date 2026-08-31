@@ -2,6 +2,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Campo, SelectFenix } from '../SubcomponenteExpress/ExpressUiBlocks.jsx';
 import { attrsCampoCaso } from '../../utils/permisosCasoPorRol.js';
+import {
+  asegurarOpcionActual,
+  opcionesLideresParaSelect,
+} from '../../utils/catalogosAsignacionCatastrofico.js';
 
 const optsDe = (lista = [], valorActual, t) => (
   <>
@@ -41,8 +45,15 @@ export default function CamposAsignacionCaso({
   mostrarInspector = true,
 }) {
   const { t } = useTranslation();
-  const listaLideres = lideres ?? responsables;
-  const listaAjustadores = ajustadores ?? [];
+  const listaLideres = opcionesLideresParaSelect(
+    lideres ?? responsables,
+    modulo,
+    form.ajustadorLider
+  );
+  const listaAjustadores = asegurarOpcionActual(
+    asegurarOpcionActual(ajustadores ?? [], form.ajustador),
+    form.ajustadorLider
+  );
   const listaInspectores = inspectores ?? [];
   const sinCiudad = filtrarPorCiudad && !String(ciudadSeleccionada || '').trim();
   const permisoOpts = {

@@ -41,7 +41,6 @@ import {
 import { AUTO_SAVE_ENABLED } from '../../config/autoSaveConfig.js';
 import useArnaldFormDraft from '../../hooks/useArnaldFormDraft.js';
 import {
-  filtrarLideresPorModulo,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   resolverLiderPorModulo,
@@ -2741,9 +2740,8 @@ setFormData(prev => ({
       label: r.label || r.value,
       codigo: r.value,
     }));
-    if (!esSura) return todos;
-    return filtrarLideresPorModulo(todos, 'sura');
-  }, [responsables, esSura]);
+    return todos;
+  }, [responsables]);
 
   useEffect(() => {
     if (!esSura || initialData?._id || !lideresAsignacion.length) return;

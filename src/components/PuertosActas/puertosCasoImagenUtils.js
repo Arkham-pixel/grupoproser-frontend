@@ -1,5 +1,6 @@
 import { getImageUrl } from '../../utils/imageUtils';
 import { isStoredFileReference } from '../../utils/storedFilePath';
+import { asegurarJpeg, esArchivoImagen } from '../../utils/heicToJpeg.js';
 
 export function imagenYaPersistida(imagen) {
   if (!imagen || typeof imagen !== 'object') return false;
@@ -51,18 +52,19 @@ function dataUrlToFile(dataUrl, filename = 'imagen.jpg') {
 
 /** Reduce fotos grandes antes de subirlas a S3 (más rápido y menos cuelgues). */
 export async function comprimirImagenParaSubida(file, { maxAncho = 1600, calidad = 0.82, umbralBytes = 350 * 1024 } = {}) {
-  if (!(file instanceof File) || !file.type.startsWith('image/')) return file;
-  if (file.size <= umbralBytes) return file;
-  if (typeof document === 'undefined') return file;
+  if (!(file instanceof File) || !esArchivoImagen(file)) return file;
+  const listo = await asegurarJpeg(file);
+  if (listo.size <= umbralBytes) return listo;
+  if (typeof document === 'undefined') return listo;
 
   return new Promise((resolve) => {
     const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+    const objectUrl = URL.createObjectURL(listo);
     img.onload = () => {
       URL.revokeObjectURL(objectUrl);
       let { width, height } = img;
-      if (width <= maxAncho && file.size <= umbralBytes * 2) {
-        resolve(file);
+      if (width <= maxAncho && listo.size <= umbralBytes * 2) {
+        resolve(listo);
         return;
       }
       if (width > maxAncho) {
@@ -74,17 +76,17 @@ export async function comprimirImagenParaSubida(file, { maxAncho = 1600, calidad
       canvas.height = height;
       const ctx = canvas.getContext('2d');
       if (!ctx) {
-        resolve(file);
+        resolve(listo);
         return;
       }
       ctx.drawImage(img, 0, 0, width, height);
       canvas.toBlob(
         (blob) => {
           if (!blob) {
-            resolve(file);
+            resolve(listo);
             return;
           }
-          const nombre = (file.name || 'imagen.jpg').replace(/\.[^.]+$/, '') + '.jpg';
+          const nombre = (listo.name || 'imagen.jpg').replace(/\.[^.]+$/, '') + '.jpg';
           resolve(new File([blob], nombre, { type: 'image/jpeg' }));
         },
         'image/jpeg',
@@ -93,7 +95,7 @@ export async function comprimirImagenParaSubida(file, { maxAncho = 1600, calidad
     };
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      resolve(file);
+      resolve(listo);
     };
     img.src = objectUrl;
   });

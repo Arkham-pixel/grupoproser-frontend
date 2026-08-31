@@ -59,7 +59,6 @@ import {
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
 import {
-  filtrarLideresPorModulo,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -246,10 +245,6 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
   const inspectoresAlfa = useMemo(
     () => asegurarOpcionActual(inspectoresCat, form.inspector),
     [inspectoresCat, form.inspector]
-  );
-  const lideresSoloSilvia = useMemo(
-    () => filtrarLideresPorModulo(responsables, 'alfa'),
-    [responsables]
   );
 
   const setCampo = (clave) => (e) => {
@@ -594,7 +589,7 @@ const FormularioSegurosAlfa = ({ initialData = null, embed = false, onClose, onS
           <CamposAsignacionCaso
             form={form}
             setCampo={setCampo}
-            lideres={lideresSoloSilvia}
+            lideres={responsables}
             ajustadores={ajustadoresAlfa}
             inspectores={inspectoresAlfa}
             rol={rolUsuario}

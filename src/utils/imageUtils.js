@@ -10,6 +10,7 @@
 
 import { getUploadsUrlCandidates } from '../config/apiConfig';
 import { isStoredFileReference } from './storedFilePath';
+import { jpegDesdeBytesImagen } from './heicToJpeg.js';
 
 /**
  * Obtiene todas las URLs candidatas para una imagen (con fallbacks)
@@ -238,11 +239,17 @@ export async function fetchImageAsArrayBuffer(imagen) {
       if (url.startsWith('data:')) return base64ToBuffer(url);
       if (url.startsWith('blob:')) {
         const resp = await fetch(url);
-        if (resp.ok) return await resp.arrayBuffer();
+        if (resp.ok) {
+          const jpeg = await jpegDesdeBytesImagen(new Uint8Array(await resp.arrayBuffer()));
+          return jpeg.buffer.slice(jpeg.byteOffset, jpeg.byteOffset + jpeg.byteLength);
+        }
         return null;
       }
       const resp = await fetch(url);
-      if (resp.ok) return await resp.arrayBuffer();
+      if (resp.ok) {
+        const jpeg = await jpegDesdeBytesImagen(new Uint8Array(await resp.arrayBuffer()));
+        return jpeg.buffer.slice(jpeg.byteOffset, jpeg.byteOffset + jpeg.byteLength);
+      }
     } catch {
       /* probar siguiente candidato */
     }
@@ -262,7 +269,8 @@ export async function fetchImageAsArrayBuffer(imagen) {
 
     if (typeof imagen === 'object' && imagen !== null) {
       if (imagen.file && typeof imagen.file.arrayBuffer === 'function') {
-        return await imagen.file.arrayBuffer();
+        const jpeg = await jpegDesdeBytesImagen(new Uint8Array(await imagen.file.arrayBuffer()));
+        return jpeg.buffer.slice(jpeg.byteOffset, jpeg.byteOffset + jpeg.byteLength);
       }
       if (imagen.base64) {
         const buf = base64ToBuffer(imagen.base64);

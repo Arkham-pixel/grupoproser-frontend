@@ -451,13 +451,15 @@ export const HOJAS_NSR10 = [
   { id: 'dictamen', label: 'Dictamen', oculta: OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 },
   { id: 'presupuesto', label: 'Presupuesto' },
   { id: 'contenidos', label: 'Contenidos' },
+  { id: 'gastos', label: 'Gastos sin deducible' },
   { id: 'totales', label: 'Totales' },
 ];
 
-/** En liquidador / informe único se navega entre Presupuesto, Contenidos y Totales. */
+/** En liquidador / informe único se navega entre Presupuesto, Contenidos, gastos y Totales. */
 export const HOJAS_LIQUIDADOR_NSR10 = [
   { id: 'presupuesto', label: 'Presupuesto' },
   { id: 'contenidos', label: 'Contenidos' },
+  { id: 'gastos', label: 'Gastos sin deducible' },
   { id: 'totales', label: 'Totales' },
 ];
 

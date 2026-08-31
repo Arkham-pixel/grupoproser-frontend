@@ -25,8 +25,6 @@ import {
 import { descargarFiniquitoSuraWord } from './generarFiniquitoSuraWord.js';
 import { descargarLiquidadorSuraExcel } from './generarLiquidadorSuraExcel.js';
 import { descargarLiquidadorSuraPdf } from './generarLiquidadorSuraPdf.js';
-import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
-import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -197,25 +195,10 @@ export default function LiquidadorSegurosSura({
             />
           </Campo>
         </div>
-        <div className="mt-4">
-          <OtrosAmparosLiquidacion
-            otrosAmparos={liquidador.otrosAmparos}
-            onChange={(filas) =>
-              setLiquidador((prev) => ({
-                ...prev,
-                otrosAmparos: Array.isArray(filas) && filas.length ? filas : defaultOtrosAmparos(),
-              }))
-            }
-          />
-        </div>
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>Total daños (NSR-10)</span>
             <span>$ {formatearMonto(totales.totalDanios)}</span>
-          </div>
-          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>Hospedaje</span>
-            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>Deducible presupuesto</span>
@@ -231,6 +214,20 @@ export default function LiquidadorSegurosSura({
                   0
               )}
             </span>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>Suma neta (edificio + contenidos)</span>
+            <span>
+              ${' '}
+              {formatearMonto(
+                (Number(totales.diagrama?.deduciblePresupuesto?.neto) || 0) +
+                  (Number(totales.diagrama?.deducibleContenidos?.neto) || 0)
+              )}
+            </span>
+          </div>
+          <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
+            <span>Gastos de hospedaje (sin deducible)</span>
+            <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
           </div>
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
             <span>Otros amparos (sin deducible)</span>

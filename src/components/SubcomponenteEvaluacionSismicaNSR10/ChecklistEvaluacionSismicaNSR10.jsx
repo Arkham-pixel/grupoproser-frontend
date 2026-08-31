@@ -1121,10 +1121,10 @@ export default function ChecklistEvaluacionSismicaNSR10({
           {modoLiquidador
             ? ocultarPresupuestoEscrito
               ? 'La cotización PDF sustituye el presupuesto escrito. Contenidos y totales siguen alimentando el deducible.'
-              : 'Presupuesto (edificio), Contenidos y Totales. La suma completa alimenta el diagrama de liquidación del informe único.'
+              : 'Presupuesto (edificio), Contenidos, Gastos sin deducible y Totales. Los gastos no llevan deducible: se suman al neto.'
             : OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-              ? 'Portada, Presupuesto, Contenidos y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'
-              : 'Portada, Evaluación, Dictamen, Presupuesto, Contenidos y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'}
+              ? 'Portada, Presupuesto, Contenidos, Gastos sin deducible y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'
+              : 'Portada, Evaluación, Dictamen, Presupuesto, Contenidos, Gastos sin deducible y Totales. El presupuesto + contenidos alimentan el liquidador del informe único.'}
             </p>
           </div>
 
@@ -2174,15 +2174,11 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 softBg={softBg}
               />
 
-              <OtrosAmparosLiquidacion
-                otrosAmparos={formData.otrosAmparos}
-                onChange={(filas) =>
-                  onInputChange({
-                    otrosAmparos:
-                      Array.isArray(filas) && filas.length ? filas : defaultOtrosAmparos(),
-                  })
-                }
-              />
+              <p className="text-xs" style={{ color: textSecondary }}>
+                Hospedaje, arriendo y retiro de escombros se diligencian en la hoja
+                «Gastos sin deducible». No se les cobra deducible: se suman al neto de
+                edificio y contenidos.
+              </p>
 
               <div
                 className="grid gap-2 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3"
@@ -2903,6 +2899,118 @@ export default function ChecklistEvaluacionSismicaNSR10({
                 ? 'El valor a indemnizar es la suma de (pérdida − deducible) de cada categoría. El deducible general (SMMLV / %) no se resta otra vez aquí.'
                 : 'Las dos vías quedan habilitadas. Se resta el mayor entre SMMLV y el porcentaje sobre pérdida o valor asegurable.'}
             </p>
+          </div>
+        </section>
+      )}
+
+      {hoja === 'gastos' && (
+        <section className="space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: textPrimary }}>
+              Gastos y amparos sin deducible
+            </h3>
+            <p className="text-xs" style={{ color: textSecondary }}>
+              Hospedaje, arriendo, retiro de escombros y otros amparos extra no llevan
+              deducible. Se suman al neto de edificio y contenidos para el total a
+              indemnizar.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2" style={{ color: textSecondary }}>
+            <label className="block text-sm">
+              % gastos de hospedaje
+              <input
+                type="number"
+                step="0.01"
+                className={`${inputClass} mt-1`}
+                style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                value={
+                  Math.round(
+                    (Number(liquidacion.hospedajePorcentaje) ||
+                      HOSPEDAJE_PORCENTAJE_DEFAULT) * 10000
+                  ) / 100
+                }
+                onChange={(e) =>
+                  actualizarLiquidacion({
+                    hospedajePorcentaje: (Number(e.target.value) || 0) / 100,
+                  })
+                }
+              />
+            </label>
+            <label className="block text-sm">
+              Hospedaje manual (opcional)
+              <input
+                type="number"
+                className={`${inputClass} mt-1`}
+                style={{ backgroundColor: inputBg, borderColor, color: textPrimary }}
+                value={liquidacion.hospedajeManual ?? ''}
+                onChange={(e) =>
+                  actualizarLiquidacion({ hospedajeManual: e.target.value })
+                }
+              />
+            </label>
+          </div>
+
+          <OtrosAmparosLiquidacion
+            otrosAmparos={formData.otrosAmparos}
+            onChange={(filas) =>
+              onInputChange({
+                otrosAmparos:
+                  Array.isArray(filas) && filas.length ? filas : defaultOtrosAmparos(),
+              })
+            }
+          />
+
+          <div
+            className="overflow-hidden rounded-lg border text-sm"
+            style={{ borderColor }}
+          >
+            <div
+              className="flex justify-between border-b px-4 py-2"
+              style={{ borderColor }}
+            >
+              <span style={{ color: textSecondary }}>Gastos de hospedaje</span>
+              <strong style={{ color: textPrimary }}>
+                {money(diagrama.gastosHospedaje || 0)}
+              </strong>
+            </div>
+            <div
+              className="flex justify-between border-b px-4 py-2"
+              style={{ borderColor }}
+            >
+              <span style={{ color: textSecondary }}>Otros amparos (arriendo, escombros…)</span>
+              <strong style={{ color: textPrimary }}>
+                {money(diagrama.totalOtrosAmparos || 0)}
+              </strong>
+            </div>
+            <div
+              className="flex justify-between border-b px-4 py-2 font-semibold"
+              style={{ borderColor, backgroundColor: softBg }}
+            >
+              <span style={{ color: textPrimary }}>TOTAL GASTOS SIN DEDUCIBLE</span>
+              <span className="text-emerald-600">
+                {money(
+                  (Number(diagrama.gastosHospedaje) || 0) +
+                    (Number(diagrama.totalOtrosAmparos) || 0)
+                )}
+              </span>
+            </div>
+            <div
+              className="flex justify-between border-b px-4 py-2"
+              style={{ borderColor }}
+            >
+              <span style={{ color: textSecondary }}>Suma neta (edificio + contenidos)</span>
+              <strong style={{ color: textPrimary }}>{money(sumaAIndemnizarVentanas)}</strong>
+            </div>
+            <div
+              className="flex justify-between px-4 py-2.5 font-bold"
+              style={{ backgroundColor: softBg }}
+            >
+              <span className="text-emerald-700 dark:text-emerald-300">TOTAL A INDEMNIZAR</span>
+              <span className="text-emerald-700 dark:text-emerald-300">
+                {money(diagrama.totalIndemnizar)}
+              </span>
+            </div>
           </div>
         </section>
       )}

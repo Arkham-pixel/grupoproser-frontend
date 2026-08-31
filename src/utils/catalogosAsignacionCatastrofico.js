@@ -216,8 +216,9 @@ export function filtrarCatalogoPorModulo(opciones = [], modulo = '') {
 }
 
 /**
- * Solo el líder permitido en el select:
+ * Líder recomendado por módulo (default al crear):
  * Alfa → Silvia; Sura → Bernardo y Mario Pinilla; BBVA → Miguel Báez; Zurich → Ladys.
+ * El select de Gestionar usa `opcionesLideresParaSelect` (lista completa).
  */
 export function filtrarLideresPorModulo(lideres = [], modulo = '') {
   const m = String(modulo || '').toLowerCase();
@@ -278,4 +279,19 @@ export function resolverLiderPorModulo(lideres = [], modulo = '') {
     return ladys?.value || LIDER_ZURICH;
   }
   return filtrados[0]?.value || '';
+}
+
+/**
+ * Select de ajustador líder en agregar/gestionar: todos los responsables.
+ * El recomendado del módulo va primero; el valor ya guardado no se pierde.
+ */
+export function opcionesLideresParaSelect(lideres = [], modulo = '', valorActual = '') {
+  const recomendados = filtrarLideresPorModulo(lideres, modulo);
+  const recKeys = new Set(recomendados.map((l) => String(l.value || '')));
+  const resto = lideres.filter((l) => !recKeys.has(String(l.value || '')));
+  const ordenados =
+    recomendados.length && recomendados.length < lideres.length
+      ? [...recomendados, ...resto]
+      : [...lideres];
+  return asegurarOpcionActual(ordenados, valorActual);
 }

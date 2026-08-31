@@ -69,6 +69,8 @@ export default function CotizacionPdfLiquidacion({
   titulo = null,
   hint = null,
   descripcionUpload = '',
+  mostrarUsarComoBase = true,
+  usarComoBasePorDefecto = true,
 } = {}) {
   const { t } = useTranslation();
   const tq = (key, opts) => t(`${i18nPrefix}.${key}`, opts);
@@ -305,7 +307,7 @@ export default function CotizacionPdfLiquidacion({
           ? formatMilesNsr10(resultado.montoDetectado)
           : '',
       montoDetectado: resultado.montoDetectado > 0 ? resultado.montoDetectado : '',
-      usarComoBasePresupuesto: true,
+      usarComoBasePresupuesto: usarComoBasePorDefecto,
       archivoPdf: null,
       paginas: resultado.paginas,
       candidatos: resultado.candidatos,
@@ -430,7 +432,7 @@ export default function CotizacionPdfLiquidacion({
             ? formatMilesNsr10(resultado.montoDetectado)
             : '',
         montoDetectado: resultado.montoDetectado > 0 ? resultado.montoDetectado : '',
-        usarComoBasePresupuesto: true,
+        usarComoBasePresupuesto: usarComoBasePorDefecto,
         archivoPdf: {
           _id: arch._id,
           ruta: arch.ruta,
@@ -792,6 +794,7 @@ export default function CotizacionPdfLiquidacion({
                 })
               : tq('quoteAmountHintManual')}
           </p>
+          {mostrarUsarComoBase ? (
           <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-200">
             <input
               type="checkbox"
@@ -807,6 +810,9 @@ export default function CotizacionPdfLiquidacion({
               </span>
             </span>
           </label>
+          ) : (
+            <p className="text-xs text-gray-500">{tq('quoteDoesNotReplaceBudget')}</p>
+          )}
         </>
       )}
 

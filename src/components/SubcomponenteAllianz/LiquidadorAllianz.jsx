@@ -35,12 +35,9 @@ import { allianzArchivosApi } from './allianzArchivosApi.js';
 import OtrosAmparosLiquidacion from '../liquidacion/OtrosAmparosLiquidacion.jsx';
 import { defaultOtrosAmparos } from '../liquidacion/otrosAmparosLiquidacion.js';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
-import {
-  serializarPaginasCotizacion,
-  montoCotizacionPdf,
-  usaCotizacionComoBasePresupuesto,
-} from '../liquidacion/cotizacionPdfLiquidacion.js';
+import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import EditorDeducibleLibreAllianz from './EditorDeducibleLibreAllianz.jsx';
+import TablaCotizacionVsPresupuestoAllianz from './TablaCotizacionVsPresupuestoAllianz.jsx';
 
 const grid3 = 'grid grid-cols-1 gap-4 sm:grid-cols-3';
 
@@ -88,10 +85,6 @@ export default function LiquidadorAllianz({
     [liquidador, totales.diagrama]
   );
   const enc = liquidador.encabezado || {};
-  const tieneCotizacionPdf = Boolean(
-    (Array.isArray(liquidador.cotizacionPdf?.paginas) && liquidador.cotizacionPdf.paginas.length) ||
-      liquidador.cotizacionPdf?.archivoPdf
-  );
 
   useEffect(() => {
     onEstadoChange?.(liquidador, totales);
@@ -363,6 +356,8 @@ export default function LiquidadorAllianz({
               });
             }}
             disabled={!!exportando || guardandoCaso}
+            mostrarUsarComoBase={false}
+            usarComoBasePorDefecto={false}
           />
         </div>
         <div className="mt-4 max-w-xl">
@@ -374,14 +369,10 @@ export default function LiquidadorAllianz({
         </div>
         <div className="mt-4 grid max-w-xl grid-cols-1 gap-1 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-            <span>
-              {totales.origenPresupuesto === 'cotizacion'
-                ? t('allianz.settlement.totalDamagesQuote')
-                : t('allianz.settlement.totalDamagesNsr')}
-            </span>
+            <span>{t('allianz.settlement.totalDamagesNsr')}</span>
             <span>$ {formatearMonto(totales.totalDanios)}</span>
           </div>
-          {totales.origenPresupuesto === 'cotizacion' && (
+          {totales.cotizacionMonto > 0 && (
             <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
               <span>{t('allianz.settlement.totalQuote')}</span>
               <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
@@ -452,11 +443,9 @@ export default function LiquidadorAllianz({
       <section className={expressFormSection}>
         {!embeberEnInforme && (
           <h3 className={expressSectionTitle}>
-            {tieneCotizacionPdf
-              ? t('allianz.settlement.nsrTitleQuote')
-              : t('allianz.settlement.nsrTitle', {
-                  defaultValue: 'Evaluación y liquidador NSR-10',
-                })}
+            {t('allianz.settlement.nsrTitle', {
+              defaultValue: 'Evaluación y liquidador NSR-10',
+            })}
           </h3>
         )}
         <ChecklistEvaluacionSismicaNSR10
@@ -464,13 +453,16 @@ export default function LiquidadorAllianz({
           onInputChange={handleNsrChange}
           modoLiquidador={embeberEnInforme}
           recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
-          ocultarPresupuestoEscrito={tieneCotizacionPdf}
-          totalPresupuestoOverride={
-            usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
-              ? montoCotizacionPdf(liquidador.cotizacionPdf)
-              : null
-          }
         />
+        <div className="mt-4">
+          <TablaCotizacionVsPresupuestoAllianz
+            filas={liquidador.filasCotizacionVsPresupuesto}
+            disabled={!!exportando || guardandoCaso}
+            onChange={(filas) =>
+              setLiquidador((prev) => ({ ...prev, filasCotizacionVsPresupuesto: filas }))
+            }
+          />
+        </div>
       </section>
     </div>
   );

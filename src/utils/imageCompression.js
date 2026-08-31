@@ -1,3 +1,27 @@
+import { asegurarJpeg, esHeic } from './heicToJpeg.js';
+
+const TIPOS_CANVAS = new Set(['image/jpeg', 'image/png', 'image/webp']);
+
+function tipoSalidaCanvas(file) {
+  const type = String(file?.type || '').toLowerCase();
+  if (TIPOS_CANVAS.has(type)) return type;
+  return 'image/jpeg';
+}
+
+function nombreConTipo(file, mime) {
+  const original = String(file?.name || 'foto');
+  if (mime === 'image/jpeg' && !/\.jpe?g$/i.test(original)) {
+    return original.replace(/\.[^.]+$/, '') + '.jpg';
+  }
+  if (mime === 'image/png' && !/\.png$/i.test(original)) {
+    return original.replace(/\.[^.]+$/, '') + '.png';
+  }
+  if (mime === 'image/webp' && !/\.webp$/i.test(original)) {
+    return original.replace(/\.[^.]+$/, '') + '.webp';
+  }
+  return original;
+}
+
 // Utilidad para comprimir imágenes antes de subirlas
 export class ImageCompression {
   
@@ -11,6 +35,9 @@ export class ImageCompression {
    * @returns {Promise<File>} - Archivo comprimido
    */
   static async compressImage(file, maxWidth = 1920, maxHeight = 1080, quality = 0.8, maxSizeKB = 500) {
+    const listo = esHeic(file) ? await asegurarJpeg(file) : file;
+    const outputType = tipoSalidaCanvas(listo);
+
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -52,27 +79,27 @@ export class ImageCompression {
 // Si aún es muy grande, reducir calidad
             if (sizeKB > maxSizeKB && quality > 0.1) {
               const newQuality = Math.max(0.1, quality - 0.2);
-this.compressImage(file, maxWidth, maxHeight, newQuality, maxSizeKB)
+this.compressImage(listo, maxWidth, maxHeight, newQuality, maxSizeKB)
                 .then(resolve)
                 .catch(reject);
               return;
             }
             
             // Crear nuevo archivo con el blob comprimido
-            const compressedFile = new File([blob], file.name, {
-              type: file.type,
+            const compressedFile = new File([blob], nombreConTipo(listo, outputType), {
+              type: outputType,
               lastModified: Date.now()
             });
             
             resolve(compressedFile);
           },
-          file.type,
+          outputType,
           quality
         );
       };
       
       img.onerror = () => reject(new Error('Error al cargar la imagen'));
-      img.src = URL.createObjectURL(file);
+      img.src = URL.createObjectURL(listo);
     });
   }
   
@@ -90,16 +117,20 @@ this.compressImage(file, maxWidth, maxHeight, newQuality, maxSizeKB)
       maxSizeKB = 500
     } = options;
     
-const compressedFiles = await Promise.all(
-      files.map(async (file) => {
+const compressedFiles = [];
+    for (const file of files) {
+      try {
+        const listo = await this.compressImage(file, maxWidth, maxHeight, quality, maxSizeKB);
+        compressedFiles.push(listo);
+      } catch (error) {
+        console.error(`❌ Error comprimiendo ${file.name}:`, error);
         try {
-          return await this.compressImage(file, maxWidth, maxHeight, quality, maxSizeKB);
-        } catch (error) {
-          console.error(`❌ Error comprimiendo ${file.name}:`, error);
-          return file; // Devolver archivo original si falla la compresión
+          compressedFiles.push(await asegurarJpeg(file));
+        } catch {
+          compressedFiles.push(file);
         }
-      })
-    );
+      }
+    }
     
 return compressedFiles;
   }
@@ -121,18 +152,19 @@ return compressedFiles;
    * @returns {Promise<Object>} - Información de la imagen
    */
   static async getImageInfo(file) {
+    const listo = esHeic(file) ? await asegurarJpeg(file) : file;
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         resolve({
           width: img.width,
           height: img.height,
-          sizeKB: (file.size / 1024).toFixed(1),
+          sizeKB: (listo.size / 1024).toFixed(1),
           aspectRatio: (img.width / img.height).toFixed(2)
         });
       };
       img.onerror = () => reject(new Error('Error al cargar la imagen'));
-      img.src = URL.createObjectURL(file);
+      img.src = URL.createObjectURL(listo);
     });
   }
 }

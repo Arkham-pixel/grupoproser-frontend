@@ -31,6 +31,7 @@ import {
 } from '../services/propiedadesService';
 import { AUTO_SAVE_ENABLED } from '../config/autoSaveConfig';
 import { ImageCompression } from '../utils/imageCompression';
+import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA, esArchivoImagen } from '../utils/heicToJpeg.js';
 import {
   MAX_FOTOS_POR_SECCION,
   MAX_FOTOS_TOTAL,
@@ -728,7 +729,7 @@ localStorage.removeItem('formularioPropiedades');
       const maxBytes = MAX_FOTO_TAMANO_MB * 1024 * 1024;
       const validos = [];
       for (const file of filesArray) {
-        if (!file.type?.startsWith('image/')) continue;
+        if (!esArchivoImagen(file)) continue;
         if (file.size > maxBytes) {
           alert(`"${file.name}" supera ${MAX_FOTO_TAMANO_MB} MB y no se agregó.`);
           continue;
@@ -1970,7 +1971,7 @@ mostrarModalConfirmacion(
           <input
             type="file"
             multiple
-            accept="image/*"
+            accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
             onChange={(e) => handleFileUpload(area, e.target.files, alcobaNum)}
             className="hidden"
             id={`file-upload-${areaKey}`}

@@ -28,7 +28,6 @@ import {
   fotosCotizacionDesdeLiquidador,
   serializarCotizacionPdf,
   serializarPaginasCotizacion,
-  usaCotizacionComoBasePresupuesto,
   montoCotizacionPdf,
 } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import {
@@ -244,6 +243,9 @@ export function sanitizarLiquidadorAllianz(liquidador = {}) {
   return {
     ...liquidador,
     cotizacionPdf: serializarCotizacionPdf(liquidador.cotizacionPdf),
+    filasCotizacionVsPresupuesto: serializarFilasCotizacionVsPresupuestoAllianz(
+      liquidador.filasCotizacionVsPresupuesto
+    ),
   };
 }
 
@@ -442,6 +444,7 @@ export const DEFAULT_LIQUIDADOR_Allianz = {
   indemnizacionSugerida: '',
   observaciones: '',
   cotizacionPdf: null,
+  filasCotizacionVsPresupuesto: [],
 };
 
 export function esLiquidadorNsrAllianz(liquidador = {}) {
@@ -453,8 +456,8 @@ export function esLiquidadorNsrAllianz(liquidador = {}) {
 }
 
 /**
- * Totales Allianz = presupuesto NSR-10 o cotización PDF + contenidos + diagrama.
- * Compat: expone totalIndemnizar / totalIndemnizable para finiquito e informe.
+ * Totales Allianz = presupuesto NSR-10 del ajustador + contenidos + diagrama.
+ * La cotización PDF es soporte de lo pedido por el cliente (reclamado), no sustituye el presupuesto.
  */
 export function calcularLiquidacionAllianz(liquidador = {}) {
   const evalData = aplicarRecargosEnEvaluacionNsr10(
@@ -466,9 +469,8 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
   const totalesPres = calcularTotalesPresupuesto(presupuesto, valoresAsegurablesCaso);
   const resumen = calcularResumenTotalesNsr10(evalData, valoresAsegurablesCaso);
   const liq = liquidador.liquidacionCatastrofico || {};
-  const usaCotiz = usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf);
   const montoCotiz = montoCotizacionPdf(liquidador.cotizacionPdf);
-  const totalPresupuesto = usaCotiz ? montoCotiz : resumen.totalPresupuesto;
+  const totalPresupuesto = resumen.totalPresupuesto;
   const sumaCompleta = Math.round((totalPresupuesto + resumen.totalContenidos) * 100) / 100;
   const diagrama = calcularDiagramaLiquidacion({
     valorAsegurado: valorAseguradoPresupuestoCat(liquidador),
@@ -482,19 +484,12 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     deducibleConfigContenidos: liq.deducibleConfigContenidos || liq.deducibleConfig,
     deducibleConfigPresupuesto: configDeduciblePresupuestoParaCalculoAllianz(liquidador),
     otrosAmparos: liquidador.otrosAmparos,
-    ...(() => {
-      const args = argsDeduciblesPorArticuloDiagrama(liq, resumen);
-      if (!usaCotiz) return args;
-      return {
-        ...args,
-        usaDeduciblePorArticuloPresupuesto: false,
-        deduciblePresupuestoPorArticulos: 0,
-        presupuestoNetoPorArticulo: null,
-      };
-    })(),
+    ...argsDeduciblesPorArticuloDiagrama(liq, resumen),
   });
   const items = normalizarItemsRespuesta(evalData.items);
   const criterio = calcularCriterioFinal(items);
+  const totalReclamado =
+    parsearNumero(liquidador.valorReclamadoCaso) || (montoCotiz > 0 ? montoCotiz : sumaCompleta);
 
   return {
     modelo: 'nsr10',
@@ -503,30 +498,26 @@ export function calcularLiquidacionAllianz(liquidador = {}) {
     totalPresupuesto,
     totalContenidos: resumen.totalContenidos,
     sumaCompleta,
-    subtotal: usaCotiz ? montoCotiz : totalesPres.subtotal,
-    aiu: usaCotiz ? 0 : totalesPres.aiu,
-    imprevistos: usaCotiz ? 0 : totalesPres.imprevistos,
-    impuestos: usaCotiz ? 0 : totalesPres.impuestos,
+    subtotal: totalesPres.subtotal,
+    aiu: totalesPres.aiu,
+    imprevistos: totalesPres.imprevistos,
+    impuestos: totalesPres.impuestos,
     totalDanios: sumaCompleta,
-    origenPresupuesto: usaCotiz ? 'cotizacion' : 'nsr10',
+    origenPresupuesto: 'nsr10',
     cotizacionMonto: montoCotiz,
     diagrama,
     criterio,
     totalIndemnizar: diagrama.totalIndemnizar,
     totalIndemnizable: diagrama.totalIndemnizar,
     totalPerdida: sumaCompleta,
-    totalReclamado: parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta,
+    totalReclamado,
     deducibleAplicado: diagrama.sumaDeducibles || diagrama.deducibleAplicado || 0,
     deducibleTexto:
       String(liq.deducible || liq.deducibleConfigPresupuesto?.texto || '').trim() ||
       desgloseDeducibleTerremotoAllianz(liquidador, diagrama).texto,
     subtotalContenidos: resumen.totalContenidos,
     subtotalEdificios: totalPresupuesto,
-    diferencia: Math.round(
-      ((parsearNumero(liquidador.valorReclamadoCaso) || sumaCompleta) -
-        (diagrama.totalIndemnizar || 0)) *
-        100
-    ) / 100,
+    diferencia: Math.round(((totalReclamado - (diagrama.totalIndemnizar || 0)) * 100)) / 100,
     usaSMMLV: Boolean(diagrama.deducibleUsaMinimo && diagrama.deducibleTipoMinimo === 'SMMLV'),
     totalOtrosAmparos: diagrama.totalOtrosAmparos || 0,
     otrosAmparos: diagrama.otrosAmparos || [],
@@ -622,23 +613,10 @@ export function armarInformeLiquidacionAllianz(liquidador = {}, totales = null, 
   };
 }
 
-/** Filas planas del presupuesto NSR o de la cotización PDF (para resúmenes). */
+/** Filas planas del presupuesto NSR; la cotización PDF queda como reclamado de referencia. */
 export function itemsPlanosAllianz(liquidador = {}) {
-  if (usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)) {
-    const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
-    const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
-    return [
-      {
-        id: 'cotizacion-pdf',
-        concepto: nombre ? `Cotización de reparación (${nombre})` : 'Cotización de reparación',
-        valorReclamado: monto,
-        valorIndemnizable: monto,
-      },
-    ];
-  }
   const items = liquidador?.evaluacionSismicaNSR10?.presupuesto?.items;
-  if (!Array.isArray(items) || !items.length) return [];
-  return items
+  const nsr = (Array.isArray(items) ? items : [])
     .filter((it) => String(it?.actividad || it?.componente || '').trim())
     .map((it) => ({
       id: it.id,
@@ -648,6 +626,75 @@ export function itemsPlanosAllianz(liquidador = {}) {
       cantidad: it.cantidad,
       valorUnitario: it.valorUnitario,
     }));
+  const monto = montoCotizacionPdf(liquidador.cotizacionPdf);
+  if (!(monto > 0)) return nsr;
+  const nombre = String(liquidador.cotizacionPdf?.nombreOriginal || '').trim();
+  return [
+    {
+      id: 'cotizacion-pdf',
+      concepto: nombre
+        ? `Cotización del asegurado (${nombre})`
+        : 'Cotización del asegurado (PDF)',
+      valorReclamado: monto,
+      valorIndemnizable: '',
+    },
+    ...nsr,
+  ];
+}
+
+export function filaCotizacionVsPresupuestoAllianz(fila = {}) {
+  return {
+    id: fila.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    concepto: String(fila.concepto || ''),
+    valorCotizacion: fila.valorCotizacion ?? '',
+    valorPresupuesto: fila.valorPresupuesto ?? '',
+    observaciones: String(fila.observaciones || ''),
+  };
+}
+
+export function serializarFilasCotizacionVsPresupuestoAllianz(filas = []) {
+  return (Array.isArray(filas) ? filas : []).map((fila) => ({
+    id: String(fila?.id || ''),
+    concepto: String(fila?.concepto || ''),
+    valorCotizacion: fila?.valorCotizacion ?? '',
+    valorPresupuesto: fila?.valorPresupuesto ?? '',
+    observaciones: String(fila?.observaciones || ''),
+  }));
+}
+
+/**
+ * Ítem de la cotización que no se paga (presupuesto 0) o se reconoce por menor valor.
+ * Filas vacías o con presupuesto ≥ cotización no salen al Word.
+ */
+export function motivoFilaCotizacionVsPresupuestoAllianz(fila = {}) {
+  const concepto = String(fila.concepto || '').trim();
+  const cotiz = parsearNumero(fila.valorCotizacion);
+  const ppto = parsearNumero(fila.valorPresupuesto);
+  const obs = String(fila.observaciones || '').trim();
+  if (!concepto && cotiz <= 0 && ppto <= 0 && !obs) return null;
+  if (cotiz > 0 && ppto <= 0) return 'no_paga';
+  if (cotiz > 0 && ppto < cotiz) return 'menor_valor';
+  return null;
+}
+
+export function diferenciaFilaCotizacionVsPresupuestoAllianz(fila = {}) {
+  return (
+    Math.round(
+      (parsearNumero(fila.valorCotizacion) - parsearNumero(fila.valorPresupuesto)) * 100
+    ) / 100
+  );
+}
+
+export function filasBreveCotizacionVsPresupuestoAllianz(filas = []) {
+  return (Array.isArray(filas) ? filas : [])
+    .map((fila) => filaCotizacionVsPresupuestoAllianz(fila))
+    .filter((fila) => motivoFilaCotizacionVsPresupuestoAllianz(fila));
+}
+
+export function etiquetaMotivoCotizacionVsPresupuestoAllianz(motivo) {
+  if (motivo === 'no_paga') return 'No se paga';
+  if (motivo === 'menor_valor') return 'Menor valor';
+  return '';
 }
 
 export function mapcasoAllianzALiquidador(caso = {}) {
@@ -703,6 +750,9 @@ export function mapcasoAllianzALiquidador(caso = {}) {
       ? normalizarOtrosAmparos(guardado.otrosAmparos)
       : defaultOtrosAmparos(),
     cotizacionPdf: guardado.cotizacionPdf || null,
+    filasCotizacionVsPresupuesto: serializarFilasCotizacionVsPresupuestoAllianz(
+      guardado.filasCotizacionVsPresupuesto
+    ),
   };
 }
 

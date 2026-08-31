@@ -7,6 +7,7 @@ import {
   crearImagenPendiente,
   getPuertosImagenDisplayUrl,
 } from '../PuertosActas/puertosCasoImagenUtils';
+import { asegurarJpeg } from '../../utils/heicToJpeg.js';
 
 export default function PuertosDragDropFotos({
   imagenes = [],
@@ -40,7 +41,7 @@ export default function PuertosDragDropFotos({
   );
 
   const onDrop = useCallback(
-    (acceptedFiles, rejectedFiles) => {
+    async (acceptedFiles, rejectedFiles) => {
       if (rejectedFiles?.length) {
         alert(t('ports.ui.formulario.dragDrop.alertRechazadas'));
       }
@@ -54,10 +55,15 @@ export default function PuertosDragDropFotos({
         return true;
       });
       const disponibles = max - (imagenes?.length || 0);
-      const nuevas = validas.slice(0, disponibles).map(crearImagenPendiente);
+      const slice = validas.slice(0, disponibles);
       if (validas.length > disponibles) {
         alert(t('ports.ui.formulario.dragDrop.alertMaxFotos', { max }));
       }
+      const convertidas = [];
+      for (const f of slice) {
+        convertidas.push(await asegurarJpeg(f));
+      }
+      const nuevas = convertidas.map(crearImagenPendiente);
       if (nuevas.length) {
         aplicarCambio((prev) => [...prev, ...nuevas]);
       }
@@ -67,7 +73,7 @@ export default function PuertosDragDropFotos({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp'] },
+    accept: { 'image/*': ['.jpeg', '.jpg', '.png', '.gif', '.webp', '.heic', '.heif'] },
     multiple: true,
     maxSize: 5 * 1024 * 1024,
     disabled: cargando || (imagenes?.length || 0) >= max,

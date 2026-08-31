@@ -69,7 +69,6 @@ import {
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
 import {
-  filtrarLideresPorModulo,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -150,7 +149,9 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     setError(null);
     setExito(null);
     setResumenImport(null);
-  }, [initialData]);
+    // Solo al cambiar de caso: si el padre re-crea el objeto, no se borra lo escrito.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData?._id]);
 
   useEffect(() => {
     let cancelado = false;
@@ -266,10 +267,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
     () => asegurarOpcionActual(inspectoresCat, form.inspector),
     [inspectoresCat, form.inspector]
   );
-  const lideresPrevisora = useMemo(
-    () => filtrarLideresPorModulo(responsables, 'previsora'),
-    [responsables]
-  );
 
   const setCampo = (clave) => (e) => {
     if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
@@ -354,6 +351,14 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
         observaciones: form.observaciones,
         ciudad: form.ciudad,
         departamento: form.departamento,
+        valorAseguradoInmueble: aNumero(form.valorAseguradoInmueble),
+        valorAseguradoContenidos: aNumero(form.valorAseguradoContenidos),
+        valorReservaPreventivaPromedio: aNumero(form.valorReservaPreventivaPromedio),
+        valorComercialInmueble: aNumero(form.valorComercialInmueble),
+        reserva: aNumero(form.reserva),
+        observacionReserva: form.observacionReserva,
+        valorReclamado: aNumero(form.valorReclamado),
+        valorLiquidado: aNumero(form.valorLiquidado),
         ajustadorLider: form.ajustadorLider,
         ajustador: form.ajustador,
         inspector: form.inspector,
@@ -635,7 +640,7 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
           <CamposAsignacionCaso
             form={form}
             setCampo={setCampo}
-            lideres={lideresPrevisora}
+            lideres={responsables}
             ajustadores={ajustadoresPorCiudad}
             inspectores={inspectoresPorCiudad}
             rol={rolUsuario}
@@ -675,6 +680,42 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
             })}
           </p>
         ) : null}
+      </section>
+
+      <section className={expressFormSection}>
+        <h3 className={expressSectionTitle}>{t('previsora.sections.values')}</h3>
+        <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+          {t('previsora.sections.valuesHint')}
+        </p>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Campo label={t('previsora.fields.valorAseguradoInmueble')}>
+            {inputMiles('valorAseguradoInmueble')}
+          </Campo>
+          <Campo label={t('previsora.fields.valorAseguradoContenidos')}>
+            {inputMiles('valorAseguradoContenidos')}
+          </Campo>
+          <Campo label={t('previsora.fields.valorReservaPreventivaPromedio')}>
+            {inputMiles('valorReservaPreventivaPromedio')}
+          </Campo>
+          <Campo label={t('previsora.fields.valorComercialInmueble')}>
+            {inputMiles('valorComercialInmueble')}
+          </Campo>
+          <Campo label={t('previsora.fields.reserva')}>{inputMiles('reserva')}</Campo>
+          <Campo label={t('previsora.fields.valorReclamado')}>
+            {inputMiles('valorReclamado')}
+          </Campo>
+          <Campo label={t('previsora.fields.valorLiquidado')}>
+            {inputMiles('valorLiquidado')}
+          </Campo>
+        </div>
+        <Campo label={t('previsora.fields.observacionReserva')} className="mt-4">
+          <textarea
+            className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+            value={form.observacionReserva || ''}
+            onChange={setCampo('observacionReserva')}
+            placeholder={t('previsora.placeholders.observacionReserva')}
+          />
+        </Campo>
       </section>
 
       <section className={expressFormSection}>
@@ -1038,41 +1079,6 @@ const FormularioPrevisora = ({ initialData = null, embed = false, origen = 'cat'
                 />
               </Campo>
             </div>
-          </section>
-
-          <section>
-            <h4 className="mb-3 font-heading text-sm font-semibold uppercase tracking-wide text-gray-600 dark:text-gray-300">
-              {t('previsora.sections.values')}
-            </h4>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <Campo label={t('previsora.fields.valorAseguradoInmueble')}>
-                {inputMiles('valorAseguradoInmueble')}
-              </Campo>
-              <Campo label={t('previsora.fields.valorAseguradoContenidos')}>
-                {inputMiles('valorAseguradoContenidos')}
-              </Campo>
-              <Campo label={t('previsora.fields.valorReservaPreventivaPromedio')}>
-                {inputMiles('valorReservaPreventivaPromedio')}
-              </Campo>
-              <Campo label={t('previsora.fields.valorComercialInmueble')}>
-                {inputMiles('valorComercialInmueble')}
-              </Campo>
-              <Campo label={t('previsora.fields.reserva')}>{inputMiles('reserva')}</Campo>
-              <Campo label={t('previsora.fields.valorReclamado')}>
-                {inputMiles('valorReclamado')}
-              </Campo>
-              <Campo label={t('previsora.fields.valorLiquidado')}>
-                {inputMiles('valorLiquidado')}
-              </Campo>
-            </div>
-            <Campo label={t('previsora.fields.observacionReserva')} className="mt-4">
-              <textarea
-                className="min-h-[88px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-body text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-                value={form.observacionReserva || ''}
-                onChange={setCampo('observacionReserva')}
-                placeholder={t('previsora.placeholders.observacionReserva')}
-              />
-            </Campo>
           </section>
 
           <section>

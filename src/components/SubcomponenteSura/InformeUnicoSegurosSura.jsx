@@ -26,6 +26,7 @@ import {
   mapCasoSuraALiquidador,
   normalizarTipoInformeSura,
   reservaSugeridaSura,
+  resumenLiquidacionIndependienteSura,
 } from './liquidadorSuraHelpers.js';
 import { fusionarFotosAgilEnInforme, informeUnicoConFotosAgil } from './informeAgilSuraHelpers.js';
 import { descargarWordInformeSura } from './generarWordInformeSura.js';
@@ -190,6 +191,10 @@ export default function InformeUnicoSegurosSura({
       .map((campo) => t(`segurosSura.reportUnique.${campo.labelKey}`))
       .join(', ');
   const reservaMostrada = useMemo(() => reservaSugeridaSura(informe), [informe]);
+  const resumenLiq = useMemo(
+    () => resumenLiquidacionIndependienteSura(liquidador, totales),
+    [liquidador, totales]
+  );
   const formDataNsr = useMemo(
     () => formDataNsrDesdeLiquidadorSura(liquidador, casoSura || {}),
     [liquidador, casoSura]
@@ -947,26 +952,111 @@ export default function InformeUnicoSegurosSura({
               </div>
             ) : null}
 
-            <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Total daños (NSR-10)</span>
-                <span>$ {formatearMonto(totales.totalDanios)}</span>
+            <div className="mb-4 space-y-4">
+              <div className="max-w-2xl overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-800/60">
+                  Deducible de edificio (presupuesto)
+                </p>
+                {resumenLiq.edificio.map((fila) => (
+                  <div
+                    key={fila.label}
+                    className={`flex justify-between gap-3 border-b border-gray-200 px-4 py-2 text-sm last:border-b-0 dark:border-gray-700 ${
+                      fila.destacado || fila.bold ? 'font-semibold' : ''
+                    }`}
+                  >
+                    <span>{fila.label}</span>
+                    <span className="font-mono tabular-nums">$ {formatearMonto(fila.value)}</span>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Hospedaje</span>
-                <span>$ {formatearMonto(totales.diagrama?.gastosHospedaje)}</span>
+              <div className="max-w-2xl overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-800/60">
+                  Deducible de contenidos (por artículo de póliza)
+                </p>
+                {resumenLiq.contenidos.map((fila) => (
+                  <div
+                    key={fila.label}
+                    className={`flex justify-between gap-3 border-b border-gray-200 px-4 py-2 text-sm last:border-b-0 dark:border-gray-700 ${
+                      fila.destacado || fila.bold ? 'font-semibold' : ''
+                    }`}
+                  >
+                    <span>{fila.label}</span>
+                    <span className="font-mono tabular-nums">$ {formatearMonto(fila.value)}</span>
+                  </div>
+                ))}
+                {resumenLiq.grupos.length > 0 && (
+                  <div className="overflow-x-auto border-t border-gray-200 dark:border-gray-700">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-gray-50 text-gray-500 dark:bg-gray-800/60">
+                        <tr>
+                          <th className="px-3 py-2 text-left font-semibold">Grupo</th>
+                          <th className="px-3 py-2 text-left font-semibold">Cobertura</th>
+                          <th className="px-3 py-2 text-right font-semibold">Pérdida</th>
+                          <th className="px-3 py-2 text-right font-semibold">Deducible</th>
+                          <th className="px-3 py-2 text-right font-semibold">Neto</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {resumenLiq.grupos.map((g) => {
+                          const perdida = Number(g.sumaPL) || 0;
+                          const deducible = Number(g.deducible ?? g.aplicado) || 0;
+                          const neto =
+                            g.neto != null && g.neto !== ''
+                              ? Number(g.neto) || 0
+                              : Math.max(0, perdida - deducible);
+                          return (
+                            <tr key={g.clave} className="border-t border-gray-100 dark:border-gray-800">
+                              <td className="px-3 py-1.5">{g.grupoLabel}</td>
+                              <td className="px-3 py-1.5">{g.coberturaLabel}</td>
+                              <td className="px-3 py-1.5 text-right font-mono">$ {formatearMonto(perdida)}</td>
+                              <td className="px-3 py-1.5 text-right font-mono font-semibold">
+                                $ {formatearMonto(deducible)}
+                              </td>
+                              <td className="px-3 py-1.5 text-right font-mono font-semibold">
+                                $ {formatearMonto(neto)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Deducible</span>
-                <span>{totales.deducibleTexto || 'No aplica'}</span>
+              <div className="max-w-2xl overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-800/60">
+                  Gastos y amparos sin deducible
+                </p>
+                {(resumenLiq.gastosSinDeducible || []).map((fila, idx) => (
+                  <div
+                    key={`gastos-${idx}-${fila.label}`}
+                    className={`flex justify-between gap-3 border-b border-gray-200 px-4 py-2 text-sm last:border-b-0 dark:border-gray-700 ${
+                      fila.destacado || fila.bold ? 'font-semibold' : ''
+                    }`}
+                  >
+                    <span>{fila.label}</span>
+                    <span className="font-mono tabular-nums">$ {formatearMonto(fila.value)}</span>
+                  </div>
+                ))}
+                <p className="px-4 py-2 text-xs text-gray-500">
+                  {resumenLiq.notaGastos}
+                </p>
               </div>
-              <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>Otros amparos (sin deducible)</span>
-                <span>$ {formatearMonto(totales.totalOtrosAmparos)}</span>
-              </div>
-              <div className="flex justify-between px-4 py-2 text-sm font-bold">
-                <span>{t('segurosSura.settlement.totalPay')}</span>
-                <span>$ {formatearMonto(totales.totalIndemnizar)}</span>
+              <div className="max-w-2xl overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="border-b border-gray-200 bg-gray-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:border-gray-700 dark:bg-gray-800/60">
+                  Consolidado
+                </p>
+                {resumenLiq.consolidado.map((fila, idx) => (
+                  <div
+                    key={`cons-${idx}-${fila.label}`}
+                    className={`flex justify-between gap-3 border-b border-gray-200 px-4 py-2 text-sm last:border-b-0 dark:border-gray-700 ${
+                      fila.destacado || fila.bold ? 'font-semibold' : ''
+                    }`}
+                  >
+                    <span>{fila.label}</span>
+                    <span className="font-mono tabular-nums">$ {formatearMonto(fila.value)}</span>
+                  </div>
+                ))}
               </div>
             </div>
 

@@ -70,7 +70,6 @@ import {
   puedeEditarCampoCaso,
 } from '../../utils/permisosCasoPorRol.js';
 import {
-  filtrarLideresPorModulo,
   asegurarOpcionActual,
   mapCatalogoCatastroficoAOpciones,
   mapResponsablesAOpciones,
@@ -284,10 +283,6 @@ const FormularioZurich = ({
     () => asegurarOpcionActual(inspectoresCat, form.inspector),
     [inspectoresCat, form.inspector]
   );
-  const lideresZurich = useMemo(
-    () => filtrarLideresPorModulo(responsables, 'zurich'),
-    [responsables]
-  );
 
   const setCampo = (clave) => (e) => {
     if (!puedeEditarCampoCaso(rolUsuario, clave, ctxPermiso)) return;
@@ -351,7 +346,7 @@ const FormularioZurich = ({
   const construirPayload = () => {
     const conLiderZurich = (payload) => {
       if (!String(payload.ajustadorLider || '').trim()) {
-        payload.ajustadorLider = resolverLiderPorModulo(lideresZurich, 'zurich');
+        payload.ajustadorLider = resolverLiderPorModulo(responsables, 'zurich');
       }
       return payload;
     };
@@ -758,7 +753,7 @@ const FormularioZurich = ({
           <CamposAsignacionCaso
             form={form}
             setCampo={setCampo}
-            lideres={lideresZurich}
+            lideres={responsables}
             ajustadores={ajustadoresPorCiudad}
             inspectores={inspectoresPorCiudad}
             rol={rolUsuario}

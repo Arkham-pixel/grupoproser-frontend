@@ -11,6 +11,7 @@ import {
 } from 'react-icons/fa';
 import IAInteligente from './IAInteligente';
 import { ImageCompression } from '../../utils/imageCompression';
+import { ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA } from '../../utils/heicToJpeg.js';
 import { useTheme } from '../../context/ThemeContext';
 import { getImageUrl, createImageErrorHandler } from '../../utils/imageUtils';
 import { isStoredFileReference } from '../../utils/storedFilePath';
@@ -420,7 +421,7 @@ return imagenesProcesadas;
               <input
                 type="file"
                 multiple
-                accept="image/*"
+                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
                 onChange={handleFileUpload}
                 className="hidden"
                 id="file-upload"
@@ -428,7 +429,7 @@ return imagenesProcesadas;
               />
               <input
                 type="file"
-                accept="image/*"
+                accept={ACCEPT_ARCHIVOS_IMAGEN_CON_CAMARA}
                 capture="environment"
                 onChange={handleFileUpload}
                 className="hidden"

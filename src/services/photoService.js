@@ -11,6 +11,7 @@ import {
   OFFLINE_ATTACHMENT_MAX_BYTES,
 } from '../config/autoSaveConfig.js';
 import { offlineLog } from '../offline/offlineLog.js';
+import { asegurarJpeg, esArchivoImagen } from '../utils/heicToJpeg.js';
 
 function loadImageBitmap(file) {
   return new Promise((resolve, reject) => {
@@ -32,12 +33,13 @@ function loadImageBitmap(file) {
  * Comprime imagen a JPEG (lado mayor <= maxEdge).
  */
 export async function compressImageFile(file, { maxEdge = OFFLINE_PHOTO_MAX_EDGE, quality = 0.72 } = {}) {
-  if (!file || !file.type?.startsWith('image/')) {
+  if (!file || !esArchivoImagen(file)) {
     return { blob: file, fileName: file?.name, mimeType: file?.type, originalSize: file?.size || 0, optimizedSize: file?.size || 0 };
   }
   const originalSize = file.size || 0;
   try {
-    const img = await loadImageBitmap(file);
+    const listo = await asegurarJpeg(file);
+    const img = await loadImageBitmap(listo);
     let { width, height } = img;
     const scale = Math.min(1, maxEdge / Math.max(width, height));
     width = Math.round(width * scale);

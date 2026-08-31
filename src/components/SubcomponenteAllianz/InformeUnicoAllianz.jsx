@@ -43,12 +43,9 @@ import { RECARGOS_PRESUPUESTO_NSR10_CAT } from '../SubcomponenteEvaluacionSismic
 import { OCULTAR_EVALUACION_Y_DICTAMEN_NSR10 } from '../SubcomponenteEvaluacionSismicaNSR10/catalogoEvaluacionSismicaNSR10.js';
 import MapaGoogleEarth from '../MapaGoogleEarth.jsx';
 import CotizacionPdfLiquidacion from '../liquidacion/CotizacionPdfLiquidacion.jsx';
-import {
-  serializarPaginasCotizacion,
-  montoCotizacionPdf,
-  usaCotizacionComoBasePresupuesto,
-} from '../liquidacion/cotizacionPdfLiquidacion.js';
+import { serializarPaginasCotizacion } from '../liquidacion/cotizacionPdfLiquidacion.js';
 import EditorDeducibleLibreAllianz from './EditorDeducibleLibreAllianz.jsx';
+import TablaCotizacionVsPresupuestoAllianz from './TablaCotizacionVsPresupuestoAllianz.jsx';
 
 function extraerLatLng(texto) {
   const parts = String(texto || '')
@@ -700,15 +697,14 @@ export default function InformeUnicoAllianz({
         <h3 className={expressSectionTitle}>
           {nConclusiones}. {t('allianz.reportUnique.sectionConclusions')}
         </h3>
-        {tieneCotizacionPdf ? (
-          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
-            {t('allianz.reportUnique.preliminaryBudgetHiddenQuote')}
-          </p>
-        ) : (
-          <>
         <p className="mb-3 font-body text-sm font-semibold text-gray-800 dark:text-gray-100">
           {t('allianz.reportUnique.sectionPreliminaryBudget')}
         </p>
+        {tieneCotizacionPdf && (
+          <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
+            {t('allianz.reportUnique.preliminaryBudgetWithQuote')}
+          </p>
+        )}
         <TablaFilasAllianz
           columnas={[
             {
@@ -745,8 +741,6 @@ export default function InformeUnicoAllianz({
           <span>{t('allianz.reportUnique.totalPreliminaryReserve')}</span>
           <span>$ {formatearMonto(totalPreliminar)}</span>
         </div>
-          </>
-        )}
 
         <div className="mt-5">
           <Campo label={t('allianz.reportUnique.conclusions')}>
@@ -830,6 +824,8 @@ export default function InformeUnicoAllianz({
                   });
                 }}
                 disabled={guardandoCaso}
+                mostrarUsarComoBase={false}
+                usarComoBasePorDefecto={false}
               />
             </div>
 
@@ -843,14 +839,10 @@ export default function InformeUnicoAllianz({
 
             <div className="mb-4 grid max-w-xl grid-cols-1 gap-1 border border-gray-200 dark:border-gray-700">
               <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
-                <span>
-                  {totales.origenPresupuesto === 'cotizacion'
-                    ? t('allianz.settlement.totalDamagesQuote')
-                    : t('allianz.settlement.totalDamagesNsr')}
-                </span>
+                <span>{t('allianz.settlement.totalDamagesNsr')}</span>
                 <span>$ {formatearMonto(totales.totalDanios)}</span>
               </div>
-              {totales.origenPresupuesto === 'cotizacion' && (
+              {totales.cotizacionMonto > 0 && (
                 <div className="flex justify-between border-b border-gray-200 px-4 py-2 text-sm dark:border-gray-700">
                   <span>{t('allianz.settlement.totalQuote')}</span>
                   <span>$ {formatearMonto(totales.cotizacionMonto)}</span>
@@ -890,13 +882,16 @@ export default function InformeUnicoAllianz({
               onInputChange={handleNsrChange}
               modoLiquidador
               recargosPresupuesto={RECARGOS_PRESUPUESTO_NSR10_CAT}
-              ocultarPresupuestoEscrito={tieneCotizacionPdf}
-              totalPresupuestoOverride={
-                usaCotizacionComoBasePresupuesto(liquidador.cotizacionPdf)
-                  ? montoCotizacionPdf(liquidador.cotizacionPdf)
-                  : null
-              }
             />
+            <div className="mt-4">
+              <TablaCotizacionVsPresupuestoAllianz
+                filas={liquidador.filasCotizacionVsPresupuesto}
+                disabled={guardandoCaso}
+                onChange={(filas) =>
+                  setLiquidador((prev) => ({ ...prev, filasCotizacionVsPresupuesto: filas }))
+                }
+              />
+            </div>
           </section>
 
           {!esUnico && (
@@ -904,8 +899,8 @@ export default function InformeUnicoAllianz({
             <h3 className={expressSectionTitle}>{nTabla}. {t('allianz.reportUnique.sectionTable')}</h3>
             <p className="mb-3 font-body text-sm text-gray-600 dark:text-gray-400">
               {tieneCotizacionPdf
-                ? 'Resumen de la cotización de reparación usada como base de liquidación.'
-                : 'Resumen de ítems del presupuesto NSR-10.'}
+                ? t('allianz.reportUnique.settlementTableHintQuote')
+                : t('allianz.reportUnique.settlementTableHintNsr')}
             </p>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100 text-sm dark:divide-gray-800">

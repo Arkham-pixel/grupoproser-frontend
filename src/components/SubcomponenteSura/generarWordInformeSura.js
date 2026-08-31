@@ -35,10 +35,12 @@ import {
   prefijoArchivoInformeSura,
   RAZON_SOCIAL_SURA,
   reservaSugeridaSura,
+  resumenLiquidacionIndependienteSura,
   textoDescripcionDaniosSura,
 } from './liquidadorSuraHelpers.js';
 import { urlDescargaArchivoSura } from '../../services/segurosSuraService.js';
 import { getUploadsUrlCandidates } from '../../config/apiConfig.js';
+import { jpegDesdeBytesImagen } from '../../utils/heicToJpeg.js';
 import { fusionarFotosAgilEnInforme } from './informeAgilSuraHelpers.js';
 
 /** Bordes estilo informe catastrófico / Puertos */
@@ -407,6 +409,167 @@ const campoFila = (label, value, opts = {}) =>
     ],
   });
 
+function tablaDosColumnasSura(filas = [], moneyFn) {
+  return new Table({
+    width: { size: 10000, type: WidthType.DXA },
+    columnWidths: [5000, 5000],
+    borders: bordersCuadro,
+    rows: filas.map((fila) =>
+      campoFila(
+        fila.label,
+        fila.tipo === 'texto' ? txt(fila.value) : moneyFn(fila.value),
+        {
+          boldValue: !!(fila.bold || fila.destacado),
+          labelW: 5000,
+          valueW: 5000,
+        }
+      )
+    ),
+  });
+}
+
+function tablaDeducibleContenidosPorArticuloSura(grupos = [], moneyFn) {
+  const lista = Array.isArray(grupos) ? grupos : [];
+  const w = [1800, 1800, 700, 1400, 1400, 1400, 1500];
+  const totalW = w.reduce((a, b) => a + b, 0);
+  const head = ['Grupo', 'Cobertura', 'Ítems', 'Suma aseg.', 'Pérdida', 'Deducible', 'Neto'];
+  const rows = [
+    new TableRow({
+      children: head.map((lab, i) =>
+        cell(lab, {
+          bold: true,
+          width: w[i],
+          size: SIZE_NSR,
+          compact: true,
+          cuadro: true,
+          alignment: AlignmentType.CENTER,
+        })
+      ),
+    }),
+  ];
+  let sumaPL = 0;
+  let sumaDed = 0;
+  let sumaNeto = 0;
+  lista.forEach((g) => {
+    const perdida = Number(g.sumaPL) || 0;
+    const deducible = Number(g.deducible ?? g.aplicado) || 0;
+    const neto =
+      g.neto != null && g.neto !== ''
+        ? Number(g.neto) || 0
+        : Math.max(0, perdida - deducible);
+    sumaPL += perdida;
+    sumaDed += deducible;
+    sumaNeto += neto;
+    rows.push(
+      new TableRow({
+        children: [
+          cell(txt(g.grupoLabel), { width: w[0], size: SIZE_NSR, compact: true, cuadro: true }),
+          cell(txt(g.coberturaLabel), { width: w[1], size: SIZE_NSR, compact: true, cuadro: true }),
+          cell(String(g.filas ?? '—'), {
+            width: w[2],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+          cell(moneyFn(g.sumaVA), {
+            width: w[3],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+          cell(moneyFn(perdida), {
+            width: w[4],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+          cell(moneyFn(deducible), {
+            width: w[5],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+            bold: true,
+          }),
+          cell(moneyFn(neto), {
+            width: w[6],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+            bold: true,
+          }),
+        ],
+      })
+    );
+  });
+  if (!lista.length) {
+    rows.push(
+      new TableRow({
+        children: [
+          cell('Sin artículos de contenidos con deducible diligenciado.', {
+            width: totalW,
+            columnSpan: 7,
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.CENTER,
+          }),
+        ],
+      })
+    );
+  } else {
+    rows.push(
+      new TableRow({
+        children: [
+          cell('SUMA POR ARTÍCULO', {
+            width: w[0] + w[1] + w[2] + w[3],
+            columnSpan: 4,
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            bold: true,
+            alignment: AlignmentType.RIGHT,
+          }),
+          cell(moneyFn(sumaPL), {
+            width: w[4],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+            bold: true,
+          }),
+          cell(moneyFn(sumaDed), {
+            width: w[5],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+            bold: true,
+          }),
+          cell(moneyFn(sumaNeto), {
+            width: w[6],
+            size: SIZE_NSR,
+            compact: true,
+            cuadro: true,
+            alignment: AlignmentType.RIGHT,
+            bold: true,
+          }),
+        ],
+      })
+    );
+  }
+  return new Table({
+    width: { size: totalW, type: WidthType.DXA },
+    columnWidths: w,
+    borders: bordersCuadro,
+    rows,
+  });
+}
+
 /** Cuadro ficha principal del siniestro (plantilla tipo Juliet / Catastrófico). */
 function construirCuadroPrincipal({
   caso = {},
@@ -594,13 +757,21 @@ function esCabeceraImagen(bytes) {
   if (bytes[0] === 0x89 && bytes[1] === 0x50) return true;
   if (bytes[0] === 0x47 && bytes[1] === 0x49) return true;
   if (bytes[0] === 0x52 && bytes[1] === 0x49) return true;
+  if (bytes.length >= 12) {
+    const brand = String.fromCharCode(...bytes.subarray(4, 12));
+    if (brand.startsWith('ftyp')) return true;
+  }
   return false;
 }
 
-/** Convierte webp/otros a JPEG vía canvas para que docx los acepte. */
+/** Convierte webp/HEIC/otros a JPEG vía canvas para que docx los acepte. */
 async function bytesAJpegSiNecesario(bytes, tipo) {
-  if (tipo === 'jpg' || tipo === 'png') {
-    return { bytes, type: tipo };
+  const comoJpeg = await jpegDesdeBytesImagen(bytes);
+  if (comoJpeg?.[0] === 0xff && comoJpeg?.[1] === 0xd8) {
+    return { bytes: comoJpeg, type: 'jpg' };
+  }
+  if (tipo === 'png') {
+    return { bytes: comoJpeg || bytes, type: 'png' };
   }
   try {
     const blob = new Blob([bytes], { type: tipo === 'webp' ? 'image/webp' : 'image/*' });
@@ -1355,88 +1526,33 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
 
   const header = await crearEncabezadoSura({ caso, informe: info, fechaGeneracion });
 
-  const liquidacionResumen = [
-    ...(OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
-      ? []
-      : [
-          campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
-          campoFila(
-            'Categoría / Habitabilidad',
-            `${txt(criterio.categoria)} / ${txt(criterio.habitabilidad)}`,
-            { labelW: 5000, valueW: 5000 }
-          ),
-        ]),
-    campoFila('Subtotal presupuesto (costo directo)', money(totales.subtotal), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(`AIU (${aiuPct}%)`, money(totales.aiu), { labelW: 5000, valueW: 5000 }),
-    ...(mostrarImprevistos
-      ? [
-          campoFila(`Imprevistos (${imprPct}%)`, money(totales.imprevistos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-        ]
-      : []),
-    ...(mostrarImpuestos
-      ? [
-          campoFila(`Impuestos (${impPct}%)`, money(totales.impuestos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-        ]
-      : []),
-    campoFila('Total presupuesto NSR-10', money(totales.totalPresupuesto ?? totales.presupuesto?.total), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Total contenidos', money(totales.totalContenidos ?? 0), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('SUMA COMPLETA (presupuesto + contenidos)', money(totales.sumaCompleta ?? totales.totalDanios), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila('Gastos de hospedaje', money(totales.diagrama?.gastosHospedaje), {
-      labelW: 5000,
-      valueW: 5000,
-    }),
-    campoFila(
-      totales.deducibleAplicado > 0
-        ? `Deducible (${txt(totales.deducibleTexto || 'aplicado')})`
-        : 'Deducible',
-      totales.deducibleAplicado > 0
-        ? money(totales.deducibleAplicado)
-        : txt(totales.deducibleTexto || 'No aplica'),
-      {
-        labelW: 5000,
-        valueW: 5000,
-      }
-    ),
-    ...(Array.isArray(totales.otrosAmparos) && totales.otrosAmparos.length
-      ? [
-          campoFila('Otros amparos (sin deducible)', money(totales.totalOtrosAmparos), {
-            labelW: 5000,
-            valueW: 5000,
-          }),
-          ...totales.otrosAmparos.map((it) =>
-            campoFila(
-              `${txt(it.nombre || it.tipo)}${it.observacion ? ` — ${txt(it.observacion)}` : ''}`,
-              money(it.valor),
-              { labelW: 5000, valueW: 5000 }
-            )
-          ),
-        ]
-      : []),
-    campoFila('TOTAL A INDEMNIZAR', money(totales.totalIndemnizar), {
-      boldValue: true,
-      labelW: 5000,
-      valueW: 5000,
-    }),
-  ];
+  const resumenInd = resumenLiquidacionIndependienteSura(liq, totales);
+  const filasDictamen = OCULTAR_EVALUACION_Y_DICTAMEN_NSR10
+    ? []
+    : [
+        campoFila('Dictamen', txt(criterio.dictamen), { labelW: 5000, valueW: 5000 }),
+        campoFila(
+          'Categoría / Habitabilidad',
+          `${txt(criterio.categoria)} / ${txt(criterio.habitabilidad)}`,
+          { labelW: 5000, valueW: 5000 }
+        ),
+      ];
+  const tablaResumenDictamen = filasDictamen.length
+    ? new Table({
+        width: { size: 10000, type: WidthType.DXA },
+        columnWidths: [5000, 5000],
+        borders: bordersCuadro,
+        rows: filasDictamen,
+      })
+    : null;
+  const tablaResumenEdificio = tablaDosColumnasSura(resumenInd.edificio, money);
+  const tablaResumenContenidos = tablaDosColumnasSura(resumenInd.contenidos, money);
+  const tablaResumenGastos = tablaDosColumnasSura(resumenInd.gastosSinDeducible || [], money);
+  const tablaResumenConsolidado = tablaDosColumnasSura(resumenInd.consolidado, money);
+  const tablaArticulosContenidos =
+    resumenInd.contenidosPorArticulo && resumenInd.grupos.length
+      ? tablaDeducibleContenidosPorArticuloSura(resumenInd.grupos, money)
+      : null;
 
   const w = NSR_COLS.widths;
   const cellNsr = (text, colIdx, opts = {}) =>
@@ -1693,12 +1809,44 @@ export async function descargarWordInformeSura({ caso = {}, informe = null, liqu
         ),
         tablaContenidos,
         p('Resumen de liquidación', { bold: true, before: 180, after: 80, size: SIZE_12 }),
-        new Table({
-          width: { size: 10000, type: WidthType.DXA },
-          columnWidths: [5000, 5000],
-          borders: bordersCuadro,
-          rows: liquidacionResumen,
+        ...(tablaResumenDictamen ? [tablaResumenDictamen] : []),
+        p('Deducible de edificio (presupuesto)', {
+          bold: true,
+          before: tablaResumenDictamen ? 160 : 40,
+          after: 80,
+          size: SIZE_12,
         }),
+        tablaResumenEdificio,
+        p(resumenInd.notaEdificio, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
+        p('Deducible de contenidos (por artículo de póliza)', {
+          bold: true,
+          before: 160,
+          after: 80,
+          size: SIZE_12,
+        }),
+        tablaResumenContenidos,
+        ...(tablaArticulosContenidos
+          ? [
+              p('Desglose por artículo de póliza', {
+                bold: true,
+                before: 120,
+                after: 60,
+                size: SIZE_12,
+              }),
+              tablaArticulosContenidos,
+            ]
+          : []),
+        p(resumenInd.notaContenidos, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
+        p('Gastos y amparos sin deducible', {
+          bold: true,
+          before: 160,
+          after: 80,
+          size: SIZE_12,
+        }),
+        tablaResumenGastos,
+        p(resumenInd.notaGastos, { before: 80, after: 80, size: SIZE_META, color: '555555' }),
+        p('Consolidado', { bold: true, before: 160, after: 80, size: SIZE_12 }),
+        tablaResumenConsolidado,
         ...(liq.observaciones
           ? [
               p('Observaciones del liquidador:', { bold: true, before: 120, after: 40 }),

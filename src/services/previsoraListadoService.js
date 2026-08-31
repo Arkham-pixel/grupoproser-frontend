@@ -4,7 +4,11 @@ import {
   homologarEstadoPrevisora,
   ultimaGestionPrevisora,
 } from '../components/SubcomponentePrevisora/previsoraHelpers.js';
-import { sanitizarInformeUnicoPrevisora, sanitizarLiquidadorPrevisora } from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
+import {
+  parsearNumero,
+  sanitizarInformeUnicoPrevisora,
+  sanitizarLiquidadorPrevisora,
+} from '../components/SubcomponentePrevisora/liquidadorPrevisoraHelpers.js';
 
 const API_URL = `${BASE_URL}/api/previsora-listado`;
 
@@ -142,6 +146,12 @@ export const guardarLiquidadorEnCasoPrevisoraListado = async ({
   return actualizarCasoPrevisoraListado(casoId, {
     ...omitirMeta(casoBase),
     liquidador: sanitizarLiquidadorPrevisora(liquidador || {}),
+    valorAseguradoInmueble:
+      parsearNumero(liquidador?.encabezado?.valorAseguradoInmueble) ||
+      casoBase.valorAseguradoInmueble,
+    valorAseguradoContenidos:
+      parsearNumero(liquidador?.encabezado?.valorAseguradoContenidos) ||
+      casoBase.valorAseguradoContenidos,
   });
 };
 

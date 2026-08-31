@@ -38,6 +38,7 @@ import {
 } from './bbvaCatHelpers.js';
 import { descargarDesprendibleCatBbvaCat } from './generarDesprendibleCatBbvaCat.js';
 import { AUTOSAVE_DEBOUNCE_MS } from '../../config/autoSaveConfig.js';
+import { ACCEPT_ARCHIVOS_IMAGEN, asegurarJpeg, esArchivoImagen } from '../../utils/heicToJpeg.js';
 
 const SEVERIDAD_MANUAL_CAT = SEVERIDAD_CAT_BBVA.map((s) => ({
   nivel: s.valor,
@@ -53,11 +54,7 @@ const INTRO_SEVERIDAD =
 const RECORDATORIO =
   'Recordatorio operativo: documentar hechos observables, no conclusiones de cobertura. Mantener trazabilidad de fecha, hora, ubicación, fuente y soporte.';
 
-const esImagen = (fileOrName) => {
-  const name = typeof fileOrName === 'string' ? fileOrName : fileOrName?.name || '';
-  const type = typeof fileOrName === 'object' ? fileOrName?.type || '' : '';
-  return type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(name);
-};
+const esImagen = (fileOrName) => esArchivoImagen(fileOrName);
 
 const esFotoArchivo = (a) => {
   const et = String(a?.etiqueta || '').toUpperCase();
@@ -243,7 +240,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
   const subirFotos = async (fileList) => {
     const files = Array.from(fileList || []).filter(esImagen);
     if (!files.length) {
-      setError('Seleccione solo fotos (JPG, PNG, GIF o WEBP).');
+      setError('Seleccione solo fotos (JPG, PNG, GIF, WEBP o HEIC).');
       return;
     }
     if (!casoBbvaCat?._id) {
@@ -255,7 +252,8 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
     setSubiendo(true);
     try {
       const subidos = [];
-      for (const file of files) {
+      for (const original of files) {
+        const file = await asegurarJpeg(original);
         const creado = await subirArchivoBbvaCat(casoBbvaCat._id, file, 'FOTOS', {
           descripcion: '',
         });
@@ -570,7 +568,7 @@ export default function InspeccionCatBbvaCat({ casoBbvaCat = null, onCasoChange 
           ref={inputRef}
           type="file"
           multiple
-          accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
+          accept={ACCEPT_ARCHIVOS_IMAGEN}
           className="hidden"
           onChange={handleFileInputChange}
         />
