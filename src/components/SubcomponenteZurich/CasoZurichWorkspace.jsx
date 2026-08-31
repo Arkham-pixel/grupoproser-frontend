@@ -667,14 +667,23 @@ export default function CasoZurichWorkspace({ tabInicial = null, origen = 'cat' 
         savedDataToRestore={draftToRestore}
         onRestore={() => {
           const data = draftToRestore?.data || {};
+          const t = (v) => String(v || '').trim();
+          const score = (inf) =>
+            t(inf?.descripcionDanios).length +
+            t(inf?.conclusiones).length +
+            t(inf?.recomendacion).length;
+          const actual = casoZurich?.informeUnico;
+          const candidato = data.informe;
+          const informeAUsar =
+            score(candidato) >= score(actual) ? candidato || actual : actual;
           setCasoZurich((prev) => ({
             ...(prev || {}),
             liquidador: data.liquidador || prev?.liquidador,
-            informeUnico: data.informe || prev?.informeUnico,
+            informeUnico: informeAUsar || prev?.informeUnico,
           }));
           if (data.liquidador) setLiquidadorState(data.liquidador);
           if (data.totales) setTotalesState(data.totales);
-          if (data.informe) setInformeState(data.informe);
+          if (informeAUsar) setInformeState(informeAUsar);
           setRestoreNonce((n) => n + 1);
           setShowDraftRestore(false);
         }}

@@ -63,6 +63,25 @@ export default function useZurichCasoAutosave({
       }
       if (snap === prevSnap) return;
 
+      if (isInf) {
+        const score = (inf) => {
+          if (!inf || typeof inf !== 'object') return 0;
+          const t = (v) => String(v || '').trim();
+          return (
+            t(inf.descripcionDanios).length +
+            t(inf.conclusiones).length +
+            t(inf.recomendacion).length +
+            t(inf.analisisCobertura).length
+          );
+        };
+        const sOld = score(casoRef.current?.informeUnico);
+        const sNew = score(payload.data);
+        if (sOld > 120 && sNew < sOld * 0.45) {
+          lastInfSnap.current = snap;
+          return;
+        }
+      }
+
       const timer = setTimeout(async () => {
         if (savingRef.current) {
           pendingFlushRef.current = payload;
