@@ -62,6 +62,17 @@ export const normalizeZurichListadoItem = (item = {}) => {
     liquidador: item.liquidador && typeof item.liquidador === 'object' ? item.liquidador : null,
     informeUnico: item.informeUnico && typeof item.informeUnico === 'object' ? item.informeUnico : null,
     archivos: Array.isArray(item.archivos) ? item.archivos : [],
+    tieneInforme: Boolean(
+      item.tieneInforme ?? (item.informeUnico && typeof item.informeUnico === 'object')
+    ),
+    tieneLiquidador: Boolean(
+      item.tieneLiquidador ?? (item.liquidador && typeof item.liquidador === 'object')
+    ),
+    nArchivos: Number.isFinite(Number(item.nArchivos))
+      ? Number(item.nArchivos)
+      : Array.isArray(item.archivos)
+        ? item.archivos.length
+        : 0,
   };
 };
 

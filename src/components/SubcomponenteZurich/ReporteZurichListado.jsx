@@ -568,9 +568,9 @@ export default function ReporteZurichListado({ modoAsignados = false }) {
                     <tr key={item._id} className="transition hover:bg-gray-50/80 dark:hover:bg-gray-900/30">
                       <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3 dark:bg-[#1A1A1A]">
                         <AccionesZurichMenu
-                          docsCount={item.archivos?.length || 0}
-                          tieneLiquidador={!!item.liquidador}
-                          tieneInforme={!!item.informeUnico}
+                          docsCount={item.nArchivos ?? item.archivos?.length ?? 0}
+                          tieneLiquidador={!!(item.tieneLiquidador ?? item.liquidador)}
+                          tieneInforme={!!(item.tieneInforme ?? item.informeUnico)}
                           onGestionar={() => setCasoEdicion(item)}
                           onArchivero={() => setCasoArchivero(item)}
                           onAbrirCaso={() =>

@@ -47,6 +47,23 @@ export default function ArchiveroZurich({
   }, [caso?._id, caso?.archivos]);
 
   useEffect(() => {
+    if (!caso?._id) return undefined;
+    let cancelado = false;
+    (async () => {
+      try {
+        const actualizado = await api.getById(caso._id);
+        if (cancelado) return;
+        setArchivos(actualizado.archivos || []);
+      } catch {
+        /* el listado no trae archivos; el getById los hidrata */
+      }
+    })();
+    return () => {
+      cancelado = true;
+    };
+  }, [caso?._id, api]);
+
+  useEffect(() => {
     if (etiquetaInicial) setEtiqueta(etiquetaInicial);
   }, [etiquetaInicial]);
 
